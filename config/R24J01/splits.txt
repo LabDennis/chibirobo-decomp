@@ -1281,10 +1281,11 @@ game/cinterfacecameraaction.cpp:
 	.text start:0x80030AC0 end:0x80031FC4
 
 game/wii/cinterpolation.cpp:
-	.text start:0x80032038 end:0x80032C48
+	.text start:0x80032038 end:0x80032FD4
+	.data start:0x802E6110 end:0x802E6250
 
 game/wii/cinterpolationeaseoutdivide.cpp:
-	.text start:0x80032C48 end:0x8003366C
+	.text start:0x80032FD4 end:0x8003366C
 
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4

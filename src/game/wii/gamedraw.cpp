@@ -60,7 +60,7 @@ void fn_802BE414(void* obj, CLight* light); // as gameupdate.cpp declares them
 void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
 void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
-void fn_802BE19C(void* effects, MtxP view, u32 group); // draws one group of the effects
+// draws one group of the effects
 void DrawTitleScreen(Title* title);
 void DrawGameHud(InfoScrn* scrn);
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
@@ -1643,7 +1643,7 @@ void CGame::Draw()
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i != 1 && i != 4) {
-					fn_802BE19C(&mEffects, view, i);
+					mEffects.Draw(view, i);
 				}
 			}
 		}
@@ -1690,7 +1690,7 @@ void CGame::Draw()
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i == 1) {
-					fn_802BE19C(&mEffects, view, i);
+					mEffects.Draw(view, i);
 				}
 			}
 		}
@@ -1713,7 +1713,7 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawHud();
-		fn_802BE19C(&mEffects, GetScreenCamera()->mViewMtx, 4);
+		mEffects.Draw(GetScreenCamera()->mViewMtx, 4);
 		Vec quad[4] = { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f } }; // the depth goes back
 		quad[0].x   = (f32)gScreenLeft;
 		quad[0].y   = (f32)gScreenTop;
@@ -1869,7 +1869,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 		return;
 	}
 	// the effect manager's two live counts
-	if (gGame.mEffects.mResources[0].mLiveCount != 0 || gGame.mEffects.mResources[1].mLiveCount != 0) {
+	if (gGame.mEffects.mResources[0].mState != 0 || gGame.mEffects.mResources[1].mState != 0) {
 		return;
 	}
 	if (gGame.mSound.mLoadPending) {

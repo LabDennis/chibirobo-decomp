@@ -93,8 +93,6 @@ void fn_8008492C(void* menu, s32 frames);            // steps the open menus
 BOOL fn_80094B04(CEvt* evt);                         // the GameCube's LoadEventResources
 void fn_800A10E4(CEvt* evt, s16 eventId, s16 index); // the GameCube's RegisterEventObjectId
 void fn_800C5814(XObjPool* pools);                   // reads the stage's objects in again
-BOOL fn_802BDBCC(void* obj, const char* path, s32 arg);
-BOOL fn_802BDC98(void* obj, s32 arg);
 }
 
 extern s32 gRefreshRate;
@@ -126,7 +124,7 @@ void fn_800D1AF8(WiiPlayerState* player, u32 frames);
 void fn_800D1BF0(WiiPlayerState* player, u32 frames);
 void fn_800D1B64(WiiPlayerState* player, u32 frames);
 void fn_800A13D0(void* effects, CCamera* camera);
-void fn_802BE03C(void* effects, const Vec* eye, MtxP view, f32 (*projection)[4], u32 frames, u32 index, f32 near, f32 far);
+
 extern u8 lbl_8044EE4C[];
 // the pointer's position in the last frame, and each stage's scope sounds (0x802C49C8)
 extern Vec lbl_80444E98;
@@ -393,11 +391,11 @@ BOOL CGame::BeforeUpdate()
 		mOutline.mFrame      = 0;
 		mOutline.mThick2     = 0.0f;
 	case 9:
-		if (!fn_802BDBCC(&mEffects, "eff/cb_robo", 0))
+		if (!mEffects.Load("eff/cb_robo", 0))
 			break;
 		++mLoadStep;
 	case 10:
-		if (!fn_802BDC98(&mEffects, 0))
+		if (!mEffects.UpdateLoad(0))
 			break;
 		++mLoadStep;
 	case 11:
@@ -1466,15 +1464,15 @@ void CGame::Update(u32 frames)
 		Vec eye        = camera.mView.mEye;
 		for (u32 j = 0; j < 6; j++) {
 			if (j != 4) {
-				fn_802BE03C(&mEffects, &eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
+				mEffects.Update(&eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
 			}
 		}
 		CCamera screen = *GetCamera();
 		eye            = screen.mView.mEye;
-		fn_802BE03C(&mEffects, &eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
+		mEffects.Update(&eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
 	} else if (mResetRequested) {
-		fn_802BDC98(&mEffects, 0);
-		fn_802BDC98(&mEffects, 1);
+		mEffects.UpdateLoad(0);
+		mEffects.UpdateLoad(1);
 	}
 
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenu.mActive && !mHomeMenu.IsOpen()) {

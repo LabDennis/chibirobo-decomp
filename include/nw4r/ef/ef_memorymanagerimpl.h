@@ -1,6 +1,11 @@
 #ifndef NW4R_EF_MEMORY_MANAGER_IMPL_H
 #define NW4R_EF_MEMORY_MANAGER_IMPL_H
 #include "nw4r/types_nw4r.h"
+#include "nw4r/NW4RAssert.hpp"
+
+#ifndef ROUND_UP
+#define ROUND_UP(x, align) (((x) + (align) - 1) & (-(align)))
+#endif
 
 #include "nw4r/ef/ef_effect.h"
 #include "nw4r/ef/ef_effectsystem.h"
@@ -70,9 +75,11 @@ public:
         // clang-format on
     }
 
-    NW4R_EF_MEMORY_MANAGER_CLASS(void* pStartAddr, u32 size, int maxEffect,
+    NW4R_EF_MEMORY_MANAGER_CLASS(void* startAddress, u32 size, int maxEffect,
                                  int maxEmitter, int maxParticleManager,
                                  int maxParticle) {
+
+        NW4RAssertAligned_FileLine("memorymanagertmp.h", 267, startAddress, 32);
 
         u32 headerSize = ::nw4r::ut::RoundUp(sizeof(MemInfo), 32);
 
@@ -96,9 +103,11 @@ public:
         mFreeMemTail = NULL;
         mAllChain = NULL;
 
-        mHeapEndAddr = static_cast<u8*>(pStartAddr) + size;
+        mHeapEndAddr = static_cast<u8*>(startAddress) + size;
         mHeapStartAddr = reinterpret_cast<u8*>(
-            ::nw4r::ut::RoundUp(reinterpret_cast<u32>(pStartAddr), 32));
+            ::nw4r::ut::RoundUp(reinterpret_cast<u32>(startAddress), 32));
+
+        NW4RAssert_FileLine("memorymanagertmp.h", 291, mHeapStartAddr < mHeapEndAddr && reinterpret_cast<u8*>(mHeapEndAddr) - reinterpret_cast<u8*>(mHeapStartAddr) > headerSize);
 
         mLeastEffect = maxEffect;
         mLeastEmitter = maxEmitter;
@@ -177,21 +186,24 @@ public:
 
             TParticleManager* mMgr = static_cast<TParticleManager*>(pPtr);
 
-            TParticle* pPtcl;
+            TParticle* pp;
             TParticle* pNextPtcl;
 
-            for (pPtcl = static_cast<TParticle*>(
+            for (pp = static_cast<TParticle*>(
                      mMgr->mActivityList.mClosingList.headObject);
-                 pPtcl != NULL; pPtcl = pNextPtcl) {
+                 pp != NULL; pp = pNextPtcl) {
 
                 // clang-format off
                 pNextPtcl = static_cast<TParticle*>(
-                    NW4R_UT_LIST_GET_LINK(mMgr->mActivityList.mClosingList, pPtcl)->nextObject);
+                    NW4R_UT_LIST_GET_LINK(mMgr->mActivityList.mClosingList, pp)->nextObject);
                 // clang-format on
 
-                pPtcl->mParticleManager->ParticleToFree(pPtcl);
-                ::nw4r::ut::List_Remove(&mParticleOM->mLeasedList, pPtcl);
-                ::nw4r::ut::List_Append(&mParticleOM->mFreeList, pPtcl);
+                NW4RAssert_FileLine("memorymanagertmp.h", 378, pp->GetRefCount() == 0);
+                NW4RAssert_FileLine("memorymanagertmp.h", 381, pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_ACTIVE || pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_WAIT || pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_CLOSING);
+
+                pp->mParticleManager->ParticleToFree(pp);
+                ::nw4r::ut::List_Remove(&mParticleOM->mLeasedList, pp);
+                ::nw4r::ut::List_Append(&mParticleOM->mFreeList, pp);
             }
 
             pPtr = static_cast<TParticleManager*>(pNext);
@@ -431,6 +443,7 @@ public:
             return reinterpret_cast<u8*>(pIt) + headerSize;
         }
 
+        NW4RAssert_FileLine("memorymanagertmp.h", 580, false);
         return NULL;
     } // at 0x60
 

@@ -26,6 +26,13 @@
 
 class CCamera;
 
+namespace nw4r {
+namespace ef {
+class EffectProject;
+class TextureProject;
+} // namespace ef
+} // namespace nw4r
+
 // one entry in the object reference table the renderer walks: the spawned object and a
 // flags halfword (CMsgFont_Init sets 0x800 on its cursor's own status instead)
 struct WiiObjectRef {
@@ -285,6 +292,7 @@ public:
 	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
 	void UpdateDvdStatus();          // 0x80019428
 	void UpdateSystemMessage();      // 0x80018364, Update calls it first: the corner message and the battery icon
+	void DrawSystemMessage();        // 0x800187B0
 
 	// the drive reports trouble and the disc is not back yet
 	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
@@ -1140,10 +1148,12 @@ class CEffectSystem {
 public:
 	// one set of effect resources, with two CFiles at _84 (constructor 0x8003467C, destructor 0x8002F5D4); the name is ours
 	struct Resource {
-		s32 mLiveCount; // _00, effects still running out of the set
-		u8 _04[0x84 - 0x4];
-		CFile mFiles[2]; // _84
-		u8 _25C[0x268 - 0x25C];
+		s32 mState;                           // _00
+		char mName[0x80];                     // _04
+		CFile mFiles[2];                      // _84
+		nw4r::ef::EffectProject* mEffectProj; // _25C
+		nw4r::ef::TextureProject* mTexProj;   // _260
+		u32 mNumEmitter;                      // _264
 	};
 
 	void* mMemoryPool;      // _00
@@ -1162,6 +1172,11 @@ public:
 
 	virtual ~CEffectSystem() { }
 	void Init();
+	BOOL Load(const char* name, s32 idx);
+	BOOL UpdateLoad(s32 idx);
+	void Unload(s32 idx);
+	void Update(const Vec* camPos, MtxP camMtx, MtxP projMtx, u32 steps, s32 groupID, f32 f1, f32 f2);
+	void Draw(MtxP viewMtx, s32 groupID);
 	void RetireAll(u32 groupID, BOOL retireParticles);
 	void UpdateLights(CLight* light);
 	void SetFog(u32 param, const GXColor* color, f32 f1, f32 f2, f32 f3, f32 f4);

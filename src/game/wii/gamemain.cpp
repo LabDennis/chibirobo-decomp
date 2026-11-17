@@ -49,7 +49,10 @@ inline void operator delete(void* ptr) throw()
 extern s32 gRefreshRate;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
+extern s32 gScreenLeft;
+extern s32 gScreenRight;
 extern s32 gScreenSafeLeft;
+extern s32 gScreenSafeTop;
 extern s32 gScreenSafeBottom;
 
 // the remote's battery query: Update asks WPAD every three seconds while pad 0 holds a remote
@@ -231,11 +234,22 @@ void CBase::UpdateDvdStatus()
  * @note Address: 0x80019414
  * @note Size: 0x14
  */
+struct DiskCheckState {
+	s32 mDvdStatus;
+	s32 mPrevDvdStatus;
+	BOOL mDiskOk;
+	bool mDvdError;
+	DVDCommandBlock mDiskCheckBlock;
+	bool mDiskChecking;
+};
+STATIC_ASSERT(offsetof(DiskCheckState, mDiskOk) == offsetof(CBase, mDiskOk) - offsetof(CBase, mDvdStatus));
+STATIC_ASSERT(offsetof(DiskCheckState, mDiskChecking) == offsetof(CBase, mDiskChecking) - offsetof(CBase, mDvdStatus));
+
 void OnDiskChecked(s32 result, DVDCommandBlock* block)
 {
-	u8* data            = (u8*)block->userData;
-	*(s32*)(data + 8)   = result;
-	*(bool*)(data + 64) = false;
+	DiskCheckState* state = static_cast<DiskCheckState*>(block->userData);
+	state->mDiskOk        = result;
+	state->mDiskChecking  = false;
 }
 
 /**
@@ -254,6 +268,109 @@ extern "C" Vec GetCornerIconPosition(CGame* game)
 	f32 shown  = sin(3.1415927f * alpha / 2.0f);
 	pos.y      = gScreenSafeBottom - (height - height * (1.0f - shown));
 	return pos;
+}
+
+/**
+ * @note Address: 0x800187B0
+ * @note Size: 0xB50
+ */
+// NONMATCHING: stack slot sharing across if/else scopes and callee-saved FPR allocation (f21..f31)
+void CBase::DrawSystemMessage()
+{
+	f32 size = 20.0f;
+	if (mSystemMessage != NULL && mSystemMessageAlpha > 0.0f) {
+		gGame.mGs.mTextFont = 1;
+		const char* text    = mSystemMessage;
+		f32 alpha           = mSystemMessageAlpha;
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		f32 textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		f32 extra     = 0.0f;
+		if (mSystemMessage == GetLocalizedInterfaceText(5) && _41E0 != NULL) {
+			extra = size;
+		}
+		f32 x;
+		f32 y;
+		Vec quad[4];
+		PrimVertex vtx[12];
+		if (_41C0) {
+			x         = (f32)(gPointerScreenWidth / 2) - textWidth * 0.5f;
+			y         = (f32)(gPointerScreenHeight / 2) - size * 0.5f;
+			quad[0].x = x - size - extra;
+			quad[0].y = y - size;
+			quad[0].z = 0.0f;
+			quad[1].x = x + textWidth + size + extra;
+			quad[1].y = y - size;
+			quad[1].z = 0.0f;
+			quad[2].x = x + textWidth + size + extra;
+			quad[2].y = y + size + size;
+			quad[2].z = 0.0f;
+			quad[3].x = x - size - extra;
+			quad[3].y = y + size + size;
+			quad[3].z = 0.0f;
+			u8 a      = (u8)(200.0f * alpha);
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, a, quad[1].x, quad[1].y, quad[1].z, a, quad[2].x, quad[2].y,
+			                 quad[2].z, a, quad[3].x, quad[3].y, quad[3].z, a);
+			DrawGsProportionalTextFormat(&gGame.mGs, (u8)(255.0f * alpha) | 0xFFFFFF00, text, x, y, 0.0f, size, size);
+		} else {
+			x                   = (f32)(gPointerScreenWidth / 2) - textWidth * 0.5f;
+			f32 slide           = sin(3.1415927f * alpha * 0.5f);
+			y                   = (f32)gScreenSafeTop - (1.0f - slide) * 24.0f;
+			u32 textColor       = (u8)(255.0f * alpha) | 0xFFFFFF00;
+			f32 bottom          = (y + size) + 2.0f;
+			f32 top             = y - 2.0f;
+			f32 midX            = (f32)(gPointerScreenWidth / 2);
+			f32 halfW           = (textWidth * alpha) * 0.5f;
+			f32 x0              = midX - halfW;
+			f32 x1              = midX + halfW;
+			f32 left            = (f32)gScreenLeft;
+			f32 right           = (f32)gScreenRight;
+			u32 bgColor         = (u8)(160.0f * alpha);
+			PrimVertex init[12] = {
+				{ { left, top, 0.0f }, 0 },        { { x0, top, 0.0f }, bgColor },    { { left, bottom, 0.0f }, 0 },
+				{ { x0, bottom, 0.0f }, bgColor }, { { x0, top, 0.0f }, bgColor },    { { x1, top, 0.0f }, bgColor },
+				{ { x0, bottom, 0.0f }, bgColor }, { { x1, bottom, 0.0f }, bgColor }, { { x1, top, 0.0f }, bgColor },
+				{ { right, top, 0.0f }, 0 },       { { x1, bottom, 0.0f }, bgColor }, { { right, bottom, 0.0f }, 0 },
+			};
+			memcpy(vtx, init, sizeof(vtx));
+			DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vtx, 12);
+			DrawGsProportionalTextFormat(&gGame.mGs, textColor, text, x, y, 0.0f, size, size);
+		}
+		if (mSystemMessage == GetLocalizedInterfaceText(5) && _41E0 != NULL) {
+			f32 iconX = x - 0.8f * size;
+			f32 iconY = y + 0.5f * size;
+			f32 blink = (mSystemMessageBlink > 0.5f) ? 220.0f : 150.0f;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u32 iconColor = (u8)(blink * alpha) | 0xFFFFFF00;
+			DrawGsTexturedQuad(&gGame.mGs, _41E0, iconColor, iconColor, iconColor, iconColor, iconX, iconY, 0.0f, size, size, 0.0f, 0.0f,
+			                   0.0f);
+			iconColor = (u8)(blink * alpha) | 0xFFFFFF00;
+			DrawGsTexturedQuad(&gGame.mGs, _41E0, iconColor, iconColor, iconColor, iconColor, iconX + textWidth + 1.6f * size, iconY, 0.0f,
+			                   size, size, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mTextFont = 0;
+	}
+	if (mBatteryAlpha > 0.0f) {
+		mIconTpl.mTex.Init(&mIconTpl.mPalette->descriptorArray[1], 0);
+		CTexObj tex = mIconTpl.mTex;
+		u32 color   = (u8)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000;
+		f32 w       = GXGetTexObjWidth(&tex);
+		f32 h       = GXGetTexObjHeight(&tex);
+		f32 slide   = sin(3.1415927f * mBatteryAlpha * 0.5f);
+		f32 x       = (f32)gScreenSafeLeft + w * 0.5f - (1.0f - slide) * 24.0f;
+		f32 y       = (f32)gScreenSafeBottom - h;
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	}
 }
 
 /**
