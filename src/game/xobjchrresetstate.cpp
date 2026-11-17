@@ -82,7 +82,7 @@ void XObjChr::ResetObjectState()
 	mHeldMoveAngle = mMoveAngle = mHeldStickAngle = NAN;
 	mBatteryWarningFrames                         = 0;
 	mBatteryWarningAngle = mBatteryWarningFade = 0.0f;
-	mGaugeTarget                               = 0;
+	mGaugeTarget                               = NULL;
 	mGaugeTime                                 = 0.0f;
 	mPlug.ResetObjectState();
 	mCopterObj.ResetObjectState();
