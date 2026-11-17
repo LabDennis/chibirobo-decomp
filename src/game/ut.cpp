@@ -898,7 +898,7 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 // drops a jobj's own dobjs
 extern "C" inline void RemoveJointDisplayObjectsJP(HSD_JObj* jobj)
 {
-	if (jobj->u.dobj != NULL) {
+	if (jobj->u.dobj) {
 		HSD_DObjRemoveAll(jobj->u.dobj);
 		jobj->u.dobj = NULL;
 	}
