@@ -6953,7 +6953,8 @@ static inline void MeasureStageLabels(MenuStageSelect* menu)
  * @note Address: 0x80033A68
  * @note Size: 0x6A0
  */
-// NONMATCHING: register allocation
+// NONMATCHING: retail keeps a second counter in the file-name copy loop and indexes the label by offset in
+// FinishStageLabel where the build walks a pointer; the rest is register allocation.
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 {
 	menu->mCount = 0;
@@ -9219,6 +9220,8 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 }
 #endif
 
+// NONMATCHING: retail computes 8.0f + labelY before the bar colour and adds 2.0f again at each quad of the
+// selection bar, the build passes one folded value; the rest is register allocation.
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
@@ -11003,6 +11006,9 @@ static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
 }
 
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
+// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once; retail also
+// has an unreachable branch in front of case 0.
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
