@@ -9992,7 +9992,8 @@ static inline void BindRotationJoint(CJointRot& rotation, s32* path, s32 depth)
  * @note Address: 0x800B7D54
  * @note Size: 0xAFC
  */
-// NONMATCHING: regalloc, the path walks hold the joint and the path pointer in each other's register; the stack matches
+// NONMATCHING: regalloc, the mount and attachment path walks hold the joint and the path pointer in each other's register,
+// and the idle loop loads the depth and the path in the other order; the stack matches
 extern "C" void ApplyPlayerSuit(XObjChr* player)
 {
 	if ((player->mStatus.mFlags & 1) && player->mSuits.mJoints[player->mSuits.mCurrent]) {
@@ -10018,7 +10019,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 		s32 path3[]        = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
 		joints[3].indices  = path3;
 		for (s32 i = 0; i < 4; ++i) // the suit's four idle joints
-			player->mIdleJoints[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
+			player->mIdleJoints[i].mJObj = GetJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
 		{ // the suit's attachment, tool and popper mount points
 			player->mAttachmentJoint = FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 }, 8);
 			player->mCopterObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
