@@ -3515,14 +3515,10 @@ static inline void LowerRingValue(f32& value, f32 target, f32 rate, u32 frames)
 static inline void ApproachItemScale(f32& value, f32 target, f32 step)
 {
 	if (value < target) {
-		const f32 next = value + step;
-		value          = next;
-		if (next > target)
+		if ((value += step) > target)
 			value = target;
 	} else if (value > target) {
-		const f32 next = value - step;
-		value          = next;
-		if (next < target)
+		if ((value -= step) < target)
 			value = target;
 	}
 }
