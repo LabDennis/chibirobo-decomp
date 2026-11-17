@@ -61,6 +61,9 @@ public:
 	MtxP LoadMtxNrm(Mtx view);                                // 0x802AFC64
 	void SetVtxPosClr(Mtx view, GXVtxAttrFmtList* fmt);       // 0x802AFCB4
 	void SetVtxPosNrmClr(Mtx view, GXVtxAttrFmtList* fmt);    // 0x802AFDA8
+#else
+	// inline in the GameCube file. spelled with the struct tag, the HSD headers don't have the typedef
+	void SetVtxPosNrmClr(Mtx view, struct _GXVtxAttrFmtList* fmt = NULL);
 #endif
 
 	void SetTrans(f32 x, f32 y, f32 z)
