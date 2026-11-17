@@ -157,7 +157,7 @@ void XObjActorMama::StateNone(u32 frames)
 
 void XObjActorMama::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	CJObj hand;
 	XObjChr* player = gGame.GetPlayer();
 	if (mHideKinds.mFlags & 0x3f) { // a held prop kind is set
