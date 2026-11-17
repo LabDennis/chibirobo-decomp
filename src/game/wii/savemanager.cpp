@@ -446,7 +446,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	for (int i = 0; i < 2; ++i) {
 		manager->mSlot.mHeader.mStages[i] = stages[i];
 		if (manager->mSlot.mHeader.mStages[i] > GetStageNum())
-			manager->mSlot.mHeader.mStages[i] -= GetStageNum() - 99;
+			manager->mSlot.mHeader.mStages[i] = manager->mSlot.mHeader.mStages[i] - GetStageNum() + 99;
 	}
 	manager->mSlot.mHeader.mStatusFlags  = (u32)gGame.GetStatusFlags(1);
 	manager->mSlot.mHeader._18           = 0;
@@ -486,7 +486,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mView.mInterest);
 		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mView.mAngle);
 		manager->mSlot.mData.mCameraDistance = camera->mView.mDistance;
-		manager->mSlot.mData.mCameraFov      = camera->mFov;
+		manager->mSlot.mData.mCameraFov      = camera->CCamera::mFov;
 	}
 	manager->mSlot.mData.mSquirterLiquid = gGame.GetPlayer()->mSquirterContent;
 	manager->mSlot.mData.mItemTint       = gGame.GetPlayer()->mItemTint;
