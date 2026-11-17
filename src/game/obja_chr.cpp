@@ -2256,8 +2256,8 @@ void XObjChr::UpdateObject(u32 frames)
 	mGroundType = GetPlayerGroundType(this);
 	UpdatePlayerFrameEffects(this, frames);
 	s32 path[]    = { 0, 1, 0, 1, 2, 0, 1 };
-	f32 jointY    = GetEventJointWorldPosition(this, 7, path).y;
-	mLook.mOffset = (Vec) { 0, (jointY - mMoveTranslate.y) + 3.0f * mMoveScale.y, 0 };
+	f32 height    = GetEventJointWorldPosition(this, 7, path).y - mMoveTranslate.y;
+	mLook.mOffset = (Vec) { 0, height + 3.0f * mMoveScale.y, 0 };
 	UpdatePlayerLookMarker(&mLook, frames);
 	XObj* plug = &mPlug;
 	plug->UpdateObject(frames);
