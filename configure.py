@@ -1920,6 +1920,11 @@ if wii:
                 Object(Matching, "revolution/THP/THPDec.c"),
                 Object(Matching, "revolution/THP/THPAudio.c"),
                 Object(Matching, "revolution/OS/__ppc_eabi_init.cpp"),
+                # NdevExi2A (0x8017B5A4-0x8017C0A8) is built unoptimised and without inlining: all 31
+                # functions of both files show -O0 code (parameters kept on the stack, locals from r31
+                # down, every static helper a call); with the library's -O4,p none of them match.
+                Object(Matching, "revolution/NdevExi2A/DebuggerDriver.c", extra_cflags=["-O0", "-inline off"]),
+                Object(NonMatching, "revolution/NdevExi2A/exi2.c", extra_cflags=["-O0", "-inline off"]),
                 Object(Matching, "revolution/ESP/esp.c"),
                 # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
                 # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
@@ -1989,7 +1994,6 @@ if wii:
                 Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSReset.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/OdemuExi2/DebuggerDriver.c", cflags=cflags_sdk, extra_cflags=["-inline deferred"], mw_version="GC/1.2.5n"),
             ],
         },
         {

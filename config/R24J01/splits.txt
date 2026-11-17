@@ -1410,8 +1410,13 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.text start:0x8022DE7C end:0x8022E1AC
 	.rodata start:0x802DFA38 end:0x802DFA48
 
-dolphin/OdemuExi2/DebuggerDriver.c:
-	.text start:0x8017B6E0 end:0x8017B95C
+revolution/NdevExi2A/DebuggerDriver.c:
+	.text start:0x8017B5A4 end:0x8017BAD4
+	.sdata start:0x805A1390 end:0x805A1398
+	.sbss start:0x805A1E28 end:0x805A1E40
+
+revolution/NdevExi2A/exi2.c:
+	.text start:0x8017BAD4 end:0x8017C0A8
 
 revolution/OS/OSMemory.c:
 	.text start:0x80187B98 end:0x801882D0
