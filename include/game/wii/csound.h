@@ -114,11 +114,16 @@ public:
 };
 STATIC_ASSERT(sizeof(CDvdSoundArchive) == 0x190);
 
+// the player's sound handles. An object of its own: ~CBase null-checks it before destroying the array
+struct WiiSoundTracks {
+	CSoundHandle mHandles[0x40]; // _00
+};
+
 class CSoundArchivePlayer : public nw4r::snd::SoundArchivePlayer {
 public:
 	void* mSetupData;           // _EC
 	void* mSetupData2;          // _F0
-	CSoundHandle mTracks[0x40]; // _F4
+	WiiSoundTracks mTracks;     // _F4
 	u32 mReady;                 // _8F4
 };
 STATIC_ASSERT(sizeof(CSoundArchivePlayer) == 0x8F8);
@@ -181,14 +186,19 @@ public:
 	CSoundHandle* FindTrack(u32 id)
 	{
 		for (int i = 0; i < 0x40; i++) {
-			if (mArchivePlayer.mTracks[i].IsAttachedSound() && mArchivePlayer.mTracks[i].GetId() == id) {
-				return &mArchivePlayer.mTracks[i];
+			if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+				return &mArchivePlayer.mTracks.mHandles[i];
 			}
 		}
 		return NULL;
 	}
 };
 STATIC_ASSERT(sizeof(CSound) == 0xB60);
+
+// what holds XSound's reverb; ~CBase null-checks it, then the reverb, then the reverb's nw4r base
+struct WiiSoundFx {
+	CSoundFxReverbHiDpl2 mReverb; // _00
+};
 
 class XSound : public CSound {
 public:
@@ -198,8 +208,8 @@ public:
 	virtual BOOL LoadGroup(s32 groupId);
 	virtual BOOL LoadGroupAsync(s32 groupId);
 
-	CSoundFxReverbHiDpl2 mReverb; // _B60
-	u8 mPlaybackState[0xF74 - 0xB60 - sizeof(CSoundFxReverbHiDpl2)];
+	WiiSoundFx mFx; // _B60, the names of this and the type are ours
+	u8 mPlaybackState[0xF74 - 0xB60 - sizeof(WiiSoundFx)];
 	s32 mStartedSfx[32];   // _F74, ids started since the last update; zero means free
 	s32 mMusicPitchFrames; // _FF4
 	s32 mAltSoundIndex;    // _FF8, the GameCube XSound's fields of the same names from here on
