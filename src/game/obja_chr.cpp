@@ -3859,25 +3859,21 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge            = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
-	const Hint* rowHint = hints;
-	for (s32 row = 0; row < 2; ++row, ++rowHint) {
+	f32 edge = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
+	for (s32 row = 0; row < 2; ++row) {
 		s32 which     = order[menu->mSel][row];
-		f32 x         = edge - MeasureGameTextWidth(&gGame.mGs, rowHint->label, TRUE, 20.0f);
+		f32 x         = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
 		f32 y         = 46.0f + row * 24.0f;
-		Hint& hint    = hints[which];
-		const f32* dy = gEquipmentHintOutlineY;
-		const f32* dx = gEquipmentHintOutlineX;
-		for (s32 j = 0; j < 4; ++j, ++dx, ++dy) {
+		for (s32 j = 0; j < 4; ++j) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
-			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hint.label, x + *dx, y + *dy, 0.0f, 20.0f, 20.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j], y + gEquipmentHintOutlineY[j], 0.0f, 20.0f, 20.0f);
 		}
 		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, hint.label, x, y, 0.0f, 20.0f, 20.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, hints[which].label, x, y, 0.0f, 20.0f, 20.0f);
 		CTexObj tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
 		PSMTXScale(tex.mMtx[1], HINT_ICON_WIDTH, 1.0f, 1.0f);
 		tex.mMtxDirty = TRUE;
-		PSMTXTrans(tex.mMtx[0], HINT_ICON_WIDTH * hint.icon, 0.0f, 0.0f);
+		PSMTXTrans(tex.mMtx[0], HINT_ICON_WIDTH * hints[which].icon, 0.0f, 0.0f);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
