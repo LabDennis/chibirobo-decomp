@@ -45,9 +45,9 @@ static inline void SpawnBoxEffect(XObjHBox* box, u32 id)
 void XObjHBox::ResetObjectState()
 {
 	XObj::ResetObjectState();
-	mLoadState   = 0;
-	mRing        = 0.0f;
-	XObj* part   = &mPart.mObj;
+	mLoadState = 0;
+	mRing      = 0.0f;
+	XObj* part = &mPart.mObj;
 	part->ResetObjectState();
 	mPart.mHit   = 0.0f;
 	mPart.mRange = 5.0f;

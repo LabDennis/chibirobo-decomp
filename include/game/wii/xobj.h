@@ -1336,15 +1336,15 @@ STATIC_ASSERT(sizeof(XObjHBoxPart) == 0x9B8);
 // a box that reads a second object (placement 36) and draws it inside itself
 class XObjHBox : public XObj {
 public:
-	virtual void Release();                                // _40 override
-	virtual void InitializeObject();                       // _14C override, fn_801164D8
-	virtual void ResetForNewGame();                        // _150 override, fn_80116518
-	virtual void ResetObjectState();                       // _154 override
-	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158 override
-	virtual void UpdateObject(u32 frames);                 // _164 override
-	virtual void DrawWithView(Mtx view);                   // _178 override
-	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184 override
-	virtual void DrawScreenOverlay();                      // _190 override
+	virtual void Release();                                            // _40 override
+	virtual void InitializeObject();                                   // _14C override, fn_801164D8
+	virtual void ResetForNewGame();                                    // _150 override, fn_80116518
+	virtual void ResetObjectState();                                   // _154 override
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158 override
+	virtual void UpdateObject(u32 frames);                             // _164 override
+	virtual void DrawWithView(Mtx view);                               // _178 override
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
+	virtual void DrawScreenOverlay();                                  // _190 override
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
 
 	s32 mLoadState;     // _9A8
