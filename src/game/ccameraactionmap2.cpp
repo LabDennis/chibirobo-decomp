@@ -8327,7 +8327,7 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	// CMotionControlCamera::Interpolate takes the interest's height at once and follows it in on x and z
 	mInterestMode = 3;
 	SetEye(camera->mEye);
-	mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
+	SetMapCameraPreviousEye(this, camera->mEye);
 	SetInterest(camera->mInterest);
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
@@ -8384,11 +8384,11 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
 	mEyeYOffsetEaseInOut.Start(0.0f, 0.0f, 1.0f);
 	mEyeYOffset       = 0.0f;
-	mPreviousInterest = CVec(mInterest.x, mInterest.y, mInterest.z);
+	SetMapCameraPreviousInterest(this, mInterest);
 	// set by SetMapCameraKeepPreviousEye when memcardpos restores a saved camera: mPreviousEye then keeps camera->mEye.
 	// the FALSE store only runs while the flag is already clear, so nothing here resets it
 	if (!mKeepPreviousEye) {
-		mPreviousEye     = CVec(mInterest.x, mInterest.y, mInterest.z);
+		SetMapCameraPreviousEye(this, mInterest);
 		mKeepPreviousEye = FALSE;
 	}
 }
