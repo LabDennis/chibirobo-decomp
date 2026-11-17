@@ -1284,7 +1284,7 @@ if wii:
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
-                # bl - auto-inlining was off for the unit
+                # bl; -inline auto keeps both as calls too (the unit builds the same under noauto)
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
                 Object(Matching, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1391,7 +1391,7 @@ if wii:
                 Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
-                Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 # the head of the Wii game file (retail 0x80017BC0-0x80019A68): main, CBase's loop, its
                 # empty virtuals, the drive and reset watch and operator new; Start, the corner icon
                 # and the two system-message virtuals have no source yet
@@ -2178,7 +2178,8 @@ if wii:
         },
     ]
 
-    # Retail's engine units sit in one block, 0x802A5358-0x802C19B8 (ut.cpp to fbeffect.cpp), and
+    # Retail's engine units sit in one block, 0x802A5358-0x802C19B8 (ut.cpp to fbeffect.cpp, with
+    # the shared game/ctoon.cpp at 0x802BD294; its one function builds the same either way), and
     # that block is built without auto-inlining: every unit in it scores the same or higher under
     # -inline noauto than without it (cgs 53 -> 89 %, cfont 56 -> 100 %, cobj 68 -> 100 %), the ones
     # with no auto-inline candidates (cobjvec, cresfile, ctrigon) included, while units outside it,
@@ -2192,7 +2193,7 @@ if wii:
         "game/wii/ut.cpp", "game/wii/mem.cpp", "game/wii/cobjvec.cpp", "game/wii/cgs.cpp",
         "game/wii/cprimitive.cpp", "game/wii/cpad.cpp", "game/wii/cfont.cpp", "game/wii/cfile.cpp",
         "game/wii/ctpl.cpp", "game/wii/cresfile.cpp", "game/wii/cobj.cpp", "game/wii/ctrigon.cpp",
-        "game/wii/ceffect.cpp", "game/wii/fbeffect.cpp",
+        "game/ctoon.cpp", "game/wii/ceffect.cpp", "game/wii/fbeffect.cpp",
     }
     for obj in (o for lib in config.libs for o in lib["objects"] if o.name in WII_NOAUTO_BLOCK):
         obj.options["extra_cflags"] = [*obj.options["extra_cflags"], "-inline noauto"]
