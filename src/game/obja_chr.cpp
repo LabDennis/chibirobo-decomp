@@ -3456,8 +3456,9 @@ static inline BOOL HasItem(XObjChr* chr, s16 id)
 // stops every popper shot he has flying
 static inline void StopShots(XObjChr* chr)
 {
-	XActPopperShot* shot = chr->mPopper.mShots.mShot;
-	for (int i = 0; i < 10; i++, shot++) {
+	XActPopperShot* shot;
+	int i;
+	for (i = 0, shot = chr->mPopper.mShots.mShot; i < 10; i++, shot++) {
 		ResetPopperShot(shot);
 	}
 }
@@ -5287,6 +5288,12 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }
 
+// the script's object for an event command's id, NULL while no event script runs
+static inline XObj* FindEventObj(s32 id)
+{
+	return gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
+}
+
 /**
  * @note Address: 0x8009DDB8
  * @note Size: 0x1740
@@ -5299,12 +5306,12 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		case 100:
 			return mPlug.mConnection;
 		case 101: {
-			XObj* obj = FindObj(args[1]);
+			XObj* obj = FindEventObj(args[1]);
 			return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, &mMoveTranslate) : 1;
 		}
 		case 102: {
 			s32 connection    = args[2];
-			XObj* target      = FindObj(args[1]);
+			XObj* target      = FindEventObj(args[1]);
 			mLift.mState      = 7;
 			mLift.mPlugTarget = target;
 			SetLiftPlugConnection(&mLift, connection, FALSE);
@@ -5312,7 +5319,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			break;
 		}
 		case 103: {
-			XObj* target = FindObj(args[1]);
+			XObj* target = FindEventObj(args[1]);
 			SetPos(target->mMoveTranslate, 0);
 			SetRotationY(PI + target->mMoveRotate.y, 0);
 			HSD_AObj* anim = GetAObj(mJObj);
@@ -5334,7 +5341,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			break;
 		}
 		case 104: {
-			XObj* target      = FindObj(args[1]);
+			XObj* target      = FindEventObj(args[1]);
 			mLift.mState      = 11;
 			mLift.mPlugTarget = target;
 			result            = -1;
@@ -5347,26 +5354,26 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			}
 			break;
 		case 106: {
-			XObj* target      = FindObj(args[1]);
+			XObj* target      = FindEventObj(args[1]);
 			mLift.mState      = 8;
 			mLift.mPlugTarget = target;
 			result            = -1;
 			break;
 		}
 		case 107:
-			FindObj(args[1]);
+			FindEventObj(args[1]);
 			ClearPlugState(&mPlug, TRUE);
 			result = -1;
 			break;
 		case 108: {
-			XObj* target      = FindObj(args[1]);
+			XObj* target      = FindEventObj(args[1]);
 			mLift.mState      = 9;
 			mLift.mPlugTarget = target;
 			result            = -1;
 			break;
 		}
 		case 109:
-			FindObj(args[1]);
+			FindEventObj(args[1]);
 			ClearPlugState(&mPlug, TRUE);
 			result = -1;
 			break;
@@ -5376,9 +5383,9 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
 			joint.SetRotationX(0, 0);
 			joint.SetRotationZ(0, 0);
+		}
 			result = -1;
 			break;
-		}
 		case 111:
 			SetLiftPlugConnection(&mLift, args[1], TRUE);
 			break;
@@ -5404,14 +5411,14 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				break;
 			}
 			case 208: {
-				XObj* target = FindObj(args[2]);
+				XObj* target = FindEventObj(args[2]);
 				TurnJoint((f32)atan2(target->mMoveTranslate.x - mMoveTranslate.x, target->mMoveTranslate.z - mMoveTranslate.z)
 				              - mMoveRotate.y,
 				          &mHeadTurn.mNeck);
 				break;
 			}
 			case 220: {
-				XObj* target            = FindObj(args[2]);
+				XObj* target            = FindEventObj(args[2]);
 				mHeadTurn.mNeck.mMode   = 1;
 				mHeadTurn.mNeck.mLookAt = target;
 				break;
@@ -5431,15 +5438,15 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		case 202:
 			return mHeadTurn.mNeck.mMode <= 0 ? TRUE : FALSE;
 		case 300:
-			mRope.SetState(4, FindObj(args[1]));
+			mRope.SetState(4, FindEventObj(args[1]));
 			result = -1;
 			break;
 		case 301:
-			mLadder.SetState(4, FindObj(args[1]));
+			mLadder.SetState(4, FindEventObj(args[1]));
 			result = -1;
 			break;
 		case 302:
-			mJump.SetState(14, FindObj(args[1]));
+			mJump.SetState(14, FindEventObj(args[1]));
 			result = -1;
 			break;
 		case 303:
@@ -5501,8 +5508,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			return ScriptLiftReady(this);
 		case 501:
 			if (mLift.mTarget) {
-				if (IsAttachment(this, 4) || IsAttachment(this, 5) || IsAttachment(this, 6) || IsAttachment(this, 7)
-				    || IsAttachment(this, 8))
+				if (GetAttachment() == 4 || GetAttachment() == 5 || GetAttachment() == 6 || GetAttachment() == 7
+				    || GetAttachment() == 8)
 					RequestScriptAttachment(this, 0);
 				else if (mLift.mTarget->GetCategory() == 8)
 					mLift.mState = 19;
