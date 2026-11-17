@@ -5909,15 +5909,15 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			}
 			if (fade->mLowerOpen > 0.0f) {
 				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
-				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x50), 0);
-				tw  = GXGetTexObjWidth(&tex);
-				w   = 1.1f * (scale * tw);
-				th  = GXGetTexObjHeight(&tex);
-				y   = 320.0f;
+				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x50), 0);
+				tw   = GXGetTexObjWidth(&tex);
+				w    = 1.1f * (scale * tw);
+				th   = GXGetTexObjHeight(&tex);
+				y    = 320.0f;
+				half = fade->mLowerOpen * (scale * th);
 #if !defined(VERSION_JP)
 				y -= 32.0f;
 #endif
-				half = fade->mLowerOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);

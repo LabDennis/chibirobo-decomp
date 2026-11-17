@@ -165,6 +165,7 @@ void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
  * @note Address: 0x8008A944
  * @note Size: 0x45C
  */
+// NONMATCHING: the map pointer and FindMapFloor's counter get each other's register (r29/r30)
 extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 {
 	Vec* pos     = &self->mMoveTranslate;
@@ -188,10 +189,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos->z;
-			f32 y = pos->y;
-			f32 x = pos->x;
-			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+			if (ProbeObjectFloor(object, *pos, *pos, radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				// only floors at most one unit overhead
 				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= highest)
@@ -341,9 +339,8 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, view, projection,
 	          viewport, &unusedX, &top, &depth);
 #if defined(VERSION_PAL)
-	f32 scale = 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
-	bottom *= scale;
-	top *= scale;
+	bottom *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
+	top *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
 #endif
 	if (left >= 0.0f && right < 640.0f && bottom >= 0.0f && top < 448.0f && depth > 0.0f && depth < 1.0f) {
 		if (width != NULL) {

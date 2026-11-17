@@ -419,9 +419,11 @@ static inline void StoreSweepContact(const Vec* from, const Vec* to, Vec* contac
  * @note Address: 0x8008ED50
  * @note Size: 0x1498
  */
-u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
+// NONMATCHING: retail hands OnPlayerContact the contact delta as an unnamed temporary (lowest stack slot) and calls
+// PSVECMag between building it and the call, as if the virtual took (const Vec&, f32, s32); the overrides live in
+// xobjdust/hbox/coin and the spider files, so the signature stays (s32, s32) for now (probe: 99.36 -> 99.69)
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor, s32 flags)
 {
-	s32* cursor = (s32*)floorCursor;
 	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
 		if (cursor)
 			*cursor = -1;

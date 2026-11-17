@@ -631,7 +631,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					u32 hit;
 					{
 						CVec from(position), to(position);
-						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, (s32)&cursor, queryFlags | 1);
+						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, &cursor, queryFlags | 1);
 					}
 					if (hit & 1) {
 						touched = true;
@@ -687,7 +687,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					ClearObjectStatusFlags(object, 0x10ULL);
 					for (s32 cursor = 0; cursor != -1;) {
 						u32 hit = object->TestFloorCollision(&player->mMoveTranslate, &player->mMoveTranslate, radius, height, &push,
-						                                     &contact, (s32)&cursor, 0);
+						                                     &contact, &cursor, 0);
 						if ((hit & 3) != 3)
 							continue;
 						f32 top = GetObjectHitFloorHeight(object);

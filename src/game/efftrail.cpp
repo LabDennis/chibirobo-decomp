@@ -347,6 +347,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
+		f32 crossSize = size + 0.02f;
 		u32 edgeColor = i == menu->mSelectedIndex ? selectedEdge : otherEdge;
 		s32 mask      = 1 << i;
 		if (!(menu->mCrossMask & mask)) {
@@ -354,7 +355,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 			f32 radius = 74.0f * size;
 			DrawMenuRing(transform, 1.05f * radius, 0.55f * radius, edgeColor, FALSE);
 		} else {
-			f32 radius = 74.0f * (size + 0.02f);
+			f32 radius = 74.0f * crossSize;
 			DrawOXCross(&gGame.mGs, edgeColor, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.36f * radius,
 			            2.0f * radius, 0.3f * (74.0f * size));
 		}
@@ -426,8 +427,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		screenX = 320.0f;
 		screenY = 418.0f;
 	} else {
-		XObj* chr        = menu->mChr;
 		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		XObj* chr        = menu->mChr;
 		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
 		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
 		Vec anchor       = offset;

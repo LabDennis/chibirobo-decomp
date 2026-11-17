@@ -149,8 +149,8 @@ static inline void EmitKind9Dust(XObjActor3* actor)
 	f32 vy     = (rand() % 100) / 800.0f;
 	Vec pos;
 	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	pos.y = y;
 	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	pos.y = y;
 	Vec scale;
 	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
 	scale.z           = 1.0f;
