@@ -2145,31 +2145,31 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0)
 								available |= 8;
 #endif
-							if (climbHeight > 1) {
-								if (climbHeight <= 4) {
+							if (climbHeight <= 1) {
+								// too low to need climbing
+							} else if (climbHeight <= 4) {
 #if defined(VERSION_JP)
-									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
+								if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
-									{
-										target     = object;
-										actionMode = 1;
-									}
-								} else if (climbHeight <= 8) {
+								{
+									target     = object;
+									actionMode = 1;
+								}
+							} else if (climbHeight <= 8) {
 #if defined(VERSION_JP)
-									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
+								if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
-									{
-										target     = object;
-										actionMode = 2;
-									}
-								} else if (climbHeight <= 12.5f) {
+								{
+									target     = object;
+									actionMode = 2;
+								}
+							} else if (climbHeight <= 12.5f) {
 #if defined(VERSION_JP)
-									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
+								if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
-									{
-										target     = object;
-										actionMode = 3;
-									}
+								{
+									target     = object;
+									actionMode = 3;
 								}
 							}
 						}
