@@ -1917,6 +1917,8 @@ if wii:
                 Object(Matching, "revolution/SC/scapi_prdinfo.c"),
                 Object(NonMatching, "revolution/USB/usb.c"),
                 Object(Matching, "revolution/TPL/TPL.c"),
+                Object(Matching, "revolution/THP/THPDec.c"),
+                Object(Matching, "revolution/THP/THPAudio.c"),
                 Object(Matching, "revolution/ESP/esp.c"),
                 # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
                 # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
@@ -1987,8 +1989,6 @@ if wii:
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSReset.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/__ppc_eabi_init.cpp", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/thp/THPDec.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/thp/THPAudio.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(Equivalent, "dolphin/OdemuExi2/DebuggerDriver.c", cflags=cflags_sdk, extra_cflags=["-inline deferred"], mw_version="GC/1.2.5n"),
             ],
         },

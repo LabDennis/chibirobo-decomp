@@ -1429,10 +1429,16 @@ revolution/OS/OSReset.c:
 dolphin/os/__ppc_eabi_init.cpp:
 	.text start:0x8018E5EC end:0x8018E654
 
-dolphin/thp/THPDec.c:
+revolution/THP/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
+	.rodata start:0x802DE5E0 end:0x802DE670
+	.data start:0x8032DAA0 end:0x8032DAE8
+	.bss start:0x8052D020 end:0x8052D16C
+	.sdata start:0x805A1878 end:0x805A187C
+	.sbss start:0x805A25A0 end:0x805A26C4
+	.sdata2 start:0x805A6808 end:0x805A6824
 
-dolphin/thp/THPAudio.c:
+revolution/THP/THPAudio.c:
 	.text start:0x80202804 end:0x80202D64
 
 revolution/GX/GXInit.c:
