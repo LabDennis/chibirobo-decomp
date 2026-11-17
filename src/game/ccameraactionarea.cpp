@@ -1611,8 +1611,8 @@ void CCameraActionArea::DrawDebug2d()
  * @note Address: 0x8013964C
  * @note Size: 0x544
  */
-// NONMATCHING: retail folds SetFovInterpolation's mode test for the zoom change (li r0, 4 then straight to the table) and
-// leaves the SetFov branch as dead code; this build still compares mode with 3. Saved registers follow from that
+// NONMATCHING: for the zoom change retail still builds the table index from 4 at run time (li r0, 4; slwi; add), here the
+// fov interpolator slot is read directly. Saved registers are numbered differently
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {
