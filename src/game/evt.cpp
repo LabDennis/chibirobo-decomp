@@ -3557,13 +3557,8 @@ void CEvt::EvalSet()
 			if (index == 0) {
 				EVT_PLAYER.mParams.SetBattery(value / 100.0f);
 			} else if (index == 1) {
-				Params* stats      = &EVT_PLAYER.mParams;
-				f32 amount         = value / 100.0f;
-				stats->mMaxBattery = amount > 0.0f ? amount : 0.0f;
-				if (stats->mMaxBattery < 0.0f)
-					stats->mMaxBattery = 0.0f;
-				if (stats->mMaxBattery > 999.9f)
-					stats->mMaxBattery = 999.9f;
+				Params* stats = &EVT_PLAYER.mParams;
+				stats->SetMaxBattery(value / 100.0f);
 				stats->SetBattery(stats->mBattery);
 			} else {
 				OSPanic("evt.cpp", 1157, "%s%s", FormatToStaticBuffer("Invalid EvalSet battery[%d] - 0~1\n", index), __FUNCTION__);
