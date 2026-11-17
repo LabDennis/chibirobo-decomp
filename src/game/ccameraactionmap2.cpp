@@ -1,3 +1,4 @@
+#include "game/cgameparticle.h"
 #include <math.h>
 #include "game/ccameraaction.h"
 extern "C" {

@@ -1,6 +1,7 @@
 #include "game/xobjs.h"
 #include "game/xobjread.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/xchr.h"
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"

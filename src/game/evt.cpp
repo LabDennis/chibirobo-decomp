@@ -30,6 +30,7 @@ extern "C" {
 #include "game/inventory.h"
 #include "game/video.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/infoscrn.h"
 #include "game/cmovie.h"
 

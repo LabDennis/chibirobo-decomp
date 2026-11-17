@@ -1,5 +1,6 @@
 #include "game/xobjattachment.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/csound.h"
 #include "game/cjobjinlineattach.h"
 #include "game/evt.h"

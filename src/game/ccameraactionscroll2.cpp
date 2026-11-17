@@ -1,3 +1,4 @@
+#include "game/cgameparticle.h"
 #include "game/ccameraaction.h"
 extern "C" {
 #include <dolphin/mtx/vec.h>

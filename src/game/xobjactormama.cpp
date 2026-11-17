@@ -1,5 +1,6 @@
 #include "game/xobjactor.h"
 #include "game/xchr.h"
+#include "game/cgameparticle.h"
 #include "game/gmath.h"
 #include "game/heldpropmatrix.h"
 #include "game/evt.h"

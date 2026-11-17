@@ -59,6 +59,7 @@ void OctaMenu::FinishClose()
 #include "game/xobjmap.h"
 #include "game/xpad.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/cgameutil.h"
 #include "game/cjobjset.h"
 #include "game/globals.h"
