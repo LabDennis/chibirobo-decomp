@@ -168,434 +168,6 @@ extern "C" void UpdateSpiralTrail(SuitChangeEffect* trail, u32 frames)
 	}
 }
 
-/**
- * @note Address: 0x80095AD8
- * @note Size: 0x1F8
- */
-extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
-{
-	ptcl->mType           = type;
-	ptcl->display.mState  = 1;
-	ptcl->display.mAmount = amount;
-	switch (ptcl->mType) {
-	case 0: // a negative amount draws in red
-		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
-		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
-		if (ptcl->burst.mNum > 40)
-			ptcl->burst.mNum = 40;
-		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -1; // -1 draws texture 154
-		break;
-	case 2:
-		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
-		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
-		if (ptcl->burst.mNum > 40)
-			ptcl->burst.mNum = 40;
-		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -2; // -2 draws texture 152
-		break;
-	case 3:
-		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
-		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
-		if (ptcl->burst.mNum > 40)
-			ptcl->burst.mNum = 40;
-		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -3; // -3 draws texture 153
-		break;
-	default:
-		ptcl->display.colors.mColor  = 0xFFFFFF00;
-		ptcl->display.colors.mColor2 = 0xFFFFFF00;
-		ptcl->burst.mNum             = 40;
-		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = 5; // a positive state is a polygon's sides
-		break;
-	}
-}
-
-extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
-{
-	PointDisplay& display = ptcl->display;
-	PointBurst& burst     = ptcl->burst;
-	if (display.mState == 1) { // build the digit strip
-		s32 value      = display.mAmount < 0 ? -display.mAmount : display.mAmount;
-		display.mCount = 0;
-		while (display.mCount < 10) {
-			display.digits[display.mCount].glyph = value % 10;
-			value /= 10;
-			++display.mCount;
-			if (!value)
-				break;
-		}
-		if (ptcl->mType == 1) {
-			display.digits[display.mCount].glyph = 76; // glyph 76 is the icon
-			++display.mCount;
-		}
-		for (s32 i = display.mCount - 1; i >= 0; --i)
-			display.digits[display.mCount - 1 - i].fade = 0.15f * -i; // the digits come in staggered
-		display.mState = 2;
-		burst.mState   = 1;
-		for (s32 i = 0; i < burst.mNum; ++i) {
-			PointPtclOne& particle = burst.mPtcls[i];
-			particle.mColor        = (100 + rand() % 156) << 24 | (100 + rand() % 156) << 16 | (100 + rand() % 156) << 8;
-			particle.mFade         = 1.0f + 0.02f * i;
-			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
-			particle.mAngle = DEG2RAD * (rand() % 360);
-			particle.mFade  = 1.0f + 0.02f * i;
-			if (display.mAmount >= 0) {
-				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 500.f);
-				particle.mSpeed        = -(10000 + rand() % 10000) / 200.f;
-			} else {
-				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 1000.f);
-				particle.mSpeed        = (10000 + rand() % 10000) / 200.f;
-			}
-			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
-			particle.mLastAngle = 0;
-		}
-	} else if (display.mState == 2) { // fading in
-		s32 moving = 0;
-		for (s32 i = display.mCount - 1; i >= 0; --i) {
-			f32& fade = display.digits[i].fade;
-			if (fade < 1.f) {
-				if ((fade += 0.08f * frames) > 1.f)
-					fade = 1.f;
-				++moving;
-			}
-		}
-		if (!moving) {
-			display.mState = 3;
-			for (s32 i = display.mCount - 1; i >= 0; --i)
-				display.digits[display.mCount - 1 - i].fade = 1.f + 0.15f * i;
-#if defined(VERSION_PAL)
-			display.holdFrames = 0.2f * gVideoFramesPerSecond;
-#else
-			display.holdFrames = 12.f;
-#endif
-		}
-	} else if (display.mState == 3) { // hold, then fade out
-		if (display.holdFrames > 0.f) {
-			if ((display.holdFrames -= frames) <= 0.f)
-				display.holdFrames = 0.f;
-		} else {
-			s32 moving = 0;
-			for (s32 i = display.mCount - 1; i >= 0; --i) {
-				f32& fade = display.digits[i].fade;
-				if (fade > 0.f) {
-					if ((fade -= 0.08f * frames) < 0.f)
-						fade = 0.f;
-					++moving;
-				}
-			}
-			if (!moving)
-				display.mState = 0;
-		}
-	}
-	if (burst.mState == 1) {
-		s32 moving = 0;
-		for (s32 i = 0; i < burst.mNum; ++i) {
-			PointPtclOne& particle = burst.mPtcls[i];
-			if (particle.mFade > 0.f) {
-				if ((particle.mFade -= 0.015f * frames) < 0.f)
-					particle.mFade = 0.f;
-				++moving;
-			}
-			particle.mAngle += particle.mAngularSpeed * frames;
-		}
-		if (!moving)
-			burst.mState = 0;
-	}
-}
-
-#if defined(VERSION_JP)
-extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
-
-extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate)
-{
-	Vec vertices[50];
-	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
-		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
-		vertices[2 * i + 1].z = 10.0f;
-		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
-		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
-		vertices[2 * i].z     = 10.0f;
-	}
-	PSMTXMultVecArray(transform, vertices, vertices, 50);
-	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
-
-	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(firstRadius * (f32)sin(angle));
-		vertices[2 * i + 1].y = firstRadius * (f32)cos(angle);
-		vertices[2 * i + 1].z = 10.0f;
-		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
-		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
-		vertices[2 * i].z     = 0.0f;
-	}
-	PSMTXMultVecArray(transform, vertices, vertices, 50);
-	if (separate) {
-		for (s32 i = 0; i < 48; i += 2)
-			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
-	} else {
-		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
-	}
-
-	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
-		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
-		vertices[2 * i + 1].z = 0.0f;
-		vertices[2 * i].x     = -(secondRadius * (f32)sin(angle));
-		vertices[2 * i].y     = secondRadius * (f32)cos(angle);
-		vertices[2 * i].z     = 10.0f;
-	}
-	PSMTXMultVecArray(transform, vertices, vertices, 50);
-	if (separate) {
-		for (s32 i = 0; i < 48; i += 2)
-			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
-	} else {
-		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
-	}
-}
-
-static inline void DrawOXCross(CGs* gs, u32 color, f32 x, f32 y, f32 rx, f32 ry, f32 rz, f32 width, f32 length, f32 depth)
-{
-	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, width, length, depth);
-	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, length, width, depth);
-}
-
-extern "C" void DrawOXMenu(OXMenu* menu)
-{
-	if (!(menu->mFade > 0.0f))
-		return;
-
-	f32 screenX, screenY;
-	if (gGame.mStatus.mFlags & 0x100ULL) {
-		screenX = 320.0f;
-		screenY = 418.0f;
-	} else {
-		XObj* chr        = menu->mChr;
-		Vec offset       = { 0.0f, 0.0f, 0.0f };
-		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
-		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
-		Vec anchor       = offset;
-		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
-	}
-	f32 fade  = menu->mFade;
-	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
-	SetGsChannelEnabled(&gGame.mGs, 0, 1);
-	f32 openAngle    = 2.0943952f * fade;
-	for (s32 i = 0; i < 2; ++i) {
-		OXMenuMark& mark = menu->mMark[i];
-		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
-		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
-		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
-		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
-		f32 size         = mark.mScale * (f32)sin(openAngle);
-
-		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + fade * (90.0f * i - 45.0f);
-		f32 y = yBase + bob;
-		Mtx translation, rotX, rotY, rotZ, transform;
-		PSMTXTrans(translation, x, y, 50.0f);
-		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
-		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
-		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
-		PSMTXConcat(translation, rotZ, transform);
-		PSMTXConcat(transform, rotX, transform);
-		PSMTXConcat(transform, rotY, transform);
-		SetGsChannelEnabled(&gGame.mGs, 0, 0);
-		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
-		f32 crossSize = size + 0.02f;
-		u32 edgeColor = i == menu->mSelectedIndex ? 0xffffff00 | (u32)(150.0f * fade) : 0x64646400 | (u32)(150.0f * fade);
-		s32 mask      = 1 << i;
-		if (!(menu->mCrossMask & mask)) {
-			SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
-			f32 radius = 74.0f * size;
-			DrawMenuRing(transform, 1.05f * radius, 0.55f * radius, edgeColor, FALSE);
-		} else {
-			f32 radius = 74.0f * crossSize;
-			DrawOXCross(&gGame.mGs, edgeColor, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.36f * radius,
-			            2.0f * radius, 0.3f * (74.0f * size));
-		}
-		SetGsChannelEnabled(&gGame.mGs, 0, 1);
-		SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
-		s32 r, g, b;
-		if (!(menu->mCrossMask & mask)) {
-			r = 255;
-			g = 0;
-			b = 0;
-		} else {
-			r = 0;
-			g = 99;
-			b = 209;
-		}
-		if (i == menu->mSelectedIndex) {
-			r *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
-			g *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
-			b *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
-		} else {
-			r = (s32)(r * 0.5f);
-			g = (s32)(g * 0.5f);
-			b = (s32)(b * 0.5f);
-		}
-		u32 color = ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | (u32)(255.0f * fade);
-		if (!(menu->mCrossMask & mask)) {
-			f32 radius = 74.0f * size;
-			DrawMenuRing(transform, radius, 0.6f * radius, color, TRUE);
-		} else {
-			f32 radius = 74.0f * size;
-			DrawOXCross(&gGame.mGs, color, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.3f * radius, 2.0f * radius,
-			            0.3f * radius);
-		}
-	}
-	SetGsChannelEnabled(&gGame.mGs, 0, 0);
-	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
-}
-#else
-
-extern "C" {
-void SetJointMaterialColorsAndAlpha(HSD_JObj*, f32**, s32);
-CVec GetEventJObjWorldPosition(CJObj*, HSD_JObj*);
-extern GXColor gOXMenuMarkDiffuseColors[2];
-extern f32 gOXMenuLabelOutlineX[4], gOXMenuLabelOutlineY[4];
-}
-
-static inline void DrawOXModel(XObj& model, f32** args)
-{
-	if (model.mJObj)
-		HSD_JObjWalkTree(model.mJObj, SetJointMaterialColorsAndAlpha, args);
-	model.DrawObject();
-	EndGsCamera(&gGame.mGs);
-	CBase* game       = &gGame;
-	gGame.mGs.mCamera = game->GetScreenCamera();
-	BeginGsCamera(&gGame);
-}
-
-// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
-// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
-extern "C" void DrawOXMenu(OXMenu* menu)
-{
-	if (!(menu->mFade > 0.0f))
-		return;
-	f32 screenX, screenY;
-	if (gGame.mStatus.mFlags & 0x100ULL) {
-		screenX = 320.0f;
-		screenY = 418.0f;
-	} else {
-		Vec offset       = { 0.0f, 0.0f, 0.0f };
-		XObj* chr        = menu->mChr;
-		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
-		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
-		Vec anchor       = offset;
-		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
-	}
-	f32 fade  = menu->mFade;
-	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 42.0f;
-	SetGsChannelEnabled(&gGame.mGs, 0, 1);
-	f32 openAngle = 2.0943952f * fade;
-	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
-	for (s32 i = 0; i < 2; ++i) {
-		OXMenuMark& mark = menu->mMark[i];
-		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
-		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
-		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
-		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
-		f32 size         = mark.mScale * (f32)sin(openAngle);
-		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + 1.2f * (fade * (90.0f * i - 45.0f));
-		f32 y = baseY + bob;
-		Mtx translation, rotX, rotY, rotZ, transform, label;
-		PSMTXTrans(translation, x, y, 50.0f);
-		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
-		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
-		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
-		PSMTXConcat(translation, rotZ, transform);
-		PSMTXConcat(transform, rotX, transform);
-		PSMTXConcat(transform, rotY, transform);
-		// the label faces the screen: same place, no rotation
-		Mtx labelTranslation, labelRotX, labelRotY, labelRotZ, labelTmp;
-		PSMTXTrans(labelTranslation, x, y, 50.0f);
-		PSMTXRotRad(labelRotX, 'x', 0);
-		PSMTXRotRad(labelRotY, 'y', 0);
-		PSMTXRotRad(labelRotZ, 'z', 0);
-		PSMTXConcat(labelTranslation, labelRotZ, labelTmp);
-		PSMTXConcat(labelTmp, labelRotX, labelTmp);
-		PSMTXConcat(labelTmp, labelRotY, label);
-		s32 kind = (menu->mCrossMask & (1 << i)) != 0;
-
-		if (i == menu->mSelectedIndex) {
-			menu->mMark[kind].mObj.SetColor(0, 255, 255, 255, 0);
-			u8 pulse = (s32)(64.0f * (0.5f * (f32)sin(1.2f * mark.mSpin) + 0.5f));
-			menu->mMark[kind].mObj.SetColor(1, pulse, pulse, pulse, 0);
-		} else {
-			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
-			menu->mMark[kind].mObj.SetColor(1, 0, 0, 0, 0);
-		}
-		menu->mMark[kind].mObj.UpdateObject(1);
-		InvalidateAll();
-		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
-		for (s32 j = 0; j < 8; ++j) {
-			f32 direction = (TWO_PI / 8.0f) * j;
-			f32 cosine    = cos(direction);
-			f32 sine      = sin(direction);
-			Mtx outlineTranslation, outlineRotX, outlineRotY, outlineRotZ, outline, scale;
-			PSMTXTrans(outlineTranslation, x + 3.0f * sine, y + 2.0f * cosine, 50.0f);
-			PSMTXRotRad(outlineRotX, 'x', DEG2RAD * pitch);
-			PSMTXRotRad(outlineRotY, 'y', DEG2RAD * yaw);
-			PSMTXRotRad(outlineRotZ, 'z', DEG2RAD * roll);
-			PSMTXConcat(outlineTranslation, outlineRotZ, outline);
-			PSMTXConcat(outline, outlineRotX, outline);
-			PSMTXConcat(outline, outlineRotY, outline);
-			PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
-			PSMTXConcat(outline, scale, outline);
-			HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, outline);
-			GXColor diffuse = { 255, 255, 255, 0 }, ambient = { 255, 255, 255, 0 };
-			f32 alpha   = 0.3f * menu->mFade;
-			f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
-			DrawOXModel(menu->mMark[kind].mObj, args);
-		}
-		Mtx scale;
-		PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
-		PSMTXConcat(transform, scale, transform);
-		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, transform);
-		GXColor diffuse = gOXMenuMarkDiffuseColors[kind], ambient = { 64, 64, 64, 0 };
-		f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &menu->mFade };
-		DrawOXModel(menu->mMark[kind].mObj, args);
-		PSMTXConcat(label, scale, label);
-		InvalidateAll();
-		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, label);
-		HSD_JObjSetupMatrix(menu->mMark[kind].mObj.mJObj);
-		SetGsChannelEnabled(&gGame.mGs, 0, 0);
-		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
-		Vec textRot        = { DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * roll };
-		gGame.mGs.mTextRot = textRot;
-		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
-		f32 fontSize       = 2.0f * (30.0f * size * size);
-		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
-		f32 top            = pos.y - 0.5f * fontSize;
-		for (s32 j = 0; j < 4; ++j)
-			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
-			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
-			                             fontSize);
-		DrawGsProportionalTextFormat(&gGame.mGs, textColor, GetLocalizedInterfaceText(0x104 + kind), left, top, pos.z, fontSize, fontSize);
-	}
-	SetGsChannelEnabled(&gGame.mGs, 0, 0);
-	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
-}
-#endif
-
 extern "C" void GXProject(f32, f32, f32, const Mtx, const f32*, const f32*, f32*, f32*, f32*);
 
 static inline void ProjectPoint(const CCamera& camera, const Vec& pos, f32* x, f32* y)
@@ -757,6 +329,435 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 	}
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }
+
+extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
+{
+	PointDisplay& display = ptcl->display;
+	PointBurst& burst     = ptcl->burst;
+	if (display.mState == 1) { // build the digit strip
+		s32 value      = display.mAmount < 0 ? -display.mAmount : display.mAmount;
+		display.mCount = 0;
+		while (display.mCount < 10) {
+			display.digits[display.mCount].glyph = value % 10;
+			value /= 10;
+			++display.mCount;
+			if (!value)
+				break;
+		}
+		if (ptcl->mType == 1) {
+			display.digits[display.mCount].glyph = 76; // glyph 76 is the icon
+			++display.mCount;
+		}
+		for (s32 i = display.mCount - 1; i >= 0; --i)
+			display.digits[display.mCount - 1 - i].fade = 0.15f * -i; // the digits come in staggered
+		display.mState = 2;
+		burst.mState   = 1;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			particle.mColor        = (100 + rand() % 156) << 24 | (100 + rand() % 156) << 16 | (100 + rand() % 156) << 8;
+			particle.mFade         = 1.0f + 0.02f * i;
+			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
+			particle.mAngle = DEG2RAD * (rand() % 360);
+			particle.mFade  = 1.0f + 0.02f * i;
+			if (display.mAmount >= 0) {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 500.f);
+				particle.mSpeed        = -(10000 + rand() % 10000) / 200.f;
+			} else {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 1000.f);
+				particle.mSpeed        = (10000 + rand() % 10000) / 200.f;
+			}
+			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
+			particle.mLastAngle = 0;
+		}
+	} else if (display.mState == 2) { // fading in
+		s32 moving = 0;
+		for (s32 i = display.mCount - 1; i >= 0; --i) {
+			f32& fade = display.digits[i].fade;
+			if (fade < 1.f) {
+				if ((fade += 0.08f * frames) > 1.f)
+					fade = 1.f;
+				++moving;
+			}
+		}
+		if (!moving) {
+			display.mState = 3;
+			for (s32 i = display.mCount - 1; i >= 0; --i)
+				display.digits[display.mCount - 1 - i].fade = 1.f + 0.15f * i;
+#if defined(VERSION_PAL)
+			display.holdFrames = 0.2f * gVideoFramesPerSecond;
+#else
+			display.holdFrames = 12.f;
+#endif
+		}
+	} else if (display.mState == 3) { // hold, then fade out
+		if (display.holdFrames > 0.f) {
+			if ((display.holdFrames -= frames) <= 0.f)
+				display.holdFrames = 0.f;
+		} else {
+			s32 moving = 0;
+			for (s32 i = display.mCount - 1; i >= 0; --i) {
+				f32& fade = display.digits[i].fade;
+				if (fade > 0.f) {
+					if ((fade -= 0.08f * frames) < 0.f)
+						fade = 0.f;
+					++moving;
+				}
+			}
+			if (!moving)
+				display.mState = 0;
+		}
+	}
+	if (burst.mState == 1) {
+		s32 moving = 0;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			if (particle.mFade > 0.f) {
+				if ((particle.mFade -= 0.015f * frames) < 0.f)
+					particle.mFade = 0.f;
+				++moving;
+			}
+			particle.mAngle += particle.mAngularSpeed * frames;
+		}
+		if (!moving)
+			burst.mState = 0;
+	}
+}
+
+/**
+ * @note Address: 0x80095AD8
+ * @note Size: 0x1F8
+ */
+extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
+{
+	ptcl->mType           = type;
+	ptcl->display.mState  = 1;
+	ptcl->display.mAmount = amount;
+	switch (ptcl->mType) {
+	case 0: // a negative amount draws in red
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -1; // -1 draws texture 154
+		break;
+	case 2:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -2; // -2 draws texture 152
+		break;
+	case 3:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -3; // -3 draws texture 153
+		break;
+	default:
+		ptcl->display.colors.mColor  = 0xFFFFFF00;
+		ptcl->display.colors.mColor2 = 0xFFFFFF00;
+		ptcl->burst.mNum             = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = 5; // a positive state is a polygon's sides
+		break;
+	}
+}
+
+#if defined(VERSION_JP)
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate);
+
+static inline void DrawOXCross(CGs* gs, u32 color, f32 x, f32 y, f32 rx, f32 ry, f32 rz, f32 width, f32 length, f32 depth)
+{
+	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, width, length, depth);
+	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, length, width, depth);
+}
+
+extern "C" void DrawOXMenu(OXMenu* menu)
+{
+	if (!(menu->mFade > 0.0f))
+		return;
+
+	f32 screenX, screenY;
+	if (gGame.mStatus.mFlags & 0x100ULL) {
+		screenX = 320.0f;
+		screenY = 418.0f;
+	} else {
+		XObj* chr        = menu->mChr;
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
+		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
+		Vec anchor       = offset;
+		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
+	}
+	f32 fade  = menu->mFade;
+	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
+	SetGsChannelEnabled(&gGame.mGs, 0, 1);
+	f32 openAngle    = 2.0943952f * fade;
+	for (s32 i = 0; i < 2; ++i) {
+		OXMenuMark& mark = menu->mMark[i];
+		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
+		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
+		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * (f32)sin(openAngle);
+
+		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + fade * (90.0f * i - 45.0f);
+		f32 y = yBase + bob;
+		Mtx translation, rotX, rotY, rotZ, transform;
+		PSMTXTrans(translation, x, y, 50.0f);
+		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
+		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
+		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
+		PSMTXConcat(translation, rotZ, transform);
+		PSMTXConcat(transform, rotX, transform);
+		PSMTXConcat(transform, rotY, transform);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
+		f32 crossSize = size + 0.02f;
+		u32 edgeColor = i == menu->mSelectedIndex ? 0xffffff00 | (u32)(150.0f * fade) : 0x64646400 | (u32)(150.0f * fade);
+		s32 mask      = 1 << i;
+		if (!(menu->mCrossMask & mask)) {
+			SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
+			f32 radius = 74.0f * size;
+			DrawMenuRing(transform, 1.05f * radius, 0.55f * radius, edgeColor, FALSE);
+		} else {
+			f32 radius = 74.0f * crossSize;
+			DrawOXCross(&gGame.mGs, edgeColor, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.36f * radius,
+			            2.0f * radius, 0.3f * (74.0f * size));
+		}
+		SetGsChannelEnabled(&gGame.mGs, 0, 1);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
+		s32 r, g, b;
+		if (!(menu->mCrossMask & mask)) {
+			r = 255;
+			g = 0;
+			b = 0;
+		} else {
+			r = 0;
+			g = 99;
+			b = 209;
+		}
+		if (i == menu->mSelectedIndex) {
+			r *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+			g *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+			b *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+		} else {
+			r = (s32)(r * 0.5f);
+			g = (s32)(g * 0.5f);
+			b = (s32)(b * 0.5f);
+		}
+		u32 color = ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | (u32)(255.0f * fade);
+		if (!(menu->mCrossMask & mask)) {
+			f32 radius = 74.0f * size;
+			DrawMenuRing(transform, radius, 0.6f * radius, color, TRUE);
+		} else {
+			f32 radius = 74.0f * size;
+			DrawOXCross(&gGame.mGs, color, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.3f * radius, 2.0f * radius,
+			            0.3f * radius);
+		}
+	}
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate)
+{
+	Vec vertices[50];
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = 10.0f;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 10.0f;
+	}
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = firstRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = 10.0f;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 0.0f;
+	}
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	if (separate) {
+		for (s32 i = 0; i < 48; i += 2)
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
+	} else {
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+	}
+
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = 0.0f;
+		vertices[2 * i].x     = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i].y     = secondRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 10.0f;
+	}
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	if (separate) {
+		for (s32 i = 0; i < 48; i += 2)
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
+	} else {
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+	}
+}
+
+#else
+
+extern "C" {
+void SetJointMaterialColorsAndAlpha(HSD_JObj*, f32**, s32);
+CVec GetEventJObjWorldPosition(CJObj*, HSD_JObj*);
+extern GXColor gOXMenuMarkDiffuseColors[2];
+extern f32 gOXMenuLabelOutlineX[4], gOXMenuLabelOutlineY[4];
+}
+
+static inline void DrawOXModel(XObj& model, f32** args)
+{
+	if (model.mJObj)
+		HSD_JObjWalkTree(model.mJObj, SetJointMaterialColorsAndAlpha, args);
+	model.DrawObject();
+	EndGsCamera(&gGame.mGs);
+	CBase* game       = &gGame;
+	gGame.mGs.mCamera = game->GetScreenCamera();
+	BeginGsCamera(&gGame);
+}
+
+// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
+// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
+extern "C" void DrawOXMenu(OXMenu* menu)
+{
+	if (!(menu->mFade > 0.0f))
+		return;
+	f32 screenX, screenY;
+	if (gGame.mStatus.mFlags & 0x100ULL) {
+		screenX = 320.0f;
+		screenY = 418.0f;
+	} else {
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		XObj* chr        = menu->mChr;
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
+		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
+		Vec anchor       = offset;
+		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
+	}
+	f32 fade  = menu->mFade;
+	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 42.0f;
+	SetGsChannelEnabled(&gGame.mGs, 0, 1);
+	f32 openAngle = 2.0943952f * fade;
+	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
+	for (s32 i = 0; i < 2; ++i) {
+		OXMenuMark& mark = menu->mMark[i];
+		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
+		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
+		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * (f32)sin(openAngle);
+		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + 1.2f * (fade * (90.0f * i - 45.0f));
+		f32 y = baseY + bob;
+		Mtx translation, rotX, rotY, rotZ, transform, label;
+		PSMTXTrans(translation, x, y, 50.0f);
+		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
+		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
+		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
+		PSMTXConcat(translation, rotZ, transform);
+		PSMTXConcat(transform, rotX, transform);
+		PSMTXConcat(transform, rotY, transform);
+		// the label faces the screen: same place, no rotation
+		Mtx labelTranslation, labelRotX, labelRotY, labelRotZ, labelTmp;
+		PSMTXTrans(labelTranslation, x, y, 50.0f);
+		PSMTXRotRad(labelRotX, 'x', 0);
+		PSMTXRotRad(labelRotY, 'y', 0);
+		PSMTXRotRad(labelRotZ, 'z', 0);
+		PSMTXConcat(labelTranslation, labelRotZ, labelTmp);
+		PSMTXConcat(labelTmp, labelRotX, labelTmp);
+		PSMTXConcat(labelTmp, labelRotY, label);
+		s32 kind = (menu->mCrossMask & (1 << i)) != 0;
+
+		if (i == menu->mSelectedIndex) {
+			menu->mMark[kind].mObj.SetColor(0, 255, 255, 255, 0);
+			u8 pulse = (s32)(64.0f * (0.5f * (f32)sin(1.2f * mark.mSpin) + 0.5f));
+			menu->mMark[kind].mObj.SetColor(1, pulse, pulse, pulse, 0);
+		} else {
+			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
+			menu->mMark[kind].mObj.SetColor(1, 0, 0, 0, 0);
+		}
+		menu->mMark[kind].mObj.UpdateObject(1);
+		InvalidateAll();
+		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
+		for (s32 j = 0; j < 8; ++j) {
+			f32 direction = (TWO_PI / 8.0f) * j;
+			f32 cosine    = cos(direction);
+			f32 sine      = sin(direction);
+			Mtx outlineTranslation, outlineRotX, outlineRotY, outlineRotZ, outline, scale;
+			PSMTXTrans(outlineTranslation, x + 3.0f * sine, y + 2.0f * cosine, 50.0f);
+			PSMTXRotRad(outlineRotX, 'x', DEG2RAD * pitch);
+			PSMTXRotRad(outlineRotY, 'y', DEG2RAD * yaw);
+			PSMTXRotRad(outlineRotZ, 'z', DEG2RAD * roll);
+			PSMTXConcat(outlineTranslation, outlineRotZ, outline);
+			PSMTXConcat(outline, outlineRotX, outline);
+			PSMTXConcat(outline, outlineRotY, outline);
+			PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
+			PSMTXConcat(outline, scale, outline);
+			HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, outline);
+			GXColor diffuse = { 255, 255, 255, 0 }, ambient = { 255, 255, 255, 0 };
+			f32 alpha   = 0.3f * menu->mFade;
+			f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
+			DrawOXModel(menu->mMark[kind].mObj, args);
+		}
+		Mtx scale;
+		PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
+		PSMTXConcat(transform, scale, transform);
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, transform);
+		GXColor diffuse = gOXMenuMarkDiffuseColors[kind], ambient = { 64, 64, 64, 0 };
+		f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &menu->mFade };
+		DrawOXModel(menu->mMark[kind].mObj, args);
+		PSMTXConcat(label, scale, label);
+		InvalidateAll();
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, label);
+		HSD_JObjSetupMatrix(menu->mMark[kind].mObj.mJObj);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
+		Vec textRot        = { DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * roll };
+		gGame.mGs.mTextRot = textRot;
+		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
+		f32 fontSize       = 2.0f * (30.0f * size * size);
+		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
+		f32 top            = pos.y - 0.5f * fontSize;
+		for (s32 j = 0; j < 4; ++j)
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
+			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
+			                             fontSize);
+		DrawGsProportionalTextFormat(&gGame.mGs, textColor, GetLocalizedInterfaceText(0x104 + kind), left, top, pos.z, fontSize, fontSize);
+	}
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+#endif
 
 // fades in and out over 0.3 seconds
 #if defined(VERSION_PAL)
