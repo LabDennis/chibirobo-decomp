@@ -1468,7 +1468,7 @@ public:
 	virtual void vf44();
 	virtual void vf48();
 	virtual void vf4C();
-	virtual void* vf50(const char* name); // _50
+	virtual nw4r::g3d::ResNode vf50(const char* name); // _50
 	virtual void vf54();
 	virtual void vf58();
 	virtual void vf5C();
@@ -1488,7 +1488,7 @@ public:
 	virtual void vf94();
 	virtual void vf98();
 	virtual void vf9C();
-	virtual MtxP vfA0(void** node); // _A0
+	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
 	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
