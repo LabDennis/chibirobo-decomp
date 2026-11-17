@@ -1,7 +1,6 @@
 #include "game/xobjactor.h"
 #include "game/csound.h"
 #include "game/cjobjset.h"
-#include "game/cjobjpath.h"
 #include "game/xchr.h"
 #include "game/cscrn.h"
 #include "game/globals.h"
@@ -16,6 +15,7 @@ extern "C" {
 }
 
 extern "C" {
+HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path);
 void PSMTXRotRad(Mtx mtx, char axis, f32 angle);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 }
@@ -415,9 +415,12 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 		SetToyBlinkVisibility(toy, joint);                                       \
 	} while (0)
 
-// NONMATCHING: retail calls HandleToyScreenShakeCommand where this build expands it (the other three small handlers and
-// CJObj's destructor are called as in retail, see game/cjobjpath.h and CStatus64::Check), so the stack is 0x10 larger;
-// and the heading to the walk target comes from an inline whose vector temporary dies before SetRotationY
+// NONMATCHING: retail calls the four small command handlers and CJObj's destructor where this build expands them, so
+// the stack is larger; and the heading to the walk target comes from an inline whose vector temporary dies before
+// SetRotationY. GetObjectJointByPath was a header inline in the original (retail's one copy stands in obja_chr's run of
+// weak inline copies): its 31 calls here weigh in the inline estimate and lower the limit until those helpers are
+// called. obja_chr defines it out of line, and as an inline in cjobj.h five of obja_chr's player functions expand it
+// where retail calls it, so this file calls the plain function and the limit stays high (GC 88.6 %, 98.0 % with the inline)
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
