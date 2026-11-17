@@ -607,18 +607,7 @@ extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 
 	if (script == NULL)
 		return;
 	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
-		s32 cursor = gEventScriptQueue.mRead;
-		for (s32 i = 0; i < 128; ++i) {
-			s32 index = cursor % 128;
-			if (gEventScriptQueue.mScript[index] == NULL) {
-				gEventScriptQueue.mScript[index]   = script;
-				gEventScriptQueue.mContext[index]  = owner;
-				gEventScriptQueue.mUseValue[index] = useValue;
-				gEventScriptQueue.mHitValue[index] = hitValue;
-				return;
-			}
-			++cursor;
-		}
+		EvtQueue_Push(script, owner, useValue, hitValue);
 		return;
 	}
 	ClearScript(evt);
