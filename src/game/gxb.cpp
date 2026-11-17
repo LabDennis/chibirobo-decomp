@@ -449,6 +449,8 @@ static inline void EndWipeMask(CGs* gs)
  * @note Address: 0x80021570
  * @note Size: 0x528
  */
+// NONMATCHING: retail adds the row's 20 after a separate multiply (fmuls, fadds) where this build
+// fuses it (fmadds), one instruction short
 void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -506,6 +508,8 @@ static inline void SetTileEdge(Vec* vertices, f32 x, f32 y, f32 outerX, f32 oute
  * @note Address: 0x800220DC
  * @note Size: 0x7C0
  */
+// NONMATCHING: retail computes each outer edge as its own fused half-plus-offset (fmadds/fmsubs)
+// where this build reuses the inner edge; the quad data also sits elsewhere in .rodata
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -2639,7 +2643,9 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  * @note Address: 0x80029760
  * @note Size: 0x69C
  */
-// NONMATCHING: float regalloc
+// NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
+// then converts alpha again for normal; this build folds both into one conversion after the call.
+// The rest is float register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
@@ -2676,7 +2682,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		u32 color = IsLineLit(title, 0) ? lit : normal;
 #if defined(VERSION_JP)
 		text     = GetLocalizedInterfaceText(0x49);
-		f32 half = size * 0.5f;
+		f32 half = size / 2.0f;
 		f32 left = 320.0f - 9.0f * half;
 		f32 y    = size + (4.0f * half + top);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, size + left, y, 0.0f, size, size);
@@ -4069,8 +4075,7 @@ static inline void TitleSelectionConfirmed(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
-// NONMATCHING: retail reaches the card's busy and found flags in two steps and turns the result of
-// the shift-jis test into 0 or 1 before it tests it
+// NONMATCHING: retail reaches the card's busy and found flags in two steps (addis 0xF, addis 1)
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
