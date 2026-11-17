@@ -631,8 +631,7 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorlook.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
             # its data order matched only under a per-unit -inline deferred
