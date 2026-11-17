@@ -188,10 +188,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos->z;
-			f32 y = pos->y;
-			f32 x = pos->x;
-			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+			if (ProbeObjectFloor(object, *pos, *pos, radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				// only floors at most one unit overhead
 				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= highest)
