@@ -41,7 +41,7 @@ void HSD_JObjSetRotationY__FP9_HSD_JObjf(HSD_JObj* jobj, f32 angle);
 void RecordObjectPositionAndHeightChange(XObj* obj);
 void ApplyPlayerJumpStrength(XActJump* act, f32 strength);
 void TryLeaveHang(XActHang* act);
-Vec GetLiftTargetContactOffset(XActLift* act, XObj* target);
+Vec GetLiftTargetContactOffset(const XActLift* act, const XObj* target);
 Vec GetTargetFloorPosition(XAction* act); // where the held floor of the target is
 u32 CheckStageFlag(s32 stage, u32 mask);
 s32 GetObjectPoolId(const XObj*);
@@ -3104,7 +3104,7 @@ void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
  * @note Size: 0x354
  */
 // NONMATCHING: stack order
-Vec GetLiftTargetContactOffset(XActLift* act, XObj* target)
+Vec GetLiftTargetContactOffset(const XActLift* act, const XObj* target)
 {
 	// a plug (24) is held by its end joint
 	if (target->GetCategory() == 24) {
