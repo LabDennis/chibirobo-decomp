@@ -209,6 +209,7 @@ public:
 	f32 GetScaleX() const { return HSD_JObjGetScaleX(mJObj); }
 	f32 GetScaleY() const { return HSD_JObjGetScaleY(mJObj); }
 	f32 GetScaleZ() const { return HSD_JObjGetScaleZ(mJObj); }
+	f32 GetRotationX() const { return HSD_JObjGetRotationX(mJObj); }
 	f32 GetRotationY() const { return HSD_JObjGetRotationY(mJObj); }
 	MtxPtr GetMtx() const { return HSD_JObjGetMtxPtr(mJObj); }
 	Vec GetPos() const { return GetJointPosition(mJObj); }
