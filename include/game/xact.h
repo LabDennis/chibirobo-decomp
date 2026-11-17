@@ -90,8 +90,6 @@ public:
 	f32 mStrength;       // _48
 	f32 mTargetStrength; // _4C
 	f32 mTargetHeight;   // _50
-
-	Vec GetArcPosition() const { return mArcPosition; }
 };
 STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
