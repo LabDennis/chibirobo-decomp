@@ -17,6 +17,13 @@
 #include "game/xobjsound.h"
 #include "game/xobjmap.h"
 
+// The readers follow the regional BSS prefix; the code reaches them relative to it.
+#if defined(VERSION_JP)
+u8 gObjectReaderBss[0x134];
+#else
+u8 gObjectReaderBss[0x140];
+#endif
+
 // the three reader threads, built by the file's static initializer
 XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
@@ -208,8 +215,11 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
-// NONMATCHING: regalloc — the inlined ReadStart loop lands its slot counter
-// in a different arg slot, costing one extra mr.
+// NONMATCHING: retail is ReadStart's own out-of-line body (its loop walks the
+// incoming this in r3; writing the loop here directly matches the code). The
+// shared __FUNCTION__ "ReadStart" says this vtable slot is really
+// XObjRead::ReadStart, with the overrides calling XObjRead::ReadStart inline;
+// matching needs that rename of the _10 slot in symbols.txt.
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
 	return ReadStart(object, info);
