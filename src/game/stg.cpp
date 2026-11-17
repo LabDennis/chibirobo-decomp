@@ -8462,8 +8462,7 @@ void MenuPC::Open()
 		mChoices[i] = -1;
 	mChoiceCount = 0;
 	mTexScroll   = 0;
-	s32 stage    = gGame.mStage;
-	if (FindStageIndexByName("stage05") == stage)
+	if (IsStage("stage05"))
 		mShopOnly = FALSE;
 	else
 		mShopOnly = TRUE;
@@ -8478,7 +8477,7 @@ void MenuPC::Open()
 			MenuPCItem* row = &sShopHistoryEntries[i];
 			s32 id          = gEventVars.mVars[mHistoryStart + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[mHistoryStart + (mHistoryCount + i)];
+			row->mCount     = gEventVars.mVars[mHistoryStart + i + mHistoryCount];
 			if (id != -1) {
 				// 0x10000 marks an attachment rather than an item
 				if (id & 0x10000) {
@@ -8505,7 +8504,7 @@ void MenuPC::Open()
 			MenuPCItem* row = &sShopCatalogEntries[i];
 			s32 id          = gEventVars.mVars[mCatalogBase + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[mCatalogBase + (mCatalogCount + i)];
+			row->mCount     = gEventVars.mVars[mCatalogBase + i + mCatalogCount];
 			if (id != -1) {
 				row->mPrice = GetUtilibotPrice(id);
 				count++;
