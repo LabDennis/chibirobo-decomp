@@ -662,7 +662,7 @@ void CCameraActionScroll2::Draw()
 				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
 				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
 			}
-			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
+			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY + -20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
 			DrawScrollMapLabel(161, markX, markY, 1.0f - fastBlink);
