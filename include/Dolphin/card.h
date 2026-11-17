@@ -63,6 +63,7 @@ struct CARDStat {
 	u8 gameName[4];                   // _28
 	u8 company[2];                    // _2C
 	u8 bannerFormat;                  // _2E
+	u8 __padding;                     // _2F
 	u32 iconAddr;                     // _30
 	u16 iconFormat;                   // _34
 	u16 iconSpeed;                    // _36
