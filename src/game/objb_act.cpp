@@ -1821,8 +1821,7 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
-// NONMATCHING: retail reads act->mOwner again after sin and cos for the round floor's step (here it stays in r28) and reads
-// the owner again for the distance in case 3
+// NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused)
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -1869,9 +1868,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				CVec floor(GetTargetFloorPosition(act));
 				floor.y = 0;
 				if (PSVECDistance(&owner, &floor) < 4.f + radius) {
-					f32 yaw = act->mOwner->mMoveRotate.y;
-					act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - .2f * (f32)sin(yaw), 0);
-					act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - .2f * (f32)cos(yaw), 0);
+					f32 yaw  = act->mOwner->mMoveRotate.y;
+					f32 sine = (f32)sin(yaw);
+					act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - .2f * sine, 0);
+					f32 cosine = (f32)cos(yaw);
+					act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - .2f * cosine, 0);
 				}
 			} else {
 				CVec delta = (contact - normal * 4.f) - start;
