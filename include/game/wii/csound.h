@@ -142,6 +142,18 @@ public:
 	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
 	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
 	void StopAllTracks(f32 fade);
+
+	// the track playing the archive sound id, or NULL; FindSound is its out-of-line copy, and
+	// retail expands it in other files too (CGame::Update's scope check, the jingle code)
+	CSoundHandle* FindTrack(u32 id)
+	{
+		for (int i = 0; i < 0x40; i++) {
+			if (mArchivePlayer.mTracks[i].IsAttachedSound() && mArchivePlayer.mTracks[i].GetId() == id) {
+				return &mArchivePlayer.mTracks[i];
+			}
+		}
+		return NULL;
+	}
 };
 STATIC_ASSERT(sizeof(CSound) == 0xB60);
 

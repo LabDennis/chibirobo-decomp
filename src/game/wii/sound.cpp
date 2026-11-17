@@ -205,15 +205,9 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
  * @note Size: 0x100
  */
 // the slot playing the archive sound id, or NULL
-// NONMATCHING: the walker, the index and the handle take r5, r7, r6 where retail has r6, r5, r7
 CSoundHandle* FindSound(CSound* sound, u32 id)
 {
-	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			return &sound->mArchivePlayer.mTracks[i];
-		}
-	}
-	return NULL;
+	return sound->FindTrack(id);
 }
 
 /**
@@ -530,26 +524,24 @@ s32 Random(s32 max)
  * @note Size: 0x19AC
  */
 // returns the slot the sound plays in; csound.h declares the result as s32
-// NONMATCHING: where a case returns its last search, retail tests the result and returns it either way (cmpwi r3, 0;
-// beqlr; blr at 0x800383EC, 0x8003939C, 0x800394A4) and ours loads the 0 again (bnelr; li r3, 0).
 extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
 {
 	// steps by two, so only even slots are searched, as on the GameCube
 	for (u32 i = 0; i < 32 && sound->mStartedSfx[i] != 0; i += 2) {
 		if (sound->mStartedSfx[i] == sfx) {
-			return (s32)FindSound(sound, sfx);
+			return (s32)sound->FindTrack(sfx);
 		}
 	}
 
 	if (isAllSfx(sound, sfx)) {
 		if (sound->mCurrentMusicId == sfx) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		if (sfx == 0xFF0000 && sound->mCurrentMusicId != 0) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		if (sfx == 0xFF0005 && sound->mCurrentMusicId != 0) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		return 0;
 	}
@@ -558,72 +550,73 @@ extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
 	// 0x88 and 0x16A stand for every sound PlayWiiSoundEffect picks for them
 	switch (sfx) {
 	case 0x88:
-		if ((slot = FindSound(sound, sfx)) != NULL) {
+		if ((slot = sound->FindTrack(sfx)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 1)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 1)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 2)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 2)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 3)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 3)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	case 0x16A:
-		if ((slot = FindSound(sound, 0x16A)) != NULL) {
+		if ((slot = sound->FindTrack(0x16A)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16B)) != NULL) {
+		if ((slot = sound->FindTrack(0x16B)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16C)) != NULL) {
+		if ((slot = sound->FindTrack(0x16C)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16D)) != NULL) {
+		if ((slot = sound->FindTrack(0x16D)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16E)) != NULL) {
+		if ((slot = sound->FindTrack(0x16E)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16F)) != NULL) {
+		if ((slot = sound->FindTrack(0x16F)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x170)) != NULL) {
+		if ((slot = sound->FindTrack(0x170)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x171)) != NULL) {
+		if ((slot = sound->FindTrack(0x171)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x172)) != NULL) {
+		if ((slot = sound->FindTrack(0x172)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x173)) != NULL) {
+		if ((slot = sound->FindTrack(0x173)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x174)) != NULL) {
+		if ((slot = sound->FindTrack(0x174)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x175)) != NULL) {
+		if ((slot = sound->FindTrack(0x175)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x176)) != NULL) {
+		if ((slot = sound->FindTrack(0x176)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x177)) != NULL) {
+		if ((slot = sound->FindTrack(0x177)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x178)) != NULL) {
+		if ((slot = sound->FindTrack(0x178)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	default:
-		if ((slot = FindSound(sound, sfx)) != NULL) {
+		if ((slot = sound->FindTrack(sfx)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	}
+	return (s32)slot;
 }
 
 /**
