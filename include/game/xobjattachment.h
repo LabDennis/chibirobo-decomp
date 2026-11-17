@@ -125,7 +125,7 @@ public:
 
 	XObjPlug();
 
-	virtual ~XObjPlug();                                      // _08 (weak)
+	virtual ~XObjPlug() { }                                   // _08 (weak)
 	virtual void Release();                                   // _54
 	virtual void InitializeObject(u32 id);                    // _90
 	virtual void ResetForNewGame();                           // _94
