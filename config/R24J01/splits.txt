@@ -218,6 +218,7 @@ game/wii/cpadact.cpp:
 game/wii/ccamera.cpp:
 	.text start:0x800A92CC end:0x800A9320
 	.ctors start:0x802C45A0 end:0x802C45A4
+	.bss start:0x80453600 end:0x80453938
 
 game/wii/savemanager.cpp:
 	extab start:0x8000A610 end:0x8000A6D0
