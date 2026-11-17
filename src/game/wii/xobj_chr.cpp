@@ -10,6 +10,9 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xchrmenu.h"
+#include "game/wii/csound.h"
+#include "game/playeranimationdata.h"
+#include "game/pointptcl.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include <math.h>
@@ -21,6 +24,14 @@ static inline bool TestStatus(const XObj* object, u64 mask)
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
+void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
+BOOL IsLiftTargetPlug(XAction* action);
+BOOL fn_800CDC98(WiiPlayerState* player);
+void fn_800CDDC0(WiiPlayerState* player);
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern s32 gRefreshRate;
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 {
@@ -102,6 +113,25 @@ BOOL LoadPlayerAttachmentAnimation(WiiPlayerState*)
 BOOL fn_800CDDAC(const XObj* object)
 {
 	return (object->mStatus.mFlags & 1) != 0;
+}
+
+// the player's suit step of the stage setup: puts on the suit the save asked for, TRUE once it is on
+// NONMATCHING: retail recomputes the suits' address into r4 and reads mCurrent before mRequested
+BOOL fn_800CDC08(WiiPlayerState* player)
+{
+	if (player->mSuits.mLoadStep == 0) {
+		player->mSuits.mLoadStep = 1;
+	}
+	if (player->mSuits.mCurrent != player->mSuits.mRequested) {
+		player->mSuits.mCurrent    = player->mSuits.mRequested;
+		player->mSuits.mChangeStep = 1;
+	}
+	if (fn_800CDC98(player)) {
+		player->mSuits.mChangeStep = 0;
+		fn_800CDDC0(player);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)
@@ -215,6 +245,22 @@ f32 GetVectorDistance(const Vec* a, const Vec* b)
 	return PSVECDistance((Vec*)a, (Vec*)b);
 }
 
+void SpawnPlayerPointParticles(WiiPlayerState*, s32 type, s32 value)
+{
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticlePool[i].IsFree()) {
+			for (s32 j = 0; j < 10; ++j) {
+				if (gPointParticleSlots[j] == NULL) {
+					gPointParticleSlots[j] = &gPointParticlePool[i];
+					StartPointParticles(gPointParticleSlots[j], type, value);
+					return;
+				}
+			}
+			return;
+		}
+	}
+}
+
 BOOL IsObjectLiftable(const XObj* object)
 {
 	return TestStatus(object, 0x0000000100000000ULL);
@@ -228,6 +274,15 @@ BOOL IsObjectClimbableLedge(const XObj* object)
 BOOL IsObjectLadder(const XObj* object)
 {
 	return TestStatus(object, 0x0000000800000000ULL);
+}
+
+// is position behind the object, within 60 degrees either side
+BOOL IsPositionBehindObject(void*, const Vec* pos, XObj* object)
+{
+	CVec* objectPos = object->GetPos();
+	f32 angle       = atan2(objectPos->x - pos->x, objectPos->z - pos->z);
+	angle           = WrapAngle(angle - object->mMoveRotate.y);
+	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
 }
 
 BOOL IsObjectRope(const XObj* object)
@@ -298,6 +353,29 @@ void* GetMapPoolEntry(const CGame* game, s32 index)
 BOOL CanFallDuringHangAction(const XActHang* act)
 {
 	return (act->mState == 0 || act->mState == 10);
+}
+
+// NONMATCHING (67-71 %): retail starts each bool at TRUE and clears it, as in CanFallDuringLadderAction
+BOOL CanFallDuringJumpAction(const XAction* act)
+{
+	s32 state = act->mState;
+	bool a    = state == 0 || state == 2;
+	bool b    = a || state == 3;
+	bool c    = b || state == 4;
+	return c || state == 17;
+}
+
+// NONMATCHING (67-71 %): retail starts each bool at TRUE and clears it, as in CanFallDuringLadderAction
+BOOL CanFallDuringCopterAction(const XAction* act)
+{
+	s32 state = act->mState;
+	bool a    = state == 0 || state == 3;
+	bool b    = a || state == 4;
+	bool c    = b || state == 7;
+	bool d    = c || state == 8;
+	bool e    = d || state == 5;
+	bool f    = e || state == 6;
+	return f || state == 9;
 }
 
 u32 CheckCurrentStageFlags(const CGame* game, u32 mask)
@@ -776,6 +854,81 @@ UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 CoordInfo* GetObjectCoordInfo(XObj* object)
 {
 	return &object->mCoord;
+}
+
+// fires on the frame it crosses mStart
+s32 FrameSoundOnStartFrame(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if ((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+		return 1;
+	return 0;
+}
+
+// fires on the frame it crosses mStart or mEnd, a loop back counts as crossing
+s32 FrameSoundOnEitherBoundary(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+	    || ((time->mLastFrame < event->mEnd || time->mLastFrame > time->mFrame) && time->mFrame >= event->mEnd))
+		return 1;
+	return 0;
+}
+
+// keep the sound playing until the anim ends
+s32 FrameSoundUntilAnimEnd(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (object->IsAnimDone()) {
+		if (IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return -1;
+	} else {
+		if (!IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return 1;
+	}
+	return 0;
+}
+
+// keep the sound playing inside the window only
+s32 FrameSoundInFrameWindow(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (time->mFrame >= event->mStart && time->mFrame < event->mEnd) {
+		if (!IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return 1;
+	} else {
+		if (IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return -1;
+	}
+	return 0;
+}
+
+// start while the sound isn't playing
+s32 FrameSoundStartIfSilent(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? FALSE : TRUE;
+}
+
+// stop once the sound is playing
+s32 FrameSoundStopIfPlaying(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? -1 : 0;
+}
+
+// the anim rate at the game's frame rate, 1.135 times faster in lift state 4 except for anim 0x13B
+// NONMATCHING: retail reads mLift.mState ahead of the prologue's stores
+f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
+{
+	f32 rate;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && anim != 0x13B) {
+		rate = 1.135f;
+	} else {
+		rate = 1.0f;
+	}
+	return rate * (60.0f / gRefreshRate);
+}
+
+// the event call 101: which side of a clear leticker he comes from, 1 for anything else
+// NONMATCHING: retail loads the data record ahead of the prologue's stores
+s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
+{
+	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
 }
 
 void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
