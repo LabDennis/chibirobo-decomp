@@ -732,23 +732,8 @@ game/xobjactor3init.cpp:
 	.text       start:0x80117AAC end:0x80117D44
 	.ctors      start:0x8020009C end:0x802000A0
 
-game/xobjactortoystate.cpp:
-	.text       start:0x80117D44 end:0x80117DC0
-
-game/xobjactortoydtor.cpp:
-	.text       start:0x80117DC0 end:0x80118724
-
-game/xobjactortoycmd.cpp:
-	.text       start:0x80118724 end:0x801187E0
-
 game/xobjactortoy.cpp:
-	.text       start:0x801187E0 end:0x801248B4
-
-game/xobjactortoydraw.cpp:
-	.text       start:0x801248B4 end:0x80124958
-
-game/xobjactortoyread.cpp:
-	.text       start:0x80124958 end:0x80125618
+	.text       start:0x80117D44 end:0x80125618
 	.data       start:0x802331E0 end:0x802339A4
 
 game/xobjactorjenny.cpp:
