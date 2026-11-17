@@ -7,6 +7,7 @@
 #include "game/ut.h"
 #include <string.h>
 #include <math.h>
+#include <cmath>
 extern "C" {
 #include <dolphin/os.h>
 }
@@ -126,12 +127,13 @@ static inline void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex,
 	ApplyAreaCameraEntry(area, entry, mode, 1, time);
 }
 
-// the yaw of angle as a unit direction in the xz plane
+// the yaw of angle as a unit direction in the xz plane; the Wii MSL's float sinf/cosf wrappers
+// (cos's float argument goes through the wrapper's parameter, the fmr before `bl cos`)
 inline void YawDir(CVec& dir, const Vec& angle)
 {
 	CVec ang(angle);
-	f32 x = sin(ang.y);
-	f32 z = cos(ang.y);
+	f32 x = std::sinf(ang.y);
+	f32 z = std::cosf(ang.y);
 	dir.x = x;
 	dir.y = 0.0f;
 	dir.z = z;
@@ -139,7 +141,7 @@ inline void YawDir(CVec& dir, const Vec& angle)
 }
 
 // the entry of the slot that faces most along dir, the first when none does; the GameCube inlines it
-// NONMATCHING: the dot product's paired-single registers and the cos argument's load differ (97.7 %)
+// NONMATCHING: the dot product's paired-single registers differ (99.4 %)
 s32 CCameraActionArea::FindFacing(s32 slotIndex, const Vec& dir)
 {
 	CVec look(dir.x, dir.y, dir.z);
