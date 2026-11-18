@@ -6897,7 +6897,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 // walked through the lobj next links
 extern "C" void SetStageCameraAnimation(XObj* obj, s32 anim, f32 frame);
 
-#define EVT_CAMERA_ACTION(type) (((CInterfaceCameraAction**)&gGame.mCameraActions.mTable)[type])
+#define EVT_CAMERA_ACTION(type) (gGame.mCameraActions.mTable[type])
 
 /**
  * @note Address: 0x80078754
