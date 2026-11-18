@@ -1210,10 +1210,10 @@ public:
 	virtual void vf1A0();
 	virtual void vf1A4();
 	virtual void vf1A8();
-	virtual void vf1AC();
-	virtual Vec GetCameraTarget();    // _1B0, where a camera looks at this object
-	virtual void SetBaseMtx(Mtx mtx); // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
-	virtual void ClearBaseMtx();      // _1B8
+	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
+	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
+	virtual void ClearBaseMtx();                 // _1B8
 	virtual void vf1BC();
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
@@ -1299,6 +1299,8 @@ public:
 	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
 	// the object id of its placement, -1 without one (the GameCube XObj's inline)
 	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
+	// the item its data record names, -1 without one (the GameCube XObj's inline)
+	s16 GetItem() const { return mAttr.mObjData != NULL ? mAttr.mObjData->GetItem() : -1; }
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 

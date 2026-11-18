@@ -942,7 +942,8 @@ struct WiiPlayerState : public XObj {
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
-	u8 _992C[0x999C - 0x992C];
+	u8 _992C[0x998C - 0x992C];
+	CVec mFloorSlope;        // _998C, the GameCube's mFloorSlope
 	WiiPlayerParams mParams; // _999C
 	u8 _9DDC[0x9DF8 - 0x9DDC];
 	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
@@ -959,9 +960,12 @@ struct WiiPlayerState : public XObj {
 	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
 	WiiOXMenu mOXMenu;     // _1A420
 	u8 _1B7B4[0x1C990 - 0x1B7B4];
-	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
-	s32 mSquirterContent;  // _1C994
-	s32 mItemTint;         // _1C998
+	BOOL mBatteryDrains;  // _1C990, TRUE while his battery runs down and an empty battery stops him
+	s32 mSquirterContent; // _1C994
+	union {
+		GXColor mItemTint; // _1C998, tints the held item
+		s32 mItemTintWord; // _1C998, the save copies it as a word
+	};
 	f32 mHeadOffset;       // _1C99C
 	BOOL mHeadOffsetReady; // _1C9A0
 	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds

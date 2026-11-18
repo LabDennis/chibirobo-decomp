@@ -1195,6 +1195,9 @@ game/wii/ccameraactionscroll.cpp:
 game/wii/cmotioncontrolcamera.cpp:
 	.text start:0x8016753C end:0x8016AD78
 
+game/wii/objb_act.cpp:
+	.text start:0x800F48E0 end:0x801067C0
+
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
 	extabindex start:0x80014B7C end:0x80014C18

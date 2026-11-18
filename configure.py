@@ -1308,6 +1308,11 @@ if wii:
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # chibi robo's actions, the GameCube's objb_act.cpp: retail 0x800F48E0-0x801067C0 holds its
+                # functions in the reverse order, GetTargetFloorPosition first and UpdatePushedObject last
+                # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
+                # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
+                Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
