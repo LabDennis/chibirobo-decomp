@@ -1,6 +1,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/infoscrn.h"
+#include "game/wii/cpad.h"
 #include "game/wii/ceffect.h"
 #include "game/attachmentvalues.h"
 #include "game/wii/spiderplacement.h"
@@ -13,13 +14,25 @@ void ResetSpiderBossState(XObjSpiderBoss* spider);
 void ApplySpiderBossPlacement(XObjSpiderBoss* spider);
 
 void ResetSpiderCoinBounces(void* unused);
+void UpdateSpiderCoinBounces(void* unused, u32 frames);
+void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames);
+void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 
 extern s32 gRefreshRate;
 extern AnimSfxEvent gSpiderBossAnimSfxEvents[];
-extern u32 gSpiderBossCoinBounceContext; // the boss's coin bounce token, the callbacks never touch it
+extern u32 gSpiderBossCoinBounceContext;
+// the states, by number
+extern void (XObjSpiderBoss::*gSpiderBossStateHandlers[5])(u32 frames); // the boss's coin bounce token, the callbacks never touch it
+}
+
+// puts the object at a place with nowhere to go
+static inline void SetPosAndTarget(XObjSpiderBoss* spider, const Vec& value)
+{
+	spider->mMoveTranslate.Set(value);
+	spider->mMoveTarget0.Set(value);
 }
 
 // back to the start: state 0, waiting to be placed
@@ -169,6 +182,49 @@ void XObjSpiderBoss::ResetObjectState()
 }
 
 /**
+ * @note Address: 0x80132B54
+ * @note Size: 0x254
+ */
+// NONMATCHING: only the CPad vtable reference differs, retail's copy (0x802E6DF8) has no name: naming it collides
+// with cpaddtor.o's in the link
+void XObjSpiderBoss::UpdateObject(u32 frames)
+{
+	CPad pad(0); // unused, retail builds one here
+	if (gGame.GetStatusFlags(0x400)) {
+		Vec& move = gGame.GetPlayer()->_1C9A8;
+		move.x    = 0.0f;
+		move.y    = 0.0f;
+		move.z    = 0.0f;
+		return;
+	}
+	if (mPoolIndex == 0) {
+		UpdateSpiderCoinBounces(&gSpiderBossCoinBounceContext, frames);
+	}
+	if (!(mStatus.mFlags & 0x10000ULL) && mState != 1) {
+		return;
+	}
+	UpdateAnimationSounds();
+	UpdateSpiderBossDamage(this, frames);
+	if (!(mSpiderStatus.mFlags & 0x02000000)) {
+		(this->*gSpiderBossStateHandlers[mState])(frames);
+		CVec step;
+		if (mSpiderStatus.mFlags & 8) {
+			mMoveTranslate.y += mSpeedY;
+		} else {
+			mMoveTranslate.y = mBasePos.y;
+		}
+		step.x = mSpeed * (f32)sin(mHeading);
+		step.z = mSpeed * (f32)cos(mHeading);
+		step.y = 0.0f;
+		SetRotateY(mTargetRotY, mRotSpeed);
+		SetPosAndTarget(this, mMoveTranslate + step * (f32)frames);
+		SetPos(mMoveTranslate);
+	}
+	XObj::UpdateObject(frames);
+	UpdateSpiderBossAttachments(this, frames);
+}
+
+/**
  * @note Address: 0x80132DA8
  * @note Size: 0x14
  */
@@ -299,6 +355,50 @@ void XObjSpiderBoss::State0(u32 frames)
 		mStep      = 100;
 	}
 	mSpiderStatus.mFlags &= ~0x8000U;
+}
+
+/**
+ * @note Address: 0x8013479C
+ * @note Size: 0x238
+ */
+// gets back up, blinking
+void XObjSpiderBoss::State1(u32 frames)
+{
+	Vec zero = { 0.0f, 0.0f, 0.0f }; // retail builds it and never reads it
+	switch (mStep) {
+	case 0:
+		mSpiderStatus.mFlags |= 0x10;
+		SetAnim(11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		++mStep;
+		mBlinkTimer = 0;
+		mSpiderStatus.mFlags &= ~0x200;
+		break;
+	case 1: {
+		if (mBlinkTimer % 30 < 15) {
+			SetColor(1, 128, 0, 0, 0.0f);
+		} else {
+			SetColor(1, 0, 0, 0, 0.0f);
+		}
+		++mBlinkTimer;
+		f32 frame = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= frame) {
+			SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mBlinkTimer = 0;
+			SetColor(1, 0, 0, 0, 0.0f);
+			mStep      = 0;
+			mTimer     = 0;
+			mPrevState = mState;
+			mState     = 0;
+			mSpiderStatus.mFlags |= 0x8000;
+			mSpiderStatus.mFlags |= 0x02000000;
+			mSpiderStatus.mFlags |= 0x40000000;
+			mSpiderStatus.mFlags &= ~0x10;
+			mSpiderStatus.mFlags |= 0x80000;
+			mHits = 16;
+		}
+		break;
+	}
+	}
 }
 
 /**

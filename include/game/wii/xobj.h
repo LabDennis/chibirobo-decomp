@@ -1671,6 +1671,7 @@ public:
 	void State9(u32 frames);
 
 	void FindWebs(); // collects the stage's webs, the first spider's job
+	void TakeWeb();  // claims the first free web
 
 	void SetState(s32 state)
 	{

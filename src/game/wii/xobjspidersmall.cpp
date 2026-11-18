@@ -1,5 +1,6 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/infoscrn.h"
 #include "nw4r/snd/snd_BasicSound.h"
 #include "nw4r/snd/snd_SoundHandle.h"
 
@@ -16,6 +17,7 @@ extern "C" {
 void ResetSmallSpiderState(XObjSpiderSmall* spider);
 void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
 void ResetSpiderCoinBounces(void* unused);
+f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 void DrawSmallSpiderWebEffect(XObjSpiderSmallFx* fx, u8 index);
 
 extern s32 gRefreshRate;
@@ -321,5 +323,36 @@ void XObjSpiderSmall::FindWebs()
 				break;
 			}
 		}
+	}
+}
+
+/**
+ * @note Address: 0x80131F30
+ * @note Size: 0x64
+ */
+// NONMATCHING: retail sets a second register to 0 before the loop and to 1 where it takes a web, never
+// reading it; a found flag the compiler did not drop. Here it is dropped
+// takes the first of the webs nobody has
+void XObjSpiderSmall::TakeWeb()
+{
+	for (int i = 0; i < 12; i++) {
+		if (gSmallSpiderEffectSlotOwners[i] == -1) {
+			mFxObj                          = gSmallSpiderEffectObjects[i];
+			mFxIndex                        = i;
+			gSmallSpiderEffectSlotOwners[i] = mPoolIndex;
+			break;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x801320A4
+ * @note Size: 0xE4
+ */
+void XObjSpiderSmall::UpdateAnimationSounds()
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+		f32 volume = GetSoundVolumeAtPosition(&gGame.mSound, GetPos(), 0);
+		mAnimSfx.Update(GetAnimId(), GetAnimFrame(), volume);
 	}
 }
