@@ -2,10 +2,13 @@
 // included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
 // order, plus the Wii's own text helpers.
 //
-// NONMATCHING: in the frame buffer queue QueueFrameCopy (99 %) and OnCopyDone (95 %) give the new
-// entry's address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height
-// before the width for the aspect; CLight::GetPosition (83 %) tests the light kind before it saves its registers and
-// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
+// NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) emits the identical instruction stream and only colours the new
+// entry's address and the popped request into other registers than retail; OnCopyDone (95 %) materialises the Peek() result twice
+// in retail (an inline sret slot plus the caller's copy, one copy is elided for us). The perspective CCamera::Init (97 %) matches
+// after materialising the efbHeight conversion as an f32; what is left is the order of the two conversion temps on the stack and
+// register colouring. CLight::GetPosition (83 %) shrink-wraps its callee saves behind the light-kind test in retail and
+// CLight::GetViewDirection (99 %) emits the same instructions but gives its two zero vectors the opposite stack slots.
+// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
 // read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
 // (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
 // GetGlyph (99 %) differs only in callee-saved colouring; DrawGsText (92 %) and DrawGsStrokeText (87 %) diverge in float allocation and
@@ -78,6 +81,7 @@ void CCamera::InitView(const GXRenderModeObj* rmode)
 
 void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode)
 {
+	f32 height        = rmode->efbHeight;
 	mFov              = fov;
 	mType             = 0;
 	mNear             = near;
@@ -85,7 +89,7 @@ void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj*
 	mProjectionDirty  = TRUE;
 	mIsOrtho          = 0.0f;
 	mProjectionSource = NULL;
-	mAspect           = (rmode->fbWidth * scale) / rmode->efbHeight;
+	mAspect           = (rmode->fbWidth * scale) / height;
 	mScale            = scale;
 	InitView(rmode);
 }
@@ -370,12 +374,13 @@ CVec CLight::GetPosition()
 CVec CLight::GetViewDirection(Mtx view)
 {
 	CVec direction;
-	if (0.0f != PSVECMag(&mInterest)) {
+	if (PSVECMag(&mInterest) != 0.0f) {
 		PSMTXMultVecSR(view, &mInterest, &direction);
 		PSVECNormalize(&direction, &direction);
 	} else {
-		Vec zero        = { 0.0f, 0.0f, 0.0f };
-		(Vec&)direction = zero;
+		Vec zero = { 0.0f, 0.0f, 0.0f };
+		Vec copy = zero;
+		direction.Set(copy);
 	}
 	return direction;
 }
