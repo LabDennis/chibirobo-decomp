@@ -4,7 +4,8 @@
 // NONMATCHING: the small helpers have source; the big per-action updates (lift, held object, hang, jump,
 // ladder, rope, push) and the input handlers are still to port. The Wii rewrote them for the nw4r models
 // and the Wii remote, so the GameCube's src/game/objb_act.cpp is a template for them, not a copy.
-#include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
+#include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
@@ -17,9 +18,14 @@
 #include "arithmetic.h"
 
 extern "C" {
+CVec fn_800E5A2C(XObj* player);                                // where the carried object hangs, in the world
 void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // stops the event effect with that id
 CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset);
 void TryLeaveHang(XActHang* act);
+BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z);
+BOOL QueryMapFloorHeight(XObj* object, f32 minHeight);
+f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height);
+f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 }
 
 // a held object of the given pool and kind
@@ -152,7 +158,198 @@ static inline f32 StickLength(const CPadOne* pad)
 	return FSqrt(x * x + y * y);
 }
 
+// a real function in another unit (0x800D57E4), inlined here as in ut.cpp
+inline void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
+{
+	Vec bc;
+	Vec ba;
+	Vec n;
+	PSVECSubtract(b, c, &bc);
+	PSVECSubtract(b, a, &ba);
+	PSVECCrossProduct(&ba, &bc, &n);
+	PSVECCrossProduct(&bc, &n, out);
+}
+
+static const f32 pushAngleTolerance = 0.1f * DEG2RAD;
+
+static inline Vec PushEdgePoint(const XObj* obj, s32 index, bool first, f32 height)
+{
+	const Vec& point = first ? obj->mEdges[index].mFrom : obj->mEdges[index].mTo;
+	Vec v            = { obj->mMoveTranslate.x + point.x, height, obj->mMoveTranslate.z + point.z };
+	return v;
+}
+
+// the heading straight into the edge of the floor he pushes
+static inline f32 FacingPushEdge(XAction* act)
+{
+	s32 index   = act->mTarget->mSelectedFloorIndex;
+	Vec& player = *act->mOwner->GetPos();
+	Vec a       = PushEdgePoint(act->mTarget, index, true, player.y);
+	Vec b       = PushEdgePoint(act->mTarget, index, false, player.y);
+	CVec normal;
+	GetOutwardPerpendicularToEdge(&player, &a, &b, &normal);
+	return WrapAngle(atan2(normal.x, normal.z));
+}
+
 extern "C" {
+
+/**
+ * @note Address: 0x80105FE8
+ * @note Size: 0x7D8
+ */
+void UpdatePushedObject(XActPush* act, u32 frames)
+{
+	if (!act->mTargetState)
+		return;
+	XObj* target = act->mTarget;
+	if (target != NULL && (target->mStatus.mFlags & 1)) {
+		switch (act->mTargetState) {
+		case 1: {
+			target->mStatus.mFlags |= 0x0800000000000000ULL;
+			Vec hand = fn_800E5A2C(act->mOwner);
+			Vec diff = *target->GetPos() - hand;
+			act->mTargetOffset.Set(diff);
+			break;
+		}
+		case 2: {
+			Vec hand  = fn_800E5A2C(act->mOwner);
+			f32 angle = WrapAngle(FacingPushEdge(act) - act->mTarget->mMoveRotate.y);
+			Mtx rotate;
+			PSMTXRotRad(rotate, 'y', angle);
+			CVec direction(0, 0, act->mMoveDirection);
+			PSMTXMultVec(rotate, &direction, &direction);
+			if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))
+			    || (angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance)))
+				act->mPushPositionClamped
+				    = SetClampedPushPositionXZ(target, &direction, 1, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
+			else
+				act->mPushPositionClamped
+				    = SetClampedPushPositionXZ(target, &direction, 2, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
+
+			target->OnPushDisplacement(*target->GetPos() - target->mLastPos);
+			if (target->mStatus.mFlags & 0x4000000000ULL) {
+				// pushed over an edge: it topples
+				f32 floor = QueryObjectFloorHeight(target, 0.1f, 0.1f);
+				if (floor < target->GetPos()->y - 5.0f) {
+					QueryMapFloorHeight(target, floor);
+					target->mStatus.mFlags &= ~0x0800000000000000ULL;
+					Release(act);
+					WiiPlayerState* owner = act->mOwner;
+					owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					owner->mIdleLoops = 3;
+					act->mState       = 0;
+					target->mStatus.mFlags |= 0x1000000000000000ULL;
+
+					Vec rotation = target->mMoveRotate, speed = target->mMoveSpeed1;
+					Vec extent = GetFloorExtent(target, 0);
+					Vec topple;
+					if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))) {
+						rotation.z -= HALF_PI;
+						speed.z  = 0.1f;
+						topple.z = 0;
+						topple.x = extent.x * (2.0f / FSqrt(3.0f)) / 2.0f;
+					} else if ((angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance))) {
+						rotation.z += HALF_PI;
+						speed.z  = 0.1f;
+						topple.z = 0;
+						topple.x = -(extent.x * (2.0f / FSqrt(3.0f))) / 2.0f;
+					} else if ((angle > (0 * DEG2RAD - pushAngleTolerance) && angle < (0 * DEG2RAD + pushAngleTolerance))) {
+						rotation.x += HALF_PI;
+						speed.x  = 0.1f;
+						topple.x = 0;
+						topple.z = extent.z * (2.0f / FSqrt(3.0f)) / 2.0f;
+					} else if ((angle > (180 * DEG2RAD - pushAngleTolerance) && angle < (180 * DEG2RAD + pushAngleTolerance))) {
+						rotation.x -= HALF_PI;
+						speed.x  = 0.1f;
+						topple.x = 0;
+						topple.z = -(extent.z * (2.0f / FSqrt(3.0f))) / 2.0f;
+					}
+					target->mMoveTarget1.Set(rotation);
+					target->mMoveSpeed1.Set(speed);
+					topple.y = -(extent.y * (2.0f / FSqrt(3.0f))) / 2.0f;
+					target->mVec714.Set(topple);
+				}
+			}
+			break;
+		}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80105B9C
+ * @note Size: 0x44C
+ */
+// the Wii passes the player's model where the GameCube passed the anim object
+void UpdatePushActionAnimation(XActPush* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
+{
+	switch (act->mState) {
+	case 1:
+		if (anim != 0x3E) {
+			XObj* target = act->mTarget;
+			if (target != NULL) {
+				f32 angle = GetFloorFacingAngle(target, act->mOwner->GetPos(), act->mTargetFloor, 1, NULL, NULL);
+				if (fpclassify(angle) != FP_NAN) {
+					act->mOwner->SetAnim(0x3E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					act->mOwner->SetRotationY(angle);
+				} else {
+					Release(act);
+					act->mState = 0;
+				}
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(0x3F, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mState       = 2;
+			act->mTargetState = 1;
+		}
+		break;
+	case 2:
+		if (act->mMoveDirection == 1) {
+			if (anim == 0x4B) {
+				if (model->IsAnimDone()) {
+					act->mOwner->SetAnim(0x40, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					act->mTargetState = 2;
+				}
+			} else if (anim != 0x40) {
+				act->mOwner->SetAnim(0x4B, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTargetState = 0;
+			}
+		} else if (act->mMoveDirection == -1) {
+			if (anim == 0x4C) {
+				if (model->IsAnimDone()) {
+					act->mOwner->SetAnim(0x41, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					act->mTargetState = 2;
+				}
+			} else if (anim != 0x41) {
+				act->mOwner->SetAnim(0x4C, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTargetState = 0;
+			}
+		} else if (anim != 0x3F) {
+			act->mOwner->SetAnim(0x3F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTargetState = 0;
+		}
+		break;
+	case 3:
+		if (anim != 0x42) {
+			act->mOwner->SetAnim(0x42, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else if (model->IsAnimDone()) {
+			WiiPlayerState* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+		}
+		break;
+	case 4:
+		// he lets go once the grab anim is ten frames in
+		if (anim == 0x3E && model->GetAnimFrame() >= 10.0f) {
+			WiiPlayerState* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+		}
+		break;
+	}
+}
 
 /**
  * @note Address: 0x80105860
@@ -177,12 +374,12 @@ void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight)
 			}
 		} else if (pad->mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA))) {
 			// a takes hold again, the stick walks away
-			act->mOwner->SetAnim(0x3E, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mOwner->SetAnim(0x3E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			act->mState = 1;
 		} else if (StickLength(pad) > 0.0f) {
 			Release(act);
 			WiiPlayerState* chr = act->mOwner;
-			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			chr->mIdleLoops = 3;
 			act->mState     = 0;
 		}
@@ -200,7 +397,7 @@ void CancelPlayerPushAction(XActPush* act)
 		Release(act);
 		act->mState         = 0;
 		WiiPlayerState* chr = act->mOwner;
-		chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 10.0f);
+		chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 		chr->mIdleLoops = 3;
 	}
 }
@@ -307,8 +504,8 @@ void TryLeaveHang(XActHang* act)
 			continue;
 
 		CVec push, contact;
-		u32 result = obj->TestFloorCollision(&CVec(position.x, position.y, position.z), &CVec(position.x, position.y, position.z), radius,
-		                                     halfHeight, &push, &contact, NULL, 0);
+		u32 result = ProbeObjectFloor(obj, CVec(position.x, position.y, position.z), CVec(position.x, position.y, position.z), radius,
+		                              halfHeight, &push, &contact, NULL);
 		if ((result & 3) == 3) {
 			blockingHit = result;
 			break;
@@ -436,7 +633,7 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 void fn_800FCE60(XActLift* act)
 {
 	if (IsState(act, 38) || IsState(act, 39)) {
-		act->mOwner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mOwner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		act->mState = 4;
 	}
 }
@@ -448,7 +645,7 @@ void fn_800FCE60(XActLift* act)
 void fn_800FCDF0(XActLift* act)
 {
 	if (IsState(act, 32) || IsState(act, 33)) {
-		act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		act->mState = 4;
 	}
 }
@@ -460,7 +657,7 @@ void fn_800FCDF0(XActLift* act)
 void fn_800FCD1C(XActLift* act)
 {
 	if (IsState(act, 28) || IsState(act, 29) || IsState(act, 30) || IsState(act, 31)) {
-		act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		act->mState = 4;
 		if (act->mContactEffect) {
 			fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
@@ -513,14 +710,14 @@ void PutAwayLiftedObject(XActLift* act)
 {
 	s32 anim = act->mOwner->GetAnimId();
 	if (anim == 0x8B1 || anim == 0x8B3) {
-		act->mOwner->SetAnim(0x8B2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mOwner->SetAnim(0x8B2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	} else if (anim == 11) {
-		act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	}
 	act->mState              = 0;
 	act->mOwner->mAttachment = 0;
 	act->mTarget->mStatus.mFlags &= ~0x0200000000000000ULL;
-	act->mTarget->SetAnim(7, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+	act->mTarget->SetAnim(7, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 	act->mTargetState = 20;
 	XObjItem* item    = (XObjItem*)act->mTarget;
 	SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, item->GetItem(), 1, TRUE);
