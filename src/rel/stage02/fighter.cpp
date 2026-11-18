@@ -232,15 +232,6 @@ public:
 	virtual s32 GetTarget() { return 0; }                                  // _60
 };
 
-inline Vec MakeVec(f32 x, f32 y, f32 z)
-{
-	Vec v;
-	v.x = x;
-	v.y = y;
-	v.z = z;
-	return v;
-}
-
 namespace fighter {
 
 class CCameraActionFighter : public CInterfaceCameraAction {
@@ -254,13 +245,13 @@ public:
 	}
 	virtual ~CCameraActionFighter() { }
 
-	void SetView(Vec eye, Vec interest, MtxPtr mtx)
+	void SetEyeOffset(Vec eye)
 	{
-		mCenterView     = false;
-		mEyeOffset      = eye;
-		mInterestOffset = interest;
-		mTargetMtx      = mtx;
+		mCenterView = false;
+		mEyeOffset  = eye;
 	}
+	void SetInterestOffset(Vec interest) { mInterestOffset = interest; }
+	void SetTargetMtx(MtxPtr mtx) { mTargetMtx = mtx; }
 
 	virtual void Update();
 	virtual void Init() { mCenterView = false; }
@@ -4008,6 +3999,8 @@ extern "C" void AddMato(UnkDolObj* obj, s32 id)
  * @note Address: stage02 .text 0x2D0C
  * @note Size: 0x1BC
  */
+// NONMATCHING: registers only. Retail keeps the zero in r31 and the copied eye offset in volatile
+// registers; the build gives r31 to the eye's x word.
 extern "C" void StartFighter(UnkDolObj* body, UnkDolObj* path, void* extra)
 {
 	UnkGame_96BC* player;
@@ -4029,8 +4022,17 @@ extern "C" void StartFighter(UnkDolObj* body, UnkDolObj* path, void* extra)
 	player->mPadReset = 0;
 	((CMotionControlCamera*)(gGame + GAME_OFS(0xE5D38, 0xE5050)))->ChangeAction(&fighterCamera);
 	{
-		fighterCamera.SetView(MakeVec(0.0f, 40.0f, -180.0f), MakeVec(0.0f, 0.0f, 120.0f), fighterWork.mBodyMtx);
+		Vec v;
+		v.x = 0.0f;
+		v.y = 40.0f;
+		v.z = -180.0f;
+		fighterCamera.SetEyeOffset(v);
+		v.x = 0.0f;
+		v.y = 0.0f;
+		v.z = 120.0f;
+		fighterCamera.SetInterestOffset(v);
 	}
+	fighterCamera.SetTargetMtx(fighterWork.mBodyMtx);
 	fireHoldFrames           = 0;
 	lbl_5_bss_0              = 0;
 	panels.mLowerState       = 0;
