@@ -7809,13 +7809,14 @@ extern "C" void DrawMenuGradientText(const char* text, f32 x, f32 y, f32 size, f
 	f32 startX  = x;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	MenuTitleChar chars[20];
-	s32 count = 0;
-	if (text) {
-		for (int i = 0; i < 20 && *text; i++, text++) {
-			chars[i].mText = text;
+	s32 count     = 0;
+	const char* p = text;
+	if (p) {
+		for (int i = 0; i < 20 && *p; i++, p++) {
+			chars[i].mText = p;
 			count++;
-			if (IsSjisLead(*text))
-				text++;
+			if (IsSjisLead(*p) & 1)
+				p++;
 		}
 	}
 	u32 top       = ((u8)(255.0f * alpha)) | 0xEFEBC500;
