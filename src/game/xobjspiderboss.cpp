@@ -131,47 +131,35 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mActionTimer         = 0;
 	spider->_9C4                 = 1.0f;
 	spider->_9C8                 = 1.0f;
-	{
-		Vec value       = { 0.0f, 0.0f, 0.0f };
-		spider->mHitPos = value;
-	}
-	{
-		Vec value        = { 0.0f, 0.0f, 0.0f };
-		spider->mBasePos = value;
-	}
-	{
-		Vec value             = { 0.0f, 0.0f, 0.0f };
-		spider->mPatrolTarget = value;
-	}
-	spider->mHitStrength = 0.0f;
-	spider->mMaxHits     = 23;
-	spider->mHits        = spider->mMaxHits;
-	spider->mCommand     = 0;
-	spider->mArgs[0]     = 0;
-	spider->_A44         = 0;
-	spider->_994         = 1.0f;
+	Vec hitPos                   = { 0.0f, 0.0f, 0.0f };
+	spider->mHitPos              = hitPos;
+	Vec basePos                  = { 0.0f, 0.0f, 0.0f };
+	spider->mBasePos             = basePos;
+	Vec patrolTarget             = { 0.0f, 0.0f, 0.0f };
+	spider->mPatrolTarget        = patrolTarget;
+	spider->mHitStrength         = 0.0f;
+	spider->mMaxHits             = 23;
+	spider->mHits                = spider->mMaxHits;
+	spider->mCommand             = 0;
+	spider->mArgs[0]             = 0;
+	spider->_A44                 = 0;
+	spider->_994                 = 1.0f;
 	spider->mStatus.mFlags |= 8ULL;
-	spider->mRadius = 28.0f;
-	{
-		Vec value        = { 0.0f, 0.0f, 0.0f };
-		spider->mAreaPos = value;
-	}
+	spider->mRadius    = 28.0f;
+	Vec areaPos        = { 0.0f, 0.0f, 0.0f };
+	spider->mAreaPos   = areaPos;
 	spider->mAreaWidth = 0.0f;
 	spider->mAreaDepth = 0.0f;
-	{
-		Vec value         = { 0.0f, 0.0f, 0.0f };
-		spider->mStartPos = value;
-	}
-	spider->_A1C = 0.0f;
+	Vec startPos       = { 0.0f, 0.0f, 0.0f };
+	spider->mStartPos  = startPos;
+	spider->_A1C       = 0.0f;
 	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->_A48                 = 0.0f;
 	spider->mEscapeInputStrength = 0.0f;
 	spider->mDrainTimer          = 0;
 	spider->mEscapeRemaining     = 0.0f;
-	{
-		Vec value    = { 0.0f, 0.0f, 0.0f };
-		spider->_A58 = value;
-	}
+	Vec vecA58                   = { 0.0f, 0.0f, 0.0f };
+	spider->_A58                 = vecA58;
 #if defined(VERSION_PAL)
 	spider->mGrabIntervalFrames = 3 * gVideoFramesPerSecond; // 3 seconds
 #else
@@ -203,7 +191,10 @@ extern "C" void ResetSpiderBossState(XObj* object)
  * @note Size: 0x584
  */
 // NONMATCHING: retail reads the three start Vecs at +0xD4 of the file's .bss: the whole .bss (0x140, JP 0x134) is the
-// header-made prefix every file starts with, which no header here makes yet, so every load has another offset
+// header-made prefix every file starts with, which no header here makes yet, so every load has another offset. MWCC makes
+// a zeroed 0xC .bss object for each Vec() it parses, also in an inline nobody calls, so the prefix is most likely the
+// Vec() defaults of about 26 header inlines; the three placement ones (Vec pos = Vec(); pos.x = ...) are followed by six
+// more (JP five)
 extern "C" void ApplySpiderBossPlacement(XObjSpiderBoss* spider)
 {
 	spider->SetColor(1, 0, 0, 0, 0.0f);
