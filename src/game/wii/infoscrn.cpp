@@ -1417,7 +1417,7 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 			if (scrn->mObjectGaugeParam == 0) {
 				pos = fn_800E5A2C(gGame.GetPlayer());
 			} else {
-				CVec joint = gGame.GetPlayer()->GetJointWorldPos("neck");
+				CVec joint       = gGame.GetPlayer()->GetJointWorldPos("neck");
 				const Vec offset = { 0.0f, 2.0f, 0.0f };
 				pos              = joint + offset;
 			}

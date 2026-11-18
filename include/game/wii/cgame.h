@@ -762,8 +762,6 @@ struct WiiPlayerSuits {
 	                 // the suit objects beyond here are not reconstructed
 };
 
-
-
 // the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire
 // (XObjWireEff). Its vtable shares the unreconstructed Wii object layout where +0x90 takes a
 // position Vec - the same slot the player's own vtable keeps it at
@@ -902,8 +900,8 @@ struct WiiPlayerState : public XObj {
 	u8 _0A04[0xA20 - 0xA04];
 	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
 	u8 _0A28[0xA88 - 0xA28];
-	s32 mIdleLoops; // _0A88, idle anim loops before the next idle move
-	f32 mIdleTimer; // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
+	s32 mIdleLoops;  // _0A88, idle anim loops before the next idle move
+	f32 mIdleTimer;  // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C

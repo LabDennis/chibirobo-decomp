@@ -1286,9 +1286,9 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex;       // _1BC
-	XObjEdge mEdges[32];      // _1C0, one per floor
+	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;  // _1BC
+	XObjEdge mEdges[32]; // _1C0, one per floor
 	// _640, the collision floors' reach on the ground plane: [0] the wider of the x and z radii,
 	// [1] the narrower; UpdateObjectFloorXZExtent fills both with NAN while there are no floors
 	f32 mFloorXZExtent[2];    // xobj_chr.cpp reads them by index, [0] is GetFloorXZExtent's
