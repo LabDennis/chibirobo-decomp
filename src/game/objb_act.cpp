@@ -2204,12 +2204,12 @@ static inline BOOL AdvanceJumpArc(XActJump* act, u32 frames)
 	if (act->mArcAngle < HALF_PI) {
 		if ((act->mArcAngle += act->mArcStep * frames) > HALF_PI)
 			act->mArcAngle = HALF_PI;
-		f32 sine = (f32)sin(act->mArcAngle);
+		f32 sine = std::sinf(act->mArcAngle);
 		f32 lift = act->mRise * sine;
 		act->mOwner->SetTranslateY(act->mArcPosition.y + lift, 0);
 		f32 angle = HSD_JObjGetRotationY(act->mOwner->mJObj);
-		f32 dx    = act->mForward * (act->mArcStep * (f32)sin(angle));
-		f32 dz    = act->mForward * (act->mArcStep * (f32)cos(angle));
+		f32 dx    = act->mForward * (act->mArcStep * std::sinf(angle));
+		f32 dz    = act->mForward * (act->mArcStep * std::cosf(angle));
 		act->mOwner->SetTranslateX(act->mArcPosition.x += dx, 0);
 		act->mOwner->SetTranslateZ(act->mArcPosition.z += dz, 0);
 		return FALSE;
@@ -2434,8 +2434,8 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(&act->mOwner->mFloors, 0);
 					PSMTXMultVec(rot, &offset, &offset);
 					f32 yaw = act->mOwner->mMoveRotate.y;
-					f32 x   = 3.f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
-					f32 z   = 3.f * (f32)cos(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
+					f32 x   = 3.f * std::sinf(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
+					f32 z   = 3.f * std::cosf(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
 					f32 y   = .5f + act->mTargetHeight;
 					for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 						XObj* obj = gGame.GetObject(i);
