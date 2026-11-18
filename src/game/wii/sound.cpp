@@ -1512,7 +1512,7 @@ void AnimSfx::vf08()
  */
 // NONMATCHING: the actor and loop pointer swap r17/r18 behind the owner's GetPos call, and the stop loops
 // wait for the typed mTracks (see SelectFootstepSound).
-void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
+void AnimSfx::Update(s32 anim, f32 frame, f32 vol)
 {
 	s32 prev = mAnimId;
 
