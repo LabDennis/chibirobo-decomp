@@ -13,6 +13,8 @@
 #include "game/inventory.h"
 #include "game/gmath.h"
 #include <math.h>
+#include <stdlib.h>
+#include "arithmetic.h"
 
 extern "C" {
 void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // stops the event effect with that id
@@ -137,7 +139,56 @@ static inline Vec GetPlacementScale(const UnkStageObj* placement)
 	return value;
 }
 
+static inline u32 ProbeObjectFloor(XObj* obj, const CVec& from, const CVec& to, f32 radius, f32 height, Vec* push, Vec* contact, s32* floor)
+{
+	return obj->TestFloorCollision(&from, &to, radius, height, push, contact, floor, 0);
+}
+
+// how far the stick is pushed
+static inline f32 StickLength(const CPadOne* pad)
+{
+	f32 y = pad->mStick.y;
+	f32 x = pad->mStick.x;
+	return FSqrt(x * x + y * y);
+}
+
 extern "C" {
+
+/**
+ * @note Address: 0x80105860
+ * @note Size: 0x33C
+ */
+void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight)
+{
+	if (act->mState == 2) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
+			// letting go of a stops pushing
+			if (!(pad->mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+				Release(act);
+				act->mState = 3;
+				*weight     = 0.0f;
+			}
+		}
+	} else if (act->mState != 0) {
+		if (act->mState == 3) {
+		} else if (act->mState != 4) {
+			if (!(pad->mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+				act->mState = 4;
+			}
+		} else if (pad->mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA))) {
+			// a takes hold again, the stick walks away
+			act->mOwner->SetAnim(0x3E, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mState = 1;
+		} else if (StickLength(pad) > 0.0f) {
+			Release(act);
+			WiiPlayerState* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+		}
+		*weight = 0.0f;
+	}
+}
 
 /**
  * @note Address: 0x80105798
@@ -232,6 +283,46 @@ void ResetPlayerJumpAction(XActJump* act)
 }
 
 /**
+ * @note Address: 0x800FD5BC
+ * @note Size: 0x4BC
+ */
+// climbs up from the ledge unless something stands where he would come up
+void TryLeaveHang(XActHang* act)
+{
+	f32 radius     = act->mOwner->GetScale()->x * GetFloorExtent(act->mOwner, 0).x;
+	f32 halfHeight = 0.5f * (act->mOwner->GetScale()->x * (GetFloorOffset(act->mOwner, 0).y + GetFloorExtent(act->mOwner, 0).y));
+	Vec position   = act->mOwner->GetJointWorldPos("second_null");
+	position.y += 0.5f;
+
+	u32 blockingHit = 0;
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* obj = gGame.mXObjs.mObjects[i];
+		if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || (obj->mStatus.mFlags & 0x100000))
+			continue;
+		if (obj->GetPool() == 7 || obj->GetPool() == 20 || act->mOwner == obj || obj->GetKind() >= 10000)
+			continue;
+		CVec* objectPos = obj->GetPos();
+		f32 dz = objectPos->z - position.z, dx = objectPos->x - position.x;
+		if (FSqrt(dx * dx + dz * dz) > 100.0f + (radius + obj->mFloorXZExtent[0]))
+			continue;
+
+		CVec push, contact;
+		u32 result = obj->TestFloorCollision(&CVec(position.x, position.y, position.z), &CVec(position.x, position.y, position.z), radius,
+		                                     halfHeight, &push, &contact, NULL, 0);
+		if ((result & 3) == 3) {
+			blockingHit = result;
+			break;
+		}
+	}
+	if (blockingHit)
+		return;
+	if ((rand() & 7) == 0)
+		act->mState = 7;
+	else
+		act->mState = 6;
+}
+
+/**
  * @note Address: 0x800FD36C
  * @note Size: 0x250
  */
@@ -275,6 +366,67 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 	if (apply) {
 		act->mOwner->mPlug.mConnection = value | 0x10000;
 	}
+}
+
+/**
+ * @note Address: 0x800FCED0
+ * @note Size: 0x47C
+ */
+BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 height, BOOL checkItem, BOOL checkEvent, BOOL checkOthers,
+                                Vec* result)
+{
+	BOOL found = FALSE;
+	if (gGame.mEvt.mData.mScript != NULL) {
+		return FALSE;
+	}
+	s32 item = act->mTarget->GetObjFlags();
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		XObj* object = gGame.mXObjs.mObjects[i];
+		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000))
+			continue;
+		CVec* objectPos = object->GetPos();
+		f32 dz = objectPos->z - pos->z, dx = objectPos->x - pos->x;
+		if (FSqrt(dx * dx + dz * dz) > 100.0f + (radius + object->mFloorXZExtent[0]))
+			continue;
+		CVec hit, contact;
+		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
+			u32 touch = ProbeObjectFloor(object, CVec(pos->x, pos->y, pos->z), CVec(pos->x, pos->y, pos->z), radius, height, &hit, &contact,
+			                             NULL);
+			if ((touch & 3) == 3 && object->OnItemUsed(pos, item)) {
+				found = TRUE;
+				if (result)
+					*result = contact;
+			}
+		}
+		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
+			u32 touch = ProbeObjectFloor(object, CVec(pos->x, pos->y, pos->z), CVec(pos->x, pos->y, pos->z), radius, height, &hit, &contact,
+			                             NULL);
+			if ((touch & 3) == 3) {
+				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
+				found = TRUE;
+				if (result)
+					*result = contact;
+			}
+		} else if (checkOthers) {
+			if (object->mStatus.mFlags & 0x2000000000000ULL)
+				continue;
+			if (object->mStatus.mFlags & 0x100000)
+				continue;
+			if (object == act->mTarget)
+				continue;
+			if (object == act->mOwner)
+				continue;
+			u32 touch = ProbeObjectFloor(object, CVec(pos->x, pos->y, pos->z), CVec(pos->x, pos->y, pos->z), radius, height, &hit, &contact,
+			                             NULL);
+			if ((touch & 3) == 3) {
+				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
+				found = TRUE;
+				if (result)
+					*result = contact;
+			}
+		}
+	}
+	return found;
 }
 
 /**
