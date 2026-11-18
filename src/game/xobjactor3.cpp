@@ -8,6 +8,7 @@
 #include "game/xobjspider.h"
 #include "game/hsd_jobj.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/cgs.h"
 #include "game/cpad.h"
 #include "game/cscrn.h"
@@ -21,12 +22,14 @@
 
 // XObjActor3, the actor most of the stage's small moving things are: which one it is comes from the stage table,
 // see GetKind and GetObjFlags. Its destructor, script commands, stage02 panels, update and per-kind functions
-// NONMATCHING: besides the functions marked below, the data differs (JP addresses). .rodata lacks the 0x48 block of
-// six Vecs retail starts with (0x8020C0D8, the CreateSRT wrappers' locals, see Kind9), the "CPtclOne" type name and
-// the jobj.h assert string, so every later offset moves. .sdata2 and .sbss2 start with two words xobjactor.h's
-// includes emit (0x80 and 4, two zeros) that retail's file lacks, and .sdata2 lacks the 40.0f, 0.0f and "scale" of
-// probably a weak scale setter, behind the type names (0x80638490-0x806384AD). After the jump tables (0x8022BCD8) .data and
-// .sdata hold another set of weak vtables, base lists and type records than retail
+// NONMATCHING: besides the functions marked below, the data differs (US addresses). A trial link as Matching puts the code
+// at retail's addresses but Kind9 is 0x30 shorter and Kind13 0x10 longer than retail. .rodata (0x8020B3D0) equals retail
+// up to Kind11's literals; retail then has three Vecs no code reads ({1,1,1} and two {0,0,0}, 0x8020B4F0) in front of
+// Kind13's and three more {0,0,0} among them (0x8020B544, 0x8020B550, 0x8020B580), and its strings add the "CPtclOne" type
+// name and the jobj.h assert string. .sdata2 lacks the 40.0f, 0.0f and "scale" of probably a weak scale setter behind the
+// type names (0x8065E1C8-0x8065E1E5); its leading 0x80 and 4 (fbeffect.h's colour setters) go, the linker drops them.
+// After the jump tables (0x8022C6B0) .data and .sdata hold another set of weak vtables, base lists and type records than
+// retail
 
 // retail's .data for this file starts with these tables, then come the handler table's member pointer
 // constants and the table
@@ -256,31 +259,7 @@ extern "C" bool IsPlayerWithinActorReach(XObjActor3*);
 extern "C" BOOL IsUsingMug(XActLift*);
 extern "C" f32 GetPlayerCollisionRadius(XObjChr*);
 
-static inline void EmitKind9Dust(XObjActor3* actor)
-{
-	f32 x = actor->mMoveTranslate.x, y = actor->mMoveTranslate.y, z = actor->mMoveTranslate.z;
-	f32 angle  = DEG2RAD * (rand() % 360);
-	f32 sine   = (f32)sin(angle);
-	f32 vx     = sine * (rand() % 100) / 1000.0f;
-	f32 cosine = (f32)cos(angle);
-	f32 vz     = cosine * (rand() % 100) / 1000.0f;
-	f32 vy     = (rand() % 100) / 800.0f;
-	Vec pos;
-	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
-	pos.y = y;
-	Vec scale;
-	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
-	scale.z           = 1.0f;
-	Vec vel           = { vx, vy, vz };
-	CPtclOne* dust    = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
-	if (dust) {
-		dust->mAngle      = DEG2RAD * (rand() % 360);
-		dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
-		dust->mColor      = 0xffffffa0;
-		dust->mTex        = &actor->mTex[0];
-	}
-}
+static inline void EmitKind9Dust(XObjActor3* actor);
 
 static inline void StunKind9Actor(XObjActor3* actor)
 {
@@ -2385,6 +2364,34 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		}
 	}
 	return FALSE;
+}
+
+// defined behind LoadFromPlacement, as retail's .rodata shows: the dust velocity's zero Vec (0x8020B5D8) follows
+// LoadFromPlacement's literals
+static inline void EmitKind9Dust(XObjActor3* actor)
+{
+	f32 x = actor->mMoveTranslate.x, y = actor->mMoveTranslate.y, z = actor->mMoveTranslate.z;
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = (f32)sin(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = (f32)cos(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
+	Vec pos;
+	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	pos.y = y;
+	Vec scale;
+	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
+	scale.z           = 1.0f;
+	Vec vel           = { vx, vy, vz };
+	CPtclOne* dust    = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
+	if (dust) {
+		dust->mAngle      = DEG2RAD * (rand() % 360);
+		dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
+		dust->mColor      = 0xffffffa0;
+		dust->mTex        = &actor->mTex[0];
+	}
 }
 
 /**
