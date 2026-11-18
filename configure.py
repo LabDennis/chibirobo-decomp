@@ -1423,6 +1423,10 @@ if wii:
                 # flag/reset/placement half. -i include/rvl_msl: game/wii/xobjflags.h's
                 # AnimSfx member pulls the nw4r sound headers
                 Object(NonMatching, "game/wii/xobjhbox.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # unit 80: the dust pile's update, event and billboard half; the event wait
+                # (fn_80117E00) and the shared billboard body (fn_80118058) are free-standing,
+                # SetAnim a passthrough to another unit's body. -i include/rvl_msl: xobjflags.h
+                Object(NonMatching, "game/wii/xobjdust.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not

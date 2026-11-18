@@ -1230,6 +1230,11 @@ game/wii/xobjhbox.cpp:
 	extabindex start:0x80014D5C end:0x80014DA4
 	.text start:0x8011701C end:0x801178E4
 
+game/wii/xobjdust.cpp:
+	extab start:0x8000D87C end:0x8000D8B4
+	extabindex start:0x80014DA4 end:0x80014DE0
+	.text start:0x801178E4 end:0x80118360
+
 game/wii/xobjactorstop.cpp:
 	.text start:0x80138560 end:0x80138598
 

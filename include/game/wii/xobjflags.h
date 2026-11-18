@@ -118,12 +118,15 @@ STATIC_ASSERT(sizeof(XObjItem) == 0x9B0);
 // XObjDust keeps the same field order, shifted 0x24 by the moved mFlags
 class XObjDust : public XObjFlags {
 public:
-	virtual void Release();                                // _40
-	virtual void ResetObjectState();                       // _154
-	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
-	virtual void UpdateObject(u32 frames);                 // _164
-	virtual s32 OnPlayerContact(s32 unused, s32 value);    // _1CC
-	virtual s32 GetFlagIndex();                            // _28C
+	virtual void Release();                                                                  // _40
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _108, shares the base body
+	virtual void ResetObjectState();                                                         // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                   // _158
+	virtual void UpdateObject(u32 frames);                                                   // _164
+	virtual void DrawWithView(Mtx view);                                                     // _178
+	virtual void DrawObjectEffects();                                                        // _188
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                                      // _1CC
+	virtual s32 GetFlagIndex();                                                              // _28C
 
 	void* mMatAnim;    // _9AC, the anim source SetAnim keeps; its type is not decoded yet
 	s32 mAnimId2;      // _9B0, the anim it was placed with
