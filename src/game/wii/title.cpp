@@ -2057,11 +2057,11 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			CFont font;
 			s32 width;
 			CTexObj letter  = *GetFontGlyphTexture(&font, title->mName.mChars[i].mText, 0, &width);
-			f32 bob         = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
-			f32 tilt        = sin(0.7f * title->mName.mChars[i].mTilt);
+			f32 bob         = 4.0f * std::sinf(title->mName.mChars[i].mBob);
+			f32 tilt        = std::sinf(0.7f * title->mName.mChars[i].mTilt);
 			f32 rot         = -(DEG2RAD * (10.0f * tilt));
-			f32 swell       = sin(PI * scale);
-			f32 pop         = 0.2f * swell + (f32)sin(HALF_PI * scale);
+			f32 swell       = std::sinf(PI * scale);
+			f32 pop         = 0.2f * swell + std::sinf(HALF_PI * scale);
 			f32 x           = 24.0f + (48.0f * i + (centreX - 48.0f * title->mName.mCount * 0.5f));
 			f32 y           = 64.0f + bob;
 			u32 bubbleColor = (u32)(255.0f * scale) | 0xFFFFFF00;

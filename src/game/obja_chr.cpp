@@ -198,8 +198,7 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 }
 
 // NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, the two circle sizes are not
-// merged, and a few registers in the digit loop differ. Retail's sin/cos calls go through MSL's float
-// sinf/cosf inlines, which the game's math.h lacks (it declares them as the out-of-line C functions)
+// merged, and a few registers in the digit loop differ.
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
@@ -230,25 +229,25 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			if (!(p.mFade > 0 && p.mFade < 1))
 				continue;
 			if (display.mAmount >= 0) {
-				x = centerX + 300 * (f32)sin(p.mAngle);
-				y = centerY + 300 * (f32)cos(p.mAngle);
+				x = centerX + 300 * std::sinf(p.mAngle);
+				y = centerY + 300 * std::cosf(p.mAngle);
 			}
 			f32 phase = p.mFade;
 			if (phase > 1)
 				phase = 1;
-			f32 alpha = sin(PI * p.mFade); // strongest halfway through the fade
+			f32 alpha = std::sinf(PI * p.mFade); // strongest halfway through the fade
 			if (alpha > 1)
 				alpha = 1;
-			f32 angle = PI * phase, arc = 1.5f * (f32)sin(angle);
-			f32 px = x + (centerX - x) * (1 - (f32)sin(angle / 2)), py = y + (centerY - y) * (1 - (f32)sin(angle / 2));
+			f32 angle = PI * phase, arc = 1.5f * std::sinf(angle);
+			f32 px = x + (centerX - x) * (1 - std::sinf(angle / 2)), py = y + (centerY - y) * (1 - std::sinf(angle / 2));
 			if (p.mState > 0 || display.mAmount < 0) {
 				f32 a  = (2 * PI / burst.mNum) * i;
-				f32 tx = x + 200 * (f32)sin(a), ty = y + 200 * (f32)cos(a);
-				px = x + (tx - x) * (1 - (f32)sin(angle / 2));
-				py = y + (ty - y) * (1 - (f32)sin(angle / 2));
+				f32 tx = x + 200 * std::sinf(a), ty = y + 200 * std::cosf(a);
+				px = x + (tx - x) * (1 - std::sinf(angle / 2));
+				py = y + (ty - y) * (1 - std::sinf(angle / 2));
 			}
-			f32 dx = p.mSpeed * (arc * (f32)sin(p.mAngle)), dy = p.mSpeed * (arc * (f32)cos(p.mAngle));
-			f32 shrink = 1 - (f32)sin(angle / 2), rotation = PI * p.mAngle;
+			f32 dx = p.mSpeed * (arc * std::sinf(p.mAngle)), dy = p.mSpeed * (arc * std::cosf(p.mAngle));
+			f32 shrink = 1 - std::sinf(angle / 2), rotation = PI * p.mAngle;
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			if (p.mState > 0) { // a polygon with mState sides
 				u32 color = p.mColor | (u8)(s32)(128 * alpha);
@@ -301,7 +300,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			if (fade > 1)
 				fade = 1;
 			f32 angle = PI * fade;
-			f32 rise = 8 * (f32)sin(angle), expand = 16 * (f32)cos(angle / 2);
+			f32 rise = 8 * std::sinf(angle), expand = 16 * std::cosf(angle / 2);
 			if (display.mState == 3)
 				expand = 0;
 			u8 alpha = (u8)(s32)(255 * fade);
@@ -488,16 +487,16 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
 	}
 	f32 fade  = menu->mFade;
-	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
+	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * std::sinf(2.268928f * fade) - 21.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
 	f32 openAngle = 2.0943952f * fade;
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
-		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
-		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
-		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
-		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
-		f32 size         = mark.mScale * (f32)sin(openAngle);
+		f32 bob          = 4.0f * std::sinf(mark.mSpin);
+		f32 pitch        = 10.0f * std::sinf(mark.mTilt);
+		f32 yaw          = 10.0f * std::sinf(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * std::sinf(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * std::sinf(openAngle);
 
 		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + fade * (90.0f * i - 45.0f);
 		f32 y = yBase + bob;
@@ -540,9 +539,9 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 			b = 209;
 		}
 		if (i == menu->mSelectedIndex) {
-			r *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
-			g *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
-			b *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+			r *= 0.8f + 0.1f * std::sinf(1.2f * mark.mSpin);
+			g *= 0.8f + 0.1f * std::sinf(1.2f * mark.mSpin);
+			b *= 0.8f + 0.1f * std::sinf(1.2f * mark.mSpin);
 		} else {
 			r = (s32)(r * 0.5f);
 			g = (s32)(g * 0.5f);
@@ -652,17 +651,17 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
 	}
 	f32 fade  = menu->mFade;
-	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 42.0f;
+	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * std::sinf(2.268928f * fade) - 42.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
 	f32 openAngle = 2.0943952f * fade;
 	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
-		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
-		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
-		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
-		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
-		f32 size         = mark.mScale * (f32)sin(openAngle);
+		f32 bob          = 4.0f * std::sinf(mark.mSpin);
+		f32 pitch        = 10.0f * std::sinf(mark.mTilt);
+		f32 yaw          = 10.0f * std::sinf(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * std::sinf(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * std::sinf(openAngle);
 		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + 1.2f * (fade * (90.0f * i - 45.0f));
 		f32 y = baseY + bob;
 		Mtx translation, rotX, rotY, rotZ, transform, label;
@@ -686,7 +685,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 
 		if (i == menu->mSelectedIndex) {
 			menu->mMark[kind].mObj.SetColor(0, 255, 255, 255, 0);
-			u8 pulse = (s32)(64.0f * (0.5f * (f32)sin(1.2f * mark.mSpin) + 0.5f));
+			u8 pulse = (s32)(64.0f * (0.5f * std::sinf(1.2f * mark.mSpin) + 0.5f));
 			menu->mMark[kind].mObj.SetColor(1, pulse, pulse, pulse, 0);
 		} else {
 			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
@@ -697,8 +696,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
 		for (s32 j = 0; j < 8; ++j) {
 			f32 direction = (TWO_PI / 8.0f) * j;
-			f32 cosine    = cos(direction);
-			f32 sine      = sin(direction);
+			f32 cosine    = std::cosf(direction);
+			f32 sine      = std::sinf(direction);
 			Mtx outlineTranslation, outlineRotX, outlineRotY, outlineRotZ, outline, scale;
 			PSMTXTrans(outlineTranslation, x + 3.0f * sine, y + 2.0f * cosine, 50.0f);
 			PSMTXRotRad(outlineRotX, 'x', DEG2RAD * pitch);
@@ -2566,7 +2565,7 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
+	f32 edge = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
 	for (s32 row = 0; row < 2; ++row) {
 		s32 which = order[menu->mSel][row];
 		f32 x     = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
@@ -3129,8 +3128,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	} else {
 		for (s32 j = -1, i = 0; i < 8; ++j, ++i) {
 			f32 angle = (PI / 4.f) * j;
-			slotY[i]  = -1.f * (f32)cos(angle);
-			slotX[i]  = (f32)sin(angle);
+			slotY[i]  = -1.f * std::cosf(angle);
+			slotX[i]  = std::sinf(angle);
 		}
 		scale = 1.35f;
 	}
@@ -3147,7 +3146,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	if (menu->mMenuType == 3) {
 		s32 start = menu->mFirstVisibleItem, last = (start + 6) % 7;
-		f32 itemSize = menu->mItems[start].mScale * (f32)sin((PI * .5f) * fade);
+		f32 itemSize = menu->mItems[start].mScale * std::sinf((PI * .5f) * fade);
 		f32 radius   = 60.f + 20.f * itemSize;
 		f32 y0       = originY + (scale * slotY[start]) * radius;
 		f32 left     = originX + (-3.f * scale) * radius;
@@ -3200,15 +3199,15 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	for (s32 i = 0; i < count; ++i) {
 		CTexObj tex = RingTexture(menu, i);
 		f32 width = gEquipmentIconWidth[i], height = gEquipmentIconHeight[i];
-		sin(menu->mItems[i].mPulsePhase);
-		sin(menu->mItems[i]._0C);
-		sin(.5f * menu->mItems[i]._0C);
-		sin(.7f * menu->mItems[i]._0C);
+		std::sinf(menu->mItems[i].mPulsePhase);
+		std::sinf(menu->mItems[i]._0C);
+		std::sinf(.5f * menu->mItems[i]._0C);
+		std::sinf(.7f * menu->mItems[i]._0C);
 		f32 pulse;
 		if (menu->mMenuType == 3)
-			pulse = menu->mItems[i].mScale * (f32)sin((PI * .5f) * fade);
+			pulse = menu->mItems[i].mScale * std::sinf((PI * .5f) * fade);
 		else
-			pulse = menu->mItems[i].mScale * (f32)sin(2.0943952f * fade);
+			pulse = menu->mItems[i].mScale * std::sinf(2.0943952f * fade);
 		f32 x, y;
 
 		if (menu->mMenuType == 3) {
@@ -3228,11 +3227,11 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		}
 		if (menu->mFocus && menu->mMenuType != 3) {
 			if (menu->mMenuType == 0) {
-				y += 80.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
-				x += 80.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
+				y += 80.f * (slotY[i] * std::sinf(PI * menu->mGlow));
+				x += 80.f * (slotX[i] * std::sinf(PI * menu->mGlow));
 			} else {
-				y += 100.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
-				x += 100.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
+				y += 100.f * (slotY[i] * std::sinf(PI * menu->mGlow));
+				x += 100.f * (slotX[i] * std::sinf(PI * menu->mGlow));
 			}
 		}
 		f32 slot = menu->mItems[i].mSlotOffset;
@@ -3260,7 +3259,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		if (i == menu->mCursorIndex) {
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 glow = fade * (.2f * (f32)sin(PI * menu->mPhase) + .2f);
+			f32 glow = fade * (.2f * std::sinf(PI * menu->mPhase) + .2f);
 			if (glow < 0)
 				glow = 0;
 			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
@@ -3300,7 +3299,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		if (item.mHighlight == zero)
 			continue;
 		f32 width = gEquipmentIconWidth[i];
-		sin(2.0943952f * fade);
+		std::sinf(2.0943952f * fade);
 		f32 x, y;
 		if (menu->mMenuType == 3) {
 			y = originY + 68.f * (scale * slotY[i]);
@@ -3341,10 +3340,10 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			CFont font;
 			s32 width;
 			CTexObj glyph = *GetFontGlyphTexture(&font, ch.mText, &width);
-			f32 bob       = 2.f * (f32)sin(ch.mAngle0);
-			f32 spin      = (f32)sin(.7f * ch.mAngle1);
-			f32 glow      = (f32)sin(PI * highlight);
-			f32 wave      = (f32)sin((PI * .5f) * highlight);
+			f32 bob       = 2.f * std::sinf(ch.mAngle0);
+			f32 spin      = std::sinf(.7f * ch.mAngle1);
+			f32 glow      = std::sinf(PI * highlight);
+			f32 wave      = std::sinf((PI * .5f) * highlight);
 			f32 cy        = baseline + bob;
 			f32 scale     = .2f * glow + wave;
 			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
@@ -5497,8 +5496,8 @@ void XObjChr::DrawObjectEffects()
 		for (int turn = 0; turn < 8; ++turn)
 			for (int step = 0; step < 16; ++step) {
 				f32 angle     = (TWO_PI / 16) * step;
-				vertices[n].x = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)sin(angle);
-				vertices[n].y = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)cos(angle);
+				vertices[n].x = (2.f * (1.f - mBatteryWarningFade) + radius) * std::sinf(angle);
+				vertices[n].y = (2.f * (1.f - mBatteryWarningFade) + radius) * std::cosf(angle);
 				vertices[n].z = z;
 				f32 wave      = phase;
 				while (wave < 0.0f)
@@ -5509,7 +5508,7 @@ void XObjChr::DrawObjectEffects()
 					wave = 0;
 				vertices[n + 1].x = vertices[n].x;
 				vertices[n + 1].y = vertices[n].y;
-				vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
+				vertices[n + 1].z = vertices[n].z - 1.5f * std::sinf(wave);
 				z += .08f;
 				phase += DEG2RAD * 30;
 				n += 2;

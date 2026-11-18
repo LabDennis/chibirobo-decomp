@@ -4435,11 +4435,11 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, &width);
-				s0          = sin(glyph->mAngle0);
+				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
-				rot         = sin(0.7f * glyph->mAngle1);
-				s1          = sin(3.1415927f * t);
-				s2          = sin(1.5707964f * t);
+				rot         = std::sinf(0.7f * glyph->mAngle1);
+				s1          = std::sinf(3.1415927f * t);
+				s2          = std::sinf(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
@@ -4499,11 +4499,11 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, &width);
-				s0          = sin(glyph->mAngle0);
+				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
-				rot         = sin(0.7f * glyph->mAngle1);
-				s1          = sin(3.1415927f * t);
-				s2          = sin(1.5707964f * t);
+				rot         = std::sinf(0.7f * glyph->mAngle1);
+				s1          = std::sinf(3.1415927f * t);
+				s2          = std::sinf(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
@@ -6889,11 +6889,11 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, &width);
-				s0          = sin(glyph->mAngle0);
+				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
-				rot         = sin(0.7f * glyph->mAngle1);
-				s1          = sin(3.1415927f * t);
-				s2          = sin(1.5707964f * t);
+				rot         = std::sinf(0.7f * glyph->mAngle1);
+				s1          = std::sinf(3.1415927f * t);
+				s2          = std::sinf(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
@@ -7382,7 +7382,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 			continue;
 		f32 bob;
 		if (menu->mSelection == i && menu->mMode == 1)
-			bob = 4.0f * (f32)sin(0.017453292f * ((menu->mAnimationFrame * 20) % 360));
+			bob = 4.0f * std::sinf(0.017453292f * ((menu->mAnimationFrame * 20) % 360));
 		else
 			bob = 0.0f;
 		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mX - 52.0f) + menu->mOffsetX));
@@ -7418,7 +7418,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		if (menu->mSelection == i && menu->mMode == 1) {
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(3.1415927f * menu->mPulsePhase) + 0.2f);
+			f32 pulse = menu->mAlpha * (0.2f * std::sinf(3.1415927f * menu->mPulsePhase) + 0.2f);
 			if (pulse < 0.0f)
 				pulse = 0.0f;
 			color = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -7867,10 +7867,10 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		s32 width;
 		CFont font;
 		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, &width);
-		f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
-		f32 rotation = sin(0.7f * glyph->mAngle1);
-		f32 s1       = sin(3.1415927f * alpha);
-		f32 s2       = sin(1.5707964f * alpha);
+		f32 bob      = 2.0f * std::sinf(glyph->mAngle0);
+		f32 rotation = std::sinf(0.7f * glyph->mAngle1);
+		f32 s1       = std::sinf(3.1415927f * alpha);
+		f32 s2       = std::sinf(1.5707964f * alpha);
 		f32 scale    = 0.2f * s1 + s2;
 		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 		f32 y        = 384.0f + bob;

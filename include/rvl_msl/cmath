@@ -37,10 +37,9 @@ inline float cos(float x) { return ::cos(x); }
 using ::pow;
 } // namespace std
 
-// nw4r::ef: the Wii MSL's float wrappers around the double routines (retail calls sin, cos, atan2, asin)
+// nw4r::ef: the Wii MSL's float wrappers around the double routines (retail calls sin, cos, atan2, asin);
+// sinf and cosf come with <math.h>
 namespace std {
-inline float sinf(float x) { return ::sin(x); }
-inline float cosf(float x) { return ::cos(x); }
 inline float asinf(float x) { return ::asin(x); }
 inline float atan2f(float y, float x) { return ::atan2(y, x); }
 // MSL's inline fabsf: a double fabs cast back to float (fabs + frsp in retail, e.g. 0x80247E24)

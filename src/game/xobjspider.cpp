@@ -506,12 +506,12 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	PrimVertex verts[26];
 	for (int i = 0; i < 13; i++) {
 		f32 angle              = (PI / 6) * i;
-		verts[i * 2].pos.x     = pos.x - size.x * 0.5f * (f32)sin(angle);
-		verts[i * 2].pos.z     = pos.z + size.z * 0.5f * (f32)cos(angle);
+		verts[i * 2].pos.x     = pos.x - size.x * 0.5f * std::sinf(angle);
+		verts[i * 2].pos.z     = pos.z + size.z * 0.5f * std::cosf(angle);
 		verts[i * 2].pos.y     = pos.y;
 		verts[i * 2].color     = edge;
-		verts[i * 2 + 1].pos.x = pos.x - (1.5f + size.x * 0.5f) * (f32)sin(angle);
-		verts[i * 2 + 1].pos.z = pos.z + (1.5f + size.z * 0.5f) * (f32)cos(angle);
+		verts[i * 2 + 1].pos.x = pos.x - (1.5f + size.x * 0.5f) * std::sinf(angle);
+		verts[i * 2 + 1].pos.z = pos.z + (1.5f + size.z * 0.5f) * std::cosf(angle);
 		verts[i * 2 + 1].pos.y = pos.y;
 		verts[i * 2 + 1].color = 0;
 	}
@@ -726,8 +726,8 @@ extern "C" void UpdateSpiderShot(XObjSpider* spider, u32 frames)
 				f32 dy                  = spider->mShotTo.y - origin.y;
 				f32 pitch               = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
 				f32 angle               = dx > 0.0f ? pitch - HALF_PI : -(HALF_PI + pitch);
-				f32 shotX               = origin.x + spider->mShotProgress * (spider->mShotRange * (f32)cos(angle));
-				f32 shotY               = origin.y + spider->mShotProgress * (spider->mShotRange * (f32)sin(angle));
+				f32 shotX               = origin.x + spider->mShotProgress * (spider->mShotRange * std::cosf(angle));
+				f32 shotY               = origin.y + spider->mShotProgress * (spider->mShotRange * std::sinf(angle));
 				spider->mShotPosition.x = shotX;
 				spider->mShotPosition.y = shotY;
 				spider->mShotPosition.z = origin.z;
@@ -747,8 +747,8 @@ extern "C" void UpdateSpiderShot(XObjSpider* spider, u32 frames)
 				f32 dz = spider->mShotTo.z - origin.z;
 
 				f32 angle               = atan2(dx, dz);
-				f32 shotX               = origin.x + spider->mShotProgress * (spider->mShotRange * (f32)sin(angle));
-				f32 shotZ               = origin.z + spider->mShotProgress * (spider->mShotRange * (f32)cos(angle));
+				f32 shotX               = origin.x + spider->mShotProgress * (spider->mShotRange * std::sinf(angle));
+				f32 shotZ               = origin.z + spider->mShotProgress * (spider->mShotRange * std::cosf(angle));
 				spider->mShotPosition.x = shotX;
 				spider->mShotPosition.y = 8.0f;
 				spider->mShotPosition.z = shotZ;
