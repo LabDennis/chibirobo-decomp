@@ -68,7 +68,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 				HSD_ShadowDeleteObject(shadow->mShadow, NULL);
 				shadow->InitRect();
 				for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
-					XObj* obj = game->mDrawLists[1].mObjects[i];
+					obj = game->mDrawLists[1].mObjects[i];
 					if (IsShadowObj(obj, 4)) { // flag 4 casts into the shadow map
 						obj->RegisterShadowObjects(shadow);
 					}
@@ -86,7 +86,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 					SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 					SetupAll(TRUE);
 					for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
-						XObj* obj = game->mDrawLists[1].mObjects[i];
+						obj = game->mDrawLists[1].mObjects[i];
 						if (IsShadowObj(obj, 8)) { // flag 8 gets the blob shadow
 							f32 alpha;
 							if (GetStageInfo()->mFlags & 1) {
@@ -104,7 +104,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 									alpha = 0.8f;
 								}
 							}
-							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(3.1415927f * alpha * 0.5f)); // a half-sine falloff
+							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(3.1415927f * alpha / 2.0f)); // a half-sine falloff
 						}
 					}
 					EndGsCamera(&game->mGs);
@@ -290,7 +290,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 		game->mGs.mCamera = game->GetCamera();
 		if (BeginGsCamera(game)) {
 			XObj* targets[2] = { NULL, NULL };
-			player           = (XObjChr*)game->mXObjs.mPools[2].First();
+			player           = game->GetPlayer();
 			if (targets[0] == NULL) {
 				targets[0] = player->mLift.mPlugTarget;
 			}

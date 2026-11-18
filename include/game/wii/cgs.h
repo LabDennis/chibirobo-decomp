@@ -764,6 +764,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CLight) == 0x6C);
 
+// the scene draw list and the lights it draws under, the CGs keeps it at _1BA4. The list functions
+// (fn_802AEDA0 and on) take its address; the destructor null-checks it as an object of its own
+struct WiiGsScene {
+	WiiGsSceneObj* mHead; // _00, the list the scene pass drains
+	BOOL _04;             // _04, Update queues the map's model on the list while it is set
+	CLight mLights[10];   // _08
+};
+
 class CGs {
 public:
 	void* mFifoBuffer;               // _00
@@ -801,13 +809,11 @@ public:
 
 	virtual ~CGs() { } // _08
 
-	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
-	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
-	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
-	BOOL _1BA8;                // _1BA8, Update queues the map's model on the list while it is set
-	CLight mLights[10];        // _1BAC
-	WiiGsSlot _1FE4[9];        // _1FE4, FinalizeStageObjectSetup clears each one's three flags
-	CFont mFont;               // _214C, the game font; CBase::BeforeUpdate loads its resource
+	Vec mTextRot;       // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont;      // _1BA0, the font argument handed to the glyph lookups
+	WiiGsScene mScene;  // _1BA4
+	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
+	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }
@@ -832,7 +838,7 @@ public:
 #ifndef offsetof
 #define offsetof(type, member) ((u32) & (((type*)0)->member))
 #endif
-STATIC_ASSERT(offsetof(CGs, mLights) == 0x1BAC);
+STATIC_ASSERT(offsetof(CGs, mScene) == 0x1BA4);
 STATIC_ASSERT(offsetof(CGs, mFont) == 0x214C);
 
 // GXSetFog's arguments, kept so the fog can be put back

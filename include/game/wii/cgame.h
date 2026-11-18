@@ -686,7 +686,6 @@ public:
 	CCameraActionChase mChase;                     // _33C
 	CCameraActionEvt mEvt;                         // _3AC
 	CCameraActionScroll2 mScroll2;                 // _890
-	u8 _B78[0xB7C - 0xB78];                        // _B78
 	CCameraActionEye mEye;                         // _B7C
 	CCameraActionAnim mAnim;                       // _CA0
 	CCameraActionMap mMap;                         // _CE8
@@ -1302,6 +1301,7 @@ STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
+	void State3(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 
@@ -1424,14 +1424,14 @@ public:
 // Wii FbSubwin: CFbTexEff with the fade state and its own perspective camera at _148.
 class FbSubwin : public CFbTexEff {
 public:
-	BOOL mEnabled;   // _128, fades in while set, out while not
-	CStatus mFlags;  // _12C, Draw tests bit 2
-	f32 mAmount;     // _134, 0 to 1
-	f32 mRectX;      // _138, centre x of the window's rect on screen
-	f32 mRectY;      // _13C, centre y of the window's rect on screen
-	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
-	f32 mRectHeight; // _144, window height, NaN picks the round frame
-	CCamera mCamera; // _148
+	BOOL mEnabled;    // _128, fades in while set, out while not
+	CStatus32 mFlags; // _12C, Draw tests bit 2
+	f32 mAmount;      // _134, 0 to 1
+	f32 mRectX;       // _138, centre x of the window's rect on screen
+	f32 mRectY;       // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;   // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight;  // _144, window height, NaN picks the round frame
+	CCamera mCamera;  // _148
 
 	virtual void Init();
 	virtual void Reset();
@@ -1468,7 +1468,7 @@ public:
 	virtual void vf44();
 	virtual void vf48();
 	virtual void vf4C();
-	virtual void* vf50(const char* name); // _50
+	virtual nw4r::g3d::ResNode vf50(const char* name); // _50
 	virtual void vf54();
 	virtual void vf58();
 	virtual void vf5C();
@@ -1488,7 +1488,7 @@ public:
 	virtual void vf94();
 	virtual void vf98();
 	virtual void vf9C();
-	virtual MtxP vfA0(void** node); // _A0
+	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
 	u32 mMdl;  // _EC, the model's nw4r ResMdl handle

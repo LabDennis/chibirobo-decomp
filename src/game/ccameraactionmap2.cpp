@@ -1,3 +1,4 @@
+#include "game/cgameparticle.h"
 #include <math.h>
 #include "game/ccameraaction.h"
 extern "C" {
@@ -1407,18 +1408,18 @@ extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
  * @note Address: 0x8013AB5C
  * @note Size: 0x668
  */
-// NONMATCHING: retail destroys origin and direction right after the new position, before the eye height is set; the build
-// destroys them at the end with position
 void CCameraActionMap::UpdateTurn(u32 step)
 {
 	if (mTurnInterpolation != NULL) {
 		if (!mTurnInterpolation->Update(step, FRAME_TIME)) {
 			f32 radius = mOrbitRadius;
 			CVec position(mTurnInterpolation->Get());
-			CVec origin(mSpringTarget);
-			origin.y = 0.0f;
-			CVec direction((position - origin).Normalize());
-			position   = origin + direction * radius;
+			{
+				CVec origin(mSpringTarget);
+				origin.y = 0.0f;
+				CVec direction((position - origin).Normalize());
+				position = origin + direction * radius;
+			}
 			position.y = mEye.y;
 			mOrbitEye  = position;
 			mTargetEye = position;
@@ -2670,6 +2671,24 @@ extern "C" void RefreshMapCameraArea(CCameraActionMap* map)
 	map->mPrevMapArea = map->mMapArea;
 }
 
+// the point 13 above and 1 behind the target's origin, in world space; GetMapCameraTargetOffsetPosition is its
+// out-of-line copy, GetMapCameraEyeBehindTarget inlines it
+static inline BOOL CalcMapCameraTargetOffsetPosition(CCameraActionMap* map, Vec& out)
+{
+	XObj* target = map->mTarget;
+	if (target != NULL && (target->mStatus.mFlags & 1)) {
+		Mtx mtx;
+		PSMTXCopy(HSD_JObjGetMtxPtr(target->mJObj), mtx);
+		CVec pos(0.0f, 13.0f, -1.0f);
+		PSMTXMultVec(mtx, &pos, &pos);
+		out.x = pos.x;
+		out.y = pos.y;
+		out.z = pos.z;
+		return TRUE;
+	}
+	return FALSE;
+}
+
 /**
  * @note Address: 0x8013BD28
  * @note Size: 0x374
@@ -2687,23 +2706,15 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
 			result = pos;
 		}
 	} else if (map->mTarget != NULL) {
-		f32 x, z;
-		XObj* target = map->mTarget;
-		if (target != NULL && (target->mStatus.mFlags & 1)) {
-			Mtx mtx;
-			PSMTXCopy(HSD_JObjGetMtxPtr(target->mJObj), mtx);
-			CVec pos(0.0f, 13.0f, -1.0f);
-			PSMTXMultVec(mtx, &pos, &pos);
-			x = pos.x;
-			z = pos.z;
-		}
+		Vec offset;
+		CalcMapCameraTargetOffsetPosition(map, offset);
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		CVec eye                     = camera->mCamera.mEye;
 		CVec interest                = camera->mCamera.mInterest;
 		f32 angle                    = HALF_PI + (f32)atan2(interest.x - eye.x, interest.z - eye.z);
 		f32 distance                 = map->mTargetRestDistance;
-		result.x                     = x + distance * (f32)cos(angle);
-		result.z                     = z + distance * -(f32)sin(angle);
+		result.x                     = offset.x + distance * (f32)cos(angle);
+		result.z                     = offset.z + distance * -(f32)sin(angle);
 		result.y                     = 13.0f + map->mTarget->GetCameraTarget().y;
 	}
 	out.x = result.x;
@@ -2951,18 +2962,7 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
  */
 extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& out)
 {
-	XObj* target = map->mTarget;
-	if (target != NULL && (target->mStatus.mFlags & 1)) {
-		Mtx mtx;
-		PSMTXCopy(HSD_JObjGetMtxPtr(target->mJObj), mtx);
-		CVec pos(0.0f, 13.0f, -1.0f);
-		PSMTXMultVec(mtx, &pos, &pos);
-		out.x = pos.x;
-		out.y = pos.y;
-		out.z = pos.z;
-		return TRUE;
-	}
-	return FALSE;
+	return CalcMapCameraTargetOffsetPosition(map, out);
 }
 
 /**
@@ -8327,7 +8327,7 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	// CMotionControlCamera::Interpolate takes the interest's height at once and follows it in on x and z
 	mInterestMode = 3;
 	SetEye(camera->mEye);
-	mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
+	SetMapCameraPreviousEye(this, camera->mEye);
 	SetInterest(camera->mInterest);
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
@@ -8383,12 +8383,12 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	lbl_8065B344      = 0;
 	mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
 	mEyeYOffsetEaseInOut.Start(0.0f, 0.0f, 1.0f);
-	mEyeYOffset       = 0.0f;
-	mPreviousInterest = CVec(mInterest.x, mInterest.y, mInterest.z);
+	mEyeYOffset = 0.0f;
+	SetMapCameraPreviousInterest(this, mInterest);
 	// set by SetMapCameraKeepPreviousEye when memcardpos restores a saved camera: mPreviousEye then keeps camera->mEye.
 	// the FALSE store only runs while the flag is already clear, so nothing here resets it
 	if (!mKeepPreviousEye) {
-		mPreviousEye     = CVec(mInterest.x, mInterest.y, mInterest.z);
+		SetMapCameraPreviousEye(this, mInterest);
 		mKeepPreviousEye = FALSE;
 	}
 }

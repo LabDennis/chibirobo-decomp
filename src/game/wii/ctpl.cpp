@@ -377,16 +377,15 @@ BOOL CSound::OpenArchive(const char* path, s32 initialGroup)
 	return TRUE;
 }
 
-// NONMATCHING: register allocation / store scheduling around the OSCreateThread
-// argument evaluation differs from retail (93.0%).
 BOOL CSound::OpenArchiveAsync(const char* path, s32 initialGroup)
 {
 	sLoaderArgs.mOwner = this;
-	sLoaderArgs.mArg2  = initialGroup;
 	sLoaderArgs.mArg1  = (u32)path;
+	sLoaderArgs.mArg2  = initialGroup;
 	sLoader.mStack     = sLoaderStack;
 	sLoader.mStackSize = 0x1000;
-	OSCreateThread(&sLoader.mThread, OpenArchiveThreadProc, &sLoaderArgs, sLoaderStack + 0x1000, 0x1000, 0x10, 1);
+	OSCreateThread(&sLoader.mThread, OpenArchiveThreadProc, &sLoaderArgs, (u8*)sLoader.mStack + sLoader.mStackSize, sLoader.mStackSize,
+	               0x10, 1);
 	OSResumeThread(&sLoader.mThread);
 	mLoadPending = TRUE;
 	return TRUE;
@@ -429,50 +428,21 @@ void CSound::RestoreHeapLevel(s32 level)
 	fn_8029A4AC(&mSoundHeap, level);
 }
 
-// NONMATCHING: track-slot loop uses the same offsets as retail but the compiler
-// picks different callee-saved registers for the slot walker (92.0%).
+// NONMATCHING: retail keeps the slot counter in r31 and the slot walker in r30,
+// this build swaps the two (98.5%).
 extern "C" void UpdateGameSound(CSound* sound, u32 step)
 {
 	if (sound->mLoadPending && OSIsThreadTerminated(&sLoader.mThread)) {
 		sound->mLoadPending = FALSE;
-		fn_8029A458(&sound->mSoundHeap);
+		sound->mSoundHeap.SaveState();
 	}
 	for (int i = 0; i < 0x40; i++) {
-		if (!sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			continue;
-		}
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			if (sound->mArchivePlayer.mTracks[i].mVolume < sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
-				sound->mArchivePlayer.mTracks[i].mVolume += sound->mArchivePlayer.mTracks[i].mVolumeStep * step;
-				if (sound->mArchivePlayer.mTracks[i].mVolume > sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
-					sound->mArchivePlayer.mTracks[i].mVolume = sound->mArchivePlayer.mTracks[i].mVolumeTarget;
-				}
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mArchivePlayer.mTracks[i].mVolume, 0);
-			} else if (sound->mArchivePlayer.mTracks[i].mVolume > sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
-				sound->mArchivePlayer.mTracks[i].mVolume += sound->mArchivePlayer.mTracks[i].mVolumeStep * step;
-				if (sound->mArchivePlayer.mTracks[i].mVolume < sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
-					sound->mArchivePlayer.mTracks[i].mVolume = sound->mArchivePlayer.mTracks[i].mVolumeTarget;
-				}
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mArchivePlayer.mTracks[i].mVolume, 0);
-			}
-		}
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			if (sound->mArchivePlayer.mTracks[i].mPitch < sound->mArchivePlayer.mTracks[i].mPitchTarget) {
-				sound->mArchivePlayer.mTracks[i].mPitch += sound->mArchivePlayer.mTracks[i].mPitchStep * step;
-				if (sound->mArchivePlayer.mTracks[i].mPitch > sound->mArchivePlayer.mTracks[i].mPitchTarget) {
-					sound->mArchivePlayer.mTracks[i].mPitch = sound->mArchivePlayer.mTracks[i].mPitchTarget;
-				}
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mArchivePlayer.mTracks[i].mPitch);
-			} else if (sound->mArchivePlayer.mTracks[i].mPitch > sound->mArchivePlayer.mTracks[i].mPitchTarget) {
-				sound->mArchivePlayer.mTracks[i].mPitch += sound->mArchivePlayer.mTracks[i].mPitchStep * step;
-				if (sound->mArchivePlayer.mTracks[i].mPitch < sound->mArchivePlayer.mTracks[i].mPitchTarget) {
-					sound->mArchivePlayer.mTracks[i].mPitch = sound->mArchivePlayer.mTracks[i].mPitchTarget;
-				}
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mArchivePlayer.mTracks[i].mPitch);
-			}
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			sound->mArchivePlayer.mTracks.mHandles[i].UpdateVolume(step);
+			sound->mArchivePlayer.mTracks.mHandles[i].UpdatePitch(step);
 		}
 	}
-	fn_802985B4(&sound->mArchivePlayer);
+	sound->mArchivePlayer.Update();
 }
 
 void WiiSound3D::Init(CSound* owner, void* player)
@@ -481,44 +451,38 @@ void WiiSound3D::Init(CSound* owner, void* player)
 	mPlayer = player;
 }
 
-// NONMATCHING: the link-insert null check and mFlags/item ordering differ from
-// retail; the original assert expression is unknown (93.6%).
 void CSound3D::Init(void* arg)
 {
-	u32 size   = fn_802958C0(mActor, mArg);
+	u32 size   = mManager.GetRequiredMemSize(mArchive);
 	void* data = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
-	fn_80295914(mActor, mArg, data, size);
-	mFlags     = 0x20;
-	void* item = &mNode[4];
-	if (&mSound == NULL) {
+	mManager.Setup(mArchive, data, size);
+	mManager.SetMaxPriorityReduction(0x20);
+	// the list's PushBack: Insert(GetEndIter(), p) with the LinkList.h pointer assert on p
+	nw4r::snd::Sound3DManager::ListenerList::Iterator end = mManager.GetListenerList().GetEndIter();
+	if (&mListener == NULL) {
 		nw4r::db::Panic(sLinkListFile, 0x233, sLinkListAssert);
 	}
-	fn_802343E0(&mNode, &item, mList);
-	fn_80295848(mSound, 1.0f);
-	fn_80295850(mSound, 1.0f);
-	fn_80295858(mSound, 1.0f);
+	mManager.GetListenerList().Insert(end, &mListener);
+	mListener.SetInteriorSize(1.0f);
+	mListener.SetMaxVolumeDistance(1.0f);
+	mListener.SetUnitDistance(1.0f);
 }
 
-// NONMATCHING: f30/f31 allocation for the look-vector locals is swapped versus
-// retail (99.6%).
 void CSound3D::SetListener(f32 angle, const Vec* pos)
 {
-	Mtx mtx;
+	nw4r::math::MTX34 mtx;
 	Vec up;
-	up.x     = 0.0f;
-	up.y     = 1.0f;
-	up.z     = 0.0f;
-	f32 z    = pos->z + (f32)cos(angle);
-	f32 y    = pos->y;
-	f32 x    = pos->x + (f32)sin(angle);
-	Vec look = { x, y, z };
-	C_MTXLookAt(mtx, pos, &up, &look);
-	fn_80295690(mSound, mtx);
+	up.x = 0.0f;
+	up.y = 1.0f;
+	up.z = 0.0f;
+	nw4r::math::VEC3 look(pos->x + (f32)sin(angle), pos->y, pos->z + (f32)cos(angle));
+	C_MTXLookAt(mtx, pos, &up, look);
+	mListener.SetMatrix(mtx);
 }
 
 void CSound3D::SetVolumePanPitch(f32 volume, f32 pan, f32 pitch)
 {
-	fn_80295848(mSound, volume);
-	fn_80295850(mSound, pan);
-	fn_80295858(mSound, pitch);
+	mListener.SetInteriorSize(volume);
+	mListener.SetMaxVolumeDistance(pan);
+	mListener.SetUnitDistance(pitch);
 }

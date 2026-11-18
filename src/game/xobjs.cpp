@@ -1,6 +1,7 @@
 #include "game/xobjs.h"
 #include "game/xobjread.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/xchr.h"
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"
@@ -63,6 +64,8 @@ BOOL XObjRead::HasPendingReads()
  * @note Address: 0x80131D2C
  * @note Size: 0x280
  */
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" BOOL HasPendingObjectReads()
 {
 	return gAllObjectsReader.HasPendingReads() || gSingleObjectReader.HasPendingReads() || gObjectAnimationReader.HasPendingReads();
@@ -208,8 +211,11 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
-// NONMATCHING: regalloc — the inlined ReadStart loop lands its slot counter
-// in a different arg slot, costing one extra mr.
+// NONMATCHING: retail is ReadStart's own out-of-line body (its loop walks the
+// incoming this in r3; writing the loop here directly matches the code). The
+// shared __FUNCTION__ "ReadStart" says this vtable slot is really
+// XObjRead::ReadStart, with the overrides calling XObjRead::ReadStart inline;
+// matching needs that rename of the _10 slot in symbols.txt.
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
 	return ReadStart(object, info);
@@ -793,6 +799,8 @@ extern "C" void ResetPooledObjects(XObjPool* pools)
  * @note Size: 0xDFC
  */
 // builds the 23 pools, numbers every object and starts the three reader threads
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" void InitializeObjectPools(XOBJS* list)
 {
 	s32 id = 0;

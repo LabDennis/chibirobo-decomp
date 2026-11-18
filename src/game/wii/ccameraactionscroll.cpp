@@ -16,10 +16,6 @@ extern s32 gRefreshRate;
 #undef FRAME_TIME
 #define FRAME_TIME (1.0f / gRefreshRate)
 
-// NONMATCHING: every player call here goes through WiiPlayerState's mVtable function
-// pointers, which costs one register move against retail's real virtual calls
-// (lwz r12, 0(r3); lwz r12, slot(r12)). The rest of the codegen lines up.
-
 /**
  * @note Address: 0x80166D50
  * @note Size: 0x70
@@ -124,10 +120,10 @@ void CCameraActionScroll::Update(u32 step)
 		return;
 	}
 
-	mInterestMode      = 2;
-	s_bScrollUpLatched = (gWiiPointer.mFlags & 0x40000000) != 0;
-	gWiiPointer.mFlags &= ~0x40000000ULL;
+	mInterestMode        = 2;
+	s_bScrollUpLatched   = (gWiiPointer.mFlags & 0x40000000) != 0;
 	s_bScrollDownLatched = (gWiiPointer.mFlags & 0x80000000) != 0;
+	gWiiPointer.mFlags &= ~0x40000000ULL;
 	gWiiPointer.mFlags &= ~0x80000000ULL;
 	// while a direction trigger is pending the bit for the other zoom stays armed
 	if (gWiiPointer.mTrigger & 8) {
@@ -138,10 +134,10 @@ void CCameraActionScroll::Update(u32 step)
 			gWiiPointer.mFlags |= 0x80000000;
 		}
 	}
-	if (gWiiPointer.mFlags & 0x40000000) {
+	if (gWiiPointer.Check(0x40000000)) {
 		mZoom = 0;
 		StartZoom(mNearDistance);
-	} else if (gWiiPointer.mFlags & 0x80000000) {
+	} else if (gWiiPointer.Check(0x80000000)) {
 		mZoom = 1;
 		StartZoom(mFarDistance);
 	}

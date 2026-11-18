@@ -269,16 +269,21 @@ public:
 	void SetEye(const Vec& eye, u32 mode)
 	{
 		mCameraFlags = mode;
-#if defined(VERSION_R24J01)
-		SetEye(eye.x, eye.y, eye.z);
-#else
 		SetEye(eye);
-#endif
 	}
 	void SetInterest(const Vec& interest, u32 mode)
 	{
 		mCameraFlags = mode;
 		SetInterest(interest);
+	}
+	// the roll goes through SetAngle so subclasses see it; the copy is this inline's local, which is why
+	// CCameraActionReset::PreviousUpdate's retail frame puts it below the caller's temporaries
+	void SetAngleZ(f32 z, u32 mode)
+	{
+		mCameraFlags = mode;
+		Vec angle    = mAngle;
+		angle.z      = z;
+		SetAngle(angle);
 	}
 };
 
@@ -374,7 +379,7 @@ public:
 	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time)
+	void SetEye_Interp(s32 mode, Vec eye, f32 time)
 	{
 		if (mode == 3 || time <= 0.0f) {
 			mEyeInterp = NULL;
@@ -491,7 +496,7 @@ public:
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 	void Reset2();
 	void UpdateTurn(u32 step);
-	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
+	virtual ~CCameraActionMap() { }          // weak, the dol copy is at 0x80009F24
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
 	virtual void Reset();                    // _14
@@ -786,6 +791,16 @@ public:
 	CCameraActionLeticker() { mTarget = NULL; }
 	virtual ~CCameraActionLeticker() { }
 
+	// keeps the eye inside the box
+	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ)
+	{
+		mBounded = true;
+		mMinX    = minX;
+		mMaxX    = maxX;
+		mMinZ    = minZ;
+		mMaxZ    = maxZ;
+	}
+
 	virtual void Update(u32 step);                  // _10
 	virtual void Reset();                           // _14
 	virtual u32 GetMode() { return 0; }             // _50 (weak)
@@ -908,9 +923,9 @@ public:
 	BOOL mDragging;           // _A8, the drag button is held
 	f32 mDragDamping;         // _AC
 	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
-	Vec mDragStart;           // _C0, the pointer position the drag started at
-	Vec mDragLast;            // _D0, the pointer position the last update saw
-	u8 _DC[0x44];             // _DC
+	CVec mDragStart;          // _C0, the pointer position the drag started at
+	CVec mDragLast;           // _D0, the pointer position the last update saw
+	u8 _E0[0x40];             // _E0
 	Mtx mMtx;                 // _120
 	u8 _150[0x94];            // _150
 	ScrollEdgeQuad mQuads[4]; // _1E4

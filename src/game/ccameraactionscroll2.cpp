@@ -1,3 +1,4 @@
+#include "game/cgameparticle.h"
 #include "game/ccameraaction.h"
 extern "C" {
 #include <dolphin/mtx/vec.h>
@@ -216,13 +217,13 @@ void CCameraActionScroll2::HideObjs()
  * @note Address: 0x80146738
  * @note Size: 0xE8
  */
-// NONMATCHING: regalloc
 void CCameraActionScroll2::ShowObjs()
 {
 	s32* id    = gScrollCameraHiddenObjectIds;
 	s32* state = gScrollCameraHiddenObjectStates;
 	for (s32 i = 0; i < 256; i++) {
-		if (*id == -1) {
+		s32 objId = *id;
+		if (objId == -1) {
 			return;
 		}
 		// 0 and 2 were not drawn before HideObjs, they stay as they are
@@ -230,7 +231,7 @@ void CCameraActionScroll2::ShowObjs()
 			id++;
 			state++;
 		} else {
-			gGame.mXObjs.mObjects[*id]->mStatus.mFlags |= 0x10000;
+			gGame.mXObjs.mObjects[objId]->mStatus.mFlags |= 0x10000;
 			id++;
 			state++;
 		}
@@ -448,6 +449,9 @@ Scroll2Limits* CCameraActionScroll2::GetLimits(s32 room)
 	}
 	return ROOM_LIMITS[7];
 }
+
+// each room's base count for the overlay, file scope: retail has it ahead of Draw's vector literals in .rodata
+static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
 
 /**
  * @note Address: 0x80143A00
@@ -739,8 +743,7 @@ void CCameraActionScroll2::Draw()
 	}
 
 	if (gGame.mStage >= 0 && gGame.mStage < 10) {
-		static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
-		s32 base                             = sRoomBaseCounts[gGame.mStage];
+		s32 base = sRoomBaseCounts[gGame.mStage];
 		// script variables from 0x603 on hold a count per room
 		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
 		// shown as count/base: the hundreds go left of the slash, the low two digits right of it

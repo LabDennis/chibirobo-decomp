@@ -174,13 +174,6 @@ void psKillAllParticle(void);
 void DrawAnas(void);
 void UpdateAnas(u32 arg);
 void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
-s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
-s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
-s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
-s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 
 s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args);
 s32 CmdCheckYakiResult(s32 cmd, s32 count, s32* args);
@@ -244,6 +237,15 @@ void HamObj_Update(HamObj* slot, u32 step);
 void HamObj_LowerStack(HamObj* slot);
 s32 HSD_Randi(s32 max);
 }
+
+// rel/ana.cpp, its script commands have C++ linkage
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
+s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 
 typedef void (*RelSlotFunc)(u32 arg);
 typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
@@ -2441,9 +2443,8 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
-	// NONMATCHING: regalloc/scheduling — the hamObjs base, the -1 and the
-	// hamDishes base land in other registers and the first hamDishes store
-	// is scheduled one slot later
+	// NONMATCHING: regalloc — the gasPlate search keeps the actor, the
+	// mObjects walker and the count in other registers
 	for (s32 i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		hamObjs[i].mId         = -1;
 		hamObjs[i].mActor      = NULL;
@@ -2456,11 +2457,9 @@ extern "C" void InitHamburg(void)
 		hamDishes[i].mActor = NULL;
 	}
 
-	CGame* game = &gGame;
-	s32 count   = game->mXObjs.mObjectCount;
-	gasPlate    = NULL;
-	for (s32 i = 0; gasPlate == NULL && i < count; i++) {
-		Stage01Actor* actor = (Stage01Actor*)game->mXObjs.mObjects[i];
+	gasPlate = NULL;
+	for (s32 i = 0; gasPlate == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		Stage01Actor* actor = (Stage01Actor*)gGame.mXObjs.mObjects[i];
 		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
 		}

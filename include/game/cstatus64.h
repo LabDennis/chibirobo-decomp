@@ -34,6 +34,11 @@ public:
 	// _08 vtable
 
 	virtual ~CStatus64() { } // _08
+
+	// any of the mask's bits set, as CStatus::Check and the Wii's CBitStatus64::Check. The toy's 0x16C command handler
+	// tests the drawn bit with it: written out, the handler fits the inline limit of the toy's ProcessPendingEvents,
+	// where retail calls it (HandleToyKind16CCommand, 0x80120778)
+	bool Check(u64 mask) const { return (mFlags & mask) ? true : false; }
 };
 #endif
 typedef char CStatus64_size_check[sizeof(CStatus64) == 0x10 ? 1 : -1];

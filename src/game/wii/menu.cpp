@@ -85,13 +85,14 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
 	CTexObj tex = gGame.mTpl.mTex;
+	f32 size    = 24.0f;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
 	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
-	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	                   size * scale, size * scale, 0.0f, 0.0f, 0.0f);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
 	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
-	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	                   0.0f, size * scale, size * scale, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
@@ -370,7 +371,6 @@ void MenuMain::Init()
 	CMenu::Init();
 }
 
-// NONMATCHING: retail compares the stage with its operands the other way round
 void MenuStageSelect::Open()
 {
 	mState = 1;
@@ -378,8 +378,9 @@ void MenuStageSelect::Open()
 	mWindow.mOpen = TRUE;
 	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
 		mSelection = -1;
-		for (int i = 0; sStageOrder[i] >= 0; i++) {
-			if (sStageOrder[i] == gGame.mStage) {
+		s32* stage = sStageOrder;
+		for (int i = 0; *stage >= 0; stage++, i++) {
+			if (*stage == gGame.mStage) {
 				mSelection = i;
 				break;
 			}
@@ -882,26 +883,27 @@ extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f
 	}
 }
 
-// NONMATCHING: register allocation of the corner coordinates
+// NONMATCHING: register allocation and order of the shadow's corner coordinates
 extern "C" void DrawMenuRectWithShadow(CMenu* menu, u32 color, f32 x, f32 y, f32 width, f32 height)
 {
 	// The original evaluates both animation curves even though their values are unused.
 	sin(4.712389f * (1.0f - menu->mAlpha));
 	sin(4.712389f * (1.0f - menu->mAlpha));
+	f32 offset      = 6.0f;
 	f32 z           = -10.0f;
 	Vec outline[10] = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
 		                (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
 		                (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z },
 		                (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
 		                (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectEnd(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectEnd(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z } };
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectStart(y, height), z },
+		                (Vec) { offset + MenuRectEnd(x, width), offset + MenuRectStart(y, height), z },
+		                (Vec) { offset + MenuRectEnd(x, width), offset + MenuRectEnd(y, height), z },
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectEnd(y, height), z },
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectStart(y, height), z } };
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 5);
-	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_NEQUAL, GX_FALSE);
 	u32 shadow = (u32)(128.0f * menu->mAlpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[5], shadow, 5);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -1044,7 +1046,8 @@ BOOL MenuMain::Update(u32 frames)
 	return IsOpen();
 }
 
-// NONMATCHING: register allocation; retail also keeps the cursor's 24 in a register for both hands
+// NONMATCHING: register allocation; retail keeps the cursor's y in the register of y and loads 1.0 ahead of the
+// sub menu's fade
 BOOL MenuMain::Draw()
 {
 	if (CMenu::Draw()) {
@@ -1073,8 +1076,8 @@ BOOL MenuMain::Draw()
 				                             y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * i, 0.0f, lineH, lineH);
 			}
 		}
-		f32 cx = x - maxW / 2;
-		f32 cy = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
+		x -= maxW / 2;
+		y = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
 		f32 alpha;
 		if (sMenuStatus.IsOpen()) {
 			alpha = mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
@@ -1089,7 +1092,7 @@ BOOL MenuMain::Draw()
 		} else {
 			alpha = mAlpha;
 		}
-		DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
+		DrawMenuSelectionCursor(mCursor, x, y, maxW, lineH, mAlpha, alpha);
 		return TRUE;
 	}
 	return FALSE;
@@ -1280,7 +1283,7 @@ static inline void PCEase(f32& value, f32& target)
 // fbeffect.cpp; its header needs the Wii MSL's <cmath>, which the game's include path does not have yet
 static inline void PCEaseCall(f32& value, f32& target)
 {
-	f32 rate = __fabsf((target - value) * 0.25f);
+	f32 rate = __fabsf((target - value) / 4.0f);
 	if (rate <= 1.0f) {
 		rate = 1.0f;
 	}
@@ -1983,6 +1986,7 @@ void MenuSave::State18(u32)
 				fn_80083350(this);
 			}
 			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			return;
 		}
 	}
 	if (addPanes) {
@@ -2038,6 +2042,12 @@ void MenuSave::State17(u32)
 		}
 		gPointerPanes.mMenu = NULL;
 	}
+}
+
+// a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
+void MenuStatus::State3(u32)
+{
+	OSPanic("menu_status.cpp", 1313, "UpdateItem");
 }
 
 // the status and PC menus' empty states

@@ -113,6 +113,9 @@ const void* __OSStringTable AT_ADDRESS(OS_BASE_CACHED | 0x30D0);
       __prev->link.next = __next;       \
   } while (0)
 
+// The SDK's own line: retail keeps the OSNotify* stubs as calls. Same pragma at this place in
+// dusklight's Revolution SDK, https://github.com/TwilitRealm/dusklight/blob/77705f8bb95ef7b7dca4675b149c4bcb6a48da34/libs/revolution/src/os/OSLink.c#L117-L127
+// and ac-decomp's Dolphin SDK, https://github.com/ACreTeam/ac-decomp/blob/986dce2514c2d4a2ba5fefb75360fa3e4f3a04c0/src/static/dolphin/os/OSLink.c#L116-L121
 #pragma dont_inline on
 /**
  * @note Address: 0x801676BC

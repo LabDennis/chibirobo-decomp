@@ -2,6 +2,7 @@
 #include "mem_heap_internal.h"
 
 // MSL's <stdlib.h> gives abs() as the compiler's own; the game's headers have no such line
+// MSL's stdlib.h has the same line: https://github.com/PrimeDecomp/sdk/blob/9b749184a7c6bdc29ddd2b0b9e8d451324d57b00/libc/stdlib.h#L20
 #define abs(n) __abs(n)
 
 #define MEM_EXP_HEAP_MAGIC       0x45585048U /* EXPH */

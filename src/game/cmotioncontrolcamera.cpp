@@ -220,28 +220,27 @@ void CMotionControlCamera::Update(u32 step)
 	Interpolate(step);
 
 	// work out whatever the action didn't drive from what it did
-	u32 flags = mFlags.mFlags;
-	if ((flags & CAMFLAG_EYE) && (flags & CAMFLAG_INTEREST)) {
+	if ((mFlags.mFlags & CAMFLAG_EYE) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcAngle();
 		mCamera.CalcDistance();
 		mAction->SetAngle(mCamera.mAngle);
 		mAction->SetDistance(mCamera.mDistance);
-	} else if ((flags & 0x20000) && (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & 0x20000) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcEye();
 		mAction->SetEye(mCamera.mEye);
-	} else if ((flags & 0x20000) && (flags & CAMFLAG_EYE)) {
+	} else if ((mFlags.mFlags & 0x20000) && (mFlags.mFlags & CAMFLAG_EYE)) {
 		mCamera.CalcInterest();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_EYE)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_EYE)) {
 		mCamera.CalcInterest();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcEye();
-	} else if ((flags & 0x80000) && (flags & CAMFLAG_DISTANCE)) {
+	} else if ((mFlags.mFlags & 0x80000) && (mFlags.mFlags & CAMFLAG_DISTANCE)) {
 		mCamera.CalcEye();
 		mAction->SetEye(mCamera.mEye);
-	} else if ((flags & CAMFLAG_EYE) || (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & CAMFLAG_EYE) || (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcAngle();
 		mCamera.CalcDistance();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST) && (flags & CAMFLAG_DISTANCE)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_INTEREST) && (mFlags.mFlags & CAMFLAG_DISTANCE)) {
 		// can't get here, the interest bit was already ruled out a branch ago
 		mCamera.CalcEye();
 	}

@@ -41,7 +41,7 @@ void HSD_JObjSetRotationY__FP9_HSD_JObjf(HSD_JObj* jobj, f32 angle);
 void RecordObjectPositionAndHeightChange(XObj* obj);
 void ApplyPlayerJumpStrength(XActJump* act, f32 strength);
 void TryLeaveHang(XActHang* act);
-Vec GetLiftTargetContactOffset(XActLift* act, XObj* target);
+Vec GetLiftTargetContactOffset(const XActLift* act, const XObj* target);
 Vec GetTargetFloorPosition(XAction* act); // where the held floor of the target is
 u32 CheckStageFlag(s32 stage, u32 mask);
 s32 GetObjectPoolId(const XObj*);
@@ -1820,8 +1820,6 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Size: 0x1CE8
  */
 // NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused)
-// and allocates registers around the ladder and rope hand-over tests differently (99.49 % with an XActHang* parameter,
-// which the header accessor shared by every action kind cannot have)
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -1931,12 +1929,12 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState               = 0;
 			act->mTarget              = NULL;
 			ReleaseHangPlug(act);
-		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
-			act->mOwner->mLadder.SetState(3, act->mTarget);
+		} else if (HasPlayerActionTarget(act) && GetPlayerActionTarget(act)->mStatus.mFlags & 0x800000000ULL) {
+			act->mOwner->mLadder.SetState(3, GetPlayerActionTarget(act));
 			act->mState  = 0;
 			act->mTarget = NULL;
-		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
-			act->mOwner->mRope.SetState(3, act->mTarget);
+		} else if (HasPlayerActionTarget(act) && GetPlayerActionTarget(act)->mStatus.mFlags & 0x1000000000ULL) {
+			act->mOwner->mRope.SetState(3, GetPlayerActionTarget(act));
 			act->mState  = 0;
 			act->mTarget = NULL;
 			return;
@@ -2636,7 +2634,6 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
  * @note Address: 0x800CE354
  * @note Size: 0x5B0
  */
-// NONMATCHING: retail keeps the masked test result in r0 and the CVec vtable in r3 over the two temporaries' destructors, here r4 and r0
 BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 height, BOOL checkItem, BOOL checkEvent, BOOL checkOthers,
                                 Vec* result)
 {
@@ -2652,16 +2649,16 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 			continue;
 		CVec hit, contact;
 		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
-			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
-			if (touch == 3 && object->OnItemUsed(pos, item)) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL);
+			if ((touch & 3) == 3 && object->OnItemUsed(pos, item)) {
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
 		}
 		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
-			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
-			if (touch == 3) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL);
+			if ((touch & 3) == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
@@ -2676,8 +2673,8 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 				continue;
 			if (object == act->mOwner)
 				continue;
-			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
-			if (touch == 3) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL);
+			if ((touch & 3) == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
@@ -3103,8 +3100,7 @@ void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
  * @note Address: 0x800CE9A8
  * @note Size: 0x354
  */
-// NONMATCHING: stack order
-Vec GetLiftTargetContactOffset(XActLift* act, XObj* target)
+Vec GetLiftTargetContactOffset(const XActLift* act, const XObj* target)
 {
 	// a plug (24) is held by its end joint
 	if (target->GetCategory() == 24) {
@@ -3129,9 +3125,8 @@ void HSD_JObjClearMtxFlags__FP9_HSD_JObj(HSD_JObj* jobj)
 // Both retail call sites read the result before the next call.
 extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {
-	const XObj* target = act->mTarget;
 	// the address of the product's temporary, as retail returns it (MWCC warns: not an lvalue)
-	return &(target->mMoveScale * GetFloorExtent(&target->mFloors, act->mTargetFloor));
+	return &(GetPlayerActionTarget(act)->mMoveScale * GetFloorExtent(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act)));
 }
 
 /**

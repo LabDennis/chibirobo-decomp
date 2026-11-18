@@ -1355,7 +1355,7 @@ inline void MenuSettings::Open()
 	mValues[0] = (gGame.mStatus.mFlags & 0x0000080000000000ULL) ? TRUE : FALSE;
 	mValues[1] = TRUE;
 	mValues[2] = (gGame.mStatus.mFlags & 0x0000004000000000ULL) ? TRUE : FALSE;
-	mValues[3] = (gGame.GetPlayer()->mPlug.mCord.mFlags >> 3) & 1;
+	mValues[3] = (gGame.GetPlayer()->mPlug.mCord.mFlags & 8) ? TRUE : FALSE;
 	mValues[4] = gGame.GetPlayer()->mMenu.mAtc.mMenuType;
 }
 #endif
@@ -6840,7 +6840,13 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			                   rotation);
 			scale       = 30.0f * (0.8f * scale);
 			f32 padding = HelpGlyphPadding(width, scale);
-			DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gStatusHelpOutlineX, gStatusHelpOutlineY);
+			for (int j = 0; j < 4; j++) {
+				DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gStatusHelpOutlineX[j] + padding / 2.0f,
+				                   bob + (384.0f + gStatusHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+			}
+			color = (u32)opacity | 0xFFFFFB00;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero,
+			                   rotation);
 		}
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7344,7 +7350,13 @@ BOOL MenuItem::Draw()
 					                   rotation);
 					scale       = 30.0f * (0.8f * scale);
 					f32 padding = HelpGlyphPadding(width, scale);
-					DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gItemHelpOutlineX, gItemHelpOutlineY);
+					for (int j = 0; j < 4; j++) {
+						DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gItemHelpOutlineX[j] + padding / 2.0f,
+						                   bob + (384.0f + gItemHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+					}
+					color = (u32)opacity | 0xFFFFFB00;
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero,
+					                   rotation);
 				}
 			}
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7517,7 +7529,7 @@ void MenuSound::Init()
 			mMaxWidth = mTextWidth[i];
 	}
 	mWindow.SetSize(60.0f + mMaxWidth, mRowCount * (2.0f + mFontSize) + 24.0f);
-	mWindow.SetPos(24.0f + (mWindow.mWidth * 0.5f + 16.0f), 24.0f + (mWindow.mHeight * 0.5f + 30.0f));
+	mWindow.SetPos(24.0f + (mWindow.mWidth / 2 + 16.0f), 24.0f + (mWindow.mHeight / 2 + 30.0f));
 	mSelection = 0;
 	if (mSelection < 0 || mRowCount <= mSelection)
 		mSelection = 0;
@@ -7537,7 +7549,7 @@ void MenuSettings::Init()
 			mMaxWidth = mTextWidth[i];
 	}
 	mWindow.SetSize(60.0f + mMaxWidth, mRowCount * (2.0f + mFontSize) + 24.0f);
-	mWindow.SetPos(24.0f + (mWindow.mWidth * 0.5f + 16.0f), 24.0f + (mWindow.mHeight * 0.5f + 30.0f));
+	mWindow.SetPos(24.0f + (mWindow.mWidth / 2 + 16.0f), 24.0f + (mWindow.mHeight / 2 + 30.0f));
 	mSelection = 0;
 }
 #endif
@@ -7644,7 +7656,7 @@ BOOL MenuSettings::Update(u32 frames)
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0xC0003) {
-			s32 extra = mSelection == 4;
+			s32 extra = mSelection == 4 ? 1 : 0;
 			if (pad.mPad->mRepeat & 0x40001) {
 				if (--mValues[mSelection] < 0)
 					mValues[mSelection] = extra + 1;
@@ -7665,11 +7677,11 @@ BOOL MenuSettings::Update(u32 frames)
 				else
 					gGame.mStatus.mFlags |= 0x0000004000000000ULL;
 			} else if (mSelection == 3) {
-				XObjChr* player = gGame.GetPlayer();
+				XObjPlugCord* cord = &gGame.GetPlayer()->mPlug.mCord;
 				if (mValues[mSelection])
-					player->mPlug.mCord.mFlags |= 8;
+					cord->mFlags |= 8;
 				else
-					player->mPlug.mCord.mFlags &= ~8;
+					cord->mFlags &= ~8;
 			} else if (mSelection == 4) {
 				SetRingMenuOption(&gGame.GetPlayer()->mMenu, mValues[mSelection]);
 			}
@@ -7865,9 +7877,15 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		rotation     = -(0.017453292f * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
-		scale       = 30.0f * (0.8f * scale);
-		f32 padding = HelpGlyphPadding(width, scale);
-		DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gSaveHelpOutlineX, gSaveHelpOutlineY);
+		scale          = 30.0f * (0.8f * scale);
+		f32 glyphWidth = width / 24.0f * scale;
+		f32 padding    = scale - glyphWidth;
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gSaveHelpOutlineX[j] + padding / 2.0f,
+			                   bob + (384.0f + gSaveHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)opacity | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
@@ -8442,8 +8460,7 @@ void MenuPC::Open()
 		mChoices[i] = -1;
 	mChoiceCount = 0;
 	mTexScroll   = 0;
-	s32 stage    = gGame.mStage;
-	if (FindStageIndexByName("stage05") == stage)
+	if (IsStage("stage05"))
 		mShopOnly = FALSE;
 	else
 		mShopOnly = TRUE;
@@ -8458,7 +8475,7 @@ void MenuPC::Open()
 			MenuPCItem* row = &sShopHistoryEntries[i];
 			s32 id          = gEventVars.mVars[mHistoryStart + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[mHistoryStart + (mHistoryCount + i)];
+			row->mCount     = gEventVars.mVars[mHistoryStart + i + mHistoryCount];
 			if (id != -1) {
 				// 0x10000 marks an attachment rather than an item
 				if (id & 0x10000) {
@@ -8485,7 +8502,7 @@ void MenuPC::Open()
 			MenuPCItem* row = &sShopCatalogEntries[i];
 			s32 id          = gEventVars.mVars[mCatalogBase + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[mCatalogBase + (mCatalogCount + i)];
+			row->mCount     = gEventVars.mVars[mCatalogBase + i + mCatalogCount];
 			if (id != -1) {
 				row->mPrice = GetUtilibotPrice(id);
 				count++;
@@ -9448,11 +9465,20 @@ static inline const char* JapaneseCardSlotName(s32 channel)
 	return "";
 }
 
+static inline void GetJapaneseCardSlotName(s32 channel, const char*& slot)
+{
+	if (channel == 0)
+		slot = GetLocalizedInterfaceText(0x29);
+	else if (channel == 1)
+		slot = GetLocalizedInterfaceText(0x2A);
+}
+
 extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f32 x, f32 y, f32 size, f32 alpha)
 {
 	char text[256];
-	u32 color = (u32)(255.0f * alpha);
+	const char* slot;
 	s32 lines = 0;
+	u32 color = (u32)(255.0f * alpha);
 	switch (error) {
 	case CARD_RESULT_FATAL_ERROR:
 	case CARD_RESULT_CANCELED:
@@ -9485,21 +9511,23 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 		break;
 	}
 	case CARD_RESULT_INSSPACE: {
-		DrawJapaneseCardLine(text, JapaneseCardSlotName(channel), 0x2B, x, y, size, color);
+		GetJapaneseCardSlotName(channel, slot);
+		DrawJapaneseCardLine(text, slot, 0x2B, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x2C, x, y + size, size, color);
 		DrawJapaneseCardLine(text, 0x2D, x, 2.0f * size + y, size, color);
-		char blocks[16];
+		char blocks[12];
 		sprintf(blocks, "%d", 6);
 		DrawJapaneseCardLine(text, blocks, 0x2E, x, 3.0f * size + y, size, color);
 		lines = 4;
 		break;
 	}
 	case CARD_RESULT_WRONGDEVICE: {
-		const char* slot = JapaneseCardSlotName(channel);
 		if (retry) {
+			GetJapaneseCardSlotName(channel, slot);
 			DrawJapaneseCardLine(text, slot, 0x28, x, y, size, color);
 			lines = 1;
 		} else {
+			GetJapaneseCardSlotName(channel, slot);
 			DrawJapaneseCardLine(text, 0x0D, x, y, size, color);
 			DrawJapaneseCardLine(text, slot, 0x28, x, y + size, size, color);
 			DrawJapaneseCardLine(text, slot, 0x1B, x, 2.0f * size + y, size, color);

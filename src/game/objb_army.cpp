@@ -148,19 +148,13 @@ static inline void SetMode(XObjArmy* army, s32 mode)
  * @note Address: 0x800E6A5C
  * @note Size: 0x114
  */
-// NONMATCHING: retail schedules the joint-tree root load after the
-// volume store; this build issues it first.
+// NONMATCHING: retail keeps the volume in its own saved register (li/mr r29)
+// and loads the joint before the anim id; this build re-extends the volume.
 
 void XObjArmy::UpdateAnimationSounds()
 {
-	s32 anim;
-	u8 volume;
-	if (mFlags.mFlags & 0x100) {
-		volume = 0xFF;
-	} else {
-		volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
-	}
-	anim = mAnimId;
+	u8 volume = (mFlags.mFlags & 0x100) ? 0xFF : GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
+	s32 anim  = mAnimId;
 	mSfx.Update(anim, GetAnimFrame(mJObj), volume);
 }
 
@@ -527,8 +521,7 @@ void XObjArmy::StateMarch()
 {
 	f32 angle    = GetAngleY(gGame.GetPlayer()->mMoveTranslate, mMoveTranslate);
 	f32 distance = PSVECDistance(&mMoveTranslate, &gGame.GetPlayer()->mMoveTranslate);
-	f32 patrolY  = mMoveTranslate.y;
-	f32 height   = gGame.GetPlayer()->mMoveTranslate.y - patrolY;
+	f32 height   = gGame.GetPlayer()->mMoveTranslate.y - mMoveTranslate.y;
 	CVec target;
 	target.x = gGame.GetPlayer()->mMoveTranslate.x;
 	target.y = mMoveTranslate.y;
@@ -576,7 +569,7 @@ void XObjArmy::StateMarch()
 		break;
 	case 3:
 		next.x = mMoveTranslate.x;
-		next.y = patrolY;
+		next.y = mMoveTranslate.y;
 		next.z = mMoveTranslate.z;
 		next.x += 5 * (f32)sin(HALF_PI + HSD_JObjGetRotationY(mJObj));
 		next.z += 5 * (f32)cos(HALF_PI + HSD_JObjGetRotationY(mJObj));
@@ -593,7 +586,7 @@ void XObjArmy::StateMarch()
 		break;
 	case 11:
 		next.x = mMoveTranslate.x;
-		next.y = patrolY;
+		next.y = mMoveTranslate.y;
 		next.z = mMoveTranslate.z;
 		next.x += 5 * (f32)sin(HSD_JObjGetRotationY(mJObj));
 		next.z += 5 * (f32)cos(HSD_JObjGetRotationY(mJObj));

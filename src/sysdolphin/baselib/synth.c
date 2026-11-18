@@ -1010,25 +1010,16 @@ static s32* getBufTableTail(s32* p)
 	return p;
 }
 
-// NONMATCHING: inlined into HSD_SynthSFXFreeVoice, HSD_SynthSFXKeyOff and HSD_SynthPStreamMasterClockCallback, where
-// retail has the same instructions with other volatile registers (the buffer index in r7, here r4). Retail indexes
-// the table with the value read back from *p, hence i.
-static void unlinkBufTable(s32* p, s32 ix)
+// frees one stream buffer: hands its beat markers back and unlinks it from the buffer table. p is the
+// table link to start from, retail takes it before the marker loop and walks the table with it.
+// NONMATCHING: inlined into HSD_SynthSFXFreeVoice and HSD_SynthSFXKeyOff (via releasePStream), where retail has the
+// same instructions with other volatile registers (the buffer index in r7, here r4). Retail indexes the table with
+// the value read back from *p, hence i.
+static void freeBuf(s32* p, s32 ix)
 {
-	s32 i;
-
-	while (*p != ix) {
-		p = &lbl_80656364[*p];
-	}
-	i               = *p;
-	*p              = lbl_80656364[i];
-	lbl_80656364[i] = -1;
-}
-
-static void freeBeatMarkers(s32 buf)
-{
-	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[buf].markers;
+	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[ix].markers;
 	HSD_SynthBeatMarkerBlock* next;
+	s32 i;
 
 	while (bmb != NULL) {
 		next         = bmb->next;
@@ -1036,7 +1027,14 @@ static void freeBeatMarkers(s32 buf)
 		sSynthFreeBeatMarkerBlocks = bmb;
 		bmb          = next;
 	}
-	sSynthStreamHakoBuffers[buf].markers = NULL;
+	sSynthStreamHakoBuffers[ix].markers = NULL;
+
+	while (*p != ix) {
+		p = &lbl_80656364[*p];
+	}
+	i               = *p;
+	*p              = lbl_80656364[i];
+	lbl_80656364[i] = -1;
 }
 
 s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 vol1Clamp, u8 vol2Clamp, u8 pan, f32 pitch1,
@@ -1058,8 +1056,7 @@ static inline void releasePStream(HSD_SynthPStream* pst)
 	for (; *pit != NULL && *pit != pst; pit = &(*pit)->next) { }
 	if (*pit != NULL) {
 		while ((buf = *(head = &(*pit)->bufTableHeadIx)) != -2) {
-			freeBeatMarkers(buf);
-			unlinkBufTable(head, buf);
+			freeBuf(head, buf);
 		}
 		*pit = (*pit)->next;
 	}
@@ -4807,8 +4804,7 @@ void HSD_SynthPStreamMasterClockCallback(void)
 				sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx++;
 			}
 			buf = pstream->bufTableHeadIx;
-			freeBeatMarkers(buf);
-			unlinkBufTable(&pstream->bufTableHeadIx, buf);
+			freeBuf(&pstream->bufTableHeadIx, buf);
 			if (pstream->bufTableHeadIx != a) {
 				OSReport("pst=%08x: pst->buftableheadix = %d, a=%d\n cadhi= %d pstbuf=%d\n", pstream, pstream->bufTableHeadIx, a,
 				         getVoiceCurrentAddress(node->voice[0]), sSynthStreamBufferAramBase * 2);

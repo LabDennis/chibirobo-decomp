@@ -20,10 +20,9 @@ inline void operator delete(void* ptr) throw()
 // NONMATCHING: retail destroys 36 members and CBase here, each with a call, and frees through
 // __dl__FPv: the function was over the compiler's inline budget. The members typed so far give
 // 15 of those calls; the rest are still padding in CGame (see cgame.h), so the offsets and the
-// call list fall short. ~CCameraActions (0x8002DD80) matches; ~CBase (0x80030088) still differs:
-// retail null-checks a member object at CGs+0x1BA4 that holds the ten lights at its +8, one at
-// the player's track table (+0xF4) and one more level at XSound+0xB60 around the reverb, and it
-// expands the empty ~CPadEx that cpadexdtor.cpp defines out of line here.
+// call list fall short. ~CCameraActions (0x8002DD80) matches. ~CBase (0x80030088) still differs:
+// retail expands the empty ~CPadEx, which the original file defines out of line (0x80030A54) and
+// which lives in cpadexdtor.cpp here, so this piece of the file can only call it.
 CGame::~CGame()
 {
 }

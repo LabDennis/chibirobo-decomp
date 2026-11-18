@@ -71,8 +71,6 @@ void fn_800C7F70(void* map);              // takes the map object, the first of 
 BOOL fn_800CDC08(WiiPlayerState* player); // three steps of the player's own setup, each true when done
 BOOL fn_800CE4B0(WiiPlayerState* player);
 BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);
-void fn_802BE414(void* obj, CLight* light);
-void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
 void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
@@ -137,8 +135,8 @@ CInterfaceCameraAction* fn_80169674();
 // Retail expands it every time, the name is ours
 static inline void StepSceneDraws(u32 frames)
 {
-	fn_802AEDA0(&gGame.mGs.mSceneHead, frames);
-	WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+	fn_802AEDA0(&gGame.mGs.mScene.mHead, frames);
+	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 	while (scene->mPending != 0) {
 		if (scene->mPending != 0) {
 			scene->vf038(scene->mPending - 1);
@@ -313,10 +311,8 @@ static inline bool FadeStopped(const CScrnColor& fade)
  * @note Size: 0xD50
  */
 // NONMATCHING: CSound3D::Init takes no argument in its declaration, retail passes one (it seems, whatever is
-// left in r4); retail reads the
-// attachment overrides out of the whole word of gCmdLineArgs (its bitfields are u32 on the Wii, u8 in
-// cmdline.h, which gameinit.cpp initializes for both); and the logo and title states are loaded once for
-// their two tests, as if they sat in objects of their own (CGame destroys one at _5978 and one at _5C70)
+// left in r4); and the logo and title states are loaded once for their two tests, as if they sat in objects
+// of their own (CGame destroys one at _5978 and one at _5C70)
 // the GameCube function with the Wii's resources: one step a frame until the stage runs, true when done
 BOOL CGame::BeforeUpdate()
 {
@@ -506,7 +502,7 @@ BOOL CGame::BeforeUpdate()
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
 		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
-		_EC1A4 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
+		_EC1A4 = (s32)(hours * 216000 + minutes * 3600 + GetStageEntryTimeComponent(2) * 60); // the clock, in frames
 		SetStatusFlags(1);
 		++mLoadStep;
 	}
@@ -641,7 +637,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 	case 5: {
 		game->SetupStageCamera(GetStageInfo()->mCameraMode);
 		game->mLightList = NULL;
-		if (gGame.mGs.mSceneHead->_2888 == NULL) {
+		if (gGame.mGs.mScene.mHead->_2888 == NULL) {
 			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
@@ -650,9 +646,9 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			gGame.mGs._1FE4[i]._00 = FALSE;
 		}
 		game->SetCameraLight();
-		fn_802BE414(&game->mEffects, gGame.mGs.mLight);
-		if (gGame.mGs.mSceneHead->_2888 != NULL) {
-			void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
+		game->mEffects.UpdateLights(gGame.mGs.mLight);
+		if (gGame.mGs.mScene.mHead->_2888 != NULL) {
+			void* fog = fn_8027AE0C(gGame.mGs.mScene.mHead, 0);
 			GXFogType type;
 			f32 startZ;
 			f32 endZ;
@@ -661,18 +657,18 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			GXColor color;
 			fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
 			GXColor fogColor = color;
-			fn_802BE4D4(&game->mEffects, type, fogColor, startZ, endZ, nearZ, farZ);
+			game->mEffects.SetFog(type, &fogColor, startZ, endZ, nearZ, farZ);
 		} else {
 			GXColor none = { 0, 0, 0, 0 };
 			game->mFog.Init(GX_FOG_NONE, none, 0.0f, 0.0f, 0.0f, 0.0f);
 			GXColor black = { 0, 0, 0, 0 };
-			fn_802BE4D4(&game->mEffects, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
+			game->mEffects.SetFog(GX_FOG_NONE, &black, 0.0f, 0.0f, 0.0f, 0.0f);
 		}
 		BuildObjectDrawList(game);
 		if (game->GetStatusFlags(0x2000000000ULL)) {
 			f32 fade        = GetStageInfo()->mMirrorFade / 100.0f;
 			CMirrorObj* map = (CMirrorObj*)game->mXObjs.mPools[3].mObjects;
-			if ((map->mStatus & 1) && fade > 0.0f) {
+			if ((map->mStatus & 1) && fade > 0.0f && fade < 1.0f) {
 				// the GameCube made the map translucent here, nothing is left of that
 			}
 		}
@@ -730,7 +726,7 @@ void CGame::SetupStageCamera(s32 mode)
 		ClearStatusFlags(0x300);
 		mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
-	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+	fn_8027AE04(gGame.mGs.mScene.mHead, 0);
 }
 
 /**
@@ -794,44 +790,39 @@ CCamera* CBase::GetPerspectiveCamera()
  * @note Address: 0x8001DF48
  * @note Size: 0x280
  */
-// NONMATCHING: the object and the loop counter swap registers in both loops (r6/r8)
+// NONMATCHING: the object and the loop's table pointer swap registers in both loops (r6/r7)
 // lists the objects in draw order: the ones with flag 0x4000 first, then the rest, then the player and
 // last the first object of pool 0. Each entry keeps the object's slot in mXObjs.mObjects
 extern "C" void BuildObjectDrawList(CGame* game)
 {
-	CMirrorObj* obj;
 	s32 i;
 	for (i = 0; i < 0x400; i++) {
 		game->mDrawLists[0].mRefs[i].mObj = NULL;
 	}
 	game->mDrawLists[0].mCount = 0;
 	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
-		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
-		    && (obj->mStatus & 0x4000)) {
-			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		if (game->mXObjs.mObjects[i] != (XObj*)game->GetPlayer() && game->mXObjs.mObjects[i] != (XObj*)game->mXObjs.mPools[0].mObjects
+		    && (game->mXObjs.mObjects[i]->mStatus.mFlags & 1) && (game->mXObjs.mObjects[i]->mStatus.mFlags & 0x4000)) {
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = game->mXObjs.mObjects[i];
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
 			game->mDrawLists[0].mCount++;
 		}
 	}
 	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
-		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
-		    && !(obj->mStatus & 0x4000)) {
-			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		if (game->mXObjs.mObjects[i] != (XObj*)game->GetPlayer() && game->mXObjs.mObjects[i] != (XObj*)game->mXObjs.mPools[0].mObjects
+		    && (game->mXObjs.mObjects[i]->mStatus.mFlags & 1) && !(game->mXObjs.mObjects[i]->mStatus.mFlags & 0x4000)) {
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = game->mXObjs.mObjects[i];
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
 			game->mDrawLists[0].mCount++;
 		}
 	}
-	obj = (CMirrorObj*)game->GetPlayer();
-	if (obj->mStatus & 1) {
-		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+	if (((XObj*)game->GetPlayer())->mStatus.mFlags & 1) {
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = game->GetPlayer();
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
 		game->mDrawLists[0].mCount++;
 	}
-	obj = (CMirrorObj*)game->mXObjs.mPools[0].mObjects;
-	if (obj->mStatus & 1) {
-		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+	if (((XObj*)game->mXObjs.mPools[0].mObjects)->mStatus.mFlags & 1) {
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = game->mXObjs.mPools[0].mObjects;
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
 		game->mDrawLists[0].mCount++;
 	}
@@ -1187,8 +1178,8 @@ void CGame::Update(u32 frames)
 			PauseGameSounds(this, 0.0f);
 			UpdateXSound(&gGame.mSound, frames);
 		}
-		if (gGame.mGs._1BA8) {
-			WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+		if (gGame.mGs.mScene._04) {
+			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
@@ -1206,8 +1197,8 @@ void CGame::Update(u32 frames)
 				PauseGameSounds(this, 0.0f);
 				UpdateXSound(&gGame.mSound, frames);
 			}
-			if (gGame.mGs._1BA8) {
-				WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+			if (gGame.mGs.mScene._04) {
+				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 				scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 				StepSceneDraws(frames);
 			}
@@ -1404,7 +1395,7 @@ void CGame::Update(u32 frames)
 	for (i = 0; i < mDrawLists[1].mCount; i++) {
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
 	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)mPointer.mCursor)->mStatus.mFlags & 1)) { // the loading screen's robot
@@ -1414,7 +1405,7 @@ void CGame::Update(u32 frames)
 		}
 		robot->SetPos(gWiiPointer.mPointer.x, gWiiPointer.mPointer.y, 50.0f);
 		robot->UpdateObject(frames);
-		gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, robot->mObject.m_pScnMdl);
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, robot->mObject.m_pScnMdl);
 	}
 	StepSceneDraws(frames);
 
@@ -1438,7 +1429,7 @@ void CGame::Update(u32 frames)
 	for (i = count; i < mDrawLists[1].mCount; i++) { // the ones the objects listed while they ran
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 1) && !(obj->_188 && obj->mBaseMtxPtr == NULL)) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
 	StepSceneDraws(frames);

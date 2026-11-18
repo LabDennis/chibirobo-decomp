@@ -218,6 +218,7 @@ game/wii/cpadact.cpp:
 game/wii/ccamera.cpp:
 	.text start:0x800A92CC end:0x800A9320
 	.ctors start:0x802C45A0 end:0x802C45A4
+	.bss start:0x80453600 end:0x80453938
 
 game/wii/savemanager.cpp:
 	extab start:0x8000A610 end:0x8000A6D0
@@ -1130,12 +1131,12 @@ game/cinterpolationeaseout.cpp:
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
-game/ccameraactionareaexinit.cpp:
+game/wii/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 	.ctors start:0x802C45C0 end:0x802C45C4
 	.bss start:0x8045F468 end:0x804630A8
 
-game/ccameraactionareaexdtor.cpp:
+game/wii/ccameraactionareaexdtor.cpp:
 	.text start:0x801541F8 end:0x801542A0
 	.rodata start:0x802DB4C8 end:0x802DB4DC
 	.data start:0x8030DDA0 end:0x8030DDAC
@@ -1585,6 +1586,8 @@ revolution/OS/OSLaunch.c:
 
 revolution/MTX/quat.c:
 	.text start:0x8018FEA0 end:0x80190208
+	.rodata start:0x802DDF08 end:0x802DDF18
+	.sdata2 start:0x805A64C0 end:0x805A64D0
 
 revolution/DVD/dvdfs.c:
 	.text start:0x80190208 end:0x80190830
@@ -2080,7 +2083,7 @@ nw4r/snd/snd_MidiSeqPlayer.cpp:
 
 nw4r/snd/snd_MmlParser.cpp:
 	.text start:0x8028EF88 end:0x8029012C
-	.data start:0x80334520 end:0x80334740
+	.data start:0x80334520 end:0x80334750
 	.sbss start:0x805A2800 end:0x805A2808
 	.sdata start:0x805A19B0 end:0x805A19C0
 	.sdata2 start:0x805A76B0 end:0x805A76D0

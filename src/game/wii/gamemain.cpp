@@ -74,8 +74,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			mArchivePlayer.mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks.mHandles[i].Stop(frames);
 		}
 	}
 }

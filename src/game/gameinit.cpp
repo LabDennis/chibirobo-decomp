@@ -122,7 +122,7 @@ void CGame::Start()
 	mShadow.mCamera.SetInterest(interest);
 	mShadow.mCamera.SetUp(0.0f, 0.0f, 1.0f);
 	mShadow.mCamera.vf88(1.0f, 1.0f, mShadow.mTexWidth - 2, mShadow.mTexHeight - 2, 0.0f, 1.0f);
-	fn_802AEF34(&gGame.mGs.mSceneHead, &mShadow.mCamera, TRUE);
+	fn_802AEF34(&gGame.mGs.mScene.mHead, &mShadow.mCamera, TRUE);
 	mShadow.mImage = mm::Alloc(GXGetTexBufferSize(mShadow.mTexWidth, mShadow.mTexHeight, GX_TF_I8, GX_FALSE, 0), "(shadow)");
 	mShadow.mTex.Init(mShadow.mImage, mShadow.mTexWidth, mShadow.mTexHeight, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
 	GXInitTexObjLOD(&mShadow.mTex, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);

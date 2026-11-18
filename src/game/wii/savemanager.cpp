@@ -16,7 +16,7 @@
 // is its own rodata object in retail; as a plain literal here it joins the unit's @stringBase0 pool
 // instead, which the remaining referent diffs in ReadWiiSaveSlot/WriteWiiSaveSlot show.
 // CheckWiiSaveBanner (0xE4, same as retail) and BuildWiiSaveBanner (0x284, one instruction short of
-// retail's 0x288) are reached via bl in retail, as they are under this unit's -inline noauto.
+// retail's 0x288) are reached via bl in retail, as they are here (the unit builds without -inline noauto).
 // StartWiiSaveJob and GetWiiSaveSlotChecksum are static inline and inline fully; retail likewise
 // has no call to either. ReadWiiSaveSlot lines up except for the stubs and its folded checksum
 // select, and the static initializer does not register CThread's destructor as retail's does.
@@ -446,7 +446,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	for (int i = 0; i < 2; ++i) {
 		manager->mSlot.mHeader.mStages[i] = stages[i];
 		if (manager->mSlot.mHeader.mStages[i] > GetStageNum())
-			manager->mSlot.mHeader.mStages[i] -= GetStageNum() - 99;
+			manager->mSlot.mHeader.mStages[i] = manager->mSlot.mHeader.mStages[i] - GetStageNum() + 99;
 	}
 	manager->mSlot.mHeader.mStatusFlags  = (u32)gGame.GetStatusFlags(1);
 	manager->mSlot.mHeader._18           = 0;
@@ -486,7 +486,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mView.mInterest);
 		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mView.mAngle);
 		manager->mSlot.mData.mCameraDistance = camera->mView.mDistance;
-		manager->mSlot.mData.mCameraFov      = camera->mFov;
+		manager->mSlot.mData.mCameraFov      = camera->CCamera::mFov;
 	}
 	manager->mSlot.mData.mSquirterLiquid = gGame.GetPlayer()->mSquirterContent;
 	manager->mSlot.mData.mItemTint       = gGame.GetPlayer()->mItemTint;

@@ -1248,11 +1248,11 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 static inline void MsgNextLine(CMsg* msg)
 {
 	msg->mFont.mLine++;
-	CMsgData* data      = msg->mFont.mData;
-	f32 width           = msg->mFont.mBits.mFitLine ? data->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
-	msg->mFont.mCursorX = -(width * 0.5f);
-	msg->mFont.mCursorY += msg->mFont.mData->mHeights[msg->mFont.mLine - 1];
-	msg->mFont.mLineY[msg->mFont.mLine] = msg->mFont.mCursorY + (msg->mFont.mData->mHeights[msg->mFont.mLine] - 22.0f) * 0.5f;
+	f32 width           = msg->mFont.mBits.mFitLine ? msg->mFont.mData->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
+	msg->mFont.mCursorX = -(width / 2.0f);
+	s32 previous        = msg->mFont.mLine - 1;
+	msg->mFont.mCursorY += msg->mFont.mData->mHeights[previous];
+	msg->mFont.mLineY[msg->mFont.mLine] = msg->mFont.mCursorY + (msg->mFont.mData->mHeights[msg->mFont.mLine] - 22.0f) / 2.0f;
 }
 
 /**
@@ -1334,7 +1334,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			s32 value = ReadMsgU8(msg);
 			value |= ReadMsgU8(msg) << 8;
 			value |= ReadMsgU8(msg) << 16;
-			// the Wii index is 24 bits, the GameCube reads 32
+			value |= ReadMsgU8(msg) << 24;
 			if (flags & 1) {
 				value = gEventVars.mVars[value];
 			}
@@ -1480,32 +1480,33 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					msg->mFont.mBits.mFadeOut = TRUE;
 					msg->mFont.mSelectedLine  = -1;
 				} else if (!gGame.GetStatusFlags(0x20)) {
-					s32 hit = 0;
 					if (gWiiPointer.mPointerValid) {
-						f32 top = msg->mFont.mWindowY;
+						f32 x      = msg->mFont.mWindowX;
+						f32 top    = msg->mFont.mWindowY;
+						f32 width  = msg->mFont.mWidth;
+						f32 height = msg->mFont.mHeight;
 						if (top < (f32)gScreenSafeTop) {
 							top = (f32)gScreenSafeTop;
 						}
-						if (top + msg->mFont.mHeight > (f32)gScreenSafeBottom) {
-							top = (f32)gScreenSafeBottom - msg->mFont.mHeight;
+						if (top + height > (f32)gScreenSafeBottom) {
+							top = (f32)gScreenSafeBottom - height;
 						}
+						s32 hit    = 0;
 						f32 margin = 40.0f + msg->mData.mHeights[msg->mData.mWidestLine];
-						if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - msg->mFont.mWidth * 0.5f - margin
-						    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + msg->mFont.mWidth * 0.5f + margin
-						    && gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + msg->mFont.mHeight + 8.0f) {
+						if (gWiiPointer.mPointer.x >= x - width / 2.0f - margin && gWiiPointer.mPointer.x <= x + width / 2.0f + margin
+						    && gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + height + 8.0f) {
 							if (msg->mFont.mPointerState == 2) {
 								hit = -1;
 							} else {
 								for (s32 i = 0; i < msg->mData.mLineCount; i++) {
-									s32 row = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
-									f32 w   = 24.0f + msg->mData.mMaxWidth;
-									if (msg->mFont.mColor.a != 0) {
-										w = margin * 2.0f + msg->mFont.mWidth;
-									}
+									s32 row    = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
 									f32 rowTop = top + msg->mFont.mLineY[row];
 									f32 h      = msg->mData.mHeights[row];
-									if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - w * 0.5f
-									    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + w * 0.5f
+									f32 w      = 24.0f + msg->mData.mMaxWidth;
+									if (msg->mFont.mColor.a != 0) {
+										w = margin * 2.0f + width;
+									}
+									if (gWiiPointer.mPointer.x >= x - w / 2.0f && gWiiPointer.mPointer.x <= x + w / 2.0f
 									    && gWiiPointer.mPointer.y >= rowTop - h * 0.25f
 									    && gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
 										hit = row + 1;
@@ -1514,38 +1515,36 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 								}
 							}
 						}
-					}
-					if (hit != 0) {
-						if (!(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
-							if (msg->mFont.mPointerState == 0) {
-								msg->mFont.mPointerState = 1;
-								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						if (hit != 0) {
+							if (!(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+								if (msg->mFont.mPointerState == 0) {
+									msg->mFont.mPointerState = 1;
+									PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+								}
+								if (hit > 0 && hit - 1 != msg->mSelectedLine) {
+									msg->mSelectedLine       = hit - 1;
+									msg->mFont.mSelectedLine = msg->mSelectedLine;
+									PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+								}
 							}
-							if (hit > 0 && hit - 1 != msg->mSelectedLine) {
-								msg->mSelectedLine       = hit - 1;
-								msg->mFont.mSelectedLine = msg->mSelectedLine;
-								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
-							}
+						} else {
+							msg->mFont.mPointerState = 0;
 						}
 					} else {
 						msg->mFont.mPointerState = 0;
 					}
-					if (gWiiPointer.Check(4)) { // the remote's up moves the highlight
-						if (msg->mFont.mPointerState == 0) {
-							if (--msg->mSelectedLine < 0) {
-								msg->mSelectedLine = msg->mData.mLineCount - 1;
-							}
-							msg->mFont.mSelectedLine = msg->mSelectedLine;
-							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					if (gWiiPointer.Check(4) && msg->mFont.mPointerState == 0) { // the remote's up moves the highlight
+						if (--msg->mSelectedLine < 0) {
+							msg->mSelectedLine = msg->mData.mLineCount - 1;
 						}
-					} else if (gWiiPointer.Check(8)) { // down
-						if (msg->mFont.mPointerState == 0) {
-							if (++msg->mSelectedLine >= msg->mData.mLineCount) {
-								msg->mSelectedLine = 0;
-							}
-							msg->mFont.mSelectedLine = msg->mSelectedLine;
-							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						msg->mFont.mSelectedLine = msg->mSelectedLine;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					} else if (gWiiPointer.Check(8) && msg->mFont.mPointerState == 0) { // down
+						if (++msg->mSelectedLine >= msg->mData.mLineCount) {
+							msg->mSelectedLine = 0;
 						}
+						msg->mFont.mSelectedLine = msg->mSelectedLine;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 					} else if (gWiiPointer.Check(1)) { // A
 						if (msg->mFont.mPointerState != 0) {
 							msg->mFont.mPointerState = 2;
@@ -1775,7 +1774,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			// is not folded there); the value is 0 either way
 			u32 frames = gRefreshRate * 0.0f;
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL)
 					track->Stop(frames);
 			}
@@ -1810,7 +1809,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL && !track->IsPause())
 					track->Pause(true, frames);
 			}
@@ -1822,7 +1821,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL && track->IsPause())
 					track->Pause(false, frames);
 			}

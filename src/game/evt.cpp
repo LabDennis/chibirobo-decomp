@@ -30,6 +30,7 @@ extern "C" {
 #include "game/inventory.h"
 #include "game/video.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/infoscrn.h"
 #include "game/cmovie.h"
 
@@ -766,7 +767,7 @@ extern "C" CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* pa
 {
 	// CJObj::mJObj, game/cjobj.h would pull 0x24 bytes of .rodata into this file
 #if defined(VERSION_JP)
-	return GetJointPosition(FindJointByPath(*(HSD_JObj**)obj, path, depth));
+	return GetJointPosition(GetJointByPath(*(HSD_JObj**)obj, path, depth));
 #else
 	return GetEventJObjWorldPosition(obj, GetJointByPath(*(HSD_JObj**)obj, path, depth));
 #endif
@@ -8989,12 +8990,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode      = Evaluate();
 		f32 time      = Evaluate() / 100.0f;
 		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(areaIndex) != 0) {
-			CMotionControlCamera* camera = &gGame.mMotionControlCamera;
-			camera->ChangeAction(CAMACTION_AREA);
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_AREA);
 			SelectAreaCameraEntryWithControl((CCameraActionArea*)area, areaIndex, entry, mode, 0, time);
 			// mode 3 jumps straight to the entry instead of easing, so apply it now
 			if (mode == 3) {
-				camera->ApplyAction();
+				gGame.mMotionControlCamera.ApplyAction();
 			}
 		}
 		break;
@@ -9019,7 +9019,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode      = Evaluate();
 		f32 time      = Evaluate() / 100.0f;
 		u32 type      = command == 240 ? 2 : 1;
-		BOOL relative = command == 251 || command == 252;
+		BOOL relative = (command == 251 || command == 252) ? TRUE : FALSE;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		switch (axis) {
 		case 2: {
@@ -10764,10 +10764,10 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 		}
 	} else {
 		u16 mode = Evaluate();
-		s32 direction;
+		s16 direction;
 		switch (mode) {
 		case EVT_ATOM_DIR:
-			direction = (s16)Evaluate();
+			direction = Evaluate();
 			break;
 		case EVT_ATOM_POS: {
 			f32 x = Evaluate() / 100.0f;
@@ -10817,10 +10817,10 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 		s32 anim = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer("mdir(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, mode, (s16)direction,
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, mode, direction,
 				                               (s32)(100.0f * time), anim, id));
 			}
-			f32 yaw        = DEG2RAD * (s16)direction;
+			f32 yaw        = DEG2RAD * direction;
 			f32 difference = obj->mMoveRotate.y - yaw;
 			while (difference < 0.0f)
 				difference += TWO_PI;

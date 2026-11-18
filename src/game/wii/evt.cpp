@@ -214,7 +214,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 		}
 		CEvt_ForgetObjId(id);
 		UnkStageObj* entry = GetStagePlacementByIndex(index);
-		entry->mFlags |= 0x80000000;
+		entry->mFlags |= 0x80000000ULL;
 	}
 	return 0;
 }
@@ -532,6 +532,22 @@ static inline void ClearTimers()
 	}
 }
 
+// parks a script in the first free slot of the ring, from the read slot on
+static inline void EvtQueue_Push(u8* script, XObj* owner, s16 useValue, s16 hitValue)
+{
+	s32 cursor = gEventScriptQueue.mRead;
+	for (s32 i = 0; i < 128; cursor++, i++) {
+		s32 index = cursor % 128;
+		if (gEventScriptQueue.mScript[index] == NULL) {
+			gEventScriptQueue.mScript[index]   = script;
+			gEventScriptQueue.mContext[index]  = owner;
+			gEventScriptQueue.mUseValue[index] = useValue;
+			gEventScriptQueue.mHitValue[index] = hitValue;
+			break;
+		}
+	}
+}
+
 /**
  * @note Address: 0x80094E90
  * @note Size: 0x4
@@ -598,24 +614,12 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
  * @note Address: 0x80094B0C
  * @note Size: 0x114
  */
-// NONMATCHING: retail keeps the slot index and the slot's address in each other's registers (99.5 %)
 extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue)
 {
 	if (script == NULL)
 		return;
 	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
-		s32 cursor = gEventScriptQueue.mRead;
-		for (s32 i = 0; i < 128; ++i) {
-			s32 index = cursor % 128;
-			if (gEventScriptQueue.mScript[index] == NULL) {
-				gEventScriptQueue.mScript[index]   = script;
-				gEventScriptQueue.mContext[index]  = owner;
-				gEventScriptQueue.mUseValue[index] = useValue;
-				gEventScriptQueue.mHitValue[index] = hitValue;
-				return;
-			}
-			++cursor;
-		}
+		EvtQueue_Push(script, owner, useValue, hitValue);
 		return;
 	}
 	ResetEventScriptState(evt, FALSE, FALSE, FALSE, FALSE);

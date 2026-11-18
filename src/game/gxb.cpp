@@ -154,7 +154,8 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			work.entries[work.used].width = width;
 			work.used++;
 			if (pass == 0) {
-				f32 inner = radius + .1f * radius * (f32)sin(eyes->mPhase), outer = 1.2f * inner;
+				f32 pulse = (f32)sin(eyes->mPhase);
+				f32 inner = radius + .1f * radius * pulse, outer = 1.2f * inner;
 				for (s32 k = 0; (f32)k < 16.0f; ++k) {
 					f32 outerAngle = .3926991f * k + eyes->mAngle, innerAngle = .3926991f * (k + 1) + eyes->mAngle;
 					f32 x0 = x + outer * (f32)sin(outerAngle), y0 = y + outer * (f32)cos(outerAngle);
@@ -449,22 +450,24 @@ static inline void EndWipeMask(CGs* gs)
  * @note Address: 0x80021570
  * @note Size: 0x528
  */
-// NONMATCHING: retail adds the row's 20 after a separate multiply (fmuls, fadds) where this build
-// fuses it (fmadds), one instruction short
+// NONMATCHING: retail adds the row's half cell after a separate multiply (fmuls, fadds) where this build
+// fuses it (fmadds), one instruction short. The cell size is a variable as on the Wii, where it comes from
+// the pointer screen's width.
 void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
 		return;
 	BeginWipe(gs, mode);
-	for (s32 row = 0; row < 448.0f / 40.0f; ++row) {
-		f32 y = (f32)row * 40.0f + 20.0f;
-		for (s32 col = 0; col < 640.0f / 40.0f; ++col) {
-			f32 x = (f32)col * 40.0f + 20.0f;
+	f32 cell = 640.0f / 16.0f;
+	for (s32 row = 0; row < 448.0f / cell; ++row) {
+		f32 y = row * cell + cell * 0.5f;
+		for (s32 col = 0; col < 640.0f / cell; ++col) {
+			f32 x = col * cell + cell * 0.5f;
 			f32 extra;
-			if (col < 8.0f)
+			if (col < 16.0f * 0.5f)
 				extra = 0.2f * col;
 			else
-				extra = 0.2f * (16.0f - col);
+				extra = 0.2f * (640.0f / cell - col);
 			DrawGsCircle(gs, 16, 0, 0, x, y, 0.0f, mWidth + mWidth * extra, mHeight + mHeight * extra, 0.0f, 0.0f, 0.0f);
 		}
 	}
@@ -770,7 +773,8 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
  * @note Address: 0x80023D74
  * @note Size: 0x16C
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc, the blue and alpha quotients swap f0/f2. The speeds are computed alpha first, as the Wii
+// build does.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -788,14 +792,14 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.a = 0.0f;
 	} else {
 		time            = FRAME_RATE * time;
-		f32 sr          = ((f32)r - color->mColor.r) / time;
-		f32 sg          = ((f32)g - color->mColor.g) / time;
-		f32 sb          = ((f32)b - color->mColor.b) / time;
-		f32 sa          = ((f32)a - color->mColor.a) / time;
-		color->mSpeed.r = sr;
-		color->mSpeed.g = sg;
-		color->mSpeed.b = sb;
-		color->mSpeed.a = sa;
+		f32 speedA      = ((f32)a - color->mColor.a) / time;
+		f32 speedB      = ((f32)b - color->mColor.b) / time;
+		f32 speedG      = ((f32)g - color->mColor.g) / time;
+		f32 speedR      = ((f32)r - color->mColor.r) / time;
+		color->mSpeed.r = speedR;
+		color->mSpeed.g = speedG;
+		color->mSpeed.b = speedB;
+		color->mSpeed.a = speedA;
 	}
 }
 
@@ -3140,18 +3144,29 @@ void Title::State15(u32 frames)
 		mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		file         = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
+			s32 level                          = file->mHeader.mLevel;
+			f32 battery                        = file->mHeader.mBattery;
+			f32 maxBattery                     = file->mHeader.mMaxBattery;
+			s32 money                          = file->mHeader.mMoney;
+			s32 exp                            = file->mHeader.mExp;
+			s32 scrap                          = file->mHeader.mScrap;
+			s32 rank                           = file->mHeader.mRank;
+			s32 hours                          = file->mHeader.mFrames / 216000;
+			s32 minutes                        = (file->mHeader.mFrames / 3600) % 60;
+			s32 stage                          = file->mHeader.mStage;
+			s32 timeMode                       = file->mHeader.mTimeMode;
 			gTitleSaveSlots[mFile].mUsed       = 1;
-			gTitleSaveSlots[mFile].mLevel      = file->mHeader.mLevel;
-			gTitleSaveSlots[mFile].mBattery    = file->mHeader.mBattery;
-			gTitleSaveSlots[mFile].mMaxBattery = file->mHeader.mMaxBattery;
-			gTitleSaveSlots[mFile].mMoney      = file->mHeader.mMoney;
-			gTitleSaveSlots[mFile].mExp        = file->mHeader.mExp;
-			gTitleSaveSlots[mFile].mScrap      = file->mHeader.mScrap;
-			gTitleSaveSlots[mFile].mRank       = file->mHeader.mRank;
-			gTitleSaveSlots[mFile].mHours      = file->mHeader.mFrames / 216000;
-			gTitleSaveSlots[mFile].mMinutes    = (file->mHeader.mFrames / 3600) % 60;
-			gTitleSaveSlots[mFile].mStage      = file->mHeader.mStage;
-			gTitleSaveSlots[mFile].mTimeMode   = file->mHeader.mTimeMode;
+			gTitleSaveSlots[mFile].mLevel      = level;
+			gTitleSaveSlots[mFile].mBattery    = battery;
+			gTitleSaveSlots[mFile].mMaxBattery = maxBattery;
+			gTitleSaveSlots[mFile].mMoney      = money;
+			gTitleSaveSlots[mFile].mExp        = exp;
+			gTitleSaveSlots[mFile].mScrap      = scrap;
+			gTitleSaveSlots[mFile].mRank       = rank;
+			gTitleSaveSlots[mFile].mHours      = hours;
+			gTitleSaveSlots[mFile].mMinutes    = minutes;
+			gTitleSaveSlots[mFile].mStage      = stage;
+			gTitleSaveSlots[mFile].mTimeMode   = timeMode;
 			gTitleSaveSlots[mFile].mState      = 0;
 			if (file->mHeader.mActive > 0) {
 				gTitleSaveSlots[mFile].mActive = 1;
@@ -3854,13 +3869,13 @@ void Title::State2(u32)
  */
 void Title::State1(u32 frames)
 {
-	Memcard* card = &gGame.mMemcard.mCard;
-	s32 state     = card->mState;
+	s32 state = gGame.mMemcard.mCard.mState;
 	mDelay -= frames;
 	if (mDelay < 0)
 		mDelay = 0;
 	switch (state) {
 	case 0: {
+		Memcard* card = &gGame.mMemcard.mCard;
 		OSTime timestamps[3];
 		for (s32 i = 0; i < 3; ++i) {
 			SavePreviewRecord* save = &card->mSaves[0][i];

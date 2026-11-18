@@ -7,19 +7,20 @@ char gSaveScanFileName[0x80];
 const char gSaveFileNameFormat[] = "CHIBIROBO(%d)";
 
 // NONMATCHING: retail derives the stat pointer from the card base it keeps, the build
-// materializes it standalone and makes the base a copy
+// computes the base into the stat register and keeps a copy of it
 /**
  * @note Address: 0x80088F20
  * @note Size: 0x338
  */
 extern "C" BOOL ScanMemoryCardForSaveFiles(Memcard* card, s32 channel)
 {
+	CARDStat* stat;
 	BOOL found = FALSE;
 	if (card->Probe(channel))
 		return TRUE;
 	if (card->Mount(channel, TRUE))
 		return TRUE;
-	CARDStat* stat = &card->mStat;
+	stat = &card->mStat;
 	for (s32 file = 0; file < 10; ++file) {
 		sprintf(gSaveScanFileName, gSaveFileNameFormat, file);
 		if (!card->OpenStatus(gSaveScanFileName, stat)) {

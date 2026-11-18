@@ -117,8 +117,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			mArchivePlayer.mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks.mHandles[i].Stop(frames);
 		}
 	}
 }
@@ -157,8 +157,8 @@ static inline MtxP GetEffectView(CGame* game)
 // the queued scene draws, sorted under view and popped one by one
 static inline void DrawSceneQueue(MtxP view)
 {
-	fn_802AEDEC(&gGame.mGs.mSceneHead, view);
-	WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+	fn_802AEDEC(&gGame.mGs.mScene.mHead, view);
+	WiiGsSceneObj* obj = gGame.mGs.mScene.mHead;
 	while (obj->mPending != 0) {
 		if (obj->mPending != 0) {
 			obj->vf038(obj->mPending - 1);
@@ -170,8 +170,9 @@ static inline void DrawSceneQueue(MtxP view)
 static inline CSoundHandle* FindTrack(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mArchivePlayer.mTracks[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks[i].GetId() == id) {
-			return &gGame.mSound.mArchivePlayer.mTracks[i];
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			return &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 		}
 	}
 	return NULL;
@@ -181,8 +182,9 @@ static inline CSoundHandle* FindTrack(u32 id)
 static inline bool IsTrackPaused(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mArchivePlayer.mTracks[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks[i].GetId() == id) {
-			return gGame.mSound.mArchivePlayer.mTracks[i].IsPause();
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			return gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsPause();
 		}
 	}
 	return false;
@@ -511,7 +513,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 			if (handle.IsAttachedSound() && handle.IsPause()) {
 				handle.Pause(false, frames);
 			}
@@ -534,7 +536,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 					s32 frames = gRefreshRate * 0.2f;
 					u32 id     = music & 0xFFFF;
 					for (int i = 0; i < 0x40; i++) {
-						nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
+						nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
 							handle.Pause(true, frames);
 						}
@@ -544,7 +546,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
 			s32 frames = gRefreshRate * fade;
 			for (int i = 0; i < 0x40; i++) {
-				nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
+				nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
 					handle.Pause(false, frames);
 				}
@@ -565,7 +567,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 			if (handle.IsAttachedSound() && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}
@@ -584,7 +586,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}
@@ -966,7 +968,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 	camera->vf88(1.0f, 1.0f, game->mShadow.mTexWidth - 2, game->mShadow.mTexHeight - 2, 0.0f, 1.0f);
 	game->mShadow.mStrength = alpha;
 	game->BeginCamera(camera);
-	fn_802AEF34(&gGame.mGs.mSceneHead, camera, TRUE);
+	fn_802AEF34(&gGame.mGs.mScene.mHead, camera, TRUE);
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
@@ -1001,7 +1003,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 		obj->DrawGroundShadow(strength);
 	}
 
-	fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+	fn_8027B6B8(gGame.mGs.mScene.mHead, TRUE, 4);
 	GXColor color = { 0, 0, 0, 0 };
 	color.a       = 100.0f * strength;
 	GXSetNumTexGens(0);
@@ -1016,18 +1018,18 @@ extern "C" void RenderSceneShadow(CGame* game)
 	GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
 	GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 	GXSetBlendMode(GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_COPY);
-	fn_8027B40C(gGame.mGs.mSceneHead);
-	fn_8027B484(gGame.mGs.mSceneHead);
-	fn_8027B570(gGame.mGs.mSceneHead);
-	fn_8027B644(gGame.mGs.mSceneHead);
-	fn_8027B5D0(gGame.mGs.mSceneHead);
-	WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+	fn_8027B40C(gGame.mGs.mScene.mHead);
+	fn_8027B484(gGame.mGs.mScene.mHead);
+	fn_8027B570(gGame.mGs.mScene.mHead);
+	fn_8027B644(gGame.mGs.mScene.mHead);
+	fn_8027B5D0(gGame.mGs.mScene.mHead);
+	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 	while (scene->mPending != 0) {
 		if (scene->mPending != 0) {
 			scene->vf038(scene->mPending - 1);
 		}
 	}
-	fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+	fn_8027B6B8(gGame.mGs.mScene.mHead, FALSE, 2);
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
@@ -1078,7 +1080,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+	fn_8027AE04(gGame.mGs.mScene.mHead, 0);
 }
 
 /**
@@ -1109,8 +1111,8 @@ void CGame::DrawHud()
 			mPointer.mHudObject->vf19C(0xFF0000C8, 0.0f, mPointer.mHudObjectX, mPointer.mHudObjectY);
 		}
 		CallStageModule(4, 0, NULL);
-		fn_802AEDEC(&gGame.mGs.mSceneHead, GetCamera()->mViewMtx);
-		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+		fn_802AEDEC(&gGame.mGs.mScene.mHead, GetCamera()->mViewMtx);
+		WiiGsSceneObj* obj = gGame.mGs.mScene.mHead;
 		while (obj->mPending != 0) {
 			if (obj->mPending != 0) { // retail tests the count again before it pops a draw
 				obj->vf038(obj->mPending - 1);
@@ -1408,7 +1410,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 		if (targets[1] == NULL) {
 			targets[1] = player->mLift.mTarget;
 		}
-		fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+		fn_8027B6B8(gGame.mGs.mScene.mHead, TRUE, 4);
 		GXSetNumTexGens(0);
 		GXSetNumChans(1);
 		GXSetNumTevStages(1);
@@ -1433,7 +1435,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			}
 		}
 		DrawSceneQueue(NULL);
-		fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+		fn_8027B6B8(gGame.mGs.mScene.mHead, FALSE, 2);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
 		gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
 		game->vf54();
@@ -1590,9 +1592,9 @@ void CGame::Draw()
 	RenderSceneShadow(this);
 	fn_802AB860(&gGame.mGs);
 	SetCameraLight();
-	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+	if (gGame.mGs.mScene.mHead->_2888 != NULL) {
 		fn_802BE414(&mEffects, gGame.mGs.mLight);
-		void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
+		void* fog = fn_8027AE0C(gGame.mGs.mScene.mHead, 0);
 		GXFogType type;
 		f32 startZ;
 		f32 endZ;
@@ -1696,7 +1698,7 @@ void CGame::Draw()
 	}
 
 	SetScreenLight();
-	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+	if (gGame.mGs.mScene.mHead->_2888 != NULL) {
 		fn_802BE414(&mEffects, gGame.mGs.mLight);
 	}
 	DrawTitleScreen(&mTitle);

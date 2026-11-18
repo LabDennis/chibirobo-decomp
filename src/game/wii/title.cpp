@@ -153,8 +153,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			mArchivePlayer.mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks.mHandles[i].Stop(frames);
 		}
 	}
 }
@@ -201,7 +201,7 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 x, f32
 // inlines to __fabsf
 static inline void ApproachTitleOffset(f32& value, f32& target)
 {
-	f32 speed = __fabsf((target - value) * .25f);
+	f32 speed = __fabsf((target - value) / 4);
 	if (speed <= 1)
 		speed = 1;
 	ApproachHudValue(&value, &target, speed);
@@ -1641,8 +1641,8 @@ extern "C" void DrawTitleScreen(Title* title)
 			}
 		}
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
-		fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
-		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+		fn_802AEDEC(&gGame.mGs.mScene.mHead, camera->mViewMtx);
+		WiiGsSceneObj* obj = gGame.mGs.mScene.mHead;
 		while (obj->mPending != 0) {
 			obj->vf038(obj->mPending - 1);
 		}
@@ -1729,9 +1729,9 @@ extern "C" void DrawTitleScreen(Title* title)
  * @note Address: 0x8004BC54
  * @note Size: 0x8F4
  */
-// NONMATCHING: read from retail's code; the float registers and spills differ, and retail calls
-// GetLocalizedInterfaceText(300) once more before the heading and drops the result; OK works out
-// its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
+// NONMATCHING: read from retail's code; the float registers and spills differ, and the two colors are
+// put together after the frame is drawn. The heading's text is fetched once more and dropped; OK works
+// out its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
 // the options page: the frame, its heading, the pointer and stick settings with their highlight bars and OK
 extern "C" void DrawTitleOptions(Title* title)
 {
@@ -1741,14 +1741,15 @@ extern "C" void DrawTitleOptions(Title* title)
 		f32 cy     = gPointerScreenHeight / 2;
 		f32 w      = (f32)(gPointerScreenWidth / 2) * alpha;
 		f32 h      = (f32)(gPointerScreenHeight / 2) * alpha;
-		u32 normal = 0xFFFFFF00 | (u8)(255.0f * alpha);
 		u32 lit    = 0xFFB62800 | (u8)(255.0f * alpha);
-		DrawTexturedWindowFrame(160.0f * alpha, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h * 0.5f, w, h, 1.0f, 1.0f,
-		                        1.0f);
-		f32 size         = 24.0f * title->mOptionAlpha;
-		const char* text = GetLocalizedInterfaceText(300);
-		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth * 0.5f, size + (cy - h * 0.5f), 0.0f, size, size);
+		u32 normal = 0xFFFFFF00 | (u8)(255.0f * alpha);
+		u32 frame  = 160.0f * alpha;
+		DrawTexturedWindowFrame(frame, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h / 2.0f, w, h, 1.0f, 1.0f, 1.0f);
+		const char* heading = GetLocalizedInterfaceText(300);
+		f32 size            = 24.0f * title->mOptionAlpha;
+		const char* text    = GetLocalizedInterfaceText(300);
+		f32 textWidth       = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth / 2.0f, size + (cy - h / 2.0f), 0.0f, size, size);
 
 		size        = 24.0f * title->mOptionAlpha;
 		f32 gap     = 8.0f;
@@ -1778,21 +1779,21 @@ extern "C" void DrawTitleOptions(Title* title)
 			selected = true;
 		}
 		u32 color = selected ? lit : normal;
-		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x11), cx - labelW - gap, 3.0f * size + (cy - h * 0.5f),
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x11), cx - labelW - gap, 3.0f * size + (cy - h / 2.0f),
 		                             0.0f, size, size);
 		selected = false;
 		if (title->mOptionLine == 0 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;
 		}
-		f32 valueX = gap + (cx + labelW) - barW * 0.5f;
-		fn_8004EDFC(title, selected, valueX, size * 0.5f + (3.0f * size + (cy - h * 0.5f)), size, barW);
+		f32 valueX = gap + (cx + labelW) - barW / 2.0f;
+		fn_8004EDFC(title, selected, valueX, size / 2.0f + (3.0f * size + (cy - h / 2.0f)), size, barW);
 		text       = title->mPointerOn ? GetLocalizedInterfaceText(0x12) : GetLocalizedInterfaceText(0x13);
 		u32 shadow = 100.0f * title->mOptionAlpha;
 		textWidth  = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (3.0f * size + (cy - h * 0.5f)),
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth / 2.0f, 2.0f + (3.0f * size + (cy - h / 2.0f)),
 		                             0.0f, size, size);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 3.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth / 2.0f, 3.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 
 		// the stick line
 		selected = false;
@@ -1800,20 +1801,20 @@ extern "C" void DrawTitleOptions(Title* title)
 			selected = true;
 		}
 		color = selected ? lit : normal;
-		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x14), cx - labelW - gap, 5.0f * size + (cy - h * 0.5f),
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x14), cx - labelW - gap, 5.0f * size + (cy - h / 2.0f),
 		                             0.0f, size, size);
 		selected = false;
 		if (title->mOptionLine == 1 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;
 		}
-		fn_8004EDFC(title, selected, valueX, size * 0.5f + (5.0f * size + (cy - h * 0.5f)), size, barW);
+		fn_8004EDFC(title, selected, valueX, size / 2.0f + (5.0f * size + (cy - h / 2.0f)), size, barW);
 		text      = title->mStickOn ? GetLocalizedInterfaceText(0x15) : GetLocalizedInterfaceText(0x16);
 		shadow    = 100.0f * title->mOptionAlpha;
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (5.0f * size + (cy - h * 0.5f)),
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth / 2.0f, 2.0f + (5.0f * size + (cy - h / 2.0f)),
 		                             0.0f, size, size);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 5.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth / 2.0f, 5.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 
 		// OK pulses with the cursor's animation
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
@@ -1825,7 +1826,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		color     = selected ? lit : normal;
 		text      = GetLocalizedInterfaceText(0x17);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, cx - textWidth * 0.5f, 7.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, cx - textWidth / 2.0f, 7.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 	}
 }
 
@@ -2156,7 +2157,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
  * @note Address: 0x8004DC94
  * @note Size: 0x174
  */
-// NONMATCHING: the two frame-count conversions of the drift step take each other's stack slot
+// the fade is stepped before the growth: retail's .sdata2 has 0.009 (0x805A2EFC) ahead of 0.018
 // one dust mote's drift cycle: a random delay, then it grows until it pops and respawns
 void fn_8004DC94(TitleDust* dust, u32 frames)
 {
@@ -2172,8 +2173,8 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
 		}
 		break;
 	case 2:
-		dust->mSpeedX += 0.018f * frames;
 		dust->mSpeedY -= 0.009f * frames;
+		dust->mSpeedX += 0.018f * frames;
 		if (dust->mSpeedX >= 2.0f) {
 			dust->mX      = rand() % gRingScreenWidth;
 			dust->mY      = rand() % gRingScreenHeight;
@@ -2271,11 +2272,12 @@ void fn_8004DF38()
 // a pane event clears whichever tracked index pointed at it; the slot sits in Title's vtable
 void fn_8004DF3C(Title* title, CbPane* pane)
 {
-	switch (pane->mKind) {
+	s32 kind = pane->mKind;
+	switch (kind) {
 	case 0:
 	case 1:
 	case 2:
-		if (title->mFile == pane->mKind && title->mFile != -1) {
+		if (title->mFile == kind && title->mFile != -1) {
 			title->mFile = -1;
 		}
 		break;
@@ -2283,7 +2285,7 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	case 4:
 		if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
 		    || title->mMode == 11) {
-			if (title->mChoice == pane->mKind - 3 && title->mChoice != -1) {
+			if (title->mChoice == kind - 3 && title->mChoice != -1) {
 				title->mChoice = -1;
 			}
 		}
@@ -2291,13 +2293,21 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	case 5:
 	case 6:
 	case 7:
-		if (title->mSelection == pane->mKind - 5 && title->mSelection != -1) {
+		if (title->mSelection == kind - 5 && title->mSelection != -1) {
 			title->mSelection = -1;
 		}
 		break;
 	}
-	if (title->mState == 21 && pane->mKind >= 8 && pane->mKind < 11 && title->mOptionLine != -1) {
-		title->mOptionLine = -1;
+	if (title->mState == 21) {
+		switch (pane->mKind) {
+		case 8:
+		case 9:
+		case 10:
+			if (title->mOptionLine != -1) {
+				title->mOptionLine = -1;
+			}
+			break;
+		}
 	}
 }
 
@@ -2521,7 +2531,7 @@ void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent
 		} else {
 			size = 38.4f;
 		}
-		f32 radius  = 2.0f * (size * 0.5f);
+		f32 radius  = 2.0f * (size / 2);
 		f32 centreY = y - radius * 0.5f;
 		Vec ring[65];
 		for (s32 i = 0; i < 65; i++) {
@@ -2573,14 +2583,14 @@ void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent
  * @note Address: 0x8004EDFC
  * @note Size: 0x480
  */
-// NONMATCHING: read from retail's code; only the float registers of x, width, top and scale differ
+// NONMATCHING: read from retail's code; only the order of the copies of x and width at the start differs
 // the highlight bar behind an options line: a stretched middle and two caps from one texture, then the
 // same bar smaller in a dark shade, which retail draws without its left cap
 void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 {
-	f32 top   = y - 2.0f;
+	y -= 2.0f;
 	f32 scale = 1.0f;
-	f32 h     = size * scale;
+	size *= scale;
 	u32 color;
 	if (selected && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 		color = (u32)(255.0f * title->mOptionAlpha) | 0xFFB62800;
@@ -2594,32 +2604,32 @@ void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + y, 0.0f, width, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width * 0.5f) - 4.0f * scale, 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width / 2) - 4.0f * scale, 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 	scale = 0.8f;
-	h *= scale;
+	size *= scale;
 	u32 shade = 200.0f * title->mOptionAlpha;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, x, 2.0f * scale + y, 0.0f, width, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 

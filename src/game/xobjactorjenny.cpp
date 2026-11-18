@@ -483,13 +483,13 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 			mActorStatus.mFlags &= ~0x200;
 			s32 first[] = { 0, 3, 1, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, first, 6));
-			firstPos     = CVec(joint.GetPos());
+			firstPos     = joint.GetPos();
 			s32 second[] = { 0, 3, 2, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, second, 6));
 			CVec secondPos(joint.GetPos());
 			// Retail computes this midpoint, then releases the player at the second joint.
-			f32 dx = (firstPos.x - secondPos.x) * 0.5f;
-			f32 dz = (firstPos.z - secondPos.z) * 0.5f;
+			f32 dx = (firstPos.x - secondPos.x) / 2;
+			f32 dz = (firstPos.z - secondPos.z) / 2;
 			firstPos.x -= dx;
 			firstPos.z -= dz;
 			firstPos.y = mMoveTranslate.y;
