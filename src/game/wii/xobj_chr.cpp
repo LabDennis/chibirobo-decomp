@@ -1291,8 +1291,8 @@ Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* chr)
 	CVec first  = chr->GetJointPos("L_eye");
 	CVec second = chr->GetJointPos("R_eye");
 	Vec point   = first + (second - first) / 2.0f;
-	point.x -= 1.5f * (f32)sin(chr->mMoveRotate.y);
-	point.z -= 1.5f * (f32)cos(chr->mMoveRotate.y);
+	point.x -= 1.5f * std::sinf(chr->mMoveRotate.y);
+	point.z -= 1.5f * std::cosf(chr->mMoveRotate.y);
 	return point;
 }
 
