@@ -3,9 +3,10 @@
 // event virtuals. The Wii source merges the GameCube's cjanim.cpp with the floor
 // helpers obja.cpp and xobjfloor.cpp carried; the floor coordinate readers appear
 // open-coded here, the array-and-index pair's inline half.
-// NONMATCHING: the per-frame animation stepper (0x800B4988), the ExecCallback
-// family and the kind-callback table (0x800B6F00-0x800BCBC4) plus
-// AssignAnimEventCallback and __sinit still come from the retail asm.
+// NONMATCHING: the per-frame animation stepper (0x800B4988), ExecCallback_CALC_MAT
+// (0x800B5CF0), the Cursor/XObjDemo ExecCallbackA (0x800BD4B8) and __sinit
+// (0x800BD624) still come from the retail asm. ExecCallbackA's mirror products
+// differ from retail only in register assignment.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
@@ -651,6 +652,33 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	if (screenZ > 0.0f && screenZ < 1.0f)
 		return FALSE; // inside the depth range: visible
 	return TRUE;
+}
+
+// the object-world-callback's first pass: with the 0x800 flag the model draws mirrored - the
+// move scale's X and Z negate, Y flips with the screen camera's orientation, and the yaw gains pi
+void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (mStatus.mFlags & 0x800 && pFuncObj->GetCallbackNodeID() == 0) {
+		CCamera* camera = gGame.GetScreenCamera();
+		f32 bottom      = camera->mBottom;
+		f32 top         = camera->mTop;
+		s32 sign        = top < bottom ? -1 : 1;
+		f32 scaleY      = mMoveScale.y;
+		f32 scaleX      = mMoveScale.x;
+		f32 scaleZ      = mMoveScale.z;
+		f32 rotateY     = mMoveRotate.y;
+		mMoveScale.x *= -1.0f;
+		mMoveScale.y *= sign;
+		mMoveScale.z *= -1.0f;
+		mMoveRotate.y += PI;
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		mMoveScale.y  = scaleY;
+		mMoveScale.x  = scaleX;
+		mMoveScale.z  = scaleZ;
+		mMoveRotate.y = rotateY;
+	} else {
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+	}
 }
 
 // the object-world-callback's second pass: copy the base matrix into the node's

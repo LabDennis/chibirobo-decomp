@@ -421,6 +421,7 @@ TestFloorCrossing__4XObjFRC3VecRC3Vec = .text:0x800B39FC; // type:function size:
 ProjectOffsetToScreen__4XObjFPC3VecPfPfPfP7CCamera = .text:0x800B43D8; // type:function size:0x110
 ProjectVisibleBounds__4XObjFPfPfP7CCameraff = .text:0x800B44E8; // type:function size:0x3B0
 IsOutsideCameraDepth__4XObjFP7CCamera = .text:0x800B4898; // type:function size:0xF0
+ExecCallbackA__4XObjFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x800B5AE4; // type:function size:0x178
 ExecCallbackB__4XObjFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x800B5C5C; // type:function size:0x94
 SetClampedPushPositionXZ = .text:0x800B61FC; // type:function size:0x274
 QueryMapFloorHeight = .text:0x800B6470; // type:function size:0x9C
