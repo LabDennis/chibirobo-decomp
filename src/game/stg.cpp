@@ -8060,13 +8060,12 @@ static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
 #endif
 }
 
-// NONMATCHING: one fadds in the separator position has its operands the other way round (retail fadds f0, f24, f0,
-// x first); x + 81 * 1.2, the constant first, 97.2 and a named sum all compile to the constant first
 extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
+	f32 scale = 1.2f;
 	// drawn as four digits, hhmm, up to 99:59
 	s32 value = hours * 100 + minutes;
 	if (value >= 9959)
@@ -8087,11 +8086,11 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	u32 color   = (u32)opacity | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-	w   = 1.2f * tex.GetWidth();
-	h   = 1.2f * (tex.GetHeight() / 10);
+	w   = scale * tex.GetWidth();
+	h   = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
-	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
+	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
 	u8 alphaByte  = opacity;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	for (int i = 0; i < 4; i++) {
@@ -8108,8 +8107,8 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 gap = 0.0f;
 			if (i < 2)
-				gap = w - 3.0f * 1.2f;
-			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * 1.2f)))), offsetScale);
+				gap = w - 3.0f * scale;
+			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))), offsetScale);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		}
 	}
@@ -8122,9 +8121,9 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	tex    = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[separator], 0);
 	u16 sw = tex.GetWidth(), sh = tex.GetHeight();
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * 1.2f), offsetScale);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (1.2f * sw), 0.7f * (1.2f * sh), 0.0f, 0.0f,
-	                   0.0f);
+	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * scale), offsetScale);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - scale, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	                   0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
