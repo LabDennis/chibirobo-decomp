@@ -20,6 +20,10 @@ struct XObjChrMenu {
 	XObjChrMenu();  // 0x800C0F70, defined in xpaddtor.cpp
 	~XObjChrMenu(); // 0x800C1058, the deleting dtor used for member destruction; no vtable
 
+	// 0x800EF3B8 and 0x800EF3D8: the item a ring's pointer starts on when it opens next, MENU 1001 sets them
+	void PointAtcItem(s32 item);
+	void PointDrsItem(s32 item);
+
 	u8 IsOpen() const { return mAtc.mOpen != 0 || mDrs.mOpen != 0; }
 	bool IsOpening() const { return mAtc.mOpen > 0 || mDrs.mOpen > 0; }
 	bool IsClosing() const { return mAtc.mOpen < 0 || mDrs.mOpen < 0; }

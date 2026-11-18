@@ -732,6 +732,16 @@ struct WiiPlayerParams {
 			mBattery = mMaxBattery;
 	}
 
+	// the battery's size stays below 999.9 watts
+	void SetMaxBattery(f32 value)
+	{
+		mMaxBattery = value > 0.0f ? value : 0.0f;
+		if (mMaxBattery < 0.0f)
+			mMaxBattery = 0.0f;
+		if (mMaxBattery > 999.9f)
+			mMaxBattery = 999.9f;
+	}
+
 	// money and scrap stay between 0 and 99999
 	void SetMoney(s32 value)
 	{

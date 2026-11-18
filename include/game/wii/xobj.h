@@ -1173,6 +1173,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// a queued anim, the same record as WiiTitleObject's WiiAnimSlot
+struct XObjAnimSlot {
+	s32 mAnim; // _00, -1 when the slot is free
+	s16 mA;    // _04
+	s16 mB;    // _06
+};
+STATIC_ASSERT(sizeof(XObjAnimSlot) == 0x8);
+
 // one floor's edge, the GameCube's XObjEdge
 struct XObjEdge {
 	Vec mContactOffset; // _00
@@ -1288,6 +1296,28 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
+	// empties the queue of anims waiting behind the current one
+	void ClearAnimQueue()
+	{
+		mAnimHead = 0;
+		for (s32 i = 0; i < 4; i++) {
+			mAnimSlots[i].mAnim = -1;
+		}
+	}
+	// queues an anim in the first free slot from the head on, dropped when all four are taken
+	void PushAnim(s32 anim, s16 a, s16 b)
+	{
+		for (s32 i = 0; i < 4; i++) {
+			XObjAnimSlot* slot = &mAnimSlots[(mAnimHead + i) % 4];
+			if (slot->mAnim == -1) {
+				slot->mAnim = anim;
+				slot->mA    = a;
+				slot->mB    = b;
+				return;
+			}
+		}
+	}
+
 	// the object's kind, -1 without its data record
 	s16 GetCategory() const
 	{
@@ -1349,12 +1379,13 @@ public:
 	CVec mVec714; // _714, the base the object's floor list hangs from in its local frame (the GameCube's mToppleOffset role: the cjanim
 	              // floor routines add the floors' center offsets to it)
 	CEvt mEvt;    // _724
-	const void* mEventScript; // _790, the event script the object starts when used
-	u8 _794[0x24];
-	CAnmQueue mAnmQueue; // _7B8
-	CJArchive mArchive;  // _820
-	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
-	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
+	const void* mEventScript;   // _790, the event script the object starts when used
+	s32 mAnimHead;              // _794, the slot PushAnim probes first
+	XObjAnimSlot mAnimSlots[4]; // _798, anims queued to play after the current one
+	CAnmQueue mAnmQueue;        // _7B8
+	CJArchive mArchive;         // _820
+	Mtx mBaseMtx;               // _968, SetBaseMtx's copy
+	MtxP mBaseMtxPtr;           // _998, NULL or mBaseMtx
 	u8 _99C[0x9A4 - 0x99C];
 	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
