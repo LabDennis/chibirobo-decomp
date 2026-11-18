@@ -710,6 +710,115 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 	return 0;
 }
 
+// retires every running effect of emitter id, fn_800A12F8 written out again
+static inline void RetireEffects(EffectInstance* effects, u32 id, BOOL retireParticles)
+{
+	if (id >= 10000) {
+		id = id + gGame.mEffects.mResources[0].mNumEmitter - 10000;
+	}
+	EffectInstance* effect = effects;
+	for (s32 i = 0; i < 0x80; i++, effect++) {
+		if (!effect->IsFinished() && id == effect->id) {
+			RetireEffect(&effect->handle, retireParticles);
+		}
+	}
+}
+
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+
+/**
+ * @note Address: 0x8009D6C0
+ * @note Size: 0x81C
+ */
+// NONMATCHING: retail's frame has @OBJ's rotation below the sum's temporary, every other slot 4 bytes lower
+s32 CEvt::_cmd_PTCL(u8, s32)
+{
+	u32 code = CEvt_Evaluate(this);
+	s16 type = CEvt_Evaluate(this);
+	Vec translate, scale;
+	if (type == EVT_ATOM_POS) {
+		translate.x            = CEvt_Evaluate(this) / 100.0f;
+		translate.y            = CEvt_Evaluate(this) / 100.0f;
+		translate.z            = CEvt_Evaluate(this) / 100.0f;
+		scale.x                = CEvt_Evaluate(this) / 100.0f;
+		scale.y                = CEvt_Evaluate(this) / 100.0f;
+		scale.z                = CEvt_Evaluate(this) / 100.0f;
+		f32 angle              = CEvt_Evaluate(this);
+		Vec rotation           = { 0.0f, 0.0f, 0.0f };
+		rotation.y             = DEG2RAD * angle;
+		EffectInstance* effect = fn_800A11A4((EffectInstance*)&gEventPtcl, code, -1);
+		if (effect != NULL) {
+			effect->pos   = translate;
+			effect->rot   = rotation;
+			effect->scale = scale;
+			UpdateEffectMtx(effect);
+		}
+	} else if (type == EVT_ATOM_OBJ) {
+		s16 id      = CEvt_Evaluate(this);
+		XObj* obj   = CEvt_GetObj(this, id);
+		translate.x = CEvt_Evaluate(this) / 100.0f;
+		translate.y = CEvt_Evaluate(this) / 100.0f;
+		translate.z = CEvt_Evaluate(this) / 100.0f;
+		scale.x     = CEvt_Evaluate(this) / 100.0f;
+		scale.y     = CEvt_Evaluate(this) / 100.0f;
+		scale.z     = CEvt_Evaluate(this) / 100.0f;
+		f32 angle   = CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			translate              = *obj->GetPos() + translate;
+			Vec rotation           = { 0.0f, 0.0f, 0.0f };
+			rotation.y             = DEG2RAD * angle;
+			EffectInstance* effect = fn_800A11A4((EffectInstance*)&gEventPtcl, code, -1);
+			if (effect != NULL) {
+				effect->pos   = translate;
+				effect->rot   = rotation;
+				effect->scale = scale;
+				UpdateEffectMtx(effect);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @OBJ, %d, ...) obj(%d) killed!", id, id));
+		}
+	} else if (type == EVT_ATOM_LEAD) {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		s32 depth = CEvt_Evaluate(this);
+		if (depth > 16)
+			depth = 16;
+		s32 path[16];
+		for (s32 i = 0; i < depth; i++) {
+			path[i] = CEvt_Evaluate(this);
+		}
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL) {
+				CEvt_Warn(FormatToStaticBuffer("ptcl(%d, @LEAD, %d, ...) ... obj(%d) is collision!\n", code, id, id));
+			}
+			// the effect follows the joint the path leads to, or the model's first one
+			nw4r::g3d::ResNode node = obj->vf284(depth, path);
+			if (node.IsValid()) {
+				MtxP mtx               = obj->GetWorldMtx(node);
+				EffectInstance* effect = fn_800A11A4((EffectInstance*)&gEventPtcl, code, -1);
+				if (effect != NULL) {
+					effect->mtx = mtx;
+					UpdateEffectMtx(effect);
+				}
+			} else {
+				MtxP mtx               = obj->GetWorldMtx((u32)0);
+				EffectInstance* effect = fn_800A11A4((EffectInstance*)&gEventPtcl, code, -1);
+				if (effect != NULL) {
+					effect->mtx = mtx;
+					UpdateEffectMtx(effect);
+				}
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @LEAD, %d, ...) obj(%d) killed!", id, id));
+		}
+	} else if (type == EVT_ATOM_KILL) {
+		RetireEffects((EffectInstance*)&gEventPtcl, code, FALSE);
+	} else {
+		OSPanic(__FILE__, 3528, FormatToStaticBuffer("ptcl(...) - invalid type - %d!\n", type));
+	}
+	return 0;
+}
+
 /**
  * @note Address: 0x8009CE98
  * @note Size: 0x160
