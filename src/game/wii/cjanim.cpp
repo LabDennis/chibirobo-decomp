@@ -1044,7 +1044,7 @@ static void fn_800B7348(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B73D8(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("ptcl_teacup");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x44, 0);
@@ -1087,10 +1087,10 @@ static void fn_800B7480(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_l");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1098,7 +1098,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_l1");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1106,7 +1106,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_l2");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1114,7 +1114,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r1");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1122,7 +1122,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r2");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1130,7 +1130,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r3");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1138,7 +1138,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r4");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1146,7 +1146,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r5");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1154,7 +1154,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r6");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1162,7 +1162,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r7");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1170,7 +1170,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r8");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1178,7 +1178,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r9");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1186,7 +1186,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r10");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1194,7 +1194,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r11");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1202,7 +1202,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r12");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1210,7 +1210,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r13");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1218,7 +1218,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r14");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1226,7 +1226,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r15");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1234,7 +1234,7 @@ static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_r16");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1274,10 +1274,10 @@ static void fn_800B7BD0(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B7CCC(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_tomp_scare3");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1285,7 +1285,7 @@ static void fn_800B7CCC(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_tomp_scare4");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1519,7 +1519,7 @@ static void fn_800B86B8(XObj* object, s32 event, f32 f1, f32 f2)
 		if (f1 < 76.0f && f2 >= 76.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_zact_gicco1");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x24, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x24, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1535,7 +1535,7 @@ static void fn_800B8748(XObj* object, s32 event, f32 f1, f32 f2)
 		if (f1 < 15.0f && f2 >= 15.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_zact_frog_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1544,7 +1544,7 @@ static void fn_800B8748(XObj* object, s32 event, f32 f1, f32 f2)
 		} else if (f1 < 29.0f && f2 >= 29.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_zact_frog_ptcl2");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x41, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x41, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1560,7 +1560,7 @@ static void fn_800B8840(XObj* object, s32 event, f32 f1, f32 f2)
 		if (f1 < 18.0f && f2 >= 18.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_zact_injured_shock");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1569,7 +1569,7 @@ static void fn_800B8840(XObj* object, s32 event, f32 f1, f32 f2)
 		} else if (f1 < 14.0f && f2 >= 14.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_zact_injured_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1585,7 +1585,7 @@ static void fn_800B8938(XObj* object, s32 event, f32 f1, f32 f2)
 		if (f1 < 2.0f && f2 >= 2.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1594,7 +1594,7 @@ static void fn_800B8938(XObj* object, s32 event, f32 f1, f32 f2)
 		} else if (f1 < 22.0f && f2 >= 22.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1603,7 +1603,7 @@ static void fn_800B8938(XObj* object, s32 event, f32 f1, f32 f2)
 		} else if (f1 < 42.0f && f2 >= 42.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1665,10 +1665,10 @@ static void fn_800B8A98(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_warpzone_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x48, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x48, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -1676,7 +1676,7 @@ static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 3) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAB, 0);
@@ -1703,7 +1703,7 @@ static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 4) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
@@ -1755,7 +1755,7 @@ static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 5) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
@@ -1787,10 +1787,10 @@ static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B91C0(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_ghost_ptcl");
-				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x47, 0);
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x47, 1);
 				if (e != NULL) {
 					e->mtx = mtx;
 					UpdateEffectMtx(e);
@@ -2144,7 +2144,7 @@ static void fn_800B9EF8(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800B9FE4(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 0.0f && f2 >= 0.0f) {
+		if (f1 < 0.0f && f2 >= 0.0f || f1 > f2) {
 			{
 				MtxP mtx          = object->GetWorldMtx("elec_ptcl2");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xF, 0);
@@ -2188,7 +2188,7 @@ static void fn_800B9FE4(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 6) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_short1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x91, 0);
@@ -2242,7 +2242,7 @@ static void fn_800B9FE4(XObj* object, s32 event, f32 f1, f32 f2)
 					UpdateEffectMtx(e);
 				}
 			}
-		} else if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		} else if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("eye_short3");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
@@ -2372,7 +2372,7 @@ static void fn_800B9FE4(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BA990(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_gicco_twinb01_ptcl1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x9D, 0);
@@ -2403,7 +2403,7 @@ static void fn_800BA990(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 3) {
-		if (f1 < 0.0f && f2 >= 0.0f) {
+		if (f1 < 0.0f && f2 >= 0.0f || f1 > f2) {
 			{
 				MtxP mtx          = object->GetWorldMtx("first_ptcl2");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA1, 0);
@@ -2419,7 +2419,7 @@ static void fn_800BA990(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BAB88(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 0.0f && f2 >= 0.0f) {
+		if (f1 < 0.0f && f2 >= 0.0f || f1 > f2) {
 			{
 				MtxP mtx          = object->GetWorldMtx("tb01_ptcl01");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA2, 0);
@@ -2500,7 +2500,7 @@ static void fn_800BADC0(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BAEB8(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("rain_ptcl1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x56, 0);
@@ -2638,7 +2638,7 @@ static void fn_800BB300(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BB3EC(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_pirateboat_ptcl");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x64, 0);
@@ -2704,7 +2704,7 @@ static void fn_800BB4F4(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BB864(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 1) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("ptcl_matrix1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6E, 0);
@@ -2723,7 +2723,7 @@ static void fn_800BB864(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 2) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("ptcl_electric");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x75, 0);
@@ -2734,7 +2734,7 @@ static void fn_800BB864(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 3) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
@@ -2745,7 +2745,7 @@ static void fn_800BB864(XObj* object, s32 event, f32 f1, f32 f2)
 			}
 		}
 	} else if (event == 4) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
@@ -3085,7 +3085,7 @@ static void fn_800BC494(XObj* object, s32 event, f32 f1, f32 f2)
 					UpdateEffectMtx(e);
 				}
 			}
-		} else if (f1 < 144.0f && f2 >= 144.0f) {
+		} else if (f1 < 144.0f && f2 >= 144.0f || f1 > f2) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_chibirobo_spark1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBB, 0);
@@ -3111,8 +3111,10 @@ static void fn_800BC494(XObj* object, s32 event, f32 f1, f32 f2)
 // the object kind's animation event callback (registered by AssignAnimEventCallback)
 static void fn_800BC964(XObj* object, s32 event, f32 f1, f32 f2)
 {
-	if (event == 0) {
-		fn_800A12F8((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, TRUE);
+	if (!(object->mStatus.mFlags & 0x10000)) {
+		if (event == 0) {
+			fn_800A12F8((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, TRUE);
+		}
 	} else if (event == 1) {
 		if (f2 == 0.0f || f1 > f2) {
 			{
@@ -3170,7 +3172,7 @@ static void fn_800BC964(XObj* object, s32 event, f32 f1, f32 f2)
 static void fn_800BCBC4(XObj* object, s32 event, f32 f1, f32 f2)
 {
 	if (event == 2) {
-		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 > f2 && f2 >= 1.0f) {
 			{
 				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
 				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
