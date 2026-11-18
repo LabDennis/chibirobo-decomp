@@ -11,6 +11,7 @@
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
+#include "game/wii/cursor.h"
 #include "game/wii/xobj.h"
 #include "game/wii/ceffect.h"
 #include "game/gmath.h"
@@ -3402,6 +3403,36 @@ void XObj::AssignAnimEventCallback()
 	case 855:
 	default:
 		mAnimEventCallback = NULL;
+	}
+}
+
+// the screen objects' pass (XObj2D, shared by Cursor and XObjDemo): they mirror
+// unconditionally, so the flag only picks where the jitter happens - inside the
+// base's own pass when it is set, here when it is clear
+void XObj2D::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() == 0) {
+		if (mStatus.mFlags & 0x800) {
+			XObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		} else {
+			CCamera* camera = gGame.GetScreenCamera();
+			f32 bottom      = camera->mBottom;
+			f32 top         = camera->mTop;
+			s32 sign        = top < bottom ? -1 : 1;
+			f32 scaleY      = mMoveScale.y;
+			f32 scaleX      = mMoveScale.x;
+			f32 scaleZ      = mMoveScale.z;
+			f32 rotateY     = mMoveRotate.y;
+			mMoveScale.x *= -1.0f;
+			mMoveScale.y *= sign;
+			mMoveScale.z *= -1.0f;
+			mMoveRotate.y += PI;
+			XObj::ExecCallbackA(pResult, mdl, pFuncObj);
+			mMoveScale.y  = scaleY;
+			mMoveScale.x  = scaleX;
+			mMoveScale.z  = scaleZ;
+			mMoveRotate.y = rotateY;
+		}
 	}
 }
 

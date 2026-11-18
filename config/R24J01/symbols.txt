@@ -470,6 +470,7 @@ fn_800BC494__FP4XObjlff = .text:0x800BC494; // type:function size:0x4D0
 fn_800BC964__FP4XObjlff = .text:0x800BC964; // type:function size:0x260
 fn_800BCBC4__FP4XObjlff = .text:0x800BCBC4; // type:function size:0x4A0
 AssignAnimEventCallback__4XObjFv = .text:0x800BD064; // type:function size:0x454
+ExecCallbackA__6XObj2DFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x800BD4B8; // type:function size:0x16C
 __dt__7CTrigonFv = .text:0x800BEB0C; // type:function size:0x40
 __dt__6ParamsFv = .text:0x800BFA18; // type:function size:0x40
 __dt__7CPadOneFv = .text:0x800C0EF0; // type:function size:0x40
