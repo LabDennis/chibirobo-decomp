@@ -9237,3 +9237,5 @@ State1__14XObjSpiderBossFUl = .text:0x8013479C; // type:function size:0x238
 gSpiderBossStateHandlers = .data:0x8030B29C; // type:object size:0x3C
 UpdateSpiderCarryModel = .text:0x801278E4; // type:function size:0x2F0
 gSpiderStateHandlers = .data:0x8030A560; // type:object size:0x78
+SpawnSpiderBounceCoin = .text:0x80128160; // type:function size:0x1E0
+ActivateWaitingKind43AActorsAtPosition = .text:0x8013EE70; // type:function size:0xF0

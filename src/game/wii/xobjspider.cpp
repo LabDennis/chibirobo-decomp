@@ -6,6 +6,7 @@
 #include "game/gmath.h"
 #include "game/wii/spiderplacement.h"
 #include "arithmetic.h"
+#include <stdlib.h>
 
 // the Wii file of the GameCube's xobjspider.cpp (retail 0x8012063C-0x80128C84): its functions run in the
 // Wii's order, ~XObjSpider lives with the pool ctors and the coin and carry helpers take the work block
@@ -28,6 +29,8 @@ void UpdateSpiderCoinBounces(void* unused, u32 frames);
 void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
 void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
+void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim);
+void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
 void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
@@ -640,6 +643,79 @@ void XObjSpider::State2(u32 frames)
 }
 
 /**
+ * @note Address: 0x8012377C
+ * @note Size: 0x354
+ */
+// NONMATCHING: retail hands StartScreenShake float literals (lfs) where the Wii prototype in game/cscrn.h takes
+// doubles, so ours loads double literals
+// dies, blinks, stops its sound, lets go of its slot, shakes the screen, then leaves
+// one of the coins where it was
+void XObjSpider::State3(u32 frames)
+{
+	mCounter++;
+	if (mCounter % 30 < 15) {
+		SetColor(1, 0, 0x80, 0, 0.0f);
+	} else {
+		SetColor(1, 0, 0, 0, 0.0f);
+	}
+	Vec pos;
+	switch (mPhase) {
+	case 0:
+		StopWiiSfx(&gGame.mSound, 0x19F, 0.0f);
+		SetAnim(0x19, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		if (mSlot != 255) {
+			if (mSlotCarry.mObj != NULL) {
+				mSlotCarry.mObj->mStatus.mFlags &= ~0x10000ULL;
+			}
+			gSpiderCarrySlotOwners[mSlot] = -1;
+			mSlotCarry.mObj               = NULL;
+			mSlot                         = 255;
+		}
+		mWait = 44;
+		mPhase++;
+		break;
+	case 1:
+		mWait -= frames;
+		if (mWait < 0) {
+			ActivateWaitingKind43AActorsAtPosition(mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			if (!gGame.GetStatusFlags(0x100)) {
+				StartScreenShake(&gGame.mQuake, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f);
+			}
+			mPhase++;
+		}
+		break;
+	case 2:
+		f32 frame = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= frame) {
+			mPhase++;
+			mCounter = 0;
+			mStatus.mFlags &= ~0x10000ULL;
+			mFlags.mFlags |= 0x80000;
+			mFlags.mFlags &= ~0x100000;
+			pos.x = mMoveTranslate.x;
+			pos.y = mMoveTranslate.y;
+			pos.z = mMoveTranslate.z;
+			s32 anim;
+			if (rand() % 2 > 0) {
+				anim = 2;
+			} else if (rand() % 4 > 1) {
+				anim = 1;
+			} else {
+				anim = 0;
+			}
+			Vec target;
+			target.x = mHome.x;
+			target.y = 0.0f;
+			target.z = mHome.z;
+			SpawnSpiderBounceCoin(&pos, &target, anim);
+		}
+		break;
+	case 3:
+		break;
+	}
+}
+
+/**
  * @note Address: 0x80125E20
  * @note Size: 0x128
  */
@@ -752,6 +828,98 @@ extern "C" void ResetSpiderCoinBounces(void* unused)
 		XObj* obj = gGame.mXObjs.mPools[7].Get(i);
 		if (obj->GetKind() == 0x104) {
 			((XObjCoin*)obj)->mBouncing = 0;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80127F0C
+ * @note Size: 0x254
+ */
+// moves the coins, shown, hopping, then falling to where they land
+extern "C" void UpdateSpiderCoinBounces(void* unused, u32 frames)
+{
+	f32 lift = 0.2f; // how far the coins float above their spot
+	for (s32 i = 0; i < 11; ++i) {
+		CoinBounce* entry = &gSpiderCoinBounces[i];
+		XObj* coin        = entry->mCoin;
+		if (coin != NULL) {
+			s32 phase   = entry->mPhase;
+			s32 counter = entry->mCount;
+			Vec pos     = { entry->mPos.x, entry->mPos.y, entry->mPos.z };
+			f32 targetY = entry->mTarget.y;
+			switch (phase) {
+			case 0:
+				coin->mStatus.mFlags |= 0x10000ULL;
+				++phase;
+				break;
+			case 1: {
+				++counter;
+				f32 height = 10.0f * (f32)sin(DEG2RAD * (f32)((counter * 16) % 360)) + lift;
+				if (height < lift) {
+					coin->SetTranslateY(pos.y + lift);
+					++phase;
+				} else {
+					coin->SetTranslateY(pos.y + height);
+				}
+				break;
+			}
+			case 2:
+				pos.y -= 0.8f * (f32)frames;
+				if (pos.y <= targetY) {
+					coin->mStatus.mFlags &= ~0x100000ULL;
+					pos.y = targetY;
+					++phase;
+				}
+				coin->SetTranslateY(pos.y + lift);
+				break;
+			case 3:
+				break;
+			}
+			entry->mPhase = phase;
+			entry->mCount = counter;
+			entry->mPos.x = pos.x;
+			entry->mPos.y = pos.y;
+			entry->mPos.z = pos.z;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80128160
+ * @note Size: 0x1E0
+ */
+// NONMATCHING: the pool loop steps another register, as on the GameCube
+// puts one of the free coins at position and plays its anim
+extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
+{
+	f32 lift = 0.2f;
+	if (gSpiderCoinBounceCount >= 11)
+		return;
+	for (s32 i = 0; i < 96; ++i) {
+		XObjCoin* coin = (XObjCoin*)gGame.mXObjs.mPools[7].Get(i);
+		if (coin->mStatus.mFlags & 1ULL) {
+			if (coin->GetKind() == 0x104) {
+				if ((coin->mStatus.mFlags & 1ULL) && !coin->mBouncing) {
+					coin->mBouncing                                   = 1;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mPhase = 0;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCount += 2;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.x    = position->x;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.y    = position->y + lift;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.z    = position->z;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.x = target->x;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.y = target->y;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.z = target->z;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin     = coin;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateX(position->x);
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateY(position->y + lift);
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateZ(position->z);
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->mStatus.mFlags |= 0x100000ULL;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetAnim(anim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					++gSpiderCoinBounceCount;
+					break;
+				}
+			}
 		}
 	}
 }
