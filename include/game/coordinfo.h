@@ -82,11 +82,15 @@ public:
 	// _08 vtable
 
 	AttrInfo() { mObjData = NULL; }
+#if defined(VERSION_R24J01)
+	AttrInfo(CoordInfo* info) { Init(info); } // the Wii ctor delegates to the real Init (SpawnObjectFromPlacement calls it)
+#else
 	AttrInfo(CoordInfo* info)
 	    : mObjData(GetObjData(info))
 	    , mPlacement(info->mPlacement)
 	{
 	}
+#endif
 	AttrInfo(const CoordInfo& info)
 	    : mObjData(GetObjData(&info))
 	    , mPlacement(info.mPlacement)
