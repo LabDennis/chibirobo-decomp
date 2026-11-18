@@ -4582,6 +4582,12 @@ f32 GetJointAnimationEndFrame(CJObj*);
 f32 GetJointAnimationCurrentFrame(CJObj*);
 }
 
+// where the jump started
+static inline Vec GetJumpArcPosition(const XActJump* jump)
+{
+	return jump->mArcPosition;
+}
+
 /**
  * @note Address: 0x800A0BD8
  * @note Size: 0x1FF8 (US)
@@ -4614,8 +4620,7 @@ Vec XObjChr::GetCameraTarget()
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetJointAnimationEndFrame(this);
-			f32 t      = GetJointAnimationCurrentFrame(this) / end;
-			t *= 1.7f;
+			f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 			if (t > 1.f)
 				t = 1.f;
 			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4651,8 +4656,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4672,8 +4676,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
@@ -4716,18 +4719,18 @@ Vec XObjChr::GetCameraTarget()
 			f32 t        = frame / duration;
 			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
 			f32 threshold = .91f * duration;
-			f32 elapsed   = GetJointAnimationCurrentFrame(this) - threshold;
+			frame         = GetJointAnimationCurrentFrame(this) - threshold;
 			f32 remaining = GetJointAnimationEndFrame(this) - threshold;
-			f32 dy        = elapsed > 0 ? (end.y - start.y) * (elapsed / remaining) : 0.f;
+			f32 dy        = frame > 0 ? (end.y - start.y) * (frame / remaining) : 0.f;
 			target        = (Vec) { x, 10.f + (start.y + dy), z };
 
 		} else if (IsJumpActionState(&mJump, 9) || IsJumpActionState(&mJump, 12) || IsJumpActionState(&mJump, 15)
 		           || IsJumpActionState(&mJump, 17)) {
 			target   = mMoveTranslate + (Vec) { 0, 10, 0 };
-			target.y = 10.f + mJump.mArcPosition.y;
+			target.y = 10.f + GetJumpArcPosition(&mJump).y;
 		} else if (IsJumpActionState(&mJump, 10) || IsJumpActionState(&mJump, 13) || IsJumpActionState(&mJump, 16)) {
 			CVec start = mMoveTranslate;
-			CVec arc   = mJump.mArcPosition;
+			CVec arc   = GetJumpArcPosition(&mJump);
 			f32 end    = GetJointAnimationEndFrame(this);
 			f32 t      = GetJointAnimationCurrentFrame(this) / end;
 			target     = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
