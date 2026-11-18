@@ -514,14 +514,8 @@ game/inventory.cpp:
 game/params.cpp:
 	.text       start:0x800DEA74 end:0x800DF070
 
-game/xobjfree.cpp:
-	.text       start:0x800DF2E4 end:0x800E4264
-	.data       start:0x80228A30 end:0x80228B7C
-
-game/xobjflagsinit.cpp:
-	.text       start:0x800E4264 end:0x800E42F0
-	.ctors      start:0x801FEF40 end:0x801FEF44
-	.bss        start:0x8035C250 end:0x8035C9B8
+game/xobjfreedtor.cpp:
+	.text       start:0x800DF2E4 end:0x800DF344
 
 game/objb_sound.cpp:
 	.text       start:0x800DF070 end:0x800DF2E4
@@ -529,6 +523,48 @@ game/objb_sound.cpp:
 	.data       start:0x80228640 end:0x80228834
 	.sdata      start:0x80634A88 end:0x80634AB0
 	.sdata2     start:0x80637C88 end:0x80637CB8
+
+game/xobjfree.cpp:
+	.text       start:0x800DF344 end:0x800DF8D0
+
+game/xobjfreeupdate.cpp:
+	.text       start:0x800DF8D0 end:0x800DFD7C
+
+game/xobjfreeevent.cpp:
+	.text       start:0x800DFD7C end:0x800E034C
+
+game/xobjdust.cpp:
+	.text       start:0x800E034C end:0x800E2EFC
+	.data       start:0x80228A30 end:0x80228B7C
+
+game/xobjcoinfall.cpp:
+	.text       start:0x800E2EFC end:0x800E3108
+
+game/xobjcoinparam.cpp:
+	.text       start:0x800E3108 end:0x800E3184
+
+game/xobjcoinupdate.cpp:
+	.text       start:0x800E3184 end:0x800E3BA4
+
+game/xobjcoin.cpp:
+	.text       start:0x800E3BA4 end:0x800E3F84
+
+game/xobjflagsdtor.cpp:
+	.text       start:0x800E3F84 end:0x800E4044
+
+game/xobjflagsclear.cpp:
+	.text       start:0x800E4044 end:0x800E40E0
+
+game/xobjhboxdtor.cpp:
+	.text       start:0x800E40E0 end:0x800E4150
+
+game/xobjcoindtor.cpp:
+	.text       start:0x800E4150 end:0x800E4264
+
+game/xobjflagsinit.cpp:
+	.text       start:0x800E4264 end:0x800E42F0
+	.ctors      start:0x801FEF40 end:0x801FEF44
+	.bss        start:0x8035C250 end:0x8035C9B8
 
 game/xobjletickerdtor.cpp:
 	.text       start:0x800E42F0 end:0x800E4350
@@ -563,8 +599,14 @@ game/xobjspiderboss.cpp:
 	.sbss       start:0x80635700 end:0x80635708
 	.sdata2     start:0x806382D8 end:0x806383D0
 
+game/xobjactordtor.cpp:
+	.text       start:0x80108754 end:0x801087CC
+
+game/xobjactorse.cpp:
+	.text       start:0x801087CC end:0x801089E4
+
 game/xobjactor.cpp:
-	.text       start:0x80108754 end:0x8010A164
+	.text       start:0x801089E4 end:0x8010A164
 	.rodata     start:0x8020BF50 end:0x8020C0D8
 	.sdata2     start:0x806383E8 end:0x80638468
 

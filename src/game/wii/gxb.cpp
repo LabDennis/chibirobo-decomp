@@ -28,18 +28,10 @@
 
 extern "C" {
 f64 fmax(f64, f64);
-// the float forms of the Wii MSL (math_double.h), which the game's math.h declares as functions or not at all
+// the float form of the Wii MSL (math_double.h), which the game's math.h does not declare
 inline f32 fmaxf(f32 x, f32 y)
 {
 	return fmax(x, y);
-}
-inline f32 sinf(f32 x)
-{
-	return sin(x);
-}
-inline f32 cosf(f32 x)
-{
-	return cos(x);
 }
 s32 GetItemIconTextureIndex(s32 id);
 void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f32 rx, f32 ry);
@@ -899,10 +891,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 			const char* name = (const char*)GetItemName(GetItem(object));
 			width            = 32.0f + MeasureGameTextWidth(&gGame.mGs, name, TRUE, size);
 			f32 angle        = 2.3561945f;
-			startX           = x + radius * sinf(angle);
-			startY           = y + radius * cosf(angle);
-			endX             = x + 1.7f * radius * sinf(angle);
-			endY             = y + 1.7f * radius * cosf(angle);
+			startX           = x + radius * std::sinf(angle);
+			startY           = y + radius * std::cosf(angle);
+			endX             = x + 1.7f * radius * std::sinf(angle);
+			endY             = y + 1.7f * radius * std::cosf(angle);
 			left             = endX;
 			right            = endX + width;
 			for (u32 j = 0; j < work.used; ++j) {
@@ -933,12 +925,12 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 			if (pass == 0) {
 				// the ring breathes with mPhase; its teeth reach out a fifth further
 				f32 segments = 16.0f;
-				f32 inner    = radius + .1f * radius * sinf(eyes->mPhase);
+				f32 inner    = radius + .1f * radius * std::sinf(eyes->mPhase);
 				radius       = 1.2f * inner;
 				for (s32 k = 0; (f32)k < segments; ++k) {
 					f32 outerAngle = TWO_PI / segments * k + eyes->mAngle, innerAngle = TWO_PI / segments * (k + 1) + eyes->mAngle;
-					f32 x0 = x + radius * sinf(outerAngle), y0 = y + radius * cosf(outerAngle);
-					f32 x1 = x + inner * sinf(innerAngle), y1 = y + inner * cosf(innerAngle);
+					f32 x0 = x + radius * std::sinf(outerAngle), y0 = y + radius * std::cosf(outerAngle);
+					f32 x1 = x + inner * std::sinf(innerAngle), y1 = y + inner * std::cosf(innerAngle);
 					DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, gold, x1, y1, 0, gold);
 				}
 				DrawGsLineSegment(&gGame.mGs, NULL, startX, startY, 0, gold, endX, endY, 0, gold);
@@ -988,7 +980,7 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 			if (gGame.mPointer.mScopeTimer >= 5.0f)
 				fade = 0.0f;
 			else
-				fade = sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mPointer.mScopeTimer, 1.0)));
+				fade = std::sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mPointer.mScopeTimer, 1.0)));
 		} else {
 			fade = 1.0f;
 		}
@@ -1064,7 +1056,7 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 	// the left lens: its ring, then the tick marks at the last rotations, each fainter than the one before
 	f32 cx = x - offset;
 	for (s32 i = 0; i < 65; ++i) {
-		f32 sx = sinf(.09817477f * i), cy = cosf(.09817477f * i);
+		f32 sx = std::sinf(.09817477f * i), cy = std::cosf(.09817477f * i);
 		points[i].x = sx * lrx + cx;
 		points[i].y = cy * lry + y;
 		points[i].z = 0;
@@ -1075,7 +1067,7 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 	s32 count = single == 0 ? 10 : 1;
 	for (s32 i = 0; i < count; ++i) {
 		for (s32 j = 0; j < 5; ++j) {
-			f32 sx = sinf(HALF_PI * j + trail[i]), cy = cosf(HALF_PI * j + trail[i]);
+			f32 sx = std::sinf(HALF_PI * j + trail[i]), cy = std::cosf(HALF_PI * j + trail[i]);
 			f32 x0 = sx * lrx + cx, x1 = sx * (lrx - 10.0f) + cx;
 			f32 y0 = cy * lry + y, y1 = cy * (lry - 10.0f) + y;
 			DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, trailColor, x1, y1, 0, trailColor);
@@ -1086,7 +1078,7 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 		// the right lens turns the other way
 		f32 rcx = x + offset;
 		for (s32 i = 0; i < 65; ++i) {
-			f32 sx = sinf(.09817477f * i), cy = cosf(.09817477f * i);
+			f32 sx = std::sinf(.09817477f * i), cy = std::cosf(.09817477f * i);
 			points[i].x = sx * rx + rcx;
 			points[i].y = cy * ry + y;
 			points[i].z = 0;
@@ -1095,7 +1087,7 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 		trailColor = color;
 		for (s32 i = 0; i < 10; ++i) {
 			for (s32 j = 0; j < 5; ++j) {
-				f32 sx = sinf(HALF_PI * j + -trail[i]), cy = cosf(HALF_PI * j + -trail[i]);
+				f32 sx = std::sinf(HALF_PI * j + -trail[i]), cy = std::cosf(HALF_PI * j + -trail[i]);
 				f32 x0 = sx * rx + rcx, x1 = sx * (rx - 10.0f) + rcx;
 				f32 y0 = cy * ry + y, y1 = cy * (ry - 10.0f) + y;
 				DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, trailColor, x1, y1, 0, trailColor);
@@ -1110,10 +1102,10 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 			u32 tint = 0xffffff00 | alpha;
 			for (s32 i = 0; i < 4; ++i) {
 				f32 a      = HALF_PI * i;
-				f32 pulse  = 3.0f * sinf(DEG2RAD * ((frame * 24) % 360));
+				f32 pulse  = 3.0f * std::sinf(DEG2RAD * ((frame * 24) % 360));
 				f32 radius = rx + pulse;
-				f32 px     = radius * sinf(a) + x;
-				f32 py     = radius * cosf(a) + y;
+				f32 px     = radius * std::sinf(a) + x;
+				f32 py     = radius * std::cosf(a) + y;
 				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 				CTpl& tpl = gGame.mTpl;
 				tpl.mTex.Init(&tpl.mPalette->descriptorArray[129], 0);
@@ -1218,8 +1210,8 @@ void CPtclDust3::Draw(CGs* gs)
 	if (!mActive) {
 		return;
 	}
-	f32 width     = 2.0f * (mSize.x * sinf(0.8f * (PI * mAlpha)));
-	f32 height    = 2.0f * (mSize.y * sinf(0.8f * (PI * mAlpha)));
+	f32 width     = 2.0f * (mSize.x * std::sinf(0.8f * (PI * mAlpha)));
+	f32 height    = 2.0f * (mSize.y * std::sinf(0.8f * (PI * mAlpha)));
 	u32 edgeColor = mColor & 0xFFFFFF00;
 	u32 color     = (mColor & 0xFFFFFF00) | ((u32)(s32)((f32)(mColor & 0xFF) * mAlpha) & 0xFF);
 	if (mTex != NULL) {

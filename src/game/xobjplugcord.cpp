@@ -208,8 +208,8 @@ extern "C" void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z)
 	Vec center = CVec(x, y, z);
 	for (s32 i = 0; i < cord->mCount; ++i) {
 		f32 angle  = (3.1415f * i) / 8.0f;
-		f32 sine   = (f32)sin(angle);
-		f32 cosine = (f32)cos(angle);
+		f32 sine   = std::sinf(angle);
+		f32 cosine = std::cosf(angle);
 		cord->mPoints[i].mPos.Set(CVec(5.0f * cosine, -10.0f, 5.0f * sine));
 		Vec offset = center;
 		cord->mPoints[i].mPos += offset;

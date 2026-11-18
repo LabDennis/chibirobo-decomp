@@ -54,10 +54,10 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			f32 x;
 			f32 rot;
 			f32 y;
-			bob       = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
-			tilt      = sin(0.7f * game->mStageName.mChars[i].mTilt);
-			swell     = sin(3.1415927f * scale);
-			pop       = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			bob       = 4.0f * std::sinf(game->mStageName.mChars[i].mBob);
+			tilt      = std::sinf(0.7f * game->mStageName.mChars[i].mTilt);
+			swell     = std::sinf(3.1415927f * scale);
+			pop       = 0.2f * swell + std::sinf(1.5707964f * scale);
 			x         = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
 			u32 alpha = 255.0f * scale;
 			rot       = -(0.017453292f * (10.0f * tilt));
