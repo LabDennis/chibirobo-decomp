@@ -22,6 +22,9 @@ extern f32 gScreenWidthScale;
 void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags, f32 volume);
 void StopGameMovie(CGame* game);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
+void fn_80084B90(void* menu, s32 index); // opens one of the menus
+void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection);
+void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result);
 }
 
 CEvtFlags gEventFlags;
@@ -300,6 +303,125 @@ s32 CEvt::_cmd_MOVIE(u8, s32)
 		StopGameMovie(&gGame);
 	}
 	return 0;
+}
+
+/**
+ * @note Address: 0x8009D014
+ * @note Size: 0x220
+ */
+s32 CEvt::_cmd_MSG(u8 cmd, s32)
+{
+	CMsg* owner = mMsg;
+	if (owner != NULL) {
+		if (owner->mStay > 0) {
+			// 1: the last message was left up by STAY; mStay 2 has END fade it out
+			if (mMsgState == 1) {
+				owner->mStay = 2;
+				mMsgState++;
+				mData.mScript--;
+				return 1;
+			}
+			// 2: wait for that window to finish; a message with no text only closes it
+			if (mMsgState == 2) {
+				if (owner->mData.mCursor != NULL) {
+					mData.mScript--;
+					return 1;
+				}
+				mMsgState   = 0;
+				mMsg->mIdle = 1;
+				if (mData.mScript[4] == 0) {
+					mData.mScript = ResolveEventScriptOffset(mData.mScript);
+					return 0;
+				}
+			}
+		}
+		owner = mMsg;
+		if (owner->mIdle != 0) {
+			if (mOwner != NULL && mOwner->_9A4 != 0 && gGame.mEvt.mData.mScript != NULL) {
+				// an object's script waits while the main script runs
+				mData.mScript--;
+			} else {
+				CMsg_Open(owner, cmd, mData.mScript + 4, (MsgFormatArgs*)&mValues.mBuf);
+				mMsg->mIdle = 0;
+				// back onto the opcode and yield: MSG runs again each frame until the message is done
+				mData.mScript--;
+				if (cmd == EVT_CMD_SELECT) {
+					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+				}
+			}
+			return 1;
+		}
+		// STAY: the script goes on with the window left up
+		if (owner->mStay > 0) {
+			mMsgState     = 1;
+			mData.mScript = ResolveEventScriptOffset(mData.mScript);
+			return 0;
+		}
+		if (owner->mData.mCursor != NULL) {
+			mData.mScript--;
+			return 1;
+		}
+		if (cmd == EVT_CMD_SELECT) {
+			mSelectResult = owner->mSelectResult;
+		}
+		mMsg->mIdle   = 1;
+		mData.mScript = ResolveEventScriptOffset(mData.mScript);
+		return 0;
+	}
+	mData.mScript = ResolveEventScriptOffset(mData.mScript);
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009C3EC
+ * @note Size: 0x1D8
+ */
+s32 CEvt::_cmd_MENU(u8, s32)
+{
+	s32 ret = 0;
+	// rewind to here until the menu closes
+	u8* cmd = mData.mScript - 1;
+	s32 id  = CEvt_Evaluate(this);
+	if (mMenuActive != 0) {
+		if (gGame.mMenu.mActive != 0) {
+			mData.mScript = cmd;
+			ret           = 1;
+		} else {
+			mMenuActive = 0;
+		}
+	} else if (id == 1000) {
+		// equipment rings: ring 0 (attachments) or 1 (costumes) gets the cursor, opening them if needed; below 0 closes them
+		s32 ring = CEvt_Evaluate(this);
+		if (ring >= 0) {
+			SelectPlayerEquipmentRing(gGame.GetPlayer(), ring);
+		} else {
+			WiiPlayerState* player = gGame.GetPlayer();
+			bool ringsOpen         = false;
+			if (player->mMenu.mAtc.mOpen != 0 || player->mMenu.mDrs.mOpen != 0) {
+				ringsOpen = true;
+			}
+			if (ringsOpen) {
+				ClosePlayerEquipmentMenu(player, -1);
+			}
+		}
+	} else if (id == 1001) {
+		s32 atcItem = CEvt_Evaluate(this);
+		s32 drsItem = CEvt_Evaluate(this);
+		if (atcItem >= 0) {
+			gGame.GetPlayer()->mMenu.PointAtcItem(atcItem);
+			gGame.GetPlayer()->mMenu.PointDrsItem(atcItem);
+		}
+		if (drsItem >= 0) {
+			gGame.GetPlayer()->mMenu.PointDrsItem(drsItem);
+			gGame.GetPlayer()->mMenu.PointAtcItem(drsItem);
+		}
+	} else {
+		fn_80084B90(&gGame.mMenu, id);
+		mMenuActive   = 1;
+		ret           = 1;
+		mData.mScript = cmd;
+	}
+	return ret;
 }
 
 s32 CEvt::_cmd_SETSP(u8, s32)
