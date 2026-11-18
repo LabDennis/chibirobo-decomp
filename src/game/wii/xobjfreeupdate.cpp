@@ -85,12 +85,12 @@ void XObjFree::DrawScreenOverlay()
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
 		s32 i;
 		for (i = 0; i < 1; i++) {
-			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * flash) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, inner + i, inner + i,
-			             0.0f, 0.0f, 0.0f);
+			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * flash) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, inner + i, inner + i, 0.0f, 0.0f,
+			             0.0f);
 		}
 		for (i = 0; i < 1; i++) {
-			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * flash) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, outer + i, outer + i,
-			             0.0f, 0.0f, 0.0f);
+			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * flash) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, outer + i, outer + i, 0.0f, 0.0f,
+			             0.0f);
 		}
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
