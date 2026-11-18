@@ -518,8 +518,10 @@ gamecube_libs = [
             # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
             # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
             # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
-            # 0x8020C2D4) and .sbss2 (Kind8's 0x8063A530 ... HandleActorRiderCommand's 0x8063A54C) run in the reverse of
-            # .text, while HandleEventCommand's strings (0x8020C338) come before LoadFromPlacement's (0x8020C368)
+            # 0x8020C2D4) and .sbss2 (Kind8's 0x8063A530 ... HandleActorRiderCommand's 0x8063A548) run in the reverse of
+            # .text, while HandleEventCommand's strings (0x8020C338) come before LoadFromPlacement's (0x8020C368).
+            # -inline noauto: LaunchSpiderBossPartByIndex (0x80111980) keeps LaunchSpiderBossPart (0x801116FC, 0x284) as a
+            # call, which -inline auto,deferred inlines
             Object(NonMatching, "game/xobjactor3.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             # -inline deferred, as retail shows (JP addresses): .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
             # first, then UpdateToy6FJointSpin's (0x8020C580), UpdateToyJointExtension's (0x8020C610), StateCarry's
