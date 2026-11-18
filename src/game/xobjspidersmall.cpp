@@ -2160,13 +2160,15 @@ void XObjSpiderSmall::ResetObjectState()
  * @note Address: 0x800FEDD0
  * @note Size: 0x398
  */
-// NONMATCHING: the spider pool loop folds 0x9B4 into the index
+// NONMATCHING: the inlined FindWebs gives its effect-array pointer a register of its own in each loop, retail
+// keeps one pointer for both
 BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if (mPoolIndex == 0) {
 			for (int i = 0; i < 16; i++) {
-				((XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i))->Hide();
+				XObj* obj = gGame.mXObjs.mPools[18].Get(i);
+				((XObjSpiderSmall*)obj)->Hide();
 			}
 			if (mTimeMode != gGame.mTimeState.mMode) {
 				for (s32 i = 0; i < 0x27; i++) {
