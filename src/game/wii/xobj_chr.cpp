@@ -1302,6 +1302,22 @@ BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
 	return IsEventBlocked(player);
 }
 
+// resets the plug, keeping its rotation while it's carried
+void ResetPlayerPlug(WiiPlayerState* chr)
+{
+	if (chr->mPlug.mStatus.mFlags & 0x0400000000000000ULL) {
+		Vec rotation = (Vec&)chr->mPlug.mMoveRotate;
+		chr->mPlug.mStatus.mFlags &= ~0x0400000000000000ULL;
+		chr->mPlug.ResetObjectState();
+		chr->mPlug.UpdateObject(10);
+		chr->mPlug.SetRot(rotation);
+		chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+	} else {
+		chr->mPlug.ResetObjectState();
+		chr->mPlug.UpdateObject(10);
+	}
+}
+
 // the event call 101: which side of a clear leticker he comes from, 1 for anything else
 // NONMATCHING: retail loads the data record ahead of the prologue's stores
 s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
@@ -1385,6 +1401,37 @@ BOOL IsPlayerStopped(const WiiPlayerState* chr)
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)
 {
 	return chr->mFlashTimer > 0;
+}
+
+// hit, flinches when he's free to and starts the flash timer. The Wii adds two carry states he may flinch
+// from and flinches only while the player status allows it
+void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 value)
+{
+	if (!gGame.GetStatusFlags(0xC00ULL) && chr->mAttachmentRequest < 0 && gGame.mEvt.mData.mScript == NULL) {
+		if (start && (chr->mLift.mState == 0 || chr->mLift.mState == 4 || chr->mLift.mState == 29 || chr->mLift.mState == 31)
+		    && chr->mHang.mState == 0 && chr->mJump.mState == 0 && chr->mLadder.mState == 0 && chr->mRope.mState == 0
+		    && chr->mPush.mState == 0 && chr->mTumble.mState == 0 && chr->mCopter.mState == 0
+		    && (chr->mPopper.mState == 0 || chr->mPopper.mState == 4 || chr->mPopper.mState == 8) && chr->mRadar.mState == 0) {
+			if (chr->mLift.mState == 0)
+				chr->SetAnim(0xD4, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			else
+				chr->SetAnim(0x94, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			if (chr->mPlayerFlags & 0x20000000)
+				chr->mTumble.mState = 8;
+		} else if (cancel) {
+			if (chr->mHang.mState == 5)
+				chr->mHang.mState = 8;
+			else if (chr->mLadder.mState == 5)
+				chr->mLadder.mState = 8;
+			else if (chr->mRope.mState == 5)
+				chr->mRope.mState = 7;
+		}
+	}
+	if (0.0f != value) {
+		chr->mFlashTimer  = gRefreshRate;
+		chr->mFlashCount  = 0;
+		chr->mHitStrength = value;
+	}
 }
 
 } // extern "C"

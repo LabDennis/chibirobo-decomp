@@ -803,10 +803,11 @@ struct WiiCordWire {
 	virtual void SetPosition(const Vec* pos); // _90
 };
 
-// the plug block embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug). The anchor
-// transform takes the whole block; only the connection word the cord simulation reads is verified
-struct WiiPlayerPlug {
-	u8 _0000[0xD64];
+// the plug object embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug): ResetPlayerPlug
+// reaches its XObj status and virtuals. The anchor transform takes the whole block; of its own members only
+// the connection word the cord simulation reads is verified
+struct WiiPlayerPlug : public XObj {
+	u8 _09A8[0xD64 - 0x9A8];
 	s32 mConnection; // _D64, XActLift's _54 with 0x10000 set
 	u8 _D68[0xDA0 - 0xD68];
 };
@@ -909,10 +910,11 @@ struct WiiPlayerState : public XObj {
 	u8 _0A04[0xA20 - 0xA04];
 	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
 	u8 _0A28[0xA88 - 0xA28];
-	s32 mIdleLoops;  // _0A88, idle anim loops before the next idle move
-	f32 mIdleTimer;  // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
-	s32 mFlashTimer; // _0A90
-	u8 _0A94[0xA9C - 0xA94];
+	s32 mIdleLoops;      // _0A88, idle anim loops before the next idle move
+	f32 mIdleTimer;      // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
+	s32 mFlashTimer;     // _0A90
+	s32 mFlashCount;     // _0A94, frames the flash has run
+	f32 mHitStrength;    // _0A98, the last hit's strength
 	f32 mMoveSpeedScale; // _0A9C
 	XAction mLift;       // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
 	u8 _0ACC[0xAF0 - 0xACC];
@@ -929,11 +931,15 @@ struct WiiPlayerState : public XObj {
 	XAction mPush; // _0C78
 	u8 _0CA4[0xCD0 - 0xCA4];
 	XActTumble mTumble; // _0CD0
-	u8 _0D18[0xD50 - 0xD18];
+	XAction mCopter;    // _0D18
+	u8 _0D44[0xD50 - 0xD44];
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
-	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
-	u8 _9608[0x96A0 - 0x9608];
+	// his sounds: AnimSfx's head (game/wii/animsfx.h, which needs this header) with two actors, as XObjCoin's;
+	// only the two are reached and the radar action follows at _95D4
+	u8 mSfx[0x28];  // _95AC
+	XAction mRadar; // _95D4
+	u8 _9600[0x96A0 - 0x9600];
 	s32 mBlinkWait;        // _96A0, frames until he blinks again
 	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
 	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
