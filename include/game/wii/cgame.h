@@ -579,6 +579,7 @@ public:
 	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
+	virtual void DrawDebug2d();              // _28
 
 	s32 FindFacing(s32 slotIndex, const Vec& dir);
 
@@ -655,7 +656,10 @@ public:
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
 	u8 _E78[0xE7C - 0xE78];
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	u8 _E98[0xF2C - 0xE98];
+	u8 _E98[0xEA4 - 0xE98];
+	s32 mInsideAreaCount; // _EA4, area IDs written to mInsideAreas
+	s32 mInsideAreas[32]; // _EA8, areas containing the player
+	u8 _F28[0xF2C - 0xF28];
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
 	u8 _F64[0xF68 - 0xF64];
 	CVec mTargetEye;      // _F68
@@ -688,6 +692,7 @@ public:
 	virtual void Update(u32 step);  // _10
 	virtual void Reset();           // _14
 	virtual void Init();            // _1C
+	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60

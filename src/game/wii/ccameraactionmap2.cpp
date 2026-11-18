@@ -144,6 +144,10 @@ void CCameraActionArea::Init()
 	mArrows[1]._14           = 0.0f;
 }
 
+extern s32 gScreenSafeRight;
+extern s32 gScreenSafeTop;
+extern "C" void fn_8016AA74(const f32* params);
+
 void CCameraActionArea::PreviousUpdate()
 {
 	if (mControlEnabled == 1) {
@@ -253,6 +257,18 @@ s32 CCameraActionArea::FindFacing(s32 slotIndex, const Vec& dir)
 
 extern "C" void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex)
 {
+	area->mControlEnabled = 1;
+	CVec view             = area->mInterest - area->mEye;
+	PSVECNormalize(&view, &view);
+	SelectAreaCameraEntry(area, slotIndex, area->FindFacing(slotIndex, view), mode, time);
+}
+
+// the Wii-only variant: picks the entry facing the current view in the active area's group
+// NONMATCHING: the view and the eye copy swap stack slots (99.9 %); retail expands
+// SelectAreaCameraEntryByViewDirection here, which this merged unit's -inline noauto does not
+extern "C" void SelectActiveAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time)
+{
+	s32 slotIndex         = gCameraAreaState.mActiveArea;
 	area->mControlEnabled = 1;
 	CVec view             = area->mInterest - area->mEye;
 	PSVECNormalize(&view, &view);
@@ -629,7 +645,57 @@ void CCameraActionArea::DrawDebug3d()
 	gCameraAreaState.DrawDebug3d();
 }
 
+/**
+ * @note Address: 0x8015F0DC
+ * @note Size: 0x270
+ */
+void CCameraActionMap::DrawDebug2d()
+{
+	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.2f };
+	fn_8016AA74(sDebugParams);
+	f32 z = 0.0f;
+	f32 y, x;
+	x = gScreenSafeRight - 171;
+	y = gScreenSafeTop + 18;
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
+	                       gCameraAreaState.mCurrentArea);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACMAP2\n", x, y + 9.0f, z, 9.0f, 9.0f);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", x - 36.0f, y + 18.0f, z, 9.0f, 9.0f,
+	                       mStatus.mFlags, mPreviousStatus.mFlags);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", x - 63.0f, y + 36.0f, z, 9.0f, 9.0f, mInsideAreas[0],
+	                       mInsideAreas[1], mInsideAreas[2]);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", x - 63.0f, y + 45.0f, z, 9.0f, 9.0f, mInsideCll0,
+	                       mInsideCll1, mInsideCll2);
+	if (mInsideCllCount > 0) {
+		DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", x - 63.0f, y + 54.0f, z, 9.0f, 9.0f, mInsideCll0,
+		                       mInsideCll1, mInsideCll2);
+	}
+	if (mNearestTargetEntry != NULL) {
+		DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", x - 63.0f, y + 63.0f, z, 9.0f, 9.0f,
+		                       mNearestTargetEntry->mRecordIndex, mNearestTargetEntry->mSide);
+	}
+}
+
 void CCameraActionMap::DrawDebug3d()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
+}
+
+// retail keeps the area half's strings in a pool of their own (behind "ccameraactionarea.cpp"); defined
+// here, after every map string, the map half's pool keeps retail's order
+/**
+ * @note Address: 0x801555AC
+ * @note Size: 0x12C
+ */
+void CCameraActionArea::DrawDebug2d()
+{
+	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
+	fn_8016AA74(sDebugParams);
+	f32 z = 0.0f;
+	f32 y, x;
+	x = gScreenSafeRight - 234;
+	y = gScreenSafeTop + 18;
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
+	                       mEntryIndex, gCameraAreaState.mCurrentArea);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", x, y + 9.0f, z, 9.0f, 9.0f);
 }
