@@ -9364,11 +9364,7 @@ BOOL MenuSave::Draw()
 		case 17:
 			break;
 		}
-#if defined(VERSION_JP)
 		if (lines <= 2)
-#else
-		if (lines < 2)
-#endif
 			lines = 2;
 		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
