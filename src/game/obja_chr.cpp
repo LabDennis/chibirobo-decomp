@@ -5888,12 +5888,16 @@ static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
 	StartScreenFade(&gGame.mScrnTex.mColor, 255, green, 0, 0, 100, 100, 200, 0, duration);
 }
 
+// an action's battery cost per second, the table holds hundredths
+static inline f32 GetActionBatteryCost(s32 index)
+{
+	return (s32)GetPlayerActionParameter(index) / 100.0f;
+}
+
 /**
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
-// NONMATCHING: retail divides the table's cost into f0 and moves it to the drain, and it loads the popper's shot strength
-// ahead of the zero it is compared with
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6167,7 +6171,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		if (index == 9)
 			drain = (f32)((u32)IDLE_SECOND / frames) * p->mLift.mBatteryCost;
 		else
-			drain = (f32)(s32)GetPlayerActionParameter(index) / 100.0f;
+			drain = GetActionBatteryCost(index);
 	}
 	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
 		drain = 0.0f;
