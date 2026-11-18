@@ -15,8 +15,6 @@ extern "C" u32 GetPickupRewardValue(s32 index);
 extern "C" void AdjustPlayerMoney(WiiPlayerParams* params, s32 amount);
 extern "C" void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
 extern "C" void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
-extern "C" u32 GetStageCollectionFlagBase(s32 set);
-extern "C" void* GetSpawnData(s32 id);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 extern "C" void PlayGameSound(XSound* sound, s32 id, s32 volume);
 

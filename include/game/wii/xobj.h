@@ -1196,7 +1196,7 @@ public:
 	                               s32 arg7);                         // _1C8
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
 	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
-	virtual void vf1D4();
+	virtual void vf1D4(const Vec* pos, f32* x, f32* y, f32* depth, s32 flag); // _1D4, projects pos to screen
 	virtual f32 GetFloorXZExtent();   // _1D8
 	virtual f32 GetCollisionHeight(); // _1DC
 	// _1E0, the object's bounds on screen under camera, the GameCube's; FALSE when it is out of view
@@ -1354,6 +1354,7 @@ public:
 	virtual void DrawWithView(Mtx view);                               // _178 override
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
 	virtual void DrawScreenOverlay();                                  // _190 override
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC override
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
 
 	s32 mLoadState;     // _9A8
@@ -1444,7 +1445,7 @@ WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
-WII_XOBJ_DECL(XObjDust, 0xA00);
+// XObjDust lives in game/wii/xobjflags.h, behind XObjFlags
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so

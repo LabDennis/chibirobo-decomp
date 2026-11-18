@@ -1393,6 +1393,10 @@ if wii:
                 # xobjhboxupdate functions in retail order. NonMatching for now: the shared
                 # literal pool (lbl_805A54xx) is owned by neighbouring auto objects
                 Object(NonMatching, "game/wii/xobjhboxpart.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # unit 79: the box's screen overlay and hit handling plus the dust pile's
+                # flag/reset/placement half. -i include/rvl_msl: game/wii/xobjflags.h's
+                # AnimSfx member pulls the nw4r sound headers
+                Object(NonMatching, "game/wii/xobjhbox.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not

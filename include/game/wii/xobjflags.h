@@ -3,6 +3,7 @@
 
 #include "game/wii/animsfx.h"
 #include "game/wii/xobj.h"
+#include "game/stagedata.h"
 
 // the Wii XObjFlags family: flag-backed pickups and the sound objects. Pulled out of
 // xobj.h because AnimSfx needs the nw4r sound headers, which only the units that use
@@ -33,6 +34,17 @@ public:
 	virtual s32 GetFlagIndex(); // _28C, the bit in mFlags, 0 and below have none
 
 	CEvtFlags* mFlags; // _9A8
+
+	// the placement's flag id over the kind's collection group, 0 without one
+	s32 GetPlacementFlagIndex(s32 group) const
+	{
+		s32 id = mPlacementParam1;
+		if (id > 0) {
+			u32 base = GetStageCollectionFlagBase(group);
+			return (s32)(base + (u32)id);
+		}
+		return 0;
+	}
 
 	// the collected bit, FALSE without one
 	u32 IsFlagSet()
@@ -97,6 +109,36 @@ public:
 	s32 mAnimId2; // _9AC, the anim id to go back to once the use anim ends, -1 when it keeps its own
 };
 STATIC_ASSERT(sizeof(XObjItem) == 0x9B0);
+
+// the dust piles, swept up by the vacuum or blown off by chibi robo; the GameCube's
+// XObjDust keeps the same field order, shifted 0x24 by the moved mFlags
+class XObjDust : public XObjFlags {
+public:
+	virtual void Release();                                // _40
+	virtual void ResetObjectState();                       // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164
+	virtual s32 OnPlayerContact(s32 unused, s32 value);    // _1CC
+	virtual s32 GetFlagIndex();                            // _28C
+
+	void* mMatAnim;    // _9AC, the anim source SetAnim keeps; its type is not decoded yet
+	s32 mAnimId2;      // _9B0, the anim it was placed with
+	s32 mAnimCount;    // _9B4, ResAnmChr entries in the model archive
+	f32 mBaseY;        // _9B8
+	f32 mPhase;        // _9BC, bobbing
+	f32 mPhaseStep;    // _9C0
+	f32 mBouncePhase;  // _9C4
+	f32 mBounceHeight; // _9C8
+	f32 mHeading;      // _9CC, NAN until something pushes it
+	f32 mSpeed;        // _9D0
+	f32 mFade;         // _9D4
+	Vec mStartScale;   // _9D8
+	Vec mFrom;         // _9E4
+	Vec mTo;           // _9F0
+	s16 mEventId;      // _9FC
+	s16 mEventArg;     // _9FE
+};
+STATIC_ASSERT(sizeof(XObjDust) == 0xA00);
 
 extern "C" {
 void UpdateFallingCoin(XObjCoin* coin, u32 frames);
