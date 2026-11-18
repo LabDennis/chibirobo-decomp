@@ -43,13 +43,13 @@ extern "C" void ResetPooledObjects(XObjPool* pools)
 	XObjPool* pool = pools;
 	for (s32 index = 0; index < 23; ++index, ++pool) {
 		for (s32 i = 0; i < pool->mCount; ++i) {
-			pools[index].Get(i)->ResetForNewGame();
+			pool->Get(i)->ResetForNewGame();
 		}
 	}
 }
 
 // queues the stage read while idle, then steps through the list's states; true when done
-extern "C" u8 UpdateStageObjectLoading(XOBJS* list)
+extern "C" s32 UpdateStageObjectLoading(XOBJS* list)
 {
 	if (list->mLoadState == 0) {
 		gAllObjectsReader.QueueRead((void*)1, list);
@@ -71,19 +71,19 @@ void XOBJS::ReadAll()
 		mPools[i].mUsed = 0;
 	}
 
-	gGame.ClearStatusFlags(0x20);
-	gGame.ClearStatusFlags(0x1000);
+	gGame.ClearStatusFlags(0x2000000000ULL);
+	gGame.ClearStatusFlags(0x100000000000ULL);
 
 	s32 i;
 	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) { // the placement list ends at id -1
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
 			s32 category = GetObjData(&info)->mCategory;
-			if (gGame.GetStatusFlags(0x20) == 0 && (info.mPlacement->mFlags & 0x2000)) {
-				gGame.SetStatusFlags(0x20);
+			if (gGame.GetStatusFlags(0x2000000000ULL) == 0 && (info.mPlacement->mFlags & 0x2000)) {
+				gGame.SetStatusFlags(0x2000000000ULL);
 			}
-			if (gGame.GetStatusFlags(0x1000) == 0 && (info.mPlacement->mFlags & 0x4)) {
-				gGame.SetStatusFlags(0x1000);
+			if (gGame.GetStatusFlags(0x100000000000ULL) == 0 && (info.mPlacement->mFlags & 0x4)) {
+				gGame.SetStatusFlags(0x100000000000ULL);
 			}
 			if (mPools[category].mUsed >= mPools[category].mCount) {
 				OSPanic("xobj_ut.cpp", 0xd1, "XOBJ_CLASS_%s:: cnt=%d, max=%d\n", mPools[category].mName,
@@ -141,37 +141,46 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 dire
 
 	if (direct) {
 		obj = list->mPools[pool].Get(list->mPools[pool].mUsed);
-		if (obj == NULL) {
-			return NULL;
-		}
-		list->mObjects[list->mObjectCount]              = obj;
-		list->mObjects[list->mObjectCount]->mStageIndex = list->mObjectCount;
-		list->mObjects[list->mObjectCount]->mPoolIndex  = list->mPools[pool].mUsed;
-		list->mPools[pool].mUsed++;
-		list->mObjectCount++;
-	} else {
-		s32 idx = list->mPools[pool].Find(0x4040000000000001ULL, 0);
-		if (idx < 0) {
-			return NULL;
-		}
-		obj = list->mPools[pool].Get(idx);
-		if (idx >= list->mPools[pool].mUsed) {
-			// a slot past the used range joins the stage's object list
+		if (obj != NULL) {
 			list->mObjects[list->mObjectCount]              = obj;
 			list->mObjects[list->mObjectCount]->mStageIndex = list->mObjectCount;
 			list->mObjects[list->mObjectCount]->mPoolIndex  = list->mPools[pool].mUsed;
 			list->mPools[pool].mUsed++;
 			list->mObjectCount++;
-		}
-	}
-	if (async) {
-		obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
-		if (!gSingleObjectReader.ReadStart(obj, info->mPlacement)) {
-			obj = NULL;
+			if (async) {
+				obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
+				if (!gSingleObjectReader.ReadStart(obj, info->mPlacement)) {
+					obj = NULL;
+				}
+			} else {
+				while (!obj->LoadFromPlacement(*info)) { }
+				gGame.SetStatusFlags(0x1000);
+			}
 		}
 	} else {
-		while (!obj->LoadFromPlacement(*info)) { }
-		gGame.SetStatusFlags(0x1000);
+		s32 idx = list->mPools[pool].Find(0x4040000000000001ULL, 0);
+		if (idx >= 0) {
+			obj = list->mPools[pool].Get(idx);
+			if (idx >= list->mPools[pool].mUsed) {
+				// a slot past the used range joins the stage's object list
+				list->mObjects[list->mObjectCount]              = obj;
+				list->mObjects[list->mObjectCount]->mStageIndex = list->mObjectCount;
+				list->mObjects[list->mObjectCount]->mPoolIndex  = list->mPools[pool].mUsed;
+				list->mPools[pool].mUsed++;
+				list->mObjectCount++;
+			}
+			if (async) {
+				obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
+				if (!gSingleObjectReader.ReadStart(obj, info->mPlacement)) {
+					obj = NULL;
+				}
+			} else {
+				while (!obj->LoadFromPlacement(*info)) { }
+				gGame.SetStatusFlags(0x1000);
+			}
+		} else {
+			obj = NULL;
+		}
 	}
 	return obj;
 }

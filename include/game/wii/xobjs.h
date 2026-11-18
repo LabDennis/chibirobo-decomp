@@ -49,7 +49,7 @@ STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 
 extern "C" {
 void ResetPooledObjects(XObjPool* pools);
-u8 UpdateStageObjectLoading(XOBJS* list);
+s32 UpdateStageObjectLoading(XOBJS* list);
 void ReleaseStageObjectList(XOBJS* list);
 XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
 s32 FindStageObjectIndex(XOBJS* list, XObj* obj);
