@@ -2372,9 +2372,9 @@ static inline void EmitKind9Dust(XObjActor3* actor)
 {
 	f32 x = actor->mMoveTranslate.x, y = actor->mMoveTranslate.y, z = actor->mMoveTranslate.z;
 	f32 angle  = DEG2RAD * (rand() % 360);
-	f32 sine   = (f32)sin(angle);
+	f32 sine   = std::sinf(angle);
 	f32 vx     = sine * (rand() % 100) / 1000.0f;
-	f32 cosine = (f32)cos(angle);
+	f32 cosine = std::cosf(angle);
 	f32 vz     = cosine * (rand() % 100) / 1000.0f;
 	f32 vy     = (rand() % 100) / 800.0f;
 	Vec pos;

@@ -308,8 +308,6 @@ extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamer
  * @note Address: 0x8008B338
  * @note Size: 0x29C
  */
-// NONMATCHING: retail calls cos and sin through float inlines (MSL's C++ cosf/sinf, which return (f32)cos(x));
-// include/stl/math.h only declares the out-of-line C cosf/sinf, so angle and cosine get each other's register
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
 	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
@@ -320,22 +318,22 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	f32 left, right, bottom, top, unusedX, unusedY, depth;
 	// three points on the circle and one raised by the height give its screen extent
 	f32 angle  = (PI + HALF_PI) + heading;
-	f32 cosine = (f32)cos(angle);
-	f32 sine   = (f32)sin(angle);
+	f32 cosine = std::cosf(angle);
+	f32 sine   = std::sinf(angle);
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &left,
 	          &unusedY, &depth);
 	angle  = HALF_PI + heading;
-	cosine = (f32)cos(angle);
-	sine   = (f32)sin(angle);
+	cosine = std::cosf(angle);
+	sine   = std::sinf(angle);
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &right,
 	          &unusedY, &depth);
 	angle  = PI + heading;
-	cosine = (f32)cos(angle);
-	sine   = (f32)sin(angle);
+	cosine = std::cosf(angle);
+	sine   = std::sinf(angle);
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &unusedX,
 	          &bottom, &depth);
-	cosine = (f32)cos(heading);
-	sine   = (f32)sin(heading);
+	cosine = std::cosf(heading);
+	sine   = std::sinf(heading);
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, view, projection,
 	          viewport, &unusedX, &top, &depth);
 #if defined(VERSION_PAL)

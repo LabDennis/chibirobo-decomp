@@ -20,9 +20,9 @@ void XObjFree::UpdateObject(u32 frames)
 		SetColor(1, 0, 0, 0, 0.4f);
 		for (s32 i = 0; i < 10; ++i) {
 			f32 angle    = DEG2RAD * (rand() % 360);
-			f32 sinAngle = (f32)sin(angle);
+			f32 sinAngle = std::sinf(angle);
 			f32 x        = sinAngle * (rand() % 100) / 150.0f;
-			f32 cosAngle = (f32)cos(angle);
+			f32 cosAngle = std::cosf(angle);
 			f32 z        = cosAngle * (rand() % 100) / 150.0f;
 			f32 y        = (rand() % 100) / 200.0f;
 			Vec position = mMoveTranslate;

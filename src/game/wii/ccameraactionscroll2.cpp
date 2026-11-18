@@ -499,8 +499,8 @@ void CCameraActionScroll2::Draw()
 	f32 y;
 
 	sOverlayFrameCount++;
-	f32 blink     = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
-	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
+	f32 blink     = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
+	f32 fastBlink = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
 	Vec pos = { 0.0f, 0.0f, 0.0f };
 	for (s32 i = 0; i < gGame.mXObjs.mPools[10].mUsed; i++) {
@@ -703,16 +703,16 @@ void CCameraActionScroll2::Draw()
 	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[160 - StatusTextureOffset], 0);
 	GXGetTexObjWidth(&tex);
 	GXGetTexObjHeight(&tex);
-	sin(angle);
-	cos(angle);
-	f32 pulse = sin(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
+	std::sinf(angle);
+	std::cosf(angle);
+	f32 pulse = std::sinf(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
 	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[166 - StatusTextureOffset], 0);
 	f32 zoom   = 1.0f;
 	f32 arrowW = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
 	u16 arrowH = GXGetTexObjHeight(&tex);
 	f32 radius = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
-	f32 arrowX = radius * (f32)sin(angle) + x;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * (f32)cos(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
+	f32 arrowX = radius * std::sinf(angle) + x;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * std::cosf(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
 	                   0.0f, PI + angle);
 
 	// the wipe sits over the room view, the edge quads round the drag frame

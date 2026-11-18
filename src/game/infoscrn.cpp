@@ -1536,8 +1536,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		for (int i = 0; i < 65; i++) {
 			f32 s;
 			f32 angle = 0.09817477f * i - HALF_PI;
-			s         = sin(angle);
-			f32 c     = -(f32)cos(angle);
+			s         = std::sinf(angle);
+			f32 c     = -std::cosf(angle);
 			pos[i].x  = x0 + s * (12.0f * 1.2f);
 			pos[i].y  = cy + c * (12.0f * 1.2f);
 			pos[i].z  = 0.0f;
@@ -1884,7 +1884,7 @@ static inline void DrawClockDisc(f32 rx, f32 ry, u32 color)
 	Vec points[65];
 	for (s32 i = 0; i < 65; ++i) {
 		f32 angle = 0.09817477f * i - HALF_PI;
-		f32 s = sin(angle), c = -(f32)cos(angle);
+		f32 s = std::sinf(angle), c = -std::cosf(angle);
 		points[i].x = 80.0f + s * rx;
 		points[i].y = 80.0f + c * ry;
 		points[i].z = 0;
@@ -1945,7 +1945,7 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 			scrn->mTimeWarningBeeps  = 5;
 		}
 		if (time >= warning) {
-			f32 wave = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
+			f32 wave = std::sinf(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
 			if (TimeMoves() || time >= 1) {
 				// one beep each time the clock blinks on: five of 0xb5, then 0xb6, which also comes at once when time is up
 				if (wave > 0) {
