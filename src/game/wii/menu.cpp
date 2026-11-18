@@ -1111,11 +1111,80 @@ void CMenu::Resume()
 	mSuspendFade = FALSE;
 }
 
+// a rectangle as left, top, right and bottom, and a width and height
+struct MenuRect {
+	MenuRect()
+	{
+		left   = 0.0f;
+		top    = 0.0f;
+		right  = 0.0f;
+		bottom = 0.0f;
+	}
+
+	f32 left, top, right, bottom;
+};
+
+struct MenuSize {
+	f32 width, height;
+};
+
+// a point on the screen
+struct MenuVec2 {
+	f32 x, y;
+};
+
+// places a pane where its layout entry says
+extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
+{
+	pane->mTrans.x = layout->mTrans.x;
+	pane->mTrans.y = layout->mTrans.y;
+	pane->mTrans.z = layout->mTrans.z;
+	pane->mWidth   = layout->mWidth;
+	pane->mHeight  = layout->mHeight;
+	pane->mKind    = layout->mKind;
+}
+
+// the pane's rectangle round its centre, y up
+extern "C" MenuRect fn_800556E4(const CbPane* pane)
+{
+	MenuRect rect;
+	MenuVec2 origin;
+	origin.x    = -pane->mWidth / 2.0f;
+	origin.y    = pane->mHeight / 2.0f;
+	rect.left   = origin.x;
+	rect.top    = origin.y;
+	rect.right  = origin.x + pane->mWidth;
+	rect.bottom = origin.y - pane->mHeight;
+	return rect;
+}
+
 extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 {
 	if (list->mCount < 0x100) {
 		list->mPanes[list->mCount++] = pane;
 	}
+}
+
+// the pointer at x, y is on the pane, tested like an nw4r::lyt pane: through the inverse of its matrix.
+// NONMATCHING: our build expands fn_800556E4 here, retail calls it
+extern "C" bool fn_80055A7C(CbPaneList* list, CbPane* pane, f32 x, f32 y)
+{
+	if (!pane->mEnabled) {
+		return false;
+	}
+	nw4r::math::MTX34 mtx;
+	PSMTXIdentity(mtx.m);
+	mtx.m[0][3]   = pane->mTrans.x;
+	mtx.m[1][3]   = pane->mTrans.y;
+	mtx.m[2][3]   = pane->mTrans.z;
+	pane->mGlbMtx = mtx;
+	Mtx inverse;
+	PSMTXInverse(pane->mGlbMtx.m, inverse);
+	Vec pos = { x, y, 0.0f };
+	Vec local;
+	PSMTXMultVec(inverse, &pos, &local);
+	MenuRect rect = fn_800556E4(pane);
+	return rect.left <= local.x && local.x <= rect.right && rect.bottom <= local.y && local.y <= rect.top;
 }
 
 // a quad in one color, the GameCube's DrawSolidQuad
@@ -3035,22 +3104,7 @@ extern "C" void fn_800848C0(MenuEx* ex)
 	}
 }
 
-// a rectangle as left, top, right and bottom, and a width and height
-struct MenuRect {
-	f32 left, top, right, bottom;
-};
-
-struct MenuSize {
-	f32 width, height;
-};
-
-// the pointer as the menus test it, centred on the screen with y down
-struct MenuPointerPos {
-	f32 x; // _00
-	f32 y; // _04
-};
-
-extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, MenuPointerPos* pos, u32 frames);
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, MenuVec2* pos, u32 frames);
 
 // UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
 // tests the pointer against the menus' panes.
@@ -3076,7 +3130,7 @@ extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
 		ex->mCursor.mFrame = (ex->mCursor.mFrame + 1) % 8;
 	}
 
-	MenuPointerPos pos;
+	MenuVec2 pos;
 	MenuSize size;
 	size.height = gPointerScreenHeight;
 	size.width  = gPointerScreenWidth;
