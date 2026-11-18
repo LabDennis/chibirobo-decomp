@@ -82,9 +82,9 @@ HSD_Generator* CreateScaledParticleAtPosition(CGame*, u32, u32, s32, const Vec&,
 extern const s32 lbl_8020A5E8[];
 f32 GetJointAnimationCurrentFrame(CJObj*);
 BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOOL, Vec*);
-// NONMATCHING: retail calls ~CVec (10 times), ~CJObj, GetObjectJointByPath and even the one-store setters here, so its
-// inline limit sits at the bottom: the function alone weighed about 7000 units for the inliner. This one is about 1500
-// units short of that, so it still expands all of them.
+// NONMATCHING: retail calls ~CVec (10 times), ~CJObj and even the one-store setters here, so its inline limit sits at the
+// bottom: the function alone weighed about 7000 units for the inliner. This one is about 1500 units short of that, so it
+// still expands all of them.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
@@ -1434,9 +1434,9 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800C7BC4
  * @note Size: 0x1FB0
  */
-// NONMATCHING: retail calls GetObjectJointByPath (inline limit 64 or lower), this build expands it; its estimate is over
-// 1200 units short. RecordObjectPositionAndHeightChange and HSD_JObjSetRotationY stand behind this function in retail, so they
-// were inlines there that weighed in the estimate; here they are plain functions defined further down.
+// GetObjectJointByPath was a header inline in retail (weak copy 0x800B2764); with it, this function expands the call,
+// being over 1200 units under retail's estimate. RecordObjectPositionAndHeightChange and HSD_JObjSetRotationY stand behind
+// it in retail, so they were inlines that weighed in the estimate; here they are plain functions defined further down.
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -1799,8 +1799,7 @@ f32 GetJointAnimationCurrentFrame(CJObj*);
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
-// NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused), and
-// it calls GetObjectJointByPath (inline limit 64), which this build expands: its estimate is over 1200 units short
+// NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused)
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -2716,8 +2715,9 @@ extern const s32 lbl_8020A5E8[];
  * @note Address: 0x800CECFC
  * @note Size: 0x2040
  */
-// NONMATCHING: this build reaches retail's inline limit of 64 (~CJObj and GetObjectJointByPath are called), but at that
-// limit it also calls HSD_JObjGetMtxPtr (74 units here), which retail expands. The two squirter SetAnim calls keep the
+// NONMATCHING: retail calls ~CJObj for the eight pairs of joints (bl __dt__5CJObjFv) where this build still expands it; the
+// function is short of the estimate at which the compiler halves its inline limit to 64, and at that limit
+// HSD_JObjGetMtxPtr (74 units here, expanded in retail) would be called too. The two squirter SetAnim calls keep the
 // item count in r0 and sign-extend it after loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
 void UpdateHeldObject(XActLift* act, s32)
 {
