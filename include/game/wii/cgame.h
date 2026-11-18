@@ -1315,6 +1315,7 @@ public:
 	void State6(u32 frames);
 	void State7(u32 frames);
 
+	virtual BOOL Draw();
 	virtual void Open();
 
 	u8 _150[0x1958 - 0x150];

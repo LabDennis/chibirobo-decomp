@@ -18,6 +18,7 @@
 #include "game/globals.h"
 #include "game/evt.h"
 #include "game/cfont.h"
+#include "game/menupanelbackground.h"
 #include "stl/math.h"
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,7 @@ extern s32 gRefreshRate;
 extern MEMiHeapHead* gWiiGameHeap;
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
+extern s32 gScreenLeft, gScreenTop;
 extern "C" {
 char* GetStageFileName(s32 stage);
 char* GetStageName(s32 stage);
@@ -44,6 +46,14 @@ u8* GetStatusIconDescription(s32 id);
 s32 ConvertHudTextToFullWidth(char* text);
 u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
+void DrawStatusMenuTabs(MenuStatus* menu);
+void fn_80061014(MenuStatus* menu);
+void DrawPlayerStatusOverview(MenuStatus* menu);
+void fn_80061DBC(MenuStatus* menu);
+void DrawStatusIconGrid(MenuStatus* menu);
+void DrawStatusHelpText(MenuStatus* menu);
+void DrawStatusMenuTitle(MenuStatus* menu);
+CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
 
@@ -52,6 +62,28 @@ static inline bool IsJapanese()
 {
 	return gGame.mLanguage == 0;
 }
+
+// a rectangle as left, top, right and bottom, and a width and height
+struct MenuRect {
+	MenuRect()
+	{
+		left   = 0.0f;
+		top    = 0.0f;
+		right  = 0.0f;
+		bottom = 0.0f;
+	}
+
+	f32 left, top, right, bottom;
+};
+
+struct MenuSize {
+	f32 width, height;
+};
+
+// a point on the screen
+struct MenuVec2 {
+	f32 x, y;
+};
 
 static MenuMainItem sMainLines[] = {
 	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
@@ -817,6 +849,48 @@ static inline void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width
 
 // two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
 // NONMATCHING: scheduling of the character copy and register allocation of the box corners
+// the status screen draws on the 4:3 middle of a wide screen: the camera and the scissor move in by the
+// margin, and the full width comes back afterwards.
+// NONMATCHING: 98 %, the int to float constant lands in f5 instead of f4 and the view's registers follow
+BOOL MenuStatus::Draw()
+{
+	if (CMenu::Draw()) {
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		u32 scissorWidth = gPointerScreenWidth - (s32)margin * 2;
+		GXSetScissor(gScreenLeft + (s32)margin, gScreenTop, scissorWidth, gPointerScreenHeight);
+		DrawStatusMenuTabs(this);
+		fn_80061014(this);
+		DrawPlayerStatusOverview(this);
+		fn_80061DBC(this);
+		DrawStatusIconGrid(this);
+		DrawStatusHelpText(this);
+		DrawStatusMenuTitle(this);
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		GXSetScissor(gScreenLeft, gScreenTop, width, gPointerScreenHeight);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
 {
 	char* p;
@@ -1110,28 +1184,6 @@ void CMenu::Resume()
 	mSuspended   = FALSE;
 	mSuspendFade = FALSE;
 }
-
-// a rectangle as left, top, right and bottom, and a width and height
-struct MenuRect {
-	MenuRect()
-	{
-		left   = 0.0f;
-		top    = 0.0f;
-		right  = 0.0f;
-		bottom = 0.0f;
-	}
-
-	f32 left, top, right, bottom;
-};
-
-struct MenuSize {
-	f32 width, height;
-};
-
-// a point on the screen
-struct MenuVec2 {
-	f32 x, y;
-};
 
 // places a pane where its layout entry says
 extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
