@@ -60,7 +60,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		}
 		if (!mFloors) {
 			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
-			mFloorMasks[1] = mFloorMasks[0] = 0;
+			mFloorMasks[0] = mFloorMasks[1] = 0;
 			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty) // a -1 id means no floor list
 				mFloors = NULL;
