@@ -1350,7 +1350,9 @@ if wii:
                 Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
                 # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
-                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
+                # headers, which want the Wii MSL
+                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
