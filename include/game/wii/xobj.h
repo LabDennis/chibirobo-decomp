@@ -18,6 +18,11 @@
 #include "game/wii/xobjs.h"
 #include "revolution/mem.h"
 
+extern "C" {
+#include "Dolphin/OS/OSMessage.h"
+#include "Dolphin/OS/OSThread.h"
+}
+
 // one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
 struct XObjFloor {
 	s16 mId;              // _00
@@ -803,6 +808,34 @@ public:
 	CVec mSpeed;  // _20
 
 	virtual ~CObjVec() { }
+
+	// puts it at a value with nowhere to go
+	void Reset(f32 x, f32 y, f32 z)
+	{
+		this->x   = x;
+		this->y   = y;
+		this->z   = z;
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+		mSpeed.x  = 0.0f;
+		mSpeed.y  = 0.0f;
+		mSpeed.z  = 0.0f;
+	}
+	void Reset(const Vec& v) { Reset(v.x, v.y, v.z); }
+	void SetTarget(f32 x, f32 y, f32 z)
+	{
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+	}
+	void SetTarget(const Vec& v) { SetTarget(v.x, v.y, v.z); }
+	// puts it at a value with its target there too, the speed stays
+	void SetNow(const Vec& v)
+	{
+		Set(v);
+		SetTarget(v);
+	}
 };
 STATIC_ASSERT(sizeof(CObjVec) == 0x30);
 #endif
@@ -962,7 +995,7 @@ STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
 // element of XObjMap's two 100-entry record lists: 0xC bytes with a ctor and
 // dtor in the CPtcl unit (retail fn_800BEB4C/dtor_800BEB60 and
-// fn_800BEBDC/fn_800BEBF0). their real names and members are not recovered yet
+// fn_800BEBDC/dtor_800BEBF0). their real names and members are not recovered yet
 class XObjMapListA {
 public:
 	XObjMapListA();
@@ -1282,8 +1315,9 @@ public:
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
 	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group (the GameCube's _250)
-	u8 _180[0x188 - 0x180];
-	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	s32 mStageIndex;    // _180, the object's slot in XOBJS's object table
+	s32 mPoolIndex;     // _184, its slot in its pool
+	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
 	void (*mAnimEventCallback)(XObj* object, s32 event, f32 f1, f32 f2); // _190, the kind's anim keyframe hook
@@ -1325,6 +1359,50 @@ public:
 	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
+
+// the base of the people and toys, the GameCube's members shifted by +0x28
+class XObjActor : public XObj {
+public:
+	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
+
+	f32 mHeading;   // _9A8, the way it walks
+	f32 mMoveSpeed; // _9AC, move speed
+	u8 _9B0[0x9B8 - 0x9B0];
+	s32 mKindStep;    // _9B8, the kind's own step
+	u32 mKindCounter; // _9BC, cleared with mKindStep
+
+	Vec GetCameraTarget();
+};
+
+// the plain object an XObjHBox carries
+struct XObjHBoxPart {
+	XObj mObj;              // _00
+	f32 mHit;               // _9A8, set to 1 when chibi robo hits the box
+	u8 _9AC[0x9B0 - 0x9AC]; // _9AC
+	f32 mRange;             // _9B0
+	s32 mSfx;               // _9B4, keyed off on a hit
+};
+STATIC_ASSERT(sizeof(XObjHBoxPart) == 0x9B8);
+
+// a box that reads a second object (placement 36) and draws it inside itself
+class XObjHBox : public XObj {
+public:
+	virtual void Release();                                            // _40 override
+	virtual void InitializeObject();                                   // _14C override, fn_801164D8
+	virtual void ResetForNewGame();                                    // _150 override, fn_80116518
+	virtual void ResetObjectState();                                   // _154 override
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158 override
+	virtual void UpdateObject(u32 frames);                             // _164 override
+	virtual void DrawWithView(Mtx view);                               // _178 override
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
+	virtual void DrawScreenOverlay();                                  // _190 override
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
+
+	s32 mLoadState;     // _9A8
+	f32 mRing;          // _9AC, draws the two rings while above 0
+	XObjHBoxPart mPart; // _9B0
+};
+STATIC_ASSERT(sizeof(XObjHBox) == 0x1368);
 
 // subclass pool types: ctor/dtor are defined in their own units, the tail pad is
 // the part of the stride the class adds on top of XObj
@@ -1397,9 +1475,6 @@ public:
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
 WII_XOBJ_DECL(XObjChr, 0x1CCA0);
 WII_XOBJ_DECL(XObjActor3, 0x21C8);
-WII_XOBJ_DECL(XObjSound, 0xA10);
-WII_XOBJ_DECL(XObjCoin, 0xA30);
-WII_XOBJ_DECL(XObjItem, 0x9B0);
 WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
 WII_XOBJ_DECL(XObjActorToy, 0x2208);
 WII_XOBJ_DECL(XObjActorJenny, 0xD98);
@@ -1412,7 +1487,6 @@ WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
-WII_XOBJ_DECL(XObjHBox, 0x1368);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so
@@ -1422,30 +1496,89 @@ public:
 	virtual ~CustomShadow();
 };
 
-// the Wii object readers: a thread-like prefix of 0x320 bytes (an OSThread plus
-// the stack fields, like the GameCube CThread), then the vtable at _320. The
-// queue and request members behind it are not yet recovered; the Wii knows only
-// the all-list and single readers, no XObjReadAnm.
-class XObjRead {
-	u8 _000[0x320];
+// the Wii object readers: retail RTTI names XObjRead, XObjReadAll and
+// XObjReadOne, with XObjRead deriving straight from the SDK OSThread (the
+// GameCube used its polymorphic CThread). The stack pointer and size are
+// XObjRead's own members in front of the virtuals, so the vtable lands at
+// _320. The Wii knows only the all-list and single readers, no XObjReadAnm.
+
+// an OSMessageQueue with its message buffer; RTTI shows it derives from
+// OSMessageQueue (the GameCube header wraps it as a member, same layout)
+class CMsgQueue : public OSMessageQueue {
+public:
+	// _00-_1F OSMessageQueue
+	OSMessage* mMsgs; // _20
+	// _24 vtable
+
+	virtual ~CMsgQueue();               // _08
+	virtual void Initialize(s32 count); // _0C, allocates mMsgs and inits the queue
+};
+STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
+
+inline CMsgQueue::~CMsgQueue()
+{
+}
+
+// one read waiting in a reader
+struct XObjReadReq {
+	void* mObj;  // _00, null when the slot is free
+	void* mInfo; // _04
+};
+
+class XObjRead : public OSThread {
+public:
+	u8* mStack;     // _318
+	u32 mStackSize; // _31C
 	// _320 vtable
 
-public:
-	virtual ~XObjRead() { }                                                                        // _08
-	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	XObjRead()
+	    : mStack(NULL)
+	{
+	}
 
-private:
-	u8 _324[0x3A0 - 0x324]; // vtable pad + CMsgQueue + requests, not yet recovered
+	virtual ~XObjRead();                                                                           // _08
+	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	virtual BOOL QueueRead(void* object, void* info);                                              // _10
+	virtual void RunRequestLoop();                                                                 // _14
+	virtual void ProcessRequest(XObjReadReq* req);                                                 // _18
+	virtual BOOL HasPendingReads();                                                                // _1C
+
+	// puts one read on the queue; both QueueReads and SpawnObjectFromPlacement inline it
+	BOOL ReadStart(void* obj, void* info);
+
+	CMsgQueue mQueue;     // _324
+	XObjReadReq mReqs[8]; // _34C
+	u8 _38C[0x14];        // tail past the requests, not touched by any retail function
 };
 STATIC_ASSERT(sizeof(XObjRead) == 0x3A0);
+STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);
+STATIC_ASSERT(offsetof(XObjRead, mReqs) == 0x34C);
 
-class XObjReadAll : public XObjRead { };
-class XObjReadOne : public XObjRead { };
+inline XObjRead::~XObjRead()
+{
+}
+
+// reads a whole object list; its destructor is defined in xaction.cpp, which anchors the vtable
+// there (retail folds the two reader vptrs off one base register in xaction's __sinit)
+class XObjReadAll : public XObjRead {
+public:
+	virtual ~XObjReadAll();                        // _08
+	virtual void ProcessRequest(XObjReadReq* req); // _18
+};
+
+// reads one object
+class XObjReadOne : public XObjRead {
+public:
+	virtual ~XObjReadOne();                           // _08
+	virtual BOOL QueueRead(void* object, void* info); // _10
+	virtual void ProcessRequest(XObjReadReq* req);    // _18
+};
 
 extern "C" {
 void InitializeObjectPools(XOBJS* list);
 void* ReadObjectListThread(void* arg);
 void* ReadSingleObjectThread(void* arg);
+BOOL HasPendingObjectReads();
 extern XObjReadAll gAllObjectsReader;
 extern XObjReadOne gSingleObjectReader;
 }

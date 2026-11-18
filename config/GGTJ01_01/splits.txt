@@ -388,23 +388,9 @@ game/msgdataformat.cpp:
 	.text       start:0x80088974 end:0x80088D20
 	.data       start:0x80224C60 end:0x80224CC4
 
-game/memcardcheck.cpp:
-	.text       start:0x80088D20 end:0x80088F8C
-
-game/memcardheader.cpp:
-	.text       start:0x80088F8C end:0x80089304
-
-game/memcardload.cpp:
-	.text       start:0x80089304 end:0x80089650
-
-game/memcardfile.cpp:
-	.text       start:0x80089650 end:0x80089848
-
-game/memcardpos.cpp:
-	.text       start:0x80089848 end:0x80089ABC
-
-game/memcardrestore.cpp:
-	.text       start:0x80089ABC end:0x80089EE8
+game/memcard.cpp:
+	.text       start:0x80088D20 end:0x80089EE8
+	.sdata2     start:0x80637420 end:0x80637428
 
 game/memcardcapture.cpp:
 	.text       start:0x80089EE8 end:0x8008A2EC
@@ -607,11 +593,11 @@ game/xobjspiderboss.cpp:
 	.text       start:0x80101FA4 end:0x80108754
 	.ctors      start:0x801FEF54 end:0x801FEF58
 	.rodata     start:0x8020BC08 end:0x8020BF50
-	.data       start:0x8022AE50 end:0x8022B490
+	.data       start:0x8022AF38 end:0x8022B578
 	.bss        start:0x8035E2B8 end:0x8035E3F0
-	.sdata      start:0x80634BF8 end:0x80634C30
+	.sdata      start:0x80634C08 end:0x80634C40
 	.sbss       start:0x80635700 end:0x80635708
-	.sdata2     start:0x806382C8 end:0x806383C4
+	.sdata2     start:0x806382D8 end:0x806383D0
 
 game/xobjactordtor.cpp:
 	.text       start:0x80108754 end:0x801087CC
@@ -619,23 +605,10 @@ game/xobjactordtor.cpp:
 game/xobjactorse.cpp:
 	.text       start:0x801087CC end:0x801089E4
 
-game/xobjactorground.cpp:
-	.text       start:0x801089E4 end:0x80108DAC
-
-game/xobjactorstop.cpp:
-	.text       start:0x80108DAC end:0x80108DE4
-
-game/xobjactorevent.cpp:
-	.text       start:0x80108DE4 end:0x8010927C
-
-game/xobjactorlook.cpp:
-	.text       start:0x8010927C end:0x80109490
-
-game/xobjactorjointupdate.cpp:
-	.text       start:0x80109490 end:0x80109B20
-
-game/xobjactorupdate.cpp:
-	.text       start:0x80109B20 end:0x8010A164
+game/xobjactor.cpp:
+	.text       start:0x801089E4 end:0x8010A164
+	.rodata     start:0x8020BF50 end:0x8020C0D8
+	.sdata2     start:0x806383E8 end:0x80638468
 
 game/xobjactor3.cpp:
 	.text       start:0x8010A164 end:0x80117118

@@ -261,6 +261,11 @@ game/wii/homemenu.cpp:
 game/wii/evt.cpp:
 	.text start:0x8009453C end:0x800A18B8
 
+game/wii/xobjs.cpp:
+	extab start:0x8000B7B4 end:0x8000B884
+	extabindex start:0x80013DFC end:0x80013ED4
+	.text start:0x800C5424 end:0x800C6408
+
 game/wii/xaction.cpp:
 	.text start:0x800C6428 end:0x800C6584
 
@@ -1191,12 +1196,13 @@ game/wii/cmotioncontrolcamera.cpp:
 	.text start:0x8016753C end:0x8016AD78
 
 game/wii/xobjplugcord.cpp:
-	extab start:0x8000D644 end:0x8000D67C
-	extabindex start:0x80014B7C end:0x80014BD0
-	.text start:0x80110C2C end:0x80111ADC
-	.bss start:0x8045BED0 end:0x8045D6E0
-	.sbss start:0x805A1C70 end:0x805A1C74
-	.sdata2 start:0x805A5390 end:0x805A53D0
+	extab start:0x8000D644 end:0x8000D724
+	extabindex start:0x80014B7C end:0x80014C18
+	.text start:0x80110C2C end:0x80113394
+	.bss start:0x8045BED0 end:0x8045D700
+	.sdata start:0x805A1150 end:0x805A1158
+	.sbss start:0x805A1C70 end:0x805A1C80
+	.sdata2 start:0x805A5390 end:0x805A53F8
 
 game/wii/params.cpp:
 	extab start:0x8000D724 end:0x8000D734
@@ -1208,6 +1214,19 @@ game/wii/inventory.cpp:
 	extab start:0x8000D734 end:0x8000D73C
 	extabindex start:0x80014C30 end:0x80014C3C
 	.text start:0x80113910 end:0x801141C0
+
+game/wii/xobjcoinupdate.cpp:
+	extab start:0x8000D73C end:0x8000D814
+	extabindex start:0x80014C3C end:0x80014D20
+	.text start:0x801141C0 end:0x80116528
+
+game/wii/xobjhboxpart.cpp:
+	extab start:0x8000D814 end:0x8000D84C
+	extabindex start:0x80014D20 end:0x80014D5C
+	.text start:0x80116528 end:0x8011701C
+
+game/wii/xobjactorstop.cpp:
+	.text start:0x80138560 end:0x80138598
 
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
