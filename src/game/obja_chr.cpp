@@ -1180,64 +1180,12 @@ void ApplyPopperMovementWeight(XActPopper*, const CPadOne*, f32*);
 void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
 }
 
-static inline void ReleaseCarriedTarget(XObjChr* player)
-{
-	if (IsPlayerCarryingPlug(player))
-		ReleasePlayerLiftTarget(player);
-}
-static inline void LiftInteractionTarget(XObjChr* player, XObj* target)
-{
-	SetLiftActionState(&player->mLift, 1);
-	SetPlayerActionTarget(&player->mLift, target);
-	SetLiftTargetState(&player->mLift, 0);
-}
-static inline void StartInteractionEvent(XObj* target)
-{
-	TryStartObjectEvent(&gGame, target->GetEventScript(), target, -1, -1);
-}
-static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bool ladder)
-{
-	s32 dir = 0;
-	if (object->mSelectedFloorIndex == 0) {
-		if (player->mHitObjectIndex == player->mFloorContacts[0].objectIndex) {
-			f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
-			if (angle <= PI * .5f || angle >= PI * 1.5f)
-				dir = -1;
-		} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight
-		           && (!ladder || IsPositionBehindObject(&player->mLadder, &player->mMoveTranslate, object)))
-			dir = 1;
-	}
-	if (dir != 0) {
-		if (mode == 1) {
-			player->mClimbType     = 0;
-			player->mNextClimbType = ladder ? 1 : 2;
-			RequestPlayerUnequipAttachment(player);
-		} else if (mode == 2) {
-			ReleaseCarriedTarget(player);
-			if (ladder) {
-				if (dir > 0)
-					SetLadderActionState(&player->mLadder, 1);
-				else if (dir < 0)
-					SetLadderActionState(&player->mLadder, 2);
-				SetPlayerActionTarget(&player->mLadder, object);
-			} else {
-				if (dir > 0)
-					SetRopeActionState(&player->mRope, 1);
-				else if (dir < 0)
-					SetRopeActionState(&player->mRope, 2);
-				SetPlayerActionTarget(&player->mRope, object);
-			}
-		}
-		StopPlayerMotion(player);
-	}
-}
-
 /**
  * @note Address: 0x800B35CC
  */
-// NONMATCHING: retail expands nothing in this function: ~CPad is called at both exits of the pad's block (bl __dt__4CPadFv at
-// 0x28C and 0x11CC) where this build expands it, like the state tests that sit out of line behind
-// UpdatePlayerMovementAndContacts. Retail's function alone weighed about 7000 units for the inliner, this one about 2500. The US and PAL
+// NONMATCHING: retail calls ~CPad at both exits of the pad's block (bl __dt__4CPadFv at 0x28C and 0x11CC) where this build
+// expands it, like the state tests that sit out of line behind UpdatePlayerMovementAndContacts. Fillers put this function about
+// 3800 inliner units under retail's; GetObjectJointByPath, a header inline in retail, would be expanded here too. The US and PAL
 // height compare of the ledge branch is dropped here (see there)
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
@@ -1307,7 +1255,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				if (press && player->mLetickerIndex >= 0) {
 					XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
 					if (object->mStatus.mFlags & 0x10000000000ULL)
-						StartInteractionEvent(object);
+						TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
 				} else if (press
 				           || (player->mFloorContacts[4].objectIndex >= 0
 				               && player->mFloorContacts[4].objectIndex == player->mHitObjectIndex)
@@ -1320,12 +1268,15 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 						if (IsObjectLiftable(object)) {
 							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 							    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
-								ReleaseCarriedTarget(player);
-								LiftInteractionTarget(player, object);
+								if (IsPlayerCarryingPlug(player))
+									ReleasePlayerLiftTarget(player);
+								SetLiftActionState(&player->mLift, 1);
+								SetPlayerActionTarget(&player->mLift, object);
+								SetLiftTargetState(&player->mLift, 0);
 								handled = true;
 							}
 						} else if (object->mStatus.mFlags & 0x10000000000ULL) {
-							StartInteractionEvent(object);
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
 							handled = true;
 						}
 					} else if (use.emptyHands && player->mFloorContacts[2].objectIndex >= 0
@@ -1334,7 +1285,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
 						if ((object->mStatus.mFlags & 0x10000000000ULL) && !(object->mStatus.mFlags & 0x100000000000ULL)
 						    && (s16)GetObjectPoolId(object) != 8) {
-							StartInteractionEvent(object);
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
 							handled = true;
 						}
 					}
@@ -1343,7 +1294,8 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
 						if (use.emptyHands && IsObjectLiftable(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
 						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
-							ReleaseCarriedTarget(player);
+							if (IsPlayerCarryingPlug(player))
+								ReleasePlayerLiftTarget(player);
 							SetLiftActionState(&player->mLift, 1);
 							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
 							SetLiftTargetState(&player->mLift, 0);
@@ -1356,31 +1308,85 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 #if defined(VERSION_JP)
 								if (height >= 12 && height <= 12.5f) {
 									if (gGame.mStatus.mFlags & 0x80000000000ULL) {
-										ReleaseCarriedTarget(player);
+										if (IsPlayerCarryingPlug(player))
+											ReleasePlayerLiftTarget(player);
 										SetHangActionState(&player->mHang, 1);
 										SetPlayerActionTarget(&player->mHang, object);
 									}
 								} else if (gGame.mStatus.mFlags & 0x80000000000ULL) {
 									if (height <= 4) {
-										ReleaseCarriedTarget(player);
+										if (IsPlayerCarryingPlug(player))
+											ReleasePlayerLiftTarget(player);
 										SetPlayerActionState(&player->mJump, 8);
 										SetPlayerActionTarget(&player->mJump, object);
 									} else if (height <= 8) {
-										ReleaseCarriedTarget(player);
+										if (IsPlayerCarryingPlug(player))
+											ReleasePlayerLiftTarget(player);
 										SetPlayerActionState(&player->mJump, 11);
 										SetPlayerActionTarget(&player->mJump, object);
 									} else if (height <= 12.5f) {
-										ReleaseCarriedTarget(player);
+										if (IsPlayerCarryingPlug(player))
+											ReleasePlayerLiftTarget(player);
 										SetPlayerActionState(&player->mJump, 14);
 										SetPlayerActionTarget(&player->mJump, object);
 									}
 								}
 #endif
 							}
-						} else if (IsObjectLadder(object))
-							ChooseClimbAction(player, object, use.mode, true);
-						else if (IsObjectRope(object))
-							ChooseClimbAction(player, object, use.mode, false);
+						} else if (IsObjectLadder(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContacts[0].objectIndex) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight
+								           && IsPositionBehindObject(&player->mLadder, &player->mMoveTranslate, object))
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 1;
+									RequestPlayerUnequipAttachment(player);
+								} else if (use.mode == 2) {
+									if (IsPlayerCarryingPlug(player))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										SetLadderActionState(&player->mLadder, 1);
+									else if (dir < 0)
+										SetLadderActionState(&player->mLadder, 2);
+									SetPlayerActionTarget(&player->mLadder, object);
+								}
+								StopPlayerMotion(player);
+							}
+						} else if (IsObjectRope(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContacts[0].objectIndex) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight)
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 2;
+									RequestPlayerUnequipAttachment(player);
+								} else if (use.mode == 2) {
+									if (IsPlayerCarryingPlug(player))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										SetRopeActionState(&player->mRope, 1);
+									else if (dir < 0)
+										SetRopeActionState(&player->mRope, 2);
+									SetPlayerActionTarget(&player->mRope, object);
+								}
+								StopPlayerMotion(player);
+							}
+						}
 #if defined(VERSION_JP)
 						if (!(gGame.mStatus.mFlags & 0x80000000000ULL))
 #endif
@@ -1392,7 +1398,8 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
 							        && IsRadarActionState(&player->mRadar, 0))
 							    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
-								ReleaseCarriedTarget(player);
+								if (IsPlayerCarryingPlug(player))
+									ReleasePlayerLiftTarget(player);
 								StopPlayerMotion(player);
 								SetPushActionState(&player->mPush, 1);
 								SetPlayerActionTarget(&player->mPush, object);
@@ -1412,7 +1419,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				if (!(gGame.mStatus.mFlags & 0x100)) {
 					if (player->mPlug.mConnection && ((pad->mTrigger & PAD_BUTTON_A) || (pad->mTrigger & PAD_BUTTON_B))) {
 						if (player->mLift.mPlugTarget) {
-							StartInteractionEvent(player->mLift.mPlugTarget);
+							TryStartObjectEvent(&gGame, player->mLift.mPlugTarget->GetEventScript(), player->mLift.mPlugTarget, -1, -1);
 							StopPlayerMotion(player);
 							speed = 0;
 						}
@@ -1478,7 +1485,9 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		} else if (!(player->mLiftPlugFlags & 1) && !(player->mLiftPlugFlags & 2))
 			lift = TRUE;
 		if (lift) {
-			LiftInteractionTarget(player, &player->mPlug);
+			SetLiftActionState(&player->mLift, 1);
+			SetPlayerActionTarget(&player->mLift, &player->mPlug);
+			SetLiftTargetState(&player->mLift, 0);
 			player->mPressTimer = 0;
 		}
 	} else
