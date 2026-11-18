@@ -1090,6 +1090,17 @@ static inline void SyncRopePosition(XObjChr* owner)
 }
 
 /**
+ * @note Address: 0x800C7810
+ * @note Size: 0x2B4
+ */
+// an inline: retail emits it right behind UpdatePlayerRopeAction, its first caller, and only the giants call it
+inline void SetJointTranslationFromVectorByPath(CJObj* obj, s32 depth, s32* path, const Vec& pos)
+{
+	CJObj joint(GetJointByPath(obj->mJObj, path, depth));
+	joint.SetTranslate(pos.x, pos.y, pos.z, TRUE);
+}
+
+/**
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
@@ -1436,6 +1447,9 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
 // GetObjectJointByPath was a header inline in retail (weak copy 0x800B2764); with it, this function expands the call,
 // being over 1200 units under retail's estimate. RecordObjectPositionAndHeightChange and HSD_JObjSetRotationY stand behind
 // it in retail, so they were inlines that weighed in the estimate; here they are plain functions defined further down.
+// Made inlines (the jobj.h one and a file inline above this function) they still leave this function about 1450 units
+// short at limit 128, and RecordObjectPositionAndHeightChange (about 58 units) shares the 33..64 class with CVec's
+// constructors, which retail expands here: retail's Record weighed 65 or more. Hang is about 1100 short the same way.
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -3091,16 +3105,6 @@ void UpdateHeldObject(XActLift* act, s32)
 			break;
 		}
 	}
-}
-
-/**
- * @note Address: 0x800C7810
- * @note Size: 0x2B4
- */
-void SetJointTranslationFromVectorByPath(CJObj* obj, s32 depth, s32* path, const Vec& pos)
-{
-	CJObj joint(GetJointByPath(obj->mJObj, path, depth));
-	joint.SetTranslate(pos.x, pos.y, pos.z, TRUE);
 }
 
 // puts the carried object where he holds it
