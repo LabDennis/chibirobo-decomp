@@ -1525,7 +1525,7 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		f32 x4 = point->mPos[4].x;
 		for (len = 1;; len++) {
 			f32 div = 1.0f;
-			for (int j = 0; j < len; j++)
+			for (s32 j = 0; j < len; j++)
 				div *= 10.0f;
 			if ((s32)(point->mValue[0] / div) == 0)
 				break;
