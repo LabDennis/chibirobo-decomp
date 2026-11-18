@@ -1482,8 +1482,7 @@ WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
-// XObjDust lives in game/wii/xobjflags.h, behind XObjFlags
-WII_XOBJ_DECL(XObjFree, 0x9B8);
+// XObjDust lives in game/wii/xobjflags.h, behind XObjFlags; XObjFree in game/wii/xobjfree.h
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so
 // far (retail 0x800BD66C, the deleting variant with no member calls)

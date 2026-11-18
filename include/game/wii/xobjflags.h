@@ -77,6 +77,8 @@ public:
 	virtual s32 OnPlayerContact(s32 unused, s32 value);                              // _1CC
 	virtual s32 HandleEventCommand(s32 count, s32* args);                            // _1E8
 	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed); // _208
+	virtual void PauseSounds(f32 fade);                                              // _20C
+	virtual void ResumeSounds(f32 fade);                                             // _210
 	virtual s32 GetFlagIndex();                                                      // _28C
 
 	// the item index its data record names, -1 without one (the GameCube XObj's inline)
@@ -126,6 +128,8 @@ public:
 	virtual void DrawWithView(Mtx view);                                                     // _178
 	virtual void DrawObjectEffects();                                                        // _188
 	virtual s32 OnPlayerContact(s32 unused, s32 value);                                      // _1CC
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);                       // _1FC
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);                                 // _204
 	virtual s32 GetFlagIndex();                                                              // _28C
 
 	void* mMatAnim;    // _9AC, the anim source SetAnim keeps; its type is not decoded yet

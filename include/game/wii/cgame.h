@@ -11,6 +11,7 @@
 #include "game/wii/infoscrn.h"
 #include "game/logo.h"
 #include "game/evt.h"
+#include "game/cptcl.h"
 #include "game/wii/msg.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
@@ -958,7 +959,9 @@ struct WiiPlayerState : public XObj {
 	u8 mAttachments[0x48]; // _19E9C
 	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
 	WiiOXMenu mOXMenu;     // _1A420
-	u8 _1B7B4[0x1C990 - 0x1B7B4];
+	u8 _1B7B4[8];
+	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, the GameCube's mDust
+	u8 _1C770[0x1C990 - 0x1C770];
 	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent;  // _1C994
 	s32 mItemTint;         // _1C998

@@ -19,7 +19,7 @@ extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which
 extern "C" void PlayGameSound(XSound* sound, s32 id, s32 volume);
 
 extern const AnimSfxEvent lbl_80307DA8[]; // the kind 0x1D2 sound objects' event table
-extern u32 lbl_8045DB20[];                // the game's coin handle table, indexed by mHandleSlot
+extern u32 gCoinHandleTable[];            // the game's coin handle table, indexed by mHandleSlot
 
 extern "C" {
 void* fn_800A11A4(void* particle, u32 code, s32 status);
@@ -245,7 +245,7 @@ void XObjCoin::ResetObjectState()
 		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, frame, 1.0f, 1.0f, 15.0f);
 	}
 	mFade           = 0.0f;
-	lbl_8045DB20[0] = 0;
+	gCoinHandleTable[0] = 0;
 	mHandleSlot     = -1;
 	mState          = 0;
 	mParam0         = 0;
@@ -383,7 +383,7 @@ void XObjCoin::UpdateObject(u32 frames)
 	}
 	// a finished bounce sound gives its claim slot back
 	if (mHandleSlot >= 0 && mActors[1].GetHandle() == NULL) {
-		lbl_8045DB20[mHandleSlot] = 0;
+		gCoinHandleTable[mHandleSlot] = 0;
 		mHandleSlot               = -1;
 	}
 	for (s32 i = 0; i < 2; i++) {
@@ -582,8 +582,8 @@ void XObjCoin::vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed
 			s32 start = rand() % 5;
 			for (s32 i = 0; i < 5; i++) {
 				s32 idx = (start + i) % 5;
-				if (lbl_8045DB20[idx] == 0) {
-					lbl_8045DB20[idx] = 1;
+				if (gCoinHandleTable[idx] == 0) {
+					gCoinHandleTable[idx] = 1;
 					mHandleSlot       = idx;
 					if (actor->detail_StartSound(&actor->mHandle, idx + 0x228, NULL) == nw4r::snd::SoundStartable::START_SUCCESS)
 						actor->mHandle.SetVolume(1.0f, 0);
