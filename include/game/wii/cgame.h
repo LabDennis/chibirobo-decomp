@@ -299,7 +299,7 @@ public:
 	void DrawSystemMessage();        // 0x800187B0
 
 	// the drive reports trouble and the disc is not back yet
-	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
+	BOOL IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)

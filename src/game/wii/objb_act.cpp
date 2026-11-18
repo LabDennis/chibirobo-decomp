@@ -9,12 +9,15 @@
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/xact.h"
+#include "game/wii/cpadact.h"
 #include "game/inventory.h"
 #include "game/gmath.h"
+#include <math.h>
 
 extern "C" {
 void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // stops the event effect with that id
 CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset);
+void TryLeaveHang(XActHang* act);
 }
 
 // a held object of the given pool and kind
@@ -161,6 +164,43 @@ void ReleasePushAction(XActPush* act)
 }
 
 /**
+ * @note Address: 0x80103978
+ * @note Size: 0x1A4
+ */
+void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
+{
+	if (act->mState == 5) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
+			// b lets go of the rope
+			if (gWiiPointer.Check(2)) {
+				act->mState = 8;
+			}
+			if (act->mOwner->GetAnimId() == 0x8A || act->mOwner->GetAnimId() == 0x8C) {
+				*weight = 0.0f;
+			}
+		}
+	} else if (act->mState != 0) {
+		*weight = 0.0f;
+	}
+}
+
+/**
+ * @note Address: 0x80101580
+ * @note Size: 0x15C
+ */
+void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
+{
+	act->mBPressed = FALSE;
+	if (act->mState == 5) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && gWiiPointer.Check(2)) {
+			act->mBPressed = TRUE;
+		}
+	} else if (act->mState != 0) {
+		*weight = 0.0f;
+	}
+}
+
+/**
  * @note Address: 0x80101554
  * @note Size: 0x2C
  */
@@ -189,6 +229,40 @@ void ResetPlayerJumpAction(XActJump* act)
 {
 	act->Reset();
 	fn_800A12F8(&gGame.mEvtPtcl, 0x15, TRUE);
+}
+
+/**
+ * @note Address: 0x800FD36C
+ * @note Size: 0x250
+ */
+void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight)
+{
+	act->mStickAway = FALSE;
+	if (act->mState == 4) {
+		f32 stick = -(f32)atan2(pad->mStick.x, pad->mStick.y);
+		f32 angle = WrapAngle(stick + gGame.mMotionControlCamera.mView.mAngle.y - act->mOwner->mMoveRotate.y);
+		if (!(angle < 30 * DEG2RAD) && !(angle > 330 * DEG2RAD)) {
+			act->mStickAway = TRUE;
+		}
+		*weight = 0.0f;
+	} else if (act->mState == 5) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
+			// a climbs up if there is room, b lets go (9)
+			if (gWiiPointer.Check(1)) {
+				if (act->mTarget == NULL || (act->mTarget->mStatus.mFlags & 0x400000000ULL)) {
+					TryLeaveHang(act);
+					act->mMoveDirection = 0;
+				}
+				*weight = 0.0f;
+			} else if (gWiiPointer.Check(2)) {
+				act->mState         = 9;
+				act->mMoveDirection = 0;
+				*weight             = 0.0f;
+			}
+		}
+	} else if (act->mState != 0) {
+		*weight = 0.0f;
+	}
 }
 
 /**
