@@ -33,7 +33,6 @@ extern "C" {
 extern "C" {
 void SetObjectJointTranslationByPath(CXObj* obj, s32 depth, const s32* path, f32 x, f32 y, f32 z); // puts a joint at a translation
 f32 GetJointAnimationEndFrame(const CJObj* obj);                                                   // the end frame of the anim
-HSD_JObj* GetObjectJointByPath(const CJObj* obj, s32 depth, s32* path);
 CVec GetPlayerJointLocalTranslationByPath(CJObj* obj, s32 depth, s32* path);
 void SetJointYawByPath(CXObj* obj, s32 depth, s32* path, f32 angle);
 void SetJointTranslationFromVectorByPath(CJObj* obj, s32 depth, s32* path, const Vec& pos);

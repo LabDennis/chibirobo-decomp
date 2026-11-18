@@ -1080,7 +1080,6 @@ BOOL FindMapFloorBelow(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec*
 void ScaleVectorInPlace(Vec* value, f32 scale);
 Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index);
 Vec GetFloorExtent(XObjFloor* const* floors, s32 index);
-HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path);
 void GetJointScale(CJObj*, HSD_JObj* jobj, Vec* scale);
 f32 GetHorizontalDistance(const Vec* a, const Vec* b);
 s32 GetObjectPoolId(const XObj* object);
@@ -1117,7 +1116,6 @@ u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 
 extern "C" {
 f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
-HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path);
 s32 GetObjectPoolId(const XObj* object);
 BOOL IsEventScriptActive(const CGame* game);
 BOOL IsLiftActionState(const XActLift* act, s32 wanted);
@@ -8731,15 +8729,6 @@ extern "C" XObj* GetDrawListObject(const CGame* game, s32 list, s32 index)
 extern "C" void GetJointScale(CJObj*, HSD_JObj* jobj, Vec* scale)
 {
 	HSD_JObjGetScale(jobj, scale);
-}
-
-/**
- * @note Address: 0x800B2764
- * @note Size: 0x7C
- */
-extern "C" HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path)
-{
-	return GetJointByPath(object->mJObj, path, depth);
 }
 
 /**
