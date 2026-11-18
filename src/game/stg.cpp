@@ -422,9 +422,9 @@ BOOL MenuPC::Draw()
 				SetMenuTextureTranslation(&tex, 0.25f, 0);
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width * 0.5f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0.5f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width * 0.5f), y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), y, 0, 8, 24, 0, 0, 0);
 				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
 				SetMenuTextureTranslation(fill, this->mTexScroll, 0);
 				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
@@ -6985,7 +6985,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
-		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + 16.0f), 24.0f + (menu->mWindow.mHeight * 0.5f + 30.0f));
+		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + 16.0f), 24.0f + (menu->mWindow.mHeight / 2.0f + 30.0f));
 	} else {
 		menu->mCount = gGame.mRoomCount;
 		for (int i = 0; i < gGame.mRoomCount; i++) {
@@ -7001,7 +7001,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
-		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + 16.0f, menu->mWindow.mHeight * 0.5f + 30.0f);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + 16.0f, menu->mWindow.mHeight / 2.0f + 30.0f);
 	}
 }
 
@@ -10690,8 +10690,8 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	u32 color = (u32)(200.0f * alpha) | 0x181CC600;
 	InitMenuSelectionBar(tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, cx, y, 0, barWidth, barHeight, 0, 0, 0);
-	DrawPCChoicePiece(tex, color, 0, (cx - barWidth * 0.5f) - gap, y, 8.0f * scale, barHeight);
-	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth * 0.5f), y, 8.0f * scale, barHeight);
+	DrawPCChoicePiece(tex, color, 0, (cx - barWidth / 2.0f) - gap, y, 8.0f * scale, barHeight);
+	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
 }
 
 static inline void DrawPCChoiceStripe(f32 x, f32 y, f32 barWidth, f32 barHeight, f32 alpha, f32 scroll)
