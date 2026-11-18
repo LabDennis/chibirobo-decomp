@@ -234,6 +234,11 @@ extern "C" void RestoreSavedPlayerAndCamera(Memcard* card)
 	}
 }
 
+void CCamera::SetAngle(const Vec& angle)
+{
+	SetAngle(angle.x, angle.y, angle.z);
+}
+
 static inline XObjChr* Player()
 {
 	return gGame.GetPlayer();

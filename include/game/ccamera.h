@@ -114,7 +114,7 @@ public:
 	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _68
 	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _6C
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _70
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _74
+	virtual void SetAngle(const Vec& angle);                                                           // _74
 	virtual void SetUp(const Vec& up) { SetUp(up.x, up.y, up.z); }                                     // _78
 	virtual void SetAngleY(f32 y) { mAngle.y = y; }                                                    // _7C
 	virtual void SetAngleX(f32 x) { mAngle.x = x; }                                                    // _80
