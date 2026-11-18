@@ -518,6 +518,15 @@ public:
 };
 STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 
+// an arrow at the left or right screen edge of the area and map cameras, Init places them
+struct CamEdgeArrow {
+	Vec mPos;  // _00, x and y on screen, z the rotation
+	u8 mShown; // _0C
+	u8 _0D;    // _0D
+	f32 _10;   // _10
+	f32 _14;   // _14
+};
+
 // the Wii area action, 0x2FC against the GameCube's 0x294. Only the members CCameraActions' constructor
 // (0x80034ACC) builds are placed: they sit at the GameCube class's offsets and carry its names. The plain
 // fields between and behind them are not reconstructed, and neither are the virtuals it overrides
@@ -551,10 +560,7 @@ public:
 	CInterfaceVectorInterpolation* mInterestInterp;      // _27C
 	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
 	// _294 to _2FC: the Wii's pointer controls, Reset and SetCamera clear them; the names are not recovered
-	u8 _294[0x2A8 - 0x294];
-	f32 _2A8;
-	u8 _2AC[0x2C0 - 0x2AC];
-	f32 _2C0;
+	CamEdgeArrow mArrows[2]; // _294, left and right
 	u8 _2C4[0x2CC - 0x2C4];
 	f32 _2CC;
 	u8 _2D0;
@@ -572,6 +578,8 @@ public:
 	virtual void Update(u32 step);           // _10
 	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual void DrawDebug2d();              // _28
 
 	s32 FindFacing(s32 slotIndex, const Vec& dir);
 
@@ -600,14 +608,16 @@ class CCameraActionMap : public CCameraActionAreaExM {
 public:
 	virtual void DrawDebug3d(); // _28, 0x8015F34C
 
-	s32 mInterestMode;      // _40, what GetInterestMode returns
-	XObj* mTarget;          // _44, the object the camera looks at
-	CVec mPreviousInterest; // _48
-	f32 mRestDistance;      // _58
-	f32 mSpringDamping;     // _5C
-	CVec mSpringPrevTarget; // _60
-	CVec mSpringTarget;     // _70
-	u8 _80[0x8C - 0x80];
+	s32 mInterestMode;       // _40, what GetInterestMode returns
+	XObj* mTarget;           // _44, the object the camera looks at
+	CVec mPreviousInterest;  // _48
+	f32 mRestDistance;       // _58
+	f32 mSpringDamping;      // _5C
+	CVec mSpringPrevTarget;  // _60
+	CVec mSpringTarget;      // _70
+	f32 mTargetRestDistance; // _80, the rest distance mRestDistance eases toward
+	f32 mFlatDistance;       // _84
+	f32 mOrbitRadius;        // _88
 	// _8C and _11FC: the constructor (0x80034ACC) builds a CObjVec at each
 	CObjVec _8C;
 	f32 mTurnSpeed;                                // _BC, turn speed
@@ -646,7 +656,10 @@ public:
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
 	u8 _E78[0xE7C - 0xE78];
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	u8 _E98[0xF2C - 0xE98];
+	u8 _E98[0xEA4 - 0xE98];
+	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
+	s32 mInsideAreas[32];                                // _EA8, areas containing the player
+	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
 	u8 _F64[0xF68 - 0xF64];
 	CVec mTargetEye;      // _F68
@@ -663,15 +676,28 @@ public:
 	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	CObjVec _11FC;
-	u8 _122C[0x128C - 0x122C];
+	u8 _122C[0x123C - 0x122C];
+	CamEdgeArrow mArrows[2]; // _123C, left and right
+	f32 _126C;               // _126C
+	f32 _1270;               // _1270
+	f32 _1274;               // _1274
+	f32 _1278;               // _1278
+	f32 _127C;               // _127C
+	f32 _1280;               // _1280
+	f32 _1284;               // _1284
+	f32 _1288;               // _1288
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
 	virtual void PreviousUpdate();  // _0C
 	virtual void Update(u32 step);  // _10
 	virtual void Reset();           // _14
+	virtual void Init();            // _1C
+	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60
+
+	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);
