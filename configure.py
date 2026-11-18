@@ -561,6 +561,7 @@ gamecube_libs = [
             # keeps StartPlugCordNode as a call, which -inline auto,deferred inlines (0x2F0)
             Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(NonMatching, "game/xobjdustevent.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjspiderbossstop.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
             Object(EquivalentFor(JP), "game/memcardload.cpp", cflags=cflags_game),
             Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -570,7 +571,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoinfall.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustpad.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -583,9 +583,15 @@ gamecube_libs = [
             # UpdateDriftingDust, which every GC compiler (2.0 to 2.7) auto-inlines by size alone under
             # -inline auto (JP code 70 % without the flag). Weaker evidence than the deferred units below:
             # a larger original body could also explain it, but no natural form does.
-            Object(Equivalent, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            # The XObjDust and XObjHBox code of one retail file, folded from seven fragment units. JP addresses:
+            # .text 0x800E034C..0x800E2EFC runs dust then hbox with no gap. That file is bigger: it starts with
+            # XObjFree (__dt__8XObjFree 0x800DF2E4, its .sdata RTTI CJObj..XObj at 0x80634AB0 are the only copies
+            # before XObjFlags/Dust/HBox/Coin/Item's at 0x80634AD8..0x80634AF8), takes OnItemUsed and
+            # OnHitFromPosition of XObjDust (0x800DFE90, in xobjfreeevent.cpp), the coin and item code, and ends
+            # with the weak tail Dust, Flags, HBox, HBoxPart, Coin, Item dtors and __sinit_xobjflagsinit_cpp
+            # (0x800E3F84..0x800E42F0). Not linked until those units join it; code in retail's order, no deferred
+            Object(NonMatching, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustbillboard.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfreeevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardread.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
@@ -604,8 +610,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorlook.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
             Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
             # what deferred codegen does to one source; the Wii build of the same file has no deferred
@@ -1021,6 +1025,7 @@ gamecube_libs = [
             Object(Matching, "game/THPSimple.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/THPDraw.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjhboxupdate.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(NonMatching, "game/xobjspiderbossevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorjointupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorevent.cpp", cflags=with_hsd_headers(cflags_game)),
         ],
