@@ -4,8 +4,8 @@
 #include "game/xobjjointpart.h"
 #include "game/csound.h"
 
-// the big spider, npc_spider_3. class name from RTTI and the vtable at 0x8022BC18, the units
-// from 0x80100264 to 0x80106A14. offsets are usa, everything past XObj sits 0x10 lower in japan
+// the big spider, npc_spider_3. class name from RTTI and the vtable at 0x8022BC18, the file
+// from 0x80100264 to 0x80106A14 (xobjspiderboss.cpp). offsets are usa, everything past XObj sits 0x10 lower in japan
 
 class XObjSpiderBoss : public XObj {
 public:
@@ -89,7 +89,6 @@ public:
 };
 
 extern "C" {
-XObjSpiderBoss* __dt__14XObjSpiderBossFv(XObjSpiderBoss* spider, s32 flags);
 void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames);
 void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames);
 void ApplySpiderBossPlacement(XObjSpiderBoss* spider);

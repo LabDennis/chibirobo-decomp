@@ -617,52 +617,15 @@ game/xobjspidersmall.cpp:
 game/xobjspidersmallstatus.cpp:
 	.text       start:0x8010011C end:0x80100264
 
-game/xobjspiderbossdtor.cpp:
-	.text       start:0x80100264 end:0x801002DC
-
-game/xobjspiderbossse.cpp:
-	.text       start:0x801002DC end:0x80100430
-
-game/xobjspiderbossstates34.cpp:
-	.text       start:0x80100430 end:0x80103B28
-
-game/xobjspiderbossstop.cpp:
-	.text       start:0x80103B28 end:0x80103B80
-
-game/xobjspiderbossgetup.cpp:
-	.text       start:0x80103B80 end:0x80103EC0
-
-game/xobjspiderbossstate.cpp:
-	.text       start:0x80103EC0 end:0x80103F54
-
-game/xobjspiderbossattack.cpp:
-	.text       start:0x80103F54 end:0x801051A0
-
-game/xobjspiderbosshit.cpp:
-	.text       start:0x801051A0 end:0x8010535C
-
-game/xobjspiderbossevent.cpp:
-	.text       start:0x8010535C end:0x80105CDC
-
-game/xobjspiderbossdraw.cpp:
-	.text       start:0x80105CDC end:0x80105D58
-
-game/xobjspiderbossupdate.cpp:
-	.text       start:0x80105D58 end:0x80106000
-
-game/xobjspiderbossload.cpp:
-	.text       start:0x80106000 end:0x80106088
-
-game/xobjspiderbossplacement.cpp:
-	.text       start:0x80106088 end:0x8010660C
-
-game/xobjspiderbossinit.cpp:
-	.text       start:0x8010660C end:0x801068D4
-
-game/xobjspiderbossreset.cpp:
-	.text       start:0x801068D4 end:0x80106A14
+game/xobjspiderboss.cpp:
+	.text       start:0x80100264 end:0x80106A14
 	.ctors      start:0x801FD694 end:0x801FD698
-	.data       start:0x8022B8F0 end:0x8022BBB8
+	.rodata     start:0x8020AF00 end:0x8020B248
+	.data       start:0x8022B808 end:0x8022BE48
+	.bss        start:0x8037FD00 end:0x8037FE40
+	.sdata      start:0x8065A7C8 end:0x8065A800
+	.sbss       start:0x8065B2E8 end:0x8065B2F0
+	.sdata2     start:0x8065E000 end:0x8065E0FC
 
 game/xobjactordtor.cpp:
 	.text       start:0x80106A14 end:0x80106A8C
