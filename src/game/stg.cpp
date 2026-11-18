@@ -7185,7 +7185,7 @@ BOOL MenuMCTest::Update(u32 frames)
 					SavePreviewRecord* save = &card->mAllSaves[i];
 					if (save->mState) {
 						if (save->mStatus != 0 || !IsValidSavePreview(save)) {
-							sprintf(mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), (s32)!IsValidSavePreview(save));
+							sprintf(mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), IsValidSavePreview(save) ? 0 : 1);
 						} else {
 							OSCalendarTime cal;
 							OSTicksToCalendarTime((OSTime)save->mStat.time * OS_TIMER_CLOCK, &cal);
