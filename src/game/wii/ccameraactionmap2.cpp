@@ -57,6 +57,93 @@ void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode
 // the map camera while the player stands outside every area
 s32 GetCameraAreaMode(CamAreaState* state);
 
+extern s32 gScreenSafeWidth;
+
+/**
+ * @note Address: 0x80157154
+ * @note Size: 0x134
+ */
+void CCameraActionMap::Init()
+{
+	mSpringDamping      = 0.5f;
+	mRestDistance       = 60.0f;
+	mTargetRestDistance = 60.0f;
+	mFlatDistance       = 60.0f;
+	_C4                 = 18.0f;
+	InitCameraAreaEntries(&gCameraAreaState);
+
+	// the turn arrows, as the area camera's
+	nw4r::math::_VEC2 pos[2] = { 0 };
+	pos[0].x                 = gScreenSafeWidth / 2 - 30;
+	pos[1].x                 = -(gScreenSafeWidth / 2 - 30);
+	f32 rot[2]               = { 0.0f, PI };
+	mArrows[0].mPos.x        = pos[0].x;
+	mArrows[0].mPos.y        = pos[0].y;
+	mArrows[0].mPos.z        = rot[0];
+	mArrows[0].mShown        = 0;
+	mArrows[0]._10           = 0.0f;
+	mArrows[0]._14           = 0.0f;
+	mArrows[1].mPos.x        = pos[1].x;
+	mArrows[1].mPos.y        = pos[1].y;
+	mArrows[1].mPos.z        = rot[1];
+	mArrows[1].mShown        = 0;
+	mArrows[1]._10           = 0.0f;
+	mArrows[1]._14           = 0.0f;
+	_126C                    = 0.0f;
+	_1270                    = 0.0f;
+	_127C                    = 0.0f;
+	_1280                    = 0.0f;
+	_1274                    = 1.0f;
+	_1278                    = 1.0f;
+	_1284                    = 0.0f;
+	_1288                    = 3.0f;
+}
+
+/**
+ * @note Address: 0x80154320
+ * @note Size: 0x154
+ */
+void CCameraActionArea::Init()
+{
+	InitCameraAreaEntries(&gCameraAreaState);
+	// by interpolation mode; mode 3 or a time <= 0 sets the value at once, and the eye and fov take mode 5 as 4
+	mEyeInterps[0]      = &mEyeLinear;
+	mEyeInterps[1]      = &mEyeEaseInOut;
+	mEyeInterps[2]      = &mEyeEaseOut;
+	mEyeInterps[3]      = NULL;
+	mEyeInterps[4]      = &mEyeEaseOutDivide;
+	mFovInterps[0]      = &mFovLinear;
+	mFovInterps[1]      = &mFovEaseInOut;
+	mFovInterps[2]      = &mFovEaseOut;
+	mFovInterps[3]      = NULL;
+	mFovInterps[4]      = &mFovEaseOutDivide;
+	mInterestInterps[0] = NULL;
+	mInterestInterps[1] = &mInterestEaseInOut;
+	mInterestInterps[2] = NULL;
+	mInterestInterps[3] = NULL;
+	mInterestInterps[4] = NULL;
+
+	// the turn arrows sit 30 pixels in from the safe area's edges, the right one turned round
+	nw4r::math::_VEC2 pos[2] = { 0 };
+	pos[0].x                 = gScreenSafeWidth / 2 - 30;
+	pos[1].x                 = -(gScreenSafeWidth / 2 - 30);
+	f32 rot[2]               = { 0.0f, PI };
+	mArrows[0].mPos.x        = pos[0].x;
+	mArrows[0].mPos.y        = pos[0].y;
+	mArrows[0].mPos.z        = rot[0];
+	mArrows[0].mShown        = 0;
+	mArrows[0]._0D           = 0;
+	mArrows[0]._10           = 0.0f;
+	mArrows[0]._14           = 0.0f;
+	mArrows[1].mPos.x        = pos[1].x;
+	mArrows[1].mPos.y        = pos[1].y;
+	mArrows[1].mPos.z        = rot[1];
+	mArrows[1].mShown        = 0;
+	mArrows[1]._0D           = 0;
+	mArrows[1]._10           = 0.0f;
+	mArrows[1]._14           = 0.0f;
+}
+
 void CCameraActionArea::PreviousUpdate()
 {
 	if (mControlEnabled == 1) {
@@ -94,8 +181,8 @@ void CCameraActionArea::Reset()
 	_2E8                = 0;
 	_2EC                = 0;
 	_2F8                = 0;
-	_2A8                = 0.0f;
-	_2C0                = 0.0f;
+	mArrows[0]._14      = 0.0f;
+	mArrows[1]._14      = 0.0f;
 }
 
 void CCameraActionArea::SetCamera(CCamera* camera)
@@ -111,8 +198,8 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 	_2E8               = 0;
 	_2EC               = 0;
 	_2F8               = 0;
-	_2A8               = 0.0f;
-	_2C0               = 0.0f;
+	mArrows[0]._14     = 0.0f;
+	mArrows[1]._14     = 0.0f;
 }
 
 // the GameCube's SelectAreaCameraEntry, which the Wii expands here
