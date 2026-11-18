@@ -9235,3 +9235,5 @@ TakeWeb__15XObjSpiderSmallFv = .text:0x80131F30; // type:function size:0x64
 UpdateAnimationSounds__15XObjSpiderSmallFv = .text:0x801320A4; // type:function size:0xE4
 State1__14XObjSpiderBossFUl = .text:0x8013479C; // type:function size:0x238
 gSpiderBossStateHandlers = .data:0x8030B29C; // type:object size:0x3C
+UpdateSpiderCarryModel = .text:0x801278E4; // type:function size:0x2F0
+gSpiderStateHandlers = .data:0x8030A560; // type:object size:0x78

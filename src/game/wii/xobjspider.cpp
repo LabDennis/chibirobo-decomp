@@ -1,6 +1,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xobjflags.h"
+#include "game/wii/cpad.h"
 #include "game/attachmentvalues.h"
 #include "game/gmath.h"
 #include "game/wii/spiderplacement.h"
@@ -23,6 +24,10 @@ extern "C" {
 void ResetSpiderState(XObjSpider* spider);
 void ApplySpiderPlacement(XObjSpider* spider);
 void ResetSpiderCoinBounces(void* unused);
+void UpdateSpiderCoinBounces(void* unused, u32 frames);
+void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
+void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
+void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
 void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
@@ -37,6 +42,15 @@ extern s32 gSpiderCarryCount;
 extern u8 gSpiderCarryFlag;
 extern CoinBounce gSpiderCoinBounces[11];
 extern s32 gSpiderCoinBounceCount; // how many coins are out
+// the states, by number
+extern void (XObjSpider::*gSpiderStateHandlers[10])(u32 frames);
+}
+
+// puts a vector and its target at a place with nowhere to go
+static inline void SetNow(XObjSpider* spider, const Vec& value)
+{
+	spider->mMoveTranslate.Set(value);
+	spider->mMoveTarget0.Set(value);
 }
 
 // takes the first of the slot models nobody has
@@ -273,7 +287,7 @@ BOOL XObjSpider::LoadFromPlacement(const CoordInfo& info)
 		mFlags.mFlags &= ~0x04000000U;
 		ResetSpiderState(this);
 		ApplySpiderPlacement(this);
-		_BD4 = 0.5f * gRefreshRate;
+		mSoundDelay = 0.5f * gRefreshRate;
 		return TRUE;
 	}
 	return FALSE;
@@ -308,6 +322,114 @@ void XObjSpider::ResetObjectState()
 			}
 		}
 	}
+}
+
+/**
+ * @note Address: 0x80121458
+ * @note Size: 0x504
+ */
+// NONMATCHING: only the CPad vtable reference differs, retail's copy (0x802E6DF8) has no name: naming it collides
+// with cpaddtor.o's in the link
+void XObjSpider::UpdateObject(u32 frames)
+{
+	CPad pad(0); // unused, retail builds one here
+	if (mSoundDelay > 0) {
+		mSoundDelay -= frames;
+		if (mSoundDelay < 0) {
+			mSoundDelay = 0;
+		}
+	}
+
+	// set to 1 when a charge hits the robot, rumbles the remote for 24 frames if rumble is turned on
+	switch (mRumble) {
+	case 0:
+		break;
+	case 1:
+		if (gGame.GetStatusFlags(0x800000000ULL)) { // the rumble option
+			WiiRumble& rumble = gWiiPads[0].mRumble[0];
+			rumble.flags |= RumbleRunning;
+			rumble.remaining = 24;
+			mRumbleTimer     = 24 / frames;
+			mRumble++;
+		} else {
+			mRumble = 0;
+		}
+		break;
+	case 2:
+		if (--mRumbleTimer < 0) {
+			mRumble = 0;
+		}
+		break;
+	}
+
+	if (gGame.GetStatusFlags(0x400)) { // the robot's menu is open
+		return;
+	}
+	if (mPoolIndex == 0) {
+		UpdateSpiderCoinBounces(&gSpiderCoinBounceUpdateContext, frames);
+	}
+	// a spider that isn't drawn stands still, unless it is taking a hit (state 1)
+	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
+		return;
+	}
+	if (mSoundDelay == 0) {
+		UpdateAnimationSounds();
+	}
+	UpdateSpiderHitReaction(this, frames);
+	if (!(mFlags.mFlags & 0x08000000)) {
+		(this->*gSpiderStateHandlers[mState])(frames);
+		CVec move;
+		if (mWall == 4) {
+			mMoveTranslate.x = mWallPos.x;
+			move.y           = mSpeed * (f32)sin(mDir);
+			move.z           = mSpeed * (f32)cos(mDir);
+			move.x           = 0.0f;
+			mMoveRotate.z    = -HALF_PI;
+			SetRotateY(mDir, mTurnSpeed);
+		} else if (mWall == 5) {
+			mMoveTranslate.x = mWallPos.x;
+			move.y           = mSpeed * (f32)sin(mDir);
+			move.z           = mSpeed * (f32)cos(mDir);
+			move.x           = 0.0f;
+			mMoveRotate.z    = HALF_PI;
+			SetRotateY(mDir, mTurnSpeed);
+		} else if (mWall == 2) {
+			mMoveTranslate.z = mWallPos.z;
+			move.y           = mSpeed * (f32)sin(mDir);
+			move.x           = mSpeed * (f32)cos(mDir);
+			move.z           = 0.0f;
+			mMoveRotate.x    = -HALF_PI;
+			mMoveRotate.z    = mDir - HALF_PI;
+		} else if (mWall == 3) {
+			mMoveTranslate.z = mWallPos.z;
+			move.y           = mSpeed * (f32)sin(mDir);
+			move.x           = mSpeed * (f32)cos(mDir);
+			move.z           = 0.0f;
+			mMoveRotate.x    = HALF_PI;
+			mMoveRotate.z    = HALF_PI + mDir;
+		} else if (mFlags.mFlags & 0x100) {
+			move.x = 0.0f;
+			move.z = 0.0f;
+			move.y = mSpeed;
+			SetRotateY(mDir, mTurnSpeed);
+		} else {
+			if (mFlags.mFlags & 8) {
+				mMoveTranslate.y += mFallSpeed;
+			} else {
+				mMoveTranslate.y = mHome.y;
+			}
+			move.x = mSpeed * (f32)sin(mDir);
+			move.z = mSpeed * (f32)cos(mDir);
+			move.y = 0.0f;
+			SetRotateY(mDir, mTurnSpeed);
+		}
+		SetNow(this, mMoveTranslate + move * (f32)frames);
+		SetPos(mMoveTranslate);
+	}
+	mAnimStartFrame = GetAnimFrame();
+	XObj::UpdateObject(frames);
+	UpdateSpiderCarryModel(&mCarry, mSlot, frames, 0);
+	UpdateSpiderAttachments(this, frames);
 }
 
 /**

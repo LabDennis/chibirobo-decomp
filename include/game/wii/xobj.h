@@ -1613,7 +1613,7 @@ public:
 	s32 mDroppedSpiderIndex; // _BC8, FindNearbyDroppedSpider's pool index
 	s32 mRumble;             // _BCC
 	s32 mRumbleTimer;        // _BD0
-	s32 _BD4;                // _BD4, LoadFromPlacement sets it to a refresh-rate scaled frame count
+	s32 mSoundDelay;         // _BD4, frames after the load before its anim sounds play, half a second
 	AnimSfx mSfx;            // _BD8
 	SpiderTie mTies[8];      // _C34
 	u8 _DF4[4];              // _DF4
