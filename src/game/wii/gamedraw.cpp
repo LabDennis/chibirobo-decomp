@@ -351,10 +351,10 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, 1, &width);
-			f32 bob        = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
-			f32 rot        = DEG2RAD * (10.0f * (f32)sin(0.7f * game->mStageName.mChars[i].mTilt));
-			f32 swell      = sin(3.1415927f * scale);
-			f32 pop        = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			f32 bob        = 4.0f * std::sinf(game->mStageName.mChars[i].mBob);
+			f32 rot        = DEG2RAD * (10.0f * std::sinf(0.7f * game->mStageName.mChars[i].mTilt));
+			f32 swell      = std::sinf(3.1415927f * scale);
+			f32 pop        = 0.2f * swell + std::sinf(1.5707964f * scale);
 			f32 x          = spacing * 0.5f + (spacing * i + (center - spacing * game->mStageName.mCount * 0.5f));
 			f32 y          = 150.0f;
 			if (gWiiPointer.mPointerValid && game->IsLoadStepRunning() && game->mLoadStep > 20) {
@@ -386,7 +386,7 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 				if ((game->mStageName.mChars[i]._18 -= 0.035f * game->mRetraceStep) <= 0.0f) {
 					game->mStageName.mChars[i]._18 = 0.0f;
 				}
-				y = 150.0f - 30.0f * (f32)sin(0.9f * (3.1415927f * game->mStageName.mChars[i]._18));
+				y = 150.0f - 30.0f * std::sinf(0.9f * (3.1415927f * game->mStageName.mChars[i]._18));
 			}
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
 			                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, x, y + bob, 0.0f,
