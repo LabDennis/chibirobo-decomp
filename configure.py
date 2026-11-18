@@ -1401,6 +1401,10 @@ if wii:
                 # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
                 # re-reads mCount for `count` instead of subtracting in one expression
                 Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # unit 77: the sound, flag-backed pickup and hbox-forward functions; the
+                # GameCube's xobjcoinupdate.cpp covers only the coin half. -i include/rvl_msl:
+                # game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound headers
+                Object(NonMatching, "game/wii/xobjcoinupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObjHBox: the carried part is an embedded plain XObj (_9B0) behind the
                 # 155-slot chain vtable; the Wii file carries the GameCube xobjhboxpart and
                 # xobjhboxupdate functions in retail order. NonMatching for now: the shared

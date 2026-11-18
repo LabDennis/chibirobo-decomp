@@ -23,6 +23,34 @@ extern "C" void PlayGameSound(XSound* sound, s32 id, s32 volume);
 extern const AnimSfxEvent lbl_80307DA8[]; // the kind 0x1D2 sound objects' event table
 extern u32 lbl_8045DB20[];                // the game's coin handle table, indexed by mHandleSlot
 
+extern "C" {
+void* fn_800A11A4(void* particle, u32 code, s32 status);
+void fn_802BEABC(void* spawned);
+}
+
+// what the Wii's particle spawn hands back (fn_800A11A4); the caller fills its TRS
+// before fn_802BEABC registers it. the coin's milestone effects also take a joint's
+// world matrix at _60
+struct SpawnedEffect {
+	u8 _00[0xC];
+	Vec mTranslate; // _0C
+	Vec mRotate;    // _18
+	Vec mScale;     // _24
+	u8 _30[0x30];
+	MtxP mWorldMtx; // _60
+};
+
+// the money pickups' milestone sparkle effects, indexed by GetItem(); retail keeps the
+// table in .data (0x803080B8): copper, silver, gold
+static const struct {
+	s32 mEffect;
+	const char* mJoint;
+} sCoinSparkles[3] = {
+	{ 14, "coin_gold_body1" },
+	{ 16, "coin_silver_body1" },
+	{ 17, "coin_copper_body1" },
+};
+
 static inline bool IsCoinItemInRange(XObjCoin* coin, s32 first, s32 end)
 {
 	bool inRange = false;
@@ -323,18 +351,45 @@ void XObjCoin::UpdateObject(u32 frames)
 		mHeading   = radians * (s32)mParam1;
 	}
 	UpdateFallingCoin(this, frames);
-	// NONMATCHING: for money items retail walks the anim-frame milestones the spin sound
-	// events hang on and refreshes the two sound actors; the exact source shape is not
-	// decoded yet, the section below is a stand-in that does nothing
 	if (IsCoinItemInRange(this, 0, 100)) {
+		// the pickup sparkle effects ride on anim-frame milestones of the two spins
+		s32 item = GetItem();
 		switch (GetAnimId()) {
 		case 1:
-			mActors[0].Update(GetPos());
-			mActors[1].Update(GetPos());
+			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f) ||
+			    (mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f) ||
+			    (mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f) || (mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f) ||
+			    (mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f) || (mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f) ||
+			    (mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f) || (mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f) ||
+			    (mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f)) {
+				MtxP mtx                 = GetWorldMtx(sCoinSparkles[item].mJoint);
+				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
+				if (spawned != NULL) {
+					spawned->mWorldMtx = mtx;
+					fn_802BEABC(spawned);
+				}
+			}
 			break;
 		case 2:
+			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f) ||
+			    (mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)) {
+				MtxP mtx                 = GetWorldMtx(sCoinSparkles[item].mJoint);
+				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
+				if (spawned != NULL) {
+					spawned->mWorldMtx = mtx;
+					fn_802BEABC(spawned);
+				}
+			}
 			break;
 		}
+	}
+	// a finished bounce sound gives its claim slot back
+	if (mHandleSlot >= 0 && mActors[1].GetHandle() == NULL) {
+		lbl_8045DB20[mHandleSlot] = 0;
+		mHandleSlot             = -1;
+	}
+	for (s32 i = 0; i < 2; i++) {
+		mActors[i].Update(GetPos());
 	}
 }
 
@@ -381,10 +436,14 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 		sound = 0x18a;
 	}
 	if (effect >= 0) {
-		// NONMATCHING: retail spawns the effect through &gGame.mEvtPtcl (fn_800A11A4
-		// with r4=effect, r5=1) and then fills its SRT by hand: mMoveTranslate into
-		// +0xC..0x14, zero rotation into +0x18..0x20, mMoveScale into +0x24..0x2C,
-		// and finishes with fn_802BEABC(obj); the effect type is not modelled yet
+		Vec rotation           = { 0.0f, 0.0f, 0.0f };
+		SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, effect, 1);
+		if (spawned != NULL) {
+			spawned->mTranslate = mMoveTranslate;
+			spawned->mRotate    = rotation;
+			spawned->mScale     = mMoveScale;
+			fn_802BEABC(spawned);
+		}
 	}
 	if (sound >= 0 && mActors[0].GetHandle() == NULL) {
 		CSound3DActor* actor = mActors[0].mActor;

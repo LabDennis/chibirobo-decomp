@@ -98,4 +98,8 @@ public:
 };
 STATIC_ASSERT(sizeof(XObjItem) == 0x9B0);
 
+extern "C" {
+void UpdateFallingCoin(XObjCoin* coin, u32 frames);
+}
+
 #endif
