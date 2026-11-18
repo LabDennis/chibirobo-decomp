@@ -20,18 +20,6 @@ extern "C" void DrawPlayerRadarEffects(XActRadar*)
 {
 }
 
-// the float forms of the MSL trig routines, which the game's math.h declares as functions
-extern "C" {
-inline f32 sinf(f32 x)
-{
-	return sin(x);
-}
-inline f32 cosf(f32 x)
-{
-	return cos(x);
-}
-}
-
 extern "C" CVec GetRadarDishWorldPosition(XObjRadar*);
 extern "C" void PSMTXMultVecArray(const Mtx, const Vec*, Vec*, u32);
 
@@ -96,15 +84,17 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	f32 z = 2, phase = act->mAngle[0];
 	for (int turn = 0; turn < 8; ++turn) {
 		for (int step = 0; step < 16; ++step) {
-			vertices[n].x = (.007f * n + 1) * (sinf((TWO_PI / 16) * step) * (.1f * sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
-			vertices[n].y = (.007f * n + 1) * (cosf((TWO_PI / 16) * step) * (.1f * sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].x
+			    = (.007f * n + 1) * (std::sinf((TWO_PI / 16) * step) * (.1f * std::sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y
+			    = (.007f * n + 1) * (std::cosf((TWO_PI / 16) * step) * (.1f * std::sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
 			vertices[n].z = z;
 			f32 wave      = WrapAngle(phase);
 			if (wave > PI)
 				wave = 0;
-			vertices[n + 1].x = vertices[n].x - ((.5f * (f32)sin(wave)) * (f32)sin((TWO_PI / 16) * step));
-			vertices[n + 1].y = vertices[n].y - ((.5f * (f32)sin(wave)) * (f32)sin((TWO_PI / 16) * step));
-			vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
+			vertices[n + 1].x = vertices[n].x - ((.5f * std::sinf(wave)) * std::sinf((TWO_PI / 16) * step));
+			vertices[n + 1].y = vertices[n].y - ((.5f * std::sinf(wave)) * std::sinf((TWO_PI / 16) * step));
+			vertices[n + 1].z = vertices[n].z - 1.5f * std::sinf(wave);
 			n += 2;
 			phase += DEG2RAD * 30;
 			z += .1f * span;
@@ -979,9 +969,9 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		return;
 	for (s32 i = 0; i < 20; ++i) {
 		f32 angle    = DEG2RAD * (rand() % 360);
-		f32 sinAngle = (f32)sin(angle);
+		f32 sinAngle = std::sinf(angle);
 		f32 vx       = (sinAngle * (rand() % 100)) / 200.0f;
-		f32 cosAngle = (f32)cos(angle);
+		f32 cosAngle = std::cosf(angle);
 		f32 vz       = (cosAngle * (rand() % 100)) / 200.0f;
 		f32 vy       = (50 + rand() % 80) / 100.0f;
 		f32 width    = (200 + rand() % 300) / 500.0f;
@@ -1247,12 +1237,12 @@ void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle)
 		f32 outer = size * 0.5f + 1.0f;
 		for (int i = 0; i < 25; i++) {
 			f32 ringAngle          = (TWO_PI / 24) * i;
-			verts[i * 2].pos.x     = center.x - size * (f32)sin(ringAngle) / 2.0f;
-			verts[i * 2].pos.z     = center.z + size * (f32)cos(ringAngle) / 2.0f;
+			verts[i * 2].pos.x     = center.x - size * std::sinf(ringAngle) / 2.0f;
+			verts[i * 2].pos.z     = center.z + size * std::cosf(ringAngle) / 2.0f;
 			verts[i * 2].pos.y     = center.y;
 			verts[i * 2].color     = color;
-			verts[i * 2 + 1].pos.x = center.x - outer * (f32)sin(ringAngle);
-			verts[i * 2 + 1].pos.z = center.z + outer * (f32)cos(ringAngle);
+			verts[i * 2 + 1].pos.x = center.x - outer * std::sinf(ringAngle);
+			verts[i * 2 + 1].pos.z = center.z + outer * std::cosf(ringAngle);
 			verts[i * 2 + 1].pos.y = center.y;
 			verts[i * 2 + 1].color = 0;
 		}
