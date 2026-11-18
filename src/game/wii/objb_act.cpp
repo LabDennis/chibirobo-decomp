@@ -1,9 +1,12 @@
 // chibi robo's actions, the GameCube's objb_act.cpp: .text 0x800F48E0-0x801067C0 (wii_units.md Nr. 67). The
 // functions come in the reverse of the GameCube's order, GetTargetFloorPosition first and UpdatePushedObject
 // last; ResetTumbleAction (the GameCube's xacttumble.cpp) follows the file.
-// NONMATCHING: the small helpers have source; the big per-action updates (lift, held object, hang, jump,
-// ladder, rope, push) and the input handlers are still to port. The Wii rewrote them for the nw4r models
-// and the Wii remote, so the GameCube's src/game/objb_act.cpp is a template for them, not a copy.
+// NONMATCHING: six per-action updates are still to port: UpdateLiftActionAnimation, UpdateHeldObject,
+// UpdatePlayerHangAction, UpdatePlayerJumpAction, UpdateLadderActionAnimation and UpdatePlayerRopeAction. The
+// Wii rewrote them for the nw4r models and the Wii remote, so the GameCube's src/game/objb_act.cpp is a
+// template for them, not a copy. Of the ported functions, the IsCarrying* checks and IsUsingMug differ only in
+// which of r4-r7 holds each nested inline's result; GetStagePlacementScale, GetTargetFloorPosition,
+// GetLiftTargetContactOffset and UpdatePushedObject in scheduling and stack slots.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
