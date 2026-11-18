@@ -38,8 +38,6 @@ void XObjLight::Release()
  * @note Address: 0x80092F98
  * @note Size: 0x14C
  */
-// NONMATCHING: regalloc only, the registers for the Init call's light mask (1 << (7 - i))
-// and the desc pointer are taken in another order.
 BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
@@ -47,7 +45,8 @@ BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 			HSD_LObj* previous = NULL;
 			for (s32 i = 0; i < 8; ++i) {
 				if (GetLightDesc(i)) {
-					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+					u8 mask = GetEnvData()[5]; // bit 7 - i switches light i on
+					mLights[i].Init(GetLightDesc(i)->mDesc, mask & (1 << (7 - i)));
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
 						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
