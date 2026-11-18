@@ -687,19 +687,22 @@ void CCameraActionScroll2::Draw()
  * @note Address: 0x80163F58
  * @note Size: 0x2A4
  */
-// NONMATCHING: retail divides the sizes by a 1.0f held in a register (fdivs at 0x801640DC); what it
-// divides by is not identified. Without the divides the helper is small enough to inline into Draw
+// zoom is the same 1.0f scale Draw's player arrow multiplies and divides by (retail fmuls and fdivs by one
+// register there, which only a variable gives); retail divides the sizes by it here too (fdivs at 0x801640DC)
 void CCameraActionScroll2::DrawMapMarker(s32 index, u32 color, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	CTexObj tex;
+	f32 zoom = 1.0f;
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[index - StatusTextureOffset], 0);
 	tex = gGame.mTpl.mTex;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	f32 cx, cy;
-	f32 w = scale * (1.1f * GXGetTexObjWidth(&tex));
-	f32 h = scale * GXGetTexObjHeight(&tex);
-	cx    = w / 2.0f;
-	cy    = -h / 2.0f;
+	u16 texW = GXGetTexObjWidth(&tex);
+	f32 w    = scale * (1.1f * texW) / zoom;
+	u16 texH = GXGetTexObjHeight(&tex);
+	f32 h    = scale * texH / zoom;
+	cx       = w / 2.0f;
+	cy       = -h / 2.0f;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f,
 	                   0.0f);
@@ -711,19 +714,21 @@ void CCameraActionScroll2::DrawMapMarker(s32 index, u32 color, f32 x, f32 y, f32
  * @note Address: 0x801641FC
  * @note Size: 0x2B8
  */
-// NONMATCHING: retail divides the sizes and offsets by a 1.0f held in a register (fdivs at 0x80164384); what it
-// divides by is not identified. Without the divides the helper is small enough to inline into Draw
+// the sizes and offsets divided by the same zoom (fdivs at 0x80164384)
 void CCameraActionScroll2::DrawMapLabel(f32 x, f32 y, f32 alpha, f32 scale)
 {
 	CTexObj tex;
+	f32 zoom = 1.0f;
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[162 - StatusTextureOffset], 0);
 	tex = gGame.mTpl.mTex;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	f32 ox, oy;
-	f32 w = scale * (1.1f * GXGetTexObjWidth(&tex));
-	f32 h = scale * GXGetTexObjHeight(&tex);
-	ox    = 36.0f * scale;
-	oy    = -32.0f * scale;
+	u16 texW = GXGetTexObjWidth(&tex);
+	f32 w    = scale * (1.1f * texW) / zoom;
+	u16 texH = GXGetTexObjHeight(&tex);
+	f32 h    = scale * texH / zoom;
+	ox       = 36.0f * scale / zoom;
+	oy       = -32.0f * scale / zoom;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x + ox, y + oy, 0.0f, w, h, 0.0f, 0.0f,
 	                   0.0f);
