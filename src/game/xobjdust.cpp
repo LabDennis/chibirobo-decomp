@@ -164,8 +164,7 @@ extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 {
 	if (dust->mStatus.mFlags & 0x4000000000000000ULL) {
 		if (dust->mEventId == 16) {
-			HSD_JObj* jobj = dust->mJObj;
-			HSD_AObj* aobj = GetAObj(jobj);
+			HSD_AObj* aobj = GetAObj(dust->mJObj);
 			if (aobj != NULL) {
 				if (aobj->flags & 0x44000000) {
 					if (dust->mStatus.mFlags & 0xC0000000000ULL) {
