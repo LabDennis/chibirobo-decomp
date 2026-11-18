@@ -63,7 +63,7 @@ static inline bool IsJapanese()
 	return gGame.mLanguage == 0;
 }
 
-// a rectangle as left, top, right and bottom, and a width and height
+// stand-ins for nw4r::ut::Rect and nw4r::lyt::Size, whose headers are not in include/nw4r
 struct MenuRect {
 	MenuRect()
 	{
@@ -78,11 +78,6 @@ struct MenuRect {
 
 struct MenuSize {
 	f32 width, height;
-};
-
-// a point on the screen
-struct MenuVec2 {
-	f32 x, y;
 };
 
 static MenuMainItem sMainLines[] = {
@@ -847,8 +842,6 @@ static inline void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width
 	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xC8C8C800, 3);
 }
 
-// two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
-// NONMATCHING: scheduling of the character copy and register allocation of the box corners
 // the status screen draws on the 4:3 middle of a wide screen: the camera and the scissor move in by the
 // margin, and the full width comes back afterwards.
 // NONMATCHING: 98 %, the int to float constant lands in f5 instead of f4 and the view's registers follow
@@ -891,6 +884,8 @@ BOOL MenuStatus::Draw()
 	return FALSE;
 }
 
+// two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
+// NONMATCHING: scheduling of the character copy and register allocation of the box corners
 extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
 {
 	char* p;
@@ -1200,7 +1195,7 @@ extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
 extern "C" MenuRect fn_800556E4(const CbPane* pane)
 {
 	MenuRect rect;
-	MenuVec2 origin;
+	nw4r::math::VEC2 origin;
 	origin.x    = -pane->mWidth / 2.0f;
 	origin.y    = pane->mHeight / 2.0f;
 	rect.left   = origin.x;
@@ -3156,7 +3151,7 @@ extern "C" void fn_800848C0(MenuEx* ex)
 	}
 }
 
-extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, MenuVec2* pos, u32 frames);
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames);
 
 // UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
 // tests the pointer against the menus' panes.
@@ -3182,7 +3177,7 @@ extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
 		ex->mCursor.mFrame = (ex->mCursor.mFrame + 1) % 8;
 	}
 
-	MenuVec2 pos;
+	nw4r::math::VEC2 pos;
 	MenuSize size;
 	size.height = gPointerScreenHeight;
 	size.width  = gPointerScreenWidth;
