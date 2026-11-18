@@ -750,23 +750,10 @@ game/xobjactordtor.cpp:
 game/xobjactorse.cpp:
 	.text       start:0x801087CC end:0x801089E4
 
-game/xobjactorground.cpp:
-	.text       start:0x801089E4 end:0x80108DAC
-
-game/xobjactorstop.cpp:
-	.text       start:0x80108DAC end:0x80108DE4
-
-game/xobjactorevent.cpp:
-	.text       start:0x80108DE4 end:0x8010927C
-
-game/xobjactorlook.cpp:
-	.text       start:0x8010927C end:0x80109490
-
-game/xobjactorjointupdate.cpp:
-	.text       start:0x80109490 end:0x80109B20
-
-game/xobjactorupdate.cpp:
-	.text       start:0x80109B20 end:0x8010A164
+game/xobjactor.cpp:
+	.text       start:0x801089E4 end:0x8010A164
+	.rodata     start:0x8020BF50 end:0x8020C0D8
+	.sdata2     start:0x806383E8 end:0x80638468
 
 game/xobjactor3dtor.cpp:
 	.text       start:0x8010A164 end:0x8010AD44
