@@ -935,7 +935,8 @@ public:
 	virtual void Update(u32 step); // _10
 	virtual void Reset();          // _14
 	virtual void Draw();           // _20, draws the markers over the room's objects
-	virtual void DrawDebug3d();    // _28
+	virtual void DrawDebug2d();    // _28
+	virtual void DrawDebug3d();    // _2C
 	virtual u32 GetCameraFlags();  // _58
 
 	void SaveCamInfo(const void* info);
@@ -945,7 +946,9 @@ public:
 	void ClearHideList();
 	BOOL AddHideObj(s32 id);
 	void DrawQuads();
-	BOOL IsFovUnderMax();
+	BOOL IsFovNotMax();
+	void DrawMapMarker(s32 index, u32 color, f32 x, f32 y, f32 alpha, f32 scale);
+	void DrawMapLabel(f32 x, f32 y, f32 alpha, f32 scale);
 	virtual ~CCameraActionScroll2() { }
 };
 

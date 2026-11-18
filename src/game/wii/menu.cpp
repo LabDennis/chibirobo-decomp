@@ -18,6 +18,7 @@
 #include "game/globals.h"
 #include "game/evt.h"
 #include "game/cfont.h"
+#include "game/menupanelbackground.h"
 #include "stl/math.h"
 #include <stdio.h>
 #include <string.h>
@@ -30,12 +31,14 @@ extern s32 gRefreshRate;
 extern MEMiHeapHead* gWiiGameHeap;
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
+extern s32 gScreenLeft, gScreenTop;
 extern "C" {
 char* GetStageFileName(s32 stage);
 char* GetStageName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
+void ResumeGameSounds(CGame* game, f32 fadeSeconds);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
@@ -43,6 +46,14 @@ u8* GetStatusIconDescription(s32 id);
 s32 ConvertHudTextToFullWidth(char* text);
 u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
+void DrawStatusMenuTabs(MenuStatus* menu);
+void fn_80061014(MenuStatus* menu);
+void DrawPlayerStatusOverview(MenuStatus* menu);
+void fn_80061DBC(MenuStatus* menu);
+void DrawStatusIconGrid(MenuStatus* menu);
+void DrawStatusHelpText(MenuStatus* menu);
+void DrawStatusMenuTitle(MenuStatus* menu);
+CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
 
@@ -51,6 +62,23 @@ static inline bool IsJapanese()
 {
 	return gGame.mLanguage == 0;
 }
+
+// stand-ins for nw4r::ut::Rect and nw4r::lyt::Size, whose headers are not in include/nw4r
+struct MenuRect {
+	MenuRect()
+	{
+		left   = 0.0f;
+		top    = 0.0f;
+		right  = 0.0f;
+		bottom = 0.0f;
+	}
+
+	f32 left, top, right, bottom;
+};
+
+struct MenuSize {
+	f32 width, height;
+};
 
 static MenuMainItem sMainLines[] = {
 	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
@@ -814,6 +842,48 @@ static inline void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width
 	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xC8C8C800, 3);
 }
 
+// the status screen draws on the 4:3 middle of a wide screen: the camera and the scissor move in by the
+// margin, and the full width comes back afterwards.
+// NONMATCHING: 98 %, the int to float constant lands in f5 instead of f4 and the view's registers follow
+BOOL MenuStatus::Draw()
+{
+	if (CMenu::Draw()) {
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		u32 scissorWidth = gPointerScreenWidth - (s32)margin * 2;
+		GXSetScissor(gScreenLeft + (s32)margin, gScreenTop, scissorWidth, gPointerScreenHeight);
+		DrawStatusMenuTabs(this);
+		fn_80061014(this);
+		DrawPlayerStatusOverview(this);
+		fn_80061DBC(this);
+		DrawStatusIconGrid(this);
+		DrawStatusHelpText(this);
+		DrawStatusMenuTitle(this);
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		GXSetScissor(gScreenLeft, gScreenTop, width, gPointerScreenHeight);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 // two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
 // NONMATCHING: scheduling of the character copy and register allocation of the box corners
 extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
@@ -1110,11 +1180,58 @@ void CMenu::Resume()
 	mSuspendFade = FALSE;
 }
 
+// places a pane where its layout entry says
+extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
+{
+	pane->mTrans.x = layout->mTrans.x;
+	pane->mTrans.y = layout->mTrans.y;
+	pane->mTrans.z = layout->mTrans.z;
+	pane->mWidth   = layout->mWidth;
+	pane->mHeight  = layout->mHeight;
+	pane->mKind    = layout->mKind;
+}
+
+// the pane's rectangle round its centre, y up
+extern "C" MenuRect fn_800556E4(const CbPane* pane)
+{
+	MenuRect rect;
+	nw4r::math::VEC2 origin;
+	origin.x    = -pane->mWidth / 2.0f;
+	origin.y    = pane->mHeight / 2.0f;
+	rect.left   = origin.x;
+	rect.top    = origin.y;
+	rect.right  = origin.x + pane->mWidth;
+	rect.bottom = origin.y - pane->mHeight;
+	return rect;
+}
+
 extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 {
 	if (list->mCount < 0x100) {
 		list->mPanes[list->mCount++] = pane;
 	}
+}
+
+// the pointer at x, y is on the pane, tested like an nw4r::lyt pane: through the inverse of its matrix.
+// NONMATCHING: our build expands fn_800556E4 here, retail calls it
+extern "C" bool fn_80055A7C(CbPaneList* list, CbPane* pane, f32 x, f32 y)
+{
+	if (!pane->mEnabled) {
+		return false;
+	}
+	nw4r::math::MTX34 mtx;
+	PSMTXIdentity(mtx.m);
+	mtx.m[0][3]   = pane->mTrans.x;
+	mtx.m[1][3]   = pane->mTrans.y;
+	mtx.m[2][3]   = pane->mTrans.z;
+	pane->mGlbMtx = mtx;
+	Mtx inverse;
+	PSMTXInverse(pane->mGlbMtx.m, inverse);
+	Vec pos = { x, y, 0.0f };
+	Vec local;
+	PSMTXMultVec(inverse, &pos, &local);
+	MenuRect rect = fn_800556E4(pane);
+	return rect.left <= local.x && local.x <= rect.right && rect.bottom <= local.y && local.y <= rect.top;
 }
 
 // a quad in one color, the GameCube's DrawSolidQuad
@@ -2990,6 +3107,25 @@ extern "C" void MarkAvailableStatusEntries(u8* available)
 	}
 }
 
+extern "C" void InitGameMenus(MenuEx* ex)
+{
+	ex->mActive   = FALSE;
+	ex->mMenus[0] = &sMenuMain;
+	ex->mMenus[5] = &sMenuStageSelect;
+	ex->mMenus[6] = &sMenuSFTest;
+	ex->mMenus[7] = &sMenuSFTestSub;
+	ex->mMenus[8] = &sMenuSFTestErr;
+	ex->mMenus[1] = &sMenuStatus;
+	ex->mMenus[2] = &sMenuItem;
+	ex->mMenus[3] = &sMenuPC;
+	ex->mMenus[4] = &sMenuSave;
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i]) {
+			ex->mMenus[i]->Init();
+		}
+	}
+}
+
 // the menus MenuEx keeps, the GameCube's menu group functions: the Wii has nine and its cursor only blinks.
 // LoadMenuGroupResources
 extern "C" BOOL fn_80084848(MenuEx* ex)
@@ -3013,6 +3149,52 @@ extern "C" void fn_800848C0(MenuEx* ex)
 			ex->mMenus[i]->Reset();
 		}
 	}
+}
+
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames);
+
+// UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
+// tests the pointer against the menus' panes.
+// NONMATCHING: 80 %, the frame is retail's; the screen size's int to float conversions are scheduled apart
+// in retail and the rectangle's registers differ
+extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
+{
+	BOOL active = FALSE;
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i] && ex->mMenus[i]->IsOpen() && ex->mMenus[i]->Update(frames)) {
+			active = TRUE;
+		}
+	}
+	if (ex->mActive && !active) {
+		// _34 is the screen capture behind the menus, a WiiFbTexture to the end of MenuEx
+		FreeFbTexture((WiiFbTexture*)&ex->_34);
+		ex->mActive = FALSE;
+		ResumeGameSounds(&gGame, 0.2f);
+	}
+	ex->mCursor.mTimer += frames;
+	if (ex->mCursor.mTimer > 3) {
+		ex->mCursor.mTimer = 0;
+		ex->mCursor.mFrame = (ex->mCursor.mFrame + 1) % 8;
+	}
+
+	nw4r::math::VEC2 pos;
+	MenuSize size;
+	size.height = gPointerScreenHeight;
+	size.width  = gPointerScreenWidth;
+	MenuRect screen;
+	screen.left   = -size.width / 2.0f;
+	screen.top    = size.height / 2.0f;
+	screen.right  = size.width / 2.0f;
+	screen.bottom = -size.height / 2.0f;
+	Vec pointer;
+	pointer.x      = gWiiPointer.mPointer.x;
+	pointer.y      = gWiiPointer.mPointer.y;
+	pointer.z      = gWiiPointer.mPointer.z;
+	f32 halfHeight = 0.5f * (screen.bottom - screen.top);
+	f32 halfWidth  = 0.5f * (screen.right - screen.left);
+	pos.x          = pointer.x - halfWidth;
+	pos.y          = -(pointer.y + halfHeight);
+	fn_8005575C(&gPointerPanes, gWiiPointer.mPointerValid != 0, &pos, frames);
 }
 
 extern "C" void DrawOpenMenus(MenuEx* ex)
@@ -3045,4 +3227,12 @@ extern "C" void fn_80084BF0(MenuEx* ex, s32 state)
 			ex->mMenus[i]->Close(state);
 		}
 	}
+}
+
+void CMenu::vf28()
+{
+}
+
+void CMenu::vf2C()
+{
 }

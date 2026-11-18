@@ -12,198 +12,68 @@ extern "C" {
 #include <dolphin/os.h>
 }
 
+// the map camera's half of the Wii camera code; the area camera's half is ccameraactionarea.cpp
+
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode);
-
-// the Wii build merged the area and map camera code into this file; the retail
-// rodata carries "ccameraactionmap2.cpp" as the __FILE__ string for both halves.
-// CamAreaSlot's constructor is the file's first emitted function.
-
-/**
- * @note Address: 0x80154310
- * @note Size: 0x10
- */
-CamAreaSlot::CamAreaSlot()
-{
-}
-
-// the area camera's half
-
-u32 CCameraActionArea::GetCameraFlags()
-{
-	return CAMFLAG_EYE | CAMFLAG_INTEREST | CAMFLAG_FOV;
-}
-
-u32 CCameraActionArea::GetInterestMode()
-{
-	return 2; // CMotionControlCamera eases its interest towards ours with Follow instead of taking it at once
-}
-
-XObj* CCameraActionArea::GetTarget()
-{
-	return mTarget;
-}
 
 extern "C" {
 void UpdateCameraAreaIndexAndBaseFov(CamAreaState* state, s32 unused);
 void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f32 to, f32 time);
-void RefreshMapCameraArea(CCameraActionMap* map);
-void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time);
 void InitCameraAreaEntries(CamAreaState* state);
-void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
-void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 force, f32 time);
+void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex);
+void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
 }
 
 // the Wii build resolves the current area's action in a second, C++ step that falls back to
 // the map camera while the player stands outside every area
 s32 GetCameraAreaMode(CamAreaState* state);
 
-void CCameraActionArea::PreviousUpdate()
+extern s32 gScreenSafeWidth;
+
+/**
+ * @note Address: 0x80157154
+ * @note Size: 0x134
+ */
+void CCameraActionMap::Init()
 {
-	if (mControlEnabled == 1) {
-		UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
-	}
-	// entering an area run by the map camera hands the camera over to it
-	if (gCameraAreaState.mCurrentArea != gCameraAreaState.mPrevArea && gCameraAreaState.mCurrentArea != -1
-	    && GetCameraAreaMode(&gCameraAreaState) == CAMACTION_MAP) {
-		gGame.mMotionControlCamera.ChangeAction(CAMACTION_MAP);
-		gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
-		SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP], gCameraAreaState.mZoomLevel, 15.0f);
-		RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP]);
-		f32 dy = gGame.mMotionControlCamera.mView.mInterest.y - mTarget->GetCameraTarget().y;
-		if (0.0f != dy) {
-			StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP], dy, 0.0f, 8.0f);
-		}
-	}
+	mSpringDamping      = 0.5f;
+	mRestDistance       = 60.0f;
+	mTargetRestDistance = 60.0f;
+	mFlatDistance       = 60.0f;
+	_C4                 = 18.0f;
+	InitCameraAreaEntries(&gCameraAreaState);
+
+	// the turn arrows, as the area camera's
+	nw4r::math::_VEC2 pos[2] = { 0 };
+	pos[0].x                 = gScreenSafeWidth / 2 - 30;
+	pos[1].x                 = -(gScreenSafeWidth / 2 - 30);
+	f32 rot[2]               = { 0.0f, PI };
+	mArrows[0].mPos.x        = pos[0].x;
+	mArrows[0].mPos.y        = pos[0].y;
+	mArrows[0].mPos.z        = rot[0];
+	mArrows[0].mShown        = 0;
+	mArrows[0]._10           = 0.0f;
+	mArrows[0]._14           = 0.0f;
+	mArrows[1].mPos.x        = pos[1].x;
+	mArrows[1].mPos.y        = pos[1].y;
+	mArrows[1].mPos.z        = rot[1];
+	mArrows[1].mShown        = 0;
+	mArrows[1]._10           = 0.0f;
+	mArrows[1]._14           = 0.0f;
+	_126C                    = 0.0f;
+	_1270                    = 0.0f;
+	_127C                    = 0.0f;
+	_1280                    = 0.0f;
+	_1274                    = 1.0f;
+	_1278                    = 1.0f;
+	_1284                    = 0.0f;
+	_1288                    = 3.0f;
 }
 
-void CCameraActionArea::Reset()
-{
-	LoadStageCameraAreaState(&gCameraAreaState);
-	mControlEnabled     = 1;
-	mPadControlEnabled  = TRUE;
-	mEntryIndex         = 0;
-	CamAreaEntry* entry = gCameraAreaState.mGroups[0].mEntries;
-	mEntry              = entry;
-	mPrevEntry          = entry;
-	mTarget             = (XObj*)gGame.GetPlayer();
-	mKeepViewDirection  = 0;
-	mForceApply         = FALSE;
-	_2D0                = 0;
-	_2D1                = 0;
-	_2D2                = 0;
-	_2E8                = 0;
-	_2EC                = 0;
-	_2F8                = 0;
-	_2A8                = 0.0f;
-	_2C0                = 0.0f;
-}
+extern s32 gScreenSafeRight;
+extern s32 gScreenSafeTop;
+extern "C" void fn_8016AA74(const f32* params);
 
-void CCameraActionArea::SetCamera(CCamera* camera)
-{
-	SetEye(camera->mView.mEye);
-	SetInterest(camera->mView.mInterest);
-	SetDistance(camera->mView.mDistance);
-	SetFov(camera->mFov);
-	mKeepViewDirection = 1;
-	Vec zero           = { 0 };
-	_2D4               = zero;
-	_2CC               = 0.0f;
-	_2E8               = 0;
-	_2EC               = 0;
-	_2F8               = 0;
-	_2A8               = 0.0f;
-	_2C0               = 0.0f;
-}
-
-// the GameCube's SelectAreaCameraEntry, which the Wii expands here
-static inline void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, f32 time)
-{
-	CamAreaEntry* entry   = &gCameraAreaState.mGroups[slotIndex].mEntries[entryIndex];
-	area->mEntry          = entry;
-	area->mPrevEntry      = entry;
-	area->mEntryIndex     = entryIndex;
-	area->mPrevEntryIndex = entryIndex;
-	SetCameraAreaIndexAndBaseFov(&gCameraAreaState, slotIndex);
-	ApplyAreaCameraEntry(area, entry, mode, 1, time);
-}
-
-// the yaw of angle as a unit direction in the xz plane; the Wii MSL's float sinf/cosf wrappers
-// (cos's float argument goes through the wrapper's parameter, the fmr before `bl cos`)
-inline void YawDir(CVec& dir, const Vec& angle)
-{
-	CVec ang(angle);
-	f32 x = std::sinf(ang.y);
-	f32 z = std::cosf(ang.y);
-	dir.x = x;
-	dir.y = 0.0f;
-	dir.z = z;
-	PSVECNormalize(&dir, &dir);
-}
-
-// the entry of the slot that faces most along dir, the first when none does; the GameCube inlines it
-// NONMATCHING: the dot product's paired-single registers differ (99.4 %)
-s32 CCameraActionArea::FindFacing(s32 slotIndex, const Vec& dir)
-{
-	CVec look(dir.x, dir.y, dir.z);
-	CamAreaSlot* slot   = &gCameraAreaState.mGroups[slotIndex];
-	f32 best            = -1.0f;
-	s32 bestIndex       = -1;
-	CamAreaEntry* entry = slot->mEntries;
-	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
-		CVec facing;
-		YawDir(facing, entry->mAngle);
-		f32 dot = nw4r::math::VEC3Dot((nw4r::math::VEC3*)&look, (nw4r::math::VEC3*)&facing);
-		if (dot > best) {
-			bestIndex = i;
-			best      = dot;
-		}
-	}
-	if (best == -1.0f) {
-		bestIndex = 0;
-	}
-	return bestIndex;
-}
-
-extern "C" void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex)
-{
-	area->mControlEnabled = 1;
-	CVec view             = area->mInterest - area->mEye;
-	PSVECNormalize(&view, &view);
-	SelectAreaCameraEntry(area, slotIndex, area->FindFacing(slotIndex, view), mode, time);
-}
-
-// NONMATCHING: retail copies both Vecs once more on the stack before SetInte_I (95.2 %)
-extern "C" void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, XObj* target, f32 time)
-{
-	if (target != NULL) {
-		area->mTarget = target;
-		Vec interest  = area->mTarget->GetCameraTarget();
-		Vec current   = area->mInterest;
-		area->SetInte_I(mode, current, interest, time);
-	}
-}
-
-extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time)
-{
-	area->mControlEnabled = control;
-	SelectAreaCameraEntry(area, slotIndex, entryIndex, mode, time);
-}
-
-extern "C" void SetAreaCameraHeightIndices(CCameraActionArea*, s32 zoomLevel)
-{
-	gCameraAreaState.mZoomLevel     = zoomLevel;
-	gCameraAreaState.mPrevZoomLevel = zoomLevel;
-}
-
-extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
-{
-	area->mControlEnabled           = 1;
-	gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
-}
-
-// the map camera's half
-
-// NONMATCHING: the string sits elsewhere in the file's pool; the pool is only right once the whole file is
 void CCameraActionMap::Reset()
 {
 	OSPanic(__FILE__, 285, "actionMap::reset\n");
@@ -536,10 +406,162 @@ u32 CCameraActionMap::GetCameraFlags()
 	return CAMFLAG_EYE | CAMFLAG_INTEREST | CAMFLAG_FOV;
 }
 
-// the area tables' debug shapes, the GameCube's DrawDebug3d of both area actions
-void CCameraActionArea::DrawDebug3d()
+// set by ResetCenter; the spring update starts over from the new center
+s32 sMapCameraCenterReset;
+// 1: a new orbit keeps the target rest distance instead of the eye's current one
+s32 sMapCameraOrbitAtRestDistance;
+
+static inline f32 FlatDistance(const CVec& pos, CVec& v)
 {
-	gCameraAreaState.DrawDebug3d();
+	CVec flat(pos.x, v.y, pos.z);
+	return PSVECDistance(&flat, &v);
+}
+
+// the orbit starts from where the camera is
+static inline void ResetMapCameraTargetEye(CCameraActionMap* map)
+{
+	map->mOrbitEye       = map->mEye;
+	map->mPrevOrbitEye   = map->mEye;
+	map->mOrbitAngle     = map->mAngle;
+	map->mPrevOrbitAngle = map->mAngle;
+	map->mPrevTargetEye  = map->mEye;
+	map->mTargetEye      = map->mPrevTargetEye;
+	map->mEyeInterp      = NULL;
+
+	map->mFlatDistance = FlatDistance(map->mTargetEye, map->mInterest);
+	FlatDistance(map->mTargetEye, map->mSpringTarget); // retail computes and drops it (bl PSVECDistance at 0x80160350)
+}
+
+static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
+{
+	map->mSpringTarget     = pos;
+	map->mSpringPrevTarget = map->mSpringTarget;
+}
+
+static inline void ResetCenter(CCameraActionMap* map)
+{
+	Vec* center = &map->mSpringTarget;
+	SetCenter(map, *center);
+	CVec eye              = map->mEye;
+	map->mRestDistance    = PSVECDistance(&eye, center);
+	sMapCameraCenterReset = 1;
+	map->mStatus.mFlags &= ~0x700;
+	if (map->mEyeInterp != NULL) { // retail tests before clearing (0x801604C4)
+		map->mEyeInterp = NULL;
+	}
+}
+
+/**
+ * @note Address: 0x80160220
+ * @note Size: 0x2D4
+ */
+// NONMATCHING: retail tests mask & flags, reads FlatDistance's z before x and copies the spring
+// center through a stack temporary before storing it back (91 %)
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
+{
+	// eye modes (0x3E): 2 eases the yaw to mTargetYaw, 4 runs mTurnInterpolation, 8 turns by the pad
+	// follow modes (0x70000): 0x10000 trails the target on a spring, 0x20000 orbits it (UpdateMapCameraOrbit)
+	u32 eyeMode = flags & 0x3E;
+	if (!map->mStatus.Check(eyeMode)) {
+		map->mStatus.mFlags &= ~0x3E;
+		map->mStatus.mFlags |= eyeMode;
+		if (eyeMode != 4) {
+			map->mTurnInterpolation = NULL;
+		}
+	}
+
+	u32 mode = flags & 0x70000;
+	if (!map->mStatus.Check(mode)) {
+		map->mStatus.mFlags &= ~0x70000;
+		map->mStatus.mFlags |= mode;
+		if (mode == 0x20000) {
+			ResetMapCameraTargetEye(map);
+			if (sMapCameraOrbitAtRestDistance == 1) {
+				map->mOrbitRadius = map->mTargetRestDistance;
+			} else if (eyeMode == 4) {
+				CVec pos          = map->mSpringTarget;
+				CVec eye          = map->mEye;
+				map->mOrbitRadius = PSVECDistance(&pos, &eye);
+			} else {
+				CVec target = map->mTarget->GetCameraTarget();
+				CVec eye    = map->mEye;
+				f32 dist    = PSVECDistance(&eye, &target);
+				if (dist < 31.0f) {
+					dist = 31.0f;
+				}
+				map->mOrbitRadius = dist;
+			}
+		} else if (mode == 0x10000) {
+			ResetCenter(map);
+		}
+	}
+}
+
+// the probe the last unobstructed-yaw test cast, kept for the debug draw
+extern "C" CVec sMapCameraTestEye;
+extern "C" CVec sMapCameraTestCenter;
+
+/**
+ * @note Address: 0x80160520
+ * @note Size: 0x268
+ */
+// NONMATCHING: retail builds the two probe CVecs in word-copied stack temporaries before storing
+// them, and map and the vtable sit in swapped saved registers (83 %)
+extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
+{
+	Vec center = *map->mTarget->GetPos();
+	CVec angles(map->mAngle.x, yaw, map->mAngle.z);
+	f32 angle = HALF_PI + angles.y;
+	f32 pitch = angles.x;
+	Vec pos;
+	f32 distance;
+	{
+		CVec target(map->mTarget->GetCameraTarget());
+		CVec eye(map->mEye);
+		distance = PSVECDistance(&target, &eye);
+	}
+	pos.x                   = center.x + distance * std::cosf(angle) * std::cosf(pitch);
+	pos.z                   = center.z + distance * -std::sinf(angle) * std::cosf(pitch);
+	pos.y                   = center.y;
+	sMapCameraTestEye       = CVec(pos);
+	sMapCameraTestCenter    = CVec(center);
+	map->mIntersectionCount = map->CalcIntersectVec(pos, center, map->mIntersectionEntries, 0);
+	if (map->mIntersectionCount == 0 && TrySetMapCameraTargetYaw(map, yaw, 25.0f, 0.0f)) {
+		SetMapCameraModeFlags(map, 0x20002);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x8015F0DC
+ * @note Size: 0x270
+ */
+void CCameraActionMap::DrawDebug2d()
+{
+	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.2f };
+	fn_8016AA74(sDebugParams);
+	f32 z = 0.0f;
+	f32 y, x;
+	x = gScreenSafeRight - 171;
+	y = gScreenSafeTop + 18;
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
+	                       gCameraAreaState.mCurrentArea);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACMAP2\n", x, y + 9.0f, z, 9.0f, 9.0f);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", x - 36.0f, y + 18.0f, z, 9.0f, 9.0f,
+	                       mStatus.mFlags, mPreviousStatus.mFlags);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", x - 63.0f, y + 36.0f, z, 9.0f, 9.0f, mInsideAreas[0],
+	                       mInsideAreas[1], mInsideAreas[2]);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", x - 63.0f, y + 45.0f, z, 9.0f, 9.0f, mInsideCll0,
+	                       mInsideCll1, mInsideCll2);
+	if (mInsideCllCount > 0) {
+		DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", x - 63.0f, y + 54.0f, z, 9.0f, 9.0f, mInsideCll0,
+		                       mInsideCll1, mInsideCll2);
+	}
+	if (mNearestTargetEntry != NULL) {
+		DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", x - 63.0f, y + 63.0f, z, 9.0f, 9.0f,
+		                       mNearestTargetEntry->mRecordIndex, mNearestTargetEntry->mSide);
+	}
 }
 
 void CCameraActionMap::DrawDebug3d()

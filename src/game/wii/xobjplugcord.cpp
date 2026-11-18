@@ -163,7 +163,7 @@ extern "C" void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint*
 	// the GameCube calls the plug's XObjWireEff through XObj::SetPos, the Wii the wire
 	// object embedded in the player
 	if (nodes->mNode[0].mState == 1) {
-		gGame.GetPlayer()->mCordWire.SetPosition(&nodes->mNode[0].mPos);
+		gGame.GetPlayer()->mCordWire.SetPos(nodes->mNode[0].mPos);
 	}
 }
 

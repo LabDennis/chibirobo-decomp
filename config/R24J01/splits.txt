@@ -1147,8 +1147,11 @@ game/wii/ccameraactionareaexdtor.cpp:
 	.data start:0x8030DDA0 end:0x8030DDAC
 	.sdata start:0x805A1278 end:0x805A1280
 
+game/wii/ccameraactionarea.cpp:
+	.text start:0x80154310 end:0x80157154
+
 game/wii/ccameraactionmap2.cpp:
-	.text start:0x80154310 end:0x80160D30
+	.text start:0x80157154 end:0x80160D30
 
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8
@@ -1194,6 +1197,9 @@ game/wii/ccameraactionscroll.cpp:
 
 game/wii/cmotioncontrolcamera.cpp:
 	.text start:0x8016753C end:0x8016AD78
+
+game/wii/objb_act.cpp:
+	.text start:0x800F48E0 end:0x801067C0
 
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
@@ -1245,6 +1251,23 @@ game/wii/xobjfreeupdate.cpp:
 	extabindex start:0x80014E04 end:0x80014E4C
 	.text start:0x80118860 end:0x801191F8
 	.bss start:0x8045D700 end:0x8045DD44
+game/wii/xobjspider.cpp:
+	extab start:0x8000DB4C end:0x8000DD0C
+	extabindex start:0x80015008 end:0x800151B8
+	.text start:0x8012063C end:0x80128C84
+	.sdata2 start:0x805A5648 end:0x805A5738
+
+game/wii/xobjspidersmall.cpp:
+	extab start:0x8000DD0C end:0x8000DF6C
+	extabindex start:0x800151B8 end:0x80015308
+	.text start:0x80128C84 end:0x80132330
+	.sdata2 start:0x805A5738 end:0x805A5838
+
+game/wii/xobjspiderboss.cpp:
+	extab start:0x8000DF6C end:0x8000E0BC
+	extabindex start:0x80015308 end:0x800153C8
+	.text start:0x80132330 end:0x801370BC
+	.sdata2 start:0x805A5838 end:0x805A58B0
 
 game/wii/xobjactorstop.cpp:
 	.text start:0x80138560 end:0x80138598

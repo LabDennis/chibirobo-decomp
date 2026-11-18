@@ -489,7 +489,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 		manager->mSlot.mData.mCameraFov      = camera->CCamera::mFov;
 	}
 	manager->mSlot.mData.mSquirterLiquid = gGame.GetPlayer()->mSquirterContent;
-	manager->mSlot.mData.mItemTint       = gGame.GetPlayer()->mItemTint;
+	manager->mSlot.mData.mItemTint       = gGame.GetPlayer()->mItemTintWord;
 }
 
 // reads a saved stage back into a live stage index, the inverse of the remap CaptureWiiSaveSlot does
@@ -592,7 +592,7 @@ extern "C" void ApplyWiiSaveSlot(CSaveFile* manager)
 	RequestSuit(gGame.GetPlayer(), manager->mSlot.mData.mSuit);
 	gGame.GetPlayer()->mSuits.mSpecial  = manager->mSlot.mData.mSpecialSuit;
 	gGame.GetPlayer()->mSquirterContent = manager->mSlot.mData.mSquirterLiquid;
-	gGame.GetPlayer()->mItemTint        = manager->mSlot.mData.mItemTint;
+	gGame.GetPlayer()->mItemTintWord    = manager->mSlot.mData.mItemTint;
 }
 
 /**
