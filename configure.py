@@ -515,13 +515,12 @@ gamecube_libs = [
             Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(JP), "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/cgameinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3dtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3ptcl.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3panel.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3draw.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3update.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3release.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/scrc.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
+            # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
+            # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
+            # 0x8020C2D4) and .sbss2 (Kind8's 0x8063A530 ... HandleActorRiderCommand's 0x8063A54C) run in the reverse of
+            # .text, while HandleEventCommand's strings (0x8020C338) come before LoadFromPlacement's (0x8020C368)
+            Object(NonMatching, "game/xobjactor3.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             # -inline deferred, as retail shows (JP addresses): .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
             # first, then UpdateToy6FJointSpin's (0x8020C580), UpdateToyJointExtension's (0x8020C610), StateCarry's
             # (0x8020C760), StateHitRecovery's (0x8020C794) and StatePickUp's (0x8020C7D4), the exact reverse of .text
@@ -567,7 +566,6 @@ gamecube_libs = [
             Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoinfall.cpp", cflags=with_hsd_headers(cflags_game)),
