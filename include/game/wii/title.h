@@ -11,7 +11,9 @@
 #include "Dolphin/vec.h"
 class CoordInfo;
 class CCamera;
+class CVec;
 struct UnkStageObj;
+struct XObjFloor;
 
 // The Wii title screen (title.cpp), CGame keeps it at _5C70. The layout follows the GameCube Title
 // (game/title.h) with a vtable in front, a remembered value behind each selection the pointer can drop,
@@ -179,7 +181,8 @@ public:
 	virtual void vf1BC();
 	virtual void vf1C0();
 	virtual void vf1C4();
-	virtual void vf1C8();
+	// _1C8, probes one floor record for the cord's collision scan, the GameCube's TestFloorCollision
+	virtual s32 vf1C8(Vec* from, Vec* to, Vec* push, Vec* contact, s32* floor, s32 flags, f32 radius, f32 height, f32 y, f32 z);
 	virtual void vf1CC();
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
@@ -212,12 +215,12 @@ public:
 	virtual void vf238();
 	virtual void vf23C();
 	virtual void vf240();
-	virtual void* vf244(); // _244, a pose component the draw copies between the cursors
+	virtual CVec* vf244(); // _244, the object's pose position, the GameCube's mMoveTranslate
 	virtual void vf248();
 	virtual void vf24C();
 	virtual void vf250();
 	virtual void vf254();
-	virtual void* vf258(); // _258, another pose component
+	virtual CVec* vf258(); // _258, the object's pose scale, the GameCube's mMoveScale
 	virtual void vf25C();
 	virtual void vf260();
 	virtual void vf264();
@@ -226,15 +229,27 @@ public:
 
 	u8 _004[0x014 - 0x004];
 	UnkStageObj* mSpawn; // _014, the placement the object loaded from
-	u8 _018[0x0F0 - 0x018];
+	u8 _018[0x060 - 0x018];
+	Vec mMoveRotate; // _060, the floor yaw adds to its _064 like the GameCube's mMoveRotate.y
+	u8 _06C[0x0F0 - 0x06C];
 	WiiCursorParts* mParts; // _0F0, up to six parts the message draw steps with the anim frame
 	u8 _0F4[0x150 - 0x0F4];
-	u64 mStatus; // _150, the flags are a 64-bit mask: clearing one bit stores both words; bit 0 of the
-	             // low word at _154 marks a finished LoadFromPlacement, bit 11 the caller's scale set
+	u64 mStatus; // _150, the flags are a 64-bit mask: clearing one bit stores both words. the cord
+	             // push tests the high word at _150: it requires 0x02000000 and skips 0x0C000000 or
+	             // 0x40000000; bit 0 of the low word at _154 marks a finished LoadFromPlacement,
+	             // bit 11 the caller's scale set
 	u8 _158[0x168 - 0x158];
 	void* mKind;      // _168, the object's spawn data; +0x16 is the s16 object kind
 	void* mSpawnData; // _16C, the placement record; _00 is the object kind the scroll map checks
-	u8 _170[0x6D4 - 0x170];
+	u8 _170[0x174 - 0x170];
+	XObjFloor* mFloors; // _174, the -1-terminated floor list the cord probes walk
+	u8 _178[0x1BC - 0x178];
+	s32 mHitFloorIndex; // _1BC, the floor the last probe hit
+	u8 _1C0[0x640 - 0x1C0];
+	f32 mFloorXZExtent; // _640, horizontal reach of the floors, the GameCube's _6F8
+	u8 _644[0x648 - 0x644];
+	f32 mFloorHeights[32]; // _648, a height per floor
+	u8 _6C8[0x6D4 - 0x6C8];
 	BOOL mScreenBoundsValid; // _6D4, the four below hold the object's bounds on screen
 	u8 _6D8[0x6E0 - 0x6D8];
 	f32 mScreenTop;    // _6E0

@@ -803,6 +803,15 @@ struct WiiCordWire {
 	virtual void SetPosition(const Vec* pos); // _90
 };
 
+// the plug block embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug). The anchor
+// transform takes the whole block; only the connection word the cord simulation reads is verified
+struct WiiPlayerPlug {
+	u8 _0000[0xD64];
+	s32 mConnection; // _D64, XActLift's _54 with 0x10000 set
+	u8 _D68[0xDA0 - 0xD68];
+};
+STATIC_ASSERT(sizeof(WiiPlayerPlug) == 0xDA0);
+
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
 struct WiiOXMenuMark {
@@ -938,7 +947,8 @@ struct WiiPlayerState : public XObj {
 	u8 _9DDC[0x9DF8 - 0x9DDC];
 	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
 	f32 mMoveAngle;     // _9DFC
-	u8 _9E00[0xABC0 - 0x9E00];
+	u8 _9E00[0x9E20 - 0x9E00];
+	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50

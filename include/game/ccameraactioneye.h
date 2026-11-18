@@ -14,7 +14,9 @@
 
 // a value with a target and a per frame speed to step it there, the decl copied
 // from cobj.h which pulls the GameCube-only HSD headers; same pattern as
-// gxa_shared.h
+// gxa_shared.h. when wii/xobj.h is already in, its CObjVec (the retail-verified
+// one, a TVec) is the class and this copy stays out
+#ifndef GAME_WII_XOBJ_H
 class CObjVec : public CVec {
 public:
 	CVec mTarget; // _10
@@ -51,6 +53,7 @@ public:
 	}
 };
 STATIC_ASSERT(sizeof(CObjVec) == 0x30);
+#endif
 
 // a two-point cubic in x and y: the end points at +00, the tangents at +10;
 // the pointer position runs through it for the look response (fn_8016A844

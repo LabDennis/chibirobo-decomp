@@ -801,6 +801,34 @@ public:
 	CVec mSpeed;  // _20
 
 	virtual ~CObjVec() { }
+
+	// puts it at a value with nowhere to go
+	void Reset(f32 x, f32 y, f32 z)
+	{
+		this->x   = x;
+		this->y   = y;
+		this->z   = z;
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+		mSpeed.x  = 0.0f;
+		mSpeed.y  = 0.0f;
+		mSpeed.z  = 0.0f;
+	}
+	void Reset(const Vec& v) { Reset(v.x, v.y, v.z); }
+	void SetTarget(f32 x, f32 y, f32 z)
+	{
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+	}
+	void SetTarget(const Vec& v) { SetTarget(v.x, v.y, v.z); }
+	// puts it at a value with its target there too, the speed stays
+	void SetNow(const Vec& v)
+	{
+		Set(v);
+		SetTarget(v);
+	}
 };
 STATIC_ASSERT(sizeof(CObjVec) == 0x30);
 #endif
@@ -960,7 +988,7 @@ STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
 // element of XObjMap's two 100-entry record lists: 0xC bytes with a ctor and
 // dtor in the CPtcl unit (retail fn_800BEB4C/dtor_800BEB60 and
-// fn_800BEBDC/fn_800BEBF0). their real names and members are not recovered yet
+// fn_800BEBDC/dtor_800BEBF0). their real names and members are not recovered yet
 class XObjMapListA {
 public:
 	XObjMapListA();
@@ -1321,6 +1349,50 @@ public:
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
+// the base of the people and toys, the GameCube's members shifted by +0x28
+class XObjActor : public XObj {
+public:
+	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
+
+	f32 mHeading;   // _9A8, the way it walks
+	f32 mMoveSpeed; // _9AC, move speed
+	u8 _9B0[0x9B8 - 0x9B0];
+	s32 mKindStep;    // _9B8, the kind's own step
+	u32 mKindCounter; // _9BC, cleared with mKindStep
+
+	Vec GetCameraTarget();
+};
+
+// the plain object an XObjHBox carries
+struct XObjHBoxPart {
+	XObj mObj;              // _00
+	f32 mHit;               // _9A8, set to 1 when chibi robo hits the box
+	u8 _9AC[0x9B0 - 0x9AC]; // _9AC
+	f32 mRange;             // _9B0
+	s32 mSfx;               // _9B4, keyed off on a hit
+};
+STATIC_ASSERT(sizeof(XObjHBoxPart) == 0x9B8);
+
+// a box that reads a second object (placement 36) and draws it inside itself
+class XObjHBox : public XObj {
+public:
+	virtual void Release();                                            // _40 override
+	virtual void InitializeObject();                                   // _14C override, fn_801164D8
+	virtual void ResetForNewGame();                                    // _150 override, fn_80116518
+	virtual void ResetObjectState();                                   // _154 override
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158 override
+	virtual void UpdateObject(u32 frames);                             // _164 override
+	virtual void DrawWithView(Mtx view);                               // _178 override
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
+	virtual void DrawScreenOverlay();                                  // _190 override
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
+
+	s32 mLoadState;     // _9A8
+	f32 mRing;          // _9AC, draws the two rings while above 0
+	XObjHBoxPart mPart; // _9B0
+};
+STATIC_ASSERT(sizeof(XObjHBox) == 0x1368);
+
 // subclass pool types: ctor/dtor are defined in their own units, the tail pad is
 // the part of the stride the class adds on top of XObj
 #define WII_XOBJ_DECL(name, size)      \
@@ -1392,9 +1464,6 @@ public:
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
 WII_XOBJ_DECL(XObjChr, 0x1CCA0);
 WII_XOBJ_DECL(XObjActor3, 0x21C8);
-WII_XOBJ_DECL(XObjSound, 0xA10);
-WII_XOBJ_DECL(XObjCoin, 0xA30);
-WII_XOBJ_DECL(XObjItem, 0x9B0);
 WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
 WII_XOBJ_DECL(XObjActorToy, 0x2208);
 WII_XOBJ_DECL(XObjActorJenny, 0xD98);
@@ -1407,7 +1476,6 @@ WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
 WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
-WII_XOBJ_DECL(XObjHBox, 0x1368);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so

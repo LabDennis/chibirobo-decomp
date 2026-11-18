@@ -1353,7 +1353,9 @@ if wii:
                 Object(NonMatching, "game/wii/cjanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
                 # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
-                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
+                # headers, which want the Wii MSL
+                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 # -inline noauto: retail calls EvalCmp (0x80097324) where auto-inlining expands it into _cmd_IF
                 # -i include/rvl_msl: the nw4r::ef handles of the event effects
@@ -1404,6 +1406,21 @@ if wii:
                 # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
                 # re-reads mCount for `count` instead of subtracting in one expression
                 Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # unit 77: the sound, flag-backed pickup and hbox-forward functions; the
+                # GameCube's xobjcoinupdate.cpp covers only the coin half. -i include/rvl_msl:
+                # game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound headers
+                Object(NonMatching, "game/wii/xobjcoinupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # Wii XObjHBox: the carried part is an embedded plain XObj (_9B0) behind the
+                # 155-slot chain vtable; the Wii file carries the GameCube xobjhboxpart and
+                # xobjhboxupdate functions in retail order. NonMatching for now: the shared
+                # literal pool (lbl_805A54xx) is owned by neighbouring auto objects
+                Object(NonMatching, "game/wii/xobjhboxpart.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
+                # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
+                # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not
+                # export that name for the eight neighbouring auto objects, and claiming the literal
+                # in splits would take it away from the auto object that defines it
+                Object(NonMatching, "game/wii/xobjactorstop.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),

@@ -1,5 +1,6 @@
 #include "Version.h"
 #if defined(VERSION_R24J01)
+#include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 
 // retail's xobj_ut.cpp: the small XObj classes (XObj, XObjLight, XObjMap and the
