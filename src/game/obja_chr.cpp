@@ -4582,12 +4582,6 @@ f32 GetJointAnimationEndFrame(CJObj*);
 f32 GetJointAnimationCurrentFrame(CJObj*);
 }
 
-// where the jump started
-static inline Vec GetJumpArcPosition(const XActJump* jump)
-{
-	return jump->mArcPosition;
-}
-
 /**
  * @note Address: 0x800A0BD8
  * @note Size: 0x1FF8 (US)
@@ -4620,7 +4614,8 @@ Vec XObjChr::GetCameraTarget()
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetJointAnimationEndFrame(this);
-			f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
+			f32 t      = GetJointAnimationCurrentFrame(this) / end;
+			t *= 1.7f;
 			if (t > 1.f)
 				t = 1.f;
 			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4656,7 +4651,8 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
+				f32 t      = GetJointAnimationCurrentFrame(this) / end;
+				t *= 1.7f;
 				if (t > 1.f)
 					t = 1.f;
 				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4676,7 +4672,8 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
+				f32 t      = GetJointAnimationCurrentFrame(this) / end;
+				t *= 1.7f;
 				if (t > 1.f)
 					t = 1.f;
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
@@ -4719,18 +4716,18 @@ Vec XObjChr::GetCameraTarget()
 			f32 t        = frame / duration;
 			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
 			f32 threshold = .91f * duration;
-			frame         = GetJointAnimationCurrentFrame(this) - threshold;
+			f32 elapsed   = GetJointAnimationCurrentFrame(this) - threshold;
 			f32 remaining = GetJointAnimationEndFrame(this) - threshold;
-			f32 dy        = frame > 0 ? (end.y - start.y) * (frame / remaining) : 0.f;
+			f32 dy        = elapsed > 0 ? (end.y - start.y) * (elapsed / remaining) : 0.f;
 			target        = (Vec) { x, 10.f + (start.y + dy), z };
 
 		} else if (IsJumpActionState(&mJump, 9) || IsJumpActionState(&mJump, 12) || IsJumpActionState(&mJump, 15)
 		           || IsJumpActionState(&mJump, 17)) {
 			target   = mMoveTranslate + (Vec) { 0, 10, 0 };
-			target.y = 10.f + GetJumpArcPosition(&mJump).y;
+			target.y = 10.f + mJump.mArcPosition.y;
 		} else if (IsJumpActionState(&mJump, 10) || IsJumpActionState(&mJump, 13) || IsJumpActionState(&mJump, 16)) {
 			CVec start = mMoveTranslate;
-			CVec arc   = GetJumpArcPosition(&mJump);
+			CVec arc   = mJump.mArcPosition;
 			f32 end    = GetJointAnimationEndFrame(this);
 			f32 t      = GetJointAnimationCurrentFrame(this) / end;
 			target     = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
@@ -5901,6 +5898,8 @@ static inline f32 GetActionBatteryCost(s32 index)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
+// NONMATCHING: GGTP01 only, for the lift's drain retail converts the idle quotient in f1 and loads the battery cost into
+// f0, swapping the two registers
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6429,14 +6428,6 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
 	p->SetAnim(id, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
-// how far the stick is pushed
-static inline f32 StickLength(const CPadOne* pad)
-{
-	f32 x = pad->mStickX;
-	f32 y = pad->mStickY;
-	return sqrtf(x * x + y * y);
-}
-
 /**
  * @note Address: 0x800AA070
  * @note Size: 0x1670
@@ -6444,7 +6435,14 @@ static inline f32 StickLength(const CPadOne* pad)
 extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim, u32, f32, f32)
 {
 	CPadOne* pad = &p->mPad;
-	f32 motion   = (gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript ? 0.0f : StickLength(pad);
+	f32 motion;
+	if ((gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript) {
+		motion = 0.0f;
+	} else {
+		f32 x  = pad->mStickX;
+		f32 y  = pad->mStickY;
+		motion = sqrtf(x * x + y * y);
+	}
 	if (motion == 0.0f && p->mFloorContacts[4].objectIndex >= 0)
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.mStatus.mFlags & 0x100) && !(gGame.mStatus.mFlags & 0x200))
