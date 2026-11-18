@@ -206,6 +206,23 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 	mArrows[1]._14     = 0.0f;
 }
 
+/**
+ * @note Address: 0x801555AC
+ * @note Size: 0x12C
+ */
+void CCameraActionArea::DrawDebug2d()
+{
+	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
+	fn_8016AA74(sDebugParams);
+	f32 z = 0.0f;
+	f32 y, x;
+	x = gScreenSafeRight - 234;
+	y = gScreenSafeTop + 18;
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
+	                       mEntryIndex, gCameraAreaState.mCurrentArea);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", x, y + 9.0f, z, 9.0f, 9.0f);
+}
+
 // the GameCube's SelectAreaCameraEntry, which the Wii expands here
 static inline void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, f32 time)
 {
@@ -355,7 +372,9 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
 
 // the map camera's half
 
-// NONMATCHING: the string sits elsewhere in the file's pool; the pool is only right once the whole file is
+// NONMATCHING: the string sits elsewhere in the file's pool. Retail's area half is a separate
+// ccameraactionarea unit with a string pool of its own; built in this file, CCameraActionArea::DrawDebug2d's
+// strings come first and shift this one's offset (94 %)
 void CCameraActionMap::Reset()
 {
 	OSPanic(__FILE__, 285, "actionMap::reset\n");
@@ -717,7 +736,7 @@ static inline void ResetMapCameraTargetEye(CCameraActionMap* map)
 	map->mEyeInterp      = NULL;
 
 	map->mFlatDistance = FlatDistance(map->mTargetEye, map->mInterest);
-	FlatDistance(map->mTargetEye, map->mSpringTarget);
+	FlatDistance(map->mTargetEye, map->mSpringTarget); // retail computes and drops it (bl PSVECDistance at 0x80160350)
 }
 
 static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
@@ -734,7 +753,7 @@ static inline void ResetCenter(CCameraActionMap* map)
 	map->mRestDistance    = PSVECDistance(&eye, center);
 	sMapCameraCenterReset = 1;
 	map->mStatus.mFlags &= ~0x700;
-	if (map->mEyeInterp != NULL) {
+	if (map->mEyeInterp != NULL) { // retail tests before clearing (0x801604C4)
 		map->mEyeInterp = NULL;
 	}
 }
@@ -855,23 +874,4 @@ void CCameraActionMap::DrawDebug2d()
 void CCameraActionMap::DrawDebug3d()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
-}
-
-// retail keeps the area half's strings in a pool of their own (behind "ccameraactionarea.cpp"); defined
-// here, after every map string, the map half's pool keeps retail's order
-/**
- * @note Address: 0x801555AC
- * @note Size: 0x12C
- */
-void CCameraActionArea::DrawDebug2d()
-{
-	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
-	fn_8016AA74(sDebugParams);
-	f32 z = 0.0f;
-	f32 y, x;
-	x = gScreenSafeRight - 234;
-	y = gScreenSafeTop + 18;
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
-	                       mEntryIndex, gCameraAreaState.mCurrentArea);
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", x, y + 9.0f, z, 9.0f, 9.0f);
 }
