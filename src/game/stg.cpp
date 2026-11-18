@@ -165,7 +165,7 @@ extern "C" void SetMenuTevMode(CGs* gs, s32 mode);
 extern "C" CTexObj* LoadMenuPaletteTexture(CGame* game, s32 i);
 extern "C" void DrawMenuTriangleFan(CGs* gs, Vec* pos, u32 color, u16 count);
 extern "C" void SetMenuDepthMode(CGs* gs, u8 enable, s32 func, u8 update);
-extern "C" CGs* GetGameGraphics(CBase* game);
+extern "C" CGs* GetGameGraphics(CBase* game); // mGs is a CBase member, as in GetGameLanguage(CBase*)
 extern "C" const char* GetPCDialogueText(s32 id);
 extern "C" char* GetPCMenuLabelText(s32 id);
 extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
@@ -181,7 +181,7 @@ f32 gPCDialogueX;
 // a macro: retail expands it at every use, even in MenuPC::Draw, which calls far smaller inlines (US 0x80045EC0);
 // rate is loaded with 0.25 and scaled in place, both in f1 (fmuls f1, f2, f1 at US 0x8004DF7C)
 #define PC_EASE_CALL(value, target)                  \
-	{                                                \
+	do {                                             \
 		f32 speed = (target) - (value);              \
 		f32 rate  = 0.25f;                           \
 		rate      = speed * rate;                    \
@@ -190,7 +190,7 @@ f32 gPCDialogueX;
 		if (rate <= 1.0f)                            \
 			rate = 1.0f;                             \
 		ApproachHudValue(&(value), &(target), rate); \
-	}
+	} while (0)
 enum PCShopListKind { PriceList, ItemPriceList };
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
@@ -255,21 +255,25 @@ static const PCChoiceArt pcChoiceArt[] = { { 0, 0 },
 enum PCIconAnchor { PCIconCenter, PCIconCorner, PCIconCursor };
 
 // a macro: retail expands it at every use, Draw included; the test of i ahead of the loop is retail's (US 0x80045F50)
-#define PC_DIGIT_DIVISOR(divisor, i)              \
-	divisor = 1.0f;                               \
-	if ((i) > 0) {                                \
-		for (s32 place = 0; place < (i); ++place) \
-			divisor *= 10.0f;                     \
-	}
+#define PC_DIGIT_DIVISOR(divisor, i)                  \
+	do {                                              \
+		divisor = 1.0f;                               \
+		if ((i) > 0) {                                \
+			for (s32 place = 0; place < (i); ++place) \
+				divisor *= 10.0f;                     \
+		}                                             \
+	} while (0)
 
 enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
 
 #if defined(VERSION_JP)
 // macros: MenuPC::Draw, their only user, could not expand inlines, yet retail stores the glyphs itself (JP 0x800468A0)
 #define PC_READ_DIALOGUE_GLYPH(text) ((((const u8*)(text))[0] << 8) | ((const u8*)(text))[1])
-#define PC_SET_DIALOGUE_GLYPH(menu, code)                    \
-	*(u16*)(menu)->mCharCopies[(menu)->mNextGlyph] = (code); \
-	(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0
+#define PC_SET_DIALOGUE_GLYPH(menu, code)                        \
+	do {                                                         \
+		*(u16*)(menu)->mCharCopies[(menu)->mNextGlyph] = (code); \
+		(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0;      \
+	} while (0)
 #endif
 
 // NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
@@ -502,6 +506,7 @@ BOOL MenuPC::Draw()
 			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f, scroll);
 #endif
 			DrawPCBlueNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mScrapDisplay.shown);
+			// the same variable top as the history bar (US 0x80045C34, 0x80045CAC); JP's scroll is 0, so 76 stays
 			f32 barY      = 76.0f;
 			s32 positions = CountShopCatalogEntries(page) - 8;
 			f32 first, last;
