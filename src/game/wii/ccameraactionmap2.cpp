@@ -263,6 +263,55 @@ extern "C" void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s3
 	SelectAreaCameraEntry(area, slotIndex, area->FindFacing(slotIndex, view), mode, time);
 }
 
+// the entry of the active area's group that faces most along dir becomes the current one, the first
+// when none does; the GameCube writes this out in UpdateAreaCameraEntrySelection
+// NONMATCHING: the dot product's paired-single registers differ, as in FindFacing (99.4 %)
+extern "C" void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir)
+{
+	CVec look(dir.x, dir.y, dir.z);
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
+	f32 best            = -1.0f;
+	CamAreaEntry* entry = slot->mEntries;
+	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
+		CVec facing;
+		YawDir(facing, entry->mAngle);
+		f32 dot = nw4r::math::VEC3Dot((nw4r::math::VEC3*)&look, (nw4r::math::VEC3*)&facing);
+		if (dot > best) {
+			area->mEntryIndex = i;
+			best              = dot;
+		}
+	}
+	if (best == -1.0f) {
+		area->mEntryIndex = 0;
+	}
+}
+
+// the active area's entries nearest the view's bearing at or below it ([0]) and the one before that ([1])
+// NONMATCHING: retail guards the loop with a zero-count test and hoists the wrap constants behind it,
+// which the GameCube build of the same loop does not do either (89.9 %)
+extern "C" void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices)
+{
+	f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
+	f32 best = TWO_PI;
+	s32 index;
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
+	CamAreaEntry* entry = slot->mEntries;
+	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
+		f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
+		f32 turn   = WrapAngle(yaw - facing);
+		if (turn <= best) {
+			best  = turn;
+			index = i;
+		}
+	}
+	s32 prev = index - 1;
+	if (prev < 0) {
+		prev = slot->mEntryCount - 1;
+	}
+	indices[0] = index;
+	indices[1] = prev;
+}
+
 // the Wii-only variant: picks the entry facing the current view in the active area's group
 // NONMATCHING: the view and the eye copy swap stack slots (99.9 %); retail expands
 // SelectAreaCameraEntryByViewDirection here, which this merged unit's -inline noauto does not
