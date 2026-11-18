@@ -1619,8 +1619,212 @@ public:
 	u8 _DF4[4];              // _DF4
 };
 STATIC_ASSERT(sizeof(XObjSpider) == 0xDF8);
-WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
-WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
+
+// the fx_spider_01 a small spider carries around (the GameCube's XObjSpiderSmallFx)
+struct XObjSpiderSmallFx {
+	CVec mPos;       // _00
+	CVec _10;        // _10
+	f32 mRotY;       // _20
+	f32 _24;         // _24
+	u32 mState;      // _28, its anim, 1 and 3 play one, 10 puts it away
+	s32 _2C;         // _2C
+	CStatus mStatus; // _30, 1 shown
+};
+STATIC_ASSERT(sizeof(XObjSpiderSmallFx) == 0x38);
+
+// the small spiders, npc_spider_2: the GameCube class behind the Wii XObj, with the Wii AnimSfx and one word
+// more in front of it
+class XObjSpiderSmall : public XObj {
+public:
+	XObjSpiderSmall();
+	// inline: retail emits the vtable and its thunks in xobjspidersmall.cpp
+	virtual ~XObjSpiderSmall() { }
+	virtual void Release();                                            // _40
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawObject();                                         // _174
+	virtual void DrawGroundShadow(f32 opacity);                        // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade) { mAnimSfx.Pause(fade); }       // _20C
+	virtual void ResumeSounds(f32 fade) { mAnimSfx.Resume(fade); }     // _210
+	virtual void DrawLate();                                           // _28C, CGame::DrawScene's last pass
+	virtual void UpdateAnimationSounds();                              // _290
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+
+	void FindWebs(); // collects the stage's webs, the first spider's job
+
+	void SetState(s32 state)
+	{
+		mStep      = 0;
+		mTimer     = 0;
+		mPrevState = mState;
+		mState     = state;
+	}
+
+	f32 mWalkHeading;       // _9A8, the way it walks
+	f32 mWalkSpeed;         // _9AC
+	f32 _9B0;               // _9B0
+	f32 mTurnSpeed;         // _9B4
+	u8 _9B8[0x9BC - 0x9B8]; // _9B8
+	f32 _9BC;               // _9BC
+	f32 mRadius;            // _9C0
+	f32 mFallSpeed;         // _9C4
+	f32 mScale;             // _9C8
+	f32 mTargetScale;       // _9CC, the scale it grows to
+	s32 mState;             // _9D0
+	s32 mStep;              // _9D4
+	s32 mTimer;             // _9D8
+	CStatus mSpiderStatus;  // _9DC, 1 hit, 2 knocked over, 0x40 shadow, 0x800000 grabbed
+	s32 mPrevState;         // _9E4
+	u32 _9E8;               // _9E8
+	f32 _9EC;               // _9EC
+	f32 _9F0;               // _9F0
+	Vec mHitPos;            // _9F4
+	Vec mHome;              // _A00
+	f32 mHitStrength;       // _A0C
+	s32 mHitsLeft;          // _A10
+	s32 mMaxHits;           // _A14
+	Vec _A18;               // _A18
+	Vec mWalkTarget;        // _A24, where it walks to
+	Vec mAreaPos;           // _A30, corner of the area it walks in
+	f32 mAreaWidth;         // _A3C
+	f32 mAreaDepth;         // _A40
+	Vec mTargetPos;         // _A44
+	f32 mTargetRadius;      // _A50
+	s32 mStage;             // _A54
+	s32 mEvtArgs[6];        // _A58, from HandleEventCommand
+	u32 _A70;               // _A70
+	XObjSpiderSmallFx mFx;  // _A74
+	XObj* mFxObj;           // _AAC
+	u8 mFxIndex;            // _AB0, 255 for none
+	u8 _AB1[0xAB4 - 0xAB1]; // _AB1
+	f32 mClingAngle;        // _AB4, the angle it sits at around the robot
+	f32 mShakeStrength;     // _AB8
+	s32 mDrainTimer;        // _ABC, frames to the next battery drain
+	f32 mHoldTime;          // _AC0, how long it holds on
+	Vec mClingOffset;       // _AC4
+	u8 _AD0;                // _AD0
+	u8 _AD1[0xAD4 - 0xAD1]; // _AD1
+	s32 mPrevBgm;           // _AD4, the bgm it took over from
+	u8 mPrevBgmVolume;      // _AD8
+	u8 _AD9[0xADC - 0xAD9]; // _AD9
+	s32 mLoadPoolIndex;     // _ADC
+	s32 mTimeMode;          // _AE0
+	s32 mAreaGraceTimer;    // _AE4
+	s32 mWarpsLeft;         // _AE8
+	s32 mBattleBgmState;    // _AEC
+	u32 _AF0;               // _AF0
+	AnimSfx mAnimSfx;       // _AF4
+};
+STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xB50);
+
+// the big spider, npc_spider_3: the GameCube class behind the Wii XObj with the Wii AnimSfx
+class XObjSpiderBoss : public XObj {
+public:
+	XObjSpiderBoss();
+	// inline: retail emits the vtable and its thunks in xobjspiderboss.cpp
+	virtual ~XObjSpiderBoss() { }
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawObject();                                         // _174
+	virtual void DrawGroundShadow(f32 opacity);                        // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade) { mAnimSfx.Pause(fade); }       // _20C
+	virtual void ResumeSounds(f32 fade) { mAnimSfx.Resume(fade); }     // _210
+	virtual void UpdateAnimationSounds();                              // _28C
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+
+	void SetState(s32 state)
+	{
+		mStep      = 0;
+		mTimer     = 0;
+		mPrevState = mState;
+		mState     = state;
+	}
+
+	f32 mHeading;             // _9A8
+	f32 mSpeed;               // _9AC
+	f32 mTargetRotY;          // _9B0
+	f32 mRotSpeed;            // _9B4
+	u8 _9B8[0x9BC - 0x9B8];   // _9B8
+	f32 _9BC;                 // _9BC
+	f32 mRadius;              // _9C0
+	f32 mSpeedY;              // _9C4
+	f32 _9C8;                 // _9C8
+	f32 _9CC;                 // _9CC
+	s32 mState;               // _9D0
+	s32 mStep;                // _9D4
+	s32 mTimer;               // _9D8
+	CStatus mSpiderStatus;    // _9DC, 1 hit, 2 knocked over, 8 airborne, 0x2000000 frozen
+	s32 mPrevState;           // _9E4
+	u32 mActionTimer;         // _9E8
+	f32 _9EC;                 // _9EC
+	f32 _9F0;                 // _9F0
+	Vec mHitPos;              // _9F4
+	Vec mBasePos;             // _A00
+	f32 mHitStrength;         // _A0C
+	s32 mHits;                // _A10
+	s32 mMaxHits;             // _A14
+	Vec mPatrolTarget;        // _A18
+	Vec mAreaPos;             // _A24
+	f32 mAreaWidth;           // _A30
+	f32 mAreaDepth;           // _A34
+	Vec mStartPos;            // _A38
+	f32 _A44;                 // _A44
+	s32 mPatrolSelection;     // _A48
+	s32 mAltAnimId;           // _A4C, the anim the sounds follow while 0x40000000 is set
+	s32 mGrabCooldown;        // _A50
+	s32 mCommand;             // _A54
+	s32 mArgs[5];             // _A58
+	u32 _A6C;                 // _A6C
+	f32 _A70;                 // _A70
+	f32 mEscapeInputStrength; // _A74
+	s32 mDrainTimer;          // _A78
+	f32 mEscapeRemaining;     // _A7C
+	Vec _A80;                 // _A80
+	s32 mGrabIntervalFrames;  // _A8C
+	u32 mDamageStep;          // _A90
+	s32 mBlinkTimer;          // _A94
+	u8 _A98[0xABD - 0xA98];   // _A98
+	u8 mPatrolEffectActive;   // _ABD
+	u8 _ABE[0xAC0 - 0xABE];   // _ABE
+	AnimSfx mAnimSfx;         // _AC0
+	u8 _B1C[0xCE0 - 0xB1C];   // _B1C, the eight joint parts; their Wii form is not recovered yet
+};
+STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
