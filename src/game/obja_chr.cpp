@@ -6637,6 +6637,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 			if (aobj->flags & 0x44000000)
 				player->SetAnim(0x5E, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			break;
+		case 0x5E:
+			break;
 		case 0x5F:
 			FinishPlayerActionAnimation(player, aobj);
 			break;

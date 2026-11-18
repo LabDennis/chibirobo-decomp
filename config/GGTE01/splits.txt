@@ -385,23 +385,9 @@ game/msgdataformat.cpp:
 	.text       start:0x800869AC end:0x80086F24
 	.data       start:0x802255F8 end:0x8022565C
 
-game/memcardcheck.cpp:
-	.text       start:0x80086F24 end:0x80087190
-
-game/memcardheader.cpp:
-	.text       start:0x80087190 end:0x80087508
-
-game/memcardload.cpp:
-	.text       start:0x80087508 end:0x80087854
-
-game/memcardfile.cpp:
-	.text       start:0x80087854 end:0x80087A4C
-
-game/memcardpos.cpp:
-	.text       start:0x80087A4C end:0x80087CC0
-
-game/memcardrestore.cpp:
-	.text       start:0x80087CC0 end:0x800880EC
+game/memcard.cpp:
+	.text       start:0x80086F24 end:0x800880EC
+	.sdata2     start:0x8065D158 end:0x8065D160
 
 game/memcardcapture.cpp:
 	.text       start:0x800880EC end:0x800884F0
@@ -615,23 +601,10 @@ game/xobjactordtor.cpp:
 game/xobjactorse.cpp:
 	.text       start:0x80106A8C end:0x80106CA4
 
-game/xobjactorground.cpp:
-	.text       start:0x80106CA4 end:0x8010706C
-
-game/xobjactorstop.cpp:
-	.text       start:0x8010706C end:0x801070A4
-
-game/xobjactorevent.cpp:
-	.text       start:0x801070A4 end:0x8010753C
-
-game/xobjactorlook.cpp:
-	.text       start:0x8010753C end:0x80107750
-
-game/xobjactorjointupdate.cpp:
-	.text       start:0x80107750 end:0x80107DE0
-
-game/xobjactorupdate.cpp:
-	.text       start:0x80107DE0 end:0x80108424
+game/xobjactor.cpp:
+	.text       start:0x80106CA4 end:0x80108424
+	.rodata     start:0x8020B248 end:0x8020B3D0
+	.sdata2     start:0x8065E120 end:0x8065E1A0
 
 game/xobjactor3.cpp:
 	.text       start:0x80108424 end:0x80115538
