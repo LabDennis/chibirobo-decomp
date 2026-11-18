@@ -1255,7 +1255,8 @@ public:
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
 	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group
-	u8 _180[0x188 - 0x180];
+	s32 mStageIndex; // _180, the object's slot in XOBJS's object table
+	s32 mPoolIndex;  // _184, its slot in its pool
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
@@ -1438,6 +1439,9 @@ public:
 	virtual void ProcessRequest(XObjReadReq* req);                                                 // _18
 	virtual BOOL HasPendingReads();                                                                // _1C
 
+	// puts one read on the queue; both QueueReads and SpawnObjectFromPlacement inline it
+	BOOL ReadStart(void* obj, void* info);
+
 	CMsgQueue mQueue;     // _324
 	XObjReadReq mReqs[8]; // _34C
 	u8 _38C[0x14];        // tail past the requests, not touched by any retail function
@@ -1466,10 +1470,23 @@ public:
 	virtual void ProcessRequest(XObjReadReq* req);    // _18
 };
 
+// objects that remember being collected in a CEvtFlags, a bit per placement id
+class XObjFlags : public XObj {
+public:
+	// _00-_9A8 = XObj
+	CEvtFlags* mFlags; // _9A8
+
+	virtual void ResetForNewGame(); // _150, clears every flag
+	virtual s32 GetFlagIndex();     // the bit in mFlags
+};
+STATIC_ASSERT(sizeof(XObjFlags) == 0x9B0); // the XObj alignment pads the tail
+STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
+
 extern "C" {
 void InitializeObjectPools(XOBJS* list);
 void* ReadObjectListThread(void* arg);
 void* ReadSingleObjectThread(void* arg);
+BOOL HasPendingObjectReads();
 extern XObjReadAll gAllObjectsReader;
 extern XObjReadOne gSingleObjectReader;
 }

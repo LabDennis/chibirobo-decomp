@@ -4,6 +4,7 @@
 #include "types.h"
 
 class XObj;
+class CoordInfo;
 
 // one of XOBJS's object pools, same layout as the GameCube one
 struct XObjPool {
@@ -23,6 +24,9 @@ struct XObjPool {
 	}
 
 	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
+
+	// first object whose status flags match value under mask, -1 without one; xobjs.cpp holds the body
+	s32 Find(u64 mask, u64 value) const;
 };
 STATIC_ASSERT(sizeof(XObjPool) == 0x14);
 
@@ -38,7 +42,17 @@ public:
 	// _11D8 vtable
 
 	virtual ~XOBJS() { }
+
+	void ReadAll(); // fills the pools and the object table from the stage placements, then loads them
 };
 STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
+
+extern "C" {
+void ResetPooledObjects(XObjPool* pools);
+u8 UpdateStageObjectLoading(XOBJS* list);
+void ReleaseStageObjectList(XOBJS* list);
+XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
+s32 FindStageObjectIndex(XOBJS* list, XObj* obj);
+}
 
 #endif
