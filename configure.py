@@ -508,20 +508,26 @@ gamecube_libs = [
             Object(NonMatching, "game/objb_army.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspider.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspidersmall.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjspiderbossdraw.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (JP addresses): .text 0x80101FA4-0x80108754 from ~XObjSpiderBoss to __sinit_xobjspiderboss_cpp,
+            # whose .ctors entry is 0x801FEF54, and one .rodata/.data/.sdata/.sdata2/.bss run behind it. -inline deferred,
+            # as retail shows: .rodata holds ResetSpiderBossState's six Vecs (0x8020BC50, .text 0x8010834C) first, then
+            # OnHitFromPosition's, UpdateSpiderBossAttachments' path, State3's paths and State4's points (0x8020BD34,
+            # .text 0x80102170), the reverse of .text; and .sdata2 opens with the RTTI names ("Vec" ... "XObj",
+            # 0x806382C8-0x806382F0) before the first literal
+            Object(NonMatching, "game/xobjspiderboss.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorstop.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjspiderbossreset.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(JP), "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/cgameinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3dtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3ptcl.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3panel.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3draw.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3update.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactor3release.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/scrc.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
+            # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
+            # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
+            # 0x8020C2D4) and .sbss2 (Kind8's 0x8063A530 ... HandleActorRiderCommand's 0x8063A548) run in the reverse of
+            # .text, while HandleEventCommand's strings (0x8020C338) come before LoadFromPlacement's (0x8020C368).
+            # -inline noauto: LaunchSpiderBossPartByIndex (0x80111980) keeps LaunchSpiderBossPart (0x801116FC, 0x284) as a
+            # call, which -inline auto,deferred inlines
+            Object(NonMatching, "game/xobjactor3.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             # -inline deferred, as retail shows (JP addresses): .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
             # first, then UpdateToy6FJointSpin's (0x8020C580), UpdateToyJointExtension's (0x8020C610), StateCarry's
             # (0x8020C760), StateHitRecovery's (0x8020C794) and StatePickUp's (0x8020C7D4), the exact reverse of .text
@@ -546,7 +552,6 @@ gamecube_libs = [
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjspiderbossdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
@@ -556,46 +561,39 @@ gamecube_libs = [
             # (margin$1108), the reverse of their .text order. noauto: UpdatePlugCordNodes (0x800DDA30, 0x144)
             # keeps StartPlugCordNode as a call, which -inline auto,deferred inlines (0x2F0)
             Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
-            Object(Matching, "game/xobjspiderbossstop.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
             Object(EquivalentFor(JP), "game/memcardload.cpp", cflags=cflags_game),
             Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsclear.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoinparam.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoinfall.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustpad.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjfreeupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoinupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossattack.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorground.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardcheck.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline noauto, as retail shows: it keeps CheckDustScatterHeading (0x238) as a call from
             # UpdateDriftingDust, which every GC compiler (2.0 to 2.7) auto-inlines by size alone under
             # -inline auto (JP code 70 % without the flag). Weaker evidence than the deferred units below:
             # a larger original body could also explain it, but no natural form does.
-            Object(Equivalent, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            # The XObjDust and XObjHBox code of one retail file, folded from seven fragment units. JP addresses:
+            # .text 0x800E034C..0x800E2EFC runs dust then hbox with no gap. That file is bigger: it starts with
+            # XObjFree (__dt__8XObjFree 0x800DF2E4, its .sdata RTTI CJObj..XObj at 0x80634AB0 are the only copies
+            # before XObjFlags/Dust/HBox/Coin/Item's at 0x80634AD8..0x80634AF8), takes OnItemUsed and
+            # OnHitFromPosition of XObjDust (0x800DFE90, in xobjfreeevent.cpp), the coin and item code, and ends
+            # with the weak tail Dust, Flags, HBox, HBoxPart, Coin, Item dtors and __sinit_xobjflagsinit_cpp
+            # (0x800E3F84..0x800E42F0). Not linked until those units join it; code in retail's order, no deferred
+            Object(NonMatching, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustbillboard.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfreeevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardread.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
-            Object(NonMatching, "game/xobjspiderbosshit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardscanjob.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossse.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossstates34.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjspiderbossload.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardfile.cpp", cflags=cflags_game),
             Object(NonMatching, "game/params.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -610,8 +608,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorlook.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
             Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
             # what deferred codegen does to one source; the Wii build of the same file has no deferred
@@ -1026,10 +1022,7 @@ gamecube_libs = [
         "objects": [
             Object(Matching, "game/THPSimple.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/THPDraw.cpp", extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/xobjhboxupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorjointupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspiderbossplacement.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorevent.cpp", cflags=with_hsd_headers(cflags_game)),
         ],
     },
