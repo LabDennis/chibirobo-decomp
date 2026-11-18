@@ -696,6 +696,8 @@ public:
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60
+
+	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);

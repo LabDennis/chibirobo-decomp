@@ -694,6 +694,43 @@ void CCameraActionArea::DrawDebug3d()
 	gCameraAreaState.DrawDebug3d();
 }
 
+// the probe the last unobstructed-yaw test cast, kept for the debug draw
+extern "C" CVec sMapCameraTestEye;
+extern "C" CVec sMapCameraTestCenter;
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
+
+/**
+ * @note Address: 0x80160520
+ * @note Size: 0x268
+ */
+// NONMATCHING: retail builds the two probe CVecs in word-copied stack temporaries before storing
+// them, and map and the vtable sit in swapped saved registers (83 %)
+extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
+{
+	Vec center = *map->mTarget->GetPos();
+	CVec angles(map->mAngle.x, yaw, map->mAngle.z);
+	f32 angle = HALF_PI + angles.y;
+	f32 pitch = angles.x;
+	Vec pos;
+	f32 distance;
+	{
+		CVec target(map->mTarget->GetCameraTarget());
+		CVec eye(map->mEye);
+		distance = PSVECDistance(&target, &eye);
+	}
+	pos.x                   = center.x + distance * std::cosf(angle) * std::cosf(pitch);
+	pos.z                   = center.z + distance * -std::sinf(angle) * std::cosf(pitch);
+	pos.y                   = center.y;
+	sMapCameraTestEye       = CVec(pos);
+	sMapCameraTestCenter    = CVec(center);
+	map->mIntersectionCount = map->CalcIntersectVec(pos, center, map->mIntersectionEntries, 0);
+	if (map->mIntersectionCount == 0 && TrySetMapCameraTargetYaw(map, yaw, 25.0f, 0.0f)) {
+		SetMapCameraModeFlags(map, 0x20002);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 /**
  * @note Address: 0x8015F0DC
  * @note Size: 0x270
