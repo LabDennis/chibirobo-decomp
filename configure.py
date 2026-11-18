@@ -470,7 +470,11 @@ gamecube_libs = [
             # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
             # three; no other function of the unit changes with the flag
             Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
-            Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline auto,deferred, as retail shows (US addresses): the getters Draw__6MenuPCFv (0x80044C74) could not
+            # expand follow it from GetPlayerLevel (0x80048EB0) to GetGameGraphics (0x800493F4) in the reverse of the
+            # order Draw first calls them (GetGameGraphics first, GetPlayerLevel last); only GetPCDialogueText
+            # (0x800493F8) stands apart, last
+            Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
