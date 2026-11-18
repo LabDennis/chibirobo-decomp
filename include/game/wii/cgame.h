@@ -1657,6 +1657,7 @@ public:
 	class FbMirrorEx : public FbMirror { };
 
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
+	void Start();                           // _10 override, 0x8001BC60 (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
 	// _24, _28, _2C, _30 (the logos, title and menus run at 60, the game at 30), _68 mLightList, _84
 	void Draw();
