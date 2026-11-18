@@ -15,6 +15,7 @@
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
+#include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -430,6 +431,14 @@ void fn_800D1AF8(WiiPlayerState* player, u32 frames)
 	}
 }
 
+// the plug and its cord wire, queued for the scene with it
+void fn_800D1B64(WiiPlayerState* player, u32 frames)
+{
+	player->mPlug.UpdateObject(frames);
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mPlug.mObject.m_pScnMdl);
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mCordWire.mObject.m_pScnMdl);
+}
+
 void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames)
 {
 	if (chr->mHeadOffsetReady == 0 && gGame.mEvt.mData.mScript == NULL)
@@ -703,6 +712,14 @@ BOOL fn_800DBD68(const XObj* object)
 BOOL FindMapFloorBelow(XObjMap* map, const Vec* pos, const XObjMapHit* last, XObjMapHit* hit)
 {
 	return fn_800C98E0(map, pos, last->mTriangle, hit);
+}
+
+// how far apart two positions are, seen from above
+f32 GetHorizontalDistance(const Vec* a, const Vec* b)
+{
+	f32 dx = a->x - b->x;
+	f32 dz = a->z - b->z;
+	return FSqrt(dx * dx + dz * dz);
 }
 
 f32 GetObjectFloorXZExtent(const XObj* object, s32 index)

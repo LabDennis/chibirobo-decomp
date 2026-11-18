@@ -547,6 +547,7 @@ CanRadarActionSlideOnSlope = .text:0x800DBA74; // type:function size:0x8
 GetFloorExtent = .text:0x800DBA98; // type:function size:0x9C
 GetFloorCenterOffset = .text:0x800DBB34; // type:function size:0x9C
 GetDrawListObject = .text:0x800DBBD0; // type:function size:0x1C
+GetHorizontalDistance = .text:0x800DBBEC; // type:function size:0xB8
 GetObjectHitFloorHeight = .text:0x800DBCB4; // type:function size:0x14
 GetDrawListIndex = .text:0x800DBCC8; // type:function size:0x20
 GetDrawListCount = .text:0x800DBCE8; // type:function size:0x14
