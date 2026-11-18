@@ -7,6 +7,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/cpad.h"
+#include "game/wii/cpadact.h"
 #include "game/wii/xobjs.h"
 #include "game/evt.h"
 #include "game/evtqueue.h"
@@ -21,6 +22,7 @@
 #include "game/cfile.h"
 #include "Dolphin/os.h"
 #include <string.h>
+#include <stdlib.h>
 
 extern "C" {
 extern s32 gRefreshRate;
@@ -47,7 +49,9 @@ void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerLevel(WiiPlayerParams* params, s32 amount);
 void AddPlayerRank(WiiPlayerParams* params, s32 amount);
-void SetAttachmentCountById(void* values, s32 id, s32 value); // a category 3 object's follow-up to a new anim
+void SetAttachmentCountById(void* values, s32 id, s32 value);
+s32 UpdateAttachmentAvailability(
+    void* values, s32 id); // the count of attachment id, below 0 when there is none // a category 3 object's follow-up to a new anim
 }
 
 CEvtFlags gEventFlags;
@@ -98,6 +102,11 @@ static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 		return evt->mData.mContext;
 	}
 	return (XObj*)id;
+}
+
+static inline s32 EvtRead16(const u8* p)
+{
+	return p[0] + (p[1] << 8);
 }
 
 static inline s16 CEvt_FindObjIndex(s16 id)
@@ -1695,6 +1704,452 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			break;
 		}
 	}
+}
+
+/**
+ * @note Address: 0x80094ED8
+ * @note Size: 0x1B60
+ */
+// NONMATCHING: retail's pad[5] runs through an FSqrt with nw4r's domain warning still in, and a few float
+// registers differ (pad[6], the percentages)
+extern "C" s32 CEvt_Evaluate(CEvt* evt)
+{
+	s32 op = *evt->mData.mScript;
+	evt->mData.mScript++;
+	s32 result;
+	switch (op) {
+	case EVT_EXPR_EQUAL:
+	case EVT_EXPR_NOT_EQUAL:
+	case EVT_EXPR_LESS:
+	case EVT_EXPR_LESS_EQUAL:
+	case EVT_EXPR_GREATER:
+	case EVT_EXPR_GREATER_EQUAL:
+	case EVT_EXPR_ADD:
+	case EVT_EXPR_SUB:
+	case EVT_EXPR_MUL:
+	case EVT_EXPR_DIV:
+	case EVT_EXPR_MOD:
+	case EVT_EXPR_AND:
+	case EVT_EXPR_OR:
+	case EVT_EXPR_XOR: {
+		u8 binary = op;
+		s32 rhs   = CEvt_Evaluate(evt);
+		s32 lhs   = CEvt_Evaluate(evt);
+		if (binary == EVT_EXPR_EQUAL)
+			result = lhs == rhs;
+		if (binary == EVT_EXPR_NOT_EQUAL)
+			result = lhs != rhs;
+		if (binary == EVT_EXPR_LESS)
+			result = lhs < rhs;
+		if (binary == EVT_EXPR_LESS_EQUAL)
+			result = lhs <= rhs;
+		if (binary == EVT_EXPR_GREATER)
+			result = lhs > rhs;
+		if (binary == EVT_EXPR_GREATER_EQUAL)
+			result = lhs >= rhs;
+		if (binary == EVT_EXPR_ADD)
+			result = lhs + rhs;
+		if (binary == EVT_EXPR_SUB)
+			result = lhs - rhs;
+		if (binary == EVT_EXPR_MUL)
+			result = lhs * rhs;
+		if (binary == EVT_EXPR_DIV)
+			result = lhs / rhs;
+		if (binary == EVT_EXPR_MOD)
+			result = lhs % rhs;
+		if (binary == EVT_EXPR_AND)
+			result = lhs & rhs;
+		if (binary == EVT_EXPR_OR)
+			result = lhs | rhs;
+		if (binary == EVT_EXPR_XOR)
+			result = lhs ^ rhs;
+		break;
+	}
+	case EVT_EXPR_NOT:
+		result = !CEvt_Evaluate(evt);
+		break;
+	case EVT_EXPR_IMM16:
+		result = (s16)EvtRead16(evt->mData.mScript);
+		evt->mData.mScript += 2;
+		break;
+	case EVT_EXPR_IMM32: {
+		s32 value = ReadResourceOffset(evt->mData.mScript);
+		evt->mData.mScript += 4;
+		result = value;
+		break;
+	}
+	case EVT_EXPR_ADDRESS_OF: {
+		s32 offset = ReadResourceOffset(evt->mData.mScript);
+		evt->mData.mScript += 4;
+		s32 library = IsGlobalEventScript(evt->mData.mScript);
+		if (library != 0)
+			result = (s32)(GetGlobalScriptTable(library) + offset);
+		else
+			result = (s32)(GetStageDataBuffer() + offset);
+		break;
+	}
+	case EVT_EXPR_STACK: {
+		s32 index = *evt->mData.mScript;
+		evt->mData.mScript++;
+		result = evt->mValues.mBuf[index + evt->mFrames.mBuf[evt->mFrames.mCount - 1]];
+		break;
+	}
+	case EVT_EXPR_PARENT_STACK: {
+		s32 index = *evt->mData.mScript;
+		evt->mData.mScript++;
+		s32 frame = evt->mFrames.mCount - 2;
+		result    = evt->mValues.mBuf[index + evt->mFrames.mBuf[frame]];
+		break;
+	}
+	case EVT_EXPR_FLAG:
+		result = CEvt_Evaluate(evt);
+		if (result >= 0 && result < 4096) {
+			result = (gEventFlags.mFlags[(u32)result >> 5] & (1U << (result & 31))) != 0;
+		} else if (result == -1)
+			result = 0;
+		else if (result == -2)
+			result = gGame.GetStatusFlags(0x8000) ? 1 : 0;
+		else if (result == -3)
+			result = gGame.GetStatusFlags(0x8000000000000ULL) ? 1 : 0;
+		else if (result == -4)
+			result = gGame.mMenuControls & 1;
+		else if (result == -5)
+			result = gGame.mMenuControls & 2;
+		else
+			OSPanic(__FILE__, 721, FormatToStaticBuffer("Invalid Evaluate flg[%d] - 0~%d\n", result, 4096));
+		break;
+	case EVT_EXPR_VAR:
+		result = CEvt_Evaluate(evt);
+		if (result >= 0 && result < 2048)
+			result = gEventVars.mVars[result];
+		else
+			OSPanic(__FILE__, 729, FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048));
+		break;
+	case EVT_EXPR_RESULT1:
+		result = evt->mSelectResult;
+		break;
+	case EVT_EXPR_RESULT2:
+		result = evt->mResult2;
+		break;
+	case EVT_EXPR_PAD: {
+		result       = CEvt_Evaluate(evt);
+		CPadOne* pad = &gWiiPads[0];
+		switch (result) {
+		case 0:
+			result = gWiiPointer.GetEventButtons();
+			break;
+		case 1:
+			result = gWiiPointer.GetEventTrigger();
+			break;
+		case 2:
+			result = 100.0f * pad->mStick.x;
+			break;
+		case 3:
+			result = 100.0f * pad->mStick.y;
+			break;
+		case 4:
+			result = RAD2DEG * WrapAngle(-(f32)atan2(pad->mStick.x, pad->mStick.y));
+			break;
+		case 5: {
+			f32 x  = pad->mStick.x;
+			f32 y  = pad->mStick.y;
+			result = 100.0f * nw4r::math::FSqrt(x * x + y * y);
+			break;
+		}
+		case 6: {
+			f32 stickAngle = (f32)atan2(pad->mStick.x, pad->mStick.y);
+			f32 cameraYaw  = gGame.mMotionControlCamera.mView.mAngle.y;
+			f32 playerYaw  = gGame.GetPlayer()->mMoveRotate.y;
+			result         = RAD2DEG * WrapAngle(-stickAngle + cameraYaw - playerYaw);
+			break;
+		}
+		case 7:
+			if (gGame.GetStatusFlags(0x800000000ULL))
+				result = pad->mRumble[0].remaining;
+			else
+				result = 0;
+			break;
+		case 8:
+			// a swing of the remote since the last frame
+			if (pad->GetSwing(NULL, NULL))
+				result = 1;
+			else
+				result = 0;
+			break;
+		default:
+			OSPanic(__FILE__, 781, FormatToStaticBuffer("Invalid Evaluate pad[%d] - 0~7\n", result));
+			break;
+		}
+		break;
+	}
+	case EVT_EXPR_BATTERY:
+		result = CEvt_Evaluate(evt);
+		if (result == 0)
+			result = 100.0f * gGame.GetPlayer()->mParams.mBattery;
+		else if (result == 1)
+			result = 100.0f * gGame.GetPlayer()->mParams.mMaxBattery;
+		else
+			OSPanic(__FILE__, 794, FormatToStaticBuffer("Invalid Evaluate battery[%d] - 0~1\n", result));
+		break;
+	case EVT_EXPR_MONEY:
+		result = gGame.GetPlayer()->mParams.mMoney;
+		break;
+	case EVT_EXPR_SCRAP:
+		result = gGame.GetPlayer()->mParams.mScrap;
+		break;
+	case EVT_EXPR_ITEM:
+		result = CEvt_Evaluate(evt);
+		if (result >= 0 && result < 159) {
+			s32 index = FindOwnedInventoryItemIndex(gGame.GetPlayer()->mParams.mInventory.mItems, result);
+			result    = index >= 0 ? gGame.GetPlayer()->mParams.mInventory.mItems[index].mCount : 0;
+		} else
+			OSPanic(__FILE__, 813, FormatToStaticBuffer("Invalid Evaluate item[%d] - 0~%d\n", result, 159));
+		break;
+	case EVT_EXPR_ATC:
+		result = CEvt_Evaluate(evt);
+		if (result >= 0 && result < 9) {
+			result = UpdateAttachmentAvailability(gGame.GetPlayer()->mAttachments, result);
+			if (result < 0)
+				result = 0;
+		} else
+			OSPanic(__FILE__, 822, FormatToStaticBuffer("Invalid Evaluate atc[%d] - 0~%d\n", result, 9));
+		break;
+	case EVT_EXPR_CURRENT_SUIT:
+		result = gGame.GetPlayer()->mSuits.mCurrent;
+		break;
+	case EVT_EXPR_EXP:
+		result = gGame.GetPlayer()->mParams.mExperience;
+		break;
+	case EVT_EXPR_LEVEL:
+		result = gGame.GetPlayer()->mParams.mLevel;
+		break;
+	case EVT_EXPR_RANK:
+		result = gGame.GetPlayer()->mParams.mRank;
+		break;
+	case EVT_EXPR_HOLD: {
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
+		if (held != NULL) {
+			if (held->GetPool() == 24)
+				result = 1000;
+			else if (held->GetPool() == 8)
+				result = held->GetObjFlags();
+			else
+				result = -1;
+		} else
+			result = -1;
+		break;
+	}
+	case EVT_EXPR_USE:
+		result = evt->mUseValue;
+		break;
+	case EVT_EXPR_HIT:
+		result = evt->mHitValue;
+		break;
+	case EVT_EXPR_CURRENT_ATC:
+		result = gGame.GetPlayer()->GetAttachment();
+		break;
+	case EVT_EXPR_MAP:
+		result = CEvt_Evaluate(evt);
+		if (result >= 0 && result <= 1) {
+			// 0 the stage, 1 the one before it: the two fields are read as an array
+			s32 stage = (&gGame.mStage)[result];
+			result    = stage;
+			if (stage > GetStageNum())
+				result = stage - GetStageNum() + 99;
+		} else
+			OSPanic(__FILE__, 871, FormatToStaticBuffer("Invalid Evaluate map[%d] - 0~1\n", result));
+		break;
+	case EVT_EXPR_ACTOR_NAME:
+		result = CEvt_Evaluate(evt);
+		if (result >= 20000)
+			result -= 20000;
+		result = (s32)GetActorName(result);
+		break;
+	case EVT_EXPR_ITEM_NAME:
+		result = (s32)GetItemName(CEvt_Evaluate(evt));
+		break;
+	case EVT_EXPR_STICKER_NAME:
+		result = (s32)GetStatusIconName(CEvt_Evaluate(evt));
+		break;
+	case EVT_EXPR_TIME:
+		result = CEvt_Evaluate(evt);
+		if (result == 0)
+			result = gGame.mTimeState.mMode;
+		else if (result == 1)
+			result = 100.0f * gGame.mTimeState.mTime;
+		else if (result == 2)
+			result = 100.0f * gGame.mTimeState.mDuration;
+		else
+			OSPanic(__FILE__, 898, FormatToStaticBuffer("Invalid Evaluate time[%d] - 0~2\n", result));
+		break;
+	case EVT_EXPR_OBJ:
+		result = CEvt_Evaluate(evt);
+		switch (result) {
+		case EVT_ATOM_ANIM:
+		case EVT_ATOM_DIR:
+		case EVT_ATOM_POSX:
+		case EVT_ATOM_POSY:
+		case EVT_ATOM_POSZ:
+		case 235:
+		case 247:
+		case 248: {
+			XObj* obj = CEvt_GetObj(evt, CEvt_Evaluate(evt));
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				switch (result) {
+				case EVT_ATOM_ANIM:
+					result = obj->GetAnimId();
+					break;
+				case EVT_ATOM_DIR:
+					result = RAD2DEG * WrapAngle(obj->mMoveRotate.y);
+					break;
+				case EVT_ATOM_POSX:
+					result = 100.0f * obj->GetPos()->x;
+					break;
+				case EVT_ATOM_POSY:
+					result = 100.0f * obj->GetPos()->y;
+					break;
+				case EVT_ATOM_POSZ:
+					result = 100.0f * obj->GetPos()->z;
+					break;
+				case 235:
+					result = (obj->mStatus.mFlags & 0x10000) ? 1 : 0;
+					break;
+				case 247: {
+					// in 4:3 screen units
+					Vec pos = { 0.0f, 0.0f, 0.0f };
+					f32 x;
+					obj->ProjectOffsetToScreen(&pos, &x, NULL, NULL, NULL);
+					result = 100.0f * (x / gScreenWidthScale);
+					break;
+				}
+				case 248: {
+					Vec pos = { 0.0f, 0.0f, 0.0f };
+					f32 y;
+					obj->ProjectOffsetToScreen(&pos, NULL, &y, NULL, NULL);
+					result = 100.0f * y;
+					break;
+				}
+				}
+			} else
+				result = -1;
+			break;
+		}
+		case EVT_ATOM_BONEX:
+		case EVT_ATOM_BONEY:
+		case EVT_ATOM_BONEZ:
+		case 249:
+		case 250: {
+			u8* data  = (u8*)CEvt_Evaluate(evt);
+			s32 id    = (s16)EvtRead16(data);
+			XObj* obj = CEvt_GetObj(evt, id);
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				s32 depth = (s16)EvtRead16(data + 2);
+				data += 4;
+				s32 path[20];
+				for (s32 i = 0; i < depth; i++) {
+					path[i] = (s16)EvtRead16(data);
+					data += 2;
+				}
+				Vec pos;
+				switch (result) {
+				case EVT_ATOM_BONEX:
+					result = 100.0f * obj->vf288(depth, path).x;
+					break;
+				case EVT_ATOM_BONEY:
+					result = 100.0f * obj->vf288(depth, path).y;
+					break;
+				case EVT_ATOM_BONEZ:
+					result = 100.0f * obj->vf288(depth, path).z;
+					break;
+				case 249: {
+					pos = obj->vf288(depth, path) - *obj->GetPos();
+					f32 x;
+					obj->ProjectOffsetToScreen(&pos, &x, NULL, NULL, NULL);
+					result = 100.0f * (x / gScreenWidthScale);
+					break;
+				}
+				case 250: {
+					pos = obj->vf288(depth, path) - *obj->GetPos();
+					f32 y;
+					obj->ProjectOffsetToScreen(&pos, NULL, &y, NULL, NULL);
+					result = 100.0f * y;
+					break;
+				}
+				}
+			} else
+				result = -1;
+			break;
+		}
+		case EVT_ATOM_DIRTO: {
+			u8* data   = (u8*)CEvt_Evaluate(evt);
+			XObj* from = CEvt_GetObj(evt, (s16)EvtRead16(data));
+			XObj* to   = CEvt_GetObj(evt, (s16)EvtRead16(data + 2));
+			if (from != NULL && (from->mStatus.mFlags & 1) && to != NULL && (to->mStatus.mFlags & 1)) {
+				f32 angle = CEvt_Angle(*from->GetPos(), *to->GetPos());
+				result    = RAD2DEG * WrapAngle(angle - from->mMoveRotate.y);
+			} else
+				result = -1;
+			break;
+		}
+		case EVT_ATOM_DISTANCE: {
+			u8* data   = (u8*)CEvt_Evaluate(evt);
+			XObj* from = CEvt_GetObj(evt, (s16)EvtRead16(data));
+			XObj* to   = CEvt_GetObj(evt, (s16)EvtRead16(data + 2));
+			if (from != NULL && (from->mStatus.mFlags & 1) && to != NULL && (to->mStatus.mFlags & 1)) {
+				result = 100.0f * PSVECDistance(from->GetPos(), to->GetPos());
+			} else
+				result = -1;
+			break;
+		}
+		default:
+			OSPanic(__FILE__, 1021, FormatToStaticBuffer("Invalid Evaluate obj(...,%d)\n", result));
+			break;
+		}
+		break;
+	case EVT_EXPR_RANDOM: {
+		s32 max = CEvt_Evaluate(evt);
+		result  = rand() % (max + 1);
+		break;
+	}
+	case EVT_EXPR_SIN:
+		result = 100.0f * (f32)sin(DEG2RAD * (CEvt_Evaluate(evt) / 100.0f));
+		break;
+	case EVT_EXPR_COS:
+		result = 100.0f * (f32)cos(DEG2RAD * (CEvt_Evaluate(evt) / 100.0f));
+		break;
+	case EVT_EXPR_ARRAY_ELEMENT: {
+		// the element size in bytes, negative for signed elements, then the index and the array
+		s8 size   = CEvt_Evaluate(evt);
+		s32 index = CEvt_Evaluate(evt);
+		u8* p     = (u8*)CEvt_Evaluate(evt) + index * abs(size);
+		switch (size) {
+		case 1:
+			result = *p;
+			break;
+		case -1:
+			result = *(s8*)p;
+			break;
+		case 2:
+			result = (u16)EvtRead16(p);
+			break;
+		case -2:
+			result = (s16)EvtRead16(p);
+			break;
+		case 4:
+		case -4:
+			result = ReadResourceOffset(p);
+			break;
+		default:
+			result = 0;
+			break;
+		}
+		break;
+	}
+	default:
+		OSPanic(__FILE__, 1067, FormatToStaticBuffer("Unknown Evaluate op - %d\n", op));
+		break;
+	}
+	return result;
 }
 
 s32 CEvt::_cmd_SET(u8, s32)
