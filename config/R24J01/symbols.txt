@@ -9220,7 +9220,6 @@ gSaveTextOutlineX = .data:0x802E9778; // type:object size:0x10
 gSaveTextOutlineY = .data:0x802E9788; // type:object size:0x10
 sShopHistoryEntries = .bss:0x8044B538; // type:object size:0xA0 scope:local
 sShopCatalogEntries = .bss:0x8044B650; // type:object size:0xA0 scope:local
-ExecCallbackB__4XObjFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x800B5C5C; // type:function size:0x94
 DrawSpiderCarryModel = .text:0x80127BD4; // type:function size:0x19C
 InitializeObject__10XObjSpiderFv = .text:0x8012063C; // type:function size:0x58
 ResetForNewGame__10XObjSpiderFv = .text:0x80120694; // type:function size:0x50
