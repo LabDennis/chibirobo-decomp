@@ -2,6 +2,8 @@
 #include "game/wii/xobj.h"
 #include "game/wii/xobjflags.h"
 #include "game/attachmentvalues.h"
+#include "game/gmath.h"
+#include "arithmetic.h"
 
 // the Wii file of the GameCube's xobjspider.cpp (retail 0x8012063C-0x80128C84): its functions run in the
 // Wii's order, ~XObjSpider lives with the pool ctors and the coin and carry helpers take the work block
@@ -34,6 +36,37 @@ extern s32 gSpiderCarryCount;
 extern u8 gSpiderCarryFlag;
 extern CoinBounce gSpiderCoinBounces[11];
 extern s32 gSpiderCoinBounceCount; // how many coins are out
+}
+
+// the placement entry's position, rotation and scale; the Wii builds all three axes each time
+static inline Vec PlacementPosition(const CoordInfo& coord)
+{
+	Vec pos;
+	const UnkStageObj* entry = coord.mPlacement;
+	pos.x                    = entry->mPos[0] / 100.0f;
+	pos.y                    = entry->mPos[1] / 100.0f;
+	pos.z                    = entry->mPos[2] / 100.0f;
+	return pos;
+}
+
+static inline Vec PlacementRotation(const CoordInfo& coord)
+{
+	Vec rot;
+	const UnkStageObj* entry = coord.mPlacement;
+	rot.x                    = DEG2RAD * entry->mRot[0];
+	rot.y                    = DEG2RAD * entry->mRot[1];
+	rot.z                    = DEG2RAD * entry->mRot[2];
+	return rot;
+}
+
+static inline Vec PlacementScale(const CoordInfo& coord)
+{
+	Vec scale;
+	const UnkStageObj* entry = coord.mPlacement;
+	scale.x                  = entry->mScale[0] / 100.0f;
+	scale.y                  = entry->mScale[1] / 100.0f;
+	scale.z                  = entry->mScale[2] / 100.0f;
+	return scale;
 }
 
 // takes the first of the slot models nobody has
@@ -167,6 +200,99 @@ extern "C" void ResetSpiderState(XObjSpider* spider)
 	spider->mRumbleTimer        = 0;
 }
 
+static inline void PlaceWallSpider(XObjSpider* spider)
+{
+	spider->SetState(8);
+	spider->mFlags.mFlags |= 0x8000;
+	spider->mAreaPos.x = -52.0f;
+	spider->mAreaPos.y = 0.0f;
+	spider->mAreaPos.z = 0.0f;
+	spider->mAreaWidth = 2.0f * nw4r::math::FAbs(spider->mAreaPos.x);
+	spider->mAreaDepth = 0.0f;
+	spider->mWall      = 3;
+	spider->mWallPos.z = spider->mMoveTranslate.z;
+	TakeSlot(spider);
+}
+
+/**
+ * @note Address: 0x80120A08
+ * @note Size: 0x878
+ */
+// NONMATCHING: the stage02 area math schedules its loads and stores in another order
+extern "C" void ApplySpiderPlacement(XObjSpider* spider)
+{
+	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord).x;
+	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord).y;
+	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord).z;
+	spider->mHome.x          = PlacementPosition(spider->mCoord).x;
+	spider->mHome.y          = PlacementPosition(spider->mCoord).y;
+	spider->mHome.z          = PlacementPosition(spider->mCoord).z;
+	spider->mDir             = PlacementRotation(spider->mCoord).y;
+	spider->mRadius          = 20.0f * PlacementScale(spider->mCoord).x;
+	switch (spider->mPlacementParam0) {
+	case 0: // held still until event command 7 lets it go
+		spider->SetState(0);
+		spider->mFlags.mFlags |= 0x08000000;
+		TakeSlot(spider);
+		break;
+	case 1: // hangs from the ceiling and drops down when the robot comes near
+		spider->SetState(6);
+		spider->mFlags.mFlags |= 0x40;
+		spider->mFlags.mFlags |= 0x400;
+		spider->mFlags.mFlags |= 0x8000;
+		if (IsStage("stage02")) {
+			spider->mAreaPos.x = -188.0f;
+			spider->mAreaPos.y = 1.0f;
+			spider->mAreaPos.z = 63.0f;
+			spider->mAreaWidth = 221.0f;
+			spider->mAreaDepth = 216.0f;
+			// shrinks the area to 90% around its center
+			f32 scaledWidth    = spider->mAreaWidth * 0.9f;
+			f32 scaledDepth    = spider->mAreaDepth * 0.9f;
+			f32 centerX        = spider->mAreaWidth * 0.5f + spider->mAreaPos.x;
+			f32 centerZ        = spider->mAreaDepth * 0.5f + spider->mAreaPos.z;
+			spider->mAreaPos.x = centerX - scaledWidth * 0.5f;
+			spider->mAreaPos.z = centerZ - scaledDepth * 0.5f;
+			spider->mAreaWidth *= 0.9f;
+			spider->mAreaDepth *= 0.9f;
+		} else {
+			spider->mAreaPos.x = -127.0f;
+			spider->mAreaPos.y = 0.0f;
+			spider->mAreaPos.z = -127.0f;
+			spider->mAreaWidth = 254.0f;
+			spider->mAreaDepth = 254.0f;
+		}
+		break;
+	case 2:
+		PlaceWallSpider(spider);
+		break;
+	case 3:
+		PlaceWallSpider(spider);
+		spider->mFlags.mFlags |= 0x02000000;
+		if (PlacementRotation(spider->mCoord).z != 0.0f)
+			spider->mDir = PI;
+		else
+			spider->mDir = 0.0f;
+		spider->mDir = PlacementRotation(spider->mCoord).z;
+		break;
+	default: // fights the robot inside a fixed area
+		spider->SetState(4);
+		spider->mFlags.mFlags |= 0x400;
+		spider->mAreaPos.x = -50.0f;
+		spider->mAreaPos.y = 0.0f;
+		spider->mAreaPos.z = -58.0f;
+		spider->mAreaWidth = 80.0f;
+		spider->mAreaDepth = 134.0f;
+		break;
+	}
+	// a hanging one shows its thread and starts mPlacementParam1 above its home
+	if (spider->mFlags.Check(0x40)) {
+		spider->mFlags.mFlags |= 0x80;
+		spider->mFlags.mFlags |= 0x100;
+		spider->mMoveTranslate.y = spider->mPlacementParam1 + spider->mHome.y;
+	}
+}
+
 /**
  * @note Address: 0x80121280
  * @note Size: 0x94
@@ -257,6 +383,86 @@ void XObjSpider::DrawScreenOverlay()
  */
 void XObjSpider::DrawDebugStatus()
 {
+}
+
+/**
+ * @note Address: 0x80121D18
+ * @note Size: 0x3B8
+ */
+// the event commands, 100 ties another object to one of its nodes or lets go of all
+// of them, anything else is kept for ExecuteSpiderCommand
+// NONMATCHING: retail loads each GetPos() component into a float right after its call (f30, f31), ours keeps
+// the pointers and loads them at the PSMTXTrans call
+s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
+{
+	switch (argv[0]) {
+	case 100: {
+		const s32 objectId = argv[1];
+		if (objectId == 0) {
+			mFlags.mFlags &= ~0x20000000;
+			for (u32 i = 0; i < 8; i++) {
+				if (mTies[i].mObj != NULL) {
+					mTies[i].mObj->ClearBaseMtx();
+					mTies[i].mObj = NULL;
+				}
+			}
+		} else {
+			u32 i;
+			for (i = 0; mTies[i].mObj != NULL && i < 8; i++) { }
+			if (i < 8) {
+				mFlags.mFlags |= 0x20000000;
+				if (argv[1] >= 10000) {
+					mTies[i].mObj = gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, argv[1]) : NULL;
+				} else {
+					mTies[i].mObj = gGame.mXObjs.mObjects[(s16)argv[1]];
+				}
+				s32 path[8];
+				s32 depth = argv[2];
+				for (s32 j = 0; j < depth; j++) {
+					path[j] = argv[3 + j];
+				}
+				mTies[i].mJoint = vf284(depth, path);
+				Mtx mtx;
+				PSMTXTrans(mtx, mTies[i].mObj->GetPos()->x, mTies[i].mObj->GetPos()->y, mTies[i].mObj->GetPos()->z);
+				PSMTXConcat(GetWorldMtx(mTies[i].mJoint), mtx, mTies[i].mMtx);
+				mTies[i].mObj->SetBaseMtx(mTies[i].mMtx);
+			}
+		}
+		break;
+	}
+	default:
+		if (argc < 1) {
+			return 0;
+		}
+		mCommand = argv[0];
+		if (argc < 2) {
+			mArgs[0] = 0;
+		} else {
+			mArgs[0] = argv[1];
+		}
+		if (argc < 3) {
+			mArgs[1] = 0;
+		} else {
+			mArgs[1] = argv[2];
+		}
+		if (argc < 4) {
+			mArgs[2] = 0;
+		} else {
+			mArgs[2] = argv[3];
+		}
+		if (argc < 5) {
+			mArgs[3] = 0;
+		} else {
+			mArgs[3] = argv[4];
+		}
+		if (argc < 6) {
+			mArgs[4] = 0;
+		} else {
+			mArgs[4] = argv[5];
+		}
+		break;
+	}
+	return 0;
 }
 
 /**
@@ -386,6 +592,56 @@ void XObjSpider::State8(u32 frames)
 extern "C" u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider)
 {
 	return (spider->mFlags.mFlags & 0x80000) != 0;
+}
+
+/**
+ * @note Address: 0x801275D4
+ * @note Size: 0x188
+ */
+// NONMATCHING: retail keeps x in f27 and z in f29, ours the other way round
+// whether another spider that dropped down is closer than 24
+extern "C" bool HasNearbyDroppedSpider(XObjSpider* spider)
+{
+	for (int i = 0; i < 16; i++) {
+		XObj* obj = gGame.mXObjs.mPools[17].Get(i);
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			XObjSpider* other = (XObjSpider*)obj;
+			if ((other->mFlags.mFlags & 0x100000) && other->mPoolIndex != spider->mPoolIndex) {
+				f32 x = other->mMoveTranslate.x - spider->mMoveTranslate.x;
+				f32 y = other->mMoveTranslate.y - spider->mMoveTranslate.y;
+				f32 z = other->mMoveTranslate.z - spider->mMoveTranslate.z;
+				if (FSqrt(x * x + y * y + z * z) < 24.0f) {
+					return TRUE;
+				}
+			}
+		}
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x8012775C
+ * @note Size: 0x188
+ */
+// NONMATCHING: x and z swap f27 and f29 as in HasNearbyDroppedSpider
+// the index of another spider that dropped down closer than 24, -1 when there is none
+extern "C" s32 FindNearbyDroppedSpider(XObjSpider* spider)
+{
+	for (int i = 0; i < 16; i++) {
+		XObj* obj = gGame.mXObjs.mPools[17].Get(i);
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			XObjSpider* other = (XObjSpider*)obj;
+			if ((other->mFlags.mFlags & 0x100000) && other->mPoolIndex != spider->mPoolIndex) {
+				f32 x = other->mMoveTranslate.x - spider->mMoveTranslate.x;
+				f32 y = other->mMoveTranslate.y - spider->mMoveTranslate.y;
+				f32 z = other->mMoveTranslate.z - spider->mMoveTranslate.z;
+				if (FSqrt(x * x + y * y + z * z) < 24.0f) {
+					return other->mPoolIndex;
+				}
+			}
+		}
+	}
+	return -1;
 }
 
 /**

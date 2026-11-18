@@ -1831,4 +1831,14 @@ STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
 STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);
 
 extern "C" CGame gGame;
+
+extern "C" s32 FindStageIndexByName(const char* name);
+
+// whether the stage up is the one with the name
+static inline bool IsStage(const char* name)
+{
+	s32 stage = gGame.mStage;
+	s32 id    = FindStageIndexByName(name);
+	return id == stage;
+}
 #endif

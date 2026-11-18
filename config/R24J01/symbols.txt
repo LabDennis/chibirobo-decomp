@@ -9185,3 +9185,6 @@ State1__10XObjSpiderFUl = .text:0x801235D4; // type:function size:0x1A4
 State5__10XObjSpiderFUl = .text:0x80125E20; // type:function size:0x128
 gSpiderCoinBounces = .bss:0x8045DED8; // type:object size:0x190
 gSpiderCoinBounceCount = .sbss:0x805A1CAC; // type:object size:0x4 data:4byte
+HandleEventCommand__10XObjSpiderFlPl = .text:0x80121D18; // type:function size:0x3B8
+HasNearbyDroppedSpider = .text:0x801275D4; // type:function size:0x188
+FindNearbyDroppedSpider = .text:0x8012775C; // type:function size:0x188
