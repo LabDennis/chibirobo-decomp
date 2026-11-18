@@ -699,6 +699,78 @@ void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl
 	}
 }
 
+// the tint stage the game appends to every material (NW_Obj::InitColorTev): on the map and
+// the tintable object kinds ExecCallback_CALC_MAT rewrites its last stage's inputs, on the
+// rest it passes the previous color through. The padding byte the marker lives in is the
+// original struct's dummy[6]; the asserts name the original files, xobj.cpp for the game's
+// own checks and g3d_resmat_ac.h for the resource accessors'.
+#define UPDATED_TEV_MAGIC_NUMBER    0xC3
+#define XOBJ_ASSERT_LINE(line, exp) ((void)((exp) || (nw4r::db::Panic("xobj.cpp", line, "NW4R:Failed assertion " #exp), 0)))
+
+void XObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
+{
+	if (timing == 4 && (mStatus.mFlags & 0x2)) {
+		u32 numMats = mObject.m_resMdl.GetResMatNumEntries();
+		if (numMats != 0) {
+			for (u32 i = 0; i < numMats; i++) {
+				nw4r::g3d::ResMat mat = mObject.m_resMdl.GetResMat(i);
+				nw4r::g3d::ScnMdl::CopiedMatAccess access(mObject.m_pScnMdl, i);
+				nw4r::g3d::ResTev tev = access.GetResTev(false);
+				if (!tev.IsValid()) {
+					tev = mat.GetResTev();
+				}
+				XOBJ_ASSERT_LINE(0xF0E, tev.IsValid());
+				if (tev.ptr()->PADDING_0x18[6] == UPDATED_TEV_MAGIC_NUMBER) {
+					nw4r::g3d::ResGenMode genMode = access.GetResGenMode(false);
+					if (!genMode.IsValid()) {
+						genMode = mat.GetResGenMode();
+					}
+					XOBJ_ASSERT_LINE(0xF15, genMode.IsValid());
+					nw4r::g3d::ResTexSrt texSrt = access.GetResTexSrt(false);
+					if (!texSrt.IsValid()) {
+						texSrt = mat.GetResTexSrt();
+					}
+					XOBJ_ASSERT_LINE(0xF1B, texSrt.IsValid());
+					// the last tex coord's flag nibble, TexSrt::FLAGSET_IDENTITY
+					texSrt.SetTexSrtFlag(genMode.GXGetNumTexGens() - 1, 0xF);
+					GXTevStageID stage = (GXTevStageID)(genMode.GXGetNumTevStages() - 1);
+					s32 floorIdx       = gGame.GetPlayer()->mFloorContactObjects[0];
+					if ((mAttr.mObjData != NULL ? mAttr.mObjData->GetCategory() : -1) == 3) {
+						// the map: blend while the object the player stands on is a
+						// tintable kind, or while he is within a meter above the map
+						BOOL blend = TRUE;
+						if (floorIdx >= 0) {
+							XObj* stood   = gGame.mXObjs.mObjects[floorIdx];
+							s32 stoodKind = stood->GetKind();
+							if (stoodKind != 0x54 && stoodKind != 0x20 && stoodKind != 0x10C
+							    && gGame.GetPlayer()->GetPos()->y - GetPos()->y >= 1.0f) {
+								blend = FALSE;
+							}
+						}
+						if (blend) {
+							tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+						} else {
+							tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+						}
+						tev.DCStore(false);
+					} else {
+						s32 kind = GetKind();
+						if (kind == 0x54 || kind == 0x20 || kind == 0x10C) {
+							if (floorIdx < 0 || floorIdx == GetStagePlacementIndex(mCoord.mPlacement)) {
+								tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+							} else {
+								tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+							}
+							tev.DCStore(false);
+						}
+					}
+				}
+			}
+		}
+	}
+	CObj::ExecCallback_CALC_MAT(timing, obj, param, info);
+}
+
 // the GameCube's cjanim.cpp function, the Wii keeps it as a free function too;
 // the anchor and limits it reads moved into the object's CAnmQueue on the Wii
 extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z)

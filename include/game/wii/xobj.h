@@ -414,6 +414,13 @@ public:
 	bool IsValid() const { return mpData != NULL; }
 	ResGenModeData* ptr() const { return mpData; }
 	void GXSetNumTevStages(u8 num);
+	u8 GXGetNumTexGens() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 195, "NW4R:Failed assertion IsValid()");
+		}
+		return IsValid() ? ptr()->nTexGens : 0;
+	}
 	u8 GXGetNumTevStages() const
 	{
 		if (!IsValid()) {
@@ -480,6 +487,28 @@ public:
 	void EndEdit() { DCStore(false); }
 };
 
+// the tex srt block's per-texture flag nibble is all the game reaches
+struct ResTexSrtData {
+	u32 flag; // _00, four TexSrt::Flag bits per texture, lowest nibble first
+	u8 _04[0x28 - 0x4];
+};
+
+class ResTexSrt {
+public:
+	ResTexSrtData* mpData; // _00
+
+	ResTexSrt(void* p = NULL)
+	    : mpData((ResTexSrtData*)p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resmat_ac.h", 107, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResTexSrtData* ptr() const { return mpData; }
+	void SetTexSrtFlag(u32 id, u32 flag) { ptr()->flag = (ptr()->flag & ~(0xF << id * 4)) | (flag << id * 4); }
+};
+
 struct ResMatData {
 	u32 size;               // _00
 	s32 toResMdlData;       // _04
@@ -489,6 +518,8 @@ struct ResMatData {
 	ResGenModeData genMode; // _14
 	u8 _1C[0x3C - 0x1C];
 	s32 toResMatDLData; // _3C
+	u8 _40[0x1A8 - 0x40];
+	ResTexSrtData texSrtData; // _1A8
 };
 
 struct ResMatDLData {
@@ -528,6 +559,7 @@ public:
 	}
 	ResMatTevColor GetResMatTevColor() { return ResMatTevColor(&GetResMatDLData()->dlTevColor); }
 	ResTev GetResTev();
+	ResTexSrt GetResTexSrt() { return ResTexSrt(&ref().texSrtData); }
 };
 
 // nw4r's handle to a model resource
@@ -649,6 +681,7 @@ public:
 		ResGenMode GetResGenMode(bool markDirty);
 		ResMatTevColor GetResMatTevColor(bool markDirty);
 		ResTev GetResTev(bool markDirty);
+		ResTexSrt GetResTexSrt(bool markDirty);
 
 	private:
 		u8 _00[0x34];
