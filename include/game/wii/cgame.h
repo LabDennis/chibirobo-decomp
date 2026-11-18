@@ -909,8 +909,8 @@ struct WiiPlayerState : public XObj {
 	u8 _0A04[0xA20 - 0xA04];
 	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
 	u8 _0A28[0xA88 - 0xA28];
-	s32 mIdleLoops; // _0A88, idle anim loops before the next idle move
-	u8 _0A8C[0xA90 - 0xA8C];
+	s32 mIdleLoops;  // _0A88, idle anim loops before the next idle move
+	f32 mIdleTimer;  // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C
@@ -1667,6 +1667,7 @@ public:
 	class FbMirrorEx : public FbMirror { };
 
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
+	void Start();                           // _10 override, 0x8001BC60 (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
 	// _24, _28, _2C, _30 (the logos, title and menus run at 60, the game at 30), _68 mLightList, _84
 	void Draw();

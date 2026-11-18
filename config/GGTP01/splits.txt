@@ -385,23 +385,9 @@ game/msg.cpp:
 game/msgdataformat.cpp:
 	.text       start:0x800888A8 end:0x80088E80
 
-game/memcardcheck.cpp:
-	.text       start:0x80088E80 end:0x800890EC
-
-game/memcardheader.cpp:
-	.text       start:0x800890EC end:0x80089464
-
-game/memcardload.cpp:
-	.text       start:0x80089464 end:0x800897B0
-
-game/memcardfile.cpp:
-	.text       start:0x800897B0 end:0x800899A8
-
-game/memcardpos.cpp:
-	.text       start:0x800899A8 end:0x80089C1C
-
-game/memcardrestore.cpp:
-	.text       start:0x80089C1C end:0x8008A064
+game/memcard.cpp:
+	.text       start:0x80088E80 end:0x8008A064
+	.sdata2     start:0x80664270 end:0x80664280
 
 game/memcardcapture.cpp:
 	.text       start:0x8008A064 end:0x8008A474
@@ -603,11 +589,11 @@ game/xobjspiderboss.cpp:
 	.text       start:0x80102ACC end:0x8010926C
 	.ctors      start:0x80200098 end:0x8020009C
 	.rodata     start:0x802117B8 end:0x80211AD0
-	.data       start:0x80232208 end:0x80232848
+	.data       start:0x802322F0 end:0x80232930
 	.bss        start:0x80386B00 end:0x80386C40
-	.sdata      start:0x80661650 end:0x80661688
+	.sdata      start:0x80661660 end:0x80661698
 	.sbss       start:0x80662188 end:0x80662190
-	.sdata2     start:0x80665114 end:0x80665208
+	.sdata2     start:0x80665120 end:0x80665218
 
 game/xobjactordtor.cpp:
 	.text       start:0x8010926C end:0x801092E4
@@ -615,23 +601,10 @@ game/xobjactordtor.cpp:
 game/xobjactorse.cpp:
 	.text       start:0x801092E4 end:0x801094FC
 
-game/xobjactorground.cpp:
-	.text       start:0x801094FC end:0x801098C4
-
-game/xobjactorstop.cpp:
-	.text       start:0x801098C4 end:0x801098FC
-
-game/xobjactorevent.cpp:
-	.text       start:0x801098FC end:0x80109D60
-
-game/xobjactorlook.cpp:
-	.text       start:0x80109D60 end:0x80109F74
-
-game/xobjactorjointupdate.cpp:
-	.text       start:0x80109F74 end:0x8010A604
-
-game/xobjactorupdate.cpp:
-	.text       start:0x8010A604 end:0x8010AC48
+game/xobjactor.cpp:
+	.text       start:0x801094FC end:0x8010AC48
+	.rodata     start:0x80211AD0 end:0x80211C28
+	.sdata2     start:0x80665230 end:0x806652B0
 
 game/xobjactor3.cpp:
 	.text       start:0x8010AC48 end:0x80117D44

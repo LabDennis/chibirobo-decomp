@@ -1280,6 +1280,6 @@ void CObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, 
  * @note Address: 0x802BA4E0
  * @note Size: 0x4
  */
-void CObj::ExecCallbackB()
+void CObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
 }

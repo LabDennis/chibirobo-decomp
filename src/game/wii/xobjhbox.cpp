@@ -39,7 +39,7 @@ void XObjHBox::DrawScreenOverlay()
 	if (mRing > 0.0f) {
 		Vec pos = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		vf1D4(&pos, &x, &y, NULL, 0);
+		ProjectOffsetToScreen(&pos, &x, &y, NULL, NULL);
 		f32 ring  = mRing;
 		f32 inner = 400.0f * ring;
 		f32 outer = 400.0f * (1.0f - ring);

@@ -261,6 +261,11 @@ game/wii/homemenu.cpp:
 game/wii/evt.cpp:
 	.text start:0x8009453C end:0x800A18B8
 
+game/wii/xobjs.cpp:
+	extab start:0x8000B7B4 end:0x8000B884
+	extabindex start:0x80013DFC end:0x80013ED4
+	.text start:0x800C5424 end:0x800C6408
+
 game/wii/xaction.cpp:
 	.text start:0x800C6428 end:0x800C6584
 
@@ -1282,6 +1287,12 @@ game/wii/gameupdate.cpp:
 
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
+
+game/wii/cjanim.cpp:
+	extab start:0x8000A864 end:0x8000AC48
+	extabindex start:0x80013598 end:0x800138B0
+	.text start:0x800B1558 end:0x800BD66C
+	.sdata2 start:0x805A44D0 end:0x805A4DF0
 
 game/wii/xobj_ut.cpp:
 	.text start:0x800BD66C end:0x800BEB0C

@@ -18,6 +18,11 @@
 #include "game/wii/xobjs.h"
 #include "revolution/mem.h"
 
+extern "C" {
+#include "Dolphin/OS/OSMessage.h"
+#include "Dolphin/OS/OSThread.h"
+}
+
 // one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
 struct XObjFloor {
 	s16 mId;              // _00
@@ -95,7 +100,7 @@ class ICalcWorldCallback {
 public:
 	virtual ~ICalcWorldCallback() { }                                                          // _08
 	virtual void ExecCallbackA(ChrAnmResult* pResult, ResMdl mdl, FuncObjCalcWorld* pFuncObj); // _0C
-	virtual void ExecCallbackB();                                                              // _10
+	virtual void ExecCallbackB(ChrAnmResult* pResult, ResMdl mdl, FuncObjCalcWorld* pFuncObj); // _10
 	virtual void ExecCallbackC();                                                              // _14
 };
 
@@ -945,12 +950,32 @@ public:
 // anims waiting to play after the current one. unlike the GameCube layout the
 // vtable leads the object on the Wii (retail stores __vt__9CAnmQueue at _7B8
 // inside XObj); the queue members behind it are not yet recovered
+// a material color stepping towards a target; the Wii keeps the pair inside the object's
+// animation queue where the GameCube XObj kept them as its own members
+struct XObjColorStep {
+	Vec mValue;  // _00
+	Vec mTarget; // _0C
+	Vec mSpeed;  // _18
+};
+STATIC_ASSERT(sizeof(XObjColorStep) == 0x24);
+
 class CAnmQueue {
 public:
 	virtual ~CAnmQueue() { }
 
-private:
-	u8 _04[0x64];
+	// the push anchor and the per-axis move limits the GameCube kept on XObj itself
+	// (SetClampedPushPositionXZ at 0x800B61FC reads _7BC.._7D0, inside the queue)
+	f32 mAnchorX;   // _04
+	f32 mAnchorZ;   // _08
+	f32 mLimitPosX; // _0C
+	f32 mLimitNegX; // _10
+	f32 mLimitPosZ; // _14
+	f32 mLimitNegZ; // _18
+	u8 _1C[4];
+
+	// _20, XObj::SetColor writes them (verified at 0x800B67F8); the rest of the queue's
+	// members are not yet recovered
+	XObjColorStep mColorStep[2];
 };
 STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 
@@ -1020,7 +1045,7 @@ public:
 	}
 	virtual ~CObj() { }
 	virtual void ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _0C
-	virtual void ExecCallbackB();                                                                                               // _10
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
 	virtual void ExecCallbackC();                                                                                               // _14
 	virtual BOOL ReadAsync(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);                   // _38
 	virtual BOOL ReadCheck();                                                                                                   // _3C
@@ -1193,12 +1218,12 @@ public:
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
 	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
-	                               s32 arg7);                         // _1C8
+	                               s32 arg7);                         // _1C8, cursor walks the floor list between calls, -1 ends it
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
 	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
-	virtual void vf1D4(const Vec* pos, f32* x, f32* y, f32* depth, s32 flag); // _1D4, projects pos to screen
-	virtual f32 GetFloorXZExtent();   // _1D8
-	virtual f32 GetCollisionHeight(); // _1DC
+	virtual void ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera); // _1D4
+	virtual f32 GetFloorXZExtent();                                                                 // _1D8
+	virtual f32 GetCollisionHeight();                                                               // _1DC
 	// _1E0, the object's bounds on screen under camera, the GameCube's; FALSE when it is out of view
 	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
 	virtual BOOL IsOutsideCameraDepth(CCamera* camera);                  // _1E4, TRUE when the model lies outside the camera's depth range
@@ -1212,7 +1237,7 @@ public:
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
 	// _208, Update tells each live object every frame whether the pointer is on it, with the pointer's
 	// motion and speed on the screen
-	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed);
+	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed);
 	virtual void PauseSounds(f32 fade);                       // _20C, empty; PauseGameSounds calls it on every live object
 	virtual void ResumeSounds(f32 fade);                      // _210, empty; ResumeGameSounds' counterpart
 	virtual void OnMoveRequest();                             // _214, runs ahead of the three requests below
@@ -1242,12 +1267,16 @@ public:
 	virtual f32 GetScaleX();                                       // _274
 	virtual f32 GetScaleY();                                       // _278
 	virtual f32 GetScaleZ();                                       // _27C
-	virtual void vf280();
-	virtual void vf284(); // _284, calls vf280
-	virtual void vf288();
+	// _280, resolves this kind's parameter record for the passed ints (cjanim's helper
+	// packs them into a u64 key, four bits per arg) and hands the record's node name to
+	// GetResNode(name), or GetResNode(0) when there is none
+	virtual nw4r::g3d::ResNode vf280(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode vf284(s32 count, s32* args); // _284, forwards to vf280
+	// _288, the same lookup, then GetJointWorldPos(name), or GetJointWorldPos(0) without one
+	virtual CVec vf288(s32 count, s32* args);
 	// CObj's
 	virtual void ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _0C
-	virtual void ExecCallbackB();                                                                                               // _10
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
 	virtual void Release();                                                                                                     // _40
 	virtual nw4r::g3d::ResNode GetResNode(const char* name);                                                                    // _50
 	virtual nw4r::g3d::ResNode GetResNode(u32 index);                                                                           // _54
@@ -1273,13 +1302,17 @@ public:
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
+	BOOL IsFloorOn(s32 i) const { return mFloorMasks[0] & (1 << i); }
+	void ClearFloor(s32 i) { mFloorMasks[0] &= ~(1 << i); }
+
 	CStatus64 mStatus;  // _150
 	CoordInfo mCoord;   // _160
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
-	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group
-	u8 _180[0x188 - 0x180];
-	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group (the GameCube's _250)
+	s32 mStageIndex;    // _180, the object's slot in XOBJS's object table
+	s32 mPoolIndex;     // _184, its slot in its pool
+	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
 	u8 _190[0x194 - 0x190];
@@ -1287,26 +1320,30 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex;       // _1BC
-	XObjEdge mEdges[32];      // _1C0, one per floor
-	f32 mFloorXZExtent[2];    // _640, [0] is GetFloorXZExtent's; xobj_chr.cpp reads them by index
+	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;  // _1BC
+	XObjEdge mEdges[32]; // _1C0, one per floor
+	// _640, the collision floors' reach on the ground plane: [0] the wider of the x and z radii,
+	// [1] the narrower; UpdateObjectFloorXZExtent fills both with NAN while there are no floors
+	f32 mFloorXZExtent[2];    // xobj_chr.cpp reads them by index, [0] is GetFloorXZExtent's
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
 	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
 	s32 mSelectedFloorIndex;  // _6D0
 	BOOL mScreenBoundsValid;  // _6D4, the four below hold the object's bounds on screen
-	u8 _6D8[4];
-	s32 _6DC;          // _6DC, set when the pointer swept across the bounds within one frame
-	f32 mScreenTop;    // _6E0
-	f32 mScreenBottom; // _6E4
-	f32 mScreenLeft;   // _6E8
-	f32 mScreenRight;  // _6EC
+	s32 _6D8;                 // _6D8, vf208 stores the pointer's over flag here
+	s32 _6DC;                 // _6DC, set when the pointer swept across the bounds within one frame
+	f32 mScreenTop;           // _6E0
+	f32 mScreenBottom;        // _6E4
+	f32 mScreenLeft;          // _6E8
+	f32 mScreenRight;         // _6EC
 	u8 _6F0[0x6F8 - 0x6F0];
-	CVec mToppleOffset;       // _6F8
-	XObjMapHit mFloorHit;     // _708, the map floor under the object
-	CVec mVec714;             // _714
-	CEvt mEvt;                // _724
+	CVec mToppleOffset; // _6F8
+	// _708, the map triangle under the object and its height; cjanim's floor queries refresh it
+	XObjMapHit mFloorHit;
+	CVec mVec714; // _714, the base the object's floor list hangs from in its local frame (the GameCube's mToppleOffset role: the cjanim
+	              // floor routines add the floors' center offsets to it)
+	CEvt mEvt;    // _724
 	const void* mEventScript; // _790, the event script the object starts when used
 	u8 _794[0x24];
 	CAnmQueue mAnmQueue; // _7B8
@@ -1455,30 +1492,89 @@ public:
 	virtual ~CustomShadow();
 };
 
-// the Wii object readers: a thread-like prefix of 0x320 bytes (an OSThread plus
-// the stack fields, like the GameCube CThread), then the vtable at _320. The
-// queue and request members behind it are not yet recovered; the Wii knows only
-// the all-list and single readers, no XObjReadAnm.
-class XObjRead {
-	u8 _000[0x320];
+// the Wii object readers: retail RTTI names XObjRead, XObjReadAll and
+// XObjReadOne, with XObjRead deriving straight from the SDK OSThread (the
+// GameCube used its polymorphic CThread). The stack pointer and size are
+// XObjRead's own members in front of the virtuals, so the vtable lands at
+// _320. The Wii knows only the all-list and single readers, no XObjReadAnm.
+
+// an OSMessageQueue with its message buffer; RTTI shows it derives from
+// OSMessageQueue (the GameCube header wraps it as a member, same layout)
+class CMsgQueue : public OSMessageQueue {
+public:
+	// _00-_1F OSMessageQueue
+	OSMessage* mMsgs; // _20
+	// _24 vtable
+
+	virtual ~CMsgQueue();               // _08
+	virtual void Initialize(s32 count); // _0C, allocates mMsgs and inits the queue
+};
+STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
+
+inline CMsgQueue::~CMsgQueue()
+{
+}
+
+// one read waiting in a reader
+struct XObjReadReq {
+	void* mObj;  // _00, null when the slot is free
+	void* mInfo; // _04
+};
+
+class XObjRead : public OSThread {
+public:
+	u8* mStack;     // _318
+	u32 mStackSize; // _31C
 	// _320 vtable
 
-public:
-	virtual ~XObjRead() { }                                                                        // _08
-	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	XObjRead()
+	    : mStack(NULL)
+	{
+	}
 
-private:
-	u8 _324[0x3A0 - 0x324]; // vtable pad + CMsgQueue + requests, not yet recovered
+	virtual ~XObjRead();                                                                           // _08
+	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	virtual BOOL QueueRead(void* object, void* info);                                              // _10
+	virtual void RunRequestLoop();                                                                 // _14
+	virtual void ProcessRequest(XObjReadReq* req);                                                 // _18
+	virtual BOOL HasPendingReads();                                                                // _1C
+
+	// puts one read on the queue; both QueueReads and SpawnObjectFromPlacement inline it
+	BOOL ReadStart(void* obj, void* info);
+
+	CMsgQueue mQueue;     // _324
+	XObjReadReq mReqs[8]; // _34C
+	u8 _38C[0x14];        // tail past the requests, not touched by any retail function
 };
 STATIC_ASSERT(sizeof(XObjRead) == 0x3A0);
+STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);
+STATIC_ASSERT(offsetof(XObjRead, mReqs) == 0x34C);
 
-class XObjReadAll : public XObjRead { };
-class XObjReadOne : public XObjRead { };
+inline XObjRead::~XObjRead()
+{
+}
+
+// reads a whole object list; its destructor is defined in xaction.cpp, which anchors the vtable
+// there (retail folds the two reader vptrs off one base register in xaction's __sinit)
+class XObjReadAll : public XObjRead {
+public:
+	virtual ~XObjReadAll();                        // _08
+	virtual void ProcessRequest(XObjReadReq* req); // _18
+};
+
+// reads one object
+class XObjReadOne : public XObjRead {
+public:
+	virtual ~XObjReadOne();                           // _08
+	virtual BOOL QueueRead(void* object, void* info); // _10
+	virtual void ProcessRequest(XObjReadReq* req);    // _18
+};
 
 extern "C" {
 void InitializeObjectPools(XOBJS* list);
 void* ReadObjectListThread(void* arg);
 void* ReadSingleObjectThread(void* arg);
+BOOL HasPendingObjectReads();
 extern XObjReadAll gAllObjectsReader;
 extern XObjReadOne gSingleObjectReader;
 }
