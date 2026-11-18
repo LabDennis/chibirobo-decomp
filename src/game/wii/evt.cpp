@@ -101,8 +101,8 @@ static inline void CEvt_Warn(const char* msg)
 	strlen(msg);
 }
 
-// ends the running script; the stage's own effects end with the main script
-static inline void CEvt_End(CEvt* evt)
+// stops the running script, DETACH's whole job; the stage's own effects end with the main script
+static inline void CEvt_Detach(CEvt* evt)
 {
 	evt->mData.mScript = NULL;
 	// a window MSG left up for STAY is idle again
@@ -126,6 +126,12 @@ static inline void CEvt_End(CEvt* evt)
 	} else {
 		evt->mOwner->_9A4 = 0;
 	}
+}
+
+// WARP, ABORT and RETURN all finish through this
+static inline void CEvt_End(CEvt* evt)
+{
+	CEvt_Detach(evt);
 	evt->mData.mScript = NULL;
 }
 
@@ -241,6 +247,29 @@ s32 CEvt::_cmd_DISP(u8, s32)
 		}
 	} else {
 		CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) killed!", id, on, id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x800981D0
+ * @note Size: 0x2D4
+ */
+s32 CEvt::_cmd_ATTACH(u8 command, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	if (command == EVT_CMD_ATTACH) {
+		u8* script = (u8*)CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			StartOrQueueEventScript(&obj->mEvt, script, mOwner, -1, -1);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("attach(%d, ...): obj(%d) killed!", id, id));
+		}
+	} else if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		CEvt_Detach(&obj->mEvt);
+	} else {
+		CEvt_Warn(FormatToStaticBuffer("detach(%d, ...): obj(%d) killed!", id, id));
 	}
 	return 0;
 }
