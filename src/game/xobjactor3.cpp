@@ -21,6 +21,12 @@
 
 // XObjActor3, the actor most of the stage's small moving things are: which one it is comes from the stage table,
 // see GetKind and GetObjFlags. Its destructor, script commands, stage02 panels, update and per-kind functions
+// NONMATCHING: besides the functions marked below, the data differs (JP addresses). .rodata lacks the 0x48 block of
+// six Vecs retail starts with (0x8020C0D8, the CreateSRT wrappers' locals, see Kind9), the "CPtclOne" type name and
+// the jobj.h assert string, so every later offset moves. .sdata2 and .sbss2 start with two words xobjactor.h's
+// includes emit (0x80 and 4, two zeros) that retail's file lacks, and .sdata2 lacks the 40.0f, 0.0f and "scale" of
+// probably a weak scale setter, behind the type names (0x80638490-0x806384AD). After the jump tables (0x8022BCD8) .data and
+// .sdata hold another set of weak vtables, base lists and type records than retail
 
 // retail's .data for this file starts with these tables, then come the handler table's member pointer
 // constants and the table
