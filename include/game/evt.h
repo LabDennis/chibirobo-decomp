@@ -276,26 +276,27 @@ class CCameraMemento;
 // the script runner. PUSHBP and POPBP park mValues's count on mFrames
 class CEvt {
 public:
-	XObj* mOwner;                   // _00, ABORT only resumes a parked script while this is zero
-	CEvtData mData;                 // _04
-	s32 mSelectResult;              // _10, SELECT result
-	s32 mResult2;                   // _14
-	s32 mWaitTimer;                 // _18
-	s32 mYesNoActive;               // _1C
-	s32 mMenuActive;                // _20
-	CStack mCalls;                  // _24, return addresses
-	CStack mFrames;                 // _34
-	CStack mValues;                 // _44
-	CMsg* mMsg;                     // _54, the message window the script talks through
-	s32 mMsgState;                  // _58
-	s16 mUseValue;                  // _5C
-	s16 mHitValue;                  // _5E
-	CCameraMemento* mCameraMemento; // _60, private saved camera
+	XObj* mOwner;      // _00, ABORT only resumes a parked script while this is zero
+	CEvtData mData;    // _04
+	s32 mSelectResult; // _10, SELECT result
+	s32 mResult2;      // _14
+	s32 mWaitTimer;    // _18
+	s32 mYesNoActive;  // _1C
+	s32 mMenuActive;   // _20
+	CStack mCalls;     // _24, return addresses
+	CStack mFrames;    // _34
+	CStack mValues;    // _44
+	CMsg* mMsg;        // _54, the message window the script talks through
+	s32 mMsgState;     // _58
+	s16 mUseValue;     // _5C
+	s16 mHitValue;     // _5E
 #if defined(VERSION_R24J01)
-	u32 _64; // _64, contents not yet recovered; the Wii's CEvt is one word longer
-	         // _68 vtable
+	BOOL mSoundBankLoading;         // _60, READ @SFX started loading a sound bank and waits for it
+	CCameraMemento* mCameraMemento; // _64, private saved camera
+	                                // _68 vtable
 #else
-	// _64 vtable
+	CCameraMemento* mCameraMemento; // _60, private saved camera
+	                                // _64 vtable
 #endif
 
 	virtual ~CEvt() { } // _08

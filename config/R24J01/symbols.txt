@@ -1635,6 +1635,7 @@ gWiiPadAllocator = .bss:0x80576B98; // type:object size:0x10
 gWiiPads = .bss:0x8059B358; // type:object size:0x4AA0
 gWiiGameCubePads = .bss:0x8059FDF8; // type:object size:0x30
 gGlobalResourceFileName = .sdata:0x805A0ED0; // type:object size:0x4
+sEvtWindowDefaultColor = .sdata:0x805A0F38; // type:object size:0x4
 gWiiSaveBannerPath = .sdata:0x805A0F48; // type:object size:0x4 scope:global
 __OSCurrHeap = .sdata:0x805A13D8; // type:object size:0x4
 __OSArenaLo = .sdata:0x805A13E0; // type:object size:0x4 scope:local

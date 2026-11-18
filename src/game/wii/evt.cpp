@@ -5,6 +5,7 @@
 #include "nw4r/ef/ef_resource.h"
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
+#include "game/wii/csound.h"
 #include "game/evt.h"
 #include "game/evtqueue.h"
 #include "game/coordinfo.h"
@@ -14,12 +15,15 @@
 #include "game/ut.h"
 #include "game/gmath.h"
 #include "game/cthread.h"
+#include "game/cfile.h"
 #include "Dolphin/os.h"
 #include <string.h>
 
 extern "C" {
 extern s32 gRefreshRate;
 extern f32 gScreenWidthScale;
+extern s32 gScreenSafeBottom;
+extern s32 gPointerScreenWidth;
 void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags, f32 volume);
 void StopGameMovie(CGame* game);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
@@ -32,6 +36,8 @@ void UpdateHeldObject(XAction* action, u32 frames);
 void CancelPlayerPushAction(XAction* action);
 void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
+BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
+void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
 }
 
 CEvtFlags gEventFlags;
@@ -41,6 +47,8 @@ CEvtTimer gEventTimers;
 // the scripts' own effects, the second set next to CGame's
 CEvtPtcl gEventPtcl;
 EvtObjIdTable gEventObjectIds = { 0 };
+// the message window's color after WIN @RESET
+GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
 // the event system's own object
 XObj gEventScriptObject;
 
@@ -143,6 +151,76 @@ static inline void CEvt_End(CEvt* evt)
 {
 	CEvt_Detach(evt);
 	evt->mData.mScript = NULL;
+}
+
+/**
+ * @note Address: 0x800A0CC8
+ * @note Size: 0x43C
+ */
+// NONMATCHING: @LETTERBOX's float registers and @RESET's message pointer register differ
+s32 CEvt::_cmd_WIN(u8, s32)
+{
+	// an object's script waits while the main script runs
+	if (mOwner != NULL && mOwner->_9A4 != 0 && gGame.mEvt.mData.mScript != NULL) {
+		mData.mScript--;
+		return 1;
+	}
+	switch ((u16)CEvt_Evaluate(this)) {
+	case EVT_ATOM_POS: {
+		f32 x = CEvt_Evaluate(this);
+		f32 y = CEvt_Evaluate(this);
+		if (mMsg != NULL) {
+			mMsg->SetWindowPosition(x * gScreenWidthScale, y);
+		}
+		break;
+	}
+	case EVT_ATOM_LETTERBOX: {
+		// centered, just above the bottom of the safe area
+		f32 x = gPointerScreenWidth / 2;
+		f32 y = 2.0f + ((gScreenSafeBottom - 357.0f) * 0.5f + 357.0f - 11.0f);
+		if (mMsg != NULL) {
+			mMsg->SetWindowPosition(x, y);
+		}
+		break;
+	}
+	case EVT_ATOM_OBJ: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		f32 x     = CEvt_Evaluate(this) / 100.0f;
+		f32 y     = CEvt_Evaluate(this) / 100.0f;
+		f32 z     = CEvt_Evaluate(this) / 100.0f;
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (mMsg != NULL) {
+				mMsg->SetWindowAnchor((WiiTitleObject*)obj, x, y, z);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("win(@OBJ, %d, ...) obj(%d) killed!", id, id));
+		}
+		break;
+	}
+	case EVT_ATOM_COLOR: {
+		u8 r      = CEvt_Evaluate(this);
+		u8 g      = CEvt_Evaluate(this);
+		u8 b      = CEvt_Evaluate(this);
+		u8 a      = CEvt_Evaluate(this);
+		CMsg* msg = mMsg;
+		if (msg != NULL) {
+			msg->mFont.mColor.r = r;
+			msg->mFont.mColor.g = g;
+			msg->mFont.mColor.b = b;
+			msg->mFont.mColor.a = a;
+		}
+		break;
+	}
+	case EVT_ATOM_RESET:
+		if (mMsg != NULL) {
+			CMsg_ResetPos(mMsg);
+			GXColor color      = sEvtWindowDefaultColor;
+			mMsg->mFont.mColor = color;
+		}
+		break;
+	}
+	return 0;
 }
 
 /**
@@ -573,6 +651,161 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 	return 0;
 }
 
+/**
+ * @note Address: 0x8009DDF4
+ * @note Size: 0x2D0
+ */
+s32 CEvt::_cmd_READ(u8, s32)
+{
+	u8* cmd  = mData.mScript - 1;
+	s32 ret  = 0;
+	u16 type = CEvt_Evaluate(this);
+	switch (type) {
+	case EVT_ATOM_ANIM: {
+		s16 id           = CEvt_Evaluate(this);
+		XObj* obj        = CEvt_GetObj(this, id);
+		const char* path = (const char*)CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			// no path drops the file, a path that isn't on the disc is ignored
+			if (path != NULL) {
+				CFile file;
+				if (file.ConvertPathToEntrynum(path) >= 0) {
+					fn_800AF098(obj, path);
+				}
+			} else {
+				fn_800AF12C(obj);
+			}
+		}
+		break;
+	}
+	case EVT_ATOM_SFX: {
+		s16 id           = CEvt_Evaluate(this);
+		XObj* obj        = CEvt_GetObj(this, id); // looked up and not used
+		const char* name = (const char*)CEvt_Evaluate(this);
+		if (!mSoundBankLoading) {
+			LoadWiiSoundBankByName(&gGame.mSound, name);
+			mSoundBankLoading = TRUE;
+		}
+		// back onto the opcode until the bank is in
+		if (gGame.mSound.mLoadPending) {
+			mData.mScript = cmd;
+			ret           = 1;
+		} else {
+			mSoundBankLoading = FALSE;
+		}
+		break;
+	}
+	default:
+		OSPanic(__FILE__, 3629, FormatToStaticBuffer("read(...) - invalid type - %d!\n", type));
+		break;
+	}
+	return ret;
+}
+
+// sound -2 is every sound the player has going
+static inline void StopAllSounds(XSound* sound, f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (s32 i = 0; i < 0x40; i++) {
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			sound->mArchivePlayer.mTracks.mHandles[i].Stop(frames);
+		}
+	}
+}
+
+static inline void PauseAllSounds(XSound* sound, f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (s32 i = 0; i < 0x40; i++) {
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			sound->mArchivePlayer.mTracks.mHandles[i].Pause(frames);
+		}
+	}
+}
+
+static inline void ResumeAllSounds(XSound* sound, f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (s32 i = 0; i < 0x40; i++) {
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			sound->mArchivePlayer.mTracks.mHandles[i].Resume(frames);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8009F3B8
+ * @note Size: 0x428
+ */
+// NONMATCHING: retail tests the id against 0xF7 unsigned (cmplwi)
+s32 CEvt::_cmd_SFX(u8, s32)
+{
+	s32 sfx  = CEvt_Evaluate(this);
+	s16 type = CEvt_Evaluate(this);
+
+	switch (type) {
+	case EVT_SFX_STOP:
+		if (sfx == -2) {
+			StopAllSounds(&gGame.mSound, 0.0f);
+		} else {
+			StopWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	case EVT_SFX_PLAY: {
+		s32 state;
+		if (sfx == 0xF7) {
+			state                              = 3;
+			gGame.mSound.mArchivePlayer.mReady = state;
+		} else {
+			state = -1;
+		}
+		PlayWiiSoundEffect(&gGame.mSound, sfx, 1.0f, 0.0f);
+		if (state != -1) {
+			gGame.mSound.mArchivePlayer.mReady = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_CUE:
+		// the GameCube's streamed cues have no Wii counterpart
+		break;
+	case EVT_SFX_FADE_OUT:
+		FadeOutGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) / 100.0f);
+		break;
+	case EVT_SFX_FADE_IN:
+		FadeInGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) / 100.0f);
+		break;
+	case EVT_SFX_FADE: {
+		f32 fade   = CEvt_Evaluate(this) / 100.0f;
+		f32 volume = CEvt_Evaluate(this) / 255.0f;
+		if (!IsWiiSfxPlaying(&gGame.mSound, sfx)) {
+			PlayWiiSoundEffect(&gGame.mSound, sfx, volume, fade);
+		} else {
+			SetWiiSfxVolume(&gGame.mSound, sfx, volume, fade);
+		}
+		break;
+	}
+	case EVT_SFX_PAUSE:
+		if (sfx == -2) {
+			PauseAllSounds(&gGame.mSound, 0.0f);
+		} else {
+			PauseWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	case EVT_SFX_RESUME:
+		if (sfx == -2) {
+			ResumeAllSounds(&gGame.mSound, 0.0f);
+		} else {
+			ResumeWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	default:
+		OSPanic(__FILE__, 4116, FormatToStaticBuffer("sfx(%d,%d) - unresolved!\n", sfx, type));
+		break;
+	}
+
+	return 0;
+}
+
 s32 CEvt::_cmd_SETSP(u8, s32)
 {
 	s32 value                      = CEvt_Evaluate(this);
@@ -970,12 +1203,12 @@ extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlo
 		if (clearGlobal)
 			gEventObjectIds.mCount = 0;
 	}
-	evt->mSelectResult  = 0;
-	evt->mResult2       = 0;
-	evt->mMsgState      = 0;
-	evt->mUseValue      = -1;
-	evt->mHitValue      = -1;
-	evt->mCameraMemento = NULL;
+	evt->mSelectResult     = 0;
+	evt->mResult2          = 0;
+	evt->mMsgState         = 0;
+	evt->mUseValue         = -1;
+	evt->mHitValue         = -1;
+	evt->mSoundBankLoading = FALSE;
 }
 
 // a stack's buffer from the game heap
@@ -1008,7 +1241,7 @@ extern "C" void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* own
 	evt->mFrames.mCount = 0;
 	AllocateWordBuffer(&evt->mValues, 128);
 	evt->mValues.mCount = 0;
-	evt->_64            = 0;
+	evt->mCameraMemento = NULL;
 	ResetEventScriptState(evt, TRUE, TRUE, TRUE, TRUE);
 }
 
