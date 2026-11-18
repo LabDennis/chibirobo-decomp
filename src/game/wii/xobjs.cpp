@@ -1,5 +1,6 @@
 #include "Version.h"
 #if defined(VERSION_R24J01)
+#include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xobjs.h"
@@ -86,8 +87,8 @@ void XOBJS::ReadAll()
 				gGame.SetStatusFlags(0x100000000000ULL);
 			}
 			if (mPools[category].mUsed >= mPools[category].mCount) {
-				OSPanic("xobj_ut.cpp", 0xd1, "XOBJ_CLASS_%s:: cnt=%d, max=%d\n", mPools[category].mName,
-				        mPools[category].mUsed + 1, mPools[category].mCount);
+				OSPanic("xobj_ut.cpp", 0xd1, "XOBJ_CLASS_%s:: cnt=%d, max=%d\n", mPools[category].mName, mPools[category].mUsed + 1,
+				        mPools[category].mCount);
 			}
 			mObjects[i]              = mPools[category].Get(mPools[category].mUsed);
 			mObjects[i]->mStageIndex = i;

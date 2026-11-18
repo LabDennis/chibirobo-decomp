@@ -30,7 +30,8 @@ STATIC_ASSERT(sizeof(XObjSound) == 0xA10);
 // XObjFlags has the pointer at _980, the Wii moved it behind the object
 class XObjFlags : public XObj {
 public:
-	virtual s32 GetFlagIndex(); // _28C, the bit in mFlags, 0 and below have none
+	virtual void ResetForNewGame(); // _150, clears every flag
+	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
 
 	CEvtFlags* mFlags; // _9A8
 
@@ -49,6 +50,9 @@ public:
 		mFlags->mFlags[index / 32] |= 1 << (index & 31);
 	}
 };
+
+STATIC_ASSERT(sizeof(XObjFlags) == 0x9B0); // the XObj alignment pads the tail
+STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 
 // the money, scrap, battery and experience pickups; two sound actors of their own
 class XObjCoin : public XObjFlags {

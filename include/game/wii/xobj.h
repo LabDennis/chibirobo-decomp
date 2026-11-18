@@ -1310,9 +1310,9 @@ public:
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
 	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group (the GameCube's _250)
-	s32 mStageIndex; // _180, the object's slot in XOBJS's object table
-	s32 mPoolIndex;  // _184, its slot in its pool
-	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	s32 mStageIndex;    // _180, the object's slot in XOBJS's object table
+	s32 mPoolIndex;     // _184, its slot in its pool
+	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
 	u8 _190[0x194 - 0x190];
@@ -1568,18 +1568,6 @@ public:
 	virtual BOOL QueueRead(void* object, void* info); // _10
 	virtual void ProcessRequest(XObjReadReq* req);    // _18
 };
-
-// objects that remember being collected in a CEvtFlags, a bit per placement id
-class XObjFlags : public XObj {
-public:
-	// _00-_9A8 = XObj
-	CEvtFlags* mFlags; // _9A8
-
-	virtual void ResetForNewGame(); // _150, clears every flag
-	virtual s32 GetFlagIndex();     // the bit in mFlags
-};
-STATIC_ASSERT(sizeof(XObjFlags) == 0x9B0); // the XObj alignment pads the tail
-STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 
 extern "C" {
 void InitializeObjectPools(XOBJS* list);

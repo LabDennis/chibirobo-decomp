@@ -1356,10 +1356,10 @@ if wii:
                 # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
                 # headers, which want the Wii MSL
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the second half of retail's xobj_ut.cpp: pool walks, stage spawn, reader threads,
-                # 0x800C5424-0x800C6408 (wii_units.md Nr. 56); the subclass ctor block stays auto for now
-                Object(NonMatching, "game/wii/xobjs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # 0x800C5424-0x800C6408 (wii_units.md Nr. 56); the subclass ctor block stays auto for now;
+                # -i include/rvl_msl like the first half, for XObjFlags from game/wii/xobjflags.h
+                Object(NonMatching, "game/wii/xobjs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 # -inline noauto: retail calls EvalCmp (0x80097324) where auto-inlining expands it into _cmd_IF
                 # -i include/rvl_msl: the nw4r::ef handles of the event effects
