@@ -100,6 +100,8 @@ revolution/OS/OSFont.c:
 
 revolution/OS/OSInterrupt.c:
 	.text start:0x80186764 end:0x80186EE8
+	.data start:0x80310CD0 end:0x80310D00
+	.sbss start:0x805A1F08 end:0x805A1F1C
 
 revolution/OS/OSLink.c:
 	.text start:0x80186EE8 end:0x801878C4
@@ -216,6 +218,7 @@ game/wii/cpadact.cpp:
 game/wii/ccamera.cpp:
 	.text start:0x800A92CC end:0x800A9320
 	.ctors start:0x802C45A0 end:0x802C45A4
+	.bss start:0x80453600 end:0x80453938
 
 game/wii/savemanager.cpp:
 	extab start:0x8000A610 end:0x8000A6D0
@@ -1128,12 +1131,12 @@ game/cinterpolationeaseout.cpp:
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
-game/ccameraactionareaexinit.cpp:
+game/wii/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 	.ctors start:0x802C45C0 end:0x802C45C4
 	.bss start:0x8045F468 end:0x804630A8
 
-game/ccameraactionareaexdtor.cpp:
+game/wii/ccameraactionareaexdtor.cpp:
 	.text start:0x801541F8 end:0x801542A0
 	.rodata start:0x802DB4C8 end:0x802DB4DC
 	.data start:0x8030DDA0 end:0x8030DDAC
@@ -1287,10 +1290,11 @@ game/cinterfacecameraaction.cpp:
 	.text start:0x80030AC0 end:0x80031FC4
 
 game/wii/cinterpolation.cpp:
-	.text start:0x80032038 end:0x80032C48
+	.text start:0x80032038 end:0x80032FD4
+	.data start:0x802E6110 end:0x802E6250
 
 game/wii/cinterpolationeaseoutdivide.cpp:
-	.text start:0x80032C48 end:0x8003366C
+	.text start:0x80032FD4 end:0x8003366C
 
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4
@@ -1413,8 +1417,13 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.text start:0x8022DE7C end:0x8022E1AC
 	.rodata start:0x802DFA38 end:0x802DFA48
 
-dolphin/OdemuExi2/DebuggerDriver.c:
-	.text start:0x8017B6E0 end:0x8017B95C
+revolution/NdevExi2A/DebuggerDriver.c:
+	.text start:0x8017B5A4 end:0x8017BAD4
+	.sdata start:0x805A1390 end:0x805A1398
+	.sbss start:0x805A1E28 end:0x805A1E40
+
+revolution/NdevExi2A/exi2.c:
+	.text start:0x8017BAD4 end:0x8017C0A8
 
 revolution/OS/OSMemory.c:
 	.text start:0x80187B98 end:0x801882D0
@@ -1431,13 +1440,20 @@ revolution/OS/OSReset.c:
 	.sdata start:0x805A1410 end:0x805A1418
 	.sbss start:0x805A1F30 end:0x805A1F40
 
-dolphin/os/__ppc_eabi_init.cpp:
-	.text start:0x8018E5EC end:0x8018E654
+revolution/OS/__ppc_eabi_init.cpp:
+	.init start:0x800042E0 end:0x80004338
+	.text start:0x8018E5EC end:0x8018E6A0
 
-dolphin/thp/THPDec.c:
+revolution/THP/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
+	.rodata start:0x802DE5E0 end:0x802DE670
+	.data start:0x8032DAA0 end:0x8032DAE8
+	.bss start:0x8052D020 end:0x8052D16C
+	.sdata start:0x805A1878 end:0x805A187C
+	.sbss start:0x805A25A0 end:0x805A26C4
+	.sdata2 start:0x805A6808 end:0x805A6824
 
-dolphin/thp/THPAudio.c:
+revolution/THP/THPAudio.c:
 	.text start:0x80202804 end:0x80202D64
 
 revolution/GX/GXInit.c:
@@ -1576,6 +1592,8 @@ revolution/OS/OSLaunch.c:
 
 revolution/MTX/quat.c:
 	.text start:0x8018FEA0 end:0x80190208
+	.rodata start:0x802DDF08 end:0x802DDF18
+	.sdata2 start:0x805A64C0 end:0x805A64D0
 
 revolution/DVD/dvdfs.c:
 	.text start:0x80190208 end:0x80190830
@@ -2071,7 +2089,7 @@ nw4r/snd/snd_MidiSeqPlayer.cpp:
 
 nw4r/snd/snd_MmlParser.cpp:
 	.text start:0x8028EF88 end:0x8029012C
-	.data start:0x80334520 end:0x80334740
+	.data start:0x80334520 end:0x80334750
 	.sbss start:0x805A2800 end:0x805A2808
 	.sdata start:0x805A19B0 end:0x805A19C0
 	.sdata2 start:0x805A76B0 end:0x805A76D0

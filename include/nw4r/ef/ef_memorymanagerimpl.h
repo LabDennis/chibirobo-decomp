@@ -1,6 +1,11 @@
 #ifndef NW4R_EF_MEMORY_MANAGER_IMPL_H
 #define NW4R_EF_MEMORY_MANAGER_IMPL_H
 #include "nw4r/types_nw4r.h"
+#include "nw4r/NW4RAssert.hpp"
+
+#ifndef ROUND_UP
+#define ROUND_UP(x, align) (((x) + (align) - 1) & (-(align)))
+#endif
 
 #include "nw4r/ef/ef_effect.h"
 #include "nw4r/ef/ef_effectsystem.h"
@@ -29,29 +34,25 @@ class NW4R_EF_MEMORY_MANAGER_CLASS : public ::nw4r::ef::MemoryManagerBase {
     };
 
     NW4R_EF_MEMORY_MANAGER_MEMBER_ACCESS;
-    int mLeastEffect;     // at 0x4
-    int mMaxEffect;       // at 0x8
-    TEffectOM* mEffectOM; // at 0xC
+    int mMaxEffect;       // at 0x4
+    TEffectOM* mEffectOM; // at 0x8
 
-    int mLeastEmitter;      // at 0x10
-    int mMaxEmitter;        // at 0x14
-    TEmitterOM* mEmitterOM; // at 0x18
+    int mMaxEmitter;        // at 0xC
+    TEmitterOM* mEmitterOM; // at 0x10
 
-    int mLeastParticleManager;              // at 0x1C
-    int mMaxParticleManager;                // at 0x20
-    TParticleManagerOM* mParticleManagerOM; // at 0x24
+    int mMaxParticleManager;                // at 0x14
+    TParticleManagerOM* mParticleManagerOM; // at 0x18
 
-    int mLeastParticle;       // at 0x28
-    int mMaxParticle;         // at 0x2C
-    TParticleOM* mParticleOM; // at 0x30
+    int mMaxParticle;         // at 0x1C
+    TParticleOM* mParticleOM; // at 0x20
 
-    void* mHeapStartAddr; // at 0x34
-    void* mHeapEndAddr;   // at 0x38
+    void* mHeapStartAddr; // at 0x24
+    void* mHeapEndAddr;   // at 0x28
 
-    MemInfo* mActiveMem;   // at 0x3C
-    MemInfo* mFreeMem;     // at 0x40
-    MemInfo* mFreeMemTail; // at 0x44
-    MemInfo* mAllChain;    // at 0x48
+    MemInfo* mActiveMem;   // at 0x2C
+    MemInfo* mFreeMem;     // at 0x30
+    MemInfo* mFreeMemTail; // at 0x34
+    MemInfo* mAllChain;    // at 0x38
 
 public:
     static u32 CalcMemorySize(u16 maxEffect, u16 maxEmitter,
@@ -70,21 +71,18 @@ public:
         // clang-format on
     }
 
-    NW4R_EF_MEMORY_MANAGER_CLASS(void* pStartAddr, u32 size, int maxEffect,
+    NW4R_EF_MEMORY_MANAGER_CLASS(void* startAddress, u32 size, int maxEffect,
                                  int maxEmitter, int maxParticleManager,
                                  int maxParticle) {
 
+        NW4RAssertAligned_FileLine("memorymanagertmp.h", 267, startAddress, 32);
+
         u32 headerSize = ::nw4r::ut::RoundUp(sizeof(MemInfo), 32);
 
-        mLeastEffect = 0;
-        mLeastEmitter = 0;
-        mLeastParticleManager = 0;
-        mLeastParticle = 0;
-
-        mMaxEffect = 0;
-        mMaxEmitter = 0;
-        mMaxParticleManager = 0;
-        mMaxParticle = 0;
+        mMaxEffect = maxEffect;
+        mMaxEmitter = maxEmitter;
+        mMaxParticleManager = maxParticleManager;
+        mMaxParticle = maxParticle;
 
         mEffectOM = NULL;
         mEmitterOM = NULL;
@@ -96,19 +94,11 @@ public:
         mFreeMemTail = NULL;
         mAllChain = NULL;
 
-        mHeapEndAddr = static_cast<u8*>(pStartAddr) + size;
+        mHeapEndAddr = static_cast<u8*>(startAddress) + size;
         mHeapStartAddr = reinterpret_cast<u8*>(
-            ::nw4r::ut::RoundUp(reinterpret_cast<u32>(pStartAddr), 32));
+            ::nw4r::ut::RoundUp(reinterpret_cast<u32>(startAddress), 32));
 
-        mLeastEffect = maxEffect;
-        mLeastEmitter = maxEmitter;
-        mLeastParticleManager = maxParticleManager;
-        mLeastParticle = maxParticle;
-
-        mMaxEffect = mLeastEffect;
-        mMaxEmitter = mLeastEmitter;
-        mMaxParticleManager = mLeastParticleManager;
-        mMaxParticle = mLeastParticle;
+        NW4RAssert_FileLine("memorymanagertmp.h", 291, mHeapStartAddr < mHeapEndAddr && reinterpret_cast<u8*>(mHeapEndAddr) - reinterpret_cast<u8*>(mHeapStartAddr) > headerSize);
 
         mFreeMem = static_cast<MemInfo*>(mHeapStartAddr);
         mFreeMem->prev = NULL;
@@ -123,7 +113,7 @@ public:
         mActiveMem = NULL;
 
         // clang-format off
-        int numEffects = mLeastEffect;
+        int numEffects = mMaxEffect;
         TEffect* pEffects = NULL;
 
         if (numEffects > 0) {
@@ -131,9 +121,9 @@ public:
         }
 
         mEffectOM = new (AllocHeap(sizeof(TEffectOM)))
-            TEffectOM(mLeastEffect, pEffects);
+            TEffectOM(mMaxEffect, pEffects);
 
-        int numEmitters = mLeastEmitter;
+        int numEmitters = mMaxEmitter;
         TEmitter* pEmitters = NULL;
 
         if (numEmitters > 0) {
@@ -141,9 +131,9 @@ public:
         }
 
         mEmitterOM = new (AllocHeap(sizeof(TEmitterOM)))
-            TEmitterOM(mLeastEmitter, pEmitters);
+            TEmitterOM(mMaxEmitter, pEmitters);
 
-        int numParticleManagers = mLeastParticleManager;
+        int numParticleManagers = mMaxParticleManager;
         TParticleManager* pParticleManagers = NULL;
 
         if (numParticleManagers > 0) {
@@ -151,9 +141,9 @@ public:
         }
 
         mParticleManagerOM = new (AllocHeap(sizeof(TParticleManagerOM)))
-            TParticleManagerOM(mLeastParticleManager, pParticleManagers);
+            TParticleManagerOM(mMaxParticleManager, pParticleManagers);
 
-        int numParticles = mLeastParticle;
+        int numParticles = mMaxParticle;
         TParticle* pParticles = NULL;
 
         if (numParticles > 0) {
@@ -161,7 +151,7 @@ public:
         }
 
         mParticleOM = new (AllocHeap(sizeof(TParticleOM)))
-            TParticleOM(mLeastParticle, pParticles);
+            TParticleOM(mMaxParticle, pParticles);
         // clang-format on
     }
 
@@ -177,21 +167,24 @@ public:
 
             TParticleManager* mMgr = static_cast<TParticleManager*>(pPtr);
 
-            TParticle* pPtcl;
+            TParticle* pp;
             TParticle* pNextPtcl;
 
-            for (pPtcl = static_cast<TParticle*>(
+            for (pp = static_cast<TParticle*>(
                      mMgr->mActivityList.mClosingList.headObject);
-                 pPtcl != NULL; pPtcl = pNextPtcl) {
+                 pp != NULL; pp = pNextPtcl) {
 
                 // clang-format off
                 pNextPtcl = static_cast<TParticle*>(
-                    NW4R_UT_LIST_GET_LINK(mMgr->mActivityList.mClosingList, pPtcl)->nextObject);
+                    NW4R_UT_LIST_GET_LINK(mMgr->mActivityList.mClosingList, pp)->nextObject);
                 // clang-format on
 
-                pPtcl->mParticleManager->ParticleToFree(pPtcl);
-                ::nw4r::ut::List_Remove(&mParticleOM->mLeasedList, pPtcl);
-                ::nw4r::ut::List_Append(&mParticleOM->mFreeList, pPtcl);
+                NW4RAssert_FileLine("memorymanagertmp.h", 378, pp->GetRefCount() == 0);
+                NW4RAssert_FileLine("memorymanagertmp.h", 381, pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_ACTIVE || pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_WAIT || pp->mParticleManager->GetLifeStatus() == ::nw4r::ef::ReferencedObject::NW4R_EF_LS_CLOSING);
+
+                pp->mParticleManager->ParticleToFree(pp);
+                ::nw4r::ut::List_Remove(&mParticleOM->mLeasedList, pp);
+                ::nw4r::ut::List_Append(&mParticleOM->mFreeList, pp);
             }
 
             pPtr = static_cast<TParticleManager*>(pNext);
@@ -431,6 +424,7 @@ public:
             return reinterpret_cast<u8*>(pIt) + headerSize;
         }
 
+        NW4RAssert_FileLine("memorymanagertmp.h", 580, false);
         return NULL;
     } // at 0x60
 

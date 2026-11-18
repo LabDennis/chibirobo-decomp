@@ -48,6 +48,8 @@ static void (*SamplingCallback)(void);
 
 // The Revolution MSL's abs is the compiler intrinsic (as in pik1wii's Pad.c). The arithmetic form
 // (n < 0 ? -n : n) orders the loads and registers of PADRead's comparisons differently from retail.
+// MSL's stdlib.h has the same line: https://github.com/PrimeDecomp/sdk/blob/9b749184a7c6bdc29ddd2b0b9e8d451324d57b00/libc/stdlib.h#L20
+// pik1wii's Pad.c: https://github.com/projectPiki/pik1wii/blob/0450613e9e29a5ff63ef3bf677f62078cbe66f86/src/pad/Pad.c#L560
 #define abs(n) __abs(n)
 
 // useful macros

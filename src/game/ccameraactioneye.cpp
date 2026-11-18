@@ -60,16 +60,16 @@ void CCameraActionEye::Reset()
  */
 inline bool PlayerCanLook()
 {
-	bool result = false;
-	bool busy   = false;
-	if (!(EYE_PLAYER->mLift.mState != 7 && EYE_PLAYER->mLift.mState != 8 && EYE_PLAYER->mLift.mState != 9 && EYE_PLAYER->mLift.mState != 10
-	      && EYE_PLAYER->mLift.mState != 11 && EYE_PLAYER->mLift.mState != 12 && EYE_PLAYER->mLift.mState != 13
-	      && EYE_PLAYER->mLift.mState != 14 && EYE_PLAYER->mLift.mState != 15 && EYE_PLAYER->mLift.mState != 16
-	      && EYE_PLAYER->mLift.mState != 17 && EYE_PLAYER->mLift.mState != 18)) {
+	XObjChr* player = EYE_PLAYER;
+	bool result     = false;
+	bool busy       = false;
+	if (!(player->mLift.mState != 7 && player->mLift.mState != 8 && player->mLift.mState != 9 && player->mLift.mState != 10
+	      && player->mLift.mState != 11 && player->mLift.mState != 12 && player->mLift.mState != 13 && player->mLift.mState != 14
+	      && player->mLift.mState != 15 && player->mLift.mState != 16 && player->mLift.mState != 17 && player->mLift.mState != 18)) {
 		busy = true;
 	}
-	if (!busy && EYE_PLAYER->mHang.mState == 0 && EYE_PLAYER->mJump.mState == 0 && EYE_PLAYER->mLadder.mState == 0
-	    && EYE_PLAYER->mRope.mState == 0 && EYE_PLAYER->mPush.mState == 0 && EYE_PLAYER->mTumble.mState == 0) {
+	if (!busy && player->mHang.mState == 0 && player->mJump.mState == 0 && player->mLadder.mState == 0 && player->mRope.mState == 0
+	    && player->mPush.mState == 0 && player->mTumble.mState == 0) {
 		result = true;
 	}
 	return result;
@@ -118,12 +118,20 @@ void CCameraActionEye::Update(u32 step)
 				}
 			}
 
-			f32 zoom;
 			if (gGame.mStatus.mFlags & 0x200) { // free-look: the C-stick aims
+				// the limits test the pad's own value here, not the copy
 				f32 x = pad.mPad->mSubStickX;
-				ClampStick(x);
+				if (pad.mPad->mSubStickX > 0.8f) {
+					x = 0.8f;
+				} else if (pad.mPad->mSubStickX < -0.8f) {
+					x = -0.8f;
+				}
 				f32 y = pad.mPad->mSubStickY;
-				ClampStick(y);
+				if (pad.mPad->mSubStickY > 0.8f) {
+					y = 0.8f;
+				} else if (pad.mPad->mSubStickY < -0.8f) {
+					y = -0.8f;
+				}
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 					y = 0.0f;
 					x = y;
@@ -166,7 +174,7 @@ void CCameraActionEye::Update(u32 step)
 				}
 				gGame.GetPlayer()->SetRotationY(EYE_PLAYER->mMoveRotate.y - 0.034906585f * turn * step, 0); // 2 degrees per step
 
-				zoom = pad.mPad->mSubStickY;
+				f32 zoom = pad.mPad->mSubStickY;
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 					zoom = 0.0f;
 				}
@@ -188,8 +196,7 @@ void CCameraActionEye::Update(u32 step)
 			}
 			mLook.Step(step);
 
-			Vec look = { mLook.x, mLook.y, 0.0f };
-			SetAngle(EYE_PLAYER->mMoveRotate + look);
+			SetAngle(EYE_PLAYER->mMoveRotate + (Vec) { mLook.x, mLook.y, 0.0f });
 			SetFov(40.0f + mLook.z);
 
 			static f32 sPreviousZoomSpeed = 0.0f;

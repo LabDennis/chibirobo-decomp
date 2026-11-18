@@ -1137,6 +1137,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// one floor's edge, the GameCube's XObjEdge
+struct XObjEdge {
+	Vec mContactOffset; // _00
+	Vec mFrom;          // _0C
+	Vec mTo;            // _18
+};
+STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
+
 class XObj : public CObj {
 public:
 	XObj();
@@ -1278,12 +1286,12 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex; // _1BC
-	u8 _1C0[0x640 - 0x1C0];
+	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;       // _1BC
+	XObjEdge mEdges[32];      // _1C0, one per floor
 	// _640, the collision floors' reach on the ground plane: [0] the wider of the x and z radii,
 	// [1] the narrower; UpdateObjectFloorXZExtent fills both with NAN while there are no floors
-	f32 mFloorXZExtent[2];
+	f32 mFloorXZExtent[2];    // xobj_chr.cpp reads them by index, [0] is GetFloorXZExtent's
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
 	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
@@ -1308,7 +1316,8 @@ public:
 	CJArchive mArchive;  // _820
 	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
-	u8 _99C[0xC];
+	u8 _99C[0x9A4 - 0x99C];
+	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
@@ -1373,7 +1382,6 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
-private:
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];

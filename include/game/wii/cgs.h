@@ -678,7 +678,7 @@ class CGsScreen : public GXRenderModeObj {
 public:
 	// _3C vtable
 
-	virtual ~CGsScreen(); // _08
+	virtual ~CGsScreen() { } // _08
 
 	// the SDK render mode with that index in the screen mode table
 	GXRenderModeObj* GetRenderMode(s32 mode); // 0x802A977C
@@ -724,6 +724,54 @@ struct WiiGsSlot {
 };
 STATIC_ASSERT(sizeof(WiiGsSlot) == 0x28);
 
+// a GX light with its place in a list. The Init* names follow the GameCube light types
+class CLight : public GXLightObj {
+public:
+	u32 mFlags;     // _40, 1 ambient, 2 infinite, 4 point, 8 spot
+	CVec mPosition; // _44
+	CVec mInterest; // _54
+	// _64 vtable
+
+	virtual ~CLight() { }                                                                    // _08
+	virtual void InitAmbient(u8 r, u8 g, u8 b, u8 a);                                        // _0C
+	virtual void InitInfinite(const Vec& position, u8 r, u8 g, u8 b, u8 a);                  // _10
+	virtual void InitPoint(const Vec& position, u8 r, u8 g, u8 b, u8 a);                     // _14
+	virtual void InitSpot(const Vec& position, const Vec& interest, u8 r, u8 g, u8 b, u8 a); // _18
+	virtual void InitAmbient(u32 color);                                                     // _1C
+	virtual void InitInfinite(const Vec& position, u32 color);                               // _20
+	virtual void InitPoint(const Vec& position, u32 color);                                  // _24
+	virtual void InitSpot(const Vec& position, const Vec& interest, u32 color);              // _28
+	virtual void vf2C();                                                                     // _2C, sets flag 0x8000
+	virtual void vf30() { mFlags &= ~0x8000; }                                               // _30
+	virtual void SetPosition(f32 x, f32 y, f32 z)                                            // _34
+	{
+		mPosition.x = x;
+		mPosition.y = y;
+		mPosition.z = z;
+	}
+	virtual void SetInterest(f32 x, f32 y, f32 z); // _38
+	virtual void SetPosition(const Vec& position); // _3C
+	virtual void SetInterest(const Vec& interest); // _40
+	virtual void SetColor(u8 r, u8 g, u8 b, u8 a); // _44
+
+	CLight* mNext; // _68
+
+	void Reset(u8 r, u8 g, u8 b, u8 a); // 0x802A89E0, a cleared light of that color, shared by the four Init kinds
+	CVec GetViewPosition(Mtx view);     // 0x802A8D1C
+	CVec GetPosition();                 // 0x802A8DA4, an infinite light's is pushed far out along its direction
+	CVec GetViewDirection(Mtx view);    // 0x802A8E64
+	CColor GetColor();                  // 0x802A8F18
+};
+STATIC_ASSERT(sizeof(CLight) == 0x6C);
+
+// the scene draw list and the lights it draws under, the CGs keeps it at _1BA4. The list functions
+// (fn_802AEDA0 and on) take its address; the destructor null-checks it as an object of its own
+struct WiiGsScene {
+	WiiGsSceneObj* mHead; // _00, the list the scene pass drains
+	BOOL _04;             // _04, Update queues the map's model on the list while it is set
+	CLight mLights[10];   // _08
+};
+
 class CGs {
 public:
 	void* mFifoBuffer;               // _00
@@ -759,13 +807,11 @@ public:
 	f32 mSingleByteWidthScale; // _1B8C
 	// _1B90 vtable
 
-	virtual ~CGs(); // _08
+	virtual ~CGs() { } // _08
 
-	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
-	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
-	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
-	BOOL _1BA8;                // _1BA8, Update queues the map's model on the list while it is set
-	u8 _1BAC[0x1FE4 - 0x1BAC];
+	Vec mTextRot;       // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont;      // _1BA0, the font argument handed to the glyph lookups
+	WiiGsScene mScene;  // _1BA4
 	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
 	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
 
@@ -789,6 +835,11 @@ public:
 	void EndFrame();                        // 0x802AB8CC, queues the frame's copy and waits for the retrace
 	void SwapBuffers();                     // 0x802AB8F0
 };
+#ifndef offsetof
+#define offsetof(type, member) ((u32) & (((type*)0)->member))
+#endif
+STATIC_ASSERT(offsetof(CGs, mScene) == 0x1BA4);
+STATIC_ASSERT(offsetof(CGs, mFont) == 0x214C);
 
 // GXSetFog's arguments, kept so the fog can be put back
 class CFog {
@@ -801,51 +852,11 @@ public:
 	CColor mColor;   // _14
 	// _1C vtable
 
-	virtual ~CFog(); // _08
+	virtual ~CFog() { } // _08
 
 	void Init(GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ); // 0x802A8FF8
 };
 STATIC_ASSERT(sizeof(CFog) == 0x20);
-
-// a GX light with its place in a list. The Init* names follow the GameCube light types
-class CLight : public GXLightObj {
-public:
-	u32 mFlags;     // _40, 1 ambient, 2 infinite, 4 point, 8 spot
-	CVec mPosition; // _44
-	CVec mInterest; // _54
-	// _64 vtable
-
-	virtual ~CLight();                                                                       // _08
-	virtual void InitAmbient(u8 r, u8 g, u8 b, u8 a);                                        // _0C
-	virtual void InitInfinite(const Vec& position, u8 r, u8 g, u8 b, u8 a);                  // _10
-	virtual void InitPoint(const Vec& position, u8 r, u8 g, u8 b, u8 a);                     // _14
-	virtual void InitSpot(const Vec& position, const Vec& interest, u8 r, u8 g, u8 b, u8 a); // _18
-	virtual void InitAmbient(u32 color);                                                     // _1C
-	virtual void InitInfinite(const Vec& position, u32 color);                               // _20
-	virtual void InitPoint(const Vec& position, u32 color);                                  // _24
-	virtual void InitSpot(const Vec& position, const Vec& interest, u32 color);              // _28
-	virtual void vf2C();                                                                     // _2C, sets flag 0x8000
-	virtual void vf30() { mFlags &= ~0x8000; }                                               // _30
-	virtual void SetPosition(f32 x, f32 y, f32 z)                                            // _34
-	{
-		mPosition.x = x;
-		mPosition.y = y;
-		mPosition.z = z;
-	}
-	virtual void SetInterest(f32 x, f32 y, f32 z); // _38
-	virtual void SetPosition(const Vec& position); // _3C
-	virtual void SetInterest(const Vec& interest); // _40
-	virtual void SetColor(u8 r, u8 g, u8 b, u8 a); // _44
-
-	CLight* mNext; // _68
-
-	void Reset(u8 r, u8 g, u8 b, u8 a); // 0x802A89E0, a cleared light of that color, shared by the four Init kinds
-	CVec GetViewPosition(Mtx view);     // 0x802A8D1C
-	CVec GetPosition();                 // 0x802A8DA4, an infinite light's is pushed far out along its direction
-	CVec GetViewDirection(Mtx view);    // 0x802A8E64
-	CColor GetColor();                  // 0x802A8F18
-};
-STATIC_ASSERT(sizeof(CLight) == 0x6C);
 
 // a frame buffer copy and the texture that shows it; the GameCube FbTexture with the Wii CTexObj and a
 // flag for who owns the image

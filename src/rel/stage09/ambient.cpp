@@ -24,6 +24,9 @@ void StopGameSfx(void* p, s32 id);
 void DrawAnas(void);
 void UpdateAnas(s32 dt);
 void InitAnas(void);
+}
+
+// rel/ana.cpp, its script commands have C++ linkage
 s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
 s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
 s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
@@ -32,7 +35,6 @@ s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
 s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
 s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
-}
 
 class AmbientSeq;
 extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt);

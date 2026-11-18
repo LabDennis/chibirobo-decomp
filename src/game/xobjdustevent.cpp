@@ -4,6 +4,7 @@
 #include "game/hsd_cobj.h"
 #include "game/evt.h"
 #include "game/xobjchr.h"
+#include "game/animframe.h"
 
 static inline BOOL AnimDone(HSD_JObj* joint)
 {
@@ -43,22 +44,12 @@ extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 			if (player->mAnimId == 0x8C0) {
 				if (AnimDone(player->mJObj))
 					return TRUE;
-				HSD_AObj* aobj         = GetAObj(player->mJObj);
-				f32 end                = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
-				aobj                   = GetAObj(player->mJObj);
-				f32 frame              = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
+				f32 end                = GetAnimEndFrame(player->mJObj);
+				f32 frame              = GetAnimFrame(player->mJObj);
 				f32 t                  = 1.0f - frame / end;
 				dust->mMoveTranslate.x = t * (dust->mFrom.x - dust->mTo.x) + dust->mTo.x;
 				dust->mMoveTranslate.z = t * (dust->mFrom.z - dust->mTo.z) + dust->mTo.z;
-				f32 x                  = dust->mStartScale.x;
-				f32 y                  = dust->mStartScale.y;
-				f32 z                  = dust->mStartScale.z;
-				x *= t;
-				y *= t;
-				z *= t;
-				dust->mMoveScale.x = x;
-				dust->mMoveScale.y = y;
-				dust->mMoveScale.z = z;
+				dust->mMoveScale.Set(dust->mStartScale.x * t, dust->mStartScale.y * t, dust->mStartScale.z * t);
 			}
 		}
 	}

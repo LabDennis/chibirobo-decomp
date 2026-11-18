@@ -4,6 +4,8 @@
 #include <string.h>
 
 // MSL's <stdlib.h> gives abs() as the compiler's own; the game's headers have no such line
+// MSL's stdlib.h has the same line: https://github.com/PrimeDecomp/sdk/blob/9b749184a7c6bdc29ddd2b0b9e8d451324d57b00/libc/stdlib.h#L20
+// pik1wii's wenc.c calls __abs directly: https://github.com/projectPiki/pik1wii/blob/0450613e9e29a5ff63ef3bf677f62078cbe66f86/src/wenc/wenc.c#L60
 #define abs(n) __abs(n)
 
 s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples, u8* adpcmData)

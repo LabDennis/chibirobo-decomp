@@ -4,14 +4,14 @@
 extern "C" void DrawAnas(void);
 extern "C" void UpdateAnas(void);
 extern "C" void InitAnas(void);
-extern "C" s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdAddAna(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
+s32 CmdAddAna(s32 cmd, s32 count, s32* args);
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 
 extern "C" void DrawStage(void* arg);
 extern "C" void UpdateStage(void* arg);

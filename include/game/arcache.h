@@ -27,9 +27,10 @@ public:
 	}
 	virtual ~ARCacheInfo() { } // _08
 
-	// a block of size bytes at the base address, which moves on past it
+	// a block of size bytes (rounded up to the 32 byte aram alignment) at the base address, which moves on past it
 	void Add(u32 size, s32 objectId, const char* name)
 	{
+		size                      = (size + 31) & ~31u;
 		mEntries[mCount].address  = mBaseAddress;
 		mEntries[mCount].size     = size;
 		mEntries[mCount].objectId = objectId;

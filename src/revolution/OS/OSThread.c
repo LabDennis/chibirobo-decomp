@@ -159,6 +159,9 @@ static void SetRun(OSThread* thread)
 // Retail keeps UnsetRun a call from its three callers; the library flags expand it. The Wii decomps
 // that have this file matched (pik1wii, pik2wii, ogws, wiiplay, xenoblade, Petari, wii-news-channel) carry
 // this pragma at this spot and wii-ipl an attribute, so it is taken as the SDK's own line.
+// pik1wii: https://github.com/projectPiki/pik1wii/blob/0450613e9e29a5ff63ef3bf677f62078cbe66f86/src/os/OSThread.c#L167-L182
+// tww: https://github.com/zeldaret/tww/blob/d217e2b5e1c1514e6f3f640835f83f01dd67aa72/libs/dolphin/src/os/OSThread.c#L235-L263
+// ogws (as DECOMP_DONT_INLINE): https://github.com/doldecomp/ogws/blob/e5a4d369011062fe243aa63f6c2e2853854c395d/src/revolution/OS/OSThread.c#L193
 #pragma dont_inline on
 /**
  * @note Address: 0x8016A05C

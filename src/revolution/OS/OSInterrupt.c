@@ -15,6 +15,7 @@ static OSInterruptMask InterruptPrioTable[] = {
 	OS_INTERRUPTMASK_MEM,
 	OS_INTERRUPTMASK_PI_RSW,
 	OS_INTERRUPTMASK_PI_VI,
+	OS_INTERRUPTMASK_PI_ACR,
 	OS_INTERRUPTMASK_PI_PE,
 	OS_INTERRUPTMASK_PI_HSP,
 	OS_INTERRUPTMASK_DSP_ARAM | OS_INTERRUPTMASK_DSP_DSP | OS_INTERRUPTMASK_AI | OS_INTERRUPTMASK_EXI | OS_INTERRUPTMASK_PI_SI
@@ -109,14 +110,15 @@ __OSInterruptHandler __OSGetInterruptHandler(__OSInterrupt interrupt)
  * @note Address: 0x80166ECC
  * @note Size: 0x74
  */
+// The masks at 0x800000C4/C8 are read and written through plain pointers here, as wii-ipl's OSInterrupt.c
+// does; through the volatile __OSPriorInterruptMask the inlined __OSMaskInterrupts stores before its nor.
 void __OSInterruptInit()
 {
 	InterruptHandlerTable = OSPhysicalToCached(0x3040);
 	memset(InterruptHandlerTable, 0, __OS_INTERRUPT_MAX * sizeof(__OSInterruptHandler));
 
-	__OSPriorInterruptMask = 0;
-
-	__OSCurrentInterruptMask = 0;
+	*(u32*)OSPhysicalToCached(0x00C4) = 0;
+	*(u32*)OSPhysicalToCached(0x00C8) = 0;
 
 	__PIRegs[PI_INTRPT_MASK] = 0xF0;
 	__ACRRegs[13] = 0x40000000;
@@ -309,11 +311,11 @@ OSInterruptMask __OSMaskInterrupts(OSInterruptMask global)
 	OSInterruptMask mask;
 
 	enabled = OSDisableInterrupts();
-	prev    = __OSPriorInterruptMask;
-	local   = __OSCurrentInterruptMask;
+	prev    = *(u32*)OSPhysicalToCached(0x00C4);
+	local   = *(u32*)OSPhysicalToCached(0x00C8);
 	mask    = ~(prev | local) & global;
 	global |= prev;
-	__OSPriorInterruptMask = global;
+	*(u32*)OSPhysicalToCached(0x00C4) = global;
 	while (mask) {
 		mask = SetInterruptMask(mask, global | local);
 	}
@@ -332,12 +334,12 @@ OSInterruptMask __OSUnmaskInterrupts(OSInterruptMask global)
 	OSInterruptMask local;
 	OSInterruptMask mask;
 
-	enabled                = OSDisableInterrupts();
-	prev                   = __OSPriorInterruptMask;
-	local                  = __OSCurrentInterruptMask;
-	mask                   = (prev | local) & global;
-	global                 = prev & ~global;
-	__OSPriorInterruptMask = global;
+	enabled = OSDisableInterrupts();
+	prev    = *(u32*)OSPhysicalToCached(0x00C4);
+	local   = *(u32*)OSPhysicalToCached(0x00C8);
+	mask    = (prev | local) & global;
+	global  = prev & ~global;
+	*(u32*)OSPhysicalToCached(0x00C4) = global;
 	while (mask) {
 		mask = SetInterruptMask(mask, global | local);
 	}

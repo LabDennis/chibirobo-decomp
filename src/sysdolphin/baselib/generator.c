@@ -512,9 +512,9 @@ f32 generateParticle(HSD_Generator* gen)
 		dir.z = gen->vel.z;
 		PSVECNormalize(&dir, &dir);
 
-		GEN_ANGLE(sa, dir.y, dir.z);
-		ca = gen_sinf(sa);
-		sa = gen_cosf(sa);
+		GEN_ANGLE(theta, dir.y, dir.z);
+		ca = gen_sinf(theta);
+		sa = gen_cosf(theta);
 		GEN_ANGLE(elev, dir.x, dir.y * ca + dir.z * sa);
 		se = gen_sinf(elev);
 		{
@@ -550,19 +550,15 @@ f32 generateParticle(HSD_Generator* gen)
 		switch (gen->type & 0xF) {
 		case 0:
 		case 3:
-		case 4: {
-			f32 min = gen->aux.disc.minAngle;
-			cur     = (gen->aux.disc.maxAngle - min) / (f32)(s32)gen->count * HSD_Randf() + min;
-			step    = (gen->aux.disc.maxAngle - min) / (f32)(s32)gen->count;
+		case 4:
+			cur  = (gen->aux.disc.maxAngle - gen->aux.disc.minAngle) / (f32)(s32)gen->count * HSD_Randf() + gen->aux.disc.minAngle;
+			step = (gen->aux.disc.maxAngle - gen->aux.disc.minAngle) / (f32)(s32)gen->count;
 			break;
-		}
 		case 6:
-		case 7: {
-			f32 min = gen->aux.cone.minAngle;
-			cur     = (gen->aux.cone.maxAngle - min) / (f32)(s32)gen->count * HSD_Randf() + min;
-			step    = (gen->aux.cone.maxAngle - min) / (f32)(s32)gen->count;
+		case 7:
+			cur  = (gen->aux.cone.maxAngle - gen->aux.cone.minAngle) / (f32)(s32)gen->count * HSD_Randf() + gen->aux.cone.minAngle;
+			step = (gen->aux.cone.maxAngle - gen->aux.cone.minAngle) / (f32)(s32)gen->count;
 			break;
-		}
 		default:
 			cur  = 2.0 * (M_PI * HSD_Randf());
 			step = (2.0 * M_PI) / (f64)(s32)gen->count;
@@ -602,8 +598,7 @@ f32 generateParticle(HSD_Generator* gen)
 						theta = M_PI_2 - gen_atan2f(gen->aux.cone.height, sa) - gen->angle;
 					}
 				} else {
-					f32 min = gen->aux.cone.minAngle;
-					cur     = (gen->aux.cone.maxAngle - min) * HSD_Randf() + min;
+					cur = (gen->aux.cone.maxAngle - gen->aux.cone.minAngle) * HSD_Randf() + gen->aux.cone.minAngle;
 					if (__fabsf(sa) < FLT_MIN) {
 						if (gen->aux.cone.height >= 0.0F) {
 							theta = gen->angle;
@@ -620,9 +615,8 @@ f32 generateParticle(HSD_Generator* gen)
 					cur += step;
 					theta = M_PI_2 - gen->angle;
 				} else {
-					f32 min = gen->aux.disc.minAngle;
-					cur     = (gen->aux.disc.maxAngle - min) * HSD_Randf() + min;
-					theta   = M_PI_2 + gen->angle;
+					cur = (gen->aux.disc.maxAngle - gen->aux.disc.minAngle) * HSD_Randf() + gen->aux.disc.minAngle;
+					theta = M_PI_2 + gen->angle;
 				}
 				break;
 			default:
@@ -630,9 +624,8 @@ f32 generateParticle(HSD_Generator* gen)
 					cur += step;
 					theta = r * -gen->angle;
 				} else {
-					f32 min = gen->aux.disc.minAngle;
-					cur     = (gen->aux.disc.maxAngle - min) * HSD_Randf() + min;
-					theta   = r * gen->angle;
+					cur = (gen->aux.disc.maxAngle - gen->aux.disc.minAngle) * HSD_Randf() + gen->aux.disc.minAngle;
+					theta = r * gen->angle;
 				}
 				break;
 			}

@@ -163,7 +163,7 @@ public:
 	s32 mHelpCount;
 	MenuHelpChar mBg[20];
 #if !defined(VERSION_JP)
-	u32 mFormatCancelled; // _3C44
+	BOOL mFormatCancelled; // _3C44
 #endif
 	// _3C48 vtable, _3C24 in japan
 

@@ -165,6 +165,7 @@ void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
  * @note Address: 0x8008A944
  * @note Size: 0x45C
  */
+// NONMATCHING: the map pointer and FindMapFloor's counter get each other's register (r29/r30)
 extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 {
 	Vec* pos     = &self->mMoveTranslate;
@@ -172,10 +173,10 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	if (!FindMapFloor(map, pos, &self->mFloorHit, NULL)) {
 		self->mFloorHit.mTriangle = -1;
 		self->mFloorHit.mTrigon   = -1;
-		self->mFloorHit.mHeight   = pos->y; // no map floor: use the object's own height
+		self->mFloorHit.mHeight   = self->mMoveTranslate.y; // no map floor: use the object's own height
 	}
 	f32 highest = self->mFloorHit.mHeight;
-	CVec contact, push;
+	CVec push, contact;
 	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
@@ -188,13 +189,10 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos->z;
-			f32 y = pos->y;
-			f32 x = pos->x;
-			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+			if (ProbeObjectFloor(object, *pos, *pos, radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				// only floors at most one unit overhead
-				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
+				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
 			}
 		}
@@ -310,6 +308,8 @@ extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamer
  * @note Address: 0x8008B338
  * @note Size: 0x29C
  */
+// NONMATCHING: retail calls cos and sin through float inlines (MSL's C++ cosf/sinf, which return (f32)cos(x));
+// include/stl/math.h only declares the out-of-line C cosf/sinf, so angle and cosine get each other's register
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
 	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
@@ -339,9 +339,8 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, view, projection,
 	          viewport, &unusedX, &top, &depth);
 #if defined(VERSION_PAL)
-	f32 scale = 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
-	bottom *= scale;
-	top *= scale;
+	bottom *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
+	top *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
 #endif
 	if (left >= 0.0f && right < 640.0f && bottom >= 0.0f && top < 448.0f && depth > 0.0f && depth < 1.0f) {
 		if (width != NULL) {
@@ -403,6 +402,8 @@ static inline f32 FloorRotationRadians(const s32& degrees)
 	return 0.017453292f * degrees;
 }
 
+// NONMATCHING: retail reads each floor field as floors + (i * 0x20 + offset) with lwzx, here floors + i * 0x20 is formed
+// once per pass; registers follow from that
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 {
 	XObjFloor* floors = mFloors;
@@ -412,24 +413,30 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 		return FALSE;
 	if (mStatus.mFlags & 0x4000000000000000ULL)
 		return FALSE;
-	CVec from(start);
-	CVec extent;
+	CVec from(*(const CVec*)&start); // retail copies both ends word by word, as CVecs
 	from.y = 0;
-	Vec to = end;
-	to.y   = 0; // floors are tested flat on the ground plane
+	CVec to(*(const CVec*)&end);
+	to.y = 0;    // floors are tested flat on the ground plane
+	CVec extent; // never read: retail builds it here and the loop's own extent shadows it
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
-		CVec center  = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
-		extent       = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
+		Vec center   = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
+		Vec extent   = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
 		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
 		f32 yaw      = rotation + localYaw;
 		switch (floors[i].mId) {
 		case 0:
 		case 1: { // a point: passed if the bearing to it swings through
 			CVec point(0, 0, 0);
-			Mtx transform;
-			MakeFloorTransform(this, center, extent, yaw, transform);
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
 			PSMTXMultVec(transform, &point, &point);
 			point.y   = 0;
 			f32 first = atan2(from.x - point.x, from.z - point.z);
@@ -440,17 +447,23 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			break;
 		}
 		case 2: { // a box, tested against its four side edges
-			Mtx transform;
-			MakeFloorTransform(this, center, extent, yaw, transform);
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
 			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f;
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
-			Vec world[8];
-			PSMTXMultVecArray(transform, corners, world, 8);
+			Vec placed[8];
+			PSMTXMultVecArray(transform, corners, placed, 8);
 			s32 outside = 0, crossed = 0;
 			for (s32 i = 0; i < 4; ++i) {
-				Vec* a = &world[2 * i];
-				Vec* b = &world[2 * i + 1];
+				Vec* a = &placed[2 * i];
+				Vec* b = &placed[2 * i + 1];
 				CountCrossedEdge(from, to, a, b, outside, crossed);
 			}
 			if (outside == crossed)
@@ -478,12 +491,12 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 		}
 		case 5: { // a four-point polygon built from this and the next three floors
 			XObjFloor* polygon = mFloors;
+			Mtx translate, rotate, scale, transform;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
 				corners[j] = mToppleOffset + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec size  = mMoveScale * ReadFloorCoordinates(polygon[i].mExtent, lbl_80378148);
 			f32 angle = mMoveRotate.y + FloorRotationRadians(polygon[i].mYawDegrees);
-			Mtx translate, rotate, scale, transform;
 			PSMTXTrans(translate, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXScale(scale, size.x, size.y, size.z);
 			PSMTXRotRad(rotate, 'y', angle);
@@ -526,7 +539,7 @@ CVec CVec::operator*(Vec other) const
 // NONMATCHING: retail keeps index in the frame and reads it again for each of the floor's values, as if
 // its address were taken (a `const s32&` bound to it gives that code, 76.6 %); the helper that takes
 // the index by reference is not found.
-extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset)
+extern "C" CVec GetFloorContactPosition(const XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate; // that flag off: no floor contact to compute

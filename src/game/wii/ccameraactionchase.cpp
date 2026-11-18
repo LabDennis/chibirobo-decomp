@@ -71,7 +71,7 @@ void CCameraActionChase::Reset()
 	if (mTarget != NULL) {
 		mRestDistance = 105.0f;
 		Mtx mtx;
-		PSMTXCopy(((WiiPlayerState*)mTarget)->GetMtxPtr(), mtx);
+		PSMTXCopy(((WiiPlayerState*)mTarget)->GetWorldMtx(), mtx);
 		CVec eye(0.0f, 40.0f, -mRestDistance);
 		PSMTXMultVec(mtx, &eye, &eye);
 		SetEye(eye);
@@ -116,7 +116,7 @@ void CCameraActionChase::Update(u32 step)
 	mLastPos.z = mPos.z;
 
 	Mtx mtx;
-	PSMTXCopy(((WiiPlayerState*)mTarget)->GetMtxPtr(), mtx);
+	PSMTXCopy(((WiiPlayerState*)mTarget)->GetWorldMtx(), mtx);
 	CVec behind(0.0f, 30.0f, -1.0f);
 	PSMTXMultVec(mtx, &behind, &behind);
 	mPos.x = behind.x;

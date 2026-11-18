@@ -16,6 +16,8 @@
 #include <string.h>
 #include <types.h>
 #include "game/cgame.h"
+#include "game/cgameutil.h"
+#include "game/cjobjset.h"
 
 extern "C" {
 #include <dolphin/os.h>
@@ -41,8 +43,9 @@ void ClearGameSoundQueue(void* sound, s32 id);
 // read before stepping, the script can point into the message's own bytes
 static inline u32 ReadMsgU8(CMsg* msg)
 {
-	u32 value = *msg->mData.mCursor;
-	msg->mData.mCursor++;
+	u8* cursor         = msg->mData.mCursor;
+	u32 value          = *cursor;
+	msg->mData.mCursor = cursor + 1;
 	return value;
 }
 
@@ -54,6 +57,14 @@ static inline CTexObj& GetMessageIconTexture()
 
 // script operands are little endian, literal colors are rgba bytes
 static inline s16 ReadMsgS16(CMsg* msg)
+{
+	u32 lo = ReadMsgU8(msg);
+	u32 hi = ReadMsgU8(msg);
+	return lo | (hi << 8);
+}
+
+// sfx fade lengths are unsigned frame counts
+static inline u16 ReadMsgU16(CMsg* msg)
 {
 	u32 lo = ReadMsgU8(msg);
 	u32 hi = ReadMsgU8(msg);
@@ -347,17 +358,17 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		PlayGameSound(&gGame.mSound, sfx, 255);
 		break;
 	case 2: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		FadeOutGameSfx(&gGame.mSound, sfx, frames);
 		break;
 	}
 	case 3: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		FadeInGameSfx(&gGame.mSound, sfx, frames);
 		break;
 	}
 	case 4: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		s32 volume = ReadMsgU8(msg);
 		if (!IsGameSoundPlaying(&gGame.mSound, sfx)) {
 			PlayGameSound(&gGame.mSound, sfx, volume);
@@ -609,6 +620,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
  * @note Address: 0x80080580
  * @note Size: 0x364
  */
+// NONMATCHING: the reads keep the cursor and the byte in each other's register
 extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 {
 	u8 flags = ReadMsgU8(msg);
@@ -3558,16 +3570,6 @@ void InvalidateMessageDrawState(CGs* gs);
 #define MSG_OBJECT_OFFSET(offset) (offset)
 #endif
 
-#if defined(VERSION_PAL)
-static inline void MsgRestoreScissor(u32 x, u32 y, u32 width, u32 height)
-{
-	f32 displayScale = gGame.mGs.mScreen.mHeightScale;
-	u32 scaledHeight = (u32)(height * displayScale);
-	u32 scaledY      = (u32)(y * displayScale);
-	GXSetScissor(x, scaledY, width, scaledHeight);
-}
-#endif
-
 // one piece of the window frame, a texture window and where it goes
 struct MsgWindowSlice {
 	f32 u;      // _00
@@ -3584,6 +3586,8 @@ struct MsgWindowSlice {
  * @note Address: 0x80082970
  * @note Size: 0x2308
  */
+// NONMATCHING: our frame has one int to float slot more (0x10) and the window slices schedule differently; the
+// unit's .rodata puts the fan template 12 bytes earlier than retail
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
@@ -3592,19 +3596,23 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, NULL, 0);
 		font->mWindowY -= font->mHeight;
 	}
-	if (font->mWindowX - font->mWidth * 0.5f < 16.0f)
-		font->mWindowX = 16.0f + font->mWidth * 0.5f;
-	if (font->mWindowX + font->mWidth * 0.5f > 624.0f)
-		font->mWindowX = 624.0f - font->mWidth * 0.5f;
-	if (font->mWindowY < 34.0f)
-		font->mWindowY = 34.0f;
-	if (font->mWindowY + font->mHeight > 414.0f)
-		font->mWindowY = 414.0f - font->mHeight;
+	f32& winX      = font->mWindowX;
+	f32& winWidth  = font->mWidth;
+	f32& winY      = font->mWindowY;
+	f32& winHeight = font->mHeight;
+	if (winX - winWidth / 2.0f < 16.0f)
+		winX = 16.0f + winWidth / 2.0f;
+	if (winX + winWidth / 2.0f > 624.0f)
+		winX = 624.0f - winWidth / 2.0f;
+	if (winY < 34.0f)
+		winY = 34.0f;
+	if (winY + winHeight > 414.0f)
+		winY = 414.0f - winHeight;
 	f32 portraitScale;
 	if (gGame.mWipeTile1.mActive != 0)
 		portraitScale = 0.846153855f;
 	else
-		portraitScale = font->mHeight / 52.0f;
+		portraitScale = winHeight / 52.0f;
 	if (portraitScale > 1.1f)
 		portraitScale = 1.1f;
 	if (portraitScale < 0.5f)
@@ -3619,40 +3627,35 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 	if (font->mAlpha > 0.0f) {
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
 		f32 halfPortrait = portraitWidth / 2.0f;
-		f32 left         = ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - expandX) - halfPortrait;
-		f32 right        = halfPortrait + (expandX + (40.0f + (font->mWindowX + font->mWidth * 0.5f)));
-		f32 top          = (font->mWindowY - 8.0f) - expandY;
-		f32 bottom       = expandY + (8.0f + (font->mWindowY + font->mHeight));
+		f32 left         = ((winX - winWidth * 0.5f) - 40.0f - expandX) - halfPortrait;
+		f32 right        = halfPortrait + (expandX + (40.0f + (winX + winWidth * 0.5f)));
+		f32 top          = (winY - 8.0f) - expandY;
+		f32 bottom       = expandY + (8.0f + (winY + winHeight));
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		f32 outerRight  = 9.0f + (8.0f + right);
-		f32 outerBottom = 9.0f + (8.0f + bottom);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		                 0xFF000000);
 
-		f32 innerLeft = 1.0f + left, innerRight = right - 1.0f;
-		f32 innerTop = 1.0f + top, innerBottom = bottom - 1.0f;
-		f32 roundLeft = 8.0f + innerLeft, roundRight = innerRight - 8.0f;
-		f32 roundTop = 8.0f + innerTop, roundBottom = innerBottom - 8.0f;
-		Vec fan[10] = { (Vec) { font->mWindowX, font->mWindowY, 0.0f },
-			            (Vec) { innerLeft, roundTop, 0.0f },
-			            (Vec) { roundLeft, innerTop, 0.0f },
-			            (Vec) { roundRight, innerTop, 0.0f },
-			            (Vec) { innerRight, roundTop, 0.0f },
-			            (Vec) { innerRight, roundBottom, 0.0f },
-			            (Vec) { roundRight, innerBottom, 0.0f },
-			            (Vec) { roundLeft, innerBottom, 0.0f },
-			            (Vec) { innerLeft, roundBottom, 0.0f },
-			            (Vec) { innerLeft, roundTop, 0.0f } };
+		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
+			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f },
+			            (Vec) { 8.0f + (1.0f + left), 1.0f + top, 0.0f },
+			            (Vec) { (right - 1.0f) - 8.0f, 1.0f + top, 0.0f },
+			            (Vec) { right - 1.0f, 8.0f + (1.0f + top), 0.0f },
+			            (Vec) { right - 1.0f, (bottom - 1.0f) - 8.0f, 0.0f },
+			            (Vec) { (right - 1.0f) - 8.0f, bottom - 1.0f, 0.0f },
+			            (Vec) { 8.0f + (1.0f + left), bottom - 1.0f, 0.0f },
+			            (Vec) { 1.0f + left, (bottom - 1.0f) - 8.0f, 0.0f },
+			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f } };
 		u32 color
 		    = ((u32)font->mColor.r << 24) | ((u32)font->mColor.g << 16) | ((u32)font->mColor.b << 8) | (u32)(font->mColor.a * font->mAlpha);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fan, color, 10);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundLeft, roundTop, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundRight, roundTop, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundLeft, roundBottom, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundRight, roundBottom, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, 8.0f + (1.0f + left), 8.0f + (1.0f + top), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, (right - 1.0f) - 8.0f, 8.0f + (1.0f + top), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, 8.0f + (1.0f + left), (bottom - 1.0f) - 8.0f, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, (right - 1.0f) - 8.0f, (bottom - 1.0f) - 8.0f, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
 		color = (u32)(64.0f * windowAlpha);
 		for (u32 i = 0; i < 10; i++) {
 			fan[i].x += 9.0f;
@@ -3692,23 +3695,23 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		slices[1].scaleU = 1.0f / textureWidth;
 		slices[0].x      = edgeLeft;
 		slices[0].y      = edgeTop;
-		slices[1].x      = font->mWindowX;
+		slices[1].x      = winX;
 		slices[1].y      = edgeTop;
 		slices[1].width  = 6.0f + stretchX;
 		slices[2].x      = edgeRight;
 		slices[2].y      = edgeTop;
 		slices[3].scaleV = 1.0f / textureHeight;
 		slices[3].x      = edgeLeft;
-		slices[3].y      = 4.0f + (font->mHeight * 0.5f + font->mWindowY);
+		slices[3].y      = 4.0f + (winHeight * 0.5f + winY);
 		slices[3].height = (20.0f + stretchY) - 8.0f;
 		slices[4].scaleV = 1.0f / textureHeight;
 		slices[4].x      = edgeRight;
-		slices[4].y      = 4.0f + (font->mHeight * 0.5f + font->mWindowY);
+		slices[4].y      = 4.0f + (winHeight * 0.5f + winY);
 		slices[4].height = (20.0f + stretchY) - 8.0f;
 		slices[5].x      = edgeLeft;
 		slices[5].y      = edgeBottom;
 		slices[6].scaleU = 1.0f / textureWidth;
-		slices[6].x      = font->mWindowX;
+		slices[6].x      = winX;
 		slices[6].y      = edgeBottom;
 		slices[6].width  = 6.0f + stretchX;
 		slices[7].x      = edgeRight;
@@ -3716,7 +3719,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		color            = 0xFFFFFF00 | (u32)(255.0f * windowAlpha);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
-		for (u32 i = 0; i < 8; i++) {
+		for (s32 i = 0; i < 8; i++) {
 			PSMTXTrans(border.mMtx[0], slices[i].u, slices[i].v, 0.0f);
 			border.mMtxDirty = TRUE;
 			PSMTXScale(border.mMtx[1], slices[i].scaleU, slices[i].scaleV, 1.0f);
@@ -3726,29 +3729,25 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		                 0xFF000000);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 
 		if (font->mMode >= 0 && font->mMode < 1) {
 			if (font->mColor.a != 0) {
+				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight);
+				u32 clipWidth  = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
+				u32 clipY      = (u32)(1.0f + ((winY - 8.0f) - expandY));
+				u32 clipX      = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 #if defined(VERSION_PAL)
-				f32 displayScale = gGame.mGs.mScreen.mHeightScale;
-				u32 clipHeight   = (u32)(displayScale * (u32)(2.0f * ((8.0f + expandY) - 1.0f) + font->mHeight));
+				SetScaledScissor(clipX, clipY, clipWidth, clipHeight);
 #else
-				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + font->mHeight);
-#endif
-				u32 clipWidth = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + font->mWidth);
-#if defined(VERSION_PAL)
-				u32 clipY = (u32)(displayScale * (u32)(1.0f + ((font->mWindowY - 8.0f) - expandY)));
-#else
-				u32 clipY = (u32)(1.0f + ((font->mWindowY - 8.0f) - expandY));
-#endif
-				u32 clipX = (u32)(1.0f + (((font->mWindowX - font->mWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
+#endif
 			}
-			f32 portraitX   = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
-			f32 portraitY   = 12.0f * portraitScale + (font->mHeight / 2.0f + font->mWindowY);
+			f32 portraitX   = 44.0f * portraitScale + ((winX - winWidth / 2.0f) - 40.0f - halfPortrait);
+			f32 portraitY   = 12.0f * portraitScale + (winHeight / 2.0f + winY);
 			XObj* portrait  = NULL;
 			s32 objectCount = gGame.mXObjs.mPools[10].mUsed;
 			s32 stride      = gGame.mXObjs.mPools[10].mStride;
@@ -3767,21 +3766,21 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					textOffset = 0.0f;
 				else {
 #endif
-					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					Vec oldPosition = (Vec)portrait->mMoveTranslate;
 					Vec oldScale    = (Vec)portrait->mMoveScale;
+					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					f32 oldYaw      = portrait->mMoveRotate.y;
 					CJObj joint(portrait->mJObj);
 					f32 depth = 80.0f * portraitScale;
-					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY, depth, 1);
-					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
-					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+					joint.SetTranslate(portraitX, portraitY, depth, 1);
+					joint.SetScale(scale, -scale, scale, 1);
+					joint.SetRotationY(0.0f, 1);
 					HSD_JObjSetupMatrix(joint.mJObj);
 					s32 path[6] = { 0, 3, 0, 0, 0, 0 };
 					f32 height  = CJObj_GetJointWorldPositionByPath((CJObj*)portrait, 6, path).y;
-					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
-					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
-					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+					joint.SetTranslate(portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
+					joint.SetScale(scale, -scale, scale, 1);
+					joint.SetRotationY(0.0f, 1);
 					HSD_JObjSetFlags(portrait->mJObj, 8);
 					u32 oldColor                                      = *(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168));
 					s32 oldMode                                       = *(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164));
@@ -3795,7 +3794,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				SetTranslate__5CJObjFRC3Vecl(&joint, oldPosition, 1);
 				SetScale__5CJObjFRC3Vecl(&joint, oldScale, 1);
 #endif
-					SetRotationY__5CJObjFfl(&joint, oldYaw, 1);
+					joint.SetRotationY(oldYaw, 1);
 					HSD_JObjClearFlags(portrait->mJObj, 8);
 					*(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168)) = oldColor;
 					*(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164)) = oldMode;
@@ -3810,25 +3809,19 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 #if defined(VERSION_JP) || defined(VERSION_PAL)
 			InvalidateMessageDrawState(&gGame.mGs);
 #else
-			HSD_StateInvalidate(-1);
-			if (gGame.mGs.mCurRenderMode != NULL)
-				gGame.mGs.mCurRenderMode->Invalidate();
-			if (gGame.mGs.mCurTevStage != NULL)
-				gGame.mGs.mCurTevStage->Invalidate();
-			if (gGame.mGs.mCurChannel != NULL && !gGame.mGs.mCurChannel->mDirty)
-				gGame.mGs.mCurChannel->mDirty = TRUE;
+			InvalidateAll();
 #endif
 			if (font->mColor.a != 0) {
 #if defined(VERSION_PAL)
-				MsgRestoreScissor(0, 0, 640, 448);
+				SetScaledScissor(0, 0, 640, 448);
 #else
 				GXSetScissor(0, 0, 640, 448);
 #endif
 			}
 		}
 		if (font->mSelectedLine >= 0) {
-			f32 x      = textOffset / 2.0f + font->mWindowX;
-			f32 y      = font->mCurLineY + (8.0f + font->mWindowY);
+			f32 x      = textOffset / 2.0f + winX;
+			f32 y      = font->mCurLineY + (8.0f + winY);
 			f32 width  = 24.0f + font->mCurLineWidth;
 			f32 height = font->mData->mHeights[font->mSelectedLine];
 			u32 color  = 0xC87F1600 | (u32)(200.0f * font->mHighlightAlpha);
@@ -3859,9 +3852,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		if (font->mOtherSelection >= 0) {
 			s32 line    = font->mGlyphs[font->mCharCount - 1].mLine;
-			f32 center  = textOffset / 2.0f + font->mWindowX;
+			f32 center  = textOffset / 2.0f + winX;
 			f32 x       = ((font->mDigitCount * font->mSize) / 2.0f + center) - (font->mOtherSelection + 1) * font->mSize;
-			f32 y       = 3.0f + ((font->mLineY[line] + (8.0f + font->mWindowY)) - font->mData->mHeights[line] / 2.0f);
+			f32 y       = 3.0f + ((font->mLineY[line] + (8.0f + winY)) - font->mData->mHeights[line] / 2.0f);
 			Vec quad[4] = { (Vec) { x, y, 0.0f }, (Vec) { x + font->mSize, y, 0.0f }, (Vec) { x + font->mSize, y + font->mSize, 0.0f },
 				            (Vec) { x, y + font->mSize, 0.0f } };
 			u32 color   = 0xFF00 | (u32)(200.0f * font->mHighlightAlpha);
@@ -3903,7 +3896,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		f32 alpha      = font->mTextAlpha;
 		f32 last       = alpha * lastAlpha;
 		Mtx translation, view;
-		PSMTXTrans(translation, 2.0f + (font->mWindowX + halfOffset), 1.0f + font->mWindowY, 0.0f);
+		PSMTXTrans(translation, 2.0f + (winX + halfOffset), 1.0f + winY, 0.0f);
 		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, translation, view);
 		for (s32 i = 0; i < font->mCharCount; i++) {
 			MsgFontGlyph& glyph = font->mGlyphs[i];
@@ -3913,7 +3906,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				glyph.mSprite.Draw(view, GX_TEXMAP0, 30, GX_MTX2x4, color, color, color, color);
 			}
 		}
-		PSMTXTrans(translation, font->mWindowX + halfOffset, font->mWindowY, 0.0f);
+		PSMTXTrans(translation, winX + halfOffset, winY, 0.0f);
 		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, translation, view);
 		for (s32 i = 0; i < font->mCharCount; i++) {
 			MsgFontGlyph& glyph = font->mGlyphs[i];
@@ -3988,8 +3981,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			cursor->mMtxDirty = TRUE;
 		}
 		s32 line = font->mGlyphs[font->mCharCount - 1].mLine;
-		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + font->mWindowX));
-		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + font->mWindowY))) - height / 4.0f;
+		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + winX));
+		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + winY))) - height / 4.0f;
 		f32 wave = sin(font->mBlinkPhase);
 		if (wave < 0.0f)
 			wave = 0.0f;
@@ -6402,12 +6395,13 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 			}
 		}
 		if (font->mSelectedLine >= 0) {
-			f32 width = font->mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
+			CTexObj& line = font->mTexs.mTex[MSG_TEX_LINE];
+			f32 width     = font->mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
 			font->mCurLineY += 0.8f * (font->mLineY[font->mSelectedLine] - font->mCurLineY);
 			font->mCurLineWidth += 0.7f * (width - font->mCurLineWidth);
 			font->mTexOffset -= 0.008f * step;
-			PSMTXTrans(font->mTexs.mTex[MSG_TEX_LINE].mMtx[0], font->mTexOffset, 0.0f, 0.0f);
-			font->mTexs.mTex[MSG_TEX_LINE].mMtxDirty = TRUE;
+			PSMTXTrans(line.mMtx[0], font->mTexOffset, 0.0f, 0.0f);
+			line.mMtxDirty = TRUE;
 		}
 		if (font->mBlink) {
 			// CMsgFont_Draw fades the button prompt with sin(mBlinkPhase): 6 degrees a frame, wrapped at PI, a pulse every 30 frames
@@ -6462,7 +6456,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
 	f32 spacing;
 #if defined(VERSION_JP)
-	spacing = (font->mSize - font->mPrevSize) * 0.5f;
+	spacing = (font->mSize - font->mPrevSize) / 2.0f;
 #else
 	if (__fpclassifyf(font->mPrevSize) == FP_NAN) {
 		spacing = 0.0f;
@@ -6480,8 +6474,8 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		icon.mMtxDirty = TRUE;
 		textureWidth   = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / 14;
 #else
-		s32 index   = (u8)text[1];
 		s32 columns = font->mData->mIconColumns;
+		s32 index   = (u8)text[1];
 		if (index >= columns) {
 			index = columns - 1;
 		}
@@ -6496,8 +6490,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	} else {
 		textureWidth = font->mGlyphs[font->mCharCount].mSprite.mTex->SetChar(text);
 	}
-	f32 x = (width - textureWidth) / 2.0f + (11.0f + font->mCursorX + spacing);
-	f32 y = font->mCursorY + font->mData->mHeights[font->mLine] * 0.5f;
+	f32 margin = (width - textureWidth) / 2.0f;
+	f32 x      = margin + (11.0f + font->mCursorX + spacing);
+	f32 y      = font->mCursorY + font->mData->mHeights[font->mLine] / 2.0f;
 #if defined(VERSION_JP)
 	if ((u8)text[0] == MSG_CODE_ICON) {
 		font->mGlyphs[font->mCharCount].mSprite.SetTrans(x + 0.08f * textureWidth, y, 0.0f);
@@ -6528,10 +6523,12 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 scaleX = (font->mSize / 2.0f) * sx;
 	f32 scaleY = (-font->mSize / 2.0f) * sy;
 	font->mGlyphs[font->mCharCount].mSprite.SetScale(scaleX, scaleY, 1.0f);
-	f32 angle = font->mGlyphAngle;
+	f32 angle;
 	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
-	if (!(angle >= 0.0f)) {
-		f32 range = 2.0f * angle;
+	if (font->mGlyphAngle >= 0.0f) {
+		angle = font->mGlyphAngle;
+	} else {
+		f32 range = 2.0f * font->mGlyphAngle;
 		if (range < 0.0f)
 			range = -range;
 		f32 delta = fmod((f32)rand(), RAD2DEG * range);
@@ -6544,9 +6541,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	font->mGlyphs[font->mCharCount].mScaleX = scaleX;
 	font->mGlyphs[font->mCharCount].mScaleY = scaleY;
 #if !defined(VERSION_JP)
-	if (!(angle <= PI)) {
-		angle = TWO_PI - angle;
-	}
+	// the tilt folded into 0 to PI
+	angle = angle <= PI ? angle : TWO_PI - angle;
+
 	font->mGlyphs[font->mCharCount].mWidthAdjust = (angle / PI) * (width - font->mSize);
 #endif
 	font->mGlyphs[font->mCharCount].mEffect = font->mEffect;

@@ -40,11 +40,8 @@ static inline HSD_JObj* GetLeaf(HSD_JObj* jobj)
 // and sets up a mirror for each object that has one, at most five
 extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 {
-	FbMirrorEx* mirror;
-	s32 mirrors;
 	XObj* obj;
 	s32 mode;
-	s32 i;
 	HSD_JObj* jobj;
 	if (UpdateStageObjectLoading(&game->mXObjs)) {
 		mode                                                           = GetStageInfo()->mCameraMode;
@@ -64,7 +61,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		} else {
 			game->mMotionControlCamera.ChangeAction(mode);
 		}
-		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		for (s32 i = 0; i < game->mXObjs.mObjectCount; i++) {
 			game->mMotionControlCamera.UpdateTarget(game->mXObjs.mObjects[i]);
 		}
 
@@ -76,11 +73,11 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		BuildObjectDrawList(game);
 
 		game->mStatus.mFlags &= ~0x2000000000;
-		mirror = gFramebufferMirrors;
 		game->mStatus.mFlags &= ~0x8000000000;
 		game->mStatus.mFlags &= ~0x100000000000;
-		mirrors = 0;
-		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		FbMirrorEx* mirror = gFramebufferMirrors;
+		s32 mirrors        = 0;
+		for (s32 i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = game->mXObjs.mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
 				if (!(game->mStatus.mFlags & 0x2000000000) && (obj->mStatus.mFlags & 0x20000000)
@@ -191,9 +188,8 @@ static inline BOOL PreloadStageArchives(ARPreCache* cache)
 					break;
 				src->mCache.address = address;
 				src->mCache.size    = size;
-				u32 padded          = (size + 31) & ~31u; // aram blocks align to 32
 
-				gARAMCacheInfo.Add(padded, id, src->mName);
+				gARAMCacheInfo.Add(size, id, src->mName); // aram blocks align to 32
 				pair += 8;
 			}
 		}

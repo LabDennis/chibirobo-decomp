@@ -18,7 +18,7 @@ void DrawPlayerEquipmentRings(XObjChrMenu*);
 void DrawOXMenu(OXMenu*);
 void DrawScanModePrompt();
 void CMsg_Draw(CMsg*);
-void CEvt_Draw();
+void CEvt_Draw(CEvt* evt);
 void DrawObjectLoadingProgress(InfoScrn*);
 void DrawHudWithTransitions(InfoScrn*);
 void DrawHudPauseLabel(InfoScrn*);
@@ -56,8 +56,9 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
  * @note Address: 0x8000DFA8
  * @note Size: 0x194C (US, JP), 0x196C (PAL)
  */
-// NONMATCHING: retail does the float-to-int conversions without __cvt_fp2unsigned calls,
-// a different cast form than the current source
+// NONMATCHING: retail passes the shake offset to operator+ without a second copy, tests IsAction(4)
+// as an int (cmpwi) where the header returns bool, and loads gMicMeterPeak again after each store
+// and before each use, as for a volatile (the audio DMA callback raises it; volatile gives 99.3 %)
 void CGame::Draw()
 {
 	s32 i;
@@ -81,8 +82,7 @@ void CGame::Draw()
 		mGs.mCamera     = camera;
 		if (BeginGsCamera(this)) {
 #if defined(VERSION_PAL)
-			f32 scale = gGame.mGs.mScreen.mHeightScale;
-			GXSetScissor(0, (u32)(0.f * scale), 320, (u32)(224.f * scale));
+			SetScaledScissor(0, 0, 320, 224);
 #else
 			GXSetScissor(0, 0, 320, 224);
 #endif
@@ -204,7 +204,7 @@ void CGame::Draw()
 		if (mStatus.mFlags & 0x800) // flag 0x800: the ox menu
 			DrawOXMenu(&GetPlayer()->mOXMenu);
 		if (!gGame.mMotionControlCamera.IsAction(4)) {
-			CEvt_Draw();
+			CEvt_Draw(&mEvt);
 			for (s32 i = 0; i < 2; ++i)
 				CMsg_Draw(&mCMsgs[i]);
 		}

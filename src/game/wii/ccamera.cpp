@@ -2,9 +2,8 @@
 // an out-of-line copy of CCamera::SetAngle(const Vec&) (vtable slot _50) and the
 // static initializer of a CThread global at 0x80453610 that nothing else
 // references - a leftover of the port.
-// NONMATCHING: both emitted functions match retail byte for byte, but the
-// compiler's .bss layout differs (retail keeps a 0x10-byte global-object
-// record at 0x80453600, we emit a 0xC-byte one), so the unit stays unlinked.
+// Its .bss (0x80453600-0x80453938) holds the 0xC-byte global-object record,
+// 4 bytes of alignment padding, and the CThread itself at 0x80453610.
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
 

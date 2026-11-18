@@ -187,8 +187,8 @@ void FbMirror::SetMirror(CMirrorObj* obj)
 void FbMirror::Update(u32 frames)
 {
 	if (IsUsed()) {
-		void* node = mJoint->vf50(sMirrorNodeName);
-		if (node == NULL) {
+		nw4r::g3d::ResNode node = mJoint->vf50(sMirrorNodeName);
+		if (!node.IsValid()) {
 			return;
 		}
 		Mtx mtx;
@@ -200,7 +200,7 @@ void FbMirror::Update(u32 frames)
 		Vec y;
 		Vec normal;
 
-		PSMTXCopy(mJoint->vfA0(&node), mtx);
+		PSMTXCopy(mJoint->vfA0(node), mtx);
 		x.x = mtx[0][0];
 		x.y = mtx[1][0];
 		x.z = mtx[2][0];
@@ -267,11 +267,12 @@ CCamera* CGame::GetCamera()
 void FbMirror::Copy()
 {
 	if (mVisible) {
-		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
-		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
-		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_TRUE);
-		if (gGame.mGs.mCurRenderState != NULL) {
-			gGame.mGs.mCurRenderState->Apply();
+		CGs* gs = &gGame.mGs;
+		gs->mCurRenderState->SetColorUpdate(GX_TRUE);
+		gs->mCurRenderState->SetAlphaUpdate(GX_TRUE);
+		gs->mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_TRUE);
+		if (gs->mCurRenderState != NULL) {
+			gs->mCurRenderState->Apply();
 		}
 		if (gGame.mGs.mCurTevStage != NULL) {
 			gGame.mGs.mCurTevStage->Apply();
@@ -292,11 +293,8 @@ void FbMirror::Draw()
 {
 	if (mJoint != NULL && mVisible) {
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
-		f32 w    = 256.0f;
-		f32 half = 0.5f;
-		f32 y    = (f32)gScreenSafeTop + w * half;
-		f32 x    = (f32)gScreenSafeRight - w * half;
-		DrawFbTexture(&mTexture, 0xFFFFFFC8, x, y, 0.0f, w, w, 0.0f, 0.0f, 0.0f);
+		f32 w = 256.0f;
+		DrawFbTexture(&mTexture, 0xFFFFFFC8, gScreenSafeRight - w / 2, gScreenSafeTop + w / 2, 0.0f, w, w, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 	}
 }

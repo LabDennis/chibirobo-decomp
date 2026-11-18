@@ -210,7 +210,7 @@ static inline void PlaceWallSpider(XObjSpider* spider)
 	spider->mAreaPos.x = -52.0f;
 	spider->mAreaPos.y = 0.0f;
 	spider->mAreaPos.z = 0.0f;
-	spider->mAreaWidth = 2.0f * Abs(spider->mAreaPos.x);
+	spider->mAreaWidth = 2.0f * ABS(spider->mAreaPos.x);
 	spider->mAreaDepth = 0.0f;
 	spider->mWall      = 3;
 	spider->mWallPos.z = spider->mMoveTranslate.z;
@@ -249,14 +249,12 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 			spider->mAreaWidth = 221.0f;
 			spider->mAreaDepth = 216.0f;
 			// shrinks the area to 90% around its center
-			f32 width          = spider->mAreaWidth;
-			f32 depth          = spider->mAreaDepth;
-			f32 centerX        = width * 0.5f + spider->mAreaPos.x;
-			f32 centerZ        = depth * 0.5f + spider->mAreaPos.z;
-			f32 scaledWidth    = width * 0.9f;
-			f32 scaledDepth    = depth * 0.9f;
-			spider->mAreaPos.x = centerX - scaledWidth * 0.5f;
-			spider->mAreaPos.z = centerZ - scaledDepth * 0.5f;
+			f32 scaledWidth    = spider->mAreaWidth * 0.9f;
+			f32 scaledDepth    = spider->mAreaDepth * 0.9f;
+			f32 centerX        = spider->mAreaWidth / 2.0f + spider->mAreaPos.x;
+			f32 centerZ        = spider->mAreaDepth / 2.0f + spider->mAreaPos.z;
+			spider->mAreaPos.x = centerX - scaledWidth / 2.0f;
+			spider->mAreaPos.z = centerZ - scaledDepth / 2.0f;
 			spider->mAreaWidth *= 0.9f;
 			spider->mAreaDepth *= 0.9f;
 		} else {
@@ -540,7 +538,7 @@ void XObjSpider::DrawDebugStatus()
  * @note Address: 0x800F29A4
  * @note Size: 0x498
  */
-// NONMATCHING: the joint path and the two points are laid out differently on the stack
+// NONMATCHING: retail loads the end x and z straight into f31 and f30, the build copies them from scratch registers
 // the thread it hangs from, a line from its joint up to the ceiling
 void XObjSpider::DrawObjectEffects()
 {
@@ -815,7 +813,8 @@ extern "C" void LaunchSpiderShot(XObjSpider* spider)
  * @note Address: 0x800F1068
  * @note Size: 0x6C8
  */
-// NONMATCHING: the matrix pointers and the tie loop take other registers
+// NONMATCHING: retail has 12 more bytes of locals and saves r25 too; the matrix pointers and the tie loop take
+// other registers
 // reads the object it holds up and keeps it on its joint, and moves the tied objects
 // along with their joints
 extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
@@ -1752,6 +1751,7 @@ void XObjSpider::State8(u32 frames)
  * @note Address: 0x800EAF18
  * @note Size: 0xA10
  */
+// NONMATCHING: .rodata, the joint paths and the assert string sit at other offsets of the unit's block
 // the slot model's anims, it opens, follows mObj's joint while the anim plays, then
 // closes and hides
 extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode)
@@ -1778,7 +1778,8 @@ extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s3
 			CJObj joint;
 			s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(carry->mObj->mJObj, path, 8));
-			carry->mPos = GetJointPosition(joint.mJObj);
+			CVec pos(GetJointPosition(joint.mJObj));
+			carry->mPos = pos;
 		}
 		f32 end = GetAnimEndFrame(gSpiderCarryModels[slot]->mJObj);
 		if (end - frames <= GetAnimFrame(gSpiderCarryModels[slot]->mJObj)) {
@@ -1791,7 +1792,8 @@ extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s3
 			CJObj joint;
 			s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(carry->mObj->mJObj, path, 8));
-			carry->mPos = GetJointPosition(joint.mJObj);
+			CVec pos(GetJointPosition(joint.mJObj));
+			carry->mPos = pos;
 		}
 		f32 closeEnd = GetAnimEndFrame(gSpiderCarryModels[slot]->mJObj);
 		if (closeEnd - frames <= GetAnimFrame(gSpiderCarryModels[slot]->mJObj)) {
@@ -2000,11 +2002,8 @@ extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 {
 	if (gSpiderCoinBounceCount >= 11)
 		return;
-	u32 stride = gGame.mXObjs.mPools[7].mStride;
-	u8* pool   = gGame.mXObjs.mPools[7].mObjects;
-	u32 offset = 0;
-	for (s32 i = 0; i < 96; ++i, offset += stride) {
-		XObjCoin* coin = (XObjCoin*)(pool + offset);
+	for (s32 i = 0; i < 96; ++i) {
+		XObjCoin* coin = (XObjCoin*)gGame.mXObjs.mPools[XOBJS::COINS].Get(i);
 		if (coin->mStatus.mFlags & 1ULL) {
 			if (coin->GetKind() == 0x104) {
 				if ((coin->mStatus.mFlags & 1ULL) && !coin->mBouncing) {

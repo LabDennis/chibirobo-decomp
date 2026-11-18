@@ -308,8 +308,7 @@ void XObjLeticker::OnUnplugged()
  * @note Address: 0x800E322C
  * @note Size: 0x8C4
  */
-// NONMATCHING: retail reads the four camera bounds before it stores the first, the code of a setter on the camera
-// action that takes them as arguments (98.2 % with one), and it reads mPowerTimer again for the start test.
+// NONMATCHING: regalloc, the GetRotationY temp and the lift's part take r29 instead of r27
 BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 {
 	if (gGame.GetPlayer()->mMoveTranslate.y < mMoveTranslate.y - 5.0f)
@@ -341,11 +340,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 			gGame.mMotionControlCamera.PushAction(&gLetickerCameraAction);
 			gLetickerCameraAction.mTarget = &mStackTopPosition;
 			if (mCameraBounded) {
-				gLetickerCameraAction.mBounded = true;
-				gLetickerCameraAction.mMinX    = mCameraMinX;
-				gLetickerCameraAction.mMaxX    = mCameraMaxX;
-				gLetickerCameraAction.mMinZ    = mCameraMinZ;
-				gLetickerCameraAction.mMaxZ    = mCameraMaxZ;
+				gLetickerCameraAction.SetBounds(mCameraMinX, mCameraMaxX, mCameraMinZ, mCameraMaxZ);
 				for (s32 i = 0; i < 4; ++i) {
 					if (CanTurn(&gLetickerCameraAction, gLetickerCameraAction.mAngle))
 						break;
@@ -374,8 +369,8 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		}
 		mWaiting = FALSE;
 	}
-	++mPowerTimer;
 	amount *= mSpeedScale;
+	++mPowerTimer;
 	bool starting = mPowerTimer < 40;
 	switch (mState) {
 	case 1: // the lift

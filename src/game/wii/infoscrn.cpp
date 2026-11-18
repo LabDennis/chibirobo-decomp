@@ -510,7 +510,7 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 static inline s32 HighlightedAttachment()
 {
 	WiiPlayerState* player = gGame.GetPlayer();
-	return player->mAtcMenu.mCursorIndex >= 0 ? player->mAtcMenu.mItems[player->mAtcMenu.mCursorIndex].mType : 0;
+	return player->mMenu.mAtc.mCursorIndex >= 0 ? player->mMenu.mAtc.mItems[player->mMenu.mAtc.mCursorIndex].mType : 0;
 }
 
 static inline void AdvanceHudIcon(InfoScrn* h)
@@ -919,7 +919,7 @@ extern "C" void HideScrapCounter()
  * @note Size: 0x14
  */
 // the scrap counter pulses again once it comes back on screen
-extern "C" void ResumeScrapCounterPulse()
+extern "C" void ResumeScrapCounterPulse(InfoScrn* scrn)
 {
 	gHudScrapCounter.mState = 2;
 }
@@ -1417,8 +1417,7 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 			if (scrn->mObjectGaugeParam == 0) {
 				pos = fn_800E5A2C(gGame.GetPlayer());
 			} else {
-				CVec joint;
-				gGame.GetPlayer()->vf23C(&joint, "neck");
+				CVec joint = gGame.GetPlayer()->GetJointWorldPos("neck");
 				const Vec offset = { 0.0f, 2.0f, 0.0f };
 				pos              = joint + offset;
 			}
@@ -1482,7 +1481,7 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		Vec ofs = { 0.0f, 10.0f, 0.0f };
 		f32 sx;
 		f32 sy;
-		gGame.GetPlayer()->vf1D4(&ofs, &sx, &sy, 0, 0);
+		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &sx, &sy, NULL, NULL);
 		f32 x     = 6.0f + (w * 0.5f + sx);
 		f32 y     = sy - h * 0.5f - 6.0f;
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;

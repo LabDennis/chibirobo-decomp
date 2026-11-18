@@ -69,6 +69,18 @@ static inline f32 FramesToClock(f32 frames)
 	return hundredths + (6000.0f * (s32)minutes + ((s32)seconds % 60) * 100);
 }
 
+// whether the day's time moves on this frame (CGame's update makes the same test, xobjspidersmall's CanPlaySe
+// too; 0xc00 is chibi robo's menu rings or yes/no menu open)
+static inline bool TimeMoves()
+{
+	bool moves = false;
+	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
+	    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
+		moves = true;
+	}
+	return moves;
+}
+
 // 10 to the n
 static inline f32 Pow10(int n)
 {
@@ -110,6 +122,7 @@ void UpdateScreenFade(CScrnColor* color, u32 frames);
  * @note Address: 0x8006D850
  * @note Size: 0x2A4
  */
+// NONMATCHING: .rodata, retail's block starts with the header's six Vecs, so the Vec initializers sit 0x48 further
 extern "C" void InitInfoScreen(InfoScrn* scrn)
 {
 	scrn->mFade.Reset();
@@ -211,6 +224,7 @@ extern "C" BOOL HideHudPointCounters(InfoScrn* scrn)
  * @note Address: 0x8006D5A4
  * @note Size: 0x280
  */
+// NONMATCHING: .rodata, as in InitInfoScreen
 extern "C" void ResetGameHudState(InfoScrn* scrn)
 {
 	scrn->mHudAlpha        = 0.0f;
@@ -505,8 +519,7 @@ static inline void ApproachHudScale(f32& current, f32 target)
  * @note Address: 0x8006AF34
  * @note Size: 0x1B5C
  */
-// NONMATCHING: registers only. retail zeroes the time flag first (r0) and copies that zero into the two flags of IsRunning,
-// the build zeroes IsRunning's flag first; the bss base, the string base and the zero at the top are numbered differently
+// NONMATCHING: registers only. the bss base, the string base and the zero at the top are numbered differently
 extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 {
 	if (!gGame.IsRunning() && !(gGame.mStatus.mFlags & 0x200000000000ULL))
@@ -703,14 +716,8 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		ApproachHudScale(h->mClockScale, 1);
 		break;
 	}
-	// the clock's warning blink ticks on the frames the day's time moves on (CGame's update makes the same test; 0xc00 is
-	// chibi robo's menu rings or yes/no menu open) and once time is up
-	bool timeMoves = false;
-	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
-	    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
-		timeMoves = true;
-	}
-	if (timeMoves || gGame.mTimeState.mTime >= 1)
+	// the clock's warning blink ticks on the frames the day's time moves on and once time is up
+	if (TimeMoves() || gGame.mTimeState.mTime >= 1)
 		++h->mTimeWarningTick;
 	CJObj joint;
 	CVec position;
@@ -1505,22 +1512,23 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
  * @note Address: 0x8006389C
  * @note Size: 0xB08
  */
-// NONMATCHING: float registers
+// NONMATCHING: float registers, and the int-to-float slots of tw and len trade places
 extern "C" void DrawHudPointCounter(InfoPoint* point)
 {
 	f32 alpha = point->mOpacity * gHudOpacityScale;
 	if (alpha > 0.0f) {
 		CTexObj tex;
-		s32 len = 1;
-		f32 x0  = point->mPos[0].x;
-		f32 y0  = point->mPos[0].y;
-		f32 x2  = point->mPos[2].x;
-		f32 x4  = point->mPos[4].x;
-		while (true) {
-			if ((s32)(point->mValue[0] / Pow10(len)) == 0) {
+		s32 len;
+		f32 x0 = point->mPos[0].x;
+		f32 y0 = point->mPos[0].y;
+		f32 x2 = point->mPos[2].x;
+		f32 x4 = point->mPos[4].x;
+		for (len = 1;; len++) {
+			f32 div = 1.0f;
+			for (int j = 0; j < len; j++)
+				div *= 10.0f;
+			if ((s32)(point->mValue[0] / div) == 0)
 				break;
-			}
-			len++;
 		}
 
 		Vec pos[65];
@@ -1543,7 +1551,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		tex              = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[125 - StatusTextureOffset], 0);
 		u16 tw           = GXGetTexObjWidth(&tex);
 		f32 lineY        = cy + 12.0f * 1.2f;
-		point->mValue[3] = len * (1.2f * tw - 3.0f * 1.2f) + 34.0f;
+		f32 digitW       = 1.2f * tw;
+		point->mValue[3] = len * (digitW - 3.0f * 1.2f) + 34.0f;
 		pos[0].x         = x0;
 		pos[0].y         = lineY;
 		pos[1].x         = x0 + point->mValue[2];
@@ -1563,8 +1572,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[point->mResource], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		f32 iconW = 0.8f * GXGetTexObjWidth(&tex);
-		f32 iconY = y0 - 9.0f;
 		f32 iconH = 0.8f * GXGetTexObjHeight(&tex);
+		f32 iconY = y0 - 9.0f;
 		if (point->mIndex == INFOPOINT_ID + 2) {
 			u32 ic = (u32)(a255 * point->mIconAlphaScale) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, 4.0f + iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
@@ -1589,7 +1598,13 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		u32 pinkB     = da | 0x5959FF00;
 		tex.mMtxDirty = TRUE;
 		for (int i = 0; i < 7; i++) {
-			s32 v = (s32)(point->mValue[0] / Pow10(i));
+			f32 div = 1.0f;
+			if (i > 0) {
+				for (int j = 0; j < i; j++) {
+					div *= 10.0f;
+				}
+			}
+			s32 v = point->mValue[0] / div;
 			if (i != 0 && v == 0) {
 				continue;
 			}
@@ -1707,13 +1722,13 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	if (step <= 1)
 		step = 1;
 	ApproachHudValue(&h->mBatteryValue, &h->mBatteryTarget, step);
+	f32 gap        = 7.6f * scale;
+	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
 	u32 red          = 0xff646400 | digitAlpha;
 	u32 green        = 0x89ff2900 | digitAlpha;
 	u32 gray         = 0x50505000 | digitAlpha;
-	f32 gap          = 7.6f * scale;
-	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	for (int i = 0; i < 4; ++i) {
 		f32 digitScale = scale, offset = largeX;
 		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
@@ -1727,8 +1742,11 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		if (change != 0)
 			h->mDigitLastDelta[i] = change;
 		int divisor = 1;
-		for (int p = 0; p < i; ++p)
-			divisor *= 10;
+		if (i > 0) {
+			for (int p = 0; p < i; ++p) {
+				divisor *= 10;
+			}
+		}
 		int whole = (s32)h->mBatteryValue / divisor, digit = whole % 10;
 		if (h->mDigitValue[i] != digit) {
 			h->mDigitRoll[i]    = 0;
@@ -1880,8 +1898,7 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-// NONMATCHING: registers only (saved float registers and the loop counters of the two discs, the time flag as in
-// UpdateHudIndicators)
+// NONMATCHING: registers only (saved float registers and the loop counters of the two discs)
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {
 	f32 alpha = scrn->mClockAlpha * gHudOpacityScale;
@@ -1928,13 +1945,8 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 			scrn->mTimeWarningBeeps  = 5;
 		}
 		if (time >= warning) {
-			f32 wave       = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
-			bool timeMoves = false;
-			if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
-			    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
-				timeMoves = true;
-			}
-			if (timeMoves || time >= 1) {
+			f32 wave = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
+			if (TimeMoves() || time >= 1) {
 				// one beep each time the clock blinks on: five of 0xb5, then 0xb6, which also comes at once when time is up
 				if (wave > 0) {
 					if (scrn->mTimeWarningBeeps >= 0 && !scrn->mTimeWarningBeeped) {

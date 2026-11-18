@@ -357,4 +357,15 @@ static inline bool IsStage(const char* name)
 	return id == stage;
 }
 
+#if defined(VERSION_PAL)
+// europe's frame can be taller than 448 lines, scissor rows scale with it
+static inline void SetScaledScissor(u32 x, u32 y, u32 width, u32 height)
+{
+	f32 displayScale = gGame.mGs.mScreen.mHeightScale;
+	u32 scaledHeight = (u32)(height * displayScale);
+	u32 scaledY      = (u32)(y * displayScale);
+	GXSetScissor(x, scaledY, width, scaledHeight);
+}
+#endif
+
 #endif

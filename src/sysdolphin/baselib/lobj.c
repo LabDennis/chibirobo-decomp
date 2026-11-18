@@ -189,7 +189,7 @@ HSD_LObj* HSD_LObjGetActiveByID(GXLightID id)
  * @note Address: 0x801BD0C8
  * @note Size: 0x2C
  */
-HSD_LObj* HSD_LObjGetActiveByIndex(s32 idx)
+HSD_LObj* HSD_LObjGetActiveByIndex(int idx)
 {
 	if (idx >= 0 && idx < MAX_GXLIGHT - 1) {
 		return active_lights[idx];
@@ -663,13 +663,18 @@ static void setup_spec_lightobj(HSD_LObj* lobj, Mtx mtx, s32 spec_id)
 }
 
 /**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+inline MtxPtr HSD_CObjGetViewingMtxPtrDirect(HSD_CObj* cobj)
+{
+	return cobj->view_mtx;
+}
+
+/**
  * @note Address: 0x801BD8F8
  * @note Size: 0xBBC
  */
-// NONMATCHING: retail keeps &active_lights from the top in r26 for the last two loops; here it is loaded again
-// before them. With `int idx` as HSD_LObjGetActiveByIndex's parameter the address is kept and size and
-// instructions are retail's, but vmtx then sits in r26 where retail has it in r29 (99.08 %, less than this form).
-// No order of the locals' declarations, in the loop or at the top, moves it there.
 void HSD_LObjSetupInit(HSD_CObj* cobj)
 {
 	MtxPtr vmtx;
@@ -681,7 +686,7 @@ void HSD_LObjSetupInit(HSD_CObj* cobj)
 	lightmask_specular = GX_LIGHT_NULL;
 	lightmask_attnfunc = GX_LIGHT_NULL;
 	lightmask_alpha    = GX_LIGHT_NULL;
-	vmtx               = cobj->view_mtx;
+	vmtx               = HSD_CObjGetViewingMtxPtrDirect(cobj);
 	HSD_LObjClearActive();
 
 	for (list = current_lights; idx < MAX_GXLIGHT - 1 && list; list = list->next) {

@@ -3,6 +3,8 @@
 // (0xFFFFxxxx on the GameCube), volumes are 0..1 floats and times are seconds. After the front end
 // come the sound banks, the sound picks PlayWiiSoundEffect makes, the message glyph sounds, the stage
 // reverb and the sounds of an object's anims (AnimSfx).
+// before cgame.h: xobj.h's nw4r::math stand-in gives way to the real one
+#include "nw4r/math/math_types.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/csoundfx.h"
@@ -50,12 +52,12 @@ s32 PauseMusicForJingle(XSound* sound, s32 sfx);
 // does not compile with the game's include paths (<new>, <climits>)
 static inline nw4r::snd::SoundStartable& ArchivePlayer(CSound* sound)
 {
-	return *(nw4r::snd::SoundStartable*)&sound->mArchivePlayer[0xC];
+	return static_cast<nw4r::snd::SoundStartable&>(sound->mArchivePlayer);
 }
 
 static inline s32 OutputLineFlag(CSound* sound)
 {
-	return *(s32*)sound->mArchivePlayerTail;
+	return *(s32*)&sound->mArchivePlayer.mReady;
 }
 
 bool isAllSfx(XSound* sound, s32 sfx);
@@ -80,7 +82,7 @@ extern "C" void InitGameSound(XSound* sound, u32 heapSize)
 {
 	InitAudio(sound, heapSize);
 	// the reverb sits at the head of mPlaybackState; retail calls it through its CSoundFx base
-	CSoundFx* fx = (CSoundFxReverbHiDpl2*)sound->mPlaybackState;
+	CSoundFx* fx = &sound->mFx.mReverb;
 	fx->Setup(gSoundReverbParam);
 }
 
@@ -203,15 +205,9 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
  * @note Size: 0x100
  */
 // the slot playing the archive sound id, or NULL
-// NONMATCHING: the walker, the index and the handle take r5, r7, r6 where retail has r6, r5, r7
 CSoundHandle* FindSound(CSound* sound, u32 id)
 {
-	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			return &sound->mTracks[i];
-		}
-	}
-	return NULL;
+	return sound->FindTrack(id);
 }
 
 /**
@@ -421,8 +417,8 @@ bool isAllSfx(XSound* sound, s32 sfx)
 static inline CSoundHandle* FindFreeSlot(CSound* sound)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (!sound->mTracks[i].IsAttachedSound()) {
-			return &sound->mTracks[i];
+		if (!sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			return &sound->mArchivePlayer.mTracks.mHandles[i];
 		}
 	}
 	return NULL;
@@ -528,26 +524,24 @@ s32 Random(s32 max)
  * @note Size: 0x19AC
  */
 // returns the slot the sound plays in; csound.h declares the result as s32
-// NONMATCHING: where a case returns its last search, retail tests the result and returns it either way (cmpwi r3, 0;
-// beqlr; blr at 0x800383EC, 0x8003939C, 0x800394A4) and ours loads the 0 again (bnelr; li r3, 0).
 extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
 {
 	// steps by two, so only even slots are searched, as on the GameCube
 	for (u32 i = 0; i < 32 && sound->mStartedSfx[i] != 0; i += 2) {
 		if (sound->mStartedSfx[i] == sfx) {
-			return (s32)FindSound(sound, sfx);
+			return (s32)sound->FindTrack(sfx);
 		}
 	}
 
 	if (isAllSfx(sound, sfx)) {
 		if (sound->mCurrentMusicId == sfx) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		if (sfx == 0xFF0000 && sound->mCurrentMusicId != 0) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		if (sfx == 0xFF0005 && sound->mCurrentMusicId != 0) {
-			return (s32)FindSound(sound, sound->mCurrentMusicId & 0xFFFF);
+			return (s32)sound->FindTrack(sound->mCurrentMusicId & 0xFFFF);
 		}
 		return 0;
 	}
@@ -556,72 +550,73 @@ extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
 	// 0x88 and 0x16A stand for every sound PlayWiiSoundEffect picks for them
 	switch (sfx) {
 	case 0x88:
-		if ((slot = FindSound(sound, sfx)) != NULL) {
+		if ((slot = sound->FindTrack(sfx)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 1)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 1)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 2)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 2)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, sfx + 3)) != NULL) {
+		if ((slot = sound->FindTrack(sfx + 3)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	case 0x16A:
-		if ((slot = FindSound(sound, 0x16A)) != NULL) {
+		if ((slot = sound->FindTrack(0x16A)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16B)) != NULL) {
+		if ((slot = sound->FindTrack(0x16B)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16C)) != NULL) {
+		if ((slot = sound->FindTrack(0x16C)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16D)) != NULL) {
+		if ((slot = sound->FindTrack(0x16D)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16E)) != NULL) {
+		if ((slot = sound->FindTrack(0x16E)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x16F)) != NULL) {
+		if ((slot = sound->FindTrack(0x16F)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x170)) != NULL) {
+		if ((slot = sound->FindTrack(0x170)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x171)) != NULL) {
+		if ((slot = sound->FindTrack(0x171)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x172)) != NULL) {
+		if ((slot = sound->FindTrack(0x172)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x173)) != NULL) {
+		if ((slot = sound->FindTrack(0x173)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x174)) != NULL) {
+		if ((slot = sound->FindTrack(0x174)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x175)) != NULL) {
+		if ((slot = sound->FindTrack(0x175)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x176)) != NULL) {
+		if ((slot = sound->FindTrack(0x176)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x177)) != NULL) {
+		if ((slot = sound->FindTrack(0x177)) != NULL) {
 			return (s32)slot;
 		}
-		if ((slot = FindSound(sound, 0x178)) != NULL) {
+		if ((slot = sound->FindTrack(0x178)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	default:
-		if ((slot = FindSound(sound, sfx)) != NULL) {
+		if ((slot = sound->FindTrack(sfx)) != NULL) {
 			return (s32)slot;
 		}
-		return 0;
+		break;
 	}
+	return (s32)slot;
 }
 
 /**
@@ -664,8 +659,8 @@ extern "C" CSoundHandle* GetGameMusicSlot(XSound* sound)
 static inline void StopSound(XSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			sound->mTracks[i].Stop(fadeFrames);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			sound->mArchivePlayer.mTracks.mHandles[i].Stop(fadeFrames);
 		}
 	}
 }
@@ -688,9 +683,9 @@ extern "C" void StopWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void PauseSound(XSound* sound, u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			if (!sound->mTracks[i].IsPause()) {
-				sound->mTracks[i].nw4r::snd::SoundHandle::Pause(true, 0);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			if (!sound->mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+				sound->mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(true, 0);
 			}
 		}
 	}
@@ -713,9 +708,9 @@ extern "C" void PauseWiiSfx(XSound* sound, s32 sfx, f32 resumeDelay)
 static inline void ResumeSound(XSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			if (sound->mTracks[i].IsPause()) {
-				sound->mTracks[i].nw4r::snd::SoundHandle::Pause(false, fadeFrames);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			if (sound->mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+				sound->mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(false, fadeFrames);
 			}
 		}
 	}
@@ -742,8 +737,8 @@ extern "C" void ResumeWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void SetSoundVolume(XSound* sound, u32 id, f32 volume, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			SetSlotVolume(&sound->mTracks[i], volume, frames, TRUE);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			SetSlotVolume(&sound->mArchivePlayer.mTracks.mHandles[i], volume, frames, TRUE);
 		}
 	}
 }
@@ -765,8 +760,8 @@ extern "C" void SetWiiSfxVolume(XSound* sound, s32 sfx, f32 volume, f32 fade)
 static inline void SetSoundPitch(XSound* sound, u32 id, f32 pitch, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
-			SetSlotPitch(&sound->mTracks[i], pitch, frames, TRUE);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			SetSlotPitch(&sound->mArchivePlayer.mTracks.mHandles[i], pitch, frames, TRUE);
 		}
 	}
 }
@@ -1370,8 +1365,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 0;
 		gSoundReverbParam.fusedMode = 5;
 		gSoundReverbParam.fusedGain = 0.7f;
-		((nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8])->SetParam(gSoundReverbParam);
-		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A, (nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8]);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
+		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	case 0x17:
 		gSoundReverbParam.outGain   = 0.6f;
@@ -1379,8 +1375,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 5;
 		gSoundReverbParam.fusedMode = 5;
 		gSoundReverbParam.fusedGain = 1.0f;
-		((nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8])->SetParam(gSoundReverbParam);
-		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A, (nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8]);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
+		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	case 0x18:
 		gSoundReverbParam.outGain   = 0.6f;
@@ -1388,8 +1385,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 0;
 		gSoundReverbParam.fusedMode = 2;
 		gSoundReverbParam.fusedGain = 0.8f;
-		((nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8])->SetParam(gSoundReverbParam);
-		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A, (nw4r::snd::FxReverbHiDpl2*)&sound->mPlaybackState[8]);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
+		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	}
 }
@@ -1512,9 +1510,8 @@ void AnimSfx::vf08()
  * @note Address: 0x8003C740
  * @note Size: 0x4EC
  */
-// NONMATCHING: the owner's GetPosition goes through WiiPlayerVtable, a struct of function pointers (lwz r4 /
-// lwz r12,0x244(r4)); retail makes a virtual call (r12 twice), and the actor and loop pointer swap r17/r18
-// behind it. The stop loops also wait for the typed mTracks (see SelectFootstepSound).
+// NONMATCHING: the actor and loop pointer swap r17/r18 behind the owner's GetPos call, and the stop loops
+// wait for the typed mTracks (see SelectFootstepSound).
 void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 {
 	s32 prev = mAnimId;
@@ -1558,7 +1555,7 @@ void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 
 	// the actors follow the object and fade towards their volume and pitch
 	for (s32 i = 0; i < 6; i++) {
-		mActors[i].Update(mOwner->GetPosition());
+		mActors[i].Update(mOwner->GetPos());
 	}
 }
 
