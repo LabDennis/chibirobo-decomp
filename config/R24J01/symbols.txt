@@ -8580,6 +8580,7 @@ LoadPlayerAttachmentAnimation = .text:0x800CD700; // type:function size:0x8
 IsPlayerRingMenuOpen = .text:0x800D14F4; // type:function size:0x28
 IsGameMenuActive = .text:0x800D151C; // type:function size:0xC
 IsEventScriptActive = .text:0x800D1550; // type:function size:0x18
+GetControlStickMagnitude = .text:0x800D1568; // type:function size:0xA8
 gCornerIconTplData = .rodata:0x802DBB60; // type:object
 CreateScnMdl__6NW_ObjFiiiPCc = .text:0x802B6560; // type:function size:0x130
 GetAnmObjChrRes__6NW_ObjCFv = .text:0x802B6850; // type:function size:0x88

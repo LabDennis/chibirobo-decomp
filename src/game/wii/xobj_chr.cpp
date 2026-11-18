@@ -343,6 +343,14 @@ BOOL IsEventScriptActive(const CGame* game)
 	return game->mEvt.mData.mScript != NULL;
 }
 
+// how far the control stick is pushed
+f32 GetControlStickMagnitude(const CPadOne* pad)
+{
+	f32 x = pad->mStick.x;
+	f32 y = pad->mStick.y;
+	return FSqrt(x * x + y * y);
+}
+
 // 0 the stage he is on, 1 the one before
 s32 fn_800D168C(const CGame* game, s32 index)
 {
