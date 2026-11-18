@@ -28,11 +28,11 @@ static inline void DrawMenuSelectionBar(CTexObj& tex, f32 barX, f32 barY, f32 ba
 	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, barX, barY, 0.0f, barW, barH, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mMtxDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, (barX - barW * 0.5f) - 4.0f, barY, 0.0f, 8.0f, barH, 0.0f,
+	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, (barX - barW / 2.0f) - 4.0f, barY, 0.0f, 8.0f, barH, 0.0f,
 	                   0.0f, 0.0f);
 	PSMTXTrans(tex.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mMtxDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, 4.0f + (barX + barW * 0.5f), barY, 0.0f, 8.0f, barH, 0.0f,
+	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, 4.0f + (barX + barW / 2.0f), barY, 0.0f, 8.0f, barH, 0.0f,
 	                   0.0f, 0.0f);
 	CTexObj& fill = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[fillTex], 0);
 	PSMTXTrans(fill.mMtx[0], textureOffset, 0.0f, 0.0f);

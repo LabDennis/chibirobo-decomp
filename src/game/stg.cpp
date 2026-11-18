@@ -422,9 +422,9 @@ BOOL MenuPC::Draw()
 				SetMenuTextureTranslation(&tex, 0.25f, 0);
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width * 0.5f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0.5f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width * 0.5f), y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), y, 0, 8, 24, 0, 0, 0);
 				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
 				SetMenuTextureTranslation(fill, this->mTexScroll, 0);
 				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
@@ -6985,7 +6985,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
-		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + 16.0f), 24.0f + (menu->mWindow.mHeight * 0.5f + 30.0f));
+		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + 16.0f), 24.0f + (menu->mWindow.mHeight / 2.0f + 30.0f));
 	} else {
 		menu->mCount = gGame.mRoomCount;
 		for (int i = 0; i < gGame.mRoomCount; i++) {
@@ -7001,7 +7001,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
-		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + 16.0f, menu->mWindow.mHeight * 0.5f + 30.0f);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + 16.0f, menu->mWindow.mHeight / 2.0f + 30.0f);
 	}
 }
 
@@ -7185,7 +7185,7 @@ BOOL MenuMCTest::Update(u32 frames)
 					SavePreviewRecord* save = &card->mAllSaves[i];
 					if (save->mState) {
 						if (save->mStatus != 0 || !IsValidSavePreview(save)) {
-							sprintf(mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), (s32)!IsValidSavePreview(save));
+							sprintf(mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), IsValidSavePreview(save) ? 0 : 1);
 						} else {
 							OSCalendarTime cal;
 							OSTicksToCalendarTime((OSTime)save->mStat.time * OS_TIMER_CLOCK, &cal);
@@ -7814,7 +7814,7 @@ extern "C" void DrawMenuGradientText(const char* text, f32 x, f32 y, f32 size, f
 		for (int i = 0; i < 20 && *text; i++, text++) {
 			chars[i].mText = text;
 			count++;
-			if (IsSjisLead(*text))
+			if (IsSjisLead(*text) & 1)
 				text++;
 		}
 	}
@@ -8060,13 +8060,13 @@ static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
 #endif
 }
 
-// NONMATCHING: one fadds in the separator position has its operands the other way round (retail fadds f0, f24, f0,
-// x first); x + 81 * 1.2, the constant first, 97.2 and a named sum all compile to the constant first
+// NONMATCHING: GGTJ01_01 still differs (99.9 %); GGTE01 and GGTP01 match
 extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
+	f32 scale = 1.2f;
 	// drawn as four digits, hhmm, up to 99:59
 	s32 value = hours * 100 + minutes;
 	if (value >= 9959)
@@ -8087,11 +8087,11 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	u32 color   = (u32)opacity | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-	w   = 1.2f * tex.GetWidth();
-	h   = 1.2f * (tex.GetHeight() / 10);
+	w   = scale * tex.GetWidth();
+	h   = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
-	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
+	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
 	u8 alphaByte  = opacity;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	for (int i = 0; i < 4; i++) {
@@ -8108,8 +8108,8 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 gap = 0.0f;
 			if (i < 2)
-				gap = w - 3.0f * 1.2f;
-			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * 1.2f)))), offsetScale);
+				gap = w - 3.0f * scale;
+			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))), offsetScale);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		}
 	}
@@ -8122,9 +8122,9 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	tex    = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[separator], 0);
 	u16 sw = tex.GetWidth(), sh = tex.GetHeight();
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * 1.2f), offsetScale);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (1.2f * sw), 0.7f * (1.2f * sh), 0.0f, 0.0f,
-	                   0.0f);
+	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * scale), offsetScale);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	                   0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
@@ -8239,14 +8239,14 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 left;
 	f32 width = 296.0f * scale, height = 156.0f * scale;
 	left        = x - width / 2.0f;
-	Vec bg[5]   = { (Vec) { left, y - height * 0.5f, -10.0f }, (Vec) { width + left, y - height * 0.5f, -10.0f },
-		            (Vec) { width + left, height + (y - height * 0.5f), -10.0f }, (Vec) { left, height + (y - height * 0.5f), -10.0f },
-		            (Vec) { left, y - height * 0.5f, -10.0f } };
+	Vec bg[5]   = { (Vec) { left, y - height / 2.0f, -10.0f }, (Vec) { width + left, y - height / 2.0f, -10.0f },
+		            (Vec) { width + left, height + (y - height / 2.0f), -10.0f }, (Vec) { left, height + (y - height / 2.0f), -10.0f },
+		            (Vec) { left, y - height / 2.0f, -10.0f } };
 	u32 opacity = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, bg, opacity, 5);
 	y += scale;
 	f32 step = 17.0f * scale;
-	f32 rowY = y - height * 0.5f;
+	f32 rowY = y - height / 2.0f;
 	f32 barX, barW;
 	if (IsJapanese()) {
 		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
@@ -9003,7 +9003,7 @@ f32 gSaveTextShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 
 static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size, u32 color, f32 offsetY)
 {
-	f32 top   = (y + offsetY) - size / 2.0f;
+	f32 top   = (offsetY + y) - size / 2.0f;
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, top, 0.0f, size, size);
 }
@@ -9070,7 +9070,7 @@ static inline void DrawSlotStats(int iconOffset, MenuSaveSlot* slot, u8 selected
 	DrawSaveStat(0x98 + iconOffset, slot->mExp, selected, SaveSlotStatX(x, sx), y + offsetY, alpha, sx, sy);
 	DrawSaveStat(0x96 + iconOffset, slot->mMoney, selected, SaveSlotStatX(x, sx), offsetY + (y + 32.0f * sy), alpha, sx, sy);
 	DrawSaveStat(0x97 + iconOffset, slot->mScrap, selected, SaveSlotStatX(x, sx), offsetY + (y + 64.0f * sy), alpha, sx, sy);
-	DrawSavePlayTime(0x9B + iconOffset - (slot->mTimeMode == 0), slot->mHours, slot->mMinutes, selected, SaveSlotStatX(x, sx),
+	DrawSavePlayTime((slot->mTimeMode == 0 ? 0x9A : 0x9B) + iconOffset, slot->mHours, slot->mMinutes, selected, SaveSlotStatX(x, sx),
 	                 offsetY + (96.0f * sy + y), alpha, sx, sy);
 }
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
@@ -9365,11 +9365,7 @@ BOOL MenuSave::Draw()
 		case 17:
 			break;
 		}
-#if defined(VERSION_JP)
 		if (lines <= 2)
-#else
-		if (lines < 2)
-#endif
 			lines = 2;
 		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
@@ -9456,15 +9452,6 @@ static inline void DrawJapaneseCardLine(char (&text)[256], const char* prefix, s
 	DrawJapaneseCardLine(text, x, y, size, color);
 }
 
-static inline const char* JapaneseCardSlotName(s32 channel)
-{
-	if (channel == 0)
-		return GetLocalizedInterfaceText(0x29);
-	if (channel == 1)
-		return GetLocalizedInterfaceText(0x2A);
-	return "";
-}
-
 static inline void GetJapaneseCardSlotName(s32 channel, const char*& slot)
 {
 	if (channel == 0)
@@ -9544,6 +9531,7 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32 y, f32 size, f32 alpha)
 {
 	char text[256];
+	const char* slot;
 	s32 lines = 0;
 	u32 color = (u32)(255.0f * alpha);
 	switch (status) {
@@ -9575,7 +9563,7 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32
 		lines = 3;
 		break;
 	case 5: {
-		const char* slot = JapaneseCardSlotName(channel);
+		GetJapaneseCardSlotName(channel, slot);
 		DrawJapaneseCardLine(text, slot, 0x32, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x12, x, y + size, size, color);
 		DrawJapaneseCardLine(text, 0x13, x, 2.0f * size + y, size, color);
@@ -9608,14 +9596,14 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32
 		lines = 3;
 		break;
 	case 12: {
-		const char* slot = JapaneseCardSlotName(channel);
+		GetJapaneseCardSlotName(channel, slot);
 		DrawJapaneseCardLine(text, slot, 0x32, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x33, x, y + size, size, color);
 		lines = 2;
 		break;
 	}
 	case 13: {
-		const char* slot = JapaneseCardSlotName(channel);
+		GetJapaneseCardSlotName(channel, slot);
 		DrawJapaneseCardLine(text, 0x0D, x, y, size, color);
 		DrawJapaneseCardLine(text, slot, 0x32, x, y + size, size, color);
 		DrawJapaneseCardLine(text, 0x33, x, 2.0f * size + y, size, color);
@@ -10695,8 +10683,8 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	u32 color = (u32)(200.0f * alpha) | 0x181CC600;
 	InitMenuSelectionBar(tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, cx, y, 0, barWidth, barHeight, 0, 0, 0);
-	DrawPCChoicePiece(tex, color, 0, (cx - barWidth * 0.5f) - gap, y, 8.0f * scale, barHeight);
-	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth * 0.5f), y, 8.0f * scale, barHeight);
+	DrawPCChoicePiece(tex, color, 0, (cx - barWidth / 2.0f) - gap, y, 8.0f * scale, barHeight);
+	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
 }
 
 static inline void DrawPCChoiceStripe(f32 x, f32 y, f32 barWidth, f32 barHeight, f32 alpha, f32 scroll)

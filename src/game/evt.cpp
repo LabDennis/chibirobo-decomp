@@ -6897,7 +6897,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 // walked through the lobj next links
 extern "C" void SetStageCameraAnimation(XObj* obj, s32 anim, f32 frame);
 
-#define EVT_CAMERA_ACTION(type) (((CInterfaceCameraAction**)&gGame.mCameraActions.mTable)[type])
+#define EVT_CAMERA_ACTION(type) (gGame.mCameraActions.mTable[type])
 
 /**
  * @note Address: 0x80078754
@@ -9169,18 +9169,18 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 			gGame.mMotionControlCamera.StartEye();
 			break;
 		case 2: {
-			f32 degrees                                                        = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.y = DEG2RAD * degrees;
+			f32 degrees                                                                  = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.y = DEG2RAD * degrees;
 			break;
 		}
 		case 3: {
-			f32 degrees                                                        = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.x = DEG2RAD * degrees;
+			f32 degrees                                                                  = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.x = DEG2RAD * degrees;
 			break;
 		}
 		case 4: {
-			f32 fov                                                            = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.z = fov;
+			f32 fov                                                                      = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.z = fov;
 			break;
 		}
 		}

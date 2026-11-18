@@ -5217,12 +5217,12 @@ void XObjChr::DrawDebugStatus()
 	u32 flags       = 0;
 	s32 floor       = -1;
 	if (player->mFloorContacts[2].objectIndex >= 0) {
-		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags >> 32) & 0xFF;
+		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags & 0xFF00000000ULL) >> 32;
 	} else if (player->mHitObjectIndex >= 0) {
 		XObj* object = gGame.GetObject(player->mHitObjectIndex);
 		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
 		floor        = object->mSelectedFloorIndex;
-		flags        = (object->mStatus.mFlags >> 32) & 0xFF;
+		flags        = (object->mStatus.mFlags & 0xFF00000000ULL) >> 32;
 	}
 	s32 anim       = player->mAnimId;
 	HSD_AObj* aobj = GetAObj(player->mJObj);
@@ -5888,12 +5888,18 @@ static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
 	StartScreenFade(&gGame.mScrnTex.mColor, 255, green, 0, 0, 100, 100, 200, 0, duration);
 }
 
+// an action's battery cost per second, the table holds hundredths
+static inline f32 GetActionBatteryCost(s32 index)
+{
+	return (s32)GetPlayerActionParameter(index) / 100.0f;
+}
+
 /**
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
-// NONMATCHING: retail divides the table's cost into f0 and moves it to the drain, and it loads the popper's shot strength
-// ahead of the zero it is compared with
+// NONMATCHING: GGTP01 only, for the lift's drain retail converts the idle quotient in f1 and loads the battery cost into
+// f0, swapping the two registers
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6167,7 +6173,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		if (index == 9)
 			drain = (f32)((u32)IDLE_SECOND / frames) * p->mLift.mBatteryCost;
 		else
-			drain = (f32)(s32)GetPlayerActionParameter(index) / 100.0f;
+			drain = GetActionBatteryCost(index);
 	}
 	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
 		drain = 0.0f;
