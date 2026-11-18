@@ -123,8 +123,8 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			const char* name = (const char*)GetItemName(object->GetItem());
 			f32 width        = 32.0f + MeasureGameTextWidth(gs, name, TRUE, 20);
 			f32 angle        = 2.3561945f;
-			f32 startX = x + radius * (f32)sin(angle), startY = y + radius * (f32)cos(angle);
-			f32 endX = x + 1.7f * radius * (f32)sin(angle), endY = y + 1.7f * radius * (f32)cos(angle);
+			f32 startX = x + radius * std::sinf(angle), startY = y + radius * std::cosf(angle);
+			f32 endX = x + 1.7f * radius * std::sinf(angle), endY = y + 1.7f * radius * std::cosf(angle);
 			f32 left = endX, right = endX + width;
 			for (u32 j = 0; j < work.used; ++j) {
 				const Label& prior = work.entries[j];
@@ -154,12 +154,12 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			work.entries[work.used].width = width;
 			work.used++;
 			if (pass == 0) {
-				f32 pulse = (f32)sin(eyes->mPhase);
+				f32 pulse = std::sinf(eyes->mPhase);
 				f32 inner = radius + .1f * radius * pulse, outer = 1.2f * inner;
 				for (s32 k = 0; (f32)k < 16.0f; ++k) {
 					f32 outerAngle = .3926991f * k + eyes->mAngle, innerAngle = .3926991f * (k + 1) + eyes->mAngle;
-					f32 x0 = x + outer * (f32)sin(outerAngle), y0 = y + outer * (f32)cos(outerAngle);
-					f32 x1 = x + inner * (f32)sin(innerAngle), y1 = y + inner * (f32)cos(innerAngle);
+					f32 x0 = x + outer * std::sinf(outerAngle), y0 = y + outer * std::cosf(outerAngle);
+					f32 x1 = x + inner * std::sinf(innerAngle), y1 = y + inner * std::cosf(innerAngle);
 					DrawGsLineSegment(gs, NULL, x0, y0, 0, gold, x1, y1, 0, gold);
 				}
 				DrawGsLineSegment(gs, NULL, startX, startY, 0, gold, endX, endY, 0, gold);
@@ -314,9 +314,9 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 		u32 tint = 0xffffff00 | alpha;
 		for (s32 i = 0; i < 4; ++i) {
 			f32 a      = HALF_PI * i;
-			f32 pulse  = 3.0f * (f32)sin(DEG2RAD * ((frame * 24) % 360));
+			f32 pulse  = 3.0f * std::sinf(DEG2RAD * ((frame * 24) % 360));
 			f32 radius = rx + pulse;
-			f32 sx = (f32)sin(a), cy = (f32)cos(a);
+			f32 sx = std::sinf(a), cy = std::cosf(a);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[128 - StatusTextureOffset], 0);
 			u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
@@ -572,12 +572,12 @@ void CScrnWipe::Draw(CGs* gs, s32 mode)
 	for (s32 i = 0; i < 65; i++) {
 		f32 angle     = (TWO_PI / 64.0f) * i;
 		PrimVertex* v = &vertices[2 * i];
-		v[0].pos.x    = mX - mWidth / 2.0f * (f32)sin(angle);
-		v[0].pos.y    = mY + mHeight / 2.0f * (f32)cos(angle);
+		v[0].pos.x    = mX - mWidth / 2.0f * std::sinf(angle);
+		v[0].pos.y    = mY + mHeight / 2.0f * std::cosf(angle);
 		v[0].pos.z    = 0.0f;
 		v[0].color    = 255;
-		v[1].pos.x    = mX - (mWidth + edgeWidth) / 2.0f * (f32)sin(angle);
-		v[1].pos.y    = mY + (mHeight + edgeHeight) / 2.0f * (f32)cos(angle);
+		v[1].pos.x    = mX - (mWidth + edgeWidth) / 2.0f * std::sinf(angle);
+		v[1].pos.y    = mY + (mHeight + edgeHeight) / 2.0f * std::cosf(angle);
 		v[1].pos.z    = 0.0f;
 		v[1].color    = 0;
 	}
@@ -1663,7 +1663,7 @@ extern "C" void DrawCurrentLogo(Logo* logo)
 			f32 shineW = GXGetTexObjWidth(&tex);
 			f32 shineH = GXGetTexObjHeight(&tex);
 			f32 y      = shineH / 2.0f + 359.0f;
-			f32 shine  = sin(logo->mAngle);
+			f32 shine  = std::sinf(logo->mAngle);
 			if (shine < 0.0f) {
 				shine = 0.0f;
 			}
@@ -2204,10 +2204,10 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			f32 x;
 			f32 rot;
 			f32 y;
-			bob   = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
-			tilt  = sin(0.7f * title->mName.mChars[i].mTilt);
-			swell = sin(PI * scale);
-			pop   = 0.2f * swell + (f32)sin(HALF_PI * scale);
+			bob   = 4.0f * std::sinf(title->mName.mChars[i].mBob);
+			tilt  = std::sinf(0.7f * title->mName.mChars[i].mTilt);
+			swell = std::sinf(PI * scale);
+			pop   = 0.2f * swell + std::sinf(HALF_PI * scale);
 #if defined(VERSION_PAL)
 			x = 20.0f + (40.0f * i + (320.0f - 40.0f * title->mName.mCount / 2.0f));
 #else

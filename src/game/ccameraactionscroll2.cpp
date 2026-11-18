@@ -465,8 +465,8 @@ void CCameraActionScroll2::Draw()
 	f32 y;
 
 	sOverlayFrameCount++;
-	f32 blink     = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
-	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
+	f32 blink     = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
+	f32 fastBlink = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
 	Vec pos = { 0.0f, 0.0f, 0.0f };
 	for (s32 i = 0; i < 288; i++) {
@@ -697,17 +697,17 @@ void CCameraActionScroll2::Draw()
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[160 - StatusTextureOffset], 0);
 	GXGetTexObjWidth(&tex);
 	GXGetTexObjHeight(&tex);
-	sin(angle);
-	cos(angle);
-	f32 pulse = sin(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
+	std::sinf(angle);
+	std::cosf(angle);
+	f32 pulse = std::sinf(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[166 - StatusTextureOffset], 0);
 	f32 zoom   = 1.0f;
 	f32 arrowW = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
 	u16 arrowH = GXGetTexObjHeight(&tex);
 	f32 radius = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
-	f32 arrowX = radius * (f32)sin(angle) + x;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * (f32)cos(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
+	f32 arrowX = radius * std::sinf(angle) + x;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * std::cosf(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
 	                   0.0f, PI + angle);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
@@ -715,7 +715,7 @@ void CCameraActionScroll2::Draw()
 	CaptionMsg msg = { 7, NULL };
 	msg.mText      = GetLocalizedInterfaceText(CAPTION_TEXT);
 	f32 slide      = HALF_PI; // a slide in, always at its end here
-	f32 captionX   = 100.0f * (1.0f - (f32)sin(slide)) + 576.0f;
+	f32 captionX   = 100.0f * (1.0f - std::sinf(slide)) + 576.0f;
 	f32 fade       = 255.0f;
 	// one caption line: retail keeps the line counter in a register and converts it for the y
 	for (s32 line = 0; line < 1; line++) {
