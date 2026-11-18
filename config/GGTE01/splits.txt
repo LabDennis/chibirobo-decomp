@@ -387,6 +387,7 @@ game/msgdataformat.cpp:
 
 game/memcard.cpp:
 	.text       start:0x80086F24 end:0x800880EC
+	.sdata2     start:0x8065D158 end:0x8065D160
 
 game/memcardcapture.cpp:
 	.text       start:0x800880EC end:0x800884F0
