@@ -554,7 +554,7 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 {
 	if (state->mAreaRecords != NULL && state->mCameraInfo != NULL) {
 		UpdateCameraAreaIndexFromPlayer(state, unused);
-		if (state->mPrevArea != state->mCurrentArea && -1 != state->mCurrentArea) {
+		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
 			f32 fov;
 			s32 mode = GetCameraAreaMode(state);
 			if (mode == 1) {
