@@ -607,11 +607,11 @@ game/xobjspiderboss.cpp:
 	.text       start:0x80101FA4 end:0x80108754
 	.ctors      start:0x801FEF54 end:0x801FEF58
 	.rodata     start:0x8020BC08 end:0x8020BF50
-	.data       start:0x8022AE50 end:0x8022B490
+	.data       start:0x8022AF38 end:0x8022B578
 	.bss        start:0x8035E2B8 end:0x8035E3F0
-	.sdata      start:0x80634BF8 end:0x80634C30
+	.sdata      start:0x80634C08 end:0x80634C40
 	.sbss       start:0x80635700 end:0x80635708
-	.sdata2     start:0x806382C8 end:0x806383C4
+	.sdata2     start:0x806382D8 end:0x806383D0
 
 game/xobjactordtor.cpp:
 	.text       start:0x80108754 end:0x801087CC

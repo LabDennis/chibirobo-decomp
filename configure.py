@@ -512,8 +512,9 @@ gamecube_libs = [
             # whose .ctors entry is 0x801FEF54, and one .rodata/.data/.sdata/.sdata2/.bss run behind it. -inline deferred,
             # as retail shows: .rodata holds ResetSpiderBossState's six Vecs (0x8020BC50, .text 0x8010834C) first, then
             # OnHitFromPosition's, UpdateSpiderBossAttachments' path, State3's paths and State4's points (0x8020BD34,
-            # .text 0x80102170), the reverse of .text; and .sdata2 opens with the RTTI names ("Vec" ... "XObj",
-            # 0x806382C8-0x806382F0) before the first literal
+            # .text 0x80102170), the reverse of .text; and .sdata2 opens with the RTTI names ("CJObj" ... "XObj",
+            # 0x806382D8-0x806382F0) before the first literal and ends with "Vec" and "CVec". The CPad/CVec/CObjVec
+            # records in front of 0x8022AF38 (.data) and the "Vec"/"CVec" in front of 0x806382D8 end the previous file
             Object(NonMatching, "game/xobjspiderboss.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorstop.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
