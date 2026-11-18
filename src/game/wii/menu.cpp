@@ -36,6 +36,7 @@ char* GetStageName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
+void ResumeGameSounds(CGame* game, f32 fadeSeconds);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
@@ -2990,6 +2991,25 @@ extern "C" void MarkAvailableStatusEntries(u8* available)
 	}
 }
 
+extern "C" void InitGameMenus(MenuEx* ex)
+{
+	ex->mActive   = FALSE;
+	ex->mMenus[0] = &sMenuMain;
+	ex->mMenus[5] = &sMenuStageSelect;
+	ex->mMenus[6] = &sMenuSFTest;
+	ex->mMenus[7] = &sMenuSFTestSub;
+	ex->mMenus[8] = &sMenuSFTestErr;
+	ex->mMenus[1] = &sMenuStatus;
+	ex->mMenus[2] = &sMenuItem;
+	ex->mMenus[3] = &sMenuPC;
+	ex->mMenus[4] = &sMenuSave;
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i]) {
+			ex->mMenus[i]->Init();
+		}
+	}
+}
+
 // the menus MenuEx keeps, the GameCube's menu group functions: the Wii has nine and its cursor only blinks.
 // LoadMenuGroupResources
 extern "C" BOOL fn_80084848(MenuEx* ex)
@@ -3013,6 +3033,67 @@ extern "C" void fn_800848C0(MenuEx* ex)
 			ex->mMenus[i]->Reset();
 		}
 	}
+}
+
+// a rectangle as left, top, right and bottom, and a width and height
+struct MenuRect {
+	f32 left, top, right, bottom;
+};
+
+struct MenuSize {
+	f32 width, height;
+};
+
+// the pointer as the menus test it, centred on the screen with y down
+struct MenuPointerPos {
+	f32 x; // _00
+	f32 y; // _04
+};
+
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, MenuPointerPos* pos, u32 frames);
+
+// UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
+// tests the pointer against the menus' panes.
+// NONMATCHING: 80 %, the frame is retail's; the screen size's int to float conversions are scheduled apart
+// in retail and the rectangle's registers differ
+extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
+{
+	BOOL active = FALSE;
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i] && ex->mMenus[i]->IsOpen() && ex->mMenus[i]->Update(frames)) {
+			active = TRUE;
+		}
+	}
+	if (ex->mActive && !active) {
+		// _34 is the screen capture behind the menus, a WiiFbTexture to the end of MenuEx
+		FreeFbTexture((WiiFbTexture*)&ex->_34);
+		ex->mActive = FALSE;
+		ResumeGameSounds(&gGame, 0.2f);
+	}
+	ex->mCursor.mTimer += frames;
+	if (ex->mCursor.mTimer > 3) {
+		ex->mCursor.mTimer = 0;
+		ex->mCursor.mFrame = (ex->mCursor.mFrame + 1) % 8;
+	}
+
+	MenuPointerPos pos;
+	MenuSize size;
+	size.height = gPointerScreenHeight;
+	size.width  = gPointerScreenWidth;
+	MenuRect screen;
+	screen.left   = -size.width / 2.0f;
+	screen.top    = size.height / 2.0f;
+	screen.right  = size.width / 2.0f;
+	screen.bottom = -size.height / 2.0f;
+	Vec pointer;
+	pointer.x      = gWiiPointer.mPointer.x;
+	pointer.y      = gWiiPointer.mPointer.y;
+	pointer.z      = gWiiPointer.mPointer.z;
+	f32 halfHeight = 0.5f * (screen.bottom - screen.top);
+	f32 halfWidth  = 0.5f * (screen.right - screen.left);
+	pos.x          = pointer.x - halfWidth;
+	pos.y          = -(pointer.y + halfHeight);
+	fn_8005575C(&gPointerPanes, gWiiPointer.mPointerValid != 0, &pos, frames);
 }
 
 extern "C" void DrawOpenMenus(MenuEx* ex)
@@ -3045,4 +3126,12 @@ extern "C" void fn_80084BF0(MenuEx* ex, s32 state)
 			ex->mMenus[i]->Close(state);
 		}
 	}
+}
+
+void CMenu::vf28()
+{
+}
+
+void CMenu::vf2C()
+{
 }
