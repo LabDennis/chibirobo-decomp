@@ -2046,9 +2046,9 @@ nw4r::g3d::ResNode XObj::FindResNode(const char* name)
  * @note Address: 0x80044348
  * @note Size: 0x10
  */
-void XObj::vf284()
+nw4r::g3d::ResNode XObj::vf284(s32 count, s32* args)
 {
-	vf280();
+	return vf280(count, args);
 }
 
 /**

@@ -1261,6 +1261,12 @@ game/wii/gameupdate.cpp:
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
 
+game/wii/cjanim.cpp:
+	extab start:0x8000A864 end:0x8000AC48
+	extabindex start:0x80013598 end:0x800138B0
+	.text start:0x800B1558 end:0x800BD66C
+	.sdata2 start:0x805A44D0 end:0x805A4DF0
+
 game/wii/xobj_ut.cpp:
 	.text start:0x800BD66C end:0x800BEB0C
 	.rodata start:0x802DA21C end:0x802DA320

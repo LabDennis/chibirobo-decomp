@@ -1348,6 +1348,11 @@ if wii:
                 Object(Matching, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the XObj floors, projections and event virtuals, 0x800B1558-0x800BD66C
+                # (wii_units.md Nr. 46); the GameCube's cjanim.cpp plus obja.cpp's and
+                # xobjfloor.cpp's floor helpers - the stepper, callbacks and __sinit
+                # still come from the retail asm
+                Object(NonMatching, "game/wii/cjanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
                 # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
