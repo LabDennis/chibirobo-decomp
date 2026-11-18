@@ -178,17 +178,19 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 extern "C" void ApproachHudValue(f32*, f32*, f32);
 // where the PC's scrolling dialogue line starts, it runs left by 3 a frame
 f32 gPCDialogueX;
-static inline void PCEaseCall(f32& value, f32& target)
-{
-	f32 speed = target - value;
-	f32 rate  = 0.25f;
-	rate      = speed * rate;
-	if (rate < 0.0f)
-		rate = -rate;
-	if (rate <= 1.0f)
-		rate = 1.0f;
-	ApproachHudValue(&value, &target, rate);
-}
+// a macro: retail expands it at every use, even in MenuPC::Draw, which calls far smaller inlines (US 0x80045EC0);
+// rate is loaded with 0.25 and scaled in place, both in f1 (fmuls f1, f2, f1 at US 0x8004DF7C)
+#define PC_EASE_CALL(value, target)                  \
+	{                                                \
+		f32 speed = (target) - (value);              \
+		f32 rate  = 0.25f;                           \
+		rate      = speed * rate;                    \
+		if (rate < 0.0f)                             \
+			rate = -rate;                            \
+		if (rate <= 1.0f)                            \
+			rate = 1.0f;                             \
+		ApproachHudValue(&(value), &(target), rate); \
+	}
 enum PCShopListKind { PriceList, ItemPriceList };
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
@@ -243,28 +245,32 @@ static const PCChoiceArt pcChoiceArt[] = { { 0, 0 },
 	                                       { 145 - StatusTextureOffset, 28 },
 	                                       { 0, 0 } };
 
-static inline bool PCUsesFixedChoiceLabels()
-{
+// a macro: MenuPC::Draw, its only user, could not expand inlines, yet tests the language in place (US 0x80045214)
 #if defined(VERSION_JP)
-	return true;
+#define PC_USES_FIXED_CHOICE_LABELS() true
 #else
-	return GetGameLanguage(&gGame) == 6;
+#define PC_USES_FIXED_CHOICE_LABELS() (GetGameLanguage(&gGame) == 6)
 #endif
-}
 
 enum PCIconAnchor { PCIconCenter, PCIconCorner, PCIconCursor };
 
-static inline f32 PCDigitDivisor(s32 i)
-{
-	f32 divisor = 1.0f;
-	if (i > 0) {
-		for (s32 place = 0; place < i; ++place)
-			divisor *= 10.0f;
+// a macro: retail expands it at every use, Draw included; the test of i ahead of the loop is retail's (US 0x80045F50)
+#define PC_DIGIT_DIVISOR(divisor, i)              \
+	divisor = 1.0f;                               \
+	if ((i) > 0) {                                \
+		for (s32 place = 0; place < (i); ++place) \
+			divisor *= 10.0f;                     \
 	}
-	return divisor;
-}
 
 enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
+
+#if defined(VERSION_JP)
+// macros: MenuPC::Draw, their only user, could not expand inlines, yet retail stores the glyphs itself (JP 0x800468A0)
+#define PC_READ_DIALOGUE_GLYPH(text) ((((const u8*)(text))[0] << 8) | ((const u8*)(text))[1])
+#define PC_SET_DIALOGUE_GLYPH(menu, code)                    \
+	*(u16*)(menu)->mCharCopies[(menu)->mNextGlyph] = (code); \
+	(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0
+#endif
 
 // NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
 // and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
@@ -309,10 +315,7 @@ BOOL MenuPC::Draw()
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 320, 193, 0, width, height, 0, 0, 0);
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 			}
-#if !defined(VERSION_JP)
-			if (GetGameLanguage(&gGame) == 6)
-#endif
-			{
+			if (PC_USES_FIXED_CHOICE_LABELS()) {
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 143 - StatusTextureOffset));
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
 				f32 width  = 1.1f * GetMenuTextureWidth(&tex);
@@ -385,18 +388,13 @@ BOOL MenuPC::Draw()
 			const f32 top = origin - 20.0f;
 
 			f32 center, width;
-#if !defined(VERSION_JP)
-			if (GetGameLanguage(&gGame) == 6)
-#endif
-			{
+			if (PC_USES_FIXED_CHOICE_LABELS()) {
 
 				sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label));
 				u32 chars = strlen(labelText) / 2;
 				center    = 224.0f + 0.5f * ((chars - 1) * 20.0f);
 				width     = 0.9f * ((chars + 2) * 20.0f);
-			}
-#if !defined(VERSION_JP)
-			else {
+			} else {
 				const char* text = GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label);
 				f32 textWidth    = MeasureGameTextWidth(GetGameGraphics(&gGame), text, TRUE, 20.0f);
 				width            = 6.0f
@@ -404,7 +402,6 @@ BOOL MenuPC::Draw()
 				         + textWidth);
 				center = 204.0f + width / 2.0f;
 			}
-#endif
 			f32 y = 2.0f + (step * this->mChoice + (8.0f + top));
 			{
 				u32 color = 0x181CC600 | (u32)(200.0f * this->mAlpha);
@@ -441,10 +438,7 @@ BOOL MenuPC::Draw()
 				u32 color = 0xFFFFFF00 | (u32)(255.0f * alpha);
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 204.0f + 0.5f * w, 1.0f + (rowY + 0.5f * h), 0, w, h, 0, 0, 0);
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
-#if !defined(VERSION_JP)
-				if (GetGameLanguage(&gGame) == 6)
-#endif
-				{
+				if (PC_USES_FIXED_CHOICE_LABELS()) {
 #if defined(VERSION_JP)
 					sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label));
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, labelText, 224, rowY, 0, 20, 20);
@@ -452,13 +446,10 @@ BOOL MenuPC::Draw()
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
 					                             224, rowY, 0, 20, 20);
 #endif
-				}
-#if !defined(VERSION_JP)
-				else {
+				} else {
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
 					                             6.0f + (204.0f + w), rowY, 0, 20, 20);
 				}
-#endif
 			}
 		} break;
 		case 3: { // the item shop, prices in money
@@ -549,14 +540,7 @@ BOOL MenuPC::Draw()
 				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
 				mDepositDisplay.target = this->mDepositBalance;
-				f32 speed              = mDepositDisplay.target - mDepositDisplay.shown;
-				f32 rate               = 0.25f;
-				rate                   = speed * rate;
-				if (rate < 0.0f)
-					rate = -rate;
-				if (rate <= 1.0f)
-					rate = 1.0f;
-				ApproachHudValue(&mDepositDisplay.shown, &mDepositDisplay.target, rate);
+				PC_EASE_CALL(mDepositDisplay.shown, mDepositDisplay.target);
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
 				f32 step   = w - 2.4f;
@@ -566,11 +550,8 @@ BOOL MenuPC::Draw()
 				u32 rgb    = 0xFFB62800;
 
 				for (int i = 0; i < 5; i++) {
-					f32 divisor = 1.0f;
-					if (i > 0) {
-						for (int place = 0; place < i; ++place)
-							divisor *= 10.0f;
-					}
+					f32 divisor;
+					PC_DIGIT_DIVISOR(divisor, i);
 					s32 digit = (s32)(mDepositDisplay.shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -603,11 +584,8 @@ BOOL MenuPC::Draw()
 					u32 rgb    = 0xC8C8C800;
 
 					for (int i = 0; i < 5; i++) {
-						f32 divisor = 1.0f;
-						if (i > 0) {
-							for (int place = 0; place < i; ++place)
-								divisor *= 10.0f;
-						}
+						f32 divisor;
+						PC_DIGIT_DIVISOR(divisor, i);
 						s32 digit = (s32)(entry.shown / divisor) % 10;
 						SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -640,6 +618,7 @@ BOOL MenuPC::Draw()
 				sprintf(labelText, "%s", GetPCMenuLabelText(10));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 260, 260, 0, 18,
 				                             18);
+				// retail tests mYesNo == 0 and falls through to 242 (US 0x8004673C)
 				f32 x = this->mYesNo == 0 ? 242.0f : 302.0f;
 				{
 					f32 coord0     = x;
@@ -670,11 +649,8 @@ BOOL MenuPC::Draw()
 				u32 rgb    = 0xFFFFFF00;
 
 				for (int i = 0; i < 5; i++) {
-					f32 divisor = 1.0f;
-					if (i > 0) {
-						for (int place = 0; place < i; ++place)
-							divisor *= 10.0f;
-					}
+					f32 divisor;
+					PC_DIGIT_DIVISOR(divisor, i);
 					s32 digit = (s32)(entry.shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -735,11 +711,8 @@ BOOL MenuPC::Draw()
 					SetMenuTextureScale(&tex, 1, 0.1f);
 
 					for (s32 i = 0; i < 5; ++i) {
-						f32 divisor = 1.0f;
-						if (i > 0) {
-							for (s32 place = 0; place < i; ++place)
-								divisor *= 10.0f;
-						}
+						f32 divisor;
+						PC_DIGIT_DIVISOR(divisor, i);
 						int digit = (s32)(entry.shown / divisor) % 10;
 						SetMenuTextureTranslation(&tex, 0, digit * 0.1f);
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -837,6 +810,7 @@ BOOL MenuPC::Draw()
 			{
 				f32 start = (40.0f + half) - half;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				// a function static: retail's compiler guard byte is read with lbz/extsb (US 0x800478F0)
 				static f32 topScanPhase = 0.0f;
 				topScanPhase += 1.0f;
 				if (topScanPhase >= 4.0f)
@@ -853,6 +827,7 @@ BOOL MenuPC::Draw()
 			{
 				f32 start = (360.0f - half * 0.5f) - half * 0.5f;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				// a function static: retail's compiler guard byte is read with lbz/extsb (US 0x80047A84)
 				static f32 bottomScanPhase = 0.0f;
 				bottomScanPhase += 1.0f;
 				if (bottomScanPhase >= 4.0f)
@@ -1000,6 +975,7 @@ BOOL MenuPC::Draw()
 							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 						}
 						break;
+					// retail compares 0 on its own and branches to the default exit (US 0x80047E6C)
 					case 0:
 					default:
 						break;
@@ -1029,10 +1005,7 @@ BOOL MenuPC::Draw()
 							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
 							SetMenuTevMode(GetGameGraphics(&gGame), 4);
 						}
-#if !defined(VERSION_JP)
-						if (GetGameLanguage(&gGame) == 6)
-#endif
-						{
+						if (PC_USES_FIXED_CHOICE_LABELS()) {
 							CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 143 - StatusTextureOffset));
 							SetMenuTevMode(GetGameGraphics(&gGame), 0);
 							f32 width  = 1.1f * GetMenuTextureWidth(&tex);
@@ -1200,24 +1173,19 @@ BOOL MenuPC::Draw()
 						char number[32];
 						sprintf(number, "%d", (s32)GetPCDialogueNumber(this));
 						ConvertHudTextToFullWidth(number);
-						const u8* digit                            = (const u8*)(number + this->mNumberOffset);
-						*(u16*)this->mCharCopies[this->mNextGlyph] = (digit[0] << 8) | digit[1];
-						this->mCharCopies[this->mNextGlyph][2]     = 0;
+						PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(number + this->mNumberOffset));
 						this->mNumberOffset += 2;
 						if (!number[this->mNumberOffset]) {
 							this->mNumberOffset  = 0;
 							this->mInsertsNumber = 0;
 						}
 					} else if (!*text) {
-						*(u16*)this->mCharCopies[this->mNextGlyph] = 0x8140;
-						this->mCharCopies[this->mNextGlyph][2]     = 0;
-						this->mCharIndex                           = 0;
-						this->mNumberOffset                        = 0;
-						this->mKeeperAnimStep                      = 0;
+						PC_SET_DIALOGUE_GLYPH(this, 0x8140);
+						this->mCharIndex      = 0;
+						this->mNumberOffset   = 0;
+						this->mKeeperAnimStep = 0;
 					} else {
-						const u8* glyph                            = (const u8*)text;
-						*(u16*)this->mCharCopies[this->mNextGlyph] = (glyph[0] << 8) | glyph[1];
-						this->mCharCopies[this->mNextGlyph][2]     = 0;
+						PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(text));
 						this->mCharIndex += 2;
 					}
 
@@ -5964,9 +5932,9 @@ BOOL MenuPC::Update(u32 frames)
 		PCSlide(mTextX, mTargetX, 6.0f * frames);
 		PCSlide(mTextY, mTargetY, 6.0f * frames);
 		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
-		PCEaseCall(mMoneyDisplay.shown, mMoneyDisplay.target);
-		PCEaseCall(mScrapDisplay.shown, mScrapDisplay.target);
-		PCEaseCall(_424, _428);
+		PC_EASE_CALL(mMoneyDisplay.shown, mMoneyDisplay.target);
+		PC_EASE_CALL(mScrapDisplay.shown, mScrapDisplay.target);
+		PC_EASE_CALL(_424, _428);
 		mTexScroll -= 0.008f * frames;
 		if (mMode > 1) {
 			switch (mTextPhase) {
@@ -6144,9 +6112,9 @@ static inline void UpdateMenuTitle(MenuType* menu, u32 frames)
 BOOL MenuSave::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
-		PCEaseCall(mPanelY, mTargetPanelY);
+		PC_EASE_CALL(mPanelY, mTargetPanelY);
 		ApproachHudValue(&mDrawAlpha, &mTargetAlpha, 0.08f * frames);
-		PCEaseCall(mBannerSlide, mOffset);
+		PC_EASE_CALL(mBannerSlide, mOffset);
 		mTexScroll -= 0.008f * frames;
 		UpdateMenuTitle(this, frames);
 		switch (mShowHelp) {
@@ -6641,6 +6609,7 @@ static inline f32 MenuRectEnd(f32 center, f32 size)
  * @note Size: 0x424
  */
 // NONMATCHING: register allocation
+// same corner form as DrawMenuRectWithShadow; retail calls this from DrawDoubleByteMenuText
 extern "C" void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width, f32 height, f32 alpha)
 {
 	Vec fill[5]
@@ -8898,7 +8867,7 @@ BOOL MenuRequestClear::Update(u32 frames)
 		PCEase(_194, _19C);
 		ApproachHudValue(&_1E0, &_1E4, 0.08f);
 		for (int i = 0; i < 4; i++) {
-			PCEaseCall(mValues[i], mTargets[i]);
+			PC_EASE_CALL(mValues[i], mTargets[i]);
 			f32 distance = mValues[i] - mTargets[i];
 			if (distance < 0)
 				distance = -distance;
@@ -9953,7 +9922,9 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	u8 a          = (u8)opacity;
 	f32 offset    = places * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	for (s32 i = 0; i < 7; i++) {
-		s32 digit = (s32)(value / PCDigitDivisor(i));
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(value / divisor);
 		if (i != 0 && digit == 0)
 			continue;
 		digit %= 10;
@@ -10065,7 +10036,9 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	f32 offset    = (3.0f * (width - 3.0f * 1.2f) - 98.0f * 1.2f) - 16.0f;
 	u32 upper, lower;
 	for (s32 i = 0; i < 5; i++) {
-		s32 digit = (s32)(10000 / PCDigitDivisor(i));
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(10000 / divisor);
 		if (i != 0 && digit == 0)
 			continue;
 		digit %= 10;
@@ -10080,7 +10053,9 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	}
 	f32 shift = 6.0f * (width - 3.0f * 1.2f);
 	for (s32 i = 0; i < 5; i++) {
-		s32 digit = (s32)(current / PCDigitDivisor(i));
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(current / divisor);
 		if (i != 0 && digit == 0)
 			continue;
 		digit %= 10;
@@ -10162,7 +10137,9 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	f32 offset    = (places - 1) * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	u32 upper, lower;
 	for (s32 i = 0; i < 4; i++) {
-		s32 digit = (s32)(value / PCDigitDivisor(i)) % 10;
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(value / divisor) % 10;
 		if ((i == 3 || i == 1) && digit == 0)
 			continue;
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
