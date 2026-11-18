@@ -5220,12 +5220,12 @@ void XObjChr::DrawDebugStatus()
 	u32 flags       = 0;
 	s32 floor       = -1;
 	if (player->mFloorContacts[2].objectIndex >= 0) {
-		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags >> 32) & 0xFF;
+		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags & 0xFF00000000ULL) >> 32;
 	} else if (player->mHitObjectIndex >= 0) {
 		XObj* object = gGame.GetObject(player->mHitObjectIndex);
 		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
 		floor        = object->mSelectedFloorIndex;
-		flags        = (object->mStatus.mFlags >> 32) & 0xFF;
+		flags        = (object->mStatus.mFlags & 0xFF00000000ULL) >> 32;
 	}
 	s32 anim       = player->mAnimId;
 	HSD_AObj* aobj = GetAObj(player->mJObj);
