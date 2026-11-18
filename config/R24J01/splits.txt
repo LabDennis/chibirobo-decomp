@@ -1228,6 +1228,24 @@ game/wii/xobjhboxpart.cpp:
 	extabindex start:0x80014D20 end:0x80014D5C
 	.text start:0x80116528 end:0x8011701C
 
+game/wii/xobjspider.cpp:
+	extab start:0x8000DB4C end:0x8000DD0C
+	extabindex start:0x80015008 end:0x800151B8
+	.text start:0x8012063C end:0x80128C84
+	.sdata2 start:0x805A5648 end:0x805A5738
+
+game/wii/xobjspidersmall.cpp:
+	extab start:0x8000DD0C end:0x8000DF6C
+	extabindex start:0x800151B8 end:0x80015308
+	.text start:0x80128C84 end:0x80132330
+	.sdata2 start:0x805A5738 end:0x805A5838
+
+game/wii/xobjspiderboss.cpp:
+	extab start:0x8000DF6C end:0x8000E0BC
+	extabindex start:0x80015308 end:0x800153C8
+	.text start:0x80132330 end:0x801370BC
+	.sdata2 start:0x805A5838 end:0x805A58B0
+
 game/wii/xobjactorstop.cpp:
 	.text start:0x80138560 end:0x80138598
 

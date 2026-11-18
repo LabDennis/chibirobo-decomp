@@ -86,7 +86,7 @@ public:
 	// _58 vtable
 
 	virtual void vf08();                                            // _08
-	virtual void Update(s32 id, f32 frame, u8 volume);              // _0C
+	virtual void Update(s32 id, f32 frame, f32 volume);             // _0C, the volume comes in f2
 	virtual BOOL CheckStart(AnimSfxEvent* event, f32 from, f32 to); // _10, starts the event
 	virtual BOOL CheckStop(AnimSfxEvent* event);                    // _14, stops it
 	virtual s32 GetSfx(AnimSfxEvent* event);                        // _18, its sfx

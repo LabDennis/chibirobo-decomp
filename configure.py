@@ -1429,6 +1429,12 @@ if wii:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not
                 # export that name for the eight neighbouring auto objects, and claiming the literal
                 # in splits would take it away from the auto object that defines it
+                # the spiders, one retail file each (0x8012063C, 0x80128C84 and 0x80132330 on): the Wii keeps the
+                # GameCube files' functions in reverse order, ~XObjSpider and the ctors sit in the pool ctor block,
+                # and xobjspidersmallstatus.cpp's functions follow the small spider's __sinit inside its file
+                Object(NonMatching, "game/wii/xobjspider.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/xobjspidersmall.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/xobjspiderboss.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjactorstop.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii

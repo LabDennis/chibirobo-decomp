@@ -969,8 +969,9 @@ struct WiiPlayerState : public XObj {
 	f32 mHeadOffset;       // _1C99C
 	BOOL mHeadOffsetReady; // _1C9A0
 	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
-	u8 _1C9A8[0x1C9B8 - 0x1C9A8];
-	f32 _1C9B8[3]; // _1C9B8, read by index; the movement code tests [2] above 0
+	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
+	u8 _1C9B4[4];          // _1C9B4
+	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
@@ -1835,4 +1836,14 @@ STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
 STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);
 
 extern "C" CGame gGame;
+
+extern "C" s32 FindStageIndexByName(const char* name);
+
+// whether the stage up is the one with the name
+static inline bool IsStage(const char* name)
+{
+	s32 stage = gGame.mStage;
+	s32 id    = FindStageIndexByName(name);
+	return id == stage;
+}
 #endif
