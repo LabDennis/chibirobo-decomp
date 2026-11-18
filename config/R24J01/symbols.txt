@@ -2395,6 +2395,7 @@ DrawPCShopList<0>__Flfffff = .text:0x80074CF0; // type:function size:0xADC
 DrawPCPriceRow = .text:0x800757CC; // type:function size:0x8D8
 DrawPCScrapPurchasePanel = .text:0x800760A4; // type:function size:0x10F0
 DrawPCRecyclePanel = .text:0x80077194; // type:function size:0xC64
+State3__10MenuStatusFUl = .text:0x8005EA0C; // type:function size:0x1C
 State4__10MenuStatusFUl = .text:0x8005EA28; // type:function size:0x2C8
 DrawPCGoldNumber = .text:0x80077DF8; // type:function size:0x798
 DrawPCBlueNumber = .text:0x80078590; // type:function size:0x798

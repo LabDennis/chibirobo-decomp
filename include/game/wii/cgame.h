@@ -1301,6 +1301,7 @@ STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
+	void State3(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 

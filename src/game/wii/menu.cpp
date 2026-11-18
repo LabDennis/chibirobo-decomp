@@ -2044,6 +2044,12 @@ void MenuSave::State17(u32)
 	}
 }
 
+// a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
+void MenuStatus::State3(u32)
+{
+	OSPanic("menu_status.cpp", 1313, "UpdateItem");
+}
+
 // the status and PC menus' empty states
 void MenuStatus::State7(u32)
 {
