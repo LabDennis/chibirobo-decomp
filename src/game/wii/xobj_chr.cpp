@@ -23,6 +23,12 @@ extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 
+// the GameCube kept a weak copy of it
+static inline BOOL IsObjectActive(XObj* object)
+{
+	return (object->mStatus.mFlags & 1ULL) != 0;
+}
+
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
 	return (u8)((object->mStatus.mFlags & mask) != 0);
@@ -437,6 +443,18 @@ void fn_800D1B64(WiiPlayerState* player, u32 frames)
 	player->mPlug.UpdateObject(frames);
 	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mPlug.mObject.m_pScnMdl);
 	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mCordWire.mObject.m_pScnMdl);
+}
+
+// the extra model of suits 3 and 6 while he wears one, queued for the scene
+void fn_800D1BF0(WiiPlayerState* player, u32 frames)
+{
+	if (IsObjectActive(&player->mSuits.mObjects[player->mSuits.mCurrent])) {
+		s32 suit = player->mSuits.mCurrent;
+		if (suit == 3 || suit == 6) {
+			player->mSuitParts[suit].UpdateObject(frames);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
+		}
+	}
 }
 
 void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames)
@@ -1270,6 +1288,42 @@ f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
 		rate = 1.0f;
 	}
 	return rate * (60.0f / gRefreshRate);
+}
+
+// sets every anim of a model to frame
+static inline void SetModelFrame(XObj* object, f32 frame)
+{
+	for (int i = 0; i < 6; i++) {
+		nw4r::g3d::AnmObj* anm = object->mObject.m_pScnMdl->GetAnmObj((nw4r::g3d::ScnMdlSimple::AnmObjType)i);
+		if (anm != NULL) {
+			anm->SetFrame(frame);
+		}
+	}
+}
+
+// his anims and the worn suit's to frame
+// NONMATCHING: retail tests the suit's active bit as a negated value (xori), this build branches on it directly
+void fn_800E3AE4(WiiPlayerState* chr, f32 frame)
+{
+	SetModelFrame(chr, frame);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		SetModelFrame(&chr->mSuits.mObjects[chr->mSuits.mCurrent], frame);
+	}
+}
+
+// the carry joint's matrix: the worn suit's while he carries at it
+// NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
+MtxP fn_800E59DC(WiiPlayerState* chr)
+{
+	XObj* object;
+	if (chr->_0AF8 != 0) {
+		object = chr;
+	} else if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		object = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	} else {
+		object = chr;
+	}
+	return object->GetWorldMtx("carry_obj_nll");
 }
 
 // where the carried object hangs, in the world

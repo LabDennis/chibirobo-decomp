@@ -752,15 +752,35 @@ struct WiiPlayerParams {
 };
 STATIC_ASSERT(sizeof(WiiPlayerParams) == 0x440);
 
-// the suit state fields the save manager touches, at the head of the PlayerSuits-shaped block
-struct WiiPlayerSuits {
-	s32 mLoadStep;   // _00
-	s32 mChangeStep; // _04, a queued suit change
-	s32 mCurrent;    // _08, the suit he's wearing
-	s32 mRequested;  // _0C, takes the saved suit
-	s32 mSpecial;    // _10
-	                 // the suit objects beyond here are not reconstructed
+// the objects behind a suit, the GameCube's PlayerSuits.mObjects: XObjs with two virtuals of their own that the
+// player forwards to the one he wears. The class has no name of its own in retail, the name is ours
+class WiiSuitObject : public XObj {
+public:
+	virtual void vf28C(BOOL on); // _28C
+	virtual void vf290(BOOL on); // _290
+
+	u8 _9A8[0x9D0 - 0x9A8];
 };
+STATIC_ASSERT(sizeof(WiiSuitObject) == 0x9D0);
+
+// the extra model suits 3 and 6 bring, updated and drawn with the suit; the name is ours
+class WiiSuitPart : public XObj {
+public:
+	u8 _9A8[0x9B0 - 0x9A8];
+};
+STATIC_ASSERT(sizeof(WiiSuitPart) == 0x9B0);
+
+// his suits, the GameCube's PlayerSuits: the save manager touches the state at the head
+struct WiiPlayerSuits {
+	s32 mLoadStep;             // _00
+	s32 mChangeStep;           // _04, a queued suit change
+	s32 mCurrent;              // _08, the suit he's wearing
+	s32 mRequested;            // _0C, takes the saved suit
+	s32 mSpecial;              // _10
+	u32 _14;                   // _14
+	WiiSuitObject mObjects[9]; // _18
+};
+STATIC_ASSERT(sizeof(WiiPlayerSuits) == 0x5868);
 
 // the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire (XObjWireEff):
 // an XObj whose model the player queues with the plug's and whose SetPos the cord simulation moves
@@ -882,7 +902,9 @@ struct WiiPlayerState : public XObj {
 	XAction mLift;       // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
 	u8 _0ACC[0xAF0 - 0xACC];
 	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
-	u8 _0AF4[0xB50 - 0xAF4];
+	u8 _0AF4[0xAF8 - 0xAF4];
+	s32 _0AF8; // _0AF8, of the carry action; while it is set he carries at his own joint, not the suit's
+	u8 _0AFC[0xB50 - 0xAFC];
 	XActHang mHang; // _0B50
 
 	XAction mJump; // _0BA0
@@ -920,9 +942,9 @@ struct WiiPlayerState : public XObj {
 	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _B568[0xDC50 - 0xB568];
-	WiiPlayerSuits mSuits; // _DC50
-	u8 _DC64[0x18BE8 - 0xDC64];
-	CPadOne mPad; // _18BE8, the pad he reads, the GameCube's mPad
+	WiiPlayerSuits mSuits;     // _DC50
+	WiiSuitPart mSuitParts[9]; // _134B8, by suit
+	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad
 	u8 _19E90[0x19E9C - 0x19E90];
 	u8 mAttachments[0x48]; // _19E9C
 	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
