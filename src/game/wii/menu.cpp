@@ -105,8 +105,8 @@ extern "C" void DrawMenuWindow(MenuWindow* window)
 		f32 height      = window->mHeight;
 		f32 x           = window->mX - width / 2.0f;
 		f32 y           = window->mY - height / 2.0f;
-		f32 dx          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
-		f32 dy          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 dx          = 2.0f * std::sinf(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 dy          = 2.0f * std::sinf(4.712389f * (1.0f - window->mDrawAlpha));
 		f32 z           = -10.0f;
 		Vec outline[18] = { (Vec) { x - dx, 8.0f + (y - dy), z },
 			                (Vec) { 8.0f + (x - dx), y - dy, z },

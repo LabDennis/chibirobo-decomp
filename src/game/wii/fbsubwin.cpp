@@ -74,7 +74,7 @@ void FbSubwin::Draw()
 	FlushCaptureGraphics(&gGame.mGs);
 
 	f32 amount            = mAmount;
-	f32 fade              = sin(0.5f * (3.1415927f * amount));
+	f32 fade              = std::sinf(0.5f * (3.1415927f * amount));
 	WiiFbTexture* texture = (WiiFbTexture*)this;
 	if (ClassifyFloatBits(mRectWidth) == FP_NAN || ClassifyFloatBits(mRectHeight) == FP_NAN) {
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[159], 0);
