@@ -36,6 +36,8 @@ static inline bool FitsInAram(CObjArchive* archive)
 	return gARAMCacheInfo.mBaseAddress + ((size + 31) & ~31u) < capacity;
 }
 
+// NONMATCHING: retail reads the placement defaults (initial) at 0xD4 into the file's shared .bss block
+// (lbl_80378080) through one base register; this unit holds only part of that file
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
@@ -71,7 +73,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			u32 model            = attr.mObjData ? attr.mObjData->mModel : 0;
 			u32 flags            = 0;
 			if ((u64)(attr.mObjData ? attr.mObjData->mFlags : 0) & 0x80) // obj flag 0x80 becomes load flag 0x10000
-				flags = 0x10000;
+				flags |= 0x10000;
 			XObjSource::Cache* cache = HasSource(attr) ? &attr.mObjData->mSource->mCache : NULL;
 			u32 address = cache->address, size = cache->size;
 			if (gGame.mStatus.mFlags & 0x20000000000ULL) { // ARAM caching on

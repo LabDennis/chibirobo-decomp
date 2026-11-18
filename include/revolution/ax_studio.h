@@ -37,8 +37,11 @@ typedef struct _AXSTUDIO {
 } AXSTUDIO;
 
 AXSTUDIO* __AXGetStudio(void);
-void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta);
-void __AXDepopFadeRmt(s32* level, u16* valueWords, s16* delta);
+// never_inline: every template that has AXSPB.c matched keeps the two fades out of line this way (ogws,
+// wiiplay, xenoblade, wii-ipl, wii-news-channel by attribute, pik1wii and pik2wii by pragma); without it
+// they are expanded 20 times into __AXPrintStudio, which retail calls.
+void __AXDepopFadeMain(s32* level, s32* value, s16* delta) __attribute__((never_inline));
+void __AXDepopFadeRmt(s32* level, s32* value, s16* delta) __attribute__((never_inline));
 void __AXPrintStudio(void);
 void __AXDepopVoice(AXPB* pb);
 

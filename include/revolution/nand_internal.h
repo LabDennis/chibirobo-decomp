@@ -15,7 +15,9 @@ void nandGetRelativeName(char* name, const char* path);
 void nandConvertPath(char* abspath, const char* wd, const char* relpath);
 BOOL nandIsPrivatePath(const char* path);
 BOOL nandIsUnderPrivatePath(const char* path);
-void nandReportErrorCode(ISFSError err);
+// never_inline: the release build calls this empty function from nandConvertErrorCode; pik1wii, pik2wii,
+// ogws, wiiplay, Petari and wii-ipl all declare it with a no-inline attribute, without which it is expanded.
+void nandReportErrorCode(ISFSError err) __attribute__((never_inline));
 s32 nandConvertErrorCode(ISFSError err);
 void nandGenerateAbsPath(char* absPath, const char* path);
 void nandGetParentDirectory(char* parentDir, const char* absPath);

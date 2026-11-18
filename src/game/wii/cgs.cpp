@@ -2,19 +2,17 @@
 // included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
 // order, plus the Wii's own text helpers.
 //
-// NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) and OnCopyDone (88 %) give the queue's
-// address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height before the
-// width for the aspect; CLight::GetPosition (83 %) tests
-// the light kind before it saves its registers and CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack.
-// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom before its top for the flip test where we read top
-// first (an inline for the test makes it worse). GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue
-// in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
-// differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
-// diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. SetGsChannelMaterialAndLighting (90 %): retail copies the light's
-// color a second time for the alpha channel, colours its components in other registers and computes the
-// material components ahead of their tests.
-// Not written yet: CGs::Init (0x802AA610) and the scene list helper (0x802AB860).
+// NONMATCHING: in the frame buffer queue QueueFrameCopy (99 %) and OnCopyDone (95 %) give the new
+// entry's address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height
+// before the width for the aspect; CLight::GetPosition (83 %) tests the light kind before it saves its registers and
+// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
+// read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
+// (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
+// GetGlyph (99 %) differs only in callee-saved colouring; DrawGsText (92 %) and DrawGsStrokeText (87 %) diverge in float allocation and
+// stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference
+// in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the light color's components for the color channel in other
+// registers and computes the material components where it tests them, not ahead of the tests. Not written yet: CGs::Init (0x802AA610) and
+// the scene list helper (0x802AB860).
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void
@@ -504,9 +502,9 @@ public:
 
 	void Push(const CopyRequest& request)
 	{
-		CopyRequest* entry = &mEntries[GetTailIndex()];
-		*entry             = request;
-		CQueuePtr::Push(entry);
+		s32 index       = GetTailIndex();
+		mEntries[index] = request;
+		CQueuePtr::Push(&mEntries[index]);
 	}
 	CopyRequest Pop() { return *(CopyRequest*)CQueuePtr::Pop(); }
 	CopyRequest Peek() const { return *(CopyRequest*)CQueuePtr::Peek(); }
@@ -815,7 +813,7 @@ extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
 BOOL CGs::BeginCamera()
 {
 	if (mCamera->SetCurrent()) {
-		fn_802AEF34(&mSceneHead, mCamera, FALSE);
+		fn_802AEF34(&mScene.mHead, mCamera, FALSE);
 		return TRUE;
 	}
 	return FALSE;
@@ -823,7 +821,7 @@ BOOL CGs::BeginCamera()
 
 void CGs::fn_802AB81C(MtxP view, BOOL flag)
 {
-	mLight = fn_802AF1D0(&mSceneHead, mLight, view, flag);
+	mLight = fn_802AF1D0(&mScene.mHead, mLight, view, flag);
 }
 
 extern "C" void EndGsCamera(CGs* gs)
@@ -862,7 +860,7 @@ extern "C" s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba)
 			if (color0->mCtrl.mAmbSrc == GX_SRC_REG) {
 				for (CLight* light = gs->mLight; light != NULL; light = light->mNext) {
 					if ((u8)light->mFlags == 1) {
-						GXColor ambient = light->GetColor();
+						const GXColor& ambient = light->GetColor();
 						color0->mAmbColor.Set(ambient);
 						gs->mChannels[2].mAmbColor.Set(ambient);
 					}
@@ -1184,9 +1182,8 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 	s32 charWidth;
 	f32 width[2] = { 0.0f, 0.0f };
 	TextGlyph glyph;
-	const char* p = text;
 
-	while ((p = GetGlyph(gs, p, &glyph)) != NULL) {
+	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {
 		if (glyph.mStr[0] == '\0') {
 			continue;
 		}
@@ -1202,10 +1199,10 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 				if ((u8)glyph.mStr[0] >= 0x81 && (u8)glyph.mStr[0] <= 0x9F || (u8)glyph.mStr[0] >= 0xE0 && (u8)glyph.mStr[0] <= 0xFC) {
 					width[0] += size * gs->mShiftJisWidthScale;
 				} else {
-					width[0] += 0.5f * size * gs->mShiftJisWidthScale;
+					width[0] += 0.7f * size * gs->mShiftJisWidthScale;
 				}
 			} else {
-				width[0] += 0.5f * size * gs->mSingleByteWidthScale;
+				width[0] += 0.7f * size * gs->mSingleByteWidthScale;
 			}
 		} else {
 			width[0] += charWidth;
@@ -1300,10 +1297,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		TextChar* chr     = &gs->mTextChars[count];
 		chr->mSprite.mTex = &chr->mTex;
 		s32 charWidth     = chr->mSprite.mTex->SetChar(glyph.mStr, gs->mTextFont);
-		BOOL wide         = TRUE;
-		if (!IsSjisLead(glyph.mStr[0])) {
-			wide = FALSE;
-		}
+		BOOL wide = (u8)glyph.mStr[0] >= 0x81 && (u8)glyph.mStr[0] <= 0x9F || (u8)glyph.mStr[0] >= 0xE0 && (u8)glyph.mStr[0] <= 0xFC;
 		f32 advance;
 		if (proportional) {
 			// the glyph's left bearing shifts it inside its cell
@@ -1316,10 +1310,10 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 			if (wide) {
 				advance = size * gs->mShiftJisWidthScale;
 			} else {
-				advance = size * (0.5f * gs->mShiftJisWidthScale);
+				advance = size * (0.7f * gs->mShiftJisWidthScale);
 			}
 		} else {
-			advance = size * (0.5f * gs->mSingleByteWidthScale);
+			advance = size * (0.7f * gs->mSingleByteWidthScale);
 		}
 
 		offsX = curX - x;

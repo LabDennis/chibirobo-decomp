@@ -1,6 +1,7 @@
 #include "game/xobjs.h"
 #include "game/xobjread.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/xchr.h"
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"
@@ -63,6 +64,8 @@ BOOL XObjRead::HasPendingReads()
  * @note Address: 0x80131D2C
  * @note Size: 0x280
  */
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" BOOL HasPendingObjectReads()
 {
 	return gAllObjectsReader.HasPendingReads() || gSingleObjectReader.HasPendingReads() || gObjectAnimationReader.HasPendingReads();
@@ -208,8 +211,11 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
-// NONMATCHING: regalloc — the inlined ReadStart loop lands its slot counter
-// in a different arg slot, costing one extra mr.
+// NONMATCHING: retail is ReadStart's own out-of-line body (its loop walks the
+// incoming this in r3; writing the loop here directly matches the code). The
+// shared __FUNCTION__ "ReadStart" says this vtable slot is really
+// XObjRead::ReadStart, with the overrides calling XObjRead::ReadStart inline;
+// matching needs that rename of the _10 slot in symbols.txt.
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
 	return ReadStart(object, info);
@@ -538,14 +544,16 @@ void XOBJS::ReadAll()
 	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) { // the placement list ends at id -1
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
-			XObjPool& pool = mPools[GetObjData(&info)->mCategory];
-			if (pool.mUsed >= pool.mCount) {
-				OSPanic(__FILE__, 161, "%s%s", FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", pool.mName, pool.mUsed, pool.mCount),
-				        __FUNCTION__);
+			s32 category = GetObjData(&info)->mCategory;
+			if (mPools[category].mUsed >= mPools[category].mCount) {
+				OSPanic(
+				    __FILE__, 161, "%s%s",
+				    FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", mPools[category].mName, mPools[category].mUsed, mPools[category].mCount),
+				    __FUNCTION__);
 			}
-			mObjects[i]             = pool.Get(pool.mUsed);
-			mObjects[i]->mPoolIndex = pool.mUsed;
-			pool.mUsed++;
+			mObjects[i]             = mPools[category].Get(mPools[category].mUsed);
+			mObjects[i]->mPoolIndex = mPools[category].mUsed;
+			mPools[category].mUsed++;
 		}
 	}
 	mObjectCount     = i;
@@ -791,6 +799,8 @@ extern "C" void ResetPooledObjects(XObjPool* pools)
  * @note Size: 0xDFC
  */
 // builds the 23 pools, numbers every object and starts the three reader threads
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" void InitializeObjectPools(XOBJS* list)
 {
 	s32 id = 0;
@@ -818,6 +828,9 @@ extern "C" void InitializeObjectPools(XOBJS* list)
 	XOBJ_POOL(20, XObjDust, 64, "DUST");
 	XOBJ_POOL(21, XObjHBox, 16, "HBOX");
 	XOBJ_POOL(22, XObjFree, 288, "FREE");
+
+	// retail walks the 23 pools once more and does nothing: whatever the loop did is gone from the release build
+	for (s32 i = 0; i < (s32)ARRAY_SIZE(list->mPools); i++) { }
 
 	list->mLoadState = 0;
 

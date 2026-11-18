@@ -25,28 +25,18 @@ void FbMirrorEx::Init()
 	mOwner = NULL;
 }
 
-static inline void DrawScanModeConfirmation(u32 color, bool alternate)
+// draws a NULL-terminated list of lines centered on the screen, returns how many there were
+static inline s32 DrawCenteredLines(const char** lines, s32 color)
 {
-#if defined(VERSION_PAL)
-	const s32 first     = alternate ? 0x112 : 0x10f;
-	const char* lines[] = { GetLocalizedInterfaceText(first), GetLocalizedInterfaceText(first + 1), NULL };
-#elif defined(VERSION_JP)
-	const char* lines[]
-	    = { GetLocalizedInterfaceText(3), GetLocalizedInterfaceText(alternate ? 5 : 4), GetLocalizedInterfaceText(6), NULL };
-#else
-	const s32 first = alternate ? 6 : 3;
-	const char* lines[]
-	    = { GetLocalizedInterfaceText(first), GetLocalizedInterfaceText(first + 1), GetLocalizedInterfaceText(first + 2), NULL };
-#endif
 	s32 count = 0;
-	for (const char* const* line = lines; *line; ++line)
-		++count;
+	for (const char** line = lines; *line; line++, count++) { }
 	f32 height = 24.0f * count;
-	f32 top    = 224.0f - height * 0.5f;
+	f32 top    = 224.0f - height / 2.0f;
 	for (s32 i = 0; i < count; ++i) {
 		f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width / 2.0f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
 	}
+	return count;
 }
 
 /**
@@ -86,15 +76,7 @@ extern "C" void DrawScanModePrompt()
 		const char* lines[]  = { GetLocalizedInterfaceText(0), GetLocalizedInterfaceText(1), "", "", NULL };
 		const s32 choiceText = 2;
 #endif
-		s32 count = 0;
-		for (const char* const* line = lines; *line; ++line)
-			++count;
-		f32 height = 24.0f * count;
-		f32 top    = 224.0f - height * 0.5f;
-		for (s32 i = 0; i < count; ++i) {
-			f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
-			DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
-		}
+		s32 count           = DrawCenteredLines(lines, color);
 		const char* format  = GetLocalizedInterfaceText(choiceText);
 		const s32 selected  = gVideoModePrompt.useStandardMode;
 		const char* yes     = selected == 0 ? "\\B404040" : "\\B000000";
@@ -104,16 +86,31 @@ extern "C" void DrawScanModePrompt()
 		const char* choices = FormatToStaticBuffer(format, yes, yesAlpha, "\\B00000000", no, noAlpha, "\\B00000000");
 		f32 width           = MeasureGameTextWidth(&gGame.mGs, choices, TRUE, 24.0f);
 
-		const f32 y = 24.0f * (count - 1) + (224.0f - (24.0f * count) * 0.5f);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, choices, 320.0f - width * 0.5f, y, 0.0f, 24.0f, 24.0f, yes, no);
+		const f32 y = 24.0f * (count - 1) + (224.0f - (24.0f * count) / 2.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, choices, 320.0f - width / 2.0f, y, 0.0f, 24.0f, 24.0f, yes, no);
 		break;
 	}
 	case 4: // the "did it work" confirmation
 	case 40: {
-		if (gVideoModePrompt.useStandardMode == 0)
-			DrawScanModeConfirmation(color, false);
-		else
-			DrawScanModeConfirmation(color, true);
+		if (gVideoModePrompt.useStandardMode == 0) {
+#if defined(VERSION_PAL)
+			const char* lines[] = { GetLocalizedInterfaceText(0x10f), GetLocalizedInterfaceText(0x110), NULL };
+#elif defined(VERSION_JP)
+			const char* lines[] = { GetLocalizedInterfaceText(3), GetLocalizedInterfaceText(4), GetLocalizedInterfaceText(6), NULL };
+#else
+			const char* lines[] = { GetLocalizedInterfaceText(3), GetLocalizedInterfaceText(4), GetLocalizedInterfaceText(5), NULL };
+#endif
+			DrawCenteredLines(lines, color);
+		} else {
+#if defined(VERSION_PAL)
+			const char* lines[] = { GetLocalizedInterfaceText(0x112), GetLocalizedInterfaceText(0x113), NULL };
+#elif defined(VERSION_JP)
+			const char* lines[] = { GetLocalizedInterfaceText(3), GetLocalizedInterfaceText(5), GetLocalizedInterfaceText(6), NULL };
+#else
+			const char* lines[] = { GetLocalizedInterfaceText(6), GetLocalizedInterfaceText(7), GetLocalizedInterfaceText(8), NULL };
+#endif
+			DrawCenteredLines(lines, color);
+		}
 		break;
 	}
 	}

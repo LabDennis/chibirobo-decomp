@@ -3,7 +3,19 @@
 
 #include "types.h"
 #include "Dolphin/mtx.h"
+// units that already have the shared Dolphin <dvd.h> keep its DVD types; the nw4r archive header would redeclare them
+#ifdef _DOLPHIN_DVD_H
+#ifndef _REVOLUTION_DVD_DVD_H
+#define _REVOLUTION_DVD_DVD_H
+#endif
+#endif
+#include "nw4r/snd/snd_DvdSoundArchive.h"
+#include "nw4r/snd/snd_Sound3DListener.h"
+#include "nw4r/snd/snd_Sound3DManager.h"
+#include "nw4r/snd/snd_SoundArchivePlayer.h"
 #include "nw4r/snd/snd_SoundHandle.h"
+#include "nw4r/snd/snd_SoundHeap.h"
+#include "game/wii/csoundfx.h"
 
 class CSound;
 
@@ -40,6 +52,43 @@ public:
 		}
 		nw4r::snd::SoundHandle::SetPitch(mPitch);
 	}
+	// one frame (of step) of the fades SetVolume/SetPitch started
+	void UpdateVolume(u32 step)
+	{
+		if (IsAttachedSound()) {
+			if (mVolume < mVolumeTarget) {
+				mVolume += mVolumeStep * step;
+				if (mVolume > mVolumeTarget) {
+					mVolume = mVolumeTarget;
+				}
+				nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+			} else if (mVolume > mVolumeTarget) {
+				mVolume += mVolumeStep * step;
+				if (mVolume < mVolumeTarget) {
+					mVolume = mVolumeTarget;
+				}
+				nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+			}
+		}
+	}
+	void UpdatePitch(u32 step)
+	{
+		if (IsAttachedSound()) {
+			if (mPitch < mPitchTarget) {
+				mPitch += mPitchStep * step;
+				if (mPitch > mPitchTarget) {
+					mPitch = mPitchTarget;
+				}
+				nw4r::snd::SoundHandle::SetPitch(mPitch);
+			} else if (mPitch > mPitchTarget) {
+				mPitch += mPitchStep * step;
+				if (mPitch < mPitchTarget) {
+					mPitch = mPitchTarget;
+				}
+				nw4r::snd::SoundHandle::SetPitch(mPitch);
+			}
+		}
+	}
 	f32 GetVolume() const { return mVolume; }
 	f32 GetPitch() const { return mPitch; }
 	f32 GetVolumeTarget() const { return mVolumeTarget; }
@@ -59,40 +108,51 @@ public:
 };
 STATIC_ASSERT(sizeof(CSoundHandle) == 0x20);
 
-// the nw4r archive player seen through the offsets this unit touches; CSound
-// holds its bytes flat, with the track table broken out as its own member
-class CSoundArchivePlayer {
+class CDvdSoundArchive : public nw4r::snd::DvdSoundArchive {
 public:
-	u8 _000[0xEC];
-	void* mSetupData;  // _EC
-	void* mSetupData2; // _F0
-	u8 _F4[0x800];
-	u32 mReady; // _8F4
+	void* mData; // _18C
+};
+STATIC_ASSERT(sizeof(CDvdSoundArchive) == 0x190);
+
+// the player's sound handles. An object of its own: ~CBase null-checks it before destroying the array
+struct WiiSoundTracks {
+	CSoundHandle mHandles[0x40]; // _00
+};
+
+class CSoundArchivePlayer : public nw4r::snd::SoundArchivePlayer {
+public:
+	void* mSetupData;       // _EC
+	void* mSetupData2;      // _F0
+	WiiSoundTracks mTracks; // _F4
+	u32 mReady;             // _8F4
 };
 STATIC_ASSERT(sizeof(CSoundArchivePlayer) == 0x8F8);
 
+class CSoundHeap : public nw4r::snd::SoundHeap { };
+STATIC_ASSERT(sizeof(CSoundHeap) == 0x2C);
+
+class CSound3DManager : public nw4r::snd::Sound3DManager { };
+STATIC_ASSERT(sizeof(CSound3DManager) == 0x2C);
+
 // the embedded 3D context at CSound::_AC0, linking back to owner and player
-class CSound3DManager {
+class WiiSound3D {
 public:
-	CSound* mOwner; // _00
-	void* mPlayer;  // _04
-	u8 _08[0x98];
+	CSound* mOwner;                       // _00
+	void* mPlayer;                        // _04
+	CSound3DManager mManager;             // _08
+	nw4r::snd::Sound3DListener mListener; // _34
 
 	void Init(CSound* owner, void* player);
 };
-STATIC_ASSERT(sizeof(CSound3DManager) == 0xA0);
+STATIC_ASSERT(sizeof(WiiSound3D) == 0xA0);
 
-// a 3D sound source the manager registers; member names are ours
+// the WiiSound3D context as its 3D manager/listener calls see it; member names are ours
 class CSound3D {
 public:
-	void* mArg; // _00
-	u8 _04[4];
-	u8 mActor[0x0C]; // _08 nw4r actor data (fn_802958C0/fn_80295914)
-	u8 mNode[0x10];  // _14 link node; the insert passes &mNode[4]
-	u32 mFlags;      // _24
-	u8 _28[0x0C];
-	u8 mSound[0x64]; // _34 nw4r sound handle
-	u8 mList[4];     // _98
+	const nw4r::snd::SoundArchive* mArchive; // _00 the owner CSound's archive
+	void* mPlayer;                           // _04
+	CSound3DManager mManager;                // _08
+	nw4r::snd::Sound3DListener mListener;    // _34
 
 	void Init(void* arg);
 	void SetListener(f32 angle, const Vec* pos);
@@ -101,15 +161,13 @@ public:
 
 class CSound {
 public:
-	u8 mDvdSoundArchive[0x190];                  // CDvdSoundArchive: path open, size@_124, data@_18C
-	u8 mArchivePlayer[0xF4];                     // CSoundArchivePlayer head
-	CSoundHandle mTracks[0x40];                  // the player's 64-track table
-	u8 mArchivePlayerTail[0x8F8 - 0xF4 - 0x800]; // through _A88
-	u8 mSoundHeap[0x2C];                         // CSoundHeap
-	u32 mSoundHeapSize;
-	u8 mLoadPending;
+	CDvdSoundArchive mDvdSoundArchive;  // _000
+	CSoundArchivePlayer mArchivePlayer; // _190
+	CSoundHeap mSoundHeap;              // _A88
+	u32 mSoundHeapSize;                 // _AB4
+	u8 mLoadPending;                    // _AB8
 
-	virtual ~CSound();
+	virtual ~CSound() { }
 	virtual BOOL OpenArchive(const char* path, s32 initialGroup);
 	virtual BOOL OpenArchiveAsync(const char* path, s32 initialGroup);
 	virtual BOOL LoadGroup(s32 groupId);
@@ -117,13 +175,30 @@ public:
 	virtual void RestoreHeapLevel(s32 level);
 	BOOL OpenArchiveFile(const char* path); // reads "<path>.brsar" into the archive's heap buffer
 
-	CSound3DManager mSound3DManager; // _AC0
+	WiiSound3D mSound3DManager; // _AC0
 
 	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
 	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
 	void StopAllTracks(f32 fade);
+
+	// the track playing the archive sound id, or NULL; FindSound is its out-of-line copy, and
+	// retail expands it in other files too (CGame::Update's scope check, the jingle code)
+	CSoundHandle* FindTrack(u32 id)
+	{
+		for (int i = 0; i < 0x40; i++) {
+			if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+				return &mArchivePlayer.mTracks.mHandles[i];
+			}
+		}
+		return NULL;
+	}
 };
 STATIC_ASSERT(sizeof(CSound) == 0xB60);
+
+// what holds XSound's reverb; ~CBase null-checks it, then the reverb, then the reverb's nw4r base
+struct WiiSoundFx {
+	CSoundFxReverbHiDpl2 mReverb; // _00
+};
 
 class XSound : public CSound {
 public:
@@ -133,13 +208,14 @@ public:
 	virtual BOOL LoadGroup(s32 groupId);
 	virtual BOOL LoadGroupAsync(s32 groupId);
 
-	u8 mPlaybackState[0xF74 - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
-	s32 mStartedSfx[32];              // _F74, ids started since the last update; zero means free
-	s32 mMusicPitchFrames;            // _FF4
-	s32 mAltSoundIndex;               // _FF8, the GameCube XSound's fields of the same names from here on
-	s32 mVoiceSeqIndex;               // _FFC
-	s32 mSoundSeqIndex;               // _1000
-	s32 mCooldown;                    // _1004
+	WiiSoundFx mFx; // _B60, the names of this and the type are ours
+	u8 mPlaybackState[0xF74 - 0xB60 - sizeof(WiiSoundFx)];
+	s32 mStartedSfx[32];   // _F74, ids started since the last update; zero means free
+	s32 mMusicPitchFrames; // _FF4
+	s32 mAltSoundIndex;    // _FF8, the GameCube XSound's fields of the same names from here on
+	s32 mVoiceSeqIndex;    // _FFC
+	s32 mSoundSeqIndex;    // _1000
+	s32 mCooldown;         // _1004
 	u8 _1008[0x100C - 0x1008];
 	u8 mQueueRead;  // _100C
 	u8 mQueueWrite; // _100D

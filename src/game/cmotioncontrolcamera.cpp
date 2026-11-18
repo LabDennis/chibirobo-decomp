@@ -43,8 +43,8 @@ inline CInterfaceCameraAction* CMotionControlCamera::GetAction(s32 type)
  */
 inline bool PlayerCanLook()
 {
-	bool result = false;
 	bool busy   = false;
+	bool result = false;
 	if (!(PLAYER->mLift.mState != 7 && PLAYER->mLift.mState != 8 && PLAYER->mLift.mState != 9 && PLAYER->mLift.mState != 10
 	      && PLAYER->mLift.mState != 11 && PLAYER->mLift.mState != 12 && PLAYER->mLift.mState != 13 && PLAYER->mLift.mState != 14
 	      && PLAYER->mLift.mState != 15 && PLAYER->mLift.mState != 16 && PLAYER->mLift.mState != 17 && PLAYER->mLift.mState != 18)) {
@@ -116,6 +116,7 @@ void CMotionControlCamera::RestoreAction()
  * @note Address: 0x80149E24
  * @note Size: 0xB1C
  */
+// NONMATCHING: retail takes &PLAYER->mLift before it tests the lift's state, and PlayerCanLook's two flags swap registers
 void CMotionControlCamera::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0x20) {
@@ -155,15 +156,7 @@ void CMotionControlCamera::Update(u32 step)
 
 	BOOL look = FALSE;
 	if (((pad.mPad->mTrigger & PAD_BUTTON_Y) || (pad.mPad->mTrigger & PAD_BUTTON_B)) && gGame.mEvt.mData.mScript == NULL) {
-		// CBase::IsRunning's test, written out
-		bool running = false;
-		if ((gGame.mStatus.mFlags & 1) && !(gGame.mStatus.mFlags & 0x22)) {
-			bool discError = (gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0;
-			if (!discError) {
-				running = true;
-			}
-		}
-		if (running && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
+		if (gGame.IsRunning() && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
 			if (!(gGame.mStatus.mFlags & 0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
 				// Y toggles the eye camera, B only takes it down
@@ -227,28 +220,27 @@ void CMotionControlCamera::Update(u32 step)
 	Interpolate(step);
 
 	// work out whatever the action didn't drive from what it did
-	u32 flags = mFlags.mFlags;
-	if ((flags & CAMFLAG_EYE) && (flags & CAMFLAG_INTEREST)) {
+	if ((mFlags.mFlags & CAMFLAG_EYE) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcAngle();
 		mCamera.CalcDistance();
 		mAction->SetAngle(mCamera.mAngle);
 		mAction->SetDistance(mCamera.mDistance);
-	} else if ((flags & 0x20000) && (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & 0x20000) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcEye();
 		mAction->SetEye(mCamera.mEye);
-	} else if ((flags & 0x20000) && (flags & CAMFLAG_EYE)) {
+	} else if ((mFlags.mFlags & 0x20000) && (mFlags.mFlags & CAMFLAG_EYE)) {
 		mCamera.CalcInterest();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_EYE)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_EYE)) {
 		mCamera.CalcInterest();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcEye();
-	} else if ((flags & 0x80000) && (flags & CAMFLAG_DISTANCE)) {
+	} else if ((mFlags.mFlags & 0x80000) && (mFlags.mFlags & CAMFLAG_DISTANCE)) {
 		mCamera.CalcEye();
 		mAction->SetEye(mCamera.mEye);
-	} else if ((flags & CAMFLAG_EYE) || (flags & CAMFLAG_INTEREST)) {
+	} else if ((mFlags.mFlags & CAMFLAG_EYE) || (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		mCamera.CalcAngle();
 		mCamera.CalcDistance();
-	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST) && (flags & CAMFLAG_DISTANCE)) {
+	} else if ((mFlags.mFlags & 0x10000) && (mFlags.mFlags & CAMFLAG_INTEREST) && (mFlags.mFlags & CAMFLAG_DISTANCE)) {
 		// can't get here, the interest bit was already ruled out a branch ago
 		mCamera.CalcEye();
 	}
@@ -1035,6 +1027,8 @@ void CMotionControlCamera::Update(u32 step)
  * @note Address: 0x8014978C
  * @note Size: 0x698
  */
+// NONMATCHING: the argument copy and the two results of Follow's (target - value) / divide sit in the other order
+// on the stack
 void CMotionControlCamera::Interpolate(u32 step)
 {
 	switch (mMode) {
@@ -1637,9 +1631,9 @@ s32 CMotionControlCamera::GetActionType()
  * @note Address: 0x80149674
  * @note Size: 0x2C
  */
-bool CMotionControlCamera::IsAction(s32 type)
+BOOL CMotionControlCamera::IsAction(s32 type)
 {
-	return mAction == GetAction(type);
+	return mAction == GetAction(type) ? TRUE : FALSE;
 }
 // fn_80149674
 /*

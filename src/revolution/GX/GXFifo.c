@@ -250,8 +250,6 @@ void GXSetGPFifo(GXFifoObj* fifo) {
     OSRestoreInterrupts(enabled);
 }
 
-// NONMATCHING: retail holds __cpReg in r7 and both register pairs' low halves in r5; here the
-// pointer takes r5 and the first low half r7 (same instructions otherwise).
 static void __GXSaveFifo(void) {
     BOOL enabled = OSDisableInterrupts();
 
@@ -263,10 +261,9 @@ static void __GXSaveFifo(void) {
     }
 
     if (GPFifoReady) {
-        u32 temp = GX_GET_CP_REG(29) << 16;
+        u32 temp;
 
-        temp |= GX_GET_CP_REG(28);
-        GPFifo.rdPtr = OSPhysicalToCached(temp);
+        GPFifo.rdPtr = OSPhysicalToCached((GX_GET_CP_REG(29) << 16) | GX_GET_CP_REG(28));
 
         temp = GX_GET_CP_REG(25) << 16;
         temp |= GX_GET_CP_REG(24);

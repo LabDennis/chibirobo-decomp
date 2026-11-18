@@ -35,6 +35,7 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
 #if defined(VERSION_R24J01)
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos);
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index);
 #endif
 
 // inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
@@ -52,35 +53,14 @@ static inline s32 GetAreaMode(s32 index)
 		break;
 	case -1:
 	default:
-		f32 height = area.GetBottom();
-		if (height < -5.0f) // an unset action falls back on the area's bottom
+		if (area.GetBottom() < -5.0f) // an unset action falls back on the area's bottom
 			mode = 7;
-		else if (height >= -5.0f)
+		else if (area.GetBottom() >= -5.0f)
 			mode = 1;
 		break;
 	}
 	return mode;
 }
-
-/**
- * @note Address: 0x80135D28
- * @note Size: 0x10C
- */
-#if defined(VERSION_R24J01)
-// the Wii build passes the index itself; callers resolve the -1 map-camera case first
-extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index)
-{
-	return GetAreaMode(index);
-}
-#else
-extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
-{
-	s32 index = state->mActiveArea;
-	if (index == -1)
-		return 7;
-	return GetAreaMode(index);
-}
-#endif
 
 static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 {
@@ -97,6 +77,224 @@ static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
 {
 	return IsPointInsideQuadXZ((Vec*)&pos, &a, &b, &c, &d);
+}
+
+static inline BOOL BothAreaTests(BOOL polygon, BOOL height)
+{
+	if (polygon && height)
+		return TRUE;
+	return FALSE;
+}
+
+static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
+{
+	BOOL inside       = PointInQuad(pos, AreaPoint(area, 0), AreaPoint(area, 1), AreaPoint(area, 2), AreaPoint(area, 3));
+	bool withinHeight = false;
+	if (pos.y <= area.GetTop() && pos.y >= area.GetBottom())
+		withinHeight = true;
+	return BothAreaTests(inside, withinHeight != false);
+}
+
+static inline bool IsAreaEnd(CamAreaRecord* record)
+{
+	CamAreaInfo area(record);
+	return area.mRecord->_00 == -1;
+}
+
+// the record tables end in a -1 sentinel; retail reads the table through the state's member on every pass
+static inline s32 CountAreaRecords(CamAreaRecord*& records)
+{
+	s32 count = 0;
+	if (records == NULL)
+		return 0;
+	while (true) {
+		if (IsAreaEnd(&records[count]))
+			break;
+		++count;
+	}
+	return count;
+}
+
+/**
+ * @note Address: 0x801353E4
+ * @note Size: 0x50
+ */
+extern "C" f32 GetAreaCameraFovForHeightLevel(CCameraActionAreaEx* state, s32 level)
+{
+	f32 scale;
+	switch (level) { // the zoom level scales the base fov
+	case 0:
+	default:
+		scale = 0.8f;
+		break;
+	case 1:
+		scale = 1.0f;
+		break;
+	case 2:
+		scale = 1.5f;
+		break;
+	case 3:
+		scale = 2.0f;
+		break;
+	}
+	return scale * state->mBaseFov;
+}
+
+/**
+ * @note Address: 0x80135434
+ * @note Size: 0x7E0
+ */
+extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
+{
+	if (state->mCameraInfo == NULL)
+		return;
+
+	CamAreaEntry* entry = state->mEntryPool[0];
+	for (s32 i = 0;; ++i, ++entry) {
+		if (CamInfo(&state->mCameraInfo[i]).mData->mGroupId == -1)
+			break;
+		entry->mInterest = CamInfo(&state->mCameraInfo[i]).GetInterest();
+		entry->mEye      = CamInfo(&state->mCameraInfo[i]).GetEye();
+		entry->mAngle
+		    = CVec(0.0f, atan2(entry->mInterest.x - entry->mEye.x, entry->mInterest.z - entry->mEye.z), 0.0f); // eye to interest yaw
+		entry->mFov = CamInfo(&state->mCameraInfo[i]).GetFov();
+		entry->mId  = i;
+	}
+
+	s32 first         = 0;
+	CamInfoData* data = state->mCameraInfo;
+	s32 group         = 0;
+	for (;;) { // a run of entries with the same group id forms a group
+		if (data->mGroupId == -1)
+			break;
+		state->mGroups[group].mEntries = state->mEntryPool[first];
+		state->mGroups[group].mGroupId = group;
+		s32 count                      = 0;
+		while (data->mGroupId == group) {
+			++count;
+			++data;
+		}
+		state->mGroups[group].mEntryCount = count;
+		first += count;
+		++group;
+	}
+	state->mGroupCount = group;
+
+	for (s32 i = 0; i < state->mGroupCount; ++i) {
+		CamAreaSlot* slot = &state->mGroups[i];
+		switch (slot->mEntryCount) {
+		case 0:
+			break;
+		case 1: { // the group's eye is the entry's own
+			CVec center = (Vec)slot->mEntries[0].mEye;
+			slot->mEye  = center;
+			break;
+		}
+		case 2: { // the midpoint of both entries
+			CVec center;
+			CamAreaEntry* entries = slot->mEntries;
+			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
+			slot->mEye            = center;
+			break;
+		}
+		case 3: { // the centroid of the three
+			CVec center;
+			CamAreaEntry* entries = slot->mEntries;
+			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
+			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
+			break;
+		}
+		case 4: { // the midpoint of the quad's diagonal
+			CVec center;
+			CamAreaEntry* entries = slot->mEntries;
+			center                = entries[0].mEye + (entries[2].mEye - entries[0].mEye) / 2.0f;
+			slot->mEye            = center;
+			break;
+		}
+		default: { // the first three's centroid
+			CVec center;
+			CamAreaEntry* entries = slot->mEntries;
+			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
+			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
+			break;
+		}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80135D28
+ * @note Size: 0x10C
+ */
+#if defined(VERSION_R24J01)
+// the Wii build splits it in two: this C++ step (0x80153A84) falls back on the map camera outside every area,
+// the C step below reads the area's action and is not inlined
+s32 GetCameraAreaMode(CCameraActionAreaEx* state)
+{
+	s32 index = state->mActiveArea;
+	if (index == -1)
+		return 7;
+	return GetCameraAreaMode(state, index);
+}
+
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index)
+{
+	s32 mode;
+	CamAreaRecord* records = GetStageCameraAreaRecords();
+	CamAreaInfo area       = CamAreaInfo(&records[index]);
+	switch (area.mRecord->mCameraAction) {
+	case 1:
+		mode = 1;
+		break;
+	case 7:
+		mode = 7;
+		break;
+	case -1:
+	default:
+		if (area.GetBottom() < -5.0f) // an unset action falls back on the area's bottom
+			mode = 7;
+		else if (area.GetBottom() >= -5.0f)
+			mode = 1;
+		break;
+	}
+	return mode;
+}
+#else
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
+{
+	s32 index = state->mActiveArea;
+	if (index == -1)
+		return 7;
+	return GetAreaMode(index);
+}
+#endif
+
+/**
+ * @note Address: 0x80135E34
+ * @note Size: 0x390
+ */
+// NONMATCHING: the loop is FindEnabledCameraAreaContainingPoint's, but retail swaps the stack slots of the two
+// CamAreaInfo temporaries and the registers of i and the record offset
+extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
+{
+	state->mPrevArea = state->mCurrentArea;
+#if defined(VERSION_R24J01)
+	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, *gGame.GetPlayer()->GetPos());
+#else
+	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
+	s32 index = -1;
+	for (s32 i = 1; i < state->mAreaCount; ++i) { // record 0 never counts
+		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
+			continue;
+		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
+			index = i;
+			break;
+		}
+	}
+	state->mCurrentArea = index;
+#endif
+	if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1)
+		state->mActiveArea = state->mCurrentArea;
 }
 
 /**
@@ -176,7 +374,9 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		             state->mGroups[index].mEye.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 	}
 }
+#endif
 
+#if !defined(VERSION_R24J01)
 /**
  * @note Address: 0x80136A54
  * @note Size: 0x77C
@@ -274,22 +474,6 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 
 #endif
 
-static inline BOOL BothAreaTests(BOOL polygon, BOOL height)
-{
-	if (polygon && height)
-		return TRUE;
-	return FALSE;
-}
-
-static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
-{
-	BOOL inside       = PointInQuad(pos, AreaPoint(area, 0), AreaPoint(area, 1), AreaPoint(area, 2), AreaPoint(area, 3));
-	bool withinHeight = false;
-	if (pos.y <= area.GetTop() && pos.y >= area.GetBottom())
-		withinHeight = true;
-	return BothAreaTests(inside, withinHeight != false);
-}
-
 /**
  * @note Address: 0x801371D0
  * @note Size: 0x324
@@ -341,36 +525,6 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
 }
 
 /**
- * @note Address: 0x80135E34
- * @note Size: 0x390
- */
-// NONMATCHING: the loop is FindEnabledCameraAreaContainingPoint's, but retail swaps the stack slots of the two
-// CamAreaInfo temporaries and the registers of i and the record offset
-extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
-{
-	state->mPrevArea = state->mCurrentArea;
-#if defined(VERSION_R24J01)
-	Vec pos             = *gGame.GetPlayer()->GetPosition();
-	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, pos);
-#else
-	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
-	s32 index = -1;
-	for (s32 i = 1; i < state->mAreaCount; ++i) { // record 0 never counts
-
-		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
-			continue;
-		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
-			index = i;
-			break;
-		}
-	}
-	state->mCurrentArea = index;
-#endif
-	if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1)
-		state->mActiveArea = state->mCurrentArea;
-}
-
-/**
  * @note Address: 0x80137B58
  * @note Size: 0x1A8
  */
@@ -381,11 +535,7 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 		state->mCurrentArea = index;
 		state->mPrevArea    = index;
 		f32 fov;
-#if defined(VERSION_R24J01)
-		s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
-#else
 		s32 mode = GetCameraAreaMode(state);
-#endif
 		if (mode == 1) {
 			fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 		} else {
@@ -406,11 +556,7 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 		UpdateCameraAreaIndexFromPlayer(state, unused);
 		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
 			f32 fov;
-#if defined(VERSION_R24J01)
-			s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
-#else
 			s32 mode = GetCameraAreaMode(state);
-#endif
 			if (mode == 1) {
 				fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 			} else {
@@ -421,57 +567,29 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 	}
 }
 
-static inline bool IsAreaEnd(CamAreaRecord* record)
-{
-	CamAreaInfo area(record);
-	return area.mRecord->_00 == -1;
-}
-
 /**
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-// NONMATCHING: retail reloads _1C and _24 from the state on every pass of the counting loops, as for a helper
-// that takes the table by reference; these loops keep the pointer in a register
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 	state->mAreaExRecords = NULL;
 	state->mAreaExCount   = 0;
 	state->mAreaExRecords = GetStageCameraAreaExRecords();
-	s32 count             = 0;
-	if (state->mAreaExRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaExRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaExCount = count;
-	state->mAreaRecords = NULL;
-	state->mAreaCount   = 0;
-	state->mAreaRecords = GetStageCameraAreaRecords();
-	count               = 0;
-	if (state->mAreaRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaCount  = count;
-	state->mCameraInfo = NULL;
-	state->mCameraInfo = GetStageCameraInfoRecords();
+	state->mAreaExCount   = CountAreaRecords(state->mAreaExRecords);
+	state->mAreaRecords   = NULL;
+	state->mAreaCount     = 0;
+	state->mAreaRecords   = GetStageCameraAreaRecords();
+	state->mAreaCount     = CountAreaRecords(state->mAreaRecords);
+	state->mCameraInfo    = NULL;
+	state->mCameraInfo    = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
 	state->mCurrentArea = -1;
 	state->mPrevArea    = -1;
 	state->mActiveArea  = -1;
 	state->mBaseFov     = 30.5f;
-#if !defined(VERSION_PAL)
-#if defined(VERSION_R24J01)
-	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
-#else
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01) // the Wii build has neither report
 	OSReport(sCameraAreaZoomResetMessage);
-#endif
 #endif
 }
 
@@ -483,15 +601,8 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 {
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
 	static CamAreaEntry gCameraAreaEntries[2048];
-#if !defined(VERSION_PAL)
-#if defined(VERSION_R24J01)
-	OSReport("CCameraActionAreaEx :: "
-	         "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
-	         "0x%x\x82\xC5\x82\xB7\x81\x42\n",
-	         gCameraAreaEntries);
-#else
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
-#endif
 #endif
 	for (int i = 0; i < 2048; ++i)
 		state->mEntryPool[i] = &gCameraAreaEntries[i];
@@ -499,109 +610,29 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 	state->mZoomLevel     = 1;
 }
 
+#if !defined(VERSION_R24J01)
+// the file's __sinit builds it and registers its dtor; the Wii build keeps this global and the destructors
+// in the separate game/wii/ccameraactionareaexinit.cpp and game/wii/ccameraactionareaexdtor.cpp
+CCameraActionAreaEx gCameraAreaState;
+
 /**
- * @note Address: 0x80135434
- * @note Size: 0x7E0
+ * @note Address: 0x801381C0
+ * @note Size: 0x70
  */
-extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
+CCameraActionAreaEx::~CCameraActionAreaEx()
 {
-	if (state->mCameraInfo == NULL)
-		return;
+}
 
-	CamAreaEntry* entry = state->mEntryPool[0];
-	for (s32 i = 0;; ++i, ++entry) {
-		if (CamInfo(&state->mCameraInfo[i]).mData->mGroupId == -1)
-			break;
-		entry->mInterest = CamInfo(&state->mCameraInfo[i]).GetInterest();
-		entry->mEye      = CamInfo(&state->mCameraInfo[i]).GetEye();
-		entry->mAngle
-		    = CVec(0.0f, atan2(entry->mInterest.x - entry->mEye.x, entry->mInterest.z - entry->mEye.z), 0.0f); // eye to interest yaw
-		entry->mFov = CamInfo(&state->mCameraInfo[i]).GetFov();
-		entry->mId  = i;
-	}
-
-	s32 first         = 0;
-	CamInfoData* data = state->mCameraInfo;
-	s32 group         = 0;
-	for (;;) { // a run of entries with the same group id forms a group
-		if (data->mGroupId == -1)
-			break;
-		state->mGroups[group].mEntries = state->mEntryPool[first];
-		state->mGroups[group].mGroupId = group;
-		s32 count                      = 0;
-		while (data->mGroupId == group) {
-			++count;
-			++data;
-		}
-		state->mGroups[group].mEntryCount = count;
-		first += count;
-		++group;
-	}
-	state->mGroupCount = group;
-
-	for (s32 i = 0; i < state->mGroupCount; ++i) {
-		CamAreaSlot* slot = &state->mGroups[i];
-		switch (slot->mEntryCount) {
-		case 0:
-			break;
-		case 1: { // the group's eye is the entry's own
-			CVec center = (Vec)slot->mEntries[0].mEye;
-			slot->mEye  = center;
-			break;
-		}
-		case 2: { // the midpoint of both entries
-			CVec center;
-			CamAreaEntry* entries = slot->mEntries;
-			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
-			slot->mEye            = center;
-			break;
-		}
-		case 3: { // the centroid of the three
-			CVec center;
-			CamAreaEntry* entries = slot->mEntries;
-			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
-			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
-			break;
-		}
-		case 4: { // the midpoint of the quad's diagonal
-			CVec center;
-			CamAreaEntry* entries = slot->mEntries;
-			center                = entries[0].mEye + (entries[2].mEye - entries[0].mEye) / 2.0f;
-			slot->mEye            = center;
-			break;
-		}
-		default: { // the first three's centroid
-			CVec center;
-			CamAreaEntry* entries = slot->mEntries;
-			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
-			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
-			break;
-		}
-		}
-	}
+// 0x80138230
+CamAreaSlot::~CamAreaSlot()
+{
 }
 
 /**
- * @note Address: 0x801353E4
- * @note Size: 0x50
+ * @note Address: 0x80138284
+ * @note Size: 0x10
  */
-extern "C" f32 GetAreaCameraFovForHeightLevel(CCameraActionAreaEx* state, s32 level)
+CamAreaSlot::CamAreaSlot()
 {
-	f32 scale;
-	switch (level) { // the zoom level scales the base fov
-	case 0:
-	default:
-		scale = 0.8f;
-		break;
-	case 1:
-		scale = 1.0f;
-		break;
-	case 2:
-		scale = 1.5f;
-		break;
-	case 3:
-		scale = 2.0f;
-		break;
-	}
-	return scale * state->mBaseFov;
 }
+#endif

@@ -4,8 +4,11 @@
 #include "types.h"
 #include "game/csound.h"
 #include "game/cfile.h"
+#include "Version.h"
+#include <string.h>
 
 extern "C" s32 HSD_SynthSFXGetPendingLoadCount();
+extern "C" void OSReport(const char* msg, ...);
 
 inline bool HasPendingSoundBankLoad()
 {
@@ -87,6 +90,33 @@ inline void XSound::StopIfPlaying(s32 sfx)
 	if (IsGameSoundPlaying(this, sfx)) {
 		StopGameSfx(this, sfx);
 	}
+}
+
+// queues a name for a sound bank unless it is already there
+inline void XSound::registerName(const char* name, s32 bank)
+{
+	if (name == NULL) {
+		return;
+	}
+	for (u32 i = 0; i < 16; ++i) {
+		if (mStageRequests.entries[i].mName != NULL && strcmp(mStageRequests.entries[i].mName, name) == 0) {
+			return;
+		}
+	}
+	for (u32 i = 0; i < 16; ++i) {
+		if (mStageRequests.entries[i].mName == NULL) {
+			++mLoadRequestCount;
+			mStageRequests.entries[i].mName = name;
+			mStageRequests.entries[i].mBank = bank;
+#if !defined(VERSION_PAL)
+			OSReport("Register:%s\n", name);
+#endif
+			return;
+		}
+	}
+#if !defined(VERSION_PAL)
+	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+#endif
 }
 
 #endif

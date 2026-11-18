@@ -1,154 +1,258 @@
 #include "game/xobjactor.h"
 #include "game/xchr.h"
+#include "game/cgameparticle.h"
 #include "game/gmath.h"
 #include "game/heldpropmatrix.h"
 #include "game/evt.h"
+#include "game/cscrn.h"
 #include <math.h>
+extern "C" {
+#include <sysdolphin/random.h>
+}
 
-/**
- * @note Address: 0x8012641C
- * @note Size: 0x24
- */
-void XObjActorMama::ClearStateHandler()
+static inline u32 MaskedFlags(const CStatus& status, u32 mask)
 {
-	mState = NULL;
+	return status.mFlags & mask;
 }
 
 /**
- * @note Address: 0x80126440
- * @note Size: 0x58
+ * @note Address: 0x8012926C
+ * @note Size: 0xB0
  */
-void XObjActorMama::RunStateHandler(u32 frames)
+void XObjActorMama::ResetActorState()
 {
-	if (mState != NULL) {
-		(this->*mState)(frames);
+	XObjChr* player = gGame.GetPlayer();
+	if (player->mPlayerStatus.mFlags & 0x40000000) {
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
+		player->mPad.mReset = TRUE;
 	}
+	mActorStatus.mFlags = 0;
+	mHideKinds.mFlags   = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
+	_C88                = 0;
+	mState              = &XObjActorMama::StateNone;
+	ResetActorMovementStep(this);
 }
 
-/**
- * @note Address: 0x80126498
- * @note Size: 0x78
- */
-XObjActorMama::~XObjActorMama()
+void XObjActorMama::ProcessPendingEvents(u32)
 {
-}
-
-/**
- * @note Address: 0x80126510
- * @note Size: 0xAC
- */
-HSD_JObj* XObjActorMama::GetHeadJoint()
-{
-	s32 headPath[4] = { 0, 4, 0, 0 };
-	return FindJointByPath(mJObj, headPath, 4);
-}
-
-/**
- * @note Address: 0x801265BC
- * @note Size: 0x5C
- */
-CVec XObjActorMama::GetHeadWorldPosition()
-{
-	s32 headPath[4] = { 0, 4, 0, 0 };
-	return GetEventJointWorldPosition(this, 4, headPath);
-}
-
-/**
- * @note Address: 0x80126618
- * @note Size: 0x8
- */
-f32 XObjActorMama::GetMinHeadPitch()
-{
-	return -DEG2RAD * 10;
-}
-
-/**
- * @note Address: 0x80126620
- * @note Size: 0x8
- */
-f32 XObjActorMama::GetMaxHeadPitch()
-{
-	return DEG2RAD * 10;
-}
-
-/**
- * @note Address: 0x80126628
- * @note Size: 0x8
- */
-f32 XObjActorMama::GetMinHeadYaw()
-{
-	return -DEG2RAD * 40;
-}
-
-/**
- * @note Address: 0x80126630
- * @note Size: 0x8
- */
-f32 XObjActorMama::GetMaxHeadYaw()
-{
-	return DEG2RAD * 40;
-}
-
-/**
- * @note Address: 0x80126638
- * @note Size: 0x210
- */
-s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
-{
-	XObjActor::HandleEventCommand(count, command);
-	switch (command[0]) {
-	case 1: // command 1 steers her head
-		switch (command[1]) {
-		case 0:
-			ResetActorLook(this, DEG2RAD * 5);
-			break;
-		case 1:
-			SetActorLookTarget(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5);
-			break;
-		case 2:
-			if (FindObj(command[2]) != NULL) {
-				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+	CJObj jobj;
+	XObjChr* player = gGame.GetPlayer();
+	CVec pos;
+	if (mActorStatus.Check(0x400)) { // drop the player pitch-tracking and level the head
+		mActorStatus.mFlags &= ~0x400;
+		mHeadPitch = 0.0f;
+	}
+	if (mActorStatus.Check(2)) { // 2: a random sound from the 10-entry range at 0x9E
+		mActorStatus.mFlags &= ~2;
+		PlayGameSound(&gGame.mSound, HSD_Randi(10) + 0x9E, 0xFF);
+	}
+	switch (mCmd[0]) {
+	case 2: // hold a scripted kind
+		Drop();
+		switch (mCmd[1]) {
+		case 0x40:
+			for (s32 i = 0; i < 64; i++) { // the kind's own pool
+				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+				if (mCmd[1] == obj->GetKind()) {
+					mHeldObjects[0] = obj;
+					obj->mStatus.mFlags |= 0x10000ULL;
+					switch (mCmd[1]) {
+					case 0x40:
+						mHideKinds.mFlags |= 1;
+						break;
+					}
+				}
 			}
 			break;
-		case 3:
-			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+		case 0x5B:
+		case 0x7D:
+		case 0x196:
+		case 0x45B:
+			for (s32 i = 0; i < 288; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (mCmd[1] == obj->GetKind()) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[0] = obj;
+					switch (mCmd[1]) {
+					case 0x5B:
+						mHideKinds.mFlags |= 2;
+						break;
+					case 0x7D:
+						mHideKinds.mFlags |= 4;
+						break;
+					case 0x196:
+						mHideKinds.mFlags |= 8;
+						break;
+					case 0x45B:
+						mHideKinds.mFlags |= 0x20;
+						break;
+					}
+				}
+			}
+			break;
+		case 0x1A1: // a pair: 0x1A0 into hand 0, 0x1A1 into hand 1
+			for (s32 i = 0; i < 288; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (obj->GetKind() == 0x1A0) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[0] = obj;
+				} else if (obj->GetKind() == 0x1A1) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[1] = obj;
+				}
+			}
+			mHideKinds.mFlags |= 0x10;
+			break;
+		default: // hold nothing
+			for (int i = 0; i < 2; ++i) {
+				XObj*& held = mHeldObjects[i];
+				if (held) {
+					HSD_JObjClearMtxFlags(held->mJObj);
+					held = NULL;
+				}
+			}
 			break;
 		}
+		mCmd[0] = 0;
 		break;
-	default: // stash other commands in mCmd
-		if (count < 1) {
-			return 0;
+	case 3: // grab or set down the player
+		switch (mCmd[1]) {
+		case 1: {
+			mActorStatus.mFlags |= 0x100;
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x40000000;
+			player->mPad.mReset = FALSE;
+			player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+
+			break;
 		}
-		mCmd[0] = command[0];
-		if (count < 2) {
-			mCmd[1] = 0;
-		} else {
-			mCmd[1] = command[1];
+		default: {
+			mActorStatus.mFlags &= ~0x100;
+			s32 path[6] = { 0, 4, 2, 0, 0, 0 };
+			jobj.Attach(FindJointByPath(mJObj, path, 6));
+			pos   = CVec(jobj.GetPos());
+			pos.y = mMoveTranslate.y;
+			player->SetPos(pos, 0);
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x20000000;
+			player->mPlayerStatus.mFlags |= 7;
+			player->mPad.mReset = TRUE;
+			break;
 		}
-		mCmd[2] = command[2];
-		mCmd[3] = command[3];
-		mCmd[4] = command[4];
-		mCmd[5] = command[5];
-		mCmd[6] = command[6];
-		mCmd[7] = command[7];
-		mCmd[8] = command[8];
-		mCmd[9] = command[9];
+		}
+		mCmd[0] = 0;
+		break;
+	case 4: // shake the screen, arg in 1/100 units
+		StartScreenShake(&gGame.mQuake, mCmd[1], mCmd[2], mCmd[3], 0.0f, 0.0f, 0.0f, mCmd[4] / 100.0f);
+		mCmd[0] = 0;
+		break;
+	case 5: { // play a scripted animation
+		void* joint = GetJointAnimation(mCmd[1]);
+		void* mat   = GetMaterialAnimation(mCmd[2]);
+		void* shape = GetShapeAnimation(mCmd[1]);
+		SetAnim(0, TRUE, joint, mat, shape, 0.0f, 1.0f, 1.0f, 10.0f);
+		mStatus.mFlags |= 0x0008000000000000ULL;
+		mCmd[0] = 0;
 		break;
 	}
-	return 0;
+	case 6: { // a particle burst 8 units ahead
+		s32 path[] = { 0, 4, 0, 0, 0 };
+		jobj.Attach(FindJointByPath(mJObj, path, 5));
+		pos = CVec(jobj.GetPos());
+		pos.x += 8.0f * (f32)sin(HSD_JObjGetRotationY(mJObj));
+		pos.y += 1.0f;
+		pos.z += 8.0f * (f32)cos(HSD_JObjGetRotationY(mJObj));
+		Vec rotation = { 0, 0, 0 };
+		rotation.y   = HSD_JObjGetRotationY(mJObj);
+		Vec scale    = { 1, 1, 1 };
+		gGame.mParticle.CreateSRT(0x82, 1, pos, scale, rotation, TRUE);
+		mCmd[0] = 0;
+		break;
+	}
+	}
 }
 
 /**
- * @note Address: 0x80126848
- * @note Size: 0x4
+ * @note Address: 0x80128230
+ * @note Size: 0x38C
  */
-void XObjActorMama::StateNone(u32 frames)
+// lets go of what she carries
+void XObjActorMama::Drop()
 {
+	s32 kind = -1;
+	if (MaskedFlags(mHideKinds, 4)) {
+		mHideKinds.mFlags &= ~4;
+		kind = 0x7D;
+	} else if (MaskedFlags(mHideKinds, 1)) {
+		mHideKinds.mFlags &= ~1;
+		kind = 0x40;
+	} else if (MaskedFlags(mHideKinds, 2)) {
+		mHideKinds.mFlags &= ~2;
+		kind = 0x5B;
+	} else if (MaskedFlags(mHideKinds, 8)) {
+		mHideKinds.mFlags &= ~8;
+		kind = 0x196;
+	} else if (MaskedFlags(mHideKinds, 0x10)) {
+		mHideKinds.mFlags &= ~0x10;
+		kind = 0x1A1;
+	} else if (MaskedFlags(mHideKinds, 0x20)) {
+		mHideKinds.mFlags &= ~0x20;
+		kind = 0x45B;
+	}
+	if (kind < 0) {
+		return;
+	}
+	switch (kind) {
+	case 0x40:
+		for (s32 i = 0; i < 64; i++) {
+			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x5B:
+	case 0x7D:
+	case 0x196:
+	case 0x45B:
+		for (s32 i = 0; i < 288; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x1A1:
+		for (s32 i = 0; i < 288; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (obj->GetKind() == 0x1A0) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			} else if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80128210
+ * @note Size: 0x20
+ */
+void XObjActorMama::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
 }
 
 void XObjActorMama::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	CJObj hand;
 	XObjChr* player = gGame.GetPlayer();
 	if (mHideKinds.mFlags & 0x3f) { // a held prop kind is set
@@ -283,4 +387,145 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		// turn the player toward her head joint
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
+}
+
+/**
+ * @note Address: 0x80126848
+ * @note Size: 0x4
+ */
+void XObjActorMama::StateNone(u32 frames)
+{
+}
+
+/**
+ * @note Address: 0x80126638
+ * @note Size: 0x210
+ */
+s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1: // command 1 steers her head
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, DEG2RAD * 5);
+			break;
+		case 1:
+			SetActorLookTarget(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default: // stash other commands in mCmd
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		mCmd[2] = command[2];
+		mCmd[3] = command[3];
+		mCmd[4] = command[4];
+		mCmd[5] = command[5];
+		mCmd[6] = command[6];
+		mCmd[7] = command[7];
+		mCmd[8] = command[8];
+		mCmd[9] = command[9];
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x80126630
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMaxHeadYaw()
+{
+	return DEG2RAD * 40;
+}
+
+/**
+ * @note Address: 0x80126628
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMinHeadYaw()
+{
+	return -DEG2RAD * 40;
+}
+
+/**
+ * @note Address: 0x80126620
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMaxHeadPitch()
+{
+	return DEG2RAD * 10;
+}
+
+/**
+ * @note Address: 0x80126618
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMinHeadPitch()
+{
+	return -DEG2RAD * 10;
+}
+
+/**
+ * @note Address: 0x801265BC
+ * @note Size: 0x5C
+ */
+CVec XObjActorMama::GetHeadWorldPosition()
+{
+	s32 headPath[4] = { 0, 4, 0, 0 };
+	return GetEventJointWorldPosition(this, 4, headPath);
+}
+
+/**
+ * @note Address: 0x80126510
+ * @note Size: 0xAC
+ */
+HSD_JObj* XObjActorMama::GetHeadJoint()
+{
+	s32 headPath[4] = { 0, 4, 0, 0 };
+	return FindJointByPath(mJObj, headPath, 4);
+}
+
+/**
+ * @note Address: 0x80126498
+ * @note Size: 0x78
+ */
+XObjActorMama::~XObjActorMama()
+{
+}
+
+/**
+ * @note Address: 0x80126440
+ * @note Size: 0x58
+ */
+void XObjActorMama::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x8012641C
+ * @note Size: 0x24
+ */
+void XObjActorMama::ClearStateHandler()
+{
+	mState = NULL;
 }

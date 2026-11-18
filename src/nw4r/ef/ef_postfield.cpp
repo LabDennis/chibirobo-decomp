@@ -633,18 +633,16 @@ f32 CollideCircle(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo,
     return 2.0f;
 }
 
-// NONMATCHING: retail's code (0x638 bytes both) but for registers. Left: the temporaries of
-// the first two inline vector products (retail f3/f4/f5, ours f5/f3/f4) and of the two
-// reflections at the end. The order of the four declarations below decides which of
-// startSq, a, b, result gets f31-f28; all 24 orders were compiled, this one is the closest.
+// NONMATCHING: retail's code (0x638 bytes both) but for registers: a and result swap
+// f30 and f29 (retail a f30, result f29).
 f32 CollideSphere(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo,
                   const math::VEC3* pEnd, const math::VEC3* pStart,
                   math::VEC3* pDiff, math::VEC3* pVel, math::VEC3* pHit,
                   math::VEC3* pHitWorld) {
     // |start + t * diff| = 1
     f32 startSq = math::VEC3LenSq(pStart);
-    f32 b = math::VEC3Dot(pStart, pDiff);
     f32 a = math::VEC3LenSq(pDiff);
+    f32 b = math::VEC3Dot(pStart, pDiff);
     f32 result = 2.0f;
 
     f32 d = 4.0f * b * b - 4.0f * a * (startSq - 1.0f);
@@ -762,13 +760,13 @@ f32 CollideSphere(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo,
 
             math::VEC3Transform(&local, &mtx, pDiff);
             math::VEC3Scale(&normal, pHit, local.y);
-            math::VEC3Sub(pDiff, pDiff, &normal);
-            math::VEC3Sub(pDiff, pDiff, &normal);
+            *pDiff -= normal;
+            *pDiff -= normal;
 
             math::VEC3Transform(&local, &mtx, pVel);
             math::VEC3Scale(&normal, pHit, local.y);
-            math::VEC3Sub(pVel, pVel, &normal);
-            math::VEC3Sub(pVel, pVel, &normal);
+            *pVel -= normal;
+            *pVel -= normal;
 
             // Off the surface, to the side the particle came from
             if (startSq > 1.0f) {
@@ -784,19 +782,17 @@ f32 CollideSphere(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo,
     return result;
 }
 
-// NONMATCHING: retail's code (0x7D4 bytes both) but for registers. With the declarations
-// in this order the saved float registers are retail's (a f31, result f30, startSq f29,
-// b f28), but retail computes startSq first; the order that computes it first swaps the
-// registers. The temporaries of the two reflections differ as in CollideSphere.
+// NONMATCHING: retail's code (0x7D4 bytes both) but for registers: startSq and a swap
+// f31 and f29 (retail a f31, startSq f29).
 f32 CollideCylinder(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo,
                     const math::VEC3* pEnd, const math::VEC3* pStart,
                     math::VEC3* pDiff, math::VEC3* pVel, math::VEC3* pHit,
                     math::VEC3* pHitWorld) {
     // The same as the sphere, in the xz plane
-    f32 a = pDiff->x * pDiff->x + pDiff->z * pDiff->z;
-    f32 result = 2.0f;
     f32 startSq = pStart->x * pStart->x + pStart->z * pStart->z;
+    f32 a = pDiff->x * pDiff->x + pDiff->z * pDiff->z;
     f32 b = pStart->x * pDiff->x + pStart->z * pDiff->z;
+    f32 result = 2.0f;
 
     f32 d = 4.0f * b * b - 4.0f * a * (startSq - 1.0f);
     if (d < 0.0f) {
@@ -935,8 +931,8 @@ f32 CollideCylinder(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo
             normal.z = pHit->z;
             math::VEC3Normalize(&normal, &normal);
             math::VEC3Scale(&normal, &normal, dot);
-            math::VEC3Sub(pDiff, pDiff, &normal);
-            math::VEC3Sub(pDiff, pDiff, &normal);
+            *pDiff -= normal;
+            *pDiff -= normal;
 
             len = math::FSqrt(pVel->x * pVel->x + pVel->z * pVel->z);
             dot = pVel->x * pHit->x + pVel->z * pHit->z;
@@ -945,8 +941,8 @@ f32 CollideCylinder(const math::MTX34* pMtx, const AnimCurvePostFieldInfo* pInfo
             normal.z = pHit->z;
             math::VEC3Normalize(&normal, &normal);
             math::VEC3Scale(&normal, &normal, dot);
-            math::VEC3Sub(pVel, pVel, &normal);
-            math::VEC3Sub(pVel, pVel, &normal);
+            *pVel -= normal;
+            *pVel -= normal;
 
             if (startSq > 1.0f) {
                 math::VEC3Scale(pHit, pHit, 1.00001f);

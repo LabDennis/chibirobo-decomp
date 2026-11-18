@@ -129,13 +129,10 @@ void CGame::Update(u32 frames)
 				}
 			}
 			if (mTimeState.mRunning == TRUE) { // then waits for an idle player
-				bool idle       = false;
 				XObjChr* player = GetPlayer();
-				if ((player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0 && player->mJump.mState == 0
-				    && player->mLadder.mState == 0 && player->mRope.mState == 0 && player->mPush.mState == 0
-				    && player->mTumble.mState == 0) {
-					idle = true;
-				}
+				bool idle       = (player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0
+				         && player->mJump.mState == 0 && player->mLadder.mState == 0 && player->mRope.mState == 0
+				         && player->mPush.mState == 0 && player->mTumble.mState == 0;
 				if (idle) {
 					mTimeState.mRunning = FALSE;
 					u8* script          = GetStageTimerExpiredScript();
@@ -147,7 +144,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (!(mStatus.mFlags & 2)) {
-		CEvt_Update(&mEvt, frames);
+		mEvt.Update(frames);
 		for (i = 0; i < 2; i++) {
 			CMsg_Update(&mCMsgs[i], frames);
 		}

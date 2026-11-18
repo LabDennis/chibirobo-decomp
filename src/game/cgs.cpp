@@ -2839,16 +2839,18 @@ extern "C" void SetGsFixedGlyphWidthScale(CGs* gs, f32 width)
 #endif
 }
 
-// Keep the width calculation inline in both tiled-text callers.
-static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size, f32 halfSize)
+/**
+ * @note Address: 0x801968BC
+ * @note Size: 0x350
+ */
+extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
 {
 	CFont font;
 	s32 charWidth;
 	f32 width[2] = { 0.0f, 0.0f };
 	TextGlyph glyph;
-	const char* p = text;
 
-	while ((p = GetGlyph(gs, p, &glyph)) != NULL) {
+	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {
 		if (glyph.mStr[0] == '\0') {
 			continue;
 		}
@@ -2871,10 +2873,10 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 				if (IsSjisLead(glyph.mStr[0]) & 1) {
 					width[0] += size * gs->mShiftJisWidthScale;
 				} else {
-					width[0] += halfSize * gs->mShiftJisWidthScale;
+					width[0] += 0.5f * size * gs->mShiftJisWidthScale;
 				}
 			} else {
-				width[0] += halfSize * gs->mSingleByteWidthScale;
+				width[0] += 0.5f * size * gs->mSingleByteWidthScale;
 			}
 #endif
 		} else {
@@ -2885,14 +2887,6 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 		}
 	}
 	return width[1];
-}
-/**
- * @note Address: 0x801968BC
- * @note Size: 0x350
- */
-extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
-{
-	return GetTextWidth(gs, text, proportional, size, 0.5f * size);
 }
 
 /*
@@ -3347,7 +3341,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	static TextChar sGsTextChars[256];
 	static TextChar* sCurrentTextChar;
 
-	f32 textWidth = GetTextWidth(gs, text, proportional, size, 0.5f * size);
+	f32 textWidth = MeasureGameTextWidth(gs, text, proportional, size); // -inline auto expands it here
 
 	f32 centerX = x + textWidth / 2.0f;
 	f32 centerY = y - lineHeight;
@@ -4894,6 +4888,8 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
  * @note Address: 0x801943FC
  * @note Size: 0xBD8
  */
+// NONMATCHING: the measuring loop sign-extends each character as it stores it (retail moves the raw
+// byte), and retail reloads the character in the default case and both stroke bytes in the loop
 extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
 {
 	if (gs->mCurRenderMode == &gs->mRenderMode) {
@@ -4913,11 +4909,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 #if defined(VERSION_JP)
 	Mtx scale;
 	Mtx mtx;
+	f32 left = x + width * w / 2.0f;
 	if (gs->mCamera->projection_type == PROJ_ORTHO) {
-		PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+		PSMTXTrans(trans, left, y, z);
 		PSMTXScale(scale, w, h, 1.0f);
 	} else {
-		PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+		PSMTXTrans(trans, left, y, z);
 		PSMTXScale(scale, w, -h, 1.0f);
 	}
 	PSMTXConcat(trans, scale, mtx);
@@ -4927,7 +4924,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	Mtx rotZ;
 	Mtx scale;
 	Mtx mtx;
-	PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+	PSMTXTrans(trans, x + width * w / 2.0f, y, z);
 	PSMTXRotRad(rotX, 'x', gs->mTextRot.x);
 	PSMTXRotRad(rotY, 'y', gs->mTextRot.y);
 	PSMTXRotRad(rotZ, 'z', gs->mTextRot.z);
@@ -4948,11 +4945,11 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	f32 unit;
 	if (gs->mBillboardEnabled) {
 		BuildBillboardMatrixFromUp(mtx, mtx);
-		startX = width * 0.5f;
+		startX = width / 2.0f;
 		curY   = 0.0f;
 		unit   = -1.0f;
 	} else {
-		startX = -width * 0.5f;
+		startX = -width / 2.0f;
 		curY   = 0.0f;
 		unit   = 1.0f;
 	}
@@ -4977,13 +4974,14 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 
 	// second pass draws, each character is one unit wide in the scaled space
 	TextGlyph glyph;
-	glyph.mColor   = color;
-	glyph.mBgColor = 0;
+	glyph.mColor    = color;
+	glyph.mBgColor  = 0;
+	const char* str = glyph.mStr;
 	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {
-		if (glyph.mStr[0] == 0) {
+		if (*str == 0) {
 			continue;
 		}
-		if (glyph.mStr[0] == '\n') {
+		if (*str == '\n') {
 			curX = startX;
 			curY += 1.0f;
 			continue;
@@ -4996,7 +4994,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			DebugVertex(curX, 1.0f + curY, glyph.mBgColor);
 		}
 		s32 index = -1;
-		switch (glyph.mStr[0]) {
+		switch (*str) {
 		// the 0.35 and 0.85 here are a bit off in retail, probably sums the compiler folded
 		case '.':
 			GXBegin(GX_POINTS, 0, 1);
@@ -5049,12 +5047,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			index = 46;
 			break;
 		default:
-			if (glyph.mStr[0] >= '0' && glyph.mStr[0] <= '9') {
-				index = glyph.mStr[0] - '0';
-			} else if (glyph.mStr[0] >= 'A' && glyph.mStr[0] <= 'Z') {
-				index = glyph.mStr[0] - 'A' + 10;
-			} else if (glyph.mStr[0] >= 'a' && glyph.mStr[0] <= 'z') {
-				index = glyph.mStr[0] - 'a' + 10;
+			if (*str >= '0' && *str <= '9') {
+				index = *str - '0';
+			} else if (*str >= 'A' && *str <= 'Z') {
+				index = *str - 'A' + 10;
+			} else if (*str >= 'a' && *str <= 'z') {
+				index = *str - 'a' + 10;
 			}
 			break;
 		}

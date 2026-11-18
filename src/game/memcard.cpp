@@ -88,16 +88,17 @@ static inline BOOL ReadFailedUnmount(Memcard* card)
  */
 extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 {
-	card->mState     = 12;
-	s32 offset       = 0;
-	s32 copy         = 0;
-	SaveHeader* save = &card->mFile.mData.mHeader;
-	for (; copy < 2; ++copy, offset += sizeof(SaveFile)) {
+	card->mState   = 12;
+	SaveFile* file = &card->mFile;
+	s32 offset;
+	s32 copy;
+	SaveHeader* save = &file->mData.mHeader;
+	for (copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
 		card->mCard.Read(card->mBuffer, sizeof(SaveFile), offset);
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY)
 			return ReadFailedUnmount(card);
-		if (card->mFile.mData.mHeader.mSignature != SAVE_SIGNATURE) {
+		if (file->mData.mHeader.mSignature != SAVE_SIGNATURE) {
 			if (copy == 1) {
 				card->mCard.mResult = -128;
 				return ReadFailedUnmount(card);
@@ -108,7 +109,7 @@ extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 		const u8* data = reinterpret_cast<const u8*>(save);
 		for (u32 i = 0; i < sizeof(SaveData); ++i)
 			checksum += *data++;
-		if (checksum != card->mFile.mChecksum) {
+		if (checksum != file->mChecksum) {
 			if (copy == 1) {
 				card->mCard.mResult = -128;
 				return ReadFailedUnmount(card);
@@ -297,8 +298,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
 	if (stage >= 100) { // stages >= 100 are relative to the current stage count
-		stage += GetStageNum();
-		stage -= 99;
+		stage += GetStageNum() - 99;
 	}
 	gGame.mPrevStage           = gGame.mStage;
 	gGame.mStage               = stage;

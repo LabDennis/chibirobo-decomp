@@ -79,6 +79,8 @@ static inline s32 GetFreeSize()
  * @note Address: 0x801913D8
  * @note Size: 0x4EC
  */
+// NONMATCHING: retail's .rodata starts with an unreferenced "(static)" string, so every format string here sits 0xC
+// further in; nothing in this file uses it
 void mm::Dump()
 {
 	OSReport("===============================================================================\n");

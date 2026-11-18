@@ -27,8 +27,20 @@ namespace nw4r
         #define NW4R_DB_ASSERT_WARN(exp, ...) \
             if(!(exp))                \
             nw4r::db::Warning(__FILE__, __LINE__, __VA_ARGS__)
+        #define NW4R_ASSERT_PTR_FILELINE(file_, line_, x) \
+            ((void)(((((u32)(x) & 0xff000000) == 0x80000000) || \
+                (((u32)(x) & 0xff800000) == 0x81000000) || \
+                (((u32)(x) & 0xf8000000) == 0x90000000) || \
+                (((u32)(x) & 0xff000000) == 0xc0000000) || \
+                (((u32)(x) & 0xff800000) == 0xc1000000) || \
+                (((u32)(x) & 0xf8000000) == 0xd0000000) || \
+                (((u32)(x) & 0xffffc000) == 0xe0000000)) || \
+                (nw4r::db::Panic(file_, line_, "NW4R:Pointer Error\n" #x "(=%p) is not valid pointer.", (x)), 0)))
+        #define NW4R_ASSERT_PTR(x) NW4R_ASSERT_PTR_FILELINE(__FILE__, __LINE__, x)
         #else
         #define NW4R_DB_ASSERT_WARN(exp, ...) ((void)0)
+        #define NW4R_ASSERT_PTR_FILELINE(file_, line_, x) ((void)0)
+        #define NW4R_ASSERT_PTR(x) ((void)0)
         #endif
 
         /* DECL_WEAK */ void VPanic(const char* file, int line, const char* fmt, std::va_list vlist, bool halt);

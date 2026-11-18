@@ -28,9 +28,7 @@ void XObjFree::UpdateObject(u32 frames)
 			Vec position = mMoveTranslate;
 			position.x += x * (rand() % 100) / 100.0f;
 			position.z += z * (rand() % 100) / 100.0f;
-			Vec velocity = { x, y, z };
-			Vec size     = { 20.0f, 20.0f, 1.0f };
-			SpawnPoolParticle(&gGame.GetPlayer()->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFF0);
+			SpawnPoolParticle(&gGame.GetPlayer()->mDust.mPtcl, &position, &(Vec) { 20.0f, 20.0f, 1.0f }, &(Vec) { x, y, z }, 0xFFFFFFF0);
 		}
 		mFlash = 1.0f;
 	}

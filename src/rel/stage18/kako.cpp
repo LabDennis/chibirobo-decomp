@@ -9,7 +9,7 @@ extern "C" void* GetSoundVolumeAtPosition(void* obj, Vec* pos, s32 arg);
 extern "C" void SetGameSfxVolume(void* obj, s32 id, void* arg, s32 arg2);
 
 // rel/ana.cpp
-extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 
 extern "C" void UpdateStage(void* arg);
 

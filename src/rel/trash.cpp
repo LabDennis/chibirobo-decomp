@@ -466,10 +466,10 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			trashArc += DEG2RAD * 5 * frames;
 			if ((f32)sin(trashArc) < 0.0f) { // the arc is over (half a turn, 36 frames): release the piece
-				trashResult    = 2;
-				TrashObj* held = trashObj;
-				if (GetKindId(held) == 8) { // category-8 pieces get their flag set
-					u32 bit = held->vf148();
+				trashResult = 2;
+				if (GetKindId(trashObj) == 8) { // category-8 pieces get their flag set
+					TrashObj* held = trashObj;
+					u32 bit        = held->vf148();
 					held->mFlags[bit >> 5] |= 1 << (bit & 31);
 				}
 				trashObj->Release();

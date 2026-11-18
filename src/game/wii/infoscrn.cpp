@@ -16,7 +16,7 @@
 // object gauge gains a parameter and the counters keep the same layout.
 //
 // todo: DrawHudBatteryGauge, DrawHudClock, DrawHudGaugeIcon, InfoScrn_DrawPlayerHudIcon,
-// InfoScrn_DrawTimer, DrawHudScanlines, DrawTexturedWindowFrame, InitHudPointCounter,
+// InfoScrn_DrawTimer, DrawHudScanlines, DrawTexturedWindowFrame,
 // UpdateHudPointValue, DrawHudPointCounter
 
 // the timer counts frames at the video mode's rate, 50 or 60 a second
@@ -55,7 +55,7 @@ f32 gHudOpacityScale = 1.0f;
 // the y the bottom row is drawn at, the wipe's own bottom edge clamped to the safe area
 static inline f32 GetHudBottomEdge()
 {
-	f32 bottom = gGame.mWipeCine.mHeight * 0.5f + gGame.mWipeCine.mY;
+	f32 bottom = gGame.mWipeCine.mHeight / 2 + gGame.mWipeCine.mY;
 	if (bottom >= (f32)gScreenSafeBottom) {
 		bottom = (f32)gScreenSafeBottom;
 	}
@@ -493,7 +493,7 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 static inline s32 HighlightedAttachment()
 {
 	WiiPlayerState* player = gGame.GetPlayer();
-	return player->mAtcMenu.mCursorIndex >= 0 ? player->mAtcMenu.mItems[player->mAtcMenu.mCursorIndex].mType : 0;
+	return player->mMenu.mAtc.mCursorIndex >= 0 ? player->mMenu.mAtc.mItems[player->mMenu.mAtc.mCursorIndex].mType : 0;
 }
 
 static inline void AdvanceHudIcon(InfoScrn* h)
@@ -830,11 +830,14 @@ extern "C" void ApproachHudValue(f32* cur, f32* target, f32 step)
  * @note Size: 0xB4
  */
 // the point at the bottom of the screen the counters' sparkle effects rise from
+// NONMATCHING: retail converts gScreenSafeBottom for the clamp into the same stack slot (0x10) as
+// for the compare; this build takes a fresh one (0x18).
 extern "C" void GetHudPointParticleOrigin(InfoScrn* scrn, f32* x, f32* y)
 {
 	f32 xPos       = 22.0f + (f32)gScreenSafeLeft;
+	f32 rowY       = GetHudBottomEdge() - 64.0f - 40.0f;
 	f32 iconHeight = 18.0f;
-	f32 iconY      = GetHudBottomEdge() - 64.0f - 40.0f - iconHeight * 0.5f;
+	f32 iconY      = rowY - iconHeight / 2;
 	if (x) {
 		*x = xPos;
 	}
@@ -901,8 +904,9 @@ extern "C" void HideScrapCounter()
  * @note Address: 0x8008C1D4
  * @note Size: 0x14
  */
-// the scrap counter pulses again once it comes back on screen
-extern "C" void ResumeScrapCounterPulse()
+// the scrap counter pulses again once it comes back on screen; the hud is passed but unused (retail's
+// caller in title.cpp loads r3 with gGame + 0xAF58, CGame's mInfoScrn, at 0x800487F4)
+extern "C" void ResumeScrapCounterPulse(InfoScrn*)
 {
 	gHudScrapCounter.mState = 2;
 }
@@ -1028,10 +1032,11 @@ extern "C" s32 ConvertHudTextToFullWidth(char* text)
  * @note Address: 0x8008F080
  * @note Size: 0x34
  */
-// NONMATCHING: retail holds the gauge and scaled maximum in f0/f1; this source uses f2/f0.
+// NONMATCHING: retail loads the 10.0f into f1 and the max battery into f2; this source swaps them.
 extern "C" BOOL InfoScrn_IsBatteryGaugeFull(InfoScrn* scrn)
 {
-	return scrn->mBatteryGauge == 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
+	f32 full = 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
+	return scrn->mBatteryGauge == full;
 }
 
 /**
@@ -1293,4 +1298,46 @@ extern "C" void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, pos, color, 65);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+}
+
+/**
+ * @note Address: 0x800903C4
+ * @note Size: 0x354
+ */
+extern "C" void InitHudPointCounter(InfoPoint* point, s32 id)
+{
+	point->mIndex       = id;
+	point->mPulseFrames = 0;
+	point->mSlideState  = 0;
+	point->mFadeState   = 0;
+	point->mSlideDelay  = 0;
+	point->mOpacity     = 0.0f;
+	for (int i = 0; i < 6; i++) {
+		point->mPos[i].x = gScreenSafeLeft - 204.0f;
+	}
+	for (int i = 0; i < 4; i++) {
+		point->mValue[i] = 0.0f;
+	}
+	point->mVisible             = 0;
+	point->mSuppressIdleDisplay = 0;
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetHudBottomEdge() - 58.0f - 40.0f;
+		point->mPos[1].y = GetHudBottomEdge() - 58.0f - 40.0f;
+		break;
+	case INFOPOINT_ID:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetHudBottomEdge() - 58.0f;
+		point->mPos[1].y = GetHudBottomEdge() - 58.0f;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = 40.0f + (GetHudBottomEdge() - 58.0f);
+		point->mPos[1].y = 40.0f + (GetHudBottomEdge() - 58.0f);
+		break;
+	}
+	point->mState          = 0;
+	point->mIconAlphaScale = 0.0f;
+	point->_80             = 0;
 }

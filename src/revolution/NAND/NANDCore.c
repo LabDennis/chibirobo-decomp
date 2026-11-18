@@ -162,10 +162,6 @@ BOOL nandIsInitialized()
 	}
 }
 
-// NONMATCHING: retail calls this function twice from nandConvertErrorCode; an empty one is expanded there,
-// with any compiler from GC/3.0a3 on. Its original body is unknown: it left no code, but enough statements
-// (assertions or reports that a release build drops) to keep MWCC from expanding it, the way the assertion
-// does in nand.c's nandComposePerm.
 void nandReportErrorCode(ISFSError result)
 {
 }

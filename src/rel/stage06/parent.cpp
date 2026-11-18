@@ -3,7 +3,7 @@
 #include "Version.h"
 
 // rel/ana.cpp
-extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 
 // JP: _C8 at 0xC0, _980 at 0x970, _12DF4 at 0x12CF4
 struct RoboView {

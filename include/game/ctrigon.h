@@ -19,7 +19,9 @@ struct TRIGON_INFO {
 	MtxP mMtx;                // _10, NULL when it's identity
 	u16 mFrac;                // _14
 	u16 mCell;                // _16, index into CTrigon::mCells
-	u8 _18[8];                // _18, not recovered yet
+	u8 _18[2];                // _18, not recovered yet
+	u16 mFloorType;           // _1A, the ground type, what the GameCube worked out from the color
+	u8 _1C[4];                // _1C, not recovered yet
 };
 STATIC_ASSERT(sizeof(TRIGON_INFO) == 0x20);
 
