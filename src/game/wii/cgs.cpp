@@ -12,9 +12,8 @@
 // stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference
 // in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the light color's components for the color channel in other
 // registers and computes the material components where it tests them, not ahead of the tests. CGs::Init (98 %): every call, argument and
-// store matches; retail packs the GS* by-value temporaries one slot higher (a 0x78 hole that here holds the second GSTevOrder) and pools the
-// tev index and channel ids into .sdata2 where we emit li, so the frame stays 0x270 instead of 0x280. Not written yet:
-// the scene list helper (0x802AB860).
+// store matches; retail packs the GS* by-value temporaries one slot higher (a 0x78 hole that here holds the second GSTevOrder) and pools
+// the tev index and channel ids into .sdata2 where we emit li, so the frame stays 0x270 instead of 0x280.
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void
@@ -736,11 +735,10 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 	mCamera     = NULL;
 	mLight      = NULL;
 
-	SetRenderState(NULL, GSBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET),
-	               GSZMode(GX_FALSE, GX_LEQUAL, GX_FALSE), GSAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF),
-	               GSColorUpdate(GX_TRUE), GSAlphaUpdate(GX_FALSE), GSDstAlpha(GX_FALSE, 0), GSZCompLoc(GX_TRUE),
-	               GSDither(GX_TRUE), GSLineWidth(12, GX_TO_ONE), GSPointSize(24, GX_TO_ZERO), GSCullMode(GX_CULL_BACK),
-	               GSClipMode(GX_CLIP_ENABLE));
+	SetRenderState(NULL, GSBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET), GSZMode(GX_FALSE, GX_LEQUAL, GX_FALSE),
+	               GSAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF), GSColorUpdate(GX_TRUE), GSAlphaUpdate(GX_FALSE),
+	               GSDstAlpha(GX_FALSE, 0), GSZCompLoc(GX_TRUE), GSDither(GX_TRUE), GSLineWidth(12, GX_TO_ONE), GSPointSize(24, GX_TO_ZERO),
+	               GSCullMode(GX_CULL_BACK), GSClipMode(GX_CLIP_ENABLE));
 
 	SetTevStage(NULL, 0, GSTevOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0),
 	            GSTevColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
@@ -753,14 +751,14 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 	            GSTevAlphaOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
 	            GSTevAlphaIn(GX_CA_ZERO, GX_CA_RASA, GX_CA_KONST, GX_CA_APREV));
 
-	SetChannel(NULL, GX_COLOR0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_SPOT),
-	           (GXColor) { 0, 0, 0, 0xFF }, (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	SetChannel(NULL, GX_ALPHA0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE),
-	           (GXColor) { 0, 0, 0, 0xFF }, (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	SetChannel(NULL, GX_COLOR1, GSChanCtrl(GX_TRUE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_SPEC),
-	           (GXColor) { 0, 0, 0, 0xFF }, (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	SetChannel(NULL, GX_ALPHA1, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE),
-	           (GXColor) { 0, 0, 0, 0xFF }, (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_COLOR0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_SPOT), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_ALPHA0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_COLOR1, GSChanCtrl(GX_TRUE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_SPEC), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_ALPHA1, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
 
 	mBillboardEnabled = FALSE;
 	mSprite.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -785,11 +783,11 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 	mShiftJisWidthScale   = 1.0f;
 	mSingleByteWidthScale = 1.0f;
 	Vec zero;
-	zero.x                = 0.0f;
-	zero.y                = 0.0f;
-	zero.z                = 0.0f;
-	mTextRot              = zero;
-	mTextFont             = 0;
+	zero.x    = 0.0f;
+	zero.y    = 0.0f;
+	zero.z    = 0.0f;
+	mTextRot  = zero;
+	mTextFont = 0;
 
 	nw4r::g3d::G3dInit(false);
 	fn_802AEBF0(&mScene.mHead, renderStates, tevStages, channels, texGens);
@@ -899,6 +897,12 @@ extern "C" void EndGsCamera(CGs* gs)
 {
 	gs->mCamera->EndCurrent();
 	gs->mCamera = NULL;
+}
+
+// the one call CGame::Draw makes between RenderSceneShadow and SetCameraLight is a no-op on the
+// Wii; on the GameCube that slot is HSD_StartRender(HSD_RP_SCREEN)
+void CGs::fn_802AB860()
+{
 }
 
 void CGs::ResetZMode()

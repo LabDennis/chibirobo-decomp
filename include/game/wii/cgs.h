@@ -834,6 +834,7 @@ public:
 	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
 	BOOL BeginCamera();                     // 0x802AB790, loads mCamera's matrices; FALSE when there is none
 	void fn_802AB81C(MtxP view, BOOL flag); // 0x802AB81C, loads mLight under view and keeps what the scene list returns
+	void fn_802AB860();                     // 0x802AB860, empty; CGame::Draw calls it where the GameCube calls HSD_StartRender
 	void ResetZMode();                      // 0x802AB864, depth test and write and color update back on
 	void EndFrame();                        // 0x802AB8CC, queues the frame's copy and waits for the retrace
 	void SwapBuffers();                     // 0x802AB8F0

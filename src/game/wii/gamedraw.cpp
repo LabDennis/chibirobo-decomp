@@ -54,7 +54,6 @@ void fn_8027B644(WiiGsSceneObj* scene);
 void fn_8027B5D0(WiiGsSceneObj* scene);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index); // as gameupdate.cpp declares it
 void fn_8001E1C8(CGame* game);
-void fn_802AB860(CGs* gs);
 void fn_802BE414(void* obj, CLight* light); // as gameupdate.cpp declares them
 void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
@@ -1590,7 +1589,7 @@ void CGame::Draw()
 		gGame.mGs.mCurChannel->Apply();
 	}
 	RenderSceneShadow(this);
-	fn_802AB860(&gGame.mGs);
+	gGame.mGs.fn_802AB860();
 	SetCameraLight();
 	if (gGame.mGs.mScene.mHead->_2888 != NULL) {
 		fn_802BE414(&mEffects, gGame.mGs.mLight);
