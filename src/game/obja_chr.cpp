@@ -6429,6 +6429,14 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
 	p->SetAnim(id, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
+// how far the stick is pushed
+static inline f32 StickLength(const CPadOne* pad)
+{
+	f32 x = pad->mStickX;
+	f32 y = pad->mStickY;
+	return sqrtf(x * x + y * y);
+}
+
 /**
  * @note Address: 0x800AA070
  * @note Size: 0x1670
@@ -6436,14 +6444,7 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
 extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim, u32, f32, f32)
 {
 	CPadOne* pad = &p->mPad;
-	f32 motion;
-	if ((gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript) {
-		motion = 0.0f;
-	} else {
-		f32 x  = pad->mStickX;
-		f32 y  = pad->mStickY;
-		motion = sqrtf(x * x + y * y);
-	}
+	f32 motion   = (gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript ? 0.0f : StickLength(pad);
 	if (motion == 0.0f && p->mFloorContacts[4].objectIndex >= 0)
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.mStatus.mFlags & 0x100) && !(gGame.mStatus.mFlags & 0x200))
