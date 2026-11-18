@@ -6,6 +6,7 @@
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
+#include "game/wii/cpad.h"
 #include "game/wii/xobjs.h"
 #include "game/evt.h"
 #include "game/evtqueue.h"
@@ -40,7 +41,13 @@ void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
 BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
 void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
-void fn_800C807C(XObj* obj);                   // a category 3 object's follow-up to a new anim
+void fn_800C807C(XObj* obj);
+void AdjustPlayerMoney(WiiPlayerParams* params, s32 amount);
+void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
+void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
+void AdjustPlayerLevel(WiiPlayerParams* params, s32 amount);
+void AddPlayerRank(WiiPlayerParams* params, s32 amount);
+void SetAttachmentCountById(void* values, s32 id, s32 value); // a category 3 object's follow-up to a new anim
 }
 
 CEvtFlags gEventFlags;
@@ -1487,6 +1494,207 @@ static BOOL EvalCmp(CEvt* evt)
 	}
 
 	return result;
+}
+
+/**
+ * @note Address: 0x80096A38
+ * @note Size: 0x8EC
+ */
+extern "C" void CEvt_EvalSet(CEvt* evt)
+{
+	s32 code = *evt->mData.mScript;
+	u8 op    = code;
+	s32 value;
+	switch (op) {
+	case EVT_EXPR_EQUAL:
+	case EVT_EXPR_NOT_EQUAL:
+	case EVT_EXPR_LESS:
+	case EVT_EXPR_LESS_EQUAL:
+	case EVT_EXPR_GREATER:
+	case EVT_EXPR_GREATER_EQUAL:
+		value = EvalCmp(evt) != FALSE;
+		break;
+	case EVT_EXPR_ADD_ASSIGN:
+	case EVT_EXPR_SUB_ASSIGN:
+	case EVT_EXPR_MUL_ASSIGN:
+	case EVT_EXPR_DIV_ASSIGN:
+	case EVT_EXPR_MOD_ASSIGN:
+	case EVT_EXPR_AND_ASSIGN:
+	case EVT_EXPR_OR_ASSIGN:
+	case EVT_EXPR_XOR_ASSIGN: {
+		evt->mData.mScript++;
+		s32 rhs         = CEvt_Evaluate(evt);
+		u8* destination = evt->mData.mScript;
+		value           = CEvt_Evaluate(evt);
+		if (op == EVT_EXPR_ADD_ASSIGN)
+			value += rhs;
+		else if (op == EVT_EXPR_SUB_ASSIGN)
+			value -= rhs;
+		else if (op == EVT_EXPR_MUL_ASSIGN)
+			value *= rhs;
+		else if (op == EVT_EXPR_DIV_ASSIGN)
+			value /= rhs;
+		else if (op == EVT_EXPR_MOD_ASSIGN)
+			value %= rhs;
+		else if (op == EVT_EXPR_AND_ASSIGN)
+			value &= rhs;
+		else if (op == EVT_EXPR_OR_ASSIGN)
+			value |= rhs;
+		else if (op == EVT_EXPR_XOR_ASSIGN)
+			value ^= rhs;
+		evt->mData.mScript = destination;
+		break;
+	}
+	default:
+		value = CEvt_Evaluate(evt);
+		break;
+	}
+	{
+		s32 op = *evt->mData.mScript;
+		evt->mData.mScript++;
+		s32 index;
+		switch (op) {
+		case EVT_EXPR_STACK:
+			index = *evt->mData.mScript;
+			evt->mData.mScript++;
+			evt->mValues.mBuf[index + evt->mFrames.mBuf[evt->mFrames.mCount - 1]] = value;
+			break;
+		case EVT_EXPR_FLAG:
+			index = CEvt_Evaluate(evt);
+			if (index >= 0 && index < 4096) {
+				if (value != 0) {
+					gEventFlags.mFlags[(u32)index >> 5] |= 1U << (index & 31);
+				} else {
+					gEventFlags.mFlags[(u32)index >> 5] &= ~(1U << (index & 31));
+				}
+			} else if (index == -1 || index == -2 || index == -3 || index == -4 || index == -5) {
+				// Evaluate's read-only flags, setting one does nothing
+			} else {
+				OSPanic(__FILE__, 1153, FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096));
+			}
+			break;
+		case EVT_EXPR_VAR:
+			index = CEvt_Evaluate(evt);
+			if (index >= 0 && index < 2048) {
+				gEventVars.mVars[index] = value;
+			} else {
+				OSPanic(__FILE__, 1162, FormatToStaticBuffer("Invalid EvalSet var[%d] - 0~%d\n", index, 2048));
+			}
+			break;
+		case EVT_EXPR_RESULT1:
+			evt->mSelectResult = value;
+			break;
+		case EVT_EXPR_RESULT2:
+			evt->mResult2 = value;
+			break;
+		case EVT_EXPR_PAD:
+			index = CEvt_Evaluate(evt);
+			// pad[7] is the rumble, it only runs with the rumble option (0x800000000) on: 1 starts it, 0 stops it
+			if (index == 7) {
+				if (gGame.GetStatusFlags(0x800000000ULL)) {
+					if (value == 1) {
+						gWiiPads[0].mRumble[0].Start(evt->mOwner != NULL ? 4 : 8);
+					} else if (value == 0) {
+						gWiiPads[0].mRumble[0].Stop();
+					} else {
+						gWiiPads[0].mRumble[0].Start(evt->mOwner != NULL ? 4 : 8);
+					}
+				}
+			} else {
+				OSPanic(__FILE__, 1202, FormatToStaticBuffer("Invalid EvalSet pad[%d] - %d\n", index, 7));
+			}
+			break;
+		case EVT_EXPR_BATTERY:
+			index = CEvt_Evaluate(evt);
+			if (index == 0) {
+				gGame.GetPlayer()->mParams.SetBattery(value / 100.0f);
+			} else if (index == 1) {
+				WiiPlayerParams* stats = &gGame.GetPlayer()->mParams;
+				stats->SetMaxBattery(value / 100.0f);
+				stats->SetBattery(stats->mBattery);
+			} else {
+				OSPanic(__FILE__, 1215, FormatToStaticBuffer("Invalid EvalSet battery[%d] - 0~1\n", index));
+			}
+			break;
+		case EVT_EXPR_MONEY:
+			AdjustPlayerMoney(&gGame.GetPlayer()->mParams, value - gGame.GetPlayer()->mParams.mMoney);
+			break;
+		case EVT_EXPR_SCRAP:
+			AddPlayerScrap(&gGame.GetPlayer()->mParams, value - gGame.GetPlayer()->mParams.mScrap);
+			break;
+		case EVT_EXPR_ITEM:
+			index = CEvt_Evaluate(evt);
+			if (index >= 0 && index < 159) {
+				SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, index, value, 0);
+			} else {
+				OSPanic(__FILE__, 1234, FormatToStaticBuffer("Invalid EvalSet item[%d] - 0~%d\n", index, 159));
+			}
+			break;
+		case EVT_EXPR_ATC:
+			index = CEvt_Evaluate(evt);
+			if (index >= 0 && index < 9) {
+				SetAttachmentCountById(gGame.GetPlayer()->mAttachments, index, value);
+			} else {
+				OSPanic(__FILE__, 1243, FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9));
+			}
+			break;
+		case EVT_EXPR_CURRENT_SUIT: {
+			WiiPlayerState* player = gGame.GetPlayer();
+			if (player->mSuits.mChangeStep == FALSE) {
+				player->mSuits.mRequested  = value;
+				player->mSuits.mChangeStep = TRUE;
+			}
+			break;
+		}
+		case EVT_EXPR_EXP:
+			AdjustPlayerExperience(&gGame.GetPlayer()->mParams, value - gGame.GetPlayer()->mParams.mExperience);
+			break;
+		case EVT_EXPR_LEVEL:
+			AdjustPlayerLevel(&gGame.GetPlayer()->mParams, value - gGame.GetPlayer()->mParams.mLevel);
+			break;
+		case EVT_EXPR_RANK:
+			AddPlayerRank(&gGame.GetPlayer()->mParams, value - gGame.GetPlayer()->mParams.mRank);
+			break;
+		case EVT_EXPR_CURRENT_ATC: {
+			WiiPlayerState* player = gGame.GetPlayer();
+			if (value != player->mAttachment) {
+				player->mAttachmentRequest = value;
+				player->mAttachmentStep    = 0;
+			}
+			break;
+		}
+		case EVT_EXPR_TIME:
+			index = CEvt_Evaluate(evt);
+			if (index == 0) {
+				gGame.mTimeState.mMode    = value;
+				gGame.mTimeState.mTime    = 0.0f;
+				gGame.mTimeState.mRunning = 0;
+			} else if (index == 1) {
+				gGame.mTimeState.mRunning = 0;
+				gGame.mTimeState.mTime    = value / 100.0f;
+			} else if (index == 2) {
+				gGame.mTimeState.mDuration = value / 100.0f;
+			} else {
+				OSPanic(__FILE__, 1292, FormatToStaticBuffer("Invalid EvalSet time[%d] - 0~2\n", index));
+			}
+			break;
+		case EVT_EXPR_HOLD:
+		case EVT_EXPR_MAP:
+		case EVT_EXPR_ACTOR_NAME:
+		case EVT_EXPR_ITEM_NAME:
+		case EVT_EXPR_USE:
+		case EVT_EXPR_HIT:
+		case EVT_EXPR_STICKER_NAME:
+		case EVT_EXPR_OBJ:
+		case EVT_EXPR_RANDOM:
+		case EVT_EXPR_SIN:
+		case EVT_EXPR_COS:
+			break;
+		default:
+			OSPanic(__FILE__, 1303, FormatToStaticBuffer("Unknown EvalSet op - %d\n", op));
+			break;
+		}
+	}
 }
 
 s32 CEvt::_cmd_SET(u8, s32)
