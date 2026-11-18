@@ -29,7 +29,9 @@ public:
 	u32 mToolEffectId;     // _74
 	BOOL mToolEffect;      // _78
 	BOOL mCheckToolHit;    // _7C
-	Vec _80;               // _80, cleared on reset
+	f32 _80;               // _80, cleared on reset
+	f32 _84;               // _84, cleared on reset; the plug pull is done at a quarter turn (pi/2)
+	f32 _88;               // _88, cleared on reset
 	u8 _8C[0xAC - 0x8C];   // _8C
 	u8 _AC;                // _AC, cleared on reset
 	u8 _AD[0xB0 - 0xAD];

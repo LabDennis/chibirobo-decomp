@@ -22,6 +22,7 @@ CVec fn_800E5A2C(XObj* player);                                // where the carr
 void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // stops the event effect with that id
 CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset);
 void TryLeaveHang(XActHang* act);
+BOOL IsPlayerBlockingEvents(const WiiPlayerState* player);
 BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z);
 BOOL QueryMapFloorHeight(XObj* object, f32 minHeight);
 f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height);
@@ -692,6 +693,123 @@ CVec GetStagePlacementScale(const XObj* obj)
 }
 
 /**
+ * @note Address: 0x800F53C4
+ * @note Size: 0x824
+ */
+void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
+{
+	if (act->mState == 4) {
+		WiiPlayerState* chr = act->mOwner;
+		if (chr->mJump.mState != 0) {
+			return;
+		}
+		if (chr->mHang.mState != 0) {
+			return;
+		}
+		if (chr->mTumble.mState != 0) {
+			return;
+		}
+		if (chr->mSuits.mChangeStep != 0) {
+			return;
+		}
+		if (chr->mMenu.IsOpen()) {
+			return;
+		}
+		if (!gGame.IsRunning()) {
+			return;
+		}
+		if (gGame.GetStatusFlags(0x100)) {
+			return;
+		}
+		if (gGame.mEvt.mData.mScript != NULL) {
+			return;
+		}
+		if (act->mOwner->GetAnimId() == 0x895 || act->mOwner->GetAnimId() == 0x152 || act->mOwner->GetAnimId() == 0x153
+		    || act->mOwner->GetAnimId() == 0x154 || act->mOwner->GetAnimId() == 0x8AE || act->mOwner->GetAnimId() == 0x8AF
+		    || act->mOwner->GetAnimId() == 0x155 || act->mOwner->GetAnimId() == 0x156 || act->mOwner->GetAnimId() == 0x157) {
+			*weight = 0.0f;
+			return;
+		}
+		// a sets it down (6), b puts an item away (20) and sets anything else down
+		if (gWiiPointer.Check(1)) {
+			if (act->mTarget == NULL) {
+				return;
+			}
+			if (act->mTarget->GetPool() == 8) {
+				return;
+			}
+			if (act->mOwner->mFloorContactObjects[4] >= 0
+			    && (gGame.mXObjs.mObjects[act->mOwner->mFloorContactObjects[4]]->mStatus.mFlags & 0x20)) {
+				*weight = 0.0f;
+				return;
+			}
+			if (act->mTarget->GetPool() == 0x18) {
+				return;
+			}
+			act->mState = 6;
+			*weight     = 0.0f;
+		} else if (gWiiPointer.Check(2)) {
+			if (act->mTarget != NULL) {
+				if (act->mTarget->GetPool() == 8) {
+					if (act->mOwner->GetAttachment() == 0) {
+						act->mState = 20;
+					}
+				} else if (act->mTarget->GetPool() != 0x18 || !act->mOwner->mMenu.IsOpen()) {
+					act->mState = 6;
+				}
+			}
+			*weight = 0.0f;
+		}
+	} else if (IsState(act, 13) || IsState(act, 14)) {
+		// a or b stops giving power and pulls the plug (15)
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && (gWiiPointer.Check(1) || gWiiPointer.Check(2))) {
+			act->mState = 15;
+			act->mTimer = 0.0f;
+		}
+		*weight = 0.0f;
+	} else if (act->mState == 16) {
+		if (gGame.IsRunning()) {
+			if (act->_84 == HALF_PI) {
+				act->mState = 17;
+				if (act->mPlugTarget != NULL) {
+					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
+				}
+				// a plug that is connected costs ten watts
+				if (((WiiPlayerPlug*)act->mTarget)->mConnection != -1) {
+					f32 battery = act->mOwner->mParams.mBattery - 10.0f;
+					if (battery < 0.0f) {
+						battery = 0.0f;
+					}
+					act->mOwner->mParams.SetBattery(battery);
+				}
+				act->mTimer = 0.0f;
+			} else if (gWiiPointer.Check(2)) {
+				act->mState = 18;
+				if (act->mPlugTarget != NULL) {
+					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
+				}
+				act->mTimer = 0.0f;
+			}
+		}
+		*weight = 0.0f;
+	} else if (act->mState == 29) {
+		// the first frames of a toothbrush stroke leave the stick alone
+	} else if (act->mState == 31) {
+	} else if (act->mState == 33) {
+		*weight = 0.0f;
+	} else if (IsState(act, 34) || IsState(act, 35)) {
+		// he uses the mug for as long as a is held
+		if (!(pad->mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA))) || gGame.mEvt.mData.mScript != NULL
+		    || IsPlayerBlockingEvents(act->mOwner)) {
+			act->mState = 36;
+		}
+		*weight = 0.0f;
+	} else if (act->mState != 0) {
+		*weight = 0.0f;
+	}
+}
+
+/**
  * @note Address: 0x800F5368
  * @note Size: 0x5C
  */
@@ -794,8 +912,8 @@ void ResetPlayerLiftAction(XActLift* act)
 	act->mUseEffect     = FALSE;
 	act->mToolEffect    = FALSE;
 	act->_58            = 0;
-	act->_80.x = act->_80.y = act->_80.z = 0.0f;
-	act->_AC                             = 0;
+	act->_80 = act->_84 = act->_88 = 0.0f;
+	act->_AC                       = 0;
 }
 
 /**

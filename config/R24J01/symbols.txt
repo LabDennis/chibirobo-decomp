@@ -2531,6 +2531,7 @@ HandleLadderActionInput = .text:0x80101580; // type:function size:0x15C
 HandleRopeActionInput = .text:0x80103978; // type:function size:0x1A4
 HandlePushActionInput = .text:0x80105860; // type:function size:0x33C
 CheckCarriedObjectContacts = .text:0x800FCED0; // type:function size:0x47C
+HandleLiftActionInput = .text:0x800F53C4; // type:function size:0x824
 UpdateLiftActionAnimation = .text:0x800F5BE8; // type:function size:0x42D8
 GetLiftTargetContactOffset = .text:0x800FCBCC; // type:function size:0x150
 SetLiftPlugConnection = .text:0x800FD34C; // type:function size:0x20

@@ -907,8 +907,8 @@ struct WiiPlayerState : public XObj {
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
 	u8 _0A04[0xA20 - 0xA04];
-	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
-	u8 _0A28[0xA88 - 0xA28];
+	s32 mFloorContactObjects[5]; // _0A20, the object under each floor group, -1 for none; [4] the one he stands in front of
+	u8 _0A34[0xA88 - 0xA34];
 	s32 mIdleLoops;  // _0A88, idle anim loops before the next idle move
 	f32 mIdleTimer;  // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
 	s32 mFlashTimer; // _0A90
