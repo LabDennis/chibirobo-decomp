@@ -9731,7 +9731,7 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 	}
 }
 
-extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase);
+extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase);
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha);
 static inline void LoadOverviewTexture(CTexObj& tex, s32 icon)
 {
@@ -9767,15 +9767,13 @@ static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 
 	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
 	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
 }
-// NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
-// no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
-// function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
-// (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
-// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f
+// NONMATCHING: registers and scheduling. The -12.0f column shift and the 0.0f in front of the first quad's x are
+// added as values, not folded, so they were variables (perhaps parameters of an inline the overview was drawn by)
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
 		CTexObj tex;
+		f32 shift = -12.0f, zero = 0.0f;
 		f32 x        = (menu->mOverviewX - 42.0f) + menu->mOffsetX;
 		f32 y        = (180.0f + menu->mOverviewY) + menu->mOffsetY;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
@@ -9784,8 +9782,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		u16 width = tex.GetWidth(), height = tex.GetHeight();
 		BeginOverviewTexture(tex);
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-		DrawOverviewTexture(tex, color, ((x - 24.0f) - 48.0f) - 12.0f, y + 14.0f, 0.6f * (1.1f * width), 0.6f * height);
-		f32 left = ((48.0f + x) - 48.0f) - 12.0f;
+		DrawOverviewTexture(tex, color, zero + (((x - 24.0f) - 48.0f) + shift), y + 14.0f, 0.6f * (1.1f * width), 0.6f * height);
+		f32 left = ((48.0f + x) - 48.0f) + shift;
 		f32 row0 = (y - 82.0f) + 14.0f;
 		DrawStatusOverviewEntry(menu, 0xAA, 5, selected, left, row0);
 		f32 row1 = 14.0f + ((y - 82.0f) + 52.0f);
@@ -9801,7 +9799,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 		else
 			color = (u32)(255.0f * menu->mAlpha);
-		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) - 12.0f;
+		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) + shift;
 		f32 middle = (y - 18.0f) + 14.0f;
 		DrawOverviewTexture(tex, color, center, middle, w, h);
 		if (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))) {
@@ -9813,8 +9811,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			DrawOverviewTexture(tex, color, 18.0f + center, 56.5f + middle, 1.4f * (1.1f * width), 1.4f * height);
 		}
 		if (menu->mShowGauge)
-			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
-		f32 right = (192.0f + (72.0f + x)) - 12.0f;
+			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) + shift, (114.0f + y) - 22.0f, menu->mAlpha);
+		f32 right = (192.0f + (72.0f + x)) + shift;
 		DrawStatusOverviewEntry(menu, 0xAE, 9, selected, right, row0);
 		DrawStatusOverviewEntry(menu, 0xAF, 10, selected, right, row1);
 		DrawStatusOverviewEntry(menu, 0xB0, 11, selected, right, row2);
@@ -9846,7 +9844,7 @@ static inline void SetStatusRing(Vec* outline, f32 x, f32 y, f32 radius)
 
 // NONMATCHING: registers only. Retail keeps the ring counter and then the colour in r24 and takes the colour
 // straight from the conversion; the build copies it through r0 (one mr more). Float registers are numbered differently
-extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase)
+extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase)
 {
 	if (!(alpha > 0.0f))
 		return;
