@@ -1557,22 +1557,22 @@ if wii:
                 # code 5 of 5; retail's .sdata2 starts with 0.5f and 0.0f, here they come after the two
                 # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
                 # (the reference decomps force the order with a macro)
-                Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                Object(Equivalent, "nw4r/math/math_geometry.cpp"),
                 # nw4r::ef (0x802362B8-0x8025B5A4), version text of 23.1.2009; after wiiplay's older ef (8.6.2007)
-                # NonMatching: emitter, util and smooth stripe have 100 % code but their literal pools
-                # differ from retail (emitter 8 bytes shorter, util and postfield in another order,
-                # smooth stripe .sdata2/.sbss); animcurve, postfield and particlemanager
+                # emitter, util and smooth stripe have 100 % code but their literal pools differ from
+                # retail (emitter lacks the 0.0f and NaN of functions the linker removed, util and postfield
+                # in another order, smooth stripe .sdata2/.sbss); animcurve, postfield and particlemanager
                 # have open functions (see // NONMATCHING in the files).
                 Object(Matching, "nw4r/ef/ef_draworder.cpp"),
                 Object(Matching, "nw4r/ef/ef_effect.cpp"),
                 Object(Matching, "nw4r/ef/ef_effectsystem.cpp"),
-                Object(NonMatching, "nw4r/ef/ef_emitter.cpp"),
+                Object(Equivalent, "nw4r/ef/ef_emitter.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_animcurve.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_postfield.cpp"),
                 Object(Matching, "nw4r/ef/ef_particle.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_particlemanager.cpp"),
                 Object(Matching, "nw4r/ef/ef_resource.cpp"),
-                Object(NonMatching, "nw4r/ef/ef_util.cpp"),
+                Object(Equivalent, "nw4r/ef/ef_util.cpp"),
                 Object(Matching, "nw4r/ef/ef_handle.cpp"),
                 Object(Matching, "nw4r/ef/ef_emitterform.cpp"),
                 Object(Matching, "nw4r/ef/ef_creationqueue.cpp"),
@@ -1705,8 +1705,9 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SoundArchive.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundArchiveFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundArchiveLoader.cpp"),
-                # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SoundArchivePlayer.cpp"),
+                # links byte-identical; objdiff's .sdata2 below 100 % is SortPriorityList's three
+                # unreferenced TMP_NUM constants, which the linker strips
+                Object(Matching, "nw4r/snd/snd_SoundArchivePlayer.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundHandle.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundHeap.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundPlayer.cpp"),
@@ -1905,7 +1906,9 @@ if wii:
                 Object(Matching, "revolution/SC/scsystem.c"),
                 Object(Matching, "revolution/SC/scapi.c"),
                 Object(Matching, "revolution/SC/scapi_prdinfo.c"),
-                Object(NonMatching, "revolution/USB/usb.c"),
+                # code complete; retail's .data ends with the texts of IUSB_RegisterInsertionNotifyWithIdAsync,
+                # a function the linker removed and no reference has (see the file)
+                Object(Equivalent, "revolution/USB/usb.c"),
                 Object(Matching, "revolution/TPL/TPL.c"),
                 Object(Matching, "revolution/THP/THPDec.c"),
                 Object(Matching, "revolution/THP/THPAudio.c"),
@@ -1932,7 +1935,7 @@ if wii:
                 # retail's .data ends with four strings ("Not Found", "Found the registered WBC\n", "Removed\n",
                 # "Not Found WBC\n", 0x8032D6BC-0x8032D700) of a function the linker removed, and no reference
                 # has that function. With a stand-in for those 0x44 bytes the unit links to an identical dol.
-                Object(NonMatching, "revolution/WUD/WUD.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Equivalent, "revolution/WUD/WUD.c", extra_cflags=["-i include/revolution/BTE"]),
                 Object(Matching, "revolution/WUD/WUDHidHost.c", extra_cflags=["-i include/revolution/BTE"]),
                 Object(Matching, "revolution/WUD/debug_msg.c", extra_cflags=["-i include/revolution/BTE"]),
                 # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are

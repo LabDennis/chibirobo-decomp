@@ -2083,7 +2083,7 @@ nw4r/snd/snd_MidiSeqPlayer.cpp:
 
 nw4r/snd/snd_MmlParser.cpp:
 	.text start:0x8028EF88 end:0x8029012C
-	.data start:0x80334520 end:0x80334740
+	.data start:0x80334520 end:0x80334750
 	.sbss start:0x805A2800 end:0x805A2808
 	.sdata start:0x805A19B0 end:0x805A19C0
 	.sdata2 start:0x805A76B0 end:0x805A76D0
