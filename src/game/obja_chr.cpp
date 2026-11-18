@@ -1183,7 +1183,7 @@ void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
  */
 // NONMATCHING: retail calls ~CPad at both exits of the pad's block (bl __dt__4CPadFv at 0x28C and 0x11CC) where this build
 // expands it, like the state tests that sit out of line behind UpdatePlayerMovementAndContacts. Fillers put this function about
-// 3800 inliner units under retail's; GetObjectJointByPath, a header inline in retail, would be expanded here too. The US and PAL
+// 3800 inliner units under retail's, so it expands the header inline GetObjectJointByPath too, which retail calls. The US and PAL
 // height compare of the ledge branch is dropped here (see there)
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
