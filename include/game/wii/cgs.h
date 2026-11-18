@@ -786,7 +786,10 @@ public:
 	CGsTevStage* mCurTevStage;       // _384
 	CGsChannel* mCurChannel;         // _388
 	BOOL mBillboardEnabled;          // _38C
-	u8 _390[0x8CC - 0x390];
+	u8 _390[0x4D4 - 0x390];
+	CTexObj mTex;              // _4D4, mSprite draws it
+	CSprite mSprite;           // _5D8
+	CPoint mPoint;             // _760, only CGs::Init touches it
 	CLine mLine;               // _8CC
 	CTriangle mTriangle;       // _A38
 	CCircline mCircline;       // _BA4

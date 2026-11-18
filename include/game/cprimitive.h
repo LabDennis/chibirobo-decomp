@@ -120,6 +120,18 @@ public:
 typedef char CTriangle_size_check[sizeof(CTriangle) == 0x16C ? 1 : -1];
 
 #if defined(VERSION_R24J01)
+// Wii only, the name is RTTI. The CGs keeps one between its sprite and its line; its
+// vtable holds only the destructor and the inherited Init
+class CPoint : public CPrimitive {
+public:
+	u32 _168; // _168, the pad word the other flat primitives carry
+
+	virtual ~CPoint() { } // _08
+};
+typedef char CPoint_size_check[sizeof(CPoint) == 0x16C ? 1 : -1];
+#endif
+
+#if defined(VERSION_R24J01)
 // Wii only, the name is RTTI. CGs has one behind its triangle; nothing in the game draws it
 class CCircline : public CPrimitive {
 public:
