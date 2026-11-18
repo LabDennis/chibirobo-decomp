@@ -694,10 +694,100 @@ void CCameraActionArea::DrawDebug3d()
 	gCameraAreaState.DrawDebug3d();
 }
 
+// set by ResetCenter; the spring update starts over from the new center
+s32 sMapCameraCenterReset;
+// 1: a new orbit keeps the target rest distance instead of the eye's current one
+s32 sMapCameraOrbitAtRestDistance;
+
+static inline f32 FlatDistance(const CVec& pos, CVec& v)
+{
+	CVec flat(pos.x, v.y, pos.z);
+	return PSVECDistance(&flat, &v);
+}
+
+// the orbit starts from where the camera is
+static inline void ResetMapCameraTargetEye(CCameraActionMap* map)
+{
+	map->mOrbitEye       = map->mEye;
+	map->mPrevOrbitEye   = map->mEye;
+	map->mOrbitAngle     = map->mAngle;
+	map->mPrevOrbitAngle = map->mAngle;
+	map->mPrevTargetEye  = map->mEye;
+	map->mTargetEye      = map->mPrevTargetEye;
+	map->mEyeInterp      = NULL;
+
+	map->mFlatDistance = FlatDistance(map->mTargetEye, map->mInterest);
+	FlatDistance(map->mTargetEye, map->mSpringTarget);
+}
+
+static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
+{
+	map->mSpringTarget     = pos;
+	map->mSpringPrevTarget = map->mSpringTarget;
+}
+
+static inline void ResetCenter(CCameraActionMap* map)
+{
+	Vec* center = &map->mSpringTarget;
+	SetCenter(map, *center);
+	CVec eye              = map->mEye;
+	map->mRestDistance    = PSVECDistance(&eye, center);
+	sMapCameraCenterReset = 1;
+	map->mStatus.mFlags &= ~0x700;
+	if (map->mEyeInterp != NULL) {
+		map->mEyeInterp = NULL;
+	}
+}
+
+/**
+ * @note Address: 0x80160220
+ * @note Size: 0x2D4
+ */
+// NONMATCHING: retail tests mask & flags, reads FlatDistance's z before x and copies the spring
+// center through a stack temporary before storing it back (91 %)
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
+{
+	// eye modes (0x3E): 2 eases the yaw to mTargetYaw, 4 runs mTurnInterpolation, 8 turns by the pad
+	// follow modes (0x70000): 0x10000 trails the target on a spring, 0x20000 orbits it (UpdateMapCameraOrbit)
+	u32 eyeMode = flags & 0x3E;
+	if (!map->mStatus.Check(eyeMode)) {
+		map->mStatus.mFlags &= ~0x3E;
+		map->mStatus.mFlags |= eyeMode;
+		if (eyeMode != 4) {
+			map->mTurnInterpolation = NULL;
+		}
+	}
+
+	u32 mode = flags & 0x70000;
+	if (!map->mStatus.Check(mode)) {
+		map->mStatus.mFlags &= ~0x70000;
+		map->mStatus.mFlags |= mode;
+		if (mode == 0x20000) {
+			ResetMapCameraTargetEye(map);
+			if (sMapCameraOrbitAtRestDistance == 1) {
+				map->mOrbitRadius = map->mTargetRestDistance;
+			} else if (eyeMode == 4) {
+				CVec pos          = map->mSpringTarget;
+				CVec eye          = map->mEye;
+				map->mOrbitRadius = PSVECDistance(&pos, &eye);
+			} else {
+				CVec target = map->mTarget->GetCameraTarget();
+				CVec eye    = map->mEye;
+				f32 dist    = PSVECDistance(&eye, &target);
+				if (dist < 31.0f) {
+					dist = 31.0f;
+				}
+				map->mOrbitRadius = dist;
+			}
+		} else if (mode == 0x10000) {
+			ResetCenter(map);
+		}
+	}
+}
+
 // the probe the last unobstructed-yaw test cast, kept for the debug draw
 extern "C" CVec sMapCameraTestEye;
 extern "C" CVec sMapCameraTestCenter;
-extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 
 /**
  * @note Address: 0x80160520

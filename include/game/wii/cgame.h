@@ -657,9 +657,9 @@ public:
 	u8 _E78[0xE7C - 0xE78];
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
 	u8 _E98[0xEA4 - 0xE98];
-	s32 mInsideAreaCount; // _EA4, area IDs written to mInsideAreas
-	s32 mInsideAreas[32]; // _EA8, areas containing the player
-	u8 _F28[0xF2C - 0xF28];
+	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
+	s32 mInsideAreas[32];                                // _EA8, areas containing the player
+	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
 	u8 _F64[0xF68 - 0xF64];
 	CVec mTargetEye;      // _F68
