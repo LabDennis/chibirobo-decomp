@@ -1,6 +1,9 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/infoscrn.h"
+#include "game/wii/ceffect.h"
+#include "game/attachmentvalues.h"
+#include "game/wii/spiderplacement.h"
 
 // the Wii file of the GameCube's xobjspiderboss.cpp (retail 0x80132330-0x801370BC), its functions in
 // the Wii's order
@@ -9,7 +12,14 @@ extern "C" {
 void ResetSpiderBossState(XObjSpiderBoss* spider);
 void ApplySpiderBossPlacement(XObjSpiderBoss* spider);
 
+void ResetSpiderCoinBounces(void* unused);
+s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
+EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+
+extern s32 gRefreshRate;
 extern AnimSfxEvent gSpiderBossAnimSfxEvents[];
+extern u32 gSpiderBossCoinBounceContext; // the boss's coin bounce token, the callbacks never touch it
 }
 
 // back to the start: state 0, waiting to be placed
@@ -37,6 +47,101 @@ void XObjSpiderBoss::InitializeObject()
 void XObjSpiderBoss::ResetForNewGame()
 {
 	ResetState(this);
+}
+
+/**
+ * @note Address: 0x801323D8
+ * @note Size: 0x2AC
+ */
+// NONMATCHING: retail reads mPoolIndex after the part stores, ours before them (as in ResetSpiderState)
+extern "C" void ResetSpiderBossState(XObjSpiderBoss* spider)
+{
+	spider->mHeading             = 0.0f;
+	spider->mSpeed               = 0.0f;
+	spider->mTargetRotY          = 0.0f;
+	spider->mRotSpeed            = 0.1f;
+	spider->mSpeedY              = 0.0f;
+	spider->_9C8                 = 0.0f;
+	spider->_9CC                 = 0.0f;
+	spider->mState               = 0;
+	spider->mPrevState           = 0;
+	spider->mStep                = 0;
+	spider->mTimer               = 0;
+	spider->mSpiderStatus.mFlags = 0;
+	spider->mActionTimer         = 0;
+	spider->_9EC                 = 1.0f;
+	spider->_9F0                 = 1.0f;
+	Vec hitPos                   = { 0.0f, 0.0f, 0.0f };
+	spider->mHitPos              = hitPos;
+	Vec basePos                  = { 0.0f, 0.0f, 0.0f };
+	spider->mBasePos             = basePos;
+	Vec patrolTarget             = { 0.0f, 0.0f, 0.0f };
+	spider->mPatrolTarget        = patrolTarget;
+	spider->mHitStrength         = 0.0f;
+	spider->mMaxHits             = 23;
+	spider->mHits                = spider->mMaxHits;
+	spider->mCommand             = 0;
+	spider->mArgs[0]             = 0;
+	spider->_A6C                 = 0;
+	spider->_9BC                 = 1.0f;
+	spider->mStatus.mFlags |= 8ULL;
+	spider->mRadius    = 28.0f;
+	Vec areaPos        = { 0.0f, 0.0f, 0.0f };
+	spider->mAreaPos   = areaPos;
+	spider->mAreaWidth = 0.0f;
+	spider->mAreaDepth = 0.0f;
+	Vec startPos       = { 0.0f, 0.0f, 0.0f };
+	spider->mStartPos  = startPos;
+	spider->_A44       = 0.0f;
+	spider->SetColor(1, 0, 0, 0, 0.0f);
+	spider->_A70                 = 0.0f;
+	spider->mEscapeInputStrength = 0.0f;
+	spider->mDrainTimer          = 0;
+	spider->mEscapeRemaining     = 0.0f;
+	Vec vecA80                   = { 0.0f, 0.0f, 0.0f };
+	spider->_A80                 = vecA80;
+	spider->mGrabIntervalFrames  = 3 * gRefreshRate; // 3 seconds
+	spider->mAreaPos.x           = -200.0f;
+	spider->mAreaPos.y           = 0.0f;
+	spider->mAreaPos.z           = -200.0f;
+	spider->mAreaWidth           = 400.0f;
+	spider->mAreaDepth           = 400.0f;
+	spider->mDamageStep          = 0;
+	spider->mBlinkTimer          = 0;
+	for (u32 i = 0; i < 8; ++i) {
+		spider->mParts[i].mObj = NULL;
+	}
+	if (spider->mPoolIndex == 0) {
+		ResetSpiderCoinBounces(&gSpiderBossCoinBounceContext);
+	}
+	spider->mPatrolSelection = 0;
+	spider->mAltAnimId       = 0;
+	spider->mGrabCooldown    = 5;
+	spider->mStatus.mFlags |= 4ULL;
+	spider->mPatrolEffectActive = 0;
+}
+
+/**
+ * @note Address: 0x80132684
+ * @note Size: 0x440
+ */
+extern "C" void ApplySpiderBossPlacement(XObjSpiderBoss* spider)
+{
+	spider->SetColor(1, 0, 0, 0, 0.0f);
+	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord).x;
+	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord).y;
+	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord).z;
+	spider->mBasePos.x       = PlacementPosition(spider->mCoord).x;
+	spider->mBasePos.y       = PlacementPosition(spider->mCoord).y;
+	spider->mBasePos.z       = PlacementPosition(spider->mCoord).z;
+	spider->mHeading         = PlacementRotation(spider->mCoord).y;
+	spider->mRadius          = 28.0f * PlacementScale(spider->mCoord).x;
+	spider->mStep            = 0;
+	spider->mTimer           = 0;
+	spider->mPrevState       = spider->mState;
+	spider->mState           = 0;
+	spider->mSpiderStatus.mFlags |= 0x8000;
+	spider->mSpiderStatus.mFlags |= 0x02000000;
 }
 
 /**
@@ -112,6 +217,47 @@ void XObjSpiderBoss::DrawDebugStatus()
  */
 void XObjSpiderBoss::DrawObjectEffects()
 {
+}
+
+/**
+ * @note Address: 0x8013359C
+ * @note Size: 0x1B8
+ */
+// NONMATCHING: the frame has scale above the hit copy and rot below it, ours hit, scale, rot
+// a hit from the robot's blaster at level 2 or up: keeps it for UpdateSpiderBossDamage and bursts where it landed
+void XObjSpiderBoss::OnHitFromPosition(const Vec& pos, f32 strength)
+{
+	u32 flags = mSpiderStatus.mFlags;
+	if (flags & 2) {
+		return;
+	}
+	if (flags & 0x10) {
+		return;
+	}
+	if (flags & 0x8000) {
+		return;
+	}
+	if (GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, 2) < 2) {
+		return;
+	}
+	XObj::OnHitFromPosition(pos, strength);
+	mSpiderStatus.mFlags |= 2;
+	Vec hit      = { pos.x, pos.y, pos.z };
+	mHitPos      = hit;
+	mHitStrength = strength;
+	fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0xB3, FALSE);
+	Vec scale              = { 1.0f, 1.0f, 1.0f };
+	Vec rot                = { 0.0f, mTargetRotY, 0.0f };
+	EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0xB3, 0);
+	if (effect != NULL) {
+		effect->pos   = pos;
+		effect->rot   = rot;
+		effect->scale = scale;
+		UpdateEffectMtx(effect);
+	}
+	if (!IsWiiSfxPlaying(&gGame.mSound, 0x194)) {
+		PlayWiiSoundEffect(&gGame.mSound, 0x194, 1.0f, 0.0f); // npc_spider_bakuhatsu
+	}
 }
 
 /**

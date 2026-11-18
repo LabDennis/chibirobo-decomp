@@ -1822,7 +1822,8 @@ public:
 	u8 mPatrolEffectActive;   // _ABD
 	u8 _ABE[0xAC0 - 0xABE];   // _ABE
 	AnimSfx mAnimSfx;         // _AC0
-	u8 _B1C[0xCE0 - 0xB1C];   // _B1C, the eight joint parts; their Wii form is not recovered yet
+	SpiderTie mParts[8];      // _B1C, the GameCube's XObjJointPart, the same shape
+	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);

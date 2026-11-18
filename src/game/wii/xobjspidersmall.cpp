@@ -14,6 +14,8 @@ STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
 extern "C" {
 void ResetSmallSpiderState(XObjSpiderSmall* spider);
+void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
+void ResetSpiderCoinBounces(void* unused);
 void DrawSmallSpiderWebEffect(XObjSpiderSmallFx* fx, u8 index);
 
 extern s32 gRefreshRate;
@@ -23,6 +25,10 @@ extern XObj* gSmallSpiderEffectObjects[12];
 extern s32 gSmallSpiderEffectSlotOwners[12];
 extern SmallSpiderStageStatus gSmallSpiderStatusByStage[39];
 extern XObj* gSmallSpiderWebFound;
+extern u32 gSpiderCoinBounceManager; // the coins' manager token, the callbacks never touch it
+extern s32 gSpiderDrainFlashTimers[2];
+extern u8 gSpiderDrainFlashClaimed;
+extern s32 gAttachedSmallSpiderCount;
 extern u8 gSmallSpiderWebFlag;
 }
 
@@ -71,6 +77,75 @@ void XObjSpiderSmall::ResetForNewGame()
 		}
 	}
 	mTimeMode = gGame.mTimeState.mMode;
+}
+
+/**
+ * @note Address: 0x80128F64
+ * @note Size: 0x258
+ */
+extern "C" void ResetSmallSpiderState(XObjSpiderSmall* spider)
+{
+	spider->mWalkHeading         = 0.0f;
+	spider->mWalkSpeed           = 0.0f;
+	spider->_9B0                 = 0.0f;
+	spider->mTurnSpeed           = 0.1f;
+	spider->mFallSpeed           = 0.0f;
+	spider->mScale               = 0.0f;
+	spider->mTargetScale         = 0.0f;
+	spider->mState               = 0;
+	spider->mPrevState           = 0;
+	spider->mStep                = 0;
+	spider->mTimer               = 0;
+	spider->mSpiderStatus.mFlags = 0;
+	spider->_9E8                 = 0;
+	spider->_9EC                 = 1.0f;
+	spider->_9F0                 = 1.0f;
+	Vec v0                       = { 0.0f, 0.0f, 0.0f };
+	spider->mHitPos              = v0;
+	Vec v1                       = { 0.0f, 0.0f, 0.0f };
+	spider->mHome                = v1;
+	Vec v2                       = { 0.0f, 0.0f, 0.0f };
+	spider->_A18                 = v2;
+	Vec v3                       = { 0.0f, 0.0f, 0.0f };
+	spider->mWalkTarget          = v3;
+	spider->mHitStrength         = 0.0f;
+	spider->mMaxHits             = 3;
+	spider->mHitsLeft            = spider->mMaxHits;
+	spider->mEvtArgs[0]          = 0;
+	spider->mEvtArgs[1]          = 0;
+	spider->_A70                 = 0;
+	spider->_9BC                 = 1.0f;
+	spider->mStatus.mFlags |= 8;
+	spider->mStatus.mFlags |= 0x10000000;
+	ResetSmallSpiderWebEffect(&spider->mFx);
+	spider->mRadius = 16.0f;
+	if (spider->mPoolIndex == 0) {
+		ResetSpiderCoinBounces(&gSpiderCoinBounceManager);
+		gSpiderDrainFlashTimers[0] = 0;
+		gSpiderDrainFlashTimers[1] = 0;
+		gSpiderDrainFlashClaimed   = 0;
+		gAttachedSmallSpiderCount  = 0;
+	}
+	spider->mFxObj         = NULL;
+	spider->mFxIndex       = 0xFF;
+	spider->mClingAngle    = 0.0f;
+	spider->mShakeStrength = 0.0f;
+	spider->mDrainTimer    = 0;
+	spider->mHoldTime      = 0.0f;
+	Vec v4                 = { 0.0f, 0.0f, 0.0f };
+	spider->mClingOffset   = v4;
+	Vec v5                 = { 0.0f, 0.0f, 0.0f };
+	spider->mAreaPos       = v5;
+	spider->mAreaWidth     = 0.0f;
+	spider->mAreaDepth     = 0.0f;
+	Vec v6                 = { 0.0f, 0.0f, 0.0f };
+	spider->mTargetPos     = v6;
+	spider->mTargetRadius  = 0.0f;
+	spider->SetColor(1, 0, 0, 0, 0.0f);
+	spider->mAreaGraceTimer = 0;
+	spider->mWarpsLeft      = 0;
+	spider->mBattleBgmState = 0;
+	spider->_AD0            = 0;
 }
 
 /**
