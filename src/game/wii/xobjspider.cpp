@@ -1,9 +1,20 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjflags.h"
 #include "game/attachmentvalues.h"
 
 // the Wii file of the GameCube's xobjspider.cpp (retail 0x8012063C-0x80128C84): its functions run in the
 // Wii's order, ~XObjSpider lives with the pool ctors and the coin and carry helpers take the work block
+
+// one of the coins a spider knocks loose, it hops up and drops to mTarget
+struct CoinBounce {
+	XObj* mCoin; // _00
+	Vec mPos;    // _04
+	s32 mPhase;  // _10
+	s32 mCount;  // _14
+	Vec mTarget; // _18
+};
+STATIC_ASSERT(sizeof(CoinBounce) == 0x24);
 
 extern "C" {
 void ResetSpiderState(XObjSpider* spider);
@@ -21,6 +32,21 @@ extern s32 gSpiderCarrySlotOwners[16];
 extern u32 gSpiderCoinBounceUpdateContext; // the coins' manager token, the callbacks never touch it
 extern s32 gSpiderCarryCount;
 extern u8 gSpiderCarryFlag;
+extern CoinBounce gSpiderCoinBounces[11];
+extern s32 gSpiderCoinBounceCount; // how many coins are out
+}
+
+// takes the first of the slot models nobody has
+static inline void TakeSlot(XObjSpider* spider)
+{
+	for (int i = 0; i < 16; i++) {
+		if (gSpiderCarrySlotOwners[i] == -1) {
+			spider->mSlotCarry.mObj   = gSpiderCarryModels[i];
+			spider->mSlot             = i;
+			gSpiderCarrySlotOwners[i] = spider->mPoolIndex;
+			return;
+		}
+	}
 }
 
 /**
@@ -50,6 +76,7 @@ void XObjSpider::ResetForNewGame()
  * @note Address: 0x801206E4
  * @note Size: 0x324
  */
+// NONMATCHING: regalloc (retail zero in r9, ours r10) and retail reads mPoolIndex after the tie stores
 // puts everything back to how it starts
 extern "C" void ResetSpiderState(XObjSpider* spider)
 {
@@ -160,6 +187,7 @@ BOOL XObjSpider::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x80121314
  * @note Size: 0x144
  */
+// NONMATCHING: regalloc, the model, gGame and owner table bases sit one register over
 void XObjSpider::ResetObjectState()
 {
 	XObj::ResetObjectState();
@@ -173,14 +201,11 @@ void XObjSpider::ResetObjectState()
 		gSpiderCarryFlag  = 0;
 		gSpiderCarryCount = 0;
 		s32 found         = 0;
-		s32 count         = gGame.mXObjs.mObjectCount;
-		XObj** output     = gSpiderCarryModels;
-		for (s32 i = 0; i < count; ++i) {
+		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
 				if (candidate->mCoord.mPlacement->mObjectId == 0x13C) {
-					++found;
-					*output++ = candidate;
+					gSpiderCarryModels[found++] = candidate;
 					if (found >= 16)
 						break;
 				}
@@ -251,8 +276,7 @@ void XObjSpider::OnHitFromPosition(const Vec& from, f32 strength)
 		return;
 	XObj::OnHitFromPosition(from, strength);
 	mFlags.mFlags |= 2;
-	Vec pos      = { 0.0f, 0.0f, 0.0f };
-	pos          = from;
+	Vec pos      = { from.x, from.y, from.z };
 	mHitPos      = pos;
 	mHitStrength = strength;
 }
@@ -278,11 +302,73 @@ void XObjSpider::State0(u32 frames)
 }
 
 /**
+ * @note Address: 0x801235D4
+ * @note Size: 0x1A4
+ */
+// hit, stops, then plays anim 21 and goes on, or dies when it has no hits left
+void XObjSpider::State1(u32 frames)
+{
+	switch (mPhase) {
+	case 0:
+		PlayWiiSoundEffect(&gGame.mSound, 0x196, 1.0f, 0.0f);
+		mFlags.mFlags &= ~0x800U;
+		mFlags.mFlags |= 0x10;
+		mSpeed = 0.0f;
+		if (mHits <= 0) {
+			mFlags.mFlags |= 0x10000;
+			SetState(3);
+		} else {
+			SetAnim(21, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			++mPhase;
+		}
+		break;
+	case 1:
+		f32 current = GetAnimFrame();
+		if (GetAnimEndFrame() - (f32)frames <= current) {
+			mFlags.mFlags &= ~0x10U;
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			SetState(4);
+		}
+		break;
+	}
+}
+
+/**
  * @note Address: 0x80123778
  * @note Size: 0x4
  */
 void XObjSpider::State2(u32 frames)
 {
+}
+
+/**
+ * @note Address: 0x80125E20
+ * @note Size: 0x128
+ */
+// lands, drops into its anim, then takes the first free slot
+void XObjSpider::State5(u32 frames)
+{
+	switch (mPhase) {
+	case 0:
+		mFlags.mFlags |= 0x40;
+		mFlags.mFlags |= 0x400;
+		mFlags.mFlags |= 0x8000;
+		SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		mPhase++;
+		break;
+	case 1:
+		if (gGame.mEvt.mData.mScript == NULL) {
+			mFlags.mFlags &= ~0x40;
+			mFlags.mFlags &= ~0x80;
+			mFlags.mFlags &= ~0x100;
+			mFlags.mFlags &= ~0x8000;
+			TakeSlot(this);
+			SetState(4);
+		}
+		break;
+	case 2:
+		break;
+	}
 }
 
 /**
@@ -300,6 +386,26 @@ void XObjSpider::State8(u32 frames)
 extern "C" u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider)
 {
 	return (spider->mFlags.mFlags & 0x80000) != 0;
+}
+
+/**
+ * @note Address: 0x80127D70
+ * @note Size: 0x19C
+ */
+extern "C" void ResetSpiderCoinBounces(void* unused)
+{
+	gSpiderCoinBounceCount = 0;
+	for (int i = 0; i < 11; i++) {
+		gSpiderCoinBounces[i].mCoin  = NULL;
+		gSpiderCoinBounces[i].mPhase = 0;
+		gSpiderCoinBounces[i].mCount = 0;
+	}
+	for (int i = 0; i < 96; i++) {
+		XObj* obj = gGame.mXObjs.mPools[7].Get(i);
+		if (obj->GetKind() == 0x104) {
+			((XObjCoin*)obj)->mBouncing = 0;
+		}
+	}
 }
 
 /**
