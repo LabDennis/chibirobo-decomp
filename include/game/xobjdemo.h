@@ -17,6 +17,8 @@ public:
 	CLight mLights[8];  // _B24
 	s32 mLightAnims[8]; // _25E4
 
+	CJArchiveDesc* GetLightDesc(int i) { return mArchive.mDesc[i + 1]; }
+
 	virtual ~XObjDemo() { } // _08
 	virtual void Release();
 	virtual void ResetObjectState();

@@ -1964,8 +1964,6 @@ static inline bool FadeDone()
  * @note Address: 0x800280B4
  * @note Size: 0x244
  */
-// NONMATCHING: retail walks separate induction pointers for mArchive.mDesc and mLightAnims, as in
-// XObjLight and XObjMap::UpdateObject; this build shares one
 // XObjDemo's update, steps the camera and light anims with the model
 void XObjDemo::UpdateObject(u32 frames)
 {
@@ -1982,7 +1980,7 @@ void XObjDemo::UpdateObject(u32 frames)
 		mCamera.Anim();
 	}
 	for (s32 i = 0; i < mLightCount; ++i) {
-		if (mArchive.mDesc[i + 1] != NULL && mLightAnims[i] >= 0) {
+		if (GetLightDesc(i) != NULL && mLightAnims[i] >= 0) {
 			mLights[i].SetAnimRate((f32)frames);
 			mLights[i].Anim();
 		}
@@ -2007,7 +2005,7 @@ void XObjDemo::Release()
 		mCamera.Release();
 	}
 	for (s32 i = 0; i < mLightCount; ++i) {
-		if (mArchive.mDesc[i + 1] != NULL) {
+		if (GetLightDesc(i) != NULL) {
 			mLights[i].Release();
 		}
 	}
@@ -2030,8 +2028,8 @@ BOOL XObjDemo::LoadFromPlacement(const CoordInfo& info)
 		}
 		HSD_LObj* prev = NULL;
 		for (s32 i = 0; i < 8; ++i) {
-			if (mArchive.mDesc[i + 1] != NULL) {
-				mLights[i].Init((HSD_LightDesc*)mArchive.mDesc[i + 1]->mObjectDesc, FALSE);
+			if (GetLightDesc(i) != NULL) {
+				mLights[i].Init((HSD_LightDesc*)GetLightDesc(i)->mObjectDesc, FALSE);
 				mLightCount++;
 				if (prev != NULL) {
 					prev->next = &mLights[i];
