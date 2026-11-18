@@ -9004,7 +9004,7 @@ f32 gSaveTextShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 
 static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size, u32 color, f32 offsetY)
 {
-	f32 top   = (y + offsetY) - size / 2.0f;
+	f32 top   = (offsetY + y) - size / 2.0f;
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, top, 0.0f, size, size);
 }
