@@ -6,9 +6,11 @@
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
+#include "game/wii/xobjs.h"
 #include "game/evt.h"
 #include "game/evtqueue.h"
 #include "game/coordinfo.h"
+#include "game/stagedata.h"
 #include "game/inventory.h"
 #include "game/savedata.h"
 #include "game/globals.h"
@@ -38,6 +40,7 @@ void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
 BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
 void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
+void fn_800C807C(XObj* obj);                   // a category 3 object's follow-up to a new anim
 }
 
 CEvtFlags gEventFlags;
@@ -340,6 +343,71 @@ s32 CEvt::_cmd_DISP(u8, s32)
 }
 
 /**
+ * @note Address: 0x80097B10
+ * @note Size: 0x360
+ */
+s32 CEvt::_cmd_ANIM(u8 command, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	for (s32 count = 0;; count++) {
+		s32 anim = CEvt_Evaluate(this);
+		if (anim == -1) {
+			break;
+		}
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL) {
+				CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) is collision!", id, anim, id));
+			} else if (count == 0) { // the first anim plays now, the ones after it are queued
+				obj->ClearAnimQueue();
+				obj->SetAnim(anim, FALSE, 0.0f, 1.0f, command == EVT_CMD_ANIM1 ? 1 : 0, 15.0f);
+				obj->UpdateAnim(1.0f);
+				if (obj->GetPool() == 3) {
+					fn_800C807C(obj);
+				}
+			} else {
+				obj->PushAnim(anim, 0, 100);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) killed!", id, anim, id));
+		}
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x80097E70
+ * @note Size: 0x378
+ */
+s32 CEvt::_cmd_ANIM2(u8, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	for (s32 count = 0;; count++) {
+		s32 anim = CEvt_Evaluate(this);
+		if (anim == -1) {
+			break;
+		}
+		u16 frame = CEvt_Evaluate(this);
+		s16 rate  = CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL) {
+				CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) is collision!", id, anim, frame, rate, id));
+			} else if (count == 0) {
+				obj->ClearAnimQueue();
+				obj->SetAnim(anim, FALSE, frame, rate / 100.0f, 0.0f, 15.0f);
+				obj->UpdateAnim(1.0f);
+			} else {
+				obj->PushAnim(anim, frame, rate);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) killed!", id, anim, frame, rate, id));
+		}
+	}
+	return 0;
+}
+
+/**
  * @note Address: 0x800981D0
  * @note Size: 0x2D4
  */
@@ -358,6 +426,105 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
 		CEvt_Detach(&obj->mEvt);
 	} else {
 		CEvt_Warn(FormatToStaticBuffer("detach(%d, ...): obj(%d) killed!", id, id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009AE98
+ * @note Size: 0x3CC
+ */
+s32 CEvt::_cmd_COLOR(u8, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	u16 mode  = CEvt_Evaluate(this);
+	u8 r      = CEvt_Evaluate(this);
+	u8 g      = CEvt_Evaluate(this);
+	u8 b      = CEvt_Evaluate(this);
+	f32 time  = CEvt_Evaluate(this) / 100.0f;
+	if (obj == (XObj*)-2) { // id -2: every object in use that has a model
+		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+			XObj* current = gGame.mXObjs.mObjects[i];
+			if ((current->mStatus.mFlags & 1) && current->mObject.m_pScnMdl != NULL) {
+				if (mode == EVT_ATOM_MODULATE) {
+					current->SetColor(0, r, g, b, time);
+				} else if (mode == EVT_ATOM_BLEND) {
+					current->SetColor(1, r, g, b, time);
+				}
+			}
+		}
+	} else if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		if (obj->mObject.m_pScnMdl == NULL) {
+			if (mode == EVT_ATOM_MODULATE) {
+				CEvt_Warn(FormatToStaticBuffer("color(%d, @MODULATE, %d,%d,%d, %d) ... obj(%d) is collision!", id, r, g, b,
+				                               (s32)(100.0f * time), id));
+			} else {
+				CEvt_Warn(FormatToStaticBuffer("color(%d, @BLEND, %d,%d,%d, %d) ... obj(%d) is collision!", id, r, g, b,
+				                               (s32)(100.0f * time), id));
+			}
+		}
+		if (mode == EVT_ATOM_MODULATE) {
+			obj->SetColor(0, r, g, b, time);
+		} else if (mode == EVT_ATOM_BLEND) {
+			obj->SetColor(1, r, g, b, time);
+		}
+	} else {
+		if (mode == EVT_ATOM_MODULATE) {
+			CEvt_Warn(
+			    FormatToStaticBuffer("color(%d, @MODULATE, %d,%d,%d, %d) ... obj(%d) killed!", id, r, g, b, (s32)(100.0f * time), id));
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("color(%d, @BLEND, %d,%d,%d, %d) ... obj(%d) killed!", id, r, g, b, (s32)(100.0f * time), id));
+		}
+	}
+	return 0;
+}
+
+// null when the pool is full
+static inline XObj* CEvt_Born(s32 index)
+{
+	CoordInfo info(GetSpawnData(index));
+	return SpawnObjectFromPlacement(&gGame.mXObjs, &info, 1, FALSE);
+}
+
+/**
+ * @note Address: 0x80098534
+ * @note Size: 0x430
+ */
+s32 CEvt::_cmd_BORN(u8, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	s16 type  = CEvt_Evaluate(this);
+	f32 x     = CEvt_Evaluate(this) / 100.0f;
+	f32 y     = CEvt_Evaluate(this) / 100.0f;
+	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	s16 rot   = CEvt_Evaluate(this);
+	f32 sx    = CEvt_Evaluate(this) / 100.0f;
+	f32 sy    = CEvt_Evaluate(this) / 100.0f;
+	f32 sz    = CEvt_Evaluate(this) / 100.0f;
+	s32 arg   = CEvt_Evaluate(this);
+	XObj* obj = CEvt_FindObj(id);
+	if (obj == NULL) {
+		obj = CEvt_Born(type + 0x16);
+		if (obj != NULL) {
+			gGame.SetStatusFlags(0x1000); // BORN raises it after a spawn
+		}
+	}
+	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		obj->SetPos(x, y, z);
+		obj->SetRotationY(DEG2RAD * rot);
+		obj->SetScale(sx, sy, sz);
+		UpdateObjectFloorHeights(obj);
+		UpdateObjectFloorXZExtent(obj);
+		obj->mEventScript = (const void*)arg;
+		s16 index         = FindStageObjectIndex(&gGame.mXObjs, obj);
+		if (CEvt_FindObj(id) == NULL) {
+			gEventObjectIds.mEntry[gEventObjectIds.mCount].mId    = id;
+			gEventObjectIds.mEntry[gEventObjectIds.mCount].mIndex = index;
+			gEventObjectIds.mCount++;
+		}
+	} else {
+		OSPanic(__FILE__, 1778, FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id));
 	}
 	return 0;
 }
