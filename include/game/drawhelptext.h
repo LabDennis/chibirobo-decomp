@@ -13,10 +13,10 @@ static inline bool HelpTextIsJapanese()
 #endif
 }
 
-// The glyph width is rounded before subtracting it from the cell width.
+// the cell's room left beside the glyph, drawn with half of it on the left
 static inline f32 HelpGlyphPadding(s32 width, f32 scale)
 {
-	f32 glyphWidth = (f32)((double)(width / 24.0f) * scale);
+	f32 glyphWidth = width / 24.0f * scale;
 	return scale - glyphWidth;
 }
 
@@ -24,10 +24,10 @@ static inline void DrawHelpLetter(CTexObj& tex, f32 x, f32 y, f32 bob, f32 scale
                                   const f32* outlineX, const f32* outlineY)
 {
 	for (int j = 0; j < 4; j++) {
-		DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + outlineX[j] + padding * 0.5f,
+		DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + outlineX[j] + padding / 2.0f,
 		                   bob + (384.0f + outlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	u32 color = opacity | 0xFFFFFB00;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding * 0.5f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 }
 #endif

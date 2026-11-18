@@ -289,6 +289,7 @@ struct Mato {
 	}
 
 	CVec GetPos() const { return mObj->mMoveTranslate; }
+	inline s32 GetPoints() const;
 
 	s32 mId;           // _00, id the stage script passed to AddMato; -1 when unused; returned by TakeDestroyedMatoId
 	UnkDolObj* mObj;   // _04, the dol actor this target is (UnkDolObj, an XObj); its mStatus bit 0x10000 marks it live
@@ -323,6 +324,11 @@ struct MatoList {
 	Mato mMatos[0x50];  // _2C, the targets, 0x50 slots, first _00 used
 };
 
+inline s32 Mato::GetPoints() const
+{
+	return mList->mKindPoints[mKind];
+}
+
 struct Shot {
 	Shot() { }
 	~Shot() { }
@@ -343,6 +349,8 @@ struct Shot {
 			mTrail[i] = mPos;
 		}
 	}
+
+	inline void Update(u32 dt);
 
 	u8 mActive;      // _00, shot in flight: set by Start, cleared when mTimer runs out, free slots are the ones with it false
 	u8 _01[0x3];     // _01
@@ -763,8 +771,8 @@ inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
 }
 
 // NONMATCHING: registers (the pool walk, the caption loop, digW/digH), the order of two literal
-// loads at PSMTXTrans, and where the digit loops set d = 0. Japan computes the scaled widths of the
-// time and gauge textures before SetGsTevMode where the others convert them after it.
+// loads at PSMTXTrans, and where the digit loops set d = 0. Japan, which has no captions, scales the
+// time and gauge textures into locals before SetGsTevMode where the others scale them in the call.
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
 	CTexObj tex;
@@ -853,10 +861,18 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// time
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x20), 0);
-			tw  = GXGetTexObjWidth(&tex);
-			th  = GXGetTexObjHeight(&tex);
+#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			digW = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, digW, scale * th, 0.0f, 0.0f, 0.0f);
+#else
+			tw = GXGetTexObjWidth(&tex);
+			th = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+#endif
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
@@ -917,10 +933,19 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// gauge
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x28), 0);
-			tw  = GXGetTexObjWidth(&tex);
-			th  = GXGetTexObjHeight(&tex);
+#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			w    = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			digH = scale * th;
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
+#else
+			tw = GXGetTexObjWidth(&tex);
+			th = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+#endif
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
@@ -3002,9 +3027,9 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 	FighterPanels_Update(&panels, dt);
 	// cue records {frame, sound id}; a cue fires when the flight frame crosses its frame
-	for (i = 0; i < GET_LE32(soundCueTable[0] + i * 8); i++) {
-		s32 frame = GET_LE32(soundCueTable[0] + i * 8);
-		s32 id    = GET_LE32(soundCueTable[0] + i * 8 + 4);
+	for (i = 0; i < GET_LE32(&soundCueTable[0][i * 8]); i++) {
+		s32 frame = GET_LE32(&soundCueTable[0][i * 8]);
+		s32 id    = GET_LE32(&soundCueTable[0][i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
 			PlayGameSound(sfx, id, 0xFF);
 		}
@@ -4157,7 +4182,7 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
+	jobj = FindJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->mCarriedMtx);
 	HSD_JObjCopyMtx(link->mCarriedObj->mJObj, link->mCarriedMtx);
 	link->mAnimFrame = animFrame;
@@ -5124,7 +5149,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
+	jobj = FindJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, work->mBodyMtx);
 	HSD_JObjCopyMtx(work->mBody->mJObj, work->mBodyMtx);
 	zero.x = zero.y = zero.z = 0.0f;
@@ -5132,7 +5157,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
 	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
 	PSMTXConcat(offset, rot, offset);
-	jobj = GetJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
+	jobj = FindJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), offset, work->mPlayerMtx);
 	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->mJObj, work->mPlayerMtx);
 	if (work->mExtra != NULL) {
@@ -5892,15 +5917,15 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			}
 			if (fade->mLowerOpen > 0.0f) {
 				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
-				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x50), 0);
-				tw  = GXGetTexObjWidth(&tex);
-				w   = 1.1f * (scale * tw);
-				th  = GXGetTexObjHeight(&tex);
-				y   = 320.0f;
+				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x50), 0);
+				tw   = GXGetTexObjWidth(&tex);
+				w    = 1.1f * (scale * tw);
+				th   = GXGetTexObjHeight(&tex);
+				y    = 320.0f;
+				half = fade->mLowerOpen * (scale * th);
 #if !defined(VERSION_JP)
 				y -= 32.0f;
 #endif
-				half = fade->mLowerOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
@@ -7377,6 +7402,42 @@ FighterPanels panels;
 s32 fireHoldFrames;
 u8* soundCueTable[2];
 
+// moves the shot along, or ends it and scores the hit when its time runs out. Retail tests mActive again right after
+// ShotList_Update's own test, the trace of this inline
+inline void Shot::Update(u32 dt)
+{
+	s32 j;
+
+	if (mActive) {
+		mTimer -= dt;
+		if (mTimer <= 0) {
+			Mato* item;
+			mActive = false;
+			item    = mTarget;
+			if (item != NULL) {
+				if (--item->mHitsLeft > 0) {
+					item->mPending = false;
+				} else if (item->mObj != NULL && (item->mObj->mStatus & 0x10000)) {
+					item->mList->mDestroyed = item;
+					item->mList->mScore += item->GetPoints();
+					shotEvents.mFlags |= 1;
+				}
+				mResult.mFlags |= 1;
+			} else {
+				mResult.mFlags |= 2;
+			}
+		} else {
+			mPos.x = mVelocity.x * dt + mPos.x;
+			mPos.y = mVelocity.y * dt + mPos.y;
+			mPos.z = mVelocity.z * dt + mPos.z;
+			for (j = 9; j > 0; j--) {
+				mTrail[j] = mTrail[j - 1];
+			}
+			mTrail[0] = mPos;
+		}
+	}
+}
+
 /**
  * @note Address: stage02 .text 0x5A48
  * @note Size: 0x2A0
@@ -7384,42 +7445,13 @@ u8* soundCueTable[2];
 extern "C" void ShotList_Update(ShotList* list, u32 dt)
 {
 	u32 i;
-	s32 j;
 
 	for (i = 0; i < 5; i++) {
 		Shot* entry = &list->mShots[i];
 		if (!entry->mActive) {
 			continue;
 		}
-		if (entry->mActive) {
-			entry->mTimer -= dt;
-			if (entry->mTimer <= 0) {
-				Mato* item;
-				entry->mActive = false;
-				item           = entry->mTarget;
-				if (item != NULL) {
-					if (--item->mHitsLeft > 0) {
-						item->mPending = false;
-					} else if (item->mObj != NULL && (item->mObj->mStatus & 0x10000)) {
-						item->mList->mDestroyed = item;
-						item->mList->mScore += item->mList->mKindPoints[item->mKind];
-						shotEvents.mFlags |= 1;
-					}
-					entry->mResult.mFlags |= 1;
-				} else {
-					entry->mResult.mFlags |= 2;
-				}
-			} else {
-				entry->mPos.x = entry->mVelocity.x * dt + entry->mPos.x;
-				entry->mPos.y = entry->mVelocity.y * dt + entry->mPos.y;
-				entry->mPos.z = entry->mVelocity.z * dt + entry->mPos.z;
-				for (j = 9; j > 0; j--) {
-					Vec* prev        = &entry->mTrail[j - 1];
-					entry->mTrail[j] = *prev;
-				}
-				entry->mTrail[0] = entry->mPos;
-			}
-		}
+		entry->Update(dt);
 		if (entry->mResult.mFlags & 1) {
 			list->mHitStreak++;
 			list->mMissStreak = 0;

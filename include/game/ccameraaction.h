@@ -269,16 +269,21 @@ public:
 	void SetEye(const Vec& eye, u32 mode)
 	{
 		mCameraFlags = mode;
-#if defined(VERSION_R24J01)
-		SetEye(eye.x, eye.y, eye.z);
-#else
 		SetEye(eye);
-#endif
 	}
 	void SetInterest(const Vec& interest, u32 mode)
 	{
 		mCameraFlags = mode;
 		SetInterest(interest);
+	}
+	// the roll goes through SetAngle so subclasses see it; the copy is this inline's local, which is why
+	// CCameraActionReset::PreviousUpdate's retail frame puts it below the caller's temporaries
+	void SetAngleZ(f32 z, u32 mode)
+	{
+		mCameraFlags = mode;
+		Vec angle    = mAngle;
+		angle.z      = z;
+		SetAngle(angle);
 	}
 };
 
@@ -374,7 +379,7 @@ public:
 	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time)
+	void SetEye_Interp(s32 mode, Vec eye, f32 time)
 	{
 		if (mode == 3 || time <= 0.0f) {
 			mEyeInterp = NULL;
@@ -402,7 +407,6 @@ public:
 STATIC_ASSERT(sizeof(CCameraActionReset) == 0x208);
 
 // GameCube layout pending the Wii one
-#if !defined(VERSION_R24J01)
 // an entry in CCameraActionMap's mIntersectionEntries and mAreaIntersections lists
 struct CamMapEntry {
 	Vec mPos;         // _00, a position
@@ -410,6 +414,8 @@ struct CamMapEntry {
 	s32 mSide;        // _10
 	Vec mNormal;      // _14
 };
+
+#if !defined(VERSION_R24J01)
 
 // the map action, CCameraActions holds it at _99C
 class CCameraActionMap : public CCameraActionAreaExM {
@@ -489,7 +495,8 @@ public:
 	// names from the symbols and from the __FUNCTION__ strings their panics pass
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 	void Reset2();
-	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
+	void UpdateTurn(u32 step);
+	virtual ~CCameraActionMap() { }          // weak, the dol copy is at 0x80009F24
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
 	virtual void Reset();                    // _14
@@ -524,8 +531,9 @@ struct CamAreaRecord {
 	s32 mBottom;       // _28, lower height in hundredths
 	s16 mCameraAction; // _2C, the CAMACTION the area switches to: 1 area camera, 7 map camera, -1 lets the bottom height pick (below -5 is
 	                   // map); the map camera skips the 1s, evt -44/-45 enable or disable every record with a given value
-	u16 mFlags;        // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
-	u8 _30[0x4];       // _30
+	u16 mFlags;  // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off; on an AreaEx record 1 lets the map camera turn
+	             // round it
+	u8 _30[0x4]; // _30
 
 	f32 GetTop() const { return mTop / 100.0f; }
 	f32 GetBottom() const { return mBottom / 100.0f; }
@@ -549,6 +557,11 @@ public:
 		return flags != 0;
 	}
 	u16 IsDisabled() const { return mRecord->mFlags & 0x80; }
+	bool AllowsTurn() const
+	{
+		u16 flags = mRecord->mFlags & 1;
+		return flags != 0;
+	}
 	f32 GetTop() const { return mRecord->mTop / 100.0f; }
 	f32 GetBottom() const { return mRecord->mBottom / 100.0f; }
 
@@ -680,14 +693,15 @@ public:
 
 	void SetFovInterpolation(s32 mode, f32 from, f32 to, f32 time)
 	{
+		s32 kind = mode;
 		if (mode == 5) {
-			mode = 4;
+			kind = 4;
 		}
-		if (mode == 3 || time <= 0.0f) {
+		if (kind == 3 || time <= 0.0f) {
 			mFovInterp = NULL;
 			SetFov(to);
 		} else {
-			mFovInterp = mFovInterps[mode];
+			mFovInterp = mFovInterps[kind];
 			if (mFovInterp != NULL) {
 				mFovInterp->Start(from, to, time);
 			}
@@ -776,6 +790,16 @@ public:
 
 	CCameraActionLeticker() { mTarget = NULL; }
 	virtual ~CCameraActionLeticker() { }
+
+	// keeps the eye inside the box
+	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ)
+	{
+		mBounded = true;
+		mMinX    = minX;
+		mMaxX    = maxX;
+		mMinZ    = minZ;
+		mMaxZ    = maxZ;
+	}
 
 	virtual void Update(u32 step);                  // _10
 	virtual void Reset();                           // _14
@@ -899,9 +923,9 @@ public:
 	BOOL mDragging;           // _A8, the drag button is held
 	f32 mDragDamping;         // _AC
 	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
-	Vec mDragStart;           // _C0, the pointer position the drag started at
-	Vec mDragLast;            // _D0, the pointer position the last update saw
-	u8 _DC[0x44];             // _DC
+	CVec mDragStart;          // _C0, the pointer position the drag started at
+	CVec mDragLast;           // _D0, the pointer position the last update saw
+	u8 _E0[0x40];             // _E0
 	Mtx mMtx;                 // _120
 	u8 _150[0x94];            // _150
 	ScrollEdgeQuad mQuads[4]; // _1E4

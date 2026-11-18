@@ -41,7 +41,7 @@ BOOL IsGameSoundPlaying(XSound* sound, s32 sfx);
 s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol);
 
 // hsd axdriver.c: key off an sfx, a pal only one, pause an sfx, stop every stream slot
-BOOL AXDriverKeyOffSfx(s32 sfx);
+BOOL AXDriverKeyOffSfx(int sfx);
 BOOL HSD_AudioSFXKeyOffAll(void);
 BOOL AXDriverPauseSfx(s32 sfx);
 void AXDriverStopAllStreams(void);

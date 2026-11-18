@@ -4,8 +4,7 @@
 // The readers are global functions as in the GameCube map (no local scope there either).
 // NONMATCHING: the triangle parser on the NW4R shapes, the grid builder, Create and
 // _trigonChecker are not written yet (Create and the parser inline the g3d accessors with
-// their asserts). TrigonGetVtxS8 and SearchNear differ from retail in register choice
-// (SearchNear: retail adds i + at again for the result instead of reusing the tested index).
+// their asserts). TrigonGetVtxS8 differs from retail in register choice.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
 #include "game/mm.h"
@@ -455,35 +454,36 @@ int CTrigon::SearchNear(Vec* pos, int hint, f32* floorY)
 {
 	TRIGON_CELL* cell = &mCells[mTri[hint].mCell];
 	TRIGON_INFO* tri  = cell->mTri;
-	u32 num           = cell->mNum;
 	int found         = -1;
+	u32 num           = cell->mNum;
 	if (tri == NULL || num == 0) {
 		return -1;
 	}
 
+	// from here on the hint counts from the cell's first triangle
 	Vec v[3];
 	int base = tri - mTri;
-	int at   = hint - base;
-	int i    = 0;
+	hint -= base;
+	int i = 0;
 	for (u32 n = 0; n < num; n++) {
-		if (at + i < num) {
-			TRIGON_INFO* t = &tri[at + i];
+		if (hint + i < num) {
+			TRIGON_INFO* t = &tri[hint + i];
 			t->mGetVtx(t, v);
 			if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
-				found = base + (i + at);
+				found = hint + base + i;
 				break;
 			}
 		}
-		if (at - i - 1 >= 0) {
-			TRIGON_INFO* t = &tri[at - i - 1];
+		if (hint - i - 1 >= 0) {
+			TRIGON_INFO* t = &tri[hint - i - 1];
 			t->mGetVtx(t, v);
 			if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
-				found = at + base - i - 1;
+				found = hint + base - i - 1;
 				break;
 			}
 		}
 		i++;
-		if (at + i >= num && at - i - 1 < 0) {
+		if (hint + i >= num && hint - i - 1 < 0) {
 			break;
 		}
 	}

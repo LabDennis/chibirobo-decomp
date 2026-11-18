@@ -198,6 +198,9 @@ extern "C" void GameXFBDrawDoneCallback(int idx);
  * @note Address: 0x8001D51C
  * @note Size: 0x384
  */
+// NONMATCHING: retail loads the scalar render-mode arguments (color and alpha update, z before
+// texture, dither, cull) from one-object .sdata2/.sbss2 constants where this build has li, and its
+// struct arguments' .rodata lies in another order behind the unit's 0x48-byte header
 extern "C" void InitGameRenderState(CBase* base)
 {
 	CGs* gs = &base->mGs;

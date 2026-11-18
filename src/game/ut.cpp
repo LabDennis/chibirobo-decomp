@@ -83,7 +83,8 @@ static inline f32 LinePlane(Vec* p0, Vec* p1, Vec* point, Vec* normal, Vec* out)
 	PSVECSubtract(p0, point, &rel);
 	PSVECSubtract(p1, p0, &dir);
 	f32 d = PSVECDotProduct(&dir, normal);
-	f32 t = -1.0f * (PSVECDotProduct(&rel, normal) / d);
+	f32 n = PSVECDotProduct(&rel, normal);
+	f32 t = -1.0f * (n / d);
 	PSVECScale(&dir, out, t);
 	PSVECAdd(out, p0, out);
 	return t;
@@ -345,17 +346,18 @@ extern "C" HSD_AObj* FindMaterialOrTextureAnimationInJointTree(HSD_JObj* jobj)
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
-			if (mobj != NULL) {
-				if (mobj->aobj != NULL) {
-					return mobj->aobj;
+			if (mobj) {
+				if ((aobj = mobj->aobj)) {
+					return aobj;
 				}
 				HSD_TObj* tobj = HSD_MObjGetTObj(mobj);
-				if (tobj != NULL && tobj->aobj != NULL) {
-					return tobj->aobj;
+				if (tobj && (aobj = tobj->aobj)) {
+					return aobj;
 				}
 			}
 		}
-		if ((aobj = FindMaterialOrTextureAnimationInJointTree(jobj->next)) != NULL) {
+		aobj = FindMaterialOrTextureAnimationInJointTree(jobj->next);
+		if (aobj) {
 			break;
 		}
 	}
@@ -639,11 +641,12 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
-			if (pobj != NULL && (aobj = pobj->aobj) != NULL) {
+			if (pobj && (aobj = pobj->aobj)) {
 				return aobj;
 			}
 		}
-		if ((aobj = FindPolygonAnimationInJointTree(jobj->next)) != NULL) {
+		aobj = FindPolygonAnimationInJointTree(jobj->next);
+		if (aobj) {
 			break;
 		}
 	}
@@ -896,7 +899,7 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 // drops a jobj's own dobjs
 extern "C" inline void RemoveJointDisplayObjectsJP(HSD_JObj* jobj)
 {
-	if (jobj->u.dobj != NULL) {
+	if (jobj->u.dobj) {
 		HSD_DObjRemoveAll(jobj->u.dobj);
 		jobj->u.dobj = NULL;
 	}
@@ -911,7 +914,7 @@ extern "C" void RemoveJointTreeDisplayObjects(HSD_JObj* jobj)
 {
 	RemoveJointDisplayObjectsJP(jobj);
 	if (!(jobj->flags & INSTANCE)) {
-		for (HSD_JObj* child = jobj->child; child != NULL; child = child->next) {
+		for (HSD_JObj* child = jobj->child; child; child = child->next) {
 			RemoveJointTreeDisplayObjects(child);
 		}
 	}
@@ -1900,8 +1903,10 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
 	Vec normal;
 	CalcTriangleNormal(a, b, c, &normal);
 
-	Vec top    = { pos->x, 1.0f, pos->z };
-	Vec bottom = { pos->x, -1.0f, pos->z };
+	f32 x      = pos->x;
+	f32 z      = pos->z;
+	Vec top    = { x, 1.0f, z };
+	Vec bottom = { x, -1.0f, z };
 	f32 t      = LinePlane(&top, &bottom, a, &normal, out);
 
 	if (Abs(t) <= 0.00001f || Abs(1.0f - t) <= 0.00001f) {
@@ -2055,15 +2060,13 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 {
 	f32 abx = b->x - a->x;
 	f32 abz = b->z - a->z;
-	f32 cdz = d->z - c->z;
-	f32 cdx = d->x - c->x;
 	f32 acx = c->x - a->x;
 	f32 acz = c->z - a->z;
 
 	f32 sideC = abx * acz - abz * acx;
 	f32 sideD = abx * (d->z - a->z) - abz * (d->x - a->x);
-	f32 sideA = cdx * (a->z - c->z) - cdz * (a->x - c->x);
-	f32 sideB = cdx * (b->z - c->z) - cdz * (b->x - c->x);
+	f32 sideA = (d->x - c->x) * (a->z - c->z) - (d->z - c->z) * (a->x - c->x);
+	f32 sideB = (d->x - c->x) * (b->z - c->z) - (d->z - c->z) * (b->x - c->x);
 
 	int hit;
 	if (check == 1) {
@@ -2080,7 +2083,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			out->z = a->z + (c->x - a->x) * ((b->z - a->z) / (b->x - a->x));
 		} else {
 			f32 slopeAB = abz / abx;
-			f32 slopeCD = cdz / cdx;
+			f32 slopeCD = (d->z - c->z) / (d->x - c->x);
 			if (slopeAB == slopeCD) {
 				return 0;
 			}
@@ -2236,7 +2239,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 // wall and push what's left of the move. returns 0 for no hit, 1 when it got stopped
 // and 3 when it bounced, then push is the move reflected off the wall times scale
 // the wall's two ends get checked like posts, corners picks the softer version of that
-extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+extern "C" u32 ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                             Vec* contact, f32* dist, f32 radius, f32 scale, int corners)
 {
 	CVec from(*fromPos);

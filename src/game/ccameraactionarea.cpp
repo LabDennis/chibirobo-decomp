@@ -18,7 +18,7 @@ inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
 		OSPanic("ccameraactionarea.cpp", 660, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", "SetEye_I");
 		return;
 	}
-	CVec zero(0.0f, 0.0f, 0.0f); // retail builds this and never reads it
+	CVec(0.0f, 0.0f, 0.0f); // retail builds this temporary and drops it at once
 	SetEyeInterpolation(mode, from, to, time);
 }
 
@@ -989,6 +989,8 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Address: 0x80138ED8
  * @note Size: 0x6E0
  */
+// NONMATCHING: registers only. retail keeps the view yaw in f28 and best in f29, best taking 2 pi from the wrap's own load
+// and lays the facing loop's look and facing vectors out below the function's other locals
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1058,8 +1060,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			area->mEntryIndex = 0;
 		}
 	} else if (buttons & previous) {
+		CamAreaSlot* slot = &gCameraAreaState.mGroups[slotIndex];
 		if (--area->mEntryIndex < 0) {
-			area->mEntryIndex = gCameraAreaState.mGroups[slotIndex].mEntryCount - 1;
+			area->mEntryIndex = slot->mEntryCount - 1;
 		}
 	} else if (currentArea != previousArea && currentArea != -1) {
 		// entered another area: the entry facing nearest the current view (after SetCamera) or the current entry's angle
@@ -1603,9 +1606,15 @@ void CCameraActionArea::DrawDebug2d()
  * @note Address: 0x8013964C
  * @note Size: 0x544
  */
+// NONMATCHING: for the zoom change retail still builds the table index from 4 at run time (li r0, 4; slwi; add), here the
+// fov interpolator slot is read directly. Saved registers are numbered differently
 void CCameraActionArea::Update(u32 step)
 {
-	mPadControlEnabled = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
+	if (gGame.mStatus.mFlags & 0xC00) {
+		mPadControlEnabled = FALSE;
+	} else {
+		mPadControlEnabled = TRUE;
+	}
 	// retail does this, nothing reads the result
 	if (mTarget != NULL && mTarget->mJObj != NULL) {
 		CPad pad(0);

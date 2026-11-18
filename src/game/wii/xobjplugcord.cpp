@@ -349,14 +349,14 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	XObjPlugCordPoint* points = cord->mPoints;
 	Vec tip                   = GetPlugCordPointPosition(cord, 18);
-	tip.y                     = gGame.GetPlayer()->GetPosition()->y;
+	tip.y                     = gGame.GetPlayer()->GetPos()->y;
 	Vec probe                 = tip;
 	static f32 sFloorY;
 	sFloorY = FindPlugCordFloor(cord, &probe, -1, 0); // the floor under cord point 18, probed from the player's height
 	Vec anchor;
 	GetPlayerPlugCordAnchorTransform(&gGame.GetPlayer()->mPlug, &anchor, NULL, NULL);
 	if (sFloorY > anchor.y) // above the plug anchor: use the player's own floor
-		sFloorY = gGame.GetPlayer()->mFloorHitHeight;
+		sFloorY = gGame.GetPlayer()->mFloorHit.mHeight;
 	for (u32 frame = 0; frame < frames; ++frame) {
 		static f32 gravity = 0.25f;
 		for (s32 i = 0; i < cord->mCount; ++i) {
@@ -596,7 +596,7 @@ extern "C" void PushPlugCordPointsFromObjects(XObjPlugCord* cord)
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000) || object->mStatus & 0x100000
 		    || object == (WiiTitleObject*)gGame.GetPlayer())
 			continue;
-		Vec pos         = *gGame.GetPlayer()->GetPosition();
+		Vec pos         = *gGame.GetPlayer()->GetPos();
 		CVec* objectPos = object->vf244();
 		f32 dx = objectPos->x - pos.x, dz = objectPos->z - pos.z;
 		if (FSqrt(dx * dx + dz * dz) > 150.0f) // only nearby objects

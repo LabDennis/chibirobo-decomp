@@ -1,7 +1,7 @@
-// Petari's file (SDK of 2007) with the changes of this SDK. The code is complete; the unit does not link yet
-// because retail's .data holds the texts of three functions the linker removed and no licensed template has:
-// IUSB_ReadBlkMsg and IUSB_WriteBlkMsg ("calling short/long blk transfer fn ...") behind __IntrBlkMsgInt, and
-// IUSB_RegisterInsertionNotifyWithIdAsync ("%s: Not enough memory", "Failed to open %s: %d") at the end.
+// Petari's file (SDK of 2007) with the changes of this SDK. The unit does not link yet because retail's .data
+// also holds the texts of IUSB_RegisterInsertionNotifyWithIdAsync ("%s: Not enough memory", "Failed to open %s: %d")
+// at the end, a function the linker removed and no licensed template has. IUSB_ReadBlkMsg and IUSB_WriteBlkMsg
+// (also removed by the linker) are rebuilt from their retail texts ("calling short/long blk transfer fn ...").
 #include "revolution/usb.h"
 
 #include "Dolphin/os.h"
@@ -522,6 +522,28 @@ IOSError IUSB_WriteIntrMsgAsync(IOSFd fd, u32 ep, u32 buflen, char* buf, USBCall
 {
 	DCFlushRange((void*)buf, buflen);
 	return __IntrBlkMsgInt(fd, ep, buflen, buf, 2, cb, cbArg, 1);
+}
+
+IOSError IUSB_ReadBlkMsg(IOSFd fd, u32 ep, u32 buflen, char* buf)
+{
+	DCInvalidateRange(buf, buflen);
+	if (buflen <= 0xFFFF) {
+		USB_LOG("calling short blk transfer fn: buflen = %u limit = %u\n", buflen, 0xFFFF);
+		return __IntrBlkMsgInt(fd, ep, buflen, buf, 1, NULL, NULL, 0);
+	}
+	USB_LOG("calling long blk transfer fn: buflen = %u limit = %u\n", buflen, 0xFFFF);
+	return __LongBlkMsgInt(fd, ep, buflen, buf, NULL, NULL, 0);
+}
+
+IOSError IUSB_WriteBlkMsg(IOSFd fd, u32 ep, u32 buflen, char* buf)
+{
+	DCFlushRange((void*)buf, buflen);
+	if (buflen <= 0xFFFF) {
+		USB_LOG("calling short blk transfer fn: buflen = %u limit = %u\n", buflen, 0xFFFF);
+		return __IntrBlkMsgInt(fd, ep, buflen, buf, 1, NULL, NULL, 0);
+	}
+	USB_LOG("calling long blk transfer fn: buflen = %u limit = %u\n", buflen, 0xFFFF);
+	return __LongBlkMsgInt(fd, ep, buflen, buf, NULL, NULL, 0);
 }
 
 IOSError IUSB_ReadBlkMsgAsync(IOSFd fd, u32 ep, u32 buflen, char* buf, USBCallbackFunc cb, void* cbArg)

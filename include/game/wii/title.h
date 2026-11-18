@@ -2,6 +2,9 @@
 #define GAME_WII_TITLE_H
 
 #include "game/wii/menuutil.h"
+// before xobj.h: see its note on the two CObjVec
+#include "game/ccameraactioneye.h"
+#include "game/wii/xobjdemo.h"
 #include "game/menuhelpchar.h"
 #include "game/ctpl.h"
 #include "game/wii/cgs.h"
@@ -58,9 +61,10 @@ public:
 	virtual WiiCursorPart* vf040(s32 index);
 };
 
-// the title's two objects, the cursor and the demo figure. The Wii XObj is not reconstructed: these are
-// its virtuals up to the one the title code calls, the unnamed ones only keep its place. Slot _08 is the destructor:
-// ~CMsg destroys CMsgFont's two through it (0x8002F1A4)
+// a stand-in for XObj that the message, roboeyes, scroll camera and gauge code still reach objects
+// through: XObj's virtuals up to the last one they call, the unnamed ones only keep its place (the
+// title's own objects are Cursor and XObjDemo). Slot _08 is the destructor: ~CMsg destroys CMsgFont's
+// two through it (0x8002F1A4)
 class WiiTitleObject {
 public:
 	virtual ~WiiTitleObject() { } // _08
@@ -282,117 +286,6 @@ public:
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 
-// one of the three demo figures behind mDemo, the class RTTI names XObjDemo. Its head
-// layout matches WiiTitleObject: the placement status sits at _154 and the state at _9A8
-class XObjDemo {
-public:
-	virtual ~XObjDemo() { } // _08, 0x8002F990
-	virtual void vf00C();
-	virtual void vf010();
-	virtual void vf014();
-	virtual void vf018();
-	virtual void vf01C();
-	virtual void vf020();
-	virtual void vf024();
-	virtual void vf028();
-	virtual void vf02C();
-	virtual void vf030();
-	virtual void vf034();
-	virtual void vf038();
-	virtual void vf03C();
-	virtual void Release(); // _040
-	virtual void vf044();
-	virtual void vf048();
-	virtual void vf04C();
-	virtual void vf050();
-	virtual void vf054();
-	virtual void vf058();
-	virtual void vf05C();
-	virtual void vf060();
-	virtual void vf064();
-	virtual void vf068();
-	virtual void vf06C();
-	virtual void vf070(f32 angle); // _070
-	virtual void vf074();
-	virtual void vf078();
-	virtual void vf07C();
-	virtual void vf080();
-	virtual void vf084();
-	virtual void vf088();
-	virtual void vf08C();
-	virtual void vf090();
-	virtual void vf094();
-	virtual void vf098();
-	virtual void vf09C(f32 scale); // _09C
-	virtual void vf0A0();
-	virtual void vf0A4();
-	virtual void vf0A8();
-	virtual void vf0AC();
-	virtual void vf0B0();
-	virtual void vf0B4();
-	virtual void vf0B8();
-	virtual void vf0BC();
-	virtual void vf0C0();
-	virtual void vf0C4();
-	virtual void vf0C8();
-	virtual void vf0CC();
-	virtual void vf0D0();
-	virtual void vf0D4();
-	virtual void vf0D8();
-	virtual void vf0DC();
-	virtual void vf0E0();
-	virtual void vf0E4();
-	virtual void vf0E8();
-	virtual void vf0EC();
-	virtual void vf0F0();
-	virtual void vf0F4();
-	virtual void vf0F8();
-	virtual void vf0FC();
-	virtual void vf100();
-	virtual void vf104();
-	virtual void vf108();
-	virtual void vf10C();
-	virtual void vf110();
-	virtual void vf114();
-	virtual void vf118();
-	virtual s32 vf11C(); // _11C, the playing animation id
-	virtual void vf120();
-	virtual void vf124();
-	virtual void vf128();
-	virtual void vf12C();
-	virtual void vf130();
-	virtual s32 vf134(); // _134, the animation flags check
-	virtual void vf138();
-	virtual void vf13C();
-	virtual void vf140();
-	virtual void vf144();
-	virtual void vf148();
-	virtual void vf14C();
-	virtual void vf150();
-	virtual void ResetObjectState();
-	virtual s32 LoadFromPlacement(const CoordInfo& info); // _158
-	virtual void vf15C();
-	virtual void vf160();
-	virtual void UpdateObject(u32 frames); // _164
-	virtual void vf168();
-	virtual void vf16C();
-	virtual void vf170();
-	virtual void vf174();    // _174, DrawObject front
-	virtual void vf178(s32); // _178, DrawObject mode
-
-	u8 _004[0x154 - 0x004];
-	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement
-	u8 _158[0x9A8 - 0x158];
-	s32 mState;      // _9A8
-	s32 mStateParam; // _9AC
-	u8 _9B0[0xBA8 - 0x9B0];
-	s32 mNextAnim; // _BA8, -1 when nothing is queued
-	s32 _BAC;
-	CLight mLights[8]; // _BB0, built and destroyed with the figure
-	s32 mAnimIds[8];   // _F10, all -1 once ResetObjectState ran
-};
-STATIC_ASSERT(sizeof(XObjDemo) == 0xF30);
-
 // one mote of dust drifting over the menu, the GameCube TitleDust
 struct TitleDust {
 	u32 mState;  // _00
@@ -422,92 +315,53 @@ struct TitleName {
 };
 STATIC_ASSERT(sizeof(TitleName) == 0x19C);
 
-// a rectangle the pointer can pick. The menu code's messages call it CbPane; the layout is not known
-// beyond the two flags
-struct CbPane {
-	// the constructor (0x800345C0) and destructor (0x8002F924) Title's eleven panes are built and destroyed with
-	CbPane()
-	{
-		_0C      = 0.0f;
-		_10      = 0.0f;
-		mKind    = 0;
-		_48      = 1.0f;
-		_4E      = TRUE;
-		mPointed = FALSE;
-		mPicked  = FALSE;
-	}
-	~CbPane() { }
-
-	u8 _00[0xC];
-	f32 _0C; // _0C
-	f32 _10; // _10
-	u8 _14[0x44 - 0x14];
-	s32 mKind;   // _44, which entry the pane reports as
-	f32 _48;     // _48
-	u8 mPointed; // _4C
-	u8 mPicked;  // _4D
-	u8 _4E;      // _4E
-	u8 _4F;
-};
-STATIC_ASSERT(sizeof(CbPane) == 0x50);
-
-// the panes the pointer is tested against this frame
-struct CbPaneList {
-	CbPane* mPanes[0x100]; // _000
-	s32 mCount;            // _400
-	MenuUtil* mMenu;       // _404, the menu whose panes are tested, NULL disables the pointer
-	u8 _408[2];
-	u8 mEnabled; // _40A
-	u8 mActive;  // _40B
-};
-
-extern "C" {
-extern CbPaneList gPointerPanes;
-void AddPointerPane(CbPaneList* list, CbPane* pane);
-}
-
 class Title : public MenuUtil {
 public:
 	// _0000 vtable
-	s32 mState;             // _0004
-	s32 mMode;              // _0008
-	u32 mOptionState;       // _000C, 0 choosing, 2 leaving
-	s32 mTimeout;           // _0010, counts down the press-start / leave delays
-	f32 mMenuAlpha;         // _0014
-	f32 mTitleAlpha;        // _0018, the second fade that gates the press-start prompt
-	f32 mPulseAngle;        // _001C
-	s32 mHighlightDelay;    // _0020, frames until the selected line starts pulsing
-	u32 mSpawnIndex;        // _0024
-	WiiTitleObject mCursor; // _0028
-	WiiTitleObject mDemo;   // _09D8
-	XObjDemo mFigures[3];   // _1388
-	CTpl mTpl;              // _4118, the "title.cpp" archive the three textures come out of
-	CTexObj mTex[6];        // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
-	s32 mSelection;         // _4928, the entry of the title menu, -1 while the pointer is on none
-	s32 mLastSelection;     // _492C
-	u8 _4930[0x493C - 0x4930];
-	f32 mPanelY;       // _493C
-	f32 mTargetPanelY; // _4940
-	f32 mLoadScroll;   // _4944, the load screen's scroll position
-	u8 _4948[4];
-	f32 mLoadOffset; // _494C
-	f32 mOffset;     // _4950
-	u8 _4954[0x4964 - 0x4954];
+	s32 mState;          // _0004
+	s32 mMode;           // _0008
+	u32 mOptionState;    // _000C, 0 choosing, 2 leaving
+	s32 mTimeout;        // _0010, counts down the press-start / leave delays
+	f32 mMenuAlpha;      // _0014
+	f32 mTitleAlpha;     // _0018, the second fade that gates the press-start prompt
+	f32 mPulseAngle;     // _001C
+	s32 mHighlightDelay; // _0020, frames until the selected line starts pulsing
+	u32 mSpawnIndex;     // _0024
+	Cursor mCursor[2];   // _0028, both loaded from the same placement; the first one's anim drives the entries
+	XObjDemo mDemo[3];   // _1388
+	CTpl mTpl;           // _4118, the "title.cpp" archive the three textures come out of
+	CTexObj mTex[6];     // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
+	s32 mSelection;      // _4928, the entry of the title menu, -1 while the pointer is on none
+	s32 mLastSelection;  // _492C
+	f32 mLoadScroll;     // _4930, the load screen's scroll position
+	f32 mPanelX;         // _4934
+	f32 mPanelY;         // _4938
+	f32 mTargetPanelX;   // _493C
+	f32 mTargetPanelY;   // _4940
+	f32 _4944;           // _4944
+	f32 mLoadOffset;     // _4948
+	f32 _494C;           // _494C
+	f32 mOffset;         // _4950
+	u32 mFreeBlocks;     // _4954, the NAND's free blocks and inodes after a write
+	u32 mFreeEntries;    // _4958
+	s32 mResult;         // _495C, the save operation's result
+	u8 _4960[4];
 	u8 mReady;       // _4964, the "press start" prompt is up
 	u8 mShowMessage; // _4965, the status line is being shown
 	u8 mWrongDevice; // _4966, a save scan finished but no usable slot answered
 	u8 _4967;
-	f32 mLoadAlpha; // _4968
-	f32 mAlpha;     // _496C
-	s32 mLastMode;  // _4970
-	s32 mModeParam; // _4974
-	u8 _4978[4];
-	s32 mFile;     // _497C, the save file picked, -1 with the pointer on none
-	s32 mLastFile; // _4980
-	u8 _4984[4];
+	f32 mLoadAlpha;  // _4968
+	f32 mAlpha;      // _496C
+	s32 mLastMode;   // _4970
+	s32 mModeParam;  // _4974, the mode's own step
+	s32 mDelay;      // _4978
+	s32 mFile;       // _497C, the save file picked, -1 with the pointer on none
+	s32 mLastFile;   // _4980
+	s32 mNewestFile; // _4984, the save written last, -1 while the new-game entry was picked
 	s32 mChoice;     // _4988, yes or no, -1 with the pointer on neither
 	s32 mLastChoice; // _498C
-	u8 _4990[0x4998 - 0x4990];
+	u8 _4990[4];
+	s32 mChannel;      // _4994, the GameCube's card slot; cleared and never read on the Wii
 	u8 mCardScanState; // _4998, where the slot scan is: 0 fresh, 1 scanning, 2 done
 	u8 mSaveFound;     // _4999, a save is on the card and the second entry shows
 	u8 _499A[2];
@@ -565,10 +419,18 @@ public:
 	void State23(u32 frames);
 	void State24(u32 frames);
 	void State25(u32 frames);
-	// the file-menu mode after State25, gTitleModeUpdates' last entry
-	void fn_80048418(u32 frames);
+	// the Wii's two modes past the GameCube's, gTitleModeUpdates' last entries (names ours, by the table)
+	void State26(u32 frames);
+	void State27(u32 frames);
 
 	void UpdateSelections();
+
+	void SetMode(s32 mode)
+	{
+		mLastMode  = mMode;
+		mMode      = mode;
+		mModeParam = 0;
+	}
 };
 
 extern "C" void UpdateTitleOptions(Title* title, u32 frames);

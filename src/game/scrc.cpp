@@ -149,8 +149,8 @@ static inline void EmitKind9Dust(XObjActor3* actor)
 	f32 vy     = (rand() % 100) / 800.0f;
 	Vec pos;
 	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	pos.y = y;
 	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	pos.y = y;
 	Vec scale;
 	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
 	scale.z           = 1.0f;
@@ -785,8 +785,8 @@ void XObjActor3::Kind6(u32 frames)
 	case 1:
 		for (i = 0; i < 0x100; i++) {
 			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
-			id                   = items[i].mId;
-			num                  = items[i].mCount;
+			id                   = items[i].GetId();
+			num                  = items[i].GetCount();
 			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
 				count++;
 			}
@@ -938,6 +938,12 @@ void XObjActor3::Kind10(u32 frames)
 	}
 }
 
+// the spider boss, the only object in pool 19
+static inline XObjSpiderBoss* GetSpiderBoss()
+{
+	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
+}
+
 /**
  * @note Address: 0x8011132C
  * @note Size: 0x2D0
@@ -996,7 +1002,8 @@ static inline void BounceBossPart(XObjActor3* part, f32 speed)
 }
 
 // the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
-// NONMATCHING: saved register numbers, retail has the frame count in r27 and the boss in r31 and r30
+// the boss's rotation is read with its position but nothing uses it; its zero initializer still takes its place in .rodata
+// NONMATCHING: only the .rodata offsets differ, the unit's constants and strings are laid out differently from retail
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1005,14 +1012,15 @@ void XObjActor3::Kind11(u32 frames)
 		if (mActorFlags.mFlags & 4)
 			break;
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		Vec rotation         = { 0, 0, 0 };
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		switch (GetKind()) {
 		case 0x3cd:
@@ -1063,7 +1071,7 @@ void XObjActor3::Kind11(u32 frames)
 		default:
 			mOrbitDistance = 32;
 			mOrbitAngle    = DEG2RAD * (rand() % 360);
-			mOrbitHeight   = (48.f - (rand() % 1800) / 100) * .5f;
+			mOrbitHeight   = (48.f - (rand() % 1800) / 100) / 2;
 			break;
 		}
 		mOrbitX  = mOrbitDistance * (f32)sin(mOrbitAngle);
@@ -1076,7 +1084,7 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	}
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			f32 x = mOrbitX, y = mOrbitHeight, z = mOrbitZ;
 			SetScale(1, 1, 1, 0);
@@ -1193,16 +1201,17 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	case 5: {
 		CVec velocity;
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
 		Vec origin           = { 0, 0, 0 };
+		Vec rotation         = { 0, 0, 0 };
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
-			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
+			mHeading   = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 		}
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
@@ -1216,18 +1225,19 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 6: {
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		Vec rotation         = { 0, 0, 0 };
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		mOrbitAngle  = DEG2RAD * (rand() % 360);
 		mOrbitX      = 32 * (f32)sin(mOrbitAngle);
-		mOrbitHeight = (48.f - (rand() % 1800) / 100) * .5f;
+		mOrbitHeight = (48.f - (rand() % 1800) / 100) / 2;
 		mOrbitZ      = 32 * (f32)cos(mOrbitAngle);
 		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
@@ -1278,15 +1288,13 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
 // NONMATCHING: register allocation
 extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 {
-	u8* data;
 	XObjActor3* obj;
-	s32 size;
-	s32 count = 0;
+	s32 offset;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	s32 count      = 0;
 	s32 i;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
-	for (i = 0; i < 48; i++) {
-		obj = (XObjActor3*)(data + i * size);
+	for (i = 0, offset = 0; i < 48; ++i, offset += pool.mStride) {
+		obj = (XObjActor3*)(pool.mObjects + offset);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xB) {
 			if (count == n && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				LaunchSpiderBossPart(obj);
@@ -1301,6 +1309,7 @@ extern "C" void LaunchSpiderBossPartByIndex(s32 n)
  * @note Address: 0x8010F318
  * @note Size: 0x804
  */
+// NONMATCHING: retail keeps the joint reads in other saved registers and saves r24 too
 void XObjActor3::Kind12(u32 frames)
 {
 	switch (mKindStep) {
@@ -1316,7 +1325,7 @@ void XObjActor3::Kind12(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f, 0);
@@ -1430,15 +1439,11 @@ extern "C" void EnableSpiderBossCenterPart(void)
  * @note Size: 0x298
  */
 // jumps the first kind 0xC actor onto the holder's middle
-// NONMATCHING: register allocation
+// NONMATCHING: only the constants' and strings' relocations differ, the unit's data is not split out of retail
 extern "C" void LaunchSpiderBossCenterPart(void)
 {
-	u8* data;
-	s32 size;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
 	for (s32 i = 0; i < 48; i++) {
-		XObjActor3* obj = (XObjActor3*)(data + i * size);
+		XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xC && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
 			if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
@@ -1463,11 +1468,6 @@ extern "C" void LaunchSpiderBossCenterPart(void)
 }
 
 extern "C" bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
-
-static inline XObjSpiderBoss* ProjectileOwner()
-{
-	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
-}
 
 static inline void PlaceBossProjectile(XObjActor3* actor, XObjSpiderBoss* boss, int spread)
 {
@@ -1526,7 +1526,7 @@ void XObjActor3::Kind13(u32 frames)
 	switch (mKindStep) {
 	case 0:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed at the robot: the first lands on it, the rest in a ring of 24 round it
 				PlaceBossProjectile(this, boss, 64);
@@ -1542,7 +1542,7 @@ void XObjActor3::Kind13(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = ProjectileOwner();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		bool blocked         = false;
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000) && IsSpiderBossProjectileHitSuppressed(boss))
 			blocked = true;
@@ -1590,7 +1590,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 10: // fired straight at the robot, gone after 120 frames
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
 				mMoveTranslate.y = 10 + HSD_JObjGetTranslationY(boss->mJObj);
@@ -1635,7 +1635,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 20:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			Vec center           = { 0, 0, 0 };
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed round the boss: the first onto its centre, the rest in a ring of 36
@@ -1694,8 +1694,10 @@ void XObjActor3::Kind13(u32 frames)
 extern "C" void CommandSpiderBossProjectiles(s32 mode)
 {
 	if (mode == 0) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 0;
@@ -1704,8 +1706,10 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 		}
 	}
 	if (mode == 2) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 20;
@@ -1842,12 +1846,12 @@ void XObjActor3::Kind15(u32 frames)
  * @note Address: 0x8010CDDC
  * @note Size: 0xA4
  */
-// NONMATCHING: regalloc
 extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 {
 	XObjActor3* obj;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
 	for (s32 i = 0; i < 48; i++) {
-		obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+		obj = (XObjActor3*)pool.Get(i);
 		switch (obj->GetKind()) {
 		case 0x43A:
 			if ((obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
@@ -2192,7 +2196,6 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
  * @note Size: 0x420
  */
 // the robot gets on the actor at its first joint, or off it
-// NONMATCHING: the robot and the joint's vectors take each other's registers
 extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 {
 	CJObj joint;
@@ -2216,7 +2219,8 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 			player->mPlayerStatus.mFlags |= 0x20000000;
 			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = 1;
-			HSD_JObjClearMtxFlags(player->mJObj);
+			HSD_JObj* jobj      = player->mJObj;
+			HSD_JObjClearMtxFlags(jobj);
 			break;
 		}
 		actor->mEventCommand = 0;

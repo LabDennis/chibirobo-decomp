@@ -1,6 +1,7 @@
 #ifndef NW4R_EF_RES_EMITTER_H
 #define NW4R_EF_RES_EMITTER_H
 #include "nw4r/types_nw4r.h"
+#include "nw4r/db/db_assert.h"
 
 #include "nw4r/ef/ef_res_animcurve.h"
 #include "nw4r/ef/ef_types.h"
@@ -451,6 +452,7 @@ public:
     }
 
     EmitterResource* ptr() {
+        NW4R_ASSERT_PTR_FILELINE("res_emitter_ac.h", 95, mData);
         return mData;
     }
 

@@ -1,5 +1,5 @@
-#include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
+#include "game/wii/xobj.h"
 #include "game/wii/csound.h"
 #include "game/gmath.h"
 #include "game/globals.h"

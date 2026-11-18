@@ -8,7 +8,7 @@ char gSaveReadFileName[0xC8];
 SaveFile gSavePreviewFileBuffer[2] ATTRIBUTE_ALIGN(32);
 
 // NONMATCHING: retail keeps the card high base and derives the stat pointer from it,
-// ours materializes the stat pointer first; it also copies CARDStat's pad byte at 0x2F
+// ours materializes the stat pointer first and makes the base a copy
 /**
  * @note Address: 0x8008933C
  * @note Size: 0x524

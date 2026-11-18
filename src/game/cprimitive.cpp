@@ -49,9 +49,12 @@ static inline void SetVtxPosClr(GXVtxAttrFmtList* fmt = NULL)
 	GXSetVtxDescv(desc);
 }
 
-// position, normal and color, all direct
-static inline void SetVtxPosNrmClr(GXVtxAttrFmtList* fmt = NULL)
+// position, normal and color, all direct, after loading the model view and its normal
+// matrix. a function of its own on the Wii
+inline void CPrimitive::SetVtxPosNrmClr(Mtx view, GXVtxAttrFmtList* fmt)
 {
+	LoadNrmMtx(LoadMtx(view));
+	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
 	GXVtxAttrFmtList defFmt[] = {
 		{ GX_VA_POS, GX_POS_XYZ, GX_F32, 0 },
 		{ GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0 },
@@ -897,9 +900,7 @@ void CTriangle::DrawLit(Mtx view, Vec* pos, u32 color, u16 count, GXPrimitive ty
 {
 	Vec normal;
 
-	LoadNrmMtx(LoadMtx(view));
-	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
-	SetVtxPosNrmClr();
+	SetVtxPosNrmClr(view);
 	CalcTriangleNormal(&pos[0], &pos[1], &pos[2], &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
@@ -1273,9 +1274,7 @@ void CTriangle::DrawLit(Mtx view, Vec* pos, u32* color, u16 count, GXPrimitive t
 {
 	Vec normal;
 
-	LoadNrmMtx(LoadMtx(view));
-	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
-	SetVtxPosNrmClr();
+	SetVtxPosNrmClr(view);
 	CalcTriangleNormal(&pos[0], &pos[1], &pos[2], &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
@@ -1652,9 +1651,7 @@ void CTriangle::DrawLit(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 {
 	Vec normal;
 
-	LoadNrmMtx(LoadMtx(view));
-	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
-	SetVtxPosNrmClr();
+	SetVtxPosNrmClr(view);
 	CalcTriangleNormal(&vtx[0].pos, &vtx[1].pos, &vtx[2].pos, &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
@@ -2014,9 +2011,7 @@ void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 		{ GX_VA_NULL, GX_POS_XY, GX_U8, 0 },
 	};
 
-	LoadNrmMtx(LoadMtx(view));
-	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
-	SetVtxPosNrmClr(fmt);
+	SetVtxPosNrmClr(view, fmt);
 	GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, segments + 2);
 	f32 zero = 0.0f;
 	GXPosition3f32(zero, zero, zero);
@@ -2406,9 +2401,7 @@ void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 		{ GX_VA_NULL, GX_POS_XY, GX_U8, 0 },
 	};
 
-	LoadNrmMtx(LoadMtx(view));
-	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
-	SetVtxPosNrmClr(fmt);
+	SetVtxPosNrmClr(view, fmt);
 	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
 	GXPosition3f32(mCenter.x - 1.0f, 1.0f + mCenter.y, mCenter.z);
 	GXNormal3s8(0, 0, 1);

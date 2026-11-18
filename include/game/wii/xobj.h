@@ -10,6 +10,7 @@
 #include "game/coordinfo.h"
 #include "game/cstatus64.h"
 #include "game/ctrigon.h"
+#include "game/mapfloorhit.h"
 #include "game/evt.h"
 #include "game/ut.h"
 #include "game/wii/cgs.h"
@@ -1144,6 +1145,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// one floor's edge, the GameCube's XObjEdge
+struct XObjEdge {
+	Vec mContactOffset; // _00
+	Vec mFrom;          // _0C
+	Vec mTo;            // _18
+};
+STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
+
 class XObj : public CObj {
 public:
 	XObj();
@@ -1183,7 +1192,7 @@ public:
 	virtual void vf1BC();
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
-	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
+	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
 	                               s32 arg7);                         // _1C8
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
 	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
@@ -1268,7 +1277,7 @@ public:
 	CoordInfo mCoord;   // _160
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
-	u32 mFloorMasks[2]; // _178, per-floor collision enables
+	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group
 	u8 _180[0x188 - 0x180];
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
@@ -1278,11 +1287,10 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex; // _1BC
-	u8 _1C0[0x640 - 0x1C0];
-	f32 mFloorXZExtent; // _640
-	u8 _644[0x648 - 0x644];
+	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;       // _1BC
+	XObjEdge mEdges[32];      // _1C0, one per floor
+	f32 mFloorXZExtent[2];    // _640, [0] is GetFloorXZExtent's; xobj_chr.cpp reads them by index
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
 	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
@@ -1295,8 +1303,8 @@ public:
 	f32 mScreenLeft;   // _6E8
 	f32 mScreenRight;  // _6EC
 	u8 _6F0[0x6F8 - 0x6F0];
-	CVec mToppleOffset; // _6F8
-	u8 _708[0xC];
+	CVec mToppleOffset;       // _6F8
+	XObjMapHit mFloorHit;     // _708, the map floor under the object
 	CVec mVec714;             // _714
 	CEvt mEvt;                // _724
 	const void* mEventScript; // _790, the event script the object starts when used
@@ -1305,7 +1313,8 @@ public:
 	CJArchive mArchive;  // _820
 	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
-	u8 _99C[0xC];
+	u8 _99C[0x9A4 - 0x99C];
+	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
@@ -1414,7 +1423,6 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
-private:
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];

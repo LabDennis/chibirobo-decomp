@@ -10,25 +10,6 @@ CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 
 extern "C" void Attach__5CJObjFP9_HSD_JObj(CJObj*, HSD_JObj*);
 
-static inline void PlaceInTaoMouth(CJObj& joint, XObj* carried, Mtx mount, f32 z)
-{
-	Mtx result, translation;
-	PSMTXCopy(joint.GetMtx(), mount);
-	Vec scale;
-	HSD_MtxGetScale(mount, &scale);
-	scale.x = GetStagePlacementScale(carried).x / scale.x;
-	scale.y = GetStagePlacementScale(carried).y / scale.y;
-	scale.z = GetStagePlacementScale(carried).z / scale.z;
-	Mtx scaling;
-	PSMTXScale(scaling, scale.x, scale.y, scale.z);
-	PSMTXConcat(mount, scaling, result);
-	PSMTXTrans(translation, 0, -10, z);
-	PSMTXConcat(result, translation, result);
-	HSD_JObj* root = carried->mJObj;
-	MtxPtr matrix  = result;
-	HSD_JObjCopyMtx(root, matrix);
-}
-
 /**
  * @note Address: 0x8012C858
  * @note Size: 0x24
@@ -311,6 +292,8 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 	if (mHideKinds.mFlags & 0x2f) {
 		CVec mouthPosition;
 		s32 mouth[6] = { 0, 0, 0, 0, 0, 0 };
+		Vec scale;
+		Mtx scaling, translation, result;
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, mouth, 6));
 		mouthPosition = joint.GetPos();
 		s32 kind      = -1;
@@ -321,13 +304,11 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		else if (mHideKinds.mFlags & 4)
 			kind = 0xf8;
 		else if (mHideKinds.mFlags & 8) {
-			kind        = 0x2a3; // one level up from the mouth
-			s32 path[5] = { 0, 0, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
+			kind = 0x2a3; // one level up from the mouth
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[5]) { 0, 0, 0, 0, 0 }, 5));
 		} else if (mHideKinds.mFlags & 0x20) {
-			kind        = 0x46f; // three levels up from the mouth
-			s32 path[3] = { 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 3));
+			kind = 0x46f; // three levels up from the mouth
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[3]) { 0, 0, 0 }, 3));
 		}
 		if (kind >= 0)
 			switch (kind) {
@@ -337,7 +318,20 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 					if (kind == obj->GetKind()) {
 						switch (kind) {
 						case 0x102:
-							PlaceInTaoMouth(joint, obj, mCarryMtx, 0);
+							PSMTXCopy(joint.GetMtx(), mCarryMtx);
+							HSD_MtxGetScale(mCarryMtx, &scale);
+							scale.x = GetStagePlacementScale(obj).x / scale.x;
+							scale.y = GetStagePlacementScale(obj).y / scale.y;
+							scale.z = GetStagePlacementScale(obj).z / scale.z;
+							PSMTXScale(scaling, scale.x, scale.y, scale.z);
+							PSMTXConcat(mCarryMtx, scaling, result);
+							PSMTXTrans(translation, 0, -10, 0);
+							PSMTXConcat(result, translation, result);
+							{
+								HSD_JObj* root = obj->mJObj;
+								MtxPtr matrix  = result;
+								HSD_JObjCopyMtx(root, matrix);
+							}
 							break;
 						default: {
 							MtxPtr matrix  = joint.GetMtx();
@@ -359,12 +353,10 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 						switch (kind) {
 						case 0x159:
 							PSMTXCopy(joint.GetMtx(), mCarryMtx);
-							Vec scale;
 							HSD_MtxGetScale(mCarryMtx, &scale);
 							scale.x = GetStagePlacementScale(obj).x / scale.x;
 							scale.y = GetStagePlacementScale(obj).y / scale.y;
 							scale.z = GetStagePlacementScale(obj).z / scale.z;
-							Mtx scaling;
 							PSMTXScale(scaling, scale.x, scale.y, scale.z);
 							PSMTXConcat(mCarryMtx, scaling, mCarryMtx);
 							HSD_JObjCopyMtx(obj->mJObj, mCarryMtx);
@@ -391,7 +383,20 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 						case 0xf8:
 							if (++ordinal != mCmd[2]) // only the numbered one
 								break;
-							PlaceInTaoMouth(joint, obj, mCarryMtx, 3);
+							PSMTXCopy(joint.GetMtx(), mCarryMtx);
+							HSD_MtxGetScale(mCarryMtx, &scale);
+							scale.x = GetStagePlacementScale(obj).x / scale.x;
+							scale.y = GetStagePlacementScale(obj).y / scale.y;
+							scale.z = GetStagePlacementScale(obj).z / scale.z;
+							PSMTXScale(scaling, scale.x, scale.y, scale.z);
+							PSMTXConcat(mCarryMtx, scaling, result);
+							PSMTXTrans(translation, 0, -10, 3);
+							PSMTXConcat(result, translation, result);
+							{
+								HSD_JObj* root = obj->mJObj;
+								MtxPtr matrix  = result;
+								HSD_JObjCopyMtx(root, matrix);
+							}
 							return;
 						default: {
 							MtxPtr matrix  = joint.GetMtx();
@@ -463,16 +468,14 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		if (mMountObjId >= 0 && mMountObj) {
 			mMountObj->SetScale(1, 1, 1, 0);
 			CJObj extra;
-			s32 path[3] = { 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&extra, FindJointByPath(mJObj, path, 3));
-			Mtx result;
+			Attach__5CJObjFP9_HSD_JObj(&extra, FindJointByPath(mJObj, (s32[3]) { 0, 0, 0 }, 3));
+			Mtx scaling, result;
 			PSMTXCopy(extra.GetMtx(), mMountMtx);
 			Vec scale;
 			HSD_MtxGetScale(mMountMtx, &scale);
 			scale.x = GetStagePlacementScale(mMountObj).x / scale.x;
 			scale.y = GetStagePlacementScale(mMountObj).y / scale.y;
 			scale.z = GetStagePlacementScale(mMountObj).z / scale.z;
-			Mtx scaling;
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
 			PSMTXConcat(mMountMtx, scaling, result);
 			HSD_JObj* root = mMountObj->mJObj;

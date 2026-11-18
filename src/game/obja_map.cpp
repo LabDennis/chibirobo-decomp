@@ -53,8 +53,6 @@ extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
  * @note Address: 0x8009369C
  * @note Size: 0xCC
  */
-// NONMATCHING: retail walks a second induction pointer for GetLightDesc where this
-// version uses the loop index for both lookups.
 void XObjMap::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
@@ -94,15 +92,16 @@ void XObjMap::Release()
  */
 BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 {
-	// NONMATCHING: the dol copies a zero path template before storing the index
+	// NONMATCHING: regalloc only, the Init call's light mask (1 << (7 - i)) and the env byte
+	// trade registers, as in XObjLight::LoadFromPlacement
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		int i;
 		int j;
-		int n = 0;
-		for (i = 0;; i++) {
+		int n;
+		for (i = 0, n = 0;; i++) {
 			s32 path[]     = { 0 };
 			path[0]        = i;
-			HSD_JObj* jobj = GetJointByPath(mJObj, path, 1);
+			HSD_JObj* jobj = FindJointByPath(mJObj, path, 1);
 			if (jobj == NULL) {
 				break;
 			}
@@ -125,7 +124,7 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 		for (i = 0; i < mTrigonCount; i++) { }
 		if (GetLightMode() == 1) {
 			CLight* prev = NULL;
-			for (i = 0; i < 8; i++) {
+			for (s32 i = 0; i < 8; i++) {
 				if (GetLightDesc(i) != NULL) {
 					// env slot 5 picks which lights cast shadows
 					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));

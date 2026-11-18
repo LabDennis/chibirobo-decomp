@@ -356,13 +356,13 @@ void XObjCoin::UpdateObject(u32 frames)
 		s32 item = GetItem();
 		switch (GetAnimId()) {
 		case 1:
-			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f) ||
-			    (mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f) ||
-			    (mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f) || (mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f) ||
-			    (mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f) || (mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f) ||
-			    (mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f) || (mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f) ||
-			    (mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f)) {
-				MtxP mtx                 = GetWorldMtx(sCoinSparkles[item].mJoint);
+			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f)
+			    || (mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)
+			    || (mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f) || (mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f)
+			    || (mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f) || (mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f)
+			    || (mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f) || (mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f)
+			    || (mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f)) {
+				MtxP mtx               = GetWorldMtx(sCoinSparkles[item].mJoint);
 				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
 				if (spawned != NULL) {
 					spawned->mWorldMtx = mtx;
@@ -371,9 +371,9 @@ void XObjCoin::UpdateObject(u32 frames)
 			}
 			break;
 		case 2:
-			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f) ||
-			    (mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)) {
-				MtxP mtx                 = GetWorldMtx(sCoinSparkles[item].mJoint);
+			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f)
+			    || (mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)) {
+				MtxP mtx               = GetWorldMtx(sCoinSparkles[item].mJoint);
 				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
 				if (spawned != NULL) {
 					spawned->mWorldMtx = mtx;
@@ -386,7 +386,7 @@ void XObjCoin::UpdateObject(u32 frames)
 	// a finished bounce sound gives its claim slot back
 	if (mHandleSlot >= 0 && mActors[1].GetHandle() == NULL) {
 		lbl_8045DB20[mHandleSlot] = 0;
-		mHandleSlot             = -1;
+		mHandleSlot               = -1;
 	}
 	for (s32 i = 0; i < 2; i++) {
 		mActors[i].Update(GetPos());

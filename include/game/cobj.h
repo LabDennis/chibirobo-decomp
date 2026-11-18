@@ -198,7 +198,7 @@ struct CXObjQueueEntry {
 class CXObj : public CJObj {
 public:
 	// _00 CJObj, vtable at _34
-	u32 mId;                    // _38
+	s32 mId;                    // _38
 	s32 mLoadState;             // _3C, 1 while the archive is being read
 	u32 mModel;                 // _40
 	u32 mLoadFlags;             // _44

@@ -452,14 +452,13 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 	f32 abx = b->x - a->x;
 	f32 abz = b->z - a->z;
 	f32 cdz = d->z - c->z;
-	f32 cdx = d->x - c->x;
 	f32 acx = c->x - a->x;
 	f32 acz = c->z - a->z;
 
 	f32 sideC = abx * acz - abz * acx;
 	f32 sideD = abx * (d->z - a->z) - abz * (d->x - a->x);
-	f32 sideA = cdx * (a->z - c->z) - cdz * (a->x - c->x);
-	f32 sideB = cdx * (b->z - c->z) - cdz * (b->x - c->x);
+	f32 sideA = (d->x - c->x) * (a->z - c->z) - cdz * (a->x - c->x);
+	f32 sideB = (d->x - c->x) * (b->z - c->z) - cdz * (b->x - c->x);
 
 	int hit;
 	if (check == 1) {
@@ -476,7 +475,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			out->z = a->z + (c->x - a->x) * ((b->z - a->z) / (b->x - a->x));
 		} else {
 			f32 slopeAB = abz / abx;
-			f32 slopeCD = cdz / cdx;
+			f32 slopeCD = cdz / (d->x - c->x);
 			if (slopeAB == slopeCD) {
 				return 0;
 			}
@@ -512,16 +511,12 @@ inline void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
 extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* pos,
                                             Vec* contact, Vec* push, int corners, f32 radius)
 {
-	CVec from(*fromPos);
-	from.y = 0.0f;
-	CVec to(*toPos);
-	to.y     = 0.0f;
+	CVec from(fromPos->x, 0.0f, fromPos->z);
+	CVec to(toPos->x, 0.0f, toPos->z);
 	f32 len  = (to - from).Length();
 	CVec dir = (to - from).Normalize();
-	CVec a(*wallA);
-	a.y = 0.0f;
-	CVec b(*wallB);
-	b.y = 0.0f;
+	CVec a(wallA->x, 0.0f, wallA->z);
+	CVec b(wallB->x, 0.0f, wallB->z);
 	CVec n;
 	GetOutwardPerpendicularToEdge(&from, &a, &b, &n);
 	PSVECNormalize(&n, &n);

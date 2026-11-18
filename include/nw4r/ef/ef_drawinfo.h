@@ -152,6 +152,20 @@ public:
         mZOffset = offset;
         mZOffsetOrig = rPos;
     }
+
+    void SetLightEnable(bool enable) { mLightEnable = enable; }
+    void SetLightMask(GXLightID mask) { mLightMask = mask; }
+    void SetLightMaskA(GXLightID mask) { mLightMaskA = mask; }
+    void SetChanAmbColor(GXColor color) { mChanAmbColor = color; }
+    void SetChanMatColor(GXColor color) { mChanMatColor = color; }
+    void SetFogType(GXFogType type) { mFogType = type; }
+    void SetFogRange(f32 startz, f32 endz, f32 nearz, f32 farz) {
+        mFogStartz = startz;
+        mFogEndz = endz;
+        mFogNearz = nearz;
+        mFogFarz = farz;
+    }
+    void SetFogColor(GXColor color) { mFogColor = color; }
 };
 
 } // namespace ef

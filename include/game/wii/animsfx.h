@@ -28,8 +28,8 @@ STATIC_ASSERT(sizeof(AnimSfxEvent) == 0x1C);
 // one of an object's sound sources. The class has no RTTI, the name is ours
 class AnimSfxActor {
 public:
-	CSound3DManager* mManager; // _00
-	CSound3DActor* mActor;     // _04
+	WiiSound3D* mManager;  // _00
+	CSound3DActor* mActor; // _04
 	u32 _08;
 
 	void Reset(); // 0x8003C3C4
@@ -50,8 +50,8 @@ public:
 	void Create()
 	{
 		if (mActor == NULL) {
-			CSound3DManager* manager = mManager;
-			mActor = new CSound3DActor(*(nw4r::snd::SoundArchivePlayer*)manager->mPlayer, *(nw4r::snd::Sound3DManager*)manager->_08);
+			WiiSound3D* manager = mManager;
+			mActor              = new CSound3DActor(*(nw4r::snd::SoundArchivePlayer*)manager->mPlayer, manager->mManager);
 		}
 	}
 	// moves a playing actor to pos and steps its fades

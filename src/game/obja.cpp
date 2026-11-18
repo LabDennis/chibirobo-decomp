@@ -246,6 +246,8 @@ static inline void FloorNormalAngle(const CVec& normal, Vec* out, f32& angle)
 		*out = normal;
 }
 
+// NONMATCHING: retail reads the quad corners through floors (lwzx off the held pointer) but the quad's yaw through
+// object->mFloors, keeps index * 32 apart from the pointer, and allocates registers differently
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
@@ -253,12 +255,13 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	CVec middle;
 	f32 angle = NAN;
 
-	Vec center   = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, index));
-	Vec extent   = object->mMoveScale * ReadObjectFloorExtent(object, index);
-	f32 baseYaw  = object->mMoveRotate.y;
-	f32 floorYaw = DEG2RAD * object->mFloors[index].mYawDegrees;
-	f32 yaw      = baseYaw + floorYaw;
-	switch (object->mFloors[index].mId) {
+	Vec center        = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, index));
+	Vec extent        = object->mMoveScale * ReadObjectFloorExtent(object, index);
+	XObjFloor* floors = object->mFloors;
+	f32 baseYaw       = object->mMoveRotate.y;
+	f32 floorYaw      = DEG2RAD * floors[index].mYawDegrees;
+	f32 yaw           = baseYaw + floorYaw;
+	switch (floors[index].mId) {
 	case 0:
 	case 1: { // a disc: face its center
 		Mtx world, local, rotate, scale, transform;
@@ -326,7 +329,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object, index);
 
 		f32 baseAngle = object->mMoveRotate.y;
-		f32 turnAngle = DEG2RAD * object->mFloors[index].mYawDegrees;
+		f32 turnAngle = DEG2RAD * floors[index].mYawDegrees;
 		f32 angleY    = baseAngle + turnAngle;
 		PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 		PSMTXScale(scaling, scale.x, scale.y, scale.z);
@@ -416,9 +419,11 @@ static inline void StoreSweepContact(const Vec* from, const Vec* to, Vec* contac
  * @note Address: 0x8008ED50
  * @note Size: 0x1498
  */
-u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
+// NONMATCHING: retail hands OnPlayerContact the contact delta as an unnamed temporary (lowest stack slot) and calls
+// PSVECMag between building it and the call, as if the virtual took (const Vec&, f32, s32); the overrides live in
+// xobjdust/hbox/coin and the spider files, so the signature stays (s32, s32) for now (probe: 99.36 -> 99.69)
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor, s32 flags)
 {
-	s32* cursor = (s32*)floorCursor;
 	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
 		if (cursor)
 			*cursor = -1;
@@ -826,7 +831,7 @@ void XObj::UpdateObject(u32 frames)
 		UpdateObjectFloorHeights((XObj*)this);
 	}
 	if (mEvt.mData.mScript != NULL)
-		CEvt_Update(&mEvt, frames);
+		mEvt.Update(frames);
 }
 
 /**

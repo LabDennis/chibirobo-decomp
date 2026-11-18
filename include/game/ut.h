@@ -125,6 +125,30 @@ public:
 };
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
+#if defined(VERSION_R24J01)
+// the Wii splits the 32-bit CStatus like CStatus64 (cstatus64.h): RTTI names CStatus32, derived from CBitStatus32,
+// each with a vtable of its own (0x802E6948, 0x802E6960). The base's constructor clears the flags before the derived
+// vtable goes in, the order the inlined constructors show (FbSubwin, 0x80033E0C)
+class CBitStatus32 {
+public:
+	CBitStatus32() { mFlags = 0; }
+
+	u32 mFlags; // _00
+	// _04 vtable
+
+	virtual ~CBitStatus32() { } // _08
+
+	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
+	void Clear() { mFlags = 0; }
+};
+
+class CStatus32 : public CBitStatus32 {
+public:
+	virtual ~CStatus32() { }
+};
+typedef char CStatus32_size_check[sizeof(CStatus32) == 0x8 ? 1 : -1];
+#endif
+
 #include "game/cstatus64.h"
 
 #if defined(VERSION_R24J01)
@@ -148,7 +172,7 @@ int IntersectLineWithPlane(Vec* p0, Vec* p1, Vec* point, Vec* normal, Vec* out);
 // the Wii put the point first; the GameCube takes the triangle first
 int IntersectVerticalLineWithTrianglePlane(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* out);
 #else
-int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+u32 ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                  Vec* contact, f32* dist, f32 radius, f32 scale, int corners);
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
 #endif

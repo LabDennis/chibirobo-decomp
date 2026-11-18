@@ -121,9 +121,9 @@ void CMotionControlCamera::InitCamera()
 void CMotionControlCamera::Init()
 {
 	InitMotionControlCameraDefaults(this);
-	mEye.Set(mView.mEye);
-	mInterest.Set(mView.mInterest);
-	mAngle.Set(mView.mAngle);
+	mEye.Set(mView.mEye.x, mView.mEye.y, mView.mEye.z);
+	mInterest.Set(mView.mInterest.x, mView.mInterest.y, mView.mInterest.z);
+	mAngle.Set(mView.mAngle.x, mView.mAngle.y, mView.mAngle.z);
 	mMode         = 0;
 	mAction       = NULL;
 	mPrevAction   = NULL;
@@ -566,7 +566,7 @@ void CMotionControlCamera::StartEye()
 		PushAction(GetAction(CAMACTION_EYE));
 		StopPlayerMotion(PLAYER);
 		PLAYER->vf28C(1);
-		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
+		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mMoveRotate.y, 0.0f);
 		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 550.0f,
 		                                500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
 		PlayWiiSoundEffect(&gGame.mSound, 0x71, 1.0f, 0.0f);
@@ -586,7 +586,7 @@ void CMotionControlCamera::EndEye()
 		PLAYER->vf28C(0);
 		// the second argument stays 1 in EndEye as well; whatever it selects happens in the
 		// joint state, not here
-		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
+		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mMoveRotate.y, 0.0f);
 		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 430.0f,
 		                                400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
 		PlayWiiSoundEffect(&gGame.mSound, 0x6F, 1.0f, 0.0f);
@@ -698,17 +698,17 @@ struct WiiCameraPoint {
  * @note Address: 0x8016A844
  * @note Size: 0x90
  */
-extern "C" WiiCameraPoint fn_8016A844(WiiCameraCurve* curve, f32 t)
+extern "C" WiiCameraPoint fn_8016A844(const WiiCameraCurve* curve, f32 t)
 {
-	WiiCameraPoint out;
 	f32 t2       = t * t;
 	f32 t3       = t * t2;
-	f32 tangent0 = t + (t3 - 2.0f * t2);
-	f32 basis0   = 1.0f + (2.0f * t3 - 3.0f * t2);
+	f32 basis0   = 2.0f * t3 - 3.0f * t2 + 1.0f;
+	f32 tangent0 = t3 - 2.0f * t2 + t;
 	f32 basis1   = -2.0f * t3 + 3.0f * t2;
 	f32 tangent1 = t3 - t2;
-	out.x        = curve->mP0X * basis0 + curve->mT0X * tangent0 + curve->mP1X * basis1 + curve->mT1X * tangent1;
-	out.y        = curve->mP0Y * basis0 + curve->mT0Y * tangent0 + curve->mP1Y * basis1 + curve->mT1Y * tangent1;
+	WiiCameraPoint out;
+	out.x = curve->mP0X * basis0 + curve->mT0X * tangent0 + curve->mP1X * basis1 + curve->mT1X * tangent1;
+	out.y = curve->mP0Y * basis0 + curve->mT0Y * tangent0 + curve->mP1Y * basis1 + curve->mT1Y * tangent1;
 	return out;
 }
 

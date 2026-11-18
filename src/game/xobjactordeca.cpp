@@ -351,28 +351,22 @@ void XObjActorDeca::UpdateAfterAnim(u32 frames)
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	if (mJointFlags.mFlags & 1) { // joint flag 1 hides the joints
-		s32 first[3] = { 0, 0, 0 };
-		joint.Attach(FindJointByPath(mJObj, first, 3));
+		joint.Attach(FindJointByPath(mJObj, (s32[3]) { 0, 0, 0 }, 3));
 		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
-		s32 second[4] = { 0, 0, 0, 0 };
-		joint.Attach(FindJointByPath(mJObj, second, 4));
+		joint.Attach(FindJointByPath(mJObj, (s32[4]) { 0, 0, 0, 0 }, 4));
 		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 	} else {
-		s32 first[3] = { 0, 0, 0 };
-		joint.Attach(FindJointByPath(mJObj, first, 3));
+		joint.Attach(FindJointByPath(mJObj, (s32[3]) { 0, 0, 0 }, 3));
 		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
-		s32 second[4] = { 0, 0, 0, 0 };
-		joint.Attach(FindJointByPath(mJObj, second, 4));
+		joint.Attach(FindJointByPath(mJObj, (s32[4]) { 0, 0, 0, 0 }, 4));
 		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 	}
 	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f); // eases toward the yaw target
-	s32 head[5] = { 0, 1, 0, 0, 0 };
-	joint.Attach(FindJointByPath(mJObj, head, 5));
+	joint.Attach(FindJointByPath(mJObj, (s32[5]) { 0, 1, 0, 0, 0 }, 5));
 	joint.SetRotationY(mJointYaw, 0);
 	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) { // the player rides the mount joint
 
-		s32 mount[2] = { 0, 3 };
-		joint.Attach(FindJointByPath(mJObj, mount, 2));
+		joint.Attach(FindJointByPath(mJObj, (s32[2]) { 0, 3 }, 2));
 		Mtx scaling, rotation, translation, result, matrix;
 		PSMTXCopy(joint.GetMtx(), matrix);
 		Vec scale;

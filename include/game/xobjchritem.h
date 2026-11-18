@@ -3,6 +3,7 @@
 
 #include "game/xchr.h"
 #include "game/stagedata.h"
+#include "game/xobjactor.h"
 
 extern "C" {
 extern s32 gSpecialSuitSpawnIds[];
@@ -24,7 +25,7 @@ static inline BOOL LoadPlayerSuitItem(XObjChr* chr)
 		HSD_JObj** joint = &chr->mSuits.mJoints[chr->mSuits.mCurrent];
 		if (*joint == NULL) {
 			s32 path[4] = { 0, 1, 0, 0 };
-			*joint      = FindJointByPath(item->mJObj, path, 4);
+			*joint      = GetJointFromRoot(item->mJObj, 4, path);
 		}
 		chr->mSuits.mLoadStep++;
 	}

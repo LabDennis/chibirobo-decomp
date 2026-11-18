@@ -22,9 +22,20 @@
 #include "game/cstopwatch.h"
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xobj.h"
+#include "game/wii/xchrmenu.h"
+#include "game/wii/menuutil.h"
+#include "game/menuhelpchar.h"
 #
 
 class CCamera;
+
+namespace nw4r {
+namespace ef {
+class EffectProject;
+class TextureProject;
+} // namespace ef
+} // namespace nw4r
 
 // one entry in the object reference table the renderer walks: the spawned object and a
 // flags halfword (CMsgFont_Init sets 0x800 on its cursor's own status instead)
@@ -285,6 +296,7 @@ public:
 	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
 	void UpdateDvdStatus();          // 0x80019428
 	void UpdateSystemMessage();      // 0x80018364, Update calls it first: the corner message and the battery icon
+	void DrawSystemMessage();        // 0x800187B0
 
 	// the drive reports trouble and the disc is not back yet
 	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
@@ -513,30 +525,72 @@ class CCameraActionArea : public CCameraActionAreaExM {
 public:
 	virtual void DrawDebug3d(); // _28, 0x80156E58
 
-	u8 _40[0x5C - 0x40];
-	s32 mControlEnabled; // _5C, with _2D0 set the area action keeps the pointer's cursor up
-	u8 _60[0x64 - 0x60];
-	XObj* mTarget; // _64
-	u8 _68[0x70 - 0x68];
+	f32 mTransitionTime;                                 // _40
+	s32 mKeepViewDirection;                              // _44, set by SetCamera: pick entries by the current view until one is applied
+	BOOL mForceApply;                                    // _48, apply mEntry even if its id is unchanged
+	s32 mEntryIndex;                                     // _4C
+	s32 mPrevEntryIndex;                                 // _50
+	CamAreaEntry* mEntry;                                // _54
+	CamAreaEntry* mPrevEntry;                            // _58
+	s32 mControlEnabled;                                 // _5C, with _2D0 set the area action keeps the pointer's cursor up
+	BOOL mPadControlEnabled;                             // _60
+	XObj* mTarget;                                       // _64
+	CInterfaceVectorInterpolation* mEyeInterp;           // _68
+	CInterfaceInterpolation* mFovInterp;                 // _6C
 	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
 	CVectorLinearInterpolation mEyeLinear;               // _CC
 	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
 	CVectorEaseOutInterpolation mEyeEaseOut;             // _15C
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _1C0
-	u8 _1F8[0x20C - 0x1F8];
-	CInterpolationLinear mFovLinear;               // _20C
-	CInterpolationEaseInOut mFovEaseInOut;         // _21C
-	CInterpolationEaseOut mFovEaseOut;             // _238
-	CInterpolationEaseOutDivide mFovEaseOutDivide; // _258
-	u8 _268[0x2D0 - 0x268];
+	CInterfaceVectorInterpolation* mEyeInterps[5];       // _1F8
+	CInterpolationLinear mFovLinear;                     // _20C
+	CInterpolationEaseInOut mFovEaseInOut;               // _21C
+	CInterpolationEaseOut mFovEaseOut;                   // _238
+	CInterpolationEaseOutDivide mFovEaseOutDivide;       // _258
+	CInterfaceInterpolation* mFovInterps[5];             // _268
+	CInterfaceVectorInterpolation* mInterestInterp;      // _27C
+	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
+	// _294 to _2FC: the Wii's pointer controls, Reset and SetCamera clear them; the names are not recovered
+	u8 _294[0x2A8 - 0x294];
+	f32 _2A8;
+	u8 _2AC[0x2C0 - 0x2AC];
+	f32 _2C0;
+	u8 _2C4[0x2CC - 0x2C4];
+	f32 _2CC;
 	u8 _2D0;
-	u8 _2D1[0x2FC - 0x2D1];
+	u8 _2D1;
+	u8 _2D2;
+	Vec _2D4;
+	u8 _2E0[0x2E8 - 0x2E0];
+	s32 _2E8;
+	s32 _2EC;
+	u8 _2F0[0x2F8 - 0x2F0];
+	s32 _2F8;
 
-	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
-	virtual void Update(u32 step);   // _10
-	virtual u32 GetCameraFlags();    // _58
-	virtual u32 GetInterestMode();   // _60
-	virtual XObj* GetTarget();       // _64
+	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+
+	s32 FindFacing(s32 slotIndex, const Vec& dir);
+
+	// the vectors are passed by value, hence the copies
+	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
+	{
+		if (mode == 3 || time <= 0.0f) {
+			mInterestInterp = NULL;
+			SetInterest(to);
+			return;
+		}
+		mInterestInterp = mInterestInterps[mode];
+		if (mInterestInterp != NULL) {
+			mInterestInterp->Start(from, to, time);
+		}
+	}
+	virtual u32 GetCameraFlags();  // _58
+	virtual u32 GetInterestMode(); // _60
+	virtual XObj* GetTarget();     // _64
 };
 STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 
@@ -546,26 +600,45 @@ class CCameraActionMap : public CCameraActionAreaExM {
 public:
 	virtual void DrawDebug3d(); // _28, 0x8015F34C
 
-	s32 mInterestMode; // _40, what GetInterestMode returns
-	u8 _44[0x48 - 0x44];
+	s32 mInterestMode;      // _40, what GetInterestMode returns
+	XObj* mTarget;          // _44, the object the camera looks at
 	CVec mPreviousInterest; // _48
-	u8 _58[0x60 - 0x58];
+	f32 mRestDistance;      // _58
+	f32 mSpringDamping;     // _5C
 	CVec mSpringPrevTarget; // _60
 	CVec mSpringTarget;     // _70
 	u8 _80[0x8C - 0x80];
-	// _8C and _11FC: the constructor (0x80034ACC) builds a CObjVec at each; typed, they tip ~CGame's inline budget
-	// so that ~CCameraActions expands into it and the member destructors behind it are no longer emitted
-	// (gamedtor.cpp, an incomplete CGame), so they stay bytes until the rest of CGame is typed
-	u8 _8C[0x30];
-	u8 _BC[0xC8 - 0xBC];
+	// _8C and _11FC: the constructor (0x80034ACC) builds a CObjVec at each
+	CObjVec _8C;
+	f32 mTurnSpeed;                                // _BC, turn speed
+	f32 mTargetYaw;                                // _C0, wrapped target yaw
+	f32 _C4;                                       // _C4
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
-	u8 _E8[0xDA4 - 0xE8];
-	s32 mPrevMapArea; // _DA4
-	s32 mMapArea;     // _DA8
-	u8 _DAC[0xDB8 - 0xDAC];
-	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
-	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
+	u8 _E8[0x4EC - 0xE8];
+	s32 mInsideCllCount;                               // _4EC
+	s32 mInsideCll0;                                   // _4F0
+	s32 mInsideCll1;                                   // _4F4
+	s32 mInsideCll2;                                   // _4F8
+	u8 _4FC[0x570 - 0x4FC];                            // _4FC
+	CamMapEntry mIntersectionEntries[32];              // _570
+	s32 mIntersectionCount;                            // _970
+	CamMapEntry* mNearestTargetEntry;                  // _974
+	s32 mNearestTargetIndex;                           // _978
+	CamMapEntry* mNearestEyeEntry;                     // _97C
+	s32 mNearestEyeIndex;                              // _980
+	Vec mSideStart;                                    // _984, one end of the picked side
+	Vec mSideEnd;                                      // _990, the other end
+	s32 mSideSign;                                     // _99C, 1 or -1, which way round they are
+	CamMapEntry mAreaIntersections[32];                // _9A0
+	s32 mAreaIntersectionCount;                        // _DA0, count of mAreaIntersections
+	s32 mPrevMapArea;                                  // _DA4
+	s32 mMapArea;                                      // _DA8
+	s32 mPadControlEnabled;                            // _DAC
+	s32 _DB0;                                          // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
+	CVectorEaseInOutInterpolation mTurnEaseInOut;      // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;          // _E14
 	u8 _E30[0xE34 - 0xE30];
 	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
 	u8 _E50[0xE64 - 0xE50];
@@ -589,16 +662,20 @@ public:
 	u8 _11EC[0x11F8 - 0x11EC];
 	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
-	u8 _11FC[0x30];
+	CObjVec _11FC;
 	u8 _122C[0x128C - 0x122C];
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
+	virtual void PreviousUpdate();  // _0C
 	virtual void Update(u32 step);  // _10
+	virtual void Reset();           // _14
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
+STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);
+STATIC_ASSERT(offsetof(CCameraActionMap, mPrevMapArea) == 0xDA4);
 
 // every camera action in one block, CGame keeps the block at +0xD78F8 and the table it fills
 // in at +0xD9B24 as mCameraActions.
@@ -609,7 +686,6 @@ public:
 	CCameraActionChase mChase;                     // _33C
 	CCameraActionEvt mEvt;                         // _3AC
 	CCameraActionScroll2 mScroll2;                 // _890
-	u8 _B78[0xB7C - 0xB78];                        // _B78
 	CCameraActionEye mEye;                         // _B7C
 	CCameraActionAnim mAnim;                       // _CA0
 	CCameraActionMap mMap;                         // _CE8
@@ -686,31 +762,6 @@ struct WiiPlayerSuits {
 	                 // the suit objects beyond here are not reconstructed
 };
 
-struct WiiPlayerState;
-// the vtable slots of the unreconstructed Wii player class that the save manager reaches:
-// +0x70 takes the rotation, +0x90 a position Vec, +0x244 returns it
-struct WiiPlayerVtable {
-	void* _00[0x70 / 4];
-	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
-	void* _74[(0x90 - 0x74) / 4];
-	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0xAC - 0x94) / 4];
-	// the camera actions read the object's world matrix through here; retail feeds the
-	// result straight into PSMTXCopy (0x80160F7C / 0x80161160)
-	MtxP (*GetMtxPtr)(WiiPlayerState* chr);
-	void* _B0[(0x1B0 - 0xB0) / 4];
-	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
-	Vec (*GetCameraTarget)(WiiPlayerState* chr);
-	void* _1B4[(0x244 - 0x1B4) / 4];
-	const Vec* (*GetPosition)(WiiPlayerState* chr);
-	void* _248[(0x26C - 0x248) / 4];
-	// the ladder camera adds the object's facing to its orbit angle
-	f32 (*GetRotationY)(WiiPlayerState* chr);
-	void* _270[(0x28C - 0x270) / 4];
-	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
-	void (*vf28C)(WiiPlayerState* chr, s32 held);
-};
-
 // the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire
 // (XObjWireEff). Its vtable shares the unreconstructed Wii object layout where +0x90 takes a
 // position Vec - the same slot the player's own vtable keeps it at
@@ -763,11 +814,23 @@ STATIC_ASSERT(sizeof(WiiPlayerPlug) == 0xDA0);
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenuMark {
+	f32 mSpin;           // _00
+	f32 mTilt;           // _04
+	f32 mScale;          // _08
+	u8 _0C[0x9B8 - 0xC]; // the mark's own object, not reconstructed
+};
+STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
 struct WiiOXMenu {
 	u8 _00[4];
-	s32 mStarted; // _04
-	u8 _08[0x1388];
-	s32 mConfirmedIndex; // _1390
+	s32 mStarted;           // _04
+	s32 mCrossMask;         // _08
+	s32 mSelectedIndex;     // _0C
+	u8 _10[0x18 - 0x10];    // _10
+	WiiOXMenuMark mMark[2]; // _18
+	XObj* mChr;             // _1388
+	f32 mStartRot;          // _138C, the chr's y rotation when it opened
+	s32 mConfirmedIndex;    // _1390
 };
 
 // one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
@@ -817,36 +880,37 @@ public:
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
-// the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
-// highlighted item's type; the item count is a bound, the menu only uses a handful
-struct WiiAtcMenuItem {
-	s32 mType; // _00
-	u8 _04[0x24];
-};
-struct WiiAtcMenu {
-	s32 mCursorIndex;            // _00
-	u8 _04[0xC];                 // _04
-	WiiAtcMenuItem mItems[0x20]; // _10
-};
-
 class CSound3DActor;
 class XObj;
 
+// where chibi robo looks and the marker over it, the GameCube's XObjChrLook with the same head
+struct XObjChrLook {
+	BOOL mActive;  // _00
+	s32 mMode;     // _04
+	XObj* mObject; // _08
+	Vec mOffset;   // _0C
+	Vec mTarget;   // _18
+	f32 mFade;     // _24, the marker is shown while it is above 0
+	f32 mPhase;    // _28
+	f32 mPulse;    // _2C
+	BOOL _30;      // _30, set with mActive, cleared on its own
+};
+STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
+
 // one of the player's positioned sounds; ChangeGameStage stops both
-// the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
-// the save manager reads and writes, at offsets verified against retail.
-struct WiiPlayerState {
-	WiiPlayerVtable* mVtable;
-	u8 _0004[0x64 - 0x04];
-	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x150 - 0x68];
-	u64 mStatus; // _0150, the object status flags, as XObj's
-	u8 _0158[0x710 - 0x158];
-	f32 mFloorHitHeight; // _0710, the height the player's own floor probe hit, the GameCube's
-	                     // mFloorHit.mHeight
-	u8 _0714[0x9CC - 0x714];
+// the Wii player object: a different, larger class than the GameCube XObjChr, on the Wii XObj. These are the
+// members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
+// todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
+struct WiiPlayerState : public XObj {
+	u8 _09A8[0x9CC - 0x9A8];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xA90 - 0x9D0];
+	u8 _09D0[0x9D4 - 0x9D0];
+	CObjVec mMotion; // _09D4, how he moves this frame
+	u8 _0A04[0xA20 - 0xA04];
+	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
+	u8 _0A28[0xA88 - 0xA28];
+	s32 mIdleLoops; // _0A88, idle anim loops before the next idle move
+	u8 _0A8C[0xA90 - 0xA8C];
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C
@@ -869,7 +933,12 @@ struct WiiPlayerState {
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
-	u8 _9608[0x9920 - 0x9608];
+	u8 _9608[0x96A0 - 0x9608];
+	s32 mBlinkWait;        // _96A0, frames until he blinks again
+	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
+	XObjChrLook mLook;     // _98E8
+	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -883,24 +952,24 @@ struct WiiPlayerState {
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
-	u8 _DC64[0x19E9C - 0xDC64];
+	u8 _DC64[0x18BE8 - 0xDC64];
+	CPadOne mPad; // _18BE8, the pad he reads, the GameCube's mPad
+	u8 _19E90[0x19E9C - 0x19E90];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x19EE8 - 0x19EE4];
-	WiiAtcMenu mAtcMenu; // _19EE8
-	u8 _1A3F8[0x1A420 - 0x1A3F8];
-	WiiOXMenu mOXMenu; // _1A420
-	u8 _1B7B4[0x1C994 - 0x1B7B4];
+	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;     // _1A420
+	u8 _1B7B4[0x1C990 - 0x1B7B4];
+	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent;  // _1C994
 	s32 mItemTint;         // _1C998
 	f32 mHeadOffset;       // _1C99C
 	BOOL mHeadOffsetReady; // _1C9A0
 	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
+	u8 _1C9A8[0x1C9B8 - 0x1C9A8];
+	f32 _1C9B8[3]; // _1C9B8, read by index; the movement code tests [2] above 0
 
-	const Vec* GetPosition() { return mVtable->GetPosition(this); }
-	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
-	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
-	f32 GetRotationY() { return mVtable->GetRotationY(this); }
-	void vf28C(s32 held) { mVtable->vf28C(this, held); }
+	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
+	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
@@ -908,6 +977,9 @@ struct WiiPlayerState {
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mMenu) == 0x19EE4);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {
@@ -945,10 +1017,27 @@ struct MenuWindow {
 	f32 mHeight; // _10
 	u8 _14[0x128 - 0x14];
 	f32 mDrawAlpha; // _128
+
+	void SetSize(f32 width, f32 height)
+	{
+		mWidth  = width;
+		mHeight = height;
+	}
+	void SetPos(f32 x, f32 y)
+	{
+		mX = x;
+		mY = y;
+	}
 };
 STATIC_ASSERT(sizeof(MenuWindow) == 0x12C);
 
-class MenuCursor;
+// the hand that points at a menu's row, the cursor the menus share (MenuEx's); on the Wii a picture from the
+// game's palette, and only its blink is left (UpdateOpenMenus, 0x8008492C)
+class MenuCursor {
+public:
+	s32 mTimer; // _00
+	s32 mFrame; // _04, 0 to 7, which of the cursor pictures (palette entry 248 on)
+};
 
 // one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
 // the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it.
@@ -966,13 +1055,15 @@ public:
 	f32 mSuspendAlpha;   // _148
 	// _14C vtable
 
+	~CMenu() { }
+
 	virtual void Init();             // _08
 	virtual void Reset();            // _0C
 	virtual BOOL LoadTexture();      // _10
 	virtual BOOL Update(u32 frames); // _14
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
-	virtual void Close();            // _20
+	virtual void Close(s32 state);   // _20, stores state as mState (0x80050D9C)
 	virtual BOOL IsOpen() { return mState != 0; }
 	virtual void Suspend(BOOL fade); // _28
 	virtual void Resume();           // _2C
@@ -980,81 +1071,350 @@ public:
 	virtual void vf2C();
 };
 
-class MenuMain : public CMenu {
+// a menu of text rows, the GameCube class of the same name
+class Menu : public CMenu {
+public:
+	f32 mFontSize; // _150
+	f32 mMaxWidth; // _154, of the widest row
+	f32 mRowCount; // _158
+};
+
+// one of MenuMain's rows and what picking it does
+struct MenuMainItem {
+	char* mText; // _00, "\x01" for a separator
+	s32 mAction; // _04, -1 for a separator
+};
+
+class MenuMain : public Menu {
 public:
 	struct ExtraRow {
 		char* mText; // _00
 		s32 mAction; // _04
 	};
 
-	u8 _150[0x1D0 - 0x150];
+	s32 mBaseRows;          // _15C
+	char* mText[14];        // _160
+	f32 mTextWidth[14];     // _198
 	s32 mChannel;           // _1D0
 	ExtraRow mExtraRows[5]; // _1D4
 
 	virtual void Init();
 	virtual void Reset();
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
+	virtual void Close(s32 state);
 	virtual void Resume();
 };
 
-class MenuStageSelect : public CMenu {
+class MenuStageSelect : public Menu {
 public:
 	virtual void Init();
-};
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
+	virtual void Open();
 
-class MenuSave : public CMenu {
+	s32 mCount;            // _15C
+	char mLabels[100][64]; // _160, "\x01" marks a stage that can't be picked
+	f32 mLabelWidth[100];  // _1A60
+};
+STATIC_ASSERT(offsetof(MenuMain, mChannel) == 0x1D0);
+STATIC_ASSERT(offsetof(MenuStageSelect, mLabelWidth) == 0x1A60);
+
+// a letter of a title that flies in, one after the other, the GameCube struct
+struct MenuTitleChar {
+	const char* mText; // _00
+	f32 mFade;         // _04
+	f32 mHold;         // _08, the letter fades out once this is 0
+	f32 mAngle0;       // _0C
+	f32 mAngle1;       // _10
+};
+STATIC_ASSERT(sizeof(MenuTitleChar) == 0x14);
+
+// a title of up to 20 letters, the GameCube struct
+struct MenuTitle {
+	BOOL mActive;             // _00
+	s32 mCount;               // _04
+	u32 mColor;               // _08
+	MenuTitleChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
+
+// the save menu, the GameCube class of the same name. Its RTTI has the pointer base this code calls MenuUtil
+// (the binary's MenuPad) at _15C; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
+// records, and between mFile and mLastFile come the stick's copies of the file and yes/no choice, as Title has them
+class MenuSave : public Menu, public MenuUtil {
 public:
-	u8 _150[0x2C4 - 0x150];
-	s32 mLastFile; // _2C4, -1 for none
+	f32 mPanelX;               // _160
+	f32 mPanelY;               // _164
+	f32 mTargetPanelX;         // _168
+	f32 mTargetPanelY;         // _16C
+	f32 _170;                  // _170
+	f32 mBannerSlide;          // _174
+	f32 _178;                  // _178
+	f32 mOffset;               // _17C
+	WiiMenuSaveSlot mSlots[3]; // _180, the three save files
+	u8 _27C[0x284 - 0x27C];
+	s32 mResult;               // _284, the save operation's result
+	s32 mMessage;              // _288
+	u8 mReady;                 // _28C
+	u8 mShowMessage;           // _28D
+	u8 mWrongDevice;           // _28E
+	u8 mSaved;                 // _28F
+	f32 mDrawAlpha;            // _290
+	f32 mTargetAlpha;          // _294, mDrawAlpha goes to it
+	s32 mMode;                 // _298, the state the table runs
+	s32 mPrevMode;             // _29C
+	u32 _2A0;                  // _2A0
+	s32 mPhase;                // _2A4
+	f32 mTime;                 // _2A8
+	s32 mDelay;                // _2AC
+	s32 mFile;                 // _2B0, the file picked, -1 with the pointer on none
+	s32 mStickFile;            // _2B4, the file the stick is on, mFile again when the pointer goes
+	s32 mNewestFile;           // _2B8
+	s32 mChoice;               // _2BC, yes or no, -1 with the pointer on neither
+	s32 mStickChoice;          // _2C0
+	s32 mLastFile;             // _2C4, -1 for none
+	s32 mChannel;              // _2C8, the GameCube's card slot
+	s32 mShowHelp;             // _2CC
+	f32 mHelpAlpha;            // _2D0
+	const char* mHelpText;     // _2D4
+	const char* mNextHelpText; // _2D8
+	f32 mTexScroll;            // _2DC
+	MenuTitle mTitle;          // _2E0
+	s32 mHelpCount;            // _47C
+	MenuHelpChar mBg[20];      // _480
+	u8 mResetOnClose;          // _570, closing asks the game for reset type 5
+	CbPane mPanes[5];          // _574, the three files, yes and no
+	f32 mFileAlpha[3];         // _704, each file's highlight
+
+	void SetMode(s32 mode)
+	{
+		mPrevMode = mMode;
+		mMode     = mode;
+		mPhase    = 0;
+	}
 
 	virtual void Reset();
+	virtual BOOL Update(u32 frames);
+	virtual void Open();
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
+	void State12(u32 frames);
+	void State13(u32 frames);
+	void State14(u32 frames);
+	void State15(u32 frames);
+	void State16(u32 frames);
+	void State17(u32 frames);
+	void State18(u32 frames);
+	void State19(u32 frames);
 };
+STATIC_ASSERT(offsetof(MenuSave, mPanelX) == 0x160);
+STATIC_ASSERT(offsetof(MenuSave, mLastFile) == 0x2C4);
+STATIC_ASSERT(offsetof(MenuSave, mResetOnClose) == 0x570);
+STATIC_ASSERT(sizeof(MenuSave) == 0x710);
+
+// the save file test menus, Wii only (RTTI); the first lists the save slots, the second what to do with one,
+// the third shows a save error. Only their sizes are known so far
+// one line of a save file test menu
+struct MenuTextRow {
+	char* mText; // _00
+	f32 mWidth;  // _04
+};
+
+class MenuSFTest : public Menu {
+public:
+	virtual void Init();
+	virtual void Open();
+	virtual ~MenuSFTest() { }
+	virtual void InitRows(); // _3C, 0x80052F98
+
+	void BuildRows();               // 0x80052FF8, the slot lines and the free space
+	void StartOperation(s32 which); // 0x80053540, 0 none, 1 scan, 2 save, 4 load, 6 delete
+
+	MenuTextRow* mRows; // _15C, twelve of them
+	s32 mRowTotal;      // _160
+	s32 mOperation;     // _164, the save manager job running, 0 when none
+	s32 _168;           // _168, -1 on opening
+};
+STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
+
+class MenuSFTestSub : public Menu {
+public:
+	u8 _15C[0x164 - 0x15C];
+};
+STATIC_ASSERT(sizeof(MenuSFTestSub) == 0x164);
+
+class MenuSFTestErr : public Menu {
+public:
+	u8 _15C[0x164 - 0x15C];
+};
+STATIC_ASSERT(sizeof(MenuSFTestErr) == 0x164);
+
+// the item menu, the GameCube class of the same name
+class MenuItem : public CMenu {
+public:
+	virtual void Open();
+
+	u8 _150[0x78C - 0x150];
+};
+STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
+
+// a row of the status menu's item pages, the GameCube struct
+struct MenuStatusEntry {
+	s16 mItem;       // _00
+	s16 mCount;      // _02
+	CStatus mStatus; // _04
+};
+STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
+
+// the items the status screen pages through, the GameCube struct
+struct MenuStatusTable {
+	s32 mPage;                   // _00, in fours
+	MenuStatusEntry mItems[256]; // _04, the eight on screen
+	MenuStatusEntry mPrev[4];    // _C04, the four before them
+	MenuStatusEntry mNext[4];    // _C34, the four after
+};
+STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
+
+// a row of the PC shop's lists, the GameCube struct
+struct MenuPCItem {
+	s16 mItem;        // _00, -1 for an empty row
+	s16 mCount;       // _02, -1 for an empty row
+	s16 mPrice;       // _04
+	u8 mIsAttachment; // _06
+	u8 _07;           // _07
+};
+STATIC_ASSERT(sizeof(MenuPCItem) == 8);
+
+// the nine rows on screen and the ones just off either end, the GameCube struct
+struct MenuPCPage {
+	s32 mStart;           // _00, list index of the first row
+	MenuPCItem mRows[20]; // _04
+	s32 mIndex[20];       // _A4, list index of each row
+	MenuPCItem mPrev[1];  // _F4
+	MenuPCItem mNext[1];  // _FC
+};
+STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
+	void State3(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
-};
 
-class MenuPC : public CMenu {
+	virtual void Open();
+
+	u8 _150[0x1958 - 0x150];
+};
+STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
+
+// a number the pc shows easing toward its value, the GameCube struct of the same name
+struct PCAmount {
+	f32 shown;
+	f32 target;
+};
+// the chibi-pc shop, the GameCube class of the same name; its members sit four bytes further on because
+// Menu is a word longer here (State4, State11, ResetPCCharacters)
+class MenuPC : public Menu {
 public:
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
 	void State6(u32 frames);
+	void State7(u32 frames);
 	void State8(u32 frames);
-};
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
 
-// Wii FbSubwin - partial: only the members below are verified, by the retail functions'
-// offsets (CreateFbTexture writes _04/_06, Init stores _58/_5C/_BC, the function-table
-// pointer is at _124, four bytes later than the GameCube class because WiiFbTexture is
-// one word bigger, _128/_134 are the fade state, the camera is embedded at _148). The
-// gaps stay unverified.
-class FbSubwin {
-public:
-	u8 _000[0x4];
-	u16 mWidth;    // _04, written by CreateFbTexture
-	u16 mHeight;   // _06, written by CreateFbTexture
-	u8 _008[0x50]; // unverified (rest of the WiiFbTexture head)
-	u8 mTexDirty;  // _58, texture-matrix flag, set TRUE around the matrix writes
-	u8 _059[0x3];
-	Mtx mTexMtx[4]; // _5C, the texture's matrices; Init writes [0] and [2]
-	u8 _11C[0x8];
-	void (**mVtable)(FbSubwin*); // _124
-	BOOL mEnabled;               // _128, fades in while set, out while not
-	u32 mFlags;                  // _12C, Draw tests bit 2
-	u8 _130[0x4];
-	f32 mAmount;     // _134, 0 to 1
-	f32 mRectX;      // _138, centre x of the window's rect on screen
-	f32 mRectY;      // _13C, centre y of the window's rect on screen
-	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
-	f32 mRectHeight; // _144, window height, NaN picks the round frame
-	CCamera mCamera; // _148
+	virtual void Init();
+	virtual BOOL Update(u32 frames);
+	virtual void Open();
 
-	void Init();
-	void Reset();
-	void Update(u32 frames);
-	void Copy();
-	void Draw();
+	s32 mMode;      // _15C
+	s32 mPrevMode;  // _160
+	u32 _164;       // _164
+	s32 mPhase;     // _168
+	f32 mSpeed;     // _16C
+	s32 mTextPhase; // _170
+	s32 mChoice;    // _174
+	u8 _178[0x184 - 0x178];
+	s32 mYesNo;             // _184
+	s32 mMoneyDigit;        // _188
+	s32 mShopSelection;     // _18C
+	s32 mScrapDigit;        // _190
+	f32 mProgress;          // _194
+	f32 mTargetProgress;    // _198
+	f32 _19C;               // _19C, eased toward _1A4
+	f32 mFrameHeight;       // _1A0, the frame quad grows to its target on opening and closes back to 2
+	f32 _1A4;               // _1A4
+	f32 mTargetFrameHeight; // _1A8
+	u8 _1AC[0x1BC - 0x1AC];
+	s32 mCharIndex;          // _1BC
+	u32 mGreetingVariant;    // _1C0
+	f32 mTextX;              // _1C4
+	f32 mTextY;              // _1C8
+	f32 mTargetX;            // _1CC
+	f32 mTargetY;            // _1D0
+	char mChars[80];         // _1D4, forty two byte sjis characters
+	u8 mTerminator;          // _224
+	f32 mCharX[40];          // _228
+	u8 mCharFlags[40];       // _2C8
+	char mCharCopies[40][3]; // _2F0, each character again as a string of its own
+	u32 mGlyphFrames;        // _368
+	u32 mNextGlyph;          // _36C
+	s32 mKeeperAnimStep;     // _370, the shopkeeper's anim step
+	s32 mKeeperAnimId;       // _374, the anim for it
+	u8 mPlayKeeperAnim;      // _378, set the anim
+	u32 mNumberOffset;       // _37C
+	u8 mInsertsNumber;       // _380
+	s32 mAmount;             // _384
+	s32 mDepositBalance;     // _388
+	s32 mHistoryStart;       // _38C
+	s32 mHistoryCount;       // _390
+	u8 _394[0x3A4 - 0x394];
+	u8 mShopOnly; // _3A4, opens straight into the item list and B closes
+	u8 _3A5[0x3A8 - 0x3A5];
+	u32 mDialogueNumber; // _3A8
+	u8 _3AC[0x400 - 0x3AC];
+	f32 mScroll;       // _400
+	f32 mScrollTarget; // _404
+	u8 _408[0x410 - 0x408];
+	PCAmount mMoneyDisplay; // _410
+	PCAmount mScrapDisplay; // _418
+	u8 _420[0x428 - 0x420];
+	f32 _428;       // _428, eased toward _42C
+	f32 _42C;       // _42C
+	f32 mScrapRate; // _430
+	s32 mExitState; // _434, the game state it hands back
+	u8 mCanSelect;  // _438
+	u8 _439[0x43C - 0x439];
+	s32 mChoices[4];  // _43C
+	s32 mChoiceCount; // _44C
+	f32 mTexScroll;   // _450
 };
+STATIC_ASSERT(offsetof(MenuPC, mYesNo) == 0x184);
+STATIC_ASSERT(offsetof(MenuPC, mCharCopies) == 0x2F0);
+STATIC_ASSERT(offsetof(MenuPC, mNumberOffset) == 0x37C);
+STATIC_ASSERT(offsetof(MenuPC, mShopOnly) == 0x3A4);
+STATIC_ASSERT(offsetof(MenuPC, mExitState) == 0x434);
+STATIC_ASSERT(offsetof(MenuPC, mTexScroll) == 0x450);
 
 // frame buffer effects that draw through a copied texture; the Wii base keeps the bigger
 // WiiFbTexture and drops mActive (WiiFbTexture::mOwnsImage took its slot), the vtable sits
@@ -1070,6 +1430,29 @@ public:
 	virtual void Update(u32 frames); // _14
 	virtual void Draw();             // _18
 };
+
+// Wii FbSubwin: CFbTexEff with the fade state and its own perspective camera at _148.
+class FbSubwin : public CFbTexEff {
+public:
+	BOOL mEnabled;    // _128, fades in while set, out while not
+	CStatus32 mFlags; // _12C, Draw tests bit 2
+	f32 mAmount;      // _134, 0 to 1
+	f32 mRectX;       // _138, centre x of the window's rect on screen
+	f32 mRectY;       // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;   // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight;  // _144, window height, NaN picks the round frame
+	CCamera mCamera;  // _148
+
+	virtual void Init();
+	virtual void Reset();
+	virtual void Copy();
+	virtual void Update(u32 frames);
+	virtual void Draw();
+};
+STATIC_ASSERT(offsetof(FbSubwin, mEnabled) == 0x128);
+STATIC_ASSERT(offsetof(FbSubwin, mAmount) == 0x134);
+STATIC_ASSERT(offsetof(FbSubwin, mCamera) == 0x148);
+STATIC_ASSERT(sizeof(FbSubwin) == 0x340);
 
 // the model object a mirror binds to: a stage object's scene carrier. Only what the retail
 // functions prove is filled in - the vtable's _50 finds a node by name ("mirror" is the
@@ -1095,7 +1478,7 @@ public:
 	virtual void vf44();
 	virtual void vf48();
 	virtual void vf4C();
-	virtual void* vf50(const char* name); // _50
+	virtual nw4r::g3d::ResNode vf50(const char* name); // _50
 	virtual void vf54();
 	virtual void vf58();
 	virtual void vf5C();
@@ -1115,7 +1498,7 @@ public:
 	virtual void vf94();
 	virtual void vf98();
 	virtual void vf9C();
-	virtual MtxP vfA0(void** node); // _A0
+	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
 	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
@@ -1153,18 +1536,38 @@ class CEffectSystem {
 public:
 	// one set of effect resources, with two CFiles at _84 (constructor 0x8003467C, destructor 0x8002F5D4); the name is ours
 	struct Resource {
-		s32 mLiveCount; // _00, effects still running out of the set
-		u8 _04[0x84 - 0x4];
-		CFile mFiles[2]; // _84
-		u8 _25C[0x268 - 0x25C];
+		s32 mState;                           // _00
+		char mName[0x80];                     // _04
+		CFile mFiles[2];                      // _84
+		nw4r::ef::EffectProject* mEffectProj; // _25C
+		nw4r::ef::TextureProject* mTexProj;   // _260
+		u32 mNumEmitter;                      // _264
 	};
 
-	u8 _00[0x8];
+	void* mMemoryPool;      // _00
+	void* mMemoryManager;   // _04
 	Resource mResources[2]; // _08
-	u8 _4D8[0x4FC - 0x4D8];
+	u32 mLightMask;         // _4D8
+	GXColor mLightColor;    // _4DC
+	GXColor _4E0;           // _4E0
+	u32 _4E4;               // _4E4
+	f32 _4E8;               // _4E8
+	f32 _4EC;               // _4EC
+	f32 _4F0;               // _4F0
+	f32 _4F4;               // _4F4
+	GXColor _4F8;           // _4F8
 	// _4FC vtable
 
 	virtual ~CEffectSystem() { }
+	void Init();
+	BOOL Load(const char* name, s32 idx);
+	BOOL UpdateLoad(s32 idx);
+	void Unload(s32 idx);
+	void Update(const Vec* camPos, MtxP camMtx, MtxP projMtx, u32 steps, s32 groupID, f32 f1, f32 f2);
+	void Draw(MtxP viewMtx, s32 groupID);
+	void RetireAll(u32 groupID, BOOL retireParticles);
+	void UpdateLights(CLight* light);
+	void SetFog(u32 param, const GXColor* color, f32 f1, f32 f2, f32 f3, f32 f4);
 };
 STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
 
@@ -1187,11 +1590,12 @@ struct ObjArchiveTable {
 
 // the menus and what they share, the GameCube class of the same name (RTTI); the constructor in 0x800332D8 stores
 // its vtable at _30, ahead of the Wii's further members, and builds the CTexObj at _50
+
 class MenuEx {
 public:
-	BOOL mActive;     // _00, a menu is open
-	CMenu* mMenus[5]; // _04, [0] is the main menu
-	u8 _18[0x30 - 0x18];
+	BOOL mActive;         // _00, a menu is open
+	CMenu* mMenus[9];     // _04, [0] is the main menu
+	MenuCursor mCursor;   // _28
 	virtual ~MenuEx() { } // _30 vtable
 	s32 _34;              // _34, DrawHud draws nothing while a menu is open and this is set
 	u8 _38[0x50 - 0x38];

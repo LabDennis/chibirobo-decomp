@@ -44,10 +44,12 @@ STATIC_ASSERT(sizeof(XObjWireEff) == 0x998);
 #endif
 #endif
 
-// one point of the cord, it steps like a CObjVec but has no vtable of its own
+// one point of the cord, it steps like a CObjVec but has no vtable of its own. On the
+// GameCube the ctor and dtor are implicit: the compiler emits both after InitPlugCord,
+// whose function-scope static array needs them
 struct XObjPlugCordPoint {
-	XObjPlugCordPoint();
 #if defined(VERSION_R24J01)
+	XObjPlugCordPoint();
 	~XObjPlugCordPoint();
 #endif
 
@@ -124,7 +126,7 @@ public:
 
 	XObjPlug();
 
-	virtual ~XObjPlug();                                      // _08 (weak)
+	virtual ~XObjPlug() { }                                   // _08 (weak)
 	virtual void Release();                                   // _54
 	virtual void InitializeObject(u32 id);                    // _90
 	virtual void ResetForNewGame();                           // _94
@@ -193,7 +195,7 @@ public:
 
 	XObjRadar();
 
-	virtual ~XObjRadar();                                  // _08 (weak)
+	virtual ~XObjRadar() { }                               // _08 (weak)
 	virtual void InitializeObject(u32 id);                 // _90
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
 	virtual void UpdateObject(u32 frames);                 // _A4

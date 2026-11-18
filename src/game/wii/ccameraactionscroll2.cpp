@@ -684,18 +684,18 @@ void CCameraActionScroll2::Draw()
 	f32 angle;
 	switch (gGame.mStage) {
 	case 3:
-		angle = PI + PLAYER->mRotY;
+		angle = PI + PLAYER->mMoveRotate.y;
 		break;
 	case 11:
 		// the turned camera's room: the arrow only points left or right of the player
-		if (HALF_PI + PLAYER->mRotY > PI) {
+		if (HALF_PI + PLAYER->mMoveRotate.y > PI) {
 			angle = -HALF_PI;
 		} else {
 			angle = HALF_PI;
 		}
 		break;
 	default:
-		angle = HALF_PI + PLAYER->mRotY;
+		angle = HALF_PI + PLAYER->mMoveRotate.y;
 		break;
 	}
 

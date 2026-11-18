@@ -59,7 +59,7 @@ enum EvtCmd {
 	EVT_CMD_MOVIE  = 49,
 };
 
-// expression ops that CEvt_Evaluate, EvalSet and EvalCmp switch on. names follow unplug,
+// expression ops that Evaluate, EvalSet and EvalCmp switch on. names follow unplug,
 // the game's panic text only spells a few of them, flg, var, pad, battery, item, atc,
 // map and time
 enum EvtExpr {
@@ -338,6 +338,15 @@ public:
 	s32 _cmd_TIMER(u8 command, s32 step);
 	s32 _cmd_WARP(u8 command, s32 step);
 	s32 _cmd_WIN(u8 command, s32 step);
+
+#if !defined(VERSION_R24J01)
+	// the Wii build has these as free functions on a CEvt*
+	s32 Evaluate();
+	void EvalSet();
+	bool EvalCmp();
+	// runs the script on for step frames
+	void Update(s32 step);
+#endif
 };
 #if defined(VERSION_R24J01)
 STATIC_ASSERT(sizeof(CEvt) == 0x6C);
@@ -416,9 +425,16 @@ CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 // start a script on evt, or park it in the queue while another one runs
 void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue);
 void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* owner);
-void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
-// runs the script on for step frames
+#if defined(VERSION_R24J01)
+void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal, BOOL clearEffects, BOOL clearQueue);
+BOOL LoadEventResources(CEvt* evt);
+void RegisterEventObjectId(CEvt* evt, s16 id, s16 index);
+void CEvt_Draw(CEvt* evt);
+// runs the script on for step frames; GameCube has it as CEvt::Update
 void CEvt_Update(CEvt* evt, s32 step);
+#else
+void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
+#endif
 // the object an event refers to by id, -1 is the one running the script
 XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 }

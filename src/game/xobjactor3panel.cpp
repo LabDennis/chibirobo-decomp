@@ -121,7 +121,7 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
 	f32 scale = 1.0f;
 #if defined(VERSION_JP)
-	f32 w = TexSize(GXGetTexObjWidth(&tex), scale);
+	f32 w = GXGetTexObjWidth(&tex);
 #else
 	u16 w = GXGetTexObjWidth(&tex);
 #endif
