@@ -14,6 +14,7 @@
 #include "game/coordinfo.h"
 #include "game/stagedata.h"
 #include "game/inventory.h"
+#include "game/attachmentvalues.h"
 #include "game/savedata.h"
 #include "game/globals.h"
 #include "game/ut.h"
@@ -43,15 +44,13 @@ void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
 BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
 void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
-void fn_800C807C(XObj* obj);
+void fn_800C807C(XObj* obj);                   // a category 3 object's follow-up to a new anim
 void AdjustPlayerMoney(WiiPlayerParams* params, s32 amount);
 void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerLevel(WiiPlayerParams* params, s32 amount);
 void AddPlayerRank(WiiPlayerParams* params, s32 amount);
-void SetAttachmentCountById(void* values, s32 id, s32 value);
-s32 UpdateAttachmentAvailability(
-    void* values, s32 id); // the count of attachment id, below 0 when there is none // a category 3 object's follow-up to a new anim
+s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
 }
 
 CEvtFlags gEventFlags;
@@ -1642,7 +1641,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_ATC:
 			index = CEvt_Evaluate(evt);
 			if (index >= 0 && index < 9) {
-				SetAttachmentCountById(gGame.GetPlayer()->mAttachments, index, value);
+				SetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, index, value);
 			} else {
 				OSPanic(__FILE__, 1243, FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9));
 			}
@@ -1908,7 +1907,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_ATC:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 9) {
-			result = UpdateAttachmentAvailability(gGame.GetPlayer()->mAttachments, result);
+			result = GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, result);
 			if (result < 0)
 				result = 0;
 		} else
