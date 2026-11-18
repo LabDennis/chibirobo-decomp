@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+// first: AnimSfx brings nw4r's math types, which the fallback below must not redefine
+#include "game/wii/animsfx.h"
+
 #include "Dolphin/gx.h"
 #include "Dolphin/mtx.h"
 
@@ -1172,6 +1175,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// a queued anim, the same record as WiiTitleObject's WiiAnimSlot
+struct XObjAnimSlot {
+	s32 mAnim; // _00, -1 when the slot is free
+	s16 mA;    // _04
+	s16 mB;    // _06
+};
+STATIC_ASSERT(sizeof(XObjAnimSlot) == 0x8);
+
 // one floor's edge, the GameCube's XObjEdge
 struct XObjEdge {
 	Vec mContactOffset; // _00
@@ -1212,10 +1223,10 @@ public:
 	virtual void vf1A0();
 	virtual void vf1A4();
 	virtual void vf1A8();
-	virtual void vf1AC();
-	virtual Vec GetCameraTarget();    // _1B0, where a camera looks at this object
-	virtual void SetBaseMtx(Mtx mtx); // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
-	virtual void ClearBaseMtx();      // _1B8
+	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
+	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
+	virtual void ClearBaseMtx();                 // _1B8
 	virtual void vf1BC();
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
@@ -1287,6 +1298,28 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
+	// empties the queue of anims waiting behind the current one
+	void ClearAnimQueue()
+	{
+		mAnimHead = 0;
+		for (s32 i = 0; i < 4; i++) {
+			mAnimSlots[i].mAnim = -1;
+		}
+	}
+	// queues an anim in the first free slot from the head on, dropped when all four are taken
+	void PushAnim(s32 anim, s16 a, s16 b)
+	{
+		for (s32 i = 0; i < 4; i++) {
+			XObjAnimSlot* slot = &mAnimSlots[(mAnimHead + i) % 4];
+			if (slot->mAnim == -1) {
+				slot->mAnim = anim;
+				slot->mA    = a;
+				slot->mB    = b;
+				return;
+			}
+		}
+	}
+
 	// the object's kind, -1 without its data record
 	s16 GetCategory() const
 	{
@@ -1301,6 +1334,8 @@ public:
 	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
 	// the object id of its placement, -1 without one (the GameCube XObj's inline)
 	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
+	// the item its data record names, -1 without one (the GameCube XObj's inline)
+	s16 GetItem() const { return mAttr.mObjData != NULL ? mAttr.mObjData->GetItem() : -1; }
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
@@ -1349,12 +1384,13 @@ public:
 	CVec mVec714; // _714, the base the object's floor list hangs from in its local frame (the GameCube's mToppleOffset role: the cjanim
 	              // floor routines add the floors' center offsets to it)
 	CEvt mEvt;    // _724
-	const void* mEventScript; // _790, the event script the object starts when used
-	u8 _794[0x24];
-	CAnmQueue mAnmQueue; // _7B8
-	CJArchive mArchive;  // _820
-	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
-	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
+	const void* mEventScript;   // _790, the event script the object starts when used
+	s32 mAnimHead;              // _794, the slot PushAnim probes first
+	XObjAnimSlot mAnimSlots[4]; // _798, anims queued to play after the current one
+	CAnmQueue mAnmQueue;        // _7B8
+	CJArchive mArchive;         // _820
+	Mtx mBaseMtx;               // _968, SetBaseMtx's copy
+	MtxP mBaseMtxPtr;           // _998, NULL or mBaseMtx
 	u8 _99C[0x9A4 - 0x99C];
 	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
@@ -1483,9 +1519,352 @@ WII_XOBJ_DECL(XObjActorPapa, 0xD90);
 WII_XOBJ_DECL(XObjActorTao, 0xDF8);
 WII_XOBJ_DECL(XObjActorDeca, 0xDA0);
 WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
-WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
-WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
-WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
+
+// a carried model, drawn with the object 0x13C model the spider claimed a slot for (the GameCube's CarryInfo)
+struct CarryInfo {
+	CVec mPos;      // _00
+	CVec _10;       // _10, zeroed with the rest, never read
+	f32 mAngle;     // _20
+	f32 _24;        // _24
+	s32 mState;     // _28, its anim, 1 opens, 2 follows mObj's joint, 3 closes
+	u32 _2C;        // _2C
+	CStatus mFlags; // _30, 1 drawn, 2 the robot was hit with it
+	XObj* mObj;     // _38, the object whose joint it follows
+};
+STATIC_ASSERT(sizeof(CarryInfo) == 0x3C);
+
+// an object an event tied to one of the spider's nodes
+struct SpiderTie {
+	nw4r::g3d::ResNode mJoint; // _00
+	XObj* mObj;                // _04
+	Mtx mMtx;                  // _08
+};
+STATIC_ASSERT(sizeof(SpiderTie) == 0x38);
+
+// the spiders: the GameCube class (PAL layout) behind the Wii XObj, with the Wii AnimSfx and one word
+// more after mRumbleTimer
+class XObjSpider : public XObj {
+public:
+	XObjSpider();
+	// inline: retail emits the vtable and its thunks with ExecCallbackB in xobjspider.cpp
+	virtual ~XObjSpider() { }
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);                                    // _108
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual void ResetForNewGame();                                                                                             // _150
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+	virtual void DrawObject();                                                                                                  // _174
+	virtual void DrawGroundShadow(f32 opacity);                                                                                 // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);                                                            // _184
+	virtual void DrawObjectEffects();                                                                                           // _188
+	virtual void DrawScreenOverlay();                                                                                           // _190
+	virtual void DrawDebugStatus();                                                                                             // _194
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                                                                         // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);                                                                       // _1E8
+	virtual void OnHitFromPosition(const Vec& from, f32 strength);                                                              // _1FC
+	virtual void PauseSounds(f32 fade) { mSfx.Pause(fade); }                                                                    // _20C
+	virtual void ResumeSounds(f32 fade) { mSfx.Resume(fade); }                                                                  // _210
+	virtual void DrawLate();              // _28C, CGame::DrawScene's last pass
+	virtual void UpdateAnimationSounds(); // _290, plays the sounds along the anim
+
+	// the states, Update calls them by number
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+
+	void SetState(s32 state)
+	{
+		mPhase     = 0;
+		mCounter   = 0;
+		mPrevState = mState;
+		mState     = state;
+	}
+
+	f32 mDir;                // _9A8, the way it walks
+	f32 mSpeed;              // _9AC
+	f32 mFacing;             // _9B0, eased toward mDir while it turns
+	f32 _9B4;                // _9B4
+	f32 mTurnSpeed;          // _9B8
+	f32 mSavedDir;           // _9BC
+	f32 mThreadAlpha;        // _9C0, 0 to 1
+	f32 mRadius;             // _9C4, shadow size, also kept off the area edges
+	f32 mFallSpeed;          // _9C8
+	s32 mState;              // _9CC
+	s32 mPhase;              // _9D0
+	s32 mCounter;            // _9D4
+	CStatus mFlags;          // _9D8
+	s32 mPrevState;          // _9E0
+	f32 mAnimStartFrame;     // _9E4, the frame SetAnim started the anim at
+	s32 mWait;               // _9E8
+	f32 _9EC;                // _9EC
+	f32 _9F0;                // _9F0
+	Vec mHitPos;             // _9F4, where it was hit from
+	Vec mHome;               // _A00, y is the floor
+	f32 mHitStrength;        // _A0C
+	s32 mWall;               // _A10, 2 to 5 while it walks on a wall, on 3 it carries sideways
+	s32 mHits;               // _A14, hits left
+	s32 mMaxHits;            // _A18
+	Vec mWallPos;            // _A1C
+	Vec mTarget;             // _A28, where it walks to
+	Vec mShotOrigin;         // _A34
+	Vec mShotPosition;       // _A40
+	u8 _A4C[0xA58 - 0xA4C];  // _A4C
+	Vec mShotTo;             // _A58, where the carried model is shot at
+	f32 mShotRange;          // _A64
+	u8 _A68[0xA6C - 0xA68];  // _A68
+	f32 mShotProgress;       // _A6C
+	s32 mShotState;          // _A70
+	s32 _A74;                // _A74
+	Vec mAreaPos;            // _A78, corner of the area it stays in
+	f32 mAreaWidth;          // _A84
+	f32 mAreaDepth;          // _A88
+	Vec mStartPos;           // _A8C
+	f32 _A98;                // _A98
+	s32 mCommand;            // _A9C, from the event scripts, 0 once handled
+	s32 mArgs[5];            // _AA0
+	u32 _AB4;                // _AB4
+	CarryInfo mCarry;        // _AB8
+	CarryInfo mSlotCarry;    // _AF4, mObj is the slot's model
+	u8 mSlot;                // _B30, 255 for none
+	u8 _B31[0xB3C - 0xB31];  // _B31
+	s16 _B3C;                // _B3C
+	s32 _B40[4];             // _B40
+	s32 _B50[3];             // _B50
+	u8 _B5C[0xB7C - 0xB5C];  // _B5C
+	s16 _B7C;                // _B7C
+	s32 _B80;                // _B80
+	s16 mEffectId;           // _B84, a stage object it holds on its node
+	XObj* mEffect;           // _B88
+	s32 mEffectOn;           // _B8C
+	Mtx mEffectMtx;          // _B90
+	s32 mHitState;           // _BC0
+	s32 mHitTimer;           // _BC4
+	s32 mDroppedSpiderIndex; // _BC8, FindNearbyDroppedSpider's pool index
+	s32 mRumble;             // _BCC
+	s32 mRumbleTimer;        // _BD0
+	s32 mSoundDelay;         // _BD4, frames after the load before its anim sounds play, half a second
+	AnimSfx mSfx;            // _BD8
+	SpiderTie mTies[8];      // _C34
+	u8 _DF4[4];              // _DF4
+};
+STATIC_ASSERT(sizeof(XObjSpider) == 0xDF8);
+
+// the fx_spider_01 a small spider carries around (the GameCube's XObjSpiderSmallFx)
+struct XObjSpiderSmallFx {
+	CVec mPos;       // _00
+	CVec _10;        // _10
+	f32 mRotY;       // _20
+	f32 _24;         // _24
+	u32 mState;      // _28, its anim, 1 and 3 play one, 10 puts it away
+	s32 _2C;         // _2C
+	CStatus mStatus; // _30, 1 shown
+};
+STATIC_ASSERT(sizeof(XObjSpiderSmallFx) == 0x38);
+
+// the small spiders, npc_spider_2: the GameCube class behind the Wii XObj, with the Wii AnimSfx and one word
+// more in front of it
+class XObjSpiderSmall : public XObj {
+public:
+	XObjSpiderSmall();
+	// inline: retail emits the vtable and its thunks in xobjspidersmall.cpp
+	virtual ~XObjSpiderSmall() { }
+	virtual void Release();                                            // _40
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawObject();                                         // _174
+	virtual void DrawGroundShadow(f32 opacity);                        // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade) { mAnimSfx.Pause(fade); }       // _20C
+	virtual void ResumeSounds(f32 fade) { mAnimSfx.Resume(fade); }     // _210
+	virtual void DrawLate();                                           // _28C, CGame::DrawScene's last pass
+	virtual void UpdateAnimationSounds();                              // _290
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+
+	void FindWebs(); // collects the stage's webs, the first spider's job
+	void TakeWeb();  // claims the first free web
+
+	void SetState(s32 state)
+	{
+		mStep      = 0;
+		mTimer     = 0;
+		mPrevState = mState;
+		mState     = state;
+	}
+
+	f32 mWalkHeading;       // _9A8, the way it walks
+	f32 mWalkSpeed;         // _9AC
+	f32 _9B0;               // _9B0
+	f32 mTurnSpeed;         // _9B4
+	u8 _9B8[0x9BC - 0x9B8]; // _9B8
+	f32 _9BC;               // _9BC
+	f32 mRadius;            // _9C0
+	f32 mFallSpeed;         // _9C4
+	f32 mScale;             // _9C8
+	f32 mTargetScale;       // _9CC, the scale it grows to
+	s32 mState;             // _9D0
+	s32 mStep;              // _9D4
+	s32 mTimer;             // _9D8
+	CStatus mSpiderStatus;  // _9DC, 1 hit, 2 knocked over, 0x40 shadow, 0x800000 grabbed
+	s32 mPrevState;         // _9E4
+	u32 _9E8;               // _9E8
+	f32 _9EC;               // _9EC
+	f32 _9F0;               // _9F0
+	Vec mHitPos;            // _9F4
+	Vec mHome;              // _A00
+	f32 mHitStrength;       // _A0C
+	s32 mHitsLeft;          // _A10
+	s32 mMaxHits;           // _A14
+	Vec _A18;               // _A18
+	Vec mWalkTarget;        // _A24, where it walks to
+	Vec mAreaPos;           // _A30, corner of the area it walks in
+	f32 mAreaWidth;         // _A3C
+	f32 mAreaDepth;         // _A40
+	Vec mTargetPos;         // _A44
+	f32 mTargetRadius;      // _A50
+	s32 mStage;             // _A54
+	s32 mEvtArgs[6];        // _A58, from HandleEventCommand
+	u32 _A70;               // _A70
+	XObjSpiderSmallFx mFx;  // _A74
+	XObj* mFxObj;           // _AAC
+	u8 mFxIndex;            // _AB0, 255 for none
+	u8 _AB1[0xAB4 - 0xAB1]; // _AB1
+	f32 mClingAngle;        // _AB4, the angle it sits at around the robot
+	f32 mShakeStrength;     // _AB8
+	s32 mDrainTimer;        // _ABC, frames to the next battery drain
+	f32 mHoldTime;          // _AC0, how long it holds on
+	Vec mClingOffset;       // _AC4
+	u8 _AD0;                // _AD0
+	u8 _AD1[0xAD4 - 0xAD1]; // _AD1
+	s32 mPrevBgm;           // _AD4, the bgm it took over from
+	u8 mPrevBgmVolume;      // _AD8
+	u8 _AD9[0xADC - 0xAD9]; // _AD9
+	s32 mLoadPoolIndex;     // _ADC
+	s32 mTimeMode;          // _AE0
+	s32 mAreaGraceTimer;    // _AE4
+	s32 mWarpsLeft;         // _AE8
+	s32 mBattleBgmState;    // _AEC
+	u32 _AF0;               // _AF0
+	AnimSfx mAnimSfx;       // _AF4
+};
+STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xB50);
+
+// the big spider, npc_spider_3: the GameCube class behind the Wii XObj with the Wii AnimSfx
+class XObjSpiderBoss : public XObj {
+public:
+	XObjSpiderBoss();
+	// inline: retail emits the vtable and its thunks in xobjspiderboss.cpp
+	virtual ~XObjSpiderBoss() { }
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawObject();                                         // _174
+	virtual void DrawGroundShadow(f32 opacity);                        // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade) { mAnimSfx.Pause(fade); }       // _20C
+	virtual void ResumeSounds(f32 fade) { mAnimSfx.Resume(fade); }     // _210
+	virtual void UpdateAnimationSounds();                              // _28C
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+
+	void SetState(s32 state)
+	{
+		mStep      = 0;
+		mTimer     = 0;
+		mPrevState = mState;
+		mState     = state;
+	}
+
+	f32 mHeading;             // _9A8
+	f32 mSpeed;               // _9AC
+	f32 mTargetRotY;          // _9B0
+	f32 mRotSpeed;            // _9B4
+	u8 _9B8[0x9BC - 0x9B8];   // _9B8
+	f32 _9BC;                 // _9BC
+	f32 mRadius;              // _9C0
+	f32 mSpeedY;              // _9C4
+	f32 _9C8;                 // _9C8
+	f32 _9CC;                 // _9CC
+	s32 mState;               // _9D0
+	s32 mStep;                // _9D4
+	s32 mTimer;               // _9D8
+	CStatus mSpiderStatus;    // _9DC, 1 hit, 2 knocked over, 8 airborne, 0x2000000 frozen
+	s32 mPrevState;           // _9E4
+	u32 mActionTimer;         // _9E8
+	f32 _9EC;                 // _9EC
+	f32 _9F0;                 // _9F0
+	Vec mHitPos;              // _9F4
+	Vec mBasePos;             // _A00
+	f32 mHitStrength;         // _A0C
+	s32 mHits;                // _A10
+	s32 mMaxHits;             // _A14
+	Vec mPatrolTarget;        // _A18
+	Vec mAreaPos;             // _A24
+	f32 mAreaWidth;           // _A30
+	f32 mAreaDepth;           // _A34
+	Vec mStartPos;            // _A38
+	f32 _A44;                 // _A44
+	s32 mPatrolSelection;     // _A48
+	s32 mAltAnimId;           // _A4C, the anim the sounds follow while 0x40000000 is set
+	s32 mGrabCooldown;        // _A50
+	s32 mCommand;             // _A54
+	s32 mArgs[5];             // _A58
+	u32 _A6C;                 // _A6C
+	f32 _A70;                 // _A70
+	f32 mEscapeInputStrength; // _A74
+	s32 mDrainTimer;          // _A78
+	f32 mEscapeRemaining;     // _A7C
+	Vec _A80;                 // _A80
+	s32 mGrabIntervalFrames;  // _A8C
+	u32 mDamageStep;          // _A90
+	s32 mBlinkTimer;          // _A94
+	u8 _A98[0xABD - 0xA98];   // _A98
+	u8 mPatrolEffectActive;   // _ABD
+	u8 _ABE[0xAC0 - 0xABE];   // _ABE
+	AnimSfx mAnimSfx;         // _AC0
+	SpiderTie mParts[8];      // _B1C, the GameCube's XObjJointPart, the same shape
+	u8 _CDC[4];               // _CDC
+};
+STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 

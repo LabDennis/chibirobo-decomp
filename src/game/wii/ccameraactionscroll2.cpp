@@ -450,41 +450,6 @@ static void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 	camera->mMaxZ += camera->mStart.z;
 }
 
-// draws one blinking marker centred on a screen point
-/**
- * @note Address: 0x80163F58
- * @note Size: 0x2A4
- */
-// NONMATCHING: guessed signature (index, x, y, alpha, scale) and tev-stage fields
-static void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha, f32 scale)
-{
-	CTexObj tex;
-	f32 half = 0.5f;
-	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[index - StatusTextureOffset], 0);
-	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
-	f32 zoom  = 1.0f; // never anything else, but it stops the divide being folded away
-	f32 w     = scale * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	f32 h     = scale * GXGetTexObjHeight(&tex) / zoom;
-	f32 cx    = w * half;
-	f32 cy    = -h * half;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-}
-
-/**
- * @note Address: 0x801641FC
- * @note Size: 0x2B8
- */
-// NONMATCHING: guessed; the leticker label quad
-static void DrawScrollLabel(s32 index, f32 x, f32 y, u32 color, f32 scale)
-{
-	CTexObj tex;
-	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[index - StatusTextureOffset], 0);
-	u16 w = GXGetTexObjWidth(&tex);
-	u16 h = GXGetTexObjHeight(&tex);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + 23.4f, y + -20.8f, 0.0f, scale * (1.1f * w), scale * h, 0.0f, 0.0f,
-	                   0.0f);
-}
-
 /**
  * @note Address: 0x80163250
  * @note Size: 0xD08
@@ -513,20 +478,20 @@ void CCameraActionScroll2::Draw()
 		case 0x10E: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->vf1D4(&ofs, &x, &y, 0, 0);
-			DrawScrollMapMarker(162, x, y, blink, MARK_SCALE);
+			DrawMapMarker(163, 0x000000FF, x, y, blink, MARK_SCALE);
 			break;
 		}
 		case 0x9D: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->vf1D4(&ofs, &x, &y, 0, 0);
-			DrawScrollMapMarker(165, x, y, blink, MARK_SCALE);
+			DrawMapMarker(166, 0x0000C8FF, x, y, blink, MARK_SCALE);
 			break;
 		}
 		case 0x115:
 			if (obj->mStatus & 0x10000) {
 				Vec ofs = { 0.0f, 0.0f, 0.0f };
 				obj->vf1D4(&ofs, &x, &y, 0, 0);
-				DrawScrollMapMarker(163, x, y, blink, MARK_SCALE);
+				DrawMapMarker(164, 0x0000C8FF, x, y, blink, MARK_SCALE);
 			}
 			break;
 		case 0xC:
@@ -646,10 +611,6 @@ void CCameraActionScroll2::Draw()
 		}
 	}
 
-	// with its particle running, a leticker's marker and its label blink in turn
-	u32 fastColor  = (u32)(255.0f * fastBlink) | 0xC8C8C800;
-	u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
-	u32 labelColor = fadedAlpha | 0xC8C8C800;
 	for (s32 i = 0; i < gGame.mXObjs.mPools[10].mUsed; i++) {
 		WiiTitleObject* obj = (WiiTitleObject*)(gGame.mXObjs.mPools[10].mObjects + i * gGame.mXObjs.mPools[10].mStride);
 		switch (*(s32*)obj->mSpawnData) {
@@ -667,17 +628,17 @@ void CCameraActionScroll2::Draw()
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		obj->vf1D4(&ofs, &x, &y, 0, 0);
 		if (((u8*)obj)[0xA54]) { // _A54, the leticker's running particle flag
-			DrawScrollMapMarker(163, x, y, fastBlink, MARK_SCALE);
-			DrawScrollLabel(161, x, y, labelColor, MARK_SCALE);
+			DrawMapMarker(164, 0x0000C8FF, x, y, fastBlink, MARK_SCALE);
+			DrawMapLabel(x, y, 1.0f - fastBlink, MARK_SCALE);
 		} else {
-			DrawScrollMapMarker(163, x, y, blink, MARK_SCALE);
+			DrawMapMarker(164, 0x0000C8FF, x, y, blink, MARK_SCALE);
 		}
 	}
 
 	{
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		((WiiTitleObject*)gGame.GetPlayer())->vf1D4(&ofs, &x, &y, 0, 0);
-		DrawScrollMapMarker(164, x, y, blink, MARK_SCALE);
+		DrawMapMarker(165, 0xC80000FF, x, y, blink, MARK_SCALE);
 	}
 
 	// the arrow round the player points the way it faces
@@ -720,6 +681,60 @@ void CCameraActionScroll2::Draw()
 	mWipe.Draw(&gGame.mGs, 0);
 }
 
+// draws one blinking marker centred on a screen point; the colour the callers pass goes unused.
+// retail converts the alpha once per corner colour, and both helpers stay calls in Draw
+/**
+ * @note Address: 0x80163F58
+ * @note Size: 0x2A4
+ */
+// zoom is the same 1.0f scale Draw's player arrow multiplies and divides by (retail fmuls and fdivs by one
+// register there, which only a variable gives); retail divides the sizes by it here too (fdivs at 0x801640DC)
+void CCameraActionScroll2::DrawMapMarker(s32 index, u32 color, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 zoom = 1.0f;
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[index - StatusTextureOffset], 0);
+	tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 cx, cy;
+	u16 texW = GXGetTexObjWidth(&tex);
+	f32 w    = scale * (1.1f * texW) / zoom;
+	u16 texH = GXGetTexObjHeight(&tex);
+	f32 h    = scale * texH / zoom;
+	cx       = w / 2.0f;
+	cy       = -h / 2.0f;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f,
+	                   0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// the leticker's label, up and right of its marker
+/**
+ * @note Address: 0x801641FC
+ * @note Size: 0x2B8
+ */
+// the sizes and offsets divided by the same zoom (fdivs at 0x80164384)
+void CCameraActionScroll2::DrawMapLabel(f32 x, f32 y, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 zoom = 1.0f;
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[162 - StatusTextureOffset], 0);
+	tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 ox, oy;
+	u16 texW = GXGetTexObjWidth(&tex);
+	f32 w    = scale * (1.1f * texW) / zoom;
+	u16 texH = GXGetTexObjHeight(&tex);
+	f32 h    = scale * texH / zoom;
+	ox       = 36.0f * scale / zoom;
+	oy       = -32.0f * scale / zoom;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x + ox, y + oy, 0.0f, w, h, 0.0f, 0.0f,
+	                   0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 /**
  * @note Address: 0x801644B4
  * @note Size: 0x28
@@ -739,6 +754,14 @@ void CCameraActionScroll2::SaveCamInfo(const void* info)
  * @note Size: 0x4
  */
 void CCameraActionScroll2::DrawDebug3d()
+{
+}
+
+/**
+ * @note Address: 0x801644E0
+ * @note Size: 0x4
+ */
+void CCameraActionScroll2::DrawDebug2d()
 {
 }
 
@@ -869,9 +892,9 @@ void CCameraActionScroll2::DrawQuads()
  * @note Address: 0x80164BD8
  * @note Size: 0x1C
  */
-BOOL CCameraActionScroll2::IsFovUnderMax()
+BOOL CCameraActionScroll2::IsFovNotMax()
 {
-	return !(mFov > mMaxFov);
+	return mFov != mMaxFov;
 }
 
 /**

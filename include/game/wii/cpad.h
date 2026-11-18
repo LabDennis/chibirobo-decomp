@@ -152,6 +152,17 @@ struct WiiRumble {
 	// CPadOne::Update reads the flag through a const path: retail loads flags again for its next test,
 	// which the compiler only does after a read through a pointer to const. The name is ours
 	BOOL IsEnabled() const { return flags & RumbleEnabled; }
+	// runs the motor for frames, CPadOne::Update counts them down
+	void Start(s32 frames)
+	{
+		remaining = frames;
+		flags |= RumbleRunning;
+	}
+	void Stop()
+	{
+		remaining = 0;
+		flags &= ~RumbleRunning;
+	}
 };
 
 class CPadOne {

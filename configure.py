@@ -1308,18 +1308,22 @@ if wii:
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # chibi robo's actions, the GameCube's objb_act.cpp: retail 0x800F48E0-0x801067C0 holds its
+                # functions in the reverse order, GetTargetFloorPosition first and UpdatePushedObject last
+                # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
+                # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
+                Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
-                # first function of ccameraactionmap2.cpp (retail 0x80154310)
+                # first function of ccameraactionarea.cpp (retail 0x80154310)
                 Object(Matching, "game/wii/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii binary merged the area and map camera code into one file; the
-                # small and mid functions of both halves are reconstructed so far
-                # -inline noauto: retail calls SetMapCameraFovStep from the area's PreviousUpdate, auto-inlining expands it
+                # the area and map camera halves are two retail files, each with its own __FILE__ string pool
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
-                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/ccameraactionarea.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
@@ -1424,6 +1428,12 @@ if wii:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not
                 # export that name for the eight neighbouring auto objects, and claiming the literal
                 # in splits would take it away from the auto object that defines it
+                # the spiders, one retail file each (0x8012063C, 0x80128C84 and 0x80132330 on): the Wii keeps the
+                # GameCube files' functions in reverse order, ~XObjSpider and the ctors sit in the pool ctor block,
+                # and xobjspidersmallstatus.cpp's functions follow the small spider's __sinit inside its file
+                Object(NonMatching, "game/wii/xobjspider.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/xobjspidersmall.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/xobjspiderboss.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjactorstop.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
