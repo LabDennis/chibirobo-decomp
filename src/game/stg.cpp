@@ -6695,12 +6695,13 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, labelX, labelY, 0.0f, 1.2f * (1.1f * width), 1.2f * height, 0.0f,
 		                   0.0f, 0.0f);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		x           = 42.0f + x;
-		y           = 84.0f + y;
-		labelX      = x - 42.0f;
-		labelY      = -12.0f + y;
-		f32 targetY = 114.0f + y;
-		f32 columnX = StatusLabelColumn(labelX, false);
+		x               = 42.0f + x;
+		y               = 84.0f + y;
+		labelX          = x - 42.0f;
+		f32 labelOffset = -12.0f;
+		labelY          = y + labelOffset;
+		f32 targetY     = 114.0f + y;
+		f32 columnX     = StatusLabelColumn(labelX, false);
 		DrawStatusCallout(menu, 7, columnX, labelY, 42.0f + ((labelX - 200.0f) - 100.0f), targetY - 7.0f);
 		columnX = StatusLabelColumn(labelX, true);
 		labelY += 22.0f;
