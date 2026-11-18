@@ -1942,12 +1942,12 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 			f32 hx               = size.x * 0.5f;
 			f32 hz               = size.z * 0.5f;
 			f32 ang              = 0.5235988f * i;
-			vtx[i * 2].pos.x     = p.x - hx * (f32)sin(ang);
-			vtx[i * 2].pos.z     = p.z + hz * (f32)cos(ang);
+			vtx[i * 2].pos.x     = p.x - hx * std::sinf(ang);
+			vtx[i * 2].pos.z     = p.z + hz * std::cosf(ang);
 			vtx[i * 2].pos.y     = p.y;
 			vtx[i * 2].color     = edge;
-			vtx[i * 2 + 1].pos.x = p.x - (1.5f + hx) * (f32)sin(ang);
-			vtx[i * 2 + 1].pos.z = p.z + (1.5f + hz) * (f32)cos(ang);
+			vtx[i * 2 + 1].pos.x = p.x - (1.5f + hx) * std::sinf(ang);
+			vtx[i * 2 + 1].pos.z = p.z + (1.5f + hz) * std::cosf(ang);
 			vtx[i * 2 + 1].pos.y = p.y;
 			vtx[i * 2 + 1].color = 0;
 		}
