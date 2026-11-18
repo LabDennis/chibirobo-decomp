@@ -82,82 +82,9 @@ HSD_Generator* CreateScaledParticleAtPosition(CGame*, u32, u32, s32, const Vec&,
 extern const s32 lbl_8020A5E8[];
 f32 GetJointAnimationCurrentFrame(CJObj*);
 BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOOL, Vec*);
-static inline void HeldAnim(XObj* obj, s32 id, BOOL force = FALSE, f32 blend = 0)
-{
-	obj->SetAnim(id, force, NULL, NULL, NULL, 0, 1, blend, 10);
-}
-static inline BOOL HasRoomForItem(XObj* item)
-{
-	BOOL room = TRUE;
-	s16 id    = GetObjectItemId(item);
-	s32 slot  = FindOwnedInventoryItemIndex(GetPlayerParamsByIndex(&gGame, 0)->mInventory.mItems, id);
-	if (slot >= 0 && GetInventoryCountByIndex(GetPlayerParamsByIndex(&gGame, 0), slot) >= 10)
-		room = FALSE; // ten of it already
-	return room;
-}
-
-static inline void LoadLiftItem(XActLift* act, s32 next)
-{
-	if (act->mPendingItemId >= 0)
-		act->mPendingItem = SpawnObjectFromPlacementIndex(&gGame, act->mPendingItemId);
-	else
-		act->mPendingItem = NULL;
-	SetLiftActionState(act, next);
-}
-static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool useCount)
-{
-	s32 wanted = useCount ? 11 : 0xec;
-	if (anim != wanted) {
-		HeldAnim(act->mOwner, wanted, TRUE, 1);
-		SetLiftTargetState(act, useCount ? 3 : 18);
-		if (IsLiftTargetPlug(act)) {
-			ClearObjectStatusFlags(act->mTarget, 0x0400000000000000ULL);
-			act->mTarget = NULL;
-		}
-		if (act->mPendingItemId >= 0 && act->mPendingItem) {
-			act->mPendingItem->mStatus.mFlags |= 0x0400000000000000ULL;
-			act->mPendingItem->SetScale(0, 0);
-			SetPlayerActionTarget(act, act->mPendingItem);
-			if (useCount) {
-				s32 count      = RemovePlayerInventoryItemCount(GetPlayerParamsByIndex(&gGame, 0), GetObjectItemId(act->mTarget), 1);
-				s16 difference = count - GetStageCollectionFlagBase(0);
-				if (difference > 0)
-					act->mPendingItem->mPlacementParam1 = difference;
-			}
-			act->mPendingItemId = -1;
-			if (useCount && IsCarryingSquirter(act))
-				ApplyPlayerItemTintToTarget(act);
-		}
-	} else if (aobj->flags & 0x44000000) {
-		HeldAnim(act->mOwner, 8);
-		SetLiftActionState(act, 4);
-		SetLiftTargetState(act, useCount ? 4 : 19);
-	}
-}
-static inline void ReleasePlugTarget(XActLift* act, s32 anim, HSD_AObj* aobj, s32 next)
-{
-	if (anim != next) {
-		HeldAnim(act->mOwner, next, FALSE, 1);
-		act->mOwner->UpdateAnim(0);
-		SetLiftTargetState(act, 13);
-	} else if (aobj->flags & 0x44000000) {
-		HeldAnim(act->mOwner, 8);
-		SetLiftActionState(act, 4);
-		act->mPlugTarget = NULL;
-	}
-}
-static inline void UseToolCharge(XActLift* act, s16 count, s32 level)
-{
-	if (lbl_8020A5E8[count] == level)
-		HeldAnim(act->mTarget, level + 1);
-	else
-		HeldAnim(act->mTarget, level);
-	SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
-}
-
 // NONMATCHING: retail calls ~CVec (10 times), ~CJObj and even the one-store setters here, so its inline limit sits at the
-// bottom: the function alone weighed about 7000 units for the inliner. This one weighs about 5000 with the helpers above
-// expanded. Retail has their code expanded while it calls smaller inlines, so in the original it stood in the function.
+// bottom: the function alone weighed about 7000 units for the inliner. This one is about 1500 units short of that, so it
+// still expands all of them.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
@@ -165,7 +92,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	switch (act->mState) {
 	case 1:
 		if (anim != 5) {
-			HeldAnim(act->mOwner, 5);
+			act->mOwner->SetAnim(5, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			if (act->mTarget) {
 				const CVec& point = GetFloorContactPosition(act->mTarget, act->mTargetFloor, NULL);
 				act->mOwner->SetRotateY(GetHeadingBetweenPositions(&act->mOwner->mMoveTranslate, &point), 12 * DEG2RAD);
@@ -176,7 +103,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		if (!(aobj->flags & 0x44000000))
 			return;
-		HeldAnim(act->mOwner, 6, TRUE, 1);
+		act->mOwner->SetAnim(6, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		SetLiftActionState(act, 2);
 		if (placement < 0) {
 			SetPlugCordSpeed(&act->mOwner->mPlug, 0.5f);
@@ -205,7 +132,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			}
 			if (room) {
 				SetLiftTargetState(act, 1);
-				HeldAnim(act->mOwner, 7, TRUE, 1);
+				act->mOwner->SetAnim(7, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			} else {
 				SetLiftActionState(act, 5);
 			}
@@ -214,7 +141,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				TryStartObjectEvent(&gGame, GetGameObjectByIndex(&gGame, placement)->GetEventScript(), target, -1, -1);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 8);
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			if (act->mTarget) {
 				if (act->mTarget->GetEventScript())
 					SetLiftActionState(act, 5);
@@ -229,7 +156,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 4:
 		if (anim == 0x895) {
 			if (aobj->flags & 0x44000000) {
-				HeldAnim(act->mOwner, 0x894);
+				act->mOwner->SetAnim(0x894, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				if (act->mContactEffect) {
 					gGame.mParticle.Kill(act->mContactEffectId);
 					act->mContactEffect = NULL;
@@ -250,7 +177,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			}
 		} else if (anim == 0x8ae || anim == 0x8af) {
 			if (aobj->flags & 0x44000000)
-				HeldAnim(act->mOwner, 0x894);
+				act->mOwner->SetAnim(0x894, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		}
 		// the brush's effect lasts while it scrubs (0x895), the squirter's while it squirts (0x8c2 to 0x8c4)
 		if (IsCarryingToothbrush(act)) {
@@ -266,7 +193,13 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 5:
 		if (!IsEventScriptActive(&gGame)) {
 			if ((s16)GetObjectPoolId(act->mTarget) == 8 && !(act->mTarget->mStatus.mFlags & 0x400000000000ULL)) {
-				if (HasRoomForItem(act->mTarget))
+				// anything but an item he already has ten of
+				BOOL room = TRUE;
+				s16 id    = GetObjectItemId(act->mTarget);
+				s32 slot  = FindOwnedInventoryItemIndex(GetPlayerParamsByIndex(&gGame, 0)->mInventory.mItems, id);
+				if (slot >= 0 && GetInventoryCountByIndex(GetPlayerParamsByIndex(&gGame, 0), slot) >= 10)
+					room = FALSE;
+				if (room)
 					SetLiftActionState(act, 19);
 				else {
 					SetLiftActionState(act, 0);
@@ -280,7 +213,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		break;
 	case 6:
 		if (anim != 9) {
-			HeldAnim(act->mOwner, 9);
+			act->mOwner->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftTargetState(act, 5);
 		} else if (aobj->flags & 0x44000000) {
 			SetPlayerStandAnim(act->mOwner, 17, 0);
@@ -310,13 +243,13 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		if (!(anim == 0x9f || anim == 0xa0 || anim == 0xbc)) {
 			ClearObjectAnimationQueue(act->mOwner);
 			if (IsLiftActionState(act, 7)) {
-				HeldAnim(act->mOwner, 0x9f);
+				act->mOwner->SetAnim(0x9f, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				SetLiftTargetState(act, 6);
 			} else if (IsLiftActionState(act, 8)) {
-				HeldAnim(act->mOwner, 0xa0);
+				act->mOwner->SetAnim(0xa0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				SetLiftTargetState(act, 8);
 			} else {
-				HeldAnim(act->mOwner, 0xbc);
+				act->mOwner->SetAnim(0xbc, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				SetLiftTargetState(act, 11);
 			}
 		} else if (aobj->flags & 0x44000000) {
@@ -329,14 +262,14 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				SetLiftActionState(act, 12);
 				act->mTimer = 0.2f * FRAME_RATE;
 			} else {
-				HeldAnim(act->mOwner, 0xbe, FALSE, 1);
+				act->mOwner->SetAnim(0xbe, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				SetLiftActionState(act, 15);
 			}
 		}
 		break;
 	case 11:
 		if (anim != 0xad) {
-			HeldAnim(act->mOwner, 0xad, FALSE, 1);
+			act->mOwner->SetAnim(0xad, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mOwner->UpdateAnim(0);
 			SetPlayerActionTarget(act, &act->mOwner->mPlug);
 			SetLiftTargetState(act, 7);
@@ -347,7 +280,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			RecordObjectPositionAndHeightChange(act->mOwner);
 			s32 root[] = { 0 };
 			SetObjectJointTranslationByPath(act->mOwner, 1, root, 0, 0, 0);
-			HeldAnim(act->mOwner, 8, FALSE, 1);
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			SetLiftActionState(act, 4);
 			act->mPlugTarget = NULL;
 		}
@@ -359,7 +292,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				SetLiftActionState(act, 14);
 				break;
 			}
-			HeldAnim(act->mOwner, 0xab);
+			act->mOwner->SetAnim(0xab, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 13);
 			if (act->mPlugTarget && !GetObjectItemId(act->mPlugTarget)) {
 				SetSubwindowRect(&gGame, NAN, NAN, NAN, NAN);
@@ -377,9 +310,9 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		Params& params = act->mOwner->mParams;
 		if (params.mBattery > 0 && params.mBattery / params.mMaxBattery > 0.2f) {
 			if (anim != 0xab)
-				HeldAnim(act->mOwner, 0xab);
+				act->mOwner->SetAnim(0xab, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else if (anim != 0xae) {
-			HeldAnim(act->mOwner, 0xae);
+			act->mOwner->SetAnim(0xae, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		}
 		if (act->mPlugTarget) {
 			act->mBatteryCost = (f32)frames * (((s32)GetPlayerActionParameter(9) / 100.0f) / FRAME_RATE);
@@ -392,25 +325,25 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	}
 	case 14:
 		if (anim != 0xac) {
-			HeldAnim(act->mOwner, 0xac);
+			act->mOwner->SetAnim(0xac, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			act->mOwner->UpdateAnim(0);
 			SetLiftTargetState(act, 10);
 			gGame.mSubwin.mEnabled = FALSE;
 			if (act->mPlugTarget && GetObjData(&act->mPlugTarget->mCoord)->mCategory == 9)
 				((XObjLeticker*)act->mPlugTarget)->OnUnplugged();
 		} else if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 8);
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 4);
 			act->mPlugTarget = NULL;
 		}
 		break;
 	case 16:
 		if (anim != 0xbf) {
-			HeldAnim(act->mOwner, 0xbf, FALSE, 1);
+			act->mOwner->SetAnim(0xbf, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			if (act->mPlugTarget)
-				HeldAnim(act->mPlugTarget, 1, FALSE, 1);
+				act->mPlugTarget->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		} else if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 8);
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 4);
 			SetLiftTargetState(act, 4);
 			act->mPlugTarget = NULL;
@@ -429,14 +362,30 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		break;
 	case 17:
-		ReleasePlugTarget(act, anim, aobj, 0xbd);
+		if (anim != 0xbd) {
+			act->mOwner->SetAnim(0xbd, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			act->mOwner->UpdateAnim(0);
+			SetLiftTargetState(act, 13);
+		} else if (aobj->flags & 0x44000000) {
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetLiftActionState(act, 4);
+			act->mPlugTarget = NULL;
+		}
 		break;
 	case 18:
-		ReleasePlugTarget(act, anim, aobj, 0xac);
+		if (anim != 0xac) {
+			act->mOwner->SetAnim(0xac, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			act->mOwner->UpdateAnim(0);
+			SetLiftTargetState(act, 13);
+		} else if (aobj->flags & 0x44000000) {
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetLiftActionState(act, 4);
+			act->mPlugTarget = NULL;
+		}
 		break;
 	case 19:
 		if (anim != 10) {
-			HeldAnim(act->mOwner, 10);
+			act->mOwner->SetAnim(10, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftTargetState(act, 14);
 			if (act->mContactEffect) {
 				gGame.mParticle.Kill(act->mContactEffectId);
@@ -460,7 +409,11 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		break;
 	// 20 to 22 take an item out of his inventory, 24 to 26 the same without counting it off
 	case 20:
-		LoadLiftItem(act, 21);
+		if (act->mPendingItemId >= 0)
+			act->mPendingItem = SpawnObjectFromPlacementIndex(&gGame, act->mPendingItemId);
+		else
+			act->mPendingItem = NULL;
+		SetLiftActionState(act, 21);
 		// fall through
 	case 21:
 		if (act->mPendingItem) {
@@ -471,11 +424,34 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		SetLiftActionState(act, 22);
 		// fall through
 	case 22:
-		TakeLiftItem(act, anim, aobj, true);
+		if (anim != 11) {
+			act->mOwner->SetAnim(11, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			SetLiftTargetState(act, 3);
+			if (IsLiftTargetPlug(act)) {
+				ClearObjectStatusFlags(act->mTarget, 0x0400000000000000ULL);
+				act->mTarget = NULL;
+			}
+			if (act->mPendingItemId >= 0 && act->mPendingItem) {
+				act->mPendingItem->mStatus.mFlags |= 0x0400000000000000ULL;
+				act->mPendingItem->SetScale(0, 0);
+				SetPlayerActionTarget(act, act->mPendingItem);
+				s32 count      = RemovePlayerInventoryItemCount(GetPlayerParamsByIndex(&gGame, 0), GetObjectItemId(act->mTarget), 1);
+				s16 difference = count - GetStageCollectionFlagBase(0);
+				if (difference > 0)
+					act->mPendingItem->mPlacementParam1 = difference;
+				act->mPendingItemId = -1;
+				if (IsCarryingSquirter(act))
+					ApplyPlayerItemTintToTarget(act);
+			}
+		} else if (aobj->flags & 0x44000000) {
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetLiftActionState(act, 4);
+			SetLiftTargetState(act, 4);
+		}
 		break;
 	case 23:
 		if (anim != 0xdd) {
-			HeldAnim(act->mOwner, 0xdd);
+			act->mOwner->SetAnim(0xdd, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftTargetState(act, 16);
 		} else if (aobj->flags & 0x44000000) {
 			SetPlayerStandAnim(act->mOwner, 17, 0);
@@ -484,7 +460,11 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		break;
 	case 24:
-		LoadLiftItem(act, 25);
+		if (act->mPendingItemId >= 0)
+			act->mPendingItem = SpawnObjectFromPlacementIndex(&gGame, act->mPendingItemId);
+		else
+			act->mPendingItem = NULL;
+		SetLiftActionState(act, 25);
 		// fall through
 	case 25:
 		if (act->mPendingItem) {
@@ -495,12 +475,29 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		SetLiftActionState(act, 26);
 		// fall through
 	case 26:
-		TakeLiftItem(act, anim, aobj, false);
+		if (anim != 0xec) {
+			act->mOwner->SetAnim(0xec, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			SetLiftTargetState(act, 18);
+			if (IsLiftTargetPlug(act)) {
+				ClearObjectStatusFlags(act->mTarget, 0x0400000000000000ULL);
+				act->mTarget = NULL;
+			}
+			if (act->mPendingItemId >= 0 && act->mPendingItem) {
+				act->mPendingItem->mStatus.mFlags |= 0x0400000000000000ULL;
+				act->mPendingItem->SetScale(0, 0);
+				SetPlayerActionTarget(act, act->mPendingItem);
+				act->mPendingItemId = -1;
+			}
+		} else if (aobj->flags & 0x44000000) {
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetLiftActionState(act, 4);
+			SetLiftTargetState(act, 19);
+		}
 		break;
 	// a with a tool out: the toothbrush (27, 28), spoon (29, 30), mug (31 to 33) and squirter (35, 36)
 	case 27:
-		HeldAnim(act->mOwner, 0x895, TRUE);
-		HeldAnim(act->mTarget, 1, TRUE);
+		act->mOwner->SetAnim(0x895, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mTarget->SetAnim(1, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		SetLiftActionState(act, 28);
 		act->mCheckContact = TRUE;
 		break;
@@ -514,20 +511,20 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		break;
 	case 29:
-		HeldAnim(act->mOwner, 0x8b7, TRUE);
-		HeldAnim(act->mTarget, 5, TRUE);
+		act->mOwner->SetAnim(0x8b7, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		act->mTarget->SetAnim(5, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		SetLiftActionState(act, 30);
 		break;
 	case 30:
 		if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 0x8ae, TRUE);
+			act->mOwner->SetAnim(0x8ae, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 4);
 			Vec pos = act->mOwner->mMoveTranslate;
 			f32 yaw = act->mOwner->mMoveRotate.y;
 			pos.x += 3.0f * (f32)sin(yaw);
 			pos.z += 3.0f * (f32)cos(yaw);
 			if (!CheckCarriedObjectContacts(act, &pos, 1, 1, TRUE, FALSE, FALSE, NULL)) {
-				HeldAnim(act->mOwner, 0x8af, TRUE);
+				act->mOwner->SetAnim(0x8af, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PlayGameSound(&gGame.mSound, 0x110, 255);
 				s32 path[]        = { 0, 0 };
 				const CVec& point = CJObj_GetJointWorldPositionByPath(act->mTarget, 2, path);
@@ -537,12 +534,12 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		break;
 	case 31:
 		if (anim != 0x8b1) {
-			HeldAnim(act->mOwner, 0x8b1);
-			HeldAnim(act->mTarget, 4);
+			act->mOwner->SetAnim(0x8b1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mTarget->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			act->mUseEffect = NULL;
 		} else if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 0x8b2);
-			HeldAnim(act->mTarget, 1);
+			act->mOwner->SetAnim(0x8b2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mTarget->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 32);
 		} else if (GetJointAnimationCurrentFrame(act->mOwner) > 10 && !act->mUseEffect) {
 			act->mUseEffectId = 47;
@@ -551,10 +548,10 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		break;
 	case 33:
 		if (anim != 0x8b3) {
-			HeldAnim(act->mOwner, 0x8b3);
-			HeldAnim(act->mTarget, 1);
+			act->mOwner->SetAnim(0x8b3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mTarget->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else if (aobj->flags & 0x44000000) {
-			HeldAnim(act->mOwner, 8);
+			act->mOwner->SetAnim(8, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 4);
 		}
 		break;
@@ -571,8 +568,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		if (CheckCarriedObjectContacts(act, &point, 2, 1, TRUE, FALSE, FALSE, NULL)) {
 			act->mOwner->mSquirterContent = 0;
 			act->mOwner->mItemTintWord    = -1;
-			HeldAnim(act->mOwner, 0x8d2);
-			HeldAnim(act->mTarget, 17);
+			act->mOwner->SetAnim(0x8d2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			act->mTarget->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else {
 			point.x += 2.0f * (f32)sin(angle);
 			point.z += 2.0f * (f32)cos(angle);
@@ -580,30 +577,30 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			if (CheckCarriedObjectContacts(act, &point, 2, 3, TRUE, FALSE, FALSE, NULL)) {
 				act->mOwner->mSquirterContent = 0;
 				act->mOwner->mItemTintWord    = -1;
-				HeldAnim(act->mOwner, 0x8c1);
-				HeldAnim(act->mTarget, 10);
+				act->mOwner->SetAnim(0x8c1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(10, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		}
 		if (act->mOwner->mAnimId != 0x8d2 && act->mOwner->mAnimId != 0x8c1) {
 			s16 count       = (s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38);
 			s32 chargeLevel = lbl_8020A5E8[count];
 			if (chargeLevel == 3) {
-				HeldAnim(act->mOwner, 0x8c2);
-				HeldAnim(act->mTarget, 11, TRUE, 1);
+				act->mOwner->SetAnim(0x8c2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(11, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 
 			} else if (chargeLevel == 2) {
-				HeldAnim(act->mOwner, 0x8c3);
-				HeldAnim(act->mTarget, 12, TRUE, 1);
+				act->mOwner->SetAnim(0x8c3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(12, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 
 			} else if (chargeLevel == 1) {
-				HeldAnim(act->mOwner, 0x8c4);
-				HeldAnim(act->mTarget, 13, TRUE, 1);
+				act->mOwner->SetAnim(0x8c4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(13, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 
 			} else if (count <= 1) {
 				act->mOwner->mSquirterContent = 0;
 				act->mOwner->mItemTintWord    = -1;
-				HeldAnim(act->mOwner, 0x8c5);
-				HeldAnim(act->mTarget, 14);
+				act->mOwner->SetAnim(0x8c5, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(14, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		}
 		act->mTarget->UpdateAnim(frames);
@@ -616,36 +613,48 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			BOOL finished = FALSE;
 			s16 count     = (s16)(GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38) - 1);
 			if (anim == 0x8c2) {
-				UseToolCharge(act, count, 3);
+				if (lbl_8020A5E8[count] == 3)
+					act->mTarget->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				else
+					act->mTarget->SetAnim(3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
 				finished = TRUE;
 			} else if (anim == 0x8c3) {
-				UseToolCharge(act, count, 2);
+				if (lbl_8020A5E8[count] == 2)
+					act->mTarget->SetAnim(3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				else
+					act->mTarget->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
 				finished = TRUE;
 			} else if (anim == 0x8c4) {
-				UseToolCharge(act, count, 1);
+				if (lbl_8020A5E8[count] == 1)
+					act->mTarget->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				else
+					act->mTarget->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
 				finished = TRUE;
 			} else if (anim == 0x8c5) {
-				HeldAnim(act->mTarget, 1);
+				act->mTarget->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				finished = TRUE;
 			} else if (anim == 0x8d2) {
-				HeldAnim(act->mOwner, 0x8c0);
-				HeldAnim(act->mTarget, 9);
+				act->mOwner->SetAnim(0x8c0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			} else if (anim == 0x8c0) {
-				HeldAnim(act->mOwner, 0x8d3);
-				HeldAnim(act->mTarget, 18);
+				act->mOwner->SetAnim(0x8d3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				act->mTarget->SetAnim(18, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			} else if (anim == 0x8d3) {
-				HeldAnim(act->mTarget, 4);
+				act->mTarget->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				// filled up, the inventory keeps the count at 10 at most
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
 				finished = TRUE;
 			} else if (anim == 0x8c1) {
-				HeldAnim(act->mTarget, 4);
+				act->mTarget->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
 				finished = TRUE;
 			}
 			act->mTarget->UpdateAnim(frames);
 			if (finished) {
-				HeldAnim(act->mOwner, 17);
+				act->mOwner->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				SetLiftActionState(act, 4);
 				if (act->mToolEffect) {
 					gGame.mParticle.Kill(act->mToolEffectId);
@@ -1425,6 +1434,9 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800C7BC4
  * @note Size: 0x1FB0
  */
+// GetObjectJointByPath was a header inline in retail (weak copy 0x800B2764); with it, this function expands the call,
+// being over 1200 units under retail's estimate. RecordObjectPositionAndHeightChange and HSD_JObjSetRotationY stand behind
+// it in retail, so they were inlines that weighed in the estimate; here they are plain functions defined further down.
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -1783,38 +1795,6 @@ s32 FindPlayerSupportingFloor(XObjChr*, s32, s32);
 f32 GetObjectEdgeOutwardYaw(const XObj*, Vec*, s32);
 f32 GetJointAnimationCurrentFrame(CJObj*);
 
-static inline void HangAnim(XActHang* act, s32 id, f32 loop = 1, BOOL force = FALSE, f32 start = 0)
-{
-	act->mOwner->SetAnim(id, force, NULL, NULL, NULL, start, 1, loop, 10);
-}
-static inline void ReleaseHangPlug(XActHang* act)
-{
-	if (CheckStageFlag(gGame.mStage, 1)) {
-		XObjPlug* plug = &act->mOwner->mPlug;
-		if (plug->mConnection) {
-			ResetPlayerPlugState(plug, TRUE);
-			PlayGameSound(&gGame.mSound, 0x37, 255);
-		}
-	}
-}
-static inline bool RoundHangFloor(XActHang* act)
-{
-	return act->mTarget->mFloors[act->mTargetFloor].mId == 0;
-}
-static inline void RefreshHangFloor(XActHang* act)
-{
-	s32 floor = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
-	if (floor >= 0)
-		act->mTargetFloor = floor;
-}
-static inline void FinishHang(XActHang* act, f32 loop)
-{
-	XObjChr* owner = act->mOwner;
-	owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, loop, 10);
-	owner->mIdleLoops = 3;
-	act->mState       = 0;
-}
-
 /**
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
@@ -1831,7 +1811,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				f32 angle = GetFloorFacingAngle(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor, 1, &contact, &normal);
 				if (__fpclassifyf(angle) != FP_NAN) {
 					StopPlayerMotion(act->mOwner);
-					HangAnim(act, 0x13, 0);
+					act->mOwner->SetAnim(0x13, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 					act->mOwner->SetRotationY(angle, 0);
 					start     = act->mOwner->mMoveTranslate;
 					contact.y = start.y;
@@ -1841,13 +1821,19 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 					return;
 				}
 			}
-			ReleaseHangPlug(act);
+			if (CheckStageFlag(gGame.mStage, 1)) {
+				XObjPlug* plug = &act->mOwner->mPlug;
+				if (plug->mConnection) {
+					ResetPlayerPlugState(plug, TRUE);
+					PlayGameSound(&gGame.mSound, 0x37, 255);
+				}
+			}
 		} else if (aobj->flags & 0x44000000) {
-			HangAnim(act, 0x14);
+			act->mOwner->SetAnim(0x14, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
 			if (act->mTarget) {
-				if (RoundHangFloor(act)) {
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 					CVec owner(act->mOwner->mMoveTranslate);
 					owner.y = 0;
 					CVec floor(GetTargetFloorPosition(act));
@@ -1858,7 +1844,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 					act->mOwner->SetPos(contact - normal * 4.f, 0);
 			}
 		} else if (act->mTarget) {
-			if (RoundHangFloor(act)) {
+			if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 				XObjChr* chr = act->mOwner;
 				f32 radius   = chr->mMoveScale.x * GetScaledTargetFloorExtent(act)->x;
 				CVec owner(act->mOwner->mMoveTranslate);
@@ -1882,9 +1868,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 	case 4:
 		if (anim != 0x7a && anim != 0xca) {
 			if (act->mTarget) {
-				RefreshHangFloor(act);
+				s32 index = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
+				if (index >= 0)
+					act->mTargetFloor = index;
 				f32 yaw;
-				if (RoundHangFloor(act)) {
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 					CVec owner(act->mOwner->mMoveTranslate);
 					owner.y = 0;
 					CVec floor(GetTargetFloorPosition(act));
@@ -1900,7 +1888,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				act->mOwner->SetPos(pos, 0);
 				RecordObjectPositionAndHeightChange(act->mOwner);
 			}
-			HangAnim(act, 0x7a, 0);
+			act->mOwner->SetAnim(0x7a, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			return;
 		}
 		if (aobj->flags & 0x44000000) {
@@ -1909,7 +1897,13 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState               = 0;
 			act->mTarget              = NULL;
 			act->mOwner->mJump.mState = 3;
-			ReleaseHangPlug(act);
+			if (CheckStageFlag(gGame.mStage, 1)) {
+				XObjPlug* plug = &act->mOwner->mPlug;
+				if (plug->mConnection) {
+					ResetPlayerPlugState(plug, TRUE);
+					PlayGameSound(&gGame.mSound, 0x37, 255);
+				}
+			}
 			return;
 		}
 		if (!act->mStickAway)
@@ -1917,8 +1911,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		{
 			f32 last = GetJointAnimationEndFrame(act->mOwner);
 			if (GetJointAnimationCurrentFrame(act->mOwner) / last <= .6f) {
-				FinishHang(act, 0);
-				act->mTarget = NULL;
+				XObjChr* chr = act->mOwner;
+				chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				chr->mIdleLoops = 3;
+				act->mState     = 0;
+				act->mTarget    = NULL;
 				return;
 			}
 		}
@@ -1928,7 +1925,13 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mOwner->mJump.mState = 2;
 			act->mState               = 0;
 			act->mTarget              = NULL;
-			ReleaseHangPlug(act);
+			if (CheckStageFlag(gGame.mStage, 1)) {
+				XObjPlug* plug = &act->mOwner->mPlug;
+				if (plug->mConnection) {
+					ResetPlayerPlugState(plug, TRUE);
+					PlayGameSound(&gGame.mSound, 0x37, 255);
+				}
+			}
 		} else if (HasPlayerActionTarget(act) && GetPlayerActionTarget(act)->mStatus.mFlags & 0x800000000ULL) {
 			act->mOwner->mLadder.SetState(3, GetPlayerActionTarget(act));
 			act->mState  = 0;
@@ -1947,10 +1950,12 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 	case 3:
 		if (anim != 0x76) {
 			if (act->mTarget) {
-				RefreshHangFloor(act);
+				s32 index = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
+				if (index >= 0)
+					act->mTargetFloor = index;
 				CVec contact(0, 0, 0);
 				f32 yaw;
-				if (RoundHangFloor(act)) {
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 					CVec owner(act->mOwner->mMoveTranslate);
 					owner.y = 0;
 					CVec floor(GetTargetFloorPosition(act));
@@ -1967,8 +1972,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				}
 				yaw = WrapAngle(yaw);
 				act->mOwner->SetRotationY(yaw, 0);
-				HangAnim(act, 0x13, 1, TRUE);
-				HangAnim(act, 0x13, 1, TRUE, GetJointAnimationEndFrame(act->mOwner));
+				act->mOwner->SetAnim(0x13, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+				act->mOwner->SetAnim(0x13, TRUE, NULL, NULL, NULL, GetJointAnimationEndFrame(act->mOwner), 1.0f, 1.0f, 10.0f);
 				act->mOwner->UpdateAnim(0);
 				s32 p1[]   = { 0 };
 				CVec local = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, p1);
@@ -1977,14 +1982,14 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				delta.y    = -delta.y;
 				act->mOwner->SetPos(act->mOwner->mMoveTranslate + delta, 0);
 				RecordObjectPositionAndHeightChange(act->mOwner);
-				HangAnim(act, 0x76);
+				act->mOwner->SetAnim(0x76, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				local.x  = -local.x;
 				local.z  = -local.z;
 				s32 p3[] = { 0 };
 				SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, local);
 				Vec pos = act->mOwner->mMoveTranslate;
 				f32 distance;
-				if (RoundHangFloor(act)) {
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 					CVec owner(act->mOwner->mMoveTranslate);
 					owner.y = 0;
 					CVec floor(GetTargetFloorPosition(act));
@@ -2010,15 +2015,21 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				act->mOwner->SetPos(pos, 0);
 				RecordObjectPositionAndHeightChange(act->mOwner);
 			}
-			ReleaseHangPlug(act);
+			if (CheckStageFlag(gGame.mStage, 1)) {
+				XObjPlug* plug = &act->mOwner->mPlug;
+				if (plug->mConnection) {
+					ResetPlayerPlugState(plug, TRUE);
+					PlayGameSound(&gGame.mSound, 0x37, 255);
+				}
+			}
 		} else if (aobj->flags & 0x44000000) {
 			s32 childPath[] = { 0 };
 			HSD_JObj* child = GetObjectJointByPath(act->mOwner, 1, childPath);
 			f32 turn        = HSD_JObjGetRotationY(child);
 			act->mOwner->SetRotationY(HSD_JObjGetRotationY(act->mOwner->mJObj) + turn, 0);
 			HSD_JObjSetRotationY__FP9_HSD_JObjf(child, 0);
-			HangAnim(act, 0x13);
-			HangAnim(act, 0x13, 1, TRUE, GetJointAnimationEndFrame(act->mOwner));
+			act->mOwner->SetAnim(0x13, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			act->mOwner->SetAnim(0x13, TRUE, NULL, NULL, NULL, GetJointAnimationEndFrame(act->mOwner), 1.0f, 1.0f, 10.0f);
 			act->mOwner->UpdateAnim(0);
 			s32 p1[]   = { 0 };
 			CVec local = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, p1);
@@ -2026,10 +2037,10 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			CVec delta = GetEventJointWorldPosition(act->mOwner, 1, p2) - act->mOwner->mMoveTranslate;
 			s32 p3[]   = { 0 };
 			SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, local);
-			HangAnim(act, 0x14);
+			act->mOwner->SetAnim(0x14, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
-			if (act->mTarget && RoundHangFloor(act)) {
+			if (act->mTarget && act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
 				CVec owner(act->mOwner->mMoveTranslate);
 				owner.y = 0;
 				CVec floor(GetTargetFloorPosition(act));
@@ -2041,7 +2052,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		break;
 	case 2:
 		if (anim != 0x18) {
-			HangAnim(act, 0x18);
+			act->mOwner->SetAnim(0x18, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			if (act->mTarget)
 				act->mOwner->SetRotationY(GetObjectEdgeOutwardYaw(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor), 0);
 		} else if (aobj->flags & 0x44000000) {
@@ -2053,7 +2064,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y, 0);
 			s32 p[] = { 0 };
 			SetJointYawByPath(act->mOwner, 1, p, 0);
-			HangAnim(act, 0x14);
+			act->mOwner->SetAnim(0x14, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mOwner->UpdateAnim(0);
 			s32 child[] = { 0 };
 			act->mOwner->SetPos(
@@ -2066,42 +2077,45 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 	case 5:
 		if (act->mMoveDirection == -1) {
 			if (anim != 0x16)
-				HangAnim(act, 0x16);
+				act->mOwner->SetAnim(0x16, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		} else if (act->mMoveDirection == 1) {
 			if (anim != 0x15)
-				HangAnim(act, 0x15);
+				act->mOwner->SetAnim(0x15, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		} else if (anim != 0x14)
-			HangAnim(act, 0x14);
+			act->mOwner->SetAnim(0x14, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		break;
 	// climbing up, TryLeaveHang picks the other climb (7) one time in eight
 	case 6:
 	case 7: {
 		int next = state == 7 ? 0x7d : 0x17;
 		if (anim != next)
-			HangAnim(act, next);
+			act->mOwner->SetAnim(next, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		else if (aobj->flags & 0x44000000) {
 			s32 path[] = { 0 };
 			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
 			s32 reset[] = { 0 };
 			SetObjectJointTranslationByPath(act->mOwner, 1, reset, 0, 0, 0);
-			FinishHang(act, 0);
-			act->mTarget = NULL;
+			XObjChr* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+			act->mTarget    = NULL;
 		}
 		break;
 	}
 	case 8:
-		HangAnim(act, 0x19, 1, TRUE, 15);
+		act->mOwner->SetAnim(0x19, TRUE, NULL, NULL, NULL, 15.0f, 1.0f, 1.0f, 10.0f);
 		act->mState = 9;
 	// fall through
 	case 9:
 		if (anim != 0x19) {
-			HangAnim(act, 0x19);
+			act->mOwner->SetAnim(0x19, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			return;
 		}
 		if (!(aobj->flags & 0x44000000))
 			return;
-		HangAnim(act, 0x1a);
+		act->mOwner->SetAnim(0x1a, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		act->mState  = 10;
 		act->mTarget = NULL;
 	// fall through
@@ -2109,14 +2123,14 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		if (act->mOwner->GetHeight() <= 0) {
 			if (act->mOwner->mFallDistance > 30) {
 				act->mState = 0;
-				HangAnim(act, 0x8e);
+				act->mOwner->SetAnim(0x8e, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mOwner->mJump.mState = 5;
 				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
 				act->mOwner->SetColor(1, 255, 0, 0, 0);
 				act->mOwner->SetColor(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
 			} else {
-				HangAnim(act, 0x1b);
+				act->mOwner->SetAnim(0x1b, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mState = 11;
 			}
 		} else if (act->mOwner->GetAttachment() == 1) {
@@ -2125,8 +2139,12 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		}
 		break;
 	case 11:
-		if (aobj->flags & 0x44000000)
-			FinishHang(act, 1);
+		if (aobj->flags & 0x44000000) {
+			XObjChr* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+		}
 		break;
 	}
 }
@@ -2698,7 +2716,7 @@ extern const s32 lbl_8020A5E8[];
  * @note Size: 0x2040
  */
 // NONMATCHING: retail calls ~CJObj for the eight pairs of joints (bl __dt__5CJObjFv) where this build still expands it; the
-// function is 300 to 375 units short of the estimate at which the compiler halves its inline limit to 64, and at that limit
+// function is short of the estimate at which the compiler halves its inline limit to 64, and at that limit
 // HSD_JObjGetMtxPtr (74 units here, expanded in retail) would be called too. The two squirter SetAnim calls keep the
 // item count in r0 and sign-extend it after loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
 void UpdateHeldObject(XActLift* act, s32)
