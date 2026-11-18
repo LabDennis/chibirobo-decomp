@@ -9169,18 +9169,18 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 			gGame.mMotionControlCamera.StartEye();
 			break;
 		case 2: {
-			f32 degrees                                                        = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.y = DEG2RAD * degrees;
+			f32 degrees                                                                  = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.y = DEG2RAD * degrees;
 			break;
 		}
 		case 3: {
-			f32 degrees                                                        = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.x = DEG2RAD * degrees;
+			f32 degrees                                                                  = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.x = DEG2RAD * degrees;
 			break;
 		}
 		case 4: {
-			f32 fov                                                            = Evaluate();
-			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.z = fov;
+			f32 fov                                                                      = Evaluate();
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.z = fov;
 			break;
 		}
 		}
