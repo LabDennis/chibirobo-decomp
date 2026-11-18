@@ -12,6 +12,7 @@
 #include "game/savedata.h"
 #include "game/globals.h"
 #include "game/ut.h"
+#include "game/gmath.h"
 #include "game/cthread.h"
 #include "Dolphin/os.h"
 #include <string.h>
@@ -25,6 +26,12 @@ void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 void fn_80084B90(void* menu, s32 index); // opens one of the menus
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection);
 void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result);
+void ResetPlayerHeadOffset(WiiPlayerState* chr);
+void ResetPlayerPlug(WiiPlayerState* chr);
+void UpdateHeldObject(XAction* action, u32 frames);
+void CancelPlayerPushAction(XAction* action);
+void UpdateObjectFloorHeights(XObj* object);
+void UpdateObjectFloorXZExtent(XObj* object);
 }
 
 CEvtFlags gEventFlags;
@@ -422,6 +429,148 @@ s32 CEvt::_cmd_MENU(u8, s32)
 		mData.mScript = cmd;
 	}
 	return ret;
+}
+
+/**
+ * @note Address: 0x8009D234
+ * @note Size: 0x38C
+ */
+s32 CEvt::_cmd_POS(u8, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	f32 x     = CEvt_Evaluate(this) / 100.0f;
+	f32 y     = CEvt_Evaluate(this) / 100.0f;
+	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		obj->SetPos(x, y, z);
+		// a placement in 4:3 screen units, x widens to the tv's aspect
+		if (obj->mStatus.mFlags & 0x800) {
+			obj->SetTranslateX(gScreenWidthScale * obj->GetPos()->x);
+		}
+		// mLastPos is overwritten below, so flag the floor heights as stale for UpdateObject
+		if (obj->mMoveTranslate.y != obj->mLastPos.y) {
+			obj->mStatus.mFlags |= 0x0010000000000000;
+		}
+		obj->mLastPos.x = obj->mMoveTranslate.x;
+		obj->mLastPos.y = obj->mMoveTranslate.y;
+		obj->mLastPos.z = obj->mMoveTranslate.z;
+		if (obj == gGame.GetPlayer()) {
+			// restart his animation where it is, blending from the new place
+			obj->SetAnim(obj->GetAnimId(), TRUE, obj->GetAnimFrame(), 1.0f, 1.0f, 15.0f);
+			obj->UpdateAnim(0.0f);
+		}
+		gGame.mMotionControlCamera.UpdateTarget(obj);
+		XAction* lift;
+		XObj* player = gGame.GetPlayer();
+		if (obj == player) {
+			ResetPlayerHeadOffset((WiiPlayerState*)player);
+			ResetPlayerPlug((WiiPlayerState*)player);
+			lift = &((WiiPlayerState*)player)->mLift;
+			if (lift->mTarget != NULL) {
+				UpdateHeldObject(lift, 1);
+				if (lift->mTarget != NULL) {
+					lift->mTarget->UpdateObject(1);
+				}
+			}
+			CancelPlayerPushAction(&((WiiPlayerState*)player)->mPush);
+		}
+	} else {
+		CEvt_Warn(FormatToStaticBuffer("pos(%d, ...) obj(%d) killed!", id, id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009E07C
+ * @note Size: 0x410
+ */
+// NONMATCHING: retail keeps the three fabs results in their own registers and rounds them only for the target
+s32 CEvt::_cmd_SCALE(u8 cmd, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	f32 x     = CEvt_Evaluate(this) / 100.0f;
+	f32 y     = CEvt_Evaluate(this) / 100.0f;
+	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	if (cmd == EVT_CMD_SCALE) {
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			obj->SetScale(x, y, z);
+			UpdateObjectFloorHeights(obj);
+			UpdateObjectFloorXZExtent(obj);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("scale(%d, ...) obj(%d) killed!", id, id));
+		}
+	} else {
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL) {
+				CEvt_Warn(FormatToStaticBuffer("mscale(%d, %d,%d,%d) ... obj(%d) is collision!", id, (s32)(100.0f * x), (s32)(100.0f * y),
+				                               (s32)(100.0f * z), id));
+			}
+			if (time == 0.0f) {
+				obj->SetScale(x, y, z);
+				UpdateObjectFloorHeights(obj);
+				UpdateObjectFloorXZExtent(obj);
+			} else {
+				CVec step = (CVec(x, y, z) - *obj->GetScale()) / (gRefreshRate * time);
+				obj->mMoveTarget2.Set(x, y, z);
+				step.x = fabs(step.x);
+				step.y = fabs(step.y);
+				step.z = fabs(step.z);
+				obj->mMoveSpeed2.Set(step);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("mscale(%d, ...) obj(%d) killed!", id, id));
+		}
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009C6C4
+ * @note Size: 0x3F8
+ */
+s32 CEvt::_cmd_MOVE(u8, s32)
+{
+	s16 id       = CEvt_Evaluate(this);
+	XObj* obj    = CEvt_GetObj(this, id);
+	f32 distance = CEvt_Evaluate(this) / 100.0f;
+	f32 time     = CEvt_Evaluate(this) / 100.0f;
+	s32 anim     = CEvt_Evaluate(this);
+	s16 dir      = CEvt_Evaluate(this);
+	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
+	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+		if (obj->mObject.m_pScnMdl == NULL) {
+			// retail's format says %d but passes a float
+			CEvt_Warn(FormatToStaticBuffer("move(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, distance, (s32)(time * 100.0f), anim,
+			                               dir, id));
+		}
+		XObj* player = gGame.GetPlayer();
+		if (obj == player) {
+			CancelPlayerPushAction(&((WiiPlayerState*)player)->mPush);
+		}
+		Vec target = *obj->GetPos();
+		// -1 and -2 keep the way it faces
+		f32 yaw = (dir == -1 || dir == -2) ? obj->mMoveRotate.y : DEG2RAD * dir;
+		target.x += distance * (f32)sin(yaw);
+		target.z += distance * (f32)cos(yaw);
+		// time 0 gets there in one frame, a positive time is seconds, a negative one the speed per frame
+		if (time == 0.0f) {
+			obj->RequestMoveDir(&target, distance);
+		} else if (time > 0.0f) {
+			obj->RequestMoveDir(&target, distance / (time * gRefreshRate));
+		} else {
+			obj->RequestMoveDir(&target, -time);
+		}
+		if (anim != -1) {
+			obj->SetAnim(anim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			obj->UpdateAnim(1.0f);
+		}
+	} else if (obj == NULL || !(obj->mStatus.mFlags & 1)) {
+		CEvt_Warn(FormatToStaticBuffer("move(%d, ...) obj(%d) killed!", id, id));
+	}
+	return 0;
 }
 
 s32 CEvt::_cmd_SETSP(u8, s32)
