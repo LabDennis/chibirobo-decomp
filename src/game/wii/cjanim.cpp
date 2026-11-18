@@ -11,6 +11,7 @@
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/ceffect.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include "game/ut.h"
@@ -22,11 +23,15 @@
 extern "C" {
 void C_VECReflect(const Vec* source, const Vec* normal, Vec* result);
 void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+void HSD_MtxGetScale(Mtx m, Vec* out);
 f64 fmax(f64 x, f64 y);
 f64 fmin(f64 x, f64 y);
 // the map XObj's floor query in an unsplit unit: fills hit with the triangle
 // under pos, the previous triangle as a hint; FALSE when there is none
 s32 fn_800C98E0(XObj* map, const Vec* pos, s32 tri, XObjMapHit* hit);
+// evt.cpp's effect slot allocator/retirer (0x800A11A4/0x800A12F8)
+EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 }
 
 // the floor coordinate readers this unit expands inline (retail shows the loads and
@@ -648,6 +653,23 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	return TRUE;
 }
 
+// the object-world-callback's second pass: copy the base matrix into the node's
+// result slot, and with the flag set move the object's transform to the matrix's
+void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() == 0 && mBaseMtxPtr != NULL) {
+		Mtx mtx;
+		PSMTXCopy(mBaseMtx, mtx);
+		PSMTXCopy(mtx, pResult->mpMtx);
+		if (mStatus.mFlags & 0x0000400000000000ULL) {
+			mMoveTranslate.x = mtx[0][3];
+			mMoveTranslate.y = mtx[1][3];
+			mMoveTranslate.z = mtx[2][3];
+			HSD_MtxGetScale(mtx, &mMoveScale);
+		}
+	}
+}
+
 // the GameCube's cjanim.cpp function, the Wii keeps it as a free function too;
 // the anchor and limits it reads moved into the object's CAnmQueue on the Wii
 extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z)
@@ -862,4 +884,2495 @@ CVec XObj::vf288(s32 count, s32* args)
 		return GetJointWorldPos(name);
 	return GetJointWorldPos((u32)0);
 }
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B6F00(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("cyl295");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x83, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B6F8C(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 149.0f && f2 >= 149.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl6");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl7");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl8");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl9");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl10");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl12");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl13");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl16");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl17");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl18");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x36, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7348(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 4.0f && f2 >= 4.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("kettle_ptcl01");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x43, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B73D8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_teacup");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x44, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7480(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x30, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x31, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7578(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_l");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_l1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_l2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r6");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r7");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r8");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r9");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r10");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r11");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r12");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r13");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r14");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r15");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_r16");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x33, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7BD0(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("bb_nikki");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x46, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f1 < 51.0f && f2 >= 51.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("bb_nikki");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x46, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7CCC(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tomp_scare3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tomp_scare4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x38, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B7DD4(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("migi1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x85, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("migi2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x85, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("migi3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x85, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("migi4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x85, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("migi5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x85, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x86, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 7.0f && f2 >= 7.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x86, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 14.0f && f2 >= 14.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x86, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 21.0f && f2 >= 21.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x86, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 28.0f && f2 >= 28.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x86, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("center");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x89, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f1 < 39.0f && f2 >= 39.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 20.0f && f2 >= 20.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("hidari5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B85B8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 2) {
+		if (f1 < 3.0f && f2 >= 3.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_leticwarp_in_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x3D, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 3.0f && f2 >= 3.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_leticwarp_out_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x3E, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B86B8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 76.0f && f2 >= 76.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_zact_gicco1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x24, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B8748(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 15.0f && f2 >= 15.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_zact_frog_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 29.0f && f2 >= 29.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_zact_frog_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x41, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B8840(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 18.0f && f2 >= 18.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_zact_injured_shock");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 14.0f && f2 >= 14.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_zact_injured_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x40, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B8938(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 22.0f && f2 >= 22.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 42.0f && f2 >= 42.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_pajamas_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x16, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B8A98(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x0, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x12, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x13, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B8C78(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_warpzone_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x48, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAB, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAB, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAB, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 41.0f && f2 >= 41.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 5) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("chrgeOK3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAC, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B91C0(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_ghost_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x47, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B9268(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 2) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_cbdoor_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x49, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B92F8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl6");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl7");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl8");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl9");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl10");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 160.0f && f2 >= 160.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 59.0f && f2 >= 59.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 59.0f && f2 >= 59.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 5) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 59.0f && f2 >= 59.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 6) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x79, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 7) {
+		if (f1 < 289.0f && f2 >= 289.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x53, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 49.0f && f2 >= 49.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl11");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x54, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B9C50(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("torch_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B9E6C(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("welding_tools");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x80, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B9EF8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("obj30");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x66, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("obj30");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x67, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800B9FE4(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 0.0f && f2 >= 0.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("elec_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("air_ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x5D, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_battery2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1A, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 5) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_battery2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x5E, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 6) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x91, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x91, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 3.0f && f2 >= 3.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x91, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x91, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 7) {
+		if (f1 < 3.0f && f2 >= 3.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 8) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x92, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short6");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x93, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short7");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x93, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 9) {
+		if (f1 < 34.0f && f2 >= 34.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x94, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 10.0f && f2 >= 10.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x94, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("eye_short5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x94, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 49.0f && f2 >= 49.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_battery2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x96, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_battery2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x95, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BA990(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_gicco_twinb01_ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x9D, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("first_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA0, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("first_ptcl01");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x57, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 0.0f && f2 >= 0.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("first_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA1, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BAB88(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 0.0f && f2 >= 0.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl01");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA2, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl01");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA2, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xA2, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("tb01_ptcl3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BADC0(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 199.0f && f2 >= 199.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_gicco_twinb03_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x9E, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 19.0f && f2 >= 19.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x9F, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BAEB8(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("rain_ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x56, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BAF60(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("catch_a_cold_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x4D, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("beam_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x58, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("beam_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x58, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 5) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("beam_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x58, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 6) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("beam_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x59, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 7) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("beam_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x59, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BB208(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("second");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x61, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("second");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x62, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BB300(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl01");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6B, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6C, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BB3EC(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_pirateboat_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x64, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_pirateboat_ptcl1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x64, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BB4F4(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("energy_ptcl_root");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6F, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("energy_ptcl_root");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6F, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 12.0f && f2 >= 12.0f || f1 < 24.0f && f2 >= 24.0f || f1 < 36.0f && f2 >= 36.0f || f1 < 48.0f && f2 >= 48.0f
+		           || f1 < 60.0f && f2 >= 60.0f || f1 < 72.0f && f2 >= 72.0f || f1 < 84.0f && f2 >= 84.0f || f1 < 96.0f && f2 >= 96.0f
+		           || f1 < 108.0f && f2 >= 108.0f || f1 < 120.0f && f2 >= 120.0f || f1 < 132.0f && f2 >= 132.0f
+		           || f1 < 144.0f && f2 >= 144.0f || f1 < 156.0f && f2 >= 156.0f || f1 < 168.0f && f2 >= 168.0f
+		           || f1 < 180.0f && f2 >= 180.0f || f1 < 192.0f && f2 >= 192.0f || f1 < 204.0f && f2 >= 204.0f
+		           || f1 < 216.0f && f2 >= 216.0f || f1 < 228.0f && f2 >= 228.0f || f1 < 240.0f && f2 >= 240.0f
+		           || f1 < 252.0f && f2 >= 252.0f || f1 < 264.0f && f2 >= 264.0f || f1 < 276.0f && f2 >= 276.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("energy_ptcl_root");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6F, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BB864(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_matrix1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6E, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_matrix2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x6E, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_electric");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x75, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 10.0f && f2 >= 10.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 20.0f && f2 >= 20.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 30.0f && f2 >= 30.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 40.0f && f2 >= 40.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 50.0f && f2 >= 50.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x77, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x76, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BBF0C(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("red_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x71, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("red_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x72, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("red_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x73, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("red_ptcl");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x74, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BC0DC(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp02");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x9, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp02");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x7, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl_exp02");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x8, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BC218(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff4");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff5");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff6");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_tm_takeoff7");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x97, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BC494(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 1) {
+		if (f1 < 13.0f && f2 >= 13.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1_laser_shock_smoke1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAA, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 179.0f && f2 >= 179.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1_laser_shock_smoke1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAA, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 199.0f && f2 >= 199.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1_laser_shock_smoke1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAA, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 219.0f && f2 >= 219.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1_laser_shock_smoke1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAA, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 79.0f && f2 >= 79.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("ptcl1_laser_energyfall1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x58, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 2) {
+		if (f1 < 17.0f && f2 >= 17.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo2");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xB8, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo3");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xB8, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo_bright1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xB9, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 4) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo_bright1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBA, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 144.0f && f2 >= 144.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo_spark1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBB, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 5) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_chibirobo_bright1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xB7, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BC964(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 0) {
+		fn_800A12F8((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, TRUE);
+	} else if (event == 1) {
+		if (f2 == 0.0f || f1 > f2) {
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere10");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere11");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere12");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere13");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere14");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("sphere15");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xBD, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the object kind's animation event callback (registered by AssignAnimEventCallback)
+static void fn_800BCBC4(XObj* object, s32 event, f32 f1, f32 f2)
+{
+	if (event == 2) {
+		if (f1 < 1.0f && f2 >= 1.0f || f1 < 1.0f && f2 >= 1.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_socket1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_btrybox1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	} else if (event == 3) {
+		if (f1 < 2.0f && f2 >= 2.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_btrybox1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 31.0f && f2 >= 31.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_socket1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_btrybox1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 61.0f && f2 >= 61.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_socket1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		} else if (f1 < 91.0f && f2 >= 91.0f) {
+			{
+				MtxP mtx          = object->GetWorldMtx("fx_deca_neck1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAE, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+			{
+				MtxP mtx          = object->GetWorldMtx("deca_socket1");
+				EffectInstance* e = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0xAF, 0);
+				if (e != NULL) {
+					e->mtx = mtx;
+					UpdateEffectMtx(e);
+				}
+			}
+		}
+	}
+}
+// the kind's anim keyframe hook picker (name invented): switches on GetKind()
+void XObj::AssignAnimEventCallback()
+{
+	switch (GetKind()) {
+	case 302:
+		mAnimEventCallback = fn_800B6F00;
+		break;
+	case 397:
+		mAnimEventCallback = fn_800B6F8C;
+		break;
+	case 405:
+		mAnimEventCallback = fn_800B7348;
+		break;
+	case 406:
+		mAnimEventCallback = fn_800B73D8;
+		break;
+	case 424:
+		mAnimEventCallback = fn_800B7480;
+		break;
+	case 428:
+		mAnimEventCallback = fn_800B7578;
+		break;
+	case 431:
+		mAnimEventCallback = fn_800B7BD0;
+		break;
+	case 435:
+		mAnimEventCallback = fn_800B7CCC;
+		break;
+	case 486:
+		mAnimEventCallback = fn_800B7DD4;
+		break;
+	case 614:
+		mAnimEventCallback = fn_800B85B8;
+		break;
+	case 626:
+		mAnimEventCallback = fn_800B86B8;
+		break;
+	case 628:
+		mAnimEventCallback = fn_800B8748;
+		break;
+	case 629:
+		mAnimEventCallback = fn_800B8840;
+		break;
+	case 630:
+		mAnimEventCallback = fn_800B8938;
+		break;
+	case 786:
+		mAnimEventCallback = fn_800B8A98;
+		break;
+	case 787:
+		mAnimEventCallback = fn_800B8C78;
+		break;
+	case 832:
+		mAnimEventCallback = fn_800B91C0;
+		break;
+	case 842:
+		mAnimEventCallback = fn_800B9268;
+		break;
+	case 849:
+		mAnimEventCallback = fn_800B92F8;
+		break;
+	case 854:
+		mAnimEventCallback = fn_800B9C50;
+		break;
+	case 856:
+		mAnimEventCallback = fn_800B9E6C;
+		break;
+	case 870:
+		mAnimEventCallback = fn_800B9EF8;
+		break;
+	case 881:
+		mAnimEventCallback = fn_800B9FE4;
+		break;
+	case 930:
+		mAnimEventCallback = fn_800BA990;
+		break;
+	case 931:
+		mAnimEventCallback = fn_800BAB88;
+		break;
+	case 932:
+		mAnimEventCallback = fn_800BADC0;
+		break;
+	case 934:
+		mAnimEventCallback = fn_800BAEB8;
+		break;
+	case 939:
+		mAnimEventCallback = fn_800BAF60;
+		break;
+	case 995:
+		mAnimEventCallback = fn_800BB208;
+		break;
+	case 1034:
+		mAnimEventCallback = fn_800BB300;
+		break;
+	case 1035:
+		mAnimEventCallback = fn_800BB3EC;
+		break;
+	case 1036:
+		mAnimEventCallback = fn_800BB4F4;
+		break;
+	case 1037:
+		mAnimEventCallback = fn_800BB864;
+		break;
+	case 1038:
+		mAnimEventCallback = fn_800BBF0C;
+		break;
+	case 1082:
+		mAnimEventCallback = fn_800BC0DC;
+		break;
+	case 1122:
+		mAnimEventCallback = fn_800BC218;
+		break;
+	case 1155:
+		mAnimEventCallback = fn_800BC494;
+		break;
+	case 1156:
+		mAnimEventCallback = fn_800BCBC4;
+		break;
+	case 1161:
+		mAnimEventCallback = fn_800BC964;
+		break;
+	case 855:
+	default:
+		mAnimEventCallback = NULL;
+	}
+}
+
 #endif

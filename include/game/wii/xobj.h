@@ -74,6 +74,8 @@ class ResMdl;
 
 // what the world callback writes for a node, as far as the game uses it
 struct ChrAnmResult {
+	MtxP mpMtx; // _00, the node's world matrix slot
+
 	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
 	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
 };
@@ -1269,6 +1271,9 @@ public:
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
+	// picks the kind's animation event callback (0x800BD064, name invented)
+	void AssignAnimEventCallback();
+
 	BOOL IsFloorOn(s32 i) const { return mFloorMasks[0] & (1 << i); }
 	void ClearFloor(s32 i) { mFloorMasks[0] &= ~(1 << i); }
 
@@ -1281,7 +1286,7 @@ public:
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
-	u8 _190[0x194 - 0x190];
+	void (*mAnimEventCallback)(XObj* object, s32 event, f32 f1, f32 f2); // _190, the kind's anim keyframe hook
 	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
