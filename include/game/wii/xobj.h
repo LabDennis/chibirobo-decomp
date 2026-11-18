@@ -18,6 +18,11 @@
 #include "game/wii/xobjs.h"
 #include "revolution/mem.h"
 
+extern "C" {
+#include "Dolphin/OS/OSMessage.h"
+#include "Dolphin/OS/OSThread.h"
+}
+
 // one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
 struct XObjFloor {
 	s16 mId;              // _00
@@ -1386,25 +1391,80 @@ public:
 	virtual ~CustomShadow();
 };
 
-// the Wii object readers: a thread-like prefix of 0x320 bytes (an OSThread plus
-// the stack fields, like the GameCube CThread), then the vtable at _320. The
-// queue and request members behind it are not yet recovered; the Wii knows only
-// the all-list and single readers, no XObjReadAnm.
-class XObjRead {
-	u8 _000[0x320];
+// the Wii object readers: retail RTTI names XObjRead, XObjReadAll and
+// XObjReadOne, with XObjRead deriving straight from the SDK OSThread (the
+// GameCube used its polymorphic CThread). The stack pointer and size are
+// XObjRead's own members in front of the virtuals, so the vtable lands at
+// _320. The Wii knows only the all-list and single readers, no XObjReadAnm.
+
+// an OSMessageQueue with its message buffer; RTTI shows it derives from
+// OSMessageQueue (the GameCube header wraps it as a member, same layout)
+class CMsgQueue : public OSMessageQueue {
+public:
+	// _00-_1F OSMessageQueue
+	OSMessage* mMsgs; // _20
+	// _24 vtable
+
+	virtual ~CMsgQueue();               // _08
+	virtual void Initialize(s32 count); // _0C, allocates mMsgs and inits the queue
+};
+STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
+
+inline CMsgQueue::~CMsgQueue()
+{
+}
+
+// one read waiting in a reader
+struct XObjReadReq {
+	void* mObj;  // _00, null when the slot is free
+	void* mInfo; // _04
+};
+
+class XObjRead : public OSThread {
+public:
+	u8* mStack;     // _318
+	u32 mStackSize; // _31C
 	// _320 vtable
 
-public:
-	virtual ~XObjRead() { }                                                                        // _08
-	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	XObjRead()
+	    : mStack(NULL)
+	{
+	}
 
-private:
-	u8 _324[0x3A0 - 0x324]; // vtable pad + CMsgQueue + requests, not yet recovered
+	virtual ~XObjRead();                                                                           // _08
+	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+	virtual BOOL QueueRead(void* object, void* info);                                              // _10
+	virtual void RunRequestLoop();                                                                 // _14
+	virtual void ProcessRequest(XObjReadReq* req);                                                 // _18
+	virtual BOOL HasPendingReads();                                                                // _1C
+
+	CMsgQueue mQueue;     // _324
+	XObjReadReq mReqs[8]; // _34C
+	u8 _38C[0x14];        // tail past the requests, not touched by any retail function
 };
 STATIC_ASSERT(sizeof(XObjRead) == 0x3A0);
+STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);
+STATIC_ASSERT(offsetof(XObjRead, mReqs) == 0x34C);
 
-class XObjReadAll : public XObjRead { };
-class XObjReadOne : public XObjRead { };
+inline XObjRead::~XObjRead()
+{
+}
+
+// reads a whole object list; its destructor is defined in xaction.cpp, which anchors the vtable
+// there (retail folds the two reader vptrs off one base register in xaction's __sinit)
+class XObjReadAll : public XObjRead {
+public:
+	virtual ~XObjReadAll();                        // _08
+	virtual void ProcessRequest(XObjReadReq* req); // _18
+};
+
+// reads one object
+class XObjReadOne : public XObjRead {
+public:
+	virtual ~XObjReadOne();                           // _08
+	virtual BOOL QueueRead(void* object, void* info); // _10
+	virtual void ProcessRequest(XObjReadReq* req);    // _18
+};
 
 extern "C" {
 void InitializeObjectPools(XOBJS* list);
