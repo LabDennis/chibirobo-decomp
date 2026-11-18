@@ -438,7 +438,7 @@ extern "C" int IntersectLineWithPlane(Vec* p0, Vec* p1, Vec* point, Vec* normal,
 	PSVECScale(&dir, out, t);
 	PSVECAdd(out, p0, out);
 
-	if (Abs(t) <= 0.00001f || Abs(1.0f - t) <= 0.00001f) {
+	if (__fabsf(t) <= 0.00001f || __fabsf(1.0f - t) <= 0.00001f) {
 		return 1;
 	}
 	if (t > 0.0f && t < 1.0f) {
