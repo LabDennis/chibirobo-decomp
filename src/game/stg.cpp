@@ -8238,14 +8238,14 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 left;
 	f32 width = 296.0f * scale, height = 156.0f * scale;
 	left        = x - width / 2.0f;
-	Vec bg[5]   = { (Vec) { left, y - height * 0.5f, -10.0f }, (Vec) { width + left, y - height * 0.5f, -10.0f },
-		            (Vec) { width + left, height + (y - height * 0.5f), -10.0f }, (Vec) { left, height + (y - height * 0.5f), -10.0f },
-		            (Vec) { left, y - height * 0.5f, -10.0f } };
+	Vec bg[5]   = { (Vec) { left, y - height / 2.0f, -10.0f }, (Vec) { width + left, y - height / 2.0f, -10.0f },
+		            (Vec) { width + left, height + (y - height / 2.0f), -10.0f }, (Vec) { left, height + (y - height / 2.0f), -10.0f },
+		            (Vec) { left, y - height / 2.0f, -10.0f } };
 	u32 opacity = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, bg, opacity, 5);
 	y += scale;
 	f32 step = 17.0f * scale;
-	f32 rowY = y - height * 0.5f;
+	f32 rowY = y - height / 2.0f;
 	f32 barX, barW;
 	if (IsJapanese()) {
 		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
