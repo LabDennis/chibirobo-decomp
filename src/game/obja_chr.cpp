@@ -1301,7 +1301,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							// Only the Japanese release starts a hang or a jump from this height check.
 							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
 							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value
-							f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							f32 height = ABS(object->mSelectedFloorHeight - player->mMoveTranslate.y);
 							if (height != 0) {
 #if defined(VERSION_JP)
 								if (height >= 12 && height <= 12.5f) {

@@ -2181,9 +2181,7 @@ void RecordObjectPositionAndHeightChange(XObj* obj)
 	if (obj->mMoveTranslate.y != obj->mLastPos.y) {
 		obj->mStatus.mFlags |= 0x0010000000000000ULL;
 	}
-	obj->mLastPos.x = obj->mMoveTranslate.x;
-	obj->mLastPos.y = obj->mMoveTranslate.y;
-	obj->mLastPos.z = obj->mMoveTranslate.z;
+	obj->mLastPos = obj->mMoveTranslate;
 }
 
 /**
