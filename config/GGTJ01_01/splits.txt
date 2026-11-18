@@ -637,31 +637,16 @@ game/xobjactorjointupdate.cpp:
 game/xobjactorupdate.cpp:
 	.text       start:0x80109B20 end:0x8010A164
 
-game/xobjactor3dtor.cpp:
-	.text       start:0x8010A164 end:0x8010AD44
-
-game/xobjactor3ptcl.cpp:
-	.text       start:0x8010AD44 end:0x8010AD8C
-
-game/xobjactor3panel.cpp:
-	.text       start:0x8010AD8C end:0x8010B9B8
-
-game/xobjactor3draw.cpp:
-	.text       start:0x8010B9B8 end:0x8010BA60
-
-game/xobjactor3update.cpp:
-	.text       start:0x8010BA60 end:0x8010C0E0
-
-game/xobjactor3release.cpp:
-	.text       start:0x8010C0E0 end:0x8010C154
-
-game/scrc.cpp:
-	.text       start:0x8010C154 end:0x80116E80
-
-game/xobjactor3init.cpp:
-	.text       start:0x80116E80 end:0x80117118
+game/xobjactor3.cpp:
+	.text       start:0x8010A164 end:0x80117118
 	.ctors      start:0x801FEF58 end:0x801FEF5C
-	.data       start:0x8022B758 end:0x8022BA48
+	.rodata     start:0x8020C0D8 end:0x8020C3D0
+	.data       start:0x8022B758 end:0x8022BE08
+	.bss        start:0x8035E3F0 end:0x8035E408
+	.sdata      start:0x80634C68 end:0x80634CA8
+	.sbss       start:0x80635708 end:0x80635710
+	.sdata2     start:0x80638468 end:0x80638620
+	.sbss2      start:0x8063A530 end:0x8063A550
 
 game/xobjactortoy.cpp:
 	.text       start:0x80117118 end:0x801249EC

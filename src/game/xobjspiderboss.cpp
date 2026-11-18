@@ -564,7 +564,7 @@ void XObjSpiderBoss::OnHitFromPosition(const Vec& pos, f32 strength)
 	CParticle* particle = &gGame.mParticle;
 	particle->Kill(0xB3);
 	// NONMATCHING: retail builds rot straight in CreateSRT's by-value argument slot, this compiler
-	// builds the local and copies it (same in states34, mamahide, scrc and evt; the (Vec){...} and
+	// builds the local and copies it (same in states34, mamahide, xobjactor3 and evt; the (Vec){...} and
 	// Vec(...) argument forms do not change it); retail's .rodata also has { -PI/2, 0, 0 } in front of these
 	// three Vecs, which no code reads, so they sit 0xC lower here
 	Vec scale = { 1.0f, 1.0f, 1.0f };
