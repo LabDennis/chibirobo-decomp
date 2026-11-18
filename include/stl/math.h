@@ -116,4 +116,18 @@ static inline f32 dolsqrtf(f32 x)
 	return x;
 }
 
+#ifdef __cplusplus
+// MSL's C++ float forms: inlines over the double routines, apart from the C sinf/cosf above
+namespace std {
+inline f32 sinf(f32 x)
+{
+	return sin(x);
+}
+inline f32 cosf(f32 x)
+{
+	return cos(x);
+}
+} // namespace std
+#endif
+
 #endif

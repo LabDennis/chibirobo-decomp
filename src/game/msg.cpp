@@ -3621,8 +3621,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 	f32 portraitWidth = (font->mMode >= 0 && font->mMode < 1) ? 40.0f * portraitScale : 0.0f;
 	f32 textOffset    = portraitWidth;
 	// 4.712389 is 3 pi / 2: as mAlpha rises from 0 to 1 the frame starts 4 pixels in, swells 4 out, then settles
-	f32 expandX = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
-	f32 expandY = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
+	f32 expandX = 4.0f * std::sinf(4.712389f * (1.0f - font->mAlpha));
+	f32 expandY = 4.0f * std::sinf(4.712389f * (1.0f - font->mAlpha));
 
 	if (font->mAlpha > 0.0f) {
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
@@ -3917,24 +3917,24 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			case 0x10:
 			case 0x20: {
 				f32 angle       = glyph.mAngle;
-				f32 shakeY      = (glyph.mEffect & 1) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseY) : 0.0f;
-				f32 shakeX      = (glyph.mEffect & 2) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseX) : 0.0f;
+				f32 shakeY      = (glyph.mEffect & 1) ? glyph.mAmount * std::sinf(DEG2RAD * glyph.mPhaseY) : 0.0f;
+				f32 shakeX      = (glyph.mEffect & 2) ? glyph.mAmount * std::sinf(DEG2RAD * glyph.mPhaseX) : 0.0f;
 				f32 quarterTurn = HALF_PI + angle;
-				f32 sideSin     = sin(quarterTurn);
-				f32 forwardSin  = sin(angle);
+				f32 sideSin     = std::sinf(quarterTurn);
+				f32 forwardSin  = std::sinf(angle);
 				f32 dx          = shakeY * forwardSin + shakeX * sideSin;
-				f32 sideCos     = cos(quarterTurn);
-				f32 forwardCos  = cos(angle);
+				f32 sideCos     = std::cosf(quarterTurn);
+				f32 forwardCos  = std::cosf(angle);
 				f32 dy          = shakeY * forwardCos + shakeX * sideCos;
 				f32 scaleX = glyph.mScaleX, scaleY = glyph.mScaleY;
 				if (glyph.mEffect & 4) {
-					f32 wave  = sin(DEG2RAD * glyph.mPhaseW);
+					f32 wave  = std::sinf(DEG2RAD * glyph.mPhaseW);
 					f32 scale = 0.1f * wave + 1.0f;
 					glyph.mSprite.SetScale(scaleX * scale, scaleY * scale, 1.0f);
 				}
 				if (glyph.mEffect & 8) {
 					// 0.52359879 is 30 degrees and SetRot gets angle + wave / 2, so the glyph rocks up to 15 degrees either way
-					f32 wave = 0.52359879f * (f32)sin(DEG2RAD * glyph.mPhaseZ);
+					f32 wave = 0.52359879f * std::sinf(DEG2RAD * glyph.mPhaseZ);
 					glyph.mSprite.SetRot(0.0f, 0.0f, wave + (angle - wave / 2.0f));
 				}
 				Mtx offset, animatedView;
@@ -3946,7 +3946,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			default:
 #if !defined(VERSION_JP)
 				if (glyph.mAngle > 0.0f) {
-					f32 wave  = sin(glyph.mAngle);
+					f32 wave  = std::sinf(glyph.mAngle);
 					f32 width = glyph.mWidthAdjust;
 					Mtx offset, rotatedView;
 					PSMTXTrans(offset, width, -width * wave, 0.0f);
@@ -3983,7 +3983,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		s32 line = font->mGlyphs[font->mCharCount - 1].mLine;
 		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + winX));
 		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + winY))) - height / 4.0f;
-		f32 wave = sin(font->mBlinkPhase);
+		f32 wave = std::sinf(font->mBlinkPhase);
 		if (wave < 0.0f)
 			wave = 0.0f;
 		u32 shadow = (u32)(200.0f * wave);

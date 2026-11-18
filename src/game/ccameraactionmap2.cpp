@@ -459,9 +459,9 @@ void CCameraActionMap::Update(u32 step)
 		if (movement.x != 0.0f || movement.z != 0.0f) {
 			PSVECNormalize(&movement, &movement);
 			Vec view;
-			view.x  = sin(mAngle.y);
+			view.x  = std::sinf(mAngle.y);
 			view.y  = 0.0f;
-			view.z  = cos(mAngle.y);
+			view.z  = std::cosf(mAngle.y);
 			f32 dot = PSVECDotProduct(&movement, &view);
 			CVec current(mEye);
 			f32 distance = GetHorizontalDistance(&current, &mSpringTarget);
@@ -488,8 +488,8 @@ void CCameraActionMap::Update(u32 step)
 				distance = PSVECDistance(&target, &current);
 			}
 			Vec candidate;
-			candidate.x = center.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
-			candidate.z = center.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
+			candidate.x = center.x + distance * std::cosf(yaw) * std::cosf(pitch);
+			candidate.z = center.z + distance * -std::sinf(yaw) * std::cosf(pitch);
 			candidate.y = center.y;
 			CopyVecToCVec(sMapCameraTestEye, __ct__4CVecFRC3Vec(candidate));
 			CopyVecToCVec(sMapCameraTestCenter, __ct__4CVecFRC3Vec(center));
@@ -512,8 +512,8 @@ void CCameraActionMap::Update(u32 step)
 			f32 pitch = mAngle.x;
 			f32 yaw   = HALF_PI + mAngle.y;
 			Vec target;
-			target.x = mSpringTarget.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
-			target.z = mSpringTarget.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
+			target.x = mSpringTarget.x + distance * std::cosf(yaw) * std::cosf(pitch);
+			target.z = mSpringTarget.z + distance * -std::sinf(yaw) * std::cosf(pitch);
 			target.y = mCurrentHeight;
 			SetEye(target);
 			ResetPlayerCameraValue((XObjChr*)GetPlayerPoolObject(&gGame, 0));
@@ -744,7 +744,6 @@ static inline BOOL SetMapYaw(CCameraActionMap* map, f32 yaw, f32 time)
  * @note Address: 0x80139E58
  * @note Size: 0x3AC
  */
-// NONMATCHING: registers only. retail keeps the distance in f30 and the cosine of the pitch in f29, the build the other way round
 extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 {
 	Vec center = map->mTarget->mMoveTranslate;
@@ -758,8 +757,8 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 		CVec eye(map->mEye);
 		distance = PSVECDistance(&target, &eye);
 	}
-	pos.x                   = center.x + distance * (f32)cos(angle) * (f32)cos(pitch);
-	pos.z                   = center.z + distance * -(f32)sin(angle) * (f32)cos(pitch);
+	pos.x                   = center.x + distance * std::cosf(angle) * std::cosf(pitch);
+	pos.z                   = center.z + distance * -std::sinf(angle) * std::cosf(pitch);
 	pos.y                   = center.y;
 	sMapCameraTestEye       = CVec(pos);
 	sMapCameraTestCenter    = CVec(center);
@@ -3634,7 +3633,7 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
  * @note Address: 0x8013CB38
  * @note Size: 0x7A4
  */
-// NONMATCHING: registers only (the cosine of the flat pitch and x swap f30 and f28, the second block's four are rotated)
+// NONMATCHING: registers only (in the second block the orbit yaw and x swap f26 and f27)
 extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 {
 	CPad pad(0);
@@ -3673,8 +3672,8 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 			f32 yaw         = HALF_PI + map->mAngle.y;
 			f32 radius      = PSVECDistance(&CVec(map->mTargetEye.x, map->mInterest.y, map->mTargetEye.z), &map->mInterest);
 			f32 flat        = 0.0f;
-			x               = map->mInterest.x + radius * (f32)cos(yaw) * (f32)cos(flat);
-			z               = map->mInterest.z + radius * -(f32)sin(yaw) * (f32)cos(flat);
+			x               = map->mInterest.x + radius * std::cosf(yaw) * std::cosf(flat);
+			z               = map->mInterest.z + radius * -std::sinf(yaw) * std::cosf(flat);
 			map->mOrbitEye  = CVec(x, y, z);
 			map->mTargetEye = CVec(x, y, z);
 		}
@@ -3725,8 +3724,8 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 		f32 orbitYaw      = HALF_PI + map->mAngle.y;
 		f32 radius        = PSVECDistance(&CVec(map->mTargetEye.x, map->mInterest.y, map->mTargetEye.z), &map->mInterest);
 		f32 flat          = 0.0f;
-		f32 x             = map->mInterest.x + radius * (f32)cos(orbitYaw) * (f32)cos(flat);
-		f32 z             = map->mInterest.z + radius * -(f32)sin(orbitYaw) * (f32)cos(flat);
+		f32 x             = map->mInterest.x + radius * std::cosf(orbitYaw) * std::cosf(flat);
+		f32 z             = map->mInterest.z + radius * -std::sinf(orbitYaw) * std::cosf(flat);
 		f32 y             = map->mTargetEye.y;
 		map->mOrbitEye    = CVec(x, y, z);
 		map->mTargetEye   = CVec(x, y, z);

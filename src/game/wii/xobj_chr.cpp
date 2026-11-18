@@ -15,12 +15,19 @@
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
+#include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
 
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+
+// the GameCube kept a weak copy of it
+static inline BOOL IsObjectActive(XObj* object)
+{
+	return (object->mStatus.mFlags & 1ULL) != 0;
+}
 
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
@@ -336,6 +343,14 @@ BOOL IsEventScriptActive(const CGame* game)
 	return game->mEvt.mData.mScript != NULL;
 }
 
+// how far the control stick is pushed
+f32 GetControlStickMagnitude(const CPadOne* pad)
+{
+	f32 x = pad->mStick.x;
+	f32 y = pad->mStick.y;
+	return FSqrt(x * x + y * y);
+}
+
 // 0 the stage he is on, 1 the one before
 s32 fn_800D168C(const CGame* game, s32 index)
 {
@@ -426,6 +441,26 @@ void fn_800D1AF8(WiiPlayerState* player, u32 frames)
 		UpdatePushedObject(&player->mPush, frames);
 		if (player->mPush.mTarget != NULL) {
 			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mPush.mTarget->mObject.m_pScnMdl);
+		}
+	}
+}
+
+// the plug and its cord wire, queued for the scene with it
+void fn_800D1B64(WiiPlayerState* player, u32 frames)
+{
+	player->mPlug.UpdateObject(frames);
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mPlug.mObject.m_pScnMdl);
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mCordWire.mObject.m_pScnMdl);
+}
+
+// the extra model of suits 3 and 6 while he wears one, queued for the scene
+void fn_800D1BF0(WiiPlayerState* player, u32 frames)
+{
+	if (IsObjectActive(&player->mSuits.mObjects[player->mSuits.mCurrent])) {
+		s32 suit = player->mSuits.mCurrent;
+		if (suit == 3 || suit == 6) {
+			player->mSuitParts[suit].UpdateObject(frames);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
 		}
 	}
 }
@@ -703,6 +738,14 @@ BOOL fn_800DBD68(const XObj* object)
 BOOL FindMapFloorBelow(XObjMap* map, const Vec* pos, const XObjMapHit* last, XObjMapHit* hit)
 {
 	return fn_800C98E0(map, pos, last->mTriangle, hit);
+}
+
+// how far apart two positions are, seen from above
+f32 GetHorizontalDistance(const Vec* a, const Vec* b)
+{
+	f32 dx = a->x - b->x;
+	f32 dz = a->z - b->z;
+	return FSqrt(dx * dx + dz * dz);
 }
 
 f32 GetObjectFloorXZExtent(const XObj* object, s32 index)
@@ -1255,6 +1298,42 @@ f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
 	return rate * (60.0f / gRefreshRate);
 }
 
+// sets every anim of a model to frame
+static inline void SetModelFrame(XObj* object, f32 frame)
+{
+	for (int i = 0; i < 6; i++) {
+		nw4r::g3d::AnmObj* anm = object->mObject.m_pScnMdl->GetAnmObj((nw4r::g3d::ScnMdlSimple::AnmObjType)i);
+		if (anm != NULL) {
+			anm->SetFrame(frame);
+		}
+	}
+}
+
+// his anims and the worn suit's to frame
+// NONMATCHING: retail tests the suit's active bit as a negated value (xori), this build branches on it directly
+void fn_800E3AE4(WiiPlayerState* chr, f32 frame)
+{
+	SetModelFrame(chr, frame);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		SetModelFrame(&chr->mSuits.mObjects[chr->mSuits.mCurrent], frame);
+	}
+}
+
+// the carry joint's matrix: the worn suit's while he carries at it
+// NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
+MtxP fn_800E59DC(WiiPlayerState* chr)
+{
+	XObj* object;
+	if (chr->_0AF8 != 0) {
+		object = chr;
+	} else if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		object = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	} else {
+		object = chr;
+	}
+	return object->GetWorldMtx("carry_obj_nll");
+}
+
 // where the carried object hangs, in the world
 // NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
 CVec fn_800E5A2C(XObj* player)
@@ -1291,8 +1370,8 @@ Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* chr)
 	CVec first  = chr->GetJointPos("L_eye");
 	CVec second = chr->GetJointPos("R_eye");
 	Vec point   = first + (second - first) / 2.0f;
-	point.x -= 1.5f * (f32)sin(chr->mMoveRotate.y);
-	point.z -= 1.5f * (f32)cos(chr->mMoveRotate.y);
+	point.x -= 1.5f * std::sinf(chr->mMoveRotate.y);
+	point.z -= 1.5f * std::cosf(chr->mMoveRotate.y);
 	return point;
 }
 
@@ -1300,6 +1379,22 @@ Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* chr)
 BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
 {
 	return IsEventBlocked(player);
+}
+
+// resets the plug, keeping its rotation while it's carried
+void ResetPlayerPlug(WiiPlayerState* chr)
+{
+	if (chr->mPlug.mStatus.mFlags & 0x0400000000000000ULL) {
+		Vec rotation = (Vec&)chr->mPlug.mMoveRotate;
+		chr->mPlug.mStatus.mFlags &= ~0x0400000000000000ULL;
+		chr->mPlug.ResetObjectState();
+		chr->mPlug.UpdateObject(10);
+		chr->mPlug.SetRot(rotation);
+		chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+	} else {
+		chr->mPlug.ResetObjectState();
+		chr->mPlug.UpdateObject(10);
+	}
 }
 
 // the event call 101: which side of a clear leticker he comes from, 1 for anything else
@@ -1385,6 +1480,37 @@ BOOL IsPlayerStopped(const WiiPlayerState* chr)
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)
 {
 	return chr->mFlashTimer > 0;
+}
+
+// hit, flinches when he's free to and starts the flash timer. The Wii adds two carry states he may flinch
+// from and flinches only while the player status allows it
+void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 value)
+{
+	if (!gGame.GetStatusFlags(0xC00ULL) && chr->mAttachmentRequest < 0 && gGame.mEvt.mData.mScript == NULL) {
+		if (start && (chr->mLift.mState == 0 || chr->mLift.mState == 4 || chr->mLift.mState == 29 || chr->mLift.mState == 31)
+		    && chr->mHang.mState == 0 && chr->mJump.mState == 0 && chr->mLadder.mState == 0 && chr->mRope.mState == 0
+		    && chr->mPush.mState == 0 && chr->mTumble.mState == 0 && chr->mCopter.mState == 0
+		    && (chr->mPopper.mState == 0 || chr->mPopper.mState == 4 || chr->mPopper.mState == 8) && chr->mRadar.mState == 0) {
+			if (chr->mLift.mState == 0)
+				chr->SetAnim(0xD4, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			else
+				chr->SetAnim(0x94, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			if (chr->mPlayerFlags & 0x20000000)
+				chr->mTumble.mState = 8;
+		} else if (cancel) {
+			if (chr->mHang.mState == 5)
+				chr->mHang.mState = 8;
+			else if (chr->mLadder.mState == 5)
+				chr->mLadder.mState = 8;
+			else if (chr->mRope.mState == 5)
+				chr->mRope.mState = 7;
+		}
+	}
+	if (0.0f != value) {
+		chr->mFlashTimer  = gRefreshRate;
+		chr->mFlashCount  = 0;
+		chr->mHitStrength = value;
+	}
 }
 
 } // extern "C"

@@ -2,6 +2,8 @@
 #define GAME_WII_MENUUTIL_H
 
 #include "types.h"
+#include "Dolphin/vec.h"
+#include "nw4r/math/math_types.h"
 
 // CPadAct's flags the menus read
 enum {
@@ -64,34 +66,46 @@ extern WiiMenuSaveSlot gTitleSaveSlots[3];
 void ResetSaveSlotRecord(WiiMenuSaveSlot* slot);
 }
 
-// a rectangle the pointer can pick. The menu code's messages call it CbPane; the layout is not known
-// beyond the two flags
+// a rectangle the pointer can pick, laid out like an nw4r::lyt pane round its centre. The menu code's messages
+// call it CbPane
 struct CbPane {
 	// the constructor (0x800345C0) and destructor (0x8002F924) Title's eleven panes are built and destroyed with
 	CbPane()
 	{
-		_0C      = 0.0f;
-		_10      = 0.0f;
+		mWidth   = 0.0f;
+		mHeight  = 0.0f;
 		mKind    = 0;
 		_48      = 1.0f;
-		_4E      = TRUE;
+		mEnabled = TRUE;
 		mPointed = FALSE;
 		mPicked  = FALSE;
 	}
 	~CbPane() { }
 
-	u8 _00[0xC];
-	f32 _0C; // _0C
-	f32 _10; // _10
-	u8 _14[0x44 - 0x14];
-	s32 mKind;   // _44, which entry the pane reports as
-	f32 _48;     // _48
-	u8 mPointed; // _4C
-	u8 mPicked;  // _4D
-	u8 _4E;      // _4E
+	Vec mTrans;                // _00, the centre
+	f32 mWidth;                // _0C
+	f32 mHeight;               // _10
+	nw4r::math::MTX34 mGlbMtx; // _14, set from mTrans by each pointer test
+	s32 mKind;                 // _44, which entry the pane reports as
+	f32 _48;                   // _48
+	u8 mPointed;               // _4C
+	u8 mPicked;                // _4D
+	u8 mEnabled;               // _4E, the pointer can pick it
 	u8 _4F;
 };
 STATIC_ASSERT(sizeof(CbPane) == 0x50);
+
+// where a pane sits, one entry of the tables the title and the menus place their panes from
+struct CbPaneLayout {
+	Vec mTrans;  // _00
+	f32 _0C;     // _0C
+	f32 _10;     // _10
+	f32 mWidth;  // _14
+	f32 mHeight; // _18
+	u8 _1C[0x24 - 0x1C];
+	s32 mKind; // _24
+};
+STATIC_ASSERT(sizeof(CbPaneLayout) == 0x28);
 
 // the panes the pointer is tested against this frame
 struct CbPaneList {
