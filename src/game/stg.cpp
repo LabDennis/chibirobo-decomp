@@ -9069,7 +9069,7 @@ static inline void DrawSlotStats(int iconOffset, MenuSaveSlot* slot, u8 selected
 	DrawSaveStat(0x98 + iconOffset, slot->mExp, selected, SaveSlotStatX(x, sx), y + offsetY, alpha, sx, sy);
 	DrawSaveStat(0x96 + iconOffset, slot->mMoney, selected, SaveSlotStatX(x, sx), offsetY + (y + 32.0f * sy), alpha, sx, sy);
 	DrawSaveStat(0x97 + iconOffset, slot->mScrap, selected, SaveSlotStatX(x, sx), offsetY + (y + 64.0f * sy), alpha, sx, sy);
-	DrawSavePlayTime(0x9B + iconOffset - (slot->mTimeMode == 0), slot->mHours, slot->mMinutes, selected, SaveSlotStatX(x, sx),
+	DrawSavePlayTime((slot->mTimeMode == 0 ? 0x9A : 0x9B) + iconOffset, slot->mHours, slot->mMinutes, selected, SaveSlotStatX(x, sx),
 	                 offsetY + (96.0f * sy + y), alpha, sx, sy);
 }
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
