@@ -122,6 +122,12 @@ static inline void CEvt_Warn(const char* msg)
 	strlen(msg);
 }
 
+// heading from one point to another, in radians
+static inline f32 CEvt_Angle(const Vec& from, const Vec& to)
+{
+	return atan2(to.x - from.x, to.z - from.z);
+}
+
 // stops the running script, DETACH's whole job; the stage's own effects end with the main script
 static inline void CEvt_Detach(CEvt* evt)
 {
@@ -525,6 +531,181 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		}
 	} else {
 		OSPanic(__FILE__, 1778, FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009CABC
+ * @note Size: 0x3DC
+ */
+s32 CEvt::_cmd_MOVETO(u8, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	f32 x     = CEvt_Evaluate(this) / 100.0f;
+	f32 y     = CEvt_Evaluate(this) / 100.0f;
+	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	f32 time  = CEvt_Evaluate(this) / 100.0f;
+	s32 anim  = CEvt_Evaluate(this);
+	s16 dir   = CEvt_Evaluate(this);
+	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
+	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+		if (obj->mObject.m_pScnMdl == NULL) {
+			CEvt_Warn(FormatToStaticBuffer("moveto(%d, %d,%d,%d, %d, %d, %d) ... obj(%d) is collision!", id, (s32)(x * 100.0f),
+			                               (s32)(y * 100.0f), (s32)(z * 100.0f), (s32)(time * 100.0f), anim, dir, id));
+		}
+		XObj* player = gGame.GetPlayer();
+		if (obj == player) {
+			CancelPlayerPushAction(&((WiiPlayerState*)player)->mPush);
+		}
+		CVec target(x, y, z);
+		f32 distance = PSVECDistance(obj->GetPos(), &target);
+		if (distance < 0.1f) {
+			// already there
+			obj->SetPos(x, y, z);
+		} else {
+			// time 0 gets there in one frame, a positive time is seconds, a negative one the speed per frame
+			if (time == 0.0f) {
+				CVec to(x, y, z);
+				obj->RequestMoveDir(&to, distance);
+			} else if (time > 0.0f) {
+				CVec to(x, y, z);
+				obj->RequestMoveDir(&to, distance / (time * gRefreshRate));
+			} else {
+				CVec to(x, y, z);
+				obj->RequestMoveDir(&to, -time);
+			}
+			if (dir != -1) {
+				f32 yaw;
+				// -2 faces where it's going
+				if (dir == -2) {
+					yaw = CEvt_Angle(*obj->GetPos(), CVec(x, y, z));
+				} else {
+					yaw = DEG2RAD * dir;
+				}
+				obj->SetRotationY(yaw);
+			}
+			if (anim != -1) {
+				obj->SetAnim(anim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				obj->UpdateAnim(1.0f);
+			}
+		}
+	} else if (obj == NULL || !(obj->mStatus.mFlags & 1)) {
+		CEvt_Warn(FormatToStaticBuffer("moveto(%d, ...) obj(%d) killed!", id, id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009B26C
+ * @note Size: 0x81C
+ */
+// NONMATCHING: retail keeps the turn's fabs unrounded and the angle in another register
+s32 CEvt::_cmd_DIR(u8 command, s32)
+{
+	s16 id    = CEvt_Evaluate(this);
+	XObj* obj = CEvt_GetObj(this, id);
+	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		XObj* player = gGame.GetPlayer();
+		if (obj == player)
+			CancelPlayerPushAction(&((WiiPlayerState*)player)->mPush);
+	}
+	if (command == EVT_CMD_DIR) {
+		s16 direction = CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			obj->SetRotationY(DEG2RAD * direction);
+			gGame.mMotionControlCamera.UpdateTarget(obj);
+			XObj* player = gGame.GetPlayer();
+			if (obj == player) {
+				player->UpdateAnim(0.0f);
+				ResetPlayerHeadOffset((WiiPlayerState*)player);
+				XAction* carry = &((WiiPlayerState*)player)->mLift;
+				if (carry->mTarget != NULL) {
+					UpdateHeldObject(carry, 1);
+					if (carry->mTarget != NULL) {
+						carry->mTarget->UpdateObject(1);
+					}
+				}
+			}
+		}
+	} else {
+		u16 mode = CEvt_Evaluate(this);
+		s16 direction;
+		switch (mode) {
+		case EVT_ATOM_DIR:
+			direction = CEvt_Evaluate(this);
+			break;
+		case EVT_ATOM_POS: {
+			// the point is level with the object
+			Vec to;
+			to.x = CEvt_Evaluate(this) / 100.0f;
+			to.z = CEvt_Evaluate(this) / 100.0f;
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				to.y      = obj->GetPos()->y;
+				direction = RAD2DEG * CEvt_Angle(*obj->GetPos(), to);
+			} else {
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @POS, ...): obj(%d) killed!", id, id));
+			}
+			break;
+		}
+		case EVT_ATOM_OBJ: {
+			s16 targetId = CEvt_Evaluate(this);
+			XObj* target = CEvt_GetObj(this, targetId);
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				if (target != NULL && (target->mStatus.mFlags & 1)) {
+					direction = RAD2DEG * CEvt_Angle(*obj->GetPos(), *target->GetPos());
+				} else {
+					CEvt_Warn(FormatToStaticBuffer("mdir(%d, @OBJ, %d, ...): obj(%d) killed!", id, targetId, targetId));
+					direction = RAD2DEG * obj->mMoveRotate.y;
+				}
+			} else {
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @OBJ, ...): obj(%d) killed!", id, id));
+			}
+			break;
+		}
+		case EVT_ATOM_CAM:
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				CCamera* camera = &gGame.mMotionControlCamera;
+				direction       = RAD2DEG * CEvt_Angle(*obj->GetPos(), camera->mView.mEye);
+			} else {
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @CAM, ...): obj(%d) killed!", id, id));
+			}
+			break;
+		default:
+			OSPanic(__FILE__, 2787, FormatToStaticBuffer("mdir(obj, %d,...) - unresolved!\n", mode));
+			break;
+		}
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		s32 anim = CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			if (obj->mObject.m_pScnMdl == NULL) {
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, mode, direction,
+				                               (s32)(100.0f * time), anim, id));
+			}
+			f32 difference = obj->mMoveRotate.y - DEG2RAD * direction;
+			while (difference < 0.0f)
+				difference += TWO_PI;
+			while (difference >= TWO_PI)
+				difference -= TWO_PI;
+			// already within a tenth of a degree of it: set it instead of turning
+			if (difference < 0.0017453292f || difference > 6.2814398f) {
+				obj->RequestRotationY(DEG2RAD * direction);
+			} else {
+				obj->RequestRotateY(DEG2RAD * direction, time);
+				f32 angle = obj->mMoveTarget1.y - obj->mMoveRotate.y;
+				if (angle > 3.1415927f)
+					angle = TWO_PI - angle;
+				obj->mMoveSpeed1.x = 0.0f;
+				f32 speed          = fabs(angle);
+				obj->mMoveSpeed1.y = speed / (time * gRefreshRate);
+				obj->mMoveSpeed1.z = 0.0f;
+				if (anim != -1) {
+					obj->SetAnim(anim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					obj->UpdateAnim(1.0f);
+				}
+			}
+		}
 	}
 	return 0;
 }
