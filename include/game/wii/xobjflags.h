@@ -76,7 +76,7 @@ public:
 	virtual void UpdateObject(u32 frames);                                           // _164
 	virtual s32 OnPlayerContact(s32 unused, s32 value);                              // _1CC
 	virtual s32 HandleEventCommand(s32 count, s32* args);                            // _1E8
-	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed); // _208
+	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed); // _208
 	virtual s32 GetFlagIndex();                                                      // _28C
 
 	// the item index its data record names, -1 without one (the GameCube XObj's inline)
