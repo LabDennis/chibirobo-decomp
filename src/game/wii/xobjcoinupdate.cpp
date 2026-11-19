@@ -151,7 +151,7 @@ BOOL XObjItem::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL result = XObj::LoadFromPlacement(info);
 	if (result && IsFlagSet())
-		mStatus.mFlags &= ~1ULL;
+		mStatus.mFlags &= ~0x10000ULL;
 	return result;
 }
 
