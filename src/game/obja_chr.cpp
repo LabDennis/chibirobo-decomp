@@ -1607,12 +1607,22 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 extern "C" {
-extern PointPtcl gPointParticlePool[10];
-extern PointPtcl* gPointParticleSlots[10];
-extern SuitChangeEffect gPlayerSuitChangeEffect;
+// this unit's .bss in retail order: the player update code addresses the section through
+// one base register anchored at its head, so every global sits at a fixed offset
+u8 lbl_803567B8[0x74]; // unused block, only its address anchors the .bss base register
+Vec lbl_80378234[2];   // zero vectors copied by SetLookTargetPosition and the look-offset update
+Vec lbl_8037824C;      // zero vector copied by SecondEdgePoint
+Vec lbl_80378258[3];   // zero vectors, the first copied by FirstEdgePoint
+Vec gPlayerFloorCenterDefault;
+Vec gPlayerFloorExtentDefault;
+u8 lbl_8035688C[0x48]; // unused retail block
+u8 lbl_803568D4[0x18]; // unused retail block
+PointPtcl gPointParticlePool[10];
+PointPtcl* gPointParticleSlots[10];
+SuitChangeEffect gPlayerSuitChangeEffect;
 PlayerTurnState gPlayerTurnState;
-extern f32 gEquipmentIconWidth[8];
-extern f32 gEquipmentIconHeight[8];
+f32 gEquipmentIconWidth[8];
+f32 gEquipmentIconHeight[8];
 }
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
@@ -1911,7 +1921,11 @@ void XObjChr::UpdateObject(u32 frames)
 	UpdatePlayerFrameEffects(this, frames);
 	s32 path[]    = { 0, 1, 0, 1, 2, 0, 1 };
 	f32 height    = GetEventJointWorldPosition(this, 7, path).y - mMoveTranslate.y;
-	mLook.mOffset = (Vec) { 0, height + 3.0f * mMoveScale.y, 0 };
+	Vec offset    = lbl_80378234[1];
+	offset.x      = 0.0f;
+	offset.y      = height + 3.0f * mMoveScale.y;
+	offset.z      = 0.0f;
+	mLook.mOffset = offset;
 	UpdatePlayerLookMarker(&mLook, frames);
 	XObj* plug = &mPlug;
 	plug->UpdateObject(frames);
@@ -2027,14 +2041,9 @@ static inline u8* AnimationHead(HSD_JObj* joint)
 	return frame ? frame->ad_head : NULL;
 }
 
-extern "C" {
-extern Vec lbl_80378258;
-extern Vec lbl_8037824C;
-}
-
 static inline Vec FirstEdgePoint(const XObj* object, s32 index, f32 height)
 {
-	Vec point = lbl_80378258;
+	Vec point = lbl_80378258[0];
 	point.x   = object->mMoveTranslate.x + object->mEdges[index].mFrom.x;
 	point.y   = height;
 	point.z   = object->mMoveTranslate.z + object->mEdges[index].mFrom.z;
@@ -8204,7 +8213,7 @@ extern "C" CVec* GetCameraAngles(CCamera* camera)
  */
 extern "C" void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z)
 {
-	Vec target    = { 0.0f, 0.0f, 0.0f };
+	Vec target    = lbl_80378234[0];
 	target.x      = x;
 	target.y      = y;
 	target.z      = z;
