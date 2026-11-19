@@ -601,48 +601,54 @@ void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCam
 		*z = screenZ;
 }
 
-// NONMATCHING: retail keeps the four projected points in a Vec screen[4] (index 3
-// down to 0 in the calls' order: 3*pi/2, pi/2, pi, heading) and each raw screen x in
-// an f32 sx[4], then writes screen[i].x = sx[i] * mScale. Whether the source used
-// arrays or four named vectors is not recoverable yet.
+// NONMATCHING: retail keeps the four world points in a Vec pos[4], assigns each
+// element from a Vec temporary (the copy keeps an extra 12-byte slot), projects
+// into Vec screen[4] (index 3 down to 0 in the calls' order) and keeps each raw
+// screen x in f32 sx[4], then writes screen[i].x = sx[i] * mScale.
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
-	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera;
-	f32 heading     = camera->mView.mAngle.y;
-	f32* projection = &camera->mIsOrtho;
-	f32* viewport   = camera->mViewport;
+	camera      = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	f32 heading = camera->mView.mAngle.y;
+	Vec point;
+	Vec pos[4];
 	Vec screen[4];
 	f32 sx[4];
 	// three points on the circle and one raised by the height give its screen extent
-	f32 angle  = (PI + HALF_PI) + heading;
-	f32 sine   = (f32)sin(angle);
-	f32 cosine = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[3], &screen[3].y, &screen[3].z);
-	screen[3].x = sx[3] * camera->mScale;
-	angle       = HALF_PI + heading;
-	sine        = (f32)sin(angle);
-	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[2], &screen[2].y, &screen[2].z);
-	screen[2].x = sx[2] * camera->mScale;
-	angle       = PI + heading;
-	sine        = (f32)sin(angle);
-	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[1], &screen[1].y, &screen[1].z);
+	f32 angle = (PI + HALF_PI) + heading;
+	pos[3].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[3].y  = mMoveTranslate.y;
+	pos[3].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point     = pos[3];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[3], &screen[3].y, &screen[3].z);
+	f32 left = screen[3].x = sx[3] * camera->mScale;
+	angle    = HALF_PI + heading;
+	pos[2].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[2].y  = mMoveTranslate.y;
+	pos[2].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point     = pos[2];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[2], &screen[2].y, &screen[2].z);
+	f32 right = screen[2].x = sx[2] * camera->mScale;
+	angle     = PI + heading;
+	pos[1].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[1].y  = mMoveTranslate.y;
+	pos[1].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point     = pos[1];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[1], &screen[1].y, &screen[1].z);
 	screen[1].x = sx[1] * camera->mScale;
-	sine        = (f32)sin(heading);
-	cosine      = (f32)cos(heading);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, camera->mViewMtx,
-	          projection, viewport, &sx[0], &screen[0].y, &screen[0].z);
+	f32 bottom  = screen[1].y;
+	pos[0].x  = radius * (f32)sin(heading) + mMoveTranslate.x;
+	pos[0].y  = mMoveTranslate.y + objectHeight;
+	pos[0].z  = radius * (f32)cos(heading) + mMoveTranslate.z;
+	point     = pos[0];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[0], &screen[0].y, &screen[0].z);
 	screen[0].x = sx[0] * camera->mScale;
-	if (screen[3].x >= gScreenLeft && screen[2].x < gScreenRight && screen[1].y >= gScreenTop && screen[0].y < gScreenBottom
-	    && screen[0].z > 0.0f && screen[0].z < 1.0f) {
+	f32 top     = screen[0].y;
+	if (left >= gScreenLeft && right < gScreenRight && bottom >= gScreenTop && top < gScreenBottom && screen[0].z > 0.0f
+	    && screen[0].z < 1.0f) {
 		if (width != NULL)
-			*width = __fabsf(screen[2].x - screen[3].x);
+			*width = __fabsf(right - left);
 		if (height != NULL)
-			*height = __fabsf(screen[0].y - screen[1].y);
+			*height = __fabsf(top - bottom);
 		return TRUE;
 	}
 	return FALSE;
