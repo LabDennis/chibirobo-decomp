@@ -18,7 +18,14 @@
 #include "game/xobjsound.h"
 #include "game/xobjmap.h"
 
-// the three reader threads, built by the file's static initializer
+// the regional bss prefix, then the three reader threads, built by the file's static
+// initializer
+#if defined(VERSION_JP)
+u8 gObjectReaderBss[0x134];
+#else
+u8 gObjectReaderBss[0x140];
+#endif
+
 XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
 XObjReadAnm gObjectAnimationReader;
