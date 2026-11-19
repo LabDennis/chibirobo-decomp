@@ -1995,6 +1995,24 @@ void XObjDemo::UpdateObject(u32 frames)
 }
 
 /**
+ * @note Address: 0x800282CC
+ * @note Size: 0x38
+ */
+void CLight::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, LOBJ_TYPE, (HSD_TypeMask)(LOBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
+ * @note Address: 0x80028304
+ * @note Size: 0x38
+ */
+void CCamera::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
  * @note Address: 0x80028368
  * @note Size: 0xA4
  */
