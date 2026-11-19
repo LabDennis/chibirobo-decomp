@@ -738,7 +738,7 @@ gamecube_libs = [
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/file_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c"),
-            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c"),
+            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c", padding="small_data"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/printf.c", extra_cflags=["-str pool"]),
@@ -994,7 +994,7 @@ gamecube_libs = [
         "progress_category": "game",
         "objects": [
             Object(NonMatching, "game/ut.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/mem.cpp"),
+            Object(Matching, "game/mem.cpp", padding="small_data"),
             Object(NonMatching, "game/ccamera.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/clight.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
