@@ -9,6 +9,7 @@
 // differ from retail only in register assignment.
 #include "Version.h"
 #if defined(VERSION_R24J01)
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cursor.h"
@@ -415,6 +416,8 @@ extern "C" void SelectHighestActiveFloor(XObj* object)
 {
 	object->mSelectedFloorHeight = NAN;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		if (object->mFloorMasks[0] & (1U << i)) {
 			if (__fpclassifyf(object->mSelectedFloorHeight) == FP_NAN || object->mFloorHeights[i] > object->mSelectedFloorHeight) {
 				object->mSelectedFloorIndex  = i;
