@@ -3,9 +3,19 @@
 #include "game/arcache.h"
 #include "game/cthread.h"
 
-// NONMATCHING: __sinit_cgameinit_cpp is the compiler's and its code is the same as retail's, but retail's .bss
-// holds more data ahead of these objects, so the offsets from the section base differ
-CGame gGame;
+// retail's bss ahead of gGame: 0xf8 bytes, three zeroed joint vecs and the joint pool
+// remainder, never referenced from this file's code
+u8 lbl_8025C200[0xF8];
+Vec gJointTranslateZero;
+Vec gJointScaleZero;
+Vec gJointRotationZero;
+u8 sJointPoolRemainder[0x18];
+
+// retail places gGame on a 0x200 boundary, leaving 0xc0 bytes after the
+// compiler's destructor chain
+CGame gGame ATTRIBUTE_ALIGN(0x200);
+// retail bss between gGame and the aram cache info, never referenced from code
+u8 lbl_80339470[0x190];
 ARCacheInfo gARAMCacheInfo;
 FbMirrorEx gFramebufferMirrors[5];
 extern "C" {
