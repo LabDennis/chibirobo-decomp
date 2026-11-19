@@ -50,10 +50,7 @@ public:
 	virtual void Init(HSD_CObjDesc* desc);                                                                  // _18
 	virtual void Release();                                                                                 // _1C
 	virtual void SetAnim(HSD_CameraAnim* anim, f32 frame);                                                  // _20
-	virtual void SetAnimRate(f32 rate)                                                                      // _24
-	{
-		HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
-	}
+	virtual void SetAnimRate(f32 rate);                                                                     // _24, defined in gxb.cpp
 	virtual void Anim();                                                                                                           // _28
 	virtual void SetViewport(f32 x, f32 y, GXRenderModeObj* rmode);   // _2C
 	virtual void SetViewport(f32 left, f32 right, f32 top, f32 bottom); // _30, defined in gameccameraview.cpp
