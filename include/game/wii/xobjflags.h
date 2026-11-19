@@ -119,12 +119,12 @@ public:
 	XObjDust();
 	virtual ~XObjDust();
 
-	virtual void ResetObjectState();                               // _154
-	virtual void UpdateObject(u32 frames);                         // _164
-	virtual s32 OnPlayerContact(s32 unused, s32 value);            // _1CC
+	virtual void ResetObjectState();                                   // _154
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
-	virtual BOOL OnItemUsed(const Vec* position, s32 value);       // _204
-	virtual s32 GetFlagIndex();                                    // _28C
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);           // _204
+	virtual s32 GetFlagIndex();                                        // _28C
 
 private:
 	u8 _tail[0xA00 - sizeof(XObjFlags)]; // _9B0

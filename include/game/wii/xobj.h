@@ -1029,6 +1029,9 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 // go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
+	// stays out of line: retail expands the NW_Anm and CFile construction into
+	// every derived XObj ctor, but an in-class body drops the weak
+	// __ct__9CJArchiveFv copy (100 %) that the XObjChr ctor calls out of line
 	CJArchive();
 
 	NW_Anm mAnm; // _00, its vtable at _58
@@ -1233,8 +1236,9 @@ STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
 
 class XObj : public CObj {
 public:
-	// in-class inline: retail expands the whole member-ctor sequence into every
 	// derived ctor; the standalone __ct__4XObjFv at 0x800BE5B0 is the emitted copy
+	// (verified: declaring it out of line makes MWCC call it for base subobjects
+	// too, which retail expands inline in every derived ctor)
 	XObj() { }
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
@@ -1671,13 +1675,25 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjLeticker) == 0xAC8);
 
+// toys made of two more objects, read after the toy itself; the retail ctor
+// (0x800C2404) calls the member ctors out of line: CStatus32 at _D78, the two
+// embedded XObj at _D88 and _1730, CVec at _20DC and a second CStatus32 at
+// _21E4. the GameCube keeps the pieces read in by id at the same tail
 class XObjActorToy : public XObjActor {
 public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
 
 private:
-	u8 _tail[0x2208 - sizeof(XObjActor)];
+	CStatus32 mHideKinds; // _D78, kinds queued to hide
+	u8 _D80[8];
+	XObj mFirst;               // _D88
+	XObj mSecond;              // _1730
+	s32 mShownPart;            // _20D8
+	CVec mPendingMove;         // _20DC
+	u8 _20EC[0x21E4 - 0x20EC]; // the piece records and pending state, ctor writes none of it
+	CStatus32 mKindFlags;      // _21E4
+	u8 _21EC[0x2208 - 0x21EC];
 };
 STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
 

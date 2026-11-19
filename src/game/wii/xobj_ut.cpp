@@ -71,7 +71,8 @@ CObjVec::CObjVec()
 {
 }
 
-// the NW_Anm and the CFile initialize themselves
+// the NW_Anm and the CFile initialize themselves; must stay out of line so the
+// weak __ct__9CJArchiveFv copy is emitted for the auto XObjChr caller
 CJArchive::CJArchive()
 {
 }

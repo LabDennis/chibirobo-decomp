@@ -62,6 +62,13 @@ XObjItem::~XObjItem()
 {
 }
 
+// NONMATCHING: retail calls every member ctor out of line (__ct__9XObjActorFv
+// for the base, __ct__9CStatus32Fv twice, __ct__4XObjFv for mFirst/mSecond,
+// __ct__4CVecFv); our member layout is recovered (CStatus32@_D78, XObj@_D88 and
+// _1730, CVec@_20DC, CStatus32@_21E4) but MWCC inlines all of it here. Moving
+// XObj's ctor out of line flips the member calls to retail's form but then it
+// also calls __ct__4XObjFv for the base subobject, which retail always expands
+// inline -- IPA-boundary wall, same class as the dead vptr store
 XObjActorToy::XObjActorToy()
 {
 }
