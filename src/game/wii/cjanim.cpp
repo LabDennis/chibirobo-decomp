@@ -81,6 +81,8 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 	PSMTXConcat(result, scale, result);
 }
 
+// NONMATCHING: retail builds the result in a stack CVec and copies it to the sret slot;
+// MWCC elides it into the sret object here (same source as the GameCube unit)
 // CVec::operator* per component
 CVec CVec::operator*(Vec other) const
 {
@@ -586,15 +588,17 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 	return FALSE;
 }
 
+// NONMATCHING: retail lays out the four f32 locals as x, scaledX, y, z in that order
+// (an extra dead store of the scaled x survives); the rest matches
 void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera)
 {
 	camera        = camera != NULL ? camera : &gGame.mMotionControlCamera;
-	CVec position = mMoveTranslate + *offset;
-	f32 screenX, screenY, screenZ;
+	Vec position  = mMoveTranslate + *offset;
+	f32 screenX, scaledX, screenY, screenZ;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
-	screenX *= camera->mScale;
+	scaledX = screenX * camera->mScale;
 	if (x != NULL)
-		*x = screenX;
+		*x = scaledX;
 	if (y != NULL)
 		*y = screenY;
 	if (z != NULL)
