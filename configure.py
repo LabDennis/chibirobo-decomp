@@ -1364,6 +1364,11 @@ if wii:
                 # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
                 # headers, which want the Wii MSL
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the member-class ctor/dtor block behind the XObj ctors,
+                # 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49): XObjMapListA/B,
+                # ~XObjMap, XObjChr's ctor and the weak emissions it references
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobjmember.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the pool-subclass ctor/dtor run, 0x800C13B0-0x800C5424 (the first half of
                 # wii_units.md Nr. 56): XObjChr/Actor3/Sound/Coin/Item, the XObjActor children,
                 # spiders, dust, hbox, scncam, leticker, army and free

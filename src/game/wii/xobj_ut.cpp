@@ -84,8 +84,4 @@ XObjLight::~XObjLight()
 XObjMap::XObjMap()
 {
 }
-
-XObjMap::~XObjMap()
-{
-}
 #endif

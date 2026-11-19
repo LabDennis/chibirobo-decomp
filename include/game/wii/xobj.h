@@ -1039,16 +1039,19 @@ public:
 };
 STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
-// element of XObjMap's two 100-entry record lists: 0xC bytes with a ctor and
-// dtor in the CPtcl unit (retail fn_800BEB4C/dtor_800BEB60 and
-// fn_800BEBDC/dtor_800BEBF0). their real names and members are not recovered yet
+// element of XObjMap's two 100-entry record lists: 0xC bytes. the ctor
+// (0x800BEB4C/0x800BEBDC) zeroes all three words, the dtor
+// (0x800BEB60/0x800BEBF0) frees the buffer at _00 and clears _04 as a
+// self-subtract. the pointee type is not recovered yet
 class XObjMapListA {
 public:
 	XObjMapListA();
 	~XObjMapListA();
 
 private:
-	u8 _00[0xC];
+	u32* mItems; // _00
+	s32 mUsed;   // _04
+	s32 mCap;    // _08
 };
 STATIC_ASSERT(sizeof(XObjMapListA) == 0xC);
 
@@ -1058,7 +1061,9 @@ public:
 	~XObjMapListB();
 
 private:
-	u8 _00[0xC];
+	u32* mItems; // _00
+	s32 mUsed;   // _04
+	s32 mCap;    // _08
 };
 STATIC_ASSERT(sizeof(XObjMapListB) == 0xC);
 
