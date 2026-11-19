@@ -352,6 +352,8 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) { // the list ends at id -1
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		Vec center  = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
 		Vec extent  = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
 		f32 baseYaw = object->mMoveRotate.y;
