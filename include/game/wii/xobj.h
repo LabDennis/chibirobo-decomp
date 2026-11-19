@@ -161,6 +161,8 @@ public:
 		}
 		return 0;
 	}
+	void SetTranslate(f32 x, f32 y, f32 z); // 0x8026173C
+	void SetRotate(f32 x, f32 y, f32 z);    // 0x802617C4
 };
 
 // the animation resources a brres file holds, each nw4r's handle with the name accessor and the

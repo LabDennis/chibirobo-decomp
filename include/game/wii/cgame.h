@@ -910,6 +910,14 @@ public:
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
+class XActCopter : public XAction {
+public:
+	f32 mTime;  // _2C, flight time left, a copter parameter count of hundredths of a second in frames
+	f32 mPhase; // _30, where the propeller bob is in its sine
+	f32 mBob;   // _34, the height the copter joint rides at
+};
+STATIC_ASSERT(sizeof(XActCopter) == 0x38);
+
 class CSound3DActor;
 class XObj;
 
@@ -962,8 +970,7 @@ struct WiiPlayerState : public XObj {
 	XAction mPush; // _0C78
 	u8 _0CA4[0xCD0 - 0xCA4];
 	XActTumble mTumble; // _0CD0
-	XAction mCopter;    // _0D18
-	u8 _0D44[0xD50 - 0xD44];
+	XActCopter mCopter; // _0D18
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	// his sounds: AnimSfx's head (game/wii/animsfx.h, which needs this header) with two actors, as XObjCoin's;
@@ -1001,7 +1008,11 @@ struct WiiPlayerState : public XObj {
 	u8 mAttachments[0x48]; // _19E9C
 	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
 	WiiOXMenu mOXMenu;     // _1A420
-	u8 _1B7B4[0x1C990 - 0x1B7B4];
+	u8 _1B7B4[0x1B7B8 - 0x1B7B4];
+	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
+	// writers are decoded so far, the word reads as a whole
+	u32 mOnGround; // _1B7B8
+	u8 _1B7BC[0x1C990 - 0x1B7BC];
 	BOOL mBatteryDrains;  // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent; // _1C994
 	union {
@@ -1020,6 +1031,9 @@ struct WiiPlayerState : public XObj {
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
+	// the GameCube's GetHeight with the flag inverted: _1B7B8 is up while he stands on the floor, so the
+	// height above it only counts while it's clear
+	f32 GetHeight() const { return mOnGround ? 0.0f : mMoveTranslate.y - mFloorHit.mHeight; }
 };
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
