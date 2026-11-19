@@ -262,12 +262,13 @@ BOOL XObjCoin::LoadFromPlacement(const CoordInfo& info)
 	mPlacementParam1 = info.mPlacement->mParam1;
 	if (IsFlagSet())
 		return TRUE;
-	if (!XObj::LoadFromPlacement(info))
-		return FALSE;
-	mStatus.mFlags |= 0x10000000;
-	for (s32 i = 0; i < 2; i++)
-		mActors[i].Create();
-	return TRUE;
+	if (XObj::LoadFromPlacement(info)) {
+		mStatus.mFlags |= 0x10000000;
+		for (s32 i = 0; i < 2; i++)
+			mActors[i].Create();
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
