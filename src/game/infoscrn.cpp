@@ -37,21 +37,11 @@ void UpdateHudIndicators(InfoScrn* scrn, u32 frames);
 const char* GetLocalizedInterfaceText(s32 id);
 }
 
-// The original HUD code addresses the counters relative to this regional BSS prefix.
+// The original HUD code addresses the counters relative to this regional BSS prefix,
+// both live in infopointinit.cpp with the counters and the scanline history
 extern "C" {
-#if defined(VERSION_JP)
-u8 gHudPointCounterStorage[0x134];
-#else
-u8 gHudPointCounterStorage[0x140];
-#endif
-}
-// todo: the three counters are infopointinit.cpp's, which is cut from this file. These are the file's own
-// copies, as on main, so that its code reaches them the way retail does
-static InfoPoint gHudMoneyCounter;
-static InfoPoint gHudHappyPointCounter;
-static InfoPoint gHudScrapCounter;
-extern "C" {
-f32 gHudScanlineHistory[10];
+extern u8 gHudPointCounterStorage[];
+extern f32 gHudScanlineHistory[10];
 }
 
 // how bright the hud is, the counters and gauges multiply their alpha by it
