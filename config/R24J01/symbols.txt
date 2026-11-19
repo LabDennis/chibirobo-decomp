@@ -2499,6 +2499,7 @@ UpdateObject__9XObjSoundFUl = .text:0x8011426C; // type:function size:0x54
 SoundUpdate__9XObjSoundFf = .text:0x801142C0; // type:function size:0xB0
 ResumeSounds__9XObjSoundFf = .text:0x80114370; // type:function size:0x14
 PauseSounds__9XObjSoundFf = .text:0x80114384; // type:function size:0x14
+@4@__dt__9XObjSoundFv = .text:0x80114398; // type:function size:0x8
 GetFlagIndex__8XObjItemFv = .text:0x801143A0; // type:function size:0x44
 ResetObjectState__8XObjItemFv = .text:0x801143E4; // type:function size:0x34
 UpdateObject__8XObjItemFUl = .text:0x801144DC; // type:function size:0x88
