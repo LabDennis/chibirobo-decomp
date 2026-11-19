@@ -892,7 +892,8 @@ void XObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, 
 			for (u32 i = 0; i < numMats; i++) {
 				nw4r::g3d::ResMat mat = mObject.m_resMdl.GetResMat(i);
 				nw4r::g3d::ScnMdl::CopiedMatAccess access(mObject.m_pScnMdl, i);
-				nw4r::g3d::ResTev tev = access.GetResTev(false);
+				nw4r::g3d::ResTev tev(NULL);
+				tev = access.GetResTev(false);
 				if (!tev.IsValid()) {
 					tev = mat.GetResTev();
 				}
@@ -915,24 +916,30 @@ void XObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, 
 					if ((mAttr.mObjData != NULL ? mAttr.mObjData->GetCategory() : -1) == 3) {
 						// the map: blend while the object the player stands on is a
 						// tintable kind, or while he is within a meter above the map
-						BOOL blend = TRUE;
 						if (floorIdx >= 0) {
-							XObj* stood   = gGame.mXObjs.mObjects[floorIdx];
-							s32 stoodKind = stood->GetKind();
-							if (stoodKind != 0x54 && stoodKind != 0x20 && stoodKind != 0x10C
-							    && gGame.GetPlayer()->GetPos()->y - GetPos()->y >= 1.0f) {
-								blend = FALSE;
+							XObj* stood = gGame.mXObjs.mObjects[floorIdx];
+							switch (stood->GetKind()) {
+							case 0x20:
+							case 0x54:
+							case 0x10C:
+								tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+								break;
+							default:
+								if (gGame.GetPlayer()->GetPos()->y - GetPos()->y < 1.0f) {
+									tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+								} else {
+									tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+								}
 							}
-						}
-						if (blend) {
-							tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
 						} else {
-							tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+							tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
 						}
 						tev.DCStore(false);
 					} else {
-						s32 kind = GetKind();
-						if (kind == 0x54 || kind == 0x20 || kind == 0x10C) {
+						switch (GetKind()) {
+						case 0x20:
+						case 0x54:
+						case 0x10C:
 							if (floorIdx < 0 || floorIdx == GetStagePlacementIndex(mCoord.mPlacement)) {
 								tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
 							} else {
