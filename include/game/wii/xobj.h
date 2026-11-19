@@ -1228,7 +1228,9 @@ STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
 
 class XObj : public CObj {
 public:
-	XObj();
+	// in-class inline: retail expands the whole member-ctor sequence into every
+	// derived ctor; the standalone __ct__4XObjFv at 0x800BE5B0 is the emitted copy
+	XObj() { }
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
 	virtual ~XObj() { }
