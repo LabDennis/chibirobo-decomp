@@ -240,12 +240,12 @@ extern "C" void ClearActiveObjectFloors(XObj* object)
 	}
 }
 
-static inline void ExpandRadius(f32 x, f32 z, f32& maxX, f32& maxZ)
+static inline void ExpandRadius(f32 x, f32 z, f64& maxX, f64& maxZ)
 {
-	if (ABS(x) > maxX)
-		maxX = ABS(x);
-	if (ABS(z) > maxZ)
-		maxZ = ABS(z);
+	if (nw4r::math::FAbs(x) > maxX)
+		maxX = nw4r::math::FAbs(x);
+	if (nw4r::math::FAbs(z) > maxZ)
+		maxZ = nw4r::math::FAbs(z);
 }
 
 extern "C" void UpdateObjectFloorXZExtent(XObj* object)
@@ -253,7 +253,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	object->mFloorXZExtent[0] = object->mFloorXZExtent[1] = NAN;
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return;
-	f32 maxX = 0.0f, maxZ = 0.0f;
+	f64 maxX = 0.0, maxZ = 0.0;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
 		if (!(object->mFloors[i].mFlags & 1))
 			continue;
@@ -261,8 +261,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		Vec center     = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
 		Vec extent     = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
 		f32 baseYaw    = object->mMoveRotate.y;
-		f32 floorAngle = GetFloorYawRadians(&object->mFloors, i);
-		f32 yaw        = baseYaw + floorAngle;
+		f32 yaw        = baseYaw + GetFloorYawRadians(&object->mFloors, i);
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: { // a disc
@@ -305,7 +304,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 			PSMTXTrans(local, center.x, center.y, center.z);
 			PSMTXScale(scale, extent.x, extent.y, extent.z);
 			PSMTXRotRad(rotate, 'y', baseYaw);
-			PSMTXRotRad(turn, 'y', floorAngle);
+			PSMTXRotRad(turn, 'y', GetFloorYawRadians(&object->mFloors, i));
 			PSMTXConcat(world, rotate, result);
 			PSMTXConcat(result, local, result);
 			PSMTXConcat(result, turn, result);
