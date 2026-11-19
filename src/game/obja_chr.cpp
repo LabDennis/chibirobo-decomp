@@ -1641,6 +1641,12 @@ extern "C" void UpdateRadarBeamAnimation(XActRadar*, u32);
 extern "C" void UpdatePointParticleDisplay(PointPtcl*, u32);
 extern "C" void UpdateSpiralTrail(SuitChangeEffect*, u32);
 
+// unreferenced retail table; DrawEquipmentRing and ~XObjChr anchor their .data
+// accesses at the section head, so the retail layout starts with these words
+s32 lbl_80225730[26] = {
+	0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0,
+};
+
 // the joints an item's animation runs on, by item
 XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ 3, 8, { 0, 1, 0, 1, 2, 0, 1, 0 }, 0.0f },
@@ -1649,6 +1655,21 @@ XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ 4, 6, { 0, 1, 0, 1, 0, 1 }, 0.0f },
 	{ -1, 0, { 0 }, 0.0f },
 };
+
+extern "C" {
+// the animation file of each attachment
+const char* gAttachmentAnimationPaths[] = {
+	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
+};
+
+// the animation file of each suit
+const char* gSuitAnimationPaths[] = {
+	NULL, "cb_robo_13.dat", "cb_robo_15.dat", "cb_robo_14.dat", "cb_robo_25.dat", NULL, "cb_robo_16.dat", "cb_robo_17.dat", "cb_robo_24.dat",
+};
+
+// spawn ids of the three special suits
+s32 gSpecialSuitSpawnIds[] = { 32, 34, 35 };
+}
 
 // closes both rings, 0 cancels, above 0 confirms, below 0 backs out
 /**
@@ -2497,11 +2518,6 @@ static inline void TakeOutTool(XObjChr* chr, s16 item)
 		chr->mLift.mPendingItemId = item;
 	}
 }
-
-// the anim archive each attachment needs
-static const char* sAttachmentAnims[9] = {
-	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
-};
 
 extern "C" {
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
@@ -9515,8 +9531,8 @@ extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
 			// fall through
 		case 15: { // load the attachment's anim archive
 			BOOL done;
-			if (sAttachmentAnims[chr->mAttachment] != NULL) {
-				if (LoadJointAnimationAsync(&chr->mAttachmentAnim, sAttachmentAnims[chr->mAttachment])) {
+			if (gAttachmentAnimationPaths[chr->mAttachment] != NULL) {
+				if (LoadJointAnimationAsync(&chr->mAttachmentAnim, gAttachmentAnimationPaths[chr->mAttachment])) {
 					chr->SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 					done = TRUE;
 				} else {
@@ -10212,11 +10228,6 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 }
 
 #include "game/xchr.h"
-
-// the animation file of each attachment
-const char* gAttachmentAnimationPaths[] = {
-	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
-};
 
 /**
  * @note Address: 0x800B9758
