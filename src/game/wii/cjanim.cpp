@@ -679,50 +679,6 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	return TRUE;
 }
 
-// the object-world-callback's first pass: with the 0x800 flag the model draws mirrored - the
-// move scale's X and Z negate, Y flips with the screen camera's orientation, and the yaw gains pi
-void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
-{
-	if (mStatus.mFlags & 0x800 && pFuncObj->GetCallbackNodeID() == 0) {
-		CCamera* camera = gGame.GetScreenCamera();
-		f32 bottom      = camera->mBottom;
-		f32 top         = camera->mTop;
-		s32 sign        = top < bottom ? -1 : 1;
-		f32 scaleY      = mMoveScale.y;
-		f32 scaleX      = mMoveScale.x;
-		f32 scaleZ      = mMoveScale.z;
-		f32 rotateY     = mMoveRotate.y;
-		mMoveScale.x *= -1.0f;
-		mMoveScale.y *= sign;
-		mMoveScale.z *= -1.0f;
-		mMoveRotate.y += PI;
-		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
-		mMoveScale.y  = scaleY;
-		mMoveScale.x  = scaleX;
-		mMoveScale.z  = scaleZ;
-		mMoveRotate.y = rotateY;
-	} else {
-		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
-	}
-}
-
-// the object-world-callback's second pass: copy the base matrix into the node's
-// result slot, and with the flag set move the object's transform to the matrix's
-void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
-{
-	if (pFuncObj->GetCallbackNodeID() == 0 && mBaseMtxPtr != NULL) {
-		Mtx mtx;
-		PSMTXCopy(mBaseMtx, mtx);
-		PSMTXCopy(mtx, pResult->mpMtx);
-		if (mStatus.mFlags & 0x0000400000000000ULL) {
-			mMoveTranslate.x = mtx[0][3];
-			mMoveTranslate.y = mtx[1][3];
-			mMoveTranslate.z = mtx[2][3];
-			HSD_MtxGetScale(mtx, &mMoveScale);
-		}
-	}
-}
-
 // the object list's per-frame floor pass: it snapshots the motion-control camera and, for
 // every floor whose id selects a shape (0/1 a disc, 2 a box), builds the floor's world
 // matrix the same way GetFloorFacingAngle does, projects the outline onto the screen and
@@ -873,6 +829,51 @@ extern "C" void fn_800B4988(XObj* object)
 			object->mFloorTop = floorTop;
 	}
 }
+
+// the object-world-callback's first pass: with the 0x800 flag the model draws mirrored - the
+// move scale's X and Z negate, Y flips with the screen camera's orientation, and the yaw gains pi
+void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (mStatus.mFlags & 0x800 && pFuncObj->GetCallbackNodeID() == 0) {
+		CCamera* camera = gGame.GetScreenCamera();
+		f32 bottom      = camera->mBottom;
+		f32 top         = camera->mTop;
+		s32 sign        = top < bottom ? -1 : 1;
+		f32 scaleY      = mMoveScale.y;
+		f32 scaleX      = mMoveScale.x;
+		f32 scaleZ      = mMoveScale.z;
+		f32 rotateY     = mMoveRotate.y;
+		mMoveScale.x *= -1.0f;
+		mMoveScale.y *= sign;
+		mMoveScale.z *= -1.0f;
+		mMoveRotate.y += PI;
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		mMoveScale.y  = scaleY;
+		mMoveScale.x  = scaleX;
+		mMoveScale.z  = scaleZ;
+		mMoveRotate.y = rotateY;
+	} else {
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+	}
+}
+
+// the object-world-callback's second pass: copy the base matrix into the node's
+// result slot, and with the flag set move the object's transform to the matrix's
+void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() == 0 && mBaseMtxPtr != NULL) {
+		Mtx mtx;
+		PSMTXCopy(mBaseMtx, mtx);
+		PSMTXCopy(mtx, pResult->mpMtx);
+		if (mStatus.mFlags & 0x0000400000000000ULL) {
+			mMoveTranslate.x = mtx[0][3];
+			mMoveTranslate.y = mtx[1][3];
+			mMoveTranslate.z = mtx[2][3];
+			HSD_MtxGetScale(mtx, &mMoveScale);
+		}
+	}
+}
+
 
 // the tint stage the game appends to every material (NW_Obj::InitColorTev): on the map and
 // the tintable object kinds ExecCallback_CALC_MAT rewrites its last stage's inputs, on the
