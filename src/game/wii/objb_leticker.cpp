@@ -11,6 +11,7 @@
 // fn_8016AA78), so the action's Update stays out until those are decompiled
 
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
+extern "C" void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // retires the event effect with that id
 
 extern const AnimSfxEvent lbl_80309360[]; // the leticker's lid sound event table
 
@@ -105,8 +106,26 @@ void XObjLeticker::UpdateObject(u32 frames)
 /**
  * @note Address: 0x8011D030
  * @note Size: 0x1B8
- * @note NONMATCHING: OnPushDisplacement's Wii body; not ported yet
  */
+void XObjLeticker::OnPushDisplacement(const Vec& displacement)
+{
+	for (s32 i = 0; i < mLinkedCount; i++) {
+		XObj* part = gGame.mXObjs.mObjects[mLinked[i]];
+		part->SetTranslateX(GetPos()->x);
+		part->SetTranslateZ(GetPos()->z);
+	}
+	if (0.0f < PSVECMag(&displacement)) {
+		SetColor(1, 0, 0, 0, 0.5f);
+		SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+	} else {
+		SetColor(1, 0xFF, 0, 0, 1.0f);
+		SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+	}
+	if (mPtcl) {
+		fn_800A12F8(&gGame.mEvtPtcl, 0xA5, FALSE);
+		mPtcl = FALSE;
+	}
+}
 
 /**
  * @note Address: 0x8011CE60
