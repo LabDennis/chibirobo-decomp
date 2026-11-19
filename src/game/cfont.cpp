@@ -199,10 +199,12 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
 			}
 		}
 		if (image == NULL) {
-			for (s32 i = 0; i < 50; i++) { // the 50-entry dynamic cache
+			s32 i                = 0;
+			FontGlyphCache* cache = &gDynamicFontGlyphCache;
+			for (; i < 50; i++) { // the 50-entry dynamic cache
 				if (code == gDynamicFontGlyphCache.glyphs[i].code) {
-					image   = &gDynamicFontGlyphCache.glyphs[i];
-					advance = gDynamicFontGlyphCache.glyphs[i].width;
+					image   = &cache->glyphs[i];
+					advance = ((FontGlyph*)image)->width;
 					break;
 				}
 			}
