@@ -44,6 +44,21 @@ extern u8 gHudPointCounterStorage[];
 extern f32 gHudScanlineHistory[10];
 }
 
+// the counter block behind the storage prefix: a global-object destructor chain sits in
+// front of each counter (infopointinit.cpp). The functions that touch all three counters
+// address them through the prefix's base instead of one address load per counter
+struct HudPointCounterBlock {
+	u8 mStorage[0x134];   // gHudPointCounterStorage
+	u8 mMoneyChain[0xC];  // sHudMoneyCounterDestructorChain
+	InfoPoint mMoney;     // gHudMoneyCounter
+	u8 mHappyChain[0xC];  // sHudHappyPointCounterDestructorChain
+	InfoPoint mHappy;     // gHudHappyPointCounter
+	u8 mScrapChain[0xC];  // sHudScrapCounterDestructorChain
+	InfoPoint mScrap;     // gHudScrapCounter
+};
+
+#define gHudPointCounterBlock (*(HudPointCounterBlock*)gHudPointCounterStorage)
+
 // how bright the hud is, the counters and gauges multiply their alpha by it
 f32 gHudOpacityScale = 1.0f;
 
@@ -204,9 +219,9 @@ extern "C" void InitInfoScreen(InfoScrn* scrn)
  */
 extern "C" BOOL HideHudPointCounters(InfoScrn* scrn)
 {
-	gHudHappyPointCounter.mVisible = FALSE;
-	gHudMoneyCounter.mVisible      = FALSE;
-	gHudScrapCounter.mVisible      = FALSE;
+	gHudPointCounterBlock.mHappy.mVisible = FALSE;
+	gHudPointCounterBlock.mMoney.mVisible = FALSE;
+	gHudPointCounterBlock.mScrap.mVisible = FALSE;
 	return TRUE;
 }
 
@@ -908,9 +923,12 @@ extern "C" void ResumeScrapCounterPulse(InfoScrn* scrn)
  */
 extern "C" void SuppressIdleHudCounters(InfoScrn* scrn)
 {
-	gHudHappyPointCounter.mSuppressIdleDisplay = TRUE;
-	gHudMoneyCounter.mSuppressIdleDisplay      = TRUE;
-	gHudScrapCounter.mSuppressIdleDisplay      = TRUE;
+	InfoPoint* happy = &gHudPointCounterBlock.mHappy;
+	InfoPoint* money = &gHudPointCounterBlock.mMoney;
+	InfoPoint* scrap = &gHudPointCounterBlock.mScrap;
+	happy->mSuppressIdleDisplay = TRUE;
+	money->mSuppressIdleDisplay = TRUE;
+	scrap->mSuppressIdleDisplay = TRUE;
 }
 
 /**
@@ -919,9 +937,12 @@ extern "C" void SuppressIdleHudCounters(InfoScrn* scrn)
  */
 extern "C" void AllowIdleHudCounters(InfoScrn* scrn)
 {
-	gHudHappyPointCounter.mSuppressIdleDisplay = FALSE;
-	gHudMoneyCounter.mSuppressIdleDisplay      = FALSE;
-	gHudScrapCounter.mSuppressIdleDisplay      = FALSE;
+	InfoPoint* happy = &gHudPointCounterBlock.mHappy;
+	InfoPoint* money = &gHudPointCounterBlock.mMoney;
+	InfoPoint* scrap = &gHudPointCounterBlock.mScrap;
+	happy->mSuppressIdleDisplay = FALSE;
+	money->mSuppressIdleDisplay = FALSE;
+	scrap->mSuppressIdleDisplay = FALSE;
 }
 
 /**
