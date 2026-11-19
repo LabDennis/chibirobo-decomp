@@ -2104,7 +2104,6 @@ public:
 	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
-WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; its trivial dtor is verified (retail

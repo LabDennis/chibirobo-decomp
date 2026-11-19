@@ -33,6 +33,8 @@ STATIC_ASSERT(sizeof(XObjSound) == 0xA10);
 // XObjFlags has the pointer at _980, the Wii moved it behind the object
 class XObjFlags : public XObj {
 public:
+	XObjFlags() { mFlags = NULL; }
+
 	virtual void ResetForNewGame(); // _150, clears every flag
 	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
 
@@ -110,6 +112,28 @@ public:
 	s32 mAnimId2; // _9AC, the anim id to go back to once the use anim ends, -1 when it keeps its own
 };
 STATIC_ASSERT(sizeof(XObjItem) == 0x9B0);
+
+// the dust piles; the Wii keeps the flag pointer in XObjFlags and adds a tail of its own
+class XObjDust : public XObjFlags {
+public:
+	XObjDust();
+	virtual ~XObjDust();
+
+	virtual void ResetObjectState();                               // _154
+	virtual void UpdateObject(u32 frames);                         // _164
+	virtual s32 OnPlayerContact(s32 unused, s32 value);            // _1CC
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);       // _204
+	virtual s32 GetFlagIndex();                                    // _28C
+
+private:
+	u8 _tail[0xA00 - sizeof(XObjFlags)]; // _9B0
+};
+STATIC_ASSERT(sizeof(XObjDust) == 0xA00);
+
+extern CEvtFlags gItemEventFlags; // items
+extern CEvtFlags gCoinEventFlags; // coins
+extern CEvtFlags gDustEventFlags; // dust
 
 extern "C" {
 void UpdateFallingCoin(XObjCoin* coin, u32 frames);

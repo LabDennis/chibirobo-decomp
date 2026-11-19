@@ -40,8 +40,13 @@ XObjSound::~XObjSound()
 {
 }
 
+// NONMATCHING: retail keeps XObjFlags' mFlags = NULL store before the coin's
+// vtables (0x800C20B0) -- the __construct_array call stops the dead-store
+// elimination that removes it in the item and dust ctors. MWCC removes it
+// here too; the rest of the member-init block is not fully modeled either
 XObjCoin::XObjCoin()
 {
+	mFlags = &gCoinEventFlags;
 }
 
 XObjCoin::~XObjCoin()
@@ -50,6 +55,7 @@ XObjCoin::~XObjCoin()
 
 XObjItem::XObjItem()
 {
+	mFlags = &gItemEventFlags;
 }
 
 XObjItem::~XObjItem()
@@ -137,6 +143,7 @@ XObjSpiderBoss::XObjSpiderBoss()
 
 XObjDust::XObjDust()
 {
+	mFlags = &gDustEventFlags;
 }
 
 XObjDust::~XObjDust()
@@ -190,3 +197,12 @@ XObjFree::XObjFree()
 XObjFree::~XObjFree()
 {
 }
+
+// the three CEvtFlags the pickups point mFlags at; the GameCube keeps them in
+// xobjflagsinit.cpp, the Wii's flag-init unit is not reconstructed yet, so they
+// are defined here -- the linker places them at the retail addresses
+// (item 0x8045D70C, coin 0x8045D91C, dust 0x8045DB40, gaps between them are
+// the flag unit's other statics)
+CEvtFlags gItemEventFlags;
+CEvtFlags gCoinEventFlags;
+CEvtFlags gDustEventFlags;
