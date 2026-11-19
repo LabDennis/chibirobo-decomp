@@ -10136,7 +10136,7 @@ extern "C" BOOL LoadRequestedHeldItem(XObjChr* chr)
 #include <stdlib.h>
 
 extern "C" {
-extern f32 gPlayerSuitChangeTimer;
+f32 gPlayerSuitChangeTimer;
 }
 
 static inline bool SuitFadeFinished(const XObjChr* player)
