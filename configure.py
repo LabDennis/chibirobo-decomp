@@ -506,7 +506,6 @@ gamecube_libs = [
             # (802284D4/802284F8, 80634A80), which only deferred codegen of the Wii-order source gives
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjletickerdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_army.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -550,14 +549,9 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infopointinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/infopointdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
             # StartPlugCordNode (0x800DE180), the reverse of the Wii file's StartPlugCordNode-first order
             # (R24J01 0x80110C2C), and .bss/.sbss hold InitPlugCord's statics (gPlugCordPoints$1827, init$1830)
@@ -566,22 +560,16 @@ gamecube_libs = [
             # keeps StartPlugCordNode as a call, which -inline auto,deferred inlines (0x2F0)
             Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(Matching, "game/xobjspiderbossstop.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjdustevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjflagsclear.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjcoinparam.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjcoinfall.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjfreeupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjcoinupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossattack.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file: the XObjActor dtor, the standalone helpers and the Count*/Set* wrappers,
             # then XObjActor's virtuals (GGTE01 .text 0x80106A14-0x80108424, contiguous in all three
@@ -589,21 +577,21 @@ gamecube_libs = [
             # modelled in source and stay auto objects
             Object(NonMatching, "game/xobjactor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcard.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline noauto, as retail shows: it keeps CheckDustScatterHeading (0x238) as a call from
-            # UpdateDriftingDust, which every GC compiler (2.0 to 2.7) auto-inlines by size alone under
-            # -inline auto (JP code 70 % without the flag). Weaker evidence than the deferred units below:
-            # a larger original body could also explain it, but no natural form does.
-            # The XObjDust and XObjHBox code of one retail file, folded from seven fragment units. JP addresses:
-            # .text 0x800E034C..0x800E2EFC runs dust then hbox with no gap. That file is bigger: it starts with
-            # XObjFree (__dt__8XObjFree 0x800DF2E4, its .sdata RTTI CJObj..XObj at 0x80634AB0 are the only copies
-            # before XObjFlags/Dust/HBox/Coin/Item's at 0x80634AD8..0x80634AF8), takes OnItemUsed and
-            # OnHitFromPosition of XObjDust (0x800DFE90, in xobjfreeevent.cpp), the coin and item code, and ends
-            # with the weak tail Dust, Flags, HBox, HBoxPart, Coin, Item dtors and __sinit_xobjflagsinit_cpp
-            # (0x800E3F84..0x800E42F0). Not linked until those units join it; code in retail's order, no deferred
-            Object(NonMatching, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
-            Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (JP addresses): .text 0x800DF2E4-0x800E4264, __dt__8XObjFree first
+            # (its .sdata RTTI CJObj..XObj at 0x80634AB0 are the only copies before XObjFlags/Dust/
+            # HBox/Coin/Item's at 0x80634AD8..0x80634AF8), then the XObjFree update/event code taking
+            # XObjDust's OnItemUsed and OnHitFromPosition, the dust and hbox code with no gap
+            # (0x800E034C..0x800E2EFC), the coin and item code, and the weak tail Dust, Flags, HBox,
+            # HBoxPart, Coin, Item dtors. -inline noauto, as retail shows: it keeps
+            # CheckDustScatterHeading (0x238) as a call from UpdateDriftingDust, which every GC
+            # compiler (2.0 to 2.7) auto-inlines by size alone under -inline auto (JP code 70 %
+            # without the flag). Weaker evidence than the deferred units: a larger original body
+            # could also explain it, but no natural form does. The file's .data (vtables, type
+            # records) stays auto objects. __sinit_xobjflagsinit_cpp names the CEvtFlags globals'
+            # own file, so xobjflagsinit.cpp stays a unit of its own right behind it
+            Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
-            Object(NonMatching, "game/xobjfreeevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardread.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
             Object(Matching, "game/memcardscanjob.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossse.cpp", cflags=with_hsd_headers(cflags_game)),
