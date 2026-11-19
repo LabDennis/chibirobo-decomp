@@ -988,7 +988,12 @@ struct WiiPlayerState : public XObj {
 	u8 _9E00[0x9E20 - 0x9E00];
 	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
-	u8 _B568[0xDC50 - 0xB568];
+	u8 _B568[0xB580 - 0xB568];
+	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
+	                           // through XObj's vtable
+	u8 mPopperObj[0x9B0];      // _BF30, the popper attachment object, the GameCube's mPopperObj
+	u8 mRadarObj[0x9C0];       // _C8E0, the radar attachment object, the GameCube's mRadarObj
+	u8 mOXObj[0x9B0];          // _D2A0, the OX attachment object, the GameCube's mOXObj
 	WiiPlayerSuits mSuits;     // _DC50
 	WiiSuitPart mSuitParts[9]; // _134B8, by suit
 	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad

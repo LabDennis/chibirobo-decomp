@@ -230,10 +230,10 @@ extern "C" void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, WiiPlayer
 			PlayTumbleAnimation(act->mOwner, 0xE6, 0.0f);
 		}
 		// the snore effect the GameCube played as particle 0x10005, as a Wii event effect instance
-		Vec offset          = { 0.0f, 12.0f, 0.0f };
-		CVec pos            = *act->mOwner->GetPos() + offset;
-		CVec* scale         = act->mOwner->GetScale();
-		Vec rot             = { 0.0f, 0.0f, 0.0f };
+		Vec offset           = { 0.0f, 12.0f, 0.0f };
+		CVec pos             = *act->mOwner->GetPos() + offset;
+		CVec* scale          = act->mOwner->GetScale();
+		Vec rot              = { 0.0f, 0.0f, 0.0f };
 		EffectInstance* inst = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 5, 1);
 		if (inst != NULL) {
 			inst->pos   = pos;
@@ -244,18 +244,16 @@ extern "C" void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, WiiPlayer
 		act->mState = 11;
 		break;
 	}
-	case 11:
-		{
-			s32 id = owner->GetAnimId();
-			if (id == 0xE6 || (u32)(id - 0x164) <= 2) {
-				if (owner->IsAnimDone())
-					FinishTumble(act, 0.0f);
-			} else {
-				fn_800A12F8(&gGame.mEvtPtcl, 5, TRUE);
-				act->mState = 0;
-			}
+	case 11: {
+		s32 id = owner->GetAnimId();
+		if (id == 0xE6 || (u32)(id - 0x164) <= 2) {
+			if (owner->IsAnimDone())
+				FinishTumble(act, 0.0f);
+		} else {
+			fn_800A12F8(&gGame.mEvtPtcl, 5, TRUE);
+			act->mState = 0;
 		}
-		break;
+	} break;
 	case 12:
 		act->mSavedYaw = act->mOwner->mMoveRotate.y;
 		act->mOwner->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, 12.0f * DEG2RAD);
