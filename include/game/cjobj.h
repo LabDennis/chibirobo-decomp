@@ -218,4 +218,10 @@ typedef char CJObj_size_check[sizeof(CJObj) == 0x38 ? 1 : -1];
 
 #pragma pop
 
+// a joint of the object's tree, by child/next path (retail's one weak copy sits in obja_chr's run of inlines)
+extern "C" inline HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path)
+{
+	return GetJointByPath(object->mJObj, path, depth);
+}
+
 #endif
