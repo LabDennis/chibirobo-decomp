@@ -443,7 +443,8 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 	} else if (IsCoinItemInRange(this, 100, 200)) { // items 100..199 are scrap
 		s32 scrap = GetPickupRewardValue(GetItem() - 97);
 		if (!scrap) {
-			AttrInfo attr(CoordInfo(GetSpawnData(GetAnimId() + 41)));
+			CoordInfo info(GetSpawnData(GetAnimId() + 41));
+			AttrInfo attr(&info);
 			scrap = GetPickupRewardValue(attr.mObjData->GetItem() - 97);
 		}
 		AddPlayerScrap(&player->mParams, scrap);
@@ -470,8 +471,10 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 	}
 	if (sound >= 0 && mActors[0].GetHandle() == NULL) {
 		CSound3DActor* actor = mActors[0].mActor;
-		if (actor != NULL && actor->detail_StartSound(&actor->mHandle, sound, NULL) == nw4r::snd::SoundStartable::START_SUCCESS) {
-			actor->mHandle.SetVolume(1.0f, 0);
+		if (actor != NULL) {
+			bool started = actor->detail_StartSound(&actor->mHandle, sound, NULL) == nw4r::snd::SoundStartable::START_SUCCESS;
+			if (started)
+				actor->mHandle.SetVolume(1.0f, 0);
 		}
 	}
 	mFade = 1.0f;
