@@ -671,7 +671,11 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-// NONMATCHING: same work; different spill/restore scheduling and argument setup order
+// NONMATCHING: retail's frame is 0x300 vs ours 0x2f0; before SetPos it copies pos (12 B)
+// to a temp and the object HSD_MtxGetRotation wrote (16 B, so not a plain Vec) to a
+// second temp that SetRotationY reads at +4. Tried Quaternion/CVec for `rot`: Quaternion
+// gives the size but MWCC never emits the whole-object copy, CVec adds vtable stores
+// retail doesn't have. Likely a by-value/copy temp from an unreadable spelling.
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
