@@ -1011,9 +1011,10 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	if (!fn_800C98E0(map, pos, self->mFloorHit.mTriangle, &self->mFloorHit)) {
 		self->mFloorHit.mTriangle = -1;
 		self->mFloorHit.mTrigon   = -1;
-		self->mFloorHit.mHeight   = pos->y;
+		self->mFloorHit.mHeight   = self->mMoveTranslate.y;
 	}
 	f32 best = self->mFloorHit.mHeight;
+	CVec push, contact;
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.mXObjs.mObjects[i];
 		if (!(object->mStatus.mFlags & 0x1) || !(object->mStatus.mFlags & 0x10000) || object->mStatus.mFlags & 0x100000 || object == self) {
@@ -1023,19 +1024,18 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 		f32 dx         = otherPos->x - pos->x;
 		f32 dz         = otherPos->z - pos->z;
 		f32 dist       = FSqrt(dx * dx + dz * dz);
-		if (dist > 100.0f + radius + object->mFloorXZExtent[0])
+		if (dist > 100.0f + (radius + object->mFloorXZExtent[0]))
 			continue;
 		s32 cursor = 0;
-		do {
+		while (cursor != -1) {
 			CVec from(*pos), to(*pos);
-			Vec push, contact;
 			u32 hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, &cursor, 0);
 			if (hit & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
-				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= best)
+				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= best)
 					best = floorHeight;
 			}
-		} while (cursor != -1);
+		}
 	}
 	if (best > self->mFloorHit.mHeight)
 		self->mFloorHit.mHeight = best;
