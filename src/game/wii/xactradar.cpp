@@ -7,6 +7,8 @@
 #include "game/wii/cgs.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/xact.h"
+#include "game/wii/ceffect.h"
 #include "game/gmath.h"
 #include <math.h>
 
@@ -24,6 +26,36 @@ static inline Vec RingPos(const Vec& pos, const Vec& offset)
 {
 	Vec v = { pos.x + offset.x, 0.01f + pos.y, pos.z + offset.z };
 	return v;
+}
+
+// retires the instance's effect when there is one
+static inline void KillInstance(EffectInstance* inst)
+{
+	if (inst != NULL) {
+		RetireEffect(&inst->handle, FALSE);
+	}
+}
+
+// the GameCube's KillGen: on the Wii a generator is an event-effect instance, so the
+// retail code shows the caller's own guard in front of the guarded call
+static inline void KillGen(EffectInstance*& gen)
+{
+	if (gen != NULL) {
+		KillInstance(gen);
+		gen = NULL;
+	}
+}
+
+// clears a shot and its effects, the GameCube's ResetShot
+static inline void ResetShot(XActPopperShot* shot)
+{
+	shot->mActive            = FALSE;
+	shot->mHitTarget         = NULL;
+	ClearParticlePool(&shot->mDust.mPtcl);
+	shot->mRing[0].mAmount = 0.0f;
+	shot->mRing[1].mAmount = 0.0f;
+	KillGen(shot->mGen);
+	KillGen(shot->mChargeGen);
 }
 
 extern "C" {
@@ -241,6 +273,37 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 		}
 		break;
 	}
+}
+
+// resets one shot and readies its pool and sound actors, the per-shot body of the
+// GameCube's InitializePlayerPopperAction loop on a function of its own
+/**
+ * @note Address: 0x801085C8
+ * @note Size: 0x140
+ */
+void InitPopperShot(XActPopperShot* shot)
+{
+	ResetShot(shot);
+	InitParticlePool(&shot->mDust.mPtcl, shot->mDust.mPtcls, sizeof(CPtclDust2), 40);
+	shot->mRing[0].mAmount = 0.0f;
+	shot->mRing[1].mAmount = 0.0f;
+	shot->mGen             = NULL;
+	shot->mChargeGen       = NULL;
+	for (s32 i = 0; i < 2; i++) {
+		shot->mSfxActors[i].Reset();
+	}
+	for (s32 i = 0; i < 2; i++) {
+		shot->mSfxActors[i].Create();
+	}
+}
+
+/**
+ * @note Address: 0x80108708
+ * @note Size: 0x88
+ */
+void ResetPopperShot(XActPopperShot* shot)
+{
+	ResetShot(shot);
 }
 
 } // extern "C"

@@ -2,6 +2,8 @@
 #define GAME_WII_XACT_H
 
 #include "game/wii/cgame.h"
+#include "game/wii/animsfx.h"
+#include "game/cptcl.h"
 
 // chibi robo's actions on the Wii player, the GameCube's XAct* kinds (game/xact.h). XAction, XActHang and
 // XActTumble live in game/wii/cgame.h with the player; WiiPlayerState still declares the others as XAction
@@ -76,5 +78,45 @@ public:
 	BOOL mPushPositionClamped; // _54
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
+
+// one of the popper's rings, drawn as two glow sprites and a soft disc
+struct XActPopperRing {
+	Vec mPos;    // _00
+	f32 mAmount; // _0C, 0 when it's gone
+	f32 mRadius; // _10
+	u32 mColor;  // _14
+};
+STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
+
+struct PopperShotDust {
+	CPtcl mPtcl;           // _00
+	CPtclDust2 mPtcls[40]; // _14
+};
+
+// one popper shot, it keeps its last ten positions for the trail. The Wii shape is the
+// GameCube's (game/xact.h) with the two generators as event-effect instances and two
+// sound actors appended; the word at _D78 is so far only written, not read
+struct XActPopperShot {
+	BOOL mActive;               // _00
+	CVec mPos;                  // _04
+	f32 mYaw;                   // _14
+	f32 mPitch;                 // _18
+	f32 mSpeed;                 // _1C
+	f32 mDistance;              // _20
+	f32 mRange;                 // _24
+	f32 _28;                    // _28, StartPopperShot writes its 'power' argument (3 charged, 1 else), never read
+	f32 mStrength;              // _2C
+	s32 mKind;                  // _30, 1 for the small shot
+	XObj* mHomingTarget;        // _34
+	XObj* mHitTarget;           // _38, deferred hit during an event
+	Vec mHistory[10];           // _3C
+	XActPopperRing mRing[2];    // _B4
+	PopperShotDust mDust;       // _E4
+	u32 _D78;                   // _D78, the GameCube's mGen slot, unproven on the Wii
+	EffectInstance* mGen;       // _D7C, the flight effect
+	EffectInstance* mChargeGen; // _D80, the charge effect
+	AnimSfxActor mSfxActors[2]; // _D84, launch and impact sounds
+};
+STATIC_ASSERT(sizeof(XActPopperShot) == 0xD9C);
 
 #endif

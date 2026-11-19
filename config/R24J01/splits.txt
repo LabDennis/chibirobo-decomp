@@ -1210,7 +1210,7 @@ game/wii/xacttumble.cpp:
 	.text start:0x801067C0 end:0x801078C8
 
 game/wii/xactradar.cpp:
-	.text start:0x801078C8 end:0x801085C8
+	.text start:0x801078C8 end:0x80108790
 
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
