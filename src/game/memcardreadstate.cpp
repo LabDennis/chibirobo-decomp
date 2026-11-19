@@ -3,10 +3,6 @@
 #include "game/memcard.h"
 #include <stdio.h>
 
-char gSaveReadFileName[0xC8];
-// CARDRead's DMA target, so the buffer itself is 32-byte aligned
-SaveFile gSavePreviewFileBuffer[2] ATTRIBUTE_ALIGN(32);
-
 // NONMATCHING: retail keeps the card high base and derives the stat pointer from it,
 // ours materializes the stat pointer first and makes the base a copy
 /**

@@ -423,7 +423,7 @@ game/memcardjob.cpp:
 game/memcardinit.cpp:
 	.text       start:0x8008C10C end:0x8008C158
 	.ctors      start:0x801FEF3C end:0x801FEF40
-	.bss        start:0x80349200 end:0x8034A538
+	.bss        start:0x80349200 end:0x80356680
 
 game/cjanim.cpp:
 	.text       start:0x8008C158 end:0x8008E5C4

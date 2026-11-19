@@ -1,8 +1,7 @@
 #include "game/cgame.h"
 #include "game/ccard.h"
+#include "game/memcard.h"
 #include <stdio.h>
-
-char gSaveScanFileName[0x80];
 
 const char gSaveFileNameFormat[] = "CHIBIROBO(%d)";
 
