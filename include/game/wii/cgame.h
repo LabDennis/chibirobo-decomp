@@ -168,28 +168,37 @@ public:
 		mViewportDirty = TRUE;
 	}
 
-	u8 mType;            // _04, 0 perspective, 1 frustum, 2 orthographic
-	f32 mFov;            // _08
-	f32 mAspect;         // _0C
-	f32 mNear;           // _10
-	f32 mFar;            // _14
-	f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
-	f32 mBottom;         // _1C
-	f32 mLeft;           // _20
-	f32 mRight;          // _24
-	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
-	u8 _29[0x2C - 0x29];
-	Mtx44 mProjection;      // _2C
-	MtxP mProjectionSource; // _6C
-	f32 mIsOrtho;           // _70, 1.0 for the orthographic camera
-	f32 mProjParams[6];     // _74, the six entries of mProjection GXSetProjection takes
-	f32 mScale;             // _8C
+	union {
+		struct {
+			u8 mType;            // _04, 0 perspective, 1 frustum, 2 orthographic
+			f32 mFov;            // _08
+			f32 mAspect;         // _0C
+			f32 mNear;           // _10
+			f32 mFar;            // _14
+			f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
+			f32 mBottom;         // _1C
+			f32 mLeft;           // _20
+			f32 mRight;          // _24
+			u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
+			u8 _29[0x2C - 0x29];
+			Mtx44 mProjection;      // _2C
+			MtxP mProjectionSource; // _6C
+			f32 mIsOrtho;           // _70, 1.0 for the orthographic camera
+			f32 mProjParams[6];     // _74, the six entries of mProjection GXSetProjection takes
+			f32 mScale;             // _8C
+		};
+	};
 	CCameraView mView;      // _90
 	Mtx44 mViewMtx;         // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
 	CMtxP mViewSource;      // _118, an external view matrix the camera follows; clearing it dirties the view
-	f32 mViewport[6];       // _11C
-	u8 mViewportDirty;      // _134
-	Mtx44 mViewportMtx;     // _138, clip space to the viewport's pixels
+	union {
+		struct {
+			f32 mViewport[6];   // _11C
+			u8 mViewportDirty;  // _134
+			u8 _135[0x138 - 0x135];
+			Mtx44 mViewportMtx; // _138, clip space to the viewport's pixels
+		};
+	};
 	Mtx44 mScreenMtx;       // _178, viewport * projection * view
 	Mtx44 mScreenInv;       // _1B8
 
