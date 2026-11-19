@@ -702,6 +702,157 @@ void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl
 	}
 }
 
+// the object list's per-frame floor pass: it snapshots the motion-control camera and, for
+// every floor whose id selects a shape (0/1 a disc, 2 a box), builds the floor's world
+// matrix the same way GetFloorFacingAngle does, projects the outline onto the screen and
+// folds the result into mScreenTop/../mScreenRight and the floors' shared mFloorTop; the
+// running mToppleOffset is the average floor center
+extern "C" void fn_800B4988(XObj* object)
+{
+	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
+		return;
+
+	CCamera camera = gGame.mMotionControlCamera;
+	object->_6DC   = object->_6D8;
+	object->_6D8   = *(s32*)&camera.mScreenInv[3][3];
+	object->mScreenLeft = object->mScreenTop = object->mScreenRight = object->mScreenBottom = NAN;
+	object->mFloorTop                                                         = NAN;
+	object->mToppleOffset.Set(0.0f, 0.0f, 0.0f);
+
+	s32 count    = 0;
+	f32 floorTop = NAN;
+	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		XObjFloor* floor = &object->mFloors[i];
+		if (!(floor->mFlags & 2))
+			continue;
+		if (floor->mId < 0 || floor->mId >= 3)
+			continue;
+
+		CVec pos     = object->mMoveTranslate;
+		Vec center   = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent   = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 yaw      = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
+		if (object->GetKind() == 0x2A0)
+			pos = object->GetJointWorldPos(7);
+		if (gGame.mStage == 14) {
+			switch (object->_18C) {
+			case 1:
+			case 4:
+				pos.y += 30.0f;
+				break;
+			case 3:
+				extent.y *= 0.5f;
+				break;
+			case 10:
+				extent.y *= 0.45f;
+				pos.y -= 12.0f;
+				break;
+			}
+		}
+
+		Mtx transform, translate, scaling;
+		if (object->mBaseMtxPtr != NULL) {
+			PSMTXTrans(translate, center.x, center.y, center.z);
+			PSMTXScale(scaling, extent.x, extent.y, extent.z);
+			PSMTXConcat(object->mBaseMtxPtr, translate, transform);
+			PSMTXConcat(transform, scaling, transform);
+		} else {
+			Mtx local, rotate;
+			PSMTXTrans(translate, pos.x, pos.y, pos.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scaling, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(translate, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scaling, transform);
+		}
+
+		CVec origin;
+		origin.Set(0.0f, 0.0f, 0.0f);
+		PSMTXMultVec(transform, &origin, &origin);
+		object->mToppleOffset += origin;
+		++count;
+
+		f32 sx, sy, sz;
+		GXProject(origin.x, origin.y, origin.z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy, &sz);
+		sx *= camera.mScale;
+		if (sz <= 0.0f || sz >= 1.0f)
+			continue;
+		f32 minX = sx, minY = sy, maxX = sx, maxY = sy;
+
+		if (floor->mId == 2) {
+			// a box: the corners of the unit cube, half the space diagonal across
+			f32 h = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
+			static Vec corners[8]
+			    = { { -h, -h, h }, { h, -h, h }, { h, -h, -h }, { -h, -h, -h }, { -h, h, h }, { h, h, h }, { h, h, -h }, { -h, h, -h } };
+			Vec points[8];
+			PSMTXMultVecArray(transform, corners, points, 8);
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy,
+				          &sz);
+				sx *= camera.mScale;
+				if (sz <= 0.0f || sz >= 1.0f)
+					continue;
+				if (sx < minX)
+					minX = sx;
+				if (sy < minY)
+					minY = sy;
+				if (sx > maxX)
+					maxX = sx;
+				if (sy > maxY)
+					maxY = sy;
+			}
+			floorTop = points[0].y - 0.01f;
+		} else if (floor->mId < 2) {
+			// a disc: four points on each of the top and bottom rings, set around
+			// the screen camera's heading
+			f32 angle   = camera.mView.mAngle.y;
+			f32 sins[4] = { extent.x * (f32)sin(angle), extent.x * (f32)sin(HALF_PI + angle), extent.x * (f32)sin(PI + angle),
+				            extent.x * (f32)sin(PI + HALF_PI + angle) };
+			f32 coss[4] = { extent.z * (f32)cos(angle), extent.z * (f32)cos(HALF_PI + angle), extent.z * (f32)cos(PI + angle),
+				            extent.z * (f32)cos(PI + HALF_PI + angle) };
+			Vec points[8] = { { 0.0f, 0.0f, 0.0f } };
+			points[0]     = origin + CVec(sins[0], extent.y, coss[0]);
+			points[1]     = origin + CVec(sins[1], extent.y, coss[1]);
+			points[2]     = origin + CVec(sins[2], extent.y, coss[2]);
+			points[3]     = origin + CVec(sins[3], extent.y, coss[3]);
+			points[4]     = origin + CVec(sins[0], -extent.y, coss[0]);
+			points[5]     = origin + CVec(sins[1], -extent.y, coss[1]);
+			points[6]     = origin + CVec(sins[2], -extent.y, coss[2]);
+			points[7]     = origin + CVec(sins[3], -extent.y, coss[3]);
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy,
+				          &sz);
+				sx *= camera.mScale;
+				if (sz <= 0.0f || sz >= 1.0f)
+					continue;
+				if (sx < minX)
+					minX = sx;
+				if (sy < minY)
+					minY = sy;
+				if (sx > maxX)
+					maxX = sx;
+				if (sy > maxY)
+					maxY = sy;
+			}
+			floorTop = origin.y + extent.y;
+		}
+
+		if (count > 0)
+			object->mToppleOffset = object->mToppleOffset / count;
+		if (__fpclassifyf(minX) != FP_NAN && (__fpclassifyf(object->mScreenLeft) == FP_NAN || minX < object->mScreenLeft))
+			object->mScreenLeft = minX;
+		if (__fpclassifyf(minY) != FP_NAN && (__fpclassifyf(object->mScreenTop) == FP_NAN || minY < object->mScreenTop))
+			object->mScreenTop = minY;
+		if (__fpclassifyf(maxX) != FP_NAN && (__fpclassifyf(object->mScreenRight) == FP_NAN || maxX > object->mScreenRight))
+			object->mScreenRight = maxX;
+		if (__fpclassifyf(maxY) != FP_NAN && (__fpclassifyf(object->mScreenBottom) == FP_NAN || maxY > object->mScreenBottom))
+			object->mScreenBottom = maxY;
+		if (__fpclassifyf(object->mFloorTop) == FP_NAN || floorTop > object->mFloorTop)
+			object->mFloorTop = floorTop;
+	}
+}
+
 // the tint stage the game appends to every material (NW_Obj::InitColorTev): on the map and
 // the tintable object kinds ExecCallback_CALC_MAT rewrites its last stage's inputs, on the
 // rest it passes the previous color through. The padding byte the marker lives in is the
