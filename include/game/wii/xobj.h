@@ -1427,6 +1427,7 @@ public:
 	virtual void DrawWithView(Mtx view);                               // _178 override
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
 	virtual void DrawScreenOverlay();                                  // _190 override
+	virtual s32 OnPlayerContact(s32 unused, s32 flags);                // _1CC override
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
 
 	s32 mLoadState;     // _9A8
@@ -1860,7 +1861,6 @@ public:
 	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
-WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so
