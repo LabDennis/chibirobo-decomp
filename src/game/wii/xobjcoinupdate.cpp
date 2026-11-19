@@ -76,8 +76,11 @@ void XObjSound::ResetObjectState()
 	XObj::ResetObjectState();
 	_A04 = 0;
 	_A08 = 0;
-	if (GetKind() == 0x1D2) // the kind carries its own event table
+	switch (GetKind()) {
+	case 0x1D2: // the kind carries its own event table
 		mAnimSfx.Init((WiiPlayerState*)this, (AnimSfxEvent*)lbl_80307DA8);
+		break;
+	}
 }
 
 /**
