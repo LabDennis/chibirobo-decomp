@@ -1697,16 +1697,34 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
 
+// the people: the GameCube heads each tail with a StateFunc mState PTMF (0xC);
+// the Wii drops it, every other member keeps its order and lands at
+// GameCube+0xF4 -- the ctors' CStatus32 stores pin the offsets (retail Jenny
+// 0x800C2844: {0,vt} at _D84 and _D8C; Mama/Papa/Tao: one at _D80; Deca: two
+// at _D84/_D8C)
 class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
 	virtual ~XObjActorJenny();
 
 private:
-	u8 _tail[0xD98 - sizeof(XObjActor)];
+	f32 _D78;              // _D78, the GameCube's _C84
+	f32 _D7C;              // _D7C, the GameCube's _C88
+	u32 _D80;              // _D80, the GameCube's _C8C
+	CStatus32 mJointFlags; // _D84, the GameCube's _C90, 4 head joint, 8 joint shown
+	CStatus32 mHideKinds;  // _D8C, the GameCube's _C98, kinds queued to hide
+	u8 mJointHidden;       // _D94, hides joint 0-3-0-0-4 below the head while drawn
+	u8 _D95[0xD98 - 0xD95];
 };
 STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
 
+// the same decode holds for Mama/Papa/Tao: their retail ctors end with one
+// CStatus32 init pair at _D80, the rest of the tail matches the GameCube
+// layout at +0xF4 (_D78/_D7C scalars, mHideKinds _D80; Papa adds mJointShown
+// _D88; Tao mCarryMtx _D88, mMountMtx _DB8, mMountObjId _DE8, mMountState
+// _DEC, mMountObj _DF0) -- but declaring the member drops their ctor scores
+// 48.07 -> 45.45 while emitting the same tail stores, so the pads stay until
+// the member-init block matches
 class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
@@ -1743,7 +1761,14 @@ public:
 	virtual ~XObjActorDeca();
 
 private:
-	u8 _tail[0xDA0 - sizeof(XObjActor)];
+	f32 _D78;              // _D78, the GameCube's _C84
+	f32 _D7C;              // _D7C, the GameCube's _C88
+	u32 _D80;              // _D80, the GameCube's _C8C
+	CStatus32 mJointFlags; // _D84, 4 head joint
+	CStatus32 _D8C;        // _D8C, the GameCube's _C98
+	f32 mJointYaw;         // _D94, eases toward mJointYawTarget in steps of 0.1
+	f32 mJointYawTarget;   // _D98, command 3 sets PI (arg 0) or 0 (arg 1)
+	u8 _D9C[0xDA0 - 0xD9C];
 };
 STATIC_ASSERT(sizeof(XObjActorDeca) == 0xDA0);
 
