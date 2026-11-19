@@ -9,6 +9,7 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/xact.h"
 #include "game/wii/ceffect.h"
+#include "game/globals.h"
 #include "game/gmath.h"
 #include <math.h>
 
@@ -20,6 +21,8 @@ extern "C" void PlayCopterLandingAnimation(XObj* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
 extern "C" s32 gRefreshRate;
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
+extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
 
 // the tumble ring sits just above the floor
 static inline Vec RingPos(const Vec& pos, const Vec& offset)
@@ -49,8 +52,8 @@ static inline void KillGen(EffectInstance*& gen)
 // clears a shot and its effects, the GameCube's ResetShot
 static inline void ResetShot(XActPopperShot* shot)
 {
-	shot->mActive            = FALSE;
-	shot->mHitTarget         = NULL;
+	shot->mActive    = FALSE;
+	shot->mHitTarget = NULL;
 	ClearParticlePool(&shot->mDust.mPtcl);
 	shot->mRing[0].mAmount = 0.0f;
 	shot->mRing[1].mAmount = 0.0f;
@@ -169,8 +172,7 @@ static inline void UpdateCopterBobbing(XActCopter* act, u32 frames, f32 speed)
  * @note Address: 0x80107D40
  * @note Size: 0x888
  */
-void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, u32 frames, f32 frame,
-							  f32 end)
+void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, u32 frames, f32 frame, f32 end)
 {
 	// the flight time (copter parameter 0, in hundredths of a second) fills up while idle and runs down in flight
 	if (act->mState == 0) {
@@ -226,8 +228,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 			act->mOwner->SetAnim(0x28, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			((XObj*)act->mOwner->mCopterObj)->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
-		if (act->mOwner->GetHeight() <= 0.0f ||
-			(act->mOwner->GetHeight() <= 1.0f && GetPlayerFloorSlope(act->mOwner).Length() > 0.5f)) {
+		if (act->mOwner->GetHeight() <= 0.0f || (act->mOwner->GetHeight() <= 1.0f && GetPlayerFloorSlope(act->mOwner).Length() > 0.5f)) {
 			act->mOwner->SetAnim(0x816, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			PlayCopterLandingAnimation((XObj*)act->mOwner->mCopterObj);
 			act->mState = 6;
@@ -304,6 +305,82 @@ void InitPopperShot(XActPopperShot* shot)
 void ResetPopperShot(XActPopperShot* shot)
 {
 	ResetShot(shot);
+}
+
+// fires one shot; kind 1 is the small one. Same field order as the GameCube version:
+// on the Wii the joint-attached particles are event-effect instances (pos/rot zero,
+// scale one, like the tumble effects) and the launch sound plays through both the
+// shot's 3D actor and the flat PlayWiiSoundEffect while the archive mReady flag is 2
+/**
+ * @note Address: 0x80108790
+ * @note Size: 0x43C
+ */
+// NONMATCHING: 68.27% - the semantics match retail field-for-field (same ids, same TRS
+// {0,0,0}/{0,0,0}/{1,1,1} effect writes, same mReady=2/PlayWiiSoundEffect/mReady=1,
+// same actor detail_StartSound + SetVolume, same trailing impact-detection call). The
+// residue is stack-frame codegen: retail keeps a bytewise Vec stack copy of pos
+// (stw-bit-copy + lfs/frsp reload into mPos) plus two separate TRS triples for the
+// two effect calls - frame 0xC0 with f28-f31 + r28-r31 saved; this source compiles to
+// a 0x70 frame with shared temporaries. Tested: explicit CVec(pos) temp and
+// per-call-site Vec triples, both scored lower.
+void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
+                     f32 strength)
+{
+	shot->mActive    = TRUE;
+	shot->mHitTarget = NULL;
+	shot->mPos       = pos;
+	shot->mYaw       = yaw;
+	shot->mPitch     = pitch;
+	shot->mSpeed     = speed;
+	shot->mDistance  = 0.0f;
+	shot->mRange     = range;
+	shot->_28        = power;
+	for (int i = 0; i < 10; i++) {
+		shot->mHistory[i].x = shot->mPos.x;
+		shot->mHistory[i].y = shot->mPos.y;
+		shot->mHistory[i].z = shot->mPos.z;
+	}
+	shot->mRing[0].mPos.x  = pos.x;
+	shot->mRing[0].mPos.y  = pos.y;
+	shot->mRing[0].mPos.z  = pos.z;
+	shot->mRing[0].mAmount = 0.9f;
+	shot->mRing[0].mRadius = 100.0f;
+	shot->mRing[0].mColor  = 0x00FF0096;
+	shot->mStrength        = strength;
+	shot->mKind            = kind;
+	if (target != NULL) {
+		shot->mHomingTarget = target;
+	} else {
+		shot->mHomingTarget = NULL;
+	}
+	Vec zero   = { 0.0f, 0.0f, 0.0f };
+	Vec unit   = { 1.0f, 1.0f, 1.0f };
+	shot->mGen = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, kind == 1 ? 0x4E : 0x4F, 1);
+	if (shot->mGen != NULL) {
+		shot->mGen->pos   = zero;
+		shot->mGen->rot   = zero;
+		shot->mGen->scale = unit;
+		UpdateEffectMtx(shot->mGen);
+	}
+	if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
+		shot->mChargeGen = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x50, 1);
+		if (shot->mChargeGen != NULL) {
+			shot->mChargeGen->pos   = zero;
+			shot->mChargeGen->rot   = zero;
+			shot->mChargeGen->scale = unit;
+			UpdateEffectMtx(shot->mChargeGen);
+		}
+	}
+	f32 full             = (s32)GetPlayerActionParameter(31) / 100.0f;
+	s32 sfx              = strength >= full ? (kind == 1 ? 0x200 : 0x203) : (kind == 1 ? 0x78 : 0x202);
+	CSound3DActor* actor = shot->mSfxActors[0].mActor;
+	if (actor != NULL && actor->detail_StartSound(&actor->mHandle, sfx, NULL) == nw4r::snd::SoundStartable::START_SUCCESS) {
+		actor->mHandle.SetVolume(1.0f, 0);
+	}
+	gGame.mSound.mArchivePlayer.mReady = 2;
+	PlayWiiSoundEffect(&gGame.mSound, sfx, 1.0f, 0.0f);
+	gGame.mSound.mArchivePlayer.mReady = 1;
+	fn_80108BCC(shot);
 }
 
 } // extern "C"

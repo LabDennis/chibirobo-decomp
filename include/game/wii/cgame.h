@@ -971,7 +971,7 @@ struct WiiPlayerState : public XObj {
 	u8 _0CA4[0xCD0 - 0xCA4];
 	XActTumble mTumble; // _0CD0
 	XActCopter mCopter; // _0D18
-	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
+	XAction mPopper;    // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	// his sounds: AnimSfx's head (game/wii/animsfx.h, which needs this header) with two actors, as XObjCoin's;
 	// only the two are reached and the radar action follows at _95D4
