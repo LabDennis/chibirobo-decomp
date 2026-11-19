@@ -654,17 +654,22 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	return FALSE;
 }
 
+// NONMATCHING: retail assigns the locals different stack slots (node before the screen floats,
+// a separate slot for the scaled screen x and a 0x50 frame instead of 0x40); control flow and
+// instruction sequence already match
 BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 {
-	if (mObject.m_pScnMdl == NULL)
+	if (mObject.m_pScnMdl != NULL) {
+		nw4r::g3d::ResNode node = GetRootResNode();
+		Vec position            = GetWorldPos(node);
+		f32 screenX, screenY, screenZ;
+		GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX,
+		          &screenY, &screenZ);
+		screenX *= camera->mScale;
+		if (screenZ > 0.0f && screenZ < 1.0f)
+			return FALSE; // inside the depth range: visible
 		return TRUE;
-	nw4r::g3d::ResNode node = GetRootResNode();
-	Vec position            = GetWorldPos(node);
-	f32 screenX, screenY, screenZ;
-	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
-	screenX *= camera->mScale;
-	if (screenZ > 0.0f && screenZ < 1.0f)
-		return FALSE; // inside the depth range: visible
+	}
 	return TRUE;
 }
 
@@ -985,11 +990,12 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
 extern "C" BOOL QueryMapFloorHeight(XObj* object, f32 minHeight)
 {
 	XObj* map = (XObj*)gGame.mXObjs.mPools[3].mObjects;
-	if (!fn_800C98E0(map, object->GetPos(), -1, &object->mFloorHit))
-		return FALSE;
-	if (object->mFloorHit.mHeight < minHeight)
-		object->mFloorHit.mHeight = minHeight;
-	return TRUE;
+	if (fn_800C98E0(map, object->GetPos(), -1, &object->mFloorHit)) {
+		if (object->mFloorHit.mHeight < minHeight)
+			object->mFloorHit.mHeight = minHeight;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // fn_800B650C, the GameCube cjanim.cpp's QueryObjectFloorHeight: the highest floor
@@ -1117,7 +1123,7 @@ static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 {
 	u64 key = 1;
 	for (s32 i = 0; i < count; ++i)
-		key = key << 4 | (args[i] & 0xF);
+		key = key << 4 | (args[i] & 0xFLL);
 	const AnimNodeRecord* records = NULL;
 	for (s32 i = 0; lbl_80302300[i].mKind >= 0; ++i) {
 		if (lbl_80302300[i].mKind == object->GetKind()) {
@@ -1125,12 +1131,17 @@ static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 			break;
 		}
 	}
+	const char* name = NULL;
 	if (records != NULL) {
 		for (s32 i = 0; records[i].mName != NULL; ++i) {
-			if (records[i].mKey == key)
-				return records[i].mName;
+			if (records[i].mKey == key) {
+				name = records[i].mName;
+				break;
+			}
 		}
 	}
+	if (name != NULL)
+		return name;
 	return NULL;
 }
 
