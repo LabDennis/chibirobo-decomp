@@ -1682,13 +1682,18 @@ private:
 STATIC_ASSERT(sizeof(XObjActorDeca) == 0xDA0);
 
 // one entry of XObjArmy's five-slot list at _9E4: retail element ctor
-// 0x800C50E4 / dtor 0x800C50F8, stride 0x30; the element's members are not recovered
+// 0x800C50E4 / dtor 0x800C50F8, stride 0x30; the ctor plants a CVec vptr at
+// _14 and _24, so the list element carries a CVec at _08 and one at _18
 struct XObjArmySlot {
 	XObjArmySlot();
 	~XObjArmySlot();
 
-	u8 _00[0x30];
+	u8 _00[0x8];
+	CVec _08;
+	CVec _18;
+	u8 _28[0x8];
 };
+STATIC_ASSERT(sizeof(XObjArmySlot) == 0x30);
 
 // the army object: five slot records at _9E4, then its own AnimSfx at _AD4
 class XObjArmy : public XObj {
