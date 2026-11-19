@@ -1080,7 +1080,6 @@ BOOL FindMapFloorBelow(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec*
 void ScaleVectorInPlace(Vec* value, f32 scale);
 Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index);
 Vec GetFloorExtent(XObjFloor* const* floors, s32 index);
-HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path);
 void GetJointScale(CJObj*, HSD_JObj* jobj, Vec* scale);
 f32 GetHorizontalDistance(const Vec* a, const Vec* b);
 s32 GetObjectPoolId(const XObj* object);
@@ -1117,7 +1116,6 @@ u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 
 extern "C" {
 f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
-HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path);
 s32 GetObjectPoolId(const XObj* object);
 BOOL IsEventScriptActive(const CGame* game);
 BOOL IsLiftActionState(const XActLift* act, s32 wanted);
@@ -1185,7 +1183,7 @@ void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
  */
 // NONMATCHING: retail calls ~CPad at both exits of the pad's block (bl __dt__4CPadFv at 0x28C and 0x11CC) where this build
 // expands it, like the state tests that sit out of line behind UpdatePlayerMovementAndContacts. Fillers put this function about
-// 3800 inliner units under retail's; GetObjectJointByPath, a header inline in retail, would be expanded here too. The US and PAL
+// 3800 inliner units under retail's, so it expands the header inline GetObjectJointByPath too, which retail calls. The US and PAL
 // height compare of the ledge branch is dropped here (see there)
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
@@ -1303,7 +1301,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							// Only the Japanese release starts a hang or a jump from this height check.
 							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
 							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value
-							f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							f32 height = ABS(object->mSelectedFloorHeight - player->mMoveTranslate.y);
 							if (height != 0) {
 #if defined(VERSION_JP)
 								if (height >= 12 && height <= 12.5f) {
@@ -8731,15 +8729,6 @@ extern "C" XObj* GetDrawListObject(const CGame* game, s32 list, s32 index)
 extern "C" void GetJointScale(CJObj*, HSD_JObj* jobj, Vec* scale)
 {
 	HSD_JObjGetScale(jobj, scale);
-}
-
-/**
- * @note Address: 0x800B2764
- * @note Size: 0x7C
- */
-extern "C" HSD_JObj* GetObjectJointByPath(const CJObj* object, s32 depth, s32* path)
-{
-	return GetJointByPath(object->mJObj, path, depth);
 }
 
 /**
