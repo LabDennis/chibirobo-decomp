@@ -137,6 +137,11 @@ class ResNode {
 public:
 	ResNodeData* mpData; // _00
 
+	explicit ResNode(void* pData = NULL)
+	    : mpData((ResNodeData*)pData)
+	{
+	}
+
 	bool IsValid() const { return mpData != NULL; }
 	ResNodeData* ptr() const { return mpData; }
 	ResNodeData& ref() const
@@ -1434,25 +1439,70 @@ public:
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
-// the base of the people and toys, the GameCube's members shifted by +0x28
+// one of an actor's eight joint parts, the GameCube's XObjJointPart; the ctor's NULL
+// store at _00 is the ResNode default constructor
+struct XObjJointPart {
+	nw4r::g3d::ResNode mJoint; // _00
+	XObj* mObj;                // _04, cleared by ResetForNewGame
+	Mtx mMtx;                  // _08
+};
+STATIC_ASSERT(sizeof(XObjJointPart) == 0x38);
+
+// the base of the people and toys, the GameCube class behind the Wii XObj; member offsets
+// come from the ctor's vptr stores and ResetForNewGame's clear list, sizes +0x28 over the
+// GameCube's through the look block, then the Wii AnimSfx/AnimSfxActor pair and mParts
 class XObjActor : public XObj {
 public:
 	XObjActor();
 	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
 
-	f32 mHeading;   // _9A8, the way it walks
-	f32 mMoveSpeed; // _9AC, move speed
-	u8 _9B0[0x9B8 - 0x9B0];
-	s32 mKindStep;    // _9B8, the kind's own step
-	u32 mKindCounter; // _9BC, cleared with mKindStep
-	u8 _9C0[0xB20 - 0x9C0];
+	f32 mHeading;           // _9A8, the way it walks
+	f32 mMoveSpeed;         // _9AC, move speed
+	f32 mFacing;            // _9B0, the yaw the model is turned to
+	f32 _9B4;               // _9B4, set to PI in ResetForNewGame
+	s32 mKindStep;          // _9B8, the kind's own step
+	u32 mKindCounter;       // _9BC, cleared with mKindStep
+	CStatus32 mActorStatus; // _9C0, 2 a sound is due, 0x2000 busy
+	u32 _9C8;               // _9C8
+	s32 _9CC;               // _9CC
+	f32 _9D0;               // _9D0, set to 1.0 on reset
+	f32 _9D4;               // _9D4, set to 1.0 on reset
+	Vec mHitPos;            // _9D8
+	Vec mHomePos;           // _9E4, where a knocked toy stood before it hopped away
+	Vec mVelocity;          // _9F0
+	f32 mHitStrength;       // _9FC
+	f32 mFallSpeed;         // _A00, vertical speed added to y each tick
+	f32 mGroundHeight;      // _A04, floor height under the actor plus the kind's offset
+	s32 mCmd[20];           // _A08, the event command HandleEventCommand got and its args
+	u8 _A58[4];
+	s32 mMovePhase;  // _A5C, index into the movement speed cycle
+	f32 _A60;        // _A60
+	f32 _A64;        // _A64
+	Vec _A68;        // _A68, set from the fourth Vec of the reset/init table
+	s16 mAttachedId; // _A74, id of the attached object, -1 for none
+	u8 _A76[0xA78 - 0xA76];
+	XObj* mAttached;       // _A78, the attached object
+	Mtx mAttachedMtx;      // _A7C, where the attached object is held
+	XObj* mHeldObjects[2]; // _AAC, Mama can carry a pair
+	u8 _AB4[0xAC4 - 0xAB4];
+	CVec _AC4; // _AC4, its vptr ends it at _AD0
+	u8 _AD4[0xAF0 - 0xAD4];
+	CObjVec _AF0;               // _AF0, a TVec and two CVecs, head-look tween shape
 	AnimSfx mSfx;               // _B20, the sounds UpdateAnimationSounds plays
 	AnimSfxActor mSfxActors[2]; // _B7C, the secondary sound slots
+	s32 mLookMode;              // _B94, 0 ahead, 1 at mLookTarget, 3 at mLookAngle
+	f32 mHeadYaw;               // _B98
+	f32 mLookAngle;             // _B9C
+	f32 mLookRate;              // _BA0
+	const Vec* mLookTarget;     // _BA4
+	f32 mHeadPitch;             // _BA8
+	XObjJointPart mParts[8];    // _BAC
+	u8 _D6C[0xD78 - 0xD6C];
 
 	Vec GetCameraTarget();
 };
-STATIC_ASSERT(sizeof(XObjActor) == 0xB98); // the polymorphic tail pads it to 8
+STATIC_ASSERT(sizeof(XObjActor) == 0xD78);
 
 // the plain object an XObjHBox carries
 struct XObjHBoxPart {

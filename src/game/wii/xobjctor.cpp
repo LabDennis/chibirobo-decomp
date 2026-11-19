@@ -60,6 +60,13 @@ XObjActorToy::XObjActorToy()
 {
 }
 
+// NONMATCHING: layout and member set are recovered (0xD78: CStatus32@0x9C0,
+// CVec@0xAC4, CObjVec@0xAF0, AnimSfx@0xB20, AnimSfxActor[2]@0xB7C,
+// XObjJointPart[8]@0xBAC), but retail expands __ct__4XObjFv, __ct__9CJArchiveFv
+// and __ct__7CObjVecFv inline while MWCC calls them here. Giving CJArchive an
+// in-class definition would drop its weak out-of-line copy, whose only retail
+// caller is the not-yet-reconstructed __ct__7XObjChrFv. The mParts element loop
+// also schedules differently (peeled/bdnz vs cmplw/blt).
 XObjActor::XObjActor()
 {
 }
