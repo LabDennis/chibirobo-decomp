@@ -261,6 +261,11 @@ game/wii/homemenu.cpp:
 game/wii/evt.cpp:
 	.text start:0x8009453C end:0x800A18B8
 
+game/wii/xobjctor.cpp:
+	extab start:0x8000B2E4 end:0x8000B7B4
+	extabindex start:0x80013BB0 end:0x80013DFC
+	.text start:0x800C13B0 end:0x800C5424
+
 game/wii/xobjs.cpp:
 	extab start:0x8000B7B4 end:0x8000B884
 	extabindex start:0x80013DFC end:0x80013ED4

@@ -9,6 +9,8 @@
 #include "Dolphin/gx.h"
 #include "Dolphin/mtx.h"
 
+#include "game/cptcl.h"
+#include "game/ctpl.h"
 #include "game/cfile.h"
 #include "game/coordinfo.h"
 #include "game/cstatus64.h"
@@ -1433,6 +1435,8 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 // the base of the people and toys, the GameCube's members shifted by +0x28
 class XObjActor : public XObj {
 public:
+	XObjActor();
+	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
 
 	f32 mHeading;   // _9A8, the way it walks
@@ -1440,9 +1444,13 @@ public:
 	u8 _9B0[0x9B8 - 0x9B0];
 	s32 mKindStep;    // _9B8, the kind's own step
 	u32 mKindCounter; // _9BC, cleared with mKindStep
+	u8 _9C0[0xB20 - 0x9C0];
+	AnimSfx mSfx;               // _B20, the sounds UpdateAnimationSounds plays
+	AnimSfxActor mSfxActors[2]; // _B7C, the secondary sound slots
 
 	Vec GetCameraTarget();
 };
+STATIC_ASSERT(sizeof(XObjActor) == 0xB98); // the polymorphic tail pads it to 8
 
 // the plain object an XObjHBox carries
 struct XObjHBoxPart {
@@ -1457,6 +1465,9 @@ STATIC_ASSERT(sizeof(XObjHBoxPart) == 0x9B8);
 // a box that reads a second object (placement 36) and draws it inside itself
 class XObjHBox : public XObj {
 public:
+	XObjHBox();
+	virtual ~XObjHBox();
+
 	virtual void Release();                                            // _40 override
 	virtual void InitializeObject();                                   // _14C override, fn_801164D8
 	virtual void ResetForNewGame();                                    // _150 override, fn_80116518
@@ -1543,16 +1554,153 @@ public:
 	u8 _1374[0x84];
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
-WII_XOBJ_DECL(XObjChr, 0x1CCA0);
-WII_XOBJ_DECL(XObjActor3, 0x21C8);
-WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
-WII_XOBJ_DECL(XObjActorToy, 0x2208);
-WII_XOBJ_DECL(XObjActorJenny, 0xD98);
-WII_XOBJ_DECL(XObjActorMama, 0xD88);
-WII_XOBJ_DECL(XObjActorPapa, 0xD90);
-WII_XOBJ_DECL(XObjActorTao, 0xDF8);
-WII_XOBJ_DECL(XObjActorDeca, 0xDA0);
-WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
+// the Chibi-Robo character object: its dtor (0x800C14A0) unwinds a CPtclSet at
+// _1B7BC, a CTexObj[2] at _1C774 and one AnimSfxActor at _1CC90 among many
+// members whose types are not recovered yet
+class XObjChr : public XObj {
+public:
+	// the dust pool the character's own effects draw from: retail RTTI names it
+	// XObjChr::CPtclSet, a DustParticlePool that adds a virtual at _08
+	class CPtclSet : public DustParticlePool {
+	public:
+		CPtclSet();
+		~CPtclSet();
+		virtual void vf08(); // _08
+	};
+
+	XObjChr();
+	virtual ~XObjChr();
+
+private:
+	u8 _9A8[0x1B7BC - 0x9A8];
+	CPtclSet mDustPool; // _1B7BC
+	CTexObj mTex[2];    // _1C774
+	u8 _1C97C[0x1CC90 - 0x1C97C];
+	AnimSfxActor mActor; // _1CC90
+	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
+};
+STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);
+
+// the three-object actor: like XObjChr it carries a dust pool (its own nested
+// CPtclSet at _C3C), a CTexObj[2] at _1BF4 and an AnimSfx at _1E28
+class XObjActor3 : public XObj {
+public:
+	class CPtclSet : public DustParticlePool {
+	public:
+		CPtclSet();
+		~CPtclSet();
+		virtual void vf08(); // _08
+	};
+
+	XObjActor3();
+	virtual ~XObjActor3();
+
+private:
+	u8 _9A8[0xC3C - 0x9A8];
+	CPtclSet mDustPool; // _C3C
+	CTexObj mTex[2];    // _1BF4
+	u8 _1DFC[0x1E28 - 0x1DFC];
+	AnimSfx mSfx; // _1E28
+	u8 _1E84[0x21C8 - 0x1E84];
+};
+STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
+
+// the leticker object: its ctor/dtor (0x800C4B90/0x800C4DE8) cover an AnimSfx at _A64
+class XObjLeticker : public XObj {
+public:
+	XObjLeticker();
+	virtual ~XObjLeticker();
+	virtual void DrawLate(); // _28C
+
+private:
+	u8 _9A8[0xA64 - 0x9A8];
+	AnimSfx mSfx; // _A64
+	u8 _AC0[0xAC8 - 0xAC0];
+};
+STATIC_ASSERT(sizeof(XObjLeticker) == 0xAC8);
+
+class XObjActorToy : public XObjActor {
+public:
+	XObjActorToy();
+	virtual ~XObjActorToy();
+
+private:
+	u8 _tail[0x2208 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
+
+class XObjActorJenny : public XObjActor {
+public:
+	XObjActorJenny();
+	virtual ~XObjActorJenny();
+
+private:
+	u8 _tail[0xD98 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
+
+class XObjActorMama : public XObjActor {
+public:
+	XObjActorMama();
+	virtual ~XObjActorMama();
+
+private:
+	u8 _tail[0xD88 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
+
+class XObjActorPapa : public XObjActor {
+public:
+	XObjActorPapa();
+	virtual ~XObjActorPapa();
+
+private:
+	u8 _tail[0xD90 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorPapa) == 0xD90);
+
+class XObjActorTao : public XObjActor {
+public:
+	XObjActorTao();
+	virtual ~XObjActorTao();
+
+private:
+	u8 _tail[0xDF8 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorTao) == 0xDF8);
+
+class XObjActorDeca : public XObjActor {
+public:
+	XObjActorDeca();
+	virtual ~XObjActorDeca();
+
+private:
+	u8 _tail[0xDA0 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorDeca) == 0xDA0);
+
+// one entry of XObjArmy's five-slot list at _9E4: retail element ctor
+// 0x800C50E4 / dtor 0x800C50F8, stride 0x30; the element's members are not recovered
+struct XObjArmySlot {
+	XObjArmySlot();
+	~XObjArmySlot();
+
+	u8 _00[0x30];
+};
+
+// the army object: five slot records at _9E4, then its own AnimSfx at _AD4
+class XObjArmy : public XObj {
+public:
+	XObjArmy();
+	virtual ~XObjArmy();
+	virtual void DrawLate(); // _28C
+
+private:
+	u8 _9A8[0x9E4 - 0x9A8];
+	XObjArmySlot mSlots[5]; // _9E4
+	AnimSfx mSfx;           // _AD4
+};
+STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);
 
 // a carried model, drawn with the object 0x13C model the spider claimed a slot for (the GameCube's CarryInfo)
 struct CarryInfo {

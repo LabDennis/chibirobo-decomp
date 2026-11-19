@@ -30,7 +30,10 @@ class AnimSfxActor {
 public:
 	WiiSound3D* mManager;  // _00
 	CSound3DActor* mActor; // _04
-	u32 _08;
+	// _08 vtable
+
+	AnimSfxActor();
+	virtual ~AnimSfxActor();
 
 	void Reset(); // 0x8003C3C4
 

@@ -12,6 +12,9 @@
 // the GameCube played its object sounds without one
 class XObjSound : public XObj {
 public:
+	XObjSound();
+	virtual ~XObjSound();
+
 	virtual void InitializeObject();       // _14C
 	virtual void ResetObjectState();       // _154
 	virtual void UpdateObject(u32 frames); // _164
@@ -57,6 +60,9 @@ STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 // the money, scrap, battery and experience pickups; two sound actors of their own
 class XObjCoin : public XObjFlags {
 public:
+	XObjCoin();
+	virtual ~XObjCoin();
+
 	virtual void InitializeObject();                                                 // _14C
 	virtual void ResetObjectState();                                                 // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);                           // _158
@@ -91,6 +97,9 @@ STATIC_ASSERT(sizeof(XObjCoin) == 0xA30);
 // the item pickups; the Wii keeps one word of its own
 class XObjItem : public XObjFlags {
 public:
+	XObjItem();
+	virtual ~XObjItem();
+
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void UpdateObject(u32 frames);                 // _164
