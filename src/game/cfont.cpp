@@ -481,6 +481,10 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
  */
 // NONMATCHING: retail's .rodata starts with 0x18 unreferenced zero bytes, so every template and string sits 0x18 further in
 #if defined(VERSION_JP)
+// retail's pool anchor for Init: six zero words ahead of the templates, the code only
+// ever reads from 0x18 on. whatever produced them is gone from the retail link too,
+// they stay so the pool layout lines up
+static const u32 sFontPoolAnchor[6] = { 0, 0, 0, 0, 0, 0 };
 void CFont::Init()
 #else
 void CFont::Init(BOOL builtin)
