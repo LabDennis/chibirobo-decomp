@@ -1,11 +1,17 @@
 #include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 #include "game/wii/animsfx.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/coordinfo.h"
 #include <math.h>
 #include <stdlib.h>
+#include "JSystem/JMath/Inline.h"
+
+// the Wii build inlines the JMath VEC helpers as paired-single code; the SDK's
+// out-of-line PSVECScale only exists as a call in this repo's Dolphin headers
+#define PSVECScale JMathInlineVEC::PSVECScale
 
 // the Wii coin and item objects and the sound objects next to them; the unit also owns the
 // XObjHBox part forwards behind the coin code. The GameCube's xobjcoinupdate.cpp covers the
@@ -23,20 +29,7 @@ extern u32 lbl_8045DB20[];                // the game's coin handle table, index
 
 extern "C" {
 void* fn_800A11A4(void* particle, u32 code, s32 status);
-void fn_802BEABC(void* spawned);
 }
-
-// what the Wii's particle spawn hands back (fn_800A11A4); the caller fills its TRS
-// before fn_802BEABC registers it. the coin's milestone effects also take a joint's
-// world matrix at _60
-struct SpawnedEffect {
-	u8 _00[0xC];
-	Vec mTranslate; // _0C
-	Vec mRotate;    // _18
-	Vec mScale;     // _24
-	u8 _30[0x30];
-	MtxP mWorldMtx; // _60
-};
 
 // the money pickups' milestone sparkle effects, indexed by GetItem(); retail keeps the
 // table in .data (0x803080B8): copper, silver, gold
@@ -345,45 +338,72 @@ void XObjCoin::UpdateObject(u32 frames)
 			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * mFade);
 		}
 	}
-	if (mParam0 == 1) { // a dropped coin gets its heading and fall speed
+	switch (mParam0) { // a dropped coin gets its heading and fall speed
+	case 0:
+		break;
+	case 1:
 		mState      = 1;
 		mFallFrames = 0;
 		mParam0     = 0;
 		mStatus.mFlags |= 0x100000;
 		mFallSpeed = (f32)(s32)mParams[0] / 100.0f;
 		mHeading   = radians * (s32)mParam1;
-	}
-	UpdateFallingCoin(this, frames);
+		break;
+	}	UpdateFallingCoin(this, frames);
 	if (IsCoinItemInRange(this, 0, 100)) {
 		// the pickup sparkle effects ride on anim-frame milestones of the two spins
 		s32 item = GetItem();
 		switch (GetAnimId()) {
-		case 1:
-			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f)
-			    || (mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)
-			    || (mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f) || (mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f)
-			    || (mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f) || (mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f)
-			    || (mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f) || (mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f)
-			    || (mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f)) {
-				MtxP mtx               = GetWorldMtx(sCoinSparkles[item].mJoint);
-				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
-				if (spawned != NULL) {
-					spawned->mWorldMtx = mtx;
-					fn_802BEABC(spawned);
+		case 1: {
+			BOOL hit = mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f;
+			if (hit) {
+				MtxP mtx             = GetWorldMtx(sCoinSparkles[item].mJoint);
+				EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
+				if (inst != NULL) {
+					inst->mtx = mtx;
+					UpdateEffectMtx(inst);
 				}
 			}
 			break;
-		case 2:
-			if ((mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f) || (mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f)
-			    || (mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f) || (mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f)) {
-				MtxP mtx               = GetWorldMtx(sCoinSparkles[item].mJoint);
-				SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
-				if (spawned != NULL) {
-					spawned->mWorldMtx = mtx;
-					fn_802BEABC(spawned);
+		}
+		case 2: {
+			BOOL hit = mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f;
+			if (!hit)
+				hit = mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f;
+			if (hit) {
+				MtxP mtx             = GetWorldMtx(sCoinSparkles[item].mJoint);
+				EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
+				if (inst != NULL) {
+					inst->mtx = mtx;
+					UpdateEffectMtx(inst);
 				}
 			}
 			break;
+		}
 		}
 	}
 	// a finished bounce sound gives its claim slot back
@@ -440,12 +460,12 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 	}
 	if (effect >= 0) {
 		Vec rotation           = { 0.0f, 0.0f, 0.0f };
-		SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, effect, 1);
-		if (spawned != NULL) {
-			spawned->mTranslate = mMoveTranslate;
-			spawned->mRotate    = rotation;
-			spawned->mScale     = mMoveScale;
-			fn_802BEABC(spawned);
+		EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, effect, 1);
+		if (inst != NULL) {
+			inst->pos   = mMoveTranslate;
+			inst->rot   = rotation;
+			inst->scale = mMoveScale;
+			UpdateEffectMtx(inst);
 		}
 	}
 	if (sound >= 0 && mActors[0].GetHandle() == NULL) {
