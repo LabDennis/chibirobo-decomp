@@ -1317,6 +1317,10 @@ if wii:
                 # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
                 # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
                 Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the tumble action's front half, 0x801067C0-0x80106D60: ResetTumbleAction (the
+                # GameCube's xacttumble.cpp), FinishTumbleAction and HandleTumbleActionInput;
+                # UpdatePlayerTumbleAnimation follows, still to port
+                Object(NonMatching, "game/wii/xacttumble.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool

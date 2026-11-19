@@ -865,6 +865,7 @@ struct WiiOXMenu {
 // one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
 // mState to tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
 struct WiiPlayerState;
+struct EffectInstance; // game/wii/ceffect.h
 class XAction {
 public:
 	WiiPlayerState* mOwner; // _00
@@ -903,9 +904,9 @@ STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
 
 class XActTumble : public XAction {
 public:
-	XActTumbleFade mFade; // _2C
-	f32 mSavedYaw;        // _40
-	u8 _44[0x48 - 0x44];  // _44, the GameCube's idle particle
+	XActTumbleFade mFade;        // _2C
+	f32 mSavedYaw;               // _40
+	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
