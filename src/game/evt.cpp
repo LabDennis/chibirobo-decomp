@@ -44,12 +44,24 @@ class CJObj;
 extern "C" void OSPanic(const char* file, int line, const char* msg, ...);
 
 // the event globals, in the order the file's static initializer builds them
+extern "C" {
+// 0x134 bytes of dead retail bss ahead of the event globals. The retail
+// static initializer and InitializeEventScriptContext use it only as the
+// base address for offset arithmetic; nothing ever reads or writes it.
+u8 lbl_80345C78[0x134];
+}
 CEvtFlags gEventFlags;
 CEvtVars gEventVars;
 CEvtQueueEx gEventScriptQueue;
 CEvtTimer gEventTimers;
 
 // script names for objects
+extern "C" {
+// 13 word pairs of retail data ahead of gEventObjectIds; nothing references
+// them any more, their original meaning is unknown.
+u32 lbl_80224748[26]
+    = { 0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0 };
+}
 EvtObjIdTable gEventObjectIds = { 0 };
 
 // the stream's beat callback latches the beat here for WAIT
