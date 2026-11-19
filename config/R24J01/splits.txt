@@ -1207,7 +1207,7 @@ game/wii/objb_act.cpp:
 	.text start:0x800F48E0 end:0x801067C0
 
 game/wii/xacttumble.cpp:
-	.text start:0x801067C0 end:0x80106D60
+	.text start:0x801067C0 end:0x801078C8
 
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
