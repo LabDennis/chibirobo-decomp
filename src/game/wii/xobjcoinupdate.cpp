@@ -15,8 +15,6 @@ extern "C" u32 GetPickupRewardValue(s32 index);
 extern "C" void AdjustPlayerMoney(WiiPlayerParams* params, s32 amount);
 extern "C" void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
 extern "C" void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
-extern "C" u32 GetStageCollectionFlagBase(s32 set);
-extern "C" void* GetSpawnData(s32 id);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 extern "C" void PlayGameSound(XSound* sound, s32 id, s32 volume);
 
@@ -241,9 +239,10 @@ void XObjCoin::ResetObjectState()
 	XObj::ResetObjectState();
 	s32 sign = (rand() & 1) ? 1 : -1;
 	mPhase   = 0.13962634f; // 8 degrees
-	mSpin    = sign * 0.017453292f * (f32)(rand() % 360);
-	if (GetAnimEndFrame() > 0.0f) {
-		f32 frame = (f32)fmod((f64)rand(), (f64)GetAnimEndFrame());
+	mSpin    = sign * (0.017453292f * (f32)(rand() % 360));
+	f32 end  = GetAnimEndFrame();
+	if (end > 0.0f) {
+		f32 frame = (f32)fmod((f32)rand(), (f64)end);
 		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, frame, 1.0f, 1.0f, 15.0f);
 	}
 	mFade           = 0.0f;
@@ -525,11 +524,11 @@ extern "C" void UpdateFallingCoin(XObjCoin* coin, u32 frames)
  * @note Size: 0x5C4
  * @note NONMATCHING: the pointer flick that makes a coin bounce. The first guard reads as a
  * status check, but retail dispatches it through *(gGame+0x41E4) slot _40 with this=&gGame,
- * r4=pointer and the mask in r5:r6 — GetStatusFlags(u64) has only the mask arg, so the real
+ * r4=pointer and the mask in r5:r6 - GetStatusFlags(u64) has only the mask arg, so the real
  * callee's first parameter is still unknown. The two action flags (+0x2D0 of action 1,
  * +0x11F8 of action 7) and the first bounce constant's exact roles are not modelled.
  */
-void XObjCoin::vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed)
+s32 XObjCoin::vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed)
 {
 	WiiPlayerState* player;
 	CSound3DActor* actor;
@@ -548,20 +547,21 @@ void XObjCoin::vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed
 		goto end;
 	{
 		const f32 radians = 0.017453292f;
-		f32 absX          = (f32)fabs(motion->x);
+		f32 absX          = __fabsf(motion->x);
 		if (absX < 0.002f) // a flick has to pass the dead zone
 			goto end;
 		if (absX > 0.05f)
 			absX = 0.05f;
 		// the flick's direction picks the spin's reset angle: 90 or -270 degrees
-		mSpin = motion->x < 0.0f ? 1.5707964f : -4.712389f;
+		f32 prevSpin = mSpin;
+		mSpin        = motion->x < 0.0f ? 1.5707964f : -4.712389f;
 		if (IsCoinItemInRange(this, 0, 100)) {
 			f32 strength = radians * (400.0f * absX + 8.0f);
-			if (strength < 0.0f || strength > mPhase)
+			if (prevSpin * mSpin < 0.0f || strength > mPhase)
 				mPhase = strength;
-		} else {
+		} else if (IsCoinItemInRange(this, 100, 200)) {
 			f32 strength = radians * (800.0f * absX + 2.0f);
-			if (strength < 0.0f || strength > mPhase)
+			if (prevSpin * mSpin < 0.0f || strength > mPhase)
 				mPhase = strength;
 		}
 		if (absX < 0.015f) // the bounce sound needs a stronger flick than the tilt
@@ -574,7 +574,7 @@ void XObjCoin::vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed
 				goto end;
 			if (actor->detail_StartSound(&actor->mHandle, 0x227, NULL) == nw4r::snd::SoundStartable::START_SUCCESS)
 				actor->mHandle.SetVolume(1.0f, 0); // lbl_805A5404
-		} else {
+		} else if (IsCoinItemInRange(this, 100, 200)) {
 			if (mActors[1].GetHandle() != NULL)
 				goto end;
 			actor = mActors[1].mActor;
@@ -595,7 +595,7 @@ void XObjCoin::vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed
 		}
 	}
 end:
-	XObj::vf208(pointer, motion, over, speed);
+	return XObj::vf208(pointer, motion, over, speed);
 }
 
 /**
