@@ -1439,6 +1439,10 @@ if wii:
                 # sound fades (vtable _20C/_210) and the three per-kind collection flags its
                 # __sinit registers. -i include/rvl_msl: xobjflags.h as above
                 Object(NonMatching, "game/wii/xobjfreeupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # unit 83: the rising lifts and their camera action. GameCube layout
+                # shifted 0x28 behind the bigger XObj; the camera's Update and most of
+                # the leticker's bodies are not ported yet. -i include/rvl_msl: AnimSfx
+                Object(NonMatching, "game/wii/objb_leticker.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not

@@ -3,6 +3,7 @@
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjleticker.h"
 #include "Dolphin/os.h"
 #include "Dolphin/vi.h"
 #include <string.h>

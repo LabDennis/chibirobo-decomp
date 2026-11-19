@@ -1507,7 +1507,7 @@ public:
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
 WII_XOBJ_DECL(XObjChr, 0x1CCA0);
 WII_XOBJ_DECL(XObjActor3, 0x21C8);
-WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
+// XObjLeticker lives in game/wii/xobjleticker.h; XObjArmy keeps the shell for now
 WII_XOBJ_DECL(XObjActorToy, 0x2208);
 WII_XOBJ_DECL(XObjActorJenny, 0xD98);
 WII_XOBJ_DECL(XObjActorMama, 0xD88);
