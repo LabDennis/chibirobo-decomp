@@ -36,6 +36,8 @@ s32 fn_800C98E0(XObj* map, const Vec* pos, s32 tri, XObjMapHit* hit);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 }
+// set from the TV format in init.cpp (50 or 60)
+extern s32 gRefreshRate;
 
 // the floor coordinate readers this unit expands inline (retail shows the loads and
 // the hundredths conversion open-coded; xobj_chr.cpp keeps its own out-of-line copies)
@@ -229,7 +231,7 @@ extern "C" void ClearActiveObjectFloors(XObj* object)
 	if (object->mStatus.mFlags & 0x0200000000000000ULL) {
 		object->mFloorMasks[1] = object->mFloorMasks[0];
 		for (s32 i = 0; object->mFloors[i].mId != -1; i++) {
-			if (object->IsFloorOn(i)) {
+			if ((object->mFloors[i].mFlags & 1) && object->IsFloorOn(i)) {
 				object->ClearFloor(i);
 			}
 		}
@@ -251,6 +253,8 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		return;
 	f32 maxX = 0.0f, maxZ = 0.0f;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		CVec origin((Vec) { 0, 0, 0 });
 		Vec center     = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
 		Vec extent     = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
@@ -649,7 +653,7 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	if (mObject.m_pScnMdl == NULL)
 		return TRUE;
 	nw4r::g3d::ResNode node = GetRootResNode();
-	CVec position           = GetWorldPos(node);
+	Vec position            = GetWorldPos(node);
 	f32 screenX, screenY, screenZ;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
 	screenX *= camera->mScale;
@@ -1033,9 +1037,9 @@ void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
 		mAnmQueue.mColorStep[index].mValue.z = blue;
 		mAnmQueue.mColorStep[index].mSpeed.x = mAnmQueue.mColorStep[index].mSpeed.y = mAnmQueue.mColorStep[index].mSpeed.z = 0.0f;
 	} else {
-		mAnmQueue.mColorStep[index].mSpeed.x = ((f32)red - mAnmQueue.mColorStep[index].mValue.x) / (60.0f * time);
-		mAnmQueue.mColorStep[index].mSpeed.y = ((f32)green - mAnmQueue.mColorStep[index].mValue.y) / (60.0f * time);
-		mAnmQueue.mColorStep[index].mSpeed.z = ((f32)blue - mAnmQueue.mColorStep[index].mValue.z) / (60.0f * time);
+		mAnmQueue.mColorStep[index].mSpeed.x = ((f32)red - mAnmQueue.mColorStep[index].mValue.x) / (gRefreshRate * time);
+		mAnmQueue.mColorStep[index].mSpeed.y = ((f32)green - mAnmQueue.mColorStep[index].mValue.y) / (gRefreshRate * time);
+		mAnmQueue.mColorStep[index].mSpeed.z = ((f32)blue - mAnmQueue.mColorStep[index].mValue.z) / (gRefreshRate * time);
 	}
 }
 

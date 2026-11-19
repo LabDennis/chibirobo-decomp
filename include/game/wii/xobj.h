@@ -1375,7 +1375,7 @@ public:
 	// picks the kind's animation event callback (0x800BD064, name invented)
 	void AssignAnimEventCallback();
 
-	BOOL IsFloorOn(s32 i) const { return mFloorMasks[0] & (1 << i); }
+	BOOL IsFloorOn(s32 i) const { return (1 << i) & mFloorMasks[0]; }
 	void ClearFloor(s32 i) { mFloorMasks[0] &= ~(1 << i); }
 
 	CStatus64 mStatus;  // _150
