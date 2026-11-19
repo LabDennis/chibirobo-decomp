@@ -188,19 +188,19 @@ public:
 			f32 mScale;             // _8C
 		};
 	};
-	CCameraView mView;      // _90
-	Mtx44 mViewMtx;         // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
-	CMtxP mViewSource;      // _118, an external view matrix the camera follows; clearing it dirties the view
+	CCameraView mView; // _90
+	Mtx44 mViewMtx;    // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
+	CMtxP mViewSource; // _118, an external view matrix the camera follows; clearing it dirties the view
 	union {
 		struct {
-			f32 mViewport[6];   // _11C
-			u8 mViewportDirty;  // _134
+			f32 mViewport[6];  // _11C
+			u8 mViewportDirty; // _134
 			u8 _135[0x138 - 0x135];
 			Mtx44 mViewportMtx; // _138, clip space to the viewport's pixels
 		};
 	};
-	Mtx44 mScreenMtx;       // _178, viewport * projection * view
-	Mtx44 mScreenInv;       // _1B8
+	Mtx44 mScreenMtx; // _178, viewport * projection * view
+	Mtx44 mScreenInv; // _1B8
 
 	void InitView(const GXRenderModeObj* rmode); // 0x802A80FC, the view at its defaults and the full-screen viewport
 	BOOL SetCurrent();                           // 0x802A82FC, rebuilds whatever matrix is out of date

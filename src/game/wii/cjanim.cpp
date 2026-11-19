@@ -6,7 +6,9 @@
 // NONMATCHING: the per-frame animation stepper (0x800B4988), ExecCallback_CALC_MAT
 // (0x800B5CF0), the Cursor/XObjDemo ExecCallbackA (0x800BD4B8) and __sinit
 // (0x800BD624) still come from the retail asm. ExecCallbackA's mirror products
-// differ from retail only in register assignment.
+// differ from retail only in register assignment. The static-init registers
+// gCustomShadow like retail; the remaining diff is that the 4-byte CustomShadow
+// stub lands in .sbss while the real ~0xAE4-byte object used absolute access.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
@@ -38,6 +40,10 @@ void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 }
 // set from the TV format in init.cpp (50 or 60)
 extern s32 gRefreshRate;
+
+// the unit's one static registration: the shadow helper xobj_chr queries
+// (retail bss 0x80456A5C, .ctors 0x802C45A8)
+CustomShadow gCustomShadow;
 
 // the floor coordinate readers this unit expands inline (retail shows the loads and
 // the hundredths conversion open-coded; xobj_chr.cpp keeps its own out-of-line copies)
@@ -258,10 +264,10 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		if (!(object->mFloors[i].mFlags & 1))
 			continue;
 		CVec origin((Vec) { 0, 0, 0 });
-		Vec center     = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
-		Vec extent     = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
-		f32 baseYaw    = object->mMoveRotate.y;
-		f32 yaw        = baseYaw + GetFloorYawRadians(&object->mFloors, i);
+		Vec center  = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent  = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 baseYaw = object->mMoveRotate.y;
+		f32 yaw     = baseYaw + GetFloorYawRadians(&object->mFloors, i);
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: { // a disc
@@ -593,8 +599,8 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 // (an extra dead store of the scaled x survives); the rest matches
 void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera)
 {
-	camera        = camera != NULL ? camera : &gGame.mMotionControlCamera;
-	Vec position  = mMoveTranslate + *offset;
+	camera       = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	Vec position = mMoveTranslate + *offset;
 	f32 screenX, scaledX, screenY, screenZ;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
 	scaledX = screenX * camera->mScale;
@@ -626,25 +632,25 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	point     = pos[3];
 	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[3], &screen[3].y, &screen[3].z);
 	f32 left = screen[3].x = sx[3] * camera->mScale;
-	angle    = HALF_PI + heading;
-	pos[2].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
-	pos[2].y  = mMoveTranslate.y;
-	pos[2].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
-	point     = pos[2];
+	angle                  = HALF_PI + heading;
+	pos[2].x               = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[2].y               = mMoveTranslate.y;
+	pos[2].z               = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point                  = pos[2];
 	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[2], &screen[2].y, &screen[2].z);
 	f32 right = screen[2].x = sx[2] * camera->mScale;
-	angle     = PI + heading;
-	pos[1].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
-	pos[1].y  = mMoveTranslate.y;
-	pos[1].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
-	point     = pos[1];
+	angle                   = PI + heading;
+	pos[1].x                = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[1].y                = mMoveTranslate.y;
+	pos[1].z                = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point                   = pos[1];
 	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[1], &screen[1].y, &screen[1].z);
 	screen[1].x = sx[1] * camera->mScale;
 	f32 bottom  = screen[1].y;
-	pos[0].x  = radius * (f32)sin(heading) + mMoveTranslate.x;
-	pos[0].y  = mMoveTranslate.y + objectHeight;
-	pos[0].z  = radius * (f32)cos(heading) + mMoveTranslate.z;
-	point     = pos[0];
+	pos[0].x    = radius * (f32)sin(heading) + mMoveTranslate.x;
+	pos[0].y    = mMoveTranslate.y + objectHeight;
+	pos[0].z    = radius * (f32)cos(heading) + mMoveTranslate.z;
+	point       = pos[0];
 	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[0], &screen[0].y, &screen[0].z);
 	screen[0].x = sx[0] * camera->mScale;
 	f32 top     = screen[0].y;
@@ -668,8 +674,7 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 		nw4r::g3d::ResNode node = GetRootResNode();
 		Vec position            = GetWorldPos(node);
 		f32 screenX, screenY, screenZ;
-		GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX,
-		          &screenY, &screenZ);
+		GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
 		screenX *= camera->mScale;
 		if (screenZ > 0.0f && screenZ < 1.0f)
 			return FALSE; // inside the depth range: visible
@@ -688,11 +693,11 @@ extern "C" void fn_800B4988(XObj* object)
 	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
 		return;
 
-	CCamera camera = gGame.mMotionControlCamera;
-	object->_6DC   = object->_6D8;
-	object->_6D8   = *(s32*)&camera.mScreenInv[3][3];
+	CCamera camera      = gGame.mMotionControlCamera;
+	object->_6DC        = object->_6D8;
+	object->_6D8        = *(s32*)&camera.mScreenInv[3][3];
 	object->mScreenLeft = object->mScreenTop = object->mScreenRight = object->mScreenBottom = NAN;
-	object->mFloorTop                                                         = NAN;
+	object->mFloorTop                                                                       = NAN;
 	object->mToppleOffset.Set(0.0f, 0.0f, 0.0f);
 
 	s32 count    = 0;
@@ -704,10 +709,10 @@ extern "C" void fn_800B4988(XObj* object)
 		if (floor->mId < 0 || floor->mId >= 3)
 			continue;
 
-		CVec pos     = object->mMoveTranslate;
-		Vec center   = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
-		Vec extent   = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
-		f32 yaw      = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
+		CVec pos   = object->mMoveTranslate;
+		Vec center = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 yaw    = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
 		if (object->GetKind() == 0x2A0)
 			pos = object->GetJointWorldPos(7);
 		if (gGame.mStage == 14) {
@@ -764,8 +769,7 @@ extern "C" void fn_800B4988(XObj* object)
 			Vec points[8];
 			PSMTXMultVecArray(transform, corners, points, 8);
 			for (s32 j = 0; j < 8; ++j) {
-				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy,
-				          &sz);
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy, &sz);
 				sx *= camera.mScale;
 				if (sz <= 0.0f || sz >= 1.0f)
 					continue;
@@ -782,11 +786,11 @@ extern "C" void fn_800B4988(XObj* object)
 		} else if (floor->mId < 2) {
 			// a disc: four points on each of the top and bottom rings, set around
 			// the screen camera's heading
-			f32 angle   = camera.mView.mAngle.y;
-			f32 sins[4] = { extent.x * (f32)sin(angle), extent.x * (f32)sin(HALF_PI + angle), extent.x * (f32)sin(PI + angle),
-				            extent.x * (f32)sin(PI + HALF_PI + angle) };
-			f32 coss[4] = { extent.z * (f32)cos(angle), extent.z * (f32)cos(HALF_PI + angle), extent.z * (f32)cos(PI + angle),
-				            extent.z * (f32)cos(PI + HALF_PI + angle) };
+			f32 angle     = camera.mView.mAngle.y;
+			f32 sins[4]   = { extent.x * (f32)sin(angle), extent.x * (f32)sin(HALF_PI + angle), extent.x * (f32)sin(PI + angle),
+				              extent.x * (f32)sin(PI + HALF_PI + angle) };
+			f32 coss[4]   = { extent.z * (f32)cos(angle), extent.z * (f32)cos(HALF_PI + angle), extent.z * (f32)cos(PI + angle),
+				              extent.z * (f32)cos(PI + HALF_PI + angle) };
 			Vec points[8] = { { 0.0f, 0.0f, 0.0f } };
 			points[0]     = origin + CVec(sins[0], extent.y, coss[0]);
 			points[1]     = origin + CVec(sins[1], extent.y, coss[1]);
@@ -797,8 +801,7 @@ extern "C" void fn_800B4988(XObj* object)
 			points[6]     = origin + CVec(sins[2], -extent.y, coss[2]);
 			points[7]     = origin + CVec(sins[3], -extent.y, coss[3]);
 			for (s32 j = 0; j < 8; ++j) {
-				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy,
-				          &sz);
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy, &sz);
 				sx *= camera.mScale;
 				if (sz <= 0.0f || sz >= 1.0f)
 					continue;
@@ -872,7 +875,6 @@ void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl
 		}
 	}
 }
-
 
 // the tint stage the game appends to every material (NW_Obj::InitColorTev): on the map and
 // the tintable object kinds ExecCallback_CALC_MAT rewrites its last stage's inputs, on the

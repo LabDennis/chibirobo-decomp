@@ -1902,10 +1902,12 @@ STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
-// a small shadow helper the unit defines; only its trivial dtor is verified so
-// far (retail 0x800BD66C, the deleting variant with no member calls)
+// a small shadow helper the unit defines; its trivial dtor is verified (retail
+// 0x800BD66C), the out-of-line ctor is retail 0x800C6F60 (~0xA70-byte object at
+// 0x80456A5C, used by xobj_chr)
 class CustomShadow {
 public:
+	CustomShadow();
 	virtual ~CustomShadow();
 };
 
