@@ -1321,6 +1321,9 @@ if wii:
                 # GameCube's xacttumble.cpp), FinishTumbleAction and HandleTumbleActionInput;
                 # UpdatePlayerTumbleAnimation follows, still to port
                 Object(NonMatching, "game/wii/xacttumble.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the tumble fade and the floor ring (the GameCube's xactradar.cpp tail, retail
+                # 0x801078C8-0x80107C50); HandleCopterActionInput and the rest of Nr. 68 follow
+                Object(NonMatching, "game/wii/xactradar.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
