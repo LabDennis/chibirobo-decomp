@@ -290,11 +290,9 @@ void XObj::DrawGroundShadow(f32 opacity)
 	}
 }
 
-// NONMATCHING: the body matches except three referent/scheduling details: retail loads
-// mObjData twice (r6, then r7) where our build keeps the first load live; our literals
-// land on different .sdata2 slots while the unit is incomplete; and gCustomShadow is
-// reached via @sda21 because our CustomShadow stub is 4 bytes and sits in .sbss — the
-// real ~0xA70 object (cjanim.cpp header note) used absolute access.
+// NONMATCHING: the body matches except two referent/scheduling details: retail loads
+// mObjData twice (r6, then r7) where our build keeps the first load live; and our
+// literals land on different .sdata2 slots while the unit is incomplete.
 // 0x800AE53C, the blob shadow at a given spot: the model's scale times the kind's shadow
 // size and a fixed 0.6 sets the blob, 170*opacity its alpha; the draw call takes both
 // vectors by value, so the caller keeps its own copies

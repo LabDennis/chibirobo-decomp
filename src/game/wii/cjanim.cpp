@@ -6,9 +6,7 @@
 // NONMATCHING: the per-frame animation stepper (0x800B4988), ExecCallback_CALC_MAT
 // (0x800B5CF0), the Cursor/XObjDemo ExecCallbackA (0x800BD4B8) and __sinit
 // (0x800BD624) still come from the retail asm. ExecCallbackA's mirror products
-// differ from retail only in register assignment. The static-init registers
-// gCustomShadow like retail; the remaining diff is that the 4-byte CustomShadow
-// stub lands in .sbss while the real ~0xAE4-byte object used absolute access.
+// differ from retail only in register assignment.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
