@@ -110,7 +110,7 @@ static inline u16 ShadeRadarBeam(XActRadar* act, u32* colors, u32 base)
 static inline f32 TargetPitch(const Vec& from, const Vec& to)
 {
 	f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
-	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+	f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
 	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 }
 
@@ -1292,15 +1292,15 @@ void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x8010C274
  * @note Size: 0xC70
  */
-// NONMATCHING: regalloc and stack layout through the middle cases
+// NONMATCHING: scheduling of the u32->f64 frames conversions and a few pointer reloads;
+// semantics decoded: the action mirrors its aim into XObjRadar::mYaw/mPitch for the dish
 void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 {
-	XObjRadar* radar = (XObjRadar*)act->mOwner->mRadarObj;
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x879) {
 			act->mOwner->SetAnim(0x879, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
-			ActivatePlayerRadar(radar);
+			ActivatePlayerRadar((XObjRadar*)act->mOwner->mRadarObj);
 		} else if (animObj->IsAnimDone()) {
 			act->mOwner->SetAnim(0x4a, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			act->mState     = 0;
@@ -1313,7 +1313,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 	case 2:
 		if (anim != 0x87a) {
 			act->mOwner->SetAnim(0x87a, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			DeactivatePlayerRadar(radar);
+			DeactivatePlayerRadar((XObjRadar*)act->mOwner->mRadarObj);
 		} else if (animObj->IsAnimDone()) {
 			WiiPlayerState* owner = act->mOwner;
 			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
@@ -1329,7 +1329,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 		WiiPlayerState* owner = act->mOwner;
 		owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		owner->mIdleLoops = 3;
-		StartPlayerRadarScan(radar);
+		StartPlayerRadarScan((XObjRadar*)act->mOwner->mRadarObj);
 		act->mState             = 4;
 		act->mTarget            = FindNearestRadarTarget(act);
 		act->mYaw.targetAngle   = TWO_PI + act->mYaw.angle;
@@ -1346,15 +1346,17 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 			if (act->mYaw.angle >= act->mYaw.targetAngle) {
 				act->mYaw.angle = WrapAngle(act->mYaw.angle);
 				if (act->mTarget) {
-					f32 yaw               = (f32)atan2(act->mTarget->mMoveTranslate.x - act->mOwner->mMoveTranslate.x,
-					                                   act->mTarget->mMoveTranslate.z - act->mOwner->mMoveTranslate.z);
-					act->mYaw.targetAngle = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
+					CVec* targetPos         = act->mTarget->GetPos();
+					CVec* ownerPos          = act->mOwner->GetPos();
+					f32 yaw                 = (f32)atan2(targetPos->x - ownerPos->x, targetPos->z - ownerPos->z);
+					act->mYaw.targetAngle   = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
 				} else
 					act->mYaw.targetAngle = TWO_PI;
 				if (act->mYaw.targetAngle < act->mYaw.angle)
 					act->mYaw.targetAngle += TWO_PI;
 				act->mYaw.reached = 1;
 			}
+			((XObjRadar*)act->mOwner->mRadarObj)->mYaw = act->mYaw.angle;
 		}
 		if (!act->mPitch.reached) {
 			RadarAimAxis& pitch = act->mPitch;
@@ -1370,12 +1372,13 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 				pitch.reached = 1;
 			if (pitch.reached) {
 				if (act->mTarget) {
-					CVec from               = GetRadarDishWorldPosition(radar);
-					CVec to                 = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+					CVec from               = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
+					CVec to                 = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 					act->mPitch.targetAngle = TargetPitch(from, to);
 				} else
 					act->mPitch.targetAngle = 0;
 			}
+			((XObjRadar*)act->mOwner->mRadarObj)->mPitch = act->mPitch.angle;
 		}
 		if (act->mYaw.reached && act->mPitch.reached) {
 			act->mState         = 5;
@@ -1390,6 +1393,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 				act->mYaw.angle   = act->mYaw.targetAngle;
 				act->mYaw.reached = 1;
 			}
+			((XObjRadar*)act->mOwner->mRadarObj)->mYaw = act->mYaw.angle;
 		}
 		if (!act->mPitch.reached) {
 			RadarAimAxis& pitch = act->mPitch;
@@ -1407,11 +1411,12 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 				}
 			} else
 				pitch.reached = 1;
+			((XObjRadar*)act->mOwner->mRadarObj)->mPitch = act->mPitch.angle;
 		}
 		if (act->mYaw.reached && act->mPitch.reached) {
 			act->mState = 0;
 			if (act->mTarget)
-				PlayWiiSoundEffect(&gGame.mSound, 0x43, 1.0f, 0.0f);
+				PlayWiiSoundEffect(&gGame.mSound, 0xB0, 1.0f, 0.0f);
 		}
 		break;
 	case 0:
@@ -1424,11 +1429,13 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 				fn_8010D094(act, 0, 0, 0);
 				act->mState = 5;
 			} else {
-				CVec from         = GetRadarDishWorldPosition(radar);
-				CVec to           = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+				CVec from         = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
+				CVec to           = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 				f32 yaw           = (f32)atan2(to.x - from.x, to.z - from.z);
 				act->mYaw.angle   = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
-				act->mPitch.angle = TargetPitch(from, to);
+				((XObjRadar*)act->mOwner->mRadarObj)->mYaw   = act->mYaw.angle;
+				act->mPitch.angle                            = TargetPitch(from, to);
+				((XObjRadar*)act->mOwner->mRadarObj)->mPitch = act->mPitch.angle;
 			}
 		}
 		break;
