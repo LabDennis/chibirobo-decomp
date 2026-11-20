@@ -129,6 +129,7 @@ extern "C" void GetPlayerPlugCordAnchorTransform(void* object, Vec* position, Ve
 	if (node.IsValid()) {
 		PSMTXCopy(gGame.GetPlayer()->GetWorldMtx(node), matrix);
 	}
+	CVec unused; // never read, the dol still constructs it
 	static CVec offset(0.0f, 0.0f, -0.4f);
 	if (position != NULL) {
 		PSMTXMultVec(matrix, &offset, position);
@@ -327,8 +328,10 @@ extern "C" void fn_801105D4(XObjPlug* plug, u32 frames)
 {
 	if (plug->mWire.mSparkMode == 0) {
 		if (plug->mWire.mSparkTimer < 0) {
-			Vec pos = *plug->GetPos();
-			CVec scale(0.5f, 0.5f, 0.5f);
+			Vec pos, scale;
+			pos                   = *plug->GetPos();
+			CVec cvec(0.5f, 0.5f, 0.5f);
+			scale                 = cvec;
 			Vec rotation          = { 0, 0, 0 };
 			EffectInstance* inst = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1a, 1);
 			if (inst != NULL) {
@@ -469,12 +472,13 @@ void XObjWireEff::DrawWithView(Mtx view)
  */
 extern "C" void ConfigurePlugWireEffect(XObjWireEff* object, s32 anim, s32 effect, f32 rate, u32 color)
 {
+	f64 r = rate;
 	object->mAnim   = anim;
 	object->mEffect = effect;
 	object->mRate   = rate;
 	if (anim >= 0) {
 		object->mStatus.mFlags |= 0x10000ULL;
-		object->SetAnim(anim, FALSE, 0.0f, rate, 0.0f, 10.0f);
+		object->SetAnim(anim, FALSE, 0.0f, r, 0.0f, 15.0f);
 	} else {
 		object->mStatus.mFlags &= ~0x10000ULL;
 	}
