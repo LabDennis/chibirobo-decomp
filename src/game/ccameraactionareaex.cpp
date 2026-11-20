@@ -14,7 +14,18 @@
 
 extern "C" void OSReport(const char* format, ...);
 #if !defined(VERSION_R24J01)
-extern "C" Vec lbl_805A0400[];
+extern "C" {
+Vec lbl_805A0400[6];
+#if defined(VERSION_JP)
+u8 lbl_805A0448[0xEC];
+#else
+u8 lbl_805A0448[0xF8];
+#endif
+}
+
+// the file's __sinit builds it and registers its dtor; placed before InitCameraAreaEntries
+// so gCameraAreaState precedes the function-local gCameraAreaEntries in .bss
+CCameraActionAreaEx gCameraAreaState;
 
 class CGs;
 
@@ -610,10 +621,6 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 }
 
 #if !defined(VERSION_R24J01)
-// the file's __sinit builds it and registers its dtor; the Wii build keeps this global and the destructors
-// in the separate game/wii/ccameraactionareaexinit.cpp and game/wii/ccameraactionareaexdtor.cpp
-CCameraActionAreaEx gCameraAreaState;
-
 /**
  * @note Address: 0x801381C0
  * @note Size: 0x70
