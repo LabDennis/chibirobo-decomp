@@ -4,6 +4,8 @@
 #include "game/wii/cgame.h"
 #endif
 #include "game/cameracollisionpolygons.h"
+#include "game/caminfo.h"
+#include "game/stagedata.h"
 #include "game/gmath.h"
 #include "game/ut.h"
 #include "game/cvec.h"
@@ -396,6 +398,20 @@ inline void SetFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time)
 extern "C" void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time)
 {
 	SetFovStep(map, zoomLevel, time);
+}
+
+/**
+ * @note Address: 0x8015EE1C
+ * @note Size: 0x190
+ */
+extern "C" f32 MapAreaHeight(CCameraActionMap* map, s32 index)
+{
+	CamAreaRecord* records = GetStageCameraAreaRecords();
+	CamAreaInfo area       = CamAreaInfo(&records[index]);
+	if (area.mRecord->mCameraAction == -1) {
+		return 0.23f * CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
+	}
+	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 }
 
 void CCameraActionMap::PreviousUpdate()
