@@ -24,14 +24,17 @@ void HSD_PObjClearFlags(HSD_PObj* pobj, u32 flags);
 void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 }
 
+static const char sObjectHaltMessage[] = "\n!!!HALT!!!\n";
+static char sXCObjLibraryName[]  = "x_cobj_class";
+
 // report, then panic with the function name. the line goes in by hand like the asserts
 #define HALT(line)              \
-	OSReport("\n!!!HALT!!!\n"); \
+	OSReport(sObjectHaltMessage); \
 	OSPanic(__FILE__, line, "%s%s", "", __FUNCTION__)
 
 // the same with a formatted message
 #define HALTF(line, ...)        \
-	OSReport("\n!!!HALT!!!\n"); \
+	OSReport(sObjectHaltMessage); \
 	OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer(__VA_ARGS__), __FUNCTION__)
 
 // a material whose tev result is multiplied by one color and has another added, see XCObjMakeTExp
@@ -1428,7 +1431,7 @@ u8 CObjVec::Step(u32 frames)
  */
 void XCObjInfoInit()
 {
-	hsdInitClassInfo(HSD_CLASS_INFO(&xCObj), HSD_CLASS_INFO(&hsdMObj), "x_cobj_class", "x_cobj", sizeof(HSD_MObjInfo), sizeof(XCObj));
+	hsdInitClassInfo(HSD_CLASS_INFO(&xCObj), HSD_CLASS_INFO(&hsdMObj), sXCObjLibraryName, "x_cobj", sizeof(HSD_MObjInfo), sizeof(XCObj));
 	HSD_MOBJ_INFO(&xCObj)->make_texp = XCObjMakeTExp;
 }
 // XCObjInfoInit()
