@@ -1,4 +1,5 @@
 #include "nw4r/math/math_types.h"
+#include "nw4r/math/math_arithmetic.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 #include <math.h>
 #include <cmath>
+#include <stdlib.h>
 extern "C" {
 #include <dolphin/os.h>
 }
@@ -314,6 +316,612 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
+{
+	return IsPointInsideQuadXZ((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
+}
+
+static inline BOOL CameraEdgeIntersect(const Vec& from, const Vec& to, Vec& a, Vec& b, Vec& hit, s32 segment)
+{
+	return IntersectLinesXZ(&from, &to, &a, &b, &hit, segment);
+}
+
+extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw);
+extern "C" Vec sPreviousMapOrbitAngle;
+extern "C" CamCollisionPolygon gCameraCollisionPolygons[256];
+
+// the last turn direction, zeroed when the collision cancels every interpolation
+static f32 lbl_805A1D28;
+
+// reseats the orbit on the eye and drops every eye mode
+static inline void ResetMapCameraInterpolation(CCameraActionMap* map)
+{
+	map->mOrbitEye       = map->mEye;
+	map->mPrevOrbitEye   = map->mEye;
+	map->mOrbitAngle     = map->mAngle;
+	map->mPrevOrbitAngle = map->mAngle;
+	map->mEyeInterp      = NULL;
+	lbl_805A1D28         = 0.0f;
+	map->mOrbitAngle.y   = sPreviousMapOrbitAngle.y;
+	map->mStatus.mFlags &= ~0x3E;
+}
+
+/**
+ * @note Address: 0x80159D70
+ * @note Size: 0x308C
+ */
+extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest,
+                                             const CVec& previousInterest, const s32* mode)
+{
+	CVec target((const Vec&)interest);
+	CVec old((const Vec&)previous);
+	CVec candidate((const Vec&)eye);
+	if (target == (Vec)old) {
+		return FALSE;
+	}
+
+	CamAreaRecord* records        = gCameraAreaState.mAreaExRecords;
+	s32 count                     = gCameraAreaState.mAreaExCount;
+	CamCollisionPolygon* polygons = gCameraCollisionPolygons;
+	BOOL changed                  = FALSE;
+	BOOL targetInside             = FALSE;
+	BOOL previousInside           = FALSE;
+	BOOL candidateInside          = FALSE;
+	for (s32 i = 0; i < count; i++) {
+		CamAreaRecord* record        = &records[i];
+		CamCollisionPolygon& polygon = polygons[i];
+		CamAreaRecord* area          = CamAreaInfo(record).GetRecord();
+		if (area->mFlags & 0x80) { // an event switched this area off
+			continue;
+		}
+		f32 top      = area->GetTop();
+		f32 bottom   = area->GetBottom();
+		bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+		if (outside) {
+			continue;
+		}
+		polygon.point[0].x = polygon.point[4].x = record->_04[0][0] / 100.0f;
+		polygon.point[0].z = polygon.point[4].z = record->_04[0][1] / 100.0f;
+		polygon.point[0].y = polygon.point[4].y = 0.0f;
+		polygon.point[1].x                      = record->_04[1][0] / 100.0f;
+		polygon.point[1].z                      = record->_04[1][1] / 100.0f;
+		polygon.point[1].y                      = 0.0f;
+		polygon.point[2].x                      = record->_04[2][0] / 100.0f;
+		polygon.point[2].z                      = record->_04[2][1] / 100.0f;
+		polygon.point[2].y                      = 0.0f;
+		polygon.point[3].x                      = record->_04[3][0] / 100.0f;
+		polygon.point[3].z                      = record->_04[3][1] / 100.0f;
+		polygon.point[3].y                      = 0.0f;
+		targetInside |= CameraPolygonContains(target, polygon);
+		previousInside |= CameraPolygonContains(old, polygon);
+	}
+
+	if (previousInside) {
+		// the old eye sat inside an area: push the candidate back out to the nearest side
+		f32 closest = NAN;
+		CVec best;
+		s32 bestSide;
+		BOOL found = FALSE;
+		for (s32 i = 0; i < count; i++) {
+			CamCollisionPolygon& polygon = polygons[i];
+			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+			if (area->mFlags & 0x80) {
+				continue;
+			}
+			f32 top      = area->GetTop();
+			f32 bottom   = area->GetBottom();
+			bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+			if (outside) {
+				continue;
+			}
+			CVec hits[4];
+			if (CameraPolygonContains(candidate, polygon)) {
+				CVec normal, hit;
+				for (s32 side = 0; side < 4; side++) {
+					Vec& a = polygon.point[side];
+					Vec& b = polygon.point[side + 1];
+					GetOutwardPerpendicularToEdge(&candidate, &a, &b, &normal);
+					normal.y = 0.0f;
+					PSVECNormalize(&normal, &normal);
+					CameraEdgeIntersect(candidate, candidate + (Vec)normal, a, b, hit, 0);
+					hits[side].Set(hit);
+					f32 distance = PSVECDistance(&candidate, &hit);
+					if (__fpclassifyf(closest) == FP_NAN || closest > distance) {
+						closest  = distance;
+						bestSide = side;
+						best.Set(hit + (Vec)(normal * 2.0f));
+						found = TRUE;
+					}
+				}
+				// some rooms pin the push-out to a fixed side
+				if (found && gGame.mStage == 6) {
+					if (i == 4) {
+						if (bestSide == 1 && interest.x < -4.15f) {
+							hit.Set(hits[3]);
+							normal.Set(-1.0f, 0.0f, 0.0f);
+							closest = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						} else if (bestSide == 3 && interest.x > -4.15f) {
+							hit.Set(hits[1]);
+							normal.Set(1.0f, 0.0f, 0.0f);
+							closest = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+					} else if (i == 0x18) {
+						if (interest.x < 5.85f && interest.x > -14.15f) {
+							if (bestSide == 1 && candidate.x < -4.15f) {
+								hit.Set(hits[3]);
+								normal.Set(-1.0f, 0.0f, 0.0f);
+								closest = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							} else if (bestSide == 3 && candidate.x > -4.15f) {
+								hit.Set(hits[1]);
+								normal.Set(1.0f, 0.0f, 0.0f);
+								closest = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+						} else {
+							if (bestSide == 1 && interest.x < -4.15f) {
+								hit.Set(hits[3]);
+								normal.Set(-1.0f, 0.0f, 0.0f);
+								closest = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							} else if (bestSide == 3 && interest.x > -4.15f) {
+								hit.Set(hits[1]);
+								normal.Set(1.0f, 0.0f, 0.0f);
+								closest = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+						}
+					}
+				}
+				if (found && gGame.mStage == 6 && i == 0x12 && (bestSide == 1 || bestSide == 3)) {
+					hit.Set(hits[2]);
+					normal.Set(0.0f, 0.0f, 1.0f);
+					closest = PSVECDistance(&candidate, &hit);
+					best.Set(hit + (Vec)(normal * 2.0f));
+				}
+				if (found && gGame.mStage == 1) {
+					if (i == 7 && (bestSide == 1 || bestSide == 3)) {
+						hit.Set(hits[2]);
+						normal.Set(0.0f, 0.0f, 1.0f);
+						closest = PSVECDistance(&candidate, &hit);
+						best.Set(hit + (Vec)(normal * 2.0f));
+					}
+					if (i == 0xA && bestSide == 0) {
+						hit.Set(hits[1]);
+						normal.Set(0.0f, 0.0f, 1.0f);
+						closest = PSVECDistance(&candidate, &hit);
+						best.Set(hit + (Vec)(normal * 2.0f));
+					}
+					if (i == 9) {
+						hit.Set(hits[3]);
+						normal.Set(0.0f, 0.0f, 1.0f);
+						closest = PSVECDistance(&candidate, &hit);
+						best.Set(hit + (Vec)(normal * 2.0f));
+					}
+					if (i == 8) {
+						if (interest.x < 212.15f) {
+							hit.Set(hits[3]);
+							normal.Set(-1.0f, 0.0f, 0.0f);
+							closest = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						} else if (interest.x > 212.15f) {
+							hit.Set(hits[1]);
+							normal.Set(1.0f, 0.0f, 0.0f);
+							closest = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+					}
+				}
+			}
+		}
+		if (found) {
+			// a second pass from the pushed-out candidate, then a third if that still sits inside
+			candidate.x  = best.x;
+			candidate.z  = best.z;
+			f32 closest2 = NAN;
+			s32 bestSide2;
+			BOOL found2 = FALSE;
+			for (s32 i = 0; i < count; i++) {
+				CamCollisionPolygon& polygon = polygons[i];
+				CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+				if (area->mFlags & 0x80) {
+					continue;
+				}
+				f32 top      = area->GetTop();
+				f32 bottom   = area->GetBottom();
+				bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+				if (outside) {
+					continue;
+				}
+				CVec hits[4];
+				if (CameraPolygonContains(candidate, polygon)) {
+					CVec normal, hit;
+					for (s32 side = 0; side < 4; side++) {
+						Vec& a = polygon.point[side];
+						Vec& b = polygon.point[side + 1];
+						GetOutwardPerpendicularToEdge(&candidate, &a, &b, &normal);
+						normal.y = 0.0f;
+						PSVECNormalize(&normal, &normal);
+						CameraEdgeIntersect(candidate, candidate + (Vec)normal, a, b, hit, 0);
+						hits[side].Set(hit);
+						f32 distance = PSVECDistance(&candidate, &hit);
+						if (__fpclassifyf(closest2) == FP_NAN || closest2 > distance) {
+							closest2  = distance;
+							bestSide2 = side;
+							best.Set(hit + (Vec)(normal * 2.0f));
+							found2 = TRUE;
+						}
+					}
+					if (found2 && gGame.mStage == 6) {
+						if (i == 4) {
+							if (bestSide2 == 1 && interest.x < -4.15f) {
+								hit.Set(hits[3]);
+								normal.Set(-1.0f, 0.0f, 0.0f);
+								closest2 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							} else if (bestSide2 == 3 && interest.x > -4.15f) {
+								hit.Set(hits[1]);
+								normal.Set(1.0f, 0.0f, 0.0f);
+								closest2 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+						} else if (i == 0x18) {
+							if (interest.x < 5.85f && interest.x > -14.15f) {
+								if (bestSide2 == 1 && candidate.x < -4.15f) {
+									hit.Set(hits[3]);
+									normal.Set(-1.0f, 0.0f, 0.0f);
+									closest2 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								} else if (bestSide2 == 3 && candidate.x > -4.15f) {
+									hit.Set(hits[1]);
+									normal.Set(1.0f, 0.0f, 0.0f);
+									closest2 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								}
+							} else {
+								if (bestSide2 == 1 && interest.x < -4.15f) {
+									hit.Set(hits[3]);
+									normal.Set(-1.0f, 0.0f, 0.0f);
+									closest2 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								} else if (bestSide2 == 3 && interest.x > -4.15f) {
+									hit.Set(hits[1]);
+									normal.Set(1.0f, 0.0f, 0.0f);
+									closest2 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								}
+							}
+						}
+					}
+					if (found2 && gGame.mStage == 6 && i == 0x12 && (bestSide2 == 1 || bestSide2 == 3)) {
+						hit.Set(hits[2]);
+						normal.Set(0.0f, 0.0f, 1.0f);
+						closest2 = PSVECDistance(&candidate, &hit);
+						best.Set(hit + (Vec)(normal * 2.0f));
+					}
+					if (found2 && gGame.mStage == 1) {
+						if (i == 7 && (bestSide2 == 1 || bestSide2 == 3)) {
+							hit.Set(hits[2]);
+							normal.Set(0.0f, 0.0f, 1.0f);
+							closest2 = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+						if (i == 0xA && bestSide2 == 0) {
+							hit.Set(hits[1]);
+							normal.Set(0.0f, 0.0f, 1.0f);
+							closest2 = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+						if (i == 9) {
+							hit.Set(hits[3]);
+							normal.Set(0.0f, 0.0f, 1.0f);
+							closest2 = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+						if (i == 8) {
+							if (interest.x < 212.15f) {
+								hit.Set(hits[3]);
+								normal.Set(-1.0f, 0.0f, 0.0f);
+								closest2 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							} else if (interest.x > 212.15f) {
+								hit.Set(hits[1]);
+								normal.Set(1.0f, 0.0f, 0.0f);
+								closest2 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+						}
+					}
+				}
+			}
+			if (__fpclassifyf(closest2) != FP_NAN) {
+				closest = closest2;
+			}
+			if (found2) {
+				candidate.x  = best.x;
+				candidate.z  = best.z;
+				f32 closest3 = NAN;
+				s32 bestSide3;
+				BOOL found3 = FALSE;
+				for (s32 i = 0; i < count; i++) {
+					CamCollisionPolygon& polygon = polygons[i];
+					CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+					if (area->mFlags & 0x80) {
+						continue;
+					}
+					f32 top      = area->GetTop();
+					f32 bottom   = area->GetBottom();
+					bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+					if (outside) {
+						continue;
+					}
+					CVec hits[4];
+					if (CameraPolygonContains(candidate, polygon)) {
+						CVec normal, hit;
+						for (s32 side = 0; side < 4; side++) {
+							Vec& a = polygon.point[side];
+							Vec& b = polygon.point[side + 1];
+							GetOutwardPerpendicularToEdge(&candidate, &a, &b, &normal);
+							normal.y = 0.0f;
+							PSVECNormalize(&normal, &normal);
+							CameraEdgeIntersect(candidate, candidate + (Vec)normal, a, b, hit, 0);
+							hits[side].Set(hit);
+							f32 distance = PSVECDistance(&candidate, &hit);
+							if (__fpclassifyf(closest3) == FP_NAN || closest3 > distance) {
+								closest3  = distance;
+								bestSide3 = side;
+								best.Set(hit + (Vec)(normal * 2.0f));
+								found3 = TRUE;
+							}
+						}
+						if (found3 && gGame.mStage == 6 && i == 0x12 && (bestSide3 == 1 || bestSide3 == 3)) {
+							hit.Set(hits[2]);
+							normal.Set(0.0f, 0.0f, 1.0f);
+							closest3 = PSVECDistance(&candidate, &hit);
+							best.Set(hit + (Vec)(normal * 2.0f));
+						}
+						if (found3 && gGame.mStage == 1) {
+							if (i == 7 && (bestSide3 == 1 || bestSide3 == 3)) {
+								hit.Set(hits[2]);
+								normal.Set(0.0f, 0.0f, 1.0f);
+								closest3 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+							if (i == 0xA && bestSide3 == 0) {
+								hit.Set(hits[1]);
+								normal.Set(0.0f, 0.0f, 1.0f);
+								closest3 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+							if (i == 9) {
+								hit.Set(hits[3]);
+								normal.Set(0.0f, 0.0f, 1.0f);
+								closest3 = PSVECDistance(&candidate, &hit);
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+							if (i == 8) {
+								if (interest.x < 212.15f) {
+									hit.Set(hits[3]);
+									normal.Set(-1.0f, 0.0f, 0.0f);
+									closest3 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								} else if (interest.x > 212.15f) {
+									hit.Set(hits[1]);
+									normal.Set(1.0f, 0.0f, 0.0f);
+									closest3 = PSVECDistance(&candidate, &hit);
+									best.Set(hit + (Vec)(normal * 2.0f));
+								}
+							}
+						}
+					}
+				}
+				if (__fpclassifyf(closest3) != FP_NAN) {
+					closest = closest3;
+				}
+			}
+		}
+		if (__fpclassifyf(closest) != FP_NAN) {
+			candidate.Set(best);
+			previousInside  = FALSE;
+			candidateInside = FALSE;
+			for (s32 i = 0; i < count; i++) {
+				CamCollisionPolygon& polygon = polygons[i];
+				CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+				if (area->mFlags & 0x80) {
+					continue;
+				}
+				f32 top      = area->GetTop();
+				f32 bottom   = area->GetBottom();
+				bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+				if (outside) {
+					continue;
+				}
+				if (CameraPolygonContains(candidate, polygon)) {
+					candidateInside = TRUE;
+					break;
+				}
+			}
+			if (candidateInside) {
+				// still inside: clamp the candidate to the side the eye crossed last
+				for (s32 i = 0; i < count; i++) {
+					CamCollisionPolygon& polygon = polygons[i];
+					CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+					if (area->mFlags & 0x80) {
+						continue;
+					}
+					f32 top      = area->GetTop();
+					f32 bottom   = area->GetBottom();
+					bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+					if (outside) {
+						continue;
+					}
+					CVec from = targetInside ? (CVec&)*map->mTarget->GetPos() : target;
+					CVec normal, hit;
+					for (s32 side = 0; side < 4; side++) {
+						Vec& a = polygon.point[side];
+						Vec& b = polygon.point[side + 1];
+						if (CameraEdgeIntersect(from, old, a, b, hit, 1)) {
+							GetOutwardPerpendicularToEdge(&old, &a, &b, &normal);
+							normal.y = 0.0f;
+							PSVECNormalize(&normal, &normal);
+							CameraEdgeIntersect(old, old + (Vec)normal, a, b, hit, 0);
+							f32 distance = PSVECDistance(&target, &hit);
+							if (__fpclassifyf(closest) == FP_NAN || closest > distance) {
+								closest = distance;
+								best.Set(hit + (Vec)(normal * 2.0f));
+							}
+						}
+					}
+				}
+				if (__fpclassifyf(closest) != FP_NAN) {
+					candidate.Set(best);
+					previousInside = FALSE;
+				}
+			}
+		}
+	} else {
+		// the old eye sat outside every area: test the way from the target's back to the candidate
+		f32 yaw = map->mTarget->mMoveRotate.y;
+		Vec behind;
+		behind.x = map->mTarget->GetPos()->x - 2.0f * (f32)sin(yaw);
+		behind.z = map->mTarget->GetPos()->z - 2.0f * (f32)cos(yaw);
+		behind.y = target.y;
+		for (s32 i = 0; i < count; i++) {
+			CamCollisionPolygon& polygon = polygons[i];
+			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+			if (area->mFlags & 0x80) {
+				continue;
+			}
+			f32 top      = area->GetTop();
+			f32 bottom   = area->GetBottom();
+			bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+			if (outside) {
+				continue;
+			}
+			CVec normal, firstHit, push;
+			BOOL inside = CameraPolygonContains(target, polygon);
+			if (!inside) {
+				inside = CameraPolygonContains(behind, polygon);
+			}
+			s32 crossedSide = -1;
+			for (s32 side = 0; side < 4; side++) {
+				if (ResolveCircleWallCollisionXZ(&old, &candidate, &polygon.point[side], &polygon.point[side + 1], &firstHit, NULL,
+				                                 NULL, 0, 2.0f)) {
+					crossedSide = side;
+					break;
+				}
+			}
+			candidateInside |= CameraPolygonContains(candidate, polygon);
+			if (!inside) {
+				if (crossedSide >= 0) {
+					CVec nearest, hit;
+					f32 closest     = NAN;
+					s32 nearestSide = -1;
+					for (s32 side = 0; side < 4; side++) {
+						if (ResolveCircleWallCollisionXZ(&target, &candidate, &polygon.point[side], &polygon.point[side + 1], &hit,
+						                                 NULL, NULL, 0, 2.0f)) {
+							f32 distance = PSVECDistance(&hit, &target);
+							if (__fpclassifyf(closest) == FP_NAN || closest > distance) {
+								closest = distance;
+								nearest.Set(hit);
+								nearestSide = side;
+							}
+						}
+					}
+					if (nearestSide >= 0) {
+						if (*mode == 1) {
+							candidate.Set(nearest);
+							candidate.y = eye.y;
+							changed     = TRUE;
+							CVec* pos  = map->mTarget->GetPos();
+							f32 dz     = target.z - pos->z;
+							f32 dx     = target.x - pos->x;
+							f32 playerDistance = nw4r::math::FSqrt(dz * dz + dx * dx);
+							dz                 = target.z - candidate.z;
+							dx                 = target.x - candidate.x;
+							if (nw4r::math::FSqrt(dz * dz + dx * dx) <= playerDistance) {
+								ResetMapCameraInterpolation(map);
+								TrySetUnobstructedMapCameraYaw(map, (f32)atan2(candidate.x - old.x, candidate.z - old.z));
+							}
+						} else {
+							if (nearestSide != crossedSide && labs(nearestSide - crossedSide) % 2 != 0) {
+								candidate.Set(firstHit);
+								candidate.y = eye.y;
+							} else {
+								Vec a, b; // retail works these out and drops them
+								GetOutwardPerpendicularToEdge(&target, &polygon.point[nearestSide], &polygon.point[nearestSide + 1],
+								                              &a);
+								GetOutwardPerpendicularToEdge(&nearest, &polygon.point[nearestSide], &polygon.point[nearestSide + 1],
+								                              &b);
+								candidate.Set(nearest);
+								candidate.y = eye.y;
+							}
+						}
+					}
+				}
+			} else if (crossedSide >= 0) {
+				Vec& a = polygon.point[crossedSide];
+				Vec& b = polygon.point[crossedSide + 1];
+				if (*mode == 1) {
+					CVec hit;
+					GetOutwardPerpendicularToEdge(&old, &a, &b, &normal);
+					if (CameraEdgeIntersect(old, old + (Vec)normal, a, b, hit, 1)) {
+						normal.y = 0.0f;
+						PSVECNormalize(&normal, &normal);
+						candidate.Set(hit - (Vec)(normal * 2.0f));
+						candidate.y = eye.y;
+					} else {
+						candidate.Set(old);
+					}
+					map->_11FC.Reset(map->mAngle);
+					ResetMapCameraInterpolation(map);
+					changed = TRUE;
+				} else {
+					CVec direction, hit;
+					GetOutwardPerpendicularToEdge(&candidate, &a, &b, &direction);
+					if (CameraEdgeIntersect(candidate, candidate + (Vec)direction, a, b, hit, 1)) {
+						direction.y = 0.0f;
+						PSVECNormalize(&direction, &direction);
+						candidate.Set(hit - (Vec)(direction * 2.0f));
+						candidate.y = eye.y;
+					} else {
+						candidate.Set(old);
+					}
+				}
+			}
+		}
+	}
+	if (!previousInside) {
+		s32 insideCount = 0;
+		for (s32 i = 0; i < count; i++) {
+			CamAreaRecord* area = CamAreaInfo(&records[i]).GetRecord();
+			if (area->mFlags & 0x80) {
+				continue;
+			}
+			f32 top      = area->GetTop();
+			f32 bottom   = area->GetBottom();
+			bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
+			if (outside) {
+				continue;
+			}
+			if (CameraPolygonContains(candidate, polygons[i])) {
+				insideCount++;
+			}
+		}
+		if (insideCount > 0) {
+			candidate.Set(old);
+			if (*mode == 1) {
+				ResetMapCameraInterpolation(map);
+				changed = TRUE;
+			}
+		}
+	}
+	eye = candidate;
+	return changed;
 }
 
 // NONMATCHING: retail reads a debug flag (sbss 0x805A1D08) after storing the speed and reloads it, and keeps

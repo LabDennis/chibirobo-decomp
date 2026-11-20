@@ -2465,6 +2465,7 @@ MapAreaHeight = .text:0x8015EE1C; // type:function size:0x190
 SetMapCameraModeFlags = .text:0x80160220; // type:function size:0x2D4
 sMapCameraCenterReset = .sbss:0x805A1D0C; // type:object size:0x4
 sMapCameraOrbitAtRestDistance = .sbss:0x805A1D20; // type:object size:0x4
+lbl_805A1D28 = .sbss:0x805A1D28; // type:object size:0x4
 DrawGsLineStrip = .text:0x802ABD4C; // type:function size:0xD0
 InitAudio = .text:0x802B58DC; // type:function size:0x7C
 UpdateHudTransitionsAndIndicators = .text:0x800875D0; // type:function size:0x5C
