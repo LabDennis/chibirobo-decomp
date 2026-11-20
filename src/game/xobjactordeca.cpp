@@ -81,7 +81,6 @@ Vec XObjActorDeca::GetCameraTarget()
  * @note Address: 0x8012F940
  * @note Size: 0x8B8
  */
-// NONMATCHING: regalloc
 s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -197,7 +196,10 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 				player->mPlayerStatus.mFlags |= 0x20000000;
 				player->mPlayerStatus.mFlags |= 7;
 				player->mPad.mReset = TRUE;
-				HSD_JObjClearMtxFlags(player->mJObj);
+				{
+					HSD_JObj* playerJObj = player->mJObj;
+					HSD_JObjClearMtxFlags(playerJObj);
+				}
 				break;
 			}
 			}
