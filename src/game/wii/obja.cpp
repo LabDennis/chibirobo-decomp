@@ -6,6 +6,7 @@
 #if defined(VERSION_R24J01)
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
+#include "game/wii/spiderplacement.h"
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj_ut2.h"
@@ -112,270 +113,262 @@ void XObj::ResetObjectState()
 // into the object, starts its animation, wires the event script and records its scope
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
-	if (info.mPlacement->mFlags & 0x80000000) {
+	BOOL ready = FALSE;
+	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) { // the placement opts out of loading
 		return TRUE;
 	}
-	BOOL result;
+	AttrInfo* attr = &mAttr;
 	if (mStatus.mFlags & 1) {
-		result = TRUE;
+		ready = TRUE;
 	} else {
-		if (mAttr.mObjData == NULL) {
+		if (attr->mObjData == NULL) {
 			mCoord.mPlacement = info.mPlacement;
-			mAttr.Init((CoordInfo*)&info);
+			attr->Init((CoordInfo*)&info);
 		}
 		if (mFloors == NULL) {
 			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
 			mFloorMasks[0] = mFloorMasks[1] = 0;
-			if (mFloors != NULL && mFloors->mId == -1) {
+			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE; // a -1 id means no floor list
+			if (empty) {
 				mFloors = NULL;
 			}
 		}
-		result = FALSE;
-		if (!HasSource(mAttr) || mAttr.mObjData->mSource->mName == NULL) {
-			result = TRUE;
-		} else if (HasSource(mAttr)) {
-			result = fn_800AD498(this);
+		if (!HasSource(*attr) || attr->mObjData->mSource->mName == NULL) {
+			ready = TRUE;
+		} else if (HasSource(*attr)) {
+			ready = fn_800AD498(this);
 		}
 	}
-	if (!result) {
-		return mStatus.mFlags & 1;
-	}
-	mStatus.mFlags = (mStatus.mFlags & 0x0040000000000000ULL) | ((u64)info.mPlacement->mFlags << 16)
-	               | (mAttr.mObjData != NULL ? mAttr.mObjData->mFlags : 0) | 1;
-	Vec pos;
-	pos.x = info.mPlacement->mPos[0] / 100.0f;
-	pos.y = info.mPlacement->mPos[1] / 100.0f;
-	pos.z = info.mPlacement->mPos[2] / 100.0f;
-	SetPos(pos);
-	if (mStatus.mFlags & 0x800ULL) {
-		SetTranslateX(GetPos()->x * gScreenWidthScale);
-	}
-	Vec rot;
-	rot.x = info.mPlacement->mRot[0] * DEG2RAD;
-	rot.y = info.mPlacement->mRot[1] * DEG2RAD;
-	rot.z = info.mPlacement->mRot[2] * DEG2RAD;
-	SetRot(rot);
-	Vec scale;
-	scale.x = info.mPlacement->mScale[0] / 100.0f;
-	scale.y = info.mPlacement->mScale[1] / 100.0f;
-	scale.z = info.mPlacement->mScale[2] / 100.0f;
-	SetScale(scale);
-	mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
-	mMoveSpeed1.Set(0.0f, 0.0f, 0.0f);
-	if (mObject.m_pScnMdl != NULL) {
-		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
-		s32 frames = (s32)GetAnimEndFrame();
-		if (frames > 1) {
-			SetAnim(GetAnimId(), TRUE, (f32)(rand() % frames), 1.0f, 1.0f, 15.0f);
+	if (ready) {
+		mStatus.mFlags = (mStatus.mFlags & 0x0040000000000000ULL) | ((u64)info.mPlacement->mFlags << 16)
+		               | (attr->mObjData != NULL ? attr->mObjData->mFlags : 0) | 1;
+		Vec pos = PlacementPosition(info);
+		SetPos(pos);
+		if (mStatus.mFlags & 0x800ULL) {
+			SetTranslateX(GetPos()->x * gScreenWidthScale);
 		}
-	}
-	ResetObjectState();
-	if (mColor1.r != 0xFF) {
-		mColor1.r = 0xFF;
-	}
-	if (mColor1.g != 0xFF) {
-		mColor1.g = 0xFF;
-	}
-	if (mColor1.b != 0xFF) {
-		mColor1.b = 0xFF;
-	}
-	if (mColor1.a != 0) {
-		mColor1.a = 0;
-	}
-	mColorsChanged = TRUE;
-	if (mColor0.r != 0) {
-		mColor0.r = 0;
-	}
-	if (mColor0.g != 0) {
-		mColor0.g = 0;
-	}
-	if (mColor0.b != 0) {
-		mColor0.b = 0;
-	}
-	if (mColor0.a != 0) {
-		mColor0.a = 0;
-	}
-	mColorsChanged = TRUE;
-	if (mStatus.mFlags & 0x2ULL) {
-		fn_800AF51C(this);
-	}
-	s32 index = GetStagePlacementIndex(mCoord.mPlacement);
-	if (index >= 0) {
-		mEventScript = GetStageScriptByIndex(index);
-	} else {
-		mEventScript = NULL;
-	}
-	if (mFloors != NULL) {
-		mStatus.mFlags |= 0x0200000000000000ULL;
-	} else {
-		mStatus.mFlags &= ~0x0200000000000000ULL;
-	}
-	mPlacementParam0 = mCoord.mPlacement->mParam0;
-	mPlacementParam1 = mCoord.mPlacement->mParam1;
-	if (mStatus.mFlags & 0x800000ULL) {
-		if (!(mStatus.mFlags & 0x100000000ULL)) {
-			mStatus.mFlags &= ~0x800000ULL;
+		Vec rot = PlacementRotation(info);
+		SetRot(rot);
+		Vec scale = PlacementScale(info);
+		SetScale(scale);
+		mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+		mMoveSpeed1.Set(0.0f, 0.0f, 0.0f);
+		if (mObject.m_pScnMdl != NULL) {
+			SetAnim(mCoord.mPlacement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			s32 frames = (s32)GetAnimEndFrame();
+			if (frames > 1) {
+				SetAnim(GetAnimId(), TRUE, (f32)(rand() % frames), 1.0f, 1.0f, 15.0f);
+			}
 		}
-	} else if (GetKind() == 0x345 || GetKind() == 0x27E) {
-		mStatus.mFlags |= 0x800000ULL;
-	}
-	if (HasModel()) {
-		u32 flags[5];
-		flags[0] = mStatus.mFlags & 0x800000ULL;
-		flags[1] = mStatus.mFlags & 0x200000ULL;
-		flags[2] = mStatus.mFlags & 0x40ULL;
-		flags[3] = mStatus.mFlags & 0x20000ULL;
-		flags[4] = mStatus.mFlags & 0x400000ULL;
-		vf1A0(flags);
-		if (mStatus.mFlags & 0x1000000ULL) {
-			if (IsStageDataLoaded() != 0 && GetStageEnvironment() != NULL) {
+		ResetObjectState();
+		if (mColor1.r != 0xFF) {
+			mColor1.r = 0xFF;
+		}
+		if (mColor1.g != 0xFF) {
+			mColor1.g = 0xFF;
+		}
+		if (mColor1.b != 0xFF) {
+			mColor1.b = 0xFF;
+		}
+		if (mColor1.a != 0) {
+			mColor1.a = 0;
+		}
+		mColorsChanged = TRUE;
+		if (mColor0.r != 0) {
+			mColor0.r = 0;
+		}
+		if (mColor0.g != 0) {
+			mColor0.g = 0;
+		}
+		if (mColor0.b != 0) {
+			mColor0.b = 0;
+		}
+		if (mColor0.a != 0) {
+			mColor0.a = 0;
+		}
+		mColorsChanged = TRUE;
+		if (mStatus.mFlags & 0x2ULL) {
+			fn_800AF51C(this);
+		}
+		s32 index = GetStagePlacementIndex(mCoord.mPlacement);
+		if (index >= 0) {
+			mEventScript = GetStageScriptByIndex(index);
+		} else {
+			mEventScript = NULL;
+		}
+		if (mFloors != NULL) {
+			mStatus.mFlags |= 0x0200000000000000ULL;
+		} else {
+			mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		mPlacementParam0 = mCoord.mPlacement->mParam0;
+		mPlacementParam1 = mCoord.mPlacement->mParam1;
+		if (mStatus.mFlags & 0x800000ULL) {
+			if (!(mStatus.mFlags & 0x100000000ULL)) {
+				mStatus.mFlags &= ~0x800000ULL;
+			}
+		} else {
+			s32 kind = GetKind();
+			if (kind == 0x345 || kind == 0x27E) {
+				mStatus.mFlags |= 0x800000ULL;
+			}
+		}
+		if (HasModel()) {
+			u32 flags[5];
+			flags[0] = mStatus.mFlags & 0x800000ULL;
+			flags[1] = mStatus.mFlags & 0x200000ULL;
+			flags[2] = mStatus.mFlags & 0x40ULL;
+			flags[3] = mStatus.mFlags & 0x20000ULL;
+			flags[4] = mStatus.mFlags & 0x400000ULL;
+			vf1A0(flags);
+			if ((mStatus.mFlags & 0x1000000ULL) && IsStageDataLoaded() != 0) {
 				vf1A8((f32)GetStageInfo()->_09 / 100.0f);
 			}
 		}
-	}
-	UpdateObjectFloorHeights(this);
-	UpdateObjectFloorXZExtent(this);
-	if (__fpclassifyf(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
-		s16 cat = GetCategory();
-		if (cat == 7 || cat == 8 || (cat >= 0x14 && cat <= 0x16)) {
-			mStatus.mFlags |= 0x80000000ULL;
+		UpdateObjectFloorHeights(this);
+		UpdateObjectFloorXZExtent(this);
+		if (__fpclassifyf(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
+			s16 cat = GetCategory();
+			if (cat == 7 || cat == 8 || (u16)(cat - 0x14) <= 2) {
+				mStatus.mFlags |= 0x80000000ULL;
+			}
 		}
+		if (mStatus.mFlags & 0x2000ULL) { // flag 0x2000 overrides the small-extent flag
+			mStatus.mFlags &= ~0x80000000ULL;
+		}
+		if (mStatus.mFlags & 0x8100000000ULL) { // either high bit maps to flag 0x4000
+			mStatus.mFlags |= 0x4000ULL;
+		}
+		mSelectedFloorHeight = NAN;
+		mSelectedFloorIndex  = 0;
+		_188 = GetCategory() == 2 || GetCategory() == 9 || GetCategory() == 5 || GetCategory() == 0xA || GetCategory() == 0xB
+		    || GetCategory() == 0xC || GetCategory() == 0xD || GetCategory() == 0xE || GetCategory() == 0xF || GetCategory() == 0x10
+		    || GetCategory() == 0x11 || GetCategory() == 0x12 || GetCategory() == 0x13;
+		switch (GetKind()) {
+		case 0x0:
+			_18C = 0;
+			break;
+		case 0x6B:
+		case 0x3B1:
+		case 0x472:
+			_18C = 1;
+			break;
+		case 0xF:
+			_18C = 2;
+			break;
+		case 0xC4:
+		case 0x24D:
+			_18C = 3;
+			break;
+		case 0x113:
+		case 0x24B:
+			_18C = 4;
+			break;
+		case 0x159:
+		case 0x42C:
+			_18C = 5;
+			break;
+		case 0x117:
+			_18C = 6;
+			break;
+		case 0xF8:
+			_18C = 7;
+			break;
+		case 0xF7:
+			_18C = 8;
+			break;
+		case 0x110:
+			_18C = 9;
+			break;
+		case 0xD7:
+		case 0x24C:
+			_18C = 0xA;
+			break;
+		case 0x25E:
+		case 0x345:
+		case 0x459:
+			_18C = 0xB;
+			break;
+		case 0x1D3:
+		case 0x38E:
+			_18C = 0xC;
+			break;
+		case 0x1FB:
+		case 0x464:
+			_18C = 0xD;
+			break;
+		case 0x26D:
+			_18C = 0xE;
+			break;
+		case 0x1FC:
+			_18C = 0xF;
+			break;
+		case 0xE:
+			_18C = 0x10;
+			break;
+		case 0x6F:
+			_18C = 0x11;
+			break;
+		case 0x26C:
+		case 0x485:
+			_18C = 0x12;
+			break;
+		case 0x317:
+			_18C = 0x13;
+			break;
+		case 0x134:
+			_18C = 0x14;
+			break;
+		case 0x10F:
+		case 0x376:
+			_18C = 0x15;
+			break;
+		case 0x156:
+			_18C = 0x16;
+			break;
+		case 0x148:
+			_18C = 0x17;
+			break;
+		case 0x2C5:
+			_18C = 0x18;
+			break;
+		case 0x1D2:
+			_18C = 0x19;
+			break;
+		case 0x2C3:
+			_18C = 0x1A;
+			break;
+		case 0x29F:
+		case 0x446:
+		case 0x465:
+			_18C = 0x1B;
+			break;
+		case 0x429:
+		case 0x447:
+		case 0x466:
+			_18C = 0x1C;
+			break;
+		default:
+			_18C = -1;
+			break;
+		}
+		s16 cat            = GetCategory();
+		mScreenBoundsValid = cat == 2 || cat == 7 || (cat == 8 && (mStatus.mFlags & 0x100000000ULL)) || (u16)(cat - 9) <= 0xA || _18C >= 0
+		                  || GetKind() == 0xE || GetKind() == 0x3AE || GetKind() == 0x1D0 || GetKind() == 0x260 || GetKind() == 0x24E
+		                  || GetKind() == 0x23F || GetKind() == 0x23D || GetKind() == 0x41D || GetKind() == 0x2A0 || GetKind() == 0x30D
+		                  || GetKind() == 0x30E || GetKind() == 0x46F || GetKind() == 0x34B || GetKind() == 0x324 || GetKind() == 0x2C9
+		                  || (GetKind() == 0x6A && mPlacementParam0 == 1);
+		_6DC       = 0;
+		_6D8       = 0;
+		mScreenTop = mScreenBottom = mScreenLeft = mScreenRight = NAN;
+		if (mScreenBoundsValid) {
+			mStatus.mFlags |= 0x100ULL;
+		}
+		fn_800B4988(this);
+		AssignAnimEventCallback();
+		mReleaseCountdown = 0;
+		_9A4              = 0;
 	}
-	if (mStatus.mFlags & 0x4000ULL) {
-		mStatus.mFlags &= ~0x80000000ULL;
-	}
-	if (mStatus.mFlags & 0x8100000000000000ULL) {
-		mStatus.mFlags |= 0x4000ULL;
-	}
-	mSelectedFloorHeight = NAN;
-	mSelectedFloorIndex  = 0;
-	_188                 = GetCategory() == 2 || GetCategory() == 9 || GetCategory() == 5 || GetCategory() == 0xA || GetCategory() == 0xB
-	    || GetCategory() == 0xC || GetCategory() == 0xD || GetCategory() == 0xE || GetCategory() == 0xF || GetCategory() == 0x10
-	    || GetCategory() == 0x11 || GetCategory() == 0x12 || GetCategory() == 0x13;
-	switch (GetKind()) {
-	case 0x0:
-		_18C = 0;
-		break;
-	case 0x6B:
-	case 0x3B1:
-	case 0x472:
-		_18C = 1;
-		break;
-	case 0xF:
-		_18C = 2;
-		break;
-	case 0xC4:
-	case 0x24D:
-		_18C = 3;
-		break;
-	case 0x113:
-	case 0x24B:
-		_18C = 4;
-		break;
-	case 0x159:
-	case 0x42C:
-		_18C = 5;
-		break;
-	case 0x117:
-		_18C = 6;
-		break;
-	case 0xF8:
-		_18C = 7;
-		break;
-	case 0xF7:
-		_18C = 8;
-		break;
-	case 0x110:
-		_18C = 9;
-		break;
-	case 0xD7:
-	case 0x24C:
-		_18C = 0xA;
-		break;
-	case 0x25E:
-	case 0x345:
-	case 0x459:
-		_18C = 0xB;
-		break;
-	case 0x1D3:
-	case 0x38E:
-		_18C = 0xC;
-		break;
-	case 0x1FB:
-	case 0x464:
-		_18C = 0xD;
-		break;
-	case 0x26D:
-		_18C = 0xE;
-		break;
-	case 0x1FC:
-		_18C = 0xF;
-		break;
-	case 0xE:
-		_18C = 0x10;
-		break;
-	case 0x6F:
-		_18C = 0x11;
-		break;
-	case 0x26C:
-	case 0x485:
-		_18C = 0x12;
-		break;
-	case 0x317:
-		_18C = 0x13;
-		break;
-	case 0x134:
-		_18C = 0x14;
-		break;
-	case 0x10F:
-	case 0x376:
-		_18C = 0x15;
-		break;
-	case 0x156:
-		_18C = 0x16;
-		break;
-	case 0x148:
-		_18C = 0x17;
-		break;
-	case 0x2C5:
-		_18C = 0x18;
-		break;
-	case 0x1D2:
-		_18C = 0x19;
-		break;
-	case 0x2C3:
-		_18C = 0x1A;
-		break;
-	case 0x29F:
-	case 0x446:
-	case 0x465:
-		_18C = 0x1B;
-		break;
-	case 0x429:
-	case 0x447:
-	case 0x466:
-		_18C = 0x1C;
-		break;
-	default:
-		_18C = -1;
-		break;
-	}
-	s16 cat            = GetCategory();
-	mScreenBoundsValid = cat == 2 || cat == 7 || (cat == 8 && (mStatus.mFlags & 0x100000000ULL)) || (cat >= 9 && cat <= 0x13) || _18C >= 0
-	                  || GetKind() == 0xE || GetKind() == 0x3AE || GetKind() == 0x1D0 || GetKind() == 0x260 || GetKind() == 0x24E
-	                  || GetKind() == 0x23F || GetKind() == 0x23D || GetKind() == 0x41D || GetKind() == 0x2A0 || GetKind() == 0x30D
-	                  || GetKind() == 0x30E || GetKind() == 0x46F || GetKind() == 0x34B || GetKind() == 0x324 || GetKind() == 0x2C9
-	                  || (GetKind() == 0x6A && mPlacementParam0 == 1);
-	_6DC       = 0;
-	_6D8       = 0;
-	mScreenTop = mScreenBottom = mScreenLeft = mScreenRight = NAN;
-	if (mScreenBoundsValid) {
-		mStatus.mFlags |= 0x100ULL;
-	}
-	fn_800B4988(this);
-	AssignAnimEventCallback();
-	mReleaseCountdown = 0;
-	_9A4              = 0;
 	return mStatus.mFlags & 1;
 }
 
