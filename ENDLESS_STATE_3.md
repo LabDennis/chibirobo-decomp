@@ -1,11 +1,47 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 49 fertig, Branch devin/lane3 @61d5fe52 (sauber, kein
-neuer Commit). R24J01: 6592/8284 matched, `main.dol: OK`.
+Stand: Lauf 50 fertig, Branch devin/lane3 @0df689fe. R24J01:
+6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 50 — vf168 69,02 → 99,18 % (commit 0df689fe)
+
+- **Merge:** `git merge github-fork/all-releases` → „Already up to date".
+- **vf168__4XObjFUl** (= GC `StepColors`, src/game/obja.cpp:771):
+  zwei ehrliche Portfehler korrigiert — (1) Loop indexiert jetzt
+  `mAnmQueue.mColorStep[i].member` direkt statt Element-Pointer
+  (Retail hält r6=this, Member-Offsets 0x7d8+ in den Immediaten);
+  (2) Farb-Writeback wie GC über gepacktes u32-Wort
+  `x<<24|y<<16|z<<8` + `CColor::Set` je Byte — `(u32)f` liefert
+  die `__cvt_fp2unsigned`-Calls (nicht `(u8)`→fctiwz) und Set's
+  Guards die lbz/cmpw/stb-Paare pro Byte. `(s32)`-Casts an den
+  Set-Args lösen die long/int-Overload-Ambiguität auf.
+  `mColorsChanged = TRUE` zweimal (Retail stb 0xe4 ×2).
+- **Rest 0,82 %:** reine ARG_MISMATCH — packed-Wort in r4 statt r3
+  (Extract-Regs getauscht) + sdata2-Referentlabels (@13526 vs
+  lbl_805A44F8 usw.); wahrscheinlich bounded bis objas sdata2-
+  Pools gesplittet sind. `Set(*(GXColor*)&u32)`-Variante getestet:
+  erzwingt Stack-Roundtrip → 91,32 %, verworfen.
+- **Pool-Aufklärung (fn_800AF098/`""`):** retails Panik-Strings
+  („xobj_ut2.h" ×2, `""` ×2, „ResTev", nw4r-asserts) liegen in
+  `.data`/`.sdata` = NON-const, pro-Funktion-Emissionen (nicht
+  dedupliziert!) — unsere landen alle in .rodata-pool. Das ist
+  sehr wahrscheinlich der `static char[]`-/`__FILE__`-Mechanismus,
+  den AGENTS.local.md als Fakematch verbietet → AF098s `""` kann
+  ehrlich evtl. NIE nach .sdata wandern; AD498 bleibt damit
+  uncommittbar solange Gate „keine Regression" gilt. In
+  `Liegt` dokumentiert.
+- **Gate:** 4 Editionen gebaut, R24J01 main.dol OK, GC 17 files OK,
+  kein Funktions-Score gesunken. `check.py --source-only` läuft
+  hier NICHT (clang-format 23.1.4 statt 18.1.8 auf diesem Host) —
+  Umgebungsproblem, kein Code-Befund; neue Zeilen folgen dem
+  Dateistil (Tabs + Klammer-Ausrichtung).
+- **Liegt:** fn_800AD498 uncommittbar (AF098-`""`-Pool-Regression,
+  siehe oben — ehrlich mutmaßlich unlösbar weil Retail non-const
+  .data-Strings nutzt). vf168-Rest = Regalloc + unsplit sdata2.
 
 ## Lauf 49 — fn_800AD498 dekodiert + Prototyp 84,66 %, ZURÜCKGENOMMEN
 
