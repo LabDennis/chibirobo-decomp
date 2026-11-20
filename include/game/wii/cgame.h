@@ -130,7 +130,7 @@ public:
 		mView.mDirty = TRUE;
 	}
 	virtual void SetAngle(const Vec& angle); // _50
-	virtual void vf54();                     // _54
+	virtual void SetUp(const Vec& up);       // _54, xobj_camera.cpp's copy into mView.mUp
 	virtual void SetAngleY(f32 y)            // _58, ConfigureSubwindowCamera passes angleY here
 	{
 		mView.mAngle.y = y;

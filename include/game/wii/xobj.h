@@ -667,8 +667,8 @@ public:
 };
 
 struct ResUserDataData {
-	u32 size;         // _00
-	ResDicData dic;   // _04
+	u32 size;       // _00
+	ResDicData dic; // _04
 };
 
 class ResUserData {
@@ -700,18 +700,18 @@ struct ResMatData {
 	u8 _1C[0x2C - 0x1C];
 	u32 numResTexPlttInfo; // _2C
 	u8 _30[0x38 - 0x30];
-	s32 toResUserData;   // _38
-	s32 toResMatDLData; // _3C
+	s32 toResUserData;    // _38
+	s32 toResMatDLData;   // _3C
 	u8 texObjData[0x104]; // _40, the embedded ResTexObjData the shadow texture lands in
 	u8 _144[0x1A8 - 0x144];
 	ResTexSrtData texSrtData; // _1A8
 };
 
 struct ResMatDLData {
-	u8 dlPix[0x20];          // _00
-	u8 dlTevColor[0x80];     // _20
+	u8 dlPix[0x20];      // _00
+	u8 dlTevColor[0x80]; // _20
 	u8 _A0[0xE0 - 0xA0];
-	u8 dlTexCoordGen[0xA0];  // _E0
+	u8 dlTexCoordGen[0xA0]; // _E0
 };
 
 class ResMat {
@@ -1005,9 +1005,18 @@ public:
 };
 
 // the scene root, as far as the game calls it: the current camera's handle is reduced to its data
-class ScnRoot {
+class ScnRoot : public G3dObj {
 public:
-	MtxP GetCurrentCamera(); // 0x8027ADC8
+	// the allocator, the size out and the four counts, all 1 for the stage's scene
+	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
+	                          u32 numLightSet); // 0x8027AB88
+	// Destroy is G3dObj's, 0x8026C574, frees the constructed buffers
+	bool SetAnmScn(AnmScn* pAnmScn); // 0x8027AE70
+	AnmScn* RemoveAnmScn();          // 0x8027AF0C
+	void UpdateFrame();              // 0x8027AF78
+	void CalcWorld();                // 0x8027B388
+	void CalcView();                 // 0x8027B40C
+	MtxP GetCurrentCamera();         // 0x8027ADC8
 };
 
 } // namespace g3d
@@ -1770,8 +1779,18 @@ public:
 	XObjScnCam();
 	virtual ~XObjScnCam();
 
+	virtual void Release();                                // _40
+	virtual void SetAnmScn(u32 id, f32 frame, f32 rate);   // _138
+	virtual void ReleaseModelWork();                       // _13C
+	virtual void InitializeObject();                       // _14C, only drops the scene, no base call in retail
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164
+	virtual void DrawObjectEffects();                      // _188
+
 	WiiGsSceneObj* mScene; // _9A8
-	u8 _9AC[0x9C0 - 0x9AC];
+	Vec m_9AC;             // _9AC, SetAnmScn zeroes it
+	f32 m_9B8;             // _9B8
+	u8 _9BC[0x9C0 - 0x9BC];
 };
 STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
@@ -1782,10 +1801,15 @@ public:
 	XObjLight();
 	virtual ~XObjLight();
 
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164, retail's is empty
+	virtual void ResetObjectState();                       // _154
+
 private:
-	u8 _9A8[4];
+	u32 m_9A8;         // ResetObjectState clears it
 	CLight mLights[8]; // _9AC
-	u8 _D0C[0x24];
+	s32 mLightIds[8];  // _D0C, ResetObjectState fills it with -1
+	u8 _D2C[0xD30 - 0xD2C];
 };
 STATIC_ASSERT(sizeof(XObjLight) == 0xD30);
 
@@ -1796,12 +1820,16 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
+	virtual void InitializeObject(); // _14C
+	virtual void ResetObjectState(); // _154
+
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4
-	u8 _1374[0x84];
+	u32 m_1374;                // InitializeObject clears it
+	u8 _1378[0x80];            // ResetObjectState drops every other word of the two 0x40 records
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
 // the Chibi-Robo character object: its dtor (0x800C14A0) unwinds a CPtclSet at

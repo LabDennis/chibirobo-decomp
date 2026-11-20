@@ -1402,6 +1402,12 @@ if wii:
                 Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
                 Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the scene camera file, 0x800C6584-0x800C7DC0 (wii_units.md Nr. 58): the CCamera
+                # virtuals defined here, XObjScnCam's overrides, XObjLight's and XObjMap's
+                # ResetObjectState and the CustomShadow pair; the thunks and the big decodes
+                # (fn_800C66C8, fn_800C6CF0, fn_800C7764) still come from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobj_camera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining

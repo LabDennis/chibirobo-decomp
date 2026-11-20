@@ -1061,8 +1061,7 @@ static inline Vec ReadObjectFloorExtent(const XObj* object, s32 index)
 // NONMATCHING: retail hands OnPlayerContact the contact delta as an unnamed temporary (lowest stack slot) and calls
 // PSVECMag between building it and the call, as if the virtual took (const Vec&, f32, s32); the overrides live in
 // the other Wii units, so the signature stays (s32, s32) for now
-u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
-                             s32 flags)
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor, s32 flags)
 {
 	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
 		if (cursor)
@@ -1135,7 +1134,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			PSMTXConcat(base, rotate, transform);
 			PSMTXConcat(transform, local, transform);
 			PSMTXConcat(transform, scale, transform);
-			f32 h             = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
+			f32 h = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
 			Vec world[8];
@@ -1177,8 +1176,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			Vec wall[2];
 			static Vec ends[2] = { { -.5f, 0, 0 }, { .5f, 0, 0 } };
 			PSMTXMultVecArray(transform, ends, wall, 2);
-			u32 touched = ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], contact, &mEdges[i].mContactOffset,
-			                                           push, 1, radius);
+			u32 touched
+			    = ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], contact, &mEdges[i].mContactOffset, push, 1, radius);
 			if (touched) {
 				collision  = 3; // the wall stops the sweep
 				contact->y = from->y;
@@ -1201,8 +1200,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			PSMTXConcat(transform, scale, transform);
 			PSMTXMultVecArray(transform, quad, quad, 4);
 			for (s32 j = 0; j < 4; ++j) {
-				collision = ResolveCircleWallCollisionXZ(&start, &dest, &quad[j], &quad[(j + 1) % 4], &hit,
-				                                         &mEdges[i + 3].mContactOffset, push, 1, radius);
+				collision = ResolveCircleWallCollisionXZ(&start, &dest, &quad[j], &quad[(j + 1) % 4], &hit, &mEdges[i + 3].mContactOffset,
+				                                         push, 1, radius);
 				if (collision) {
 					collision = 8;
 					StoreFloorEdge(mEdges[i + 3], mMoveTranslate, quad[j], quad[(j + 1) % 4]);
@@ -1244,8 +1243,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 		mStatus.mFlags |= 0x0100000000000000ULL;
 		if ((flags & 2) && (result & 3) == 3) { // any contact (3) can start its event script
 			WiiPlayerState* player = gGame.GetPlayer();
-			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL)
-			    && !gGame.GetStatusFlags(0x400) && player->mAttachmentRequest < 0
+			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL) && !gGame.GetStatusFlags(0x400)
+			    && player->mAttachmentRequest < 0
 			    && (!gGame.GetStatusFlags(0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
 			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
