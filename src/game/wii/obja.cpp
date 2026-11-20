@@ -364,6 +364,50 @@ void XObj::vf198(f32 margin, f32 alpha, u32 color)
 	}
 }
 
+// 0x800AE9F0 still missing here (the ResMat tev/color table pass, 0x6A8)
+
+// 0x800AF098, the READ command's start half: kicks the archive's animation-file read and
+// arms the flag UpdateObject polls; the panic names the header the helper family lives in
+// NONMATCHING: retail pools "" in .sdata (lbl_805A0F80), ours folds it into the
+// "xobj_ut2.h" .rodata stringBase (addi r5, r3, 0xb) — a string-pool layout
+// difference of the still-incomplete unit; the code is instruction-identical otherwise
+extern "C" BOOL fn_800AF098(XObj* obj, const char* path)
+{
+	s32 result = obj->mArchive.mAnm.mFile.ReadAsync(path, 0, 0, FALSE);
+	BOOL ok    = result != 0 ? TRUE : (OSPanic("xobj_ut2.h", 0xe2, ""), FALSE);
+	if (ok) {
+		obj->mStatus.mFlags |= 0x80000000000000ULL;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// 0x800AF12C, the READ command's empty-path half: rebinds the playing anim to the object's
+// own file (resetting to anim 0 when only the archive had it), then drops the source,
+// releases the archive and closes the file
+extern "C" void fn_800AF12C(XObj* obj)
+{
+	if (obj->mArchive.mAnm.IsLoaded()) {
+		if (obj->GetAnimId() >= 0) {
+			XObjSource* source = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mSource : NULL;
+			if (source != NULL) {
+				if (source->mAnimNames != NULL) {
+					if (obj->mObject.m_resFile.GetResAnmChr(source->mAnimNames[obj->GetAnimId()]).mpData == NULL) {
+						obj->SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+					}
+				}
+			}
+			f32 frame = obj->GetAnimFrame();
+			obj->SetAnim(obj->GetAnimId(), TRUE, frame, 1.0f, 1.0f, 15.0f);
+		}
+		obj->ClearAnmSource();
+		if (obj->mArchive.mAnm.mFile.IsLoaded()) {
+			obj->mArchive.mAnm.Release(TRUE);
+			obj->mArchive.mAnm.mFile.Close();
+		}
+	}
+}
+
 // 0x800AF2C8, the kind's packed anim id: the low halfword names the character animation, the high
 // one a material animation; both index the source's own name table, each wrapping at 1000
 void XObj::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)

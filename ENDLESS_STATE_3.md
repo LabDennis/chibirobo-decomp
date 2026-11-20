@@ -1,11 +1,47 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 47 fertig, Branch devin/lane3 @64ae5a3a. R24J01:
-  6591/8284 matched, `main.dol: OK`.
+Stand: Lauf 48 fertig, Branch devin/lane3 @e3751019. R24J01:
+  6592/8284 matched, `main.dol: OK`.
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 48 — obja READ-Paar: fn_800AF12C 100 %, fn_800AF098 98,38
+
+- **Merge:** `git merge github-fork/all-releases` → „Already up to date".
+- **fn_800AF098** (0x94, READ-Start): `mArchive.mAnm.mFile.ReadAsync
+  (path,0,0,FALSE)`; auf 0 → `OSPanic("xobj_ut2.h", 0xe2, "")` +
+  FALSE, sonst READ-Pending-Bit `0x80000000000000ULL` in
+  mStatus.mFlags (_150, High-Word `oris 0x80`) + TRUE. Source-Form
+  die Retail-Kontrollfluss trifft: Ternary
+  `result != 0 ? TRUE : (OSPanic(...), FALSE)` — &&/Bool-Varianten
+  erzeugen neg/or/srwi + Extra-Register. Bleibt **98,38 %
+  NONMATCHING**: Retail lädt `""` aus .sdata (lbl_805A0F80), unser
+  Build faltet es in die "xobj_ut2.h"-rodata-StringBase
+  (`addi r5, r3, 0xb`) — Pool-Layout der unvollständigen Unit,
+  Code ansonsten instruktionsidentisch. Kommentar im Source.
+- **fn_800AF12C** (0x19C, READ-Abbruch): **100 % matched.**
+  Schlüssel: Retail-Guards sind *geschachtelte* ifs (drei beq auf
+  dasselbe Ziel), NICHT eine &&-Kette — && erzeugt Bool-
+  Materialisierung + r29-Save + Frame 0x30 statt 0x20.
+  Ablauf: `mArchive.mAnm.IsLoaded()` → `GetAnimId()>=0` →
+  `source = mAttr.mObjData ? mAttr.mObjData->mSource : NULL` →
+  `if (source) if (source->mAnimNames) if (GetResAnmChr(...)==NULL)
+  SetAnim(0,...)` → `SetAnim(GetAnimId(), TRUE, GetAnimFrame(),
+  1,1,15)` → ClearAnmSource → Release(TRUE) + mFile.Close().
+- **vf168 gezählt:** `vf168__4XObjFUl = .text:0x800AE170 size 0x2D8`
+  fehlte in symbols.txt (war seit Lauf 44 implementiert aber
+  ungemeldet). +1 Symbol-Zeile → jetzt im Report: **69,02 %** —
+  Restdiff bisher unanalysiert, steht auf der Liste.
+- **Gate:** R24J01 `main.dol: OK` 6592/8284 (+1: AF12C neu matched,
+  vf168 neu gezählt bei 69); --non-matching linkt; GGTE01/GGTJ01_01/
+  GGTP01 je `17 files OK`; Report-Diff alle 4 Editionen **0
+  Regressionen** (up: AF12C 100, AF098 98,38, vf168 69,02).
+  config-Diff nur die eine Symbol-Zeile. check.py --source-only
+  weiter blockiert (nur clang-format 23.1.4, kein 18.1.8);
+  callcheck.py existiert nicht in tools/ (nur Erwähnung in dieser
+  Datei).
 
 ## Lauf 47 — CustomShadow echtes Layout → gCustomShadow in .bss
 
@@ -50,11 +86,14 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 - DrawGroundShadowAt (94,03): Rest = mObjData-Doppelload (r6→r7 neu) +
   Pool-Slots der unvollständigen Unit. ehrlich NONMATCHING.
+- fn_800AF098 (98,38): nur noch String-Pool — Retail `""` in .sdata
+  (lbl_805A0F80), wir `addi r5, r3, 0xb` auf die rodata-StringBase;
+  löst sich mit vollständiger Unit. ehrlich NONMATCHING.
+- vf168__4XObjFUl 0x800AE170 (69,02): seit Lauf 48 im Report,
+  Restdiff unanalysiert.
 - vf198 (87,56): Scheduling-Rest, unverändert.
 - obja-Funktionen ohne Quelltext, Retail-Größen:
-  fn_800AF098 0x94 (vf-Aufruf über *_964+0x14 mit this+0x87C; setzt
-  Bit 31 in _150, sonst OSPanic — Typen _964/_87C offen);
-  fn_800AF12C ~0x19C; fn_800AD498 ~0x3D8 (strcmp, bctrl über
+  fn_800AD498 ~0x3D8 (strcmp, bctrl über
   gGame+0x41E4-vf); fn_800AE9F0 ~0x6A4 (0x1000-Frame, Farbtabellen,
   DrawGsColoredTrianglePrimitive ×8); fn_800AF51C ~0xA64 (NW4R-ResMat-
   Tev-Schleife); LoadFromPlacement 0x800AC238 0x1260;
@@ -67,9 +106,9 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Nächster Schritt
 
-obja, kleinste zuerst: fn_800AF098 (0x94 — Member _964-Typ und
-_87C-Struktur aus Retail-Lesern rekonstruieren), dann fn_800AF12C,
-fn_800AD498, fn_800AE9F0, fn_800AF51C; LoadFromPlacement +
+obja, kleinste zuerst: fn_800AD498 (~0x3D8, strcmp + bctrl über
+gGame+0x41E4-vf), dann vf168-Diff ansehen (69,02, jetzt im Report),
+dann fn_800AE9F0, fn_800AF51C; LoadFromPlacement +
 TestFloorCollision (je ~0x1200) als eigene Anläufe.
 CustomShadow-Ctor/Draw (0x800C6F60/0x800C7130) als Quelle in die
 Lücken-Unit, sobald deren Originaldatei identifiziert ist.
