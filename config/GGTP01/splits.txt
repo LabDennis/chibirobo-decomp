@@ -1675,6 +1675,7 @@ game/cfont.cpp:
 	.sdata      start:0x80661C00 end:0x80661C08
 	.sbss       start:0x80662700 end:0x80662718
 	.sdata2     start:0x806667C8 end:0x806667F0
+	.sbss2      start:0x80667410 end:0x80667418
 
 game/cfile.cpp:
 	extab       start:0x80005F10 end:0x80005F78

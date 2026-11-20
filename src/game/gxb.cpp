@@ -769,12 +769,18 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
 	StepChannel(color->mColor.a, color->mTarget.a, color->mSpeed.a, frames);
 }
 
+static inline void SetColorSpeed(ScrnColorF& speed, f32 r, f32 g, f32 b, f32 a)
+{
+	speed.r = r;
+	speed.g = g;
+	speed.b = b;
+	speed.a = a;
+}
+
 /**
  * @note Address: 0x80023D74
  * @note Size: 0x16C
  */
-// NONMATCHING: regalloc, the blue and alpha quotients swap f0/f2. The speeds are computed alpha first, as the Wii
-// build does.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -791,15 +797,9 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time            = FRAME_RATE * time;
-		f32 speedA      = ((f32)a - color->mColor.a) / time;
-		f32 speedB      = ((f32)b - color->mColor.b) / time;
-		f32 speedG      = ((f32)g - color->mColor.g) / time;
-		f32 speedR      = ((f32)r - color->mColor.r) / time;
-		color->mSpeed.r = speedR;
-		color->mSpeed.g = speedG;
-		color->mSpeed.b = speedB;
-		color->mSpeed.a = speedA;
+		time = FRAME_RATE * time;
+		SetColorSpeed(color->mSpeed, ((f32)r - color->mColor.r) / time, ((f32)g - color->mColor.g) / time,
+		              ((f32)b - color->mColor.b) / time, ((f32)a - color->mColor.a) / time);
 	}
 }
 

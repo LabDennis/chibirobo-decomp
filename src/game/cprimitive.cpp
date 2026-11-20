@@ -27,11 +27,6 @@ static inline void LoadNrmMtx(MtxP mtx)
 // position and color, both direct. every caller shares one copy of these arrays, so
 // it's an inline. retail's tile draws and lit circle pass their own format with no null
 // test, this check still costs them a compare. default first then an if beats a ternary
-// the default centers of the circle, tile and sprite primitives
-static const Vec sCircleDefaultCenter = { 0.0f, 0.0f, 0.0f };
-static const Vec sSpriteDefaultCenter = { 0.0f, 0.0f, 0.0f };
-static const Vec sTileDefaultCenter   = { 0.0f, 0.0f, 0.0f };
-
 static inline void SetVtxPosClr(GXVtxAttrFmtList* fmt = NULL)
 {
 	GXVtxAttrFmtList defFmt[] = {
@@ -1844,7 +1839,8 @@ void CTriangle::DrawLit(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 void CCircle::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	mCenter = sCircleDefaultCenter;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**
@@ -2229,7 +2225,8 @@ void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 void CTile::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	mCenter = sTileDefaultCenter;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**
@@ -2598,8 +2595,9 @@ void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 void CSprite::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	mTex     = NULL;
-	mCenter = sSpriteDefaultCenter;
+	mTex       = NULL;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**

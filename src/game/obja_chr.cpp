@@ -5947,8 +5947,6 @@ static inline f32 GetActionBatteryCost(s32 index)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
-// NONMATCHING: GGTP01 only, for the lift's drain retail converts the idle quotient in f1 and loads the battery cost into
-// f0, swapping the two registers
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6219,9 +6217,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	// battery per second, the table holds hundredths; row 9 instead drains about the lift's mBatteryCost each update
 	f32 drain = 0.0f;
 	if (index >= 0) {
-		if (index == 9)
-			drain = (f32)((u32)IDLE_SECOND / frames) * p->mLift.mBatteryCost;
-		else
+		if (index == 9) {
+			f32 rate = (u32)IDLE_SECOND / frames;
+			drain    = rate * p->mLift.mBatteryCost;
+		} else
 			drain = GetActionBatteryCost(index);
 	}
 	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
@@ -6439,21 +6438,35 @@ extern "C" {
 extern s32 lbl_8065B268;
 }
 
+static inline f32 GetStickMotion(CPadOne* pad)
+{
+	u8 blocked = (gGame.mStatus.mFlags & 0x20) != 0;
+	if (!blocked) {
+		blocked = gGame.mEvt.mData.mScript != NULL;
+	}
+	if (blocked) {
+		return 0.0f;
+	}
+	f32 x = pad->mStickX;
+	f32 y = pad->mStickY;
+	return sqrtf(x * x + y * y);
+}
+
 static inline f32 PlayerGaitRate(f32 speed, bool slow)
 {
-	f32 rate;
 	if (slow) {
-		rate = speed > 1.0f ? 1.0f : speed;
+		f32 rate = speed > 1.0f ? 1.0f : speed;
 		if (rate < 0.5f)
 			rate = 0.5f;
+		return rate;
 	} else {
-		rate = 0.5f * speed;
+		f32 rate = 0.5f * speed;
 		if (rate > 1.0f)
 			rate = 1.0f;
 		if (rate < 0.7f)
 			rate = 0.7f;
+		return rate;
 	}
-	return rate;
 }
 
 static inline f32 PlayerGaitEndFrame(XObjChr* p)
@@ -6484,14 +6497,7 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
 extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim, u32, f32, f32)
 {
 	CPadOne* pad = &p->mPad;
-	f32 motion;
-	if ((gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript) {
-		motion = 0.0f;
-	} else {
-		f32 x  = pad->mStickX;
-		f32 y  = pad->mStickY;
-		motion = sqrtf(x * x + y * y);
-	}
+	f32 motion   = GetStickMotion(pad);
 	if (motion == 0.0f && p->mFloorContacts[4].objectIndex >= 0)
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.mStatus.mFlags & 0x100) && !(gGame.mStatus.mFlags & 0x200))
@@ -6617,9 +6623,12 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 		case 0x88:
 		case 0x882:
 		case 0x897:
-			if (speed < 1.25f)
-				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-			else if (speed >= 1.9f)
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed >= 1.9f)
 				ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
 			else
 				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
@@ -6629,11 +6638,17 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 		case 0xD:
 		case 0x819:
 		case 0x898:
-			if (speed < 1.25f)
-				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-			else if (speed < 1.9f)
-				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, true));
-			else
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed < 1.9f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 0x77, rate);
+			} else
 				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
 			break;
 		}
