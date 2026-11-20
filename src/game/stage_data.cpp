@@ -46,6 +46,9 @@ extern u8 HSD_VIData[];
 BOOL LoadGameSoundBank(XSound* sound, s32 stage);
 }
 
+// retail's 0x134-byte bss prefix ahead of gStageResources, used as the base
+// register in __sinit_stage_data_cpp
+u8 lbl_80345738[0x134];
 Stage gStageResources;
 Globals gGlobalScriptResources;
 
