@@ -66,6 +66,10 @@ AnimSfxEvent sArmyF8SoundEvents[] = {
 
 } // extern "C"
 
+// zero vectors the shot facing and the shot marker rotation start from
+static const Vec sArmyShotFacingOrigin   = { 0.0f, 0.0f, 0.0f };
+static const Vec sArmyShotMarkerRotation = { 0.0f, 0.0f, 0.0f };
+
 // the y angle that looks from to at from, 0 when they're on top of each other
 static inline f32 GetAngleY(const Vec& from, const Vec& to)
 {
@@ -373,7 +377,7 @@ void FireNextArmyShot(XObjArmy* army)
 	s32 path[6] = { 0, 0, 4, 0, 0, 0 };
 	GetJointFromRoot(army->mJObj, 6, path); // the result goes unused
 	pos        = army->mMoveTranslate;
-	Vec facing = { 0.0f, 0.0f, 0.0f };
+	Vec facing = sArmyShotFacingOrigin;
 	facing.x   = sin(HSD_JObjGetRotationY(army->mJObj));
 	facing.z   = cos(HSD_JObjGetRotationY(army->mJObj));
 	dir        = CVec(facing);
@@ -666,7 +670,7 @@ void XObjArmy::DrawObjectEffects()
 				gs->mBillboardEnabled = 1;
 				Vec pos               = mShots[i].mPos;
 				SetGsBlendMode(gs->mCurRenderMode, 1, 1, 1, 15);
-				Vec rot = { 0.0f, 0.0f, 0.0f };
+				Vec rot = sArmyShotMarkerRotation;
 				DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0xFF, pos.x, pos.y, pos.z, 3.0f, 3.0f, rot.x, rot.y, rot.z);
 				gs->mBillboardEnabled = 0;
 			} else {
