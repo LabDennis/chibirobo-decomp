@@ -210,8 +210,7 @@ extern "C" void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z)
 		f32 sine   = std::sinf(angle);
 		f32 cosine = std::cosf(angle);
 		cord->mPoints[i].mPos.Set(CVec(5.0f * cosine, -10.0f, 5.0f * sine));
-		Vec offset = center;
-		cord->mPoints[i].mPos += offset;
+		AdvanceSpark(cord->mPoints[i].mPos, center);
 		XObjPlugCordPoint& point = cord->mPoints[i];
 		point.mTarget.x          = point.mPos.x;
 		point.mTarget.y          = point.mPos.y;
