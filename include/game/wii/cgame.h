@@ -655,18 +655,19 @@ public:
 	f32 mTargetHeight;                             // _E54, the height kept once no area is picked
 	s32 mHeightMode;                               // _E58, 0 height above the target, 1 absolute
 	s32 mUseAreaHeight;                            // _E5C, 1 keeps the area's height outside it
-	u8 _E60[0xE64 - 0xE60];
+	f32 mCurrentHeight; // _E60, current camera height
 	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
-	u8 _E78[0xE7C - 0xE78];
+	CInterfaceInterpolation* mEyeYOffsetInterp; // _E78
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
 	f32 mEyeYOffset;                              // _E98
-	u8 _E9C[0xEA4 - 0xE9C];
+	s32 mTurnBlocked; // _E9C, 1 while area corners keep the camera from turning
+	s32 mManualInput; // _EA0, manual camera input this frame
 	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
 	s32 mInsideAreas[32];                                // _EA8, areas containing the player
 	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
-	u8 _F64[0xF68 - 0xF64];
+	f32 mEyeInterpTime; // _F64, target-eye interpolation time
 	CVec mTargetEye;      // _F68
 	CVec mPrevTargetEye;  // _F78
 	CVec mOrbitEye;       // _F88

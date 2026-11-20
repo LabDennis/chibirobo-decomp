@@ -5,6 +5,7 @@
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #endif
 #include "game/cameracollisionpolygons.h"
 #include "game/caminfo.h"
@@ -20,6 +21,12 @@ extern "C" {
 #include <dolphin/os.h>
 }
 
+extern s32 gRefreshRate;
+
+// the Wii builds divide by the current refresh rate, the GameCube header's FRAME_TIME is the 60 Hz constant
+#undef FRAME_TIME
+#define FRAME_TIME (1.0f / gRefreshRate)
+
 // the map camera's half of the Wii camera code; the area camera's half is ccameraactionarea.cpp
 
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode);
@@ -32,7 +39,34 @@ void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32
 void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
 void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 f32 MapAreaHeight(CCameraActionMap* map, s32 index);
+void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
+void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step);
+CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance);
+s32 CollectCameraAreasContainingPoint(CamAreaState* state, Vec pos, s32* ids);
 }
+
+extern s32 sMapCameraCenterReset;
+extern s32 sMapCameraOrbitAtRestDistance;
+extern "C" CVec sMapCameraTestEye;
+extern "C" CVec sMapCameraTestCenter;
+
+// the map camera's spring stiffnesses, by mode
+extern "C" f32 sMapCameraSpringParameters[] = { 0.5f, 2.5f, 4.5f };
+// the collision modes Update hands to ResolveMapCameraEyeCollision, for the spring eye and the orbit eye
+extern "C" s32 sMapCameraCollisionMode0[1];
+extern "C" s32 sMapCameraCollisionMode1 = 1;
+
+extern s32 lbl_805A1D14;
+extern s32 lbl_805A1D18;
+extern s32 lbl_805A1D1C;
+extern s32 lbl_805A1D24;
+extern s32 lbl_805A1D2C;
+extern f32 lbl_805A1D30;
+extern f32 lbl_805A1D34;
+extern s32 lbl_805A1D38;
+extern s32 lbl_805A1D3C;
+extern s32 lbl_805A1D40;
+extern s32 lbl_805A1D44;
 
 // the area index the last turn interpolation aims at, Update skips starting another for it
 extern s32 lbl_805A1D10;
@@ -325,7 +359,8 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 static inline f32 FSqrt(f32 x)
 {
 	if (x < 0.0f) {
-		nw4r::db::Warning("arithmetic.h", 627, "FSqrt: Input is out of the domain.");
+		static const char sFile[] = "arithmetic.h";
+		nw4r::db::Warning(sFile, 627, "FSqrt: Input is out of the domain.");
 	}
 	return x <= 0.0f ? 0.0f : x * nw4r::math::FrSqrt(x);
 }
@@ -360,6 +395,8 @@ static inline void ResetMapCameraInterpolation(CCameraActionMap* map)
 	map->mStatus.mFlags &= ~0x3E;
 }
 
+// NONMATCHING: the logic matches throughout; what remains is scheduling and register allocation
+// (retail's frame is 0x160 larger and assigns the loop variables to different registers) (85,1 %)
 /**
  * @note Address: 0x80159D70
  * @note Size: 0x308C
@@ -1232,6 +1269,441 @@ void CCameraActionMap::PreviousUpdate()
 	}
 }
 
+// the camera target plus the running height-offset interpolation
+static inline Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map)
+{
+	Vec target = map->mTarget->GetCameraTarget();
+	if (map->mTargetHeightOffsetInterp != NULL) {
+		target.y += map->mTargetHeightOffsetInterp->Get();
+	}
+	return target;
+}
+
+// the GameCube has this out of line; the Wii build inlines it into Update
+static inline void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
+{
+	f32 dz    = map->mInterest.z - map->mEye.z;
+	f32 dx    = map->mInterest.x - map->mEye.x;
+	f32 dy    = map->mInterest.y - map->mEye.y;
+	f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+	Vec angle;
+	angle.x = dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI;
+	angle.y = atan2(map->mInterest.x - map->mEye.x, map->mInterest.z - map->mEye.z);
+	angle.z = 0.0f;
+	map->SetAngle(angle);
+}
+
+// horizontal distance; out of line on the GameCube, inlined here
+static inline f32 GetHorizontalDistance(const Vec* from, const Vec* to)
+{
+	f32 dz = to->z - from->z;
+	f32 dx = to->x - from->x;
+	return FSqrt(dx * dx + dz * dz);
+}
+
+// horizontal heading from one position to another
+static inline f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to)
+{
+	return atan2(to->x - from->x, to->z - from->z);
+}
+
+static inline void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time)
+{
+	map->mEyeInterp = &map->mEyeEaseOutDivide;
+	map->mEyeInterp->Start(map->mEye, to, time);
+}
+
+static inline void UpdateCameraEyeInterpolation(CCameraActionMap* map, u32 step)
+{
+	if (map->mEyeInterp != NULL) {
+		if (!map->mEyeInterp->Update(step, FRAME_TIME)) {
+			map->SetEye(map->mEyeInterp->Get());
+		} else {
+			map->mEyeInterp = NULL;
+			map->mStatus.mFlags &= ~0x3E;
+		}
+	}
+}
+
+// the nearest intersection list entry to pos, NULL when the list is empty
+static inline CamMapEntry* GetNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)
+{
+	s32 idx = FindNearestMapCameraEntry(map, pos);
+	if (idx == -1) {
+		return NULL;
+	}
+	return &map->mIntersectionEntries[idx];
+}
+
+// how many of the frame's intersection entries belong to the given area
+static inline s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 recordIndex)
+{
+	s32 count = 0;
+	if (map->mIntersectionCount > 0) {
+		for (s32 i = 0; i < map->mIntersectionCount; i++) {
+			if (map->mIntersectionEntries[i].mRecordIndex == recordIndex) {
+				count++;
+			}
+		}
+	}
+	return count;
+}
+
+// NONMATCHING: the logic matches throughout; what remains is register allocation, stack-slot
+// choice (retail's frame is 0x60 larger, more named temporaries) and literal-pool offsets (93,3 %)
+/**
+ * @note Address: 0x80157D84
+ * @note Size: 0x1FEC
+ */
+void CCameraActionMap::Update(u32 step)
+{
+	if (step > 2)
+		step = 2;
+	if (mTarget == NULL)
+		return;
+
+	Vec pos          = *mTarget->GetPos();
+	mInsideAreaCount = 0;
+	for (u32 i = 0; i < 32; i++)
+		mInsideAreas[i] = -2;
+	pos.y += 10.0f;
+	mInsideAreaCount  = CollectCameraAreasContainingPoint(&gCameraAreaState, pos, mInsideAreas);
+	f32 dt            = 0.1f * step;
+	mSpringPrevTarget = mSpringTarget;
+	CalcMapCameraTargetOffsetPosition(this, mSpringTarget);
+	UpdateMapCameraPadControls(this, step);
+	// orbiting with no turn running and the target moved: go back to trailing it on the spring
+	if ((mStatus.mFlags & 0x20000) && !(mStatus.mFlags & 0x3E) && mSpringTarget != mSpringPrevTarget) {
+		SetMapCameraModeFlags(this, 0x10000);
+	}
+
+	// retail steps these twice
+	for (s32 i = 0; i < 2; i++) {
+		if (mHeightMode == 0) {
+			if (mHeightInterp != NULL)
+				mHeightInterp->Update(step, FRAME_TIME);
+			f32 height     = mHeightInterp->Get();
+			mCurrentHeight = height + gGame.GetPlayer()->GetCameraTarget().y;
+		}
+		if (mHeightMode == 1) {
+			if (mAbsHeightInterp != NULL)
+				mAbsHeightInterp->Update(step, FRAME_TIME);
+			mCurrentHeight = mAbsHeightInterp->Get();
+		}
+	}
+	if (mTargetHeightOffsetInterp != NULL)
+		mTargetHeightOffsetInterp->Update(step, FRAME_TIME);
+	if (mEyeYOffsetInterp != NULL) {
+		if (!mEyeYOffsetInterp->Update(step, FRAME_TIME))
+			mEyeYOffset = mEyeYOffsetInterp->Get();
+	} else {
+		mEyeYOffsetInterp = NULL;
+	}
+
+	// spring mode: the eye trails mSpringTarget on a damped spring
+	if (mStatus.mFlags & 0x10000) {
+		{
+			CVec eye(mEye);
+			f32 previousDistance = PSVECDistance(&eye, &mSpringPrevTarget);
+			f32 distance         = PSVECDistance(&eye, &mSpringTarget);
+			f32 rest             = mRestDistance;
+			f32 targetRest       = mTargetRestDistance;
+			if (rest != targetRest && distance > previousDistance) {
+				if (distance < targetRest && rest != targetRest)
+					rest = distance;
+				if (distance >= targetRest)
+					rest = targetRest;
+			} else if (distance < previousDistance) {
+				rest = targetRest;
+			}
+			mRestDistance = rest;
+		}
+		CVec eye(mEye);
+		eye = SpringDamp(eye, mSpringTarget, mSpringPrevTarget, dt, sMapCameraSpringParameters[0], mSpringDamping, mRestDistance);
+		SetEye(eye);
+		SetInterest(GetMapCameraTargetWithHeightOffset(this));
+		SetEye(mEye.x, mPreviousEye.y, mEye.z);
+		SetMapCameraAnglesFromEyeAndInterest(this);
+		if (__fpclassifyf(mAngle.x) == FP_NAN || __fpclassifyf(mAngle.y) == FP_NAN || __fpclassifyf(mAngle.z) == FP_NAN) {
+			OSPanic("ccameraactionmap2.cpp", 660,
+			        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+			                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+			                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+			                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+			                             mPreviousStatus.mFlags, mManualInput, lbl_805A1D1C, lbl_805A1D18, mTargetEye.x, mTargetEye.y,
+			                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp, mTurnInterpolation,
+			                             mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y, mOrbitAngle.z,
+			                             mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_805A1D14));
+		}
+
+		Vec movement;
+		PSVECSubtract(&mSpringTarget, &mSpringPrevTarget, &movement);
+		movement.y = 0.0f;
+		if (movement.x != 0.0f || movement.z != 0.0f) {
+			PSVECNormalize(&movement, &movement);
+			Vec view;
+			view.x  = (f32)sin(mAngle.y);
+			view.y  = 0.0f;
+			view.z  = (f32)cos(mAngle.y);
+			f32 dot = PSVECDotProduct(&movement, &view);
+			CVec current(mEye);
+			f32 distance = GetHorizontalDistance(&current, &mSpringTarget);
+			// the target heads back at the camera (over 120 degrees off the camera's view) within 20 of the eye
+			if (dot < -0.5f && distance < 20.0f)
+				sMapCameraOrbitAtRestDistance = 1;
+			else
+				sMapCameraOrbitAtRestDistance = 0;
+		}
+		// lbl_805A1D1C is the player's hang state, lbl_805A1D18 the one before it (HANG(%d(%d)) in the panic text)
+		lbl_805A1D18 = lbl_805A1D1C;
+		lbl_805A1D1C = gGame.GetPlayer()->mHang.mState;
+		// on entering hang state 3, swing round in front of the target if no area edge is in the way
+		if (gGame.GetPlayer()->mHang.mState == 3 && lbl_805A1D1C != lbl_805A1D18) {
+			CVec center = *mTarget->GetPos();
+			CVec angles(mAngle.x, PI + mTarget->mMoveTarget1.y, mAngle.z);
+			f32 yaw   = HALF_PI + angles.y;
+			f32 pitch = mAngle.x;
+			f32 distance;
+			{
+				CVec target(mTarget->GetCameraTarget());
+				CVec current(mEye);
+				distance = PSVECDistance(&target, &current);
+			}
+			Vec candidate;
+			candidate.x = center.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
+			candidate.z = center.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
+			candidate.y = center.y;
+			CVec testEye(candidate);
+			CVec testCenter(center);
+			sMapCameraTestEye    = testEye;
+			sMapCameraTestCenter = testCenter;
+			mIntersectionCount   = CalcIntersectVec(candidate, center, mIntersectionEntries, 0);
+			if (mIntersectionCount == 0 && TrySetMapCameraTargetYaw(this, PI + mTarget->mMoveTarget1.y, 20.0f, 0.0f)) {
+				SetMapCameraModeFlags(this, 0x20002);
+				goto checkCollision;
+			}
+		}
+		// the target came back at the camera: put the eye behind its facing, at least 31 away
+		if (sMapCameraOrbitAtRestDistance != 0) {
+			SetInterest(GetMapCameraTargetWithHeightOffset(this));
+			CVec angles;
+			angles = CVec(mAngle.x, mTarget->mMoveRotate.y, mAngle.z);
+			SetAngle(angles);
+			CVec current(mEye);
+			f32 distance = PSVECDistance(&current, &mSpringTarget);
+			if (distance < 31.0f)
+				distance = 31.0f;
+			f32 pitch = mAngle.x;
+			f32 yaw   = HALF_PI + mAngle.y;
+			Vec target;
+			target.x = mSpringTarget.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
+			target.z = mSpringTarget.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
+			target.y = mCurrentHeight;
+			SetEye(target);
+			gGame.GetPlayer()->ResetCameraValue();
+			SetMapCameraAnglesFromEyeAndInterest(this);
+			if (__fpclassifyf(mAngle.x) == FP_NAN || __fpclassifyf(mAngle.y) == FP_NAN || __fpclassifyf(mAngle.z) == FP_NAN) {
+				OSPanic("ccameraactionmap2.cpp", 762,
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+				                             mPreviousStatus.mFlags, mManualInput, lbl_805A1D1C, lbl_805A1D18, mTargetEye.x,
+				                             mTargetEye.y, mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp,
+				                             mTurnInterpolation, mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y,
+				                             mOrbitAngle.z, mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_805A1D14));
+			}
+			sMapCameraOrbitAtRestDistance = 0;
+		} else {
+			SetMapCameraAnglesFromEyeAndInterest(this);
+			if (__fpclassifyf(mAngle.x) == FP_NAN || __fpclassifyf(mAngle.y) == FP_NAN || __fpclassifyf(mAngle.z) == FP_NAN) {
+				OSPanic("ccameraactionmap2.cpp", 772,
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+				                             mPreviousStatus.mFlags, mManualInput, lbl_805A1D1C, lbl_805A1D18, mTargetEye.x,
+				                             mTargetEye.y, mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp,
+				                             mTurnInterpolation, mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y,
+				                             mOrbitAngle.z, mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_805A1D14));
+			}
+			CVec target(*mTarget->GetPos());
+			target.y += 10.0f;
+			CVec current(mEye);
+			current.y = target.y;
+			CVec direction;
+			PSVECSubtract(&target, &current, &direction);
+			PSVECNormalize(&direction, &direction);
+			target += direction * 3.0f;
+			mIntersectionCount  = CalcIntersectVec(mEye, target, mIntersectionEntries, 0);
+			mNearestTargetIndex = FindNearestMapCameraEntry(this, *mTarget->GetPos());
+			mNearestTargetEntry = GetNearestMapCameraEntry(this, *mTarget->GetPos());
+			mNearestEyeIndex    = FindNearestMapCameraEntry(this, mEye);
+			mNearestEyeEntry    = GetNearestMapCameraEntry(this, mEye);
+			SetMapCameraSideEndpoints(this);
+			if (mNearestEyeEntry != NULL) {
+				// turn only if the eye-to-target line cuts a corner of the area hit nearest the eye: two hits, on
+				// neighbouring sides
+				s32 count    = CountMapCameraEntriesInGroup(this, mNearestEyeEntry->mRecordIndex);
+				s32 adjacent = CountMapCameraAdjacentSideIntersections(this, mNearestEyeEntry);
+				if (count < 2)
+					mTurnBlocked = 1;
+				else if (adjacent == 0)
+					mTurnBlocked = 1;
+				else {
+					bool allowsTurn = CamAreaInfo(&gCameraAreaState.mAreaExRecords[mNearestEyeEntry->mRecordIndex]).AllowsTurn();
+					if (allowsTurn)
+						mTurnBlocked = 0;
+					else
+						mTurnBlocked = 1;
+					if (gGame.GetPlayer()->mCopter.mState != 0 || gGame.GetPlayer()->mJump.mState != 0) {
+						mTurnBlocked = 1;
+					}
+				}
+			}
+			if (_8C.y == _8C.mTarget.y && mNearestEyeEntry != NULL && mTurnBlocked == 0) {
+				StartMapCameraTurnInterpolation(this, 0);
+			}
+		}
+	checkCollision:
+		CVec current(mEye);
+		CVec previous(mPreviousEye);
+		ResolveMapCameraEyeCollision(this, current, previous, mInterest, mPreviousInterest, sMapCameraCollisionMode0);
+		SetEye(current);
+	}
+
+	// orbit mode: UpdateMapCameraOrbit turns the eye round the interest, then the eye eases to mTargetEye
+	if (mStatus.mFlags & 0x20000) {
+		SetInterest(GetMapCameraTargetWithHeightOffset(this));
+		if (!(mStatus.mFlags & 0x400))
+			mTargetEye.y = mCurrentHeight;
+		mTargetEye.y = mPrevTargetEye.y;
+		UpdateMapCameraOrbit(this, step);
+		mTargetEye.y = mPrevTargetEye.y;
+		if (sMapCameraCenterReset != 0) {
+			CVec previous(mPrevTargetEye);
+			mPrevTargetEye = mTargetEye;
+			CVec current(mTargetEye);
+			current        = SpringDamp(current, mSpringTarget, mSpringPrevTarget, 0.1f * step, sMapCameraSpringParameters[0],
+                                        mSpringDamping, mTargetRestDistance);
+			mTargetEye     = current;
+			mPrevTargetEye = previous;
+		}
+		lbl_805A1D34 = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
+		// no area collision while mTurnInterpolation runs (eye mode 4)
+		if (!(mStatus.mFlags & 4)) {
+			s32 wasBlocked = lbl_805A1D24;
+			f32 before     = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+			BOOL hit = ResolveMapCameraEyeCollision(this, mTargetEye, mPrevTargetEye, mInterest, mPreviousInterest,
+			                                        &sMapCameraCollisionMode1);
+			// lbl_805A1D28 is the last turn direction: a heading the collision pushed back against it blocks the turn
+			if (lbl_805A1D28 > 0.0f) {
+				f32 after = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+				GetHeadingBetweenPositions(&mPrevTargetEye, &mInterest);
+				before = WrapAngle(before);
+				after  = WrapAngle(after);
+				if (after - before < 0.0f) {
+					lbl_805A1D24 = 1;
+					lbl_805A1D2C++;
+				} else {
+					lbl_805A1D24 = 0;
+					lbl_805A1D2C = 0;
+				}
+			} else if (lbl_805A1D28 < 0.0f) {
+				f32 after = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+				GetHeadingBetweenPositions(&mPrevTargetEye, &mInterest);
+				before = WrapAngle(before);
+				after  = WrapAngle(after);
+				if (after - before > 0.0f) {
+					lbl_805A1D24 = 1;
+					lbl_805A1D2C++;
+				} else {
+					lbl_805A1D24 = 0;
+					lbl_805A1D2C = 0;
+				}
+			}
+			if (lbl_805A1D24 == 1 && wasBlocked != lbl_805A1D24) {
+				mTargetEye  = mPrevTargetEye;
+				mOrbitAngle = mPrevOrbitAngle;
+			}
+			if (hit != 0) {
+				if (sMapCameraCenterReset != 0)
+					sMapCameraCenterReset = 0;
+			} else {
+				if (sMapCameraCenterReset == 0)
+					sMapCameraCenterReset = 1;
+			}
+		}
+		lbl_805A1D30 = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
+		if (lbl_805A1D30 > lbl_805A1D34)
+			mEyeInterpTime = 0.0f;
+		else {
+			mEyeInterpTime = 3.0f;
+			if (mStatus.mFlags & 0x10)
+				mEyeInterpTime = 5.0f;
+		}
+		mPrevTargetEye.y = mTargetEye.y = mCurrentHeight;
+		SetEye(CVec(mEye.x, mTargetEye.y, mEye.z));
+		if (mPrevTargetEye != mTargetEye)
+			StartCameraEyeInterpolation(this, mTargetEye, mEyeInterpTime);
+	}
+
+	UpdateCameraEyeInterpolation(this, step);
+	f32 weight = GetHorizontalDistance(&mEye, &mSpringTarget) / 60.0f;
+	if (weight > 1.0f)
+		weight = 1.0f;
+	if (weight < 0.0f)
+		weight = 0.0f;
+	if (gGame.mMotionControlCamera.GetMapDistance() <= 1.0f)
+		weight = 0.0f;
+	f32 interestHeight = mInterest.y;
+	f32 height         = mCurrentHeight;
+	f32 difference     = height - interestHeight;
+	if (difference < 0.0f)
+		difference = 0.0f;
+	f32 weighted = difference * weight;
+	f32 offset   = interestHeight + weighted;
+	offset -= height;
+	f32 from = mEyeYOffsetInterp->Get();
+	if (0.0f != offset) {
+		mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
+		mEyeYOffsetInterp->Start(from, offset, 0.05f);
+	}
+	Vec eye = mEye;
+	eye.y   = mCurrentHeight;
+	eye.y += mEyeYOffset;
+	SetEye(eye);
+	CVec previousEye(mEye);
+	CVec previousInterest(mInterest);
+	mPreviousEye           = previousEye;
+	mPrevTargetEye         = mTargetEye;
+	mPrevOrbitEye          = mOrbitEye;
+	mPreviousInterest      = previousInterest;
+	mPreviousStatus.mFlags = mStatus.mFlags;
+
+	// the Wii remote's direction pad: Update forces these bits from its own state
+	if (lbl_805A1D38 != 0) {
+		gWiiPointer.mFlags |= 0x40000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x40000000;
+	}
+	if (lbl_805A1D3C != 0) {
+		gWiiPointer.mFlags |= 0x80000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x80000000;
+	}
+	if (lbl_805A1D44 != 0) {
+		gWiiPointer.mFlags |= 0x04000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x04000000;
+	}
+	if (lbl_805A1D40 != 0) {
+		gWiiPointer.mFlags |= 0x08000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x08000000;
+	}
+}
+
 f32 CCameraActionMap::GetFollowDivisor()
 {
 	// CMotionControlCamera::Follow closes 1/6 of the remaining distance per call
@@ -1252,8 +1724,25 @@ u32 CCameraActionMap::GetCameraFlags()
 s32 sMapCameraCenterReset;
 // the area index the last turn interpolation aims at, Update skips starting another for it
 s32 lbl_805A1D10;
+// the FIX(%d) value in Update's panic dump
+s32 lbl_805A1D14;
+// the player's hang state, last frame and this one (HANG(%d(%d)) in the panic dump)
+s32 lbl_805A1D18;
+s32 lbl_805A1D1C;
 // 1: a new orbit keeps the target rest distance instead of the eye's current one
 s32 sMapCameraOrbitAtRestDistance;
+// 1 while the collision keeps pushing the orbit eye back against the turn direction
+s32 lbl_805A1D24;
+// how often the turn was blocked in a row
+s32 lbl_805A1D2C;
+// the orbit eye's horizontal move this frame, after and before the orbit step
+f32 lbl_805A1D30;
+f32 lbl_805A1D34;
+// the Wii build presses these into gWiiPointer's direction-pad bits at the end of Update
+s32 lbl_805A1D38;
+s32 lbl_805A1D3C;
+s32 lbl_805A1D40;
+s32 lbl_805A1D44;
 
 static inline f32 FlatDistance(const CVec& pos, CVec& v)
 {
