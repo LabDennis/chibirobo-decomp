@@ -1987,17 +1987,16 @@ void XObjSpider::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, voi
  * @note Address: 0x800EA40C
  * @note Size: 0x148
  */
-// NONMATCHING: the jobj and the anim id swap registers
+static inline void UpdateSpiderAnimationSound(XObjSpider* spider, s32 id)
+{
+	f32 frame = GetAnimFrame(spider->mJObj);
+	spider->mSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &spider->mMoveTranslate, 0));
+}
+
 void XObjSpider::UpdateAnimationSounds()
 {
-	if (mStatus.mFlags & 1ULL) {
-		if (mStatus.mFlags & 0x10000ULL) {
-			HSD_JObj* joint = mJObj;
-			s32 id          = mAnimId;
-			HSD_AObj* aobj  = GetAObj(joint);
-			f32 frame       = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
-			mSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
-		}
+	if ((mStatus.mFlags & 1ULL) && (mStatus.mFlags & 0x10000ULL)) {
+		UpdateSpiderAnimationSound(this, mAnimId);
 	}
 }
 
