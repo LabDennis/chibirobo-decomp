@@ -1,11 +1,59 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 48 fertig, Branch devin/lane3 @61d5fe52. R24J01:
-  6592/8284 matched, `main.dol: OK`.
+Stand: Lauf 49 fertig, Branch devin/lane3 @61d5fe52 (sauber, kein
+neuer Commit). R24J01: 6592/8284 matched, `main.dol: OK`.
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 49 — fn_800AD498 dekodiert + Prototyp 84,66 %, ZURÜCKGENOMMEN
+
+- **Merge:** `git merge github-fork/all-releases` → „Already up to date".
+- **fn_800AD498** (0x3D8, Frame 0x160, r24–r31) = der Modell-Ladeschritt
+  aus `XObj::LoadFromPlacement` (direkter `bl`-Aufruf bei 0x800AC378,
+  KEIN vf — vf15C ist fn_80024008). Rückgabe steuert `ready` im Caller.
+- **Retail-Ablauf (belegt):** r26=this, r28=mAttr.mObjData (_168);
+  archive = data&&data->mSource ? source->mArchive : NULL → r31;
+  name = ModelName → r30; model = data?data->mModel:0 → r29;
+  flags: (data?data->mFlags:0)&0x80 → |=0x10000 (oris 0x1);
+  wall2-Check: ModelName!=NULL && strcmp(name,"ufo/wall2")==0
+  → bool materialisiert in r25 (li/subf/neg/or/srwi-Sequenz!), |=0x40000
+  (oris 0x4); joined u64 = (mCoord.mPlacement->mFlags(_34) << 16) |
+  (data?data->mFlags:0) → r25:hi/r24:lo; score = (joined&4)?4:3;
+  2× bctrl über gGame+0x41E4-vptr Slot _40 = CBase::GetStatusFlags(u64):
+  flag 0x20 → +1 wenn joined&0x20000000 || pool==2 || pool 4..0x10;
+  flag 0x1000 → +5 wenn joined&0x200000000000 || gleiche Pool-Tests;
+  mStatus.mFlags(_150.._154 lo)&0x200 → +1; switch mObjectId(_00):
+  0xEE→+0xA, 0x12A→+0xC8, 0x13C→+0x10, 0x1BC→+0xC; flags =
+  (flags&~0xFF)|score; sprintf(path,"%s.brres",name); lokale
+  `CFile file;` @r1+0x48 (extab __dt__5CFileFv); ConvertPathToEntrynum
+  <0 → strcpy(path,"test/unitCube.brres"); return
+  Load(archive,path,model,flags,0,0) ? TRUE:FALSE.
+- **Strings:** lbl_802D98E0-Pool = "ufo/wall2","%s.brres",
+  "test/unitCube.brres","xobj.cpp". "xobj.cpp" = __FILE__ (nicht genutzt).
+- **Prototyp-Quelle** (compiliert, 84,66 % — unten in „Anhang A").
+  Helfer HasSource/ModelName als `static inline` nach ShadowSize,
+  Includes game/cfile.h + <stdio.h> + <string.h>.
+- **BLOCKER — Pool-Regression:** die drei neuen Unit-Strings
+  verschieben obja.rodata → `fn_800AF098` fiel 98,38→**95,27**
+  (sein `""` foldet nicht mehr in "xobj_ut2.h"+0xb-NUL sondern in
+  eines meiner String-Enden — MWCC dedupliziert `""` gegen rodata-
+  NULs in Adress-/Emissionsfolge). Gate-Regel „keine Funktion
+  schlechter" → commit verboten → **`git checkout` rückgängig**.
+- **Hypothesen für nächsten Lauf:**
+  (a) Erst AD498-Restdiff (84,66→100) schließen — generiertes Asm
+      unter build/R24J01/src/game/wii/obja.o disassemblieren (dtk/
+      objdiff-json pro Instruktion), Registerwahl r24–r31 angleichen.
+  (b) AF098-`""`: Retail lädt es aus .sdata-Byte lbl_805A0F80
+      (= wohl objas eigener gepoolter `""`-Byte am sdata-Ende).
+      Wenn MWCC `""` an .sdata emittiert statt rodata-dedup, könnte
+      die exakte 100%-Belegung von AD498 den Fold auf sdata lenken —
+      sonst bleibt AF098 regrediert und AD498 ist UNCOMMITBAR, bis
+      AF098s `""` ehrlich nach .sdata wandert (Unit-Pool-Abhängigkeit).
+  (c) Kontrollfrage: ist 805A0F80 in objas .sdata-Range (Ende =
+      erster Byte des Folge-Pools)? Auto-Pool-Unit `auto_11_805A2900_
+      sdata2` existiert in objdiff.json — dort prüfen.
 
 ## Lauf 48 — obja READ-Paar: fn_800AF12C 100 %, fn_800AF098 98,38
 
@@ -86,6 +134,11 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 - DrawGroundShadowAt (94,03): Rest = mObjData-Doppelload (r6→r7 neu) +
   Pool-Slots der unvollständigen Unit. ehrlich NONMATCHING.
+- fn_800AD498: Retail vollständig dekodiert (Lauf 49 oben), Prototyp
+  84,66 % compiliert — UNCOMMITBAR: seine Unit-Strings regredieren
+  fn_800AF098 (98,38→95,27, `""`-rodata-Fold). Erst klären, ob der
+  Fold bei exaktem AD498-Match wieder nach xobj_ut2.h-NUL oder gar
+  .sdata wandert; Anhang A unten enthält den Quelltext zum Wiederherstellen.
 - fn_800AF098 (98,38): nur noch String-Pool — Retail `""` in .sdata
   (lbl_805A0F80), wir `addi r5, r3, 0xb` auf die rodata-StringBase;
   löst sich mit vollständiger Unit. ehrlich NONMATCHING.
@@ -106,12 +159,88 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Nächster Schritt
 
-obja, kleinste zuerst: fn_800AD498 (~0x3D8, strcmp + bctrl über
-gGame+0x41E4-vf), dann vf168-Diff ansehen (69,02, jetzt im Report),
-dann fn_800AE9F0, fn_800AF51C; LoadFromPlacement +
-TestFloorCollision (je ~0x1200) als eigene Anläufe.
+fn_800AD498: Anhang-A-Quelle wiederherstellen, Restdiff 84,66→100
+schließen (Registerwahl r24–r31 aus Retail-Ablauf oben), dabei
+fn_800AF098s `""`-Fold beobachten — erst committen wenn AF098 nicht
+unter 98,38 fällt (Pool-Mechanismus siehe Lauf-49-Blocker). Falls
+AF098 unlösbar regrediert: AD498 uncommitiert lassen und zu vf168
+(69,02-Diff ansehen) oder fn_800AE9F0/fn_800AF51C wechseln —
+LoadFromPlacement + TestFloorCollision (je ~0x1200) eigene Anläufe.
 CustomShadow-Ctor/Draw (0x800C6F60/0x800C7130) als Quelle in die
 Lücken-Unit, sobald deren Originaldatei identifiziert ist.
+
+## Anhang A — fn_800AD498 Prototyp (Lauf 49, 84,66 %, reverted)
+
+Includes (nach den wii-Headern, vor evt.h): `#include "game/cfile.h"`,
+`<stdio.h>`, `<string.h>`. Helfer nach ShadowSize:
+
+```cpp
+static inline bool HasSource(const AttrInfo& attr)
+{
+	return attr.mObjData != NULL && attr.mObjData->mSource != NULL;
+}
+static inline const char* ModelName(const AttrInfo& attr)
+{
+	return HasSource(attr) ? attr.mObjData->mSource->mName : NULL;
+}
+```
+
+Funktion (zwischen ResetObjectState und vf1A0, Retail-Position):
+
+```cpp
+extern "C" BOOL fn_800AD498(XObj* obj)
+{
+	UnkObjData* data = obj->mAttr.mObjData;
+	ResourceFile* archive = data != NULL && data->mSource != NULL ? data->mSource->mArchive : NULL;
+	const char* name      = ModelName(obj->mAttr);
+	u32 model             = data != NULL ? data->mModel : 0;
+	u32 flags             = 0;
+	if ((data != NULL ? data->mFlags : 0) & 0x80) {
+		flags |= 0x10000;
+	}
+	BOOL wall2 = ModelName(obj->mAttr) != NULL && strcmp(ModelName(obj->mAttr), "ufo/wall2") == 0;
+	if (wall2) {
+		flags |= 0x40000;
+	}
+	u64 joined = ((u64)obj->mCoord.mPlacement->mFlags << 16) | (data != NULL ? data->mFlags : 0);
+	s32 score  = (joined & 4) ? 4 : 3;
+	if (gGame.GetStatusFlags(0x20) != 0) {
+		if ((joined & 0x20000000) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 0x10)) {
+			score += 1;
+		}
+	}
+	if (gGame.GetStatusFlags(0x1000) != 0) {
+		if ((joined & 0x200000000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 0x10)) {
+			score += 5;
+		}
+	}
+	if (obj->mStatus.mFlags & 0x200) {
+		score += 1;
+	}
+	switch (obj->mCoord.mPlacement->mObjectId) {
+	case 0xEE:  score += 0xA;  break;
+	case 0x12A: score += 0xC8; break;
+	case 0x13C: score += 0x10; break;
+	case 0x1BC: score += 0xC;  break;
+	}
+	flags = (flags & ~0xFF) | score;
+	char path[64];
+	sprintf(path, "%s.brres", name);
+	CFile file;
+	if (file.ConvertPathToEntrynum(path) < 0) {
+		strcpy(path, "test/unitCube.brres");
+	}
+	return obj->Load(archive, path, model, flags, 0, 0) ? TRUE : FALSE;
+}
+```
+
+Offene Restdiff-Ansätze (84,66 %): Registerbelegung — Retail nutzt
+r31=archive, r30=name, r29=model, r28=data→score-Recycling,
+r25=wall2-Bool→joined-hi, r24=joined-lo, r27=flags, r26=this.
+Wall2-Bool MUSS die li/subf/neg/or/srwi-Materialisierung liefern
+(`A && B==0` als BOOL-Var). CFile-Ctor inlinet (r1+0x48, extab-Dtor).
+Möglicherweise `path`/`file`-Slot-Tausch oder joined-Aufbau
+(hi vor lo) noch anders.
 
 ## Ältere Läufe
 
