@@ -48,7 +48,11 @@ extern "C" {
 // 0x134 bytes of dead retail bss ahead of the event globals. The retail
 // static initializer and InitializeEventScriptContext use it only as the
 // base address for offset arithmetic; nothing ever reads or writes it.
+#if defined(VERSION_JP)
 u8 lbl_80345C78[0x134];
+#else
+u8 lbl_80345C78[0x140];
+#endif
 }
 CEvtFlags gEventFlags;
 CEvtVars gEventVars;

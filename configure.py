@@ -1003,7 +1003,7 @@ gamecube_libs = [
             # CPadEx::Init's and CPadOne::Clear's floats. Without deferred MWCC builds vtables/RTTI only at
             # the end of the file, after every function's constants; deferred builds them first
             Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(MatchingFor(JP), "game/cfont.cpp"),
+            Object(MatchingFor(JP, PAL), "game/cfont.cpp"),
             Object(Matching, "game/cfile.cpp", extra_cflags=["-inline auto,deferred"], padding="small_data"),
             Object(Matching, "game/ctpl.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cobj.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
