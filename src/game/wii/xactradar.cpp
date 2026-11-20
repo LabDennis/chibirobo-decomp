@@ -23,6 +23,7 @@ extern "C" void PlayCopterLandingAnimation(XObj* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
 extern "C" s32 gRefreshRate;
+extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
 extern "C" void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended);
@@ -628,6 +629,46 @@ CVec AddScalarToVectorComponents(const CVec& v, f32 d)
 	t.y += d;
 	t.z += d;
 	return t;
+}
+
+// NONMATCHING: 96.2% - same instruction count and frame; the residue is register
+// allocation. Retail strength-reduces mRing[j] into three cursors (r29 = &mPos,
+// r28 = &mAmount for the three body reads, r30 = shot for guard/radius/color) and
+// so needs _savegpr_18; we emit two (pos + base) and land on _savegpr_19, shifting
+// every callee colour by one. The mAmount*mRadius / (1-amount)*radius operand
+// order is retail's (the GameCube source multiplies the other way round). A named
+// XActPopperRing* local scored lower (one cursor, 96.08).
+
+// one shot's two rings, drawn only while the projection lands inside the frame's
+// bounds and a 0..1 depth. The GameCube's DrawPopperShotRings walked all ten shots
+// itself; on the Wii the ten-step loop is a caller of its own at 0x8010BE94 and this
+// draws a single shot, the ring math and colors unchanged
+/**
+ * @note Address: 0x80109C88
+ * @note Size: 0x344
+ */
+void DrawPopperShotRings(XActPopperShot* shot)
+{
+	for (s32 j = 0; j < 2; j++) {
+		if (shot->mRing[j].mAmount > 0.0f) {
+			f32 x, y, z;
+			gGame.ProjectOffsetToScreen(&shot->mRing[j].mPos, &x, &y, &z, NULL);
+			if (x >= gScreenLeft && x < gScreenRight && y >= gScreenTop && y < gScreenBottom && z > 0.0f && z < 1.0f) {
+				u32 color  = shot->mRing[j].mColor;
+				u32 edge   = color & 0xFFFFFF00;
+				u32 center = edge | (u8)((color & 0xFF) * shot->mRing[j].mAmount);
+				f32 inner  = shot->mRing[j].mAmount * shot->mRing[j].mRadius;
+				f32 outer  = (1.0f - shot->mRing[j].mAmount) * shot->mRing[j].mRadius;
+				gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+				DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * shot->mRing[j].mAmount) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, 2.0f * inner,
+				             2.0f * inner, 0.0f, 0.0f, 0.0f);
+				DrawGsCircle(&gGame.mGs, 16, (u32)(128.0f * shot->mRing[j].mAmount) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, 1.5f * inner,
+				             1.5f * inner, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+				DrawGsCircle(&gGame.mGs, 16, edge, center, x, y, 0.0f, outer, outer, 0.0f, 0.0f, 0.0f);
+			}
+		}
+	}
 }
 
 } // extern "C"
