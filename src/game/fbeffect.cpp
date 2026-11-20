@@ -234,7 +234,9 @@ void CFbBlur::DrawTex()
 	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 	GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
 	DrawQuad(1.0f, 1.0f);
-}
+}
+static const char sOutlineAllocationTag[] = "(outline)";
+
 
 /**
  * @note Address: 0x801A7E5C
@@ -244,7 +246,7 @@ void CFbOutline::Init(u16 w, u16 h)
 {
 	mWidth  = w;
 	mHeight = h;
-	mBuf    = (u8*)mm::Alloc(mWidth * mHeight, "(outline)");
+	mBuf    = (u8*)mm::Alloc(mWidth * mHeight, sOutlineAllocationTag);
 	GXInitTexObj(&mTexObj, mBuf, mWidth, mHeight, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
 	GXInitTexObjLOD(&mTexObj, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
 
