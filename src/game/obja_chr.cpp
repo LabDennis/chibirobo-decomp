@@ -5947,8 +5947,6 @@ static inline f32 GetActionBatteryCost(s32 index)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
-// NONMATCHING: GGTP01 only, for the lift's drain retail converts the idle quotient in f1 and loads the battery cost into
-// f0, swapping the two registers
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6219,9 +6217,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	// battery per second, the table holds hundredths; row 9 instead drains about the lift's mBatteryCost each update
 	f32 drain = 0.0f;
 	if (index >= 0) {
-		if (index == 9)
-			drain = (f32)((u32)IDLE_SECOND / frames) * p->mLift.mBatteryCost;
-		else
+		if (index == 9) {
+			f32 rate = (u32)IDLE_SECOND / frames;
+			drain    = rate * p->mLift.mBatteryCost;
+		} else
 			drain = GetActionBatteryCost(index);
 	}
 	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851

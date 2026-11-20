@@ -9552,7 +9552,11 @@ extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f3
 // declaring it here would land it in .sbss (small-data threshold is 8 bytes), so it is
 // intentionally left undeclared.
 extern "C" {
+#if defined(VERSION_JP)
 u8 lbl_805C0190[0x134];
+#else
+u8 lbl_805C0190[0x140];
+#endif
 CVec lbl_805C02DC;
 CVec lbl_805C02F8;
 u8 lbl_805C0308[0x18];
