@@ -1,11 +1,60 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 57 fertig, Branch devin/lane3. R24J01: 6602/8284 matched;
+Stand: Lauf 58 fertig, Branch devin/lane3. R24J01: 6604/8284 matched;
 GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 58 — fn_800C659C + SetAnmScn gematcht (+2)
+
+- **Commit e3921032** `wii xobj_camera: match fn_800C659C and
+  XObjScnCam::SetAnmScn`.
+- **`fn_800C659C` 77,4 → 100 % MATCHED.** Retail lädt `__float_nan`
+  absolut (lis/lfs, externes Undef-Symbol); `0.0f/0.0f` faltet zu
+  einem .sdata2-Literal. Fix: `#include <math.h>` (rvl_msl) +
+  `NAN`-Makro (`*(float*)__float_nan`). Aliasing gelöst über
+  typisiertes lokales Record `XObjScnCamInitRec` (statt u8*-Writes)
+  + **verkettete Zuweisungen** `m_24 = m_28 = NAN` /
+  `m_2C = m_30 = m_34 = m_38 = 0.0f` — Retail CSE't einen Load in
+  zwei Stores (Paar-Reihenfolge 0x30/0x2C, 0x38/0x34).
+- **`SetAnmScn__10XObjScnCamFUlff` 95,8 → 100 % MATCHED.**
+  `BOOL has = mObject.m_resFile.HasResAnmScn();` als benanntes Local
+  erzeugt Retails `mr. r0,r3`-Testidiom + Ternary-Form.
+- **`ResetObjectState__7XObjMapFv` 94,1 → 94,68 %**: ehrlicher
+  Zeiger-Walk `u32* fields = (u32*)_1378; ... fields += 16`
+  (2 Records à 0x40, 8 gerade Worte). Wand: Retail nutzt separates
+  Zeiger-Register (`addi r4,r31,0x1378`), MWCC bei uns das Objekt-
+  Register — Induktionsform-Residuum, kein ehrlicher Ansatz gefunden.
+- **fn_800C6608 91,67 % unverändert**: Scheduling + String-Pool-
+  Label-Adressierung — dokumentiert begrenzt.
+- **Gate komplett grün:** check.py --fix baute alle 4 Editionen OK;
+  R24J01 main.dol OK, 6604/8284 (+2); --non-matching linkt sauber;
+  Report-Diff vs Lauf-44-Baseline 0 Regressionen (vf1A8__4XObjFv→Ff
+  ist Signatur-Rename); callcheck R24J01/GGTE01: keine neuen
+  xobj_camera-Treffer (50 bekannte Fremdartefakte); config/ sauber
+  (dtk-Rewrites revertiert); Format ok.
+
+## Liegt (Blocker, kein Stopp)
+
+- `tools/check.py --source-only`: braucht clang-format 18.1.8,
+  installiert ist 23.1.4. Workaround: `python3 tools/check.py --fix`
+  (geht auf diesem Host, formatiert + baut alle Editionen).
+- fn_800C6608 (91,67): Scheduling + String-Pool-Label.
+- ResetObjectState(XObjMap) (94,68): Zeiger-Register-Induktionsform.
+- LoadFromPlacement(ScnCam) (89,47): 3-saved-reg-Frame + Pool.
+- vf2C/vf68 (58): Regalloc-Wand, Header ok.
+- fn_800AD498 uncommittbar (AF098-`""`-Pool-Regression, Altbestand).
+
+## Nächster Schritt
+
+- Grosse ScnCam-Funktionen: fn_800C66C8 (0x624), fn_800C6CF0 (0x270),
+  fn_800C7764 (0x4B8) + CustomShadow-Ctor/Draw — Layout dekodiert:
+  _00 Vec Center, _0C Vec[33], _198 Vec[34], _330 Vec[66],
+  _648 Vec[66], _960 33×u32-Paare, _A68 rodata-Ptr, ~0xA70, kein vptr.
+- Danach `game/wii/xobj_map.cpp` 0x800C7DC0–0x800C9E84 (Nr. 59,
+  25 Fn) splitten — gleiche Technik wie xobj_camera.
 
 ## Lauf 57 — Lauf-56-Gate nachgeholt + ScnCam-Finetuning (+1 matched)
 
