@@ -13,6 +13,7 @@
 #include "game/globals.h"
 #include "game/gmath.h"
 #include <math.h>
+#include <stdlib.h>
 
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" void ShowAndDeployCopter(XObj* copter);
@@ -450,6 +451,54 @@ void fn_80108BCC(XActPopperShot* shot)
 	CheckPopperShotImpact(shot, &shot->mPos, ended);
 	KillGen(shot->mGen);
 	KillGen(shot->mChargeGen);
+}
+
+// NONMATCHING: 98.74% - the whole spark loop, the stack Vec literals and the ended
+// block match. The residue is one reload: retail reads mSfxActors[1].mActor twice
+// (into r3 for the GetHandle test, into r21 for the start block), our compiler keeps
+// it live in r21 through both; a named AnimSfxActor* local changed nothing.
+
+// the resolution half of the GameCube's CheckPopperShotImpact, split off on the Wii:
+// twenty sparks around the hit, the impact sound through the shot's second actor when
+// it isn't playing already, and the landing ring when the shot is done. The GameCube
+// version played the sound flat through PlayGameSound and retired the generators
+// itself; the Wii leaves the KillGen pair to the caller, fn_80108BCC
+/**
+ * @note Address: 0x80108F4C
+ * @note Size: 0x404
+ */
+void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended)
+{
+	for (s32 i = 0; i < 20; ++i) {
+		f32 angle       = DEG2RAD * (rand() % 360);
+		f32 sinAngle    = std::sinf(angle);
+		f32 vx          = (sinAngle * (rand() % 100)) / 200.0f;
+		f32 cosAngle    = std::cosf(angle);
+		f32 vz          = (cosAngle * (rand() % 100)) / 200.0f;
+		f32 vy          = (50 + rand() % 80) / 100.0f;
+		f32 width       = (200 + rand() % 300) / 500.0f;
+		f32 height      = (10 + rand() % 200) / 500.0f;
+		CPtclOne* spark = SpawnPoolParticle(&shot->mDust.mPtcl, pos, &(Vec) { width, height, 1.0f }, &(Vec) { vx, vy, vz }, 0xC8C8FFFF);
+		if (!spark)
+			break;
+		spark->mAlpha      = (192 + (rand() & 63)) / 255.0f;
+		spark->mAlphaStep  = 0.03f;
+		spark->mAngleSpeed = DEG2RAD * ((rand() & 63) - 32);
+	}
+	u32 sfx = shot->mKind == 1 ? 0x201 : 0x204;
+	if (shot->mSfxActors[1].GetHandle() == NULL) {
+		CSound3DActor* actor = shot->mSfxActors[1].mActor;
+		if (actor != NULL && actor->StartSound(&actor->mHandle, sfx)) {
+			actor->mHandle.SetVolume(1.0f, 0);
+		}
+	}
+	if (ended) {
+		shot->mActive          = FALSE;
+		shot->mRing[1].mPos    = *pos;
+		shot->mRing[1].mAmount = 0.9f;
+		shot->mRing[1].mRadius = 100.0f;
+		shot->mRing[1].mColor  = 0x6464FF96;
+	}
 }
 
 } // extern "C"
