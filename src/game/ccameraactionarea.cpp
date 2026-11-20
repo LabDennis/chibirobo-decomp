@@ -1093,7 +1093,10 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 	}
 	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
 	return area->mEntry->mId;
-}
+}
+static const char sAreaCameraSelectionFormat[] = "\\B000000A0AREA(%3d,%3d)(%3d)\n";
+static const char sAreaCameraOverlayTitle[]     = "\\B000000A0ACAREA\n";
+
 /*
     stwu     r1, -0xf0(r1)
     mflr     r0
@@ -1597,9 +1600,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
  */
 void CCameraActionArea::DrawDebug2d()
 {
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", 324.0f, 298.0f, 0.0f, 12.0f, 12.0f,
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraSelectionFormat, 324.0f, 298.0f, 0.0f, 12.0f, 12.0f,
 	                       gCameraAreaState.mActiveArea, mEntryIndex, gCameraAreaState.mCurrentArea);
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraOverlayTitle, 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 }
 
 /**
