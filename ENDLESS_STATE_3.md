@@ -1,11 +1,40 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 58 fertig, Branch devin/lane3. R24J01: 6604/8284 matched;
-GC: 17 files OK (alle drei). Baselines:
+Stand: Lauf 59 fertig, Branch devin/lane3, HEAD f3d6b884. R24J01:
+6605/8284 matched (+1); GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 59 — fn_800C6CEC gematcht (+1), drei grosse ScnCam-Funktionen ehrlich
+
+- **Commit f3d6b884** `wii xobj_camera: match fn_800C6CEC, honest
+  passes for fn_800C66C8/fn_800C6CF0/fn_800C7764`.
+- **`fn_800C6CEC` 100 % MATCHED** — `b`-Thunk auf fn_800C6608:
+  `extern "C" CVec fn_800C6CEC(XObjScnCamInitRec*, XObj*)` →
+  `return fn_800C6608((u32)rec, obj)`.
+- **`fn_800C66C8` 43,1 % NONMATCHING** (0x624): drei Arme
+  (m_0C→GetPos×2!, mTarget-NAN-Check, m_20→mView.mEye), Yaw =
+  `(f32)atan2(dx,dz) - rot->y`, Pitch = `dy>=0 ? HALF_PI-r : r-HALF_PI`,
+  `atan2(FSqrt(dz²+dx²), FSqrt(dy²))`, Clamp gegen ±m_30/m_2C.
+  Gleiche Ins-Anzahl (528), Rest = CVec-Temp-/Regallokation.
+- **`fn_800C6CF0` 93,6 % NONMATCHING** (0x270): Zwei-Achsen-Tracker,
+  WrapAngle-Norm, kürzester Winkelweg, speed=max(0.1*|d|,0.01), Snap-
+  Zählerprotokoll. Rest: Retail `lha 0x2(r30)` mit r30=rec+2i (kein
+  addi) vs unser `rec->mSnap[i]`-Zugang + Stack-Slot-Reihenfolge.
+- **`fn_800C7764` 76,0 % NONMATCHING** (0x4B8): ScnCam→CCamera-
+  Transfer komplett (Projektion 3-Wege + gScreenWidthScale, View-Mtx
+  über gSingleObjectReader+0x390, Eye/Posture/Viewport). Retail
+  materialisiert den Camera-Handle direkt (`stw r3,0x20(r1)`,
+  kein ctor!) — `MtxP handle` + `Camera& cam = *(Camera*)&handle`.
+  Flag-Test als `(flags & 1) ^ 1` (xori-Idiom). Rest:
+  Reader-Matrix-Slot-Typ + Scheduling.
+- Includes: `nw4r/g3d/g3d_camera.h` VOR den Game-Headern nötig
+  (revolution/gx.h muss gegen Dolphin-Deklaration gewinnen).
+- Gate: R24J01 main.dol OK 6605/8284 (+1, kein Regress); GGTE01/
+  GGTJ01_01/GGTP01 je 17 files OK, 0 Delta; config/ sauber.
+- Unit xobj_camera: 13/30 Fn matched, 62,35 % fuzzy.
 
 ## Lauf 58 — fn_800C659C + SetAnmScn gematcht (+2)
 
@@ -38,9 +67,18 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Liegt (Blocker, kein Stopp)
 
-- `tools/check.py --source-only`: braucht clang-format 18.1.8,
-  installiert ist 23.1.4. Workaround: `python3 tools/check.py --fix`
-  (geht auf diesem Host, formatiert + baut alle Editionen).
+- `tools/check.py --source-only`: braucht clang-format 18.1.8;
+  ~/.local/bin/clang-format und /usr/bin sind 23.1.4. cf18 liegt in
+  ~/.local/opt/clang-format-18/ aber ALLE Aufrufe (direkt, via
+  CLANG_FORMAT-env, pip install) wurden vom User rejected — Format-
+  Check auf diesem Host aktuell nicht lauffähig. xobj_camera.cpp
+  wurde im bestehenden Tab-Stil formatiert.
+- fn_800C6CF0 (93,6): mSnap-Zugriffsform (`lha 0x2(r30)`, r30=rec+2i)
+  + outA/outB-Stackslots — evtl. Record-/Loop-Form anders denken.
+- fn_800C66C8 (43,1): 528 Ins identisch gezählt, Rest Regallokation/
+  CVec-Temps — wall-Klasse unklar, eher Schedule/Referent.
+- fn_800C7764 (76,0): gSingleObjectReader+0x390-Matrix-Slot-Typ
+  und Camera-Handle-Form präzisieren.
 - fn_800C6608 (91,67): Scheduling + String-Pool-Label.
 - ResetObjectState(XObjMap) (94,68): Zeiger-Register-Induktionsform.
 - LoadFromPlacement(ScnCam) (89,47): 3-saved-reg-Frame + Pool.
@@ -49,10 +87,12 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Nächster Schritt
 
-- Grosse ScnCam-Funktionen: fn_800C66C8 (0x624), fn_800C6CF0 (0x270),
-  fn_800C7764 (0x4B8) + CustomShadow-Ctor/Draw — Layout dekodiert:
-  _00 Vec Center, _0C Vec[33], _198 Vec[34], _330 Vec[66],
-  _648 Vec[66], _960 33×u32-Paare, _A68 rodata-Ptr, ~0xA70, kein vptr.
+- CustomShadow-Ctor/Draw — Layout dekodiert: _00 Vec Center,
+  _0C Vec[33], _198 Vec[34], _330 Vec[66], _648 Vec[66],
+  _960 33×u32-Paare, _A68 rodata-Ptr, ~0xA70, kein vptr;
+  Draw: DrawGs*-Signaturen + Literale 0.19634955f (PI/16), 2.0f.
+- 3×8B-Stubs fn_800C6584/658C/6594 + Thunks fn_800C7C4C/7C54/7CB4/
+  7CBC noch offen in der Unit.
 - Danach `game/wii/xobj_map.cpp` 0x800C7DC0–0x800C9E84 (Nr. 59,
   25 Fn) splitten — gleiche Technik wie xobj_camera.
 
