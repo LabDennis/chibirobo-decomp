@@ -449,13 +449,6 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-static inline Quaternion GetJointRotation(HSD_JObj* jobj)
-{
-	Quaternion rot;
-	HSD_MtxGetRotation(HSD_JObjGetMtxPtr(jobj), (Vec*)&rot);
-	return rot;
-}
-
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
@@ -491,7 +484,7 @@ void XObjHBox::UpdateObject(u32 frames)
 		mPart.mObj.SetRotationY(DEG2RAD * (rand() % 360), 0);
 		SpawnBoxEffect(this, 0x10021);
 		mFloors        = GetObjectCollisionList(mPart.mObj.mCoord.mPlacement->mObjectId);
-		mFloorMasks[1] = mFloorMasks[0] = 0;
+		mFloorMasks[0] = mFloorMasks[1] = 0;
 		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
 			mEventScript = (u32)GetStageScriptByIndex(index);
@@ -515,8 +508,8 @@ void XObjHBox::UpdateObject(u32 frames)
 	if (id > 1) {
 		s32 path[2] = { 0, 0 };
 		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
-		Vec pos = joint.GetPos();
-		Quaternion rot = GetJointRotation(joint.mJObj);
+		Vec pos        = joint.GetPos();
+		Quaternion rot = joint.GetRot();
 		SetPos(pos, 0);
 		SetRotationY(rot.y, 0);
 	}
