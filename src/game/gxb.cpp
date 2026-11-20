@@ -4479,6 +4479,9 @@ extern "C" void ClearStageSoundBank(XSound* sound)
  */
 // NONMATCHING: the strings are in sound.cpp's rodata
 // a negative stage loads the shared samples a step per call, TRUE once they're in
+// the operation name the load asserts report, as named in retail
+static const char sSoundReadOperation[] = "Read";
+
 extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 {
 	if (stage < 0) {
@@ -4489,9 +4492,9 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 				++sound->mLoadState;
 			} else {
 #if defined(VERSION_JP)
-				OSPanic("sound.cpp", 0xED, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xED, "%s%s", "", sSoundReadOperation);
 #else
-				OSPanic("sound.cpp", 0xF1, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF1, "%s%s", "", sSoundReadOperation);
 #endif
 			}
 			break;
@@ -4501,9 +4504,9 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 				++sound->mLoadState;
 			} else if (result < 0) {
 #if defined(VERSION_JP)
-				OSPanic("sound.cpp", 0xF5, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF5, "%s%s", "", sSoundReadOperation);
 #else
-				OSPanic("sound.cpp", 0xF9, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF9, "%s%s", "", sSoundReadOperation);
 #endif
 			}
 			break;
