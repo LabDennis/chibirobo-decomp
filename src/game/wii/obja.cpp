@@ -17,8 +17,11 @@
 #include "game/stagedata.h"
 #include "arithmetic.h"
 #include "Dolphin/mtx.h"
+#include "game/cfile.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 using namespace nw4r::g3d;
 
@@ -39,9 +42,19 @@ static inline u32 ShadowSize(XObj* object)
 	return object->mAttr.mObjData != NULL ? object->mAttr.mObjData->mShadowSize : 0;
 }
 
+static inline XObjSource* Source(const AttrInfo& attr)
+{
+	return attr.mObjData ? attr.mObjData->mSource : NULL;
+}
+
 static inline BOOL HasSource(const AttrInfo& attr)
 {
-	return attr.mObjData != NULL && attr.mObjData->mSource != NULL;
+	return attr.mObjData && attr.mObjData->mSource;
+}
+
+static inline const char* ModelName(const AttrInfo& attr)
+{
+	return HasSource(attr) ? attr.mObjData->mSource->mName : NULL;
 }
 
 // the head of the stage's info record, as far as this file reads it: the GameCube's
@@ -371,6 +384,73 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		_9A4              = 0;
 	}
 	return mStatus.mFlags & 1;
+}
+
+// 0x800AD498, the load half of LoadFromPlacement: the kind's archive, model id and a tex-stage
+// count out of the object data, "<name>.brres" through CObj::Load. the GameCube keeps this
+// inline in xobjinit.cpp (there with "%s.dat" and ARAM flags instead of the stage count)
+// NONMATCHING: ~87% fuzzy - retail CSEs GetPool()'s mObjData load across the two &&-range tests
+// and schedules the selects differently; the generated logic is otherwise identical
+extern "C" BOOL fn_800AD498(XObj* obj)
+{
+	AttrInfo& attr     = obj->mAttr;
+	ResourceFile* file = Source(attr) ? attr.mObjData->mSource->mArchive : NULL;
+	const char* name   = ModelName(attr);
+	u32 model          = attr.mObjData ? attr.mObjData->mModel : 0;
+	u32 flags          = 0;
+	if ((u64)(attr.mObjData ? attr.mObjData->mFlags : 0) & 0x80) { // obj flag 0x80 becomes load flag 0x10000
+		flags |= 0x10000;
+	}
+	BOOL isWall2 = FALSE;
+	if (HasSource(attr) && ModelName(attr) != NULL && strcmp(ModelName(attr), "ufo/wall2") == 0) {
+		isWall2 = TRUE;
+	}
+	if (isWall2) {
+		flags |= 0x40000;
+	}
+	u64 objFlags = ((u64)obj->mCoord.mPlacement->mFlags << 16) | (attr.mObjData ? attr.mObjData->mFlags : 0);
+	u32 texNum   = 3;
+	if (objFlags & 4) {
+		texNum = 4;
+	}
+	if (gGame.GetStatusFlags(0x2000000000ULL) != 0) {
+		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+			texNum += 1;
+		}
+	}
+	if (gGame.GetStatusFlags(0x100000000000ULL) != 0) {
+		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+			texNum += 5;
+		}
+	}
+	if (obj->mStatus.mFlags & 0x200) {
+		texNum += 1;
+	}
+	switch (obj->mCoord.mPlacement->mObjectId) {
+	case 0xEE:
+		texNum += 10;
+		break;
+	case 0x12A:
+		texNum += 200;
+		break;
+	case 0x13C:
+		texNum += 16;
+		break;
+	case 0x1BC:
+		texNum += 12;
+		break;
+	}
+	flags = (flags & 0xFFFFFF00) | texNum;
+	char path[64];
+	sprintf(path, "%s.brres", name);
+	CFile entry;
+	if (entry.ConvertPathToEntrynum(path) < 0) {
+		strcpy(path, "test/unitCube.brres");
+	}
+	if (obj->Load(file, path, model, flags, 0, 0)) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // 0x800AD870, flags[0] asks for dst alpha 8, flags[1] or nothing for 4, on every material's pix copy
