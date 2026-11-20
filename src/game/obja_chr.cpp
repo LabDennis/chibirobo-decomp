@@ -4342,11 +4342,16 @@ static const Vec sPlayerDustVelocityInitializer = { 0.0f, 0.0f, 0.0f };
  * @note Address: 0x8009F7D0
  * @note Size: 0x490
  */
+static inline f32 ScaleByRandomPercent(f32 value)
+{
+	return value * (rand() % 100) / 1000.0f;
+}
+
 extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 {
 	f32 angle = DEG2RAD * (rand() % 360);
-	f32 vx    = (rand() % 100) * (f32)sin(angle) / 1000.0f;
-	f32 vz    = (rand() % 100) * (f32)cos(angle) / 1000.0f;
+	f32 vx    = ScaleByRandomPercent(sin(angle));
+	f32 vz    = ScaleByRandomPercent(cos(angle));
 	f32 vy    = (rand() % 100) / 800.0f;
 	Vec position;
 	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
