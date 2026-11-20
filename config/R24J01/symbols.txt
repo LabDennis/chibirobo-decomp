@@ -1840,6 +1840,7 @@ IsCarryingSquirter = .text:0x800F4FE8; // type:function size:0xBC
 SuppressMovementDuringJump = .text:0x800FFBA0; // type:function size:0x18
 HandleCopterActionInput = .text:0x80107C50; // type:function size:0xF0
 DrawPopperShotRings = .text:0x80109C88; // type:function size:0x344
+DrawPopperShotParticles = .text:0x8010BE1C; // type:function size:0x78
 InitRadarAction = .text:0x8010BF48; // type:function size:0xE0
 DrawRadarTargetBeam = .text:0x8010D3A8; // type:function size:0x11A0
 InitializeObject__8XObjPlugFUl = .text:0x8010F944; // type:function size:0x7C

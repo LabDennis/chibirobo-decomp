@@ -90,14 +90,20 @@ struct XActPopperRing {
 };
 STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
 
+// the shot's dust pool: like XObjChr::CPtclSet it wraps the pool and its array in a
+// class of its own whose vtable gains a first virtual at _08 (retail RTTI names the
+// kind XBullet::CPtclSet); its vptr sits at _C94, the word behind the last particle
 struct PopperShotDust {
 	CPtcl mPtcl;           // _00
 	CPtclDust2 mPtcls[40]; // _14
+	// _C94 vtable
+	virtual void vf08(CGs* gs); // _08
 };
+STATIC_ASSERT(sizeof(PopperShotDust) == 0xC98);
 
 // one popper shot, it keeps its last ten positions for the trail. The Wii shape is the
 // GameCube's (game/xact.h) with the two generators as event-effect instances and two
-// sound actors appended; the word at _D78 is so far only written, not read
+// sound actors appended; the word at _D78 is the dust pool's vtable pointer
 struct XActPopperShot {
 	BOOL mActive;               // _00
 	CVec mPos;                  // _04
@@ -114,7 +120,6 @@ struct XActPopperShot {
 	Vec mHistory[10];           // _3C
 	XActPopperRing mRing[2];    // _B4
 	PopperShotDust mDust;       // _E4
-	u32 _D78;                   // _D78, the GameCube's mGen slot, unproven on the Wii
 	EffectInstance* mGen;       // _D7C, the flight effect
 	EffectInstance* mChargeGen; // _D80, the charge effect
 	AnimSfxActor mSfxActors[2]; // _D84, launch and impact sounds
@@ -152,5 +157,29 @@ public:
 	XActPopperCharge mCharge; // _8848
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8884);
+
+struct RadarAimAxis {
+	f32 angle, targetAngle, reached;
+};
+
+// the beam's two colours, the GameCube's RadarBeamColors
+struct RadarBeamColors {
+	CScrnColor mColor[2]; // _00
+};
+STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
+
+// the radar action, the GameCube's XActRadar: the fields the Wii reaches are the
+// GameCube layout's own. WiiPlayerState reserves _95D4 to _96A0 for it
+class XActRadar : public XAction {
+public:
+	XObj* mTarget;         // _2C
+	RadarAimAxis mYaw;     // _30
+	RadarAimAxis mPitch;   // _3C
+	RadarBeamColors mBeam; // _48
+	f32 mFade;             // _B0
+	f32 mAngle[2];         // _B4
+	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
+};
+STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 
 #endif

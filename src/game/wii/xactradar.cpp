@@ -28,13 +28,13 @@ extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 grou
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
 extern "C" void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended);
 extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit); // the Wii's out-of-line FindMapFloor
-extern "C" void fn_8010EA78(XObj* popper);                                            // the GameCube's ShowAndDeployPopper
-extern "C" void fn_8010EADC(XObj* popper);                                            // PlayPopperStowAnimation
-extern "C" void fn_8010EB80(XObj* popper);                                            // PlayPopperRaiseAnimation
-extern "C" void fn_8010EBA8(XObj* popper);                                            // PlayPopperFireAnimation
-extern "C" BOOL fn_8010EBD0(XObj* popper);                                            // IsPopperFireAnimationSelected
-extern "C" void fn_8010EC08(XObj* popper);                                            // PlayPopperLowerAnimation
-extern "C" void fn_8010EC30(XObj* popper);                                            // ShowIdlePlayerPopper
+extern "C" void fn_8010EA78(XObj* popper);                                             // the GameCube's ShowAndDeployPopper
+extern "C" void fn_8010EADC(XObj* popper);                                             // PlayPopperStowAnimation
+extern "C" void fn_8010EB80(XObj* popper);                                             // PlayPopperRaiseAnimation
+extern "C" void fn_8010EBA8(XObj* popper);                                             // PlayPopperFireAnimation
+extern "C" BOOL fn_8010EBD0(XObj* popper);                                             // IsPopperFireAnimationSelected
+extern "C" void fn_8010EC08(XObj* popper);                                             // PlayPopperLowerAnimation
+extern "C" void fn_8010EC30(XObj* popper);                                             // ShowIdlePlayerPopper
 struct AttachmentValues;
 extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
 extern "C" void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
@@ -106,6 +106,8 @@ static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
 }
 
 extern "C" {
+
+void ResetPlayerRadarAction(XActRadar* act);
 
 /**
  * @note Address: 0x801078C8
@@ -884,10 +886,10 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 	BOOL canCharge    = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x35) >= 0;
 	// with the popper out (attachment 2), holding the remote button charges a shot
 	if (act->mOwner->GetAttachment() == 2) {
-		if ((gWiiPads[0].mButton & 0x0001000000000010ULL) && canCharge
-		    && ((XObj*)act->mOwner->mPopperObj)->GetAnimId() == 4 && !gGame.mEvt.mData.mScript && !gGame.GetStatusFlags(0x400)
-		    && !act->mOwner->mLift.mState && !act->mOwner->mHang.mState && !act->mOwner->mJump.mState && !act->mOwner->mLadder.mState
-		    && !act->mOwner->mRope.mState && !act->mOwner->mPush.mState && !act->mOwner->mTumble.mState) {
+		if ((gWiiPads[0].mButton & 0x0001000000000010ULL) && canCharge && ((XObj*)act->mOwner->mPopperObj)->GetAnimId() == 4
+		    && !gGame.mEvt.mData.mScript && !gGame.GetStatusFlags(0x400) && !act->mOwner->mLift.mState && !act->mOwner->mHang.mState
+		    && !act->mOwner->mJump.mState && !act->mOwner->mLadder.mState && !act->mOwner->mRope.mState && !act->mOwner->mPush.mState
+		    && !act->mOwner->mTumble.mState) {
 			if (!gGame.GetStatusFlags(0x20)) {
 				XActPopperCharge* charge = &act->mCharge;
 				charge->mState           = 1;
@@ -1110,6 +1112,130 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 		UpdatePopperShotFlight(&act->mShots.mShot[i], frames);
 	}
 	UpdatePopperCharge(&act->mCharge, frames);
+}
+
+// the GameCube's DrawPopperShotParticles: the dust pool behind every shot, with the
+// pool wrapper's first virtual run before each draw the way DrawObjectEffects does
+// it for the player's own CPtclSet
+/**
+ * @note Address: 0x8010BE1C
+ * @note Size: 0x78
+ */
+void DrawPopperShotParticles(XActPopper* act)
+{
+	s32 i;
+	XActPopperShot* shot;
+	for (i = 0, shot = act->mShots.mShot; i < 10; i++, shot++) {
+		shot->mDust.vf08(&gGame.mGs);
+		DrawParticlePool(&shot->mDust.mPtcl, &gGame.mGs);
+	}
+}
+
+// the GameCube's DrawPopperShotRings tail loop on its own: the overlay draw walks all
+// ten shots here while DrawPopperShotRings itself stays a per-shot helper
+/**
+ * @note Address: 0x8010BE94
+ * @note Size: 0x4C
+ */
+void fn_8010BE94(XActPopper* act)
+{
+	s32 i;
+	XActPopperShot* shot;
+	for (i = 0, shot = act->mShots.mShot; i < 10; i++, shot++) {
+		DrawPopperShotRings(shot);
+	}
+}
+
+// reads the popper muzzle's joint position out for the caller; CGame::Update uses it
+// to aim shots from the cannon_C joint of the popper object
+/**
+ * @note Address: 0x8010BEE0
+ * @note Size: 0x68
+ */
+// NONMATCHING: retail copies the returned vector with three word load/stores and
+// schedules the mOwner load ahead of the string's address; this build does the copy
+// as float member stores
+void fn_8010BEE0(Vec* out, XActPopper* act)
+{
+	*out = ((XObj*)act->mOwner->mPopperObj)->GetJointPos("cannon_C");
+}
+
+// the GameCube's InitRadarAction: initialize the action, then its full reset
+/**
+ * @note Address: 0x8010BF48
+ * @note Size: 0xE0
+ */
+void InitRadarAction(XActRadar* act, WiiPlayerState* owner)
+{
+	act->Init(owner);
+	ResetPlayerRadarAction(act);
+}
+
+// the GameCube's ResetPlayerRadarAction: back to a cleared target and both beam
+// colours fading in from white
+/**
+ * @note Address: 0x8010C028
+ * @note Size: 0xCC
+ */
+void ResetPlayerRadarAction(XActRadar* act)
+{
+	act->Reset();
+	act->mTarget    = NULL;
+	act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0.0f;
+	act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0.0f;
+	act->mTargetDistance                                              = NAN;
+	StartScreenFade(&act->mBeam.mColor[0], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	StartScreenFade(&act->mBeam.mColor[1], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	act->mFade = 0.0f;
+}
+
+// the Wii's own radar reset: the player reset body, then the aim angles are pushed
+// into the radar attachment object's pair at _9B4/_9B8 and the radar loop sound is
+// silenced. XObjC::UpdateObject and a spider state call it
+/**
+ * @note Address: 0x8010C0F4
+ * @note Size: 0x114
+ */
+void fn_8010C0F4(XActRadar* act)
+{
+	act->Reset();
+	act->mTarget    = NULL;
+	act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0.0f;
+	act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0.0f;
+	act->mTargetDistance                                              = NAN;
+	StartScreenFade(&act->mBeam.mColor[0], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	StartScreenFade(&act->mBeam.mColor[1], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	act->mFade                                   = 0.0f;
+	*(f32*)((u8*)act->mOwner->mRadarObj + 0x9B4) = act->mYaw.angle;
+	*(f32*)((u8*)act->mOwner->mRadarObj + 0x9B8) = act->mPitch.angle;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0xB1)) {
+		StopWiiSfx(&gGame.mSound, 0xB1, 0.0f);
+	}
+}
+
+// the GameCube's ApplyRadarMovementWeight: with the radar out (attachment 3) he
+// stands still while it comes out, goes away or scans. the Wii checks the pending
+// attachment pick first and falls back to the current one
+/**
+ * @note Address: 0x8010C20C
+ * @note Size: 0x68
+ */
+// NONMATCHING: retail chains two compares per state group; this build folds the
+// first group's 'state == 1 || state == 2' into an unsigned range test
+void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight)
+{
+	const WiiPlayerState* owner = act->mOwner;
+	const s32 attachment        = owner->mAttachmentRequest >= 0 ? owner->mAttachmentRequest : owner->mAttachment;
+	if (attachment == 3) {
+		const s32 state = act->mState;
+		if (state == 1 || state == 2) {
+			*weight = 0.0f;
+		} else {
+			if (state != 3 && state != 4 && state != 5)
+				return;
+			*weight = 0.0f;
+		}
+	}
 }
 
 } // extern "C"
