@@ -370,8 +370,8 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 }
 
 // the loading bar, the robot walks along it
-static const u8 sWalkAnim[]  = { 3, 2, 1, 0, 3, 1, 2, 0xFF };
-static const u8 sStandAnim[] = { 0, 1, 2, 3, 0xFF };
+static u8 sWalkAnim[]  = { 3, 2, 1, 0, 3, 1, 2, 0xFF };
+static u8 sStandAnim[] = { 0, 1, 2, 3, 0xFF };
 static struct {
 	f32 mX;          // _00
 	s32 mFrame;      // _04
@@ -1627,18 +1627,39 @@ extern "C" void InfoScrn_SetTimerHundredths(InfoScrn* scrn, s32 hundredths)
  * @note Address: 0x8008EA5C
  * @note Size: 0x114
  */
+// NONMATCHING: same body as TimerFramesToHundredths — the GameCube shares FramesToClock for both,
+// but the Wii compiler gives the inline's conversion temps the wrong stack slots; the open body
+// fixes those. Remaining diff: our literal refs sit at other .sdata2 offsets, and retail defers
+// the minutes reload one instruction later.
 extern "C" s32 InfoScrn_GetTimerHundredths(InfoScrn* scrn)
 {
-	return (s32)FramesToClock(scrn->mTimer);
+	f32 seconds    = scrn->mTimer / (f32)TIMER_RATE;
+	s32 hundredths = ((s32)scrn->mTimer % TIMER_RATE) * 100 / TIMER_RATE;
+	if (scrn->mTimer >= (f32)TIMER_MAX) {
+		hundredths = 99;
+	}
+	s32 secs    = ((s32)seconds % 60) * 100;
+	f32 minutes = seconds / 60.0f;
+	return (s32)(hundredths + (secs + 6000.0f * (s32)minutes));
 }
 
 /**
  * @note Address: 0x8008EB70
  * @note Size: 0x104
  */
+// NONMATCHING: the GameCube file gives this function its own copy of the clock arithmetic too.
+// `secs` must be a separate statement before `minutes` — that puts the seconds conversion temp
+// in retail's stack slot (declaring it inside the expression assigns the pair in reverse).
 extern "C" f32 TimerFramesToHundredths(f32 frames)
 {
-	return FramesToClock(frames);
+	f32 seconds    = frames / (f32)TIMER_RATE;
+	s32 hundredths = ((s32)frames % TIMER_RATE) * 100 / TIMER_RATE;
+	if (frames >= (f32)TIMER_MAX) {
+		hundredths = 99;
+	}
+	s32 secs    = ((s32)seconds % 60) * 100;
+	f32 minutes = seconds / 60.0f;
+	return hundredths + (secs + 6000.0f * (s32)minutes);
 }
 
 static const char* sAscii = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}";
