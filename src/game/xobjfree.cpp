@@ -4,6 +4,9 @@
 #include "game/hsd_cobj.h"
 #include <math.h>
 
+// the screen origin the flash rings project from
+static const Vec sFreeObjectRingOrigin = { 0.0f, 0.0f, 0.0f };
+
 /**
  * @note Address: 0x800DD600
  * @note Size: 0x94
@@ -66,7 +69,7 @@ void XObjFree::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
 	if ((mStatus.mFlags & 0x4000000000000000ULL) && mFlash > 0.0f) {
-		Vec position = { 0.0f, 0.0f, 0.0f };
+		Vec position = sFreeObjectRingOrigin;
 		f32 x, y;
 		ProjectOffsetToScreen(&position, &x, &y, NULL, 0);
 		f32 effect      = mFlash;
