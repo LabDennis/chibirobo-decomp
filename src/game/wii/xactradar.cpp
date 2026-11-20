@@ -22,7 +22,7 @@ extern "C" void PlayCopterDescentAnimation(XObj* copter);
 extern "C" void PlayCopterLandingAnimation(XObj* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
-extern "C" s32 gRefreshRate;
+extern "C" u32 gRefreshRate;
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
@@ -668,6 +668,176 @@ void DrawPopperShotRings(XActPopperShot* shot)
 				DrawGsCircle(&gGame.mGs, 16, edge, center, x, y, 0.0f, outer, outer, 0.0f, 0.0f, 0.0f);
 			}
 		}
+	}
+}
+
+// the GameCube's ClearPopperCharge on the Wii's grown charge: retires the two effect
+// instances, fades both sound actors out instantly (the retail math is
+// gRefreshRate * 0.0f frames) and stops the two charge sounds by their Wii ids
+static inline void ClearPopperCharge(XActPopperCharge* charge)
+{
+	charge->mState = 0;
+	charge->mTimer = 0.0f;
+	charge->mMtx   = NULL;
+	KillGen(charge->mGen);
+	KillGen(charge->mChargeGen);
+	for (s32 i = 0; i < 2; ++i) {
+		CSound3DActor* actor = charge->mSfxActors[i].mActor;
+		if (actor != NULL) {
+			actor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+		}
+	}
+	StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
+	StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+}
+
+// NONMATCHING: retail re-evaluates (s32)(gRefreshRate * 0.0f) per actor instead of
+// folding it to 0 the way this build does
+/**
+ * @note Address: 0x80109FCC
+ * @note Size: 0x148
+ */
+void ResetPopperCharge(XActPopperCharge* charge)
+{
+	ClearPopperCharge(charge);
+}
+
+// steps the muzzle glow while a shot is charged: the timer fills at one per refresh
+// frame, the two generators sit on the joint's matrix column or get dragged to mPos,
+// the full-charge glow and its loop sound appear at 1.0, and both actors follow the
+// muzzle while their fades step. The GameCube folded this into
+// UpdatePlayerPopperAction's tail; on the Wii it's a function of its own
+// NONMATCHING: same control flow and calls as retail, but the inlined helper set and
+// the register schedule still diverge (effect-handle reads and the sfx-start block)
+/**
+ * @note Address: 0x8010A114
+ * @note Size: 0x4B0
+ */
+void UpdatePopperCharge(XActPopperCharge* charge, u32 frames)
+{
+	if (charge->mState) {
+		if (charge->mTimer < 1.0f) {
+			if ((charge->mTimer += (1.0f / gRefreshRate) * frames) > 1.0f) {
+				charge->mTimer = 1.0f;
+			}
+		}
+		if (charge->mMtx != NULL) {
+			Vec pos      = { charge->mMtx[0][3], charge->mMtx[1][3], charge->mMtx[2][3] };
+			charge->mPos = pos;
+		} else {
+			if (charge->mGen != NULL) {
+				charge->mGen->pos = charge->mPos;
+				UpdateEffectMtx(charge->mGen);
+			}
+			if (charge->mChargeGen != NULL) {
+				charge->mChargeGen->pos = charge->mPos;
+				UpdateEffectMtx(charge->mChargeGen);
+			}
+		}
+		if (charge->mTimer >= 1.0f) {
+			if (charge->mChargeGen == NULL) {
+				EffectInstance* inst;
+				if (charge->mMtx != NULL) {
+					inst = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x5C, 1);
+					if (inst != NULL) {
+						inst->mtx = charge->mMtx;
+						UpdateEffectMtx(inst);
+					}
+				} else {
+					inst = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x5C, 1);
+					if (inst != NULL) {
+						Vec zero    = { 0.0f, 0.0f, 0.0f };
+						Vec unit    = { 1.0f, 1.0f, 1.0f };
+						inst->pos   = zero;
+						inst->rot   = zero;
+						inst->scale = unit;
+						UpdateEffectMtx(inst);
+					}
+				}
+				charge->mChargeGen = inst;
+			}
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x1F8)) {
+				if (charge->mSfxActors[1].GetHandle() == NULL) {
+					CSound3DActor* actor = charge->mSfxActors[1].mActor;
+					if (actor != NULL
+					    && actor->detail_StartSound(&actor->mHandle, 0x1F8, NULL) == nw4r::snd::SoundStartable::START_SUCCESS) {
+						actor->mHandle.SetVolume(1.0f, 0);
+					}
+				}
+				gGame.mSound.mArchivePlayer.mReady = 2;
+				PlayWiiSoundEffect(&gGame.mSound, 0x1F8, 1.0f, 0.0f);
+				gGame.mSound.mArchivePlayer.mReady = 1;
+			}
+		}
+	} else {
+		charge->mTimer = 0.0f;
+	}
+	for (s32 i = 0; i < 2; ++i) {
+		CSound3DActor* actor = charge->mSfxActors[i].mActor;
+		if (actor != NULL && actor->mHandle.IsAttachedSound()) {
+			actor->SetPosition(nw4r::math::VEC3(charge->mPos));
+			actor->UpdateFade(frames);
+		}
+	}
+}
+
+// the GameCube's InitializePlayerPopperAction: base Init, ten shots, the charge
+// cleared, its two actors reset and made on demand. On the Wii the charge carries a
+// last word the GameCube's didn't have
+/**
+ * @note Address: 0x8010A5C4
+ * @note Size: 0x108
+ */
+void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner)
+{
+	act->Init(owner);
+	for (s32 i = 0; i < 10; ++i) {
+		InitPopperShot(&act->mShots.mShot[i]);
+	}
+	act->mCharge.mState     = 0;
+	act->mCharge.mChargeGen = NULL;
+	act->mCharge.mGen       = NULL;
+	for (s32 i = 0; i < 2; ++i) {
+		act->mCharge.mSfxActors[i].Reset();
+	}
+	for (s32 i = 0; i < 2; ++i) {
+		act->mCharge.mSfxActors[i].Create();
+	}
+	act->mCharge._38 = 0;
+}
+
+// the action's reset on the Wii: the base vcall, every shot cleared, then the same
+// charge teardown ResetPopperCharge does on its own
+// NONMATCHING: inherits the ResetPopperCharge residue through ClearPopperCharge
+/**
+ * @note Address: 0x8010A6CC
+ * @note Size: 0x1FC
+ */
+void ResetPlayerPopperAction(XActPopper* act)
+{
+	act->Reset();
+	for (s32 i = 0; i < 10; ++i) {
+		ResetShot(&act->mShots.mShot[i]);
+	}
+	ClearPopperCharge(&act->mCharge);
+}
+
+// the GameCube's ApplyPopperMovementWeight, unchanged: only the aiming, flying and
+// shot states pin the player in place
+/**
+ * @note Address: 0x8010A8C8
+ * @note Size: 0x64
+ */
+void ApplyPopperMovementWeight(XActPopper* act, const CPadOne* pad, f32* weight)
+{
+	if (act->mState == 4) {
+		*weight = 1.0f;
+	} else if (act->mState == 6) {
+		*weight = 1.0f;
+	} else if (act->mState == 7 || act->mState == 8 || act->mState == 5) {
+		*weight = 1.0f;
+	} else if (act->mState != 0) {
+		*weight = 0.0f;
 	}
 }
 

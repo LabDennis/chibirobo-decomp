@@ -4,6 +4,8 @@
 #include "game/wii/cgame.h"
 #include "game/wii/animsfx.h"
 #include "game/cptcl.h"
+#include "Dolphin/mtx.h"
+#include "game/wii/ceffect.h"
 
 // chibi robo's actions on the Wii player, the GameCube's XAct* kinds (game/xact.h). XAction, XActHang and
 // XActTumble live in game/wii/cgame.h with the player; WiiPlayerState still declares the others as XAction
@@ -118,5 +120,37 @@ struct XActPopperShot {
 	AnimSfxActor mSfxActors[2]; // _D84, launch and impact sounds
 };
 STATIC_ASSERT(sizeof(XActPopperShot) == 0xD9C);
+
+// the charge's glow at the popper's muzzle, the GameCube's XActPopperCharge (game/xact.h)
+// grown on the Wii: the joint is an external matrix pointer now and two sound actors
+// (wind-up and charged loop) sit behind the generators. The word at _38 is only ever
+// cleared by the action's init
+struct XActPopperCharge {
+	s32 mState;                 // _00
+	f32 mTimer;                 // _04, 1.0 is a full charge
+	Vec mPos;                   // _08, where the generators are anchored
+	MtxP mMtx;                  // _14, the muzzle joint's world matrix while charging, NULL otherwise
+	EffectInstance* mGen;       // _18, the wind-up effect
+	EffectInstance* mChargeGen; // _1C, the charged glow, made when mTimer reaches 1.0
+	AnimSfxActor mSfxActors[2]; // _20, the charge sounds
+	u32 _38;                    // _38
+};
+STATIC_ASSERT(sizeof(XActPopperCharge) == 0x3C);
+
+// the popper's ten shots, an object of their own like the GameCube's PopperShots
+struct PopperShots {
+	XActPopperShot mShot[10]; // _00
+};
+STATIC_ASSERT(sizeof(PopperShots) == 0x8818);
+
+// the chibi-blaster, the GameCube's XActPopper: it fills WiiPlayerState's mPopper slot
+// at _0D50 out to mRadar at _95D4
+class XActPopper : public XAction {
+public:
+	f32 mShotStrength;        // _2C
+	PopperShots mShots;       // _30
+	XActPopperCharge mCharge; // _8848
+};
+STATIC_ASSERT(sizeof(XActPopper) == 0x8884);
 
 #endif
