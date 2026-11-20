@@ -4,6 +4,7 @@
 // CGs layer; HandleCopterActionInput reads the remote's B button through gWiiPointer
 // where the GameCube read the pad trigger, and plays the descent animation on the
 // copter object at _B580.
+#include "arithmetic.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
@@ -23,6 +24,8 @@ extern "C" u32 GetCopterParameter(s32 index);
 extern "C" s32 gRefreshRate;
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
+extern "C" void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended);
+extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit); // the Wii's out-of-line FindMapFloor
 
 // the tumble ring sits just above the floor
 static inline Vec RingPos(const Vec& pos, const Vec& offset)
@@ -47,6 +50,14 @@ static inline void KillGen(EffectInstance*& gen)
 		KillInstance(gen);
 		gen = NULL;
 	}
+}
+
+// the GameCube objectfloorquery.h inline: the Wii keeps the reference signature and
+// forwards to the pointer-taking virtual, so the CVec arguments materialize as
+// temporaries on the caller's stack
+static inline u32 ProbeObjectFloor(XObj* obj, const CVec& from, const CVec& to, f32 radius, f32 height, Vec* push, Vec* contact, s32* floor)
+{
+	return obj->TestFloorCollision(&from, &to, radius, height, push, contact, floor, 0);
 }
 
 // clears a shot and its effects, the GameCube's ResetShot
@@ -381,6 +392,64 @@ void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* targe
 	PlayWiiSoundEffect(&gGame.mSound, sfx, 1.0f, 0.0f);
 	gGame.mSound.mArchivePlayer.mReady = 1;
 	fn_80108BCC(shot);
+}
+
+// NONMATCHING: 99.02% - every instruction and the control flow match; the only
+// residue is register allocation order: retail binds i, ended, hit, the object-table
+// walker and object to r24-r28 in that order while we get object, i, ended, hit,
+// walker. Same rotation for f26/f27 on the GetPos loads. Declaring i outside the
+// loop and swapping dx/dz were tried and moved nothing.
+
+// the detection half of the GameCube's CheckPopperShotImpact, split off on the Wii:
+// scans the live objects in reach and the stage map for the first thing the shot
+// touches, snaps the position to the contact and leaves the sparks, the sound and the
+// ring to CheckPopperShotImpact
+/**
+ * @note Address: 0x80108BCC
+ * @note Size: 0x380
+ */
+void fn_80108BCC(XActPopperShot* shot)
+{
+	Vec pos  = shot->mPos;
+	BOOL hit = FALSE, ended = FALSE;
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		XObj* object = gGame.mXObjs.mObjects[i];
+		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x40000)
+		    || (object->mStatus.mFlags & 0x0002000000000000ULL) || (object->mStatus.mFlags & 0x100000))
+			continue;
+		CVec* objPos = object->GetPos();
+		f32 dz = objPos->z - pos.z, dx = objPos->x - pos.x;
+		if (FSqrt(dx * dx + dz * dz) > 100.0f + (0.8f + object->mFloorXZExtent[0]))
+			continue;
+		CVec push, contact;
+		u32 touch = ProbeObjectFloor(object, CVec(pos.x, pos.y, pos.z), CVec(pos.x, pos.y, pos.z), 0.8f, 0.8f, &push, &contact, NULL) & 3;
+		if (touch == 3) {
+			hit          = TRUE;
+			ended        = TRUE;
+			shot->mPos.x = contact.x;
+			shot->mPos.y = contact.y;
+			shot->mPos.z = contact.z;
+			if (gGame.mEvt.mData.mScript != NULL)
+				shot->mHitTarget = object;
+			else
+				object->OnHitFromPosition(shot->mPos, shot->mStrength * shot->mKind);
+		}
+	}
+	if (!hit) {
+		XObjMapHit ground;
+		XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].mObjects;
+		if (fn_800C98E0(map, &pos, -1, &ground) && pos.y <= ground.mHeight) {
+			hit   = TRUE;
+			ended = TRUE;
+			shot->mPos.Set(Vec(pos));
+			shot->mPos.y = ground.mHeight;
+		}
+	}
+	if (!hit)
+		return;
+	CheckPopperShotImpact(shot, &shot->mPos, ended);
+	KillGen(shot->mGen);
+	KillGen(shot->mChargeGen);
 }
 
 } // extern "C"
