@@ -8737,7 +8737,9 @@ void CCameraActionMap::Reset2()
 		                             mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
 		        __FUNCTION__);
 	}
-}
+}
+static const char sMapCameraResetMessage[] = "actionMap::reset\n";
+
 /*
     stwu     r1, -0xd0(r1)
     mflr     r0
@@ -9108,7 +9110,7 @@ void CCameraActionMap::Reset2()
 
 void CCameraActionMap::Reset()
 {
-	OSPanic(__FILE__, 220, "%s%s", "actionMap::reset\n", __FUNCTION__);
+	OSPanic(__FILE__, 220, "%s%s", sMapCameraResetMessage, __FUNCTION__);
 	// OSPanic ends in PPCHalt, so nothing below ever runs
 
 	mTarget = gGame.GetPlayer();
