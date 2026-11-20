@@ -1002,6 +1002,13 @@ struct WiiPlayerState : public XObj {
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
+	// snaps his heading back unless a hang, rope, ladder or push action holds it
+	void ResetCameraValue()
+	{
+		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
+			mHeldMoveAngle = mMoveAngle;
+		}
+	}
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
