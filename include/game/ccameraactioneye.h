@@ -70,9 +70,7 @@ class CCameraActionEye : public CInterfaceCameraAction {
 public:
 	CObjVec mLook;    // _40, x up and down, y around, z the fov offset
 	CVec mOverride;   // _70, a non zero part replaces the target the pointer gives
-	CVec mVec80;      // _80
-	CVec mVec90;      // _90
-	CVec mVecA0;      // _A0
+	CObjVec mVec80;   // _80, the pointer presence blend: 1 aims, 0 keeps the last aim
 	f32 mB0;          // _B0
 	Vec mVecB4;       // _B4
 	Vec mVecC0;       // _C0, a copy of one of the file's static limit vectors
