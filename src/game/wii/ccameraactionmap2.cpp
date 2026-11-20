@@ -27,6 +27,7 @@ void InitCameraAreaEntries(CamAreaState* state);
 void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex);
 void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
 void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
+f32 MapAreaHeight(CCameraActionMap* map, s32 index);
 }
 
 // the area index the last turn interpolation aims at, Update skips starting another for it
@@ -398,6 +399,65 @@ inline void SetFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time)
 extern "C" void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time)
 {
 	SetFovStep(map, zoomLevel, time);
+}
+
+/**
+ * @note Address: 0x8015F8A0
+ * @note Size: 0x29C
+ */
+extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
+{
+	CamAreaInfo area = CamAreaInfo(&gCameraAreaState.mAreaRecords[map->mMapArea]);
+	if (map->mMapArea >= 0) {
+		// flag 1: the area's height is absolute, otherwise it is above the player's camera target
+		if (!(area.mRecord->mFlags & 1)) {
+			map->mHeightMode = 0;
+		} else {
+			map->mHeightMode = 1;
+		}
+		// flag 2: keep the area's height once no area is picked (mMapArea -1), otherwise fall back to 13
+		if (!(area.mRecord->mFlags & 2)) {
+			map->mUseAreaHeight = 0;
+		} else {
+			map->mUseAreaHeight = 1;
+		}
+		if (map->mHeightMode == 0) {
+			f32 height         = MapAreaHeight(map, map->mMapArea);
+			f32 from           = map->mEye.y - (gGame.GetPlayer())->GetCameraTarget().y - map->mEyeYOffset;
+			map->mHeightInterp = &map->mHeightEaseInOut;
+			map->mHeightInterp->Start(from, height, 1.0f);
+			if (map->mUseAreaHeight == 0) {
+				map->mTargetHeight = 13.0f;
+			}
+			if (map->mUseAreaHeight == 1) {
+				map->mTargetHeight = height;
+			}
+		}
+		if (map->mHeightMode == 1) {
+			f32 height            = MapAreaHeight(map, map->mMapArea);
+			f32 from              = map->mEye.y - map->mEyeYOffset;
+			map->mAbsHeightInterp = &map->mAbsHeightEaseInOut;
+			map->mAbsHeightInterp->Start(from, height, 1.0f);
+			if (map->mUseAreaHeight == 0) {
+				map->mTargetHeight = 13.0f;
+			}
+			if (map->mUseAreaHeight == 1) {
+				map->mTargetHeight = height;
+			}
+		}
+	} else if (map->mMapArea == -1) {
+		if (map->mHeightMode == 0 || (map->mHeightMode == 1 && map->mUseAreaHeight == 0)) {
+			map->mHeightMode   = 0;
+			f32 from           = map->mEye.y - (gGame.GetPlayer())->GetCameraTarget().y - map->mEyeYOffset;
+			map->mHeightInterp = &map->mHeightEaseInOut;
+			map->mHeightInterp->Start(from, map->mTargetHeight, 1.0f);
+		}
+		if (map->mHeightMode == 1 && map->mUseAreaHeight == 1) {
+			f32 from              = map->mEye.y - map->mEyeYOffset;
+			map->mAbsHeightInterp = &map->mAbsHeightEaseInOut;
+			map->mAbsHeightInterp->Start(from, map->mTargetHeight, 1.0f);
+		}
+	}
 }
 
 /**
