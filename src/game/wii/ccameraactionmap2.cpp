@@ -3,6 +3,7 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
 #endif
+#include "game/cameracollisionpolygons.h"
 #include "game/gmath.h"
 #include "game/ut.h"
 #include <string.h>
@@ -567,4 +568,19 @@ void CCameraActionMap::DrawDebug2d()
 void CCameraActionMap::DrawDebug3d()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
+}
+
+// the file's statics, in the bss layout retail has: five CVecs nothing references, the orbit's
+// previous angle, one more unreferenced CVec and the two probes the unobstructed-yaw test keeps
+extern "C" {
+CVec lbl_8047F0C8;
+CVec lbl_8047F0E8;
+CVec lbl_8047F108;
+CVec lbl_8047F128;
+CVec lbl_8047F148;
+Vec sPreviousMapOrbitAngle;
+CVec lbl_8047F170(0.0f, 10.0f, 0.0f);
+CVec sMapCameraTestEye;
+CVec sMapCameraTestCenter;
+CamCollisionPolygon gCameraCollisionPolygons[256];
 }
