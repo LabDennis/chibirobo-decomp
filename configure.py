@@ -1324,6 +1324,10 @@ if wii:
                 # the tumble fade and the floor ring (the GameCube's xactradar.cpp tail, retail
                 # 0x801078C8-0x80107C50); HandleCopterActionInput and the rest of Nr. 68 follow
                 Object(NonMatching, "game/wii/xactradar.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the attachment objects (copter, popper, radar, OX mark), retail
+                # 0x8010E548-0x8010F944: the action code calls their anim helpers with plain
+                # bl, so they were a separate file; in xactradar.cpp -ipa file inlines them
+                Object(NonMatching, "game/wii/xobjattachment.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
