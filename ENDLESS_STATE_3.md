@@ -1,11 +1,81 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 53 fertig, Branch devin/lane3 (Commit 88dd81d0). R24J01:
+Stand: Lauf 54 fertig, Branch devin/lane3 (Commit 93fd2d24). R24J01:
 6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 54 — LoadFromPlacement 81,74 → 90,18 %; TestFloorCollision dekodiert
+
+- **Commit 93fd2d24**: `wii obja: LoadFromPlacement 81.74 -> 90.18
+  (ready-flag shape, spiderplacement inlines)`. Der uncommittete
+  Anlauf aus dem Vorkontext wurde verifiziert, formatiert, durchs
+  volle Gate geschickt und committed. `ready`-BOOL-Struktur +
+  `AttrInfo* attr = &mAttr` + Wii-`spiderplacement.h`-Inlines
+  (PlacementPosition/Rotation/Scale, bauen alle drei Achsen).
+- **Gate komplett grün:** R24J01 main.dol OK, obja-Unit 0
+  Regressionen (vf168 99,23; fn_800AE9F0 72,91; fn_800AF51C 71,44;
+  DrawGroundShadowAt 94,03 unverändert); GC 3× 17 files OK;
+  Report-Diff 0 Regressionen in allen 4 Editionen; callcheck nur
+  bekannte Fremd-Treffer (actor_pool); keine neuen Doppelsymbole.
+- **TestFloorCollision 0x800B034C (0x120C) vollständig dekodiert**
+  — Retail-ASM in `/tmp/obja_dis` (sonst neu:
+  `dtk elf disasm build/R24J01/obj/game/wii/obja.o /tmp/obja_dis`,
+  Funktion ~Zeilen 5437–6640; llvm-objdump kann Paired-Single
+  NICHT → nur dtk). Struktur = GC `src/game/obja.cpp:425`
+  TestFloorCollision 1:1 (gleiche Guards, Cases, Konstanten,
+  Epilog). Wii-Abweichungen/Befunde für den Port:
+  - **NEU: Schleifen-Gate** `if (!(mFloors[i].mFlags & 1)) continue;`
+    — Kopf lädt `lbz r0,3(floor)` clrlwi. &1; mFlags Bit 0 = "in
+    contact tests" (xobj.h-Kommentar). GC hat das NICHT.
+  - `mToppleOffset` (GC) → **`mVec714`** (_714) auf Wii.
+  - Decode wie GC: `xoris s32,0x8000`→f64−2^52→`fdivs` 100.0f
+    (f31=lbl_805A44DC) ⇒ `ReadObjectFloorOffset/Extent(this,i)` aus
+    `include/game/objectfloorquery.h` (Wii-tauglich, benutzen!).
+  - yaw = `mMoveRotate.y` (_64) + DEG2RAD*(`mYawDegrees` s32 @+0x10);
+    f25=lbl_805A44E0=DEG2RAD; mId s16 @+0 switcht Cases (0,1 Disc;
+    2 Box; 3 Wall; 5 Quad).
+  - **Wii-Signatur `ResolveCircleWallCollisionXZ`** (ut.h:184 unter
+    `VERSION_R24J01`): `int (from,to,wallA,wallB, pos, contact,
+    push, int corners, f32 radius)` — 9 Args, ANDERE Reihenfolge
+    als GC! Belegt im Box-Case: r3=start(0x280),r4=dest(0x270),
+    r5/r6=Wände, r7=&hit(0x260), r8=&edge.mContactOffset,
+    r9=push(r18), r10=0 → `corners=0`, f1=radius. Case-3-r10
+    (corners) noch prüfen (GC übergab dort 1). Impl wii/ut.cpp:511.
+  - `IsPointInsideQuadXZ` (wii/ut.cpp:356),
+    `ReflectVectorAboutNormal` extern "C" (wii/cjanim.cpp:100),
+    `IsPlayerStopped` extern "C" — deklarieren wie GC obja.cpp:387.
+  - CVec auf Wii mit VTABLE: Operatoren `__pl__/__mi__/__ml__
+    4CVecCF3Vec` sind out-of-line Calls (ut.h CVec : public Vec);
+    Locals start=0x280 (aus `from`), dest=0x270 (aus `to`), y=0.
+  - Statik im Box-Case wie GC: `static Vec corners[8]` @lbl_804574C8
+    + Guard-Byte lbl_805A1C40, h = (2/√3)/2 via FrSqrt.
+  - Member belegt: mMoveTranslate _30, mMoveScale _90, mFloors _174
+    (Stride 0x20), mFloorMasks _178, mHitFloorIndex _1BC,
+    mEdges _1C0 (i*0x24), mFloorHeights _648 (i*4), mStatus
+    _150/_154. Kollision-Konstanten identisch (8 Wand, 4 Quad,
+    3/1/0 Höhe).
+  - Epilog identisch: mFloorMasks[0] |= 1<<i; mHitFloorIndex=i;
+    result|=collision; cursor→i (−1 am Terminator); bei result:
+    mStatus|=0x0100000000000000; flags&2 + (result&3)==3 +
+    0x20000000000 + !0x8000000000000000 + !(gGame flags&0x400) +
+    player(gGame+0xF70C)->mAttachmentRequest(+0x19924)<0 +
+    ((gGame flags&0x40000000 && IsPlayerStopped(player) &&
+    player->mBatteryDrains(+0x1C990)) || mFlags&0x8000) →
+    mStatus|=0x8000..; GetEventScript() (vptr _1EC) +
+    StartOrQueueEventScript(&gGame.mEvt(+0x4C8E0),script,this,-1,-1);
+    flags&1 → delta=*contact-*from (CVec-__mi__), PSVECMag(push),
+    result=OnPlayerContact((s32)&delta,result) (vptr _1CC —
+    gleiche GC-Eigenheit: Mag berechnet, aber &delta als s32!).
+    result==0 → mStatus &= ~0x0100000000000000 (Hi-Wort).
+- **Nächster Schritt:** GC-Code obja.cpp:425 als Port kopieren —
+  Gate-Zeile einfügen, mVec714, Wii-Resolve-Signatur, sonst fast
+  1:1. Danach R24J01 bauen + Score; nur bei sinnvollem Ergebnis
+  volles Gate + Commit. fn_800AD498 bleibt in Liegt
+  (String-Pool-Regression fn_800AF098 ungelöst). progress.md:
+  Haupt-Checkout weiterhin nicht beschreibbar.
 
 ## Lauf 53 — LoadFromPlacement portiert, 81,74 % fuzzy NONMATCHING
 
