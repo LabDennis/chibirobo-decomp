@@ -474,6 +474,57 @@ extern "C" f32 MapAreaHeight(CCameraActionMap* map, s32 index)
 	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 }
 
+// the point 13 above and 1 behind the target's origin, in world space; GetMapCameraTargetOffsetPosition is its
+// out-of-line copy, GetMapCameraEyeBehindTarget inlines it
+static inline BOOL CalcMapCameraTargetOffsetPosition(CCameraActionMap* map, Vec& out)
+{
+	XObj* target = map->mTarget;
+	if (target != NULL && (target->mStatus.mFlags & 1)) {
+		Mtx mtx;
+		PSMTXCopy(target->GetWorldMtx(), mtx);
+		CVec pos(0.0f, 13.0f, -1.0f);
+		PSMTXMultVec(mtx, &pos, &pos);
+		out.x = pos.x;
+		out.y = pos.y;
+		out.z = pos.z;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x8015F460
+ * @note Size: 0x264
+ */
+extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32 mode)
+{
+	CVec result;
+	if (mode != 1) {
+		if (map->mTarget != NULL) {
+			Mtx mtx;
+			PSMTXCopy(map->mTarget->GetWorldMtx(), mtx);
+			CVec pos(0.0f, 13.0f, -map->mTargetRestDistance);
+			PSMTXMultVec(mtx, &pos, &pos);
+			pos.y  = map->mHeightInterp->Get();
+			result = pos;
+		}
+	} else if (map->mTarget != NULL) {
+		Vec offset;
+		CalcMapCameraTargetOffsetPosition(map, offset);
+		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
+		CVec eye                     = camera->mView.mEye;
+		CVec interest                = camera->mView.mInterest;
+		f32 angle                    = HALF_PI + (f32)atan2(interest.x - eye.x, interest.z - eye.z);
+		f32 distance                 = map->mTargetRestDistance;
+		result.x                     = offset.x + distance * (f32)cos(angle);
+		result.z                     = offset.z + distance * -(f32)sin(angle);
+		result.y                     = 13.0f + map->mTarget->GetCameraTarget().y;
+	}
+	out.x = result.x;
+	out.y = result.y;
+	out.z = result.z;
+}
+
 void CCameraActionMap::PreviousUpdate()
 {
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
