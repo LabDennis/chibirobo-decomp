@@ -3539,6 +3539,17 @@ extern "C" XObjSource* GetObjectSources()
 	return gObjectSources;
 }
 
+#if !defined(VERSION_R24J01)
+#if defined(VERSION_JP)
+extern "C" const char* gGlobalResourceFileName = "bin/globals.bin";
+#else
+extern "C" const char* gGlobalResourceFileName = "globals.bin";
+extern "C" const char* gResourceDirectorySuffixByLanguage[] = {
+	"/e", "/g", "/f", "/s", "/i", "/e", "",
+};
+#endif
+#endif
+
 #if defined(VERSION_PAL)
 #define STAGE(file, message, flags) { file, file, message, flags }
 #else
@@ -3597,6 +3608,35 @@ StageDesc stageTable[] = {
 };
 
 #undef STAGE
+
+#if defined(VERSION_US) || defined(VERSION_PAL)
+extern "C" {
+extern const char* gEnglishInterfaceText[];
+extern const char* gGermanInterfaceText[];
+extern const char* gFrenchInterfaceText[];
+extern const char* gSpanishInterfaceText[];
+extern const char* gItalianInterfaceText[];
+extern const char* gJapaneseInterfaceText[];
+extern const char* gEnglishPCDialogue[];
+extern const char* gGermanPCDialogue[];
+extern const char* gFrenchPCDialogue[];
+extern const char* gSpanishPCDialogue[];
+extern const char* gItalianPCDialogue[];
+extern const char* gJapanesePCDialogue[];
+
+const char** gInterfaceTextByLanguage[] = {
+	gEnglishInterfaceText, gGermanInterfaceText, gFrenchInterfaceText,
+	gSpanishInterfaceText, gItalianInterfaceText, gEnglishInterfaceText,
+	gJapaneseInterfaceText,
+};
+
+const char** gPCDialogueByLanguage[] = {
+	gEnglishPCDialogue, gGermanPCDialogue, gFrenchPCDialogue,
+	gSpanishPCDialogue, gItalianPCDialogue, gEnglishPCDialogue,
+	gJapanesePCDialogue,
+};
+}
+#endif
 #else
 // the Wii's table also names each stage's sound bank and the bank's first sound id
 StageDesc stageTable[] = {
