@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 48 fertig, Branch devin/lane3 @e3751019. R24J01:
+Stand: Lauf 48 fertig, Branch devin/lane3 @61d5fe52. R24J01:
   6592/8284 matched, `main.dol: OK`.
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
