@@ -49,6 +49,7 @@ extern s32 sMapCameraCenterReset;
 extern s32 sMapCameraOrbitAtRestDistance;
 extern "C" CVec sMapCameraTestEye;
 extern "C" CVec sMapCameraTestCenter;
+extern "C" CVec lbl_8047F170;
 
 // the map camera's spring stiffnesses, by mode
 extern "C" f32 sMapCameraSpringParameters[] = { 0.5f, 2.5f, 4.5f };
@@ -67,6 +68,27 @@ extern s32 lbl_805A1D38;
 extern s32 lbl_805A1D3C;
 extern s32 lbl_805A1D40;
 extern s32 lbl_805A1D44;
+
+
+// the look response curves, two hermite segments a piece; the same shape
+// cmotioncontrolcamera evaluates for the pointer look, applied to the orbit input here
+struct WiiCameraCurve {
+	f32 mP0X; // _00
+	f32 mP0Y; // _04
+	f32 mP1X; // _08
+	f32 mP1Y; // _0C
+	f32 mT0X; // _10
+	f32 mT0Y; // _14
+	f32 mT1X; // _18
+	f32 mT1Y; // _1C
+};
+
+struct WiiCameraPoint {
+	f32 x; // _00
+	f32 y; // _04
+};
+
+extern "C" WiiCameraPoint fn_8016A844(const WiiCameraCurve* curve, f32 t);
 
 // the area index the last turn interpolation aims at, Update skips starting another for it
 extern s32 lbl_805A1D10;
@@ -1701,6 +1723,191 @@ void CCameraActionMap::Update(u32 step)
 		gWiiPointer.mFlags |= 0x08000000;
 	} else {
 		gWiiPointer.mFlags &= ~0x08000000;
+	}
+}
+
+
+// nudges target onto the shorter arc toward yaw, both wrapped into [0, 2pi) beforehand
+static inline void AdjustOrbitTargetAngle(f32& target, f32 yaw)
+{
+	f32 diff = __fabsf(target - yaw);
+	if (diff > 0.0f) {
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (target < yaw) {
+				target += TWO_PI;
+			} else {
+				target -= TWO_PI;
+			}
+		}
+	}
+}
+
+// NONMATCHING: the logic matches throughout, including retail's unread eye.y on the two driven
+// paths; what remains is register allocation (retail rematerializes the CVec vtable pointer per
+// block instead of keeping it in a saved register, so its frame is 0x10 smaller) and the usual
+// stack-slot shuffling (87,5 %)
+/**
+ * @note Address: 0x8015D928
+ * @note Size: 0xBCC
+ */
+void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
+{
+	sPreviousMapOrbitAngle = map->mOrbitAngle;
+	map->mOrbitEye         = map->mTargetEye;
+	if (lbl_805A1D24 == 0) {
+		map->mOrbitAngle = map->mAngle;
+	}
+
+	// the second orbit axis is not wired up in this build
+	f32 input  = map->mOrbitInput;
+	f32 input2 = 0.0f;
+
+	WiiCameraPoint point = fn_8016A844((const WiiCameraCurve*)&map->_126C, __fabsf(input));
+	if (input > 0.0f) {
+		input = point.y;
+	}
+	if (input < 0.0f) {
+		input = -point.y;
+	}
+
+	if (input != 0.0f || input2 != 0.0f) {
+		map->_1230   = map->mOrbitInput;
+		lbl_805A1D28 = input;
+		if (map->mOrbitReseed) {
+			map->mOrbitReseed    = 0;
+			map->_11FC.mTarget.y = map->mOrbitAngle.y;
+		}
+		map->_11FC.y          = map->mOrbitAngle.y;
+		map->_11FC.mTarget.y += step * (0.040142573f * input);
+		f32 target = WrapAngle(map->_11FC.mTarget.y);
+		f32 yaw    = WrapAngle(map->_11FC.y);
+		AdjustOrbitTargetAngle(target, yaw);
+		map->_11FC.y         = yaw;
+		map->_11FC.mTarget.y = target;
+		if (yaw < target) {
+			lbl_805A1D28 = 1.0f;
+		} else if (yaw > target) {
+			lbl_805A1D28 = -1.0f;
+		}
+		map->_11FC.mSpeed.x = 0.0f;
+		map->_11FC.mSpeed.z = 0.0f;
+		map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.y) / lbl_8047F170.y;
+		map->_11FC.Step(step);
+		map->SetAngle(map->mOrbitAngle.x, map->_11FC.y, map->mOrbitAngle.z);
+		map->mPrevOrbitAngle = map->mOrbitAngle;
+		map->mOrbitAngle     = map->mAngle;
+		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+		f32 yaw2  = HALF_PI + map->mAngle.y;
+		f32 pitch = 0.0f;
+		CVec flat(map->mTargetEye.x, map->mInterest.y, map->mTargetEye.z);
+		f32 dist  = PSVECDistance(&flat, &map->mInterest);
+		Vec eye;
+		eye.x = map->mInterest.x + dist * (f32)cos(yaw2) * (f32)cos(pitch);
+		eye.z = map->mInterest.z + dist * -(f32)sin(yaw2) * (f32)cos(pitch);
+		// retail never sets eye.y on this path; the assignments pass the stale word through
+		map->mOrbitEye  = eye;
+		map->mTargetEye = eye;
+		map->mOrbiting  = 1;
+	} else {
+		if (map->mStatus.mFlags & 2) {
+			map->mOrbiting    = 0;
+			map->mOrbitReseed = 1;
+		} else if (map->mOrbiting) {
+			map->_11FC.y = map->mOrbitAngle.y;
+			f32 target   = WrapAngle(map->_11FC.mTarget.y);
+			f32 yaw      = WrapAngle(map->_11FC.y);
+			AdjustOrbitTargetAngle(target, yaw);
+			map->_11FC.y         = yaw;
+			map->_11FC.mTarget.y = target;
+			if (input2 == 0.0f && input == 0.0f) {
+				f32 ease = 0.3f;
+				map->_11FC.mTarget.y = (1.0f - ease) * map->_11FC.mTarget.y + ease * map->_11FC.y;
+			} else {
+				map->_11FC.mTarget.y += step * (0.040142573f * input);
+			}
+			map->_11FC.mSpeed.x = 0.0f;
+			map->_11FC.mSpeed.z = 0.0f;
+			map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.y) / lbl_8047F170.y;
+			map->_11FC.Step(step);
+			if (__fabsf(map->_11FC.mSpeed.y) > 0.01f) {
+				if (yaw < target) {
+					lbl_805A1D28 = 1.0f;
+				} else if (yaw > target) {
+					lbl_805A1D28 = -1.0f;
+				}
+				map->SetAngle(map->mOrbitAngle.x, map->_11FC.y, map->mOrbitAngle.z);
+				map->mPrevOrbitAngle = map->mOrbitAngle;
+				map->mOrbitAngle     = map->mAngle;
+				map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+				f32 yaw2  = HALF_PI + map->mAngle.y;
+				f32 pitch = 0.0f;
+				CVec flat(map->mTargetEye.x, map->mInterest.y, map->mTargetEye.z);
+				f32 dist  = PSVECDistance(&flat, &map->mInterest);
+				Vec eye;
+				eye.x = map->mInterest.x + dist * (f32)cos(yaw2) * (f32)cos(pitch);
+				eye.z = map->mInterest.z + dist * -(f32)sin(yaw2) * (f32)cos(pitch);
+				// same stale eye.y as the stick-driven path
+				map->mOrbitEye  = eye;
+				map->mTargetEye = eye;
+				map->mOrbiting  = 1;
+			} else {
+				map->mOrbiting    = 0;
+				map->mOrbitReseed = 1;
+			}
+		}
+	}
+
+	if (map->mStatus.mFlags & 2) {
+		map->mOrbitEye = map->mTargetEye;
+		if (lbl_805A1D24 == 0) {
+			map->mOrbitAngle = map->mAngle;
+		}
+		f32 newYaw = WrapAngle(map->mOrbitAngle.y);
+		f32 target = WrapAngle(map->mTargetYaw);
+		AdjustOrbitTargetAngle(target, newYaw);
+		if (newYaw < target) {
+			lbl_805A1D28 = 1.0f;
+			newYaw += step * map->mTurnSpeed;
+			if (newYaw > target) {
+				newYaw = target;
+			}
+		} else if (newYaw > target) {
+			newYaw -= step * map->mTurnSpeed;
+			if (newYaw < target) {
+				newYaw = target;
+			}
+			lbl_805A1D28 = -1.0f;
+		}
+		if (__fabsf(target - newYaw) < 0.001f) {
+			newYaw = target;
+		}
+		BOOL turning = TRUE;
+		Vec angle(map->mOrbitAngle);
+		angle.y = newYaw;
+		map->SetAngle(angle);
+		map->mPrevOrbitAngle = map->mOrbitAngle;
+		map->mOrbitAngle     = map->mAngle;
+		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+		f32 yaw2  = HALF_PI + map->mAngle.y;
+		f32 pitch = 0.0f;
+		CVec flat(map->mTargetEye.x, map->mInterest.y, map->mTargetEye.z);
+		f32 dist  = PSVECDistance(&flat, &map->mInterest);
+		Vec eye;
+		eye.x = map->mInterest.x + dist * (f32)cos(yaw2) * (f32)cos(pitch);
+		eye.y = map->mTargetEye.y;
+		eye.z = map->mInterest.z + dist * -(f32)sin(yaw2) * (f32)cos(pitch);
+		map->mOrbitEye    = eye;
+		map->mTargetEye   = eye;
+		map->mManualInput = 1;
+		if (newYaw == target) {
+			turning = FALSE;
+		}
+		if (!turning) {
+			map->mStatus.mFlags &= ~2;
+		}
 	}
 }
 
