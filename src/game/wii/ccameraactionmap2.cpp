@@ -254,6 +254,68 @@ extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, Ca
 	return count;
 }
 
+/**
+ * @note Address: 0x8015D6B0
+ * @note Size: 0x278
+ */
+extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
+{
+	CamMapEntry* entry = map->mNearestEyeEntry;
+	if (entry != NULL) {
+		s32 group          = entry->mRecordIndex;
+		s32 side           = entry->mSide;
+		CVec dir           = entry->mNormal;
+		CamAreaRecord* rec = gCameraAreaState.mAreaExRecords;
+		rec += group;
+		CVec toPlayer = *gGame.GetPlayer()->GetPos();
+		toPlayer.y    = 0.0f;
+		Vec eye       = map->mEye;
+		eye.y         = 0.0f;
+		toPlayer -= eye;
+		PSVECNormalize(&toPlayer, &toPlayer);
+		PSVECCrossProduct(&dir, &toPlayer, &dir);
+		CVec cross = dir;
+
+		s32* corner = &rec->_04[0][0];
+		corner += side;
+		corner += side;
+		f32 x0 = corner[0];
+		x0 /= 100.0f;
+		f32 z0 = corner[1];
+		z0 /= 100.0f;
+		if (side == 3) {
+			corner = rec->_04[0];
+		} else {
+			corner += 2;
+		}
+		f32 x1 = corner[0];
+		x1 /= 100.0f;
+		f32 z1 = corner[1];
+		z1 /= 100.0f;
+
+		if (cross.y > 0.0f) {
+			map->mSideStart.x = x0;
+			map->mSideStart.y = 0.0f;
+			map->mSideStart.z = z0;
+			map->mSideEnd.x   = x1;
+			map->mSideEnd.y   = 0.0f;
+			map->mSideEnd.z   = z1;
+			map->mSideSign    = 1;
+		}
+		if (cross.y < 0.0f) {
+			map->mSideStart.x = x1;
+			map->mSideStart.y = 0.0f;
+			map->mSideStart.z = z1;
+			map->mSideEnd.x   = x0;
+			map->mSideEnd.y   = 0.0f;
+			map->mSideEnd.z   = z0;
+			map->mSideSign    = -1;
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
 // NONMATCHING: retail reads a debug flag (sbss 0x805A1D08) after storing the speed and reloads it, and keeps
 // from and to in each other's registers (88.9 %)
 extern "C" BOOL TrySetMapCameraTargetYaw(CCameraActionMap* map, f32 yaw, f32 time, f32 unused)

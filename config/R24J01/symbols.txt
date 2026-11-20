@@ -2459,6 +2459,7 @@ DrawOpenMenus = .text:0x80084B08; // type:function size:0x88
 SetAreaCameraInterestTarget = .text:0x8015601C; // type:function size:0x14C
 FindNearestMapCameraEntry = .text:0x8015D510; // type:function size:0xD0
 CountMapCameraAdjacentSideIntersections = .text:0x8015D5E0; // type:function size:0xD0
+SetMapCameraSideEndpoints = .text:0x8015D6B0; // type:function size:0x278
 StartMapCameraTurnInterpolation = .text:0x8015FB20; // type:function size:0x1D4
 MapAreaHeight = .text:0x8015EE1C; // type:function size:0x190
 SetMapCameraModeFlags = .text:0x80160220; // type:function size:0x2D4
