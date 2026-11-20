@@ -1309,8 +1309,8 @@ public:
 	virtual void DrawCollisionShapes();                              // _18C
 	virtual void DrawScreenOverlay();                                // _190
 	virtual void DrawDebugStatus();                                  // _194
-	virtual void vf198();
-	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
+	virtual void vf198(f32 margin, f32 alpha, u32 color);            // _198, frames the on-screen bounds while hovered
+	virtual void vf19C(u32 color, f32 z, f32 x, f32 y);              // _19C, CGame::DrawHud calls it on its mHudObject
 	virtual void vf1A0(const u32* flags);
 	virtual void vf1A4();
 	virtual void vf1A8();

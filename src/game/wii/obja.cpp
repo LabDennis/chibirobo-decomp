@@ -4,7 +4,8 @@
 // source is the GameCube's obja.cpp carried over onto the nw4r model and queue types.
 #include "Version.h"
 #if defined(VERSION_R24J01)
-#include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
+#include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj_ut2.h"
@@ -18,6 +19,7 @@ using namespace nw4r::g3d;
 
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
+extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
 {
@@ -301,6 +303,39 @@ void XObj::DrawScreenOverlay()
 	}
 	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 	scene->vf034(scene->mPending, mObject.m_pScnMdl);
+}
+
+// NONMATCHING: same instruction stream (188 each side); retail schedules the flag test's
+// lwz/and/xor. between the callee saves and the zero-stores between the render-state setup,
+// here both run after. Register assignment and the sdata2 constant labels differ with it.
+// 0x800AE700, frames the object's on-screen bounds a margin wider while it is pointer-hovered
+void XObj::vf198(f32 margin, f32 alpha, u32 color)
+{
+	if ((mStatus.mFlags & 0x10001) != 0x10001) {
+		return;
+	}
+	if (mStatus.mFlags & 0x1000000000800) {
+		return;
+	}
+	BOOL onScreen = mScreenBoundsValid && __fpclassifyf(mScreenLeft) != FP_NAN && __fpclassifyf(mScreenTop) != FP_NAN
+	             && __fpclassifyf(mScreenRight) != FP_NAN && __fpclassifyf(mScreenBottom) != FP_NAN && mScreenLeft <= gScreenRight
+	             && mScreenTop <= gScreenBottom && mScreenRight >= gScreenLeft && mScreenBottom >= gScreenTop;
+	if (onScreen && _6D8 != 0) {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		f32 l      = mScreenLeft - margin;
+		f32 r      = mScreenRight + margin;
+		f32 t      = mScreenTop - margin;
+		f32 b      = mScreenBottom + margin;
+		Vec pos[5] = { { l, t, 0.0f },   // top left
+			           { r, t, 0.0f },   // top right
+			           { r, b, 0.0f },   // bottom right
+			           { l, b, 0.0f },   // bottom left
+			           { l, t, 0.0f } }; // back to top left
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetLineWidth(0xC, GX_TO_ONE);
+		DrawGsLineStrip(&gGame.mGs, pos, (color & 0xFFFFFF00) | (u8)((color & 0xFF) * alpha), 5);
+	}
 }
 
 // 0x800AF2C8, the kind's packed anim id: the low halfword names the character animation, the high
