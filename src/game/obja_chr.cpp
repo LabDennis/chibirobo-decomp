@@ -4336,6 +4336,8 @@ extern "C" void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* p
 	joint.CJObj::SetTranslate(x, y, z, TRUE);
 }
 
+static const Vec sPlayerDustVelocityInitializer = { 0.0f, 0.0f, 0.0f };
+
 /**
  * @note Address: 0x8009F7D0
  * @note Size: 0x490
@@ -4354,7 +4356,10 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 	Vec size;
 	size.x = size.y = width;
 	size.z          = 1.0f;
-	Vec velocity    = { vx, vy, vz };
+	Vec velocity    = sPlayerDustVelocityInitializer;
+	velocity.x      = vx;
+	velocity.y      = vy;
+	velocity.z      = vz;
 	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
 	if (dust != NULL) {
 		if (player->mGroundType == 10) {
@@ -5228,6 +5233,12 @@ static inline s32 ActionTargetPlacement(const XAction& action)
 	return -1;
 }
 
+static const char sPlayerDebugStatusFormat[]
+    = "\\B00000080POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
+      "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n\nACT :%2d\n"
+      "LIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\nROPE:%2d(%d)\nPUSH:%2d(%d)\n"
+      "TMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n";
+
 /**
  * @note Address: 0x800A4678
  * @note Size: 0x3E8
@@ -5259,11 +5270,7 @@ void XObjChr::DrawDebugStatus()
 	s32 anim       = player->mAnimId;
 	HSD_AObj* aobj = GetAObj(player->mJObj);
 	f32 endFrame   = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
-	DrawGsStrokeTextFormat(&gGame.mGs, -56,
-	                       "\\B00000080POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
-	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n\nACT :%2d\n"
-	                       "LIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\nROPE:%2d(%d)\nPUSH:%2d(%d)\n"
-	                       "TMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n",
+	DrawGsStrokeTextFormat(&gGame.mGs, -56, sPlayerDebugStatusFormat,
 	                       16.0f, 30.0f, 0.0f, 11.0f, 12.0f, player->mMoveTranslate.x, player->mMoveTranslate.y, player->mMoveTranslate.z,
 	                       (s32)(RAD2DEG * player->mMoveRotate.y), player->mMoveSpeed, player->mMoveTranslate.mSpeed.y, anim,
 	                       player->mFrameTime.mFrame, endFrame, player->mIdleLoops, nearIndex, player->mNearDistance, hitIndex, flags,
@@ -5439,6 +5446,9 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
 	SetGsLineWidth(gs->mCurRenderMode, 12, 5);
 }
 
+static const Vec sPlayerDurationGaugeProjectionOffset   = { 0.0f, 0.0f, 0.0f };
+static const Vec sPlayerAnimationGaugeProjectionOffset  = { 0.0f, 0.0f, 0.0f };
+
 /**
  * @note Address: 0x800A551C
  * @note Size: 0x73C
@@ -5453,7 +5463,7 @@ void XObjChr::DrawScreenOverlay()
 
 	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 	if (!camera->IsAction(CAMACTION_SCROLL2) && mGaugeTime > 0.0f) {
-		Vec offset = { 0.0f, 0.0f, 0.0f };
+		Vec offset = sPlayerDurationGaugeProjectionOffset;
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
 		f32 left     = x - 31.0f;
@@ -5461,7 +5471,7 @@ void XObjChr::DrawScreenOverlay()
 		DrawPlayerGauge(left, y, 62.0f, mGaugeTime / (IDLE_SECOND * duration), 0x00FF0064);
 	}
 	if (!camera->IsAction(CAMACTION_SCROLL2) && (mAnimId == 0x7A || mAnimId == 0xCA)) {
-		Vec offset = { 0.0f, 0.0f, 0.0f };
+		Vec offset = sPlayerAnimationGaugeProjectionOffset;
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
 		f32 left     = x - 36.0f;
@@ -5588,6 +5598,8 @@ void XObjChr::DrawObjectEffects()
 	DrawSpiralTrail(&gPlayerSuitChangeEffect, mMoveTranslate);
 }
 
+static const Vec sPlayerGroundShadowRotation = { -HALF_PI, 0.0f, 0.0f };
+
 /**
  * @note Address: 0x800A72F8
  * @note Size: 0x4DC
@@ -5607,7 +5619,7 @@ void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 		CVec jointScale;
 		s32 path[] = { 0, 0 };
 		HSD_JObjGetScale(FindJointByPath(mJObj, path, 2), &jointScale);
-		Vec rotation   = { -HALF_PI, 0.0f, 0.0f };
+		Vec rotation   = sPlayerGroundShadowRotation;
 		u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
 		Vec size       = (mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
