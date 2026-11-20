@@ -679,15 +679,15 @@ public:
 	CStatus mPreviousStatus; // _11E0
 	BOOL mKeepPreviousEye;   // _11E8
 	f32 mOrbitInput; // _11EC, the pad's orbit input, shaped by the curve at _126C (name inferred)
-	u8 _11F0[0x11F8 - 0x11F0];
-	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
+	f32 _11F0;       // _11F0, second orbit axis, only cleared by the pad controls
+	f32 mPointerHoldTime; // _11F4, frames the pointer button has been held (name inferred)
+	u8 mPointerHeld; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	CObjVec _11FC;
 	u8 mOrbiting;    // _122C, 1 while the orbit keeps placing the eye (name inferred)
 	u8 mOrbitReseed; // _122D, reseeds the orbit target from the camera angle on the next input (name inferred)
 	u8 _122E[0x1230 - 0x122E];
-	f32 _1230; // _1230, copy of the frame's raw orbit input
-	u8 _1234[0x123C - 0x1234];
+	Vec mOrbitPointer; // _1230, the pointer position clamped to the screen limits (name inferred)
 	CamEdgeArrow mArrows[2]; // _123C, left and right
 	f32 _126C;               // _126C
 	f32 _1270;               // _1270

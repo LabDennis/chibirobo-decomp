@@ -23,6 +23,9 @@ extern "C" {
 
 extern s32 gRefreshRate;
 
+// the pointer's screen resolution, cpadact.cpp
+extern s32 gPointerScreenWidth, gPointerScreenHeight;
+
 // the Wii builds divide by the current refresh rate, the GameCube header's FRAME_TIME is the 60 Hz constant
 #undef FRAME_TIME
 #define FRAME_TIME (1.0f / gRefreshRate)
@@ -41,6 +44,8 @@ void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 f32 MapAreaHeight(CCameraActionMap* map, s32 index);
 void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
 void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step);
+// clamps the screen point into the per-axis limits, in cmotioncontrolcamera.cpp
+void fn_8016AA78(f32* out, f32* in, f32* limits);
 CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance);
 s32 CollectCameraAreasContainingPoint(CamAreaState* state, Vec pos, s32* ids);
 }
@@ -68,6 +73,9 @@ extern s32 lbl_805A1D38;
 extern s32 lbl_805A1D3C;
 extern s32 lbl_805A1D40;
 extern s32 lbl_805A1D44;
+extern f32 lbl_805A1288;
+extern f32 lbl_805A1290[2];
+extern const f32 lbl_802DB578[4];
 
 
 // the look response curves, two hermite segments a piece; the same shape
@@ -1373,6 +1381,158 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
 	}
 }
 
+/**
+ * @note Address: 0x8015E4F4
+ * @note Size: 0x828
+ */
+extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
+{
+	if (gGame.GetStatusFlags(0xC00)) {
+		map->mPadControlEnabled = FALSE;
+	} else {
+		map->mPadControlEnabled = TRUE;
+	}
+
+	// Update presses these back into gWiiPointer's direction-pad bits at its end
+	lbl_805A1D38 = gWiiPointer.Check(0x40000000);
+	lbl_805A1D3C = gWiiPointer.Check(0x80000000);
+	lbl_805A1D40 = gWiiPointer.Check(0x08000000);
+	lbl_805A1D44 = gWiiPointer.Check(0x04000000);
+	gWiiPointer.mFlags &= ~0x40000000ULL;
+	gWiiPointer.mFlags &= ~0x80000000ULL;
+	gWiiPointer.mFlags &= ~0x08000000ULL;
+	gWiiPointer.mFlags &= ~0x04000000ULL;
+
+	map->mOrbitInput = 0.0f;
+	map->_11F0       = 0.0f;
+
+	if ((gWiiPointer.mButton & 4) && map->mPadControlEnabled) {
+		if (map->mPointerHoldTime > lbl_805A1288) {
+			if (!map->mPointerHeld) {
+				map->mPointerHeld = TRUE;
+				map->mOrbitReseed = TRUE;
+			}
+		} else {
+			map->mPointerHoldTime += step;
+		}
+	}
+
+	if (map->mPointerHeld) {
+		CVec vec(0.0f, 0.0f, 0.0f);
+		if (gWiiPointer.mPointerValid) {
+			Vec in = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
+				       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f,
+				       gWiiPointer.mPointer.z };
+			Vec out;
+			fn_8016AA78((f32*)&out, (f32*)&in, (f32*)lbl_802DB578);
+			Vec scaled = out;
+			vec.Set(scaled);
+			map->mOrbitPointer = scaled;
+		} else {
+			if (!(gGame._41B0 & 8)) {
+				vec.Set(map->mOrbitPointer);
+			}
+		}
+		map->mOrbitInput = -vec.y;
+	} else {
+		if (map->mPadControlEnabled) {
+			if (gWiiPointer.mButton & 1) {
+				map->mOrbitInput = 1.0f;
+			}
+			if (gWiiPointer.mButton & 2) {
+				map->mOrbitInput = -1.0f;
+			}
+			if (gWiiPointer.mTrigger & 8) {
+				if (gCameraAreaState.mZoomLevel > 1) {
+					gWiiPointer.mFlags |= 0x40000000;
+				}
+				if (gCameraAreaState.mZoomLevel < 2) {
+					gWiiPointer.mFlags |= 0x80000000;
+				}
+			}
+			if (map->mPointerHoldTime != 0.0f && map->mPointerHoldTime <= lbl_805A1288) {
+				gWiiPointer.mFlags |= 0x400000000ULL;
+			}
+		}
+		map->mPointerHeld     = FALSE;
+		map->mPointerHoldTime = 0.0f;
+	}
+
+	map->mArrows[0].mShown = 0;
+	map->mArrows[1].mShown = 0;
+	if (map->mOrbitInput != 0.0f) {
+		if (map->mOrbitInput > 0.0f) {
+			map->mArrows[1].mShown = 1;
+		}
+		if (map->mOrbitInput < 0.0f) {
+			map->mArrows[0].mShown = 1;
+		}
+	}
+
+	if (map->mPointerHeld || map->mArrows[0].mShown) {
+		if (map->mArrows[0]._14 < 1.0f) {
+			map->mArrows[0]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (map->mArrows[0]._14 > 1.0f) {
+				map->mArrows[0]._14 = 1.0f;
+			}
+		}
+	} else if (map->mArrows[0]._14 > 0.0f) {
+		map->mArrows[0]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (map->mArrows[0]._14 < 0.0f) {
+			map->mArrows[0]._14 = 0.0f;
+		}
+	}
+	if (map->mPointerHeld || map->mArrows[1].mShown) {
+		if (map->mArrows[1]._14 < 1.0f) {
+			map->mArrows[1]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (map->mArrows[1]._14 > 1.0f) {
+				map->mArrows[1]._14 = 1.0f;
+			}
+		}
+	} else if (map->mArrows[1]._14 > 0.0f) {
+		map->mArrows[1]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (map->mArrows[1]._14 < 0.0f) {
+			map->mArrows[1]._14 = 0.0f;
+		}
+	}
+
+	map->mManualInput = 0;
+	if (map->mOrbitInput != 0.0f || map->_11F0 != 0.0f || map->mOrbiting) {
+		map->mManualInput = 1;
+		SetMapCameraModeFlags(map, 0x20008);
+	} else if (map->mStatus.mFlags & 8) {
+		map->mStatus.mFlags &= ~8;
+	}
+
+	if (map->mTarget != NULL && map->mTarget->HasModel() && gWiiPointer.Check(0x400000000ULL)
+	    && map->mPadControlEnabled && gGame.GetPlayer()->mHang.mState != 3) {
+		if (TrySetMapCameraTargetYaw(map, map->mTarget->mMoveTarget1.y, 10.0f, 0.0f)) {
+			gGame.GetPlayer()->ResetCameraValue();
+			SetMapCameraModeFlags(map, 0x20002);
+		}
+	}
+
+	UpdateMapCameraTurnInterpolation(map, step);
+
+	s32 zoomLevel = gCameraAreaState.mZoomLevel;
+	if (gWiiPointer.Check(0x40000000) && map->mPadControlEnabled) {
+		if (zoomLevel > 1) {
+			zoomLevel--;
+		}
+	} else if (gWiiPointer.Check(0x80000000) && map->mPadControlEnabled) {
+		if (zoomLevel < 2) {
+			zoomLevel++;
+		}
+	}
+	if (zoomLevel != gCameraAreaState.mPrevZoomLevel) {
+		SetFovStep(map, zoomLevel, 15.0f);
+	}
+
+	if (!map->mFovEaseOutDivide.Update(step, 0.0f)) {
+		map->SetFov(map->mFovEaseOutDivide.Get());
+	}
+}
+
 static inline void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time)
 {
 	map->mEyeInterp = &map->mEyeEaseOutDivide;
@@ -1756,7 +1916,7 @@ void CCameraActionMap::Update(u32 step)
 	if (lbl_805A1D3C != 0) {
 		gWiiPointer.mFlags |= 0x80000000;
 	} else {
-		gWiiPointer.mFlags &= ~0x80000000;
+		gWiiPointer.mFlags &= ~0x80000000ULL;
 	}
 	if (lbl_805A1D44 != 0) {
 		gWiiPointer.mFlags |= 0x04000000;
@@ -1818,7 +1978,7 @@ void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 	}
 
 	if (input != 0.0f || input2 != 0.0f) {
-		map->_1230   = map->mOrbitInput;
+		map->mOrbitPointer.x = map->mOrbitInput;
 		lbl_805A1D28 = input;
 		if (map->mOrbitReseed) {
 			map->mOrbitReseed    = 0;
