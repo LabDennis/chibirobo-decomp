@@ -235,14 +235,18 @@ void XObj::vf168(u32 frames)
 {
 	if (mObject.m_pScnMdl != NULL) {
 		for (s32 i = 0; i < 2; i++) {
-			XObjColorStep* color = &mAnmQueue.mColorStep[i];
-			StepColor(color->mValue.x, color->mTarget.x, color->mSpeed.x, frames);
-			StepColor(color->mValue.y, color->mTarget.y, color->mSpeed.y, frames);
-			StepColor(color->mValue.z, color->mTarget.z, color->mSpeed.z, frames);
+			StepColor(mAnmQueue.mColorStep[i].mValue.x, mAnmQueue.mColorStep[i].mTarget.x, mAnmQueue.mColorStep[i].mSpeed.x, frames);
+			StepColor(mAnmQueue.mColorStep[i].mValue.y, mAnmQueue.mColorStep[i].mTarget.y, mAnmQueue.mColorStep[i].mSpeed.y, frames);
+			StepColor(mAnmQueue.mColorStep[i].mValue.z, mAnmQueue.mColorStep[i].mTarget.z, mAnmQueue.mColorStep[i].mSpeed.z, frames);
 		}
-		mColor1.Set((u8)mAnmQueue.mColorStep[0].mValue.x, (u8)mAnmQueue.mColorStep[0].mValue.y, (u8)mAnmQueue.mColorStep[0].mValue.z, 0);
+		u32 color1 = ((u32)mAnmQueue.mColorStep[0].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[0].mValue.y << 16) |
+		             ((u32)mAnmQueue.mColorStep[0].mValue.z << 8);
+		mColor1.Set((s32)(color1 >> 24), (s32)((color1 >> 16) & 0xFF), (s32)((color1 >> 8) & 0xFF), (s32)(color1 & 0xFF));
 		mColorsChanged = TRUE;
-		mColor0.Set((u8)mAnmQueue.mColorStep[1].mValue.x, (u8)mAnmQueue.mColorStep[1].mValue.y, (u8)mAnmQueue.mColorStep[1].mValue.z, 0);
+		u32 color0 = ((u32)mAnmQueue.mColorStep[1].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[1].mValue.y << 16) |
+		             ((u32)mAnmQueue.mColorStep[1].mValue.z << 8);
+		mColor0.Set((s32)(color0 >> 24), (s32)((color0 >> 16) & 0xFF), (s32)((color0 >> 8) & 0xFF), (s32)(color0 & 0xFF));
+		mColorsChanged = TRUE;
 	}
 }
 
