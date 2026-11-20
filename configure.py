@@ -1057,7 +1057,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/tev.c"),
             Object(Matching, "sysdolphin/baselib/mobj.c"),
             Object(Matching, "sysdolphin/baselib/aobj.c", padding="small_data+data"),
-            Object(NonMatching, "sysdolphin/baselib/lobj.c"),
+            Object(Matching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/jobj.c"),
