@@ -2211,12 +2211,12 @@ struct EffectInstance; // game/wii/ceffect.h
 // own effect instance and the spark timer XObjPlug::UpdateObject paces
 class XObjWireEff : public XObj {
 public:
-	s32 mAnim;                    // _9A8, -1 when off
-	f32 mRate;                    // _9AC
-	s32 mEffect;                  // _9B0, -1 when off
-	EffectInstance* mGenerator;   // _9B4
-	s32 mSparkMode;               // _9B8
-	s32 mSparkTimer;              // _9BC
+	s32 mAnim;                  // _9A8, -1 when off
+	f32 mRate;                  // _9AC
+	s32 mEffect;                // _9B0, -1 when off
+	EffectInstance* mGenerator; // _9B4
+	s32 mSparkMode;             // _9B8
+	s32 mSparkTimer;            // _9BC
 
 	XObjWireEff();
 

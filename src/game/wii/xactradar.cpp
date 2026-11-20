@@ -1346,10 +1346,10 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 			if (act->mYaw.angle >= act->mYaw.targetAngle) {
 				act->mYaw.angle = WrapAngle(act->mYaw.angle);
 				if (act->mTarget) {
-					CVec* targetPos         = act->mTarget->GetPos();
-					CVec* ownerPos          = act->mOwner->GetPos();
-					f32 yaw                 = (f32)atan2(targetPos->x - ownerPos->x, targetPos->z - ownerPos->z);
-					act->mYaw.targetAngle   = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
+					CVec* targetPos       = act->mTarget->GetPos();
+					CVec* ownerPos        = act->mOwner->GetPos();
+					f32 yaw               = (f32)atan2(targetPos->x - ownerPos->x, targetPos->z - ownerPos->z);
+					act->mYaw.targetAngle = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
 				} else
 					act->mYaw.targetAngle = TWO_PI;
 				if (act->mYaw.targetAngle < act->mYaw.angle)
@@ -1429,10 +1429,10 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 				fn_8010D094(act, 0, 0, 0);
 				act->mState = 5;
 			} else {
-				CVec from         = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
-				CVec to           = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
-				f32 yaw           = (f32)atan2(to.x - from.x, to.z - from.z);
-				act->mYaw.angle   = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
+				CVec from       = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
+				CVec to         = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+				f32 yaw         = (f32)atan2(to.x - from.x, to.z - from.z);
+				act->mYaw.angle = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
 				((XObjRadar*)act->mOwner->mRadarObj)->mYaw   = act->mYaw.angle;
 				act->mPitch.angle                            = TargetPitch(from, to);
 				((XObjRadar*)act->mOwner->mRadarObj)->mPitch = act->mPitch.angle;

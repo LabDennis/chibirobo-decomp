@@ -187,9 +187,10 @@ void XObjPlug::UpdateObject(u32 frames)
 			}
 		}
 		const Vec& tint = mAnmQueue.mColorStep[1].mValue;
-		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff;
-		mCord.mColor    = color;
-		mCord._60       = color;
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+		color |= 0xff;
+		mCord.mColor = color;
+		mCord._60    = color;
 		UpdatePlugCordSimulation(&mCord, frames);
 	} else {
 		ResetObjectState();
@@ -203,17 +204,21 @@ void XObjPlug::UpdateObject(u32 frames)
 			XObj::UpdateObject(frames);
 			fn_801105D4(this, frames);
 		} else {
-			CVec pos = GetPlugCordPointPosition(&mCord, 18);
+			Vec pos = GetPlugCordPointPosition(&mCord, 18); // the plug follows the cord's free end
 			SetPos(pos);
-			CVec tip = GetPlugCordPointPosition(&mCord, 19);
-			CVec base = GetPlugCordPointPosition(&mCord, 18);
-			CVec dir, rot;
-			rot.y = atan2(tip.x - base.x, tip.z - base.z);
-			f32 pitch;
-			f32 dy = tip.y - base.y;
-			pitch  = atan2(FSqrt((tip.x - base.x) * (tip.x - base.x) + (tip.z - base.z) * (tip.z - base.z)), FSqrt(dy * dy));
-			rot.x  = dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI;
-			rot.z = 0.0f;
+			CVec tip, base, dir, rot, size; // dir and size are never read, the dol still constructs them
+			tip   = GetPlugCordPointPosition(&mCord, 19);
+			base  = GetPlugCordPointPosition(&mCord, 18);
+			rot.y = atan2(tip.x - base.x, tip.z - base.z); // the heading of the cord's last span
+			// NONMATCHING: frame, FPR saves and every statement now line up; the
+			// only residue is the tip.x/tip.z operand loads taking f2/f3 in the
+			// opposite order to retail (99.947 fuzzy).
+			f32 dy    = tip.y - base.y;
+			f32 dz    = tip.z - base.z;
+			f32 dx    = tip.x - base.x;
+			f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+			rot.x     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
+			rot.z     = 0;
 			SetRot(rot);
 			static Vec hang = { 0, -0.2f, 0 };
 			Mtx m;
@@ -329,10 +334,10 @@ extern "C" void fn_801105D4(XObjPlug* plug, u32 frames)
 	if (plug->mWire.mSparkMode == 0) {
 		if (plug->mWire.mSparkTimer < 0) {
 			Vec pos, scale;
-			pos                   = *plug->GetPos();
+			pos = *plug->GetPos();
 			CVec cvec(0.5f, 0.5f, 0.5f);
-			scale                 = cvec;
-			Vec rotation          = { 0, 0, 0 };
+			scale                = cvec;
+			Vec rotation         = { 0, 0, 0 };
 			EffectInstance* inst = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x1a, 1);
 			if (inst != NULL) {
 				inst->pos   = pos;
@@ -414,7 +419,7 @@ static inline void KillGen(EffectInstance*& gen)
 	}
 }
 
-}
+} // namespace
 
 /**
  * @note Address: 0x80110908
@@ -472,7 +477,7 @@ void XObjWireEff::DrawWithView(Mtx view)
  */
 extern "C" void ConfigurePlugWireEffect(XObjWireEff* object, s32 anim, s32 effect, f32 rate, u32 color)
 {
-	f64 r = rate;
+	f64 r           = rate;
 	object->mAnim   = anim;
 	object->mEffect = effect;
 	object->mRate   = rate;

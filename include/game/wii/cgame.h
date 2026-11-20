@@ -989,8 +989,8 @@ struct WiiPlayerState : public XObj {
 	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
 	f32 mMoveAngle;     // _9DFC
 	u8 _9E00[0x9E20 - 0x9E00];
-	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
-	XObjWireEff mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
+	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
+	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
 	                           // through XObj's vtable
 	u8 mPopperObj[0x9B0];      // _BF30, the popper attachment object, the GameCube's mPopperObj

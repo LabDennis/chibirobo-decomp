@@ -295,7 +295,7 @@ public:
 
 	XObjPlug();
 
-	virtual ~XObjPlug() { }                                                                                                     // _08 (weak)
+	virtual ~XObjPlug() { } // _08 (weak)
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
 	virtual void Release();                                                                                                     // _40
 	virtual void InitializeObject(u32 id);                                                                                      // _14C
@@ -307,7 +307,7 @@ public:
 	virtual void DrawReflection(Mtx view);                                                                                      // _17C
 	virtual void DrawGroundShadow(f32 opacity);                                                                                 // _180
 	virtual void DrawObjectEffects();                                                                                           // _188
-	virtual void SetDestinationAlpha(BOOL enabled, u8 value);                                                                   // _1A4, the base's vf1A4 slot
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value); // _1A4, the base's vf1A4 slot
 };
 STATIC_ASSERT(sizeof(XObjPlug) == 0x1760);
 STATIC_ASSERT(offsetof(XObjPlug, mWire) == 0xDA0);

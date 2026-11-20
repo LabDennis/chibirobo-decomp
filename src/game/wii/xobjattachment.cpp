@@ -365,7 +365,7 @@ void XObjPopper::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResM
 		Vec eye = player->GetEyeAim();
 		PSMTXRotRad(rotY, 'y', eye.y - 12.0f * DEG2RAD - player->mMoveRotate.y);
 		Vec pitch = player->GetEyeAim();
-		f32 roll = pitch.x;
+		f32 roll  = pitch.x;
 		if (roll >= PI)
 			roll -= TWO_PI;
 		roll *= 0.75f;
