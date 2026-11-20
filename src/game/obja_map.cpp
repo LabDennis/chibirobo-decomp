@@ -92,8 +92,6 @@ void XObjMap::Release()
  */
 BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 {
-	// NONMATCHING: regalloc only, the Init call's light mask (1 << (7 - i)) and the env byte
-	// trade registers, as in XObjLight::LoadFromPlacement
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		int i;
 		int j;
@@ -127,7 +125,8 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 			for (s32 i = 0; i < 8; i++) {
 				if (GetLightDesc(i) != NULL) {
 					// env slot 5 picks which lights cast shadows
-					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+					u8 mask = GetEnvData()[5];
+					mLights[i].Init(GetLightDesc(i)->mDesc, mask & (1 << (7 - i)));
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
 						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
