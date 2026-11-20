@@ -11,21 +11,47 @@
 #include "game/wii/xobj_ut2.h"
 #include "game/evt.h"
 #include "game/gmath.h"
+#include "game/globals.h"
+#include "game/stagedata.h"
 #include "arithmetic.h"
 #include "Dolphin/mtx.h"
 #include <math.h>
+#include <stdlib.h>
 
 using namespace nw4r::g3d;
 
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
+extern "C" BOOL fn_800AD498(XObj* obj);
+extern "C" void fn_800AF51C(XObj* obj);
+extern "C" void fn_800B4988(XObj* obj);
+extern "C" s32 IsStageDataLoaded(void);
+extern "C" u8* GetStageScriptByIndex(s32 index);
+extern f32 gScreenWidthScale;
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern CustomShadow gCustomShadow;
 
 static inline u32 ShadowSize(XObj* object)
 {
 	return object->mAttr.mObjData != NULL ? object->mAttr.mObjData->mShadowSize : 0;
+}
+
+static inline BOOL HasSource(const AttrInfo& attr)
+{
+	return attr.mObjData != NULL && attr.mObjData->mSource != NULL;
+}
+
+// the head of the stage's info record, as far as this file reads it: the GameCube's
+// UnkStageInfo (game/cgameutil.h, which the Wii cannot include); EnvInfo starts with a pointer to it
+struct WiiStageInfo {
+	u8 _00[0x9];
+	u8 _09;
+};
+
+static inline WiiStageInfo* GetStageInfo()
+{
+	return *(WiiStageInfo**)GetStageEnvironment();
 }
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
@@ -82,6 +108,277 @@ void XObj::ResetObjectState()
 	_99C = 0;
 }
 
+// 0x800AC238, the placement read: copies the stage entry's transform, flags and parameters
+// into the object, starts its animation, wires the event script and records its scope
+BOOL XObj::LoadFromPlacement(const CoordInfo& info)
+{
+	if (info.mPlacement->mFlags & 0x80000000) {
+		return TRUE;
+	}
+	BOOL result;
+	if (mStatus.mFlags & 1) {
+		result = TRUE;
+	} else {
+		if (mAttr.mObjData == NULL) {
+			mCoord.mPlacement = info.mPlacement;
+			mAttr.Init((CoordInfo*)&info);
+		}
+		if (mFloors == NULL) {
+			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
+			mFloorMasks[0] = mFloorMasks[1] = 0;
+			if (mFloors != NULL && mFloors->mId == -1) {
+				mFloors = NULL;
+			}
+		}
+		result = FALSE;
+		if (!HasSource(mAttr) || mAttr.mObjData->mSource->mName == NULL) {
+			result = TRUE;
+		} else if (HasSource(mAttr)) {
+			result = fn_800AD498(this);
+		}
+	}
+	if (!result) {
+		return mStatus.mFlags & 1;
+	}
+	mStatus.mFlags = (mStatus.mFlags & 0x0040000000000000ULL) | ((u64)info.mPlacement->mFlags << 16)
+	               | (mAttr.mObjData != NULL ? mAttr.mObjData->mFlags : 0) | 1;
+	Vec pos;
+	pos.x = info.mPlacement->mPos[0] / 100.0f;
+	pos.y = info.mPlacement->mPos[1] / 100.0f;
+	pos.z = info.mPlacement->mPos[2] / 100.0f;
+	SetPos(pos);
+	if (mStatus.mFlags & 0x800ULL) {
+		SetTranslateX(GetPos()->x * gScreenWidthScale);
+	}
+	Vec rot;
+	rot.x = info.mPlacement->mRot[0] * DEG2RAD;
+	rot.y = info.mPlacement->mRot[1] * DEG2RAD;
+	rot.z = info.mPlacement->mRot[2] * DEG2RAD;
+	SetRot(rot);
+	Vec scale;
+	scale.x = info.mPlacement->mScale[0] / 100.0f;
+	scale.y = info.mPlacement->mScale[1] / 100.0f;
+	scale.z = info.mPlacement->mScale[2] / 100.0f;
+	SetScale(scale);
+	mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+	mMoveSpeed1.Set(0.0f, 0.0f, 0.0f);
+	if (mObject.m_pScnMdl != NULL) {
+		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		s32 frames = (s32)GetAnimEndFrame();
+		if (frames > 1) {
+			SetAnim(GetAnimId(), TRUE, (f32)(rand() % frames), 1.0f, 1.0f, 15.0f);
+		}
+	}
+	ResetObjectState();
+	if (mColor1.r != 0xFF) {
+		mColor1.r = 0xFF;
+	}
+	if (mColor1.g != 0xFF) {
+		mColor1.g = 0xFF;
+	}
+	if (mColor1.b != 0xFF) {
+		mColor1.b = 0xFF;
+	}
+	if (mColor1.a != 0) {
+		mColor1.a = 0;
+	}
+	mColorsChanged = TRUE;
+	if (mColor0.r != 0) {
+		mColor0.r = 0;
+	}
+	if (mColor0.g != 0) {
+		mColor0.g = 0;
+	}
+	if (mColor0.b != 0) {
+		mColor0.b = 0;
+	}
+	if (mColor0.a != 0) {
+		mColor0.a = 0;
+	}
+	mColorsChanged = TRUE;
+	if (mStatus.mFlags & 0x2ULL) {
+		fn_800AF51C(this);
+	}
+	s32 index = GetStagePlacementIndex(mCoord.mPlacement);
+	if (index >= 0) {
+		mEventScript = GetStageScriptByIndex(index);
+	} else {
+		mEventScript = NULL;
+	}
+	if (mFloors != NULL) {
+		mStatus.mFlags |= 0x0200000000000000ULL;
+	} else {
+		mStatus.mFlags &= ~0x0200000000000000ULL;
+	}
+	mPlacementParam0 = mCoord.mPlacement->mParam0;
+	mPlacementParam1 = mCoord.mPlacement->mParam1;
+	if (mStatus.mFlags & 0x800000ULL) {
+		if (!(mStatus.mFlags & 0x100000000ULL)) {
+			mStatus.mFlags &= ~0x800000ULL;
+		}
+	} else if (GetKind() == 0x345 || GetKind() == 0x27E) {
+		mStatus.mFlags |= 0x800000ULL;
+	}
+	if (HasModel()) {
+		u32 flags[5];
+		flags[0] = mStatus.mFlags & 0x800000ULL;
+		flags[1] = mStatus.mFlags & 0x200000ULL;
+		flags[2] = mStatus.mFlags & 0x40ULL;
+		flags[3] = mStatus.mFlags & 0x20000ULL;
+		flags[4] = mStatus.mFlags & 0x400000ULL;
+		vf1A0(flags);
+		if (mStatus.mFlags & 0x1000000ULL) {
+			if (IsStageDataLoaded() != 0 && GetStageEnvironment() != NULL) {
+				vf1A8((f32)GetStageInfo()->_09 / 100.0f);
+			}
+		}
+	}
+	UpdateObjectFloorHeights(this);
+	UpdateObjectFloorXZExtent(this);
+	if (__fpclassifyf(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
+		s16 cat = GetCategory();
+		if (cat == 7 || cat == 8 || (cat >= 0x14 && cat <= 0x16)) {
+			mStatus.mFlags |= 0x80000000ULL;
+		}
+	}
+	if (mStatus.mFlags & 0x4000ULL) {
+		mStatus.mFlags &= ~0x80000000ULL;
+	}
+	if (mStatus.mFlags & 0x8100000000000000ULL) {
+		mStatus.mFlags |= 0x4000ULL;
+	}
+	mSelectedFloorHeight = NAN;
+	mSelectedFloorIndex  = 0;
+	_188                 = GetCategory() == 2 || GetCategory() == 9 || GetCategory() == 5 || GetCategory() == 0xA || GetCategory() == 0xB
+	    || GetCategory() == 0xC || GetCategory() == 0xD || GetCategory() == 0xE || GetCategory() == 0xF || GetCategory() == 0x10
+	    || GetCategory() == 0x11 || GetCategory() == 0x12 || GetCategory() == 0x13;
+	switch (GetKind()) {
+	case 0x0:
+		_18C = 0;
+		break;
+	case 0x6B:
+	case 0x3B1:
+	case 0x472:
+		_18C = 1;
+		break;
+	case 0xF:
+		_18C = 2;
+		break;
+	case 0xC4:
+	case 0x24D:
+		_18C = 3;
+		break;
+	case 0x113:
+	case 0x24B:
+		_18C = 4;
+		break;
+	case 0x159:
+	case 0x42C:
+		_18C = 5;
+		break;
+	case 0x117:
+		_18C = 6;
+		break;
+	case 0xF8:
+		_18C = 7;
+		break;
+	case 0xF7:
+		_18C = 8;
+		break;
+	case 0x110:
+		_18C = 9;
+		break;
+	case 0xD7:
+	case 0x24C:
+		_18C = 0xA;
+		break;
+	case 0x25E:
+	case 0x345:
+	case 0x459:
+		_18C = 0xB;
+		break;
+	case 0x1D3:
+	case 0x38E:
+		_18C = 0xC;
+		break;
+	case 0x1FB:
+	case 0x464:
+		_18C = 0xD;
+		break;
+	case 0x26D:
+		_18C = 0xE;
+		break;
+	case 0x1FC:
+		_18C = 0xF;
+		break;
+	case 0xE:
+		_18C = 0x10;
+		break;
+	case 0x6F:
+		_18C = 0x11;
+		break;
+	case 0x26C:
+	case 0x485:
+		_18C = 0x12;
+		break;
+	case 0x317:
+		_18C = 0x13;
+		break;
+	case 0x134:
+		_18C = 0x14;
+		break;
+	case 0x10F:
+	case 0x376:
+		_18C = 0x15;
+		break;
+	case 0x156:
+		_18C = 0x16;
+		break;
+	case 0x148:
+		_18C = 0x17;
+		break;
+	case 0x2C5:
+		_18C = 0x18;
+		break;
+	case 0x1D2:
+		_18C = 0x19;
+		break;
+	case 0x2C3:
+		_18C = 0x1A;
+		break;
+	case 0x29F:
+	case 0x446:
+	case 0x465:
+		_18C = 0x1B;
+		break;
+	case 0x429:
+	case 0x447:
+	case 0x466:
+		_18C = 0x1C;
+		break;
+	default:
+		_18C = -1;
+		break;
+	}
+	s16 cat            = GetCategory();
+	mScreenBoundsValid = cat == 2 || cat == 7 || (cat == 8 && (mStatus.mFlags & 0x100000000ULL)) || (cat >= 9 && cat <= 0x13) || _18C >= 0
+	                  || GetKind() == 0xE || GetKind() == 0x3AE || GetKind() == 0x1D0 || GetKind() == 0x260 || GetKind() == 0x24E
+	                  || GetKind() == 0x23F || GetKind() == 0x23D || GetKind() == 0x41D || GetKind() == 0x2A0 || GetKind() == 0x30D
+	                  || GetKind() == 0x30E || GetKind() == 0x46F || GetKind() == 0x34B || GetKind() == 0x324 || GetKind() == 0x2C9
+	                  || (GetKind() == 0x6A && mPlacementParam0 == 1);
+	_6DC       = 0;
+	_6D8       = 0;
+	mScreenTop = mScreenBottom = mScreenLeft = mScreenRight = NAN;
+	if (mScreenBoundsValid) {
+		mStatus.mFlags |= 0x100ULL;
+	}
+	fn_800B4988(this);
+	AssignAnimEventCallback();
+	mReleaseCountdown = 0;
+	_9A4              = 0;
+	return mStatus.mFlags & 1;
+}
+
 // 0x800AD870, flags[0] asks for dst alpha 8, flags[1] or nothing for 4, on every material's pix copy
 void XObj::vf1A0(const u32* flags)
 {
@@ -113,7 +410,7 @@ void XObj::vf1A4()
 }
 
 // 0x800AD9D4
-void XObj::vf1A8()
+void XObj::vf1A8(f32)
 {
 }
 
@@ -528,7 +825,7 @@ void XObj::ClearAnim()
 // the marker the material pass writes into ResTev's padding, and the "xobj.cpp" assert the
 // retail's Panic calls name (the GameCube's obja.cpp is xobj.cpp here)
 #ifndef UPDATED_TEV_MAGIC_NUMBER
-#define UPDATED_TEV_MAGIC_NUMBER 0xC3
+#define UPDATED_TEV_MAGIC_NUMBER    0xC3
 #define XOBJ_ASSERT_LINE(line, exp) ((void)((exp) || (nw4r::db::Panic("xobj.cpp", line, "NW4R:Failed assertion " #exp), 0)))
 #endif
 
@@ -608,7 +905,7 @@ extern "C" void fn_800AF51C(XObj* obj)
 			continue;
 		}
 
-		static const GXColor sdwKColor[] = { {0x00, 0x00, 0x00, 0xFF} };
+		static const GXColor sdwKColor[] = { { 0x00, 0x00, 0x00, 0xFF } };
 		GXColor color                    = sdwKColor[numTexGens];
 		XOBJ_ASSERT_LINE(0x846, !texObj.IsValidTexObj((GXTexMapID)sdwTexMapId));
 		*texObj.GetTexObj((GXTexMapID)sdwTexMapId) = gGame.mShadow.mTex;
@@ -618,8 +915,7 @@ extern "C" void fn_800AF51C(XObj* obj)
 		tevColor.GXSetTevKColor(GX_KCOLOR2, color);
 		tevColor.DCStore(false);
 		// the new tex gen is a position transform on its own Wii texmtx base (0x40 + 3*n)
-		texCoordGen.GXSetTexCoordGen2((GXTexCoordID)numTexGens, GX_TG_MTX3x4, GX_TG_POS, GX_FALSE,
-		                              0x40 + numTexGens * 3);
+		texCoordGen.GXSetTexCoordGen2((GXTexCoordID)numTexGens, GX_TG_MTX3x4, GX_TG_POS, GX_FALSE, 0x40 + numTexGens * 3);
 		texCoordGen.DCStore(false);
 		texSrt.SetEffectMtx(numTexGens, NULL);
 		texSrt.SetMapMode(numTexGens, 2, 1, -1);

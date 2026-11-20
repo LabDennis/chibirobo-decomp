@@ -1460,7 +1460,7 @@ public:
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y);              // _19C, CGame::DrawHud calls it on its mHudObject
 	virtual void vf1A0(const u32* flags);
 	virtual void vf1A4();
-	virtual void vf1A8();
+	virtual void vf1A8(f32 value); // takes the stage's ambient level; LoadFromPlacement passes it
 	virtual void
 	SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
 	virtual Vec GetCameraTarget();         // _1B0, where a camera looks at this object
