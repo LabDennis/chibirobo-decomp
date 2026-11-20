@@ -60,6 +60,15 @@ void HSD_StateInvalidate(s32 state);
 int rand();
 void OSReport(const char* fmt, ...);
 
+// diagnostics for the attachment event command
+#if !defined(VERSION_PAL)
+static const char sSpiderAttachmentIdMessage[]      = "id = %d, argv[1]=%d\n";
+static const char sSpiderMissingAttachmentMessage[] = "NULL===============\n";
+#endif
+
+// the ground shadow's fixed rotation
+static const Vec sSpiderShadowRotation = { -HALF_PI, 0.0f, 0.0f };
+
 AnimSfxEvent gSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ 12, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
@@ -495,7 +504,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 		return;
 	}
 	Vec pos  = *origin;
-	Vec rot  = { -HALF_PI, 0.0f, 0.0f };
+	Vec rot  = sSpiderShadowRotation;
 	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 	size.x   = mRadius;
 	size.y   = mRadius;
@@ -588,7 +597,7 @@ s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 			for (i = 0; mTies[i].mObj != NULL && i < 8; i++) { }
 			if (i < 8) {
 #if !defined(VERSION_PAL)
-				OSReport("id = %d, argv[1]=%d\n", i, objectId);
+				OSReport(sSpiderAttachmentIdMessage, i, objectId);
 #endif
 				mFlags.mFlags |= 0x20000000;
 				if (argv[1] >= 10000) {
@@ -598,7 +607,7 @@ s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 				}
 #if !defined(VERSION_PAL)
 				if (mTies[i].mObj == NULL) {
-					OSReport("NULL===============\n");
+					OSReport(sSpiderMissingAttachmentMessage);
 				}
 #endif
 				s32 path[8];
