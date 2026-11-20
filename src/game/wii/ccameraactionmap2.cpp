@@ -6,6 +6,7 @@
 #include "game/cameracollisionpolygons.h"
 #include "game/gmath.h"
 #include "game/ut.h"
+#include "game/cvec.h"
 #include <string.h>
 #include <math.h>
 #include <cmath>
@@ -23,7 +24,11 @@ void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f3
 void InitCameraAreaEntries(CamAreaState* state);
 void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex);
 void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
+void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 }
+
+// the area index the last turn interpolation aims at, Update skips starting another for it
+extern s32 lbl_805A1D10;
 
 // the Wii build resolves the current area's action in a second, C++ step that falls back to
 // the map camera while the player stands outside every area
@@ -331,6 +336,31 @@ extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 	return map->mMapArea;
 }
 
+/**
+ * @note Address: 0x8015FB20
+ * @note Size: 0x1D4
+ */
+extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unused)
+{
+	CVec to(map->mSideStart);
+	CVec eyeNormal(map->mNearestEyeEntry->mNormal);
+	CVec targetNormal(map->mNearestTargetEntry->mNormal);
+	CVec move = eyeNormal * 20.0f;
+	move += targetNormal * 5.0f;
+	to += move;
+
+	Vec from = map->mEye;
+	from.y   = 0.0f;
+	if (map->mTurnInterpolation == NULL) {
+		map->mTurnInterpolation = &map->mTurnEaseInOut;
+		map->mTurnInterpolation->Start(from, to, 0.7f);
+		map->_DB0 = 0;
+		gGame.GetPlayer()->ResetCameraValue();
+		lbl_805A1D10 = map->mNearestTargetEntry->mRecordIndex;
+		SetMapCameraModeFlags(map, 0x20004);
+	}
+}
+
 extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map)
 {
 	CVec pos = *map->mTarget->GetPos();
@@ -409,6 +439,8 @@ u32 CCameraActionMap::GetCameraFlags()
 
 // set by ResetCenter; the spring update starts over from the new center
 s32 sMapCameraCenterReset;
+// the area index the last turn interpolation aims at, Update skips starting another for it
+s32 lbl_805A1D10;
 // 1: a new orbit keeps the target rest distance instead of the eye's current one
 s32 sMapCameraOrbitAtRestDistance;
 
