@@ -9,6 +9,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/globals.h"
+#include "game/gmath.h"
 
 extern "C" void HSD_MtxGetScale(Mtx m, Vec* dst);
 
@@ -79,7 +80,9 @@ void XObjAttachment::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::
 		} else {
 			PSMTXIdentity(pResult->mpMtx);
 		}
-		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
+		mMoveTranslate.x = mParent[0][3];
+		mMoveTranslate.y = mParent[1][3];
+		mMoveTranslate.z = mParent[2][3];
 		HSD_MtxGetScale(mParent, &mMoveScale);
 	}
 }
@@ -327,30 +330,53 @@ void XObjPopper::UpdateObject(u32 frames)
  * @note Address: 0x8010EF00
  * @note Size: 0x244
  */
-// NONMATCHING: the attachment check and eye-aim read share registers with the matrix copies
 void XObjPopper::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
 	u16 node = pFuncObj->GetCallbackNodeID();
 	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	if (node == 0 && mVisible && mParent != NULL) {
-		if (mParent != NULL) {
-			PSMTXCopy(mParent, pResult->mpMtx);
+		MtxP parent = mParent;
+		if (parent != NULL) {
+			PSMTXCopy(parent, pResult->mpMtx);
 		} else {
 			PSMTXIdentity(pResult->mpMtx);
 		}
-		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
-		HSD_MtxGetScale(mParent, &mMoveScale);
+		mMoveTranslate.x = parent[0][3];
+		mMoveTranslate.y = parent[1][3];
+		mMoveTranslate.z = parent[2][3];
+		HSD_MtxGetScale(parent, &mMoveScale);
 	}
 	if (!mVisible)
 		return;
 	if (node == 0) {
-		if (((WiiPlayerState*)gGame.mXObjs.mPools[2].mObjects)->mAttachmentRequest == 2) {
-			pFuncObj->mNodeID = 1;
+		if (gGame.GetStatusFlags(0x100)) {
+			WiiPlayerState* player = gGame.GetPlayer();
+			if (player->GetAttachment() == 2) {
+				pFuncObj->mNodeID = 1;
+			}
 		}
 	} else if (node == 1) {
-		// retail composes the muzzle aim here: it copies the parent matrix, builds a
-		// rotY of (mEyeAim.y - 805A5344 - owner->_64) and a rotX, adds two translate
-		// offsets and four concatenations into pResult->mpMtx
+		// while the eye camera steers (status 0x100) the muzzle joint rides the eye
+		// aim: a yaw on the aim's pitch over the body yaw, a roll on its yaw wrapped
+		// past pi, all of it pivoted 1.5 out of the joint
+		WiiPlayerState* player = gGame.GetPlayer();
+		Mtx work, rotY, rotZ, trans;
+		PSMTXCopy(pResult->mpMtx, work);
+		Vec eye = player->GetEyeAim();
+		PSMTXRotRad(rotY, 'y', eye.y - 12.0f * DEG2RAD - player->mMoveRotate.y);
+		Vec pitch = player->GetEyeAim();
+		f32 roll = pitch.x;
+		if (roll >= PI)
+			roll -= TWO_PI;
+		roll *= 0.75f;
+		PSMTXRotRad(rotZ, 'z', -roll);
+		PSMTXTrans(trans, 1.5f, 0.0f, 0.0f);
+		PSMTXConcat(work, trans, work);
+		PSMTXConcat(work, rotY, work);
+		PSMTXConcat(work, rotZ, work);
+		PSMTXTrans(trans, -1.5f, 0.0f, 0.0f);
+		PSMTXConcat(work, trans, work);
+		PSMTXCopy(work, pResult->mpMtx);
 	}
 }
 
@@ -475,16 +501,19 @@ void XObjRadar::UpdateObject(u32 frames)
 // NONMATCHING: the node lookups and the matrix premultiplies order differently
 void XObjRadar::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	u16 node = pFuncObj->GetCallbackNodeID();
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	if (node == 0 && mVisible && mParent != NULL) {
-		if (mParent != NULL) {
-			PSMTXCopy(mParent, pResult->mpMtx);
+		MtxP parent = mParent;
+		if (parent != NULL) {
+			PSMTXCopy(parent, pResult->mpMtx);
 		} else {
 			PSMTXIdentity(pResult->mpMtx);
 		}
-		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
-		HSD_MtxGetScale(mParent, &mMoveScale);
+		mMoveTranslate.x = parent[0][3];
+		mMoveTranslate.y = parent[1][3];
+		mMoveTranslate.z = parent[2][3];
+		HSD_MtxGetScale(parent, &mMoveScale);
 	}
 	if (!mVisible)
 		return;

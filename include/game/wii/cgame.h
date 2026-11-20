@@ -1037,6 +1037,8 @@ struct WiiPlayerState : public XObj {
 	// the GameCube's GetHeight with the flag inverted: _1B7B8 is up while he stands on the floor, so the
 	// height above it only counts while it's clear
 	f32 GetHeight() const { return mOnGround ? 0.0f : mMoveTranslate.y - mFloorHit.mHeight; }
+	// a copy of the aim the eye camera steers with; the popper's muzzle math takes it by value
+	Vec GetEyeAim() const { return mEyeAim; }
 };
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);

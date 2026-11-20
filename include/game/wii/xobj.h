@@ -95,11 +95,13 @@ class FuncObjCalcWorld {
 public:
 	u16 GetCallbackNodeID() const { return mNodeID; }
 
-	u16 mNodeID; // _06, the binding code writes the node it hooks up
 private:
 	void* mpCallback; // _00
 	u8 mTiming;       // _04
 	u8 _05;
+
+public:
+	u16 mNodeID; // _06, the binding code writes the node it hooks up
 };
 
 // the three hooks of nw4r's world-matrix pass; their parameters are not recovered
