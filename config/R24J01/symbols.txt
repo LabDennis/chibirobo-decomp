@@ -4343,6 +4343,7 @@ __dt__7CThreadFv = .text:0x80033264; // type:function size:0x6C
 __dt__5StageFv = .text:0x80094328; // type:function size:0x40
 SetAngle__7CCameraFRC3Vec = .text:0x800A92CC; // type:function size:0x24
 __sinit_\ccamera_cpp = .text:0x800A92F0; // type:function size:0x30 scope:local
+lbl_80453508 = .bss:0x80453508; // type:object size:0x8 scope:local
 lbl_80453600 = .bss:0x80453600; // type:object size:0xC scope:local
 gWiiCameraThread = .bss:0x80453610; // type:object size:0x328 scope:global
 __dt__4XPadFv = .text:0x800C0F30; // type:function size:0x40

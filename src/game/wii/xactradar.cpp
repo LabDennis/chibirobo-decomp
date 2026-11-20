@@ -28,6 +28,17 @@ extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 grou
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
 extern "C" void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended);
 extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit); // the Wii's out-of-line FindMapFloor
+extern "C" void fn_8010EA78(XObj* popper);                                            // the GameCube's ShowAndDeployPopper
+extern "C" void fn_8010EADC(XObj* popper);                                            // PlayPopperStowAnimation
+extern "C" void fn_8010EB80(XObj* popper);                                            // PlayPopperRaiseAnimation
+extern "C" void fn_8010EBA8(XObj* popper);                                            // PlayPopperFireAnimation
+extern "C" BOOL fn_8010EBD0(XObj* popper);                                            // IsPopperFireAnimationSelected
+extern "C" void fn_8010EC08(XObj* popper);                                            // PlayPopperLowerAnimation
+extern "C" void fn_8010EC30(XObj* popper);                                            // ShowIdlePlayerPopper
+struct AttachmentValues;
+extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
+extern "C" void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
+extern XObj* lbl_80453508; // the aim target CGame::Update locks while the pointer rests on it; its timer sits right behind
 
 // the tumble ring sits just above the floor
 static inline Vec RingPos(const Vec& pos, const Vec& offset)
@@ -839,6 +850,266 @@ void ApplyPopperMovementWeight(XActPopper* act, const CPadOne* pad, f32* weight)
 	} else if (act->mState != 0) {
 		*weight = 0.0f;
 	}
+}
+
+// how many of the ten shot slots are in the air, the GameCube's ActivePopperShots
+static inline int ActivePopperShots(XActPopper* act)
+{
+	int count = 0;
+	for (int i = 0; i < 10; ++i) {
+		if (act->mShots.mShot[i].mActive) {
+			++count;
+		}
+	}
+	return count;
+}
+
+// the GameCube's UpdatePlayerPopperAction, rebuilt for the remote: holding the remote
+// button while the popper is the active attachment charges (inventory 0x35 gates the
+// charge, 0x36 stretches the range), letting go fires a full charge or drops a short
+// one. States 1-3 deploy and ready the popper, 4 is the charge, 5-7 fire (6 the
+// charged shot), 8 waits on the fire animation, 9 and 10 lower and stow it. Where the
+// GameCube scanned the object list for a target the Wii reads the one CGame::Update
+// locked, and without a target or the eye camera it aims through the remote's pointer
+// NONMATCHING: same control flow and call set as retail; the inlined helpers
+// (ClearPopperCharge's fade math, GetAttachment and the CVec temporaries around the
+// pointer ray) still schedule differently
+/**
+ * @note Address: 0x8010A92C
+ * @note Size: 0x14F0
+ */
+void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, u32 frames, f32, f32)
+{
+	BOOL rangeUpgrade = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x36) >= 0;
+	BOOL canCharge    = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x35) >= 0;
+	// with the popper out (attachment 2), holding the remote button charges a shot
+	if (act->mOwner->GetAttachment() == 2) {
+		if ((gWiiPads[0].mButton & 0x0001000000000010ULL) && canCharge
+		    && ((XObj*)act->mOwner->mPopperObj)->GetAnimId() == 4 && !gGame.mEvt.mData.mScript && !gGame.GetStatusFlags(0x400)
+		    && !act->mOwner->mLift.mState && !act->mOwner->mHang.mState && !act->mOwner->mJump.mState && !act->mOwner->mLadder.mState
+		    && !act->mOwner->mRope.mState && !act->mOwner->mPush.mState && !act->mOwner->mTumble.mState) {
+			if (!gGame.GetStatusFlags(0x20)) {
+				XActPopperCharge* charge = &act->mCharge;
+				charge->mState           = 1;
+				Vec pos                  = { 0.0f, 0.0f, 0.0f };
+				charge->mPos             = pos;
+				charge->mMtx             = ((XObj*)act->mOwner->mPopperObj)->GetWorldMtx("cannon_C");
+				if (charge->mGen == NULL) {
+					charge->mGen = fn_800A11A4((EffectInstance*)gGame.mEvtPtcl.mEmitters, 0x51, 1);
+					if (charge->mGen != NULL) {
+						charge->mGen->mtx = charge->mMtx;
+						UpdateEffectMtx(charge->mGen);
+					}
+				}
+				if (!IsWiiSfxPlaying(&gGame.mSound, 0x1F3)) {
+					if (charge->mSfxActors[0].GetHandle() == NULL) {
+						CSound3DActor* actor = charge->mSfxActors[0].mActor;
+						if (actor != NULL
+						    && actor->detail_StartSound(&actor->mHandle, 0x1F3, NULL) == nw4r::snd::SoundStartable::START_SUCCESS) {
+							actor->mHandle.SetVolume(1.0f, 0);
+						}
+					}
+					gGame.mSound.mArchivePlayer.mReady = 2;
+					PlayWiiSoundEffect(&gGame.mSound, 0x1F3, 1.0f, 0.0f);
+					gGame.mSound.mArchivePlayer.mReady = 1;
+				}
+				if (charge->mTimer >= 0.5f) {
+					act->mState = 4;
+				}
+			} else {
+				act->mState = 0;
+				ClearPopperCharge(&act->mCharge);
+			}
+		} else {
+			// letting go of the button: a full charge fires, a short one is dropped
+			if (act->mState == 4) {
+				act->mState = act->mCharge.mTimer >= 1.0f ? 6 : 0;
+			}
+			ClearPopperCharge(&act->mCharge);
+		}
+	}
+	act->mShotStrength = 0.0f;
+	switch (act->mState) {
+	case 1:
+		if (anim != 0x81F) {
+			act->mOwner->SetAnim(0x81F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			fn_8010EA78((XObj*)act->mOwner->mPopperObj);
+			break;
+		}
+		if (!owner->IsAnimDone()) {
+			break;
+		}
+		act->mOwner->vf290(TRUE);
+		act->mState = 2;
+		// fall through
+	case 2:
+		if (anim != 0x821) {
+			act->mOwner->SetAnim(0x821, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			fn_8010EB80((XObj*)act->mOwner->mPopperObj);
+		} else if (owner->IsAnimDone()) {
+			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			act->mState = 0;
+		}
+		break;
+	case 3:
+		if (anim != 0x822) {
+			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+		}
+		act->mState = 0;
+		break;
+	case 5:
+		if (ActivePopperShots(act) < (s32)GetPopperParameter(3)) {
+			((XObj*)act->mOwner->mPopperObj)->SetAnim(4, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			((XObj*)act->mOwner->mPopperObj)->UpdateAnim(0.0f);
+			act->mState        = 7;
+			act->mShotStrength = (s32)GetPlayerActionParameter(0x1E) / 100.0f;
+		}
+		// fall through
+	case 6:
+	case 7:
+		if (anim != 0x823 || act->mShotStrength != 0.0f) {
+			if (ActivePopperShots(act) < (s32)GetPopperParameter(3)) {
+				CVec pos = ((XObj*)act->mOwner->mPopperObj)->GetJointPos("cannon_C");
+				f32 yaw, pitch;
+				XObj* aimObj = lbl_80453508;
+				if (aimObj != NULL) {
+					// face the locked target and arc the shot over to it
+					Vec aim = aimObj->mToppleOffset;
+					yaw     = atan2(aim.x - pos.x, aim.z - pos.z);
+					f32 dz  = aim.z - pos.z;
+					f32 dx  = aim.x - pos.x;
+					f32 dy  = aim.y - pos.y;
+					f32 a   = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+					pitch   = dy < 0.0f ? HALF_PI - a : a - HALF_PI;
+					if (!gGame.GetStatusFlags(0x100)) {
+						act->mOwner->SetRotationY(yaw);
+					}
+					if (act->mCharge._38 == 0) {
+						act->mCharge._38 = 1;
+						break;
+					}
+					act->mCharge._38 = 0;
+				} else if (gGame.GetStatusFlags(0x100)) {
+					// the eye camera keeps the shot angles on the player
+					pitch = act->mOwner->mEyeAim.x - 0.02617994f;
+					yaw   = act->mOwner->mEyeAim.y - 0.02617994f;
+				} else if (gWiiPointer.mPointerValid) {
+					CCamera* cam = &gGame.mMotionControlCamera;
+					if (gGame.mStage == 0xB) {
+						// no world ray here: the side of the projected position the pointer is on decides
+						Vec pos0 = *act->mOwner->GetPos();
+						f32 sx, sy, sz;
+						GXProject(pos0.x, pos0.y, pos0.z, cam->mViewMtx, &cam->mIsOrtho, cam->mViewport, &sx, &sy, &sz);
+						yaw   = gWiiPointer.mPointer.x < sx * cam->mScale ? 4.712389f : 1.5707964f;
+						pitch = 0.0f;
+						act->mOwner->SetRotationY(yaw);
+					} else {
+						// unproject the pointer to the near plane and stretch the eye's ray
+						// through it to the muzzle's height
+						Vec ndc = { gWiiPointer.mPointer.x / cam->mScale, gWiiPointer.mPointer.y, gWiiPointer.mPointer.z };
+						CVec point;
+						PSMTX44MultVec(cam->mScreenInv, &ndc, &point);
+						CVec start = point;
+						Vec eye    = cam->mView.mEye;
+						CVec dir   = point - eye;
+						CVec end   = point + dir;
+						if (point.y > eye.y) {
+							end.y = eye.y;
+						}
+						Vec plane[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
+						plane[0]     = pos;
+						if (gGame.GetStatusFlags(0x100)) {
+							plane[0].y = eye.y;
+						}
+						Vec hit;
+						IntersectLineWithPlane(&start, &end, &plane[0], &plane[1], &hit);
+						yaw    = atan2(hit.x - pos.x, hit.z - pos.z);
+						f32 dz = hit.z - pos.z;
+						f32 dx = hit.x - pos.x;
+						f32 dy = hit.y - pos.y;
+						f32 a  = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+						pitch  = dy < 0.0f ? HALF_PI - a : a - HALF_PI;
+						act->mOwner->SetRotationY(yaw);
+					}
+					// the aim runs one frame behind the state, so the first aiming
+					// frame only turns and the second one fires
+					if (act->mCharge._38 == 0) {
+						act->mCharge._38 = 1;
+						break;
+					}
+					act->mCharge._38 = 0;
+				} else {
+					yaw   = act->mOwner->mMoveRotate.y;
+					pitch = 0.0f;
+				}
+				f32 power = act->mState == 6 ? 3 : 1;
+				// in tenths: popper parameter 2 is the speed, 0 the range and 1 the range with the upgrade
+				f32 speed = (s32)GetPopperParameter(2) / 10.0f;
+				f32 range = (s32)GetPopperParameter(rangeUpgrade) / 10.0f;
+				fn_8010EBA8((XObj*)act->mOwner->mPopperObj);
+				if (act->mShotStrength == 0.0f) {
+					act->mShotStrength
+					    = act->mState == 6 ? (s32)GetPlayerActionParameter(0x1F) / 100.0f : (s32)GetPlayerActionParameter(0x1E) / 100.0f;
+				}
+				if (act->mOwner->mBatteryDrains) {
+					act->mOwner->mParams.SetBattery(act->mOwner->mParams.mBattery - act->mShotStrength);
+				}
+				s32 kind = GetAttachmentCountById((AttachmentValues*)act->mOwner->mAttachments, 2);
+				for (s32 i = 0; i < 10; ++i) {
+					if (!act->mShots.mShot[i].mActive) {
+						StartPopperShot(&act->mShots.mShot[i], pos, kind, NULL, yaw, pitch, power, speed, range, act->mShotStrength);
+						break;
+					}
+				}
+			}
+			if (act->mState != 6) {
+				act->mState = 8;
+			}
+			ClearPopperCharge(&act->mCharge);
+			act->mState = 8;
+		} else if (owner->IsAnimDone()) {
+			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			act->mState = 0;
+		}
+		break;
+	case 8:
+		if (!fn_8010EBD0((XObj*)act->mOwner->mPopperObj)) {
+			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			act->mState = 0;
+		}
+		break;
+	case 9:
+		if (anim != 0x824) {
+			act->mOwner->SetAnim(0x824, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			fn_8010EC08((XObj*)act->mOwner->mPopperObj);
+			break;
+		}
+		if (!owner->IsAnimDone()) {
+			break;
+		}
+		act->mOwner->vf290(FALSE);
+		act->mState = 10;
+		// fall through
+	case 10:
+		if (anim != 0x820) {
+			act->mOwner->SetAnim(0x820, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			fn_8010EADC((XObj*)act->mOwner->mPopperObj);
+			act->mOwner->vf290(FALSE);
+		} else if (owner->IsAnimDone()) {
+			WiiPlayerState* chr = act->mOwner;
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+		}
+		break;
+	}
+	for (s32 i = 0; i < 10; ++i) {
+		UpdatePopperShotFlight(&act->mShots.mShot[i], frames);
+	}
+	UpdatePopperCharge(&act->mCharge, frames);
 }
 
 } // extern "C"

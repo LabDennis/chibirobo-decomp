@@ -1025,9 +1025,12 @@ struct WiiPlayerState : public XObj {
 	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
 	u8 _1C9B4[4];          // _1C9B4
 	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
+	u8 _1C9C4[8];          // _1C9C4
+	Vec mEyeAim;           // _1C9CC, the pitch and yaw the eye camera aims shots with
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
+	virtual void vf290(BOOL on);  // _290, hides the popper mount while the popper is out
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
