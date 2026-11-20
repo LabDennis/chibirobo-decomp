@@ -23,8 +23,8 @@ s32 fn_800C98E0(void* map, const Vec* pos, s32 triangle, XObjMapHit* hit);
 // the Wii MSL's out-of-line __fpclassifyf
 s32 ClassifyFloatBits(f32 value);
 // the Wii wire effect, the GameCube's XObjWireEff calls
-void ConfigurePlugWireEffect(WiiCordWire* wire, s32 anim, s32 effect, f32 rate, u32 color);
-void ClearWireEffect(WiiCordWire* wire);
+void ConfigurePlugWireEffect(XObjWireEff* wire, s32 anim, s32 effect, f32 rate, u32 color);
+void ClearWireEffect(XObjWireEff* wire);
 // the Wii's stand-alone object-push pass, the GameCube had it inside UpdatePlugCordSimulation
 void PushPlugCordPointsFromObjects(XObjPlugCord* cord);
 }

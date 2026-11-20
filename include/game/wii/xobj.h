@@ -2205,6 +2205,30 @@ struct XObjReadReq {
 	void* mInfo; // _04
 };
 
+struct EffectInstance; // game/wii/ceffect.h
+
+// the wire effect along the plug's cord, the GameCube's XObjWireEff: own anim,
+// own effect instance and the spark timer XObjPlug::UpdateObject paces
+class XObjWireEff : public XObj {
+public:
+	s32 mAnim;                    // _9A8, -1 when off
+	f32 mRate;                    // _9AC
+	s32 mEffect;                  // _9B0, -1 when off
+	EffectInstance* mGenerator;   // _9B4
+	s32 mSparkMode;               // _9B8
+	s32 mSparkTimer;              // _9BC
+
+	XObjWireEff();
+
+	virtual ~XObjWireEff() { }             // _08 (weak)
+	virtual void Release();                // _40
+	virtual void ResetObjectState();       // _154
+	virtual void UpdateObject(u32 frames); // _164
+	virtual void DrawWithView(Mtx view);   // _178
+};
+STATIC_ASSERT(sizeof(XObjWireEff) == 0x9C0);
+STATIC_ASSERT(offsetof(XObjWireEff, mSparkMode) == 0x9B8);
+
 class XObjRead : public OSThread {
 public:
 	u8* mStack;     // _318

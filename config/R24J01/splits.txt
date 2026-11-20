@@ -1215,6 +1215,9 @@ game/wii/xactradar.cpp:
 game/wii/xobjattachment.cpp:
 	.text start:0x8010E548 end:0x8010F944
 
+game/wii/xobjplug.cpp:
+	.text start:0x8010F944 end:0x80110C2C
+
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
 	extabindex start:0x80014B7C end:0x80014C18

@@ -1331,6 +1331,7 @@ if wii:
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
+                Object(NonMatching, "game/wii/xobjplug.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
                 # first function of ccameraactionarea.cpp (retail 0x80154310)

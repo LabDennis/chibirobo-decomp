@@ -275,6 +275,42 @@ public:
 	virtual ~XObjOX() { }                  // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _164
 };
+
+// the plug at the end of chibi robo's cord: same members as the GameCube class,
+// the wire effect at _DA0, and a joint matrix + roll the callback maintains
+// instead of the GameCube's HSD_JObj parenting
+class XObjPlug : public XObj {
+public:
+	XObjPlugCord mCord;  // _9A8
+	Vec mCordAnchor;     // _D3C, source for the first cord endpoint
+	Vec mCordJointPos;   // _D48
+	Vec mCordJointTip;   // _D54
+	s32 mCordEndsPinned; // _D60, 1 while cord ends 1 and 2 follow mCordJointPos and mCordJointTip (plug held or connected), 0 once
+	                     // they are let go
+	s32 mConnection;     // _D64, nonzero while the plug sits in a socket
+	Mtx mPlugMtx;        // _D68, the transform ExecCallbackB hands the plug joint
+	f32 mPlugRot;        // _D98, the joint's Z roll while carried
+	s32 mLoadState;      // _D9C
+	XObjWireEff mWire;   // _DA0
+
+	XObjPlug();
+
+	virtual ~XObjPlug() { }                                                                                                     // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void Release();                                                                                                     // _40
+	virtual void InitializeObject(u32 id);                                                                                      // _14C
+	virtual void ResetForNewGame();                                                                                             // _150
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+	virtual void DrawWithView(Mtx view);                                                                                        // _178
+	virtual void DrawReflection(Mtx view);                                                                                      // _17C
+	virtual void DrawGroundShadow(f32 opacity);                                                                                 // _180
+	virtual void DrawObjectEffects();                                                                                           // _188
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);                                                                   // _1A4, the base's vf1A4 slot
+};
+STATIC_ASSERT(sizeof(XObjPlug) == 0x1760);
+STATIC_ASSERT(offsetof(XObjPlug, mWire) == 0xDA0);
 #endif
 
 extern "C" {

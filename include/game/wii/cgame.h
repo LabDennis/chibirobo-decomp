@@ -827,10 +827,6 @@ struct WiiPlayerSuits {
 };
 STATIC_ASSERT(sizeof(WiiPlayerSuits) == 0x5868);
 
-// the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire (XObjWireEff):
-// an XObj whose model the player queues with the plug's and whose SetPos the cord simulation moves
-struct WiiCordWire : public XObj { };
-
 // the plug object embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug): ResetPlayerPlug
 // reaches its XObj status and virtuals. The anchor transform takes the whole block; of its own members only
 // the connection word the cord simulation reads is verified
@@ -994,8 +990,7 @@ struct WiiPlayerState : public XObj {
 	f32 mMoveAngle;     // _9DFC
 	u8 _9E00[0x9E20 - 0x9E00];
 	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
-	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
-	u8 _B568[0xB580 - 0xB568];
+	XObjWireEff mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
 	                           // through XObj's vtable
 	u8 mPopperObj[0x9B0];      // _BF30, the popper attachment object, the GameCube's mPopperObj
