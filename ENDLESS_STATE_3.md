@@ -1,11 +1,48 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 50 fertig, Branch devin/lane3 @0df689fe. R24J01:
+Stand: Lauf 51 fertig, Branch devin/lane3 (dieser Commit). R24J01:
 6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 51 — fn_800AE9F0 portiert, 72,91 % NONMATCHING
+
+- **Merge:** `git merge github-fork/all-releases` → „Already up to date".
+- **fn_800AE9F0** (0x6A8, `extern "C" void fn_800AE9F0(XObj*, f32 margin,
+  f32 scale, f32 rot, u32 color)`) = der zweite Screen-Bounds-Effekt
+  nach vf198: drehender Zwei-Ton-Ring ums Screen-Rechteck bei Hover.
+  Vollständig aus Retail-ASM dekodiert: Guard `(mStatus.mFlags & 0x10001)
+  == 0x10001` + `!(mFlags & 0x800)`; `SetGsChannelEnabled(&gGame.mGs,0,0)`;
+  `mCurRenderState->SetZMode(GX_FALSE,GX_ALWAYS,GX_FALSE)`; Radien
+  `rIn=(h-w)*0.5f-2.0f`, `rOut=(h-w)*0.5f+6.0f+4.0f*scale` mit
+  w/h = Bounds+margin; 65 Scheitelpaare via std::cosf/sinf(i*PI/32)
+  (→bl cos/sin, f64-MSL); colors: inner `(color&~0xFF)|(u8)(0.8f*((color&0xFF)*scale))`,
+  aussen `edge1&0xFFFFFF00`; Mtx-Kette Trans*Scale(2-scale)*RotZ('z')
+  dann `PSMTXMultVecArray` (Datei-deklariert wie in wii/ctrigon.cpp —
+  mtx.h hat die Deklaration nicht); 2 Durchgänge × 3 DrawGsColored-
+  TrianglePrimitive(GX_TRIANGLESTRIP, mCamera->mViewMtx, out+{0,42,86},
+  colors, 0x26); Blend 1. (1,4,5,15), 2. weiß (1,2,4,15), Restore (1,4,5,15).
+- **Score 0 → 72,91 %.** Rest = Regalloc (f23-f31-Shift, r25-31),
+  Retail hält `stfsux/stwux` Basis+Index-Formen in beiden Schleifen
+  (unser -O4,p wählt Zeiger-Lauf in Pass 2), rlwimi-Richtung und
+  Scheduling um die u64-cvt-Scratch-Paare. Stackbelegung stimmt
+  (out@0x8e8/vtx@0x2d0/colors@0xc8/mtx@0x8 via Dekl-Reihenfolge
+  out,vtx,colors,transM,scaleM,rotM,mtx — MWCC legt letzte Dekl
+  tiefster). NONMATCHING-Kommentar an der Fn.
+- **Nebenbei formatiert:** cf18-clang-format auf die Datei legte auch
+  die vf168-Zeilen aus Lauf 50 neu (| an Zeilenanfang) — whitespace-
+  only, Formatgate verlangt es.
+- **Gate:** R24J01 `main.dol: OK`, --non-matching linkt; GC 3×
+  `17 files OK`; Report-Vergleich vs .lane3_baseline: 0 schlechter
+  in allen 4 Editionen; callcheck R24J01: 0 obja-Einträge;
+  check.py --source-only `format: ok` via cf18-clang-format +
+  python3-subprocess; config/ sauber (checkout nach jedem Build).
+- **Nächster Schritt:** fn_800AF51C (0xA64, ResMat/TEV-Preset-
+  Pass, Wii-only — CopiedMatAccess-Idiome aus cobj.cpp/cjanim.cpp
+  als Vorlage), dann LoadFromPlacement 0x800AC238 (0x1260) ohne
+  fn_800AD498 (bleibt in Liegt), TestFloorCollision 0x800B034C.
 
 ## Lauf 50 — vf168 69,02 → 99,18 % (commit 0df689fe)
 

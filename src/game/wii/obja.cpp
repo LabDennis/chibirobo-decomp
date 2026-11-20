@@ -19,6 +19,7 @@ using namespace nw4r::g3d;
 
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern CustomShadow gCustomShadow;
 
@@ -239,12 +240,12 @@ void XObj::vf168(u32 frames)
 			StepColor(mAnmQueue.mColorStep[i].mValue.y, mAnmQueue.mColorStep[i].mTarget.y, mAnmQueue.mColorStep[i].mSpeed.y, frames);
 			StepColor(mAnmQueue.mColorStep[i].mValue.z, mAnmQueue.mColorStep[i].mTarget.z, mAnmQueue.mColorStep[i].mSpeed.z, frames);
 		}
-		u32 color1 = ((u32)mAnmQueue.mColorStep[0].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[0].mValue.y << 16) |
-		             ((u32)mAnmQueue.mColorStep[0].mValue.z << 8);
+		u32 color1 = ((u32)mAnmQueue.mColorStep[0].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[0].mValue.y << 16)
+		           | ((u32)mAnmQueue.mColorStep[0].mValue.z << 8);
 		mColor1.Set((s32)(color1 >> 24), (s32)((color1 >> 16) & 0xFF), (s32)((color1 >> 8) & 0xFF), (s32)(color1 & 0xFF));
 		mColorsChanged = TRUE;
-		u32 color0 = ((u32)mAnmQueue.mColorStep[1].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[1].mValue.y << 16) |
-		             ((u32)mAnmQueue.mColorStep[1].mValue.z << 8);
+		u32 color0     = ((u32)mAnmQueue.mColorStep[1].mValue.x << 24) | ((u32)mAnmQueue.mColorStep[1].mValue.y << 16)
+		           | ((u32)mAnmQueue.mColorStep[1].mValue.z << 8);
 		mColor0.Set((s32)(color0 >> 24), (s32)((color0 >> 16) & 0xFF), (s32)((color0 >> 8) & 0xFF), (s32)(color0 & 0xFF));
 		mColorsChanged = TRUE;
 	}
@@ -368,7 +369,73 @@ void XObj::vf198(f32 margin, f32 alpha, u32 color)
 	}
 }
 
-// 0x800AE9F0 still missing here (the ResMat tev/color table pass, 0x6A8)
+// 0x800AE9F0, a second on-screen-bounds effect: a rotating two-tone ring (colored inner
+// edge fading to a transparent rim, then a white copy under a different blend) around the
+// object's screen box while it is hovered
+// NONMATCHING: the instruction stream is structurally identical (same guards, same
+// (h-w)*0.5f ring radii, same matrix chain, same two blend passes over 130 verts) — the
+// residue is register allocation (f23-f31/r25-r31 shift), MWCC picking pointer-walk
+// stores instead of the retail base+index stfsux/stwux forms in the unrolled pass-2
+// loop, and scheduling interleave around the u64 cvt scratch pairs
+extern "C" void fn_800AE9F0(XObj* obj, f32 margin, f32 scale, f32 rot, u32 color)
+{
+	if ((obj->mStatus.mFlags & 0x10001) != 0x10001) {
+		return;
+	}
+	if (obj->mStatus.mFlags & 0x800) {
+		return;
+	}
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	Vec out[130];
+	Vec vtx[130];
+	u32 colors[130];
+	Mtx transM, scaleM, rotM, mtx;
+	u32 edge1 = color & 0xFFFFFF00;
+	edge1 |= (u8)(0.8f * ((color & 0xFF) * scale));
+	u32 edge0 = edge1 & 0xFFFFFF00;
+	f32 l     = obj->mScreenLeft - margin;
+	f32 r     = obj->mScreenRight + margin;
+	f32 t     = obj->mScreenTop - margin;
+	f32 b     = obj->mScreenBottom + margin;
+	f32 w     = r - l;
+	f32 h     = b - t;
+	f32 cx    = w * 0.5f + l;
+	f32 cy    = h * 0.5f + t;
+	f32 rIn   = (h - w) * 0.5f - 2.0f;
+	f32 rOut  = (h - w) * 0.5f + 6.0f + 4.0f * scale;
+	for (s32 i = 0; i < 65; i++) {
+		s32 j         = i * 2;
+		vtx[j].x      = rIn * std::cosf(i * (PI / 32.0f));
+		vtx[j].y      = rIn * std::sinf(i * (PI / 32.0f));
+		vtx[j].z      = 0.0f;
+		colors[j]     = edge1;
+		vtx[j + 1].x  = rOut * std::cosf(i * (PI / 32.0f));
+		vtx[j + 1].y  = rOut * std::sinf(i * (PI / 32.0f));
+		vtx[j + 1].z  = 0.0f;
+		colors[j + 1] = edge0;
+	}
+	PSMTXTrans(transM, cx, cy, 0.0f);
+	f32 size = 1.0f + (1.0f - scale);
+	PSMTXScale(scaleM, size, size, size);
+	PSMTXConcat(transM, scaleM, mtx);
+	PSMTXRotRad(rotM, 'z', rot);
+	PSMTXConcat(mtx, rotM, mtx);
+	PSMTXMultVecArray(mtx, vtx, out, 130);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out, colors, 0x26);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out + 42, colors, 0x26);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out + 86, colors, 0x26);
+	for (s32 i = 0; i < 65; i++) {
+		colors[i * 2]     = 0xFFFFFF00 | (u8)((edge1 & 0xFF) * scale);
+		colors[i * 2 + 1] = 0xFFFFFF00;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out, colors, 0x26);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out + 42, colors, 0x26);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, out + 86, colors, 0x26);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+}
 
 // 0x800AF098, the READ command's start half: kicks the archive's animation-file read and
 // arms the flag UpdateObject polls; the panic names the header the helper family lives in
