@@ -129,6 +129,12 @@ void PSMTXRotRad(Mtx m, char axis, f32 rad);
 // mSavedInfo while SaveCamInfo holds a camera info, NULL otherwise
 void* gSavedScrollCameraInfo;
 
+// zero-initialized Vec templates ahead of the hidden-object tables in retail .bss
+extern "C" Vec gScrollCameraEyeInitializer;
+extern "C" Vec gScrollCameraInterestInitializer;
+Vec gScrollCameraEyeInitializer;
+Vec gScrollCameraInterestInitializer;
+
 // the objects hidden while this camera runs and what they were before
 s32 gScrollCameraHiddenObjectIds[256];
 s32 gScrollCameraHiddenObjectStates[256];
