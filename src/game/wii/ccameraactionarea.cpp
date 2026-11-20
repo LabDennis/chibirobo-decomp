@@ -1,3 +1,4 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "nw4r/math/math_types.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
@@ -330,4 +331,44 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
 void CCameraActionArea::DrawDebug3d()
 {
 	gCameraAreaState.DrawDebug3d();
+}
+
+// retail links SpringDamp's text into this unit (between GetCameraFlags and the map camera's Init), but its
+// panics name ccameraactionmap2.cpp, its true source file; the GameCube's src/game/ccameraactionmap2.cpp
+// has the same function
+
+// CVec's += takes a reference, this one copies b first like retail does here
+inline void AddCopy(CVec& a, Vec b)
+{
+	PSVECAdd(&a, &b, &a);
+}
+
+/**
+ * @note Address: 0x80156E7C
+ * @note Size: 0x2D8
+ */
+extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping,
+                           f32 restDistance)
+{
+	CVec displacement;
+	CVec velocity;
+	displacement = position - target;
+	f32 distance = sqrt(displacement.z * displacement.z + (displacement.x * displacement.x + displacement.y * displacement.y));
+	if (__fpclassifyf(distance) == FP_NAN) {
+		OSPanic("ccameraactionmap2.cpp", 192,
+		        FormatToStaticBuffer("CCameraActionMap ... disp(%f, %f, %f)\n", displacement.x, displacement.y, displacement.z));
+	}
+	velocity  = (previous - target) * step;
+	f32 speed = PSVECDotProduct(&displacement, &velocity) / distance;
+	f32 force = stiffness * (restDistance - distance) + damping * speed;
+	PSVECNormalize(&displacement, &displacement);
+	PSVECScale(&displacement, &displacement, force * step);
+	AddCopy(position, displacement);
+	if (__fpclassifyf(position.x) == FP_NAN || __fpclassifyf(position.y) == FP_NAN || __fpclassifyf(position.z) == FP_NAN) {
+		// retail's format and args don't line up
+		OSPanic("ccameraactionmap2.cpp", 206,
+		        FormatToStaticBuffer("CCameraActionMap ... (%f, %f, %f), %f, %f, %f, %s\n", displacement.x, displacement.y,
+		                             displacement.z, distance, force, velocity, 206));
+	}
+	return position;
 }
