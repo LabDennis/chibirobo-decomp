@@ -282,6 +282,11 @@ game/wii/xobj_camera.cpp:
 	extabindex start:0x80013EF8 end:0x80013FA0
 	.text start:0x800C6584 end:0x800C7DC0
 
+game/wii/xobj_map.cpp:
+	extab start:0x8000B954 end:0x8000BAC0
+	extabindex start:0x80013FA0 end:0x80014090
+	.text start:0x800C7DC0 end:0x800C9E84
+
 game/wii/xobj_chr.cpp:
 	.text start:0x800C9E84 end:0x800E9D30
 

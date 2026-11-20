@@ -1408,6 +1408,11 @@ if wii:
                 # (fn_800C66C8, fn_800C6CF0, fn_800C7764) still come from the retail asm
                 # -i include/rvl_msl like the other xobj units
                 Object(NonMatching, "game/wii/xobj_camera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the map object, 0x800C7DC0-0x800C9E84 (wii_units.md Nr. 59): XObjMap's overrides
+                # are written; the record-list helpers and the scene-proc draw callback still come
+                # from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobj_map.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining

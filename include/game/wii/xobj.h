@@ -81,6 +81,7 @@ namespace g3d {
 
 class ScnObj;
 class ResMdl;
+class ScnProc;
 
 // what the world callback writes for a node, as far as the game uses it
 struct ChrAnmResult {
@@ -831,6 +832,23 @@ private:
 	u8 mScale[0xC]; // _DC, nw4r's VEC3
 };
 
+// the user-drawn leaf: the draw callback and a user pointer at _F0, where the
+// map object stashes its state record (retail stw at 0x800C7EFC)
+class ScnProc : public ScnLeaf {
+public:
+	typedef void (*DrawProc)(ScnProc* pProc, bool opa);
+
+	static ScnProc* Construct(MEMAllocator* pAllocator, u32* pSize, DrawProc pDrawProc, bool opa, bool xlu, u32 userData);
+
+	void SetUserData(void* pData) { mpUserData = pData; }
+	void* GetUserData() { return mpUserData; }
+
+private:
+	u32 mFlag;           // _E8, nw4r's opa/xlu bits
+	DrawProc mpDrawProc; // _EC
+	void* mpUserData;    // _F0
+};
+
 class AnmObj;
 class AnmObjChr;
 
@@ -1240,6 +1258,8 @@ STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 // (0x800BEB60/0x800BEBF0) frees the buffer at _00 and clears _04 as a
 // self-subtract. the pointee type is not recovered yet
 class XObjMapListA {
+	friend class XObjMap;
+
 public:
 	XObjMapListA();
 	~XObjMapListA();
@@ -1252,6 +1272,8 @@ private:
 STATIC_ASSERT(sizeof(XObjMapListA) == 0xC);
 
 class XObjMapListB {
+	friend class XObjMap;
+
 public:
 	XObjMapListB();
 	~XObjMapListB();
@@ -1455,7 +1477,10 @@ public:
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168(u32 frames);        // _168, steps the two queued material colors to their targets
 	virtual void vf16C();                  // _16C, empty
-	virtual void vf170();
+	// queues the model on the scene draw list; the view argument is unused in the
+	// body but callers pass it: DrawWithView hands its view through (retail emits
+	// no argument setup), the DrawGroundShadow call sites pass NULL (li r4, 0)
+	virtual void vf170(Mtx view);
 	virtual void DrawObject();                                       // _174
 	virtual void DrawWithView(Mtx view);                             // _178
 	virtual void DrawReflection(Mtx view);                           // _17C
@@ -1820,15 +1845,20 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
-	virtual void InitializeObject(); // _14C
-	virtual void ResetObjectState(); // _154
+	virtual void Release();                                // _40
+	virtual void InitializeObject();                       // _14C
+	virtual void ResetObjectState();                       // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164
+	virtual void DrawWithView(Mtx view);                   // _178
+	virtual void DrawGroundShadow(f32 opacity);            // _180
 
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4
-	u32 m_1374;                // InitializeObject clears it
+	nw4r::g3d::ScnProc* m_1374; // the translucent draw proc LoadFromPlacement plants, InitializeObject clears it
 	u8 _1378[0x80];            // ResetObjectState drops every other word of the two 0x40 records
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);

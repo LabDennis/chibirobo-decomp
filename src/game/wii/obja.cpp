@@ -543,16 +543,15 @@ void XObj::vf168(u32 frames)
 }
 
 // 0x800AE448, queues the model on the scene's draw list when it has one and a nonzero scale
-void XObj::vf170()
+void XObj::vf170(Mtx view)
 {
 	if (mObject.m_pScnMdl == NULL) {
 		return;
 	}
-	if (PSVECMag(&mMoveScale) <= 0.0f) {
-		return;
+	if (PSVECMag(&mMoveScale) > 0.0f) {
+		WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+		scene->vf034(scene->mPending, mObject.m_pScnMdl);
 	}
-	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
-	scene->vf034(scene->mPending, mObject.m_pScnMdl);
 }
 
 // 0x800AE4B4
@@ -564,7 +563,7 @@ void XObj::DrawWithView(Mtx view)
 	if (mStatus.mFlags & 0x800) {
 		return;
 	}
-	vf170();
+	vf170(view);
 }
 
 // 0x800AE4E0
@@ -580,7 +579,7 @@ void XObj::DrawGroundShadow(f32 opacity)
 		return;
 	}
 	if (mStatus.mFlags & 0x4) {
-		vf170();
+		vf170(NULL);
 	} else {
 		DrawGroundShadowAt(&mMoveTranslate, 1.0f);
 	}
