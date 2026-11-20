@@ -574,14 +574,17 @@ game/xobjletickerdtor.cpp:
 game/objb_leticker.cpp:
 	.text       start:0x800E4CDC end:0x800E8EF8
 	.ctors      start:0x80200088 end:0x8020008C
+	.bss        start:0x803851E0 end:0x80385254
 
 game/objb_army.cpp:
 	.text       start:0x800E8EF8 end:0x800EC8B4
 	.ctors      start:0x8020008C end:0x80200090
+	.bss        start:0x80385258 end:0x8038527C
 
 game/xobjspider.cpp:
 	.text       start:0x800EC8B4 end:0x800F723C
 	.ctors      start:0x80200090 end:0x80200094
+	.bss        start:0x80385280 end:0x803855CC
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F723C end:0x80102984
