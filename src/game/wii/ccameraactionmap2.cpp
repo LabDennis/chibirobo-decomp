@@ -380,9 +380,10 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 // (arithmetic.h:627); the shared header has the final, warning-free version
 static inline f32 FSqrt(f32 x)
 {
-	if (x < 0.0f) {
-		static const char sFile[] = "arithmetic.h";
-		nw4r::db::Warning(sFile, 627, "FSqrt: Input is out of the domain.");
+	if (!(x >= 0.0f)) {
+		static const char sFile[]    = "arithmetic.h";
+		static const char sMessage[] = "FSqrt: Input is out of the domain.";
+		nw4r::db::Warning(sFile, 627, sMessage);
 	}
 	return x <= 0.0f ? 0.0f : x * nw4r::math::FrSqrt(x);
 }
@@ -1327,6 +1328,49 @@ static inline f32 GetHorizontalDistance(const Vec* from, const Vec* to)
 static inline f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to)
 {
 	return atan2(to->x - from->x, to->z - from->z);
+}
+
+/**
+ * @note Address: 0x8015FCF4
+ * @note Size: 0x498
+ */
+extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step)
+{
+	if (map->mTurnInterpolation != NULL) {
+		if (!map->mTurnInterpolation->Update(step, FRAME_TIME)) {
+			f32 radius = map->mOrbitRadius;
+			CVec position(map->mTurnInterpolation->Get());
+			{
+				CVec origin(map->mSpringTarget);
+				origin.y = 0.0f;
+				CVec direction((position - origin).Normalize());
+				position = origin + direction * radius;
+			}
+			position.y      = map->mEye.y;
+			map->mOrbitEye  = position;
+			map->mTargetEye = position;
+			SetMapCameraAnglesFromEyeAndInterest(map);
+			if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN
+			    || __fpclassifyf(map->mAngle.z) == FP_NAN) {
+				OSPanic("ccameraactionmap2.cpp", 5085,
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
+				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->mManualInput,
+				                             lbl_805A1D1C, lbl_805A1D18, map->mTargetEye.x, map->mTargetEye.y, map->mTargetEye.z,
+				                             map->mPrevTargetEye.x, map->mPrevTargetEye.y, map->mPrevTargetEye.z, map->mEyeInterp,
+				                             map->mTurnInterpolation, map->mOrbitEye.x, map->mOrbitEye.y, map->mOrbitEye.z,
+				                             map->mOrbitAngle.x, map->mOrbitAngle.y, map->mOrbitAngle.z, map->mPrevOrbitAngle.x,
+				                             map->mPrevOrbitAngle.y, map->mPrevOrbitAngle.z, lbl_805A1D14));
+			}
+			map->mOrbitAngle  = map->mAngle;
+			map->mManualInput = 1;
+		} else {
+			map->mStatus.mFlags &= ~4;
+			map->mTurnInterpolation = NULL;
+		}
+	}
 }
 
 static inline void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time)
