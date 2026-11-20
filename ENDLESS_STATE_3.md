@@ -1,11 +1,73 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 51 fertig, Branch devin/lane3 (dieser Commit). R24J01:
+Stand: Lauf 52 fertig, Branch devin/lane3 (Commit 081c1c33). R24J01:
 6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 52 — fn_800AF51C portiert, 71,44 % NONMATCHING
+
+- **Merge:** `git merge github-fork/all-releases` → „Already up to date".
+- **fn_800AF51C** (0xA64, `extern "C" void fn_800AF51C(XObj* obj)`) =
+  der Material-Setup-Pass, den LoadFromPlacement bei gesetztem Flag
+  fährt: jede Material bekommt eine finale TEV-Stage, die vorige
+  Farbe mit der gerenderten Schattentextur multipliziert; das
+  "sdw"-User-Data-Item mit erstem s32 == -1 opt-t aus.
+- **Ablauf (belegt):** Guard m_pScnMdl==NULL→return; Schleife über
+  mObject.m_resMdl.GetResMatNumEntries; je Material CopiedMatAccess-
+  Fetch+Fallback (Reihenfolge GenMode→TevColor→TexCoordGen→TexObj→
+  TexSrt→Tev, jeweils `access.GetResX(false)` dann `mat.GetResX()`)
+  + XOBJ_ASSERT_LINE (xobj.cpp-Zeilen 0x74F/0x755/0x75B/0x761/0x767);
+  i==0 && tev.ptr()->PADDING_0x18[6]==0xC3 → return (schon gesetzt).
+  userData→GetResDic()["sdw"]→item numData!=0 → GetS32(0)==-1 →
+  continue. sdwTexMapId = mat.ref().numResTexPlttInfo (@+0x2C);
+  Reports `>7 textures`, `>7 tex coord gens`, `>15 tev stages`
+  via OSReport mit mat.GetName(). Dann: KColor aus
+  `sdwKColor[]={0,0,0,255}` (.sdata2 lbl_805A4528) indiziert mit
+  numTexGens; assert !texObj.IsValidTexObj(sdwTexMapId) (0x846);
+  *GetTexObj(sdwTexMapId) = gGame.mShadow.mTex (gGame+0xF0000-0x1BF8
+  = 0xEE408 = GameShadow::mTex@0x1F8!); Validate; genMode NumTevs+1
+  + NumTexGens+1; tevColor.GXSetTevKColor(GX_KCOLOR2)+DCStore;
+  texCoordGen.GXSetTexCoordGen2(n,MTX3x4,POS,false,0x40+3n)+DCStore;
+  texSrt.SetEffectMtx(n,NULL)+SetMapMode(n,2,1,-1)+SetTexSrtFlag(n,0xF).
+  marker==0 → tev.SetNumTevStages(n+1)+GXSetTevDirect+KColorSel(K2)+
+  TevOrder(n,sdwTexMapId,GX_COLOR_NULL)+ColorIn(CPREV,KONST,TEXA,ZERO)+
+  ColorOp(ADD,ZERO,SCALE_1,true,TEVPREV)+AlphaIn(ZERO×3,APREV)+AlphaOp
+  (gleich)+marker=0xC3+DCStore; assert numTevStages==numTevStageData
+  (0x89C) sonst numTevStageData==numTevStages+1 (0x89E); Schluss-assert
+  marker==0xC3 (0x8A0).
+- **xobj.h erweitert (kanonischer Wii-Shim):** ResMatData numResTexPlttInfo
+  @0x2C, toResUserData@0x38, texObjData@0x40 (0x104), texSrtData
+  bleibt @0x1A8; ResMatDLData dlTexCoordGen@0xE0; neue Wrapper
+  ResMatTexCoordGen (ctor &0x1f, Zeile 513), ResTexObj (&3, Z.40),
+  ResDic/ResDicData/ResDicNodeData (&3, g3d_resdict_ac.h Z.84),
+  ResUserDataItem/Data (GetValueType-assert Z.54, ref Z.38),
+  ResUserData/Data (ref Z.87, GetResDic=&ref().dic@+4); ResGenMode
+  GXSetNumTexGens, ResTev GXSetTevDirect, ResTexSrt SetEffectMtx/
+  SetMapMode, CopiedMatAccess +GetResMatTexCoordGen/GetResTexObj,
+  ResMat +GetResMatTexCoordGen/GetResTexObj/GetResUserData.
+  Item-Layout {nameID,ofsData,numData,valueType} aus ASM-Reads
+  modelliert (+8 numData, +0xC type==S32==0, +4 ofsData→data).
+- **Score 0 → 71,44 %.** Ehrlich NONMATCHING: provisorische Item-
+  Feldnamen, Assert/Report-Ausdrücke plausibel geschätzt,
+  Regalloc/Scheduling-Rest. Obja.cpp bekam UPDATED_TEV_MAGIC_NUMBER/
+  XOBJ_ASSERT_LINE-Defines (wie cjanim.cpp, __FILE__="xobj.cpp").
+- **Gate:** R24J01 main.dol OK; GC 3× 17 files OK; Report-Vergleich
+  vs .lane3_baseline: 0 Funktionen schlechter in allen 4 Editionen;
+  config/ sauber. check.py --source-only: NUR Version-Blockade
+  (clang-format 23.1.4 auf PATH, 18.1.8-Binary nicht aufrufbar —
+  Aufruf wurde verworfen), neue Zeilen im Dateistil.
+- **Nächster Schritt:** LoadFromPlacement 0x800AC238 (0x1260) —
+  der direkte Aufrufer von fn_800AF51C; fn_800AD498 bleibt in
+  Liegt (Pool-Regression AF098). Danach TestFloorCollision 0x800B034C.
+- **Liegt:** fn_800AD498 uncommittbar (AF098-`""`-Pool-Regression —
+  Retail non-const .data-Strings vs. unsere .rodata-Faltung, ehrlich
+  mutmaßlich unlösbar). fn_800AF51C-Rest = provisorische User-Data-
+  Modellierung + Regalloc/Scheduling; evtl. genauere Item-API aus
+  echtem nw4r g3d_resuser.h nachtragen. check.py-Formatgate auf
+  diesem Host nicht lauffähig (18.1.8 fehlt).
 
 ## Lauf 51 — fn_800AE9F0 portiert, 72,91 % NONMATCHING
 
