@@ -64,31 +64,40 @@ static inline bool IsJapanese()
 #if defined(VERSION_JP)
 enum { MainMemCardAction = 10, MainSelectStageAction = 7, MainPCAction = 8, MainSaveAction = 12 };
 
-static MenuMainItem sMainLines[] = {
-	{ "\x83\x58\x83\x65\x81\x5B\x83\x5E\x83\x58", 1 },
+static char sMainMenuStatusLabel[]      = "\x83\x58\x83\x65\x81\x5B\x83\x5E\x83\x58";
+static char sMainMenuMemoryCardLabel[]  = "\x83\x81\x83\x82\x83\x4A (?)";
+static char sMainMenuSelectStageLabel[] = "\x83\x7D\x83\x62\x83\x76\x91\x49\x91\xF0";
+static MenuMainItem sMainMenuRows[] = {
+	{ sMainMenuStatusLabel, 1 },
 	{ "\x01", -1 },
-	{ "\x83\x81\x83\x82\x83\x4A (?)", MainMemCardAction },
-	{ "\x83\x7D\x83\x62\x83\x76\x91\x49\x91\xF0", MainSelectStageAction },
+	{ sMainMenuMemoryCardLabel, MainMemCardAction },
+	{ sMainMenuSelectStageLabel, MainSelectStageAction },
 	{ NULL, 0 },
 };
 #else
 enum { MainMemCardAction = 6, MainSelectStageAction = 5, MainPCAction = 3, MainSaveAction = 4 };
 
-static MenuMainItem sMainLines[] = {
+static MenuMainItem sMainMenuRows[] = {
 	{ "StatusMenu", 1 }, { "\x01", -1 }, { "MemCard(?)", MainMemCardAction }, { "SelectStage", MainSelectStageAction }, { NULL, 0 },
 };
 #endif
 
 // the stages the stage select offers, in its order
-static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+static s32 sStageSelectOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
 
 // the card test popup's rows
 #if defined(VERSION_JP)
-static MenuMCTestAction sMCTestSubLines[]
+static MenuMCTestAction sMemoryCardTestRows[]
     = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
 #else
-static MenuMCTestAction sMCTestSubLines[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
+static MenuMCTestAction sMemoryCardTestRows[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
 #endif
+
+// the card test's printed strings, named as in the retail .rodata
+static const char sMenuSoundActivateMessage[] = "MenuSound::Activate\n";
+static const char sCardTestSlotFormat[]       = "SLOT: %c";
+static const char sCardTestInitialFileLabel[]
+    = "(0) 00/00/00 00:00 [ 0:00] (000)\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40";
 
 // the file's statics in .bss order, what the first ones hold isn't known yet
 u8 lbl_80361F68[0xD4];
@@ -1345,7 +1354,7 @@ inline void MenuSound::Open()
 {
 	CMenu::Open();
 	PlayGameSound(&gGame.mSound, 0x148, 0x50);
-	OSReport("MenuSound::Activate\n");
+	OSReport(sMenuSoundActivateMessage);
 }
 
 inline void MenuSettings::Open()
@@ -1390,7 +1399,7 @@ inline void MenuMCTest::Open()
 	for (int i = 0; i < mFileCount; i++) {
 		strcpy(mText[i], "");
 	}
-	sprintf(mText[mFileCount + 1], "SLOT: %c", sMenuMain.mChannel + 'A');
+	sprintf(mText[mFileCount + 1], sCardTestSlotFormat, sMenuMain.mChannel + 'A');
 	StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 	mOperation = 1;
 }
@@ -1403,7 +1412,7 @@ inline void MenuStageSelect::Open()
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
 		mSelection = -1;
 		int i      = 0;
-		for (s32* stage = sStageOrder; *stage >= 0; stage++, i++) {
+		for (s32* stage = sStageSelectOrder; *stage >= 0; stage++, i++) {
 			if (*stage == gGame.mStage) {
 				mSelection = i;
 				break;
@@ -1635,7 +1644,7 @@ BOOL MenuMCTestSub::Update(u32 frames)
 			sMenuMCTest.mSuspendFade = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
-			s32 id                  = sMCTestSubLines[mSelection].mAction;
+			s32 id                  = sMemoryCardTestRows[mSelection].mAction;
 			Memcard* card           = &gGame.mMemcard.mCard;
 			SavePreviewRecord* save = &card->mSaves[0][sMenuMCTest.mSelection];
 			// load (4) and delete (6) buzz on an empty slot, load also on a damaged save
@@ -1707,10 +1716,10 @@ void MenuMCTestSub::Init()
 {
 	MenuMCTestSub* menu = this;
 	menu->CMenu::Init();
-	menu->mText[0]  = sMCTestSubLines[0].mText;
-	menu->mText[1]  = sMCTestSubLines[1].mText;
-	menu->mText[2]  = sMCTestSubLines[2].mText;
-	menu->mText[3]  = sMCTestSubLines[3].mText;
+	menu->mText[0]  = sMemoryCardTestRows[0].mText;
+	menu->mText[1]  = sMemoryCardTestRows[1].mText;
+	menu->mText[2]  = sMemoryCardTestRows[2].mText;
+	menu->mText[3]  = sMemoryCardTestRows[3].mText;
 	menu->mRowCount = 4.0f;
 	menu->mMaxWidth = 0.0f;
 	menu->mFontSize = 16.0f;
@@ -1831,7 +1840,7 @@ extern "C" void Open__10MenuMCTestFv(MenuMCTest* menu)
 	for (int i = 0; i < menu->mFileCount; i++) {
 		strcpy(menu->mText[i], "");
 	}
-	sprintf(menu->mText[menu->mFileCount + 1], "SLOT: %c", sMenuMain.mChannel + 'A');
+	sprintf(menu->mText[menu->mFileCount + 1], sCardTestSlotFormat, sMenuMain.mChannel + 'A');
 	StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 	menu->mOperation = 1;
 }
@@ -1847,8 +1856,7 @@ void MenuMCTest::Init()
 	menu->mFileCount = 10;
 	// a row as wide as the card listing can print, to size the window; \x81\x40 is a full-width space
 	for (int i = 0; i < menu->mFileCount; i++) {
-		strcpy(menu->mText[i],
-		       "(0) 00/00/00 00:00 [ 0:00] (000)\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40");
+		strcpy(menu->mText[i], sCardTestInitialFileLabel);
 	}
 	strcpy(menu->mText[menu->mFileCount], "\x01");
 	strcpy(menu->mText[menu->mFileCount + 1], "");
@@ -1906,9 +1914,9 @@ BOOL MenuStageSelect::Update(u32 frames)
 		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			Close();
 			sMenuMain.Close();
-			// with the short list the rows are sStageOrder's entries, not stage numbers
+			// with the short list the rows are sStageSelectOrder's entries, not stage numbers
 			if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
-				ChangeGameStage(&gGame, sStageOrder[mSelection], 1);
+				ChangeGameStage(&gGame, sStageSelectOrder[mSelection], 1);
 			} else {
 				ChangeGameStage(&gGame, mSelection, 1);
 			}
@@ -1929,7 +1937,7 @@ extern "C" void Open__15MenuStageSelectFv(MenuStageSelect* menu)
 	menu->mWindow.mOpen = TRUE;
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
 		menu->mSelection = -1;
-		s32* stages      = sStageOrder;
+		s32* stages      = sStageSelectOrder;
 		s32 stage;
 		s32 current = gGame.mStage;
 		for (int i = 0; stages[i] >= 0; i++) {
@@ -2224,7 +2232,7 @@ BOOL MenuMain::Update(u32 frames)
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_STICK_RIGHT | HSD_PAD_DPADLEFT | HSD_PAD_DPADRIGHT)) {
 			// on the MemCard line left and right swap the card slot, [8] is its ?
-			if (sMainLines[mSelection].mAction == MainMemCardAction) {
+			if (sMainMenuRows[mSelection].mAction == MainMemCardAction) {
 				mChannel = (mChannel + 1) & 1;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				mText[mSelection][8] = mChannel + 'A';
@@ -2233,7 +2241,7 @@ BOOL MenuMain::Update(u32 frames)
 			Close();
 		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			if (mSelection < mBaseRows) {
-				id = sMainLines[mSelection].mAction;
+				id = sMainMenuRows[mSelection].mAction;
 			} else {
 				// the rows past the divider (hence + 1) each hold an event script to run
 				Close();
@@ -2317,8 +2325,8 @@ extern "C" void LayoutMainMenuRows(MenuMain* menu)
 	menu->mRowCount = menu->mBaseRows;
 	menu->mMaxWidth = 0.0f;
 	for (int i = 0; i < menu->mRowCount; i++) {
-		menu->mText[i] = sMainLines[i].mText;
-		if (sMainLines[i].mAction == MainMemCardAction) {
+		menu->mText[i] = sMainMenuRows[i].mText;
+		if (sMainMenuRows[i].mAction == MainMemCardAction) {
 			menu->mText[i][8] = menu->mChannel + 'A';
 		}
 		menu->mTextWidth[i] = MeasureGameTextWidth(&gGame.mGs, menu->mText[i], 0, menu->mFontSize);
@@ -6974,10 +6982,10 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		menu->mLabels[i][0]  = 0;
 		menu->mLabelWidth[i] = 0.0f;
 	}
-	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
+	// with this status bit only the stages in sStageSelectOrder; without it every room, a rule, then stages 100 and up
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
 		int i = 0;
-		for (s32* stage = sStageOrder; *stage >= 0; stage++, i++) {
+		for (s32* stage = sStageSelectOrder; *stage >= 0; stage++, i++) {
 			int length         = CopyStageFileName(menu->mLabels[i], GetStageFileName(*stage));
 			const char* format = IsJapanese() ? "(%2d) %-.20s" : "(%2d) %-.30s";
 			sprintf(menu->mLabels[i] + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
@@ -7009,7 +7017,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 static inline u8 StageRowBlue(int row, u8 normal, u8 current)
 {
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL)
-		return (u8)(sStageOrder[row] == gGame.mStage ? current : normal);
+		return (u8)(sStageSelectOrder[row] == gGame.mStage ? current : normal);
 	return (u8)(row == gGame.mStage ? current : normal);
 }
 
