@@ -1,5 +1,7 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "nw4r/math/math_types.h"
 #include "nw4r/math/math_arithmetic.h"
+#include "nw4r/db/db_assert.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
@@ -316,6 +318,16 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+// the game was built against an nw4r whose FSqrt still carried the domain warning
+// (arithmetic.h:627); the shared header has the final, warning-free version
+static inline f32 FSqrt(f32 x)
+{
+	if (x < 0.0f) {
+		nw4r::db::Warning("arithmetic.h", 627, "FSqrt: Input is out of the domain.");
+	}
+	return x <= 0.0f ? 0.0f : x * nw4r::math::FrSqrt(x);
 }
 
 static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
@@ -787,9 +799,11 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		// the old eye sat outside every area: test the way from the target's back to the candidate
 		f32 yaw = map->mTarget->mMoveRotate.y;
 		Vec behind;
-		behind.x = map->mTarget->GetPos()->x - 2.0f * (f32)sin(yaw);
-		behind.z = map->mTarget->GetPos()->z - 2.0f * (f32)cos(yaw);
+		f32 back = (f32)sin(yaw);
+		behind.x = map->mTarget->GetPos()->x - 2.0f * back;
 		behind.y = target.y;
+		back     = (f32)cos(yaw);
+		behind.z = map->mTarget->GetPos()->z - 2.0f * back;
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
 			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
@@ -840,10 +854,10 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 							CVec* pos  = map->mTarget->GetPos();
 							f32 dz     = target.z - pos->z;
 							f32 dx     = target.x - pos->x;
-							f32 playerDistance = nw4r::math::FSqrt(dz * dz + dx * dx);
+							f32 playerDistance = FSqrt(dz * dz + dx * dx);
 							dz                 = target.z - candidate.z;
 							dx                 = target.x - candidate.x;
-							if (nw4r::math::FSqrt(dz * dz + dx * dx) <= playerDistance) {
+							if (FSqrt(dz * dz + dx * dx) <= playerDistance) {
 								ResetMapCameraInterpolation(map);
 								TrySetUnobstructedMapCameraYaw(map, (f32)atan2(candidate.x - old.x, candidate.z - old.z));
 							}
