@@ -9,10 +9,10 @@ u8 lbl_8025C200[0xF8];
 Vec gJointTranslateZero;
 Vec gJointScaleZero;
 Vec gJointRotationZero;
-#if defined(VERSION_PAL)
-u8 sJointPoolRemainder[0x24];
-#else
+#if defined(VERSION_JP)
 u8 sJointPoolRemainder[0x18];
+#else
+u8 sJointPoolRemainder[0x24];
 #endif
 
 // retail places gGame on a 0x200 boundary, leaving 0xc0 bytes after the

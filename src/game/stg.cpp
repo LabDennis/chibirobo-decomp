@@ -162,7 +162,7 @@ extern "C" s32 GetShopCatalogFirstRow(const MenuPCPage* page);
 extern "C" s32 GetShopHistoryFirstRow(const MenuPCPage* page);
 extern "C" void SetMenuTextureTranslation(CTexObj* tex, f32 x, f32 y);
 extern "C" void SetMenuTextureScale(CTexObj* tex, f32 x, f32 y);
-extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color);
+extern "C" void DrawSolidQuad(CGs* gs, const Vec* quad, u32 color);
 extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha, f32 /*scale*/);
 extern "C" void SetMenuLineWidth(CGs* gs, u8 width, s32 texOffs);
 extern "C" void SetMenuBlendMode(CGs* gs, s32 type, s32 src, s32 dst, s32 op);
@@ -2663,13 +2663,10 @@ extern "C" void SetMenuTextureScale(CTexObj* tex, f32 x, f32 y)
  * @note Address: 0x80049174
  * @note Size: 0x6C
  */
-// NONMATCHING: retail keeps quad in r4, hoists the loads above the stack stores and moves the colour into r4 last.
-// That is the code of a const Vec* quad passed to a DrawGsVertexQuad whose four colours follow the twelve
-// coordinates; cgs.h declares them interleaved, and its other callers are outside this file.
-extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color)
+extern "C" void DrawSolidQuad(CGs* gs, const Vec* quad, u32 color)
 {
-	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
-	                 color, quad[3].x, quad[3].y, quad[3].z, color);
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z, quad[3].x,
+	                 quad[3].y, quad[3].z, color, color, color, color);
 }
 
 /**
