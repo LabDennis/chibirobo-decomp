@@ -478,6 +478,7 @@ gamecube_libs = [
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(NonMatching, "game/interfacetext.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/cjanim.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfloor.cpp", cflags=with_hsd_headers(cflags_game)),
