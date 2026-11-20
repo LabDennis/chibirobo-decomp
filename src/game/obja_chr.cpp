@@ -1616,7 +1616,11 @@ Vec lbl_80378258[3];   // zero vectors, the first copied by FirstEdgePoint
 Vec gPlayerFloorCenterDefault;
 Vec gPlayerFloorExtentDefault;
 u8 lbl_8035688C[0x48]; // unused retail block
+#if defined(VERSION_JP)
 u8 lbl_803568D4[0x18]; // unused retail block
+#else
+u8 lbl_803568D4[0x24]; // unused retail block
+#endif
 PointPtcl gPointParticlePool[10];
 PointPtcl* gPointParticleSlots[10];
 SuitChangeEffect gPlayerSuitChangeEffect;

@@ -676,7 +676,7 @@ game/ccameraactionmap2.cpp:
 	.ctors      start:0x801FEF64 end:0x801FEF68
 	.rodata     start:0x8020D5C8 end:0x8020DAF8
 	.data       start:0x8022DC38 end:0x8022DD10
-	.bss        start:0x8059A5B0 end:0x8059E3D0
+	.bss        start:0x8059A5B0 end:0x8059E3CC
 	.sdata      start:0x80634EA8 end:0x80634EE0
 	.sbss       start:0x80635748 end:0x80635778
 	.sdata2     start:0x80638C54 end:0x80638D48
