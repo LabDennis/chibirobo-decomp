@@ -1,11 +1,48 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 52 fertig, Branch devin/lane3 (Commit 081c1c33). R24J01:
+Stand: Lauf 53 fertig, Branch devin/lane3 (Commit 88dd81d0). R24J01:
 6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 53 — LoadFromPlacement portiert, 81,74 % fuzzy NONMATCHING
+
+- **Merge:** all-releases (cb115b0c) ist Vorfahre — nichts zu holen.
+- **LoadFromPlacement__4XObjFRC9CoordInfo** (0x800AC238, 0x1260 B)
+  komplett aus Retail-ASM rekonstruiert und committed: Placement-
+  Flags 0x80000000 → sofort TRUE; AttrInfo::Init wenn mObjData==NULL;
+  GetObjectCollisionList-Init; fn_800AD498-Call bei Source; 64-Bit-
+  Status-Join (Placement-Flags + ObjData-Flags + Drawn-Bit);
+  pos/scale ÷100, rot ×DEG2RAD über virtuelle Setter; SetTranslateX
+  (bit 0x800, ×gScreenWidthScale); SetAnim + rand()%GetAnimEndFrame;
+  ResetObjectState; Farbkanäle; Stage-Script über
+  GetStagePlacementIndex/GetStageScriptByIndex; Floor-Updates
+  (Heights + XZExtent); Floor-Bit 0x80000000-Logik; _188-Kaskade
+  {2,5,9..0x13}; Kind-Switch → _18C (29 Werte, 41 Cases, default −1);
+  _6CC=NAN, mScreenBoundsValid-Ausdruck; Ambient via
+  vf1A8(GetStageInfo()->_09/100) bei bit 0x1000000; fn_800B4988 +
+  AssignAnimEventCallback + Release-Zähler am Ende.
+- **WiiStageInfo lokal in obja.cpp** — game/cgameutil.h zieht den
+  GC-xobj.h herein (Klassenkonflikt), Idiom aus gameupdate.cpp
+  kopiert: GetStageEnvironment()[0] → struct mit _09-Ambient-Byte.
+- **vf1A8-Signatur korrigiert:** `Fv` → `Ff` (Retail ruft mit f32).
+  xobj.h + Impl + config/R24J01/symbols.txt (`vf1A8__4XObjFf`) —
+  vf1A8 matcht 100 %. Auto-.s-Vtable-Referenzen regenerieren beim
+  Build sauber.
+- **Score 0 → 81,74 %** (4704 B). Ehrlich NONMATCHING; Rest vmtl.
+  Regalloc/Scheduling + String-/Pool-Platzierung, noch nicht
+  analysiert.
+- **Gate:** R24J01 main.dol OK, Report-Diff vs Baseline **0
+  Regressionen**; GC 3× 17 files OK; clang-format 18.1.8
+  (~/.local/opt/clang-format-18/bin/clang-format) auf obja.cpp
+  angewendet + -n --Werror sauber; xobj.h-Verstöße sind Altbestand
+  (HEAD identisch). check.py --source-only direkt bleibt auf diesem
+  Host blockiert (Aufruf verworfen), Format manuell geprüft.
+- **Nächster Schritt:** Restdiff von LoadFromPlacement ansehen
+  (objdiff gegen Retail, ~18 %) — danach TestFloorCollision
+  0x800B034C (0x120C). fn_800AD498 bleibt in Liegt.
 
 ## Lauf 52 — fn_800AF51C portiert, 71,44 % NONMATCHING
 
@@ -295,12 +332,11 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 - vf168__4XObjFUl 0x800AE170 (69,02): seit Lauf 48 im Report,
   Restdiff unanalysiert.
 - vf198 (87,56): Scheduling-Rest, unverändert.
+- LoadFromPlacement (81,74): Restdiff noch nicht analysiert —
+  vermutlich Regalloc/Scheduling, evtl. Pool-Platzierung wie AF098.
 - obja-Funktionen ohne Quelltext, Retail-Größen:
   fn_800AD498 ~0x3D8 (strcmp, bctrl über
-  gGame+0x41E4-vf); fn_800AE9F0 ~0x6A4 (0x1000-Frame, Farbtabellen,
-  DrawGsColoredTrianglePrimitive ×8); fn_800AF51C ~0xA64 (NW4R-ResMat-
-  Tev-Schleife); LoadFromPlacement 0x800AC238 0x1260;
-  TestFloorCollision 0x800B034C 0x120C.
+  gGame+0x41E4-vf); TestFloorCollision 0x800B034C 0x120C.
 - Alt-Callchecks (fremd): gamestart::Start, objb_act-UpdateHeldObject/
   UpdateLiftActionAnimation, actor_pool __ct__*Fv (fn_8001AFAC),
   ut fn_8018F9B4 (__as__3Vec), _savegpr-/@4@-Dtor-Fälle.
@@ -309,15 +345,14 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Nächster Schritt
 
-fn_800AD498: Anhang-A-Quelle wiederherstellen, Restdiff 84,66→100
-schließen (Registerwahl r24–r31 aus Retail-Ablauf oben), dabei
-fn_800AF098s `""`-Fold beobachten — erst committen wenn AF098 nicht
-unter 98,38 fällt (Pool-Mechanismus siehe Lauf-49-Blocker). Falls
-AF098 unlösbar regrediert: AD498 uncommitiert lassen und zu vf168
-(69,02-Diff ansehen) oder fn_800AE9F0/fn_800AF51C wechseln —
-LoadFromPlacement + TestFloorCollision (je ~0x1200) eigene Anläufe.
-CustomShadow-Ctor/Draw (0x800C6F60/0x800C7130) als Quelle in die
-Lücken-Unit, sobald deren Originaldatei identifiziert ist.
+LoadFromPlacement-Restdiff (81,74→mehr) mit objdiff gegen Retail
+diagnostizieren — Klassifikation Regalloc/Scheduling vs. Pool/
+Referent. Danach TestFloorCollision 0x800B034C (0x120C) als
+eigener Anlauf. fn_800AD498 weiter uncommittbar (AF098-Pool-
+Regression, Lauf-49-Blocker, Anhang A unten); AF098s `""`-Fold
+beobachten sobald die Unit-Strings sich ändern. CustomShadow-
+Ctor/Draw (0x800C6F60/0x800C7130) als Quelle in die Lücken-Unit,
+sobald deren Originaldatei identifiziert ist.
 
 ## Anhang A — fn_800AD498 Prototyp (Lauf 49, 84,66 %, reverted)
 
