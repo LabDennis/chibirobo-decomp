@@ -2674,12 +2674,11 @@ extern "C" void DrawTitleOptions(Title* title)
 	if (scale > 0.0f) {
 		f32 alpha  = 255.0f * scale;
 		f32 h      = 224.0f * scale;
-		s32 a      = alpha;
+		u32 lit    = (u8)(s32)alpha | 0xFFFFFF00;
 		u32 window = (u32)alpha | 0xFFFFFF00;
 		f32 top;
 		DrawTexturedWindowFrame((u32)(160.0f * scale), window, 320.0f, top = 224.0f - h / 2.0f, 320.0f * scale, h, 1.0f, 1.0f, 1.0f);
 
-		u32 lit    = (u8)a | 0xFFFFFF00;
 		u32 normal = (u8)alpha | 0xFFFFFF00;
 		const char* text;
 #if !defined(VERSION_PAL)
