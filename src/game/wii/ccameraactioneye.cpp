@@ -8,44 +8,70 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
 
-class XObjChr;
-extern "C" {
-// the empty debug-draw hook DrawDebug2d feeds, in cmotioncontrolcamera.cpp's range
-void fn_8016AA74(const f32* params);
-// the first person eye of the player object; xchr.h is GameCube-only, on the
-// Wii the same function sits at 0x800E589C
-Vec GetPlayerFirstPersonEyePosition(XObjChr* player);
-}
+#define EYE_PLAYER gGame.GetPlayer()
 
-// the band limits the pointer's aim point is clamped into; the free look swaps
-// between the two whenever mOverride has a part set
+// the pointer position runs through this on its way to the look, per axis of
+// the clamped screen point; shared by Update, TrackPointer and the debug draw
+static const f32 sEyePointerLimits[4] = { 0.9f, 0.9f, 0.3f, 0.2f };
+
+// the look angle Reset starts from, word-copied into the SetAngle argument
+static const Vec sEyeResetAngle = { 0.05235988f, 0.0f, 0.0f };
+
+// the speed limits the look target's merge divides by; the free look swaps to
+// the wide one whenever mOverride has a part set
 static CVec sEyeLimitA(20.0f, 20.0f, 20.0f);
 static CVec sEyeLimitB(30.0f, 30.0f, 20.0f);
 
-// the Wii player object keeps its action states past the named part of
-// WiiPlayerState; the offsets are read straight off the retail object:
-// +0xAA4 the lift state (7-19 busy), the rest the idle checks the GameCube ran
-// on mHang/mJump/mLadder/mRope/mPush/mTumble
-static inline bool PlayerCanLook()
-{
-	const u8* player = (const u8*)gGame.GetPlayer();
-	s32 lift         = *(const s32*)(player + 0xAA4);
-	if (lift >= 7 && lift <= 19) {
-		return false;
-	}
-	return *(const s32*)(player + 0xB54) == 0 && *(const s32*)(player + 0xBA4) == 0 && *(const s32*)(player + 0xBF8) == 0
-	    && *(const s32*)(player + 0xC3C) == 0 && *(const s32*)(player + 0xC7C) == 0 && *(const s32*)(player + 0xCD4) == 0;
+// the pitch the last Update merged, Reset reseeds it
+static f32 sPrevPitch;
+
+extern "C" {
+// the empty debug-draw hook DrawDebug2d feeds, in cmotioncontrolcamera.cpp's range
+void fn_8016AA74(const f32* params);
+// clamps a value into [min, max], in cmotioncontrolcamera.cpp
+f32 fn_8016A81C(f32 value, f32 min, f32 max);
+// clamps the screen point into the per-axis limits, in cmotioncontrolcamera.cpp
+void fn_8016AA78(f32* out, f32* in, f32* limits);
 }
 
-static inline void ClampStick(f32& value)
+// the first person eye of the player object, xobj_chr.cpp
+Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* player);
+
+// the pointer's screen resolution, cpadact.cpp
+extern s32 gPointerScreenWidth, gPointerScreenHeight;
+
+// the curve evaluator's return, two floats back in r3/r4
+struct WiiCameraPoint {
+	f32 x;
+	f32 y;
+};
+
+extern "C" WiiCameraPoint fn_8016A844(const EyeCurve* curve, f32 t);
+
+// whether the player's action states leave the look controls free: the lift
+// action's busy states and the idle states of the rest, the GameCube's checks
+// with the Wii action offsets
+inline bool PlayerCanLook()
 {
-	if (value > 0.8f) {
-		value = 0.8f;
-	} else if (value < -0.8f) {
-		value = -0.8f;
+	WiiPlayerState* player = EYE_PLAYER;
+	bool result            = false;
+	bool busy              = false;
+	if (!(player->mLift.mState != 7 && player->mLift.mState != 8 && player->mLift.mState != 9 && player->mLift.mState != 11
+	      && player->mLift.mState != 12 && player->mLift.mState != 13 && player->mLift.mState != 14 && player->mLift.mState != 15
+	      && player->mLift.mState != 16 && player->mLift.mState != 17 && player->mLift.mState != 18 && player->mLift.mState != 19)) {
+		busy = true;
 	}
+	if (!busy && player->mHang.mState == 0 && player->mJump.mState == 0 && player->mLadder.mState == 0 && player->mRope.mState == 0
+	    && player->mPush.mState == 0 && player->mTumble.mState == 0) {
+		result = true;
+	}
+	return result;
 }
 
+/**
+ * @note Address: 0x80164BFC
+ * @note Size: 0x5C
+ */
 void CCameraActionEye::Init()
 {
 	mCurveX.mP0X = 0.0f;
@@ -67,8 +93,10 @@ void CCameraActionEye::Init()
 	mFirstFrame  = 0;
 }
 
-// NONMATCHING: same stores and calls as retail, different emission order;
-// mLook.Reset folds the value, target and speed writes into the member call
+/**
+ * @note Address: 0x80164C58
+ * @note Size: 0x1A8
+ */
 void CCameraActionEye::Reset()
 {
 	mLook.x         = 0.0f;
@@ -86,194 +114,334 @@ void CCameraActionEye::Reset()
 	mVec80.x        = 0.0f;
 	mVec80.y        = 0.0f;
 	mVec80.z        = 0.0f;
-	mVec90.x        = 0.0f;
-	mVec90.y        = 0.0f;
-	mVec90.z        = 0.0f;
-	mVecA0.x        = 0.0f;
-	mVecA0.y        = 0.0f;
-	mVecA0.z        = 0.0f;
+	mVec80.mTarget.x = 0.0f;
+	mVec80.mTarget.y = 0.0f;
+	mVec80.mTarget.z = 0.0f;
+	mVec80.mSpeed.x  = 0.0f;
+	mVec80.mSpeed.y  = 0.0f;
+	mVec80.mSpeed.z  = 0.0f;
 
-	Vec angle = { 0.05235988f, 0.0f, 0.0f };
-	angle.y   = gGame.GetPlayer()->mMoveRotate.y;
+	Vec angle = sEyeResetAngle;
+	angle.y   = EYE_PLAYER->mMoveRotate.y;
 	SetAngle(angle);
 	SetDistance(100.0f);
 	SetFov(40.0f);
 
-	mLook.Reset(0.05235988f, gGame.GetPlayer()->mMoveRotate.y, 0.0f);
-	mB0         = 0.0f;
-	mVecB4.x    = 0.0f;
-	mVecB4.y    = 0.0f;
-	mVecB4.z    = 0.0f;
-	mVecC0      = sEyeLimitA;
-	mVec10C.x   = 0.0f;
-	mVec10C.y   = 0.0f;
-	mVec10C.z   = 0.0f;
-	mRange      = 24.0f;
+	mLook.Reset(0.05235988f, EYE_PLAYER->mMoveRotate.y, 0.0f);
+	sPrevPitch = 0.05235988f;
+	mB0        = 0.0f;
+	Vec zero   = { 0.0f, 0.0f, 0.0f };
+	mVecB4     = zero;
+	mVecC0     = sEyeLimitA;
+	mVec10C.x  = 0.0f;
+	mVec10C.y  = 0.0f;
+	mVec10C.z  = 0.0f;
+	mRange     = 24.0f;
 	mFirstFrame = 1;
 }
 
-// NONMATCHING: the body is reconstructed from the retail flow - the free-look
-// toggle on the remote buttons, the pointer aim through TrackPointer and the
-// two response curves, the action-state look gates, the roboeyes swap and the
-// blur writes on the zoom - but the instruction order and the uncharted member
-// reads do not line up yet
+/**
+ * @note Address: 0x80164E00
+ * @note Size: 0x118C
+ */
 void CCameraActionEye::Update(u32 step)
 {
-	WiiPlayerState* player = gGame.GetPlayer();
-	const CPadOne& pad     = gWiiPads[0];
-
-	SetEye(GetPlayerFirstPersonEyePosition((XObjChr*)player));
+	CPad pad(0);
+	SetEye(GetPlayerFirstPersonEyePosition(EYE_PLAYER));
 
 	if (!gGame.GetStatusFlags(0xC00)) {
-		if ((pad.mTrigger & 0x40) && (pad.mButton & 0x20) && gGame.GetStatusFlags(0x80000000)) {
-			if (gGame.GetStatusFlags(0x200)) { // toggle the free-look mode
-				gGame.ClearStatusFlags(0x200);
-				StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 224.0f, 430.0f, 400.0f,
-				                               430.0f, 400.0f, 0.0f, 0xFF, FALSE);
+		if (gGame.IsRunning()) {
+			if ((pad.mPad->mTrigger & 0x0040000000008000ULL) && (pad.mPad->mButton & 0x0020000000010000ULL)
+			    && gGame.GetStatusFlags(0x80000000)) {
+				gGame.ToggleStatusFlags(0x200); // the free-look mode
+				if (gGame.GetStatusFlags(0x200)) {
+					gGame.mRoboeyes.StartTransition(0x80, 0x80, 0xFF, 0xFF, 0x80, 0x80, 0xFF, gPointerScreenWidth / 2,
+					                                gPointerScreenHeight / 2, 430.0f, 400.0f, 430.0f, 400.0f, 0.0f, 0xFF, FALSE);
+					mLook.y         = 0.0f;
+					mLook.x         = 0.05235988f;
+					mLook.z         = 0.0f;
+					mLook.mTarget.x = 0.05235988f;
+					mLook.mTarget.y = 0.0f;
+					mLook.mTarget.z = 0.0f;
+				} else {
+					gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2,
+					                                gPointerScreenHeight / 2, 430.0f, 400.0f, 430.0f, 400.0f, 0.0f, 0xFF, FALSE);
+				}
+			}
+
+			if (gGame.GetStatusFlags(0x200)) { // free-look: the nunchuk stick aims
+				f32 x = pad.mPad->mSubStick.x;
+				if (x > 0.8f) {
+					x = 0.8f;
+				} else if (x < -0.8f) {
+					x = -0.8f;
+				}
+				f32 y = pad.mPad->mSubStick.y;
+				if (y > 0.8f) {
+					y = 0.8f;
+				} else if (y < -0.8f) {
+					y = -0.8f;
+				}
+				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
+					y = 0.0f;
+					x = y;
+				}
+				mLook.mTarget.y = -HALF_PI * x;
+				mLook.mTarget.x = -0.7853982f * y;
 			} else {
-				gGame.SetStatusFlags(0x200);
-				StartScreenWipeColorTransition(&gGame.mRoboeyes, 0x80, 0x80, 0xFF, 0xFF, 0x80, 0x80, 0xFF, 320.0f, 224.0f, 430.0f, 400.0f,
-				                               430.0f, 400.0f, 0.0f, 0xFF, FALSE);
-			}
-		}
-
-		f32 zoom;
-		if (gGame.GetStatusFlags(0x200)) { // free-look: the C-stick aims
-			f32 x = pad.mSubStick.x;
-			ClampStick(x);
-			f32 y = pad.mSubStick.y;
-			ClampStick(y);
-			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
-				y = 0.0f;
-				x = y;
-			}
-			mLook.mTarget.y = -1.5707964f * x;
-			mLook.mTarget.x = -0.7853982f * y;
-		} else {
-			// the pointer picks the aim point, run through the response curve
-			mVecB4.x = gWiiPointer.mPointer.x;
-			mVecB4.y = gWiiPointer.mPointer.y;
-			mVecB4.z = gWiiPointer.mPointer.z;
-			if (gWiiPointer.mPointerValid) {
-				mLook.mTarget.x = TrackPointer(step, 30.0f, 400.0f) * -0.7853982f;
-			}
-
-			f32 turn = pad.mStick.x;
-			ClampStick(turn);
-			f32 tilt = pad.mStick.y;
-			ClampStick(tilt);
-			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
-				tilt = 0.0f;
-				turn = tilt;
-			}
-			f32 pitch       = 0.0f;
-			mLook.mTarget.y = 0.0f;
-			if (tilt > 0.0f) {
-				pitch = mLook.x + 0.06981317f * Abs(tilt);
-				if (pitch > 0.87266463f) {
-					pitch = 0.87266463f;
-				}
-			} else if (tilt < 0.0f) {
-				pitch = mLook.x - 0.06981317f * Abs(tilt);
-				if (pitch < -0.87266463f) {
-					pitch = -0.87266463f;
-				}
-			}
-			if (mOverride.y != 0.0f) {
-				mLook.mTarget.y = mOverride.y;
-			}
-			if (mOverride.x == 0.0f) {
-				if (pitch != 0.0f) {
-					mLook.mTarget.x = pitch;
-					mLook.x         = pitch;
-					if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
-						PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
+				// the pointer picks the aim point
+				CVec aim(0.0f, 0.0f, 0.0f);
+				if (gWiiPointer.mPointerValid) {
+					Vec in = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
+						       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f,
+						       gWiiPointer.mPointer.z };
+					Vec out;
+					fn_8016AA78((f32*)&out, (f32*)&in, (f32*)sEyePointerLimits);
+					Vec scaled = out;
+					aim.Set(scaled);
+					mB0    = 0.0f;
+					mVecB4 = scaled;
+					mVec80.mSpeed.x = 0.02f;
+					mVec80.mSpeed.y = 0.02f;
+					mVec80.mSpeed.z = 0.02f;
+					mVec80.mTarget.x = 1.0f;
+					mVec80.mTarget.y = 1.0f;
+					mVec80.mTarget.z = 1.0f;
+					if (aim.x == 0.0f && aim.y == 0.0f) {
+						// the center needs no blend
 					}
+				} else {
+					if (!(gGame._41B0 & 8)) {
+						aim.Set(mVecB4);
+					}
+					mVec80.mSpeed.x  = 1.0f;
+					mVec80.mSpeed.y  = 1.0f;
+					mVec80.mSpeed.z  = 1.0f;
+					mVec80.mTarget.x = 0.0f;
+					mVec80.mTarget.y = 0.0f;
+					mVec80.mTarget.z = 0.0f;
 				}
+				mVec80.Step(step);
+
+				f32 aimX = aim.x;
+				f32 aimY = aim.y;
+				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()
+				    || !(EYE_PLAYER->mLift.mState != 1 && EYE_PLAYER->mLift.mState != 2 && EYE_PLAYER->mLift.mState != 3)) {
+					aimX = 0.0f;
+					aimY = aimX;
+				}
+
+				f32 track  = TrackPointer(step, -aimX, aimY);
+				f32 pitchT = track * -1.0f;
+				WiiCameraPoint pt = fn_8016A844(&mCurveX, Abs(aimY));
+				f32 pitch         = aimY;
+				if (aimY > 0.0f) {
+					pitch = 0.8f * pt.y;
+				}
+				if (pitch < 0.0f) {
+					pitch = 0.8f * -pt.y;
+				}
+
+				f32 targetY;
+				if (aimY == 0.0f && pitch == 0.0f) {
+					targetY = (1.0f - 0.3f) * EYE_PLAYER->mMoveRotate.y + 0.3f * mLook.y;
+				} else {
+					targetY = EYE_PLAYER->mMoveRotate.y - 0.034906585f * pitch * step;
+				}
+				if (mOverride.y == 0.0f) {
+					mLook.mTarget.y = targetY;
+				} else {
+					mLook.mTarget.y = mOverride.y + EYE_PLAYER->mMoveRotate.y;
+					mVecC0          = sEyeLimitB;
+				}
+				if (mOverride.x == 0.0f) {
+					mLook.mTarget.x = pitchT;
+					sPrevPitch      = pitchT;
+				} else {
+					mLook.mTarget.x = mOverride.x;
+					mVecC0          = sEyeLimitB;
+				}
+				if (mOverride.y == 0.0f) {
+					EYE_PLAYER->SetRotationY(mLook.mTarget.y);
+				}
+
+				f32 zoom = pad.mPad->mStick.y;
+				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
+					zoom = 0.0f;
+				}
+				if (mOverride.z == 0.0f) {
+					mLook.mTarget.z = -30.0f * zoom;
+				} else {
+					mLook.mTarget.z = mOverride.z;
+				}
+			}
+
+			f32 speedY = Abs(mLook.mTarget.y - mLook.y) / mVecC0.y;
+			f32 speedX = Abs(mLook.mTarget.x - mLook.x) / mVecC0.x;
+			f32 speedZ = Abs(mLook.mTarget.z - mLook.z) / mVecC0.z;
+
+			// the turn speed may only grow a tenth of a degree per update
+			static f32 sPrevSpeedX = speedX;
+			f32 diff               = speedX - sPrevSpeedX;
+			f32 thresh             = 0.1f * DEG2RAD;
+			if (Abs(diff) > thresh) {
+				speedX = sPrevSpeedX + thresh / Abs(diff) * diff;
+			}
+			sPrevSpeedX = speedX;
+			if (gWiiPointer.mPointerValid) {
+				speedY *= mVec80.y;
+				speedX *= mVec80.x;
+			}
+			mLook.mSpeed.x = speedX;
+			mLook.mSpeed.y = speedY;
+			mLook.mSpeed.z = speedZ;
+
+			static CVec sPrevTarget;
+			if (RAD2DEG * Abs(mLook.mTarget.x - sPrevTarget.x) > 0.2f || RAD2DEG * Abs(mLook.mTarget.y - sPrevTarget.y) > 0.2f) {
+				// still turning fast: keep the sound on
+				if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
+					PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
+				}
+			}
+			sPrevTarget.Set(mLook.mTarget);
+			mLook.Step(step);
+
+			if (gGame.GetStatusFlags(0x200)) {
+				Vec look = { 0.0f, 0.0f, 0.0f };
+				look.x   = mLook.x;
+				look.y   = mLook.y;
+				SetAngle(EYE_PLAYER->mMoveRotate + look);
 			} else {
-				mLook.mTarget.x = mOverride.x;
+				CVec base = EYE_PLAYER->mMoveRotate;
+				base.y    = 0.0f;
+				Vec look  = { 0.0f, 0.0f, 0.0f };
+				look.x    = mLook.x;
+				look.y    = mLook.y;
+				SetAngle(base + look);
 			}
-			player->SetRotationY(player->mMoveRotate.y - 0.034906585f * turn * step);
+			SetFov(40.0f + mLook.z);
 
-			zoom = pad.mSubStick.y;
-			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
-				zoom = 0.0f;
+			static f32 sPrevZoomSpeed = 0.0f;
+			f32 stick                 = pad.mPad->mStick.y;
+			if (Abs(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
+				f32 alpha = -1.0f;
+				if (alpha >= 0.0f) {
+					gGame.mBlur.mAlpha = alpha;
+				}
+				f32 target = 0.0f;
+				if (target >= 0.0f) {
+					gGame.mBlur.mTarget = target;
+				}
+				gGame.mBlur.mOffsetX = 2.0f * -stick;
+				gGame.mBlur.mOffsetY = 2.0f * -stick;
+				gGame.mBlur.mSpeed   = Abs(0.1f);
+				gGame.mBlur.CalcMtx();
+			} else { // zooming: kick the blur to 0.8, it decays back to 0
+				f32 alpha = 0.8f;
+				if (alpha >= 0.0f) {
+					gGame.mBlur.mAlpha = alpha;
+				}
+				f32 target = 0.0f;
+				if (target >= 0.0f) {
+					gGame.mBlur.mTarget = target;
+				}
+				gGame.mBlur.mOffsetX = 2.0f * -stick;
+				gGame.mBlur.mOffsetY = 2.0f * -stick;
+				gGame.mBlur.mSpeed   = Abs(0.1f);
+				gGame.mBlur.CalcMtx();
 			}
-			if (mOverride.z == 0.0f) {
-				mLook.mTarget.z = -30.0f * zoom;
-			} else {
-				mLook.mTarget.z = mOverride.z;
-			}
+			sPrevZoomSpeed = speedZ;
 		}
-
-		f32 speedY     = Abs(mLook.mTarget.y - mLook.y) / 30.0f;
-		f32 speedX     = Abs(mLook.mTarget.x - mLook.x) / 30.0f;
-		f32 speedZ     = Abs(mLook.mTarget.z - mLook.z) / 20.0f;
-		mLook.mSpeed.x = speedX;
-		mLook.mSpeed.y = speedY;
-		mLook.mSpeed.z = speedZ;
-		if (57.295776f * speedY > 0.2f || 57.295776f * speedX > 0.2f) { // still turning fast: keep the sound on
-			if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
-				PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
-			}
-		}
-		mLook.Step(step);
-
-		// the move vector's y is mRotY at +0x64, so it sits at +0x60
-		Vec look = { mLook.x, mLook.y, 0.0f };
-		SetAngle(CVec(*(const Vec*)((const u8*)player + 0x60)) + look);
-		SetFov(40.0f + mLook.z);
-
-		static f32 sPreviousZoomSpeed = 0.0f;
-		f32 stick                     = pad.mStick.y;
-		// the Wii blur sits at CGame+0x52E4; the fields are uncharted, the writes
-		// retail makes land at +0x190..+0x1A0 with the vfunc at +0x88
-		u8* blur = (u8*)&gGame + 0x52E4;
-		if (Abs(speedZ - sPreviousZoomSpeed) < 0.02f) { // zoom settled
-			*(f32*)(blur + 0x190) = -1.0f;
-		} else {
-			*(f32*)(blur + 0x190) = 0.8f;
-		}
-		*(f32*)(blur + 0x194) = 0.0f;
-		*(f32*)(blur + 0x198) = 0.1f;
-		*(f32*)(blur + 0x19C) = *(f32*)(blur + 0x1A0) = 2.0f * -stick;
-		sPreviousZoomSpeed                            = speedZ;
 	}
+	gGame.mRoboeyes.mRotation = mAngle.y;
 }
 
 // the pointer tracker's dead band: keeps the aim inside a mRange-wide window
-// around the screen middle and hands back the scaled offset;
-// NONMATCHING: retail folds the band math and the first-frame snap into the
-// mVec10C window and a static previous-sample word at lbl_805A1D70
+// around the tracked point and hands back the scaled scroll offset
+/**
+ * @note Address: 0x80165F8C
+ * @note Size: 0x3F4
+ */
 f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 {
-	f32 y = gWiiPointer.mPointer.y;
+	static f32 sPrev = 0.0f;
 
-	mVec10C.y = y;
 	if (mFirstFrame) {
+		f32 winLow  = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * -sEyePointerLimits[2];
+		f32 winHigh = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * sEyePointerLimits[2];
+		sPrev       = 0.0f;
+		f32 pointerY = gWiiPointer.mPointer.y;
+		mVec10C.y    = pointerY;
+		f32 lo       = 0.5f * mRange + winLow;
+		if (pointerY < lo) {
+			mVec10C.y = lo;
+		} else {
+			f32 hi = -0.5f * mRange + winHigh;
+			if (pointerY > hi) {
+				mVec10C.y = hi;
+			}
+		}
 		mFirstFrame = 0;
-		if (y > high) {
-			y = high;
-		} else if (y < low) {
-			y = low;
+		return 0.7853982f * sPrev + 0.05235988f;
+	}
+
+	f32 bandLow  = mVec10C.y - 0.5f * mRange;
+	f32 bandHigh = mVec10C.y + 0.5f * mRange;
+	if (low == 0.0f) {
+		f32 pointerY = gWiiPointer.mPointer.y;
+		f32 winLow   = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * -sEyePointerLimits[2];
+		f32 winHigh  = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * sEyePointerLimits[2];
+		if (pointerY < bandLow && winHigh < bandHigh && gWiiPointer.mPointerValid) {
+			f32 d = pointerY - bandLow;
+			mVec10C.y += d;
+			sPrev += -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2]));
+		} else if (pointerY > bandHigh && winLow > bandLow && gWiiPointer.mPointerValid) {
+			f32 d = pointerY - bandHigh;
+			mVec10C.y += d;
+			sPrev += -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2]));
+		} else if ((winLow > bandLow || winHigh < bandHigh) && gWiiPointer.mPointerValid) {
+			// the pointer holds the aim while it stays inside the window
+		} else {
+			mVec10C.y = pointerY;
+			sPrev     = 0.0f;
+			f32 lo    = 0.5f * mRange + winLow;
+			if (pointerY < lo) {
+				mVec10C.y = lo;
+			} else {
+				f32 hi = -0.5f * mRange + winHigh;
+				if (pointerY > hi) {
+					mVec10C.y = hi;
+				}
+			}
+		}
+	} else {
+		f32 pointerY = gWiiPointer.mPointer.y;
+		if (pointerY < bandLow) {
+			f32 d = pointerY - bandLow;
+			mVec10C.y += d;
+			sPrev = fn_8016A81C(sPrev + -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2])), -1.0f, 1.0f);
+		} else if (pointerY > bandHigh) {
+			f32 d = pointerY - bandHigh;
+			mVec10C.y += d;
+			sPrev = fn_8016A81C(sPrev + -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2])), -1.0f, 1.0f);
 		}
 	}
-	f32 mid = 0.5f * (low + high);
-	if (y > mid + mRange) {
-		y = mid + mRange;
-	} else if (y < mid - mRange) {
-		y = mid - mRange;
-	}
-	return (y - mid) / mRange;
+	return 0.7853982f * sPrev + 0.05235988f;
 }
 
-// NONMATCHING: retail passes a four-float debug block to an empty hook
+/**
+ * @note Address: 0x80166380
+ * @note Size: 0xC
+ */
 void CCameraActionEye::DrawDebug2d()
 {
-	static const f32 sEyeDebugParams[4] = { 0.9f, 0.9f, 0.3f, 0.2f };
-	fn_8016AA74(sEyeDebugParams);
+	fn_8016AA74(sEyePointerLimits);
 }
 
+/**
+ * @note Address: 0x8016638C
+ * @note Size: 0xC
+ */
 u32 CCameraActionEye::GetCameraFlags()
 {
 	return 0x20019;
