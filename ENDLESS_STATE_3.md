@@ -43,6 +43,21 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
   Pass, Wii-only — CopiedMatAccess-Idiome aus cobj.cpp/cjanim.cpp
   als Vorlage), dann LoadFromPlacement 0x800AC238 (0x1260) ohne
   fn_800AD498 (bleibt in Liegt), TestFloorCollision 0x800B034C.
+- **fn_800AF51C-Anfang (belegt, Disasm /tmp/af51c.s lokal):**
+  Guard `lwz 0xf0(this)` = ScnMdl* m_pScnMdl@_F0, NULL→return;
+  `this+0xEC` = ResMdl mResMdl (Methoden als ResMdl*). Schleife
+  i<GetResMatNumEntries: `ResMat mat = mResMdl.GetResMat(i)` @r1+0x2c;
+  `CopiedMatAccess access(m_pScnMdl, i)` @r1+0x30; dann je Attribut
+  `ResX x = access.GetResX(false); if (!x) { if (!mat) db::Panic(
+  header,zeile,msg); x = mat.GetResX(); }` — Reihenfolge: GenMode,
+  MatTevColor, TexCoordGen, TexObj, TexSrt, Tev (bl-Folge
+  0x3534..0x3870). Danach `mat.GetResUserData()` + `ResDic::__vc__
+  (name)` → ~250 Insns Tev-Setter/UserData-Logik. Panic-Strings:
+  lbl_802E6B90/6B70/6BA0/6BC0 (Headernamen) + lbl_802D98E0-Pool,
+  lbl_80302930/2970/298C/27B0. Panic-Zeilen 0x26d usw. = NW4R-ASSERTs
+  aus den geinlineten ResMat-Accessoren — jede Accessor-Gruppe hat
+  2-3 Panics. Idiom-Vorlage exakt cobj.cpp:697ff (zweistufig:
+  access.GetResX(false), Fallback mat.GetResX()).
 
 ## Lauf 50 — vf168 69,02 → 99,18 % (commit 0df689fe)
 
