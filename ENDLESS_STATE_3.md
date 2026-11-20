@@ -1,11 +1,50 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 59 fertig, Branch devin/lane3, HEAD f3d6b884. R24J01:
-6605/8284 matched (+1); GC: 17 files OK (alle drei). Baselines:
+Stand: Lauf 60 fertig, Branch devin/lane3. R24J01:
+6605/8284 matched (kein Regress), xobj_camera 69,12 % fuzzy;
+GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 60 — CustomShadow-Layout korrigiert + Ctor implementiert (90,5 %)
+
+- **Thunk-/`None`-Rätsel gelöst:** die `fn_800C6584/7C4C/…`-Einträge
+  und `dtor_*`-Stubs zeigen `None`, weil der Report per Symbolnamen
+  paart — unser Compiler emittiert sie als `@4@__dt__…`/`__dt__…`,
+  Retail hat Auto-Namen `fn_*`/`dtor_*`. Dauerhaft unscorebar, kein
+  Punkteverlust. Verifiziert: `virtual ~XObjScnCam() {}` im Klassen-
+  körper verschiebt `__vt__10XObjScnCam`+`@4@`-Thunk in UNSERE TU
+  (Retails Anordnung: Dtors inline, `__dt__`-Kopien in xobjctor/
+  xobj_ut/xobjmember sind weak-Emissionen aus den echten Ctor-Unwind-
+  Tabellen). Zurückgenommen: unser Stub-Ctor referenziert den Dtor
+  nicht → `__dt__10XObjScnCamFv` würde aus xobjctor verschwinden
+  (Regress ohne Report-Gewinn). Ehrlicher Fix erst wenn die echten
+  Ctors (ScnCam 0x800C48A0 0x2B0 u.a.) rekonstruiert sind.
+- **CustomShadow-Layout korrigiert (xobj.h):** Retail-Ctor
+  `stw r4,0xa68(r3)` speichert `lbl_80303780` = Vtable
+  `[RTTI"CustomShadow",0,__dt__12CustomShadowFv]` HINTER den Daten —
+  vptr bei _A68 (RTTI-Basenzeiger 0 = kein polymorpher Base). Daten
+  liegen jetzt in `struct CustomShadowData` (0xA68), `class
+  CustomShadow : public CustomShadowData` legt den vptr korrekt.
+  Alter Kommentar "first virtual declared last" war der falsche
+  Mechanismus (vptr wäre bei +0, Member um +4 verschoben).
+- **`__ct__12CustomShadowFv` None → 90,47 %.** mCenter=0; Schleife 1:
+  `mCircle[i]=(cos(i*s),0,sin(i*s))`; Schleife 2: Ringpaare
+  `(cos,0,sin)`/`(2cos,0,2sin)` + `mColors[2i+1]=i`. s=0.19634955f
+  (π/16), Skala 2.0f, int i (xoris-Idiom = signed→f64).
+  Schlüssel: `(f32)cos(...)`-Cast VOR `*2.0f` → `fmuls` nicht
+  `fmul`; Store-Reihenfolge x,z,y (MWCC hält Programmreihenfolge).
+  Rest: `_savegpr_27` vs Retail `_savegpr_26` (ein Live-Reg mehr).
+- **Gate:** GGTE01/GGTJ01_01/GGTP01 je 17 files OK; R24J01
+  6605/8284, xobjctor 20/51, xobj_ut 6/9, xobjmember 3/64 — kein
+  Regress. check.py: Host hat clang-format 23.1.4 (braucht 18.1.8);
+  eigene Zeilen unter v23 nicht verletzt (Fundstellen vorbestehend).
+- **Nächstes:** `Draw__12CustomShadowF3Vec3VecUl` (0x800C7130, 0x20C,
+  GX-Fan/Ring-Strip); danach obja-Funktionen in Adressfolge
+  (fn_800AD498, LoadFromPlacement, fn_800AE9F0, fn_800AF098,
+  fn_800AF12C, fn_800AF51C, TestFloorCollision 0x800B034C).
 
 ## Lauf 59 — fn_800C6CEC gematcht (+1), drei grosse ScnCam-Funktionen ehrlich
 

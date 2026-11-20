@@ -209,6 +209,31 @@ extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 }
 
 /**
+ * @note Address: 0x800C6F60
+ * @note Size: 0x1D0
+ */
+CustomShadow::CustomShadow()
+{
+	mCenter.x = 0.0f;
+	mCenter.z = 0.0f;
+	mCenter.y = 0.0f;
+	for (int i = 0; i < 33; i++) {
+		mCircle[i].x = (f32)cos(i * 0.19634955f);
+		mCircle[i].z = (f32)sin(i * 0.19634955f);
+		mCircle[i].y = 0.0f;
+	}
+	for (int i = 0; i < 33; i++) {
+		mRing[2 * i].x     = (f32)cos(i * 0.19634955f);
+		mRing[2 * i].z     = (f32)sin(i * 0.19634955f);
+		mRing[2 * i].y     = 0.0f;
+		mRing[2 * i + 1].x = (f32)cos(i * 0.19634955f) * 2.0f;
+		mRing[2 * i + 1].z = (f32)sin(i * 0.19634955f) * 2.0f;
+		mRing[2 * i + 1].y = 0.0f;
+		mColors[2 * i + 1] = i;
+	}
+}
+
+/**
  * @note Address: 0x800C733C
  * @note Size: 0x1A8
  */

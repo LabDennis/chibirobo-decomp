@@ -2371,19 +2371,23 @@ WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // the object's blob shadow: a dark fan (center plus a 33-point rim) over a fading
 // ring of (outer, inner) vertex pairs, built once in the constructor (retail
-// 0x800C6F60) and transformed per Draw (0x800C7130). Its dtor is 0x800BD66C; the
-// vtable sits behind the data at _A68 because the first virtual is declared last.
-class CustomShadow {
-public:
-	CustomShadow();
-	void Draw(Vec pos, Vec scale, u32 alpha); // 0x800C7130
-
+// 0x800C6F60) and transformed per Draw (0x800C7130). Its dtor is 0x800BD66C.
+// The retail ctor stores the vtable pointer behind the data at _A68, so the
+// shadow's arrays live in a non-polymorphic base and the vptr lands after them.
+struct CustomShadowData {
 	Vec mCenter;              // _000
 	Vec mCircle[33];          // _00C, unit rim: (cos(a), 0, sin(a)), a = i * step
 	Vec mFan[34];             // _198, mCenter+mCircle in the Draw transform
 	Vec mRing[66];            // _330, (rim, scaled rim) pairs
 	Vec mRingTransformed[66]; // _648
 	u32 mColors[66];          // _960, ring vertex colors: [2i] = alpha, [2i+1] = i
+};
+STATIC_ASSERT(sizeof(CustomShadowData) == 0xA68);
+
+class CustomShadow : public CustomShadowData {
+public:
+	CustomShadow();
+	void Draw(Vec pos, Vec scale, u32 alpha); // 0x800C7130
 
 	virtual ~CustomShadow(); // _A68 vtable
 };
