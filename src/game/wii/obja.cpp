@@ -10,6 +10,7 @@
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj_ut2.h"
+#include "game/cvec.h"
 #include "game/evt.h"
 #include "game/gmath.h"
 #include "game/globals.h"
@@ -1005,6 +1006,261 @@ void XObj::ResetCullMode()
 		genMode.GXSetCullMode((GXCullMode)(tev.ptr()->PADDING_0x18[5] - 1));
 		mat.DCStore(false);
 	}
+}
+
+extern "C" CVec ReflectVectorAboutNormal(const Vec* source, const Vec* normal);
+extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
+
+static inline void StoreFloorEdge(XObjEdge& edge, const Vec& origin, const Vec& a, const Vec& b)
+{
+	edge.mContactOffset.x -= origin.x;
+	edge.mContactOffset.y -= origin.y;
+	edge.mContactOffset.z -= origin.z;
+	edge.mFrom.x = a.x - origin.x;
+	edge.mFrom.y = a.y - origin.y;
+	edge.mFrom.z = a.z - origin.z;
+	edge.mTo.x   = b.x - origin.x;
+	edge.mTo.y   = b.y - origin.y;
+	edge.mTo.z   = b.z - origin.z;
+}
+
+static inline void StoreSweepContact(const Vec* from, const Vec* to, Vec* contact, Vec& dest, const Vec& hit, f32 top)
+{
+	if (to->y == top) {
+		contact->x = to->x;
+		// The original copies the destination height into Z on an exact top hit.
+		contact->z = to->y;
+		contact->y = from->y;
+	} else {
+		contact->x = hit.x;
+		contact->z = hit.z;
+		contact->y = from->y;
+		dest.x     = hit.x;
+		dest.z     = hit.z;
+	}
+}
+
+// the floor coordinate readers this unit expands inline (same reads as cjanim.cpp's
+// GetFloorCenterOffset/GetFloorExtent; the GameCube's objectfloorquery.h version
+// initialized from template globals the Wii no longer has)
+static inline Vec ReadObjectFloorOffset(const XObj* object, s32 index)
+{
+	Vec offset = { object->mFloors[index].mCenterOffset[0] / 100.0f, object->mFloors[index].mCenterOffset[1] / 100.0f,
+		           object->mFloors[index].mCenterOffset[2] / 100.0f };
+	return offset;
+}
+
+static inline Vec ReadObjectFloorExtent(const XObj* object, s32 index)
+{
+	Vec extent = { object->mFloors[index].mExtent[0] / 100.0f, object->mFloors[index].mExtent[1] / 100.0f,
+		           object->mFloors[index].mExtent[2] / 100.0f };
+	return extent;
+}
+
+// 0x800B034C
+// NONMATCHING: retail hands OnPlayerContact the contact delta as an unnamed temporary (lowest stack slot) and calls
+// PSVECMag between building it and the call, as if the virtual took (const Vec&, f32, s32); the overrides live in
+// the other Wii units, so the signature stays (s32, s32) for now
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
+                             s32 flags)
+{
+	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
+		if (cursor)
+			*cursor = -1;
+		return 0;
+	}
+	if (mStatus.mFlags & 0x0C00000000000000ULL) {
+		if (cursor)
+			*cursor = -1;
+		return 0;
+	}
+	if (mStatus.mFlags & 0x4000000000000000ULL) {
+		if (cursor)
+			*cursor = -1;
+		return 0;
+	}
+	u32 result = 0;
+	CVec start(*(const CVec*)from); // the callers pass CVecs
+	start.y = 0;
+	CVec dest(*(const CVec*)to);
+	dest.y = 0;
+	CVec hit;
+	s32 i = cursor ? *cursor : 0; // a cursor lets a caller resume after a hit
+	for (; mFloors[i].mId != -1; ++i) {
+		if (!(mFloors[i].mFlags & 1)) // the Wii skips floors this flag clears
+			continue;
+		u32 collision = 0;
+		Vec center    = mMoveScale * (mVec714 + ReadObjectFloorOffset(this, i));
+		Vec extent    = mMoveScale * ReadObjectFloorExtent(this, i);
+		f32 objYaw    = mMoveRotate.y;
+		f32 angle     = DEG2RAD * mFloors[i].mYawDegrees;
+		f32 yaw       = objYaw + angle;
+		switch (mFloors[i].mId) {
+		case 0:
+		case 1: { // a disc
+			CVec middle(0, 0, 0);
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
+			PSMTXMultVec(transform, &middle, &middle);
+			const f32 y = middle.y;
+			middle.y    = 0;
+			f32 reach   = radius + extent.x;
+			if (PSVECDistance(&middle, &dest) < reach) { // inside the disc's radius
+				CVec travel              = (dest - start).Normalize();
+				CVec normal              = (dest - middle).Normalize();
+				CVec reflect             = ReflectVectorAboutNormal(&travel, &normal);
+				*push                    = reflect * (dest - start).Length() * 0.0f;
+				hit                      = middle + normal * reach;
+				mEdges[i].mContactOffset = (middle + normal * extent.x) - mMoveTranslate;
+				if (to->y <= mFloorHeights[i] && to->y >= ((y - extent.y) - height)) {
+					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
+					collision = 3; // touching it within its height span
+				} else
+					collision = to->y < ((y - extent.y) - height) ? 0 : 1; // above it
+			}
+			break;
+		}
+		case 2: { // a box
+			Mtx base, local, rotate, scale, transform;
+			PSMTXTrans(base, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(base, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
+			f32 h             = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
+			static Vec corners[8]
+			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
+			Vec world[8];
+			PSMTXMultVecArray(transform, corners, world, 8);
+			for (s32 side = 0; side < 4; ++side) {
+				collision = ResolveCircleWallCollisionXZ(&start, &dest, &world[side * 2], &world[side * 2 + 1], &hit,
+				                                         &mEdges[i].mContactOffset, push, 0, radius);
+				if (collision) {
+					collision = 8; // a wall hit
+					StoreFloorEdge(mEdges[i], mMoveTranslate, world[side * 2], world[side * 2 + 1]);
+					break;
+				}
+			}
+			if (!collision && IsPointInsideQuadXZ(&dest, &world[0], &world[2], &world[4], &world[6])) {
+				collision = 4; // inside it
+				hit.x     = to->x;
+				hit.z     = to->z;
+			}
+			if (collision) {
+				if (to->y <= mFloorHeights[i] && to->y >= (world[0].y - 2.f * (extent.y * h) - height)) {
+					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
+					collision = 3;
+				} else
+					collision = to->y < (world[0].y - 2.f * (extent.y * h) - height) ? 0 : 1; // above it
+			}
+			break;
+		}
+		case 3: { // a wall segment
+			Mtx base, local, rot, extra, scale, transform;
+			PSMTXTrans(base, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rot, 'y', objYaw);
+			PSMTXRotRad(extra, 'y', angle);
+			PSMTXConcat(base, rot, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, extra, transform);
+			PSMTXConcat(transform, scale, transform);
+			Vec wall[2];
+			static Vec ends[2] = { { -.5f, 0, 0 }, { .5f, 0, 0 } };
+			PSMTXMultVecArray(transform, ends, wall, 2);
+			u32 touched = ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], contact, &mEdges[i].mContactOffset,
+			                                           push, 1, radius);
+			if (touched) {
+				collision  = 3; // the wall stops the sweep
+				contact->y = from->y;
+				StoreFloorEdge(mEdges[i], mMoveTranslate, wall[0], wall[1]);
+			}
+			break;
+		}
+		case 5: { // a quad from this and the next three records
+			Mtx translate, rotate, scale, transform;
+			Vec quad[4];
+			for (s32 j = 0; j < 4; ++j)
+				quad[j] = mVec714 + ReadObjectFloorOffset(this, i + j);
+			Vec size       = mMoveScale * ReadObjectFloorExtent(this, i);
+			f32 floorAngle = DEG2RAD * mFloors[i].mYawDegrees;
+			f32 rotY       = mMoveRotate.y + floorAngle;
+			PSMTXTrans(translate, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXScale(scale, size.x, size.y, size.z);
+			PSMTXRotRad(rotate, 'y', rotY);
+			PSMTXConcat(translate, rotate, transform);
+			PSMTXConcat(transform, scale, transform);
+			PSMTXMultVecArray(transform, quad, quad, 4);
+			for (s32 j = 0; j < 4; ++j) {
+				collision = ResolveCircleWallCollisionXZ(&start, &dest, &quad[j], &quad[(j + 1) % 4], &hit,
+				                                         &mEdges[i + 3].mContactOffset, push, 1, radius);
+				if (collision) {
+					collision = 8;
+					StoreFloorEdge(mEdges[i + 3], mMoveTranslate, quad[j], quad[(j + 1) % 4]);
+					break;
+				}
+			}
+			if (!collision && IsPointInsideQuadXZ(&dest, &quad[0], &quad[1], &quad[2], &quad[3])) {
+				collision = 4;
+				hit.x     = to->x;
+				hit.z     = to->z;
+			}
+			if (collision) {
+				if (to->y <= mFloorHeights[i] && to->y >= (quad[0].y - extent.y / 2.f - height)) {
+					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
+					collision = 3;
+				} else
+					collision = to->y < (quad[0].y - extent.y / 2.f - height) ? 0 : 1; // above it
+			}
+			i += 3;
+			break;
+		}
+		}
+		if (collision) {
+			mFloorMasks[0] |= 1u << i; // mark the floor touched
+			result |= collision;
+			mHitFloorIndex = i;
+			if (cursor) {
+				++i;
+				break;
+			}
+		}
+	}
+	if (cursor) {
+		*cursor = i;
+		if (mFloors[i].mId == -1)
+			*cursor = -1;
+	}
+	if (result) {
+		mStatus.mFlags |= 0x0100000000000000ULL;
+		if ((flags & 2) && (result & 3) == 3) { // any contact (3) can start its event script
+			WiiPlayerState* player = gGame.GetPlayer();
+			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL)
+			    && !gGame.GetStatusFlags(0x400) && player->mAttachmentRequest < 0
+			    && (!gGame.GetStatusFlags(0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
+			        || (mStatus.mFlags & 0x8000))) {
+				mStatus.mFlags |= 0x8000000000000000ULL;
+				u8* script = (u8*)GetEventScript();
+				StartOrQueueEventScript(&gGame.mEvt, script, this, -1, -1);
+			}
+		}
+		if (flags & 1) { // let the object's own handler react and adjust the result
+			const CVec& delta = *(CVec*)contact - *from;
+			PSVECMag(push);
+			result = OnPlayerContact((s32)&delta, result);
+		}
+	} else
+		mStatus.mFlags &= ~0x0100000000000000ULL;
+	return result;
 }
 
 #endif

@@ -1,11 +1,59 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 54 fertig, Branch devin/lane3 (Commit 93fd2d24). R24J01:
-6592/8284 matched, `main.dol: OK`; GC: 17 files OK (alle drei).
-Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
+Stand: Lauf 55 fertig, Branch devin/lane3. R24J01: 6592/8284 matched;
+GC: 17 files OK (alle drei, Report = Baseline). Baselines:
+.lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 55 — TestFloorCollision portiert, ehrlich 94,78 %
+
+- **`XObj::TestFloorCollision` 0x800B034C (0x120C) implementiert** in
+  `src/game/wii/obja.cpp` (Datei-Ende, Adressfolge nach ResetCullMode):
+  GC-Port obja.cpp:425 1:1 + Lauf-54-Wii-Deltas — Loop-Gate
+  `mFloors[i].mFlags & 1`, `mVec714` statt mToppleOffset, lokale
+  `ReadObjectFloorOffset/Extent` (Brace-Init s32/100.0f wie cjanim.cpp;
+  objectfloorquery.h NICHT inkludierbar — zieht GC-cgame.h),
+  Wii-9-Arg-`ResolveCircleWallCollisionXZ` (pos,contact,push,corners,
+  radius; corners 0 Box / 1 Wall / 1 Quad), `h` via
+  `nw4r::math::FrSqrt(3.0f)` wie cjanim.cpp, `static Vec corners[8]`+
+  `ends[2]` als echte Statics, `gGame.GetStatusFlags(0x400/0x40000000)`
+  virtuell statt mStatus.mFlags, `WiiPlayerState`/`IsPlayerStopped`,
+  gleiche OnPlayerContact-Eigenheit ((s32)&delta + PSVECMag-Call,
+  NONMATCHING-Kommentar wie GC). +`#include "game/cvec.h"` für
+  `.Normalize()`/`.Length()`-Inlines (PSVECNormalize/PSVECMag wie Retail).
+- **Ergebnis: 94,77663 % fuzzy** (vorher keine Bewertung — Funktion
+  fehlte). Ins-Vergleich: 82,6 % Befehle identisch, Rest =
+  Stack-/Regallokations-Residuen: Frame 0x810 statt 0x800 (+0x10,
+  ein f20-Spill mehr), Temp-Slots verschoben, `li r22,0`
+  (collision=0) Scheduling, kleine CSE-/Reg-Unterschiede
+  (xoris r3/r4, f21↔f24 objYaw/yaw). Keine Struktur-/Semantiklücke —
+  ehrliche MWCC-Bookkeeping-Wand wie bei den anderen großen Funktionen.
+- **Gate grün:** R24J01 6592/8284 (Baseline, 0 Regressionen), obja-Unit
+  alle anderen Scores unverändert; `main.dol` baut + linkt
+  (--non-matching-Link-Check sauber, corners/ends-Statics aufgelöst);
+  GC 3× Report = Baseline exakt; config/* unberührt (keine dtk-Rewrites);
+  Disc-Files-Check ok. check.py-Format weiter blockiert (s.u.).
+
+## Liegt (Blocker, kein Stopp)
+
+- `tools/check.py --source-only`: braucht clang-format 18.1.8,
+  installiert ist 23.1.4 → Format-Check nicht lauffähig (bekannt).
+- Restdiff TestFloorCollision (5,2 %): reine Compiler-Buchführung
+  (Frame +0x10, f20-Spill, Temp-Slot-Layout). Kandidat für einen
+  Permuter-Lauf falls jemand die 100 % will; Source-Shape steht.
+
+## Nächster Schritt
+
+- Weiter in Adressfolge: `__ml__4CVecCF3Vec` 0x800B1558 (0x7C,
+  CVec-Operator — prüfen, welche Unit ihn liefert; evtl. schon
+  woanders definiert → dann nur linken), `ReflectVectorAboutNormal`
+  0x800B15D4 (0x44, extern "C"), dann `GetFloorFacingAngle`
+  0x800B1618 (0xCA8, GC-Pendant in src/game/obja.cpp vor
+  ClearActiveObjectFloors). Danach `ClearActiveObjectFloors`
+  0x800B22C0 (0x6C), `UpdateObjectFloorXZExtent` 0x800B232C (0xA0C),
+  `UpdateObjectFloorHeights` 0x800B2D38 (0x7F0).
 
 ## Lauf 54 — LoadFromPlacement 81,74 → 90,18 %; TestFloorCollision dekodiert
 
