@@ -505,6 +505,7 @@ __dt__11XObjReadAllFv = .text:0x800C6464; // type:function size:0x40
 __dt__11XObjReadOneFv = .text:0x800C64A4; // type:function size:0x40
 __sinit_\xaction_cpp = .text:0x800C64E4; // type:function size:0xA0 scope:local
 __ct__12CustomShadowFv = .text:0x800C6F60; // type:function size:0x1D0
+Draw__12CustomShadowF3Vec3VecUl = .text:0x800C7130; // type:function size:0x20C
 SetVectorComponents = .text:0x800CC808; // type:function size:0x10
 ClearObjectStatusFlags = .text:0x800CC818; // type:function size:0x24
 HasPlayerActionTarget = .text:0x800CCD24; // type:function size:0x14

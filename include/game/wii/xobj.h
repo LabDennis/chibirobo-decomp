@@ -2201,6 +2201,7 @@ class CustomShadow {
 public:
 	CustomShadow();
 	virtual ~CustomShadow();
+	void Draw(Vec pos, Vec scale, u32 alpha); // 0x800C7130
 };
 
 // the Wii object readers: retail RTTI names XObjRead, XObjReadAll and

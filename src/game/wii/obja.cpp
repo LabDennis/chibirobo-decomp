@@ -20,6 +20,12 @@ using namespace nw4r::g3d;
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
+extern CustomShadow gCustomShadow;
+
+static inline u32 ShadowSize(XObj* object)
+{
+	return object->mAttr.mObjData != NULL ? object->mAttr.mObjData->mShadowSize : 0;
+}
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
 {
@@ -282,6 +288,28 @@ void XObj::DrawGroundShadow(f32 opacity)
 	} else {
 		DrawGroundShadowAt(&mMoveTranslate, 1.0f);
 	}
+}
+
+// NONMATCHING: the body matches except three referent/scheduling details: retail loads
+// mObjData twice (r6, then r7) where our build keeps the first load live; our literals
+// land on different .sdata2 slots while the unit is incomplete; and gCustomShadow is
+// reached via @sda21 because our CustomShadow stub is 4 bytes and sits in .sbss — the
+// real ~0xA70 object (cjanim.cpp header note) used absolute access.
+// 0x800AE53C, the blob shadow at a given spot: the model's scale times the kind's shadow
+// size and a fixed 0.6 sets the blob, 170*opacity its alpha; the draw call takes both
+// vectors by value, so the caller keeps its own copies
+void XObj::DrawGroundShadowAt(const Vec* origin, f32 opacity)
+{
+	if (!(mStatus.mFlags & 0x8)) {
+		return;
+	}
+	if (ShadowSize(this) == 0) {
+		return;
+	}
+	Vec pos   = *origin;
+	Vec scale = mMoveScale * (f32)ShadowSize(this) * 0.6f;
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gCustomShadow.Draw(pos, scale, (u32)(170.0f * opacity));
 }
 
 // 0x800AE6A8
