@@ -8,6 +8,8 @@
 #include "game/globals.h"
 #include "game/ut.h"
 
+#include <math.h>
+
 extern MEMAllocator gWiiPadAllocator;
 
 // nw4r's db pointer check (db_assert.h) as the game's sources use it; the line is the game's own
@@ -19,29 +21,57 @@ extern MEMAllocator gWiiPadAllocator;
 
 // the small scene-camera record this file's functions work with: Init fills it with
 // its defaults; the class name and its other members are not recovered
-extern "C" void fn_800C659C(u32* self, u32 arg)
+struct XObjScnCamInitRec {
+	u16 m_00;
+	u16 m_02;
+	u16 m_04;
+	u16 m_06;
+	u32 m_08;
+	u32 m_0C;
+	f32 m_10;
+	u32 m_14;
+	u32 m_18;
+	u32 m_1C;
+	u32 m_20;
+	f32 m_24;
+	f32 m_28;
+	f32 m_2C;
+	f32 m_30;
+	f32 m_34;
+	f32 m_38;
+	f32 m_3C;
+	f32 m_40;
+	f32 m_44;
+	u32 m_48;
+	f32 m_4C;
+	f32 m_50;
+	f32 m_54;
+	u32 m_58;
+	f32 m_5C;
+	f32 m_60;
+	f32 m_64;
+};
+
+extern "C" void fn_800C659C(XObjScnCamInitRec* self, u32 arg)
 {
-	self[2]                   = arg;
-	*(u16*)((u8*)self + 4)    = 0;
-	*(u16*)((u8*)self + 2)    = 0;
-	self[3]                   = 0;
-	*(f32*)((u8*)self + 0x10) = 0.0f / 0.0f;
-	self[8]                   = 0;
-	*(f32*)((u8*)self + 0x28) = 0.0f / 0.0f;
-	*(f32*)((u8*)self + 0x24) = 0.0f / 0.0f;
-	*(f32*)((u8*)self + 0x2C) = 0.0f;
-	*(f32*)((u8*)self + 0x30) = 0.0f;
-	*(f32*)((u8*)self + 0x34) = 0.0f;
-	*(f32*)((u8*)self + 0x38) = 0.0f;
-	*(f32*)((u8*)self + 0x3C) = 0.0f;
-	*(f32*)((u8*)self + 0x40) = 0.0f;
-	*(f32*)((u8*)self + 0x44) = 0.0f;
-	*(f32*)((u8*)self + 0x4C) = 0.0f;
-	*(f32*)((u8*)self + 0x50) = 0.0f;
-	*(f32*)((u8*)self + 0x54) = 0.0f;
-	*(f32*)((u8*)self + 0x5C) = 0.0f;
-	*(f32*)((u8*)self + 0x60) = 0.0f;
-	*(f32*)((u8*)self + 0x64) = 0.0f;
+	self->m_08 = arg;
+	self->m_04 = 0;
+	self->m_02 = 0;
+	self->m_0C = 0;
+	self->m_10 = NAN;
+	self->m_20 = 0;
+	self->m_24 = self->m_28 = NAN;
+	self->m_2C = self->m_30 = 0.0f;
+	self->m_34 = self->m_38 = 0.0f;
+	self->m_3C              = 0.0f;
+	self->m_40              = 0.0f;
+	self->m_44              = 0.0f;
+	self->m_4C              = 0.0f;
+	self->m_50              = 0.0f;
+	self->m_54              = 0.0f;
+	self->m_5C              = 0.0f;
+	self->m_60              = 0.0f;
+	self->m_64              = 0.0f;
 }
 
 // the head bone's world position, or the object's own position when the model has no
@@ -150,7 +180,8 @@ void XObjScnCam::SetAnmScn(u32 id, f32 frame, f32 rate)
 	if (mScene != NULL) {
 		if (id < mObject.m_resFile.GetResAnmScnNumEntries()) {
 			CObj::SetAnmScn(id, frame, rate);
-			((nw4r::g3d::ScnRoot*)mScene)->SetAnmScn(mObject.m_resFile.HasResAnmScn() ? mObject.m_resources.scn : NULL);
+			BOOL has = mObject.m_resFile.HasResAnmScn();
+			((nw4r::g3d::ScnRoot*)mScene)->SetAnmScn(has ? mObject.m_resources.scn : NULL);
 			((nw4r::g3d::ScnRoot*)mScene)->CalcWorld();
 			((nw4r::g3d::ScnRoot*)mScene)->CalcView();
 			Vec zero = { 0, 0, 0 };
@@ -241,8 +272,8 @@ void XObjMap::InitializeObject()
 void XObjMap::ResetObjectState()
 {
 	XObj::ResetObjectState();
-	for (int i = 0; i < 2; i++) {
-		u32* fields = (u32*)&_1378[i * 0x40];
+	u32* fields = (u32*)_1378;
+	for (int i = 0; i < 2; i++, fields += 16) {
 		for (int k = 0; k < 8; k++) {
 			if (fields[k * 2] != 0) {
 				fields[k * 2] = 0;
