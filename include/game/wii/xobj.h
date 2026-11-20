@@ -437,6 +437,7 @@ public:
 	}
 	bool IsValid() const { return mpData != NULL; }
 	ResGenModeData* ptr() const { return mpData; }
+	void GXSetNumTexGens(u8 num);
 	void GXSetNumTevStages(u8 num);
 	u8 GXGetNumTexGens() const
 	{
@@ -524,6 +525,7 @@ public:
 		}
 		return *mpData;
 	}
+	void GXSetTevDirect(GXTevStageID stage);
 	void GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXChannelID channel);
 	void GXSetTevColorIn(GXTevStageID stage, GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d);
 	void GXSetTevColorOp(GXTevStageID stage, GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg);
@@ -556,6 +558,136 @@ public:
 	bool IsValid() const { return mpData != NULL; }
 	ResTexSrtData* ptr() const { return mpData; }
 	void SetTexSrtFlag(u32 id, u32 flag) { ptr()->flag = (ptr()->flag & ~(0xF << id * 4)) | (flag << id * 4); }
+	bool SetEffectMtx(u32 id, const math::MTX34* pMtx);
+	bool SetMapMode(u32 id, u32 mode, int camRef, int lightRef);
+};
+
+// the tex coord gen and texture object blocks, same g3d_resmat_ac.h guard style
+class ResMatTexCoordGen {
+public:
+	void* mpData; // _00
+
+	ResMatTexCoordGen(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x1f) {
+			db::Panic("g3d_resmat_ac.h", 513, "NW4R:Failed assertion !((u32)p & 0x1f)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	void GXSetTexCoordGen2(GXTexCoordID id, GXTexGenType func, GXTexGenSrc param, GXBool normalize, u32 postMtx);
+	void DCStore(bool sync);
+};
+
+class ResTexObj {
+public:
+	void* mpData; // _00
+
+	ResTexObj(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resmat_ac.h", 40, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	bool IsValidTexObj(GXTexMapID id) const;
+	GXTexObj* GetTexObj(GXTexMapID id);
+	void Validate(GXTexMapID id);
+};
+
+// the material user data: a resource dictionary of typed items, g3d_resdict_ac.h /
+// g3d_resuser_ac.h guards as retail reaches them
+struct ResDicNodeData {
+	u16 ref;       // _00
+	u16 flag;      // _02
+	u16 idxLeft;   // _04
+	u16 idxRight;  // _06
+	s32 ofsString; // _08
+	s32 ofsData;   // _0C
+};
+
+struct ResDicData {
+	u32 size;               // _00
+	u32 numData;            // _04
+	ResDicNodeData data[1]; // _08
+};
+
+class ResDic {
+public:
+	void* mpData; // _00
+
+	ResDic(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resdict_ac.h", 84, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	void* operator[](const char* pName) const;
+};
+
+struct ResUserDataItemData {
+	enum DataType { S32 };
+
+	u32 nameID;    // _00
+	s32 ofsData;   // _04
+	u32 numData;   // _08
+	u32 valueType; // _0C
+};
+
+class ResUserDataItem {
+public:
+	ResUserDataItemData* mpData; // _00
+
+	ResUserDataItem(void* p = NULL)
+	    : mpData((ResUserDataItemData*)p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resuser_ac.h", 38, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResUserDataItemData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resuser_ac.h", 38, "%s::%s: Object not valid.", "ResUserDataItem", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetValueType() const { return ref().valueType; }
+	s32 GetS32(u32 idx) const
+	{
+		if (GetValueType() != ResUserDataItemData::S32) {
+			db::Panic("g3d_resuser_ac.h", 54, "NW4R:Failed assertion GetValueType() == ResUserDataItemData::S32");
+		}
+		const s32* data = ref().ofsData != 0 ? (const s32*)((const u8*)mpData + ref().ofsData) : NULL;
+		return data[idx];
+	}
+};
+
+struct ResUserDataData {
+	u32 size;         // _00
+	ResDicData dic;   // _04
+};
+
+class ResUserData {
+public:
+	ResUserDataData* mpData; // _00
+
+	ResUserData(void* p = NULL)
+	    : mpData((ResUserDataData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResUserDataData& ref()
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resuser_ac.h", 87, "%s::%s: Object not valid.", "ResUserData", "ref");
+		}
+		return *mpData;
+	}
+	ResDic GetResDic() { return ResDic(&ref().dic); }
 };
 
 struct ResMatData {
@@ -565,15 +697,21 @@ struct ResMatData {
 	u32 id;                 // _0C
 	u32 flag;               // _10
 	ResGenModeData genMode; // _14
-	u8 _1C[0x3C - 0x1C];
+	u8 _1C[0x2C - 0x1C];
+	u32 numResTexPlttInfo; // _2C
+	u8 _30[0x38 - 0x30];
+	s32 toResUserData;   // _38
 	s32 toResMatDLData; // _3C
-	u8 _40[0x1A8 - 0x40];
+	u8 texObjData[0x104]; // _40, the embedded ResTexObjData the shadow texture lands in
+	u8 _144[0x1A8 - 0x144];
 	ResTexSrtData texSrtData; // _1A8
 };
 
 struct ResMatDLData {
-	u8 dlPix[0x20];      // _00
-	u8 dlTevColor[0x80]; // _20
+	u8 dlPix[0x20];          // _00
+	u8 dlTevColor[0x80];     // _20
+	u8 _A0[0xE0 - 0xA0];
+	u8 dlTexCoordGen[0xA0];  // _E0
 };
 
 class ResMat {
@@ -608,8 +746,15 @@ public:
 	}
 	ResMatPix GetResMatPix() { return ResMatPix(&GetResMatDLData()->dlPix); }
 	ResMatTevColor GetResMatTevColor() { return ResMatTevColor(&GetResMatDLData()->dlTevColor); }
+	ResMatTexCoordGen GetResMatTexCoordGen() { return ResMatTexCoordGen(&GetResMatDLData()->dlTexCoordGen); }
+	ResTexObj GetResTexObj() { return ResTexObj(&ref().texObjData); }
 	ResTev GetResTev();
 	ResTexSrt GetResTexSrt() { return ResTexSrt(&ref().texSrtData); }
+	ResUserData GetResUserData()
+	{
+		s32 ofs = ref().toResUserData;
+		return ResUserData(ofs != 0 ? (u8*)mpData + ofs : NULL);
+	}
 	void DCStore(bool sync);
 };
 
@@ -732,6 +877,8 @@ public:
 		ResGenMode GetResGenMode(bool markDirty);
 		ResMatPix GetResMatPix(bool markDirty);
 		ResMatTevColor GetResMatTevColor(bool markDirty);
+		ResMatTexCoordGen GetResMatTexCoordGen(bool markDirty);
+		ResTexObj GetResTexObj(bool markDirty);
 		ResTev GetResTev(bool markDirty);
 		ResTexSrt GetResTexSrt(bool markDirty);
 

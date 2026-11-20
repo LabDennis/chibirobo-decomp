@@ -525,6 +525,126 @@ void XObj::ClearAnim()
 	mStatus.mFlags &= ~0x0008000000000000ULL;
 }
 
+// the marker the material pass writes into ResTev's padding, and the "xobj.cpp" assert the
+// retail's Panic calls name (the GameCube's obja.cpp is xobj.cpp here)
+#ifndef UPDATED_TEV_MAGIC_NUMBER
+#define UPDATED_TEV_MAGIC_NUMBER 0xC3
+#define XOBJ_ASSERT_LINE(line, exp) ((void)((exp) || (nw4r::db::Panic("xobj.cpp", line, "NW4R:Failed assertion " #exp), 0)))
+#endif
+
+// 0x800AF51C, the material pass LoadFromPlacement runs while the placement flag is set: every
+// material gains a final TEV stage multiplying the previous colour by the rendered shadow
+// texture, unless its "sdw" user-data item's first value is -1
+// NONMATCHING: the flow is the retail's (copied-resource fallbacks, the "sdw" item lookup,
+// the stage append and its trailing asserts) but the reconstruction is provisional — the
+// ResUserDataItem field names are modelled from the retail offsets and the report/assert
+// strings are the plausible expressions, so codegen is expected to differ
+extern "C" void fn_800AF51C(XObj* obj)
+{
+	if (obj->mObject.m_pScnMdl == NULL) {
+		return;
+	}
+	u32 numMats = obj->mObject.m_resMdl.GetResMatNumEntries();
+	for (u32 i = 0; i < numMats; i++) {
+		ResMat mat = obj->mObject.m_resMdl.GetResMat(i);
+		ScnMdl::CopiedMatAccess access(obj->mObject.m_pScnMdl, i);
+
+		ResGenMode genMode = access.GetResGenMode(false);
+		if (!genMode.IsValid()) {
+			genMode = mat.GetResGenMode();
+		}
+		ResMatTevColor tevColor = access.GetResMatTevColor(false);
+		if (!tevColor.IsValid()) {
+			tevColor = mat.GetResMatTevColor();
+		}
+		XOBJ_ASSERT_LINE(0x74F, tevColor.IsValid());
+		ResMatTexCoordGen texCoordGen = access.GetResMatTexCoordGen(false);
+		if (!texCoordGen.IsValid()) {
+			texCoordGen = mat.GetResMatTexCoordGen();
+		}
+		XOBJ_ASSERT_LINE(0x755, texCoordGen.IsValid());
+		ResTexObj texObj = access.GetResTexObj(false);
+		if (!texObj.IsValid()) {
+			texObj = mat.GetResTexObj();
+		}
+		XOBJ_ASSERT_LINE(0x75B, texObj.IsValid());
+		ResTexSrt texSrt = access.GetResTexSrt(false);
+		if (!texSrt.IsValid()) {
+			texSrt = mat.GetResTexSrt();
+		}
+		XOBJ_ASSERT_LINE(0x761, texSrt.IsValid());
+		ResTev tev = access.GetResTev(false);
+		if (!tev.IsValid()) {
+			tev = mat.GetResTev();
+		}
+		XOBJ_ASSERT_LINE(0x767, tev.IsValid());
+		if (i == 0 && tev.ptr()->PADDING_0x18[6] == UPDATED_TEV_MAGIC_NUMBER) {
+			return;
+		}
+
+		ResUserData userData = mat.GetResUserData();
+		if (userData.IsValid()) {
+			ResDic dic           = userData.GetResDic();
+			ResUserDataItem item = ResUserDataItem(dic["sdw"]);
+			if (item.IsValid() && item.ref().numData != 0 && item.GetS32(0) == -1) {
+				continue;
+			}
+		}
+
+		u32 sdwTexMapId     = mat.ref().numResTexPlttInfo;
+		u32 numTexGens      = genMode.GXGetNumTexGens();
+		u32 numTevStages    = genMode.GXGetNumTevStages();
+		u32 numTevStageData = tev.ref().nStages;
+		if (sdwTexMapId > 7) {
+			OSReport("mat '%s' has more than %d textures.(%d)\n", mat.GetName(), 7, sdwTexMapId);
+			continue;
+		}
+		if (numTexGens > 7) {
+			OSReport("mat '%s' has more than %d tex coord gens.(%d)\n", mat.GetName(), 7, numTexGens);
+			continue;
+		}
+		if (numTevStages > 15) {
+			OSReport("mat '%s' has more than %d tev stages.(%d)\n", mat.GetName(), 15, numTevStages);
+			continue;
+		}
+
+		static const GXColor sdwKColor[] = { {0x00, 0x00, 0x00, 0xFF} };
+		GXColor color                    = sdwKColor[numTexGens];
+		XOBJ_ASSERT_LINE(0x846, !texObj.IsValidTexObj((GXTexMapID)sdwTexMapId));
+		*texObj.GetTexObj((GXTexMapID)sdwTexMapId) = gGame.mShadow.mTex;
+		texObj.Validate((GXTexMapID)sdwTexMapId);
+		genMode.GXSetNumTevStages((u8)(numTevStages + 1));
+		genMode.GXSetNumTexGens((u8)(numTexGens + 1));
+		tevColor.GXSetTevKColor(GX_KCOLOR2, color);
+		tevColor.DCStore(false);
+		// the new tex gen is a position transform on its own Wii texmtx base (0x40 + 3*n)
+		texCoordGen.GXSetTexCoordGen2((GXTexCoordID)numTexGens, GX_TG_MTX3x4, GX_TG_POS, GX_FALSE,
+		                              0x40 + numTexGens * 3);
+		texCoordGen.DCStore(false);
+		texSrt.SetEffectMtx(numTexGens, NULL);
+		texSrt.SetMapMode(numTexGens, 2, 1, -1);
+		texSrt.SetTexSrtFlag(numTexGens, 0xF);
+
+		GXTevStageID stage = (GXTevStageID)numTevStages;
+		if (tev.ptr()->PADDING_0x18[6] == 0) {
+			tev.SetNumTevStages((u8)(numTevStages + 1));
+			tev.GXSetTevDirect(stage);
+			tev.GXSetTevKColorSel(stage, GX_TEV_KCSEL_K2);
+			tev.GXSetTevOrder(stage, (GXTexCoordID)numTexGens, (GXTexMapID)sdwTexMapId, GX_COLOR_NULL);
+			tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+			tev.GXSetTevColorOp(stage, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+			tev.GXSetTevAlphaIn(stage, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+			tev.GXSetTevAlphaOp(stage, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+			tev.ptr()->PADDING_0x18[6] = UPDATED_TEV_MAGIC_NUMBER;
+			tev.DCStore(false);
+			XOBJ_ASSERT_LINE(0x89C, numTevStages == numTevStageData);
+		} else {
+			XOBJ_ASSERT_LINE(0x89E, numTevStageData == numTevStages + 1);
+		}
+		XOBJ_ASSERT_LINE(0x8A0, tev.ptr()->PADDING_0x18[6] == UPDATED_TEV_MAGIC_NUMBER);
+	}
+}
+
 // 0x800AFF80
 void XObj::vf1BC(s32 mode)
 {
