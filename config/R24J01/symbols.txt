@@ -664,6 +664,7 @@ SetAreaCameraHeightIndices = .text:0x801569A0; // type:function size:0x14
 GetTarget__17CCameraActionAreaFv = .text:0x80156E64; // type:function size:0x8
 GetInterestMode__17CCameraActionAreaFv = .text:0x80156E6C; // type:function size:0x8
 GetCameraFlags__17CCameraActionAreaFv = .text:0x80156E74; // type:function size:0x8
+SpringDamp = .text:0x80156E7C; // type:function size:0x2D8
 Reset__16CCameraActionMapFv = .text:0x80157288; // type:function size:0xFC
 SetMapCameraKeepPreviousEye = .text:0x80157B98; // type:function size:0xC
 PreviousUpdate__16CCameraActionMapFv = .text:0x80157BA4; // type:function size:0x1E0
