@@ -257,16 +257,17 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-// needed as an inline for the stack layout of the two CVec copies
-static inline s32 IsNearXZ(const Vec& p, const Vec& q)
+// whether pos is within reach of object index's position, on the XZ plane
+static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
 {
 	CVec a, b;
-	a.x = p.x;
-	a.y = p.y;
-	a.z = p.z;
-	b.x = q.x;
-	b.y = q.y;
-	b.z = q.z;
+	a.x           = pos.x;
+	a.y           = pos.y;
+	a.z           = pos.z;
+	TrashObj* obj = (TrashObj*)gGame.GetObject(index);
+	b.x           = obj->mMoveTranslate.x;
+	b.y           = obj->mMoveTranslate.y;
+	b.z           = obj->mMoveTranslate.z;
 	b.y = 0.0f;
 	a.y = 0.0f;
 	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
@@ -281,11 +282,8 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  */
 extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 {
-	// NONMATCHING: count regs — the instruction sequence is identical, but trashboxIndex,
-	// the gGame+0x10000 base, robot and the CVec vtable land one slot over.
 	CGame* game;
 	TrashObj* robot;
-	TrashObj* box;
 
 	if (trashboxIndex < 0) {
 		return 0;
@@ -295,8 +293,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 	if (trashboxIndex != robot->mFloorContacts) { // the box must be the contacted object
 		return 0;
 	}
-	box = (TrashObj*)game->mXObjs.mObjects[trashboxIndex];
-	return IsNearXZ(robot->mMoveTranslate, box->mMoveTranslate);
+	return IsNearObjectXZ(robot->mMoveTranslate, trashboxIndex);
 }
 // CmdIsNearTrashbox
 /*
