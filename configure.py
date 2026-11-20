@@ -1366,6 +1366,12 @@ if wii:
                 Object(Matching, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the XObj core methods, 0x800AC07C-0x800B1558 (wii_units.md Nr. 45):
+                # init/reset, the draw dispatch virtuals, the screen-list queue pair and
+                # ClearAnim are written; load, release, update, the material helpers and
+                # the floor test still come from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/obja.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the XObj floors, projections and event virtuals, 0x800B1558-0x800BD66C
                 # (wii_units.md Nr. 46); the GameCube's cjanim.cpp plus obja.cpp's and
                 # xobjfloor.cpp's floor helpers - the stepper, callbacks and __sinit

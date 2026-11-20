@@ -1025,13 +1025,13 @@ public:
 
 	// the push anchor and the per-axis move limits the GameCube kept on XObj itself
 	// (SetClampedPushPositionXZ at 0x800B61FC reads _7BC.._7D0, inside the queue)
-	f32 mAnchorX;   // _04
-	f32 mAnchorZ;   // _08
-	f32 mLimitPosX; // _0C
-	f32 mLimitNegX; // _10
-	f32 mLimitPosZ; // _14
-	f32 mLimitNegZ; // _18
-	u8 _1C[4];
+	f32 mAnchorX;        // _04
+	f32 mAnchorZ;        // _08
+	f32 mLimitPosX;      // _0C
+	f32 mLimitNegX;      // _10
+	f32 mLimitPosZ;      // _14
+	f32 mLimitNegZ;      // _18
+	u32 mMarkerOverride; // _1C, ResetObjectState puts 0x80000000 here, the GameCube kept it on XObj
 
 	// _20, XObj::SetColor writes them (verified at 0x800B67F8); the rest of the queue's
 	// members are not yet recovered
@@ -1425,10 +1425,10 @@ public:
 	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
-	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex;  // _1BC
-	XObjEdge mEdges[32]; // _1C0, one per floor
+	Vec mLastRot;         // _1AC, the last update's rotation, ResetObjectState refills it from mMoveRotate
+	f32 mLastAnimFrame;   // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;   // _1BC
+	XObjEdge mEdges[32];  // _1C0, one per floor
 	// _640, the collision floors' reach on the ground plane: [0] the wider of the x and z radii,
 	// [1] the narrower; UpdateObjectFloorXZExtent fills both with NAN while there are no floors
 	f32 mFloorXZExtent[2];    // xobj_chr.cpp reads them by index, [0] is GetFloorXZExtent's
@@ -1458,7 +1458,8 @@ public:
 	CJArchive mArchive;         // _820
 	Mtx mBaseMtx;               // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;           // _998, NULL or mBaseMtx
-	u8 _99C[0x9A4 - 0x99C];
+	u32 _99C;                   // _99C, ResetObjectState clears it
+	u8 _9A0[0x9A4 - 0x9A0];
 	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);

@@ -769,8 +769,9 @@ STATIC_ASSERT(sizeof(CLight) == 0x6C);
 struct WiiGsScene {
 	WiiGsSceneObj* mHead; // _00, the list the scene pass drains
 	BOOL _04;             // _04, Update queues the map's model on the list while it is set
-	CLight mLights[10];   // _08
+	u8 _08[0x440 - 0x08]; // the rest is unrecovered (the old CLight[10] claim at _08 was wrong)
 };
+STATIC_ASSERT(sizeof(WiiGsScene) == 0x440);
 
 class CGs {
 public:
