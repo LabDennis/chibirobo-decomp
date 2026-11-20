@@ -233,7 +233,7 @@ void CCameraActionEye::Update(u32 step)
 
 				f32 track  = TrackPointer(step, -aimX, aimY);
 				f32 pitchT = track * -1.0f;
-				WiiCameraPoint pt = fn_8016A844(&mCurveX, Abs(aimY));
+				WiiCameraPoint pt = fn_8016A844(&mCurveX, __fabsf(aimY));
 				f32 pitch         = aimY;
 				if (aimY > 0.0f) {
 					pitch = 0.8f * pt.y;
@@ -276,16 +276,16 @@ void CCameraActionEye::Update(u32 step)
 				}
 			}
 
-			f32 speedY = Abs(mLook.mTarget.y - mLook.y) / mVecC0.y;
-			f32 speedX = Abs(mLook.mTarget.x - mLook.x) / mVecC0.x;
-			f32 speedZ = Abs(mLook.mTarget.z - mLook.z) / mVecC0.z;
+			f32 speedY = __fabsf(mLook.mTarget.y - mLook.y) / mVecC0.y;
+			f32 speedX = __fabsf(mLook.mTarget.x - mLook.x) / mVecC0.x;
+			f32 speedZ = __fabsf(mLook.mTarget.z - mLook.z) / mVecC0.z;
 
 			// the turn speed may only grow a tenth of a degree per update
 			static f32 sPrevSpeedX = speedX;
 			f32 diff               = speedX - sPrevSpeedX;
 			f32 thresh             = 0.1f * DEG2RAD;
-			if (Abs(diff) > thresh) {
-				speedX = sPrevSpeedX + thresh / Abs(diff) * diff;
+			if (__fabsf(diff) > thresh) {
+				speedX = sPrevSpeedX + thresh / __fabsf(diff) * diff;
 			}
 			sPrevSpeedX = speedX;
 			if (gWiiPointer.mPointerValid) {
@@ -297,7 +297,7 @@ void CCameraActionEye::Update(u32 step)
 			mLook.mSpeed.z = speedZ;
 
 			static CVec sPrevTarget;
-			if (RAD2DEG * Abs(mLook.mTarget.x - sPrevTarget.x) > 0.2f || RAD2DEG * Abs(mLook.mTarget.y - sPrevTarget.y) > 0.2f) {
+			if (RAD2DEG * __fabsf(mLook.mTarget.x - sPrevTarget.x) > 0.2f || RAD2DEG * __fabsf(mLook.mTarget.y - sPrevTarget.y) > 0.2f) {
 				// still turning fast: keep the sound on
 				if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
 					PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
@@ -323,7 +323,7 @@ void CCameraActionEye::Update(u32 step)
 
 			static f32 sPrevZoomSpeed = 0.0f;
 			f32 stick                 = pad.mPad->mStick.y;
-			if (Abs(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
+			if (__fabsf(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
 				f32 alpha = -1.0f;
 				if (alpha >= 0.0f) {
 					gGame.mBlur.mAlpha = alpha;
@@ -334,7 +334,7 @@ void CCameraActionEye::Update(u32 step)
 				}
 				gGame.mBlur.mOffsetX = 2.0f * -stick;
 				gGame.mBlur.mOffsetY = 2.0f * -stick;
-				gGame.mBlur.mSpeed   = Abs(0.1f);
+				gGame.mBlur.mSpeed   = __fabsf(0.1f);
 				gGame.mBlur.CalcMtx();
 			} else { // zooming: kick the blur to 0.8, it decays back to 0
 				f32 alpha = 0.8f;
@@ -347,7 +347,7 @@ void CCameraActionEye::Update(u32 step)
 				}
 				gGame.mBlur.mOffsetX = 2.0f * -stick;
 				gGame.mBlur.mOffsetY = 2.0f * -stick;
-				gGame.mBlur.mSpeed   = Abs(0.1f);
+				gGame.mBlur.mSpeed   = __fabsf(0.1f);
 				gGame.mBlur.CalcMtx();
 			}
 			sPrevZoomSpeed = speedZ;
