@@ -545,6 +545,8 @@ extern "C" void SetGameSoundStereo(XSound* sound, s32 stereo)
  * @note Size: 0xD8
  */
 // NONMATCHING: regalloc
+static const char sSoundBankLoadFormat[] = "HSD_AudioSFXLoad::%s\n";
+
 extern "C" BOOL RegisterGameSoundName(XSound* sound, const char* name)
 {
 	sound->registerName(name, sound->mStageBank);
@@ -1860,7 +1862,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		for (s32 i = 0; i < 16; i++) {
 			if (sound->mStageRequests.entries[i].mName != NULL && !sound->mStageRequests.entries[i].mLoaded) {
 #if !defined(VERSION_PAL)
-				OSReport("HSD_AudioSFXLoad::%s\n", sound->mStageRequests.entries[i].mName);
+				OSReport(sSoundBankLoadFormat, sound->mStageRequests.entries[i].mName);
 #endif
 				sound->mStageRequests.entries[i].mResult
 				    = HSD_SynthSFXLoad(sound->mStageRequests.entries[i].mName, sound->mStageRequests.entries[i].mBank, 0, 0);
