@@ -2120,7 +2120,7 @@ sysdolphin/baselib/synth.c:
 	.bss        start:0x8065CDC0 end:0x80660848
 	.sdata      start:0x80661F80 end:0x80661FC0
 	.sbss       start:0x80662A18 end:0x80662A98
-	.sdata2     start:0x80666FD8 end:0x80667070
+	.sdata2     start:0x80666FD8 end:0x8066706C
 
 dolphin/mic/mic.c:
 	.text       start:0x801F5804 end:0x801F7900
