@@ -61,12 +61,20 @@ extern "C" CVec fn_800C6608(u32, XObj* obj)
  * @note Address: 0x800C733C
  * @note Size: 0x1A8
  */
+// NONMATCHING: the staged scene check is retail's shape (two flag values, the second read off the first before the ScnRoot construct); the
+// residue is register choice (flag regs swapped, two saved regs instead of three), the placement of the FALSE return and the assert's
+// string addressing
 BOOL XObjScnCam::LoadFromPlacement(const CoordInfo& info)
 {
 	if (!XObj::LoadFromPlacement(info)) {
 		return FALSE;
 	}
-	if (mObject.m_pScnMdl != NULL && mObject.m_resFile.HasResAnmScn() && mObject.m_resFile.GetResAnmScnNumEntries() != 0) {
+	BOOL ready = FALSE;
+	BOOL scn   = mObject.m_pScnMdl != NULL && mObject.m_resFile.HasResAnmScn();
+	if (scn && mObject.m_resFile.GetResAnmScnNumEntries() != 0) {
+		ready = TRUE;
+	}
+	if (ready) {
 		mScene = (WiiGsSceneObj*)nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, 1, 1, 1, 1);
 		NW4R_ASSERT_VALID_PTR_LINE(0x20, mScene);
 	}
@@ -117,10 +125,9 @@ void XObjScnCam::UpdateObject(u32 frames)
 {
 	XObj::UpdateObject(frames);
 	if (mScene != NULL) {
-		nw4r::g3d::ScnRoot* scene = (nw4r::g3d::ScnRoot*)mScene;
-		scene->CalcWorld();
-		scene->CalcView();
-		scene->UpdateFrame();
+		((nw4r::g3d::ScnRoot*)mScene)->CalcWorld();
+		((nw4r::g3d::ScnRoot*)mScene)->CalcView();
+		((nw4r::g3d::ScnRoot*)mScene)->UpdateFrame();
 	}
 }
 
@@ -143,10 +150,9 @@ void XObjScnCam::SetAnmScn(u32 id, f32 frame, f32 rate)
 	if (mScene != NULL) {
 		if (id < mObject.m_resFile.GetResAnmScnNumEntries()) {
 			CObj::SetAnmScn(id, frame, rate);
-			nw4r::g3d::ScnRoot* scene = (nw4r::g3d::ScnRoot*)mScene;
-			scene->SetAnmScn(mObject.m_resFile.HasResAnmScn() ? mObject.m_resources.scn : NULL);
-			scene->CalcWorld();
-			scene->CalcView();
+			((nw4r::g3d::ScnRoot*)mScene)->SetAnmScn(mObject.m_resFile.HasResAnmScn() ? mObject.m_resources.scn : NULL);
+			((nw4r::g3d::ScnRoot*)mScene)->CalcWorld();
+			((nw4r::g3d::ScnRoot*)mScene)->CalcView();
 			Vec zero = { 0, 0, 0 };
 			m_9AC    = zero;
 			m_9B8    = 0.0f;

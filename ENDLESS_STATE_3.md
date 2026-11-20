@@ -1,11 +1,103 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 55 fertig, Branch devin/lane3. R24J01: 6592/8284 matched;
-GC: 17 files OK (alle drei, Report = Baseline). Baselines:
+Stand: Lauf 57 fertig, Branch devin/lane3. R24J01: 6602/8284 matched;
+GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 57 — Lauf-56-Gate nachgeholt + ScnCam-Finetuning (+1 matched)
+
+- Lauf 56 committet als `b00a08dd` (volles Gate: 4 Builds OK,
+  --non-matching OK, Report-Diff 0 Regress, callcheck nur bekannte
+  Fremdartefakte, keine neuen Symbol-Dupes, cf18-Format OK).
+- **`UpdateObject__10XObjScnCamFUl` 87,9 → 100 %**: Retail lädt mScene
+  je Aufruf neu (`lwz r3,0x9a8(r31)`) — direkte Member-Aufrufe
+  `((nw4r::g3d::ScnRoot*)mScene)->CalcWorld()` statt gecachtem lokalem
+  ScnRoot* bringen 100 %.
+- **`SetAnmScn` 92,4 → 95,79 %** mit selbem Idiom. Rest: Retail testet
+  Ergebnis via `mr. r0,r3` (Ergebnis wird noch gebraucht), lädt mScene
+  vor dem Branch, Pool-Slot der f32-Konstante anders.
+- **`LoadFromPlacement(ScnCam)` 80,4 → 88,91 %**: Retail hat zwei
+  materialisierte Flags (r30=A&&B-Ergebnis, r31=final); Form
+  `BOOL ready=FALSE; BOOL scn=A&&B; if(scn&&C) ready=TRUE; if(ready)…`
+  erzeugt beide, nur Reg-Zuordnung vertauscht + Frame kleiner
+  (2 statt 3 saved regs) + String-Pool-Adressierung. NONMATCHING-
+  Kommentar dokumentiert.
+- vf2C/vf68 (58 %) bleibt ehrliche Regalloc-Wand: Retail
+  `li r0,0;stw r0,…;li r0,1;stb r0,…` vs. unser vorgezogenes
+  `li r4,0;li r0,1` — semantisch identisch, Header stimmt (u8-Felder).
+- Gate nach Commit: R24J01 OK 6602/8284, --non-matching OK, GC 3×
+  17 files OK, Report-Diff 0 Regress, Format OK (check.py --fix mit
+  CLANG_FORMAT=~/.local/opt/clang-format-18/bin/clang-format;
+  direkte cf18-Binary-Aufrufe wurden vom User rejected — check.py geht).
+
+## Lauf 56 — neue Unit xobj_camera.cpp gesplittet, +9 matched
+
+- **Neue Unit `game/wii/xobj_camera.cpp` 0x800C6584–0x800C7DC0**
+  (wii_units.md Nr. 58, 30 Fn): splits.txt (+extab 0x8000B89C–0x8000B954,
+  +extabindex 0x80013EF8–0x80013FA0), symbols.txt (+15 Symbole ab
+  0x800C733C), configure.py `Object(NonMatching,...,mw_version="GC/3.0a5",
+  extra_cflags=["-Cpp_exceptions on","-ipa file","-i include/rvl_msl"])`
+  in der Wii-Objektliste neben xaction.cpp.
+- **Neu `src/game/wii/xobj_camera.cpp`** — rekonstruiert:
+  fn_800C659C (Init-Helper, Record füllen+NaNs), fn_800C6608
+  (head_chn-Knochenpos sonst XObj::GetPos), CCamera::vf2C/vf68/SetUp,
+  XObjScnCam::LoadFromPlacement/Release/UpdateObject/DrawObjectEffects/
+  SetAnmScn/ReleaseModelWork/InitializeObject, XObjLight::ResetObjectState/
+  LoadFromPlacement/UpdateObject, XObjMap::InitializeObject/ResetObjectState.
+  mScene (_9A8) ist deklariert als WiiGsSceneObj*, Retail behandelt es
+  als nw4r::g3d::ScnRoot* — gamedraw.cpp castet genauso (Konvention).
+- **xobj.h**: XObjScnCam +7 virtuelle Overrides + Felder
+  (mScene@_9A8, m_9AC Vec, m_9B8); XObjLight +LoadFromPlacement/
+  UpdateObject/ResetObjectState + m_9A8, CLight mLights[8],
+  s32 mLightIds[8]@_D0C; XObjMap +InitializeObject/ResetObjectState +
+  m_1374, _1378[0x80]; ScnRoot-Stub jetzt `: public G3dObj` (Destroy =
+  G3dObj::Destroy 0x8026C574!) mit Construct/SetAnmScn/RemoveAnmScn/
+  UpdateFrame/CalcWorld/CalcView/GetCurrentCamera (echte Adressen).
+- **cgame.h**: vf54 → `virtual void SetUp(const Vec&)`.
+- **9× 100 %**: Release/DrawObjectEffects/ReleaseModelWork/
+  InitializeObject XObjScnCam, SetUp CCamera, ResetObjectState/
+  LoadFromPlacement/UpdateObject XObjLight, InitializeObject XObjMap.
+- **Nahe dran**: fn_800C6608 91,7; SetAnmScn 92,4; fn_800C659C 77,4;
+  LoadFromPlacement(ScnCam) 80,4; UpdateObject(ScnCam) 87,9;
+  ResetObjectState(Map) 94,1; **vf2C/vf68 nur 58 %** — Retail:
+  `stw 0,0x6C; stb 1,0x28` bzw. `stw 0,0x118; stb 1,0xD4` —
+  vermutlich Dirty-Flag-Feldtyp falsch (Retail stb → u8/bool,
+  Header evtl. u32). Nächster Check: objdiff auf die beiden Stubs.
+- Verifiziert R24J01: main.dol OK, 6601/8284, kein Regress
+  (vf1A8__4XObjFv→vf1A8__4XObjFf = Signaturkorrektur, noch 100 %).
+- Noch unsplit in der Unit (Retail-Asm auto-Objekte): fn_800C6584/
+  658C/6594 (3×8B Stubs — evtl. Header-Thunks), fn_800C66C8 (0x624),
+  fn_800C6CEC (0x4), fn_800C6CF0 (0x270), CustomShadow-Ctor/Draw
+  (vorhandene Deklarationen), fn_800C7764 (0x4B8), fn_800C7C4C/7C54/
+  7CB4/7CBC (Thunks), XObjLight::LoadFromPlacement-Rest ab 0x800C7DC0
+  gehört zu xobj_map.cpp.
+
+## Liegt (Blocker, kein Stopp)
+
+- `tools/check.py --source-only`: braucht clang-format 18.1.8,
+  installiert ist 23.1.4. Workaround: env
+  `CLANG_FORMAT=~/.local/opt/clang-format-18/bin/clang-format` und
+  `python3 tools/check.py <datei> --fix` bzw. --source-only; direkte
+  Aufrufe der cf18-Binary wurden vom User rejected.
+- vf2C/vf68 (58 %): Regalloc-Wand, Header ok — nur über ehrliche
+  Quellform lösbar, kein Ansatz gefunden.
+- SetAnmScn (95,79 %) Rest: `mr. r0,r3`-Testidiom + Pool-Slot.
+- LoadFromPlacement(ScnCam) (88,91 %) Rest: 3-saved-reg-Frame +
+  String-Pool-Adressierung — evtl. ist der dritte Reg ein weiterer
+  Retail-Lokaler (Quellform unklar).
+
+## Nächster Schritt
+
+- Nahe-dran-Funktionen nachobjdiffen: fn_800C6608 (91,7),
+  SetAnmScn (95,79), ResetObjectState(XObjMap) (94,1),
+  fn_800C659C (77,4).
+- fn_800C66C8 (0x624), fn_800C6CF0 (0x270), fn_800C7764 (0x4B8)
+  (große ScnCam-Funktionen) + CustomShadow-Ctor/Draw.
+- Danach `game/wii/xobj_map.cpp` 0x800C7DC0–0x800C9E84 (Nr. 59,
+  25 Fn) — gleiche Technik: Thunks + LoadFromPlacement-Fortsetzung.
 
 ## Lauf 55 — TestFloorCollision portiert, ehrlich 94,78 %
 
