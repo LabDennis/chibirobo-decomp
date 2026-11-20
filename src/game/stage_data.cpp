@@ -3751,6 +3751,9 @@ void AttrInfo::Init(CoordInfo* info)
 }
 #endif
 
+const char sStageDataPathFormat[]   = "bin/%s.bin";
+const char sStageModulePathFormat[] = "rel/%s%s.rel";
+
 /**
  * @note Address: 0x8006EE24
  * @note Size: 0x514
@@ -3760,7 +3763,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 	switch (stage->mState) {
 	case 0: {
 #if defined(VERSION_JP)
-		strcpy(stage->mDataPath, FormatToStaticBuffer("bin/%s.bin", stageTable[index].fileName));
+		strcpy(stage->mDataPath, FormatToStaticBuffer(sStageDataPathFormat, stageTable[index].fileName));
 #else
 		strcpy(stage->mDataPath,
 		       FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], stageTable[index].fileName));
@@ -3771,9 +3774,9 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 #if defined(VERSION_PAL)
 		// europe's table has the module's name apart from the data file's
 		StageDesc* desc = &stageTable[index];
-		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", desc->moduleName, ""));
+		strcpy(stage->mModulePath, FormatToStaticBuffer(sStageModulePathFormat, desc->moduleName, ""));
 #else
-		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", stageTable[index].fileName, ""));
+		strcpy(stage->mModulePath, FormatToStaticBuffer(sStageModulePathFormat, stageTable[index].fileName, ""));
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
 			stage->mModulePath[0] = 0; // an empty path skips the module load below
