@@ -450,6 +450,31 @@ public:
 		}
 		return IsValid() ? ptr()->nTevs : 0;
 	}
+	GXCullMode GXGetCullMode() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 223, "NW4R:Failed assertion IsValid()");
+		}
+		return IsValid() ? (GXCullMode)ptr()->cullMode : GX_CULL_ALL;
+	}
+	void GXSetCullMode(GXCullMode mode);
+};
+
+class ResMatPix {
+public:
+	void* mpData; // _00
+
+	ResMatPix(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x1f) {
+			db::Panic("g3d_resmat_ac.h", 340, "NW4R:Failed assertion !((u32)p & 0x1f)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	void GXSetDstAlpha(GXBool enable, u8 alpha);
+	void DCStore(bool sync);
+	void EndEdit() { DCStore(false); }
 };
 
 class ResMatTevColor {
@@ -579,9 +604,11 @@ public:
 		s32 ofs = ref().toResMatDLData;
 		return ofs != 0 ? (ResMatDLData*)((u8*)mpData + ofs) : NULL;
 	}
+	ResMatPix GetResMatPix() { return ResMatPix(&GetResMatDLData()->dlPix); }
 	ResMatTevColor GetResMatTevColor() { return ResMatTevColor(&GetResMatDLData()->dlTevColor); }
 	ResTev GetResTev();
 	ResTexSrt GetResTexSrt() { return ResTexSrt(&ref().texSrtData); }
+	void DCStore(bool sync);
 };
 
 // nw4r's handle to a model resource
@@ -701,6 +728,7 @@ public:
 		CopiedMatAccess(ScnMdl* pScnMdl, u32 id);
 
 		ResGenMode GetResGenMode(bool markDirty);
+		ResMatPix GetResMatPix(bool markDirty);
 		ResMatTevColor GetResMatTevColor(bool markDirty);
 		ResTev GetResTev(bool markDirty);
 		ResTexSrt GetResTexSrt(bool markDirty);
@@ -1286,14 +1314,14 @@ public:
 	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198();
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
-	virtual void vf1A0();
+	virtual void vf1A0(const u32* flags);
 	virtual void vf1A4();
 	virtual void vf1A8();
-	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	virtual void SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
 	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
 	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
 	virtual void ClearBaseMtx();                 // _1B8
-	virtual void vf1BC();
+	virtual void vf1BC(s32 mode);
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
 	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
