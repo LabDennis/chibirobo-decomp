@@ -133,7 +133,6 @@ extern "C" void UpdatePlugCordSpark(XObjPlugCordNode* node, XObjPlugCordPoint* p
  * @note Address: 0x800DBC98
  * @note Size: 0x144
  */
-// NONMATCHING: retail issues the wrapped game-pointer subtract one insn later.
 extern "C" void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint* points, s32 count, u32)
 {
 	if (nodes->mEnabled) {
@@ -164,8 +163,8 @@ extern "C" void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint*
 		}
 	}
 	if (nodes->mNode[0].mState == 1) {
-		XObj* object = &gGame.GetPlayer()->mPlug.mWire;
-		object->SetPos(nodes->mNode[0].mPos, 0);
+		XObjPlug* plug = &gGame.GetPlayer()->mPlug;
+		plug->mWire.SetPos(nodes->mNode[0].mPos, 0);
 	}
 }
 
