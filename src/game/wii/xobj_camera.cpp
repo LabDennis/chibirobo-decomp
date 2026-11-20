@@ -3,14 +3,23 @@
 // and the CustomShadow ctor/draw pair
 #include "Version.h"
 
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
+
+#include "nw4r/g3d/g3d_camera.h" // revolution/gx.h has to win over dolphin's here
+
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/globals.h"
 #include "game/ut.h"
 
+#include "arithmetic.h"
+
+#include "Dolphin/mtx.h"
+
 #include <math.h>
 
 extern MEMAllocator gWiiPadAllocator;
+extern f32 gScreenWidthScale;
 
 // nw4r's db pointer check (db_assert.h) as the game's sources use it; the line is the game's own
 #define NW4R_ASSERT_VALID_PTR_LINE(line, exp)                                                                                              \
@@ -23,16 +32,13 @@ extern MEMAllocator gWiiPadAllocator;
 // its defaults; the class name and its other members are not recovered
 struct XObjScnCamInitRec {
 	u16 m_00;
-	u16 m_02;
-	u16 m_04;
+	s16 mSnap[2]; // _02, fn_800C6CF0's per-axis snap counters
 	u16 m_06;
 	u32 m_08;
-	u32 m_0C;
-	f32 m_10;
-	u32 m_14;
-	u32 m_18;
+	XObj* m_0C;    // the object the aim tracks when set
+	Vec mTarget;   // _10, a fixed aim position; x stays NAN when unused
 	u32 m_1C;
-	u32 m_20;
+	CCamera* m_20; // the camera the aim falls back to
 	f32 m_24;
 	f32 m_28;
 	f32 m_2C;
@@ -54,12 +60,12 @@ struct XObjScnCamInitRec {
 
 extern "C" void fn_800C659C(XObjScnCamInitRec* self, u32 arg)
 {
-	self->m_08 = arg;
-	self->m_04 = 0;
-	self->m_02 = 0;
-	self->m_0C = 0;
-	self->m_10 = NAN;
-	self->m_20 = 0;
+	self->m_08      = arg;
+	self->mSnap[1]  = 0;
+	self->mSnap[0]  = 0;
+	self->m_0C      = NULL;
+	self->mTarget.x = NAN;
+	self->m_20      = NULL;
 	self->m_24 = self->m_28 = NAN;
 	self->m_2C = self->m_30 = 0.0f;
 	self->m_34 = self->m_38 = 0.0f;
@@ -85,6 +91,121 @@ extern "C" CVec fn_800C6608(u32, XObj* obj)
 		}
 	}
 	return *obj->GetPos();
+}
+
+extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj);
+
+// NONMATCHING: the aim-angle helper the trackers below share: *outA gets the yaw from
+// head to the tracked target, *outB the pitch; both are clamped to the record's
+// m_30/m_2C ranges. first honest pass, scheduling and the exact source shape of the
+// CVec temporaries are not recovered
+extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* outA, f32* outB)
+{
+	if (rec->m_0C != NULL) {
+		*outA   = (f32)atan2(rec->m_0C->GetPos()->x - head->x, rec->m_0C->GetPos()->z - head->z) - rot->y;
+		CVec at = fn_800C6CEC(rec, rec->m_0C);
+		if (at.y == rec->m_0C->GetPos()->y) {
+			at.y = head->y;
+		}
+		f32 dz = at.z - head->z;
+		f32 dx = at.x - head->x;
+		f32 dy = at.y - head->y;
+		*outB  = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
+		                   : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+	} else if (__fpclassifyf(rec->mTarget.x) != FP_NAN) {
+		*outA   = (f32)atan2(rec->mTarget.x - head->x, rec->mTarget.z - head->z) - rot->y;
+		CVec at = rec->mTarget;
+		f32 dz  = at.z - head->z;
+		f32 dx  = at.x - head->x;
+		f32 dy  = at.y - head->y;
+		*outB   = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
+		                   : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+	} else if (rec->m_20 != NULL) {
+		CVec* eye = &rec->m_20->mView.mEye;
+		*outA     = (f32)atan2(eye->x - head->x, eye->z - head->z) - rot->y;
+		CVec at   = *eye;
+		f32 dz    = at.z - head->z;
+		f32 dx    = at.x - head->x;
+		f32 dy    = at.y - head->y;
+		*outB     = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
+		                     : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+	}
+	if (*outA > rec->m_30) {
+		*outA = rec->m_30;
+	}
+	if (*outA < -rec->m_30) {
+		*outA = -rec->m_30;
+	}
+	if (*outB > rec->m_2C) {
+		*outB = rec->m_2C;
+	}
+	if (*outB < -rec->m_2C) {
+		*outB = -rec->m_2C;
+	}
+}
+
+extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj)
+{
+	return fn_800C6608((u32)rec, obj);
+}
+
+// NONMATCHING: per-frame yaw/pitch tracker: re-aims m_4C/m_50 at the target, then eases
+// m_3C/m_40 toward them by m_5C/m_60 * frames, or snaps when the counter protocol runs
+extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
+{
+	CVec head = fn_800C6CEC(rec, (XObj*)rec->m_08);
+	CVec rot  = ((XObj*)rec->m_08)->mMoveRotate;
+	f32 outB;
+	f32 outA;
+	fn_800C66C8(rec, &head, &rot, &outA, &outB);
+	rec->m_50 = outA + rec->m_38;
+	rec->m_4C = outB + rec->m_34;
+	f32* cur    = &rec->m_3C;
+	f32* target = &rec->m_4C;
+	f32* speed  = &rec->m_5C;
+	for (int i = 0; i < 2; i++) {
+		*cur    = WrapAngle(*cur);
+		*target = WrapAngle(*target);
+		f32 diff = __fabsf(*target - *cur);
+		if (diff > 0.0f) {
+			if (diff >= TWO_PI) {
+				diff -= TWO_PI;
+			}
+			if (diff > PI) {
+				if (*target < *cur) {
+					*target += TWO_PI;
+				} else {
+					*target -= TWO_PI;
+				}
+			}
+		}
+		if (diff >= 0.001f) {
+			*speed = 0.1f * __fabsf(*target - *cur);
+			if (*speed < 0.01f) {
+				*speed = 0.01f;
+			}
+			if (*cur < *target) {
+				*cur += *speed * (f32)frames;
+				if (*cur > *target) {
+					*cur = *target;
+				}
+			} else if (*cur > *target) {
+				*cur -= *speed * (f32)frames;
+				if (*cur < *target) {
+					*cur = *target;
+				}
+			}
+		} else {
+			if (rec->mSnap[i] > 0) {
+				rec->mSnap[i] = rec->mSnap[i] == 2 ? 0 : -rec->mSnap[i];
+			}
+			*speed = 0.0f;
+			*cur   = *target;
+		}
+		cur++;
+		target++;
+		speed++;
+	}
 }
 
 /**
@@ -205,6 +326,132 @@ void XObjScnCam::ReleaseModelWork()
 	}
 	gGame.mMotionControlCamera.vf2C();
 	gGame.mMotionControlCamera.vf68();
+}
+
+/**
+ * @note Address: 0x800C7764
+ * @note Size: 0x4B8
+ */
+// NONMATCHING: copies the scene's current nw4r camera into the game camera each frame:
+// projection, the view matrix offset by m_9AC/m_9B8, eye, posture and viewport. first
+// honest pass, the reader's matrix slot is not modelled
+extern "C" void fn_800C7764(XObjScnCam* self, CCamera* camera)
+{
+	BOOL active = FALSE;
+	if (((self->mStatus.mFlags & 0x1ULL) ^ 1) && self->mScene != NULL && self->mScene->_2888 != NULL) {
+		active = TRUE;
+	}
+	if (!active) {
+		return;
+	}
+	// GetCurrentCamera hands back the camera object's CameraData*; the caller keeps it in
+	// a slot that is the Camera object's whole layout ({mpData})
+	MtxP handle                    = ((nw4r::g3d::ScnRoot*)self->mScene)->GetCurrentCamera();
+	nw4r::g3d::Camera& cam         = *(nw4r::g3d::Camera*)&handle;
+	// upstream rescommon's ref() asserts on a NULL mpData; our copy dropped the check,
+	// the retail TU has it inlined at the first camera data read
+	if (cam.ptr() == NULL) {
+		nw4r::db::Panic("g3d_rescommon_ac.h", 0x8C, "NW4R:Pointer must not be NULL (mpData)");
+	}
+	nw4r::g3d::CameraData& data = cam.ref();
+	if (data.flags & nw4r::g3d::CameraData::FLAG_PROJ_ORTHO) {
+		camera->mType             = 2;
+		camera->mTop              = data.projTop;
+		camera->mBottom           = data.projBottom;
+		camera->mLeft             = data.projLeft * gScreenWidthScale;
+		camera->mRight            = data.projRight * gScreenWidthScale;
+		camera->mNear             = data.projNear;
+		camera->mFar              = data.projFar;
+		camera->mProjectionDirty  = TRUE;
+		camera->mIsOrtho          = 1.0f;
+		camera->mProjectionSource = NULL;
+		camera->mScale            = gScreenWidthScale;
+	} else if (data.flags & nw4r::g3d::CameraData::FLAG_PROJ_FRUSTUM) {
+		camera->mType             = 1;
+		camera->mTop              = data.projTop;
+		camera->mBottom           = data.projBottom;
+		camera->mLeft             = data.projLeft * gScreenWidthScale;
+		camera->mRight            = data.projRight * gScreenWidthScale;
+		camera->mNear             = data.projNear;
+		camera->mFar              = data.projFar;
+		camera->mProjectionDirty  = TRUE;
+		camera->mIsOrtho          = 0.0f;
+		camera->mProjectionSource = NULL;
+		camera->mScale            = gScreenWidthScale;
+	} else {
+		camera->mType             = 0;
+		camera->mFov              = data.projFovy;
+		camera->mAspect           = data.projAspect * gScreenWidthScale;
+		camera->mNear             = data.projNear;
+		camera->mFar              = data.projFar;
+		camera->mProjectionDirty  = TRUE;
+		camera->mIsOrtho          = 0.0f;
+		camera->mProjectionSource = NULL;
+		camera->mScale            = gScreenWidthScale;
+	}
+	static BOOL sViewMtxInit;
+	if (!sViewMtxInit) {
+		sViewMtxInit = TRUE;
+	}
+	// the view matrix buffer the reader carries at _390; the class member is not modelled
+	MtxP viewMtx = (MtxP)((u8*)&gSingleObjectReader + 0x390);
+	cam.GetCameraMtx((nw4r::math::MTX34*)viewMtx);
+	Mtx trans;
+	Mtx rot;
+	Mtx out;
+	PSMTXTrans(trans, -self->m_9AC.x, -self->m_9AC.y, -self->m_9AC.z);
+	PSMTXRotRad(rot, 'y', -self->m_9B8);
+	PSMTXConcat(rot, trans, out);
+	PSMTXConcat(viewMtx, out, viewMtx);
+	camera->vf64(viewMtx);
+	Vec pos;
+	cam.GetPosition((nw4r::math::VEC3*)&pos);
+	pos.x += self->m_9AC.x;
+	pos.y += self->m_9AC.y;
+	pos.z += self->m_9AC.z;
+	camera->SetEye(pos);
+	nw4r::g3d::Camera::PostureInfo info;
+	cam.GetPosture(&info);
+	switch (info.tp) {
+	case nw4r::g3d::Camera::POSTURE_LOOKAT: {
+		Vec target;
+		target.x = info.cameraTarget.x + self->m_9AC.x;
+		target.y = info.cameraTarget.y + self->m_9AC.y;
+		target.z = info.cameraTarget.z + self->m_9AC.z;
+		camera->SetInterest(target);
+		camera->SetUp(*(const Vec*)&info.cameraUp);
+		camera->CalcAngle();
+		break;
+	}
+	case nw4r::g3d::Camera::POSTURE_ROTATE: {
+		Vec angle;
+		angle.x = info.cameraRotate.x * DEG2RAD;
+		angle.y = info.cameraRotate.y * DEG2RAD + self->m_9B8;
+		angle.z = info.cameraRotate.z * DEG2RAD;
+		camera->SetAngle(angle);
+		break;
+	}
+	case nw4r::g3d::Camera::POSTURE_AIM: {
+		Vec target;
+		target.x = info.cameraTarget.x + self->m_9AC.x;
+		target.y = info.cameraTarget.y + self->m_9AC.y;
+		target.z = info.cameraTarget.z + self->m_9AC.z;
+		camera->SetInterest(target);
+		Vec up = { 0.0f, info.cameraTwist, 0.0f };
+		CVec angle = camera->mView.mAngle + up;
+		camera->SetAngle(angle);
+		camera->CalcUp();
+		break;
+	}
+	}
+	f32 x;
+	f32 y;
+	f32 w;
+	f32 h;
+	f32 near;
+	f32 far;
+	cam.GetViewport(&x, &y, &w, &h, &near, &far);
+	camera->vf88(x, y, w, h, near, far);
 }
 
 /**
