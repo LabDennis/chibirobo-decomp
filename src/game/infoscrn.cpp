@@ -935,6 +935,8 @@ extern "C" void AllowIdleHudCounters(InfoScrn* scrn)
 	gHudScrapCounter.mSuppressIdleDisplay      = FALSE;
 }
 
+static const Vec sHudPlayerIconProjectionOffset = { 0.0f, 10.0f, 0.0f };
+
 /**
  * @note Address: 0x80067418
  * @note Size: 0x510
@@ -962,7 +964,7 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		w       = 0.8f * (1.1f * tw);
 		u16 th  = GXGetTexObjHeight(&tex);
 		h       = 0.8f * th;
-		Vec ofs = { 0.0f, 10.0f, 0.0f };
+		Vec ofs = sHudPlayerIconProjectionOffset;
 		f32 sx;
 		f32 sy;
 		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &sx, &sy, NULL, 0);
