@@ -21,6 +21,8 @@
 extern MEMAllocator gWiiPadAllocator;
 extern f32 gScreenWidthScale;
 
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
+
 // nw4r's db pointer check (db_assert.h) as the game's sources use it; the line is the game's own
 #define NW4R_ASSERT_VALID_PTR_LINE(line, exp)                                                                                              \
 	((void)((((u32)(exp) & 0xFF000000) == 0x80000000 || ((u32)(exp) & 0xFF800000) == 0x81000000 || ((u32)(exp) & 0xF8000000) == 0x90000000 \
@@ -35,8 +37,8 @@ struct XObjScnCamInitRec {
 	s16 mSnap[2]; // _02, fn_800C6CF0's per-axis snap counters
 	u16 m_06;
 	u32 m_08;
-	XObj* m_0C;    // the object the aim tracks when set
-	Vec mTarget;   // _10, a fixed aim position; x stays NAN when unused
+	XObj* m_0C;  // the object the aim tracks when set
+	Vec mTarget; // _10, a fixed aim position; x stays NAN when unused
 	u32 m_1C;
 	CCamera* m_20; // the camera the aim falls back to
 	f32 m_24;
@@ -111,7 +113,7 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dx = at.x - head->x;
 		f32 dy = at.y - head->y;
 		*outB  = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
-		                   : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+		                    : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
 	} else if (__fpclassifyf(rec->mTarget.x) != FP_NAN) {
 		*outA   = (f32)atan2(rec->mTarget.x - head->x, rec->mTarget.z - head->z) - rot->y;
 		CVec at = rec->mTarget;
@@ -119,7 +121,7 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dx  = at.x - head->x;
 		f32 dy  = at.y - head->y;
 		*outB   = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
-		                   : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+		                     : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
 	} else if (rec->m_20 != NULL) {
 		CVec* eye = &rec->m_20->mView.mEye;
 		*outA     = (f32)atan2(eye->x - head->x, eye->z - head->z) - rot->y;
@@ -128,7 +130,7 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dx    = at.x - head->x;
 		f32 dy    = at.y - head->y;
 		*outB     = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy))
-		                     : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
+		                       : atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy)) - HALF_PI;
 	}
 	if (*outA > rec->m_30) {
 		*outA = rec->m_30;
@@ -158,14 +160,14 @@ extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 	f32 outB;
 	f32 outA;
 	fn_800C66C8(rec, &head, &rot, &outA, &outB);
-	rec->m_50 = outA + rec->m_38;
-	rec->m_4C = outB + rec->m_34;
+	rec->m_50   = outA + rec->m_38;
+	rec->m_4C   = outB + rec->m_34;
 	f32* cur    = &rec->m_3C;
 	f32* target = &rec->m_4C;
 	f32* speed  = &rec->m_5C;
 	for (int i = 0; i < 2; i++) {
-		*cur    = WrapAngle(*cur);
-		*target = WrapAngle(*target);
+		*cur     = WrapAngle(*cur);
+		*target  = WrapAngle(*target);
 		f32 diff = __fabsf(*target - *cur);
 		if (diff > 0.0f) {
 			if (diff >= TWO_PI) {
@@ -231,6 +233,27 @@ CustomShadow::CustomShadow()
 		mRing[2 * i + 1].y = 0.0f;
 		mColors[2 * i + 1] = i;
 	}
+}
+
+/**
+ * @note Address: 0x800C7130
+ * @note Size: 0x20C
+ */
+void CustomShadow::Draw(Vec pos, Vec scale, u32 alpha)
+{
+	Mtx trans;
+	Mtx scaleM;
+	Mtx mtx;
+	PSMTXTrans(trans, pos.x, pos.y, pos.z);
+	PSMTXScale(scaleM, scale.x, scale.y, scale.z);
+	PSMTXConcat(trans, scaleM, mtx);
+	PSMTXMultVecArray(mtx, &mCenter, mFan, 34);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, mFan, alpha, 34);
+	for (int i = 0; i < 33; i++) {
+		mColors[i * 2] = alpha;
+	}
+	PSMTXMultVecArray(mtx, mRing, mRingTransformed, 66);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, mRingTransformed, mColors, 66);
 }
 
 /**
@@ -371,8 +394,8 @@ extern "C" void fn_800C7764(XObjScnCam* self, CCamera* camera)
 	}
 	// GetCurrentCamera hands back the camera object's CameraData*; the caller keeps it in
 	// a slot that is the Camera object's whole layout ({mpData})
-	MtxP handle                    = ((nw4r::g3d::ScnRoot*)self->mScene)->GetCurrentCamera();
-	nw4r::g3d::Camera& cam         = *(nw4r::g3d::Camera*)&handle;
+	MtxP handle            = ((nw4r::g3d::ScnRoot*)self->mScene)->GetCurrentCamera();
+	nw4r::g3d::Camera& cam = *(nw4r::g3d::Camera*)&handle;
 	// upstream rescommon's ref() asserts on a NULL mpData; our copy dropped the check,
 	// the retail TU has it inlined at the first camera data read
 	if (cam.ptr() == NULL) {
@@ -462,7 +485,7 @@ extern "C" void fn_800C7764(XObjScnCam* self, CCamera* camera)
 		target.y = info.cameraTarget.y + self->m_9AC.y;
 		target.z = info.cameraTarget.z + self->m_9AC.z;
 		camera->SetInterest(target);
-		Vec up = { 0.0f, info.cameraTwist, 0.0f };
+		Vec up     = { 0.0f, info.cameraTwist, 0.0f };
 		CVec angle = camera->mView.mAngle + up;
 		camera->SetAngle(angle);
 		camera->CalcUp();
