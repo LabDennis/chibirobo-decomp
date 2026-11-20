@@ -73,6 +73,26 @@ static inline void ResetShot(XActPopperShot* shot)
 	KillGen(shot->mChargeGen);
 }
 
+// turns an angle towards a target by up to 14 degrees per frame, the GameCube's
+// homing steer; the short way round is taken when the wrapped delta passes pi
+static inline void SteerPopperAngle(f32& angle, f32 target, u32 frames)
+{
+	f32 delta    = WrapAngle(target - angle);
+	f32 distance = delta > PI ? TWO_PI - delta : delta;
+	f32 factor   = distance / PI;
+	if (delta > PI)
+		angle -= DEG2RAD * (14.0f * factor) * frames;
+	else
+		angle += DEG2RAD * (14.0f * factor) * frames;
+}
+
+// fades a landing ring out over time, the GameCube's FadePopperRing
+static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
+{
+	if (ring.mAmount > 0.0f && (ring.mAmount -= 0.05f * frames) < 0.0f)
+		ring.mAmount = 0.0f;
+}
+
 extern "C" {
 
 /**
@@ -499,6 +519,115 @@ void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended)
 		shot->mRing[1].mRadius = 100.0f;
 		shot->mRing[1].mColor  = 0x6464FF96;
 	}
+}
+
+CVec AddScalarToVectorComponents(const CVec& v, f32 d);
+
+// NONMATCHING: 96.9% - the call sequence (GetCollisionHeight, GetPos, atan2,
+// PSMTX*, UpdateEffectMtx, RetireEffect, fn_80108BCC, UpdateParticlePool,
+// SetPosition) and all branches match; the ~3% residue is in instruction
+// scheduling and stack slot choice, undiagnosed this run.
+
+// steps one shot through the air, the GameCube's UpdatePopperShotFlight: the homing
+// steer on the target, the ballistic advance, the range check, the trail history
+// and the dust pool. On the Wii the generators are event-effect instances dragged
+// to the new position and rotation instead of a JObj joint, and the shot's two
+// sound actors follow it while their fades step
+/**
+ * @note Address: 0x80109350
+ * @note Size: 0x8C8
+ */
+void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
+{
+	if (shot->mActive) {
+		XObj* target = shot->mHomingTarget;
+		if (target != NULL) {
+			Vec aim = AddScalarToVectorComponents(*target->GetPos(), target->GetCollisionHeight() * 0.5f);
+			SteerPopperAngle(shot->mYaw, (f32)atan2(aim.x - shot->mPos.x, aim.z - shot->mPos.z), frames);
+			f32 dz    = aim.z - shot->mPos.z;
+			f32 dx    = aim.x - shot->mPos.x;
+			f32 dy    = aim.y - shot->mPos.y;
+			f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+			SteerPopperAngle(shot->mPitch, dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI, frames);
+		}
+		shot->mDistance += shot->mSpeed * frames;
+		Mtx translation, yaw, pitch, transform;
+		PSMTXTrans(translation, shot->mPos.x, shot->mPos.y, shot->mPos.z);
+		PSMTXRotRad(yaw, 'y', shot->mYaw);
+		PSMTXRotRad(pitch, 'x', shot->mPitch);
+		PSMTXConcat(translation, yaw, transform);
+		PSMTXConcat(transform, pitch, transform);
+		Vec step    = { 0.0f, 0.0f, 0.0f };
+		step.z      = shot->mSpeed * frames;
+		Vec forward = step;
+		PSMTXMultVec(transform, &forward, &shot->mPos);
+		if (shot->mGen != NULL) {
+			shot->mGen->pos = shot->mPos;
+			UpdateEffectMtx(shot->mGen);
+			Vec rot         = { 0.0f, 0.0f, 0.0f };
+			rot.x           = shot->mPitch;
+			rot.y           = shot->mYaw;
+			shot->mGen->rot = rot;
+			UpdateEffectMtx(shot->mGen);
+		}
+		if (shot->mChargeGen != NULL) {
+			shot->mChargeGen->pos = shot->mPos;
+			UpdateEffectMtx(shot->mChargeGen);
+			Vec rot               = { 0.0f, 0.0f, 0.0f };
+			rot.x                 = shot->mPitch;
+			rot.y                 = shot->mYaw;
+			shot->mChargeGen->rot = rot;
+			UpdateEffectMtx(shot->mChargeGen);
+		}
+		if (shot->mDistance >= shot->mRange) {
+			shot->mActive          = FALSE;
+			shot->mRing[1].mPos    = shot->mPos;
+			shot->mRing[1].mAmount = 0.9f;
+			shot->mRing[1].mRadius = 40.0f;
+			shot->mRing[1].mColor  = 0x64FF6496;
+			KillGen(shot->mGen);
+			KillGen(shot->mChargeGen);
+		} else {
+			fn_80108BCC(shot);
+		}
+		for (s32 i = 9; i > 0; --i)
+			shot->mHistory[i] = shot->mHistory[i - 1];
+		shot->mHistory[0] = shot->mPos;
+	} else if (shot->mHitTarget) {
+		shot->mHitTarget->OnHitFromPosition(shot->mPos, shot->mStrength * shot->mKind);
+		shot->mHitTarget = NULL;
+	}
+	UpdateParticlePool(&shot->mDust.mPtcl, frames);
+	FadePopperRing(shot->mRing[0], frames);
+	FadePopperRing(shot->mRing[1], frames);
+	for (s32 i = 0; i < 2; ++i) {
+		CSound3DActor* actor = shot->mSfxActors[i].mActor;
+		if (actor != NULL && actor->mHandle.IsAttachedSound()) {
+			actor->SetPosition(nw4r::math::VEC3(shot->mPos));
+			actor->UpdateFade(frames);
+		}
+	}
+}
+
+// NONMATCHING: 58.4% - the GameCube's exact body, but GC/3.0a5 folds the local
+// CVec into the sret slot while retail keeps it as a real stack temp (frame 0x20,
+// word copies to the temp, float read-modify-writes on it, then a word copy plus
+// vtable store to the out object). `t = v` assignment and `return CVec(t)` fold
+// the same way; the older GC compiler emits retail's shape for this exact source.
+
+// the GameCube's AddScalarToVectorComponents, the homing aim's lift over the
+// target's center
+/**
+ * @note Address: 0x80109C18
+ * @note Size: 0x70
+ */
+CVec AddScalarToVectorComponents(const CVec& v, f32 d)
+{
+	CVec t(v);
+	t.x += d;
+	t.y += d;
+	t.z += d;
+	return t;
 }
 
 } // extern "C"
