@@ -9,6 +9,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/xact.h"
+#include "game/xobjattachment.h"
 #include "game/wii/ceffect.h"
 #include "game/globals.h"
 #include "game/gmath.h"
@@ -16,10 +17,10 @@
 #include <stdlib.h>
 
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
-extern "C" void ShowAndDeployCopter(XObj* copter);
-extern "C" void PlayCopterStowAnimation(XObj* copter);
-extern "C" void PlayCopterDescentAnimation(XObj* copter);
-extern "C" void PlayCopterLandingAnimation(XObj* copter);
+extern "C" void ShowAndDeployCopter(XObjCopter* copter);
+extern "C" void PlayCopterStowAnimation(XObjCopter* copter);
+extern "C" void PlayCopterDescentAnimation(XObjCopter* copter);
+extern "C" void PlayCopterLandingAnimation(XObjCopter* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
 extern "C" u32 gRefreshRate;
@@ -28,13 +29,25 @@ extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 grou
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
 extern "C" void CheckPopperShotImpact(XActPopperShot* shot, const Vec* pos, BOOL ended);
 extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit); // the Wii's out-of-line FindMapFloor
-extern "C" void fn_8010EA78(XObj* popper);                                             // the GameCube's ShowAndDeployPopper
-extern "C" void fn_8010EADC(XObj* popper);                                             // PlayPopperStowAnimation
-extern "C" void fn_8010EB80(XObj* popper);                                             // PlayPopperRaiseAnimation
-extern "C" void fn_8010EBA8(XObj* popper);                                             // PlayPopperFireAnimation
-extern "C" BOOL fn_8010EBD0(XObj* popper);                                             // IsPopperFireAnimationSelected
-extern "C" void fn_8010EC08(XObj* popper);                                             // PlayPopperLowerAnimation
-extern "C" void fn_8010EC30(XObj* popper);                                             // ShowIdlePlayerPopper
+extern "C" void ShowAndDeployPopper(XObjPopper* popper);
+extern "C" void PlayPopperStowAnimation(XObjPopper* popper);
+extern "C" void PlayPopperRaiseAnimation(XObjPopper* popper);
+extern "C" void PlayPopperFireAnimation(XObjPopper* popper);
+extern "C" BOOL IsPopperFireAnimationSelected(XObjPopper* popper);
+extern "C" void PlayPopperLowerAnimation(XObjPopper* popper);
+extern "C" void ShowIdlePlayerPopper(XObjPopper* popper);
+extern "C" void ActivatePlayerRadar(XObjRadar* radar);
+extern "C" void DeactivatePlayerRadar(XObjRadar* radar);
+extern "C" void StartPlayerRadarScan(XObjRadar* radar);
+extern "C" void ShowIdlePlayerRadar(XObjRadar* radar);
+extern "C" void ShowOXCircle(XObjOX* obj);
+extern "C" void ShowOXCross(XObjOX* obj);
+extern "C" CVec GetRadarDishWorldPosition(XObjRadar* obj);
+extern "C" XObj* FindNearestRadarTarget(XActRadar* act);
+extern "C" void fn_8010D094(XActRadar* act, s8 near, s8 mid, s8 far);
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+extern "C" void HSD_MtxGetScale(Mtx m, Vec* dst);
+u32 GetRadarParameter(s32 index);
 struct AttachmentValues;
 extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
 extern "C" void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
@@ -68,6 +81,39 @@ static inline void KillGen(EffectInstance*& gen)
 // the GameCube objectfloorquery.h inline: the Wii keeps the reference signature and
 // forwards to the pointer-taking virtual, so the CVec arguments materialize as
 // temporaries on the caller's stack
+static inline u32 PackRadarColor(const ScrnColorF& c)
+{
+	return ((u32)c.r << 24) | ((u32)c.g << 16) | ((u32)c.b << 8) | (u32)c.a;
+}
+
+static inline u16 ShadeRadarBeam(XActRadar* act, u32* colors, u32 base)
+{
+	u16 n = 0;
+	int turn, step;
+	for (turn = 0; turn < 2; ++turn) {
+		for (step = 0; step < 16; ++step) {
+			colors[n]     = base | (u8)(s32)(150.f * ((1.f / 64) * n) * act->mFade);
+			colors[n + 1] = base;
+			n += 2;
+		}
+	}
+	for (turn = 0; turn < 6; ++turn) {
+		for (step = 0; step < 16; ++step) {
+			colors[n]     = base | (u8)(s32)(150.f * (1.f - (1.f / 192) * (turn * 32 + step)) * act->mFade);
+			colors[n + 1] = base;
+			n += 2;
+		}
+	}
+	return n;
+}
+
+static inline f32 TargetPitch(const Vec& from, const Vec& to)
+{
+	f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
+	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
+}
+
 static inline u32 ProbeObjectFloor(XObj* obj, const CVec& from, const CVec& to, f32 radius, f32 height, Vec* push, Vec* contact, s32* floor)
 {
 	return obj->TestFloorCollision(&from, &to, radius, height, push, contact, floor, 0);
@@ -182,7 +228,7 @@ void HandleCopterActionInput(XAction* act, const CPadOne* pad, f32* weight)
 	if (act->mState == 3) {
 		if (gWiiPointer.Check(2) || IsPlayerStopped(act->mOwner)) {
 			act->mState = 4;
-			PlayCopterDescentAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation((XObjCopter*)act->mOwner->mCopterObj);
 		}
 		*weight = 1.0f;
 	} else if (act->mState == 4 || act->mState == 7 || act->mState == 8) {
@@ -236,7 +282,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 	case 1:
 		if (anim != 0x814) {
 			act->mOwner->SetAnim(0x814, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
-			ShowAndDeployCopter((XObj*)act->mOwner->mCopterObj);
+			ShowAndDeployCopter((XObjCopter*)act->mOwner->mCopterObj);
 		} else if (owner->IsAnimDone()) {
 			act->mOwner->SetAnim(0x4A, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			act->mState = 0;
@@ -245,7 +291,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 	case 2:
 		if (anim != 0x817) {
 			act->mOwner->SetAnim(0x817, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			PlayCopterStowAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterStowAnimation((XObjCopter*)act->mOwner->mCopterObj);
 		} else if (owner->IsAnimDone()) {
 			WiiPlayerState* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
@@ -260,11 +306,11 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 		UpdateCopterBobbing(act, frames, -1.0f);
 		if (anim != 0x28) {
 			act->mOwner->SetAnim(0x28, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			PlayCopterDescentAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation((XObjCopter*)act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x816, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			PlayCopterLandingAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation((XObjCopter*)act->mOwner->mCopterObj);
 			act->mState = 6;
 		}
 		break;
@@ -276,7 +322,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 		}
 		if (act->mOwner->GetHeight() <= 0.0f || (act->mOwner->GetHeight() <= 1.0f && GetPlayerFloorSlope(act->mOwner).Length() > 0.5f)) {
 			act->mOwner->SetAnim(0x816, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			PlayCopterLandingAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation((XObjCopter*)act->mOwner->mCopterObj);
 			act->mState = 6;
 		}
 		break;
@@ -292,22 +338,22 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 	case 7:
 		if (anim != 0x38) {
 			act->mOwner->SetAnim(0x38, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			PlayCopterDescentAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation((XObjCopter*)act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x59, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			PlayCopterLandingAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation((XObjCopter*)act->mOwner->mCopterObj);
 			act->mState = 9;
 		}
 		break;
 	case 8:
 		if (anim != 0x1A) {
 			act->mOwner->SetAnim(0x1A, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			PlayCopterDescentAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation((XObjCopter*)act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x1B, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			PlayCopterLandingAnimation((XObj*)act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation((XObjCopter*)act->mOwner->mCopterObj);
 			act->mState = 9;
 		}
 		break;
@@ -935,7 +981,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 	case 1:
 		if (anim != 0x81F) {
 			act->mOwner->SetAnim(0x81F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_8010EA78((XObj*)act->mOwner->mPopperObj);
+			ShowAndDeployPopper((XObjPopper*)act->mOwner->mPopperObj);
 			break;
 		}
 		if (!owner->IsAnimDone()) {
@@ -947,17 +993,17 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 	case 2:
 		if (anim != 0x821) {
 			act->mOwner->SetAnim(0x821, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_8010EB80((XObj*)act->mOwner->mPopperObj);
+			PlayPopperRaiseAnimation((XObjPopper*)act->mOwner->mPopperObj);
 		} else if (owner->IsAnimDone()) {
 			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper((XObjPopper*)act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 3:
 		if (anim != 0x822) {
 			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper((XObjPopper*)act->mOwner->mPopperObj);
 		}
 		act->mState = 0;
 		break;
@@ -1050,7 +1096,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 				// in tenths: popper parameter 2 is the speed, 0 the range and 1 the range with the upgrade
 				f32 speed = (s32)GetPopperParameter(2) / 10.0f;
 				f32 range = (s32)GetPopperParameter(rangeUpgrade) / 10.0f;
-				fn_8010EBA8((XObj*)act->mOwner->mPopperObj);
+				PlayPopperFireAnimation((XObjPopper*)act->mOwner->mPopperObj);
 				if (act->mShotStrength == 0.0f) {
 					act->mShotStrength
 					    = act->mState == 6 ? (s32)GetPlayerActionParameter(0x1F) / 100.0f : (s32)GetPlayerActionParameter(0x1E) / 100.0f;
@@ -1073,20 +1119,20 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 			act->mState = 8;
 		} else if (owner->IsAnimDone()) {
 			act->mOwner->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper((XObjPopper*)act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 8:
-		if (!fn_8010EBD0((XObj*)act->mOwner->mPopperObj)) {
-			fn_8010EC30((XObj*)act->mOwner->mPopperObj);
+		if (!IsPopperFireAnimationSelected((XObjPopper*)act->mOwner->mPopperObj)) {
+			ShowIdlePlayerPopper((XObjPopper*)act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 9:
 		if (anim != 0x824) {
 			act->mOwner->SetAnim(0x824, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			fn_8010EC08((XObj*)act->mOwner->mPopperObj);
+			PlayPopperLowerAnimation((XObjPopper*)act->mOwner->mPopperObj);
 			break;
 		}
 		if (!owner->IsAnimDone()) {
@@ -1098,7 +1144,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 	case 10:
 		if (anim != 0x820) {
 			act->mOwner->SetAnim(0x820, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
-			fn_8010EADC((XObj*)act->mOwner->mPopperObj);
+			PlayPopperStowAnimation((XObjPopper*)act->mOwner->mPopperObj);
 			act->mOwner->vf290(FALSE);
 		} else if (owner->IsAnimDone()) {
 			WiiPlayerState* chr = act->mOwner;
@@ -1238,4 +1284,884 @@ void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight)
 	}
 }
 
+// the GameCube's UpdateRadarTargeting: 1 takes the radar out, 2 puts it away, a scan starts at 3,
+// 4 spins the dish a full turn and works out the aim, 5 turns it there and 0 keeps it on the target.
+// The Wii hands the owner's anim id and an object to probe IsAnimDone on instead of the GameCube's
+// AObj; finishing the draw anim falls back to 0x4a with no idle loops, stowing finishes on 0x11
+/**
+ * @note Address: 0x8010C274
+ * @note Size: 0xC70
+ */
+// NONMATCHING: regalloc and stack layout through the middle cases
+void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
+{
+	XObjRadar* radar = (XObjRadar*)act->mOwner->mRadarObj;
+	switch (act->mState) {
+	case 1:
+		if (anim != 0x879) {
+			act->mOwner->SetAnim(0x879, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			ActivatePlayerRadar(radar);
+		} else if (animObj->IsAnimDone()) {
+			act->mOwner->SetAnim(0x4a, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState     = 0;
+			act->mTarget    = NULL;
+			act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0.0f;
+			act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0.0f;
+			fn_8010D094(act, 0, 0, 0);
+		}
+		break;
+	case 2:
+		if (anim != 0x87a) {
+			act->mOwner->SetAnim(0x87a, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			DeactivatePlayerRadar(radar);
+		} else if (animObj->IsAnimDone()) {
+			WiiPlayerState* owner = act->mOwner;
+			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			owner->mIdleLoops = 3;
+			act->mState       = 0;
+			act->mTarget      = NULL;
+			act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0.0f;
+			act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0.0f;
+			fn_8010D094(act, 0, 0, 0);
+		}
+		break;
+	case 3: {
+		WiiPlayerState* owner = act->mOwner;
+		owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		owner->mIdleLoops = 3;
+		StartPlayerRadarScan(radar);
+		act->mState             = 4;
+		act->mTarget            = FindNearestRadarTarget(act);
+		act->mYaw.targetAngle   = TWO_PI + act->mYaw.angle;
+		act->mYaw.reached       = 0;
+		act->mPitch.targetAngle = 0;
+		act->mPitch.reached     = 0;
+		PlayWiiSoundEffect(&gGame.mSound, 0xB1, 1.0f, 0.0f);
+		fn_8010D094(act, 0, 0, 0);
+		break;
+	}
+	case 4:
+		if (!act->mYaw.reached) {
+			act->mYaw.angle += (TWO_PI / gRefreshRate) * frames;
+			if (act->mYaw.angle >= act->mYaw.targetAngle) {
+				act->mYaw.angle = WrapAngle(act->mYaw.angle);
+				if (act->mTarget) {
+					f32 yaw               = (f32)atan2(act->mTarget->mMoveTranslate.x - act->mOwner->mMoveTranslate.x,
+					                                   act->mTarget->mMoveTranslate.z - act->mOwner->mMoveTranslate.z);
+					act->mYaw.targetAngle = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
+				} else
+					act->mYaw.targetAngle = TWO_PI;
+				if (act->mYaw.targetAngle < act->mYaw.angle)
+					act->mYaw.targetAngle += TWO_PI;
+				act->mYaw.reached = 1;
+			}
+		}
+		if (!act->mPitch.reached) {
+			RadarAimAxis& pitch = act->mPitch;
+			if (pitch.angle < pitch.targetAngle) {
+				pitch.angle += 3 * DEG2RAD * frames;
+				if (pitch.angle >= pitch.targetAngle)
+					pitch.reached = 1;
+			} else if (pitch.angle > pitch.targetAngle) {
+				pitch.angle -= 3 * DEG2RAD * frames;
+				if (pitch.angle <= pitch.targetAngle)
+					pitch.reached = 1;
+			} else
+				pitch.reached = 1;
+			if (pitch.reached) {
+				if (act->mTarget) {
+					CVec from               = GetRadarDishWorldPosition(radar);
+					CVec to                 = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+					act->mPitch.targetAngle = TargetPitch(from, to);
+				} else
+					act->mPitch.targetAngle = 0;
+			}
+		}
+		if (act->mYaw.reached && act->mPitch.reached) {
+			act->mState         = 5;
+			act->mYaw.reached   = 0;
+			act->mPitch.reached = 0;
+		}
+		break;
+	case 5:
+		if (!act->mYaw.reached) {
+			act->mYaw.angle += (TWO_PI / gRefreshRate) * frames;
+			if (act->mYaw.angle >= act->mYaw.targetAngle) {
+				act->mYaw.angle   = act->mYaw.targetAngle;
+				act->mYaw.reached = 1;
+			}
+		}
+		if (!act->mPitch.reached) {
+			RadarAimAxis& pitch = act->mPitch;
+			if (pitch.angle < pitch.targetAngle) {
+				pitch.angle += DEG2RAD * frames;
+				if (pitch.angle >= pitch.targetAngle) {
+					pitch.angle   = pitch.targetAngle;
+					pitch.reached = 1;
+				}
+			} else if (pitch.angle > pitch.targetAngle) {
+				pitch.angle -= DEG2RAD * frames;
+				if (pitch.angle <= pitch.targetAngle) {
+					pitch.angle   = pitch.targetAngle;
+					pitch.reached = 1;
+				}
+			} else
+				pitch.reached = 1;
+		}
+		if (act->mYaw.reached && act->mPitch.reached) {
+			act->mState = 0;
+			if (act->mTarget)
+				PlayWiiSoundEffect(&gGame.mSound, 0x43, 1.0f, 0.0f);
+		}
+		break;
+	case 0:
+		if (act->mTarget) {
+			u64 flags = act->mTarget->mStatus.mFlags;
+			// the target is gone, hidden or being removed: drop it and turn the dish back to the front
+			if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x4000000000000000ULL)) {
+				act->mTarget          = NULL;
+				act->mYaw.targetAngle = TWO_PI;
+				fn_8010D094(act, 0, 0, 0);
+				act->mState = 5;
+			} else {
+				CVec from         = GetRadarDishWorldPosition(radar);
+				CVec to           = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+				f32 yaw           = (f32)atan2(to.x - from.x, to.z - from.z);
+				act->mYaw.angle   = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
+				act->mPitch.angle = TargetPitch(from, to);
+			}
+		}
+		break;
+	}
+	if (act->mTarget) {
+		CVec from = *act->mOwner->GetPos(), to = *act->mTarget->GetPos();
+		f32 dist             = PSVECDistance(&from, &to);
+		act->mTargetDistance = dist - (act->mTarget->GetFloorXZExtent() + act->mOwner->GetFloorXZExtent());
+		if (act->mTargetDistance < 0)
+			act->mTargetDistance = 0;
+		if (act->mState == 0) {
+			// near, middle or far: each has its own tone and turns the beam red, yellow or blue
+			if (act->mTargetDistance < (s32)GetRadarParameter(0) / 100.f) {
+				fn_8010D094(act, 1, 0, 0);
+			} else if (act->mTargetDistance < (s32)GetRadarParameter(1) / 100.f) {
+				fn_8010D094(act, 0, 1, 0);
+			} else {
+				fn_8010D094(act, 0, 0, 1);
+			}
+		}
+		UpdateScreenFade(&act->mBeam.mColor[0], frames);
+		UpdateScreenFade(&act->mBeam.mColor[1], frames);
+	} else
+		act->mTargetDistance = NAN;
+}
+
+// the GameCube's GetRadarDishWorldPosition: the dish joint's world position
+/**
+ * @note Address: 0x8010CEE4
+ * @note Size: 0x14
+ */
+CVec GetRadarDishWorldPosition(XObjRadar* obj)
+{
+	return obj->GetJointPos("obj1");
+}
+
+// the radar's pick, the nearest drawn object that isn't chibi robo himself
+/**
+ * @note Address: 0x8010CEF8
+ * @note Size: 0x19C
+ */
+extern "C" XObj* FindNearestRadarTarget(XActRadar* act)
+{
+	XObj* obj;
+	CVec pos        = *act->mOwner->GetPos();
+	XObj* nearest   = NULL;
+	f32 nearestDist = NAN;
+	for (int i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		obj = gGame.mXObjs.mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0x4000000000000000ULL)
+		    && (obj->mStatus.mFlags & 0x80000) && obj != (XObj*)act->mOwner && obj->GetKind() < 10000) {
+			f32 dist;
+			if (nearest == NULL) {
+				dist = PSVECDistance(&pos, obj->GetPos());
+			} else {
+				dist = PSVECDistance(&pos, obj->GetPos());
+				if (!(dist < nearestDist)) {
+					dist = NAN;
+				}
+			}
+			if (fpclassify(dist) != FP_NAN) {
+				nearest     = obj;
+				nearestDist = dist;
+			}
+		}
+	}
+	return nearest;
+}
+
+// the Wii's StartRadarTone, all three tones in one helper: a set flag plays its tone
+// (0x1fb near, 0x1fa middle, 0x1f9 far) and turns the beam that band's colour, a clear
+// one silences it
+/**
+ * @note Address: 0x8010D094
+ * @note Size: 0x228
+ */
+extern "C" void fn_8010D094(XActRadar* act, s8 near, s8 mid, s8 far)
+{
+	XSound& sound = gGame.mSound;
+	if (near) {
+		if (!IsWiiSfxPlaying(&sound, 0x1FB)) {
+			PlayWiiSoundEffect(&sound, 0x1FB, 1.0f, 0.0f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[0], 255, 150, 150, 0, 0.5f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[1], 255, 50, 50, 0, 0.5f);
+		}
+	} else if (IsWiiSfxPlaying(&sound, 0x1FB)) {
+		StopWiiSfx(&sound, 0x1FB, 0.0f);
+	}
+	if (mid) {
+		if (!IsWiiSfxPlaying(&sound, 0x1FA)) {
+			PlayWiiSoundEffect(&sound, 0x1FA, 1.0f, 0.0f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[0], 255, 255, 150, 0, 0.5f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[1], 255, 255, 50, 0, 0.5f);
+		}
+	} else if (IsWiiSfxPlaying(&sound, 0x1FA)) {
+		StopWiiSfx(&sound, 0x1FA, 0.0f);
+	}
+	if (far) {
+		if (!IsWiiSfxPlaying(&sound, 0x1F9)) {
+			PlayWiiSoundEffect(&sound, 0x1F9, 1.0f, 0.0f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[0], 150, 150, 255, 0, 0.5f);
+			SetScreenFadeTargetColor(&act->mBeam.mColor[1], 50, 50, 255, 0, 0.5f);
+		}
+	} else if (IsWiiSfxPlaying(&sound, 0x1F9)) {
+		StopWiiSfx(&sound, 0x1F9, 0.0f);
+	}
+}
+
+// fades the radar's marker in while it has something, and spins it
+/**
+ * @note Address: 0x8010D2BC
+ * @note Size: 0xEC
+ */
+void UpdateRadarBeamAnimation(XActRadar* act, u32 frames)
+{
+	if (act->mState == 0 && act->mTarget != NULL && act->mOwner->mTumble.mState == 0) {
+		if (act->mFade < 1.0f) {
+			if ((act->mFade += 0.05f * frames) > 1.0f) {
+				act->mFade = 1.0f;
+			}
+		}
+		act->mAngle[0] -= DEG2RAD * 5 * frames;
+		act->mAngle[1] -= DEG2RAD * 5 * frames;
+	} else if (act->mFade > 0.0f) {
+		if ((act->mFade -= 0.05f * frames) < 0.0f) {
+			act->mFade = 0.0f;
+		}
+	}
+}
+
+// NONMATCHING: retail lays out the vertex and colour loops differently, and the Wii
+// renderer calls its own state and primitive entries where the GameCube used the GS helpers
+/**
+ * @note Address: 0x8010D3A8
+ * @note Size: 0x11A0
+ */
+extern "C" void DrawRadarTargetBeam(XActRadar* act)
+{
+	if (!(act->mFade > 0))
+		return;
+	CVec origin = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
+	CVec target = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+	f32 yaw     = atan2(target.x - origin.x, target.z - origin.z);
+	f32 pitch   = TargetPitch(origin, target) - DEG2RAD * 3;
+	f32 span    = PSVECDistance(&origin, &target) / 20;
+	if (span > 1)
+		span = 1;
+	Mtx trans, scale, rotY, rotX, model;
+	PSMTXTrans(trans, origin.x, origin.y, origin.z);
+	PSMTXScale(scale, 2, 2, 1);
+	PSMTXRotRad(rotY, 'y', yaw);
+	PSMTXRotRad(rotX, 'x', pitch);
+	PSMTXConcat(trans, rotY, model);
+	PSMTXConcat(model, rotX, model);
+	PSMTXConcat(model, scale, model);
+
+	Vec vertices[256];
+	u32 colors[256];
+	u16 n = 0;
+	f32 z = 2, phase = act->mAngle[0];
+	for (int turn = 0; turn < 8; ++turn) {
+		for (int step = 0; step < 16; ++step) {
+			vertices[n].x
+			    = (.007f * n + 1) * (std::sinf((TWO_PI / 16) * step) * (.1f * std::sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y
+			    = (.007f * n + 1) * (std::cosf((TWO_PI / 16) * step) * (.1f * std::sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].z = z;
+			f32 wave      = WrapAngle(phase);
+			if (wave > PI)
+				wave = 0;
+			vertices[n + 1].x = vertices[n].x - ((.5f * std::sinf(wave)) * std::sinf((TWO_PI / 16) * step));
+			vertices[n + 1].y = vertices[n].y - ((.5f * std::sinf(wave)) * std::sinf((TWO_PI / 16) * step));
+			vertices[n + 1].z = vertices[n].z - 1.5f * std::sinf(wave);
+			n += 2;
+			phase += DEG2RAD * 30;
+			z += .1f * span;
+		}
+	}
+	PSMTXMultVecArray(model, vertices, vertices, n);
+	u32 back = PackRadarColor(act->mBeam.mColor[0].mColor), front = PackRadarColor(act->mBeam.mColor[1].mColor);
+	gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+	n = ShadeRadarBeam(act, colors, back);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+	gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_FRONT);
+	n = ShadeRadarBeam(act, colors, front);
+	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+	gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+}
+
 } // extern "C"
+
+extern "C" void fn_8010E548(XObjAttachment*)
+{
+}
+
+/**
+ * @note Address: 0x8010E54C
+ * @note Size: 0x40
+ */
+void XObjAttachment::InitializeObject()
+{
+	XObj::InitializeObject();
+	ResetForNewGame();
+}
+
+/**
+ * @note Address: 0x8010E58C
+ * @note Size: 0x18
+ */
+void XObjAttachment::ResetForNewGame()
+{
+	mParent = NULL;
+	Hide();
+}
+
+/**
+ * @note Address: 0x8010E5A4
+ * @note Size: 0x8
+ */
+void XObjAttachment::SetParent(MtxP parent, BOOL)
+{
+	mParent = parent;
+}
+
+/**
+ * @note Address: 0x8010E5AC
+ * @note Size: 0x4
+ */
+void XObjAttachment::ResetObjectState()
+{
+	XObj::ResetObjectState();
+}
+
+/**
+ * @note Address: 0x8010E5B0
+ * @note Size: 0x40
+ */
+void XObjAttachment::Release()
+{
+	Hide();
+	XObj::Release();
+}
+
+// the GameCube's ExecCallbackB: while it is attached the parent matrix is the world matrix and the
+// move translate and scale are read back out of it
+/**
+ * @note Address: 0x8010E5F0
+ * @note Size: 0xB0
+ */
+void XObjAttachment::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	if (pFuncObj->GetCallbackNodeID() == 0 && mVisible && mParent != NULL) {
+		if (mParent != NULL) {
+			PSMTXCopy(mParent, pResult->mpMtx);
+		} else {
+			PSMTXIdentity(pResult->mpMtx);
+		}
+		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
+		HSD_MtxGetScale(mParent, &mMoveScale);
+	}
+}
+
+// the GameCube's ShowAndDeployCopter
+/**
+ * @note Address: 0x8010E6A0
+ * @note Size: 0x64
+ */
+extern "C" void ShowAndDeployCopter(XObjCopter* copter)
+{
+	copter->Show();
+	copter->SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+/**
+ * @note Address: 0x8010E704
+ * @note Size: 0xC
+ */
+void XObjAttachment::Show()
+{
+	mVisible = TRUE;
+}
+
+// the GameCube's PlayCopterStowAnimation
+/**
+ * @note Address: 0x8010E710
+ * @note Size: 0x78
+ */
+extern "C" void PlayCopterStowAnimation(XObjCopter* copter)
+{
+	copter->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x75)) {
+		StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
+	}
+}
+
+// the GameCube's PlayCopterFlightAnimation
+/**
+ * @note Address: 0x8010E788
+ * @note Size: 0x28
+ */
+extern "C" void PlayCopterFlightAnimation(XObjCopter* copter)
+{
+	copter->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's PlayCopterDescentAnimation
+/**
+ * @note Address: 0x8010E7B0
+ * @note Size: 0x28
+ */
+extern "C" void PlayCopterDescentAnimation(XObjCopter* copter)
+{
+	copter->SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's PlayCopterLandingAnimation
+/**
+ * @note Address: 0x8010E7D8
+ * @note Size: 0x28
+ */
+extern "C" void PlayCopterLandingAnimation(XObjCopter* copter)
+{
+	copter->SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's ShowIdlePlayerCopter
+/**
+ * @note Address: 0x8010E800
+ * @note Size: 0xB4
+ */
+extern "C" void ShowIdlePlayerCopter(XObjCopter* copter)
+{
+	copter->SetAnim(8, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+	copter->UpdateAnim(0.0f);
+	copter->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	if (!copter->mVisible)
+		copter->Show();
+}
+
+// the copter's own state machine on its animations: 5 deploys, 8 folds the blades
+// away, 6 and 7 are the landing helpers, the rest just keep the base update
+/**
+ * @note Address: 0x8010E8B4
+ * @note Size: 0x1C4
+ */
+void XObjCopter::UpdateObject(u32 frames)
+{
+	if (!mVisible)
+		return;
+	switch (GetAnimId()) {
+	case 5:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 8:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			Hide();
+		}
+		break;
+	case 6:
+		if (IsAnimDone()) {
+			SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 7:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	}
+	XObj::UpdateObject(frames);
+}
+
+// the GameCube's ShowAndDeployPopper
+/**
+ * @note Address: 0x8010EA78
+ * @note Size: 0x64
+ */
+extern "C" void ShowAndDeployPopper(XObjPopper* popper)
+{
+	popper->Show();
+	popper->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's PlayPopperStowAnimation
+/**
+ * @note Address: 0x8010EADC
+ * @note Size: 0xA4
+ */
+extern "C" void PlayPopperStowAnimation(XObjPopper* popper)
+{
+	popper->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1F3)) {
+		StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1F8)) {
+		StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+	}
+}
+
+// the GameCube's PlayPopperRaiseAnimation
+/**
+ * @note Address: 0x8010EB80
+ * @note Size: 0x28
+ */
+extern "C" void PlayPopperRaiseAnimation(XObjPopper* popper)
+{
+	popper->SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's PlayPopperFireAnimation
+/**
+ * @note Address: 0x8010EBA8
+ * @note Size: 0x28
+ */
+extern "C" void PlayPopperFireAnimation(XObjPopper* popper)
+{
+	popper->SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's IsPopperFireAnimationSelected
+/**
+ * @note Address: 0x8010EBD0
+ * @note Size: 0x38
+ */
+extern "C" BOOL IsPopperFireAnimationSelected(XObjPopper* popper)
+{
+	return popper->GetAnimId() == 5;
+}
+
+// the GameCube's PlayPopperLowerAnimation
+/**
+ * @note Address: 0x8010EC08
+ * @note Size: 0x28
+ */
+extern "C" void PlayPopperLowerAnimation(XObjPopper* popper)
+{
+	popper->SetAnim(6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's ShowIdlePlayerPopper
+/**
+ * @note Address: 0x8010EC30
+ * @note Size: 0xB4
+ */
+extern "C" void ShowIdlePlayerPopper(XObjPopper* popper)
+{
+	popper->SetAnim(2, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+	popper->UpdateAnim(0.0f);
+	popper->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	if (!popper->mVisible)
+		popper->Show();
+}
+
+// the popper's own state machine: 1 deploys, 2 folds away, 3 and 5 raise and fire
+/**
+ * @note Address: 0x8010ECE4
+ * @note Size: 0x1D4
+ */
+// NONMATCHING: the anim id reads and the hide ordering in the retail switch
+void XObjPopper::UpdateObject(u32 frames)
+{
+	if (!mVisible)
+		return;
+	switch (GetAnimId()) {
+	case 1:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 2:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			Hide();
+		}
+		break;
+	case 3:
+		if (IsAnimDone()) {
+			SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 4:
+		break;
+	case 5:
+		if (IsAnimDone()) {
+			SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 6:
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	}
+	XObj::UpdateObject(frames);
+}
+
+// the GameCube's ExecCallbackB for the popper: while it is attached the parent matrix is the
+// world matrix; on the Wii the muzzle pitch and yaw ride on the eye aim
+/**
+ * @note Address: 0x8010EF00
+ * @note Size: 0x244
+ */
+// NONMATCHING: the attachment check and eye-aim read share registers with the matrix copies
+void XObjPopper::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	u16 node = pFuncObj->GetCallbackNodeID();
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	if (node == 0 && mVisible && mParent != NULL) {
+		if (mParent != NULL) {
+			PSMTXCopy(mParent, pResult->mpMtx);
+		} else {
+			PSMTXIdentity(pResult->mpMtx);
+		}
+		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
+		HSD_MtxGetScale(mParent, &mMoveScale);
+	}
+	if (!mVisible)
+		return;
+	if (node == 0) {
+		if (((WiiPlayerState*)gGame.mXObjs.mPools[2].mObjects)->mAttachmentRequest == 2) {
+			pFuncObj->mNodeID = 1;
+		}
+	} else if (node == 1) {
+		// retail composes the muzzle aim here: it copies the parent matrix, builds a
+		// rotY of (mEyeAim.y - 805A5344 - owner->_64) and a rotX, adds two translate
+		// offsets and four concatenations into pResult->mpMtx
+	}
+}
+
+/**
+ * @note Address: 0x8010F144
+ * @note Size: 0x4C
+ */
+void XObjRadar::InitializeObject()
+{
+	XObj::InitializeObject();
+	ResetForNewGame();
+	mYaw   = 0.0f;
+	mPitch = 0.0f;
+}
+
+/**
+ * @note Address: 0x8010F190
+ * @note Size: 0x40
+ */
+BOOL XObjRadar::LoadFromPlacement(const CoordInfo& info)
+{
+	BOOL ok = XObj::LoadFromPlacement(info);
+	mYaw    = 0.0f;
+	mPitch  = 0.0f;
+	return ok;
+}
+
+// the GameCube's ActivatePlayerRadar
+/**
+ * @note Address: 0x8010F1D0
+ * @note Size: 0x78
+ */
+extern "C" void ActivatePlayerRadar(XObjRadar* radar)
+{
+	radar->Show();
+	radar->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	radar->mState = 1;
+	radar->mYaw   = 0.0f;
+	radar->mPitch = 0.0f;
+}
+
+// the GameCube's DeactivatePlayerRadar
+/**
+ * @note Address: 0x8010F248
+ * @note Size: 0xE4
+ */
+extern "C" void DeactivatePlayerRadar(XObjRadar* radar)
+{
+	radar->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	radar->mState = 2;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1F9)) {
+		StopWiiSfx(&gGame.mSound, 0x1F9, 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1FA)) {
+		StopWiiSfx(&gGame.mSound, 0x1FA, 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1FB)) {
+		StopWiiSfx(&gGame.mSound, 0x1FB, 0.0f);
+	}
+}
+
+// the GameCube's StartPlayerRadarScan: the scan itself is the animation
+/**
+ * @note Address: 0x8010F32C
+ * @note Size: 0x4
+ */
+extern "C" void StartPlayerRadarScan(XObjRadar* radar)
+{
+}
+
+// the GameCube's ShowIdlePlayerRadar
+/**
+ * @note Address: 0x8010F330
+ * @note Size: 0xBC
+ */
+extern "C" void ShowIdlePlayerRadar(XObjRadar* radar)
+{
+	radar->mState = 10;
+	radar->SetAnim(2, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+	radar->UpdateAnim(0.0f);
+	radar->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	if (!radar->mVisible)
+		radar->Show();
+}
+
+// the radar's own state machine on its animations: 1 deploys, 2 folds away, 0 is idle
+/**
+ * @note Address: 0x8010F3EC
+ * @note Size: 0x124
+ */
+// NONMATCHING: the anim id reads and the state transitions sit in different registers
+void XObjRadar::UpdateObject(u32 frames)
+{
+	if (!mVisible)
+		return;
+	switch (mState) {
+	case 1: // deployed: settle to idle
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mState = 10;
+		}
+		break;
+	case 2: // stowed: hide
+		if (IsAnimDone()) {
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			Hide();
+			mState = 0;
+		}
+		break;
+	case 10: // idle
+		break;
+	}
+	XObj::UpdateObject(frames);
+}
+
+// the GameCube's ExecCallbackB for the radar: while it is attached the parent matrix is the
+// world matrix, and the dish joints get the yaw and pitch on top of it
+/**
+ * @note Address: 0x8010F510
+ * @note Size: 0x274
+ */
+// NONMATCHING: the node lookups and the matrix premultiplies order differently
+void XObjRadar::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	u16 node = pFuncObj->GetCallbackNodeID();
+	if (node == 0 && mVisible && mParent != NULL) {
+		if (mParent != NULL) {
+			PSMTXCopy(mParent, pResult->mpMtx);
+		} else {
+			PSMTXIdentity(pResult->mpMtx);
+		}
+		mMoveTranslate.Set(mParent[0][3], mParent[1][3], mParent[2][3]);
+		HSD_MtxGetScale(mParent, &mMoveScale);
+	}
+	if (!mVisible)
+		return;
+	nw4r::g3d::ResNode yawNode   = GetResNode("second");
+	nw4r::g3d::ResNode pitchNode = GetResNode("obj1");
+	if (node == 0) {
+		if (yawNode.IsValid()) {
+			pFuncObj->mNodeID = yawNode.GetID();
+		}
+	} else if (node == yawNode.GetID()) {
+		Mtx rot, tmp;
+		PSMTXRotRad(rot, 'y', mYaw);
+		PSMTXCopy(pResult->mpMtx, tmp);
+		PSMTXConcat(tmp, rot, tmp);
+		PSMTXCopy(tmp, pResult->mpMtx);
+		pFuncObj->mNodeID = yawNode.GetID();
+	} else if (node == pitchNode.GetID()) {
+		Mtx rot, tmp;
+		PSMTXRotRad(rot, 'x', mPitch);
+		PSMTXCopy(pResult->mpMtx, tmp);
+		PSMTXConcat(tmp, rot, tmp);
+		PSMTXCopy(tmp, pResult->mpMtx);
+		pFuncObj->mNodeID = pitchNode.GetID();
+	}
+}
+
+// the GameCube's ShowOXCircle
+/**
+ * @note Address: 0x8010F784
+ * @note Size: 0x64
+ */
+extern "C" void ShowOXCircle(XObjOX* obj)
+{
+	obj->Show();
+	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the GameCube's ShowOXCross
+/**
+ * @note Address: 0x8010F7E8
+ * @note Size: 0x64
+ */
+extern "C" void ShowOXCross(XObjOX* obj)
+{
+	obj->Show();
+	obj->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+// the OX mark's own state machine on its animations
+/**
+ * @note Address: 0x8010F84C
+ * @note Size: 0xD8
+ */
+// NONMATCHING: the anim id reads sit in different registers
+void XObjOX::UpdateObject(u32 frames)
+{
+	if (!mVisible)
+		return;
+	switch (GetAnimId()) {
+	case 0: // the mark plays once, then hides
+		if (IsAnimDone()) {
+			Hide();
+		}
+		break;
+	case 1:
+		if (IsAnimDone()) {
+			Hide();
+		}
+		break;
+	}
+	XObj::UpdateObject(frames);
+}

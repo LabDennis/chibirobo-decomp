@@ -5,10 +5,9 @@
 #if defined(VERSION_R24J01)
 #include "Dolphin/mtx.h"
 #include "game/ut.h"
-class XObj;
+#include "game/wii/xobj.h"
 class WiiTitleObject;
 class XObjPlug;
-class XObjCopter;
 #else
 #include "game/xobj.h"
 #endif
@@ -207,6 +206,74 @@ public:
 
 	virtual ~XObjOX() { }                  // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
+};
+#endif
+
+#if defined(VERSION_R24J01)
+// the Wii base of the copter, the blaster, the radar and the OX marks: the same
+// class as the GameCube's below, but XObj runs to _9A8 on the Wii and the parent
+// handle is a plain matrix pointer the callback copies
+class XObjAttachment : public XObj {
+public:
+	MtxP mParent;  // _9A8, the owner's matrix it copies its transform from, NULL while detached
+	BOOL mVisible; // _9AC, cleared when it's put away
+
+	XObjAttachment();
+
+	// the GameCube header's own shape: the dtor stays non-inline so the vtable
+	// lands with it in xobjmember.cpp like retail's
+	virtual ~XObjAttachment();                                                                                                  // _08
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void Release();                                                                                                     // _40
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual void ResetForNewGame();                                                                                             // _150
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual void Show();                                                                                                        // _28C
+	virtual void Hide() { mVisible = FALSE; }                                                                                   // _290
+	virtual void SetParent(MtxP parent, BOOL fromPlacement);                                                                    // _294
+};
+STATIC_ASSERT(sizeof(XObjAttachment) == 0x9B0);
+
+class XObjCopter : public XObjAttachment {
+public:
+	XObjCopter();
+
+	virtual ~XObjCopter() { }              // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _164
+};
+
+class XObjPopper : public XObjAttachment {
+public:
+	XObjPopper();
+
+	virtual ~XObjPopper() { } // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+};
+
+class XObjRadar : public XObjAttachment {
+public:
+	s32 mState;             // _9B0
+	f32 mYaw;               // _9B4, the dish's turning inside the scan
+	f32 mPitch;             // _9B8
+	u8 _9BC[0x9C0 - 0x9BC]; // _9BC
+
+	XObjRadar();
+
+	virtual ~XObjRadar() { } // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+};
+STATIC_ASSERT(sizeof(XObjRadar) == 0x9C0);
+
+class XObjOX : public XObjAttachment {
+public:
+	XObjOX();
+
+	virtual ~XObjOX() { }                  // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _164
 };
 #endif
 

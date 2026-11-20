@@ -95,11 +95,11 @@ class FuncObjCalcWorld {
 public:
 	u16 GetCallbackNodeID() const { return mNodeID; }
 
+	u16 mNodeID; // _06, the binding code writes the node it hooks up
 private:
 	void* mpCallback; // _00
 	u8 mTiming;       // _04
 	u8 _05;
-	u16 mNodeID; // _06
 };
 
 // the three hooks of nw4r's world-matrix pass; their parameters are not recovered
@@ -125,7 +125,8 @@ public:
 
 // a node (bone) of a model resource, as far as the game reads it
 struct ResNodeData {
-	u8 _00[0x10];
+	u8 _00[0x0C];
+	u32 mID;    // _0C
 	u32 mMtxID; // _10, the node's index in the model's world matrix array
 	u8 _14[0x18];
 	Vec mRotate;    // _2C, in degrees
@@ -150,6 +151,16 @@ public:
 			db::Panic("g3d_resnode_ac.h", 44, "%s::%s: Object not valid.", "ResNode", "ref");
 		}
 		return *mpData;
+	}
+	u32 GetID() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 56, "NW4R:Failed assertion IsValid()");
+		}
+		if (IsValid()) {
+			return ptr()->mID;
+		}
+		return 0;
 	}
 	u32 GetMtxID() const
 	{
