@@ -102,7 +102,9 @@ static int CompareTrigonDist(const void* a, const void* b)
 		return -1;
 	}
 	return 0;
-}
+}
+static const char sTrigonAllocationFormat[] = "(tri:%4d * %2d)";
+
 
 /**
  * @note Address: 0x801A5DF4
@@ -125,7 +127,7 @@ TRIGON_INFO* CTrigon::Create(HSD_JObj* jobj)
 
 	// then again into one that fits
 	u32 size = mNum * sizeof(TRIGON_INFO);
-	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, FormatToStaticBuffer("(tri:%4d * %2d)", mNum, sizeof(TRIGON_INFO)));
+	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, FormatToStaticBuffer(sTrigonAllocationFormat, mNum, sizeof(TRIGON_INFO)));
 	if (mTri != NULL) {
 		mNum = 0;
 		HSD_JObjWalkTree(jobj, CollectTrigons, (f32**)this);
