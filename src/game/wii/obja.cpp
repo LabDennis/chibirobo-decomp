@@ -7,6 +7,7 @@
 #include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
+#include "game/wii/xobj_ut2.h"
 #include "game/evt.h"
 #include "game/gmath.h"
 #include "arithmetic.h"
@@ -14,6 +15,24 @@
 #include <math.h>
 
 using namespace nw4r::g3d;
+
+extern "C" void UpdateObjectFloorHeights(XObj* object);
+extern "C" void UpdateObjectFloorXZExtent(XObj* object);
+
+static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
+{
+	if (current != target) {
+		current += speed * frames;
+		if (speed > 0.0f && current >= target) {
+			current = target;
+			speed   = 0.0f;
+		}
+		if (speed < 0.0f && current <= target) {
+			current = target;
+			speed   = 0.0f;
+		}
+	}
+}
 
 // 0x800AC07C
 void XObj::InitializeObject()
@@ -106,6 +125,119 @@ void XObj::SetDiffuseColor(const GXColor& color)
 	}
 }
 
+// 0x800ADB20
+void XObj::Release()
+{
+	if (mArchive.mAnm.IsLoaded()) {
+		if (GetAnimId() >= 0) {
+			XObjSource* source = NULL;
+			if (mAttr.mObjData != NULL) {
+				source = mAttr.mObjData->mSource;
+			}
+			if (source != NULL && source->mAnimNames != NULL
+			    && mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
+				SetAnim(0, TRUE, 0.0f, 15.0f, 15.0f, 1.0f);
+			}
+			SetAnim(GetAnimId(), TRUE, GetAnimFrame(), 15.0f, 15.0f, 1.0f);
+		}
+		ClearAnmSource();
+		if (mArchive.mAnm.mFile.IsLoaded()) {
+			mArchive.mAnm.Release(TRUE);
+			mArchive.mAnm.mFile.Close();
+		}
+	}
+	if (mEvt.mData.mScript != NULL) {
+		ResetEventScriptState(&mEvt, FALSE, FALSE, FALSE, FALSE);
+	}
+	if (mStatus.mFlags & 1) {
+		CObj::Release();
+	}
+	mAttr.mObjData   = NULL;
+	mAttr.mPlacement = NULL;
+	mFloors          = NULL;
+	mStatus.mFlags &= ~0x10001ULL;
+}
+
+// 0x800ADD28
+void XObj::UpdateObject(u32 frames)
+{
+	if (mObject.m_pScnMdl != NULL) {
+		if (mReleaseCountdown > 0 && !(mStatus.mFlags & 0x10000ULL)) {
+			if (--mReleaseCountdown == 0) {
+				Release();
+			}
+			return;
+		}
+		vf168(frames);
+		if (mStatus.mFlags & 0x1000000000000000ULL) { // toppling: sink onto the floor hit
+			if (mMoveTranslate.y + mVec714.y > mFloorHit.mHeight) {
+				mMoveTarget0.y = mFloorHit.mHeight;
+				f32 speed      = 0.15f + mMoveSpeed0.y; // fall faster, capped at 10
+				if (speed > 10.0f) {
+					speed = 10.0f;
+				}
+				mMoveSpeed0.y = speed;
+			} else { // landed: take over the offset and stand straight
+				mMoveSpeed0.y = 0.0f;
+				mMoveTranslate.x += mVec714.x;
+				mMoveTranslate.z += mVec714.z;
+				mMoveTranslate.y = mFloorHit.mHeight;
+				mVec714.x = mVec714.y = mVec714.z = 0.0f;
+				SetRotationX(0.0f);
+				SetRotationZ(0.0f);
+				mStatus.mFlags &= ~0x1000000000000000ULL;
+				if ((s16)GetPool() == 0x15) {
+					mStatus.mFlags |= 0x2000000000000000ULL;
+				} else if ((s16)GetPool() == 0x16 && (mStatus.mFlags & 0x04000000ULL)) {
+					mStatus.mFlags |= 0x2000000000000000ULL;
+				}
+			}
+		}
+		// move, scale and turn toward their targets, then animate
+		((CObjVec*)&mMoveRotate)->Step((f32)frames);
+		((CObjVec*)&mMoveTranslate)->Step((f32)frames);
+		if (((CObjVec*)&mMoveScale)->Step((f32)frames)) {
+			UpdateObjectFloorHeights(this);
+			UpdateObjectFloorXZExtent(this);
+		}
+		if (mStatus.mFlags & 0x80000000000000ULL) { // the archive anm source's read is still running
+			UpdateArchiveAnmSource(this);
+		}
+		UpdateAnim((f32)frames);
+	}
+	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != mLastPos.y) { // floor heights track the height
+		UpdateObjectFloorHeights(this);
+	}
+	if (mEvt.mData.mScript != NULL) {
+		CEvt_Update(&mEvt, frames);
+	}
+	if (mAnimEventCallback != NULL && !(mStatus.mFlags & 0x800ULL)) {
+		mAnimEventCallback(this, GetAnimId(), mLastAnimFrame, GetAnimFrame());
+	}
+	if (PSVECMag(&mMoveScale) > 0.0f) {
+		WiiObjectRef* ref = &gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount];
+		ref->mObj         = this;
+		ref->mIndex       = 0;
+		gGame.mDrawLists[1].mCount++;
+	}
+}
+
+// 0x800AE170, steps the two queued material colors to their targets and flags the change
+void XObj::vf168(u32 frames)
+{
+	if (mObject.m_pScnMdl != NULL) {
+		for (s32 i = 0; i < 2; i++) {
+			XObjColorStep* color = &mAnmQueue.mColorStep[i];
+			StepColor(color->mValue.x, color->mTarget.x, color->mSpeed.x, frames);
+			StepColor(color->mValue.y, color->mTarget.y, color->mSpeed.y, frames);
+			StepColor(color->mValue.z, color->mTarget.z, color->mSpeed.z, frames);
+		}
+		mColor1.Set((u8)mAnmQueue.mColorStep[0].mValue.x, (u8)mAnmQueue.mColorStep[0].mValue.y, (u8)mAnmQueue.mColorStep[0].mValue.z, 0);
+		mColorsChanged = TRUE;
+		mColor0.Set((u8)mAnmQueue.mColorStep[1].mValue.x, (u8)mAnmQueue.mColorStep[1].mValue.y, (u8)mAnmQueue.mColorStep[1].mValue.z, 0);
+	}
+}
+
 // 0x800AE448, queues the model on the scene's draw list when it has one and a nonzero scale
 void XObj::vf170()
 {
@@ -169,6 +301,45 @@ void XObj::DrawScreenOverlay()
 	}
 	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 	scene->vf034(scene->mPending, mObject.m_pScnMdl);
+}
+
+// 0x800AF2C8, the kind's packed anim id: the low halfword names the character animation, the high
+// one a material animation; both index the source's own name table, each wrapping at 1000
+void XObj::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	if (id != GetAnimId()) {
+		mLastAnimFrame = -1.0f;
+	} else if (force && GetAnimFrame() != frame) {
+		mLastAnimFrame = -1.0f;
+	}
+	if (mStatus.mFlags & 0x20000000000000ULL) {
+		blend = 15.0f;
+	}
+	s32 animIndex      = (id & 0xFFFF) % 1000;
+	XObjSource* source = NULL;
+	if (mAttr.mObjData != NULL) {
+		source = mAttr.mObjData->mSource;
+	}
+	if (source != NULL && source->mAnimNames != NULL) {
+		if (animIndex >= source->mAnimCount) {
+			animIndex = 0;
+		}
+		CObjAnim anim;
+		anim.mId   = id;
+		anim.mName = source->mAnimNames[animIndex];
+		CObj::SetAnim(&anim, force, frame, rate, blend, blendRate);
+		if ((id >> 16) != 0) {
+			s32 matIndex = (id >> 16) % 1000;
+			if (matIndex < source->mAnimCount) {
+				CObjAnim matAnim;
+				matAnim.mId   = id;
+				matAnim.mName = source->mAnimNames[matIndex];
+				SetMatAnim(&matAnim, frame);
+			}
+		}
+	} else {
+		CObj::SetAnim(id, force, frame, rate, blend, blendRate);
+	}
 }
 
 // 0x800AF4CC

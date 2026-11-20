@@ -6,8 +6,8 @@
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
-#include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/cgame.h"
 #include "game/wii/xchrmenu.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
@@ -128,9 +128,9 @@ static inline void OpenMenus(WiiPlayerState* chr)
 // he stops where he is, and lets go of what he pushes
 static inline void StopMoving(WiiPlayerState* chr)
 {
-	chr->mMotion.x         = 0.0f;
-	chr->mMotion.y         = 0.0f;
-	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mValue.x  = 0.0f;
+	chr->mMotion.mValue.y  = 0.0f;
+	chr->mMotion.mValue.z  = 0.0f;
 	chr->mMotion.mTarget.x = 0.0f;
 	chr->mMotion.mTarget.y = 0.0f;
 	chr->mMotion.mTarget.z = 0.0f;
@@ -312,7 +312,7 @@ TVec* GetObjectMoveRotation(CObj* object)
 
 void SetObjectYAndTarget(CObjVec* value, f32 y)
 {
-	value->y         = y;
+	value->mValue.y  = y;
 	value->mTarget.y = y;
 }
 
@@ -674,18 +674,18 @@ f32 GetVectorMagnitude(const Vec* value)
 
 Vec* GetObjectVectorCurrent(CObjVec* value)
 {
-	return value;
+	return &value->mValue;
 }
 
 void SetObjectXAndTarget(CObjVec* value, f32 x)
 {
-	value->x         = x;
+	value->mValue.x  = x;
 	value->mTarget.x = x;
 }
 
 void SetObjectZAndTarget(CObjVec* value, f32 z)
 {
-	value->z         = z;
+	value->mValue.z  = z;
 	value->mTarget.z = z;
 }
 
@@ -775,9 +775,9 @@ u32 GetPlayerActionMoveDirection(const XAction* action)
 
 void SetObjectVectorAndTargetXYZ(CObjVec* value, f32 x, f32 y, f32 z)
 {
-	value->x         = x;
-	value->y         = y;
-	value->z         = z;
+	value->mValue.x  = x;
+	value->mValue.y  = y;
+	value->mValue.z  = z;
 	value->mTarget.x = x;
 	value->mTarget.y = y;
 	value->mTarget.z = z;
@@ -906,9 +906,9 @@ XObjFloor** GetObjectFloorTableAddress(XObj* object)
 void SetObjectVectorAndTargetFromVec(CObjVec* value, const Vec& v)
 {
 	f32 z = v.z, y = v.y, x = v.x;
-	value->x         = x;
-	value->y         = y;
-	value->z         = z;
+	value->mValue.x  = x;
+	value->mValue.y  = y;
+	value->mValue.z  = z;
 	value->mTarget.x = x;
 	value->mTarget.y = y;
 	value->mTarget.z = z;

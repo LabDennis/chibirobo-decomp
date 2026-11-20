@@ -408,6 +408,8 @@ public:
 	bool HasResAnmShp() const;
 	bool HasResAnmScn() const;
 
+	bool Bind(const ResFile file); // 0x8025D1EC
+
 	void Release();
 	void Terminate();
 };
@@ -866,41 +868,31 @@ public:
 
 class CCamera;
 
-// the Wii's CVec sibling: same {x,y,z,vtable} shape with its own vtable, base of
-// the Wii CObjVec (retail __ct__7CObjVecFv at 0x800BE7C0 stores the TVec vtable
-// for its first member and CVec vtables for the two behind it)
-class TVec : public CVec {
-public:
-	TVec() { }
-	TVec(f32 x, f32 y, f32 z)
-	    : CVec(x, y, z)
-	{
-	}
-	virtual ~TVec() { } // _08
-};
-
 // same shape and role as the GameCube CObjVec: a current vec with the target it
-// walks to and the step's speed, only the current vec is a TVec here
+// walks to and the step's speed, only the current vec is a TVec here (ut.h)
 // ccameraactioneye.h (which cgame.h includes) carries a second copy of the class for the camera
 // code; until the two are one, a file that needs both headers includes that one first and takes it
 #ifndef _GAME_CCAMERAACTIONEYE_H
-class CObjVec : public TVec {
+class CObjVec {
 public:
+	// the retail ctor stores __vt__4TVec at _0C: the current vec is a member,
+	// not a base, so the class has no vtable of its own. defined in xobj_ut.cpp;
+	// XObj and the actor ctors never call it (their nine vecs are flat
+	// TVec/CVec members); the only callers are XObjChr's own CObjVec members
 	CObjVec();
-	u8 Step(f32 frames); // 0x802A7FB4
-	bool IsMoving() const;
-
+	TVec mValue;  // _00
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
 
-	virtual ~CObjVec() { }
+	u8 Step(f32 frames); // 0x802A7FB4
+	bool IsMoving() const;
 
 	// puts it at a value with nowhere to go
 	void Reset(f32 x, f32 y, f32 z)
 	{
-		this->x   = x;
-		this->y   = y;
-		this->z   = z;
+		mValue.x  = x;
+		mValue.y  = y;
+		mValue.z  = z;
 		mTarget.x = x;
 		mTarget.y = y;
 		mTarget.z = z;
@@ -919,7 +911,7 @@ public:
 	// puts it at a value with its target there too, the speed stays
 	void SetNow(const Vec& v)
 	{
-		Set(v);
+		mValue.Set(v);
 		SetTarget(v);
 	}
 };
@@ -1027,13 +1019,19 @@ public:
 	const char* mTexPatName;    // _54, the pattern anim playing
 
 	virtual ~NW_Obj() { } // _58
+	// _0C, the base's own reading is "has a resource"; NW_Anm overrides it with its file's read state
+	virtual BOOL IsLoaded() { return m_resFile.mpData != NULL; }
 };
 STATIC_ASSERT(sizeof(NW_Obj) == 0x5C);
 
 class NW_Anm : public NW_Obj {
 public:
-	virtual ~NW_Anm() { }
+	virtual ~NW_Anm() { }                                // _08
+	virtual BOOL IsLoaded() { return mFile.IsLoaded(); } // _0C
+
+	CFile mFile; // _5C, the archive read the extra animation file comes through
 };
+STATIC_ASSERT(sizeof(NW_Anm) == 0x148);
 
 // anims waiting to play after the current one. unlike the GameCube layout the
 // vtable leads the object on the Wii (retail stores __vt__9CAnmQueue at _7B8
@@ -1077,8 +1075,7 @@ public:
 	// __ct__9CJArchiveFv copy (100 %) that the XObjChr ctor calls out of line
 	CJArchive();
 
-	NW_Anm mAnm; // _00, its vtable at _58
-	CFile mFile; // _5C
+	NW_Anm mAnm; // _00, its vtable at _58 and its CFile at _5C
 };
 STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
@@ -1300,8 +1297,8 @@ public:
 	virtual void vf15C();
 	virtual void vf160() { mLastAnimFrame = GetAnimFrame(); }
 	virtual void UpdateObject(u32 frames); // _164
-	virtual void vf168();
-	virtual void vf16C(); // _16C, empty
+	virtual void vf168(u32 frames);        // _168, steps the two queued material colors to their targets
+	virtual void vf16C();                  // _16C, empty
 	virtual void vf170();
 	virtual void DrawObject();                                       // _174
 	virtual void DrawWithView(Mtx view);                             // _178
@@ -1317,10 +1314,11 @@ public:
 	virtual void vf1A0(const u32* flags);
 	virtual void vf1A4();
 	virtual void vf1A8();
-	virtual void SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
-	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
-	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
-	virtual void ClearBaseMtx();                 // _1B8
+	virtual void
+	SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	virtual Vec GetCameraTarget();         // _1B0, where a camera looks at this object
+	virtual void SetBaseMtx(Mtx mtx);      // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
+	virtual void ClearBaseMtx();           // _1B8
 	virtual void vf1BC(s32 mode);
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
@@ -1487,8 +1485,8 @@ public:
 	Mtx mBaseMtx;               // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;           // _998, NULL or mBaseMtx
 	u32 _99C;                   // _99C, ResetObjectState clears it
-	u8 _9A0[0x9A4 - 0x9A0];
-	s32 _9A4; // _9A4, the end of a script it owns clears it
+	s32 mReleaseCountdown;      // _9A0, >0 ticks down to a Release call while the keep flag is clear
+	s32 _9A4;                   // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 

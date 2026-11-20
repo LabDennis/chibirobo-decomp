@@ -71,9 +71,9 @@ void CCameraActionEye::Init()
 // mLook.Reset folds the value, target and speed writes into the member call
 void CCameraActionEye::Reset()
 {
-	mLook.x         = 0.0f;
-	mLook.y         = 0.0f;
-	mLook.z         = 0.0f;
+	mLook.mValue.x  = 0.0f;
+	mLook.mValue.y  = 0.0f;
+	mLook.mValue.z  = 0.0f;
 	mLook.mTarget.x = 0.0f;
 	mLook.mTarget.y = 0.0f;
 	mLook.mTarget.z = 0.0f;
@@ -169,12 +169,12 @@ void CCameraActionEye::Update(u32 step)
 			f32 pitch       = 0.0f;
 			mLook.mTarget.y = 0.0f;
 			if (tilt > 0.0f) {
-				pitch = mLook.x + 0.06981317f * Abs(tilt);
+				pitch = mLook.mValue.x + 0.06981317f * Abs(tilt);
 				if (pitch > 0.87266463f) {
 					pitch = 0.87266463f;
 				}
 			} else if (tilt < 0.0f) {
-				pitch = mLook.x - 0.06981317f * Abs(tilt);
+				pitch = mLook.mValue.x - 0.06981317f * Abs(tilt);
 				if (pitch < -0.87266463f) {
 					pitch = -0.87266463f;
 				}
@@ -185,7 +185,7 @@ void CCameraActionEye::Update(u32 step)
 			if (mOverride.x == 0.0f) {
 				if (pitch != 0.0f) {
 					mLook.mTarget.x = pitch;
-					mLook.x         = pitch;
+					mLook.mValue.x  = pitch;
 					if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
 						PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
 					}
@@ -206,9 +206,9 @@ void CCameraActionEye::Update(u32 step)
 			}
 		}
 
-		f32 speedY     = Abs(mLook.mTarget.y - mLook.y) / 30.0f;
-		f32 speedX     = Abs(mLook.mTarget.x - mLook.x) / 30.0f;
-		f32 speedZ     = Abs(mLook.mTarget.z - mLook.z) / 20.0f;
+		f32 speedY     = Abs(mLook.mTarget.y - mLook.mValue.y) / 30.0f;
+		f32 speedX     = Abs(mLook.mTarget.x - mLook.mValue.x) / 30.0f;
+		f32 speedZ     = Abs(mLook.mTarget.z - mLook.mValue.z) / 20.0f;
 		mLook.mSpeed.x = speedX;
 		mLook.mSpeed.y = speedY;
 		mLook.mSpeed.z = speedZ;
@@ -220,9 +220,9 @@ void CCameraActionEye::Update(u32 step)
 		mLook.Step(step);
 
 		// the move vector's y is mRotY at +0x64, so it sits at +0x60
-		Vec look = { mLook.x, mLook.y, 0.0f };
+		Vec look = { mLook.mValue.x, mLook.mValue.y, 0.0f };
 		SetAngle(CVec(*(const Vec*)((const u8*)player + 0x60)) + look);
-		SetFov(40.0f + mLook.z);
+		SetFov(40.0f + mLook.mValue.z);
 
 		static f32 sPreviousZoomSpeed = 0.0f;
 		f32 stick                     = pad.mStick.y;

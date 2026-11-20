@@ -60,6 +60,21 @@ public:
 // size checks by hand, STATIC_ASSERT is in types.h and most includers come in through the HSD headers
 typedef char CVec_size_check[sizeof(CVec) == 0x10 ? 1 : -1];
 
+#if defined(VERSION_R24J01)
+// the Wii's CVec sibling: same {x,y,z,vtable} shape with its own vtable. the retail
+// CObjVec ctor (0x800BE7C0) stores this vtable for its first member and CVec vtables
+// for the two behind it
+class TVec : public CVec {
+public:
+	TVec() { }
+	TVec(f32 x, f32 y, f32 z)
+	    : CVec(x, y, z)
+	{
+	}
+	virtual ~TVec() { } // _08
+};
+#endif
+
 // a GXColor with a vtable, RTTI gives the base as "_GXColor"
 class CColor : public _GXColor {
 public:
