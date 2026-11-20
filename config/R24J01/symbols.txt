@@ -678,6 +678,7 @@ StartMapCameraTargetHeightInterpolation = .text:0x801604F4; // type:function siz
 GetFollowDivisor__16CCameraActionMapFv = .text:0x80160C1C; // type:function size:0x8
 GetInterestMode__16CCameraActionMapFv = .text:0x80160C24; // type:function size:0x8
 GetCameraFlags__16CCameraActionMapFv = .text:0x80160C2C; // type:function size:0x8
+__sinit_\ccameraactionmap2_cpp = .text:0x80160C34; // type:function size:0xFC scope:local
 GetCameraFlags__18CCameraActionChaseFv = .text:0x80161450; // type:function size:0x8
 SetEye_Interp__16CCameraActionEvtFl3Vecf = .text:0x801618C0; // type:function size:0xB8
 SetInterest_Interp__16CCameraActionEvtFlP4XObjf = .text:0x80161978; // type:function size:0x128
