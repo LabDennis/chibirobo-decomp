@@ -7,12 +7,14 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/xobj.h"
 #include <math.h>
+#include <stdlib.h>
 
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 extern "C" void fn_8002BBD8(CGs* gs, f32 x, f32 y);
 extern "C" void fn_8002BBDC(CGs* gs);
 extern s32 gPointerScreenWidth;
 extern s32 gScreenSafeLeft, gScreenSafeRight, gScreenSafeTop, gScreenSafeBottom;
+extern s32 gRefreshRate;
 
 // NONMATCHING: retail keeps `angle` in a saved FPR across the sin/cos calls and walks the vertex
 // array with a +0x18 pointer increment (uses f25-f31); this spelling rematerializes angle per call
@@ -244,9 +246,105 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	}
 }
 
+// NONMATCHING: retail unrolls the two stagger-fade loops 8x and schedules the -i neg/xoris/lfd
+// sequence differently inside the unroll (plus sdata2 pool layout); the state machine, digit
+// decomposition and burst initialization match the GameCube source shape. Score ~83.4 %.
+/**
+ * @note Address: 0x800F1360
+ * @note Size: 0xAF8
+ */
+extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
+{
+	PointDisplay& display = ptcl->display;
+	PointBurst& burst     = ptcl->burst;
+	if (display.mState == 1) { // build the digit strip
+		s32 value      = __fabsf(display.mAmount);
+		display.mCount = 0;
+		while (display.mCount < 10) {
+			display.digits[display.mCount].glyph = value % 10;
+			value /= 10;
+			++display.mCount;
+			if (!value)
+				break;
+		}
+		if (ptcl->mType == 1) {
+			display.digits[display.mCount].glyph = 76; // glyph 76 is the icon
+			++display.mCount;
+		}
+		for (s32 i = display.mCount - 1; i >= 0; --i)
+			display.digits[display.mCount - 1 - i].fade = 0.15f * -i; // the digits come in staggered
+		display.mState = 2;
+		burst.mState   = 1;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			particle.mColor        = (100 + rand() % 156) << 16 | (100 + rand() % 156) << 24 | (100 + rand() % 156) << 8;
+			particle.mFade         = 1.0f + 0.02f * i;
+			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
+			particle.mAngle = DEG2RAD * (rand() % 360);
+			particle.mFade  = 1.0f + 0.02f * i;
+			if (display.mAmount >= 0) {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 500.f);
+				particle.mSpeed        = -(10000 + rand() % 10000) / 200.f;
+			} else {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 1000.f);
+				particle.mSpeed        = (10000 + rand() % 10000) / 200.f;
+			}
+			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
+			particle.mLastAngle = 0;
+		}
+	} else if (display.mState == 2) { // fading in
+		s32 moving = 0;
+		for (s32 i = display.mCount - 1; i >= 0; --i) {
+			f32& fade = display.digits[i].fade;
+			if (fade < 1.f) {
+				if ((fade += 0.08f * frames) > 1.f)
+					fade = 1.f;
+				++moving;
+			}
+		}
+		if (!moving) {
+			display.mState = 3;
+			for (s32 i = display.mCount - 1; i >= 0; --i)
+				display.digits[display.mCount - 1 - i].fade = 1.f + 0.15f * i;
+			display.holdFrames = 0.2f * gRefreshRate;
+		}
+	} else if (display.mState == 3) { // hold, then fade out
+		if (display.holdFrames > 0.f) {
+			if ((display.holdFrames -= frames) <= 0.f)
+				display.holdFrames = 0.f;
+		} else {
+			s32 moving = 0;
+			for (s32 i = display.mCount - 1; i >= 0; --i) {
+				f32& fade = display.digits[i].fade;
+				if (fade > 0.f) {
+					if ((fade -= 0.08f * frames) < 0.f)
+						fade = 0.f;
+					++moving;
+				}
+			}
+			if (!moving)
+				display.mState = 0;
+		}
+	}
+	if (burst.mState == 1) {
+		s32 moving = 0;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			if (particle.mFade > 0.f) {
+				if ((particle.mFade -= 0.015f * frames) < 0.f)
+					particle.mFade = 0.f;
+				++moving;
+			}
+			particle.mAngle += particle.mAngularSpeed * frames;
+		}
+		if (!moving)
+			burst.mState = 0;
+	}
+}
+
 // the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect: xobj_chr.cpp
 // models the same 0x258-byte object as SuitChangeTrail (scale-first records at +0x10).
-// This file's functions index it the way the GameCube's spiral code does — an active
+// This file's functions index it the way the GameCube's spiral code does -- an active
 // flag, then two rings of ten records holding a position, a scale, a color and an angle.
 struct SpiralTrailPoint {
 	Vec position; // _00
