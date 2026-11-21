@@ -1,6 +1,7 @@
 #include "game/ccameraaction.h"
 #include "game/cthread.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/csoundfx.h"
 #include "revolution/mem.h"
 
 // The Wii unit 0x80032C48-0x8003366C (wii_units.md #19): the tail of the game's main file, the one
@@ -11,6 +12,8 @@
 
 extern MEMiHeapHead* gWiiMem1Heap;
 extern MEMiHeapHead* gWiiGameHeap;
+void* SoundHeapAlloc(void** slot, u32 size);
+void SoundHeapFree(void** slot);
 
 // operator delete has an inline body on the Wii, so the deleting destructors free to the MEM1 heap
 inline void operator delete(void* ptr) throw()
@@ -46,3 +49,17 @@ CThread gMovieUpdateThread;
 //              Its vtable (0x802E6A10) has six slots, not the 75 of xobj.h.
 //   0x80033040 an empty virtual, the fourth of the base Title and MenuSave share (RTTI:
 //              CContainCallback, MenuPad); title.h derives Title from MenuUtil alone.
+
+BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param)
+{
+	if (mWorkBuffer != NULL) {
+		Shutdown();
+		ReleaseWorkBuffer();
+		SoundHeapFree(&mWorkBuffer);
+	}
+	if (SetParam(param)) {
+		u32 size = GetRequiredMemSize();
+		return AssignWorkBuffer(SoundHeapAlloc(&mWorkBuffer, size), size);
+	}
+	return FALSE;
+}

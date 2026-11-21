@@ -8334,6 +8334,7 @@ DrawParticlePool = .text:0x802BEF20; // type:function size:0x90
 __dt__7CPadActFv = .text:0x80032FD4; // type:function
 __sinit_\cinterpolationeaseoutdivide_cpp = .text:0x800332D8; // type:function
 Start__13CScrnWipeTileFUcUcUcUcifffffff = .text:0x80033080; // type:function
+Setup__20CSoundFxReverbHiDpl2FRCQ44nw4r3snd6detail15FxReverbHiParam = .text:0x80033084; // type:function size:0xBC
 OpenArchive__6XSoundFPCcl = .text:0x800366DC; // type:function
 OpenArchiveAsync__6XSoundFPCcl = .text:0x800366E0; // type:function
 LoadGroup__6XSoundFl = .text:0x800366E4; // type:function
