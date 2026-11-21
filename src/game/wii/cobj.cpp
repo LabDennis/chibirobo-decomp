@@ -1051,8 +1051,7 @@ void CObj::SetMoveDir(const Vec* dir, f32 speed)
 		d.z = __fabsf(d.z);
 		// each axis gets its share of the distance, so all three arrive on the same frame
 		PSVECNormalize(&d, &d);
-		CVec step = d * speed;
-		mMoveSpeed0.Set(step.x, step.y, step.z);
+		mMoveSpeed0.Set(d * speed);
 		if (mMoveSpeed0.x > 0.0f && mMoveSpeed0.x < 0.001f) {
 			mMoveSpeed0.x = 0.001f;
 		}
