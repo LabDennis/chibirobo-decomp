@@ -1,10 +1,10 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 82 fertig, Branch devin/lane3 @3bf0a530. R24J01:
-  6647/8284 matched, `main.dol: OK`. ringmenu.cpp: AtcMenu::Open
-  (99,58 — instruktionsidentisch, nur Regfarben-Permutation,
-  NONMATCHING). WiiPlayerState::mAttachments jetzt typisiert
-  (AttachmentValues statt u8[0x48]).
+Stand: Lauf 108 fertig, Branch devin/lane3. R24J01:
+  6702/8284 matched, `main.dol: OK`. xobjmember 39/64:
+  `__ct__7XObjChrFv` (0x800BECE8) definiert mit gehobenem
+  Member-Layout (0→17,5 %, NONMATCHING ehrlich) + `XPad::XPad`
+  (0x800C0E98, 100 %).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 
 ## Lauf 82 — ringmenu: AtcMenu::Open 99,58 % + mAttachments typisiert (3bf0a530)
@@ -1665,3 +1665,62 @@ XObjScnCamInitRec-Layout, __ct__10CPtclDust2Fv, Handoffs.)
   sein extab-/Call-Bezug zieht __ct__9CJArchiveFv und die fuenf
   abgeleiteten __dt__Fv-Kopien zurueck. Wii-XObjChr-Klasse ggf. neu
   anlegen (xchr.h ist GC-only); Offsets aus XObjChr-Ctor-ASM verifiziert.
+
+## Lauf 108 — xobjmember: XObjChr-Ctor + Layout gehoben, XPad-Ctor 100 %
+
+- **Commit (dieser Lauf):** `XObjChr::XObjChr()` an Retail-Position in
+  xobjmember.cpp + gehobenes Member-Layout in wii/xobj.h: CObjVec
+  mMotion@_9D4, CVec mContactPos@_A34/mEdgePos@_A48, XObjScnCamInitRec
+  @_9810/_987C, CObjVec mSlopeMotion@_995C + CVec mFloorSlope@_998C,
+  XPad mPad@_18BE8, XObjChrMenu mMenu@_19EE4, CPtclSet@_1B7BC,
+  CTexObj[2]@_1C774, CVec@_1C9A8, CObjVec mEyeAim@_1C9CC, CJArchive
+  mAttachmentAnm@_1C9FC + mSuitAnm@_1CB44, AnimSfxActor mActor@_1CC90
+  (skalar — Retail wrappt in __construct_array(count 1), Caller nutzen
+  skalar). STATIC_ASSERT(sizeof==0x1CCA0) steht; Offsets per Probe-File
+  (sizeof/offsetof, private->public) vermessen.
+- **Neue Includes in xobj.h:** xobjcamera.h, xpad.h, xchrmenu.h (alles
+  zykelfrei). Params@_999C und XAct-/_XObjAttachment-/_XObjChrBase-/
+  OXMenu-Bloecke bleiben Padding — ihre Klassen leben in cgame.h
+  (WiiPlayerState-Sicht) und sind von xobj.h aus nicht sauber
+  erreichbar.
+- **XPad::XPad()** (0x800C0E98) out-of-line in xobjmember.cpp: 100 %.
+  Letzte Emission der Unit, CPadOne-Basis + Reset-Felder.
+- **Ergebnis:** __ct__7XObjChrFv 0→17,5 % (NONMATCHING, ehrlich),
+  xobjmember 39/64, R24J01 6702/8284 (+5 netto). 36 Verbesserungen
+  gegen die stale Lauf-44-Baseline, darunter 10x neue 100 % (u. a.
+  XObjScnCamInitRec ct/dt, XObjPlugCordNode ct/dt, CPtclDust2,
+  CScrnColor, XActRadar ct/dt, Params ct/dt — groesstenteils schon in
+  Lauefen 103-107 committed).
+- **Regressionen (keine neuen Match-Verluste):** __ct__9CJArchiveFv
+  bleibt 0 — transient, schon Lauf 107 begruendet: nichts ODR-nutzt
+  den Ctor, weil unser XObjChr-Ctor CJArchive INLINE expandiert,
+  waehrend Retail ihn per bl ruft (IPA-Budget des Riesen-Ctors).
+  XObjActorJenny/Mama/Papa/Tao/Deca + fn_800C66C8 sanken je ein paar
+  Punkte (48→35/46→37/43→42) — Include-Ripple auf ungematchte
+  Fremd-Ctors, keine 100 %-Verluste. Aus Lauf 23 bekannt:
+  Mama/Papa/Tao-Deklarationen NICHT blind wiedereinfuehren.
+- **Verworfen (rueckgerollt):** `XObj::XObj()` out-of-line in
+  xobj_ut.cpp — Retail ruft __ct__4XObjFv zwar per bl aus
+  Derived-Ctors, aber MWCC ruft es dann auch fuer Basis-Subobjekte:
+  24 Derived-Ctor-Regressionen (XObjDemo/Sound/Coin/Item/Spider-Cluster
+  …). Inline belassen; XObjChr ruft deshalb auch nicht fn_800BEECC —
+  Retail stoppt das Inlining erst beim Riesen-Aggregat. Header-
+  Kommentar korrigiert.
+- **IPA-Theorie (belegt, nicht geloest):** Retail-XObjChr-Ctor ruft
+  ALLE Member-Ctors per bl (inkl. inline-faehiger Blaetter wie
+  CVec/CObjVec/CJArchive) — MWCC-Inliner gibt beim 0x1E4-Aggregat auf.
+  Hebel: mit zunehmend echten Member-Bodies waechst unser Ctor und
+  kippt ggf. selbst in die Call-Form; dann zieht er
+  __ct__9CJArchiveFv und fn_800BEECC-Emission zurueck.
+- **Gate:** R24J01 main.dol OK (sha1), GGTE01/GGTJ01_01/GGTP01
+  main.dol je sha1-OK, config/ sauber, keine neuen Symbol-Dubs.
+- **Liegt:** tools/check.py --source-only scheitert weiter: kein
+  clang-format 18.1.8 (nur 23.1.4/llvm21); Edits im Datei-Stil
+  gehalten, Format-Pruefung offen. Aufruf-Test wurde abgelehnt.
+- **Naechstes:** Member-Typen nachziehen — Params@_999C (existiert in
+  cgame.h), dann die XAct-Member _AA0.._95D4 (XActLift/…-Offsets aus
+  Retail-Ctor-Call-Sequenz), XObjRadar@_95D4, Attachment-Set
+  _9E20.._D2A0, XObjChrBase@_DC50, OXMenu@_1A420; jede echte
+  Deklaration vergroessert den Ctor Richtung Retail-Call-Form.
+  Alternative Breite: xobj_map-Grid-Builder fn_800C85EC,
+  LoadFromPlacement 0x800AC238, TestFloorCollision 0x800B034C.

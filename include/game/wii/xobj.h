@@ -21,6 +21,9 @@
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xobjcamera.h"
+#include "game/xpad.h"
+#include "game/wii/xchrmenu.h"
 #include "revolution/mem.h"
 
 extern "C" {
@@ -1505,9 +1508,10 @@ STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
 
 class XObj : public CObj {
 public:
-	// derived ctor; the standalone __ct__4XObjFv at 0x800BE5B0 is the emitted copy
-	// (verified: declaring it out of line makes MWCC call it for base subobjects
-	// too, which retail expands inline in every derived ctor)
+	// retail's derived ctors expand this inline; a weak __ct__4XObjFv copy is
+	// emitted wherever an out-of-line call survives (0x800BE5B0 in xobj_ut's
+	// range, plus the unnamed second copy 0x800BEECC that only XObjChr's ctor
+	// calls -- MWCC stops inlining the base once the aggregate ctor gets big)
 	XObj() { }
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
@@ -1953,11 +1957,38 @@ public:
 	virtual void ResumeSounds(f32 fade);                               // _210
 
 private:
-	u8 _9A8[0x1B7BC - 0x9A8];
-	CPtclSet mDustPool; // _1B7BC
-	CTexObj mTex[2];    // _1C774
-	u8 _1C97C[0x1CC90 - 0x1C97C];
-	AnimSfxActor mActor; // _1CC90
+	// the member offsets come from the ctor's call sequence (0x800BECE8) and the
+	// extab unwind types; gaps hold the members whose classes live in cgame.h or
+	// are not recovered yet: the XAct actions _AA0-_D50, XActRadar _95D4, Params
+	// _999C, the XObj attachment set _9E20-_D2A0, XObjChrBase _DC50, OXMenu _1A420
+	u8 _9A8[0x9CC - 0x9A8];
+	u8 _9CC[8]; // its own little class: ctor 0x800BF148, dtor 0x8002E67C
+	CObjVec mMotion;
+	u8 _A04[0xA34 - 0xA04];
+	CVec mContactPos;              // _A34
+	u8 _A44[4];
+	CVec mEdgePos;                 // _A48
+	u8 _A58[0x9810 - 0xA58];       // the action members and everything to the camera records
+	XObjScnCamInitRec mEyeAimRec;  // _9810
+	XObjScnCamInitRec mHeadAimRec; // _987C
+	u8 _98E8[0x995C - 0x98E8];
+	CObjVec mSlopeMotion; // _995C
+	CVec mFloorSlope;     // _998C
+	u8 _999C[0x18BE8 - 0x999C]; // Params, the XObj attachments, the suit objects
+	XPad mPad;                  // _18BE8
+	u8 _19E98[0x19EE4 - 0x19E98];
+	XObjChrMenu mMenu;            // _19EE4
+	u8 _1A420[0x1B7BC - 0x1A420]; // OXMenu's class pulls in the GameCube xobj.h
+	CPtclSet mDustPool;           // _1B7BC
+	CTexObj mTex[2];              // _1C774
+	u8 _1C97C[0x1C9A8 - 0x1C97C];
+	CVec _1C9A8;
+	u8 _1C9B8[0x1C9CC - 0x1C9B8];
+	CObjVec mEyeAim;         // _1C9CC
+	CJArchive mAttachmentAnm; // _1C9FC
+	CJArchive mSuitAnm;       // _1CB44
+	u8 _1CC8C[0x1CC90 - 0x1CC8C];
+	AnimSfxActor mActor; // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
 	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
 };
 STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);

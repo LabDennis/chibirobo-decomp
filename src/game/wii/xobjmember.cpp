@@ -48,6 +48,18 @@ XObjMap::~XObjMap()
 {
 }
 
+// retail 0x800BECE8: the player aggregate. Retail calls an out-of-line copy of
+// the XObj base ctor (fn_800BEECC), stores its two vtables and runs the member
+// chain in declaration order; the recovered member types (CObjVec/CVec records,
+// XPad, XObjChrMenu, CPtclSet, CTexObj[2], the CJArchive pair, AnimSfxActor) get
+// built from this body, the gaps stay padding until their classes -- most only
+// declared in cgame.h's WiiPlayerState -- become visible to xobj.h
+// NONMATCHING: MWCC expands XObj() inline here instead of calling fn_800BEECC,
+// and inlines the leaf member ctors retail calls out of line
+XObjChr::XObjChr()
+{
+}
+
 // the member classes XObjChr's constructor builds out of line: the action kinds
 // (wii/xact.h, wii/cgame.h) get one weak copy each here, the deleting destructors
 // ride along with the vtables. The CStatus32 copy at 0x800BF148 stays missing: its
@@ -198,5 +210,11 @@ XObjRadar::XObjRadar()
 }
 
 XObjOX::XObjOX()
+{
+}
+
+// retail 0x800C0E98, last emission of the unit: XObjChr's mPad member builds it
+// (CPadOne base, the motion reset fields), its deleting dtor is in xpaddtor.cpp
+XPad::XPad()
 {
 }
