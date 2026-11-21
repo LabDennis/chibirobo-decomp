@@ -299,7 +299,7 @@ public:
 	virtual ~XObjPlug() { } // _08 (weak)
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
 	virtual void Release();                                                                                                     // _40
-	virtual void InitializeObject(u32 id);                                                                                      // _14C
+	virtual void InitializeObject();                                                                                            // _14C
 	virtual void ResetForNewGame();                                                                                             // _150
 	virtual void ResetObjectState();                                                                                            // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158

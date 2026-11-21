@@ -29,7 +29,7 @@ void HSD_MtxGetScale(Mtx m, Vec* dst);
  * @note Address: 0x8010F944
  * @note Size: 0x7C
  */
-void XObjPlug::InitializeObject(u32 id)
+void XObjPlug::InitializeObject()
 {
 	XObj::InitializeObject();
 	InitPlugCord(&mCord, 20, 0.0f, 0.0f, 0.0f, 0.5f);
