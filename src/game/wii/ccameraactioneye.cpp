@@ -15,8 +15,6 @@
 static const f32 sEyePointerLimits[4] = { 0.9f, 0.9f, 0.3f, 0.2f };
 
 // the look angle Reset starts from, word-copied into the SetAngle argument
-static const Vec sEyeResetAngle = { 0.05235988f, 0.0f, 0.0f };
-
 // the speed limits the look target's merge divides by; the free look swaps to
 // the wide one whenever mOverride has a part set
 static CVec sEyeLimitA(20.0f, 20.0f, 20.0f);
@@ -99,21 +97,21 @@ void CCameraActionEye::Init()
  */
 void CCameraActionEye::Reset()
 {
-	mLook.x         = 0.0f;
-	mLook.y         = 0.0f;
-	mLook.z         = 0.0f;
-	mLook.mTarget.x = 0.0f;
-	mLook.mTarget.y = 0.0f;
-	mLook.mTarget.z = 0.0f;
-	mOverride.x     = 0.0f;
-	mOverride.y     = 0.0f;
-	mOverride.z     = 0.0f;
-	mLook.mSpeed.x  = 0.05f;
-	mLook.mSpeed.y  = 0.05f;
-	mLook.mSpeed.z  = 0.05f;
-	mVec80.x        = 0.0f;
-	mVec80.y        = 0.0f;
-	mVec80.z        = 0.0f;
+	mLook.x          = 0.0f;
+	mLook.y          = 0.0f;
+	mLook.z          = 0.0f;
+	mLook.mTarget.x  = 0.0f;
+	mLook.mTarget.y  = 0.0f;
+	mLook.mTarget.z  = 0.0f;
+	mOverride.x      = 0.0f;
+	mOverride.y      = 0.0f;
+	mOverride.z      = 0.0f;
+	mLook.mSpeed.x   = 0.05f;
+	mLook.mSpeed.y   = 0.05f;
+	mLook.mSpeed.z   = 0.05f;
+	mVec80.x         = 0.0f;
+	mVec80.y         = 0.0f;
+	mVec80.z         = 0.0f;
 	mVec80.mTarget.x = 0.0f;
 	mVec80.mTarget.y = 0.0f;
 	mVec80.mTarget.z = 0.0f;
@@ -121,22 +119,22 @@ void CCameraActionEye::Reset()
 	mVec80.mSpeed.y  = 0.0f;
 	mVec80.mSpeed.z  = 0.0f;
 
-	Vec angle = sEyeResetAngle;
+	Vec angle = { 0.05235988f, 0.0f, 0.0f };
 	angle.y   = EYE_PLAYER->mMoveRotate.y;
 	SetAngle(angle);
 	SetDistance(100.0f);
 	SetFov(40.0f);
 
 	mLook.Reset(0.05235988f, EYE_PLAYER->mMoveRotate.y, 0.0f);
-	sPrevPitch = 0.05235988f;
-	mB0        = 0.0f;
-	Vec zero   = { 0.0f, 0.0f, 0.0f };
-	mVecB4     = zero;
-	mVecC0     = sEyeLimitA;
-	mVec10C.x  = 0.0f;
-	mVec10C.y  = 0.0f;
-	mVec10C.z  = 0.0f;
-	mRange     = 24.0f;
+	sPrevPitch  = 0.05235988f;
+	mB0         = 0.0f;
+	Vec zero    = { 0.0f, 0.0f, 0.0f };
+	mVecB4      = zero;
+	mVecC0      = sEyeLimitA;
+	mVec10C.x   = 0.0f;
+	mVec10C.y   = 0.0f;
+	mVec10C.z   = 0.0f;
+	mRange      = 24.0f;
 	mFirstFrame = 1;
 }
 
@@ -193,23 +191,19 @@ void CCameraActionEye::Update(u32 step)
 				CVec aim(0.0f, 0.0f, 0.0f);
 				if (gWiiPointer.mPointerValid) {
 					Vec in = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
-						       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f,
-						       gWiiPointer.mPointer.z };
+						       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, gWiiPointer.mPointer.z };
 					Vec out;
 					fn_8016AA78((f32*)&out, (f32*)&in, (f32*)sEyePointerLimits);
 					Vec scaled = out;
 					aim.Set(scaled);
-					mB0    = 0.0f;
-					mVecB4 = scaled;
-					mVec80.mSpeed.x = 0.02f;
-					mVec80.mSpeed.y = 0.02f;
-					mVec80.mSpeed.z = 0.02f;
+					mB0              = 0.0f;
+					mVecB4           = scaled;
+					mVec80.mSpeed.x  = 0.02f;
+					mVec80.mSpeed.y  = 0.02f;
+					mVec80.mSpeed.z  = 0.02f;
 					mVec80.mTarget.x = 1.0f;
 					mVec80.mTarget.y = 1.0f;
 					mVec80.mTarget.z = 1.0f;
-					if (aim.x == 0.0f && aim.y == 0.0f) {
-						// the center needs no blend
-					}
 				} else {
 					if (!(gGame._41B0 & 8)) {
 						aim.Set(mVecB4);
@@ -231,8 +225,8 @@ void CCameraActionEye::Update(u32 step)
 					aimY = aimX;
 				}
 
-				f32 track  = TrackPointer(step, -aimX, aimY);
-				f32 pitchT = track * -1.0f;
+				f32 track         = TrackPointer(step, -aimX, aimY);
+				f32 pitchT        = track * -1.0f;
 				WiiCameraPoint pt = fn_8016A844(&mCurveX, __fabsf(aimY));
 				f32 pitch         = aimY;
 				if (aimY > 0.0f) {
@@ -367,9 +361,9 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 	static f32 sPrev = 0.0f;
 
 	if (mFirstFrame) {
-		f32 winLow  = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * -sEyePointerLimits[2];
-		f32 winHigh = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * sEyePointerLimits[2];
-		sPrev       = 0.0f;
+		f32 winLow   = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * -sEyePointerLimits[2];
+		f32 winHigh  = 0.5f * gPointerScreenHeight + 0.5f * gPointerScreenHeight * sEyePointerLimits[2];
+		sPrev        = 0.0f;
 		f32 pointerY = gWiiPointer.mPointer.y;
 		mVec10C.y    = pointerY;
 		f32 lo       = 0.5f * mRange + winLow;
