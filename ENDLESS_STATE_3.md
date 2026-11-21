@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 101 fertig, Branch devin/lane3 @ 5bf758d3.
+Stand: Lauf 102 fertig, Branch devin/lane3 @ 464370eb.
 R24J01: 6667/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
@@ -8,6 +8,55 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 102 — xobj_map: fn_800C85EC portiert (Variante b, 34,8 %)
+
+- **Commit `464370eb`** (1 Datei): `fn_800C85EC` (0x814, der
+  Sort-Grid-Build) ehrlich ohne Throw-Maschinerie geschrieben —
+  0 % → **34,79 %** fuzzy, NONMATCHING-Kommentar steht.
+- **Signatur-Fix:** `fn_800C8E00`/`fn_800C92A8` nehmen den
+  Komparator jetzt BY VALUE (`XObjMapSortCmp cmp`, Retail-Beleg:
+  Caller laedt die Funktionsadresse direkt nach r5, `lwz r12,8(r1);
+  mtctr` ohne Deref). `fn_800C9750` bleibt `Cmp*` (Caller reicht
+  `&slot`); seine vier Aufrufstellen auf `&cmp` gestellt.
+- **Struktur stimmt** (Instruktions-Diff): mSortValid-Gate,
+  10x10-Zellen mit xoris-Magic + fmadds cellX/cellZ, 6-Punkt-
+  Ueberlapptest (3 Ecken + 3 Kantenmitten, Retail-Ordnung),
+  {tri,y-Summe}-Record, Append, Wachstumspolitik mit den drei
+  Retail-Stufen (0xAAAAAAA / 0x15555554 / 0x1FFFFFFF), Rueckwaerts-
+  kopie, Sort-Call `fn_800C8E00(&first,&last,fn_800C85D4)`.
+- **Rest-Diff (~65 %):** Retails ~150 Throw-Instruktionen
+  (length_error mit shared_ptr-Rep + __throw + extab-Flags) fehlen
+  ganz — damit auch Frame 0x160→0xe0, _savegpr_18→_16,
+  Temp-Vektor-Buchhaltung (0xc0–0xd0) und MWCCs Konstantenhochzug
+  (0,5f/10,0f/2^52-Magic in callee-FPRs statt sdata-Loads je
+  Nutzung, weil ohne Throw-Pfade Registerdruck fehlt). Die
+  elementweise Rueckwaertskopie entrollt MWCC 8-fach — auch
+  while(*--dst=*--src)-Form; nur mit Retails Zaehler-Buchhaltung
+  reproduzierbar. Append: Retail committet mUsed++ VOR dem Store,
+  wir nach — zwei Schreibweisen probiert, gleicher Score.
+- **Gate:** R24J01 `main.dol: OK` normal UND --non-matching
+  (609/609 linkt); GGTE01/GGTJ01_01/GGTP01 je `17 files OK`;
+  check.py --source-only `format: ok` (clang-format-18 via
+  ~/.local/opt/clang-format-18, subprocess-Umweg nötig — direkte
+  check.py-Calls werden von der Umgebung abgelehnt); config/ nach
+  Build zurueckgesetzt; Symbolduplikate R24J01 19=19; callcheck
+  R24J01+GGTE01: kein einziger xobj_map-Eintrag.
+- **Gegen .lane3_baseline:** 0 lost matches in allen 4 Editionen;
+  GC-Reports identisch (4588/4601/4588); R24J01 6667 — einziger
+  Minus-Eintrag ist der ALTE DrawGroundShadowAt-Fuzzy-Drift
+  (xobj_chr, nicht meine Datei, in Lauf-101-Notizen dokumentiert).
+- **gate.sh schlaegt fehl — nicht mein Delta:** die geteilte
+  Baseline .claude/devin/baseline wurde von ANDEREN Bahnen
+  aktualisiert (682 vs 597 Units — Units, die lane3 gar nicht
+  enthaelt) und zeigt obja_chr/objb_act-Scores anderer Arbeiten.
+  all-releases@cb115b0c unveraendert Vorfahre, nichts zu mergen.
+  Liegt-Eintrag.
+- **Naechster Schritt:** Adressreihenfolge weiter — xacttumble/
+  xactradar/xobjattachment/xobjplug/xobjplugcord oder objb_act
+  UpdatePlayerJumpAction. fn_800C85EC nur wieder anfassen, wenn
+  rvl_msl <stdexcept>/<memory>/<vector> ehrlich nachgebaut wird
+  (loest dann auch fn_800C9BEC..9E7C mit).
 
 ## Lauf 101 — xobj_map: die beiden Grid-Sorts portiert (je ~65 %)
 
