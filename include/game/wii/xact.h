@@ -190,6 +190,9 @@ STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
 // GameCube layout's own. WiiPlayerState reserves _95D4 to _96A0 for it
 class XActRadar : public XAction {
 public:
+	XActRadar();
+	~XActRadar();
+
 	XObj* mTarget;         // _2C
 	RadarAimAxis mYaw;     // _30
 	RadarAimAxis mPitch;   // _3C

@@ -132,3 +132,13 @@ AnimSfxActor::AnimSfxActor()
 AnimSfxActor::~AnimSfxActor()
 {
 }
+
+// the radar action's members build out of line here: XObjChr's ctor calls it last,
+// the two CScrnColor of mBeam come along as __construct_array's element ctor
+XActRadar::XActRadar()
+{
+}
+
+XActRadar::~XActRadar()
+{
+}

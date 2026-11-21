@@ -1,14 +1,61 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 103 fertig, Branch devin/lane3 @ 42e80c76.
-R24J01: 6690/7242 matched (Fuzzy-Eintraege), main.dol: 0 Diffs/OK;
-GC: je 17 files OK;
-all-releases@cb115b0c ist Vorfahre.
+Stand: Lauf 104 fertig, Branch devin/lane3 @ e75928fa.
+R24J01: 6694/8284 matched, xobjmember 30/64, main.dol OK;
+GC: je 0 Regressionen, disc files OK;
+symbols.txt +26 Eintraege (24 retail-belegte Namen + 2 Vtables).
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
-aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
-99,98->96,62; KEIN matched-Verlust, nur fuzzy).
+aeltere Commits danach driften Einzelscores; KEIN matched-Verlust).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 104 — xobjmember: XActRadar + Member-Block benannt (NEU)
+
+- **+4 auf 100 %:** `__dt__10XActPopperFv`@0x800BF800 (Rename von
+  dtor_800BF800 — unser .o emittierte bereits eine 144-B-Deleting-Dtor-
+  Kopie, Name genuegte), `__ct__9XActRadarFv`@0x800BF890,
+  `__dt__9XActRadarFv`@0x800BF938 (neue Defs in xobjmember.cpp, Decls
+  in xact.h) und `__ct__10CScrnColorFv`@0x800BF8F4 (Weak-Emission aus
+  dem mBeam-Array, Vtable __vt__10CScrnColor benannt @0x802E63E4).
+- **Retail belegt, noch nicht emittiert (nur Namen vergeben):**
+  `__ct__17XObjScnCamInitRecFv`@0x800BF9A4 + Dtor@0x800BF9C8
+  (Member _9810/_987C in WiiPlayerState; Header-Layout in
+  xobjcamera.h ist noch Vec statt CVec/TVec — Emission wartet auf
+  die Layout-Korrektur, 0x68->0x6C), `__ct__6ParamsFv`@0x800BFA08
+  (Params vptr liegt AM ENDE @+0x440, Member @0x999C),
+  `__ct__8XObjPlugFv`@0x800BFA58 (956 B, baut XObjPlugCordNode via
+  `__ct__16XObjPlugCordNodeFv`@0x800BFE14),
+  `__ct__10XObjCopterFv`/`__dt__`@0x800BFF28/0x800C014C,
+  `__ct__10XObjPopperFv`/`__dt__`@0x800C018C/0x800C03B0,
+  `__ct__9XObjRadarFv`/`__dt__`@0x800C03F0/0x800C0614,
+  `__ct__6XObjOXFv`/`__dt__`@0x800C0654/0x800C0878,
+  `__ct__11XObjChrBaseFv`@0x800C08B8 (baut XObjDress[9]@+0x18 +
+  XObjDressOpt[9]@+0x5868) + `__dt__`@0x800C0E18,
+  `__ct__9XObjDressFv`/`__dt__`@0x800C0924/0x800C0B74,
+  `__ct__12XObjDressOptFv`/`__dt__`@0x800C0BB4/0x800C0DD8,
+  `__ct__4XPadFv`@0x800C0E98 (CPadOne@+0x12A4 + 3 Motion-Resets).
+  Alle ueber RTTI-Namen aus der DOL belegt (0x803030AC XPad,
+  0x803030F0 XActRadar, 0x803030D4 Params, 0x80306060 DressOpt,
+  0x80306310 ChrBase, 0x80306CF8 OX, 0x80306FC0 Radar,
+  0x80307288 Popper, 0x80307550 Copter, 0x80307844 Plug).
+- **Emissions-Haken:** Die grossen XObj-Ctors werden erst emittiert,
+  wenn eine Funktion ihrer Klasse/Member-Arrays instantiiert wird —
+  meist `__ct__7XObjChrFv` (noch nicht decompiliert). Ohne Emission
+  bleiben die Namen ungematcht (harmlos). XObjScnCamInitRec emittiert
+  sobald sein Ktor aufgerufen wird ODER via XObjChr-Member.
+- **Gate:** R24J01 main.dol OK, +4 fns, 0 Regressionen in allen 4
+  Editionen; GC je 17 files/disc OK. Format-Gate NICHT gelaufen:
+  clang-format-18-Binary liegt ausserhalb Worktree-Scope, Aufruf
+  wurde von der Sandbox abgelehnt — in ENDLESS.md dokumentierter
+  Pfad ist ~/.local/opt/clang-format-18/bin/clang-format.
+- **Naechster Schritt:** xobjcamera.h `XObjScnCamInitRec` auf die
+  Retail-Member (CVec@0x10, TVec@0x3C, CVec@0x4C, CVec@0x5C,
+  size 0x6C) korrigieren -> Weak-Ctor/Dtor emittieren. Dann die
+  offenen Kleinen: fn_800BF5F0/fn_800BF614, dtor_800BF108/
+  dtor_800BF1C0. XObjChr-Ktor (0x80134694) ist der Schluessel, der
+  alle grossen Member-Ctors emittiert.
+- **Liegt:** Format-Check (s.o.); zentrale Handoff-Kopie nicht
+  beschreibbar.
 
 ## Lauf 103 — xobjmember: XAct-Ktor-/Dtor-Cluster gehoben (ebf09f43)
 
