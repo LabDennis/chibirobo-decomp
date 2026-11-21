@@ -3,14 +3,14 @@
 // event virtuals. The Wii source merges the GameCube's cjanim.cpp with the floor
 // helpers obja.cpp and xobjfloor.cpp carried; the floor coordinate readers appear
 // open-coded here, the array-and-index pair's inline half.
-// NONMATCHING: the per-frame animation stepper (0x800B4988),
-// ExecCallback_CALC_MAT (0x800B5CF0) and __sinit still come from the retail asm.
+// NONMATCHING: ExecCallback_CALC_MAT (0x800B5CF0) and __sinit still come from the retail asm.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
 #include "game/wii/ceffect.h"
 #include "game/wii/xobj.h"
+#include "JSystem/JMath/Inline.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include "game/ut.h"
@@ -647,6 +647,164 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	if (screenZ > 0.0f && screenZ < 1.0f)
 		return FALSE; // inside the depth range: visible
 	return TRUE;
+}
+
+static inline void ExpandScreenBounds(f32 x, f32 y, f32& minX, f32& minY, f32& maxX, f32& maxY)
+{
+	if (x < minX)
+		minX = x;
+	if (y < minY)
+		minY = y;
+	if (x > maxX)
+		maxX = x;
+	if (y > maxY)
+		maxY = y;
+}
+
+// the on-screen bounds of every floor that takes part in pointer picking
+extern "C" void fn_800B4988(XObj* object)
+{
+	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
+		return;
+
+	CCamera camera = gGame.mMotionControlCamera;
+	object->_6DC   = object->_6D8;
+	object->_6D8   = 0;
+	object->mScreenBottom = NAN;
+	object->mScreenRight  = NAN;
+	object->mScreenTop    = NAN;
+	object->mScreenLeft   = NAN;
+	object->mFloorTop     = NAN;
+	object->mToppleOffset.Set(0.0f, 0.0f, 0.0f);
+
+	s32 count = 0;
+	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		XObjFloor* floor = &object->mFloors[i];
+		if (!(floor->mFlags & 2) || floor->mId >= 3 || floor->mId < 0)
+			continue;
+
+		CVec pos   = object->mMoveTranslate;
+		Vec center = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 yaw    = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
+		if (object->GetKind() == 0x2A0)
+			pos = object->GetJointWorldPos(7);
+
+		if (gGame.mStage == 14) {
+			switch (object->_18C) {
+			case 1:
+			case 4:
+				pos.y += 30.0f;
+				break;
+			case 3:
+				extent.y *= 0.5f;
+				break;
+			case 10:
+				extent.y *= 0.45f;
+				pos.y -= 12.0f;
+				break;
+			}
+		}
+
+		Mtx transform, work, translate, scale;
+		if (object->mBaseMtxPtr != NULL) {
+			PSMTXTrans(translate, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXConcat(object->mBaseMtxPtr, translate, work);
+			PSMTXConcat(work, scale, transform);
+		} else {
+			Mtx position, rotate;
+			PSMTXTrans(position, pos.x, pos.y, pos.z);
+			PSMTXTrans(translate, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(position, rotate, work);
+			PSMTXConcat(work, translate, work);
+			PSMTXConcat(work, scale, transform);
+		}
+
+		CVec origin(0.0f, 0.0f, 0.0f);
+		PSMTXMultVec(transform, &origin, &origin);
+		JMathInlineVEC::PSVECAdd(&object->mToppleOffset, &origin, &object->mToppleOffset);
+		++count;
+
+		f32 x, y, z;
+		GXProject(origin.x, origin.y, origin.z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y, &z);
+		x *= camera.mScale;
+		if (z <= 0.0f || z >= 1.0f)
+			continue;
+		f32 minX = x, minY = y, maxX = x, maxY = y;
+		f32 height = NAN;
+
+		switch (floor->mId) {
+		case 0:
+		case 1: {
+			f32 angle   = camera.mView.mAngle.y;
+			f32 angles[4] = { angle, HALF_PI + angle, PI + angle, (PI + HALF_PI) + angle };
+			f32 xs[4] = { extent.x * (f32)sin(angles[0]), extent.x * (f32)sin(angles[1]), extent.x * (f32)sin(angles[2]),
+				          extent.x * (f32)sin(angles[3]) };
+			f32 zs[4] = { extent.z * (f32)cos(angles[0]), extent.z * (f32)cos(angles[1]), extent.z * (f32)cos(angles[2]),
+				          extent.z * (f32)cos(angles[3]) };
+			Vec points[8] = {};
+			points[0] = origin + (Vec) { xs[0], extent.y, zs[0] };
+			points[1] = origin + (Vec) { xs[1], extent.y, zs[1] };
+			points[2] = origin + (Vec) { xs[2], extent.y, zs[2] };
+			points[3] = origin + (Vec) { xs[3], extent.y, zs[3] };
+			points[4] = origin + (Vec) { xs[0], -extent.y, zs[0] };
+			points[5] = origin + (Vec) { xs[1], -extent.y, zs[1] };
+			points[6] = origin + (Vec) { xs[2], -extent.y, zs[2] };
+			points[7] = origin + (Vec) { xs[3], -extent.y, zs[3] };
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
+				          &z);
+				x *= camera.mScale;
+				if (z <= 0.0f || z >= 1.0f)
+					goto nextFloor;
+				ExpandScreenBounds(x, y, minX, minY, maxX, maxY);
+			}
+			height = origin.y + extent.y;
+			break;
+		}
+		case 2: {
+			f32 h = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
+			static Vec corners[8]
+			    = { { -h, h, -h }, { h, h, -h }, { h, h, h }, { -h, h, h }, { -h, -h, -h }, { h, -h, -h }, { h, -h, h }, { -h, -h, h } };
+			Vec points[8];
+			PSMTXMultVecArray(transform, corners, points, 8);
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
+				          &z);
+				x *= camera.mScale;
+				if (z <= 0.0f || z >= 1.0f)
+					goto nextFloor;
+				ExpandScreenBounds(x, y, minX, minY, maxX, maxY);
+			}
+			height = points[0].y - 0.01f;
+			break;
+		}
+		}
+
+		if (count > 0) {
+			object->mToppleOffset.x /= count;
+			object->mToppleOffset.y /= count;
+			object->mToppleOffset.z /= count;
+		}
+		if (__fpclassifyf(minX) != FP_NAN
+		    && (__fpclassifyf(object->mScreenLeft) == FP_NAN || minX < object->mScreenLeft))
+			object->mScreenLeft = minX;
+		if (__fpclassifyf(minY) != FP_NAN && (__fpclassifyf(object->mScreenTop) == FP_NAN || minY < object->mScreenTop))
+			object->mScreenTop = minY;
+		if (__fpclassifyf(maxX) != FP_NAN
+		    && (__fpclassifyf(object->mScreenRight) == FP_NAN || maxX > object->mScreenRight))
+			object->mScreenRight = maxX;
+		if (__fpclassifyf(maxY) != FP_NAN
+		    && (__fpclassifyf(object->mScreenBottom) == FP_NAN || maxY > object->mScreenBottom))
+			object->mScreenBottom = maxY;
+		if (__fpclassifyf(object->mFloorTop) == FP_NAN || height > object->mFloorTop)
+			object->mFloorTop = height;
+
+	nextFloor:;
+	}
 }
 
 // fn_800B5AE4: the mirror pass: with the screen camera flipped (the mirrors draw

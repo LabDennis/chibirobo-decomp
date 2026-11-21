@@ -1461,7 +1461,8 @@ public:
 	f32 mScreenBottom;        // _6E4
 	f32 mScreenLeft;          // _6E8
 	f32 mScreenRight;         // _6EC
-	u8 _6F0[0x6F8 - 0x6F0];
+	f32 mFloorTop; // _6F0, the highest projected floor top
+	u8 _6F4[0x6F8 - 0x6F4];
 	CVec mToppleOffset; // _6F8
 	// _708, the map triangle under the object and its height; cjanim's floor queries refresh it
 	XObjMapHit mFloorHit;
