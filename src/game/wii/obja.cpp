@@ -489,7 +489,7 @@ void XObj::vf1A8(f32)
 }
 
 // 0x800AD9D8
-void XObj::SetDiffuseColor(const GXColor& color)
+void XObj::SetDiffuseColor(GXColor color)
 {
 	for (u32 i = 0; i < mObject.m_resMdl.GetResMatNumEntries(); i++) {
 		ResMat mat = mObject.m_resMdl.GetResMat(i);

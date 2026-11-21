@@ -1542,7 +1542,7 @@ public:
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
 	virtual void vf1A8(f32 value); // takes the stage's ambient level; LoadFromPlacement passes it
 	virtual void
-	SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	SetDiffuseColor(GXColor color); // _1AC, by value: the carry code materializes a copy on the caller's stack
 	virtual Vec GetCameraTarget();         // _1B0, where a camera looks at this object
 	virtual void SetBaseMtx(Mtx mtx);      // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
 	virtual void ClearBaseMtx();           // _1B8
