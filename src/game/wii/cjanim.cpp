@@ -3,9 +3,8 @@
 // event virtuals. The Wii source merges the GameCube's cjanim.cpp with the floor
 // helpers obja.cpp and xobjfloor.cpp carried; the floor coordinate readers appear
 // open-coded here, the array-and-index pair's inline half.
-// NONMATCHING: the per-frame animation stepper (0x800B4988), the ExecCallback
-// family and the kind-callback table (0x800B6F00-0x800BCBC4) plus
-// AssignAnimEventCallback and __sinit still come from the retail asm.
+// NONMATCHING: the per-frame animation stepper (0x800B4988),
+// ExecCallback_CALC_MAT (0x800B5CF0) and __sinit still come from the retail asm.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
@@ -23,6 +22,7 @@
 extern "C" {
 void C_VECReflect(const Vec* source, const Vec* normal, Vec* result);
 void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+void HSD_MtxGetScale(Mtx m, Vec* out);
 f64 fmax(f64 x, f64 y);
 f64 fmin(f64 x, f64 y);
 // the map XObj's floor query in an unsplit unit: fills hit with the triangle
@@ -647,6 +647,52 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	if (screenZ > 0.0f && screenZ < 1.0f)
 		return FALSE; // inside the depth range: visible
 	return TRUE;
+}
+
+// fn_800B5AE4: the mirror pass: with the screen camera flipped (the mirrors draw
+// through it with the projection's top and bottom swapped) the callback runs with
+// the model mirrored - the scale's x and z negated, y by the flip's sign and the
+// rotation turned by pi; the object's own values are restored afterwards
+void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if ((mStatus.mFlags & 0x800) && pFuncObj->GetCallbackNodeID() == 0) {
+		CCamera* camera = gGame.GetScreenCamera();
+		s32 sign        = camera->mTop >= camera->mBottom ? 1 : -1;
+		f32 scaleY      = mMoveScale.y;
+		f32 scaleX      = mMoveScale.x;
+		f32 scaleZ      = mMoveScale.z;
+		f32 rotateY     = mMoveRotate.y;
+		mMoveScale.x    = scaleX * -1.0f;
+		mMoveScale.y    = scaleY * sign;
+		mMoveScale.z    = scaleZ * -1.0f;
+		mMoveRotate.y   = rotateY + PI;
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		mMoveScale.y  = scaleY;
+		mMoveScale.x  = scaleX;
+		mMoveScale.z  = scaleZ;
+		mMoveRotate.y = rotateY;
+	} else {
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+	}
+}
+
+// hands the node the object's base matrix; with the flag set the object follows
+// it: the matrix's translation becomes its position and its scale the object's
+void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() != 0)
+		return;
+	if (mBaseMtxPtr == NULL)
+		return;
+	Mtx m;
+	PSMTXCopy(mBaseMtx, m);
+	PSMTXCopy(m, pResult->mMtx);
+	if (mStatus.mFlags & 0x400000000000ULL) {
+		mMoveTranslate.x = m[0][3];
+		mMoveTranslate.y = m[1][3];
+		mMoveTranslate.z = m[2][3];
+		HSD_MtxGetScale(m, (Vec*)&mMoveScale);
+	}
 }
 
 // the GameCube's cjanim.cpp function, the Wii keeps it as a free function too;

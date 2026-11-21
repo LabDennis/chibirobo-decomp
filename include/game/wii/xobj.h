@@ -82,6 +82,8 @@ class ResMdl;
 
 // what the world callback writes for a node, as far as the game uses it
 struct ChrAnmResult {
+	MtxP mMtx; // _00, the node's world matrix the callback fills
+
 	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
 	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
 };
