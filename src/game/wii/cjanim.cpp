@@ -999,6 +999,20 @@ static void AnimEventPajamas(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 786: one effect per event kind on the same node
+static void AnimEventFxPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x0, 0);
+	} else if (kind == 2 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x12, 0);
+	} else if (kind == 3 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x13, 0);
+	} else if (kind == 4 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x4a, 0);
+	}
+}
+
 // kind 832: the ghost's effect
 static void AnimEventGhost(XObj* object, s32 kind, f32 prev, f32 frame)
 {
@@ -1015,6 +1029,20 @@ static void AnimEventCbDoor(XObj* object, s32 kind, f32 prev, f32 frame)
 		return;
 	if (prev < 2.0f && frame >= 2.0f)
 		StartNodeEffect(object, "fx_cbdoor_ptcl", 0x49, 0);
+}
+
+// kind 854: the torch, lit and burning
+static void AnimEventTorchPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+	} else if (kind == 3 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+	} else if (kind == 4 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+	}
 }
 
 // kind 856: the welding tools' sparks
@@ -1037,6 +1065,37 @@ static void AnimEventObj30(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 930: the twin's start and first effects
+static void AnimEventGiccoTwinB01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "fx_gicco_twinb01_ptcl1", 0x9d, 0);
+		} else if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "first_ptcl2", 0xa0, 0);
+		}
+	} else if (kind == 2 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "first_ptcl01", 0x57, 0);
+	} else if (kind == 3 && ((prev < 0.0f && frame >= 0.0f) || prev > frame)) {
+		StartNodeEffect(object, "first_ptcl2", 0xa1, 0);
+	}
+}
+
+// kind 931: the toolbox's three nodes, two effects each
+static void AnimEventTb01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 0.0f && frame >= 0.0f) || prev > frame) {
+		StartNodeEffect(object, "tb01_ptcl01", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl01", 0x1, 0);
+		StartNodeEffect(object, "tb01_ptcl2", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl2", 0x1, 0);
+		StartNodeEffect(object, "tb01_ptcl3", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl3", 0x1, 0);
+	}
+}
+
 // kind 932: the twin's two effects, far apart in the animation
 static void AnimEventGiccoTwinB03(XObj* object, s32 kind, f32 prev, f32 frame)
 {
@@ -1056,6 +1115,24 @@ static void AnimEventRain(XObj* object, s32 kind, f32 prev, f32 frame)
 		return;
 	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
 		StartNodeEffect(object, "rain_ptcl1", 0x56, 0);
+}
+
+// kind 939: catching a cold, then the beam's stages
+static void AnimEventCatchACold(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "catch_a_cold_ptcl", 0x4d, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 4 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 5 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 6 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x59, 0);
+	} else if (kind == 7 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x59, 0);
+	}
 }
 
 // kind 995: the clock's second hand, one effect per event kind
@@ -1092,6 +1169,20 @@ static void AnimEventPirateBoat(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 1038: the red effect, one per event kind
+static void AnimEventRedPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x71, 0);
+	} else if (kind == 2 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x72, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x73, 0);
+	} else if (kind == 4 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x74, 0);
+	}
+}
+
 // kind 1082: the explosion's three phases on one node
 static void AnimEventPtclExp02(XObj* object, s32 kind, f32 prev, f32 frame)
 {
@@ -1101,6 +1192,41 @@ static void AnimEventPtclExp02(XObj* object, s32 kind, f32 prev, f32 frame)
 		StartNodeEffect(object, "ptcl_exp02", 0x9, 0);
 		StartNodeEffect(object, "ptcl_exp02", 0x7, 0);
 		StartNodeEffect(object, "ptcl_exp02", 0x8, 0);
+	}
+}
+
+// kind 1122: the takeoff's seven stages
+static void AnimEventTmTakeoff(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "fx_tm_takeoff1", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff2", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff3", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff4", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff5", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff6", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff7", 0x97, 0);
+	}
+}
+
+// kind 1161: the spheres' effect, stopped while the object is off
+extern "C" void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+static void AnimEventSphere(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (!(object->mStatus.mFlags & 0x10000)) {
+		if (kind == 0)
+			fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0xbd, TRUE);
+	} else if (kind == 1) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "sphere10", 0xbd, 0);
+			StartNodeEffect(object, "sphere11", 0xbd, 0);
+			StartNodeEffect(object, "sphere12", 0xbd, 0);
+			StartNodeEffect(object, "sphere13", 0xbd, 0);
+			StartNodeEffect(object, "sphere14", 0xbd, 0);
+			StartNodeEffect(object, "sphere15", 0xbd, 0);
+		}
 	}
 }
 
@@ -1119,16 +1245,24 @@ extern "C" void AssignAnimEventCallback(XObj* object)
 	case 628: object->mAnimEventCallback = AnimEventZactFrog; break;
 	case 629: object->mAnimEventCallback = AnimEventZactInjured; break;
 	case 630: object->mAnimEventCallback = AnimEventPajamas; break;
+	case 786: object->mAnimEventCallback = AnimEventFxPtcl; break;
 	case 832: object->mAnimEventCallback = AnimEventGhost; break;
 	case 842: object->mAnimEventCallback = AnimEventCbDoor; break;
+	case 854: object->mAnimEventCallback = AnimEventTorchPtcl; break;
 	case 856: object->mAnimEventCallback = AnimEventWeldingTools; break;
 	case 870: object->mAnimEventCallback = AnimEventObj30; break;
+	case 930: object->mAnimEventCallback = AnimEventGiccoTwinB01; break;
+	case 931: object->mAnimEventCallback = AnimEventTb01; break;
 	case 932: object->mAnimEventCallback = AnimEventGiccoTwinB03; break;
 	case 934: object->mAnimEventCallback = AnimEventRain; break;
+	case 939: object->mAnimEventCallback = AnimEventCatchACold; break;
 	case 995: object->mAnimEventCallback = AnimEventSecond; break;
 	case 1034: object->mAnimEventCallback = AnimEventPtcl01; break;
 	case 1035: object->mAnimEventCallback = AnimEventPirateBoat; break;
+	case 1038: object->mAnimEventCallback = AnimEventRedPtcl; break;
 	case 1082: object->mAnimEventCallback = AnimEventPtclExp02; break;
+	case 1122: object->mAnimEventCallback = AnimEventTmTakeoff; break;
+	case 1161: object->mAnimEventCallback = AnimEventSphere; break;
 	}
 }
 #endif
