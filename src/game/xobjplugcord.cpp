@@ -471,6 +471,13 @@ extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f
 	scale.z = 0.9f * cord->mWidth;
 }
 
+static inline void MakePlugNodeMtx(Mtx mtx, Vec* trans)
+{
+	Vec rotation = CVec(0.0f, 0.0f, 0.0f);
+	Vec scale    = CVec(0.7f, 0.7f, 0.7f);
+	HSD_MtxSRT(mtx, &scale, &rotation, trans, NULL);
+}
+
 // draws the nodes, each one half as bright as the one before
 /**
  * @note Address: 0x800DA4D0
@@ -488,9 +495,7 @@ extern "C" void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 
 		XObjPlugCordNode* node = cord->mNodes.mNode;
 		for (s32 i = 0; i < cord->mNodes.mCount; i++, node++) {
 			if (cord->mNodes.mNode[i].mState != 0) {
-				Vec rotation = CVec(0.0f, 0.0f, 0.0f);
-				Vec scale    = CVec(0.7f, 0.7f, 0.7f);
-				HSD_MtxSRT(local, &scale, &rotation, &node->mPos, NULL);
+				MakePlugNodeMtx(local, &node->mPos);
 				PSMTXConcat(selectedView, local, combined);
 				DrawGsSphereWithMatrix(&gGame.mGs, combined, (cord->mNodes.mColor & 0xFFFFFF00) | (s32)(300.0 / pow(2.0, i)), 8, 8);
 			}
