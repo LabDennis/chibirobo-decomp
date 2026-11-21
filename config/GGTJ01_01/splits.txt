@@ -57,6 +57,7 @@ game/micaudio.cpp:
 
 game/gamemicrophone.cpp:
 	.text       start:0x8000A6DC end:0x8000A85C
+	.sbss       start:0x80635568 end:0x80635598
 
 game/stagemicrophone.cpp:
 	.text       start:0x8000A85C end:0x8000AB94
@@ -74,6 +75,7 @@ game/gameobjupdate.cpp:
 
 game/gamexobjshadow.cpp:
 	.text       start:0x8000C424 end:0x8000DA24
+	.sbss2      start:0x8063A220 end:0x8063A230
 
 game/gamexobjdraw.cpp:
 	.text       start:0x8000DA24 end:0x8000DA50
@@ -323,6 +325,7 @@ game/sound.cpp:
 game/gxa.cpp:
 	.text       start:0x8001CE44 end:0x8001DC04
 	.bss        start:0x8033FA10 end:0x8033FA30
+	.sbss       start:0x80635598 end:0x8063559C
 
 game/gameosreport.cpp:
 	.text       start:0x80015790 end:0x800157E0
@@ -330,6 +333,7 @@ game/gameosreport.cpp:
 game/gxb.cpp:
 	.text       start:0x8001F8BC end:0x80030E28
 	.bss        start:0x8033FA8C end:0x8033FB64 align:4
+	.sbss2      start:0x8063A248 end:0x8063A24C
 
 game/titlestates.cpp:
 	.text       start:0x80030E28 end:0x80031180
@@ -347,6 +351,8 @@ game/infoscrn.cpp:
 	.text       start:0x80065CD0 end:0x8006FF94
 	.ctors      start:0x801FEF30 end:0x801FEF34
 	.bss        start:0x80345420 end:0x80345738
+	.sbss       start:0x80635638 end:0x80635655
+	.sbss2      start:0x8063A260 end:0x8063A270
 
 game/infopointdtor.cpp:
 	.text       start:0x8006FF94 end:0x8006FFDC
@@ -435,6 +441,8 @@ game/xobjfloor.cpp:
 
 game/obja.cpp:
 	.text       start:0x8008E69C end:0x80093A3C
+	.sbss       start:0x80635668 end:0x8063566C
+	.sbss2      start:0x8063A278 end:0x8063A294
 
 game/xobjwalk.cpp:
 	.text       start:0x80093A3C end:0x80093A78
@@ -466,6 +474,7 @@ game/ctrigondtor.cpp:
 
 game/obja_map.cpp:
 	.text       start:0x80095008 end:0x80095974
+	.sbss2      start:0x8063A298 end:0x8063A29C
 
 game/obja_chr.cpp:
 	.text       start:0x80095974 end:0x800BEFF0
@@ -485,6 +494,7 @@ game/xacttumble.cpp:
 
 game/objb_act.cpp:
 	.text       start:0x800C661C end:0x800D72C4
+	.sbss2      start:0x8063A360 end:0x8063A4E0
 
 game/objb_attach.cpp:
 	.text       start:0x800D72C4 end:0x800D9AD4
@@ -538,6 +548,7 @@ game/xobjfreeevent.cpp:
 game/xobjdust.cpp:
 	.text       start:0x800E034C end:0x800E2EFC
 	.data       start:0x80228A30 end:0x80228B7C
+	.sbss2      start:0x8063A510 end:0x8063A520
 
 game/xobjcoinfall.cpp:
 	.text       start:0x800E2EFC end:0x800E3108
@@ -575,21 +586,26 @@ game/objb_leticker.cpp:
 	.text       start:0x800E4350 end:0x800E8694
 	.ctors      start:0x801FEF44 end:0x801FEF48
 	.bss        start:0x8035C9B8 end:0x8035CA2C
+	.sbss2      start:0x8063A520 end:0x8063A528
 
 game/objb_army.cpp:
 	.text       start:0x800E8694 end:0x800EC050
 	.ctors      start:0x801FEF48 end:0x801FEF4C
 	.bss        start:0x8035CA30 end:0x8035CA54
+	.sbss       start:0x806356B8 end:0x806356D0
 
 game/xobjspider.cpp:
 	.text       start:0x800EC050 end:0x800F6734
 	.ctors      start:0x801FEF4C end:0x801FEF50
 	.bss        start:0x8035CA58 end:0x8035CD98
+	.sbss       start:0x806356D0 end:0x806356E0
+	.sbss2      start:0x8063A528 end:0x8063A530
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F6734 end:0x80101E5C
 	.ctors      start:0x801FEF50 end:0x801FEF54
 	.bss        start:0x8035CD98 end:0x8035E2B8
+	.sbss       start:0x806356E0 end:0x806356F9
 
 game/xobjspidersmallstatus.cpp:
 	.text       start:0x80101E5C end:0x80101FA4
@@ -629,6 +645,9 @@ game/xobjactor3.cpp:
 game/xobjactortoy.cpp:
 	.text       start:0x80117118 end:0x801249EC
 	.data       start:0x8022BE08 end:0x8022C5CC
+	.bss        start:0x8035E408 end:0x8035E444
+	.sbss       start:0x80635710 end:0x8063571D
+	.sbss2      start:0x8063A550 end:0x8063A558
 
 game/xobjactorjenny.cpp:
 	.text       start:0x801249EC end:0x80127FFC
@@ -1415,13 +1434,13 @@ dolphin/ax/AXOut.c:
 
 dolphin/ax/AXSPB.c:
 	.text       start:0x8017A50C end:0x8017A9D4
-	.bss        start:0x805AD400 end:0x805AD440
+	.bss        start:0x805AD400 end:0x805AD436
 	.sbss       start:0x80635B88 end:0x80635BAC
 
 dolphin/ax/AXVPB.c:
 	.text       start:0x8017A9D4 end:0x8017BF68
 	.data       start:0x80231638 end:0x80231720
-	.bss        start:0x805AD440 end:0x805BEC40
+	.bss        start:0x805AD440 end:0x805BEC40 align:32
 	.sbss       start:0x80635BB0 end:0x80635BC0
 	.sdata2     start:0x80639590 end:0x80639598
 

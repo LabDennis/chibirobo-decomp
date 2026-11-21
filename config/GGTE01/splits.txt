@@ -1407,13 +1407,13 @@ dolphin/ax/AXOut.c:
 
 dolphin/ax/AXSPB.c:
 	.text       start:0x80178940 end:0x80178E08
-	.bss        start:0x805D2FE0 end:0x805D3020
+	.bss        start:0x805D2FE0 end:0x805D3016
 	.sbss       start:0x8065B770 end:0x8065B798
 
 dolphin/ax/AXVPB.c:
 	.text       start:0x80178E08 end:0x8017A39C
 	.data       start:0x80232010 end:0x80232100
-	.bss        start:0x805D3020 end:0x805E4820
+	.bss        start:0x805D3020 end:0x805E4820 align:32
 	.sbss       start:0x8065B798 end:0x8065B7A8
 	.sdata2     start:0x8065F2C8 end:0x8065F2D0
 
