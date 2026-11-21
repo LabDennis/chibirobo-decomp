@@ -81,10 +81,7 @@ void CCameraActionReset::Update(u32 step)
 			mFovInterp = NULL;
 		}
 	}
-}
-static const char sResetCameraEyeDiagnostic[]
-    = "CCameraActionReset ...\nEye(%f, %f, %f)\nInt(%f, %f, %f)\n";
-
+}
 
 /**
  * @note Address: 0x80147794
@@ -149,7 +146,7 @@ void CCameraActionReset::PreviousUpdate()
 			CVec cameraEye      = gGame.mMotionControlCamera.mCamera.mEye;
 			CVec cameraInterest = gGame.mMotionControlCamera.mCamera.mInterest;
 			OSPanic(__FILE__, 157, "%s%s",
-			        FormatToStaticBuffer(sResetCameraEyeDiagnostic, cameraEye.x, cameraEye.y,
+			        FormatToStaticBuffer("CCameraActionReset ...\nEye(%f, %f, %f)\nInt(%f, %f, %f)\n", cameraEye.x, cameraEye.y,
 			                             cameraEye.z, cameraInterest.x, cameraInterest.y, cameraInterest.z),
 			        __FUNCTION__);
 		}

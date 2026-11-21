@@ -8737,9 +8737,7 @@ void CCameraActionMap::Reset2()
 		                             mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
 		        __FUNCTION__);
 	}
-}
-static const char sMapCameraResetMessage[] = "actionMap::reset\n";
-
+}
 /*
     stwu     r1, -0xd0(r1)
     mflr     r0
@@ -9110,7 +9108,7 @@ static const char sMapCameraResetMessage[] = "actionMap::reset\n";
 
 void CCameraActionMap::Reset()
 {
-	OSPanic(__FILE__, 220, "%s%s", sMapCameraResetMessage, __FUNCTION__);
+	OSPanic(__FILE__, 220, "%s%s", "actionMap::reset\n", __FUNCTION__);
 	// OSPanic ends in PPCHalt, so nothing below ever runs
 
 	mTarget = gGame.GetPlayer();
@@ -9544,22 +9542,13 @@ extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f3
  * @note Address: 0x8014232C
  * @note Size: 0x10C
  */
-// __sinit_ccameraactionmap2_cpp builds these vecs and registers their dtors.
-// the 0x134 bytes ahead of them are this unit's other retail bss; the inline
-// asm of StartMapCameraAreaHeightInterpolation reads two words from its head,
-// the rest is never referenced. lbl_805C0308 is dead as well.
-// retail bss ends with a dead 4-byte gap (lbl_8059E3CC) after gCameraCollisionPolygons;
-// declaring it here would land it in .sbss (small-data threshold is 8 bytes), so it is
-// intentionally left undeclared.
+// NONMATCHING: the sinit's objects sit behind 0x140 bytes of the unit's other
+// bss in retail; this build starts the blob with them.
+// __sinit_ccameraactionmap2_cpp
+// builds these vecs and registers their dtors. the bss between them is unknown
 extern "C" {
-#if defined(VERSION_JP)
-u8 lbl_805C0190[0x134];
-#else
-u8 lbl_805C0190[0x140];
-#endif
 CVec lbl_805C02DC;
 CVec lbl_805C02F8;
-u8 lbl_805C0308[0x18];
 CVec lbl_805C032C;
 CVec lbl_805C0348;
 CVec lbl_805C0364;
