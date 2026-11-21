@@ -1026,7 +1026,9 @@ struct WiiPlayerState : public XObj {
 	u8 _1C9B4[4];          // _1C9B4
 	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
 	u8 _1C9C4[8];          // _1C9C4
-	Vec mEyeAim;           // _1C9CC, the pitch and yaw the eye camera aims shots with
+	CVec mEyeAim;          // _1C9CC, the pitch and yaw the eye camera aims shots with
+	CVec mEyeAimTarget;    // _1C9DC, where the eye camera eases the aim toward
+	CVec mEyeAimStep;      // _1C9EC, the per-frame aim step while the eye camera runs
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals

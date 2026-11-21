@@ -1927,6 +1927,36 @@ extern "C" void fn_800E7EA8(WiiPlayerState* chr)
 	fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
 }
 
+// the eye camera setup: resets the aim state to his facing, and while he holds attachment 2
+// (the eye camera) it queues the same worn models as fn_800E7EA8, steps the scene draws once,
+// then drains the queue again
+extern "C" void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidden, f32 rotY, f32 unused)
+{
+	player->mEyeAim.Set(unused, rotY, 0.0f);
+	player->mEyeAimTarget.Set(unused, rotY, 0.0f);
+	player->mEyeAimStep.Set(0.0f, 0.0f, 0.0f);
+	if (player->GetAttachment() == 2 && hidden) {
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mObject.m_pScnMdl);
+		WiiSuitObject* suit = &player->mSuits.mObjects[player->mSuits.mCurrent];
+		if (IsObjectActive(suit)) {
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+			if (player->mSuits.mCurrent == 3 || player->mSuits.mCurrent == 6) {
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending,
+				                              player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
+			}
+		}
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)player->mPopperObj)->mObject.m_pScnMdl);
+		fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+		WiiGsSceneObj* head = gGame.mGs.mScene.mHead;
+		s32 pending;
+		while ((pending = head->mPending) != 0) {
+			if (pending != 0) {
+				head->vf038(pending - 1);
+			}
+		}
+	}
+}
+
 void XObjChr::SetBaseMtx(Mtx mtx)
 {
 	mBaseMtxPtr = mBaseMtx;
