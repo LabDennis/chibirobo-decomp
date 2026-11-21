@@ -1,13 +1,52 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 66 fertig, Branch devin/lane3 @b2e63c06. R24J01: 6627/8284 matched, main.dol: OK (+2
-gegenueber Lauf 65, kein Regress); GC: 17 files OK (alle drei).
-check.py --source-only GRUEN (CLANG_FORMAT=cf18 ueber env/subprocess).
+Stand: Lauf 67 fertig, Branch devin/lane3 @91eb5fd8. R24J01: 6632/8284 matched, main.dol: OK (+5
+gegenueber Lauf 66, kein Regress); GC: 17 files OK (alle drei);
+--non-matching linkt; callcheck R24J01: 7 bekannte objb_act-Diffs,
+keine neuen in Bahn-3-Units. check.py --source-only: clang-format
+auf dem Host ist 23.1.4, Script verlangt 18.1.8 — Umgebungslimit,
+kein Formatfehler (cf18-Pfad ~/.local/opt/clang-format-18 wurde vom
+Shell-Wrapper abgelehnt).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
 — Signatur-Renames zeigen sich darin als lost/new).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 67 — xobj_chr: fuenf Forwarder + Slot-Korrekturen, alle 100 % (+5)
+
+- **Commit 91eb5fd8** `wii: XObjChr cull-mode, flag and fade
+  forwarders, all matched` — 5 Dateien, +165/-8.
+- Basisslot _1A4 korrigiert: evt.s ruft ihn mit (0,0) → zwei Argumente;
+  XObjPlug::SetDestinationAlpha(BOOL,u8) ueberschreibt denselben Slot.
+  `XObj::vf1A4()` wurde `XObj::SetDestinationAlpha(BOOL,u8)`
+  (0x800AD9D0, Symbol umbenannt), xobjplug.cpp ruft jetzt die Basis
+  direkt statt des extern-"C"-Wrappers fn_800AD9D0.
+- Stale-Symbole korrigiert (Retail-Asm bewies Vertauschung):
+  0x800D209C ApplyMaterialPresets→`SetCullMode__7XObjChrFl`
+  (ruft Basis SetCullMode + Member-_1C0); 0x800D2204
+  SetDestinationAlpha→`ResetCullMode__7XObjChrFv` (Basis
+  ResetCullMode + Member-_1C4, keine Args benutzt).
+- **100 % gematcht (alle fuenf):** `vf1BC__7XObjChrFl` 0x800D1F34,
+  `SetCullMode__7XObjChrFl` 0x800D209C, `ResetCullMode__7XObjChrFv`
+  0x800D2204 — Guard-Triade: Basis-Call, dann mPlug.HasModel();
+  die vier Attachments ueber `((XObjAttachment*)…)->mVisible` (_9AC);
+  aktueller Suit ueber IsObjectActive (mStatus.mFlags&1), Suit-Part
+  zusaetzlich bei mSuits.mCurrent==3||6.
+  `vf1A0__7XObjChrFPCUl` 0x800D2344 und
+  `SetDestinationAlpha__7XObjChrFiUc` 0x800D251C — HasModel()-Guards
+  (_224) ueberall + volle 9er-Schleife ueber mSuits.mObjects UND
+  mSuitParts (nicht nur aktueller Suit).
+- Offsets bestaetigt: mCopterObj _B580, mPopperObj _BF30,
+  mRadarObj _C8E0, mOXObj _D2A0 (u8-Blobs, Cast auf
+  XObj/XObjAttachment); mSuits.mObjects[i] _DC68+i*0x9D0;
+  mSuitParts[i] _134B8+i*0x9B0; mSuits.mCurrent _DC58.
+- GC-Gegenstueck bestaetigt die Semantik (obja_chr.cpp
+  XObjChr::SetDestinationAlpha-Forwarder-Muster).
+- Neue XObjChr-Deklarationen in xobj.h: vf1A0(_1A0),
+  SetDestinationAlpha(_1A4), vf1BC(_1BC), SetCullMode(_1C0),
+  ResetCullMode(_1C4). WICHTIG: WiiTitleObject::vf1A4 ist eine
+  andere Hierarchie — nicht anfassen.
 
 ## Lauf 66 — xobj_chr: XObjChr Draw-Overrides (+2 matched, 2 knapp drunter)
 
