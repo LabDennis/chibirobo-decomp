@@ -223,6 +223,24 @@ extern "C" void fn_800C83DC(nw4r::g3d::ScnProc* proc, bool opa)
 	}
 }
 
+// a {triangle run, height} pair the sort lists keep per grid cell
+struct XObjMapSortRec {
+	u32 mTri; // _00
+	f32 mY;   // _04
+};
+STATIC_ASSERT(sizeof(XObjMapSortRec) == 8);
+
+// 0x800C85D4, the grid build's record order: entries sort by height,
+// highest first
+/**
+ * @note Address: 0x800C85D4
+ * @note Size: 0x18
+ */
+extern "C" s32 fn_800C85D4(XObjMapSortRec* a, XObjMapSortRec* b)
+{
+	return a->mY > b->mY;
+}
+
 // NONMATCHING: retail keeps this out-of-line with a full frame and an extab
 // entry, and fn_800C7F70 reaches it through bl; our build sibling-calls the
 // stub (b) and inlines the wrapper into its only caller. the frame implies an
@@ -237,4 +255,44 @@ extern "C" void fn_800C83DC(nw4r::g3d::ScnProc* proc, bool opa)
 extern "C" void fn_800C9B84(XObjMap* map)
 {
 	fn_800929EC();
+}
+
+typedef s32 (*XObjMapSortCmp)(XObjMapSortRec*, XObjMapSortRec*);
+
+// NONMATCHING: same instruction list; retail saves the four arguments into
+// r27-r30 in order and keeps the second record pointer for the final stores,
+// our build reorders the saved registers and reloads it once
+// 0x800C9750, the sort3 the grid build runs over a record's neighborhood:
+// orders the three entries it is pointed at through the same comparator
+/**
+ * @note Address: 0x800C9750
+ * @note Size: 0x1A8
+ */
+extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortRec** c, XObjMapSortCmp* cmp)
+{
+	BOOL ca = (*cmp)(*c, *a) == 0;
+	BOOL bc = (*cmp)(*b, *c) == 0;
+	if (ca && bc) {
+		return;
+	}
+	if (!ca && !bc) {
+		XObjMapSortRec t = **a;
+		**a = **b;
+		**b = t;
+		return;
+	}
+	if ((*cmp)(*b, *a) != 0) {
+		XObjMapSortRec t = **a;
+		**a = **b;
+		**b = t;
+	}
+	if (ca) {
+		XObjMapSortRec t = **b;
+		**b = **c;
+		**c = t;
+	} else {
+		XObjMapSortRec t = **a;
+		**a = **c;
+		**c = t;
+	}
 }
