@@ -921,6 +921,37 @@ static void AnimEventPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 431: the same diary effect on two different events
+static void AnimEventBbNikki(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "bb_nikki", 0x46, 0);
+	} else if (kind == 2 && prev < 51.0f && frame >= 51.0f) {
+		StartNodeEffect(object, "bb_nikki", 0x46, 0);
+	}
+}
+
+// kind 435: both scare effects at once
+static void AnimEventTompScare(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+		StartNodeEffect(object, "fx_tomp_scare3", 0x38, 1);
+		StartNodeEffect(object, "fx_tomp_scare4", 0x38, 1);
+	}
+}
+
+// kind 614: warp-in on event 2, warp-out on event 3
+static void AnimEventLeticWarp(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 2 && prev < 3.0f && frame >= 3.0f) {
+		StartNodeEffect(object, "fx_leticwarp_in_ptcl", 0x3d, 0);
+	} else if (kind == 3 && prev < 3.0f && frame >= 3.0f) {
+		StartNodeEffect(object, "fx_leticwarp_out_ptcl", 0x3e, 0);
+	}
+}
+
 // kind 626
 static void AnimEventZactGicco(XObj* object, s32 kind, f32 prev, f32 frame)
 {
@@ -928,6 +959,44 @@ static void AnimEventZactGicco(XObj* object, s32 kind, f32 prev, f32 frame)
 		return;
 	if (prev < 76.0f && frame >= 76.0f)
 		StartNodeEffect(object, "fx_zact_gicco1", 0x24, 1);
+}
+
+// kind 628: the frog's two jumps
+static void AnimEventZactFrog(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 15.0f && frame >= 15.0f) {
+		StartNodeEffect(object, "fx_zact_frog_ptcl", 0x40, 1);
+	} else if (prev < 29.0f && frame >= 29.0f) {
+		StartNodeEffect(object, "fx_zact_frog_ptcl2", 0x41, 1);
+	}
+}
+
+// kind 629: the injury shock first, the lasting effect after
+static void AnimEventZactInjured(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 18.0f && frame >= 18.0f) {
+		StartNodeEffect(object, "fx_zact_injured_shock", 0x40, 1);
+	} else if (prev < 14.0f && frame >= 14.0f) {
+		StartNodeEffect(object, "fx_zact_injured_ptcl", 0x40, 1);
+	}
+}
+
+// kind 630: the pajamas' effect at three frames
+static void AnimEventPajamas(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	} else if (prev < 22.0f && frame >= 22.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	} else if (prev < 42.0f && frame >= 42.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	}
 }
 
 // kind 832: the ghost's effect
@@ -968,6 +1037,18 @@ static void AnimEventObj30(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 932: the twin's two effects, far apart in the animation
+static void AnimEventGiccoTwinB03(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 199.0f && frame >= 199.0f) {
+		StartNodeEffect(object, "fx_gicco_twinb03_ptcl", 0x9e, 0);
+	} else if (prev < 19.0f && frame >= 19.0f) {
+		StartNodeEffect(object, "ptcl1", 0x9f, 0);
+	}
+}
+
 // kind 934: the rain effect
 static void AnimEventRain(XObj* object, s32 kind, f32 prev, f32 frame)
 {
@@ -1000,6 +1081,29 @@ static void AnimEventPtcl01(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
+// kind 1035: the pirate boat's two effects at once
+static void AnimEventPirateBoat(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+		StartNodeEffect(object, "fx_pirateboat_ptcl", 0x64, 0);
+		StartNodeEffect(object, "fx_pirateboat_ptcl1", 0x64, 0);
+	}
+}
+
+// kind 1082: the explosion's three phases on one node
+static void AnimEventPtclExp02(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "ptcl_exp02", 0x9, 0);
+		StartNodeEffect(object, "ptcl_exp02", 0x7, 0);
+		StartNodeEffect(object, "ptcl_exp02", 0x8, 0);
+	}
+}
+
 // fn_800BD064: sets the object's animation event callback for its kind
 extern "C" void AssignAnimEventCallback(XObj* object)
 {
@@ -1008,14 +1112,23 @@ extern "C" void AssignAnimEventCallback(XObj* object)
 	case 405: object->mAnimEventCallback = AnimEventKettle; break;
 	case 406: object->mAnimEventCallback = AnimEventTeacup; break;
 	case 424: object->mAnimEventCallback = AnimEventPtcl; break;
+	case 431: object->mAnimEventCallback = AnimEventBbNikki; break;
+	case 435: object->mAnimEventCallback = AnimEventTompScare; break;
+	case 614: object->mAnimEventCallback = AnimEventLeticWarp; break;
 	case 626: object->mAnimEventCallback = AnimEventZactGicco; break;
+	case 628: object->mAnimEventCallback = AnimEventZactFrog; break;
+	case 629: object->mAnimEventCallback = AnimEventZactInjured; break;
+	case 630: object->mAnimEventCallback = AnimEventPajamas; break;
 	case 832: object->mAnimEventCallback = AnimEventGhost; break;
 	case 842: object->mAnimEventCallback = AnimEventCbDoor; break;
 	case 856: object->mAnimEventCallback = AnimEventWeldingTools; break;
 	case 870: object->mAnimEventCallback = AnimEventObj30; break;
+	case 932: object->mAnimEventCallback = AnimEventGiccoTwinB03; break;
 	case 934: object->mAnimEventCallback = AnimEventRain; break;
 	case 995: object->mAnimEventCallback = AnimEventSecond; break;
 	case 1034: object->mAnimEventCallback = AnimEventPtcl01; break;
+	case 1035: object->mAnimEventCallback = AnimEventPirateBoat; break;
+	case 1082: object->mAnimEventCallback = AnimEventPtclExp02; break;
 	}
 }
 #endif
