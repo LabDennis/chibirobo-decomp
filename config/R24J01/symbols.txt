@@ -487,6 +487,7 @@ UpdateStageObjectLoading = .text:0x800C54A4; // type:function size:0x90
 ReleaseStageObjectList = .text:0x800C5814; // type:function size:0xEC
 SpawnObjectFromPlacement = .text:0x800C5900; // type:function size:0x398
 FindStageObjectIndex = .text:0x800C5C98; // type:function size:0x3C
+Initialize__12XObjDrawListFv = .text:0x800C5CD4; // type:function size:0x118
 Create__8XObjReadFPFPv_PvPvUllUs = .text:0x800C5DEC; // type:function size:0xCC
 Initialize__9CMsgQueueFl = .text:0x800C5EB8; // type:function size:0x58
 QueueRead__8XObjReadFPvPv = .text:0x800C5F10; // type:function size:0x90

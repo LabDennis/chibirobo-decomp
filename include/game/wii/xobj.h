@@ -2514,6 +2514,8 @@ public:
 };
 STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
 
+// retail emits the out-of-line deleting copy in xobjs.cpp; the inline body
+// keeps every derived dtor folding it to nothing, like retail's
 inline CMsgQueue::~CMsgQueue()
 {
 }
@@ -2577,6 +2579,7 @@ STATIC_ASSERT(sizeof(XObjRead) == 0x3A0);
 STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);
 STATIC_ASSERT(offsetof(XObjRead, mReqs) == 0x34C);
 
+// same weak-copy split as CMsgQueue: inline here, the deleting copy lives in xobjs.cpp
 inline XObjRead::~XObjRead()
 {
 }

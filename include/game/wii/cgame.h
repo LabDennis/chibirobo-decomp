@@ -52,6 +52,8 @@ struct WiiObjectRef {
 struct XObjDrawList {
 	WiiObjectRef* mRefs; // _00
 	s32 mCount;          // _04
+
+	void Initialize(); // 0x800C5CD4, allocates the 1024-entry ref table off MEM1
 };
 
 // where a camera looks from and at. The class has no RTTI of its own, so its name is made up
