@@ -1,13 +1,52 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 102 fertig, Branch devin/lane3 @ 464370eb.
-R24J01: 6667/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 103 fertig, Branch devin/lane3 @ 42e80c76.
+R24J01: 6690/7242 matched (Fuzzy-Eintraege), main.dol: 0 Diffs/OK;
+GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 103 — xobjmember: XAct-Ktor-/Dtor-Cluster gehoben (ebf09f43)
+
+- **Commit ebf09f43** (4 Dateien): Wii legt die leeren Ktor/Dtor der
+  XAct-Klassen out-of-line in die xobjmember-Unit (GC inline).
+  Deklarationen in xact.h + cgame.h, Definitionen in xobjmember.cpp —
+  23 neue 100 %: Lift/Hang/Jump/Ladder/Rope/Push/Tumble/Copter/Popper
+  Ctors+Dtors, PopperShot-Ctor+Dtor, PopperShotDust-Dtor,
+  PopperShots-Dtor, AnimSfxActor-Ctor+Dtor. xobjmember 26/64.
+- **Belege:** Retail-Ctor-Stores geben Member-Offsets + Vtable-Platz;
+  RTTI-/Vtable-Namen aus der Retail-DOL (XActLift@0x803031F0 ...
+  XAction@0x80303210). AnimSfxActor-Ctor initialisiert NUR mActor —
+  mManager bleibt absichtlich uninitialisiert (Retail belegt, nicht
+  "aufraeumen").
+- **Verworfen:** CStatus32::CStatus32() out-of-line erzeugt das
+  Retail-Symbol 0x800BF148, bricht aber __ct__8FbSubwinFv (100->9,8:
+  Caller rufen statt inlinen) — rueckgerollt, Grund als Kommentar
+  in xobjmember.cpp. Retail-Kopie bleibt unbelegt.
+- **Doppelname-Falle:** symbols.txt enthielt __dt__4CVecFv bereits
+  (stark, 0x80024A7C, fremde Unit). Namensnennung fuer 0x800BF5B0 ->
+  Linker loeste Verweise auf die starke Kopie -> 6172 DOL-Diff-Bytes
+  in der extab-Sektion. Zurueck auf dtor_800BF5B0 -> DOL wieder
+  0 Diffs. Regel: keinen generischen Weak-Namen vergeben, wenn ein
+  gleichnamiges starkes Symbol existiert.
+- **Gate:** R24J01 main.dol byte-identisch (sha1 OK), Report-Diff
+  0 Funktionen 100-><100; GGTE01/GGTJ01_01/GGTP01 je 0 Regressionen,
+  ninja OK. Format-Gate gruen (env CLANG_FORMAT=clang-format-18,
+  475 files). splits.txt unberuehrt; symbols.txt +24 Eintraege
+  (alle retail-belegt). Bekannte Vordrifts unveraendert:
+  DrawGroundShadowAt 96,62, FindPlugCordFloor ~91,77.
+- **Offen in xobjmember (26/64):** XObjMapListA/B-Dtors ~85/88 %
+  (Retail-Totzweige ums mUsed-Clearing), XObjChr-Ctor-Block, Rest des
+  Member-Blocks 0x800BF5F0..0x800C0EF0 (Cord-Klassen, 956-Byte-Ctor
+  0x800BFA58 etc.), __ct__9CStatus32Fv-Provenienz.
+- **Naechstes:** dtor_800BF800/938/9C8 und fn_800BF890/8F4/9A4/A08/A58
+  aus Retail-Dumps identifizieren (PopperCharge/Cord-Kandidaten), nur
+  eindeutige benennen; danach XObjMapListA/B-Dtor-Wand; alternativ
+  anderer Bahn-3-Fuzzy.
 
 ## Lauf 102 — xobj_map: fn_800C85EC portiert (Variante b, 34,8 %)
 
