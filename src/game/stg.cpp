@@ -64,14 +64,11 @@ static inline bool IsJapanese()
 #if defined(VERSION_JP)
 enum { MainMemCardAction = 10, MainSelectStageAction = 7, MainPCAction = 8, MainSaveAction = 12 };
 
-static char sMainMenuStatusLabel[]      = "\x83\x58\x83\x65\x81\x5B\x83\x5E\x83\x58";
-static char sMainMenuMemoryCardLabel[]  = "\x83\x81\x83\x82\x83\x4A (?)";
-static char sMainMenuSelectStageLabel[] = "\x83\x7D\x83\x62\x83\x76\x91\x49\x91\xF0";
 static MenuMainItem sMainMenuRows[] = {
-	{ sMainMenuStatusLabel, 1 },
+	{ "\x83\x58\x83\x65\x81\x5B\x83\x5E\x83\x58", 1 },
 	{ "\x01", -1 },
-	{ sMainMenuMemoryCardLabel, MainMemCardAction },
-	{ sMainMenuSelectStageLabel, MainSelectStageAction },
+	{ "\x83\x81\x83\x82\x83\x4A (?)", MainMemCardAction },
+	{ "\x83\x7D\x83\x62\x83\x76\x91\x49\x91\xF0", MainSelectStageAction },
 	{ NULL, 0 },
 };
 #else
@@ -92,12 +89,6 @@ static MenuMCTestAction sMemoryCardTestRows[]
 #else
 static MenuMCTestAction sMemoryCardTestRows[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
 #endif
-
-// the card test's printed strings, named as in the retail .rodata
-static const char sMenuSoundActivateMessage[] = "MenuSound::Activate\n";
-static const char sCardTestSlotFormat[]       = "SLOT: %c";
-static const char sCardTestInitialFileLabel[]
-    = "(0) 00/00/00 00:00 [ 0:00] (000)\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40";
 
 // the file's statics in .bss order, what the first ones hold isn't known yet
 u8 lbl_80361F68[0xD4];
@@ -1354,7 +1345,7 @@ inline void MenuSound::Open()
 {
 	CMenu::Open();
 	PlayGameSound(&gGame.mSound, 0x148, 0x50);
-	OSReport(sMenuSoundActivateMessage);
+	OSReport("MenuSound::Activate\n");
 }
 
 inline void MenuSettings::Open()
@@ -1399,7 +1390,7 @@ inline void MenuMCTest::Open()
 	for (int i = 0; i < mFileCount; i++) {
 		strcpy(mText[i], "");
 	}
-	sprintf(mText[mFileCount + 1], sCardTestSlotFormat, sMenuMain.mChannel + 'A');
+	sprintf(mText[mFileCount + 1], "SLOT: %c", sMenuMain.mChannel + 'A');
 	StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 	mOperation = 1;
 }
@@ -1840,7 +1831,7 @@ extern "C" void Open__10MenuMCTestFv(MenuMCTest* menu)
 	for (int i = 0; i < menu->mFileCount; i++) {
 		strcpy(menu->mText[i], "");
 	}
-	sprintf(menu->mText[menu->mFileCount + 1], sCardTestSlotFormat, sMenuMain.mChannel + 'A');
+	sprintf(menu->mText[menu->mFileCount + 1], "SLOT: %c", sMenuMain.mChannel + 'A');
 	StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 	menu->mOperation = 1;
 }
@@ -1856,7 +1847,8 @@ void MenuMCTest::Init()
 	menu->mFileCount = 10;
 	// a row as wide as the card listing can print, to size the window; \x81\x40 is a full-width space
 	for (int i = 0; i < menu->mFileCount; i++) {
-		strcpy(menu->mText[i], sCardTestInitialFileLabel);
+		strcpy(menu->mText[i],
+		       "(0) 00/00/00 00:00 [ 0:00] (000)\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40");
 	}
 	strcpy(menu->mText[menu->mFileCount], "\x01");
 	strcpy(menu->mText[menu->mFileCount + 1], "");
