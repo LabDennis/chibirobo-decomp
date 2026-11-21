@@ -348,7 +348,8 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 			list->mObjectCount++;
 		}
 		if (async) {
-			gSingleObjectReader.XObjReadOne::QueueRead(obj, info->mPlacement);
+			obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
+			gSingleObjectReader.ReadStart(obj, info->mPlacement);
 		} else {
 			while (!obj->LoadFromPlacement(*info)) { }
 		}
