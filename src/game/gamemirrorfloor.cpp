@@ -6,26 +6,12 @@ void PSMTXReflect(Mtx m, const Vec* p, const Vec* n);
 void PSMTXTranspose(const Mtx src, Mtx xPose);
 }
 
-// the floor's reflection transform starts as the identity
-static const Vec sFloorReflectionRotation    = { 0.0f, 0.0f, 0.0f };
-static const Vec sFloorReflectionTranslation = { 0.0f, 0.0f, 0.0f };
-static const Vec sFloorReflectionPoint       = { 0.0f, 0.0f, 0.0f };
-static const Vec sFloorReflectionNormal      = { 0.0f, 1.0f, 0.0f };
-
-// the quad that covers the floor afterwards
-static Vec sFloorQuad[4] = {
-	{ -1000.0f, -0.1f, -1000.0f },
-	{ 1000.0f, -0.1f, -1000.0f },
-	{ 1000.0f, -0.1f, 1000.0f },
-	{ -1000.0f, -0.1f, 1000.0f },
-};
-
 /**
  * @note Address: 0x8000DA7C
  * @note Size: 0x4FC
  */
-// NONMATCHING: the rodata pool anchor/offsets (retail pools the unit's rodata behind
-// sGameVectorDefaults at the section start) and the first light loop's r26/r27 swap
+// NONMATCHING: the local initializers sit at their offset in the file's rodata pool, and the
+// first object loop's registers swap
 // draws the 0x20000000 objects mirrored in the floor with the lights flipped under it, then
 // covers the floor with a quad
 extern "C" void RenderFloorReflection(CGame* game)
@@ -38,8 +24,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 			}
 			game->mLightList->SetCurrent(game->GetCamera());
 
-			Vec rot   = sFloorReflectionRotation;
-			Vec trans = sFloorReflectionTranslation;
+			Vec rot   = { 0.0f, 0.0f, 0.0f };
+			Vec trans = { 0.0f, 0.0f, 0.0f };
 			Mtx mtx;
 			Mtx rotX;
 			Mtx rotY;
@@ -51,8 +37,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 			PSMTXTrans(transMtx, trans.x, trans.y, trans.z);
 			PSMTXConcat(transMtx, rotMtx, mtx);
 
-			Vec point  = sFloorReflectionPoint;
-			Vec normal = sFloorReflectionNormal;
+			Vec point  = { 0.0f, 0.0f, 0.0f };
+			Vec normal = { 0.0f, 1.0f, 0.0f };
 			PSMTXMultVec(mtx, &point, &point);
 			PSMTXInverse(mtx, mtx);
 			PSMTXTranspose(mtx, mtx);
@@ -86,11 +72,17 @@ extern "C" void RenderFloorReflection(CGame* game)
 		if (game->mStatus.mFlags & 0x20000002000000) {
 			game->mGs.mCamera = game->GetCamera();
 			if (BeginGsCamera(game)) {
+				static Vec floor[4] = {
+					{ -1000.0f, -0.1f, -1000.0f },
+					{ 1000.0f, -0.1f, -1000.0f },
+					{ 1000.0f, -0.1f, 1000.0f },
+					{ -1000.0f, -0.1f, 1000.0f },
+				};
 				SetupAll(TRUE);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 0);
-				DrawGsVertexQuad(&gGame.mGs, sFloorQuad[0].x, sFloorQuad[0].y, sFloorQuad[0].z, sFloorQuad[1].x, sFloorQuad[1].y, sFloorQuad[1].z,
-				                 sFloorQuad[2].x, sFloorQuad[2].y, sFloorQuad[2].z, sFloorQuad[3].x, sFloorQuad[3].y, sFloorQuad[3].z, 0, 0, 0, 0);
+				DrawGsVertexQuad(&gGame.mGs, floor[0].x, floor[0].y, floor[0].z, floor[1].x, floor[1].y, floor[1].z, floor[2].x, floor[2].y,
+				                 floor[2].z, floor[3].x, floor[3].y, floor[3].z, 0, 0, 0, 0);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
 				EndGsCamera(&game->mGs);
