@@ -188,6 +188,10 @@ class EnvInfo;
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsCarryingMug(XAction* action);
+BOOL IsCarryingSquirter(XAction* action);
+BOOL IsCarryingSpoon(XAction* action);
+BOOL IsCarryingToothbrush(XAction* action);
+void ApplyPlayerItemTintToTarget(XAction* action);
 BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 void UpdateHeldObject(XAction* action, u32 frames);
 void UpdatePushedObject(XAction* action, u32 frames);
@@ -198,6 +202,7 @@ BOOL IsLiftTargetPlug(XAction* action);
 UnkStageObj* GetSpawnData(s32 index);
 s32 IsStageDataLoaded(void);
 EnvInfo* GetStageEnvironment(void);
+UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
 void ShowIdlePlayerCopter(XObjCopter* copter);
 void ShowIdlePlayerRadar(XObjRadar* radar);
 extern s32 gSpecialSuitSpawnIds[];
@@ -913,6 +918,63 @@ void XObjChr::Release()
 void fn_800CE48C(WiiPlayerState* player)
 {
 	player->mPad.Update(gWiiGameCubePads, 0);
+}
+
+// picks up again what he was holding before the reset, TRUE once it is back in his hands;
+// the GameCube's RestorePlayerHeldItem. The Wii flags the respawned object as carried
+// (0x10000, what ResetPlayerAttachment clears) and, while he holds a tool, mirrors his
+// own hidden flag into the target's 0x20000000
+extern "C" BOOL RestorePlayerHeldItem(WiiPlayerState* chr)
+{
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 24) {
+				chr->mLift.mTarget      = &chr->mPlug;
+				chr->mLift.mTargetFloor = chr->mLift.mTarget->mSelectedFloorIndex;
+				chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+				chr->SetAnim(8, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+				return TRUE;
+			}
+		}
+		ResetPlayerLiftAction((XActLift*)&chr->mLift);
+	}
+
+	s16 id = chr->mSavedTarget;
+	if (id >= 0) {
+		chr->mPendingTarget = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(id)), 0, TRUE);
+		chr->mSavedTarget   = -1;
+	}
+	if (chr->mPendingTarget != NULL) {
+		if (!(chr->mPendingTarget->mStatus.mFlags & 0x0040000000000000ULL)) {
+			chr->mPendingTarget->mStatus.mFlags |= 0x10000;
+			ResetPlayerLiftAction((XActLift*)&chr->mLift);
+			chr->mLift.mState = 4;
+			chr->mLift.SetTarget(chr->mPendingTarget);
+			chr->mLift.mTargetState = 4;
+			chr->mLift.mTarget->SetAnim(chr->mSavedTargetAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->mLift.mTarget->mStatus.mFlags |= 0x0400000000000000ULL;
+			chr->SetAnim(8, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->mPendingTarget = NULL;
+			if (IsCarryingSquirter(&chr->mLift)) {
+				ApplyPlayerItemTintToTarget(&chr->mLift);
+			}
+			if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingMug(&chr->mLift)
+			    || IsCarryingSquirter(&chr->mLift)) {
+				if ((chr->mStatus.mFlags & 0x20000000) != 0) {
+					if ((chr->mLift.mTarget->mStatus.mFlags & 0x20000000) == 0) {
+						chr->mLift.mTarget->mStatus.mFlags |= 0x20000000;
+					}
+				} else if ((chr->mLift.mTarget->mStatus.mFlags & 0x20000000) != 0) {
+					chr->mLift.mTarget->mStatus.mFlags &= ~0x20000000ULL;
+				}
+			}
+			return TRUE;
+		}
+	} else {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)

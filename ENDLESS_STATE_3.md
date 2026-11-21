@@ -1,12 +1,56 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 77 fertig, Branch devin/lane3 (Tip 376e5afd).
-R24J01: 6641/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 78 fertig, Branch devin/lane3.
+R24J01: 6642/8284 matched, main.dol: OK; GC: je 17 files OK;
 --non-matching linkt; callcheck ohne neuen Eintrag; format ok;
 keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 78 — RestorePlayerHeldItem MATCHED (100,0 %)
+
+- `RestorePlayerHeldItem` (.text:0x800CE4B0, size 0x2BC) in
+  src/game/wii/xobj_chr.cpp hinter fn_800CE48C — Wii-Port des
+  GC-RestorePlayerHeldItem (obja_chr.cpp). Nach Diff-Korrektur
+  BYTE-EXAKT: 95,14 → **100,0 %**, matched 6641→6642.
+- **Korrekturen zum 95-%-Wurf:** (a) verschachtelte GC-Form
+  `if (pending) { if (!(flag&0x0040..)) {..; return TRUE;} } else
+  return TRUE; return FALSE;` statt Early-Returns — Retail
+  beq/bne-Sinn; (b) rlwinm-Bitnummerierung: die gespiegelte
+  Flagge ist 0x20000000 (lo-Bit 2) auf BEIDEN Seiten, nicht 0x4.
+- **Semantik:** Lift mState!=0 && Target-Pool 24 → Target=mPlug,
+  Plug-Status 0x0400000000000000, SetAnim 8, TRUE. Sonst Lift-
+  Reset. mSavedTarget>=0 → SpawnObjectFromPlacement +
+  mPendingTarget, saved=-1. pending==NULL→TRUE; pending-Status
+  0x0040000000000000→FALSE; sonst pending->mStatus|=0x10000,
+  Lift-Reset, mState=4, SetTarget, mTargetState=4, Target-Anim
+  mSavedTargetAnim + Status 0x0400000000000000, Spieler-Anim 8,
+  pending=NULL; Squirter→ApplyPlayerItemTintToTarget; bei
+  Toothbrush|Spoon|Mug|Squirter: Ziel-0x20000000 := Spieler-
+  0x20000000 (nur bei Abweichung schreiben). TRUE.
+- **Neue Member/Helfer (cgame.h):** `XObj* mPendingTarget`
+  (_1C98C, ersetzt Pad), `XAction::SetTarget(XObj*)` inline
+  (mTarget=mTargetFloor-Setzpaar).
+- **Extern-Dekl. xobj_chr.cpp:** IsCarryingSquirter/Spoon/
+  Toothbrush, ApplyPlayerItemTintToTarget,
+  GetStageObjectPlacementByIndex.
+- **Gate:** R24J01 main.dol OK 6642/8284; --non-matching linkt
+  (606 Obj.); GGTE01/GGTJ01_01/GGTP01 je "17 files OK";
+  Baseline-Diff 0 Drops in allen 4 Editionen; callcheck
+  R24J01+GGTE01: 0 xobj_chr-Eintraege (7 alte objb_act-Reste
+  anderer Bahn); check.py --source-only: format ok nach
+  clang-format-18.1.8; Symbol einzigartig (Zeile 547).
+- **MWCC-Lektion:** rlwinm mb,me-Argumente sind MSB=0-Bits:
+  (2,2)=0x20000000 lo, (9,9)=0x00400000 hi. Retail-Totzweig
+  `beq` hinter beq bei GetObjDataPool = verschachtelter
+  NULL-Check — fiel diesmal automatisch richtig aus.
+- **Liegt:** nichts Neues; bekannte Restwaende in
+  LoadFromPlacement (93,96), Release (96,27), DrawGroundShadowAt
+  (96,63) = Pool-/RegAlloc-Klasse.
+- **Naechstes:** xobj_chr Adressfolge ab 0x800CE76C
+  (SetPlayerActionTarget ist vorhanden) — naechste Luecke/
+  fn_-Funktion danach; 0-%-Reste fn_800C9E84, fn_800CB1DC.
 
 ## Lauf 77 — XObjChr::LoadFromPlacement committet (93,96 % fuzzy)
 

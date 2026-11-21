@@ -878,6 +878,12 @@ public:
 	XObj* mTarget;      // _20
 	s32 mTargetState;   // _24
 	s32 mTargetFloor;   // _28, the selected floor when the target was picked
+
+	void SetTarget(XObj* target)
+	{
+		mTarget      = target;
+		mTargetFloor = mTarget->mSelectedFloorIndex;
+	}
 };
 STATIC_ASSERT(sizeof(XAction) == 0x2C);
 
@@ -1055,9 +1061,9 @@ struct WiiPlayerState : public XObj {
 	u8 _1C982[2];          // _1C982
 	s32 mSavedTargetAnim;  // _1C984, its playing anim
 	s32 mSavedTargetState; // _1C988, mLift's target state at the release
-	u8 _1C98C[0x1C990 - 0x1C98C];
-	BOOL mBatteryDrains;  // _1C990, TRUE while his battery runs down and an empty battery stops him
-	s32 mSquirterContent; // _1C994
+	XObj* mPendingTarget;  // _1C98C, the respawned carry object RestorePlayerHeldItem waits on
+	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
+	s32 mSquirterContent;  // _1C994
 	union {
 		GXColor mItemTint; // _1C998, tints the held item
 		s32 mItemTintWord; // _1C998, the save copies it as a word

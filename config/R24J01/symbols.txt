@@ -544,6 +544,7 @@ UpdatePlayerSuitChange = .text:0x800CD708; // type:function size:0x500
 LoadPlayerSuitItem = .text:0x800CDC98; // type:function size:0x114
 ApplyPlayerSuit = .text:0x800CDDC0; // type:function size:0x294
 Release__7XObjChrFv = .text:0x800CE054; // type:function size:0x438
+RestorePlayerHeldItem = .text:0x800CE4B0; // type:function size:0x2BC
 SetPlayerActionTarget = .text:0x800CE76C; // type:function size:0x10
 GetSelectedFloorIndex = .text:0x800CE77C; // type:function size:0x8
 GetObjectMoveRotation = .text:0x800D143C; // type:function size:0x8
