@@ -1,13 +1,85 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 85 fertig, Branch devin/lane3 @ 369f63ae.
-R24J01: 6652/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 87 fertig, Branch devin/lane3 @ 4119fefa.
+R24J01: 6653/8284 matched, main.dol: OK; GC: je 17 files OK;
 callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 87 — UpdateOXMenuTransition MATCHED (100 %) + Unit-66-Inventar
+
+- **Neu (commit `4119fefa`):** `UpdateOXMenuTransition(WiiOXMenu*, u32)`
+  @0x800EFD90 (0x370) in xobjchrmenu.cpp — **100 %**. Wii-Port des
+  GC-Pendants obja_chr.cpp:767 mit zwei Deltas: (a) die selektierte
+  Marke waechst nur, wenn das Menue "scharf" ist —
+  `i==mSelectedIndex && (_10>=0 || ((mc&2) && (!(mc&1) || !mPointerValid)))`
+  (selbe Stick-Gate wie HandleOXMenuInput); (b) Anim-Check = 3× vcall
+  `mChr->GetAnimId()` (vtable+0x11C) statt einmaligem `mAnimId`-Member.
+  Rest identisch: Fade `1.0f/(0.3f*gRefreshRate)*frames` (lbl_805A4F74
+  =0.3f — GC's `OX_FADE_STEP`), Spin `DEG2RAD*8` (0x805A510C=0.13962634),
+  Tilt `DEG2RAD*3` (0x805A4F68=0.05235988), Grow 0.05f (0x805A4FC8),
+  Grenzen 0.8f/0.5f (0x805A4F10/0x805A4EE0), Cleanup
+  `gGame.ClearStatusFlags(0x800)` (vptr gGame+0x41E4, slot 0x38),
+  `mChr->SetRotateY(mStartRot, DEG2RAD*12)` (vcall 0x104),
+  `gGame.GetPlayer()->mPad.Update(gWiiGameCubePads,0)`.
+- **KEY INSIGHT:** Retail haelt ZWEI Induktionszeiger im Mark-Loop
+  (r27=menu+0 fuer die Float-Felder via +0x18/+0x1C/+0x20, r26=menu+0x28
+  fuer `&mMark[i].mObj`). Mit `WiiOXMenuMark* mark`-Lokal faltet MWCC
+  alles zu einem Zeiger (96,99 %). **`menu->mMark[i]` ohne mark-Lokal**
+  schreiben erzeugt die zwei IVs → 100 %.
+- **POD-Falle:** `XObj mObj` als echtes Member macht WiiOXMenuMark →
+  WiiOXMenu → WiiPlayerState nicht-POD; cgame.h's
+  `offsetof(T,m)=&((T*)0)->m`-Makro ist dann "illegal constant
+  expression" (bricht ~40 Units). Loesung: `struct WiiOXMenuMarkObj {
+  u8 _0[0x9A8]; }` opak in cgame.h, `((XObj*)&mark->mObj)` am Call —
+  member-Adress-Ausdruck, zweite IV kommt trotzdem.
+- **WiiOXMenuMark jetzt:** mSpin/mTilt/mScale/u32 _0C (GC's dropped
+  random angle)/WiiOXMenuMarkObj mObj@_10, sizeof 0x9B8.
+- **Gate:** R24J01 main.dol OK 6653/8284; --non-matching linkt;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Report-Diff nur
+  DrawGroundShadowAt-Artefakt 96,625 (bekannt seit Lauf 84);
+  callcheck R24J01 23 Eintraege alle fremd (actor_pool-Ctors, ut);
+  Format 474 ok; Symbol-Dubs nur SDK-Vorbestand.
+- **Unit-66-Inventar (0x800F0100–0x800F48E0, 23 Fns) — fertig kartiert
+  fuer den naechsten Lauf:** neue TU `src/game/wii/efftrail.cpp`
+  (Beleg: GC `game/efftrail.cpp` = hier obja_chr.cpp; Name frei).
+  Auto-.s fuer ALLE Fns unter build/R24J01/asm/:
+  DrawMenuRing@0x800F0100(0x45C), DrawOXMenu@0x800F055C(0xBB4),
+  **StartPointParticles**@0x800F1110(0x250),
+  **UpdatePointParticleDisplay**@0x800F1360(0xAF8),
+  **DrawPointParticleDisplay**@0x800F1E58(0xE9C) (benannte auto-Files
+  StartPointParticles/UpdatePointParticleD/DrawPointParticleDis),
+  fn_800F2CF4(0x1B0), UpdateSpiralTrail@0x800F2EA4(0x29C),
+  DrawSpiralTrail@0x800F3140(0x4A8), fn_800F35E8(0x12C),
+  fn_800F3714(0x474), fn_800F3B88(0x2EC), fn_800F3E74(0x14,
+  `stb r4(bool),0x9c8` + b fn_800F3E9C), fn_800F3E88(0x14, selbes
+  Muster stb 0x9c9 + b fn_800F403C), fn_800F3E9C(0x1A0),
+  fn_800F403C(0x170), fn_800F41AC(0x44), fn_800F41F0(0x90),
+  fn_800F4280(0x28C), fn_800F450C(0x28C), fn_800F4798(0x130),
+  fn_800F48C8/D0/D8 je 0x8 (3 Stubs).
+  GC-Vorlagen: obja_chr.cpp:79 DrawSpiralTrail, :142 UpdateSpiralTrail,
+  :202 DrawPointParticleDisplay; DrawMenuRing/DrawOXMenu
+  ~obja_chr.cpp:472/637 (OXMenu-Variante). splits: `.text
+  0x800F0100..0x800F48E0`; wii_units.md nennt extab
+  0x8000C620..0x8000C780, extabindex 0x8001460C..0x800146E4.
+  Unit 67 (objb_act, 0x800F48E0..) existiert bereits.
+  configure.py-Rezept wie xobjchrmenu: NonMatching, GC/3.0a5,
+  `-Cpp_exceptions on -ipa file`, Eintrag nach xobjchrmenu.
+
+## Lauf 86 — HandleOXMenuInput (~83 %, ehrlich NONMATCHING)
+
+- Commit `46a30073`, Handoff `6933f388`. HandleOXMenuInput(WiiOXMenu*,
+  CPad*) @0x800EF58C (0x804): mStarted>0-Gate, SetRotateY bei !Flag
+  0x100, _10=Hover-Index, Pointer gueltig → Basispunkt Safe-Bottom
+  oder Neck-Joint-Projektion (2 Stack-Vecs), Mark-Box-Tests
+  (90-Spreizung, 70-Radius, 4-Bob, 120deg*mFade), Stick-Fallback ueber
+  mMenuControls-Gate, Kopf-Aim chr->_987C immer geschrieben
+  (snap=2-Reset vs. snap=1 ±20deg), Confirm bei fade==1 && Check(1) →
+  ConfirmOXMenuSelection. Sound ueberall 0xF4.
+- Liegt: ~83 % Scheduling/Pool-Wand wie Rest der Unit.
 
 ## Lauf 85 — DrawPlayerEquipmentRings (85,69 %, ehrlich NONMATCHING)
 
