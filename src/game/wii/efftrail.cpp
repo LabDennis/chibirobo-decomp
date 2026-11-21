@@ -277,7 +277,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		burst.mState   = 1;
 		for (s32 i = 0; i < burst.mNum; ++i) {
 			PointPtclOne& particle = burst.mPtcls[i];
-			particle.mColor        = (100 + rand() % 156) << 16 | (100 + rand() % 156) << 24 | (100 + rand() % 156) << 8;
+			particle.mColor        = (100 + rand() % 156) << 24 | (100 + rand() % 156) << 16 | (100 + rand() % 156) << 8;
 			particle.mFade         = 1.0f + 0.02f * i;
 			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
 			particle.mAngle = DEG2RAD * (rand() % 360);
@@ -508,6 +508,31 @@ struct SpiralTrail {
 	SpiralTrailPoint rings[2][10]; // _04
 	u8 _1E4[0x258 - 0x1E4];
 };
+
+// the suit-change spiral's reset, the GameCube's UpdatePlayerSuitChange case-1 block
+// factored into its own function; xobj_chr.cpp calls it as fn_800F2CF4.
+/**
+ * @note Address: 0x800F2CF4
+ * @note Size: 0x1B0
+ */
+extern "C" void fn_800F2CF4(SpiralTrail* trail)
+{
+	trail->active = TRUE;
+	for (s32 i = 0; i < 2; ++i) {
+		for (s32 j = 0; j < 10; ++j) {
+			Vec position                = { 0.0f, 0.5f, 0.0f };
+			trail->rings[i][j].position = position;
+			trail->rings[i][j].scale    = 0.0f;
+			trail->rings[i][j].color
+			    = ((u32)(rand() % 156 + 100) << 24) | ((u32)(rand() % 156 + 100) << 16) | ((u32)(rand() % 156 + 100) << 8);
+			trail->rings[i][j].angle = 0.0f;
+		}
+	}
+	trail->rings[0][0].scale = 1.0f;
+	trail->rings[0][0].angle = DEG2RAD * (rand() % 360);
+	trail->rings[1][0].scale = 1.0f;
+	trail->rings[1][0].angle = PI + trail->rings[0][0].angle;
+}
 
 // NONMATCHING: the GameCube source ported over verbatim reaches 95.9 %; retail keeps a
 // second ring pointer for the scale sum (its offsets fold the +4 ring base in) and
