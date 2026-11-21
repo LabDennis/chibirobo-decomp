@@ -1493,7 +1493,7 @@ dolphin/dsp/dsp_task.c:
 
 dolphin/card/CARDBios.c:
 	.text       start:0x8018014C end:0x801816F8
-	.data       start:0x8023CF50 end:0x8023CFC0
+	.data       start:0x8023CF50 end:0x8023CFA8
 	.bss        start:0x805EB6A0 end:0x805EB8E0
 	.sdata      start:0x80661B38 end:0x80661B40
 	.sbss       start:0x80662678 end:0x8066267C
