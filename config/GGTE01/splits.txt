@@ -345,15 +345,12 @@ game/menu_cleanup.cpp:
 	.text       start:0x8006331C end:0x8006389C
 
 game/infoscrn.cpp:
-	.text       start:0x8006389C end:0x8006DAF4
+	.text       start:0x8006389C end:0x8006DB80
+	.ctors      start:0x801FD670 end:0x801FD674
 	.bss        start:0x80366E58 end:0x80367180
 
 game/infopointdtor.cpp:
 	.text       start:0x8006DB80 end:0x8006DBC8
-
-game/infopointinit.cpp:
-	.text       start:0x8006DAF4 end:0x8006DB80
-	.ctors      start:0x801FD670 end:0x801FD674
 
 game/globalresources.cpp:
 	.text       start:0x8006DBC8 end:0x8006EDB4

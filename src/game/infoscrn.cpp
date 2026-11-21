@@ -37,10 +37,7 @@ void UpdateHudIndicators(InfoScrn* scrn, u32 frames);
 const char* GetLocalizedInterfaceText(s32 id);
 }
 
-// the hud counters' bss block: the regional storage prefix, the three counters with their
-// destructor registration slots between them, and the scanline history. Retail compiled
-// this whole block into the hud code's TU, so the functions that touch several counters
-// pool their addresses onto the storage prefix's base
+// The original HUD code addresses the counters relative to this regional BSS prefix.
 extern "C" {
 #if defined(VERSION_JP)
 u8 gHudPointCounterStorage[0x134];
@@ -48,6 +45,7 @@ u8 gHudPointCounterStorage[0x134];
 u8 gHudPointCounterStorage[0x140];
 #endif
 }
+// the three counters, with their dtor registrations from the file's __sinit
 InfoPoint gHudMoneyCounter;
 InfoPoint gHudHappyPointCounter;
 InfoPoint gHudScrapCounter;
