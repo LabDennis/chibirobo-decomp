@@ -3535,6 +3535,8 @@ extern "C" BOOL LoadEventResources(CEvt* evt)
  * @note Address: 0x80094904
  * @note Size: 0x200
  */
+// NONMATCHING: r29 and r30 swap since CEvtPtcl holds typed EffectInstance entries (6f2c2466); index, pointer-walk and
+// direct-member spellings of the effect loop all give the same swap
 extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal, BOOL clearEffects, BOOL clearQueue)
 {
 	ClearScript(evt);
