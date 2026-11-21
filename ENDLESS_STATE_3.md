@@ -1,13 +1,74 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 95 fertig, Branch devin/lane3 @ a5db3cc5.
-R24J01: 6658/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 96 fertig, Branch devin/lane3 @ 8c5a6f1b.
+R24J01: 6659/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 96 — ApplyPlayerItemTintToTarget 100 % (SetDiffuseColor by-value) + Befunde
+
+- **Commit `8c5a6f1b`** (3 Dateien): `XObj::SetDiffuseColor(GXColor color)`
+  BY VALUE (xobj.h-Dekl + obja.cpp-Def + symbols.txt FRC8→F8_GXColor).
+  Retail-Caller 0x800F5368 kopiert die Farbe byteweise auf den Stack
+  (Aggregate-Materialisierung) statt die Member-Adresse zu reichen —
+  Beweis fuer by-value-Dekl. Callee-Codegen identisch (beide ABIs
+  reichen Zeiger). ApplyPlayerItemTintToTarget 21,74 → 100; Definition
+  bleibt 99,45. Einzige SetDiffuseColor-Callsite im Spiel.
+- **Gate vollstaendig:** R24J01 main.dol OK normal + --non-matching
+  linkt; GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Report-Diff vs
+  Baseline: 0 matched-Verlust, nur bekannter DrawGroundShadowAt-
+  Fuzzy-Drift (alt) + Umbenennungen; callcheck R24J01: keine
+  objb_act/obja/efftrail-Treffer; symbols.txt Dups 19=19.
+- **Klassenarchaeologie (wichtig, fuer Thunks/Vtables):**
+  Retail-Hierarchie lt. RTTI-Strings (auto_06_802D9460_rodata.s):
+  `XObjChrBase : public XObj` — definiert ExecCallbackA=fn_800F3714,
+  ExecCallbackB=fn_800F3B88, LoadFromPlacement=fn_800F35E8, dtor
+  dtor_800C0B74. `XObjChr : XObjChrBase` (eigene Overrides:
+  Release__7XObjChr, SetMoveDir, SetAnim, InitializeObject=fn_800C9E84,
+  ResetForNewGame=fn_800CB1DC, ResetObjectState, LoadFromPlacement
+  __7XObjChr@0x800CCE68, UpdateObject, Draw..., Pause/ResumeSounds).
+  `XObjDress : XObjChrBase` (=unser WiiSuitObject; dtor dtor_800BF108;
+  vf28C/vf290=fn_800F3E74/3E88). `XObjDressOpt : XObj` (WiiSuitPart;
+  dtor fn_800C0DD8; ExecCallbackB=fn_800F41F0; ExecCallbackA=base).
+  Vtables: XObjChrBase=lbl_80302DBC (Thunk fn_800C658C in
+  xobj_camera-Range!), XObjChr=lbl_80305DA0 (Thunk fn_800F48D8),
+  XObjDressOpt=lbl_80306060 (48D0), XObjDress=lbl_80306310 (48C8).
+- **Dtor-Thunks 48C8/48D0/48D8 — Liegt (Strukturprojekt):**
+  MWCC emittiert Vtable+@4@-Thunks in der Unit der Key-Funktion =
+  erste non-inline NON-DTOR Virtual in Dekl-Reihenfolge (Beweis:
+  alle drei Dtoren liegen ausserhalb efftrail, Vtables trotzdem hier).
+  Bloesstellen: (a) Klassen korrekt modellieren (XObjChrBase einfuegen,
+  ExecCallbackA/B + LoadFromPlacement dorthin, WiiSuitObject davon
+  erben lassen — shared Header xobj.h/cgame.h!); (b) Key-Funktionen
+  als Member in efftrail.cpp definieren (fn_800F3714/3B88/35E8/3E74/
+  3E88/41F0 → Memberform); (c) die drei Vtable-.data-Bereiche fuer
+  efftrail in splits.txt claimen UND bytegenau erzeugen — je Vtable
+  ~150-165 Slots, viele noch fn_-namenlos. Ohne (c) kollidiert unsere
+  .data-Emission mit dem Auto-Blob → main.dol bricht.
+- **Sonstige objb_act-Befunde (alle klassifiziert, keine Quickfixes):**
+  PutAwayLiftedObject 98,96: instruktionsidentisch, nur Pool-Labels.
+  IsCarryingToothbrush/Spoon/Mug/Squirter je 98,40 + IsUsingMug 98,11:
+  identischer Strom, nur Registerfarben der 4 Inline-Bools
+  (IsHolding→IsHoldingPool→IsHoldingKind→IsCarrying Kette; Retail
+  aussen→innen r4..r7, wir andersherum) — Registerfarbwand.
+  GetTargetFloorPosition 91,62 / GetStagePlacementScale 80,0 /
+  GetLiftTargetContactOffset 95,23 / UpdatePushedObject 92,08:
+  Scheduling-/Farb-Reste, Semantik steht. Die sechs Grossen
+  (UpdateLiftActionAnimation 0x42D8, UpdateHeldObject 0x2C54,
+  UpdatePlayerHangAction 0x20E0, UpdatePlayerJumpAction 0x199C,
+  UpdateLadderActionAnimation 0x229C, UpdatePlayerRopeAction 0x1C34)
+  bleiben unportiert — GC-Vorlage src/game/objb_act.cpp, Wii hat sie
+  fuer nw4r/Remote neu geschrieben; je ein Mehr-Stunden-Port.
+- **Naechster Schritt:** in Adressfolge xacttumble (3/4, fuzzy 99,8 —
+  wahrscheinlich schnell fertig), dann xactradar (10/31 — 21 offene
+  Funktionen, evtl. portierbar), xobjattachment (36/39), xobjplug
+  (23/26), xobjplugcord (10/17). Alternativ einer der objb_act-Riesen
+  (UpdatePlayerJumpAction 0x199C ist der kleinste) oder das
+  Vtable-Strukturprojekt fuer die Thunks.
 
 ## Lauf 95 — XObjChr::ResumeSounds/PauseSounds (vtable _210/_20C) je 94,74 %
 
