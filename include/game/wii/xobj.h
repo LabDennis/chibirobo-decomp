@@ -1474,7 +1474,9 @@ public:
 	virtual ~XObjScnCam();
 
 	WiiGsSceneObj* mScene; // _9A8
-	u8 _9AC[0x9C0 - 0x9AC];
+	Vec mAnimOffset;       // _9AC, zeroed when an event starts a scene camera animation
+	f32 mAnimAngle;        // _9B8, DEG2RAD-scaled, zeroed with mAnimOffset
+	u8 _9BC[0x9C0 - 0x9BC];
 };
 STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 

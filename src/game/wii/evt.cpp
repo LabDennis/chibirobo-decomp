@@ -8,6 +8,9 @@
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/infoscrn.h"
+#include "game/ccameraaction.h"
+#include "game/ccameraactioneye.h"
+#include "game/cmotioncontrolcamera.h"
 #include "game/wii/cpad.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/xobjs.h"
@@ -76,8 +79,16 @@ GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
 // the event system's own object
 XObj gEventScriptObject;
 
+CCameraMemento gEventCameraMementos[4];
+
 extern "C" s32 CEvt_Evaluate(CEvt* evt);
 extern "C" void CEvt_EvalSet(CEvt* evt);
+extern "C" void StopSceneCameraAnm(CGame* game);
+extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate);
+extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control,
+                                                 f32 time);
+extern "C" void ResumeAreaCameraControl(CCameraActionArea* area);
+extern "C" void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 
 // the object registered under a script name from 10000 up, NULL unless it's in use
 static inline XObj* CEvt_FindObj(s16 id)
@@ -1067,6 +1078,234 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		}
 	} else {
 		OSPanic(__FILE__, 1778, FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id));
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009A224
+ * @note Size: 0xC7C
+ */
+s32 CEvt::_cmd_CAMERA(u8, s32)
+{
+	StopSceneCameraAnm(&gGame);
+	CCameraActionEvt* action   = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
+	CCameraActionArea* area    = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
+	CCameraActionReset* reset  = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
+	u16 command                = CEvt_Evaluate(this);
+	switch (command) {
+	case EVT_ATOM_AREA: {
+		s32 areaIndex = CEvt_Evaluate(this);
+		s32 entry     = CEvt_Evaluate(this);
+		s32 mode      = CEvt_Evaluate(this);
+		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(areaIndex) != 0) {
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_AREA);
+			SelectAreaCameraEntryWithControl(area, areaIndex, entry, mode, 0, time);
+			// mode 3 jumps straight to the entry instead of easing, so apply it now
+			if (mode == 3) {
+				gGame.mMotionControlCamera.ApplyAction();
+			}
+		}
+		break;
+	}
+	case EVT_ATOM_POS: {
+		f32 x    = CEvt_Evaluate(this) / 100.0f;
+		f32 y    = CEvt_Evaluate(this) / 100.0f;
+		f32 z    = CEvt_Evaluate(this) / 100.0f;
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = 11;
+		action->SetEye_Interp(mode, (Vec) { x, y, z }, time);
+		break;
+	}
+	case 240:
+	case 243:
+	case 251:
+	case 252: {
+		s32 axis      = CEvt_Evaluate(this);
+		f32 degrees   = CEvt_Evaluate(this);
+		s32 mode      = CEvt_Evaluate(this);
+		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		u32 type      = command == 240 ? 2 : 1;
+		BOOL relative = (command == 251 || command == 252) ? TRUE : FALSE;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		switch (axis) {
+		case 2: {
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, DEG2RAD * degrees, 0.0f }, 2, type, relative, time);
+			break;
+		}
+		case 3: {
+			action->SetAngle_Interp(mode, (Vec) { DEG2RAD * degrees, 0.0f, 0.0f }, 1, type, relative, time);
+			break;
+		}
+		case 5: {
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, 0.0f, DEG2RAD * degrees }, 4, type, relative, time);
+			break;
+		}
+		}
+		break;
+	}
+	case EVT_ATOM_INTEREST: {
+		f32 x    = CEvt_Evaluate(this) / 100.0f;
+		f32 y    = CEvt_Evaluate(this) / 100.0f;
+		f32 z    = CEvt_Evaluate(this) / 100.0f;
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = 11;
+		action->SetInterest_Interp(mode, (Vec) { x, y, z }, time);
+		break;
+	}
+	case EVT_ATOM_OBJ: {
+		s32 id    = CEvt_Evaluate(this);
+		s32 mode  = CEvt_Evaluate(this);
+		f32 time  = CEvt_Evaluate(this) / 100.0f;
+		XObj* obj = CEvt_GetObj(this, (s16)id);
+		if (obj != NULL) {
+			Vec target = obj->GetCameraTarget();
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+			action->mCameraFlags = 11;
+			action->SetInterest_Interp(mode, target, time);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("cam(@OBJ, %d, ...): obj(%d) killed!", id, id));
+		}
+		break;
+	}
+	case EVT_ATOM_LEAD: {
+		s32 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, (s16)id);
+		if (obj != NULL) {
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+			action->mCameraFlags = 11;
+			action->SetInterest_Interp(3, obj, 0.0f);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("cam(@LEAD, %d): obj(%d) killed!", id, id));
+		}
+		break;
+	}
+	case EVT_ATOM_DISTANCE:
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this);
+		CEvt_Evaluate(this) / 100.0f;
+		break;
+	case EVT_ATOM_FOV: {
+		f32 fov  = CEvt_Evaluate(this);
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = action->GetCameraFlags() | 8;
+		action->SetFov_Interp(mode, fov, time);
+		break;
+	}
+	case EVT_ATOM_ANIM: {
+		s32 anim = CEvt_Evaluate(this);
+		CEvt_Evaluate(this);
+		CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_ANIM);
+		Vec offset;
+		s32 degrees;
+		if (anim >= 0) {
+			offset.x = 0.0f;
+			offset.y = 0.0f;
+			offset.z = 0.0f;
+			degrees  = 0;
+		}
+		if (anim >= 0) {
+			XObjScnCam* camera = (XObjScnCam*)StartSceneCameraAnm(&gGame, anim, 0.0f, 1.0f);
+			if (camera != NULL) {
+				camera->mAnimOffset = offset;
+				camera->mAnimAngle  = DEG2RAD * degrees;
+			}
+		} else {
+			StopSceneCameraAnm(&gGame);
+		}
+		break;
+	}
+	case EVT_ATOM_RESET: {
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_EVT)) {
+			reset->mMode      = mode;
+			reset->mTime      = time;
+			reset->mImmediate = FALSE;
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_RESET);
+		}
+		break;
+	}
+	case 230: { // finish the active scripted camera
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_AREA)) {
+			ResumeAreaCameraControl((CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA));
+		} else if (gGame.mMotionControlCamera.IsAction(CAMACTION_EVT)) {
+			reset->mMode      = 0;
+			reset->mTime      = 0.0f;
+			reset->mImmediate = TRUE;
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_RESET);
+		}
+		break;
+	}
+	case EVT_ATOM_SAVE: {
+		gGame.mMotionControlCamera.EndEye();
+		s32 slot = CEvt_Evaluate(this);
+		if (slot >= 0) {
+			gGame.mMotionControlCamera.CreateMemento(&gEventCameraMementos[slot]);
+		} else {
+			mCameraMemento = gGame.mMotionControlCamera.CreateMemento(NULL);
+		}
+		break;
+	}
+	case EVT_ATOM_LOAD: {
+		s32 slot = CEvt_Evaluate(this);
+		if (slot >= 0) {
+			gGame.mMotionControlCamera.SetMemento(&gEventCameraMementos[slot]);
+		} else if (mCameraMemento != NULL) {
+			gGame.mMotionControlCamera.SetMemento(mCameraMemento);
+			mCameraMemento = NULL;
+		}
+		break;
+	}
+	case 238: { // area camera zoom level, passed negated; values above 0 do nothing
+		s32 zoom = CEvt_Evaluate(this);
+		if (zoom <= 0) {
+			SetAreaCameraHeightIndex(&gGame.mMotionControlCamera, labs(zoom));
+		}
+		break;
+	}
+	case 232: // first-person controls
+		switch (CEvt_Evaluate(this)) {
+		case -1:
+			gGame.ClearStatusFlags(0x80);
+			break;
+		case -2:
+			gGame.SetStatusFlags(0x80);
+			break;
+		case 0:
+			gGame.mMotionControlCamera.EndEye();
+			break;
+		case 1:
+			gGame.mMotionControlCamera.StartEye();
+			break;
+		case 2: {
+			f32 degrees                                                                  = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.y = DEG2RAD * degrees;
+			break;
+		}
+		case 3: {
+			f32 degrees                                                                  = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.x = DEG2RAD * degrees;
+			break;
+		}
+		case 4: {
+			f32 fov                                                                      = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.z = fov;
+			break;
+		}
+		}
+		break;
+	default:
+		OSPanic(__FILE__, 2627, FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command));
+		break;
 	}
 	return 0;
 }
