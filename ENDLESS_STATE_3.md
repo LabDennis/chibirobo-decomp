@@ -1,12 +1,42 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 61 fertig, Branch devin/lane3, Tip 76c49cf2. R24J01:
+Stand: Lauf 63 fertig, Branch devin/lane3 @7000d0f9. R24J01: 6613/8284 matched, main.dol: OK. R24J01:
 6613/8284 matched (+8 gegenueber Lauf-60-Stand, kein neuer Regress);
 GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+
+## Lauf 63 — xobj_map: fn_800C98E0 (FindMapFloor) 89,33 %, Listen als 10x10
+
+- **Commit 7000d0f9** `Wii xobj_map: fn_800C98E0 (FindMapFloor) 89.33%,
+  map lists as 10x10 grids`.
+- **`fn_800C98E0` neu (676 B, 89,33 % ehrlich NONMATCHING):** Wii-
+  out-of-line FindMapFloor. Ablauf: Hint-Dreieck probieren (mGetVtx +
+  IsPointInsideTriangleXZ + IntersectVerticalLineWithTrianglePlane),
+  dann Sort-Grid-Zelle `mListB[cellX][cellZ]` mit Record-Liste
+  {u32 tri, f32 hoehe} (limit = pos->y + 7.5f), dann
+  `CTrigon::Check(pos,-1,&hit->mHeight)`; Erfolg schreibt
+  mTriangle/mTrigon=mCell/mHeight, Misserfolg mTrigon=-1+FALSE.
+  NONMATCHING-Rest: gleiche Instruktionsfolge, nur RegAlloc/Stack-Slots
+  (Retail haelt tri-Zeiger callee-saved, Frame r25-r31 statt r24-r31,
+  Loop-Vecs in niedrigeren Slots als Hint-Vecs). objdiff-Richtung beim
+  Diff beachten: links=Retail, rechts=eigener Build.
+- **`mListA`/`mListB` [0x64] -> [10][10]** (xobj.h, nur xobj_map nutzt
+  sie): Retail rechnet verteilt `this + cellX*0x78 + cellZ*0xC`;
+  Nebeneffekt: `fn_800C807C` 78,2->80,93, `XObjMap::Release` 80,9->83,36.
+  `cell->mItems[i]` per-Iteration member-access (kein gehoisteter
+  Local) = retails `lwz`+`lwzx`.
+- **Gate:** R24J01 `main.dol: OK` 6613/8284 (kein Regress; C98E0
+  nonmatching zaehlt nicht), GC 3x `17 files OK`, config sauber,
+  Format geblockt (clang-format 23.1.4 vs. gefordert 18.1.8 — Dauer-
+  Blocker, host-seitig).
+- **Liegt:** fn_800C98E0 RegAlloc-Wand (s.o.); fn_800C9750 94,75
+  RegAlloc; fn_800C9B84 inline/extab-Wand; clang-format-Version.
+- **Naechstes:** fn_800C9B84 (inline/extab) oder fn_800C9D88 /
+  xobj_chr ab 0x800C9E84.
 
 ## Lauf 61 — XObjMap-Fortsetzung: fn_800C85D4 matcht, fn_800C9750 ehrlich
 
