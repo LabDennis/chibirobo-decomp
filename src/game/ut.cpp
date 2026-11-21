@@ -1506,13 +1506,15 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
  */
 // whether pos lies inside abc seen from above, corners wound so CalcTriangleNormal points up. pos is
 // out as soon as one edge's rel x edge points down: its dot with up, which is (0, -1, 0), goes positive
+static const Vec sTriangleEdgeTestDown = { 0.0f, -1.0f, 0.0f };
+
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
 	f32 ex = a->x - b->x;
 	f32 ez = a->z - b->z;
 	f32 rx = b->x - pos->x;
 	f32 rz = b->z - pos->z;
-	Vec up = { 0.0f, -1.0f, 0.0f };
+	Vec up = sTriangleEdgeTestDown;
 	Vec edge, rel, n;
 
 	edge.x = ex;
@@ -1682,13 +1684,15 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
  * @note Size: 0x21C
  */
 // the IsPointInsideTriangleXZ test with four corners, so the quad has to be convex and wound the same way
+static const Vec sQuadEdgeTestDown = { 0.0f, -1.0f, 0.0f };
+
 BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
 {
 	f32 ex = a->x - b->x;
 	f32 ez = a->z - b->z;
 	f32 rx = b->x - pos->x;
 	f32 rz = b->z - pos->z;
-	Vec up = { 0.0f, -1.0f, 0.0f };
+	Vec up = sQuadEdgeTestDown;
 	Vec edge, rel, n;
 
 	edge.x = ex;
