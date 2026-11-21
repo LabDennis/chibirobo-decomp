@@ -23,6 +23,7 @@ struct XObjPool {
 		mStride  = stride;
 	}
 
+	XObj* First() const { return (XObj*)mObjects; }
 	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
 
 	// first object whose status flags match value under mask, -1 without one; xobjs.cpp holds the body
@@ -30,10 +31,20 @@ struct XObjPool {
 };
 STATIC_ASSERT(sizeof(XObjPool) == 0x14);
 
+class CEvtFlags;
+
 // the objects: a pool per kind and the table of the ones in use, same layout as
 // the GameCube XOBJS
 class XOBJS {
 public:
+	// the collections with a flag bit per placement: the coin, item and dust pools each
+	// lead with a flags object that carries the CEvtFlags
+	enum CollectionPool {
+		COINS = 7,
+		ITEMS = 8,
+		DUST  = 20,
+	};
+
 	XObjPool mPools[0x17]; // _000
 	XObj* mObjects[0x400]; // _1CC, the object table
 	s32 mObjectCount;      // _11CC
@@ -42,6 +53,9 @@ public:
 	// _11D8 vtable
 
 	virtual ~XOBJS() { }
+
+	// the collection's flags; the definition needs XObjFlags, so the units that use it hold it
+	CEvtFlags& GetCollectionFlags(CollectionPool pool) const;
 
 	void ReadAll(); // fills the pools and the object table from the stage placements, then loads them
 };

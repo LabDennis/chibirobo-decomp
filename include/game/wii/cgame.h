@@ -1013,6 +1013,8 @@ struct WiiPlayerState : public XObj {
 	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
 	u8 _1C9B4[4];          // _1C9B4
 	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
+	u8 _1C9C4[0x1C9FC - 0x1C9C4];
+	CJArchive mAttachmentAnim; // _1C9FC, the attachment's anims, the GameCube's CJAnim mAttachmentAnim
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals

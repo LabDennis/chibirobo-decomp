@@ -974,7 +974,8 @@ public:
 	f32 mLimitNegX; // _10
 	f32 mLimitPosZ; // _14
 	f32 mLimitNegZ; // _18
-	u8 _1C[4];
+	// _1C, the GameCube XObj's own mMarkerOverride: scripts override the object's map marker with it
+	s32 mMarkerOverride;
 
 	// _20, XObj::SetColor writes them (verified at 0x800B67F8); the rest of the queue's
 	// members are not yet recovered
@@ -1218,8 +1219,9 @@ public:
 	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198();
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
-	virtual void vf1A0();
-	virtual void vf1A4();
+	// _1A0, the GameCube's ApplyMaterialPresets: SYSCALL_SET_OBJSTAT's 0x20000 passes the object's material bits
+	virtual void ApplyMaterialPresets(u32 flags[5]);
+	virtual void SetDestinationAlpha(s32 alpha, s32 time); // _1A4, the GameCube's
 	virtual void vf1A8();
 	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
 	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
