@@ -358,8 +358,11 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu);
 const char* GetLocalizedInterfaceText(s32 id);
 
 extern s32 gRefreshRate;
+extern s32 gPointerScreenWidth;
+extern s32 gScreenSafeLeft;
 extern s32 gScreenSafeRight;
 extern s32 gScreenSafeTop;
+extern s32 gScreenSafeBottom;
 
 // the ring accepts menu input while fully faded in and past its opening glow
 static inline u8 RingReady(const OctaMenu& ring)
@@ -754,4 +757,122 @@ extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 	aim->m_4C                     = 0.0f;
 	aim->m_50                     = 0.0f;
 	aim->m_54                     = 0.0f;
+}
+
+// the yes/no menu's input on the Wii: like the GameCube's HandleOXMenuInput the
+// selection moves left and right and the confirm action picks it, but the remote's
+// pointer can also hover a mark. the marks orbit a base point that is the chr's
+// projected neck joint, or a fixed bottom-center spot while the 0x100 status is up;
+// the stick moves the selection only where gGame.mMenuControls gives it to the pad
+// NONMATCHING (~83%): register/scheduling/pool wall like the rest of the unit —
+// the projected-point locals and the marker math reschedule, float refs land on
+// local @labels instead of the unit's named sdata2 globals, and retail's arg for
+// ProjectOffsetToScreen is a second stack vec; semantics decoded and verified
+/**
+ * @note Address: 0x800EF58C
+ * @note Size: 0x804
+ */
+extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
+{
+	if (menu->mStarted > 0) {
+		if (!gGame.GetStatusFlags(0x100)) {
+			menu->mChr->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, DEG2RAD * 8.0f);
+		}
+		s32 lastPointed = menu->_10;
+		menu->_10       = -1;
+		if (gWiiPointer.mPointerValid) {
+			Vec pointer = gWiiPointer.mPointer;
+			f32 sx, sy;
+			if (gGame.GetStatusFlags(0x100)) {
+				sx = gPointerScreenWidth / 2;
+				sy = gScreenSafeBottom;
+			} else {
+				CVec joint = menu->mChr->GetJointWorldPos("neck");
+				Vec pos    = { 0.0f, 0.0f, 0.0f };
+				pos.y      = joint.y - menu->mChr->GetPos()->y;
+				Vec arg    = pos;
+				menu->mChr->ProjectOffsetToScreen(&arg, &sx, &sy, NULL, NULL);
+			}
+			for (s32 i = 0; i < 2; i++) {
+				f32 mx = sx + 1.0f * (90.0f * (i - 0.5f));
+				f32 my = sy - 70.0f * (f32)sin(130.0f * DEG2RAD) - 0.3f * 70.0f * 1.0f;
+				if (mx < gScreenSafeLeft || mx > gScreenSafeRight || my < gScreenSafeTop || my > gScreenSafeBottom) {
+					sx = gPointerScreenWidth / 2;
+					sy = gScreenSafeBottom;
+					break;
+				}
+			}
+			f32 baseY;
+			if (gGame.GetStatusFlags(0x100)) {
+				baseY = sy - 0.8f * 70.0f;
+			} else {
+				baseY = sy - 70.0f * (f32)sin(130.0f * DEG2RAD * menu->mFade) - 0.3f * 70.0f * 1.0f;
+			}
+			for (s32 i = 0; i < 2; i++) {
+				f32 bob  = 4.0f * (f32)sin(menu->mMark[i].mSpin);
+				f32 half = (4.0f + 70.0f) * menu->mMark[i].mScale * (f32)sin(120.0f * DEG2RAD * menu->mFade);
+				f32 mx;
+				if (gGame.GetStatusFlags(0x100)) {
+					mx = sx + 90.0f * (i - 0.5f);
+				} else {
+					mx = sx + 1.0f * (menu->mFade * (90.0f * (i - 0.5f)));
+				}
+				f32 my = baseY + bob;
+				if (pointer.x >= mx - half && pointer.x <= mx + half && pointer.y >= my - half && pointer.y <= my + half) {
+					menu->_10 = i;
+					break;
+				}
+			}
+		} else if ((gGame.mMenuControls & 2) && (gGame.mMenuControls & 1) && gWiiPointer.mPointerChanged) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		if (menu->_10 >= 0) {
+			if (menu->mSelectedIndex != menu->_10 || lastPointed < 0) {
+				menu->mSelectedIndex = menu->_10;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)) {
+			if (gWiiPointer.Check(0x20)) {
+				if (menu->mSelectedIndex + 1 < 2) {
+					menu->mSelectedIndex = menu->mSelectedIndex + 1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+			} else if (gWiiPointer.Check(0x10)) {
+				if (menu->mSelectedIndex - 1 >= 0) {
+					menu->mSelectedIndex = menu->mSelectedIndex - 1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+			}
+		}
+		WiiPlayerState* chr    = (WiiPlayerState*)menu->mChr;
+		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)chr->_987C;
+		if (menu->_10 < 0 && (!(gGame.mMenuControls & 2) || ((gGame.mMenuControls & 1) && !gWiiPointer.mPointerValid))) {
+			aim->mSnap[0] = aim->mSnap[1] = 2;
+			aim->m_0C                     = NULL;
+			aim->mTarget.x                = NAN;
+			aim->m_20                     = NULL;
+			aim->m_24                     = NAN;
+			aim->m_28                     = NAN;
+			aim->m_2C                     = 0.0f;
+			aim->m_30                     = 0.0f;
+			aim->m_4C                     = 0.0f;
+			aim->m_50                     = 0.0f;
+			aim->m_54                     = 0.0f;
+		} else {
+			f32 angle     = menu->mSelectedIndex == 0 ? DEG2RAD * -20.0f : DEG2RAD * 20.0f;
+			aim->mSnap[0] = aim->mSnap[1] = 1;
+			aim->m_0C                     = NULL;
+			aim->mTarget.x                = NAN;
+			aim->m_20                     = NULL;
+			aim->m_24                     = NAN;
+			aim->m_28                     = angle;
+		}
+		if (!gGame.GetStatusFlags(0x20) && 1.0f == menu->mFade) {
+			if (menu->_10 >= 0 || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
+				if (gWiiPointer.Check(1)) {
+					ConfirmOXMenuSelection(menu, 1);
+				}
+			}
+		}
+	}
 }
