@@ -330,6 +330,43 @@ struct ResAnmScnData {
 	u16 mNumFrame; // _34
 };
 
+// a light set of a scene animation, as far as LIGHT reads it: a plain handle like the other
+// shims here, so ResAnmScn::GetResLightSet hands it back in r3
+struct ResLightSetData {
+	static const u32 INVALID_ID = 0xFFFF;
+
+	u8 _00[0x1A];
+	u8 numLight;              // _1A
+	u8 _1B[0x3C - 0x1B];
+	u16 lightId[8];           // _3C, INVALID_ID for an empty slot
+};
+
+class ResLightSet {
+public:
+	ResLightSetData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	const ResLightSetData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_reslightset_ac.h", 39, "%s::%s: Object not valid.", "ResLightSet", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetNumLight() const { return ref().numLight; }
+	u32 GetLightID(u32 index) const
+	{
+		if (index > ref().numLight - 1) {
+			db::Panic("g3d_reslightset_ac.h", 113, "index is out of bounds(%d)\n%d <= index <= %d not satisfied.", index, 0,
+			          ref().numLight - 1);
+		}
+		if (ref().lightId[index] == ResLightSetData::INVALID_ID) {
+			db::Panic("g3d_reslightset_ac.h", 114, "NW4R:Failed assertion ref().lightId[index] != DataType::INVALID_ID");
+		}
+		return ref().lightId[index];
+	}
+};
+
 class ResAnmScn {
 public:
 	void* mpData; // _00
@@ -343,6 +380,8 @@ public:
 		return *(const ResAnmScnData*)mpData;
 	}
 	u16 GetNumFrame() const { return ref().mNumFrame; }
+	ResLightSet GetResLightSet(u32 idx) const;
+	u32 GetResLightSetNumEntries() const;
 	bool Bind(const ResAnmScn scene); // 0x80265718
 	void Release();
 	bool Bind() { return Bind(*this); }
@@ -754,17 +793,61 @@ public:
 	static AnmObjShpRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmShp shp, ResMdl mdl, bool cache);
 };
 
-// the scene animation (lights, fog, cameras)
+// nw4r's light object, as far as LIGHT reads it: the enable flag in front of the GX light
+class LightObj {
+public:
+	LightObj()
+	    : mFlag(0)
+	{
+	}
+	~LightObj() { }
+
+	bool IsEnable() const { return (mFlag & FLAG_ENABLE_LIGHT) ? true : false; }
+
+private:
+	enum LightObjFlag { FLAG_ENABLE_LIGHT = (1 << 2) };
+
+	u32 mFlag;       // _00
+	GXLightObj mObj; // _04
+};
+
+class AnmScnRes;
+
+// the scene animation (lights, fog, cameras); the virtuals in nw4r's order through GetLight,
+// nothing past it is needed yet
 class AnmScn : public G3dObj {
 public:
-	virtual void SetFrame(f32 frame);     // _1C
-	virtual f32 GetFrame() const;         // _20
-	virtual void SetUpdateRate(f32 rate); // _24
+	virtual void SetFrame(f32 frame);                      // _1C
+	virtual f32 GetFrame() const;                          // _20
+	virtual void SetUpdateRate(f32 rate);                  // _24
+	virtual f32 GetUpdateRate() const;                     // _28
+	virtual void UpdateFrame();                            // _2C
+	virtual AnmScnRes* Attach(int idx, AnmScnRes* pRes);   // _30
+	virtual AnmScnRes* Detach(int idx);                    // _34
+	virtual u32 GetNumLightSet() const;                    // _38
+	virtual u32 GetNumAmbLight() const;                    // _3C
+	virtual u32 GetNumDiffuseLight() const;                // _40
+	virtual u32 GetNumSpecularLight() const;               // _44
+	virtual u32 GetNumFog() const;                         // _48
+	virtual u32 GetNumCamera() const;                      // _4C
+	virtual u32 GetLightSetMaxRefNumber() const;           // _50
+	virtual u32 GetAmbLightMaxRefNumber() const;           // _54
+	virtual u32 GetDiffuseLightMaxRefNumber() const;       // _58
+	virtual u32 GetFogMaxRefNumber() const;                // _5C
+	virtual u32 GetCameraMaxRefNumber() const;             // _60
+	virtual void vf064();                                  // _64, GetLightSet
+	virtual void vf068();                                  // _68, GetAmbLightColor
+	virtual void GetLight(LightObj* pDiff, LightObj* pSpec, u32 refNumber); // _6C
 };
 
 class AnmScnRes : public AnmScn {
 public:
 	static AnmScnRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmScn scn, bool cache);
+
+	// inline: retail's only copy is in the game's range
+	virtual u32 GetNumLightSet() const { return mRes.GetResLightSetNumEntries(); } // _38
+
+	ResAnmScn GetResAnm() { return mRes; }
 
 	u8 _0C[0x20 - 0x0C];
 	ResAnmScn mRes; // _20, the resource it plays; IsAnmScnEnd reads its frame count

@@ -76,6 +76,8 @@ CEvtPtcl gEventPtcl;
 EvtObjIdTable gEventObjectIds = { 0 };
 // the message window's color after WIN @RESET
 GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
+// the alpha LIGHT @COLOR writes with the color
+u8 sEvtLightAlpha = 255;
 // the event system's own object
 XObj gEventScriptObject;
 
@@ -833,6 +835,64 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
 		c             = *str;
 		mData.mScript = str + 1;
 	} while (c != 0);
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009BF68
+ * @note Size: 0x42C
+ */
+// the stage's scene animation carries the light the script's index names; COLOR and POS
+// override its color and position in the CGs's slots
+s32 CEvt::_cmd_LIGHT(u8, s32)
+{
+	s32 index = CEvt_Evaluate(this);
+	nw4r::g3d::LightObj diff, spec;
+	nw4r::g3d::AnmScnRes* anm = (nw4r::g3d::AnmScnRes*)gGame.mGs.mScene.mHead->_2888;
+	if (anm != NULL) {
+		u32 numSets = anm->GetNumLightSet();
+		for (u32 s = 0; s < numSets; s++) {
+			nw4r::g3d::ResLightSet lightSet = anm->GetResAnm().GetResLightSet(s);
+			for (u32 l = 0; l < lightSet.GetNumLight(); l++) {
+				if (l == index - 1) {
+					anm->GetLight(&diff, &spec, lightSet.GetLightID(l));
+					break;
+				}
+			}
+		}
+	}
+	u16 type = CEvt_Evaluate(this);
+	switch (type) {
+	case EVT_ATOM_COLOR: {
+		u8 r = CEvt_Evaluate(this);
+		u8 g = CEvt_Evaluate(this);
+		u8 b = CEvt_Evaluate(this);
+		if (diff.IsEnable()) {
+			GXColor color = { r, g, b, sEvtLightAlpha };
+			gGame.mGs._1FE4[index].SetColor(color);
+		}
+		break;
+	}
+	case EVT_ATOM_POS: {
+		f32 x = CEvt_Evaluate(this) / 100.0f;
+		f32 y = CEvt_Evaluate(this) / 100.0f;
+		f32 z = CEvt_Evaluate(this) / 100.0f;
+		if (diff.IsEnable()) {
+			Vec pos = { x, y, z };
+			gGame.mGs._1FE4[index].SetPos(pos);
+		}
+		break;
+	}
+	case EVT_ATOM_INTEREST:
+		// read and dropped, the Wii does not aim the light
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this) / 100.0f;
+		break;
+	default:
+		OSPanic(__FILE__, 3008, FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type));
+		break;
+	}
 	return 0;
 }
 
