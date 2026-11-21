@@ -400,8 +400,7 @@ void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 				inLift      = inLift || (u8)(chr->mLift.mState == 3);
 				inLift      = inLift && ((XActLift*)&chr->mLift)->_AC;
 				if (!inLift) {
-					SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, chr->mLift.mTarget->GetItem(), 1,
-					    TRUE);
+					SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, chr->mLift.mTarget->GetItem(), 1, TRUE);
 					((XObjItem*)chr->mLift.mTarget)->SetFlag();
 				}
 			}
@@ -423,14 +422,14 @@ void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 	chr->mCopter.Reset();
 	chr->mPopper.Reset();
 	ResetPlayerRadarAction((XActRadar*)&chr->mRadar);
-	chr->mAttachment       = 0;
-	chr->mAttachmentRequest = -1;
-	chr->mAttachmentStep     = 0;
-	chr->mScriptAttach       = 0;
-	chr->mClimbType          = 0;
-	chr->mNextClimbType      = 0;
-	chr->m_0A18              = -1;
-	chr->m_0A1C              = -1;
+	chr->mAttachment             = 0;
+	chr->mAttachmentRequest      = -1;
+	chr->mAttachmentStep         = 0;
+	chr->mScriptAttach           = 0;
+	chr->mClimbType              = 0;
+	chr->mNextClimbType          = 0;
+	chr->m_0A18                  = -1;
+	chr->m_0A1C                  = -1;
 	chr->mFloorContactObjects[2] = -1;
 	if (nextAnimation >= 0) {
 		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1712,8 +1711,8 @@ void XObjChr::SetMoveDir(const Vec* direction, f32 speed)
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	StopMoving(chr);
 	CObj::SetMoveDir(direction, speed);
-	CVec horizontal   = chr->mMoveSpeed0;
-	horizontal.y      = 0.0f;
+	CVec horizontal = chr->mMoveSpeed0;
+	horizontal.y    = 0.0f;
 	if (PSVECMag((Vec*)&horizontal) > 0.0f) {
 		chr->mWalkHeading = WrapAngle(GetYAngle(chr->mMoveTarget0 - chr->mMoveTranslate));
 	}
