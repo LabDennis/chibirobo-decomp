@@ -840,8 +840,8 @@ extern "C" void fn_800F3B88(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 		Mtx rotY;
 		Mtx rotZ;
 		PSMTXCopy(pResult->mpMtx, m);
-		PSMTXRotRad(rotY, 'y', aim->m_40);
-		PSMTXRotRad(rotZ, 'z', aim->m_3C);
+		PSMTXRotRad(rotY, 'y', aim->m_3C.y);
+		PSMTXRotRad(rotZ, 'z', aim->m_3C.x);
 		PSMTXConcat(m, rotY, m);
 		PSMTXConcat(m, rotZ, m);
 		PSMTXCopy(m, pResult->mpMtx);

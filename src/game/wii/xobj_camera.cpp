@@ -42,15 +42,15 @@ extern "C" void fn_800C659C(XObjScnCamInitRec* self, XObj* obj)
 	self->m_24 = self->m_28 = NAN;
 	self->m_2C = self->m_30 = 0.0f;
 	self->m_34 = self->m_38 = 0.0f;
-	self->m_3C              = 0.0f;
-	self->m_40              = 0.0f;
-	self->m_44              = 0.0f;
-	self->m_4C              = 0.0f;
-	self->m_50              = 0.0f;
-	self->m_54              = 0.0f;
-	self->m_5C              = 0.0f;
-	self->m_60              = 0.0f;
-	self->m_64              = 0.0f;
+	self->m_3C.x            = 0.0f;
+	self->m_3C.y            = 0.0f;
+	self->m_3C.z            = 0.0f;
+	self->m_4C.x            = 0.0f;
+	self->m_4C.y            = 0.0f;
+	self->m_4C.z            = 0.0f;
+	self->m_5C.x            = 0.0f;
+	self->m_5C.y            = 0.0f;
+	self->m_5C.z            = 0.0f;
 }
 
 // the head bone's world position, or the object's own position when the model has no
@@ -122,8 +122,8 @@ extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj)
 	return fn_800C6608((u32)rec, obj);
 }
 
-// NONMATCHING: per-frame yaw/pitch tracker: re-aims m_4C/m_50 at the target, then eases
-// m_3C/m_40 toward them by m_5C/m_60 * frames, or snaps when the counter protocol runs
+// NONMATCHING: per-frame yaw/pitch tracker: re-aims m_4C.x/.y at the target, then eases
+// m_3C.x/.y toward them by m_5C.x/.y * frames, or snaps when the counter protocol runs
 extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 {
 	CVec head = fn_800C6CEC(rec, rec->m_08);
@@ -131,11 +131,11 @@ extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 	f32 outB;
 	f32 outA;
 	fn_800C66C8(rec, &head, &rot, &outA, &outB);
-	rec->m_50   = outA + rec->m_38;
-	rec->m_4C   = outB + rec->m_34;
-	f32* cur    = &rec->m_3C;
-	f32* target = &rec->m_4C;
-	f32* speed  = &rec->m_5C;
+	rec->m_4C.y = outA + rec->m_38;
+	rec->m_4C.x = outB + rec->m_34;
+	f32* cur    = &rec->m_3C.x;
+	f32* target = &rec->m_4C.x;
+	f32* speed  = &rec->m_5C.x;
 	for (int i = 0; i < 2; i++) {
 		*cur     = WrapAngle(*cur);
 		*target  = WrapAngle(*target);

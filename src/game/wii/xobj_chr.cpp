@@ -2957,9 +2957,9 @@ void OctaMenu::Select(s32 result)
 		aim->m_28                     = NAN;
 		aim->m_2C                     = 0.0f;
 		aim->m_30                     = 0.0f;
-		aim->m_4C                     = 0.0f;
-		aim->m_50                     = 0.0f;
-		aim->m_54                     = 0.0f;
+		aim->m_4C.x                   = 0.0f;
+		aim->m_4C.y                   = 0.0f;
+		aim->m_4C.z                   = 0.0f;
 	}
 	mPointedItem = mPreviousPointedItem = -1;
 }

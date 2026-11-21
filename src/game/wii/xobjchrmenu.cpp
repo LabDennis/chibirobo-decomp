@@ -754,9 +754,9 @@ extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 	aim->m_28                     = NAN;
 	aim->m_2C                     = 0.0f;
 	aim->m_30                     = 0.0f;
-	aim->m_4C                     = 0.0f;
-	aim->m_50                     = 0.0f;
-	aim->m_54                     = 0.0f;
+	aim->m_4C.x                   = 0.0f;
+	aim->m_4C.y                   = 0.0f;
+	aim->m_4C.z                   = 0.0f;
 }
 
 // the yes/no menu's input on the Wii: like the GameCube's HandleOXMenuInput the
@@ -855,9 +855,9 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 			aim->m_28                     = NAN;
 			aim->m_2C                     = 0.0f;
 			aim->m_30                     = 0.0f;
-			aim->m_4C                     = 0.0f;
-			aim->m_50                     = 0.0f;
-			aim->m_54                     = 0.0f;
+			aim->m_4C.x                   = 0.0f;
+			aim->m_4C.y                   = 0.0f;
+			aim->m_4C.z                   = 0.0f;
 		} else {
 			f32 angle     = menu->mSelectedIndex == 0 ? DEG2RAD * -20.0f : DEG2RAD * 20.0f;
 			aim->mSnap[0] = aim->mSnap[1] = 1;

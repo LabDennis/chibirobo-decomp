@@ -1,6 +1,7 @@
 #include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
 #include "game/wii/xact.h"
+#include "game/wii/xobjcamera.h"
 
 // retail .text 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49, guessed "CPtcl"):
 // the XObjMapList record types, XObjMap's dtor, XObjChr's ctor and the run of
@@ -140,5 +141,15 @@ XActRadar::XActRadar()
 }
 
 XActRadar::~XActRadar()
+{
+}
+
+// the player state keeps two of these camera aim records (mEyeAimRecord/mHeadAimRecord
+// in cgame.h); the ctor fills the CVec/TVec members' vtables, the dtor rides along
+XObjScnCamInitRec::XObjScnCamInitRec()
+{
+}
+
+XObjScnCamInitRec::~XObjScnCamInitRec()
 {
 }
