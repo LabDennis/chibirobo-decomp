@@ -938,7 +938,8 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 struct WiiPlayerState : public XObj {
 	u8 _09A8[0x9C8 - 0x9A8];
 	u8 m_9C8; // _9C8, DrawWithView skips the transition suit part while it is set
-	u8 _09C9[0x9CC - 0x9C9];
+	u8 m_9C9; // _9C9, the same for the popper mount, fn_800E3C50 sets it
+	u8 _09CA[0x9CC - 0x9CA];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame

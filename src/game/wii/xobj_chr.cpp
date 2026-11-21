@@ -1319,12 +1319,57 @@ static inline void SetModelFrame(XObj* object, f32 frame)
 	}
 }
 
+// the anim rate scale of fn_800E32B8 shared with fn_800E3968
+static inline f32 PlayerAnimRateScale(WiiPlayerState* chr, s32 anim)
+{
+	f32 rate;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && anim != 0x13B) {
+		rate = 1.135f;
+	} else {
+		rate = 1.0f;
+	}
+	return rate * (60.0f / gRefreshRate);
+}
+
+// scales his own anim rate and the worn suit's by frame
+void fn_800E3968(WiiPlayerState* chr, f32 frame)
+{
+	chr->CObj::SetAnimRate(frame * PlayerAnimRateScale(chr, chr->GetAnimId()));
+	if ((chr->mSuits.mObjects[chr->mSuits.mCurrent].mStatus.mFlags & 1) == TRUE) {
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].SetAnimRate(frame * PlayerAnimRateScale(chr, chr->GetAnimId()));
+	}
+}
+
 // his anims and the worn suit's to frame
 void fn_800E3AE4(WiiPlayerState* chr, f32 frame)
 {
 	SetModelFrame(chr, frame);
 	if ((chr->mSuits.mObjects[chr->mSuits.mCurrent].mStatus.mFlags & 1) == TRUE) {
 		SetModelFrame(&chr->mSuits.mObjects[chr->mSuits.mCurrent], frame);
+	}
+}
+
+// the eye camera takes and frees his motion: the flag the draw checks, and the worn suit's vf28C
+extern "C" void fn_800F3E9C(WiiPlayerState* chr, BOOL held);
+void fn_800E3BCC(WiiPlayerState* chr, s32 held)
+{
+	chr->m_9C8 = held != 0;
+	fn_800F3E9C(chr, held != 0);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if ((suit->mStatus.mFlags & 1) == TRUE) {
+		suit->vf28C(held);
+	}
+}
+
+// the same for the popper mount while the popper is out
+extern "C" void fn_800F403C(WiiPlayerState* chr, BOOL on);
+void fn_800E3C50(WiiPlayerState* chr, s32 on)
+{
+	chr->m_9C9 = on != 0;
+	fn_800F403C(chr, on != 0);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if ((suit->mStatus.mFlags & 1) == TRUE) {
+		suit->vf290(on);
 	}
 }
 
