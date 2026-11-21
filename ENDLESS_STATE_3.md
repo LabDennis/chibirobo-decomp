@@ -1,15 +1,74 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 73 fertig, Branch devin/lane3.
-R24J01: 6638/8284 matched, main.dol: OK (kein Regress; fuzzy 68,52 %);
-GC: alle drei gebaut, files OK; --non-matching-Link: NICHT erneut
-gelaufen (s. Liegt); check.py: format FAILED nur weil System-
-clang-format 23.1.4 statt CI-18.1.8 vorliegt — selber Befund wie
-frueher, 18.1.8-Binary im Worktree-Pfad nicht auffindbar; disc ok.
+Stand: Lauf 74 fertig, Branch devin/lane3 (Tip 474d9b3c).
+R24J01: 6639/8284 matched (+1), main.dol: OK (kein Regress;
+fuzzy 68,56 %); GC: alle drei gebaut, 17 files OK je Edition;
+--non-matching-Link: OK (525 Objekte gebaut, main.dol linkt);
+check.py: wie gehabt blockiert — System clang-format 23.1.4 statt
+CI-18.1.8, Binary nicht gefunden (s. Liegt); disc ok.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 74 — xobj_chr: LoadPlayerSuitItem MATCHED (100 %), ApplyPlayerSuit (96,84 %)
+
+Commit 474d9b3c (2 Dateien, +67/−4): src/game/wii/xobj_chr.cpp +
+config/R24J01/symbols.txt (LoadPlayerSuitItem .text:0x800CDC98
+size 0x114, ApplyPlayerSuit .text:0x800CDDC0 size 0x294,
+gSpecialSuitSpawnIds .data:0x80304040 size 0xC = {0x20,0x22,0x23}).
+
+- **LoadPlayerSuitItem(0x800CDC98) = 100,00 % — MATCHED**
+  (6638→6639). Wii-Variante des GC-LoadPlayerSuitItem
+  (xobjchritem.h): mSuits bei this+0xDC50 (mLoadStep _00,
+  mCurrent _08, mSpecial _10, mObjects[9] _18). Schritt 1:
+  Suit = mObjects[mCurrent]; SpawnId = mCurrent==7 ?
+  gSpecialSuitSpawnIds[mSpecial] : mCurrent+25;
+  suit->LoadFromPlacement(CoordInfo(GetSpawnData(id))); bei
+  Erfolg `suit->SetAnmSource(&player->mObject)` (NW_Obj an
+  this+0xE8 — Wii sourct die Suit-Anim aus dem Player-Obj,
+  KEIN separater Animdatei-Load wie am Cube), mLoadStep=0.
+  Schritt 2: nur mLoadStep=0.
+- **MWCC-Lektion:** `if(!x) return FALSE` auf einem BOOL-
+  Call-Ergebnis erzeugt cntlzw/srwi. (Bool-Materialisierung);
+  `if(x){...;return TRUE;} break;` + gemeinsamer
+  `return FALSE` hinter dem switch erzeugt cmpwi r3,0 +
+  geteilten FALSE-Block (94,71 → 96,88 → 100).
+- **ApplyPlayerSuit(0x800CDDC0) = 96,84 % fuzzy** — instruktions-
+  identisch bis auf reine Referent-Diffs: Strings "head"/
+  "l_arm_chn" landen in unserem @stringBase0, Retail in
+  lbl_802DAA6C+0x95/+0x9A (Unit-rodata-Pool, beginnt mit
+  "xobj_chr.cpp" — loest sich mit Unit-Vollstaendigkeit),
+  plus sdata2-Pool-Namen @15945/@15947/@16183 vs
+  lbl_805A4EB0/4EC0/4ED0. Gleiche Pool-in-r30-Strategie.
+- **Semantik ApplyPlayerSuit:** Player aktiv (mStatus.mFlags&1)
+  + Suit mit SceneModel → ClearAnim (vf110), bei Attachment 2
+  vf290(FALSE); 4 Attachments via vf0A4("head"/"l_arm_chn")=
+  GetWorldMtx + vf294 SetParent: Copter→head, Popper→l_arm_chn,
+  Radar→head, OX→head; wenn !(gGame.GetStatusFlags(0x100)):
+  vf28C(FALSE); bei Attach 2 vf290(TRUE). Attach 1|3:
+  SetAnim 0x4A; sonst SetAnim 17 + mIdleLoops=3 (this+0xA88).
+  u64-Arg-Konvention verifiziert: u64-Args in r5:r6-Paar,
+  u64-Return in r3:r4 (or. testet den Return).
+- **fn_800CDC08** ruft jetzt die beiden benannten Helfer;
+  bleibt 98,69 % (dokumentierte RegAlloc-Wand).
+- **Gate:** R24J01 main.dol: OK 6639/8284, --non-matching
+  linkt, GGTE01/GGTJ01_01/GGTP01 je "17 files OK",
+  Baseline-Diff: 0 verloren, +1 gewonnen, config-Status sauber
+  (nur die 3 beabsichtigten Symbol-Zeilen).
+- **Liegt:** check.py --source-only — "need clang-format
+  18.1.8, got 23.1.4"; die 18.1.8-Binary ist weiterhin nicht
+  auffindbar (Aufrufe wurden diesmal vom Bediener verworfen —
+  evtl. Wrapper/Absolutpfad extern einmal pruefen). Callcheck
+  nicht erneut gelaufen (keine neuen externen Calls: beide
+  Funktionen rufen nur bereits benannte Symbole + virtuelle
+  Slots).
+- **Naechstes:** xobj_chr in Adressfolge weiter: naechste
+  offene nach ApplyPlayerSuit u.a. fn_800CE054; 0-%-Reste
+  fn_800C9E84, fn_800CB1DC; UpdatePlayerSuitChange-Kandidat
+  fn_800CD708 gehoert zur selben Suit-Kette. obja-Rest:
+  fn_800AD498, LoadFromPlacement 90,18, fn_800AE9F0,
+  fn_800AF098, fn_800AF12C, fn_800AF51C, TestFloorCollision.
 
 ## Lauf 73 — xobj_chr: ResetPlayerAttachment rekonstruiert (97,94 %)
 
