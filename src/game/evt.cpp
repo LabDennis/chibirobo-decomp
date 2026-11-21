@@ -11730,12 +11730,6 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     blr
 */
 
-// the warnings the light, kill and disp commands report
-static const char sEvtLightUnresolved[] = "light(%d, %d,...) - unresolved!\n";
-static const char sEvtKillLifted[]      = "kill(%d) ... obj(%d) lifted!";
-static const char sEvtDispLifted[]      = "disp(%d, %d) ... obj(%d) lifted!";
-static const char sEvtDispKilled[]      = "disp(%d, %d) ... obj(%d) killed!";
-
 /**
  * @note Address: 0x800762AC
  * @note Size: 0x358
@@ -11749,14 +11743,14 @@ s32 CEvt::_cmd_DISP(u8, s32)
 		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, leave it be
-			CEvt_Warn(FormatToStaticBuffer(sEvtDispLifted, id, on, id));
+			CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) lifted!", id, on, id));
 		} else if (on) {
 			obj->mStatus.mFlags |= 0x10000;
 		} else {
 			obj->mStatus.mFlags &= ~0x10000;
 		}
 	} else {
-		CEvt_Warn(FormatToStaticBuffer(sEvtDispKilled, id, on, id));
+		CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) killed!", id, on, id));
 	}
 	return 0;
 }
@@ -11796,7 +11790,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, can't kill that
-			CEvt_Warn(FormatToStaticBuffer(sEvtKillLifted, id, id));
+			CEvt_Warn(FormatToStaticBuffer("kill(%d) ... obj(%d) lifted!", id, id));
 		} else {
 			obj->Release();
 			CEvt_ForgetObjId(id);
@@ -11860,9 +11854,9 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 	}
 	default:
 #if defined(VERSION_PAL)
-		OSPanic(__FILE__, 2846, "%s%s", FormatToStaticBuffer(sEvtLightUnresolved, index, type), __FUNCTION__);
+		OSPanic(__FILE__, 2846, "%s%s", FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type), __FUNCTION__);
 #else
-		OSPanic(__FILE__, 2842, "%s%s", FormatToStaticBuffer(sEvtLightUnresolved, index, type), __FUNCTION__);
+		OSPanic(__FILE__, 2842, "%s%s", FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type), __FUNCTION__);
 #endif
 		break;
 	}
