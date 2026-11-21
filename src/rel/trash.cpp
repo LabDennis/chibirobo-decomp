@@ -247,8 +247,8 @@ static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
 	b.x           = obj->mMoveTranslate.x;
 	b.y           = obj->mMoveTranslate.y;
 	b.z           = obj->mMoveTranslate.z;
-	b.y = 0.0f;
-	a.y = 0.0f;
+	b.y           = 0.0f;
+	a.y           = 0.0f;
 	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
 		return 0;
 	}
@@ -1070,12 +1070,11 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 
-	s32 n   = trashStackNum;
-	count   = n;
+	count   = trashStackNum;
 	Vec pos = actor->mMoveTranslate;
 	angle   = THIRD_PI + actor->mMoveRotateY;
 	jobj    = actor->jobj;
-	if (n < 0) {
+	if (count < 0) {
 		count = 0;
 	}
 	if (count > 10) {
