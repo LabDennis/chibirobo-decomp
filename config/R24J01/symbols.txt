@@ -474,6 +474,9 @@ ExecCallbackA__6XObj2DFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d1
 __sinit_\cjanim_cpp = .text:0x800BD624; // type:function size:0x48 scope:local
 __dt__7CTrigonFv = .text:0x800BEB0C; // type:function size:0x40
 __dt__6ParamsFv = .text:0x800BFA18; // type:function size:0x40
+__dt__16XObjPlugCordNodeFv = .text:0x800BFE34; // type:function size:0x40 scope:weak
+__dt__11XObjWireEffFv = .text:0x800BFE74; // type:function size:0x40 scope:weak
+__dt__8XObjPlugFv = .text:0x800BFEB4; // type:function size:0x74 scope:weak
 __dt__7CPadOneFv = .text:0x800C0EF0; // type:function size:0x40
 __dt__8OctaMenuFv = .text:0x800C0F98; // type:function size:0x40
 __dt__7AtcMenuFv = .text:0x800C0FD8; // type:function size:0x40
@@ -1938,8 +1941,8 @@ ExecCallbackB__8XObjPlugFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3
 Release__11XObjWireEffFv = .text:0x80110968; // type:function size:0x80
 UpdateObject__11XObjWireEffFUl = .text:0x801109E8; // type:function size:0x2C
 DrawWithView__11XObjWireEffFPA4_f = .text:0x80110A14; // type:function size:0x1C
-fn_80110C1C = .text:0x80110C1C; // type:function size:0x8 scope:weak
-fn_80110C24 = .text:0x80110C24; // type:function size:0x8 scope:weak
+@4@__dt__11XObjWireEffFv = .text:0x80110C1C; // type:function size:0x8 scope:weak
+@4@__dt__8XObjPlugFv = .text:0x80110C24; // type:function size:0x8 scope:weak
 StartPlugCordNode = .text:0x80110C2C; // type:function size:0x1C4
 UpdatePlugCordSpark = .text:0x80110DF0; // type:function size:0x600
 UpdatePlugCordNodes = .text:0x801113F0; // type:function size:0x144
