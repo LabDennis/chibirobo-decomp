@@ -7,6 +7,7 @@
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
+#include "game/wii/infoscrn.h"
 #include "game/wii/cpad.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/xobjs.h"
@@ -31,6 +32,7 @@ extern s32 gRefreshRate;
 extern f32 gScreenWidthScale;
 extern s32 gScreenSafeBottom;
 extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
 void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags, f32 volume);
 void StopGameMovie(CGame* game);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
@@ -281,6 +283,7 @@ s32 CEvt::_cmd_WARP(u8, s32)
 
 extern "C" s32 InfoScrn_IsBatteryGaugeFull(void* hud);
 extern "C" s32 IsSceneCameraAnmEnd(CGame* game);
+extern "C" void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mode);
 
 #define EVT_CAMERA_ACTION(type) (gGame.mCameraActions.mTable[type])
 
@@ -600,6 +603,207 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 			gEventTimers.mValue[i]  = script;
 			break;
 		}
+	}
+	return 0;
+}
+
+struct EvtHudCommand {
+	u8 enabled; // _00
+	s32 mode;   // _04
+};
+
+/**
+ * @note Address: 0x8009E4C0
+ * @note Size: 0xED8
+ */
+s32 CEvt::_cmd_SCRN(u8, s32)
+{
+	u16 mode = CEvt_Evaluate(this);
+	switch (mode) {
+	case EVT_ATOM_FADE: {
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenFade(&gGame.mFade, r0, g0, b0, a0, r1, g1, b1, a1, time);
+		break;
+	}
+	case EVT_ATOM_MONO: {
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenFade(&gGame.mColor0.mColor, r0, g0, b0, a0, r1, g1, b1, a1, time);
+		break;
+	}
+	case EVT_ATOM_WIPE: {
+		s32 type = CEvt_Evaluate(this);
+		s32 open = CEvt_Evaluate(this);
+		s32 x    = CEvt_Evaluate(this);
+		s32 y    = CEvt_Evaluate(this);
+		s32 w0   = CEvt_Evaluate(this);
+		s32 h0   = CEvt_Evaluate(this);
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		s32 w1   = CEvt_Evaluate(this);
+		s32 h1   = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		switch (type) {
+		case 0:
+			gGame.mWipeCircle.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			break;
+		case 1:
+			gGame.mWipeTile.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			break;
+		default:
+			if (type >= 2000) {
+				if (open) {
+					gGame.mWipeCustom.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, 57.0f, 57.0f, 0.0f, 0.0f, time, a1, !open);
+				} else {
+					gGame.mWipeCustom.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, 0.0f, 0.0f, 57.0f, 57.0f, time, a1, !open);
+				}
+			} else if (type >= 1000) {
+				TPLPalette* palette = gGame.mTpl.mPalette;
+				gGame.mTpl.mTex.Init(&palette->descriptorArray[type - 1000], 0);
+				gGame.mWipeTex.mTex = gGame.mTpl.mTex;
+				gGame.mWipeTex.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			} else {
+				OSPanic(__FILE__, 3792, FormatToStaticBuffer("scrn(@WIPE, %d,...) - unresolved!\n", type));
+			}
+			break;
+		}
+		break;
+	}
+	case EVT_ATOM_LETTERBOX: {
+		s32 open    = CEvt_Evaluate(this);
+		s32 centerX = gPointerScreenWidth / 2;
+		s32 height0 = open ? gPointerScreenHeight : 314;
+		u8 r0       = CEvt_Evaluate(this);
+		u8 g0       = CEvt_Evaluate(this);
+		u8 b0       = CEvt_Evaluate(this);
+		u8 a0       = CEvt_Evaluate(this);
+		s32 height1 = open ? 314 : gPointerScreenHeight;
+		u8 r1       = CEvt_Evaluate(this);
+		u8 g1       = CEvt_Evaluate(this);
+		u8 b1       = CEvt_Evaluate(this);
+		u8 a1       = CEvt_Evaluate(this);
+		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		s32 centerY = 200;
+		gGame.mWipeCine.StartTransition(r0, g0, b0, a0, r1, g1, b1, centerX, centerY, gPointerScreenWidth, height0, gPointerScreenWidth,
+		                                height1, time, a1, !open);
+		break;
+	}
+	case EVT_ATOM_HUD:
+		switch (CEvt_Evaluate(this)) {
+		case EVT_HUD_BATTERY: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 0, 2 }, { 1, 2 }, { 0, 3 }, { 1, 3 } };
+			InfoScrn_ApplyBatteryHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			break;
+		}
+		case EVT_HUD_CLOCK: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, 2 }, { 1, 3 }, { 0, 4 }, { 1, 4 } };
+			InfoScrn_ApplyClockHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode, 0);
+			break;
+		}
+		case EVT_HUD_SCORE: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			break;
+		}
+		case 3:
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this) / 100.0f;
+			break;
+		case EVT_HUD_TIMER: {
+			s32 index = CEvt_Evaluate(this);
+			if (index >= 0) {
+				EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+				InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			} else {
+				switch (index) {
+				case -1:
+					InfoScrn_ShowTimer(&gGame.mInfoScrn);
+					break;
+				case -2:
+					InfoScrn_HideTimer(&gGame.mInfoScrn);
+					break;
+				case -3: {
+					s32 hundredths = CEvt_Evaluate(this);
+					InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, hundredths);
+					break;
+				}
+				case -4:
+					mSelectResult = InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
+					break;
+				}
+			}
+			break;
+		}
+		}
+		break;
+	case EVT_ATOM_ZBLUR: {
+		u8 a0       = CEvt_Evaluate(this);
+		u8 a1       = CEvt_Evaluate(this);
+		s32 offsetX = CEvt_Evaluate(this);
+		s32 offsetY = CEvt_Evaluate(this);
+		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		f32 start   = a0 / 255.0f;
+		f32 end     = a1 / 255.0f;
+		f32 step;
+		if (time == 0.0f) {
+			start = end;
+			step  = 0.0f;
+		} else {
+			step = (end - start) / (gRefreshRate * time);
+		}
+		f32 x = offsetX;
+		f32 y = offsetY;
+		if (start >= 0.0f)
+			gGame.mBlur.mAlpha = start;
+		if (end >= 0.0f)
+			gGame.mBlur.mTarget = end;
+		step                 = __fabsf(step);
+		gGame.mBlur.mOffsetX = x;
+		gGame.mBlur.mOffsetY = y;
+		gGame.mBlur.mSpeed   = step;
+		gGame.mBlur.CalcMtx();
+		break;
+	}
+	case EVT_ATOM_SHAKE: {
+		f32 x0   = CEvt_Evaluate(this) / 100.0f;
+		f32 y0   = CEvt_Evaluate(this) / 100.0f;
+		f32 z0   = CEvt_Evaluate(this) / 100.0f;
+		f32 x1   = CEvt_Evaluate(this) / 100.0f;
+		f32 y1   = CEvt_Evaluate(this) / 100.0f;
+		f32 z1   = CEvt_Evaluate(this) / 100.0f;
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenShake(&gGame.mQuake, x0, y0, z0, x1, y1, z1, time);
+		break;
+	}
+	default:
+		OSPanic(__FILE__, 3987, FormatToStaticBuffer("scrn(%d,...) - unresolved!\n", mode));
+		break;
 	}
 	return 0;
 }
