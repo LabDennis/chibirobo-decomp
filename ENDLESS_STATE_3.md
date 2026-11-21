@@ -1,13 +1,57 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 104 fertig, Branch devin/lane3 @ e75928fa.
-R24J01: 6694/8284 matched, xobjmember 30/64, main.dol OK;
-GC: je 0 Regressionen, disc files OK;
-symbols.txt +26 Eintraege (24 retail-belegte Namen + 2 Vtables).
+Stand: Lauf 105 fertig, Branch devin/lane3 (commit nach Gate).
+R24J01: 6696/8284 matched, xobjmember 32/64, main.dol OK;
+GC: je 0 Regressionen, 17 files OK; symbols.txt +1 (__vt__4TVec).
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores; KEIN matched-Verlust).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 105 — XObjScnCamInitRec-Layout gehoben, Ctor+Dtor 2x 100 % (NEU)
+
+- **+2 auf 100 %:** `__ct__17XObjScnCamInitRecFv`@0x800BF9A4 (0x24) +
+  `__dt__17XObjScnCamInitRecFv`@0x800BF9C8 (0x40), out-of-line in
+  xobjmember.cpp definiert (Unit-Muster wie die XAct-Köpfe).
+- **Layout-Befund (Retail-Ctor):** die alten Skalar-Felder waren
+  falsch — _1C/_48/_58 sind vptr-Slots. Echte Member:
+  `CVec mTarget`@_10 (vptr _1C), `TVec m_3C`@_3C (vptr _48,
+  lbl_802E675C = `__vt__4TVec`, RTTI zeigt auf String "TVec"),
+  `CVec m_4C`@_4C (vptr _58), `CVec m_5C`@_5C (vptr _68).
+  size 0x68 -> 0x6C. Store-Reihenfolge im Ctor = Dekl-Reihenfolge
+  (1C CVec, 48 TVec, 58 CVec, 68 CVec) — MWCC CSE'd die CVec-
+  Vtable-Adresse in ein Register, matcht exakt.
+- **Semantik des Tails (aus fn_800C6CF0/efftrail):** m_3C/m_4C/m_5C
+  sind ein Rotations-Stepper {current,target,speed} — CObjVec-Form,
+  aber KEIN CObjVec-Member (Retail inlined die drei vptr-Stores,
+  ruft nicht den out-of-line CObjVec-Ctor). m_3C.x/.y = z/y-Winkel
+  (efftrail PSMTXRotRad), m_4C.x/.y = Ziel, m_5C.x/.y = Schritt;
+  die .z-Komponenten werden nur genullt, nie gelesen.
+- **Ripple (Shared-Header-Folge):** cgame.h verlor die zwei
+  Kompensations-Pads `_9878[4]`/`_98E4[4]` (0x6C passt jetzt exakt,
+  STATIC_ASSERTs halten _9810/_987C/_98E8). Feldzugriffe auf
+  .x/.y/.z umgeschrieben: xobj_camera.cpp (fn_800C659C 9 Stores,
+  fn_800C6CF0 f32*-Wanderer -> &member.x), xobj_chr.cpp (3),
+  xobjchrmenu.cpp (6), efftrail.cpp (2) — letzteres Bahn-5-Gebiet,
+  erzwungener Minimal-Ripple wie in Lauf 82.
+- **Report-Diff:** +2 bei 100 %; `fn_800C66C8` (xobj_camera,
+  ehrlich NONMATCHING) wackelt 43,48 -> 42,31 fuzzy — dieselbe
+  Einzelscore-Drift-Klasse wie in der Baseline-Notiz; kein
+  matched-Verlust in allen vier Editionen.
+- **Gate:** R24J01 `main.dol: OK` (byte-identisch); `--non-matching`
+  linkt (609/609); GGTE01/GGTJ01_01/GGTP01 je `17 files OK`;
+  callcheck R24J01 49 Eintraege nur bekannter Klassen (savegpr/
+  restgpr-Regfarben, Namensaliase, Overload-Mangling), kein Eintrag
+  in xobjmember/xobjcamera; Format 475 files 0 need formatting
+  (zwei Dateien nachformatiert); symbols.txt keine neue Dublette,
+  +1 `__vt__4TVec` (scope:weak).
+- **Naechster Schritt:** xobjmember-Rest in Adressfolge:
+  dtor_800BF108/dtor_800BF1C0, fn_800BF5F0/fn_800BF614 identifizieren;
+  `__ct__6ParamsFv`@0x800BFA08 (0x10: stw RTTI-Vtable @+0x440,
+  Member @0x999C in WiiPlayerState) und `__ct__8XObjPlugFv`
+  @0x800BFA58 (0x3BC, baut XObjPlugCordNode) emittieren;
+  XObjChr-Ctor 0x800BECE8 (0x1E4) bleibt der Schluessel fuer die
+  grossen Member-Ctors.
 
 ## Lauf 104 — xobjmember: XActRadar + Member-Block benannt (NEU)
 
