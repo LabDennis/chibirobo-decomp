@@ -449,13 +449,7 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-static inline Quaternion GetJointRotation(HSD_JObj* jobj)
-{
-	Quaternion rot;
-	HSD_MtxGetRotation(HSD_JObjGetMtxPtr(jobj), (Vec*)&rot);
-	return rot;
-}
-
+// NONMATCHING: same work; different spill/restore scheduling and argument setup order
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
@@ -516,7 +510,8 @@ void XObjHBox::UpdateObject(u32 frames)
 		s32 path[2] = { 0, 0 };
 		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
 		Vec pos = joint.GetPos();
-		Quaternion rot = GetJointRotation(joint.mJObj);
+		Vec rot;
+		HSD_MtxGetRotation(joint.GetMtx(), &rot);
 		SetPos(pos, 0);
 		SetRotationY(rot.y, 0);
 	}
