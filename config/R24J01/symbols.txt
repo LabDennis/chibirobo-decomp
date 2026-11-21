@@ -122,6 +122,7 @@ SCGetAspectRatio = .text:0x801B80A0; // type:function size:0x54
 SCGetProgressiveMode = .text:0x801B81E0; // type:function size:0x54
 SCGetLanguage = .text:0x801B8174; // type:function size:0x6C
 Update__8FbMirrorFUl = .text:0x8001A0E0; // type:function size:0x2D8
+vfA0__10CMirrorObjFQ34nw4r3g3d7ResNode = .text:0x8001A3C0; // type:function size:0x90
 GetCamera__5CGameFv = .text:0x8001A450; // type:function size:0xC
 Init__8FbSubwinFv = .text:0x8001A704; // type:function size:0x15C
 Reset__8FbSubwinFv = .text:0x8001A860; // type:function size:0x14

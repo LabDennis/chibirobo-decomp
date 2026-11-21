@@ -250,6 +250,14 @@ void FbMirror::Update(u32 frames)
 	}
 }
 
+MtxP CMirrorObj::vfA0(nw4r::g3d::ResNode node)
+{
+	if (mF0 != NULL) {
+		return mF0->mpWorldMtxArray[node.GetMtxID()];
+	}
+	return NULL;
+}
+
 /**
  * @note Address: 0x8001A450
  * @note Size: 0xC
