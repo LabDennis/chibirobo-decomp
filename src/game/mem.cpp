@@ -79,10 +79,8 @@ static inline s32 GetFreeSize()
  * @note Address: 0x801913D8
  * @note Size: 0x4EC
  */
-// the tag static blocks get in the dump. retail pools it ahead of the dump formats even
-// though the code that used it is dead-stripped there, the pooled string stayed
-static const char sStaticBlockName[] = "(static)";
-
+// NONMATCHING: retail's .rodata starts with an unreferenced "(static)" string, so every format string here sits 0xC
+// further in; nothing in this file uses it
 void mm::Dump()
 {
 	OSReport("===============================================================================\n");
