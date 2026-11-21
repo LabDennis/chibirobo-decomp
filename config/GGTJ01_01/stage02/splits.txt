@@ -17,7 +17,7 @@ rel/stage02/rouka.cpp:
 	.text       start:0x00005C40 end:0x0000692C
 	.rodata     start:0x000001D8 end:0x000001F8
 	.data       start:0x00000160 end:0x000001EC
-	.bss        start:0x000016D8 end:0x000016E0
+	.bss        start:0x000016D8 end:0x000016DC
 
 rel/stage02/car.cpp:
 	.text       start:0x0000692C end:0x000081E8
