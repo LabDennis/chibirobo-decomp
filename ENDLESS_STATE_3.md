@@ -1,13 +1,66 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 87 fertig, Branch devin/lane3 @ 4119fefa.
+Stand: Lauf 89 fertig, Branch devin/lane3 @ 9dbe52ed.
 R24J01: 6653/8284 matched, main.dol: OK; GC: je 17 files OK;
-callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
 all-releases@cb115b0c ist Vorfahre.
-Baselines .lane3_baseline/report_<V>.json.
+Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
+aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
+99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 89 — DrawMenuRing 70,7 % + DrawOXMenu 79,2 % (ehrlich NONMATCHING)
+
+- **Commit `9dbe52ed`:** zwei Funktionen in efftrail.cpp in
+  Retail-Adressfolge vor UpdateSpiralTrail.
+- **DrawMenuRing @0x800F0100 (0x45C): 70,7 %.** Wortgleich zur
+  GC-JP-Fassung (obja_chr.cpp): 50 Vec-Vertices, 3 Schleifen a 25,
+  `angle=(TWO_PI/24)*i`, PSMTXMultVecArray, DrawGsTrianglePrimitive
+  (GX_TRIANGLESTRIP, `gGame.mGs.mCamera->mViewMtx`, separate→Paare a 4).
+  REST-WAND: Retail haelt `angle` in f29 ueber sin UND cos (ein fmuls +
+  fmr) und wandert den Vertex-Zeiger (+0x18 statt Indexskalierung), nutzt
+  f25-f31; meine Schreibweise rematerialisiert angle pro Call und
+  indexiert — gleiche Source-Form wie GC, MWCC-Wahl anders.
+- **DrawOXMenu @0x800F055C (0xBB4): 79,2 %.** JP-Geometrie-Pfad
+  (NICHT der PAL-Modellpfad): Fade-Fruehreturn, mChr-Anker via
+  `GetJointWorldPos("neck")` (vtable _23C, rodata-String!) minus
+  `GetPos()->y` (_244), `ProjectOffsetToScreen(_1D4)`. WII-DELTAS:
+  (a) `GetStatusFlags(0x100)`-Zweig → screenX=gPointerScreenWidth/2,
+  screenY=gScreenSafeBottom statt Projektion; (b) zusaetzliche
+  Safe-Area-Schleife (2 Marken-Testpunkte x+90i-45 / y-70*sin(2.268928)-21
+  gegen gScreenSafe{L,R,T,B}) → Out-of-Bounds = Re-Center; (c) pro Marke
+  Pointer-Hint: `mc&2 && i==sel && mStarted>0 && fade==1.0f &&
+  (!(mc&1)||!mPointerValid)` → fn_8002BBD8(&gs,x,yBase+0.2*70) else
+  fn_8002BBDC — `yBase` set=screenY-56 / unset=screenY-70*sin(2.268928*f)-21;
+  (d) Render-State via `gGame.mGs.mCurRenderState->Set{BlendMode,ZMode,
+  CullMode}` (CGsRenderState+0/4/8/C, +14/18/1C, +7C — Stores passen).
+  Scharf-Gate identisch zu UpdateOXMenuTransition (siehe Lauf 87).
+  DrawOXCross = statisches inline mit 2x DrawGsCube(z=50). REST ~20 %:
+  Register-/Scheduling-Residuum ueber die Zwei-Draw-Schleife; kein
+  offensichtlicher Source-Fehler mehr (Konstanten alle dekodiert:
+  2.268928 double-lfd, 70/90/45/21/56/74/1.05/0.55/0.6/0.02/0.36/0.3/
+  0.8/0.1/1.2/0.5/255/150/50/2.0943952/4/10/0.7/0.5/0.2).
+- **`1.0f *`-Hinweis:** Retail emittiert fmadds mit 1.0-Faktor in
+  `screenX + 1.0f*(fade*(90i-45))` und der Bounds-testX — als Literal
+  geschrieben (Skalen-Familie der Funktion), NICHT als Trickserei.
+- **Gate vollstaendig:** 4 Editionen OK (GGTE01/GGTJ01_01/GGTP01 je
+  17 files, R24J01 main.dol), check.py format ok, keine config-Diffs,
+  keine matched-Regression (6653 stabil).
+- **objdiff-cli Aufruf:** Unit-Name ist `main/game/wii/efftrail`
+  (L3_diff.py ohne Praefix schlaegt fehl).
+- **externs in efftrail.cpp:** PSMTXMultVecArray, fn_8002BBD8/DC,
+  gPointerScreenWidth, gScreenSafe{L,R,T,B} (lokale extern-Dekls wie
+  ccameraaction*.cpp); gWiiPointer via wii/cpadact.h.
+- Naechster Schritt: Unit 66 in Adressfolge weiter — StartPointParticles
+  @0x800F1110 (0x250), UpdatePointParticleDisplay @0x800F1360 (0xAF8),
+  DrawPointParticleDisplay @0x800F1E58 (0xE9C), fn_800F2CF4, dann
+  DrawSpiralTrail @0x800F3140 (GC-Vorlage obja_chr.cpp ~97,7 %).
+- Liegt: (a) zentrale .claude/devin/progress.md vom Worktree aus nicht
+  beschreibbar (Tool-Gate) — Eintrag steht hier im Lauf-89-Block;
+  (b) DrawMenuRing/DrawOXMenu Restwaende = Register-/Scheduling-
+  Residuum, klassifiziert (siehe oben) — ggf. spaeterer Permuter-
+  Kandidat, kein Source-Fehler bekannt.
 
 ## Lauf 88 — Unit 66 angelegt: wii/efftrail.cpp, UpdateSpiralTrail 95,9 %
 
