@@ -295,6 +295,85 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 	return count;
 }
 
+/**
+ * @note Address: 0x8015CDFC
+ * @note Size: 0x3E4
+ */
+s32 CCameraActionMap::CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
+{
+	if (out == NULL) {
+		return -1;
+	}
+	memset(out, 0, 32 * sizeof(CamMapEntry));
+	CamAreaRecord* record;
+	s32 numRecords;
+	if (type == 0) {
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
+	}
+	if (type == 1) {
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
+	}
+	CamMapEntry* entry = out;
+	s32 count          = 0;
+	s32* corner;
+	for (s32 i = 0; i < numRecords; i++) {
+		u32 disabled = CamAreaInfo(record).IsDisabled();
+		if (disabled != 0) {
+			record++;
+			continue;
+		}
+		f32 top    = CamAreaInfo(record).GetTop();
+		f32 bottom = CamAreaInfo(record).GetBottom();
+		if (ClassifyAreaHeight(from.y, bottom, top) < 0 && ClassifyAreaHeight(to.y, bottom, top) < 0) {
+			record++;
+			continue;
+		}
+		// while a turn runs, skip the area StartMapCameraTurnInterpolation stored in lbl_805A1D10
+		if (mTurnInterpolation != NULL && i == lbl_805A1D10) {
+			record++;
+			continue;
+		}
+		corner = record->_04[0];
+		for (s32 side = 0; side < 4; side++) {
+			Vec a, b;
+			a.x = corner[0] / 100.0f;
+			a.y = 0.0f;
+			a.z = corner[1] / 100.0f;
+			corner += 2;
+			if (side == 3) {
+				corner = record->_04[0];
+			}
+			b.x       = corner[0] / 100.0f;
+			b.y       = 0.0f;
+			b.z       = corner[1] / 100.0f;
+			Vec end   = to;
+			Vec start = from;
+			Vec hit;
+			s32 intersects = IntersectLinesXZ(&a, &b, &end, &start, &hit, 1);
+			if (intersects && (__fpclassifyf(hit.x) == FP_NAN || __fpclassifyf(hit.y) == FP_NAN || __fpclassifyf(hit.z) == FP_NAN)) {
+				OSPanic("ccameraactionmap2.cpp", 2856,
+				        FormatToStaticBuffer(
+				            "CCameraActionMap ... GetCrossPoint\np1(%f, %f, %f) p2(%f, %f, %f)\nvs(%f, %f, %f) ve(%f, %f, %f)\n(1)\n",
+				            a.x, a.y, a.z, b.x, b.y, b.z, end.x, end.y, end.z, start.x, start.y, start.z));
+			}
+			if (intersects) {
+				Vec normal;
+				GetMapAreaEdgeNormal(a, b, &normal, FALSE);
+				count++;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal      = normal;
+				entry++;
+			}
+		}
+		record++;
+	}
+	return count;
+}
+
 extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, CamMapEntry* entry)
 {
 	// the two neighbours of each of the 4 sides, wraps around
