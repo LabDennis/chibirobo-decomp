@@ -21,9 +21,6 @@ OXMenu::OXMenu()
 {
 	mChr = NULL;
 }
-// NONMATCHING: the mark ctor inlines the whole Wii XObj ctor (~35 member vtable
-// stores, zeroed fields up to _160, CVec writes, a CFile member at _974); it
-// needs the Wii CXObj/XObj class model from the unit_800BD66C work first
 OXMenuMark::OXMenuMark()
 {
 }

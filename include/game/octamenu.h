@@ -4,18 +4,23 @@
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "types.h"
+#include "game/wii/xobj.h"
 
 // Wii OXMenu - partial: the destructor destroys OXMenuMark mMark[2] at _18 with
-// element stride 0x9B8 (retail __destroy_arr in 0x800C1348). Mark internals and the
-// rest of the class are not recovered yet.
+// element stride 0x9B8 (retail __destroy_arr in 0x800C1348). The mark has the
+// GameCube usa/europe layout: three floats and a counter ahead of the embedded
+// object; the retail ctor inlines the whole XObj construction.
 struct OXMenuMark {
-	u8 _0[0x9B8]; // retail element stride; internals unverified
+	f32 mSpin;  // _00
+	f32 mTilt;  // _04
+	f32 mScale; // _08
+	u32 _0C;    // _0C
+	XObj mObj;  // _10
 
 	OXMenuMark();
 	~OXMenuMark();
 };
-
-class XObj;
+STATIC_ASSERT(sizeof(OXMenuMark) == 0x9B8);
 
 class OXMenu {
 public:
