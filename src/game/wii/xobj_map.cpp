@@ -260,7 +260,94 @@ extern "C" void fn_800C9B84(XObjMap* map)
 typedef s32 (*XObjMapSortCmp)(XObjMapSortRec*, XObjMapSortRec*);
 
 extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortRec** c, XObjMapSortCmp* cmp);
-extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp);
+extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp);
+extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp);
+
+// the game's own heap ops the cell grow calls (gamemain.cpp/delete.cpp)
+void* operator new(u32 size) throw();
+void operator delete(void* ptr) throw();
+
+// NONMATCHING: the grow path's three length_error throws are not rebuilt —
+// retail constructs a std::length_error whose message sits in a shared_ptr
+// rep (vtables lbl_80303FA0/lbl_80303FC8/lbl_80303FE4, deleter fn_800C9C7C,
+// exception type lbl_802DA4B4+0x5A), and rvl_msl has no <stdexcept>/<memory>
+// in the repo to spell that with; it also stages the move through a temp
+// vector whose unwind bookkeeping the straightforward code below drops. the
+// cell math, the six-point overlap test, the append, the growth policy and
+// the sort call follow retail
+// 0x800C85EC, the sort-grid build fn_800C7F70 runs once the trigon is big
+// enough: every trigon triangle goes on the record list of each 10x10 cell
+// it overlaps — a triangle counts when one of its corners or edge midpoints
+// falls in the cell's rect — then every cell list is sorted, highest first
+/**
+ * @note Address: 0x800C85EC
+ * @note Size: 0x814
+ */
+extern "C" void fn_800C85EC(XObjMap* map)
+{
+	if (map->mSortValid == 0) {
+		return;
+	}
+	for (s32 i = 0; i < 10.0f; i++) {
+		for (s32 k = 0; k < 10.0f; k++) {
+			XObjMapListB* cell = &map->mListB[i][k];
+			f32 cellX          = i * map->mSortCellX + map->mSortMin.x;
+			f32 cellZ          = k * map->mSortCellZ + map->mSortMin.z;
+			for (u32 t = 0; t < map->mTrigon.mNum; t++) {
+				TRIGON_INFO* tri = &map->mTrigon.mTri[t];
+				Vec v[3];
+				tri->mGetVtx(tri, v);
+				if ((v[0].x >= cellX && v[0].x < cellX + map->mSortCellX && v[0].z >= cellZ && v[0].z < cellZ + map->mSortCellZ)
+				    || (v[1].x >= cellX && v[1].x < cellX + map->mSortCellX && v[1].z >= cellZ && v[1].z < cellZ + map->mSortCellZ)
+				    || (v[2].x >= cellX && v[2].x < cellX + map->mSortCellX && v[2].z >= cellZ && v[2].z < cellZ + map->mSortCellZ)
+				    || ((v[0].x + v[1].x) * 0.5f >= cellX && (v[0].x + v[1].x) * 0.5f < cellX + map->mSortCellX
+				        && (v[0].z + v[1].z) * 0.5f >= cellZ && (v[0].z + v[1].z) * 0.5f < cellZ + map->mSortCellZ)
+				    || ((v[1].x + v[2].x) * 0.5f >= cellX && (v[1].x + v[2].x) * 0.5f < cellX + map->mSortCellX
+				        && (v[1].z + v[2].z) * 0.5f >= cellZ && (v[1].z + v[2].z) * 0.5f < cellZ + map->mSortCellZ)
+				    || ((v[2].x + v[0].x) * 0.5f >= cellX && (v[2].x + v[0].x) * 0.5f < cellX + map->mSortCellX
+				        && (v[2].z + v[0].z) * 0.5f >= cellZ && (v[2].z + v[0].z) * 0.5f < cellZ + map->mSortCellZ)) {
+					XObjMapSortRec rec    = { t, v[0].y + v[1].y + v[2].y };
+					XObjMapSortRec* items = (XObjMapSortRec*)cell->mItems;
+					if (cell->mUsed < cell->mCap) {
+						cell->mUsed++;
+						items[cell->mUsed - 1] = rec;
+					} else {
+						// grow: retail bounds-checks against a 0x1FFFFFFF-entry
+						// max_size and throws std::length_error on both
+						// failures; the capacity steps and the backwards move
+						// are kept, the throws are not (see NONMATCHING)
+						u32 need = (u32)(cell->mUsed + 1 - cell->mCap);
+						u32 newcap;
+						if ((u32)cell->mCap >= 0xAAAAAAA) {
+							newcap = (u32)cell->mCap >= 0x15555554
+							           ? 0x1FFFFFFF
+							           : (u32)cell->mCap + ((u32)(cell->mCap + 1) / 2 > need ? (u32)(cell->mCap + 1) / 2 : need);
+						} else {
+							u32 grow = ((u32)(cell->mCap + 1) * 3) / 5;
+							newcap   = (u32)cell->mCap + (grow > need ? grow : need);
+						}
+						XObjMapSortRec* nb = (XObjMapSortRec*)::operator new(newcap * sizeof(XObjMapSortRec));
+						nb[cell->mUsed]    = rec;
+						u32* dst           = (u32*)nb + cell->mUsed * 2;
+						u32* src           = (u32*)items + cell->mUsed * 2;
+						while (src > (u32*)items) {
+							*--dst = *--src;
+						}
+						cell->mItems = (u32*)nb;
+						cell->mUsed++;
+						cell->mCap = newcap;
+						if (items != NULL) {
+							::operator delete(items);
+						}
+					}
+				}
+			}
+			XObjMapSortRec* first = (XObjMapSortRec*)cell->mItems;
+			XObjMapSortRec* last  = first + cell->mUsed;
+			fn_800C8E00(&first, &last, fn_800C85D4);
+		}
+	}
+}
 
 // the record introsort the grid build runs once over each finished cell list:
 // the MSL algorithm's sort, but the caller's iterator slots and the comparator
@@ -273,7 +360,7 @@ extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XOb
  * @note Address: 0x800C8E00
  * @note Size: 0x4A8
  */
-extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp)
+extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp)
 {
 	static int shuffle = -4;
 
@@ -312,7 +399,7 @@ extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XOb
 			shuffle = -4;
 		}
 		XObjMapSortRec* j = last - 1;
-		fn_800C9750(&m, &i1, &j, cmp);
+		fn_800C9750(&m, &i1, &j, &cmp);
 
 		m  = first;
 		i1 = j;
@@ -401,7 +488,7 @@ extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XOb
  * @note Address: 0x800C92A8
  * @note Size: 0x4A8
  */
-extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp)
+extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp)
 {
 	static int shuffle = -4;
 
@@ -440,7 +527,7 @@ extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XOb
 			shuffle = -4;
 		}
 		XObjMapSortRec* j = last - 1;
-		fn_800C9750(&m, &i1, &j, cmp);
+		fn_800C9750(&m, &i1, &j, &cmp);
 
 		m  = first;
 		i1 = j;
