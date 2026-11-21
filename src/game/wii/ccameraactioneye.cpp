@@ -318,31 +318,9 @@ void CCameraActionEye::Update(u32 step)
 			static f32 sPrevZoomSpeed = 0.0f;
 			f32 stick                 = pad.mPad->mStick.y;
 			if (__fabsf(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
-				f32 alpha = -1.0f;
-				if (alpha >= 0.0f) {
-					gGame.mBlur.mAlpha = alpha;
-				}
-				f32 target = 0.0f;
-				if (target >= 0.0f) {
-					gGame.mBlur.mTarget = target;
-				}
-				gGame.mBlur.mOffsetX = 2.0f * -stick;
-				gGame.mBlur.mOffsetY = 2.0f * -stick;
-				gGame.mBlur.mSpeed   = __fabsf(0.1f);
-				gGame.mBlur.CalcMtx();
+				gGame.mBlur.Start(-1.0f, 0.0f, 2.0f * -stick, 2.0f * -stick, 0.1f);
 			} else { // zooming: kick the blur to 0.8, it decays back to 0
-				f32 alpha = 0.8f;
-				if (alpha >= 0.0f) {
-					gGame.mBlur.mAlpha = alpha;
-				}
-				f32 target = 0.0f;
-				if (target >= 0.0f) {
-					gGame.mBlur.mTarget = target;
-				}
-				gGame.mBlur.mOffsetX = 2.0f * -stick;
-				gGame.mBlur.mOffsetY = 2.0f * -stick;
-				gGame.mBlur.mSpeed   = __fabsf(0.1f);
-				gGame.mBlur.CalcMtx();
+				gGame.mBlur.Start(0.8f, 0.0f, 2.0f * -stick, 2.0f * -stick, 0.1f);
 			}
 			sPrevZoomSpeed = speedZ;
 		}
