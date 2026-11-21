@@ -9,6 +9,7 @@
 
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjcamera.h"
 #include "game/globals.h"
 #include "game/ut.h"
 
@@ -29,36 +30,6 @@ extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase,
 	         || ((u32)(exp) & 0xFF000000) == 0xC0000000 || ((u32)(exp) & 0xFF800000) == 0xC1000000                                         \
 	         || ((u32)(exp) & 0xF8000000) == 0xD0000000 || ((u32)(exp) & 0xFFFFC000) == 0xE0000000)                                        \
 	        || (nw4r::db::Panic(__FILE__, line, "NW4R:Pointer Error\n" #exp "(=%p) is not valid pointer.", (exp)), 0)))
-
-// the small scene-camera record this file's functions work with: Init fills it with
-// its defaults; the class name and its other members are not recovered
-struct XObjScnCamInitRec {
-	u16 m_00;
-	s16 mSnap[2]; // _02, fn_800C6CF0's per-axis snap counters
-	u16 m_06;
-	XObj* m_08;
-	XObj* m_0C;  // the object the aim tracks when set
-	Vec mTarget; // _10, a fixed aim position; x stays NAN when unused
-	u32 m_1C;
-	CCamera* m_20; // the camera the aim falls back to
-	f32 m_24;
-	f32 m_28;
-	f32 m_2C;
-	f32 m_30;
-	f32 m_34;
-	f32 m_38;
-	f32 m_3C;
-	f32 m_40;
-	f32 m_44;
-	u32 m_48;
-	f32 m_4C;
-	f32 m_50;
-	f32 m_54;
-	u32 m_58;
-	f32 m_5C;
-	f32 m_60;
-	f32 m_64;
-};
 
 extern "C" void fn_800C659C(XObjScnCamInitRec* self, XObj* obj)
 {

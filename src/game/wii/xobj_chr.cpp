@@ -8,6 +8,7 @@
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjcamera.h"
 #include "game/wii/cgame.h"
 #include "game/xobjattachment.h"
 #include "game/wii/xchrmenu.h"
@@ -182,7 +183,6 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 	return ret;
 }
 
-struct XObjScnCamInitRec; // xobj_camera.cpp's camera aim record
 class EnvInfo;
 
 extern "C" {
@@ -2749,6 +2749,142 @@ void XObjChr::ClearBaseMtx()
 	for (int i = 0; i < 9; i++) {
 		chr->mSuits.mObjects[i].ClearBaseMtx();
 	}
+}
+
+// one of his tools is out
+static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
+{
+	switch (item) {
+	case 0x10:
+		return IsCarryingToothbrush(&chr->mLift);
+	case 0x16:
+		return IsCarryingMug(&chr->mLift);
+	case 0x15:
+		return IsCarryingSpoon(&chr->mLift);
+	default:
+		return IsCarryingSquirter(&chr->mLift);
+	}
+}
+
+// he can use the tool, he has it or it is out
+static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
+{
+	s32 has = 1;
+	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
+		has = 0;
+	return has;
+}
+
+static inline void SetAttachmentOn(AttachmentValues* values, s32 id, s32 on)
+{
+	s32 index = values->Find(id);
+	if (index >= 0)
+		values->mEntries[index].mValue = on;
+}
+
+// which of his tools he can use, he has them or one of them is going; the
+// GameCube's UpdateAttachmentAvailability, only ever inlined here on the Wii
+static inline void UpdateAttachmentAvailability(AttachmentValues* values)
+{
+	WiiPlayerState* chr = gGame.GetPlayer();
+	SetAttachmentOn(values, 4, CanUseTool(chr, 0x10));
+	SetAttachmentOn(values, 6, CanUseTool(chr, 0x16));
+	SetAttachmentOn(values, 5, CanUseTool(chr, 0x15));
+	SetAttachmentOn(values, 7, CanUseTool(chr, 0x38));
+	SetAttachmentOn(values, 8, FALSE);
+}
+
+// the count for an attachment id, -1 when it isn't in the list
+// NONMATCHING: register allocation only (values in r29 vs retail's r30 and
+// vice versa), the inlined Find/CanUseTool chains are instruction-identical
+/**
+ * @note Address: 0x800E84BC
+ * @note Size: 0x5E4
+ */
+extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
+{
+	s32 index = values->Find(id);
+	if (index >= 0) {
+		UpdateAttachmentAvailability(values);
+		return values->mEntries[index].mValue;
+	}
+	return -1;
+}
+
+// OctaMenu::Open, ahead of the two menus that inline it; the Wii's head aim is the
+// scene-camera record at WiiPlayerState _987C (snapped to its neutral angle here,
+// released in Select), not the GameCube's neck/head CJointRot pair
+// NONMATCHING: register allocation in the head-aim block (mChr held in r7 vs
+// retail's r6), the instruction stream is otherwise identical
+/**
+ * @note Address: 0x800E9304
+ * @note Size: 0x2AC
+ */
+void OctaMenu::Open(s32 focus)
+{
+	if (mOpen == 0) {
+		mOpeningHeading        = mChr->mMoveRotate.y;
+		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)mChr)->_987C;
+		aim->mSnap[0] = aim->mSnap[1] = 1;
+		aim->m_0C                     = NULL;
+		aim->mTarget.x                = NAN;
+		aim->m_20                     = NULL;
+		aim->m_24                     = 0.0f;
+		aim->m_28                     = 0.0f;
+	}
+	mOpen  = 1;
+	mFocus = focus;
+	if (mFocus != 0) {
+		mGlow = 1.0f;
+	}
+	Vec offset = { 0.0f, 8.8f, 0.0f };
+	mChr->ProjectOffsetToScreen(&offset, &mOpenScreenX, &mOpenScreenY, NULL, NULL);
+	for (int i = 0; i < 8; i++) {
+		mItems[i].mPulsePhase = DEG2RAD * (rand() % 360);
+		mItems[i]._0C         = DEG2RAD * (rand() % 360);
+		mItems[i].mScale      = mFocus != 0 ? 0.3f : 0.5f;
+	}
+	mCursorIndex = -1;
+	mLabelLength = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(mLabelChars); i++) {
+		mLabelChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mLabelChars[i].mAngle1 = DEG2RAD * (rand() % 360);
+	}
+	mChr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	mPointedItem = mPreviousPointedItem = -1;
+}
+
+// OctaMenu::Select, closes the ring and turns chibi robo back
+// NONMATCHING: register/schedule noise only, the instruction stream is identical
+/**
+ * @note Address: 0x800E95B0
+ * @note Size: 0x11C
+ */
+void OctaMenu::Select(s32 result)
+{
+	if (result > 0 && mFocus == 0)
+		mOpen = -1;
+	else
+		mOpen = -2;
+	mPendingFirstVisibleItem = -1;
+	mFocus                   = 0;
+	if (((WiiPlayerState*)mChr)->mTumble.mState == 0) {
+		mChr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		mChr->SetRotateY(mOpeningHeading, DEG2RAD * 12.0f);
+		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)mChr)->_987C;
+		aim->mSnap[0] = aim->mSnap[1] = 2;
+		aim->m_0C                     = NULL;
+		aim->mTarget.x                = NAN;
+		aim->m_20                     = NULL;
+		aim->m_24                     = NAN;
+		aim->m_28                     = NAN;
+		aim->m_2C                     = 0.0f;
+		aim->m_30                     = 0.0f;
+		aim->m_4C                     = 0.0f;
+		aim->m_50                     = 0.0f;
+		aim->m_54                     = 0.0f;
+	}
+	mPointedItem = mPreviousPointedItem = -1;
 }
 
 // nothing to decide on the base menu
