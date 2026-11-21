@@ -131,9 +131,6 @@ extern f64 log(f64);
 #define ASSERT_SYNTH_MSG(line, cond, msg)    ((cond) ? ((void)0) : __assert(__FILE__, line, msg))
 #define ASSERT_SYNTH_REPORT(line, cond, ...) ((cond) ? (void)0 : (OSReport(__VA_ARGS__), __assert(__FILE__, line, #cond)))
 
-// the report a load with a bad bank id prints
-static const char sSynthInvalidBankMessage[] = "invalid bankID = %d; filename = %s\n";
-
 #define USERVOL_NUM          2
 #define USERPAN_NUM          2
 #define HSD_SYNTHSFXNODE_MAX 0x40
@@ -786,7 +783,7 @@ s32 HSD_SynthSFXLoad(const s8* filename, s32 bankID, void (*callback)(s32, s32),
 	s32 entrynum;
 	u32 enabled;
 
-	ASSERT_SYNTH_REPORT(0x18F, (bankID >= 0 && bankID < hsd_SynthSFXBankNum), sSynthInvalidBankMessage, bankID, filename);
+	ASSERT_SYNTH_REPORT(0x18F, (bankID >= 0 && bankID < hsd_SynthSFXBankNum), "invalid bankID = %d; filename = %s\n", bankID, filename);
 
 	entrynum = DVDConvertPathToEntrynum(filename);
 	if (entrynum != -1) {
