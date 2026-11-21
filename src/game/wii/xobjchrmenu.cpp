@@ -5,6 +5,8 @@
 #include "game/wii/xchrmenu.h"
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
+#include "game/wii/cpad.h"
+#include "game/wii/cpadact.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xobjcamera.h"
 #include "game/xobjattachment.h"
@@ -345,8 +347,178 @@ u32 DrsMenu::GetItemColor(s32 index)
 	return ((u32)red << 24) | ((u8)green << 16) | ((u8)blue << 8);
 }
 
-// UpdatePlayerEquipmentRings (0x800EDF8C), DrawPlayerEquipmentRings (0x800EE8B0):
-// the pointer-driven ring drivers, still to reconstruct
+extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active);
+extern "C" void UpdateEquipmentRingAnimation(OctaMenu* menu, u32 frames);
+extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
+
+extern s32 gRefreshRate;
+
+// the ring accepts menu input while fully faded in and past its opening glow
+static inline u8 RingReady(const OctaMenu& ring)
+{
+	return ring.mOpen > 1 && (ring.mGlow == 0.0f || ring.mGlow == 1.0f);
+}
+
+static inline BOOL CanSelectEquipmentRing(const XObjChrMenu* menu)
+{
+	return RingReady(menu->mAtc) || RingReady(menu->mDrs);
+}
+
+static inline void FocusEquipmentRing(XObjChrMenu* menu)
+{
+	if (menu->mSel == 0) {
+		menu->mAtc.mFocus       = 0;
+		menu->mDrs.mFocus       = 1;
+		menu->mDrs.mCursorIndex = -1;
+	} else {
+		menu->mAtc.mFocus       = 1;
+		menu->mAtc.mCursorIndex = -1;
+		menu->mDrs.mFocus       = 0;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+}
+
+static inline void FadeEquipmentRingIn(XObjChrMenu* menu, u32 frames)
+{
+	f32 fade    = menu->mFade + (1.0f / (0.18f * gRefreshRate)) * frames;
+	menu->mFade = fade;
+	if (fade >= 1.0f)
+		menu->mFade = 1.0f;
+}
+
+static inline void FadeEquipmentRingOut(XObjChrMenu* menu, u32 frames)
+{
+	f32 fade    = menu->mFade - (1.0f / (0.25f * gRefreshRate)) * frames;
+	menu->mFade = fade;
+	if (fade <= 0.0f)
+		menu->mFade = 0.0f;
+}
+
+// the pair of rings, pointer-driven on the Wii: the GameCube's UpdatePlayerEquipmentRings.
+// mSel 0 is the attachment row on top, 1 the costume row; with the remote's
+// pointer the rings follow mPointedItem, on pad buttons the remote's dpad or the
+// X/L/R equivalents switch rows
+// NONMATCHING (~94%): register/scheduling/pool wall like the rest of the unit —
+// float refs land on local @labels instead of retail's named sdata2 globals
+// (they resolve once the unit owns its .sdata2), the 0x4330 u32→f64 magic and
+// the sound-call sites reschedule, and MWCC caches the second
+// gGame.mEvt.mData.mScript check in a bool where retail reloads it
+/**
+ * @note Address: 0x800EDF8C
+ * @note Size: 0x924
+ */
+extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
+{
+	BOOL active = gGame.mEvt.mData.mScript == NULL;
+	if (CanSelectEquipmentRing(menu)) {
+		if (gGame.mMenuControls & 1) {
+			menu->mAtc.UpdatePointedItem(active);
+			menu->mDrs.UpdatePointedItem(active);
+		}
+		if (active) {
+			if (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid) {
+				if (menu->mAtc.mMenuType == 3) {
+					if ((gGame.mMenuControls & 2) && !(gWiiPointer.mButton & 0x0000100000000001)
+					    && !(gWiiPointer.mButton & 0x0000200000000002)) {
+						if (gWiiPointer.Check(4) && (menu->mSel == 1 || menu->mSel < 0)) {
+							if (menu->mDrs.mPointedItem < 0) {
+								menu->mSel              = 0;
+								menu->mAtc.mFocus       = 0;
+								menu->mDrs.mFocus       = 1;
+								menu->mDrs.mCursorIndex = -1;
+							} else {
+								menu->mAtc.mFocus       = -1;
+								menu->mAtc.mCursorIndex = -1;
+								menu->mDrs.mFocus       = 0;
+							}
+							PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+						}
+						if (gWiiPointer.Check(8) && (menu->mSel == 0 || menu->mSel < 0)) {
+							if (menu->mAtc.mPointedItem < 0) {
+								menu->mSel              = 1;
+								menu->mAtc.mFocus       = 1;
+								menu->mAtc.mCursorIndex = -1;
+								menu->mDrs.mFocus       = 0;
+							} else {
+								menu->mAtc.mFocus       = menu->mAtc.mPointedItem;
+								menu->mDrs.mFocus       = 1;
+								menu->mDrs.mCursorIndex = menu->mAtc.mPointedItem;
+							}
+							PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+						}
+					}
+				} else if (gWiiPointer.mTrigger & 0x6400000000000200) {
+					menu->mSel = (menu->mSel + 1) % 2;
+					FocusEquipmentRing(menu);
+				}
+			}
+		}
+	}
+	if (RingReady(menu->mAtc) && RingReady(menu->mDrs)) {
+		menu->mAtc.mHeadTurn = NAN;
+		menu->mDrs.mHeadTurn = NAN;
+	} else {
+		menu->mAtc.mHeadTurn = 0.0f;
+		menu->mDrs.mHeadTurn = 0.0f;
+	}
+	s32 result;
+	if (menu->mSel == 0) {
+		result = HandleEquipmentRingInput(&menu->mAtc, active);
+		if (result == 0 && HandleEquipmentRingInput(&menu->mDrs, active) != 0) {
+			menu->mSel = (menu->mSel + 1) % 2;
+			FocusEquipmentRing(menu);
+		}
+		if (!active) {
+			menu->mDrs.mLastPointedItem       = menu->mAtc.mLastPointedItem;
+			menu->mDrs.mKeepPointedItemOnOpen = 0;
+		}
+	} else {
+		result = HandleEquipmentRingInput(&menu->mDrs, active);
+		if (result == 0 && HandleEquipmentRingInput(&menu->mAtc, active) != 0) {
+			menu->mSel = (menu->mSel + 1) % 2;
+			FocusEquipmentRing(menu);
+		}
+		if (!active) {
+			menu->mAtc.mLastPointedItem       = menu->mDrs.mLastPointedItem;
+			menu->mAtc.mKeepPointedItemOnOpen = 0;
+		}
+	}
+	if (menu->mAtc.mOpen > 0) {
+		// he turns to face the camera, except in first person
+		if (gGame.GetStatusFlags(0x100) == 0) {
+			gGame.GetPlayer()->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, DEG2RAD * 8.0f);
+		}
+		if (gGame.mEvt.mData.mScript == NULL && gWiiPointer.Check(2)) {
+			result = -1;
+		}
+	}
+	if (result != 0) {
+		ClosePlayerEquipmentRings(menu, result);
+	}
+	UpdateEquipmentRingAnimation(&menu->mAtc, frames);
+	UpdateEquipmentRingAnimation(&menu->mDrs, frames);
+	if (menu->IsOpen()) {
+		if (menu->IsOpening()) {
+			if (menu->mFade < 1.0f) {
+				if (menu->mAtc.mMenuType == 3) {
+					if (menu->mSel >= 0) {
+						FadeEquipmentRingIn(menu, frames);
+					} else {
+						FadeEquipmentRingOut(menu, frames);
+					}
+				} else {
+					FadeEquipmentRingIn(menu, frames);
+				}
+			}
+		} else if (menu->IsClosing() && menu->mFade > 0.0f) {
+			FadeEquipmentRingOut(menu, frames);
+		}
+	} else if (gGame.GetStatusFlags(0x400)) {
+		// both rings are shut, clear the menu flag OpenMenus set
+		gGame.ClearStatusFlags(0x400);
+		gGame.GetPlayer()->mPad.Update(gWiiGameCubePads, 0);
+	}
+}
 
 /**
  * @note Address: 0x800EF2AC
