@@ -1036,7 +1036,8 @@ struct WiiPlayerState : public XObj {
 	WiiPlayerSuits mSuits;     // _DC50
 	WiiSuitPart mSuitParts[9]; // _134B8, by suit
 	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad
-	u8 _19E90[8];              // _19E90
+	BOOL mPadReset;            // _19E90, the GameCube's mPad.mReset, moved behind the Wii pad
+	u8 _19E94[4];              // _19E94
 	f32 mWalkHeading;          // _19E98, NANed until he walks
 	u8 mAttachments[0x48];     // _19E9C
 	XObjChrMenu mMenu;         // _19EE4, the attachment and costume rings
@@ -1045,7 +1046,12 @@ struct WiiPlayerState : public XObj {
 	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
 	// writers are decoded so far, the word reads as a whole
 	u32 mOnGround; // _1B7B8
-	u8 _1B7BC[0x1C990 - 0x1B7BC];
+	u8 _1B7BC[0x1C980 - 0x1B7BC];
+	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
+	u8 _1C982[2];          // _1C982
+	s32 mSavedTargetAnim;  // _1C984, its playing anim
+	s32 mSavedTargetState; // _1C988, mLift's target state at the release
+	u8 _1C98C[0x1C990 - 0x1C98C];
 	BOOL mBatteryDrains;  // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent; // _1C994
 	union {

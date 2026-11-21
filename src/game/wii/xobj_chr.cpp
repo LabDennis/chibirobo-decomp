@@ -208,6 +208,7 @@ void ResetTumbleAction(XActTumble* act);
 void ResetPlayerRadarAction(XActRadar* act);
 void ResetPopperCharge(XActPopperCharge* charge);
 void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
+void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object's own file, then releases the archive
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
@@ -694,6 +695,76 @@ void ApplyPlayerSuit(WiiPlayerState* player)
 	} else {
 		player->SetAnim(17, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 		player->mIdleLoops = 3;
+	}
+}
+
+// NONMATCHING (96 %): same instruction multiset, call set and control flow; retail keeps this in
+// r31 and the unit string table lbl_802DAA6C in r30, this build swaps both down one register
+// (this in r30, the two new strings at the top of the pool in r29) — closes with unit
+// completeness, as in ApplyPlayerSuit and UpdatePlayerSuitChange
+
+// _40, the GameCube's XObjChr::Release with RemovePlayerSuit folded in: the player flags and
+// the pad reset, the base matrix, the carried object's saved state, both animation archives,
+// the four attachments back on his own joints, the worn suit and the event script
+void XObjChr::Release()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	chr->mPadReset      = TRUE;
+	chr->mPlayerFlags   = 0;
+	chr->mPlayerFlags |= 0x20000000;
+	chr->mPlayerFlags |= 7;
+	if (HasModel()) {
+		ClearBaseMtx();
+	}
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 8) {
+				chr->mSavedTarget      = target->GetObjFlags();
+				chr->mSavedTargetAnim  = chr->mLift.mTarget->GetAnimId();
+				chr->mSavedTargetState = chr->mLift.mTargetState;
+			}
+		}
+	} else {
+		switch (chr->GetAttachment()) {
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			chr->mAttachment = 0;
+			break;
+		}
+	}
+	fn_800AF12C(this);
+	if (chr->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+		chr->mAttachmentAnm.mAnm.Release(TRUE);
+		chr->mAttachmentAnm.mAnm.mFile.Close();
+	}
+	if (chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		chr->mSuitAnm.mAnm.Release(TRUE);
+		chr->mSuitAnm.mAnm.mFile.Close();
+	}
+	s32 anim  = GetAnimId();
+	f32 frame = GetAnimFrame();
+	ClearAnim();
+	((XObjAttachment*)chr->mCopterObj)->SetParent(GetWorldMtx("head"), FALSE);
+	((XObjAttachment*)chr->mPopperObj)->SetParent(GetWorldMtx("l_arm_chn"), FALSE);
+	((XObjAttachment*)chr->mRadarObj)->SetParent(GetWorldMtx("head"), FALSE);
+	((XObjAttachment*)chr->mOXObj)->SetParent(GetWorldMtx("head"), FALSE);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		if (chr->GetAttachment() == 2) {
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].vf290(FALSE);
+		}
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].ClearAnim();
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].Release();
+	}
+	if (chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		chr->mSuitAnm.mAnm.Release(TRUE);
+		chr->mSuitAnm.mAnm.mFile.Close();
+	}
+	SetAnim(anim, TRUE, frame, 1.0f, 1.0f, 15.0f);
+	if (chr->mEvt.mData.mScript != NULL) {
+		ResetEventScriptState(&chr->mEvt, FALSE, FALSE, FALSE, FALSE);
 	}
 }
 

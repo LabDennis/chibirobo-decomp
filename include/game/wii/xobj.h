@@ -1884,6 +1884,7 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
+	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
