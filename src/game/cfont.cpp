@@ -199,10 +199,12 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
 			}
 		}
 		if (image == NULL) {
-			for (s32 i = 0; i < 50; i++) { // the 50-entry dynamic cache
+			s32 i                = 0;
+			FontGlyphCache* cache = &gDynamicFontGlyphCache;
+			for (; i < 50; i++) { // the 50-entry dynamic cache
 				if (code == gDynamicFontGlyphCache.glyphs[i].code) {
-					image   = &gDynamicFontGlyphCache.glyphs[i];
-					advance = gDynamicFontGlyphCache.glyphs[i].width;
+					image   = &cache->glyphs[i];
+					advance = cache->glyphs[i].width;
 					break;
 				}
 			}
@@ -477,7 +479,10 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
  * @note Address: 0x8019EC40
  * @note Size: 0x738
  */
-// NONMATCHING: retail's .rodata starts with 0x18 unreferenced zero bytes, so every template and string sits 0x18 further in
+// retail's pool anchor for Init: six zero words ahead of the templates, the code only
+// ever reads from 0x18 on. whatever produced them is gone from the retail link too,
+// they stay so the pool layout lines up
+static const u32 sFontPoolAnchor[6] = { 0, 0, 0, 0, 0, 0 };
 #if defined(VERSION_JP)
 void CFont::Init()
 #else

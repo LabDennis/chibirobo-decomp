@@ -66,6 +66,10 @@ AnimSfxEvent sArmyF8SoundEvents[] = {
 
 } // extern "C"
 
+// zero vectors the shot facing and the shot marker rotation start from
+static const Vec sArmyShotFacingOrigin   = { 0.0f, 0.0f, 0.0f };
+static const Vec sArmyShotMarkerRotation = { 0.0f, 0.0f, 0.0f };
+
 // the y angle that looks from to at from, 0 when they're on top of each other
 static inline f32 GetAngleY(const Vec& from, const Vec& to)
 {
@@ -148,14 +152,21 @@ static inline void SetMode(XObjArmy* army, s32 mode)
  * @note Address: 0x800E6A5C
  * @note Size: 0x114
  */
-// NONMATCHING: retail keeps the volume in its own saved register (li/mr r29)
-// and loads the joint before the anim id; this build re-extends the volume.
+static inline void UpdateArmyAnimationSound(XObjArmy* army, s32 id, u8 volume)
+{
+	f32 frame = GetAnimFrame(army->mJObj);
+	army->mSfx.Update(id, frame, volume);
+}
 
 void XObjArmy::UpdateAnimationSounds()
 {
-	u8 volume = (mFlags.mFlags & 0x100) ? 0xFF : GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
-	s32 anim  = mAnimId;
-	mSfx.Update(anim, GetAnimFrame(mJObj), volume);
+	u8 volume;
+	if (mFlags.mFlags & 0x100) {
+		volume = 255;
+	} else {
+		volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
+	}
+	UpdateArmyAnimationSound(this, mAnimId, volume);
 }
 
 extern "C" {
@@ -373,7 +384,7 @@ void FireNextArmyShot(XObjArmy* army)
 	s32 path[6] = { 0, 0, 4, 0, 0, 0 };
 	GetJointFromRoot(army->mJObj, 6, path); // the result goes unused
 	pos        = army->mMoveTranslate;
-	Vec facing = { 0.0f, 0.0f, 0.0f };
+	Vec facing = sArmyShotFacingOrigin;
 	facing.x   = sin(HSD_JObjGetRotationY(army->mJObj));
 	facing.z   = cos(HSD_JObjGetRotationY(army->mJObj));
 	dir        = CVec(facing);
@@ -666,7 +677,7 @@ void XObjArmy::DrawObjectEffects()
 				gs->mBillboardEnabled = 1;
 				Vec pos               = mShots[i].mPos;
 				SetGsBlendMode(gs->mCurRenderMode, 1, 1, 1, 15);
-				Vec rot = { 0.0f, 0.0f, 0.0f };
+				Vec rot = sArmyShotMarkerRotation;
 				DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0xFF, pos.x, pos.y, pos.z, 3.0f, 3.0f, rot.x, rot.y, rot.z);
 				gs->mBillboardEnabled = 0;
 			} else {

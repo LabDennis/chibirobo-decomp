@@ -172,7 +172,7 @@ f64 x, y;
 	int hx, hy, ix, iy;
 	u32 lx, ly;
 
-	i0 = ((*(int*)&one) >> 29) ^ 1;
+	i0 = 0;
 	i1 = 1 - i0;
 	hx = __HI(x);
 	lx = __LO(x);

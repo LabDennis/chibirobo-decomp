@@ -82,6 +82,8 @@ class ResMdl;
 
 // what the world callback writes for a node, as far as the game uses it
 struct ChrAnmResult {
+	MtxP mMtx; // _00, the node's world matrix the callback fills
+
 	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
 	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
 };
@@ -330,6 +332,43 @@ struct ResAnmScnData {
 	u16 mNumFrame; // _34
 };
 
+// a light set of a scene animation, as far as LIGHT reads it: a plain handle like the other
+// shims here, so ResAnmScn::GetResLightSet hands it back in r3
+struct ResLightSetData {
+	static const u32 INVALID_ID = 0xFFFF;
+
+	u8 _00[0x1A];
+	u8 numLight;              // _1A
+	u8 _1B[0x3C - 0x1B];
+	u16 lightId[8];           // _3C, INVALID_ID for an empty slot
+};
+
+class ResLightSet {
+public:
+	ResLightSetData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	const ResLightSetData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_reslightset_ac.h", 39, "%s::%s: Object not valid.", "ResLightSet", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetNumLight() const { return ref().numLight; }
+	u32 GetLightID(u32 index) const
+	{
+		if (index > ref().numLight - 1) {
+			db::Panic("g3d_reslightset_ac.h", 113, "index is out of bounds(%d)\n%d <= index <= %d not satisfied.", index, 0,
+			          ref().numLight - 1);
+		}
+		if (ref().lightId[index] == ResLightSetData::INVALID_ID) {
+			db::Panic("g3d_reslightset_ac.h", 114, "NW4R:Failed assertion ref().lightId[index] != DataType::INVALID_ID");
+		}
+		return ref().lightId[index];
+	}
+};
+
 class ResAnmScn {
 public:
 	void* mpData; // _00
@@ -343,6 +382,8 @@ public:
 		return *(const ResAnmScnData*)mpData;
 	}
 	u16 GetNumFrame() const { return ref().mNumFrame; }
+	ResLightSet GetResLightSet(u32 idx) const;
+	u32 GetResLightSetNumEntries() const;
 	bool Bind(const ResAnmScn scene); // 0x80265718
 	void Release();
 	bool Bind() { return Bind(*this); }
@@ -754,17 +795,61 @@ public:
 	static AnmObjShpRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmShp shp, ResMdl mdl, bool cache);
 };
 
-// the scene animation (lights, fog, cameras)
+// nw4r's light object, as far as LIGHT reads it: the enable flag in front of the GX light
+class LightObj {
+public:
+	LightObj()
+	    : mFlag(0)
+	{
+	}
+	~LightObj() { }
+
+	bool IsEnable() const { return (mFlag & FLAG_ENABLE_LIGHT) ? true : false; }
+
+private:
+	enum LightObjFlag { FLAG_ENABLE_LIGHT = (1 << 2) };
+
+	u32 mFlag;       // _00
+	GXLightObj mObj; // _04
+};
+
+class AnmScnRes;
+
+// the scene animation (lights, fog, cameras); the virtuals in nw4r's order through GetLight,
+// nothing past it is needed yet
 class AnmScn : public G3dObj {
 public:
-	virtual void SetFrame(f32 frame);     // _1C
-	virtual f32 GetFrame() const;         // _20
-	virtual void SetUpdateRate(f32 rate); // _24
+	virtual void SetFrame(f32 frame);                      // _1C
+	virtual f32 GetFrame() const;                          // _20
+	virtual void SetUpdateRate(f32 rate);                  // _24
+	virtual f32 GetUpdateRate() const;                     // _28
+	virtual void UpdateFrame();                            // _2C
+	virtual AnmScnRes* Attach(int idx, AnmScnRes* pRes);   // _30
+	virtual AnmScnRes* Detach(int idx);                    // _34
+	virtual u32 GetNumLightSet() const;                    // _38
+	virtual u32 GetNumAmbLight() const;                    // _3C
+	virtual u32 GetNumDiffuseLight() const;                // _40
+	virtual u32 GetNumSpecularLight() const;               // _44
+	virtual u32 GetNumFog() const;                         // _48
+	virtual u32 GetNumCamera() const;                      // _4C
+	virtual u32 GetLightSetMaxRefNumber() const;           // _50
+	virtual u32 GetAmbLightMaxRefNumber() const;           // _54
+	virtual u32 GetDiffuseLightMaxRefNumber() const;       // _58
+	virtual u32 GetFogMaxRefNumber() const;                // _5C
+	virtual u32 GetCameraMaxRefNumber() const;             // _60
+	virtual void vf064();                                  // _64, GetLightSet
+	virtual void vf068();                                  // _68, GetAmbLightColor
+	virtual void GetLight(LightObj* pDiff, LightObj* pSpec, u32 refNumber); // _6C
 };
 
 class AnmScnRes : public AnmScn {
 public:
 	static AnmScnRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmScn scn, bool cache);
+
+	// inline: retail's only copy is in the game's range
+	virtual u32 GetNumLightSet() const { return mRes.GetResLightSetNumEntries(); } // _38
+
+	ResAnmScn GetResAnm() { return mRes; }
 
 	u8 _0C[0x20 - 0x0C];
 	ResAnmScn mRes; // _20, the resource it plays; IsAnmScnEnd reads its frame count
@@ -974,7 +1059,8 @@ public:
 	f32 mLimitNegX; // _10
 	f32 mLimitPosZ; // _14
 	f32 mLimitNegZ; // _18
-	u8 _1C[4];
+	// _1C, the GameCube XObj's own mMarkerOverride: scripts override the object's map marker with it
+	s32 mMarkerOverride;
 
 	// _20, XObj::SetColor writes them (verified at 0x800B67F8); the rest of the queue's
 	// members are not yet recovered
@@ -1191,7 +1277,7 @@ STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
 
 class XObj : public CObj {
 public:
-	XObj();
+	XObj() { } // everything is the member classes' own constructors; retail inlines this at every construction site
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
 	virtual ~XObj() { }
@@ -1218,8 +1304,9 @@ public:
 	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198();
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
-	virtual void vf1A0();
-	virtual void vf1A4();
+	// _1A0, the GameCube's ApplyMaterialPresets: SYSCALL_SET_OBJSTAT's 0x20000 passes the object's material bits
+	virtual void ApplyMaterialPresets(u32 flags[5]);
+	virtual void SetDestinationAlpha(s32 alpha, s32 time); // _1A4, the GameCube's
 	virtual void vf1A8();
 	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
 	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
@@ -1350,7 +1437,9 @@ public:
 	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
-	u8 _190[0x194 - 0x190];
+	// _190, the animation event callback for the object's kind; AssignAnimEventCallback
+	// (cjanim.cpp) sets it, the animation stepper calls it at the events' frames
+	void (*mAnimEventCallback)(XObj* object, s32 kind, f32 prev, f32 frame);
 	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
@@ -1372,7 +1461,8 @@ public:
 	f32 mScreenBottom;        // _6E4
 	f32 mScreenLeft;          // _6E8
 	f32 mScreenRight;         // _6EC
-	u8 _6F0[0x6F8 - 0x6F0];
+	f32 mFloorTop; // _6F0, the highest projected floor top
+	u8 _6F4[0x6F8 - 0x6F4];
 	CVec mToppleOffset; // _6F8
 	// _708, the map triangle under the object and its height; cjanim's floor queries refresh it
 	XObjMapHit mFloorHit;
@@ -1427,6 +1517,7 @@ public:
 	virtual void DrawWithView(Mtx view);                               // _178 override
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
 	virtual void DrawScreenOverlay();                                  // _190 override
+	virtual s32 OnPlayerContact(s32 unused, s32 flags);                // _1CC override
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
 
 	s32 mLoadState;     // _9A8
@@ -1471,7 +1562,9 @@ public:
 	virtual ~XObjScnCam();
 
 	WiiGsSceneObj* mScene; // _9A8
-	u8 _9AC[0x9C0 - 0x9AC];
+	Vec mAnimOffset;       // _9AC, zeroed when an event starts a scene camera animation
+	f32 mAnimAngle;        // _9B8, DEG2RAD-scaled, zeroed with mAnimOffset
+	u8 _9BC[0x9C0 - 0x9BC];
 };
 STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
@@ -1860,7 +1953,6 @@ public:
 	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
-WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so

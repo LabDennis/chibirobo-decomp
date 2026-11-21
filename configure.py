@@ -478,6 +478,7 @@ gamecube_libs = [
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(NonMatching, "game/interfacetext.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/cjanim.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfloor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -550,7 +551,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorpapa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/infopointinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjactordtor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -738,7 +738,7 @@ gamecube_libs = [
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/file_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c"),
-            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c"),
+            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c", padding="small_data"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/printf.c", extra_cflags=["-str pool"]),
@@ -994,7 +994,7 @@ gamecube_libs = [
         "progress_category": "game",
         "objects": [
             Object(NonMatching, "game/ut.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/mem.cpp"),
+            Object(Matching, "game/mem.cpp", padding="small_data"),
             Object(NonMatching, "game/ccamera.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/clight.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
@@ -1004,7 +1004,7 @@ gamecube_libs = [
             # CPadEx::Init's and CPadOne::Clear's floats. Without deferred MWCC builds vtables/RTTI only at
             # the end of the file, after every function's constants; deferred builds them first
             Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/cfont.cpp"),
+            Object(MatchingFor(JP, PAL), "game/cfont.cpp"),
             Object(Matching, "game/cfile.cpp", extra_cflags=["-inline auto,deferred"], padding="small_data"),
             Object(Matching, "game/ctpl.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cobj.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
@@ -1058,7 +1058,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/tev.c"),
             Object(Matching, "sysdolphin/baselib/mobj.c"),
             Object(Matching, "sysdolphin/baselib/aobj.c", padding="small_data+data"),
-            Object(NonMatching, "sysdolphin/baselib/lobj.c"),
+            Object(Matching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/jobj.c"),
@@ -1327,7 +1327,9 @@ if wii:
                 # the area and map camera halves are two retail files, each with its own __FILE__ string pool
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
                 Object(NonMatching, "game/wii/ccameraactionarea.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # noauto: retail keeps MapAreaHeight out of line for
+                # StartMapCameraAreaHeightInterpolation's two calls
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
@@ -1427,6 +1429,10 @@ if wii:
                 # xobjhboxupdate functions in retail order. NonMatching for now: the shared
                 # literal pool (lbl_805A54xx) is owned by neighbouring auto objects
                 Object(NonMatching, "game/wii/xobjhboxpart.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # unit 79: the XObjHBox overlay/hit/contact functions and XObjDust's flag index,
+                # reset, load and release. -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx
+                # member pulls the nw4r sound headers
+                Object(NonMatching, "game/wii/xobjhbox.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not

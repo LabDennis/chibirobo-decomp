@@ -160,11 +160,16 @@ void XObjDust::DrawWithView(Mtx view)
  * @note Size: 0x37C
  */
 // event 16 waits for its own anim, event 56 shrinks it towards mTo while chibi robo plays anim 0x8C0
+static inline _HSD_AObj* GetObjAObj(XObj* obj)
+{
+	return GetAObj(obj->mJObj);
+}
+
 extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 {
 	if (dust->mStatus.mFlags & 0x4000000000000000ULL) {
 		if (dust->mEventId == 16) {
-			HSD_AObj* aobj = GetAObj(dust->mJObj);
+			HSD_AObj* aobj = GetObjAObj(dust);
 			if (aobj != NULL) {
 				if (aobj->flags & 0x44000000) {
 					if (dust->mStatus.mFlags & 0xC0000000000ULL) {
@@ -444,7 +449,6 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-// NONMATCHING: same work; different spill/restore scheduling and argument setup order
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
@@ -480,7 +484,7 @@ void XObjHBox::UpdateObject(u32 frames)
 		mPart.mObj.SetRotationY(DEG2RAD * (rand() % 360), 0);
 		SpawnBoxEffect(this, 0x10021);
 		mFloors        = GetObjectCollisionList(mPart.mObj.mCoord.mPlacement->mObjectId);
-		mFloorMasks[1] = mFloorMasks[0] = 0;
+		mFloorMasks[0] = mFloorMasks[1] = 0;
 		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
 			mEventScript = (u32)GetStageScriptByIndex(index);
@@ -504,9 +508,8 @@ void XObjHBox::UpdateObject(u32 frames)
 	if (id > 1) {
 		s32 path[2] = { 0, 0 };
 		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
-		Vec pos = joint.GetPos();
-		Vec rot;
-		HSD_MtxGetRotation(joint.GetMtx(), &rot);
+		Vec pos        = joint.GetPos();
+		Quaternion rot = joint.GetRot();
 		SetPos(pos, 0);
 		SetRotationY(rot.y, 0);
 	}

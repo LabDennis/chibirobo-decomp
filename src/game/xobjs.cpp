@@ -18,7 +18,14 @@
 #include "game/xobjsound.h"
 #include "game/xobjmap.h"
 
-// the three reader threads, built by the file's static initializer
+// the regional bss prefix, then the three reader threads, built by the file's static
+// initializer
+#if defined(VERSION_JP)
+u8 gObjectReaderBss[0x134];
+#else
+u8 gObjectReaderBss[0x140];
+#endif
+
 XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
 XObjReadAnm gObjectAnimationReader;
@@ -348,8 +355,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 			list->mObjectCount++;
 		}
 		if (async) {
-			obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
-			gSingleObjectReader.ReadStart(obj, info->mPlacement);
+			gSingleObjectReader.XObjReadOne::QueueRead(obj, info->mPlacement);
 		} else {
 			while (!obj->LoadFromPlacement(*info)) { }
 		}

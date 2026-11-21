@@ -16,6 +16,15 @@ extern "C" {
 }
 #include <sysdolphin/controller.h>
 
+// the diagnostic strings of the leticker camera, named as in the retail .rodata
+static const char sLetickerEyeXZFormat[]        = "%4.2f %4.2f\n";
+static const char sLetickerTurnAngleFormat[]    = "CCameraActionLeticker::Update %4.2f %4.2f %d\n";
+static const char sLetickerLevelEntryFormat[]   = "m_level_table[%d]=%d\n";
+static const char sLetickerCameraResetMessage[] = "CCameraActionLeticker::Reset\n";
+static const char sLetickerUninitializedMessage[]
+    = "\x83\x8C\x83\x60\x83\x62\x83\x4A\x81\x5B\x83\x59\x82\xAA\x8F\x89\x8A\xFA\x89\xBB\x82\xB3\x82\xEA\x82\xC4\x82\xDC\x82"
+      "\xB9\x82\xF1\n";
+
 // XObjLeticker, and the camera that turns around it in steps, CCameraActionLeticker
 
 extern "C" {
@@ -168,11 +177,11 @@ static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
 	Vec eye;
 	camera->CalcEye(&eye, angle);
 #if !defined(VERSION_PAL)
-	OSReport("%4.2f %4.2f\n", eye.x, eye.z);
+	OSReport(sLetickerEyeXZFormat, eye.x, eye.z);
 #endif
 	if (eye.x < camera->mMinX || camera->mMaxX < eye.x || eye.z < camera->mMinZ || camera->mMaxZ < eye.z) {
 #if !defined(VERSION_PAL)
-		OSReport("CCameraActionLeticker::Update %4.2f %4.2f %d\n", eye.x, eye.z, (s32)(RAD2DEG * camera->mTurnTo));
+		OSReport(sLetickerTurnAngleFormat, eye.x, eye.z, (s32)(RAD2DEG * camera->mTurnTo));
 #endif
 		return false;
 	}
@@ -524,8 +533,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 			setHeight = true;
 		if (mLinkedCount == 0) {
 #if !defined(VERSION_PAL)
-			OSReport("\x83\x8C\x83\x60\x83\x62\x83\x4A\x81\x5B\x83\x59\x82\xAA\x8F\x89\x8A\xFA\x89\xBB\x82\xB3\x82\xEA\x82\xC4\x82\xDC\x82"
-			         "\xB9\x82\xF1\n");
+			OSReport(sLetickerUninitializedMessage);
 #endif
 			break;
 		}
@@ -600,7 +608,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mLevelBySide[i] = args[i + 2];
 #if !defined(VERSION_PAL)
 			for (u32 i = 0; i < 4; ++i)
-				OSReport("m_level_table[%d]=%d\n", i, mLevelBySide[i]);
+				OSReport(sLetickerLevelEntryFormat, i, mLevelBySide[i]);
 #endif
 			break;
 		case 2:
@@ -1034,7 +1042,7 @@ void CCameraActionLeticker::Update(u32 step)
 void CCameraActionLeticker::Reset()
 {
 #if !defined(VERSION_PAL)
-	OSReport("CCameraActionLeticker::Reset\n");
+	OSReport(sLetickerCameraResetMessage);
 #endif
 	CCameraActionLadr::Reset();
 	mTurnTo     = 0.0f;

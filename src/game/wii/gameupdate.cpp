@@ -641,9 +641,9 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
-			gGame.mGs._1FE4[i]._18 = FALSE;
-			gGame.mGs._1FE4[i]._08 = FALSE;
-			gGame.mGs._1FE4[i]._00 = FALSE;
+			gGame.mGs._1FE4[i]._18      = FALSE;
+			gGame.mGs._1FE4[i].mPosSet   = FALSE;
+			gGame.mGs._1FE4[i].mColorSet = FALSE;
 		}
 		game->SetCameraLight();
 		game->mEffects.UpdateLights(gGame.mGs.mLight);
@@ -992,7 +992,7 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 	if (!game->GetStatusFlags(0x100) && game->GetPlayer()->GetAttachment() != 2
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
-	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
+	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
 		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent[0];
 		if (scope->mObj == NULL || dist < scope->mDist) {
@@ -1112,7 +1112,7 @@ void CGame::Update(u32 frames)
 	           && !IsMenuOpen(mMenu.mMenus[2]) && !IsMenuOpen(mMenu.mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
-	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
+	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
 	           && !(fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) && !(mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 		if (mPointer.mAlpha > 0.5f) {
 			if ((mPointer.mAlpha -= 0.1f * frames) < 0.5f) {
@@ -1135,7 +1135,7 @@ void CGame::Update(u32 frames)
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
-		    || (mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
+		    || (mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
 		    || (fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) || (mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 			wanted = true;
 		}
@@ -1443,7 +1443,7 @@ void CGame::Update(u32 frames)
 	StepSceneDraws(frames);
 	if (!GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800A13D0(&lbl_8044EE4C, GetCamera());
-		fn_800A13D0(mEvtPtcl.mEmitters, GetCamera());
+		fn_800A13D0(mEvtPtcl.mEffects, GetCamera());
 	}
 
 	// the effects follow the camera: the stage camera object's when its scene brings one, else the game's

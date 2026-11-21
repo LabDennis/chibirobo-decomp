@@ -22,236 +22,7 @@ extern u8 gGameLanguageMap[12];
 }
 
 /**
- * @note Address: 0x8001552C
- * @note Size: 0x8
- */
-BOOL CBase::BeforeUpdate()
-{
-	return TRUE;
-}
-
-/**
- * @note Address: 0x80015534
- * @note Size: 0x100
- */
-// NONMATCHING: pool symbol names (sGameVectorDefaults) and regalloc in the
-// language-map loop
-// CBase's Start
-void CBase::Start()
-{
-	InitGameRuntime();
-	InitGameRenderState(this);
-	InitGameARAM();
-	InitGameDVD();
-#if defined(VERSION_PAL)
-	u8 language = OSGetLanguage();
-	for (s32 i = 0; i < 6; ++i) {
-		if (language == gGameLanguageMap[i * 2]) {
-			mLanguage = gGameLanguageMap[i * 2 + 1];
-			break;
-		}
-	}
-#elif !defined(VERSION_JP)
-	mLanguage = 0;
-#endif
-#if defined(VERSION_JP)
-	mFont.Init();
-#else
-	mFont.Init(gGame.mLanguage != 6);
-#endif
-	mPad.Init();
-	mLastRetrace   = 0;
-	mRetraceStep   = 0;
-	mStatus.mFlags = 0;
-	InitGamePerspectiveCamera(&mCameras[0], &mGs.mScreen);
-	InitGameOrthoCamera(&mCameras[1], &mGs.mScreen);
-	InitFourLightSet(&mLights[0]);
-	InitTwoLightSet(&mLights[4]);
-	OSInitStopwatch(&mStopwatch[0], "__$dsync$ ");
-	OSInitStopwatch(&mStopwatch[1], "__$update$");
-	OSInitStopwatch(&mStopwatch[2], "__$draw$  ");
-	mPrevDvdStatus = 0;
-	mDvdStatus     = 0;
-	mDiskOk        = 1;
-	mDvdError      = 0;
-	mResetHold     = 0;
-	mReset         = 0;
-}
-
-/**
- * @note Address: 0x800153B4
- * @note Size: 0x4
- */
-void CBase::DrawHud()
-{
-}
-
-/**
- * @note Address: 0x800153B8
- * @note Size: 0x4
- */
-void CBase::DrawScene()
-{
-}
-
-/**
- * @note Address: 0x80015634
- * @note Size: 0x4
- */
-void CBase::Initialize(int argc, char** argv)
-{
-}
-
-/**
- * @note Address: 0x80015638
- * @note Size: 0x8
- */
-s32 CBase::FrameInterval()
-{
-	return 1;
-}
-
-/**
- * @note Address: 0x80015640
- * @note Size: 0x4
- */
-void CBase::Draw()
-{
-}
-
-extern "C" {
-void AXQuit(void);
-void AIReset(void);
-void AIStopDMA(void);
-void* HSD_VISetUserGXDrawDoneCallback(void* cb);
-void GXDrawDone(void);
-void GXAbortFrame(void);
-void OSResetSystem(int reset, u32 code, BOOL forceMenu);
-}
-
-/**
- * @note Address: 0x800153BC
- * @note Size: 0x170
- */
-void CBase::Update(u32 frames)
-{
-	BaseUpdate(this, frames);
-}
-
-// stops the sound and the video and resets
-inline void ResetSystem(u32 code)
-{
-#if defined(VERSION_PAL)
-	AXDriverStopAllStreams();
-	HSD_AudioSFXKeyOffAll();
-#else
-	AXQuit();
-	AIReset();
-#endif
-	HSD_VISetUserGXDrawDoneCallback(NULL);
-	GXDrawDone();
-	GXAbortFrame();
-	VISetBlack(TRUE);
-	VIFlush();
-	VIWaitForRetrace();
-#if defined(VERSION_PAL)
-	AXQuit();
-	AIStopDMA();
-#endif
-	OSResetSystem(code, 0, 0);
-}
-
-/**
- * @note Address: 0x800152A0
- * @note Size: 0x60
- */
-// CBase::Reset
-void CBase::Reset(u32 code)
-{
-	ResetSystem(code);
-}
-
-extern "C" void GXProject(f32 x, f32 y, f32 z, const Mtx mtx, const f32* pm, const f32* vp, f32* sx, f32* sy, f32* sz);
-
-/**
- * @note Address: 0x80015300
- * @note Size: 0xB4
- */
-// where a point ends up on screen through a camera, the main one by default
-extern "C" void ProjectWorldPositionToScreen(CGame* game, const Vec& pos, f32* x, f32* y, f32* z, CCamera* camera)
-{
-	camera = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
-	f32 sx, sy, sz;
-	GXProject(pos.x, pos.y, pos.z, camera->mViewMtx, camera->mProjection, camera->mViewport, &sx, &sy, &sz);
-	if (x != NULL) {
-		*x = sx;
-	}
-	if (y != NULL) {
-#if defined(VERSION_PAL)
-		*y = 448.0f * sy / gGame.mGs.mScreen.xfbHeight;
-#else
-		*y = sy;
-#endif
-	}
-	if (z != NULL) {
-		*z = sz;
-	}
-}
-
-/**
- * @note Address: 0x80015644
- * @note Size: 0x1C8
- */
-void main(int argc, char** argv)
-{
-	((CBase*)&gGame)->Initialize(argc, argv);
-	((CBase*)&gGame)->Start();
-	HSD_VISetBlack(0);
-	while (true) {
-		VIWaitForRetrace();
-		gGame.mRetraceStep = VIGetRetraceCount() - gGame.mLastRetrace;
-		gGame.mLastRetrace = VIGetRetraceCount();
-		if (gGame.mRetraceStep > 4) { // a hitch only counts four frames
-			gGame.mRetraceStep = 4;
-		}
-		OSResetStopwatch(&gGame.mStopwatch[0]);
-		OSStartStopwatch(&gGame.mStopwatch[0]);
-		OSResetStopwatch(&gGame.mStopwatch[1]);
-		OSStartStopwatch(&gGame.mStopwatch[1]);
-		OSResetStopwatch(&gGame.mStopwatch[2]);
-		OSStartStopwatch(&gGame.mStopwatch[2]);
-		HSD_VICopyXFBAsync(0);
-		gGame.mStopwatch[0].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[0]);
-		OSStopStopwatch(&gGame.mStopwatch[0]);
-		gGame.mPad.Update(gGame.mRetraceStep);
-		((CBase*)&gGame)->BeforeUpdate();
-		((CBase*)&gGame)->Update(gGame.mRetraceStep);
-		gGame.mStopwatch[1].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[1]);
-		OSStopStopwatch(&gGame.mStopwatch[1]);
-		((CBase*)&gGame)->Draw();
-		gGame.mStopwatch[2].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[2]);
-		OSStopStopwatch(&gGame.mStopwatch[2]);
-#if defined(VERSION_PAL)
-		s32 interval = ((CBase*)&gGame)->FrameInterval() * 60;
-		while (VIGetRetraceCount() - gGame.mLastRetrace < (u32)(interval / gVideoFramesPerSecond - 1)) { }
-#else
-		s32 interval = ((CBase*)&gGame)->FrameInterval();
-		u32 wait     = interval * 60 / 60 - 1;
-		while (VIGetRetraceCount() - gGame.mLastRetrace < wait) { } // pads the frame to the interval
-#endif
-	}
-}
-
-/**
- * @note Address: 0x800151DC
- * @note Size: 0x4
- */
-void FbMirror::Reset()
-{
-}
-
-/**
- * @note Address: 0x80014DA4
+ * @note Address: 0x80014D4C
  * @note Size: 0x2BC
  */
 // FbMirror::Update, puts the mirror camera at the main camera's eye reflected in the surface,
@@ -315,7 +86,15 @@ void FbMirror::Update(u32 frames)
 }
 
 /**
- * @note Address: 0x800151E0
+ * @note Address: 0x80015184
+ * @note Size: 0x4
+ */
+void FbMirror::Reset()
+{
+}
+
+/**
+ * @note Address: 0x80015188
  * @note Size: 0xC0
  */
 // FbMirror::Init
@@ -326,4 +105,223 @@ void FbMirror::Init()
 	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f); // the mirror renders a 256 square
 	mCamera.SetScissor(0, 256, 0, 256);
 	Reset();
+}
+
+extern "C" {
+void AXQuit(void);
+void AIReset(void);
+void AIStopDMA(void);
+void* HSD_VISetUserGXDrawDoneCallback(void* cb);
+void GXDrawDone(void);
+void GXAbortFrame(void);
+void OSResetSystem(int reset, u32 code, BOOL forceMenu);
+}
+
+// stops the sound and the video and resets
+inline void ResetSystem(u32 code)
+{
+#if defined(VERSION_PAL)
+	AXDriverStopAllStreams();
+	HSD_AudioSFXKeyOffAll();
+#else
+	AXQuit();
+	AIReset();
+#endif
+	HSD_VISetUserGXDrawDoneCallback(NULL);
+	GXDrawDone();
+	GXAbortFrame();
+	VISetBlack(TRUE);
+	VIFlush();
+	VIWaitForRetrace();
+#if defined(VERSION_PAL)
+	AXQuit();
+	AIStopDMA();
+#endif
+	OSResetSystem(code, 0, 0);
+}
+
+/**
+ * @note Address: 0x80015248
+ * @note Size: 0x60
+ */
+// CBase::Reset
+void CBase::Reset(u32 code)
+{
+	ResetSystem(code);
+}
+
+extern "C" void GXProject(f32 x, f32 y, f32 z, const Mtx mtx, const f32* pm, const f32* vp, f32* sx, f32* sy, f32* sz);
+
+/**
+ * @note Address: 0x800152A8
+ * @note Size: 0xB4
+ */
+// where a point ends up on screen through a camera, the main one by default
+extern "C" void ProjectWorldPositionToScreen(CGame* game, const Vec& pos, f32* x, f32* y, f32* z, CCamera* camera)
+{
+	camera = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
+	f32 sx, sy, sz;
+	GXProject(pos.x, pos.y, pos.z, camera->mViewMtx, camera->mProjection, camera->mViewport, &sx, &sy, &sz);
+	if (x != NULL) {
+		*x = sx;
+	}
+	if (y != NULL) {
+#if defined(VERSION_PAL)
+		*y = 448.0f * sy / gGame.mGs.mScreen.xfbHeight;
+#else
+		*y = sy;
+#endif
+	}
+	if (z != NULL) {
+		*z = sz;
+	}
+}
+
+/**
+ * @note Address: 0x8001535C
+ * @note Size: 0x4
+ */
+void CBase::DrawHud()
+{
+}
+
+/**
+ * @note Address: 0x80015360
+ * @note Size: 0x4
+ */
+void CBase::DrawScene()
+{
+}
+
+/**
+ * @note Address: 0x80015364
+ * @note Size: 0x170
+ */
+void CBase::Update(u32 frames)
+{
+	BaseUpdate(this, frames);
+}
+
+/**
+ * @note Address: 0x800154D4
+ * @note Size: 0x8
+ */
+BOOL CBase::BeforeUpdate()
+{
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x800154DC
+ * @note Size: 0xDC
+ */
+// CBase's Start
+void CBase::Start()
+{
+	InitGameRuntime();
+	InitGameRenderState(this);
+	InitGameARAM();
+	InitGameDVD();
+#if defined(VERSION_PAL)
+	u8 language = OSGetLanguage();
+	for (s32 i = 0; i < 6; ++i) {
+		if (language == gGameLanguageMap[i * 2]) {
+			mLanguage = gGameLanguageMap[i * 2 + 1];
+			break;
+		}
+	}
+#elif !defined(VERSION_JP)
+	mLanguage = 0;
+#endif
+#if defined(VERSION_JP)
+	mFont.Init();
+#else
+	mFont.Init(gGame.mLanguage != 6);
+#endif
+	mPad.Init();
+	mLastRetrace   = 0;
+	mRetraceStep   = 0;
+	mStatus.mFlags = 0;
+	InitGamePerspectiveCamera(&mCameras[0], &mGs.mScreen);
+	InitGameOrthoCamera(&mCameras[1], &mGs.mScreen);
+	InitFourLightSet(&mLights[0]);
+	InitTwoLightSet(&mLights[4]);
+	OSInitStopwatch(&mStopwatch[0], "__$dsync$ ");
+	OSInitStopwatch(&mStopwatch[1], "__$update$");
+	OSInitStopwatch(&mStopwatch[2], "__$draw$  ");
+	mPrevDvdStatus = 0;
+	mDvdStatus     = 0;
+	mDiskOk        = 1;
+	mDvdError      = 0;
+	mResetHold     = 0;
+	mReset         = 0;
+}
+
+/**
+ * @note Address: 0x800155B8
+ * @note Size: 0x4
+ */
+void CBase::Initialize(int argc, char** argv)
+{
+}
+
+/**
+ * @note Address: 0x800155BC
+ * @note Size: 0x8
+ */
+s32 CBase::FrameInterval()
+{
+	return 1;
+}
+
+/**
+ * @note Address: 0x800155C4
+ * @note Size: 0x4
+ */
+void CBase::Draw()
+{
+}
+
+/**
+ * @note Address: 0x800155C8
+ * @note Size: 0x1C8
+ */
+void main(int argc, char** argv)
+{
+	((CBase*)&gGame)->Initialize(argc, argv);
+	((CBase*)&gGame)->Start();
+	HSD_VISetBlack(0);
+	while (true) {
+		VIWaitForRetrace();
+		gGame.mRetraceStep = VIGetRetraceCount() - gGame.mLastRetrace;
+		gGame.mLastRetrace = VIGetRetraceCount();
+		if (gGame.mRetraceStep > 4) { // a hitch only counts four frames
+			gGame.mRetraceStep = 4;
+		}
+		OSResetStopwatch(&gGame.mStopwatch[0]);
+		OSStartStopwatch(&gGame.mStopwatch[0]);
+		OSResetStopwatch(&gGame.mStopwatch[1]);
+		OSStartStopwatch(&gGame.mStopwatch[1]);
+		OSResetStopwatch(&gGame.mStopwatch[2]);
+		OSStartStopwatch(&gGame.mStopwatch[2]);
+		HSD_VICopyXFBAsync(0);
+		gGame.mStopwatch[0].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[0]);
+		OSStopStopwatch(&gGame.mStopwatch[0]);
+		gGame.mPad.Update(gGame.mRetraceStep);
+		((CBase*)&gGame)->BeforeUpdate();
+		((CBase*)&gGame)->Update(gGame.mRetraceStep);
+		gGame.mStopwatch[1].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[1]);
+		OSStopStopwatch(&gGame.mStopwatch[1]);
+		((CBase*)&gGame)->Draw();
+		gGame.mStopwatch[2].mElapsed = OSCheckStopwatch(&gGame.mStopwatch[2]);
+		OSStopStopwatch(&gGame.mStopwatch[2]);
+#if defined(VERSION_PAL)
+		s32 interval = ((CBase*)&gGame)->FrameInterval() * 60;
+		while (VIGetRetraceCount() - gGame.mLastRetrace < (u32)(interval / gVideoFramesPerSecond - 1)) { }
+#else
+		s32 interval = ((CBase*)&gGame)->FrameInterval();
+		u32 wait     = interval * 60 / 60 - 1;
+		while (VIGetRetraceCount() - gGame.mLastRetrace < wait) { } // pads the frame to the interval
+#endif
+	}
 }

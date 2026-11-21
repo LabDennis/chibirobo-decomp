@@ -172,6 +172,19 @@ extern "C" CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index)
 	return cord->mPoints[index].mPos;
 }
 
+static inline HSD_Generator* CreatePlugParticle(u32 code, s32 status, const Vec& pos, const Vec& scale, BOOL keep)
+{
+	return gGame.mParticle.CreateSRT(code, status, pos, scale, (Vec) { 0, 0, 0 }, keep);
+}
+
+static inline void SpawnPlugSpark(const CVec& translate)
+{
+	Vec pos, scale;
+	pos   = translate;
+	scale = CVec(0.5f, 0.5f, 0.5f);
+	CreatePlugParticle(0x1001a, 1, pos, scale, FALSE);
+}
+
 // XObjPlug::UpdateObject
 void XObjPlug::UpdateObject(u32 frames)
 {
@@ -232,11 +245,7 @@ void XObjPlug::UpdateObject(u32 frames)
 		SetPos(offset, 0);
 		if (mWire.mSparkMode == 0) {
 			if (mWire.mSparkTimer < 0) {
-				Vec pos, scale;
-				pos          = mMoveTranslate;
-				scale        = CVec(0.5f, 0.5f, 0.5f);
-				Vec rotation = { 0, 0, 0 };
-				gGame.mParticle.CreateSRT(0x1001a, 1, pos, scale, rotation, FALSE);
+				SpawnPlugSpark(mMoveTranslate);
 				mWire.mSparkTimer += HSD_Randi(10) + 16; // the next spark in 16 to 25 frames
 			}
 			XSound* sound = &gGame.mSound;

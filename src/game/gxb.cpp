@@ -388,8 +388,8 @@ static inline void StepChannel(f32& current, f32& target, f32& speed, u32 frames
 static inline void DrawWipeQuad(CGs* gs, const WipeQuad& shape, u32 color)
 {
 	const Vec* quad = shape.vertices;
-	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
-	                 color, quad[3].x, quad[3].y, quad[3].z, color);
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z, quad[3].x,
+	                 quad[3].y, quad[3].z, color, color, color, color);
 }
 
 static inline void BeginWipe(CGs* gs, s32 mode)
@@ -769,12 +769,18 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
 	StepChannel(color->mColor.a, color->mTarget.a, color->mSpeed.a, frames);
 }
 
+static inline void SetColorSpeed(ScrnColorF& speed, f32 r, f32 g, f32 b, f32 a)
+{
+	speed.r = r;
+	speed.g = g;
+	speed.b = b;
+	speed.a = a;
+}
+
 /**
  * @note Address: 0x80023D74
  * @note Size: 0x16C
  */
-// NONMATCHING: regalloc, the blue and alpha quotients swap f0/f2. The speeds are computed alpha first, as the Wii
-// build does.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -791,15 +797,9 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time            = FRAME_RATE * time;
-		f32 speedA      = ((f32)a - color->mColor.a) / time;
-		f32 speedB      = ((f32)b - color->mColor.b) / time;
-		f32 speedG      = ((f32)g - color->mColor.g) / time;
-		f32 speedR      = ((f32)r - color->mColor.r) / time;
-		color->mSpeed.r = speedR;
-		color->mSpeed.g = speedG;
-		color->mSpeed.b = speedB;
-		color->mSpeed.a = speedA;
+		time = FRAME_RATE * time;
+		SetColorSpeed(color->mSpeed, ((f32)r - color->mColor.r) / time, ((f32)g - color->mColor.g) / time,
+		              ((f32)b - color->mColor.b) / time, ((f32)a - color->mColor.a) / time);
 	}
 }
 
@@ -1995,6 +1995,24 @@ void XObjDemo::UpdateObject(u32 frames)
 }
 
 /**
+ * @note Address: 0x800282CC
+ * @note Size: 0x38
+ */
+void CLight::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, LOBJ_TYPE, (HSD_TypeMask)(LOBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
+ * @note Address: 0x80028304
+ * @note Size: 0x38
+ */
+void CCamera::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
  * @note Address: 0x80028368
  * @note Size: 0xA4
  */
@@ -2656,12 +2674,11 @@ extern "C" void DrawTitleOptions(Title* title)
 	if (scale > 0.0f) {
 		f32 alpha  = 255.0f * scale;
 		f32 h      = 224.0f * scale;
-		s32 a      = alpha;
+		u32 lit    = (u8)(s32)alpha | 0xFFFFFF00;
 		u32 window = (u32)alpha | 0xFFFFFF00;
 		f32 top;
 		DrawTexturedWindowFrame((u32)(160.0f * scale), window, 320.0f, top = 224.0f - h / 2.0f, 320.0f * scale, h, 1.0f, 1.0f, 1.0f);
 
-		u32 lit    = (u8)a | 0xFFFFFF00;
 		u32 normal = (u8)alpha | 0xFFFFFF00;
 		const char* text;
 #if !defined(VERSION_PAL)
@@ -4461,6 +4478,9 @@ extern "C" void ClearStageSoundBank(XSound* sound)
  */
 // NONMATCHING: the strings are in sound.cpp's rodata
 // a negative stage loads the shared samples a step per call, TRUE once they're in
+// the operation name the load asserts report, as named in retail
+static const char sSoundReadOperation[] = "Read";
+
 extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 {
 	if (stage < 0) {
@@ -4471,9 +4491,9 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 				++sound->mLoadState;
 			} else {
 #if defined(VERSION_JP)
-				OSPanic("sound.cpp", 0xED, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xED, "%s%s", "", sSoundReadOperation);
 #else
-				OSPanic("sound.cpp", 0xF1, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF1, "%s%s", "", sSoundReadOperation);
 #endif
 			}
 			break;
@@ -4483,9 +4503,9 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 				++sound->mLoadState;
 			} else if (result < 0) {
 #if defined(VERSION_JP)
-				OSPanic("sound.cpp", 0xF5, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF5, "%s%s", "", sSoundReadOperation);
 #else
-				OSPanic("sound.cpp", 0xF9, "%s%s", "", "Read");
+				OSPanic("sound.cpp", 0xF9, "%s%s", "", sSoundReadOperation);
 #endif
 			}
 			break;

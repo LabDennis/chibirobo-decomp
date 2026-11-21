@@ -37,7 +37,10 @@ void UpdateHudIndicators(InfoScrn* scrn, u32 frames);
 const char* GetLocalizedInterfaceText(s32 id);
 }
 
-// The original HUD code addresses the counters relative to this regional BSS prefix.
+// the hud counters' bss block: the regional storage prefix, the three counters with their
+// destructor registration slots between them, and the scanline history. Retail compiled
+// this whole block into the hud code's TU, so the functions that touch several counters
+// pool their addresses onto the storage prefix's base
 extern "C" {
 #if defined(VERSION_JP)
 u8 gHudPointCounterStorage[0x134];
@@ -45,11 +48,9 @@ u8 gHudPointCounterStorage[0x134];
 u8 gHudPointCounterStorage[0x140];
 #endif
 }
-// todo: the three counters are infopointinit.cpp's, which is cut from this file. These are the file's own
-// copies, as on main, so that its code reaches them the way retail does
-static InfoPoint gHudMoneyCounter;
-static InfoPoint gHudHappyPointCounter;
-static InfoPoint gHudScrapCounter;
+InfoPoint gHudMoneyCounter;
+InfoPoint gHudHappyPointCounter;
+InfoPoint gHudScrapCounter;
 extern "C" {
 f32 gHudScanlineHistory[10];
 }
@@ -934,6 +935,8 @@ extern "C" void AllowIdleHudCounters(InfoScrn* scrn)
 	gHudScrapCounter.mSuppressIdleDisplay      = FALSE;
 }
 
+static const Vec sHudPlayerIconProjectionOffset = { 0.0f, 10.0f, 0.0f };
+
 /**
  * @note Address: 0x80067418
  * @note Size: 0x510
@@ -961,7 +964,7 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		w       = 0.8f * (1.1f * tw);
 		u16 th  = GXGetTexObjHeight(&tex);
 		h       = 0.8f * th;
-		Vec ofs = { 0.0f, 10.0f, 0.0f };
+		Vec ofs = sHudPlayerIconProjectionOffset;
 		f32 sx;
 		f32 sy;
 		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &sx, &sy, NULL, 0);
@@ -1435,8 +1438,8 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
 	f32 top    = y - 8.0f - sy;
 	f32 bottom = sy + (8.0f + (y + height));
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
-	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 9.0f + (8.0f + right),
+	                 9.0f + (8.0f + bottom), -1.0f, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
 	                 0xFF000000);
 	Vec pos[10] = {
 		(Vec) { x, y, 0.0f },
@@ -1502,8 +1505,8 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
-	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 9.0f + (8.0f + right),
+	                 9.0f + (8.0f + bottom), -1.0f, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
 	                 0xFF000000);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }

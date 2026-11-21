@@ -227,7 +227,11 @@ void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, 
 void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha);
 void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source);
 void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z);
+#if defined(VERSION_R24J01)
 f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height);
+#else
+f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 height);
+#endif
 // the Wii object class is not reconstructed; the cord passes the table's WiiTitleObject
 #if defined(VERSION_R24J01)
 BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f32 radius);

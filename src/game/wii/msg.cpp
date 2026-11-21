@@ -221,7 +221,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			++src;
 			sprintf(buffers.text, buffers.format, args->values[--args->count]);
 			if (grouped) {
-				char separator = ',';
+				char separator;
 				switch (gGame.mLanguage) {
 				case 2:
 				case 3:
@@ -231,7 +231,6 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 				case 5:
 					separator = '.';
 					break;
-				case 0:
 				case 1:
 				default:
 					separator = ',';

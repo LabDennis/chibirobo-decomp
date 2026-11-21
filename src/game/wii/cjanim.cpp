@@ -3,14 +3,14 @@
 // event virtuals. The Wii source merges the GameCube's cjanim.cpp with the floor
 // helpers obja.cpp and xobjfloor.cpp carried; the floor coordinate readers appear
 // open-coded here, the array-and-index pair's inline half.
-// NONMATCHING: the per-frame animation stepper (0x800B4988), the ExecCallback
-// family and the kind-callback table (0x800B6F00-0x800BCBC4) plus
-// AssignAnimEventCallback and __sinit still come from the retail asm.
+// NONMATCHING: ExecCallback_CALC_MAT (0x800B5CF0) and __sinit still come from the retail asm.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/xobj.h"
+#include "JSystem/JMath/Inline.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include "game/ut.h"
@@ -22,6 +22,7 @@
 extern "C" {
 void C_VECReflect(const Vec* source, const Vec* normal, Vec* result);
 void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+void HSD_MtxGetScale(Mtx m, Vec* out);
 f64 fmax(f64 x, f64 y);
 f64 fmin(f64 x, f64 y);
 // the map XObj's floor query in an unsplit unit: fills hit with the triangle
@@ -648,6 +649,210 @@ BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 	return TRUE;
 }
 
+static inline void ExpandScreenBounds(f32 x, f32 y, f32& minX, f32& minY, f32& maxX, f32& maxY)
+{
+	if (x < minX)
+		minX = x;
+	if (y < minY)
+		minY = y;
+	if (x > maxX)
+		maxX = x;
+	if (y > maxY)
+		maxY = y;
+}
+
+// the on-screen bounds of every floor that takes part in pointer picking
+extern "C" void fn_800B4988(XObj* object)
+{
+	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
+		return;
+
+	CCamera camera = gGame.mMotionControlCamera;
+	object->_6DC   = object->_6D8;
+	object->_6D8   = 0;
+	object->mScreenBottom = NAN;
+	object->mScreenRight  = NAN;
+	object->mScreenTop    = NAN;
+	object->mScreenLeft   = NAN;
+	object->mFloorTop     = NAN;
+	object->mToppleOffset.Set(0.0f, 0.0f, 0.0f);
+
+	s32 count = 0;
+	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		XObjFloor* floor = &object->mFloors[i];
+		if (!(floor->mFlags & 2) || floor->mId >= 3 || floor->mId < 0)
+			continue;
+
+		CVec pos   = object->mMoveTranslate;
+		Vec center = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 yaw    = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
+		if (object->GetKind() == 0x2A0)
+			pos = object->GetJointWorldPos(7);
+
+		if (gGame.mStage == 14) {
+			switch (object->_18C) {
+			case 1:
+			case 4:
+				pos.y += 30.0f;
+				break;
+			case 3:
+				extent.y *= 0.5f;
+				break;
+			case 10:
+				extent.y *= 0.45f;
+				pos.y -= 12.0f;
+				break;
+			}
+		}
+
+		Mtx transform, work, translate, scale;
+		if (object->mBaseMtxPtr != NULL) {
+			PSMTXTrans(translate, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXConcat(object->mBaseMtxPtr, translate, work);
+			PSMTXConcat(work, scale, transform);
+		} else {
+			Mtx position, rotate;
+			PSMTXTrans(position, pos.x, pos.y, pos.z);
+			PSMTXTrans(translate, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(position, rotate, work);
+			PSMTXConcat(work, translate, work);
+			PSMTXConcat(work, scale, transform);
+		}
+
+		CVec origin(0.0f, 0.0f, 0.0f);
+		PSMTXMultVec(transform, &origin, &origin);
+		JMathInlineVEC::PSVECAdd(&object->mToppleOffset, &origin, &object->mToppleOffset);
+		++count;
+
+		f32 x, y, z;
+		GXProject(origin.x, origin.y, origin.z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y, &z);
+		x *= camera.mScale;
+		if (z <= 0.0f || z >= 1.0f)
+			continue;
+		f32 minX = x, minY = y, maxX = x, maxY = y;
+		f32 height = NAN;
+
+		switch (floor->mId) {
+		case 0:
+		case 1: {
+			f32 angle   = camera.mView.mAngle.y;
+			f32 angles[4] = { angle, HALF_PI + angle, PI + angle, (PI + HALF_PI) + angle };
+			f32 xs[4] = { extent.x * (f32)sin(angles[0]), extent.x * (f32)sin(angles[1]), extent.x * (f32)sin(angles[2]),
+				          extent.x * (f32)sin(angles[3]) };
+			f32 zs[4] = { extent.z * (f32)cos(angles[0]), extent.z * (f32)cos(angles[1]), extent.z * (f32)cos(angles[2]),
+				          extent.z * (f32)cos(angles[3]) };
+			Vec points[8] = {};
+			points[0] = origin + (Vec) { xs[0], extent.y, zs[0] };
+			points[1] = origin + (Vec) { xs[1], extent.y, zs[1] };
+			points[2] = origin + (Vec) { xs[2], extent.y, zs[2] };
+			points[3] = origin + (Vec) { xs[3], extent.y, zs[3] };
+			points[4] = origin + (Vec) { xs[0], -extent.y, zs[0] };
+			points[5] = origin + (Vec) { xs[1], -extent.y, zs[1] };
+			points[6] = origin + (Vec) { xs[2], -extent.y, zs[2] };
+			points[7] = origin + (Vec) { xs[3], -extent.y, zs[3] };
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
+				          &z);
+				x *= camera.mScale;
+				if (z <= 0.0f || z >= 1.0f)
+					goto nextFloor;
+				ExpandScreenBounds(x, y, minX, minY, maxX, maxY);
+			}
+			height = origin.y + extent.y;
+			break;
+		}
+		case 2: {
+			f32 h = (2.0f / (3.0f * nw4r::math::FrSqrt(3.0f))) * 0.5f;
+			static Vec corners[8]
+			    = { { -h, h, -h }, { h, h, -h }, { h, h, h }, { -h, h, h }, { -h, -h, -h }, { h, -h, -h }, { h, -h, h }, { -h, -h, h } };
+			Vec points[8];
+			PSMTXMultVecArray(transform, corners, points, 8);
+			for (s32 j = 0; j < 8; ++j) {
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
+				          &z);
+				x *= camera.mScale;
+				if (z <= 0.0f || z >= 1.0f)
+					goto nextFloor;
+				ExpandScreenBounds(x, y, minX, minY, maxX, maxY);
+			}
+			height = points[0].y - 0.01f;
+			break;
+		}
+		}
+
+		if (count > 0) {
+			object->mToppleOffset.x /= count;
+			object->mToppleOffset.y /= count;
+			object->mToppleOffset.z /= count;
+		}
+		if (__fpclassifyf(minX) != FP_NAN
+		    && (__fpclassifyf(object->mScreenLeft) == FP_NAN || minX < object->mScreenLeft))
+			object->mScreenLeft = minX;
+		if (__fpclassifyf(minY) != FP_NAN && (__fpclassifyf(object->mScreenTop) == FP_NAN || minY < object->mScreenTop))
+			object->mScreenTop = minY;
+		if (__fpclassifyf(maxX) != FP_NAN
+		    && (__fpclassifyf(object->mScreenRight) == FP_NAN || maxX > object->mScreenRight))
+			object->mScreenRight = maxX;
+		if (__fpclassifyf(maxY) != FP_NAN
+		    && (__fpclassifyf(object->mScreenBottom) == FP_NAN || maxY > object->mScreenBottom))
+			object->mScreenBottom = maxY;
+		if (__fpclassifyf(object->mFloorTop) == FP_NAN || height > object->mFloorTop)
+			object->mFloorTop = height;
+
+	nextFloor:;
+	}
+}
+
+// fn_800B5AE4: the mirror pass: with the screen camera flipped (the mirrors draw
+// through it with the projection's top and bottom swapped) the callback runs with
+// the model mirrored - the scale's x and z negated, y by the flip's sign and the
+// rotation turned by pi; the object's own values are restored afterwards
+void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if ((mStatus.mFlags & 0x800) && pFuncObj->GetCallbackNodeID() == 0) {
+		CCamera* camera = gGame.GetScreenCamera();
+		s32 sign        = camera->mTop >= camera->mBottom ? 1 : -1;
+		f32 scaleY      = mMoveScale.y;
+		f32 scaleX      = mMoveScale.x;
+		f32 scaleZ      = mMoveScale.z;
+		f32 rotateY     = mMoveRotate.y;
+		mMoveScale.x    = scaleX * -1.0f;
+		mMoveScale.y    = scaleY * sign;
+		mMoveScale.z    = scaleZ * -1.0f;
+		mMoveRotate.y   = rotateY + PI;
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		mMoveScale.y  = scaleY;
+		mMoveScale.x  = scaleX;
+		mMoveScale.z  = scaleZ;
+		mMoveRotate.y = rotateY;
+	} else {
+		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
+	}
+}
+
+// hands the node the object's base matrix; with the flag set the object follows
+// it: the matrix's translation becomes its position and its scale the object's
+void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() != 0)
+		return;
+	if (mBaseMtxPtr == NULL)
+		return;
+	Mtx m;
+	PSMTXCopy(mBaseMtx, m);
+	PSMTXCopy(m, pResult->mMtx);
+	if (mStatus.mFlags & 0x400000000000ULL) {
+		mMoveTranslate.x = m[0][3];
+		mMoveTranslate.y = m[1][3];
+		mMoveTranslate.z = m[2][3];
+		HSD_MtxGetScale(m, (Vec*)&mMoveScale);
+	}
+}
+
 // the GameCube's cjanim.cpp function, the Wii keeps it as a free function too;
 // the anchor and limits it reads moved into the object's CAnmQueue on the Wii
 extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z)
@@ -861,5 +1066,754 @@ CVec XObj::vf288(s32 count, s32* args)
 	if (name != NULL)
 		return GetJointWorldPos(name);
 	return GetJointWorldPos((u32)0);
+}
+
+// the per-kind animation event callbacks (retail 0x800B6F00-0x800BCBC4):
+// AssignAnimEventCallback puts the one for the object's kind on it; the
+// animation stepper calls it while an animation with event frames plays.
+// Each starts the kind's effect on the named model node when the frame
+// condition holds; kind is the event's kind, frame the animation's current
+// frame and target the event's frame (0 marks an event without one)
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+
+static inline void StartNodeEffect(XObj* object, const char* node, u32 effect, s32 group)
+{
+	MtxP mtx             = object->GetWorldMtx(node);
+	EffectInstance* inst = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, effect, group);
+	if (inst != NULL) {
+		inst->mtx = mtx;
+		UpdateEffectMtx(inst);
+	}
+}
+
+// kind 302: the cylinder node's loop effect
+static void AnimEventCyl295(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 3)
+		return;
+	if (frame == 0.0f || prev > frame)
+		StartNodeEffect(object, "cyl295", 0x83, 0);
+}
+
+// kind 397: the particle burst on the ptcl5..ptcl18 nodes
+static void AnimEventPtcl397(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 149.0f && frame >= 149.0f) {
+		StartNodeEffect(object, "ptcl5", 0x36, 0);
+		StartNodeEffect(object, "ptcl6", 0x36, 0);
+		StartNodeEffect(object, "ptcl7", 0x36, 0);
+		StartNodeEffect(object, "ptcl8", 0x36, 0);
+		StartNodeEffect(object, "ptcl9", 0x36, 0);
+		StartNodeEffect(object, "ptcl10", 0x36, 0);
+		StartNodeEffect(object, "ptcl12", 0x36, 0);
+		StartNodeEffect(object, "ptcl13", 0x36, 0);
+		StartNodeEffect(object, "ptcl16", 0x36, 0);
+		StartNodeEffect(object, "ptcl17", 0x36, 0);
+		StartNodeEffect(object, "ptcl18", 0x36, 0);
+	}
+}
+
+// kind 405: the kettle's steam
+static void AnimEventKettle(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 4.0f && frame >= 4.0f)
+		StartNodeEffect(object, "kettle_ptcl01", 0x43, 0);
+}
+
+// kind 406: the teacup's steam
+static void AnimEventTeacup(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "ptcl_teacup", 0x44, 0);
+}
+
+// kind 424: one effect per event kind on the same node
+static void AnimEventPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "ptcl", 0x30, 0);
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "ptcl", 0x31, 0);
+	}
+}
+
+// kind 428: the eyes' sparkle on every eye node
+static void AnimEventEyes(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+		StartNodeEffect(object, "eye_l", 0x33, 1);
+		StartNodeEffect(object, "eye_l1", 0x33, 1);
+		StartNodeEffect(object, "eye_l2", 0x33, 1);
+		StartNodeEffect(object, "eye_r1", 0x33, 1);
+		StartNodeEffect(object, "eye_r2", 0x33, 1);
+		StartNodeEffect(object, "eye_r3", 0x33, 1);
+		StartNodeEffect(object, "eye_r4", 0x33, 1);
+		StartNodeEffect(object, "eye_r5", 0x33, 1);
+		StartNodeEffect(object, "eye_r6", 0x33, 1);
+		StartNodeEffect(object, "eye_r7", 0x33, 1);
+		StartNodeEffect(object, "eye_r8", 0x33, 1);
+		StartNodeEffect(object, "eye_r9", 0x33, 1);
+		StartNodeEffect(object, "eye_r10", 0x33, 1);
+		StartNodeEffect(object, "eye_r11", 0x33, 1);
+		StartNodeEffect(object, "eye_r12", 0x33, 1);
+		StartNodeEffect(object, "eye_r13", 0x33, 1);
+		StartNodeEffect(object, "eye_r14", 0x33, 1);
+		StartNodeEffect(object, "eye_r15", 0x33, 1);
+		StartNodeEffect(object, "eye_r16", 0x33, 1);
+	}
+}
+
+// kind 431: the same diary effect on two different events
+static void AnimEventBbNikki(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "bb_nikki", 0x46, 0);
+	} else if (kind == 2 && prev < 51.0f && frame >= 51.0f) {
+		StartNodeEffect(object, "bb_nikki", 0x46, 0);
+	}
+}
+
+// kind 435: both scare effects at once
+static void AnimEventTompScare(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+		StartNodeEffect(object, "fx_tomp_scare3", 0x38, 1);
+		StartNodeEffect(object, "fx_tomp_scare4", 0x38, 1);
+	}
+}
+
+// kind 486: the fan's right, left and center blades
+static void AnimEventFan(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "migi1", 0x85, 0);
+		StartNodeEffect(object, "migi2", 0x85, 0);
+		StartNodeEffect(object, "migi3", 0x85, 0);
+		StartNodeEffect(object, "migi4", 0x85, 0);
+		StartNodeEffect(object, "migi5", 0x85, 0);
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "hidari1", 0x86, 0);
+		} else if (prev < 7.0f && frame >= 7.0f) {
+			StartNodeEffect(object, "hidari2", 0x86, 0);
+		} else if (prev < 14.0f && frame >= 14.0f) {
+			StartNodeEffect(object, "hidari3", 0x86, 0);
+		} else if (prev < 21.0f && frame >= 21.0f) {
+			StartNodeEffect(object, "hidari4", 0x86, 0);
+		} else if (prev < 28.0f && frame >= 28.0f) {
+			StartNodeEffect(object, "hidari5", 0x86, 0);
+		}
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "center", 0x89, 0);
+	} else if (kind == 4) {
+		if (prev < 39.0f && frame >= 39.0f) {
+			StartNodeEffect(object, "hidari1", 0x8a, 0);
+			StartNodeEffect(object, "hidari1", 0x8b, 0);
+		} else if (prev < 20.0f && frame >= 20.0f) {
+			StartNodeEffect(object, "hidari2", 0x8a, 0);
+			StartNodeEffect(object, "hidari2", 0x8b, 0);
+			StartNodeEffect(object, "hidari3", 0x8a, 0);
+			StartNodeEffect(object, "hidari3", 0x8b, 0);
+		} else if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "hidari4", 0x8a, 0);
+			StartNodeEffect(object, "hidari4", 0x8b, 0);
+			StartNodeEffect(object, "hidari5", 0x8a, 0);
+			StartNodeEffect(object, "hidari5", 0x8b, 0);
+		}
+	}
+}
+
+// kind 614: warp-in on event 2, warp-out on event 3
+static void AnimEventLeticWarp(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 2 && prev < 3.0f && frame >= 3.0f) {
+		StartNodeEffect(object, "fx_leticwarp_in_ptcl", 0x3d, 0);
+	} else if (kind == 3 && prev < 3.0f && frame >= 3.0f) {
+		StartNodeEffect(object, "fx_leticwarp_out_ptcl", 0x3e, 0);
+	}
+}
+
+// kind 626
+static void AnimEventZactGicco(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 76.0f && frame >= 76.0f)
+		StartNodeEffect(object, "fx_zact_gicco1", 0x24, 1);
+}
+
+// kind 628: the frog's two jumps
+static void AnimEventZactFrog(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 15.0f && frame >= 15.0f) {
+		StartNodeEffect(object, "fx_zact_frog_ptcl", 0x40, 1);
+	} else if (prev < 29.0f && frame >= 29.0f) {
+		StartNodeEffect(object, "fx_zact_frog_ptcl2", 0x41, 1);
+	}
+}
+
+// kind 629: the injury shock first, the lasting effect after
+static void AnimEventZactInjured(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 18.0f && frame >= 18.0f) {
+		StartNodeEffect(object, "fx_zact_injured_shock", 0x40, 1);
+	} else if (prev < 14.0f && frame >= 14.0f) {
+		StartNodeEffect(object, "fx_zact_injured_ptcl", 0x40, 1);
+	}
+}
+
+// kind 630: the pajamas' effect at three frames
+static void AnimEventPajamas(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	} else if (prev < 22.0f && frame >= 22.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	} else if (prev < 42.0f && frame >= 42.0f) {
+		StartNodeEffect(object, "fx_pajamas_ptcl", 0x16, 1);
+	}
+}
+
+// kind 786: one effect per event kind on the same node
+static void AnimEventFxPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x0, 0);
+	} else if (kind == 2 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x12, 0);
+	} else if (kind == 3 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x13, 0);
+	} else if (kind == 4 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "fx_ptcl", 0x4a, 0);
+	}
+}
+
+// kind 787: the warp zone and its charge-ok nodes
+static void AnimEventWarpzone(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "fx_warpzone_ptcl", 0x48, 1);
+	} else if (kind == 3 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "chrgeOK1", 0xab, 0);
+		StartNodeEffect(object, "chrgeOK2", 0xab, 0);
+		StartNodeEffect(object, "chrgeOK3", 0xab, 0);
+	} else if (kind == 4) {
+		if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "chrgeOK1", 0xac, 0);
+			StartNodeEffect(object, "chrgeOK2", 0xac, 0);
+			StartNodeEffect(object, "chrgeOK3", 0xac, 0);
+		} else if (prev < 41.0f && frame >= 41.0f) {
+			StartNodeEffect(object, "chrgeOK1", 0xac, 0);
+			StartNodeEffect(object, "chrgeOK2", 0xac, 0);
+			StartNodeEffect(object, "chrgeOK3", 0xac, 0);
+		}
+	} else if (kind == 5 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "chrgeOK1", 0xac, 0);
+		StartNodeEffect(object, "chrgeOK2", 0xac, 0);
+		StartNodeEffect(object, "chrgeOK3", 0xac, 0);
+	}
+}
+
+// kind 832: the ghost's effect
+static void AnimEventGhost(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "fx_ghost_ptcl", 0x47, 1);
+}
+
+// kind 842
+static void AnimEventCbDoor(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 2)
+		return;
+	if (prev < 2.0f && frame >= 2.0f)
+		StartNodeEffect(object, "fx_cbdoor_ptcl", 0x49, 0);
+}
+
+// kind 849: the torch stand's particle nodes
+static void AnimEventTorch849(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "ptcl1", 0x53, 0);
+			StartNodeEffect(object, "ptcl2", 0x53, 0);
+			StartNodeEffect(object, "ptcl3", 0x53, 0);
+			StartNodeEffect(object, "ptcl4", 0x53, 0);
+			StartNodeEffect(object, "ptcl5", 0x53, 0);
+			StartNodeEffect(object, "ptcl6", 0x53, 0);
+			StartNodeEffect(object, "ptcl7", 0x53, 0);
+			StartNodeEffect(object, "ptcl8", 0x53, 0);
+			StartNodeEffect(object, "ptcl9", 0x53, 0);
+			StartNodeEffect(object, "ptcl10", 0x53, 0);
+		}
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+		} else if (prev < 160.0f && frame >= 160.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+		}
+	} else if (kind == 3) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+		} else if (prev < 59.0f && frame >= 59.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+			StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+		}
+	} else if (kind == 4) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+		} else if (prev < 59.0f && frame >= 59.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+			StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+		}
+	} else if (kind == 5) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+		} else if (prev < 59.0f && frame >= 59.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+			StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+		}
+	} else if (kind == 6) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "torch_ptcl", 0x79, 0);
+	} else if (kind == 7) {
+		if (prev < 289.0f && frame >= 289.0f) {
+			StartNodeEffect(object, "ptcl1", 0x53, 0);
+			StartNodeEffect(object, "ptcl2", 0x53, 0);
+		} else if (prev < 49.0f && frame >= 49.0f) {
+			StartNodeEffect(object, "ptcl11", 0x54, 0);
+		}
+	}
+}
+
+// kind 854: the torch, lit and burning
+static void AnimEventTorchPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+	} else if (kind == 3 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+	} else if (kind == 4 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+	}
+}
+
+// kind 856: the welding tools' sparks
+static void AnimEventWeldingTools(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame)
+		StartNodeEffect(object, "welding_tools", 0x80, 0);
+}
+
+// kind 870: two effects on the same node
+static void AnimEventObj30(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 2)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "obj30", 0x66, 0);
+		StartNodeEffect(object, "obj30", 0x67, 0);
+	}
+}
+
+// kind 881: the eye short circuit and battery effects
+static void AnimEventEyeShort(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && ((prev < 0.0f && frame >= 0.0f) || prev > frame)) {
+		StartNodeEffect(object, "elec_ptcl2", 0xf, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "air_ptcl1", 0x5d, 0);
+	} else if (kind == 4 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "fx_deca_battery2", 0x1a, 0);
+	} else if (kind == 5 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "fx_deca_battery2", 0x5e, 0);
+	} else if (kind == 6) {
+		if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "eye_short1", 0x91, 0);
+			StartNodeEffect(object, "eye_short3", 0x91, 0);
+		} else if (prev < 3.0f && frame >= 3.0f) {
+			StartNodeEffect(object, "eye_short2", 0x91, 0);
+		} else if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "eye_short5", 0x91, 0);
+		}
+	} else if (kind == 7) {
+		if (prev < 3.0f && frame >= 3.0f) {
+			StartNodeEffect(object, "eye_short1", 0x92, 0);
+			StartNodeEffect(object, "eye_short2", 0x92, 0);
+		} else if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "eye_short3", 0x92, 0);
+			StartNodeEffect(object, "eye_short4", 0x92, 0);
+		} else if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "eye_short5", 0x92, 0);
+		}
+	} else if (kind == 8 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "eye_short1", 0x92, 0);
+		StartNodeEffect(object, "eye_short2", 0x92, 0);
+		StartNodeEffect(object, "eye_short3", 0x92, 0);
+		StartNodeEffect(object, "eye_short4", 0x92, 0);
+		StartNodeEffect(object, "eye_short6", 0x93, 0);
+		StartNodeEffect(object, "eye_short7", 0x93, 0);
+	} else if (kind == 9) {
+		if (prev < 34.0f && frame >= 34.0f) {
+			StartNodeEffect(object, "eye_short1", 0x94, 0);
+		} else if (prev < 10.0f && frame >= 10.0f) {
+			StartNodeEffect(object, "eye_short4", 0x94, 0);
+		} else if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "eye_short5", 0x94, 0);
+		} else if (prev < 49.0f && frame >= 49.0f) {
+			StartNodeEffect(object, "fx_deca_battery2", 0x96, 0);
+			StartNodeEffect(object, "fx_deca_battery2", 0x95, 0);
+		}
+	}
+}
+
+// kind 930: the twin's start and first effects
+static void AnimEventGiccoTwinB01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "fx_gicco_twinb01_ptcl1", 0x9d, 0);
+		} else if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "first_ptcl2", 0xa0, 0);
+		}
+	} else if (kind == 2 && prev < 2.0f && frame >= 2.0f) {
+		StartNodeEffect(object, "first_ptcl01", 0x57, 0);
+	} else if (kind == 3 && ((prev < 0.0f && frame >= 0.0f) || prev > frame)) {
+		StartNodeEffect(object, "first_ptcl2", 0xa1, 0);
+	}
+}
+
+// kind 931: the toolbox's three nodes, two effects each
+static void AnimEventTb01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 0.0f && frame >= 0.0f) || prev > frame) {
+		StartNodeEffect(object, "tb01_ptcl01", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl01", 0x1, 0);
+		StartNodeEffect(object, "tb01_ptcl2", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl2", 0x1, 0);
+		StartNodeEffect(object, "tb01_ptcl3", 0xa2, 0);
+		StartNodeEffect(object, "tb01_ptcl3", 0x1, 0);
+	}
+}
+
+// kind 932: the twin's two effects, far apart in the animation
+static void AnimEventGiccoTwinB03(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 199.0f && frame >= 199.0f) {
+		StartNodeEffect(object, "fx_gicco_twinb03_ptcl", 0x9e, 0);
+	} else if (prev < 19.0f && frame >= 19.0f) {
+		StartNodeEffect(object, "ptcl1", 0x9f, 0);
+	}
+}
+
+// kind 934: the rain effect
+static void AnimEventRain(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "rain_ptcl1", 0x56, 0);
+}
+
+// kind 939: catching a cold, then the beam's stages
+static void AnimEventCatchACold(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "catch_a_cold_ptcl", 0x4d, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 4 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 5 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x58, 0);
+	} else if (kind == 6 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x59, 0);
+	} else if (kind == 7 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "beam_ptcl", 0x59, 0);
+	}
+}
+
+// kind 995: the clock's second hand, one effect per event kind
+static void AnimEventSecond(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "second", 0x61, 0);
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "second", 0x62, 0);
+	}
+}
+
+// kind 1034: two effects on two nodes
+static void AnimEventPtcl01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "ptcl01", 0x6b, 0);
+		StartNodeEffect(object, "ptcl2", 0x6c, 0);
+	}
+}
+
+// kind 1035: the pirate boat's two effects at once
+static void AnimEventPirateBoat(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+		StartNodeEffect(object, "fx_pirateboat_ptcl", 0x64, 0);
+		StartNodeEffect(object, "fx_pirateboat_ptcl1", 0x64, 0);
+	}
+}
+
+// kind 1036: the energy node's charge-up sparks
+static void AnimEventEnergyPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 2 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "energy_ptcl_root", 0x6f, 0);
+	} else if (kind == 3) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "energy_ptcl_root", 0x6f, 0);
+		} else if ((prev < 12.0f && frame >= 12.0f) || (prev < 24.0f && frame >= 24.0f)
+		           || (prev < 36.0f && frame >= 36.0f) || (prev < 48.0f && frame >= 48.0f)
+		           || (prev < 60.0f && frame >= 60.0f) || (prev < 72.0f && frame >= 72.0f)
+		           || (prev < 84.0f && frame >= 84.0f) || (prev < 96.0f && frame >= 96.0f)
+		           || (prev < 108.0f && frame >= 108.0f) || (prev < 120.0f && frame >= 120.0f)
+		           || (prev < 132.0f && frame >= 132.0f) || (prev < 144.0f && frame >= 144.0f)
+		           || (prev < 156.0f && frame >= 156.0f) || (prev < 168.0f && frame >= 168.0f)
+		           || (prev < 180.0f && frame >= 180.0f) || (prev < 192.0f && frame >= 192.0f)
+		           || (prev < 204.0f && frame >= 204.0f) || (prev < 216.0f && frame >= 216.0f)
+		           || (prev < 228.0f && frame >= 228.0f) || (prev < 240.0f && frame >= 240.0f)
+		           || (prev < 252.0f && frame >= 252.0f) || (prev < 264.0f && frame >= 264.0f)
+		           || (prev < 276.0f && frame >= 276.0f)) {
+			StartNodeEffect(object, "energy_ptcl_root", 0x6f, 0);
+		}
+	}
+}
+
+// kind 1037: the matrix and explosion particles
+static void AnimEventPtclExp1(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "ptcl_matrix1", 0x6e, 0);
+		StartNodeEffect(object, "ptcl_matrix2", 0x6e, 0);
+	} else if (kind == 2 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "ptcl_electric", 0x75, 0);
+	} else if (kind == 3 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+	} else if (kind == 4) {
+		if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f)) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		} else if (prev < 10.0f && frame >= 10.0f) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		} else if (prev < 20.0f && frame >= 20.0f) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		} else if (prev < 30.0f && frame >= 30.0f) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		} else if (prev < 40.0f && frame >= 40.0f) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		} else if (prev < 50.0f && frame >= 50.0f) {
+			StartNodeEffect(object, "ptcl_exp1", 0x77, 0);
+			StartNodeEffect(object, "ptcl_exp1", 0x76, 0);
+		}
+	}
+}
+
+// kind 1038: the red effect, one per event kind
+static void AnimEventRedPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x71, 0);
+	} else if (kind == 2 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x72, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x73, 0);
+	} else if (kind == 4 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "red_ptcl", 0x74, 0);
+	}
+}
+
+// kind 1082: the explosion's three phases on one node
+static void AnimEventPtclExp02(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "ptcl_exp02", 0x9, 0);
+		StartNodeEffect(object, "ptcl_exp02", 0x7, 0);
+		StartNodeEffect(object, "ptcl_exp02", 0x8, 0);
+	}
+}
+
+// kind 1122: the takeoff's seven stages
+static void AnimEventTmTakeoff(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "fx_tm_takeoff1", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff2", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff3", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff4", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff5", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff6", 0x97, 0);
+		StartNodeEffect(object, "fx_tm_takeoff7", 0x97, 0);
+	}
+}
+
+// kind 1155: the laser shock's smoke and the robot's reaction effects
+static void AnimEventLaserShock(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (prev < 13.0f && frame >= 13.0f) {
+			StartNodeEffect(object, "ptcl1_laser_shock_smoke1", 0xaa, 0);
+		} else if (prev < 179.0f && frame >= 179.0f) {
+			StartNodeEffect(object, "ptcl1_laser_shock_smoke1", 0xaa, 0);
+		} else if (prev < 199.0f && frame >= 199.0f) {
+			StartNodeEffect(object, "ptcl1_laser_shock_smoke1", 0xaa, 0);
+		} else if (prev < 219.0f && frame >= 219.0f) {
+			StartNodeEffect(object, "ptcl1_laser_shock_smoke1", 0xaa, 0);
+		} else if (prev < 79.0f && frame >= 79.0f) {
+			StartNodeEffect(object, "ptcl1_laser_energyfall1", 0x58, 0);
+		}
+	} else if (kind == 2 && prev < 17.0f && frame >= 17.0f) {
+		StartNodeEffect(object, "fx_chibirobo2", 0xb8, 0);
+		StartNodeEffect(object, "fx_chibirobo3", 0xb8, 0);
+	} else if (kind == 3 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "fx_chibirobo_bright1", 0xb9, 0);
+	} else if (kind == 4) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "fx_chibirobo_bright1", 0xba, 0);
+		} else if ((prev < 144.0f && frame >= 144.0f) || prev > frame) {
+			StartNodeEffect(object, "fx_chibirobo_spark1", 0xbb, 0);
+		}
+	} else if (kind == 5 && (frame == 0.0f || prev > frame)) {
+		StartNodeEffect(object, "fx_chibirobo_bright1", 0xb7, 0);
+	}
+}
+
+// kind 1161: the spheres' effect, stopped while the object is off
+extern "C" void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+static void AnimEventSphere(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (!(object->mStatus.mFlags & 0x10000)) {
+		if (kind == 0)
+			fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0xbd, TRUE);
+	} else if (kind == 1) {
+		if (frame == 0.0f || prev > frame) {
+			StartNodeEffect(object, "sphere10", 0xbd, 0);
+			StartNodeEffect(object, "sphere11", 0xbd, 0);
+			StartNodeEffect(object, "sphere12", 0xbd, 0);
+			StartNodeEffect(object, "sphere13", 0xbd, 0);
+			StartNodeEffect(object, "sphere14", 0xbd, 0);
+			StartNodeEffect(object, "sphere15", 0xbd, 0);
+		}
+	}
+}
+
+// kind 1156: the deca robot's neck, socket and battery box effects
+static void AnimEventDeca(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 2 && ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))) {
+		StartNodeEffect(object, "fx_deca_neck1", 0xae, 0);
+		StartNodeEffect(object, "deca_socket1", 0xaf, 0);
+		StartNodeEffect(object, "deca_btrybox1", 0xaf, 0);
+	} else if (kind == 3) {
+		if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "fx_deca_neck1", 0xae, 0);
+			StartNodeEffect(object, "deca_btrybox1", 0xaf, 0);
+		} else if (prev < 31.0f && frame >= 31.0f) {
+			StartNodeEffect(object, "fx_deca_neck1", 0xae, 0);
+			StartNodeEffect(object, "deca_socket1", 0xaf, 0);
+			StartNodeEffect(object, "deca_btrybox1", 0xaf, 0);
+		} else if (prev < 61.0f && frame >= 61.0f) {
+			StartNodeEffect(object, "fx_deca_neck1", 0xae, 0);
+			StartNodeEffect(object, "deca_socket1", 0xaf, 0);
+		} else if (prev < 91.0f && frame >= 91.0f) {
+			StartNodeEffect(object, "fx_deca_neck1", 0xae, 0);
+			StartNodeEffect(object, "deca_socket1", 0xaf, 0);
+		}
+	}
+}
+
+// fn_800BD064: sets the object's animation event callback for its kind
+extern "C" void AssignAnimEventCallback(XObj* object)
+{
+	switch (object->GetKind()) {
+	case 302: object->mAnimEventCallback = AnimEventCyl295; break;
+	case 397: object->mAnimEventCallback = AnimEventPtcl397; break;
+	case 405: object->mAnimEventCallback = AnimEventKettle; break;
+	case 406: object->mAnimEventCallback = AnimEventTeacup; break;
+	case 424: object->mAnimEventCallback = AnimEventPtcl; break;
+	case 428: object->mAnimEventCallback = AnimEventEyes; break;
+	case 431: object->mAnimEventCallback = AnimEventBbNikki; break;
+	case 435: object->mAnimEventCallback = AnimEventTompScare; break;
+	case 486: object->mAnimEventCallback = AnimEventFan; break;
+	case 614: object->mAnimEventCallback = AnimEventLeticWarp; break;
+	case 626: object->mAnimEventCallback = AnimEventZactGicco; break;
+	case 628: object->mAnimEventCallback = AnimEventZactFrog; break;
+	case 629: object->mAnimEventCallback = AnimEventZactInjured; break;
+	case 630: object->mAnimEventCallback = AnimEventPajamas; break;
+	case 786: object->mAnimEventCallback = AnimEventFxPtcl; break;
+	case 787: object->mAnimEventCallback = AnimEventWarpzone; break;
+	case 832: object->mAnimEventCallback = AnimEventGhost; break;
+	case 842: object->mAnimEventCallback = AnimEventCbDoor; break;
+	case 849: object->mAnimEventCallback = AnimEventTorch849; break;
+	case 854: object->mAnimEventCallback = AnimEventTorchPtcl; break;
+	case 856: object->mAnimEventCallback = AnimEventWeldingTools; break;
+	case 870: object->mAnimEventCallback = AnimEventObj30; break;
+	case 881: object->mAnimEventCallback = AnimEventEyeShort; break;
+	case 930: object->mAnimEventCallback = AnimEventGiccoTwinB01; break;
+	case 931: object->mAnimEventCallback = AnimEventTb01; break;
+	case 932: object->mAnimEventCallback = AnimEventGiccoTwinB03; break;
+	case 934: object->mAnimEventCallback = AnimEventRain; break;
+	case 939: object->mAnimEventCallback = AnimEventCatchACold; break;
+	case 995: object->mAnimEventCallback = AnimEventSecond; break;
+	case 1034: object->mAnimEventCallback = AnimEventPtcl01; break;
+	case 1035: object->mAnimEventCallback = AnimEventPirateBoat; break;
+	case 1036: object->mAnimEventCallback = AnimEventEnergyPtcl; break;
+	case 1037: object->mAnimEventCallback = AnimEventPtclExp1; break;
+	case 1038: object->mAnimEventCallback = AnimEventRedPtcl; break;
+	case 1082: object->mAnimEventCallback = AnimEventPtclExp02; break;
+	case 1122: object->mAnimEventCallback = AnimEventTmTakeoff; break;
+	case 1155: object->mAnimEventCallback = AnimEventLaserShock; break;
+	case 1156: object->mAnimEventCallback = AnimEventDeca; break;
+	case 1161: object->mAnimEventCallback = AnimEventSphere; break;
+	default: object->mAnimEventCallback = NULL;
+	}
 }
 #endif

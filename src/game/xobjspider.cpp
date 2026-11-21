@@ -60,6 +60,15 @@ void HSD_StateInvalidate(s32 state);
 int rand();
 void OSReport(const char* fmt, ...);
 
+// diagnostics for the attachment event command
+#if !defined(VERSION_PAL)
+static const char sSpiderAttachmentIdMessage[]      = "id = %d, argv[1]=%d\n";
+static const char sSpiderMissingAttachmentMessage[] = "NULL===============\n";
+#endif
+
+// the ground shadow's fixed rotation
+static const Vec sSpiderShadowRotation = { -HALF_PI, 0.0f, 0.0f };
+
 AnimSfxEvent gSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ 12, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
@@ -495,7 +504,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 		return;
 	}
 	Vec pos  = *origin;
-	Vec rot  = { -HALF_PI, 0.0f, 0.0f };
+	Vec rot  = sSpiderShadowRotation;
 	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 	size.x   = mRadius;
 	size.y   = mRadius;
@@ -588,7 +597,7 @@ s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 			for (i = 0; mTies[i].mObj != NULL && i < 8; i++) { }
 			if (i < 8) {
 #if !defined(VERSION_PAL)
-				OSReport("id = %d, argv[1]=%d\n", i, objectId);
+				OSReport(sSpiderAttachmentIdMessage, i, objectId);
 #endif
 				mFlags.mFlags |= 0x20000000;
 				if (argv[1] >= 10000) {
@@ -598,7 +607,7 @@ s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 				}
 #if !defined(VERSION_PAL)
 				if (mTies[i].mObj == NULL) {
-					OSReport("NULL===============\n");
+					OSReport(sSpiderMissingAttachmentMessage);
 				}
 #endif
 				s32 path[8];
@@ -1978,17 +1987,16 @@ void XObjSpider::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, voi
  * @note Address: 0x800EA40C
  * @note Size: 0x148
  */
-// NONMATCHING: the jobj and the anim id swap registers
+static inline void UpdateSpiderAnimationSound(XObjSpider* spider, s32 id)
+{
+	f32 frame = GetAnimFrame(spider->mJObj);
+	spider->mSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &spider->mMoveTranslate, 0));
+}
+
 void XObjSpider::UpdateAnimationSounds()
 {
-	if (mStatus.mFlags & 1ULL) {
-		if (mStatus.mFlags & 0x10000ULL) {
-			HSD_JObj* joint = mJObj;
-			s32 id          = mAnimId;
-			HSD_AObj* aobj  = GetAObj(joint);
-			f32 frame       = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
-			mSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
-		}
+	if ((mStatus.mFlags & 1ULL) && (mStatus.mFlags & 0x10000ULL)) {
+		UpdateSpiderAnimationSound(this, mAnimId);
 	}
 }
 

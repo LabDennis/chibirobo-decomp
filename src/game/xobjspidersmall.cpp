@@ -60,6 +60,9 @@ extern "C" XObjFloor sSmallSpiderHighFloor[] = {
 	{ -1 },
 };
 extern "C" XObjFloor* sSmallSpiderFloors[2] = { sSmallSpiderLowFloor, sSmallSpiderHighFloor };
+
+// the ground shadow circle's fixed rotation
+static const Vec sSmallSpiderCircleRotation = { -HALF_PI, 0.0f, 0.0f };
 extern "C" {
 AnimSfxEvent gSmallSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
@@ -100,12 +103,16 @@ static inline bool CanPlaySe()
  * @note Address: 0x800F4AAC
  * @note Size: 0x164
  */
-// NONMATCHING: anim and jobj swap r29 and r30
+static inline void UpdateSmallSpiderAnimationSound(XObjSpiderSmall* spider, s32 id)
+{
+	f32 frame = GetAnimFrame(spider->mJObj);
+	spider->mAnimSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &spider->mMoveTranslate, 0));
+}
+
 void XObjSpiderSmall::UpdateAnimationSounds()
 {
 	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
-		s32 anim = mAnimId;
-		mAnimSfx.Update(anim, GetAnimFrame(mJObj), GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
+		UpdateSmallSpiderAnimationSound(this, mAnimId);
 	}
 }
 
@@ -1926,7 +1933,7 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 {
 	if ((mStatus.mFlags & 8) && (mSpiderStatus.mFlags & 0x40) && (mStatus.mFlags & 0x10000)) {
 		Vec p    = *pos;
-		Vec rot  = { -HALF_PI, 0.0f, 0.0f };
+		Vec rot  = sSmallSpiderCircleRotation;
 		Vec size = mMoveScale * (mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 		size.x   = mRadius;
 		size.y   = mRadius;
@@ -2260,6 +2267,13 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
  * @note Size: 0x998
  */
 // NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
+static inline bool IsCurrentStage(const char* name)
+{
+	s32 stage = gGame.mStage;
+	s32 id    = FindStageIndexByName(name);
+	return stage == id;
+}
+
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
 	spider->SetColor(1, 0, 0, 0, 0.0f);
@@ -2277,15 +2291,15 @@ extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 	case 0:
 		spider->SetState(3);
 		SetSmallSpiderTarget(spider);
-		if (IsStage("stage07")) {
+		if (IsCurrentStage("stage07")) {
 			SetSmallSpiderArea(spider, -102.85f, 0.0f, -335.27f, 150.0f, 134.0f);
-		} else if (IsStage("stage01")) {
+		} else if (IsCurrentStage("stage01")) {
 			if (spider->mHome.y > 70.0f) {
 				SetSmallSpiderArea(spider, -306.38f, 75.84f, -33.31f, 80.0f, 100.0f);
 			} else {
 				SetSmallSpiderArea(spider, -150.97f, 0.0f, -100.32f, 150.0f, 134.0f);
 			}
-		} else if (IsStage("stage02")) {
+		} else if (IsCurrentStage("stage02")) {
 			if (spider->mHome.x > 0.0f) {
 				SetSmallSpiderArea(spider, 25.65f, 0.31f, 2.28f, 166.0f, 197.0f);
 			} else {

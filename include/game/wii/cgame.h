@@ -3,6 +3,7 @@
 
 #include "Dolphin/mtx.h"
 #include "game/wii/cpad.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
@@ -649,19 +650,25 @@ public:
 	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
 	CVectorEaseInOutInterpolation mTurnEaseInOut;      // _DB8
 	CInterpolationEaseInOut mHeightEaseInOut;          // _E14
-	u8 _E30[0xE34 - 0xE30];
+	CInterfaceInterpolation* mHeightInterp;            // _E30, camera height above the target
 	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	u8 _E50[0xE64 - 0xE50];
+	CInterfaceInterpolation* mAbsHeightInterp;     // _E50, absolute camera height
+	f32 mTargetHeight;                             // _E54, the height kept once no area is picked
+	s32 mHeightMode;                               // _E58, 0 height above the target, 1 absolute
+	s32 mUseAreaHeight;                            // _E5C, 1 keeps the area's height outside it
+	f32 mCurrentHeight; // _E60, current camera height
 	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
-	u8 _E78[0xE7C - 0xE78];
+	CInterfaceInterpolation* mEyeYOffsetInterp; // _E78
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	u8 _E98[0xEA4 - 0xE98];
+	f32 mEyeYOffset;                              // _E98
+	s32 mTurnBlocked; // _E9C, 1 while area corners keep the camera from turning
+	s32 mManualInput; // _EA0, manual camera input this frame
 	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
 	s32 mInsideAreas[32];                                // _EA8, areas containing the player
 	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
-	u8 _F64[0xF68 - 0xF64];
+	f32 mEyeInterpTime; // _F64, target-eye interpolation time
 	CVec mTargetEye;      // _F68
 	CVec mPrevTargetEye;  // _F78
 	CVec mOrbitEye;       // _F88
@@ -672,11 +679,16 @@ public:
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
 	BOOL mKeepPreviousEye;   // _11E8
-	u8 _11EC[0x11F8 - 0x11EC];
-	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
+	f32 mOrbitInput; // _11EC, the pad's orbit input, shaped by the curve at _126C (name inferred)
+	f32 _11F0;       // _11F0, second orbit axis, only cleared by the pad controls
+	f32 mPointerHoldTime; // _11F4, frames the pointer button has been held (name inferred)
+	u8 mPointerHeld; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	CObjVec _11FC;
-	u8 _122C[0x123C - 0x122C];
+	u8 mOrbiting;    // _122C, 1 while the orbit keeps placing the eye (name inferred)
+	u8 mOrbitReseed; // _122D, reseeds the orbit target from the camera angle on the next input (name inferred)
+	u8 _122E[0x1230 - 0x122E];
+	Vec mOrbitPointer; // _1230, the pointer position clamped to the screen limits (name inferred)
 	CamEdgeArrow mArrows[2]; // _123C, left and right
 	f32 _126C;               // _126C
 	f32 _1270;               // _1270
@@ -691,13 +703,16 @@ public:
 	virtual void PreviousUpdate();  // _0C
 	virtual void Update(u32 step);  // _10
 	virtual void Reset();           // _14
+	virtual void SetCamera(CCamera* camera); // _18, takes eye, interest, angle, distance and fov
 	virtual void Init();            // _1C
+	virtual void vf24();            // _24, draws the turn arrows at the screen edges (fn_80160788 in retail)
 	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60
 
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
+	void Reset2(); // 0x80157384, resets eye and interest behind the target; called directly, not virtual
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);
@@ -999,9 +1014,18 @@ struct WiiPlayerState : public XObj {
 	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
 	u8 _1C9B4[4];          // _1C9B4
 	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
+	u8 _1C9C4[0x1C9FC - 0x1C9C4];
+	CJArchive mAttachmentAnim; // _1C9FC, the attachment's anims, the GameCube's CJAnim mAttachmentAnim
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
+	// snaps his heading back unless a hang, rope, ladder or push action holds it
+	void ResetCameraValue()
+	{
+		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
+			mHeldMoveAngle = mMoveAngle;
+		}
+	}
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
@@ -1608,7 +1632,7 @@ STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
 // the emitter handles, stepped with the camera like the global at 0x8044EE4C
 class CEvtPtcl {
 public:
-	u8 mEmitters[0x80][0x74]; // _00
+	EffectInstance mEffects[0x80]; // _00
 	// _3A00 vtable
 
 	virtual ~CEvtPtcl() { }

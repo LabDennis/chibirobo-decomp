@@ -75,6 +75,14 @@ inline bool PlayerCanLook()
 	return result;
 }
 
+static inline f32 AbsValue(f32& value)
+{
+	if (value < 0.0f) {
+		value = -value;
+	}
+	return value;
+}
+
 static inline void ClampStick(f32& value)
 {
 	if (value > 0.8f) {
@@ -150,12 +158,12 @@ void CCameraActionEye::Update(u32 step)
 				f32 pitch       = 0.0f;
 				mLook.mTarget.y = 0.0f;
 				if (tilt > 0.0f) {
-					pitch = mLook.x + 0.06981317f * Abs(tilt); // up to 4 degrees per update, scaled by the stick
+					pitch = mLook.x + 0.06981317f * AbsValue(tilt); // up to 4 degrees per update, scaled by the stick
 					if (pitch > 0.87266463f) {
 						pitch = 0.87266463f; // 50 degrees up
 					}
 				} else if (tilt < 0.0f) {
-					pitch = mLook.x - 0.06981317f * Abs(tilt);
+					pitch = mLook.x - 0.06981317f * AbsValue(tilt);
 					if (pitch < -0.87266463f) {
 						pitch = -0.87266463f; // 50 degrees down
 					}

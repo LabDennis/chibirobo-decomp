@@ -35,6 +35,8 @@ static inline HSD_JObj* GetLeaf(HSD_JObj* jobj)
  * @note Address: 0x80011638
  * @note Size: 0x5A0
  */
+static const char sMirrorAllocationName[] = "(mirror)";
+
 // NONMATCHING: the stage's camera mode and the second loop's registers rotate
 // the step after the objects are read: points the camera and its actions at them, lists them
 // and sets up a mirror for each object that has one, at most five
@@ -99,7 +101,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 						mirror->mTexture.mX      = 0.0f;
 						mirror->mTexture.mY      = 0.0f;
 						mirror->mTexture.mMipmap = 0;
-						mirror->mTexture.mImage  = mm::Alloc(GXGetTexBufferSize(256, 256, GX_TF_RGB565, GX_FALSE, 0), "(mirror)");
+						mirror->mTexture.mImage  = mm::Alloc(GXGetTexBufferSize(256, 256, GX_TF_RGB565, GX_FALSE, 0), sMirrorAllocationName);
 						mirror->mActive          = TRUE;
 						mirror->mTexture.mTex.Init(mirror->mTexture.mImage, mirror->mTexture.mWidth, mirror->mTexture.mHeight,
 						                           mirror->mTexture.mFormat, GX_CLAMP, GX_CLAMP, GX_FALSE);
