@@ -539,6 +539,7 @@ SetPushActionState = .text:0x800CCE60; // type:function size:0x8
 SetObjectStatusFlags = .text:0x800CD6A8; // type:function size:0x1C
 GetMaskedObjectStatus = .text:0x800CD6C4; // type:function size:0x14
 IsPlayerAttachmentEquipped = .text:0x800CD6D8; // type:function size:0x28
+UpdatePlayerSuitChange = .text:0x800CD708; // type:function size:0x500
 LoadPlayerSuitItem = .text:0x800CDC98; // type:function size:0x114
 ApplyPlayerSuit = .text:0x800CDDC0; // type:function size:0x294
 SetPlayerActionTarget = .text:0x800CE76C; // type:function size:0x10

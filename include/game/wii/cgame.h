@@ -1052,16 +1052,18 @@ struct WiiPlayerState : public XObj {
 		GXColor mItemTint; // _1C998, tints the held item
 		s32 mItemTintWord; // _1C998, the save copies it as a word
 	};
-	f32 mHeadOffset;       // _1C99C
-	BOOL mHeadOffsetReady; // _1C9A0
-	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
-	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
-	u8 _1C9B4[4];          // _1C9B4
-	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
-	f32 _1C9C4[2];         // _1C9C4, two more of the same block, cleared with it on reset
-	CVec mEyeAim;          // _1C9CC, the pitch and yaw the eye camera aims shots with
-	CVec mEyeAimTarget;    // _1C9DC, where the eye camera eases the aim toward
-	CVec mEyeAimStep;      // _1C9EC, the per-frame aim step while the eye camera runs
+	f32 mHeadOffset;          // _1C99C
+	BOOL mHeadOffsetReady;    // _1C9A0
+	s32 mGroundType;          // _1C9A4, the floor he walks on, picks the footstep sounds
+	Vec _1C9A8;               // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
+	u8 _1C9B4[4];             // _1C9B4
+	f32 _1C9B8[3];            // _1C9B8, read by index; the movement code tests [2] above 0
+	f32 _1C9C4[2];            // _1C9C4, two more of the same block, cleared with it on reset
+	CVec mEyeAim;             // _1C9CC, the pitch and yaw the eye camera aims shots with
+	CVec mEyeAimTarget;       // _1C9DC, where the eye camera eases the aim toward
+	CVec mEyeAimStep;         // _1C9EC, the per-frame aim step while the eye camera runs
+	CJArchive mAttachmentAnm; // _1C9FC, the attachment's own animation file, the GameCube's mAttachmentAnim
+	CJArchive mSuitAnm;       // _1CB44, the worn suit's animation file, the GameCube's mSuitAnim
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals

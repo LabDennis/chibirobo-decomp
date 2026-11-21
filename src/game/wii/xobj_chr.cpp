@@ -198,6 +198,7 @@ UnkStageObj* GetSpawnData(s32 index);
 extern s32 gSpecialSuitSpawnIds[];
 BOOL LoadPlayerSuitItem(WiiPlayerState* player);
 void ApplyPlayerSuit(WiiPlayerState* player);
+void UpdatePlayerSuitChange(WiiPlayerState* player);
 void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
 void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
 void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
@@ -226,6 +227,11 @@ struct SuitChangeTrail {
 	u8 _1F0[0x258 - 0x1F0];
 };
 extern SuitChangeTrail lbl_8045BBD0;
+extern "C" void fn_800F2CF4(SuitChangeTrail* trail); // starts the suit-change spiral
+
+// the delay the suit change keeps the old suit's resources around, the GameCube's
+// gPlayerSuitChangeTimer; the Wii resets it to 0.0f and waits on the file itself
+static f32 gPlayerSuitChangeTimer;
 
 static inline void ResetSuitChangeTrail(SuitChangeTrail& trail)
 {
@@ -513,6 +519,98 @@ BOOL IsPlayerAttachmentEquipped(const WiiPlayerState* chr, s32 wanted)
 BOOL LoadPlayerAttachmentAnimation(WiiPlayerState*)
 {
 	return TRUE;
+}
+
+// the GameCube's SuitFadeFinished: the fade SetColor queues is done once the second color
+// step's speed ran out; the Wii keeps the pair inside the animation queue
+static inline bool SuitFadeFinished(const WiiPlayerState* player)
+{
+	const Vec& speed = player->mAnmQueue.mColorStep[1].mSpeed;
+	return speed.x == 0.0f && speed.y == 0.0f && speed.z == 0.0f;
+}
+
+// the queued suit change, one call a frame: flashes him white, swaps the worn suit for the
+// requested one, mounts the attachments back on his joints and fades back to its tint.
+// The GameCube's UpdatePlayerSuitChange; on the Wii its RemovePlayerSuit work is inlined and
+// the suit's own animation file is a CJArchive instead of a CJAnim
+// _0x500, the GameCube's UpdatePlayerSuitChange: fades to white, starts the spiral, frees
+// the old suit and its animation file, loads the new one through LoadPlayerSuitItem, then
+// ApplyPlayerSuit and fades back. Step 3 commits mCurrent=mRequested and drops through 4->5
+// NONMATCHING (~96 %): same instruction multiset, call set and control flow. Retail dedicates
+// r30 to the unit's shared string block (lbl_802DAA6C+0x95/"head", +0x9A/"l_arm_chn") and
+// keeps `player` in r31; our pool still carries only this function's two strings, so MWCC
+// keeps `player` in r30 and no register goes to the strings — every remaining diff is that
+// rename, the same-value float labels (@-labels vs lbl_805A4Exx), the timer's .sbss address
+// (lbl_805A1C50) and the scheduling it drags with it. Closes when the unit's rodata/.sbss
+// fill in in retail order (fn_800CE054 also binds these strings)
+void UpdatePlayerSuitChange(WiiPlayerState* player)
+{
+	switch (player->mSuits.mChangeStep) {
+	case 1:
+		player->SetColor(2, 255, 255, 255, 0.5f);
+		fn_800F2CF4(&lbl_8045BBD0);
+		PlayWiiSoundEffect(&gGame.mSound, 0xB2, 1.0f, 0.0f);
+		++player->mSuits.mChangeStep;
+		break;
+	case 2:
+		if (SuitFadeFinished(player)) {
+			++player->mSuits.mChangeStep;
+		}
+		break;
+	case 3:
+		if (player->mSuits.mCurrent != 0) {
+			s32 anim  = player->GetAnimId();
+			f32 frame = player->GetAnimFrame();
+			player->ClearAnim();
+			((XObjAttachment*)player->mCopterObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			((XObjAttachment*)player->mPopperObj)->SetParent(player->GetWorldMtx("l_arm_chn"), FALSE);
+			((XObjAttachment*)player->mRadarObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			((XObjAttachment*)player->mOXObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			if (IsObjectActive(&player->mSuits.mObjects[player->mSuits.mCurrent])) {
+				if (player->GetAttachment() == 2) {
+					player->mSuits.mObjects[player->mSuits.mCurrent].vf290(FALSE);
+				}
+				player->mSuits.mObjects[player->mSuits.mCurrent].ClearAnim();
+				player->mSuits.mObjects[player->mSuits.mCurrent].Release();
+			}
+			if (player->mSuitAnm.mAnm.mFile.IsLoaded()) {
+				player->mSuitAnm.mAnm.Release(TRUE);
+				player->mSuitAnm.mAnm.mFile.Close();
+			}
+			player->SetAnim(anim, TRUE, frame, 1.0f, 1.0f, 15.0f);
+			player->SetColor(2, 255, 255, 255, 0.0f);
+		}
+		player->mSuits.mLoadStep = 1;
+		player->mSuits.mCurrent  = player->mSuits.mRequested;
+		++player->mSuits.mChangeStep;
+		gPlayerSuitChangeTimer = 0.0f;
+		// fall through
+	case 4:
+		gPlayerSuitChangeTimer -= 2.0f;
+		if (gPlayerSuitChangeTimer <= 0.0f) {
+			gPlayerSuitChangeTimer = 0.0f;
+		}
+		if (!LoadPlayerSuitItem(player) || gPlayerSuitChangeTimer != 0.0f) {
+			break;
+		}
+		++player->mSuits.mChangeStep;
+		// fall through
+	case 5: {
+		ApplyPlayerSuit(player);
+		player->SetColor(2, 255, 255, 255, 0.0f);
+		player->SetColor(2, 0, 0, 0, 0.5f);
+		const Vec& tint = player->mAnmQueue.mColorStep[0].mValue;
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
+		++player->mSuits.mChangeStep;
+		break;
+	}
+	case 6:
+		if (SuitFadeFinished(player)) {
+			player->mSuits.mChangeStep = 0;
+		}
+		break;
+	}
 }
 
 BOOL fn_800CDDAC(const XObj* object)
