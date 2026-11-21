@@ -212,18 +212,7 @@ public:
 	f32 GetRotationX() const { return HSD_JObjGetRotationX(mJObj); }
 	f32 GetRotationY() const { return HSD_JObjGetRotationY(mJObj); }
 	MtxPtr GetMtx() const { return HSD_JObjGetMtxPtr(mJObj); }
-	Vec GetPos() const
-	{
-		Vec position;
-		HSD_MtxGetTranslate(HSD_JObjGetMtxPtr(mJObj), &position);
-		return position;
-	}
-	Quaternion GetRot() const
-	{
-		Quaternion rotation;
-		HSD_MtxGetRotation(HSD_JObjGetMtxPtr(mJObj), (Vec*)&rotation);
-		return rotation;
-	}
+	Vec GetPos() const { return GetJointPosition(mJObj); }
 };
 typedef char CJObj_size_check[sizeof(CJObj) == 0x38 ? 1 : -1];
 
