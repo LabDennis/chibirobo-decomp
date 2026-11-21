@@ -3,6 +3,7 @@
 // NONMATCHING: the script control, the queue, the effect slots and the small commands have source; the
 // expression evaluator and the big commands (CALL, CAMERA, WAIT, SCRN, ...) do not yet.
 #include "nw4r/ef/ef_resource.h"
+#include "game/wii/xobjflags.h" // ahead of cgame.h: its AnimSfx needs the real nw4r::math, before xobj.h's shim
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
@@ -42,6 +43,7 @@ void UpdateHeldObject(XAction* action, u32 frames);
 void CancelPlayerPushAction(XAction* action);
 void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
+void ClearActiveObjectFloors(XObj* object);
 BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
 void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
 void fn_800C807C(XObj* obj);                   // a category 3 object's follow-up to a new anim
@@ -51,7 +53,14 @@ void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerLevel(WiiPlayerParams* params, s32 amount);
 void AddPlayerRank(WiiPlayerParams* params, s32 amount);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
+void AddMainMenuExtraRow(void* menu, s32 arg1, s32 arg2);
 }
+
+void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex);      // 0x800D2B50
+void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                   // 0x800EF58C
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);                           // xobj_chr.cpp
+
+#include "game/fbtexeff.h"
 
 CEvtFlags gEventFlags;
 CEvtVars gEventVars;
@@ -101,6 +110,12 @@ static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 		return evt->mData.mContext;
 	}
 	return (XObj*)id;
+}
+
+// the header only declares it: the body needs XObjFlags, which not every unit can afford to include
+inline CEvtFlags& XOBJS::GetCollectionFlags(CollectionPool pool) const
+{
+	return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags;
 }
 
 static inline s32 EvtRead16(const u8* p)
@@ -548,6 +563,421 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		OSPanic(__FILE__, 1778, FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id));
 	}
 	return 0;
+}
+
+/**
+ * @note Address: 0x800988AC
+ * @note Size: 0x1978
+ */
+// the GameCube's _cmd_CALL: runs one syscall on the target object. The Wii adds case -46 and
+// reads the game status through CBase's virtuals instead of the flags member
+s32 CEvt::_cmd_CALL(u8, s32)
+{
+	s32 yield  = 0;
+	u8* start  = mData.mScript - 1;
+	u8* begin  = mData.mScript;
+	u16 length = EvtRead16(begin);
+	mData.mScript += 2;
+	u8* end      = begin + length;
+	s16 id       = CEvt_Evaluate(this);
+	XObj* target = CEvt_GetObj(this, id);
+	s32 count    = 0;
+	s32 args[24];
+	for (s32 i = 0;; i++) {
+		if (mData.mScript >= end)
+			break;
+		if (i < 24) {
+			args[i] = CEvt_Evaluate(this);
+			count++;
+		}
+	}
+
+	switch ((s32)target) {
+	case -10: { // keeps the object inside these limits around where it stands now
+		XObj* obj = CEvt_GetObj(this, (s16)args[0]);
+		f32 negZ = args[4], posZ = args[3], negX = args[2], posX = args[1];
+		obj->mAnmQueue.mAnchorX   = obj->mMoveTranslate.x;
+		obj->mAnmQueue.mAnchorZ   = obj->mMoveTranslate.z;
+		obj->mAnmQueue.mLimitPosX = posX;
+		obj->mAnmQueue.mLimitNegX = negX;
+		obj->mAnmQueue.mLimitPosZ = posZ;
+		obj->mAnmQueue.mLimitNegZ = negZ;
+		break;
+	}
+	case -11: {
+		s16 id    = args[0];
+		s32 flags = args[1];
+		if (flags == -1) {
+			XObj* obj                   = CEvt_GetObj(this, id);
+			obj->mAnmQueue.mMarkerOverride  = 0;
+			obj->mAnmQueue.mMarkerOverride |= 0x80000000;
+		} else {
+			XObj* obj = CEvt_GetObj(this, id);
+			obj->mAnmQueue.mMarkerOverride &= ~0x80000000;
+			obj->mAnmQueue.mMarkerOverride |= flags;
+		}
+		break;
+	}
+	case -12:
+	case -13:
+	case -14:
+	case -15:
+		if (mYesNoActive != 0) {
+			// OpenPlayerYesNoMenu sets 0x800, it clears once the marks have faded out after the answer
+			if (gGame.GetStatusFlags(0x800)) {
+				CPad pad(0);
+				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
+				mData.mScript = start;
+				yield         = 1;
+			} else {
+				mYesNoActive  = 0;
+				mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+			}
+		} else {
+			if (gGame.GetPlayer()->mAttachmentRequest < 0) {
+				s32 crossMask = 2;
+				if ((s32)target == -12)
+					crossMask = 2;
+				else if ((s32)target == -13)
+					crossMask = 1;
+				else if ((s32)target == -14)
+					crossMask = 0;
+				else if ((s32)target == -15)
+					crossMask = 3;
+				OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, args[0]);
+				mYesNoActive = 1;
+			}
+			mData.mScript = start;
+			yield         = 1;
+		}
+		break;
+	case -16:
+		// the subwindow: 231 sets its rect, @CAM aims its camera and shows it, @RESET and 230 (the two
+		// atoms that end the scripted camera in _cmd_CAMERA) hide it. The Wii scales the rect's x
+		// by the screen's width scale, its centre is in pixels of the widescreen frame
+		if (args[0] == 231) {
+			gGame.mSubwin.mRectX      = args[1] * gScreenWidthScale;
+			gGame.mSubwin.mRectY      = args[2];
+			gGame.mSubwin.mRectWidth  = args[3];
+			gGame.mSubwin.mRectHeight = args[4];
+		} else if (args[0] == EVT_ATOM_CAM) {
+			Vec pos;
+			pos.x = args[1] / 100.0f;
+			pos.y   = args[2] / 100.0f;
+			pos.z   = args[3] / 100.0f;
+			ConfigureSubwindowCamera(&gGame.mSubwin, pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
+			gGame.mSubwin.mEnabled      = 1;
+			gGame.mSubwin.mFlags.mFlags = 0;
+		} else if (args[0] == EVT_ATOM_RESET || args[0] == 230) {
+			gGame.mSubwin.mEnabled = 0;
+		}
+		break;
+	// -17 to -19 set, clear and test an item's collection flag, -20 to -22 a coin's, -23 to -25 a dust pile's;
+	// id -2 sets or clears all of them
+	case -17: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -18: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -19: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case -20: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -21: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -22: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case -23: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -24: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -25: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case SYSCALL_SET_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL) {
+			// the Wii learns the floor reflection here: the first time an object asks for it,
+			// its floor data is refreshed so the reflection has something to stand on
+			if (mask == 0x200000000000000ULL && !(obj->mStatus.mFlags & mask)) {
+				obj->mStatus.mFlags |= mask;
+				if ((obj->mStatus.mFlags & 1) == 1) {
+					UpdateObjectFloorHeights(obj);
+					UpdateObjectFloorXZExtent(obj);
+					ClearActiveObjectFloors(obj);
+				}
+			} else {
+				obj->mStatus.mFlags |= mask;
+			}
+			if (mask & 0x20000) {
+				u32 flags[5];
+				flags[0]     = obj->mStatus.mFlags & 0x800000;
+				flags[1]     = obj->mStatus.mFlags & 0x200000;
+				flags[2]     = obj->mStatus.mFlags & 0x40;
+				flags[3]     = obj->mStatus.mFlags & 0x20000;
+				flags[4]     = obj->mStatus.mFlags & 0x400000;
+				obj->ApplyMaterialPresets(flags);
+			}
+			if (mask & ((u64)0x4000 << 32)) {
+				WiiPlayerState* player = gGame.GetPlayer();
+				if ((s16)obj->GetPool() == 8 && obj == player->mLift.mTarget) {
+					s16 item = obj->GetObjFlags();
+					switch (item) {
+					case 16:
+						player->mAttachment = 4;
+						break;
+					case 21:
+						player->mAttachment = 5;
+						break;
+					case 22:
+						player->mAttachment = 6;
+						break;
+					case 56:
+						player->mAttachment = 7;
+						break;
+					}
+					switch (item) {
+					case 16:
+					case 21:
+					case 22:
+					case 56:
+						if (!LoadPlayerAttachmentAnimation(player)) {
+							mData.mScript = start;
+							yield         = 1;
+						}
+						break;
+					}
+				}
+			}
+		} else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_SET_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case SYSCALL_CLR_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL) {
+			obj->mStatus.mFlags &= ~mask;
+			if (mask & 0x20000)
+				obj->SetDestinationAlpha(0, 0);
+			if (mask & ((u64)0x4000 << 32)) {
+				WiiPlayerState* player = gGame.GetPlayer();
+				if ((s16)obj->GetPool() == 8 && obj == player->mLift.mTarget) {
+					s16 item = obj->GetObjFlags();
+					switch (item) {
+					case 16:
+					case 21:
+					case 22:
+					case 56:
+						player->mAttachment = 0;
+						// the GameCube released the CJAnim here; the Wii's archive releases
+						// its model and closes its file
+						if (player->mAttachmentAnim.mFile.IsLoaded()) {
+							player->mAttachmentAnim.mAnm.Release(TRUE);
+							player->mAttachmentAnim.mFile.Close();
+						}
+						break;
+					}
+				}
+			}
+		} else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CLR_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case SYSCALL_CHK_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL)
+			mSelectResult = (obj->mStatus.mFlags & mask) ? 1 : 0;
+		else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CHK_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case -29:
+		SetItemFlags((s16)args[0], (u16)args[1]);
+		break;
+	case -30:
+		ClearItemFlags((s16)args[0], (u16)args[1]);
+		break;
+	case -31:
+		mSelectResult = (u16)GetItemFlagsMasked((s16)args[0], (u16)args[1]);
+		break;
+	case -41:
+		gGame.SetStatusFlags((u64)1 << args[0]);
+		break;
+	case -42:
+		gGame.ClearStatusFlags((u64)1 << args[0]);
+		break;
+	case -43:
+		mSelectResult = gGame.GetStatusFlags((u64)1 << args[0]) ? 1 : 0;
+		break;
+	case -32:
+		gGame.SetStatusFlags((u64)0x8000 << 32);
+		break;
+	case -33:
+		gGame.ClearStatusFlags((u64)0x8000 << 32);
+		break;
+	case -37:
+		gGame.SetStatusFlags((u64)0x10000 << 32);
+		break;
+	case -38:
+		gGame.ClearStatusFlags((u64)0x10000 << 32);
+		break;
+	case -34:
+		gGame.SetStatusFlags((u64)0x20 << 32);
+		break;
+	case -35:
+		gGame.ClearStatusFlags((u64)0x20 << 32);
+		break;
+	case -36:
+		// the GameCube walked the objects for one with the reflection bit here; the Wii keeps
+		// its answer on the pointer, an object asks for the floor reflection through -26
+		if (gGame.mPointer.mFloorReflect) {
+			gGame.SetStatusFlags((u64)0x20 << 32);
+		} else {
+			gGame.ClearStatusFlags((u64)0x20 << 32);
+		}
+		break;
+	// -44 turns back on and -45 turns off every camera area record whose mCameraAction is the id
+	case -44: {
+		s16 id                 = args[0];
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
+		for (s32 i = 0; i < areaCount; i++) {
+			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
+			if (id == record->mCameraAction)
+				record->mFlags &= ~0x80;
+		}
+		break;
+	}
+	case -45: {
+		s16 id                 = args[0];
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
+		for (s32 i = 0; i < areaCount; i++) {
+			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
+			if (id == record->mCameraAction)
+				record->mFlags |= 0x80;
+		}
+		break;
+	}
+	case -39: {
+		s16 result    = GetItemScrapValue(args[0]);
+		mSelectResult = result;
+		break;
+	}
+	case -40:
+		mSelectResult = (s16)GetItemHappyPointValue(args[0]);
+		break;
+	case -46:
+		// Wii only: wakes the script's owner, CEvt's end clears the word again
+		if (mOwner != NULL)
+			mOwner->_9A4 = 1;
+		break;
+	case SYSCALL_STGFUNC:
+		if (count > 0)
+			mSelectResult = CallStageModule(args[0] + 7, count - 1, &args[1]);
+		else
+			OSPanic(__FILE__, 2244, "SYSCALL_STGFUNC, noargs\n");
+		break;
+	case -200:
+		AddMainMenuExtraRow(gGame.mMenu.mMenus[0], args[0], args[1]);
+		break;
+	default:
+		if (target != NULL && (target->mStatus.mFlags & 1)) {
+			s32 result = target->HandleEventCommand(count, args);
+			if ((s16)target->GetPool() == 2) {
+				if (result == -1 && args[0] != 101)
+					yield = 1;
+				else
+					mSelectResult = result;
+			} else
+				mSelectResult = result;
+			for (s32 i = 0; i < count; i++) { }
+		}
+		break;
+	}
+	return yield;
 }
 
 /**
