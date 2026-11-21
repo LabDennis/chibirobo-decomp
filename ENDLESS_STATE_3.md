@@ -1,14 +1,47 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 69 fertig, Branch devin/lane3 @bbc85e92. R24J01: 6636/8284 matched, main.dol: OK (+1,
+Stand: Lauf 70 fertig, Branch devin/lane3 @8c490ad5. R24J01: 6637/8284 matched, main.dol: OK (+1,
 kein Regress); GC: 17 files OK (alle drei); --non-matching linkt;
-callcheck R24J01: 52 bekannte Eintraege, keine neuen; check.py ueber
+callcheck R24J01: keine neuen Eintraege; check.py ueber
 CLANG_FORMAT=~/.local/opt/clang-format-18 + subprocess-Wrapper:
-471 files ok. Baselines .lane3_baseline/report_<V>.json jetzt auf
-Lauf-69-Stand (vorher veraltet).
+471 files ok. Baselines .lane3_baseline/report_<V>.json auf
+Lauf-70-Stand.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 70 — xobj_chr: SetPlayerEyeCameraJointsHidden gematcht (+1)
+
+- **Commit 8c490ad5** `wii xobj_chr: match
+  SetPlayerEyeCameraJointsHidden (0x800E7FB0)` — 2 Dateien, +33/-1.
+- **`SetPlayerEyeCameraJointsHidden` (0x190) = 100 %.** Signatur
+  `(WiiPlayerState* player, BOOL hidden, f32 rotY, f32 unused)` —
+  aus cmotioncontrolcamera.cpp-Aufrufen. Schreibt IMMER drei
+  CVec-Tripel (x=unused, y=rotY, z=0 / identisch / 0,0,0):
+  mEyeAim _1C9CC, mEyeAimTarget _1C9DC, mEyeAimStep _1C9EC.
+  CVec = 0x10 Byte, vptr bei +0xC (Retail-Beweis aus
+  GetViewPosition `stw __vt__4CVec,0xc`). Der 0xC-Abstand der
+  Stores ist das Give-away — ResetObjectState nullt alle neun
+  Floats, laesst die vptr-Plaetze frei.
+- Layout-Fix in cgame.h: `Vec mEyeAim` -> drei `CVec`
+  (mEyeAim/mEyeAimTarget/mEyeAimStep). WiiPlayerState ist reines
+  Overlay (kein Symbol emittiert), sicher aenderbar.
+- Nachbar fn_800E8140 (0x800E8140) nutzt dieselben neun Floats:
+  Winkel-Lerp mit pi/2pi/0.05235988f (3 Grad pro Frame) —
+  Augenkamera-Ziel-Anfahrung, bestaetigt die Semantik.
+- Scene-Teil nur wenn `GetAttachment()==2 && hidden` (Attachment 2
+  = Augenkamera): Queue-Muster identisch zu fn_800E7EA8 (Player,
+  aktiver Suit, SuitPart bei mCurrent 3||6, Popper), dann
+  `fn_802AEDA0(&mHead,0)`, dann Drain: Retail haelt mHead in r30
+  und testet `head->mPending` je Iteration — ein
+  `WiiGsSceneObj* head = gGame.mGs.mScene.mHead;`-Local +
+  `while ((pending = head->mPending) != 0) if (pending != 0)
+  head->vf038(pending-1);` erzeugt genau das (96,44 % -> 100 %).
+  Kontrast: fn_800E7EA8 will KEIN head-Local (laedt mHead vor
+  jedem Call neu); hier ist das Local Retail-idiom.
+- Gate: R24J01 OK 6637/8284 (+1); GC 3x `17 files OK`; config/
+  sauber; Report-Diff nur die neue Funktion None->100; callcheck
+  keine neuen Treffer.
 
 ## Lauf 69 — xobj_chr: fn_800E7EA8 gematcht (+1)
 
@@ -40,8 +73,8 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 - xobj_chr weiter in Adress-Reihenfolge: fn_800E3CD4
   (GetCameraTarget-Gegend), SetAnim 0x800E333C (gross);
-  SetPlayerEyeCameraJointsHidden 0x800E7FB0 (0x190, liegt direkt
-  hinter fn_800E7EA8 im Retail — auto_fn_800E7FB0-Asm ziehen);
+  fn_800E8140 (Augen-Lerp, nutzt die drei neuen CVecs — jetzt
+  modelliert, Asm schon gelesen: pi/2pi/3-Grad-Stepping);
   ResetObjectState 0x800CC294 / ResetPlayerAttachment 0x800CC83C
   (GC-Vorlagen in obja_chr.cpp, Wii-Offsets gemappt).
 - obja-Folge: LoadFromPlacement 0x800AC238, fn_800AE9F0, fn_800AF098,
