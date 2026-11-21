@@ -920,6 +920,7 @@ void CPtclOne::Init()
  * @note Address: 0x80024600
  * @note Size: 0x1D8
  */
+// NONMATCHING: regalloc (rot copy uses r4/r6/r0 instead of r5/r4/r0, scheduling mTex load earlier)
 void CPtclDust3::Draw(CGs* gs)
 {
 	if (!mActive) {
@@ -979,6 +980,7 @@ void CPtclDust3::Update(u32 frames)
  * @note Address: 0x80024934
  * @note Size: 0x1E8
  */
+// NONMATCHING: regalloc (rot copy uses r4/r6/r0 instead of r5/r4/r0, scheduling mTex load earlier)
 void CPtclDust2::Draw(CGs* gs)
 {
 	if (!mActive) {

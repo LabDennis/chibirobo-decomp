@@ -171,6 +171,7 @@ static inline BOOL UseGlyphCache()
  * @note Address: 0x8019E8F4
  * @note Size: 0x34C
  */
+// NONMATCHING: retail reloads gDynamicFontGlyphCache.glyphs inside the dynamic-cache hit branch instead of reusing r6
 extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width)
 {
 	void* image;

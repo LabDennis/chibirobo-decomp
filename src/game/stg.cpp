@@ -7965,6 +7965,7 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 
 extern "C" u8* GetAttachmentName(s32 id);
 
+// NONMATCHING: float regalloc (f25/f26/f27/f28/f31 permutation and one fmuls schedule)
 extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale)
 {
 #if defined(VERSION_JP)

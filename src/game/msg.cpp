@@ -6356,6 +6356,7 @@ CJObj::CJObj(HSD_JObj* jobj)
  * @note Address: 0x80084DC0
  * @note Size: 0x684
  */
+// NONMATCHING: regalloc (addis r30, r28, 4 kept across PSMTXTrans; retail reloads addis r3, r28, 4)
 extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 {
 	if (font->mActive) {
