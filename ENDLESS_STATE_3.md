@@ -1,7 +1,7 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 89 fertig, Branch devin/lane3 @ 9dbe52ed.
-R24J01: 6653/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 90 fertig, Branch devin/lane3 @ 861115b4.
+R24J01: 6654/8284 matched, main.dol: OK; GC: je 17 files OK;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
@@ -9,6 +9,53 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 90 — StartPointParticles 100 % + UpdatePointParticleDisplay 83,4 %
+
+- **Zwei Commits:** `d6145fad` StartPointParticles (100 %),
+  `861115b4` UpdatePointParticleDisplay (83,4 %, ehrlich NONMATCHING).
+- **StartPointParticles @0x800F1110 (0x250): 100 %.** Wii-Port aus
+  obja_chr.cpp: mType/mState=1/mAmount, Typ-Switch (0/2/3 sonst):
+  Farben je Vorzeichen, Burst-Count = |amount| max 40, mPtcl-States
+  -1/-2/-3/5. WICHTIG: Wii nutzt `__fabsf(amount)` (fsubs+Fabs+
+  fctiwz), NICHT `__abs` — s32->f32->s32-Umweg wie Retail.
+- **UpdatePointParticleDisplay @0x800F1360 (0xAF8): 83,36 %.**
+  GC-Quelle obja_chr.cpp ~322ff wortnah portiert, State-Maschine,
+  Ziffern-Dekomposition (0x66666667-Magie), Burst-Init mit 6×
+  rand() — alles identisch decodiert. WII-DELTAS zur GC-Quelle:
+  (a) `value = __fabsf(mAmount)` statt ternary; (b) mColor-
+  Quellreihenfolge `<<16 | <<24 | <<8` (Retail isst rand() in
+  dieser Reihenfolge — <<16 zuerst!); (c) `holdFrames = 0.2f *
+  gRefreshRate` (PAL-Formel, NICHT JP's 12.f); (d) frames ist u32
+  (2^52-Magie lbl_805A4ED8, kein xoris).
+  REST-WAND (~16,6 %): Retail unrollt die zwei Stagger-Fade-Loops
+  8x und scheduled die -i neg/xoris/lfd-Sequenz anders im Unroll
+  (r3 vs r4 Registerwanderung, DELETE/INSERT-Paare = reine
+  Umordnung); dazu sdata2-Pool-Layout (@labels statt benannter
+  lbl_805A4xxx — loesen sich mit weiterem Unit-Fuellstand).
+  Kein Source-Fehler bekannt; klassische MWCC-Unroll-Scheduling-
+  Wand, NONMATCHING-Kommentar steht im File.
+- **externs neu:** `<stdlib.h>` (rand) + `extern s32 gRefreshRate`.
+- **Gate vollstaendig:** 4 Editionen gebaut — R24J01 main.dol OK
+  (6654/8284, +1 durch StartPointParticles), GGTE01/GGTJ01_01/
+  GGTP01 je 17 files OK; Format 475 ok 0 need; config/splits/
+  symbols unveraendert; Baseline-Diff: kein REGRESSION-Eintrag,
+  NEW-100 nur eigene neue Units (ringmenu/xobjchrmenu/efftrail-
+  Funktionen, die im alten Baseline-Stand fehlten); kein
+  em-dash-Byte mehr (sjiswrap-Warnung efftrail.cpp behoben).
+- **Naechster Schritt (Adressfolge Unit 66):** DrawPointParticleDisplay
+  @0x800F1E58 (0xE9C) — GC-Vorlage obja_chr.cpp ~415ff (Kamera-
+  Fruehreturn, Player-Pos + Joint-Pfad, Screen-Projektion,
+  Burst-Partikel-Bewegung, alpha/radius, Polygon+Textur-Render,
+  Ziffern-Render; Wii-Deltas gScreenSafe*/Pointer beachten),
+  dann fn_800F2CF4 (0x1B0), DrawSpiralTrail @0x800F3140 (0x4A8,
+  GC obja_chr.cpp:79 ~97,7 %).
+- Liegt: (a) zentrale .claude/devin/progress.md + ENDLESS_STATE_3.md
+  vom Worktree aus nicht beschreibbar — diese Kopie ist Stand;
+  (b) UpdatePointParticleDisplay-Unroll-Wand klassifiziert, ggf.
+  Permuter-Kandidat spaeter; (c) callcheck-Skript liegt nicht in
+  tools/ dieses Worktree — Randpruefung ueber objdiff-Instruktionsdiff
+  (bl rand-Sites matchen, kein neuer Call-Target-Diff).
 
 ## Lauf 89 — DrawMenuRing 70,7 % + DrawOXMenu 79,2 % (ehrlich NONMATCHING)
 
