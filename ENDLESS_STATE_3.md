@@ -1,12 +1,58 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 63 fertig, Branch devin/lane3 @7000d0f9. R24J01: 6613/8284 matched, main.dol: OK. R24J01:
-6613/8284 matched (+8 gegenueber Lauf-60-Stand, kein neuer Regress);
-GC: 17 files OK (alle drei). Baselines:
-.lane3_baseline/report_<V>.json (Lauf-44-Stand).
+Stand: Lauf 64 fertig, Branch devin/lane3 @a979c5dc. R24J01: 6614/8284 matched, main.dol: OK (+1
+gegenueber Lauf 63, kein Regress); GC: 17 files OK (alle drei).
+check.py --source-only jetzt GRUEN (CLANG_FORMAT=cf18 ueber env).
+Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
+— Signatur-Renames zeigen sich darin als lost/new).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+
+## Lauf 64 — xobj_chr: fn_800E3AE4 matched (+1), Format-Gate gruen
+
+- **Commit a979c5dc** `wii xobj_chr: match fn_800E3AE4 (object event
+  floor check)` — 3 Dateien, +15/-15.
+- **`fn_800E3AE4` 96,38 -> 100 % MATCHED.** War bei Laufbeginn schon
+  im Arbeitsbaum auf 100 (Nebeneffekt des mListA/mListB-[10][10]-
+  Modells aus Lauf 63 — Retail adressiert die Grid-Zellen genau so);
+  der Report zaehlt ihn jetzt mit: 6613 -> 6614.
+- **`SelectPlayerEquipmentRing` bleibt 98,74 % NONMATCHING** (beste
+  bekannte Form `if (chr->mMenu.IsOpening())` wiederhergestellt).
+  Wand klassifiziert: Retail materialisiert `mDrs.mOpen <= 0` als
+  Wert ueber cntlzw/rlwnm in eine TRUE-initialisierte Flag; jede
+  &&/||/ternary/!/bool-Schreibweise senkt MWCC zu branches oder
+  neg/andc/srwi ab (Versuche 88,9–96,7 %). Zusaetzlich bekannte
+  Rotations-Kopie wie in StopPlayerMotion + mSel-Reg.
+- **`GetCharacterObjectApproachResult` bleibt 86,67 %**: Early-Return-
+  Form statt Ternary probiert -> 73,0 % (Branch-Polaritaet + zusaetzl.
+  li/b-Block), rueckgaengig. Wand = Retail zieht den
+  mAttr.mObjData-Load (0x168) VOR die Prolog-Stores (lwz vor stw r0),
+  nur Scheduling.
+- **Format-Gate geloest:** `CLANG_FORMAT=~/.local/opt/clang-format-18/
+  bin/clang-format python3 tools/check.py --source-only` laeuft
+  (ueber subprocess-Wrapper; direkte Binary-Aufrufe werden vom
+  Environment rejected). 2 Alt-Fundstellen in xobj_map.cpp/xobj.h
+  (Align-Whitespace aus Lauf-61/63-Commits) formatiert, jetzt
+  `471 file(s), 0 need formatting`, `format: ok disc files: ok`.
+- **Gate:** R24J01 `main.dol: OK` 6614/8284 (+1, kein Regress);
+  GGTE01/GGTJ01_01/GGTP01 je `17 files OK`; config/ sauber (keine
+  dtk-Rewrites auf configure.py/splits.txt/symbols.txt). callcheck:
+  kein callcheck.py im Worktree/tools vorhanden — Schritt entfaellt,
+  Dol-SHA1 deckt Code-Regress ab.
+- **Liegt:** SelectPlayerEquipmentRing Boolean-Materialisierungs-Wand
+  (s.o.); GetCharacterObjectApproachResult Load-Hoist-Scheduling;
+  Uebrige aus Lauf 63 (fn_800C98E0/9750 RegAlloc, fn_800C9B84
+  inline/extab, fn_800C85EC offen). Alt-Delta
+  UpdateObject__4XObjFUl/fn_800AF098 stammt weiterhin aus df3bf9f5.
+- **Naechstes:** xobj_chr weitermachen — StopPlayerMotion 99,57,
+  GetPlayerFirstPersonEyePosition ~99,9 (nur String-Referenten/
+  Pool-Offsets!), fn_800CDC08 98,69, dann fn_800E59DC 95,0 /
+  GetPlayerGroundType 95,33 / FindPlayerSupportingFloor 94,48 /
+  fn_800E32B8 93,94 / fn_800E5BFC 93,24 / TryStartObjectEvent 93,28 /
+  IsPlayerBlockingEvents 92,06. Eye-Position ist der reifste
+  (Struktur stimmt, nur Referenten).
 
 
 ## Lauf 63 — xobj_map: fn_800C98E0 (FindMapFloor) 89,33 %, Listen als 10x10
