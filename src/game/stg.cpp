@@ -6944,12 +6944,9 @@ static inline void FinishStageLabel(char* text)
 static inline int CopyStageFileName(char* dst, const char* name)
 {
 	int count = 0;
-	for (; *name; name++, count++) {
-		char c   = *name;
-		u8 lower = c >= 'a' && c <= 'z';
-		if (lower)
-			c -= 'a' - 'A';
-		dst[count] = c;
+	for (int i = 0; name[i]; i++) {
+		u8 lower     = name[i] >= 'a' && name[i] <= 'z';
+		dst[count++] = lower ? name[i] - ('a' - 'A') : name[i];
 	}
 	return count;
 }
