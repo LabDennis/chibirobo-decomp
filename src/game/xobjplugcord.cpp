@@ -272,14 +272,14 @@ static inline void CopyCordPos(Vec& dst, const Vec& src)
 	dst.y = src.y;
 	dst.z = src.z;
 }
-static inline void PinTail(XObjPlugCord* cord, XObjPlugCordPoint* points, s32 end)
+static inline void PinTail(XObjPlugCord* cord, XObjPlugCordPoint* points, s32 end, s32 back)
 {
 	if (cord->mEndSource[end]) {
-		Vec& dst = points[cord->mCount - 3 + end].mPos;
+		Vec& dst = points[cord->mCount - back].mPos;
 		CopyCordPos(dst, *cord->mEndSource[end]);
-		CopyCordPos(points[cord->mCount - 3 + end].mPos, dst);
+		CopyCordPos(points[cord->mCount - back].mPos, dst);
 	} else if (cord->mEndHeight[end]) {
-		points[cord->mCount - 3 + end].mPos.y = *cord->mEndHeight[end];
+		points[cord->mCount - back].mPos.y = *cord->mEndHeight[end];
 	}
 }
 static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
@@ -288,10 +288,11 @@ static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
 		CopyCordPos(points[0].mPos, *cord->mEndSource[0]);
 		CopyCordPos(points[0].mTarget, points[0].mPos);
 	} else if (cord->mEndHeight[0]) {
-		points[0].mPos.y = points[0].mTarget.y = *cord->mEndHeight[0];
+		points[0].mPos.y    = *cord->mEndHeight[0];
+		points[0].mTarget.y = *cord->mEndHeight[0];
 	}
-	PinTail(cord, points, 1);
-	PinTail(cord, points, 2);
+	PinTail(cord, points, 1, 2);
+	PinTail(cord, points, 2, 1);
 }
 
 static inline void AddStep(CVec& position, Vec step)
@@ -321,8 +322,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 	XObjPlugCordPoint* points = cord->mPoints;
 	Vec tip                   = GetPlugCordPointPosition(cord, 18);
 	tip.y                     = gGame.GetPlayer()->mMoveTranslate.y;
-	Vec probe                 = tip;
-	floorHeight               = FindPlugCordFloor(cord, &probe, -1, 0); // the floor under cord point 18, probed from the player's height
+	floorHeight               = FindPlugCordFloor(cord, tip, -1, 0); // the floor under cord point 18, probed from the player's height
 	Vec anchor;
 	GetPlayerPlugCordAnchorTransform(&gGame.GetPlayer()->mPlug, &anchor, NULL, NULL);
 	if (floorHeight > anchor.y) // above the plug anchor: use the player's own floor
@@ -333,16 +333,16 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			if (i < 4)
 				points[i].mPos.y += 0.0049f; // the near ends drift up
 			else if (i < 10)
-				points[i].mPos.y += 0.98f * -gravity * 0.5f; // half gravity on the middle
+				points[i].mPos.y += 0.5f * (0.98f * -gravity); // half gravity on the middle
 			else
 				points[i].mPos.y += 0.98f * -gravity;
 		}
 		for (s32 pass = 0; pass < 10; ++pass) { // ten relaxation passes
 			PinCordEnds(cord, points);
 			for (s32 i = 0; i < cord->mCount - 1; ++i) {
-				CVec& a = points[i].mPos;
-				CVec& b = points[i + 1].mPos;
 				static CVec delta;
+				CVec& a        = points[i].mPos;
+				CVec& b        = points[i + 1].mPos;
 				delta          = b - a;
 				f32 distance   = PSVECDistance(&b, &a);
 				f32 correction = 0.7f * (cord->mSpeed - distance); // relax toward the rest length
@@ -576,13 +576,13 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius)
  * @note Address: 0x800D9B10
  * @note Size: 0x44C
  */
-extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height)
+extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 height)
 {
 	XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].mObjects;
-	if (!FindMapFloor(map, pos, &cord->mFloorHit, NULL)) {
+	if (!FindMapFloor(map, &pos, &cord->mFloorHit, NULL)) {
 		cord->mFloorHit.mTriangle = -1;
 		cord->mFloorHit.mTrigon   = -1;
-		cord->mFloorHit.mHeight   = pos->y;
+		cord->mFloorHit.mHeight   = pos.y;
 	}
 	f32 highest = cord->mFloorHit.mHeight;
 	CVec push, contact;
@@ -590,18 +590,18 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 h
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
 			continue;
-		f32 dx = object->mMoveTranslate.x - pos->x;
-		f32 dz = object->mMoveTranslate.z - pos->z;
+		f32 dx = object->mMoveTranslate.x - pos.x;
+		f32 dz = object->mMoveTranslate.z - pos.z;
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (radius + object->mFloorXZExtent))
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos->z;
-			f32 y = pos->y;
-			f32 x = pos->x;
+			f32 z = pos.z;
+			f32 y = pos.y;
+			f32 x = pos.x;
 			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
-				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
+				if (__fpclassifyf(floorHeight) != FP_NAN && pos.y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
 			}
 		}
