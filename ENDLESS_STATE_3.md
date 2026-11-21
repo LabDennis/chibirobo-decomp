@@ -1,13 +1,67 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 82 fertig, Branch devin/lane3 @ 3bf0a530.
-R24J01: 6647/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 83 fertig, Branch devin/lane3 @ 547c3319.
+R24J01: 6652/8284 matched, main.dol: OK; GC: je 17 files OK;
 callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
-all-releases@8a3860d3 ist Vorfahre.
+all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 83 — NEUE TU game/wii/xobjchrmenu.cpp (Unit 65), +5 matched
+
+- **Neu:** `src/game/wii/xobjchrmenu.cpp` deckt Unit 65
+  (0x800ED45C–0x800F0100) ab — die Wii-Fortsetzung des GC-
+  obja_chr.cpp-Menueabschnitts. configure.py +1 Objekt
+  (NonMatching, GC/3.0a5, -Cpp_exceptions on -ipa file),
+  splits.txt +1 .text-Eintrag, ringmenu.h +`void Init(XObjChr*)`
+  auf DrsMenu unter VERSION_R24J01, symbols.txt +4 Namen:
+  `Init__7DrsMenuFP7XObjChr` (0x800ED7E0), `Open__7DrsMenuFl`
+  (0x800ED8EC), `ConfirmSelection__7DrsMenuFv` (0x800EDBB4),
+  `ConfirmOXMenuSelection` (0x800EF3F8, war fn_).
+- **Gematcht (100 %):** AtcMenu::IsItemEquipped,
+  AtcMenu::GetItemIconTextureIndex, DrsMenu::GetItemIconTextureIndex,
+  ClosePlayerEquipmentRings, OctaMenu::OpenActive.
+- **Knapp drunter:** DrsMenu::GetItemLabel 99,38 / Open__7DrsMenuFl
+  99,10 / IsItemEquipped__7DrsMenuFl 98,5 / PointAtcItem +
+  PointDrsItem je 97,5 / ConfirmSelection__7DrsMenuFv 95,16 /
+  ConfirmOXMenuSelection 90,46 / GetItemColor Atc 89,13 + Drs 88,09 /
+  GetItemLabel__7AtcMenuFl 84,86 / Init__7DrsMenu 78,48 — alle mit
+  NONMATCHING-Kommentaren (Register-/Scheduling-Waende, lokale
+  Pool-Label vs. Retail-Globals; die float/sdata2-Konstanten
+  0x805A4DF0-805A5390 liegen im unzugeordneten Pool mehrerer
+  Units, bewusst NICHT zugeschnitten).
+- **Dekodierte Fakten (belegt):** fn_800ED7E0 = DrsMenu::Init
+  (mMenuType aus gCmdLineArgs.mAttachmentMenuType, Items typ3
+  {1,4,6,3,2,7,8,5} sonst {3,5,4,1,6,8,7,2}, _10=1.0f, mRowOffset
+  0.9f, mFirstVisibleItem=4). DrsMenu::Open nutzt
+  FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems,id)>=0
+  statt GC-HasItem; Typ-3-Ids {0x18,0x20,0x22,0x19,0x1A,0x1E,0x1F,
+  0x21}, sonst {0x19,0x21,0x20,0x18,0x22,0x1F,0x1E,0x1A}.
+  ConfirmSelection-Tabelle {0,1,1,1,1,0,1,1,1} (Typ 0/5 nicht
+  anlegbar). Wii-Sounds: 0xF3=cancel, 0xF5=confirm via
+  PlayWiiSoundEffect(&gGame.mSound,id,1.0f,0.0f).
+  fn_800EF3F8 = OX-Menu Confirm(result>0)/Cancel(<0) + HeadAim-
+  Reset (_987C, mSnap=2) — aus HandleOXMenuInput ausgelagert.
+- **Noch offen (Unit 65):** UpdatePlayerEquipmentRings 0x800EDF8C
+  (0x924), DrawPlayerEquipmentRings 0x800EE8B0 (0x9FC),
+  HandleOXMenuInput 0x800EF58C (0x804), fn_800EFD90 (0x370, der
+  OX-Frame-Updater: mFade ein/aus, Mark-Loop 2× stride 0x9B8,
+  Anim-Check 0x78/0xEF/0x13B). Alle Wii-Pointer-getrieben —
+  GC-Vorlagen in obja_chr.cpp:2517/2646/826, aber Wii-Deltas
+  (gWiiPointer, PlayWiiSoundEffect, gScreenSafe*) beachten.
+  Unit 66 (0x800F0100–0x800F48E0): DrawMenuRing, DrawOXMenu,
+  UpdateSpiralTrail u.a.
+- **Gate:** R24J01 main.dol: OK 6652/8284; GGTE01/GGTJ01_01/GGTP01
+  je 17 files OK; Format 474 files 0 need; callcheck 52 Eintraege
+  ausschliesslich bekannter Klassen, keine xobjchrmenu-Treffer;
+  Symbol-Dups nur SDK-Vorbestand; config-Diff = nur die 3 eigenen
+  Zeilenbloecke.
+- **Naechstes:** UpdatePlayerEquipmentRings + DrawPlayerEquipmentRings
+  dekodieren (Call-Sites + Pointer-Pfade schon kartiert), dann
+  HandleOXMenuInput (GC-Port + Wii-Pointer), fn_800EFD90, danach
+  Unit 66 in Adressfolge.
 
 ## Lauf 82 — ringmenu: AtcMenu::Open 99,58 % + mAttachments typisiert (3bf0a530)
 
