@@ -1014,16 +1014,16 @@ struct WiiPlayerState : public XObj {
 	u8 mSfx[0x28];  // _95AC
 	XAction mRadar; // _95D4
 	u8 _9600[0x9694 - 0x9600];
-	FrameEventTime mFrameTime; // _9694, where the running anim's frame events are
-	s32 _969C;                 // _969C, cleared on reset; maybe the GameCube's mIdleJointCooldown
-	s32 mBlinkWait;            // _96A0, frames until he blinks again
-	s32 mBlinkFrame;           // _96A4, where the eyelids are in a blink, -1 between blinks
-	s8 mBlinkAnims[0x168];     // _96A8, by anim id % 1000, set where he may blink
+	FrameEventTime mFrameTime;        // _9694, where the running anim's frame events are
+	s32 _969C;                        // _969C, cleared on reset; maybe the GameCube's mIdleJointCooldown
+	s32 mBlinkWait;                   // _96A0, frames until he blinks again
+	s32 mBlinkFrame;                  // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x168];            // _96A8, by anim id % 1000, set where he may blink
 	XObjScnCamInitRec mEyeAimRecord;  // _9810, a camera aim record fn_800C659C fills; the eye aim
 	u8 _9878[4];                      // _9878
 	XObjScnCamInitRec mHeadAimRecord; // _987C, the head aim; the menus snap it and ExecCallbackB applies it to head_chn
 	u8 _98E4[4];                      // _98E4
-	XObjChrLook mLook;         // _98E8
+	XObjChrLook mLook;                // _98E8
 	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none

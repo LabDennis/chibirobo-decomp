@@ -680,36 +680,36 @@ extern "C" BOOL fn_800F35E8(WiiPlayerState* self, const CoordInfo& info)
 // then up lid, left eye then right eye, each indexed by WiiPlayerState::mBlinkFrame.
 // the values are bit-exact retail data; they read as designer-authored near-zero noise.
 static nw4r::math::VEC3 sBlinkRotLDown[11] = {
-    nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f), nw4r::math::VEC3(-32.45600128173828f, 180.0f, 0.00003f),
-    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-    nw4r::math::VEC3(-16.78667449951172f, 180.0f, 0.00003f), nw4r::math::VEC3(-48.125328063964844f, 180.0f, 0.00003f),
-    nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f), nw4r::math::VEC3(-32.45600128173828f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(-16.78667449951172f, 180.0f, 0.00003f), nw4r::math::VEC3(-48.125328063964844f, 180.0f, 0.00003f),
+	nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f),
 };
 static nw4r::math::VEC3 sBlinkRotLUp[11] = {
-    nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f), nw4r::math::VEC3(-32.45599365234375f, 0.0f, 0.000004f),
-    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-    nw4r::math::VEC3(-16.786663055419922f, 0.0f, 0.000004f), nw4r::math::VEC3(-48.125343322753906f, 0.0f, 0.000004f),
-    nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),   nw4r::math::VEC3(-32.45599365234375f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(-16.786663055419922f, 0.0f, 0.000004f), nw4r::math::VEC3(-48.125343322753906f, 0.0f, 0.000004f),
+	nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),
 };
 static nw4r::math::VEC3 sBlinkRotRDown[11] = {
-    nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f), nw4r::math::VEC3(-32.45600891113281f, 180.0f, -0.000013f),
-    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-    nw4r::math::VEC3(-16.786680221557617f, 180.0f, -0.000013f), nw4r::math::VEC3(-48.12534713745117f, 180.0f, -0.000013f),
-    nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),  nw4r::math::VEC3(-32.45600891113281f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(-16.786680221557617f, 180.0f, -0.000013f), nw4r::math::VEC3(-48.12534713745117f, 180.0f, -0.000013f),
+	nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),
 };
 static nw4r::math::VEC3 sBlinkRotRUp[11] = {
-    nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f), nw4r::math::VEC3(-32.455989837646484f, -0.000001f, 0.0f),
-    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-    nw4r::math::VEC3(-16.786659240722656f, -0.000001f, 0.0f), nw4r::math::VEC3(-48.125328063964844f, -0.000001f, 0.0f),
-    nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),   nw4r::math::VEC3(-32.455989837646484f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(-16.786659240722656f, -0.000001f, 0.0f), nw4r::math::VEC3(-48.125328063964844f, -0.000001f, 0.0f),
+	nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),
 };
 
 // the player character's ExecCallbackA: after the base handling it drives the head-cap
@@ -728,7 +728,7 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
                             nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
 	self->XObj::ExecCallbackA(pResult, mdl, pFuncObj);
-	u16 nodeId           = pFuncObj->GetCallbackNodeID();
+	u16 nodeId             = pFuncObj->GetCallbackNodeID();
 	WiiPlayerState* player = self->mPlayer;
 
 	if (self->mHeadNodes[2].IsValid() && nodeId == self->mHeadNodes[2].GetID()) {
@@ -823,8 +823,8 @@ extern "C" void fn_800F3B88(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 		return;
 	}
 
-	WiiPlayerState* player        = self->mPlayer;
-	XObjScnCamInitRec* headAim    = &player->mHeadAimRecord;
+	WiiPlayerState* player     = self->mPlayer;
+	XObjScnCamInitRec* headAim = &player->mHeadAimRecord;
 	if (!AimFree(headAim) || !AimFree(&player->mEyeAimRecord)) {
 		XObjScnCamInitRec* aim;
 		if (!AimFree(headAim)) {
@@ -885,8 +885,8 @@ extern "C" void fn_800F3E9C(XObj* self, BOOL hide)
 {
 	if (self->mObject.m_pScnMdl != NULL) {
 		const char* nodeNames[] = {
-			"head",        "head_cap",      "L_eye",       "l_mabuta_down", "l_mabuta_up", "R_eye",
-			"r_mabuta_down", "r_mabuta_up", "neck",        "body_model",    "koshi_model", NULL,
+			"head",          "head_cap",    "L_eye", "l_mabuta_down", "l_mabuta_up", "R_eye",
+			"r_mabuta_down", "r_mabuta_up", "neck",  "body_model",    "koshi_model", NULL,
 		};
 		const bool visible = !hide;
 		for (const char** p = nodeNames; *p != NULL; p++) {

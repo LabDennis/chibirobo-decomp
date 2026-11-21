@@ -1540,12 +1540,11 @@ public:
 	virtual void vf1A0(const u32* flags);
 	// _1A4, the material fade the plug and the attachments implement; the GameCube had it at _DC
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
-	virtual void vf1A8(f32 value); // takes the stage's ambient level; LoadFromPlacement passes it
-	virtual void
-	SetDiffuseColor(GXColor color); // _1AC, by value: the carry code materializes a copy on the caller's stack
-	virtual Vec GetCameraTarget();         // _1B0, where a camera looks at this object
-	virtual void SetBaseMtx(Mtx mtx);      // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
-	virtual void ClearBaseMtx();           // _1B8
+	virtual void vf1A8(f32 value);               // takes the stage's ambient level; LoadFromPlacement passes it
+	virtual void SetDiffuseColor(GXColor color); // _1AC, by value: the carry code materializes a copy on the caller's stack
+	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
+	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
+	virtual void ClearBaseMtx();                 // _1B8
 	virtual void vf1BC(s32 mode);
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
