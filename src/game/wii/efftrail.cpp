@@ -570,3 +570,80 @@ extern "C" void UpdateSpiralTrail(SpiralTrail* trail, u32 frames)
 			trail->active = 0;
 	}
 }
+
+// NONMATCHING (99.6 %): the GameCube source ported over reaches 97.4 % verbatim; writing
+// trail->rings[i][j] member accesses instead of a `point` local gives retail's ring-base
+// induction pointer. Rest is scheduling: f27/f28 (radius/angle) and r21-r23 renumber
+// differently, the `center | alpha` or has its operands swapped, and the unnamed CVec +
+// by-value Vec temporaries sit at other stack slots (the same class of wall as
+// UpdateSpiralTrail and the OX-menu draws in this file).
+// the GameCube's DrawSpiralTrail; on the Wii the render state is CGsRenderState and the
+// SetupAll work is the three conditional Apply calls like the other draw units write them.
+/**
+ * @note Address: 0x800F3140
+ * @note Size: 0x4A8
+ */
+extern "C" void DrawSpiralTrail(SpiralTrail* trail, const CVec& origin)
+{
+	if (!trail->active) {
+		return;
+	}
+
+	gGame.mGs.mBillboardEnabled = 1;
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	if (gGame.mGs.mCurRenderState != NULL) {
+		gGame.mGs.mCurRenderState->Apply();
+	}
+	if (gGame.mGs.mCurTevStage != NULL) {
+		gGame.mGs.mCurTevStage->Apply();
+	}
+	if (gGame.mGs.mCurChannel != NULL) {
+		gGame.mGs.mCurChannel->Apply();
+	}
+
+	Vec top  = origin;
+	f32 peak = 0.0f;
+	for (s32 i = 0; i < 2; ++i) {
+		for (s32 j = 0; j < 10; ++j) {
+			if (trail->rings[i][j].scale > peak) {
+				peak = trail->rings[i][j].scale;
+			}
+			if (trail->rings[i][j].position.y > top.y) {
+				top.y = trail->rings[i][j].position.y;
+			}
+		}
+	}
+
+	f32 size = 15.0f * peak; // the halo at the trail's top
+
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, outerRotation.x,
+	             outerRotation.y, outerRotation.z);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+	Vec innerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, innerRotation.x,
+	             innerRotation.y, innerRotation.z);
+
+	for (s32 i = 0; i < 2; ++i) {
+		for (s32 j = 0; j < 10; ++j) {
+			// each point: a wide glow disc under a solid core
+			Vec pos        = origin + trail->rings[i][j].position;
+			f32 angle      = trail->rings[i][j].angle;
+			f32 radius     = 4.0f * trail->rings[i][j].scale;
+			const u32 edge = trail->rings[i][j].color;
+			u32 center     = edge;
+			center |= (u8)(s32)(255.0f * trail->rings[i][j].scale);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+			glowRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
+			             glowRotation.y, glowRotation.z);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
+			coreRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
+		}
+	}
+	gGame.mGs.mBillboardEnabled = 0;
+}
