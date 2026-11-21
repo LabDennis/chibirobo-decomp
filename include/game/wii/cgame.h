@@ -938,9 +938,12 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 // members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
 // todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
 struct WiiPlayerState : public XObj {
-	u8 _09A8[0x9C8 - 0x9A8];
-	u8 m_9C8; // _9C8, DrawWithView skips the transition suit part while it is set
-	u8 m_9C9; // _9C9, the same for the popper mount, fn_800E3C50 sets it
+	u8 _09A8[4];
+	// the player's head bones, fetched out of the loaded model by name in LoadFromPlacement:
+	// second_null, head_chn, head_cap and both eyelid pairs, down then up
+	nw4r::g3d::ResNode mHeadNodes[7]; // _9AC
+	u8 m_9C8;                         // _9C8, DrawWithView skips the transition suit part while it is set
+	u8 m_9C9;                         // _9C9, the same for the popper mount, fn_800E3C50 sets it
 	u8 _09CA[0x9CC - 0x9CA];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
@@ -1025,7 +1028,8 @@ struct WiiPlayerState : public XObj {
 	f32 mBatteryWarningFade;        // _9E0C
 	XObj* mGaugeTarget;             // _9E10, the object the battery gauge sits over
 	f32 mGaugeTime;                 // _9E14
-	u8 _9E18[0x9E20 - 0x9E18];
+	s32 mLoadStep;                  // _9E18, the step of LoadFromPlacement's stage load to resume at
+	u8 _9E1C[0x9E20 - 0x9E1C];
 	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
 	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
@@ -1085,6 +1089,8 @@ struct WiiPlayerState : public XObj {
 };
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeadNodes) == 0x9AC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLoadStep) == 0x9E18);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
 STATIC_ASSERT(offsetof(WiiPlayerState, mStick) == 0x0A08);

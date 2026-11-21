@@ -918,6 +918,15 @@ public:
 	virtual bool Bind(const ResMdl mdl);  // _30
 	virtual void Release();               // _34
 
+	enum AnmFlag {
+		FLAG_NEED_UPDATE                   = (1 << 0),
+		FLAG_CACHE_OBSOLETE                = (1 << 1),
+		FLAG_ANM_BOUND                     = (1 << 2),
+		FLAG_USE_QUATERNION_ROTATION_BLEND = (1 << 3),
+		FLAG_USE_ACCURATE_SCALE_BLEND      = (1 << 4)
+	};
+	void SetAnmFlag(AnmFlag flag, bool value);
+
 private:
 	u32 mFlags; // _0C
 };
@@ -939,6 +948,9 @@ public:
 
 	using AnmObj::Bind;
 	using AnmObj::Release;
+
+	void UseQuaternionBlend(bool enable) { SetAnmFlag(FLAG_USE_QUATERNION_ROTATION_BLEND, enable); }
+	void UseAccurateScaleBlend(bool enable) { SetAnmFlag(FLAG_USE_ACCURATE_SCALE_BLEND, enable); }
 
 protected:
 	int mNumBinding;      // _10
@@ -1887,6 +1899,7 @@ public:
 	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
 	virtual void DrawReflection(Mtx view);                             // _17C
 	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera

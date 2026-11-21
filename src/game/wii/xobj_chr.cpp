@@ -183,6 +183,7 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 }
 
 struct XObjScnCamInitRec; // xobj_camera.cpp's camera aim record
+class EnvInfo;
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
@@ -195,6 +196,10 @@ s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
 UnkStageObj* GetSpawnData(s32 index);
+s32 IsStageDataLoaded(void);
+EnvInfo* GetStageEnvironment(void);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
 extern s32 gSpecialSuitSpawnIds[];
 BOOL LoadPlayerSuitItem(WiiPlayerState* player);
 void ApplyPlayerSuit(WiiPlayerState* player);
@@ -249,6 +254,19 @@ static inline void ClearRingHighlights(OctaMenu& ring)
 	ring.mFade = 0.0f;
 	for (s32 i = 0; i < 8; ++i)
 		ring.mItems[i].mHighlight = 0.0f;
+}
+
+// the head of the stage's info record, as far as LoadFromPlacement reads it: the GameCube's
+// UnkStageInfo (game/cgameutil.h, which the Wii cannot include). The loaded stage's EnvInfo
+// starts with a pointer to it
+struct WiiStageInfo {
+	u8 _00[0x9];
+	u8 _09; // _09, the ambient light level in percent, vf1A8's argument
+};
+
+static inline WiiStageInfo* GetStageInfo()
+{
+	return *(WiiStageInfo**)GetStageEnvironment();
 }
 
 // _154, the GameCube's XObjChr::ResetObjectState: the player state, his actions,
@@ -499,6 +517,129 @@ BOOL IsPushActionState(const XAction* act, s32 wanted)
 void SetPushActionState(XAction* act, s32 state)
 {
 	act->mState = state;
+}
+
+// _158, the GameCube's XObjChr::LoadFromPlacement: the stage load runs one step a frame.
+// The Wii model's head joints come out of the scene graph by name, the attachments mount on
+// world matrices instead of joint paths, and his two status textures and the suit-change
+// sound actor are made here; the GameCube's pose samples, O/X marks and idle joints are gone
+// NONMATCHING (93 %): same instruction multiset, call set and control flow; retail colours six
+// callee-saves (r26-r31, this in r30, the unit string base in r28, the new actor's manager and
+// vtable halves in r26/r27/r28/r29), ours three - and materializes the case-0 'placed' bool at
+// the merge instead of keeping it in r29. Pool referents (100.0f, the u8 magic, the jump table
+// and the string base) still land in @labels; they resolve as the unit fills in
+BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	// Each ready model falls through to the next load. A pending one resumes at the same step.
+	switch (chr->mLoadStep) {
+	case 0: {
+		BOOL placed = XObj::LoadFromPlacement(info);
+		if (placed && chr->mObject.m_pScnMdl != NULL) {
+			chr->mHeadNodes[0] = GetResNode("second_null");
+			chr->mHeadNodes[1] = GetResNode("head_chn");
+			chr->mHeadNodes[2] = GetResNode("head_cap");
+			chr->mHeadNodes[3] = GetResNode("l_mabuta_down");
+			chr->mHeadNodes[4] = GetResNode("l_mabuta_up");
+			chr->mHeadNodes[5] = GetResNode("r_mabuta_down");
+			chr->mHeadNodes[6] = GetResNode("r_mabuta_up");
+			chr->mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+		}
+		if (!placed)
+			break;
+		mStatus.mFlags |= 0x200000000000ULL;
+		chr->mBlinkWait  = 0;
+		chr->mBlinkFrame = 0;
+		mObject.m_blend.m_pBlend->UseQuaternionBlend(true);
+		mObject.m_blend.m_pBlend->UseAccurateScaleBlend(true);
+		++chr->mLoadStep;
+	}
+	case 1: // the plug
+		if (chr->mPlug.LoadFromPlacement(CoordInfo(GetSpawnData(15)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 2: // the copter
+		if (((XObjCopter*)chr->mCopterObj)->LoadFromPlacement(CoordInfo(GetSpawnData(17)))) {
+			((XObjCopter*)chr->mCopterObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 3: // the popper
+		if (((XObjPopper*)chr->mPopperObj)->LoadFromPlacement(CoordInfo(GetSpawnData(18)))) {
+			((XObjPopper*)chr->mPopperObj)->SetParent(GetWorldMtx("l_arm_chn"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 4: // the radar
+		if (((XObjRadar*)chr->mRadarObj)->LoadFromPlacement(CoordInfo(GetSpawnData(19)))) {
+			((XObjRadar*)chr->mRadarObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 5: // the O/X mark attachment; a Japan-only game always loads entry 20
+		if (((XObjOX*)chr->mOXObj)->LoadFromPlacement(CoordInfo(GetSpawnData(20)))) {
+			((XObjOX*)chr->mOXObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 6:
+		// the GameCube's other editions loaded the two O/X menu marks here, in their own steps
+		++chr->mLoadStep;
+	case 7: // the suit parts the stage itself provides
+		if (chr->mSuitParts[3].LoadFromPlacement(CoordInfo(GetSpawnData(36)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 8:
+		if (chr->mSuitParts[6].LoadFromPlacement(CoordInfo(GetSpawnData(37)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 9: {
+		u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
+			            mStatus.mFlags & 0x400000 };
+		vf1A0(flags);
+		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded()) {
+			vf1A8(GetStageInfo()->_09 / 100.0f);
+		}
+		++chr->mLoadStep;
+	}
+	case 10: // his two status textures, out of the global tpl's palette
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[123], 0);
+		mTex[0] = gGame.mTpl.mTex;
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[124], 0);
+		mTex[1] = gGame.mTpl.mTex;
+		++chr->mLoadStep;
+	case 11:
+		++chr->mLoadStep;
+	case 12:
+		if (chr->GetAttachment() == 1) {
+			ShowIdlePlayerCopter((XObjCopter*)chr->mCopterObj);
+		} else if (chr->GetAttachment() == 2) {
+			chr->mPopper.mState = 3;
+		} else if (chr->GetAttachment() == 3) {
+			ShowIdlePlayerRadar((XObjRadar*)chr->mRadarObj);
+		}
+		++chr->mLoadStep;
+		break;
+	case 13: // the suit change's sound actor
+		mActor.Create();
+		++chr->mLoadStep;
+	}
+	if (chr->mLoadStep > 0xD) {
+		mStatus.mFlags |= 0x40000ULL;
+		chr->mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void SetObjectStatusFlags(XObj* object, u64 mask)

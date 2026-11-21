@@ -536,6 +536,7 @@ GetObjectPlacementParam = .text:0x800CCD7C; // type:function size:0x10
 StopPlayerMotion = .text:0x800CCD8C; // type:function size:0xB8
 IsPushActionState = .text:0x800CCE4C; // type:function size:0x14
 SetPushActionState = .text:0x800CCE60; // type:function size:0x8
+LoadFromPlacement__7XObjChrFRC9CoordInfo = .text:0x800CCE68; // type:function size:0x840
 SetObjectStatusFlags = .text:0x800CD6A8; // type:function size:0x1C
 GetMaskedObjectStatus = .text:0x800CD6C4; // type:function size:0x14
 IsPlayerAttachmentEquipped = .text:0x800CD6D8; // type:function size:0x28
