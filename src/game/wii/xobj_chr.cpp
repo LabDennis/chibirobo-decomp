@@ -4,6 +4,7 @@
 // NONMATCHING: the small accessors and helpers have source, the player's update, draw and menu code is
 // still to do. The state checks call the action accessors above them, which -inline auto expands.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
+#include "game/wii/xobjflags.h" // its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
 #include "game/wii/xobj.h"
@@ -192,6 +193,11 @@ void fn_800CDDC0(WiiPlayerState* player);
 void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
 void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
 void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
+void ResetPlayerLiftAction(XActLift* act);
+void ResetPlayerJumpAction(XActJump* act);
+void ResetTumbleAction(XActTumble* act);
+void ResetPlayerRadarAction(XActRadar* act);
+void ResetPopperCharge(XActPopperCharge* charge);
 void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
@@ -337,6 +343,95 @@ void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 void ClearObjectStatusFlags(XObj* object, u64 mask)
 {
 	object->mStatus.mFlags &= ~mask;
+}
+
+// the attachment goes away: its sounds stop, its object hides, and the actions and
+// the carried object all reset; the GameCube's ResetPlayerAttachment (obja_chr.cpp).
+// On the Wii the put-away is shared with the attachment switch, so the lift's early
+// states keep the held item from jumping straight back into the inventory
+void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
+{
+	switch (chr->GetAttachment()) {
+	case 1:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x75)) {
+			StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
+		}
+		((XObjAttachment*)chr->mCopterObj)->Hide();
+		break;
+	case 2:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F3)) {
+			StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F8)) {
+			StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+		}
+		((XObjAttachment*)chr->mPopperObj)->Hide();
+		chr->vf290(FALSE);
+		ResetPopperCharge(&((XActPopper*)&chr->mPopper)->mCharge);
+		break;
+	case 3:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F9)) {
+			StopWiiSfx(&gGame.mSound, 0x1F9, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1FA)) {
+			StopWiiSfx(&gGame.mSound, 0x1FA, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1FB)) {
+			StopWiiSfx(&gGame.mSound, 0x1FB, 0.0f);
+		}
+		((XObjAttachment*)chr->mRadarObj)->Hide();
+		break;
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	default:
+		if (chr->mLift.mTarget != NULL) {
+			if (chr->mLift.mTarget->GetPool() == 8) {
+				BOOL inLift = (u8)(chr->mLift.mState == 1 || chr->mLift.mState == 2);
+				inLift      = inLift || (u8)(chr->mLift.mState == 3);
+				inLift      = inLift && ((XActLift*)&chr->mLift)->_AC;
+				if (!inLift) {
+					SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, chr->mLift.mTarget->GetItem(), 1,
+					    TRUE);
+					((XObjItem*)chr->mLift.mTarget)->SetFlag();
+				}
+			}
+			if (chr->mLift.mTarget->GetPool() != 24) {
+				// the Wii schedules the release over two frames; the GameCube called Release here
+				chr->mLift.mTarget->mStatus.mFlags &= ~0x10000ULL;
+				chr->mLift.mTarget->mReleaseCountdown = 2;
+			}
+		}
+		break;
+	}
+	ResetPlayerLiftAction((XActLift*)&chr->mLift);
+	chr->mHang.Reset();
+	ResetPlayerJumpAction((XActJump*)&chr->mJump);
+	chr->mLadder.Reset();
+	chr->mRope.Reset();
+	ReleasePushAction(&chr->mPush);
+	ResetTumbleAction(&chr->mTumble);
+	chr->mCopter.Reset();
+	chr->mPopper.Reset();
+	ResetPlayerRadarAction((XActRadar*)&chr->mRadar);
+	chr->mAttachment       = 0;
+	chr->mAttachmentRequest = -1;
+	chr->mAttachmentStep     = 0;
+	chr->mScriptAttach       = 0;
+	chr->mClimbType          = 0;
+	chr->mNextClimbType      = 0;
+	chr->m_0A18              = -1;
+	chr->m_0A1C              = -1;
+	chr->mFloorContactObjects[2] = -1;
+	if (nextAnimation >= 0) {
+		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+	}
+	chr->mFallDistance = 0.0f;
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
 }
 
 XSound* GetGameSound(CGame* game)

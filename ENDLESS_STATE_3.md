@@ -1,13 +1,61 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 72 fertig, Branch devin/lane3 @2fa01204+2 Uebergabe-Commits.
-R24J01: 6638/8284 matched, main.dol: OK (kein Regress); GC: 17 files OK
-(alle drei); --non-matching linkt; callcheck R24J01+GGTE01: nur alte
-objb_act-Eintraege; check.py --source-only via python3-subprocess-
-Wrapper: format ok, disc ok. Baselines .lane3_baseline/report_<V>.json.
+Stand: Lauf 73 fertig, Branch devin/lane3.
+R24J01: 6638/8284 matched, main.dol: OK (kein Regress; fuzzy 68,52 %);
+GC: alle drei gebaut, files OK; --non-matching-Link: NICHT erneut
+gelaufen (s. Liegt); check.py: format FAILED nur weil System-
+clang-format 23.1.4 statt CI-18.1.8 vorliegt — selber Befund wie
+frueher, 18.1.8-Binary im Worktree-Pfad nicht auffindbar; disc ok.
+Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 73 — xobj_chr: ResetPlayerAttachment rekonstruiert (97,94 %)
+
+- **ResetPlayerAttachment (0x800CC83C, 0x4D4)** in src/game/wii/
+  xobj_chr.cpp hinter ClearObjectStatusFlags — komplette
+  Rekonstruktion aus Retail-Asm + GC-Vorlage obja_chr.cpp.
+- **Semantik (alle Faelle verifiziert):** Switch auf GetAttachment():
+  1 Copter (Sfx 0x75, Hide via XObjAttachment::_290), 2 Popper
+  (Sfx 0x1F3+0x1F8, Hide, vf290(FALSE)=Mount unhidden, ResetPopperCharge),
+  3 Radar (Sfx 0x1F9..0x1FB, Hide), default: mLift.mTarget — bei Pool 8
+  wirds Inventar-Item (SetOrAddInventoryItemCount + XObjItem::SetFlag),
+  ABER nicht wenn der Lift in den fruehen Zustaenden 1..3 steckt UND
+  XActLift::_AC gesetzt ist (Wii-Neuerung: Put-away teilt sich mit dem
+  Attachment-Wechsel); Pool != 24 → KEIN Release()-Call wie am Cube,
+  sondern `mStatus.mFlags &= ~0x10000ULL` (Keep-Flag weg) +
+  `mReleaseCountdown = 2` (Tick-down zum Release). Danach alle neun
+  Action-Resets, Attachment-/Climb-/Kontakt-Felder, optional SetAnim
+  (nextAnimation,TRUE,0,1,1,10), mFallDistance, 4x
+  InfoScrn_ApplyObjectGaugeCommand(infoscrn,NULL,0,1,0..3).
+- **Score 97,94 %** — Restdiff ist dokumentierte Wand-Klasse:
+  10x Literal-Pool-Namen (@15865 vs lbl_805A4EB0, Unit-weit, loest
+  sich mit Unit-Vollstaendigkeit), RegAlloc in der mObjData/mState-/
+  Flag-Kette (r7/r6/r5/r4-Bindung) und ein extsh bei GetItem()→Arg.
+  Kein Logik-Diff mehr — alle Stores/Calls/Branch-Struktur gleich.
+- **MWCC-Lektion:** `state==1||state==2||state==3` als ein Ausdruck
+  wird zum subi/cmplwi-Range-Check (94,06→); als gestufte u8-Bools
+  (inLift=(1||2); inLift=inLift||(3); inLift=inLift&&_AC) entsteht die
+  Retail-Flagkette (→97,94). u8-Cast je Teilterm zaehlt.
+- **Masken-Korrektur:** die Release-Vormerkung loescht 0x10000, NICHT
+  Bit 0 — lis 0xffff/subi 1 = 0xFFFEFFFF am Low-Word, High & -1.
+- **Gate:** GGTE01/GGTJ01_01/GGTP01 ninja OK; R24J01 main.dol: OK,
+  6638/8284 unveraendert (die Funktion ist fuzzy, nicht matched —
+  kein Verlust). Keine splits/symbols-Aenderungen. NONMATCHING per
+  Unit-Kopf abgedeckt; Wand hier dokumentiert.
+- **Liegt:** (a) --non-matching-Link diesmal nicht gelaufen — Kommando
+  wurde vom Bediener abgebrochen; vor naechstem Commit nachholen.
+  (b) check.py --source-only meldet "need clang-format 18.1.8, got
+  23.1.4" — Lauf-72-Stand sagt "via python3-subprocess-Wrapper: format
+  ok" — der Wrapper (clang-format-18.1.8-Binary irgendwo im Suchpfad,
+  NICHT ~/.local/bin oder /usr/bin) muss wiedergefunden werden; der
+  nackte check.py-Aufruf allein reicht nicht.
+- **Naechstes:** xobj_chr in Adressfolge weiter — naechste 0-%
+  bzw. kleine Fuzzies hinter ResetPlayerAttachment; Restliste der
+  61 offenen Funktionen liegt im Report (main/game/wii/xobj_chr).
+  obja-Fuzzies weiterhin moeglich: LoadFromPlacement 90,18,
+  fn_800AE9F0 72,91, fn_800AF51C 71,44.
 
 ## Lauf 72 — xobj_chr: XObjChr::ResetObjectState (2fa01204)
 
