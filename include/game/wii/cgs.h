@@ -706,6 +706,7 @@ public:
 	virtual void vf030();
 	virtual void vf034(s32 index, void* model); // queues a model's draw
 	virtual void vf038(s32 index);
+	virtual void vf03C(void* model); // unqueues a model's draw, the map calls it after CalcWorld
 
 	u8 _004[0xE4 - 0x004];
 	s32 mPending; // _E4, the queued draws still waiting

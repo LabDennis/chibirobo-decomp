@@ -1264,7 +1264,6 @@ public:
 	XObjMapListA();
 	~XObjMapListA();
 
-private:
 	u32* mItems; // _00
 	s32 mUsed;   // _04
 	s32 mCap;    // _08
@@ -1278,7 +1277,6 @@ public:
 	XObjMapListB();
 	~XObjMapListB();
 
-private:
 	u32* mItems; // _00
 	s32 mUsed;   // _04
 	s32 mCap;    // _08
@@ -1855,7 +1853,13 @@ public:
 
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
-	u8 _9EC[0x28];
+	u8 mSortValid;   // _9EC, the grid below holds entries while it is set
+	u8 _9ED[3];
+	Vec mSortMin;   // _9F0, the trigon's bounds
+	Vec mSortMax;   // _9FC
+	f32 mSortCellX; // _A08, a tenth of the x span
+	u8 _A0C[4];
+	f32 mSortCellZ;        // _A10, a tenth of the z span
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4
 	nw4r::g3d::ScnProc* m_1374; // the translucent draw proc LoadFromPlacement plants, InitializeObject clears it
