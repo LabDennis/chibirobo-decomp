@@ -318,8 +318,8 @@ void XObjChr::ResetObjectState()
 	chr->mFrameTime.mFrame = chr->mFrameTime.mLastFrame = -1.0f;
 	chr->mBlinkWait                                     = 0;
 	chr->mBlinkFrame                                    = 0;
-	fn_800C659C((XObjScnCamInitRec*)chr->_9810, this);
-	fn_800C659C((XObjScnCamInitRec*)chr->_987C, this);
+	fn_800C659C(&chr->mEyeAimRecord, this);
+	fn_800C659C(&chr->mHeadAimRecord, this);
 	chr->mLook.mActive = FALSE;
 	chr->mLook.mMode   = -1;
 	chr->mLook.mObject = NULL;
@@ -2901,7 +2901,7 @@ void OctaMenu::Open(s32 focus)
 {
 	if (mOpen == 0) {
 		mOpeningHeading        = mChr->mMoveRotate.y;
-		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)mChr)->_987C;
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)mChr)->mHeadAimRecord;
 		aim->mSnap[0] = aim->mSnap[1] = 1;
 		aim->m_0C                     = NULL;
 		aim->mTarget.x                = NAN;
@@ -2948,7 +2948,7 @@ void OctaMenu::Select(s32 result)
 	if (((WiiPlayerState*)mChr)->mTumble.mState == 0) {
 		mChr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		mChr->SetRotateY(mOpeningHeading, DEG2RAD * 12.0f);
-		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)mChr)->_987C;
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)mChr)->mHeadAimRecord;
 		aim->mSnap[0] = aim->mSnap[1] = 2;
 		aim->m_0C                     = NULL;
 		aim->mTarget.x                = NAN;
@@ -3037,7 +3037,7 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
 				cursor = menu->mCursorIndex;
 			}
 		}
-		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)menu->mChr)->_987C;
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)menu->mChr)->mHeadAimRecord;
 		if (menu->mMenuType == 3) {
 			if (__fpclassifyf(menu->mHeadTurn) == FP_NAN) {
 				aim->mSnap[0] = aim->mSnap[1] = 1;

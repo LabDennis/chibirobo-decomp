@@ -745,7 +745,7 @@ extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 		menu->mChr->SetAnim(0x5F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		menu->mChr->SetRotateY(menu->mStartRot, DEG2RAD * 12.0f);
 	}
-	XObjScnCamInitRec* aim = (XObjScnCamInitRec*)chr->_987C;
+	XObjScnCamInitRec* aim = &chr->mHeadAimRecord;
 	aim->mSnap[0] = aim->mSnap[1] = 2;
 	aim->m_0C                     = NULL;
 	aim->mTarget.x                = NAN;
@@ -845,7 +845,7 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 			}
 		}
 		WiiPlayerState* chr    = (WiiPlayerState*)menu->mChr;
-		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)chr->_987C;
+		XObjScnCamInitRec* aim = &chr->mHeadAimRecord;
 		if (menu->_10 < 0 && (!(gGame.mMenuControls & 2) || ((gGame.mMenuControls & 1) && !gWiiPointer.mPointerValid))) {
 			aim->mSnap[0] = aim->mSnap[1] = 2;
 			aim->m_0C                     = NULL;

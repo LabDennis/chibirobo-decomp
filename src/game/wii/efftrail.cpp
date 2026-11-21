@@ -715,9 +715,10 @@ static nw4r::math::VEC3 sBlinkRotRUp[11] = {
 // and the four eyelid joints. head_cap gets a fixed nod rotation while an attachment is
 // worn; each eyelid gets the blink keyframe at mBlinkFrame and hands the next joint id
 // back to the CalcWorld walker.
-// NONMATCHING: the chain compiles through ResNode::GetID()/IsValid(), but the retail
-// accessor emits an extra NW4R "IsValid()" assertion (g3d_resnode_ac.h:56/:175) that our
-// rescommon port does not carry, so every node check lacks its unreachable Panic block.
+// NONMATCHING: the node-walk compiles through the same ResNode::GetID()/IsValid()
+// asserts retail emits (g3d_resnode_ac.h:56); the residue is register coloring
+// (retail saves r27-r31, we r26-r31), the mPlayer load folded to its first use vs
+// hoisted once early, and the jump table's pool label.
 /**
  * @note Address: 0x800F3714
  * @note Size: 0x474
@@ -781,5 +782,70 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 	}
 	if (self->mHeadNodes[6].IsValid() && nodeId == self->mHeadNodes[6].GetID()) {
 		pResult->SetRotateDeg(&sBlinkRotRUp[player->mBlinkFrame]);
+	}
+}
+
+// the player's ExecCallbackB: walks the head chain. The walk opens at second_null,
+// second_null hands to head_chn; at head_chn the node's matrix gets the scene-camera
+// aim rotation concatenated on — the head aim while either of its axes is snapped,
+// the eye aim only when the head aim is fully released — then hands to head_cap.
+// an aim record is free to steer only while neither axis holds a snap count; retail
+// evaluates the pair test through a call-shaped accessor (materializes the record
+// pointer and the bool) — a plain `mSnap[0]==0 && mSnap[1]==0` fold loses both
+static inline bool AimFree(const XObjScnCamInitRec* rec)
+{
+	return rec->mSnap[0] == 0 && rec->mSnap[1] == 0;
+}
+// NONMATCHING (98.9 %): instruction-identical stream (187 insns); the residue is
+// register coloring in the aim-record evaluation (retail: player r5, record base r6,
+// snap0 cached in r7, bool in r3 — ours shifted by one) plus the unit's string-pool
+// labels on the Panic calls.
+/**
+ * @note Address: 0x800F3B88
+ * @note Size: 0x2EC
+ */
+extern "C" void fn_800F3B88(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl,
+                            nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	self->XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	u16 nodeId = pFuncObj->GetCallbackNodeID();
+
+	if (nodeId == 0) {
+		pFuncObj->SetCallbackNodeID(self->mHeadNodes[0].GetID());
+		return;
+	}
+	if (nodeId == self->mHeadNodes[0].GetID()) {
+		pFuncObj->SetCallbackNodeID(self->mHeadNodes[1].GetID());
+		return;
+	}
+	if (nodeId != self->mHeadNodes[1].GetID()) {
+		return;
+	}
+
+	WiiPlayerState* player        = self->mPlayer;
+	XObjScnCamInitRec* headAim    = &player->mHeadAimRecord;
+	if (!AimFree(headAim) || !AimFree(&player->mEyeAimRecord)) {
+		XObjScnCamInitRec* aim;
+		if (!AimFree(headAim)) {
+			aim = headAim;
+		} else {
+			XObjScnCamInitRec* eyeAim = &player->mEyeAimRecord;
+			if (!AimFree(eyeAim)) {
+				aim = eyeAim;
+			}
+		}
+		self->GetResNode(nodeId);
+		Mtx m;
+		Mtx rotY;
+		Mtx rotZ;
+		PSMTXCopy(pResult->mpMtx, m);
+		PSMTXRotRad(rotY, 'y', aim->m_40);
+		PSMTXRotRad(rotZ, 'z', aim->m_3C);
+		PSMTXConcat(m, rotY, m);
+		PSMTXConcat(m, rotZ, m);
+		PSMTXCopy(m, pResult->mpMtx);
+	}
+	if (self->mHeadNodes[2].IsValid()) {
+		pFuncObj->SetCallbackNodeID(self->mHeadNodes[2].GetID());
 	}
 }

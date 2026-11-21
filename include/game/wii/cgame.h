@@ -24,6 +24,7 @@
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjcamera.h"
 #include "game/wii/xchrmenu.h"
 #include "game/playeranimationdata.h"
 #include "game/wii/menuutil.h"
@@ -1013,10 +1014,10 @@ struct WiiPlayerState : public XObj {
 	s32 mBlinkWait;            // _96A0, frames until he blinks again
 	s32 mBlinkFrame;           // _96A4, where the eyelids are in a blink, -1 between blinks
 	s8 mBlinkAnims[0x168];     // _96A8, by anim id % 1000, set where he may blink
-	u8 _9810[0x68];            // _9810, a camera aim record fn_800C659C fills (xobj_camera.cpp's XObjScnCamInitRec)
-	u8 _9878[4];               // _9878
-	u8 _987C[0x68];            // _987C, a second one
-	u8 _98E4[4];               // _98E4
+	XObjScnCamInitRec mEyeAimRecord;  // _9810, a camera aim record fn_800C659C fills; the eye aim
+	u8 _9878[4];                      // _9878
+	XObjScnCamInitRec mHeadAimRecord; // _987C, the head aim; the menus snap it and ExecCallbackB applies it to head_chn
+	u8 _98E4[4];                      // _98E4
 	XObjChrLook mLook;         // _98E8
 	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
@@ -1106,6 +1107,8 @@ STATIC_ASSERT(offsetof(WiiPlayerState, mHeadNodes) == 0x9AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLoadStep) == 0x9E18);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mEyeAimRecord) == 0x9810);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeadAimRecord) == 0x987C);
 STATIC_ASSERT(offsetof(WiiPlayerState, mStick) == 0x0A08);
 STATIC_ASSERT(offsetof(WiiPlayerState, mNearDistance) == 0x0A58);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLiftPlugFlags) == 0x0A74);
