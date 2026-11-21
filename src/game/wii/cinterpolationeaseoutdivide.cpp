@@ -12,8 +12,6 @@
 
 extern MEMiHeapHead* gWiiMem1Heap;
 extern MEMiHeapHead* gWiiGameHeap;
-void* SoundHeapAlloc(void** slot, u32 size);
-void SoundHeapFree(void** slot);
 
 // operator delete has an inline body on the Wii, so the deleting destructors free to the MEM1 heap
 inline void operator delete(void* ptr) throw()
@@ -33,8 +31,7 @@ CThread gMovieUpdateThread;
 // that constructs gGame (CThread::Create, 0x800331D4, among them):
 //   0x80033058 CFile::IsLoaded                          include/game/cfile.h
 //   0x80033080 CScrnWipeTile::Start                     include/game/cscrn.h
-//   0x80033084 CSoundFxReverbHiDpl2::SetParam           include/game/wii/csoundfx.h
-//   0x80033140 CSoundFx::SetParam                       include/game/wii/csoundfx.h
+//   0x80033140 CSoundFx::Setup                          include/game/wii/csoundfx.h
 //   0x80033148 nw4r::snd::SoundArchivePlayer::detail_ConvertLabelStringToSoundId
 //   0x800331B0 nw4r::snd::DvdSoundArchive::detail_GetWaveDataFileAddress
 //   0x800331B8 nw4r::snd::DvdSoundArchive::detail_GetFileAddress
@@ -50,6 +47,8 @@ CThread gMovieUpdateThread;
 //   0x80033040 an empty virtual, the fourth of the base Title and MenuSave share (RTTI:
 //              CContainCallback, MenuPad); title.h derives Title from MenuUtil alone.
 
+// 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. Written there, it
+// is emitted by unit_8003366C.cpp instead, so it stays out of line here.
 BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param)
 {
 	if (mWorkBuffer != NULL) {

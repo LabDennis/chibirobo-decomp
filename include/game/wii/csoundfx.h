@@ -4,6 +4,9 @@
 #include "types.h"
 #include "nw4r/snd/snd_FxReverbHiDpl2.h"
 
+void* SoundHeapAlloc(void** slot, u32 size);
+void SoundHeapFree(void** slot);
+
 // an effect XSound owns, class names from RTTI. The work buffer comes from SoundHeapAlloc
 class CSoundFx {
 public:
