@@ -1,15 +1,81 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 74 fertig, Branch devin/lane3 (Tip 474d9b3c).
-R24J01: 6639/8284 matched (+1), main.dol: OK (kein Regress;
-fuzzy 68,56 %); GC: alle drei gebaut, 17 files OK je Edition;
---non-matching-Link: OK (525 Objekte gebaut, main.dol linkt);
-check.py: wie gehabt blockiert — System clang-format 23.1.4 statt
-CI-18.1.8, Binary nicht gefunden (s. Liegt); disc ok.
+Stand: Lauf 75 fertig, Branch devin/lane3 (Tip 2fe44eaf).
+R24J01: 6641/8284 matched (+2 ggue. Header-Stand Lauf 74), main.dol:
+OK (kein Regress; fuzzy 68,64 %); GC: alle drei gebaut, 17 files OK
+je Edition; --non-matching-Link: OK (606 Objekte, main.dol linkt);
+callcheck R24J01+GGTE01: kein xobj_chr-Eintrag (nur bekannte
+objb_act-Funde); clang-format-18.1.8-Binary GEFUNDEN unter
+~/.local/opt/clang-format-18/bin/clang-format — beide geaenderten
+Dateien sind format-sauber (dry-run), check.py selbst vom Bediener
+verworfen (s. Liegt); disc ok.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 75 — xobj_chr: UpdatePlayerSuitChange rekonstruiert (95,98 %)
+
+Commit 2fe44eaf (3 Dateien, +111/−10): src/game/wii/xobj_chr.cpp,
+include/game/wii/cgame.h, config/R24J01/symbols.txt
+(UpdatePlayerSuitChange .text:0x800CD708 size 0x500 — dtk erwartet
+die alinierte Groesse, nicht die 0x4FC des Listings).
+
+- **UpdatePlayerSuitChange (0x800CD708) = 95,98 % fuzzy — NEU.**
+  Suit-Wechsel-Zustandsmaschine, GC-Vorlage UpdatePlayerSuitChange
+  + RemovePlayerSuit (beim Wii inline). Switch auf
+  mSuits.mChangeStep: 1: SetColor(2,255,255,255,0.5) +
+  fn_800F2CF4(&lbl_8045BBD0) (Spiraleffekt, Record-Typ
+  SuitChangeTrail in xobj_chr.cpp) + PlayWiiSoundEffect(0xB2).
+  2: SuitFadeFinished (mAnmQueue.mColorStep[1].mSpeed == 0, neu
+  als Helper). 3: bei mCurrent!=0: GetAnimId/GetAnimFrame sichern,
+  ClearAnim, 4 Attachments via GetWorldMtx+SetParent rebinden
+  (Copter→head, Popper→l_arm_chn, Radar→head, OX→head — dieselben
+  Strings wie ApplyPlayerSuit), altes Suit via
+  IsObjectActive(&mObjects[mCurrent]) + vf290(FALSE)@Attach2 +
+  ClearAnim + Release freigeben, mSuitAnm-Archiv
+  (mAnm.Release(TRUE) + mFile.Close()) schliessen, SetAnim
+  restore, SetColor weiss. Dann mLoadStep=1, mCurrent=mRequested,
+  step++, gPlayerSuitChangeTimer=0.0f — Fallthrough 4: Timer
+  −=2.0f (clamp 0), LoadPlayerSuitItem + Timer==0 → 5:
+  ApplyPlayerSuit, weiss sofort, schwarz 0.5, Farb-Pack aus
+  mColorStep[0].mValue → SetColor(0). 6: Fade-Ende → step=0.
+- **Layout-Fix:** CVec ist 0x10 (vtable), nicht 0xC —
+  mEyeAimStep endet exakt auf _1C9FC; ein u8-Pad [4] war falsch
+  und schob beide CJArchive +4 (Diff −0x3374 statt −0x3378).
+  Recovered in WiiPlayerState: CJArchive mAttachmentAnm (_1C9FC),
+  mSuitAnm (_1CB44) = GameCube mAttachmentAnim/mSuitAnim.
+- **MWCC-Lektionen:** Retail leitet `mObjects[mCurrent]` bei
+  jedem Call neu ab (kein gebundener Suit-Pointer — volles
+  Indexing an jeder Stelle schreiben); der Flag-Test geht ueber
+  IsObjectActive(&…) — die Adressbildung materialisiert &suit in
+  r3, das vf290 danach wiederverwendet (94,11 → 95,98).
+- **NONMATCHING-Rest (~4 %, dokumentiert im Code):** gleiche
+  Instruktionsmenge/Calls/Kontrollfluss. Retail haelt den Unit-
+  Stringblock lbl_802DAA6C in r30 (+0x95 head, +0x9A l_arm_chn)
+  und player in r31; unser rodata-Pool traegt erst die zwei
+  Strings dieser Funktion → player bleibt in r30, keine
+  Stringreg-Allokation. Jeder Rest-Diff ist die r30↔r31-Umbenennung,
+  gleichwertige Float-Labels (@16148… vs lbl_805A4EB0/4EBC/4EC0/
+  4ED0/4EE0), der Timer-.sbss-Name (gPlayerSuitChangeTimer vs
+  lbl_805A1C50) und Scheduling-Kaskade. Schliesst mit Unit-
+  Vollstaendigkeit (fn_800CE054 bindet dieselben Strings).
+- **Gate:** R24J01 main.dol OK 6641/8284, Baseline-Diff 0 verloren
+  +1 neu; GGTE01/GGTJ01_01/GGTP01 je "17 files OK";
+  --non-matching linkt (606 Objekte); callcheck R24J01/GGTE01
+  kein xobj_chr-Eintrag; symbols.txt-Diff = nur die eine neue
+  Zeile; clang-format-18.1.8 dry-run sauber.
+- **Liegt:** `python3 tools/check.py --source-only` wurde vom
+  Bediener zweimal verworfen (auch mit CLANG_FORMAT=~/.local/opt/
+  clang-format-18/bin/clang-format — die Binary existiert und die
+  geaenderten Dateien sind einzeln geprueft sauber). Uebrig sind
+  die bekannten Pool-/RegAlloc-Waende; kein Hard-Blocker.
+- **Naechstes:** xobj_chr Adressfolge: fn_800CE054 (0x438,
+  Attachment-/Suit-Teardown, bindet head/l_arm_chn + beide
+  CJArchive — koennte den Stringpool in Retail-Reihenfolge
+  ergaenzen und UpdatePlayerSuitChange/ApplyPlayerSuit Richtung
+  100 ziehen); danach fn_800CCE68, 0-%-Reste fn_800C9E84/
+  fn_800CB1DC; fn_800CE48C. obja-Rest unveraendert.
 
 ## Lauf 74 — xobj_chr: LoadPlayerSuitItem MATCHED (100 %), ApplyPlayerSuit (96,84 %)
 
