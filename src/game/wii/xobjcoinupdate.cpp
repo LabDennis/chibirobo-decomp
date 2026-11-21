@@ -349,34 +349,16 @@ void XObjCoin::UpdateObject(u32 frames)
 		mFallSpeed = (f32)(s32)mParams[0] / 100.0f;
 		mHeading   = radians * (s32)mParam1;
 		break;
-	}	UpdateFallingCoin(this, frames);
+	}
+	UpdateFallingCoin(this, frames);
 	if (IsCoinItemInRange(this, 0, 100)) {
 		// the pickup sparkle effects ride on anim-frame milestones of the two spins
 		s32 item = GetItem();
 		switch (GetAnimId()) {
 		case 1: {
-			BOOL hit = mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 8.0f && GetAnimFrame() >= 8.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 14.0f && GetAnimFrame() >= 14.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 26.0f && GetAnimFrame() >= 26.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 32.0f && GetAnimFrame() >= 32.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 38.0f && GetAnimFrame() >= 38.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 44.0f && GetAnimFrame() >= 44.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 50.0f && GetAnimFrame() >= 50.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 56.0f && GetAnimFrame() >= 56.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 64.0f && GetAnimFrame() >= 64.0f;
-			if (hit) {
+			if (PassedAnimFrame(2.0f) || PassedAnimFrame(8.0f) || PassedAnimFrame(14.0f) || PassedAnimFrame(20.0f) || PassedAnimFrame(26.0f)
+			    || PassedAnimFrame(32.0f) || PassedAnimFrame(38.0f) || PassedAnimFrame(44.0f) || PassedAnimFrame(50.0f)
+			    || PassedAnimFrame(56.0f) || PassedAnimFrame(64.0f)) {
 				MtxP mtx             = GetWorldMtx(sCoinSparkles[item].mJoint);
 				EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
 				if (inst != NULL) {
@@ -387,14 +369,7 @@ void XObjCoin::UpdateObject(u32 frames)
 			break;
 		}
 		case 2: {
-			BOOL hit = mLastAnimFrame < 2.0f && GetAnimFrame() >= 2.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 11.0f && GetAnimFrame() >= 11.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 17.0f && GetAnimFrame() >= 17.0f;
-			if (!hit)
-				hit = mLastAnimFrame < 20.0f && GetAnimFrame() >= 20.0f;
-			if (hit) {
+			if (PassedAnimFrame(2.0f) || PassedAnimFrame(11.0f) || PassedAnimFrame(17.0f) || PassedAnimFrame(20.0f)) {
 				MtxP mtx             = GetWorldMtx(sCoinSparkles[item].mJoint);
 				EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, sCoinSparkles[item].mEffect, 0);
 				if (inst != NULL) {
@@ -460,7 +435,7 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 		sound = 0x18a;
 	}
 	if (effect >= 0) {
-		Vec rotation           = { 0.0f, 0.0f, 0.0f };
+		Vec rotation         = { 0.0f, 0.0f, 0.0f };
 		EffectInstance* inst = (EffectInstance*)fn_800A11A4(&gGame.mEvtPtcl, effect, 1);
 		if (inst != NULL) {
 			inst->pos   = mMoveTranslate;

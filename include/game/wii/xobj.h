@@ -1212,6 +1212,8 @@ public:
 		f32 frame = GetAnimFrame();
 		return frame + mAnimRate[1] >= GetAnimEndFrame();
 	}
+	// the animation crossed frame f during the last update
+	BOOL PassedAnimFrame(f32 f) { return mLastAnimFrame < f && GetAnimFrame() >= f; }
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
