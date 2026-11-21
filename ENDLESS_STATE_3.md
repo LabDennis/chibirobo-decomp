@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 98 fertig, Branch devin/lane3 @ 15eb683b.
+Stand: Lauf 99 fertig, Branch devin/lane3 @ f5b7cb35.
 R24J01: 6664/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
@@ -8,6 +8,50 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 99 — FindPlugCordFloor: echtes __fpclassifyf + Arg-Slots
+
+- **Commit `f5b7cb35`** (1 Datei, +3/-4). `FindPlugCordFloor` ruft jetzt
+  das echte MSL-`__fpclassifyf` (Include `rvl_msl/.../math_api.h` als
+  ERSTE Zeile — der Guard `_MSL_MATH_API_H` muss vor den anderen
+  Headern gewinnen, sonst inlinet jede Nutzung; Muster aus obja.cpp/
+  cjanim.cpp). Das erfundene `ClassifyFloatBits`-Extern ist weg —
+  Retail macht `bl __fpclassifyf`, wir jetzt auch. Zusaetzlich
+  `CVec push, contact;` statt `contact, push` deklariert: die
+  Stack-Slots der vf1C8-Argumente stimmen jetzt mit Retail ueberein
+  (r6=0x40/r7=0x30 exakt).
+- Fuzzy 91,77 (vorher 91,771736, jetzt 91,766304 — Fuzzy ist
+  instruktionsbasiert, der semantische Gewinn ist der echte Symbolaufruf
+  + korrekte Arg-Slots). Alle sieben xobjplugcord-Funktionen <100
+  diesen Lauf klassifiziert:
+  - ResetPlugCordPoints 99,84: Stack-Layout/Scheduling-Wand.
+    Experiment (Vec-center-Temp umordnen) fiel auf 90,87 — revertiert.
+  - DrawPlugCordSegments 91,90: Induktionsvariablen-Wand — Retail
+    rechnet `(i+1)*0x30` pro Iteration frisch per mulli, MWCC folded
+    uns zur +0x30-Pointerkette. NONMATCHING-Kommentar steht.
+  - UpdatePlugCordSimulation 94,27: Regalloc-Wand — Retail spart ein
+    Callee-Reg mehr (_savegpr_17 vs _16) + `frames==0`-Guard sitzt
+    vor der Register-Init, nicht am Loop-Ende. Statics landen auf den
+    richtigen SDA-Adressen, nur Label-Namen kosmetisch.
+  - PushPlugCordPointFromObject 97,63 + PushPlugCordPointsFromObjects
+    98,23: fast reine Register-Renames (r29/r30/r31 vertauscht,
+    f28/f29 dx/dz-Paar gespiegelt), Instruktionsstrom identisch.
+  - DrawPlugCordSparks 98,49: nicht nochmal angefasst.
+- **Gate:** R24J01 main.dol OK 6664/8284 (= Stand, Baseline-Datei
+  6641 ist aelter); GGTE01 4588=baseline, GGTJ01_01 4601=baseline,
+  GGTP01 4588=baseline — kein matched-Verlust in keiner Edition.
+  Config splits/symbols unberuehrt.
+- **Liegt:** `tools/check.py --source-only` laeuft in dieser Umgebung
+  NICHT: nur clang-format 23.1.4/21 installiert, Projekt braucht
+  18.1.8. Diff ist 3 Zeilen im Dateistil (Tabs), Risiko minimal —
+  beim naechsten Lauf mit 18.1.8-Binary nachholen.
+- **Naechster Schritt:** xobjplugcord-Rest = Regalloc/Scheduling-
+  Waende → Kandidaten fuer permute-Klassifikation, sonst weiter in
+  Adressreihenfolge: DrawPlugCordSparks (98,49, kleinster Abstand),
+  dann fn_800F3B88, fn_800F3E74/88/9C, fn_800F403C, fn_800F41AC,
+  fn_800F41F0, fn_800F4280, fn_800F450C, fn_800F4798, Dtor-Thunks
+  0x800F48C8-0x800F48D8; obja: fn_800AD498, LoadFromPlacement,
+  fn_800AE9F0, fn_800AF098/12C/51C, TestFloorCollision 0x800B034C.
 
 ## Lauf 98 — InitializeObject-Signatur + xobjplug-Datenclaims
 
