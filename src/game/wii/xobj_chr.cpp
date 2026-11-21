@@ -1584,6 +1584,156 @@ void XObjAttachment::Hide()
 	mVisible = FALSE;
 }
 
+// _1BC, the guarded cull mode forward: himself, the plug, the visible attachments and the
+// suit he wears, plus the extra part suits 3 and 6 bring
+void XObjChr::vf1BC(s32 mode)
+{
+	XObj::vf1BC(mode);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->vf1BC(mode);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->vf1BC(mode);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].vf1BC(mode);
+		}
+	}
+}
+
+// _1C0, the same forward at the tag-preserving cull mode slot
+void XObjChr::SetCullMode(s32 mode)
+{
+	XObj::SetCullMode(mode);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->SetCullMode(mode);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->SetCullMode(mode);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].SetCullMode(mode);
+		}
+	}
+}
+
+// _1C4, and back to the materials' own cull modes
+void XObjChr::ResetCullMode()
+{
+	XObj::ResetCullMode();
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->ResetCullMode();
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->ResetCullMode();
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].ResetCullMode();
+		}
+	}
+}
+
+// _1A0, the dst-alpha flags go to every model he carries: the plug and attachments when
+// they have one, all nine suits and their extra parts
+void XObjChr::vf1A0(const u32* flags)
+{
+	XObj::vf1A0(flags);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.vf1A0(flags);
+	}
+	if (((XObj*)chr->mCopterObj)->HasModel()) {
+		((XObj*)chr->mCopterObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mPopperObj)->HasModel()) {
+		((XObj*)chr->mPopperObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mRadarObj)->HasModel()) {
+		((XObj*)chr->mRadarObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mOXObj)->HasModel()) {
+		((XObj*)chr->mOXObj)->vf1A0(flags);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (chr->mSuits.mObjects[i].HasModel()) {
+			chr->mSuits.mObjects[i].vf1A0(flags);
+		}
+		if (chr->mSuitParts[i].HasModel()) {
+			chr->mSuitParts[i].vf1A0(flags);
+		}
+	}
+}
+
+// _1A4, the fade on himself and every model he carries, the GameCube's
+// XObjChr::SetDestinationAlpha with the suit parts added
+void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
+{
+	XObj::SetDestinationAlpha(enabled, value);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mCopterObj)->HasModel()) {
+		((XObj*)chr->mCopterObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mPopperObj)->HasModel()) {
+		((XObj*)chr->mPopperObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mRadarObj)->HasModel()) {
+		((XObj*)chr->mRadarObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mOXObj)->HasModel()) {
+		((XObj*)chr->mOXObj)->SetDestinationAlpha(enabled, value);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (chr->mSuits.mObjects[i].HasModel()) {
+			chr->mSuits.mObjects[i].SetDestinationAlpha(enabled, value);
+		}
+		if (chr->mSuitParts[i].HasModel()) {
+			chr->mSuitParts[i].SetDestinationAlpha(enabled, value);
+		}
+	}
+}
+
 // drops the stale object indexes first, then draws himself or the current suit and the
 // attachments; the popper turns with the camera while the menu flag is up
 // NONMATCHING (92 %): retail's register and schedule residue over the five index cleanups

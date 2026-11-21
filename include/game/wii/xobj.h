@@ -1491,7 +1491,8 @@ public:
 	virtual void vf198(f32 margin, f32 alpha, u32 color);            // _198, frames the on-screen bounds while hovered
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y);              // _19C, CGame::DrawHud calls it on its mHudObject
 	virtual void vf1A0(const u32* flags);
-	virtual void vf1A4();
+	// _1A4, the material fade the plug and the attachments implement; the GameCube had it at _DC
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
 	virtual void vf1A8(f32 value); // takes the stage's ambient level; LoadFromPlacement passes it
 	virtual void
 	SetDiffuseColor(const GXColor& color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
@@ -1887,9 +1888,14 @@ public:
 	virtual void DrawReflection(Mtx view);                           // _17C
 	virtual void DrawGroundShadow(f32 opacity);                      // _180, nothing up close to the camera
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184, the mug's blob or the joint's
+	virtual void vf1A0(const u32* flags);                            // _1A0, forwards the flags to everything he wears
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);        // _1A4, the fade on himself and his attachments
 	virtual void vf1A8(f32);                                         // _1A8, empty on the player
 	virtual void SetBaseMtx(Mtx mtx);                                // _1B4, his own plus the nine suits'
 	virtual void ClearBaseMtx();                                     // _1B8, same
+	virtual void vf1BC(s32 mode);                                    // _1BC, culls him and the visible attachments
+	virtual void SetCullMode(s32 mode);                              // _1C0
+	virtual void ResetCullMode();                                    // _1C4
 
 private:
 	u8 _9A8[0x1B7BC - 0x9A8];

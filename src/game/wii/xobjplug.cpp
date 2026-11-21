@@ -14,8 +14,6 @@
 // the carried plug where the GameCube re-parented a HSD_JObj.
 
 extern "C" {
-// the Wii build's base SetDestinationAlpha, the _1A4 slot
-void fn_800AD9D0(XObj* object, BOOL enabled, u8 value);
 // the player's world matrix, xobj_chr.cpp
 MtxP fn_800E59DC(WiiPlayerState* chr);
 // the cord's spark pass, the GameCube ran it inside UpdateObject
@@ -309,7 +307,7 @@ void XObjPlug::DrawObjectEffects()
  */
 void XObjPlug::SetDestinationAlpha(BOOL enabled, u8 value)
 {
-	fn_800AD9D0(this, enabled, value);
+	XObj::SetDestinationAlpha(enabled, value);
 	SetPlugCordAlphaMode(&mCord, enabled, value);
 }
 

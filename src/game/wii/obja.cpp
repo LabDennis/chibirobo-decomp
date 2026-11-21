@@ -479,7 +479,7 @@ void XObj::vf1A0(const u32* flags)
 }
 
 // 0x800AD9D0
-void XObj::vf1A4()
+void XObj::SetDestinationAlpha(BOOL enabled, u8 value)
 {
 }
 
