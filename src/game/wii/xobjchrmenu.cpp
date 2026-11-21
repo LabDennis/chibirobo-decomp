@@ -15,6 +15,7 @@
 #include "game/inventory.h"
 #include "game/globals.h"
 #include "game/gmath.h"
+#include <cmath>
 #include <math.h>
 
 extern "C" void ShowOXCircle(XObjOX* obj);
@@ -350,8 +351,15 @@ u32 DrsMenu::GetItemColor(s32 index)
 extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active);
 extern "C" void UpdateEquipmentRingAnimation(OctaMenu* menu, u32 frames);
 extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
+// the pointer-hint hooks of the ring menu, kept in retail as empty stubs
+extern "C" void fn_8002BBD8(CGs* gs, f32 x, f32 y);
+extern "C" void fn_8002BBDC(CGs* gs);
+extern "C" void DrawEquipmentRing(OctaMenu* menu);
+const char* GetLocalizedInterfaceText(s32 id);
 
 extern s32 gRefreshRate;
+extern s32 gScreenSafeRight;
+extern s32 gScreenSafeTop;
 
 // the ring accepts menu input while fully faded in and past its opening glow
 static inline u8 RingReady(const OctaMenu& ring)
@@ -517,6 +525,132 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
 		// both rings are shut, clear the menu flag OpenMenus set
 		gGame.ClearStatusFlags(0x400);
 		gGame.GetPlayer()->mPad.Update(gWiiGameCubePads, 0);
+	}
+}
+
+f32 gEquipmentHintOutlineX[4] = { -1, 1, 1, -1 };
+f32 gEquipmentHintOutlineY[4] = { -1, -1, 1, 1 };
+
+/**
+ * @note Address: 0x800EE8B0
+ * @note Size: 0x9FC
+ */
+// NONMATCHING (~86%): the Wii pointer/dpad dim-checks and hint stub calls are in,
+// but retail keeps the pointed/override flags in separate registers where MWCC
+// short-circuits through branches, it saves f21/f22 for the hint loop's x/y and
+// alpha, float refs land on local @labels instead of the unit's named sdata2
+// globals, and the 0x4330 u32->f64 magic plus the icon/tex arg setup reschedule
+extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
+{
+	if (menu->mSel == 0) {
+		DrawEquipmentRing(&menu->mDrs);
+		DrawEquipmentRing(&menu->mAtc);
+	} else {
+		DrawEquipmentRing(&menu->mAtc);
+		DrawEquipmentRing(&menu->mDrs);
+	}
+	if (menu->mAtc.mMenuType == 3) {
+		if (menu->mSel == 0) {
+			menu->mTargetY = menu->mAtc.mCursorY;
+			menu->mTargetX = menu->mAtc.mCursorX;
+		} else if (menu->mSel == 1) {
+			menu->mTargetY = menu->mDrs.mCursorY;
+			menu->mTargetX = menu->mDrs.mCursorX;
+		} else {
+			menu->mTargetY = 0.0f;
+			menu->mTargetX = 0.0f;
+		}
+		if (menu->mFade < 1.0f) {
+			menu->mCursorY = menu->mTargetY;
+			menu->mCursorX = menu->mTargetX;
+		} else {
+			menu->mCursorY += 0.7f * (menu->mTargetY - menu->mCursorY);
+			menu->mCursorX += 0.7f * (menu->mTargetX - menu->mCursorX);
+		}
+		f32 radius = 40.0f * menu->mFade;
+		f32 y      = menu->mCursorY;
+		f32 x      = menu->mCursorX;
+		f32 left   = 8.0f + (x - radius);
+		f32 top    = 8.0f + (y - radius);
+		f32 right  = (x + radius) - 8.0f;
+		f32 bottom = (y + radius) - 8.0f;
+		Vec quad[] = { { left, top, 0.0f }, { right, top, 0.0f }, { right, bottom, 0.0f }, { left, bottom, 0.0f }, { left, top, 0.0f } };
+
+		// the cursor is drawn solid while a ring is pointed at or the remote's
+		// dpad took over, half-transparent while nothing is under the pointer
+		BOOL show = TRUE;
+		if (gGame.mEvt.mData.mScript == NULL) {
+			if (menu->mSel == 0) {
+				if (menu->mAtc.mPointedItem < 0
+				    && !((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
+					show = FALSE;
+				}
+			} else {
+				show = FALSE;
+			}
+			if (!show) {
+				show = menu->mSel == 1
+				    && !(menu->mDrs.mPointedItem < 0
+				         && !((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)));
+			}
+		}
+		f32 alpha = show ? menu->mFade : 0.5f * menu->mFade;
+
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_NEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[110 - StatusTextureOffset], 0);
+		CTexObj tex = gGame.mTpl.mTex;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
+		                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), x, y, 0.0f, 2.0f * radius, 2.0f * radius,
+		                   0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		if (gGame.mMenuControls & 2) {
+			if ((RingReady(menu->mAtc) || RingReady(menu->mDrs)) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)) {
+				fn_8002BBD8(&gGame.mGs, x + 0.6f * radius, y + 0.4f * radius);
+			} else {
+				fn_8002BBDC(&gGame.mGs);
+			}
+		}
+		return;
+	}
+
+	struct Hint {
+		s32 icon;
+		const char* label;
+	};
+	Hint hints[]    = { { 8, NULL }, { 5, NULL }, { 5, NULL } };
+	hints[0].label  = GetLocalizedInterfaceText(10);
+	hints[1].label  = GetLocalizedInterfaceText(11);
+	hints[2].label  = GetLocalizedInterfaceText(12);
+	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
+
+	f32 textSize = 20.0f;
+	f32 iconSize = 1.2f * textSize;
+	f32 edge     = gScreenSafeRight - 0x10 + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
+	for (s32 row = 0; row < 2; ++row) {
+		s32 which = order[menu->mSel][row];
+		f32 x     = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, textSize);
+		f32 y     = gScreenSafeTop + 0x10 + iconSize * row;
+		for (s32 j = 0; j < 4; ++j) {
+			u32 alpha = (u32)(255.0f * menu->mFade);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j],
+			                             y + gEquipmentHintOutlineY[j], 0.0f, textSize, textSize);
+		}
+		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, hints[which].label, x, y, 0.0f, textSize, textSize);
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[119 - StatusTextureOffset], 0);
+		CTexObj tex = gGame.mTpl.mTex;
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / 17.0f, 1.0f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], (1.0f / 17.0f) * hints[which].icon, 0.0f, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 0.5f * iconSize, y + 0.5f * textSize, 0.0f, iconSize, iconSize,
+		                   0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	}
 }
 
