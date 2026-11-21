@@ -994,7 +994,7 @@ gamecube_libs = [
         "progress_category": "game",
         "objects": [
             Object(NonMatching, "game/ut.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/mem.cpp", padding="small_data"),
+            Object(NonMatching, "game/mem.cpp", padding="small_data"),
             Object(NonMatching, "game/ccamera.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/clight.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
