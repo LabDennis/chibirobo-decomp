@@ -30,7 +30,6 @@ void (*gPreviousAudioDMACallback)(void);
  * @note Address: 0x8000A6D8
  * @note Size: 0x180
  */
-// NONMATCHING: the work area isn't read back for the mount
 // mounts the mic in slot B and keeps it mounted
 extern "C" void UpdateMicrophoneMount(void)
 {
