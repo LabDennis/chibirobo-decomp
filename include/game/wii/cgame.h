@@ -841,13 +841,19 @@ STATIC_ASSERT(sizeof(WiiPlayerPlug) == 0xDA0);
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenuMarkObj {
+	u8 _0[0x9A8]; // the mark's own XObj (retail __destroy_arr walks mMark[2] in
+	              // 0x800C1348); kept opaque so WiiOXMenu stays POD
+};
 struct WiiOXMenuMark {
-	f32 mSpin;           // _00
-	f32 mTilt;           // _04
-	f32 mScale;          // _08
-	u8 _0C[0x9B8 - 0xC]; // the mark's own object, not reconstructed
+	f32 mSpin;             // _00
+	f32 mTilt;             // _04
+	f32 mScale;            // _08
+	u32 _0C;               // _0C, the GameCube's dropped random angle
+	WiiOXMenuMarkObj mObj; // _10, the GameCube's XObj mObj
 };
 STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
+STATIC_ASSERT(offsetof(WiiOXMenuMark, mObj) == 0x10);
 struct WiiOXMenu {
 	u8 _00[4];
 	s32 mStarted;           // _04

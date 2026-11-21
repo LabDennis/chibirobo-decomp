@@ -876,3 +876,60 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 		}
 	}
 }
+
+// the yes/no menu's per-frame update, the GameCube's UpdateOXMenuTransition with
+// two Wii deltas: the selected mark only grows while the menu is "armed" — the
+// pointer hovers a mark (mSelectedIndex mirrors _10 then), or the stick drives it
+// under the same menu-controls gate HandleOXMenuInput uses — and the anim id is a
+// virtual GetAnimId per test where the GameCube read mAnimId once
+/**
+ * @note Address: 0x800EFD90
+ * @note Size: 0x370
+ */
+extern "C" void UpdateOXMenuTransition(WiiOXMenu* menu, u32 frames)
+{
+	if (menu->mStarted > 0) {
+		if (menu->mFade < 1.0f) {
+			f32 fade    = menu->mFade + (1.0f / (0.3f * gRefreshRate)) * frames;
+			menu->mFade = fade;
+			if (fade >= 1.0f) {
+				menu->mFade = 1.0f;
+			}
+		}
+	} else if (menu->mStarted < 0) {
+		if (menu->mFade > 0.0f) {
+			f32 fade    = menu->mFade - (1.0f / (0.3f * gRefreshRate)) * frames;
+			menu->mFade = fade;
+			if (fade <= 0.0f) {
+				menu->mFade = 0.0f;
+			}
+		}
+		if (0.0f == menu->mFade) {
+			if (menu->mChr->GetAnimId() != 0x78 && menu->mChr->GetAnimId() != 0xEF && menu->mChr->GetAnimId() != 0x13B) {
+				menu->mStarted = 0;
+				gGame.ClearStatusFlags(0x800);
+				menu->mChr->SetRotateY(menu->mStartRot, DEG2RAD * 12.0f);
+				gGame.GetPlayer()->mPad.Update(gWiiGameCubePads, 0);
+			}
+		}
+	}
+	if (menu->mFade > 0.0f) {
+		for (s32 i = 0; i < 2; ++i) {
+			menu->mMark[i].mSpin += DEG2RAD * 8.0f * frames;
+			menu->mMark[i].mTilt += DEG2RAD * 3.0f * frames;
+			if (i == menu->mSelectedIndex
+			    && (menu->_10 >= 0 || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)))) {
+				menu->mMark[i].mScale += 0.05f * frames;
+				if (menu->mMark[i].mScale > 0.8f) {
+					menu->mMark[i].mScale = 0.8f;
+				}
+			} else {
+				menu->mMark[i].mScale -= 0.05f * frames;
+				if (menu->mMark[i].mScale < 0.5f) {
+					menu->mMark[i].mScale = 0.5f;
+				}
+			}
+			((XObj*)&menu->mMark[i].mObj)->UpdateObject(frames);
+		}
+	}
+}
