@@ -1,13 +1,64 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 96 fertig, Branch devin/lane3 @ 8c5a6f1b.
-R24J01: 6659/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 97 fertig, Branch devin/lane3 @ 90e99c75.
+R24J01: 6662/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 97 — drei 100 %-Matches durch ehrliche Temporaere (xobjattachment/xactradar)
+
+- **Commit `90e99c75`** (2 Dateien, 6659→6662 matched):
+  - `XObjAttachment::ExecCallbackB` 79,66→**100**: `const u16 nodeId =
+    pFuncObj->GetCallbackNodeID()` VOR dem Basisaufruf cachen (Retail
+    laedt die ID in r31 vor ExecCallbackB__4XObj) plus `MtxP parent =
+    mParent`-Lokal — Retail haelt parent in einem Callee-Reg ueber die
+    Calls. Idiom steht schon an Zeilen 339/511 der Datei.
+  - `XObjRadar::LoadFromPlacement` 86,75→**100**: mYaw/mPitch-Reset nur
+    bei `ok`-Return des Basisaufrufs; Rest war nur Pool-Label.
+  - `AddScalarToVectorComponents` 58,43→**100**: `CVec r(t); return r;`
+    statt `return t;` — GC/3.0a5 folded eine direkt returnte Lokal in
+    den sret-Slot, Retail materialisiert die Arbeitskopie auf dem Stack
+    und wort-kopiert sie mit Vtable-Store heraus. Echtes Temp, kein Trick.
+  - `fn_8010BEE0` 73,85→**87,69**: Signatur `Vec fn_8010BEE0(XAction*)`
+    passend zum einzigen Aufrufer (gameupdate.cpp:126/1508 deklariert
+    exakt so) — der CVec→Vec-Slice erzeugt Retails Wort-Kopien statt
+    Float-Stores. Rest: mOwner-Load-Scheduling + Pool-Label (ehrlich
+    NONMATCHING-Kommentar).
+- **Versucht und klassifiziert (keine Commits):**
+  - `ApplyRadarMovementWeight` (90,58): `!= &&`-Umschreibung → schlechter
+    (71,8/76). Retail emittiert zwei explizite `cmpwi` fuer `s==1||s==2`,
+    GC/3.0a5 folded zu unsigned-Range-Test. GC-verbatim `||`-Spelling
+    zurueckgesetzt — Compiler-Versions-Wand, dokumentiert.
+  - `UpdatePlayerTumbleAnimation` (99,75): Instruktionsstrom identisch;
+    Registerfaerbung/Stack-Slots/Jump-Table/Pool-Labels — klassische
+    Schedule-Wand, kein semantischer Hebel gefunden.
+  - `GetRadarDishWorldPosition` (48,0): Retail laedt `"obj1"` aus
+    `.sdata`@0x805A1110 (ungeclaimter Auto-Blob), wir `.rodata`
+    stringBase. Braucht .sdata-Blob-Modellierung, kein Source-Hebel.
+  - `ResetPopperCharge`/`ClearPopperCharge` u.a.: `(s32)(gRefreshRate *
+    0.0f)` — Retail emittiert pro Actor eine cvt-Sequenz, GC/3.0a5
+    folded auf 0. Compiler-Versions-Wand.
+  - `XObjRadar::ExecCallbackB` (90,35): Rest = Panic-String-Labelnamen
+    (@STRING@GetID vs lbl_803068D8), Registerfarben r30/r31 und ein
+    zusaetzliches GetID-Panic-Stueck — kosmetisch/Farbwand.
+- **Gate vollstaendig:** R24J01 main.dol OK (normal + --non-matching
+  linkt); GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Report-Diff vs
+  Baseline: 0 matched-Verlust, nur bekannter DrawGroundShadowAt-
+  Fuzzy-Drift; config/* sauber (kein dtk-Drift); keine neuen Symbole;
+  Call-Reihenfolge per objdiff verifiziert (callcheck-Skript fehlt in
+  tools/ — unveraendert); check.py --source-only: clang-format 18.1.8
+  fehlt weiterhin (Host 23.1.4; ~/.local/opt/clang-format-18 existiert,
+  Ausfuehrung wurde vom Environment abgelehnt) → Liegt.
+- **Naechster Schritt:** `UpdateObject__8XObjPlugFUl` (99,95 — nur ein
+  Rest) und `fn_80110C1C`/`fn_80110C24` (0,0 — evtl. Symbolnamen-
+  Problem statt echter Code) in xobjplug (23/26); danach xobjplugcord
+  (10/17, sieben Funktionen 91–99,8) und xactradar-Rest (meiste
+  sub-100 sind Scheduling/Pool-Waende). xacttumble 3/4 abgeschlossen
+  bis auf dokumentierte Schedule-Wand; xobjattachment 38/39.
 
 ## Lauf 96 — ApplyPlayerItemTintToTarget 100 % (SetDiffuseColor by-value) + Befunde
 
