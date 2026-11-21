@@ -1607,12 +1607,12 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 extern "C" {
-PointPtcl gPointParticlePool[10];
-PointPtcl* gPointParticleSlots[10];
-SuitChangeEffect gPlayerSuitChangeEffect;
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern SuitChangeEffect gPlayerSuitChangeEffect;
 PlayerTurnState gPlayerTurnState;
-f32 gEquipmentIconWidth[8];
-f32 gEquipmentIconHeight[8];
+extern f32 gEquipmentIconWidth[8];
+extern f32 gEquipmentIconHeight[8];
 }
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
