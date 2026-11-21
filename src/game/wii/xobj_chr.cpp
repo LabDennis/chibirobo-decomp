@@ -2811,6 +2811,82 @@ extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
 	return -1;
 }
 
+// the marker over what chibi robo looks at, ported from the GameCube's
+// DrawPlayerLookMarker; on the Wii _30 dims the marker to half and drops its
+// glow, and it picks the second look texture, and the color fold is spelled
+// out at each corner instead of once per quad
+// NONMATCHING: literal-pool slots only (@ labels vs the unit's shared pool);
+// the instruction stream is identical
+/**
+ * @note Address: 0x800E8AA0
+ * @note Size: 0x864
+ */
+extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
+{
+	if (!gGame.mMotionControlCamera.IsAction(CAMACTION_SCROLL2) && look->mFade > 0.0f) {
+		CTexObj tex;
+		f32 scale = look->mFade + 0.5f * (f32)sin(PI * look->mFade);
+		f32 alpha = look->_30 ? look->mFade : 0.5f * look->mFade;
+		if (look->_30) {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[111], 0);
+			tex = gGame.mTpl.mTex;
+		} else {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[112], 0);
+			tex = gGame.mTpl.mTex;
+		}
+		f32 width  = scale * GXGetTexObjWidth(&tex);
+		f32 height = scale * GXGetTexObjHeight(&tex);
+		Vec pos;
+		look->mObject->ProjectOffsetToScreen(&look->mOffset, &pos.x, &pos.y, NULL, NULL);
+		pos.x += width / 2.0f;
+		pos.y -= height / 2.0f;
+		pos.z = 0.0f;
+		pos.y += 4.0f * (f32)sin(DEG2RAD * look->mPhase);
+
+		gGame.mGs.mCurRenderState->SetZCompLoc(FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		Vec rotation = { 0.0f, 0.0f, 0.0f };
+		DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
+		                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z,
+		                   width, height, rotation.x, rotation.y, rotation.z);
+
+		f32 glow = alpha * (look->_30 ? 0.5f + 0.5f * (f32)sin(PI * look->mPulse) : 0.5f);
+		if (glow < 0.0f)
+			glow = 0.0f;
+		if (look->_30) {
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, TRUE);
+			Vec maskRotation = { 0.0f, 0.0f, 0.0f };
+			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z,
+			                   0.99f * width, 0.99f * height, maskRotation.x, maskRotation.y, maskRotation.z);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_EQUAL, FALSE);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+			DrawGsQuad(&gGame.mGs, 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow),
+			           0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow), pos.x, pos.y, pos.z, width,
+			           height, glowRotation.x, glowRotation.y, glowRotation.z);
+		}
+
+		if (look->mMode >= 0) {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[look->mMode], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, FALSE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
+			                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z,
+			                   width, height, look->mTarget.x, look->mTarget.y, look->mTarget.z);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_LEQUAL, FALSE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(TRUE);
+	}
+}
+
 // OctaMenu::Open, ahead of the two menus that inline it; the Wii's head aim is the
 // scene-camera record at WiiPlayerState _987C (snapped to its neutral angle here,
 // released in Select), not the GameCube's neck/head CJointRot pair
