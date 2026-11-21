@@ -829,18 +829,10 @@ f32 QueryObjectFloorHeight(XObj* target, f32 radius, f32 height);
 
 static const f32 pushAngleTolerance = 0.1f * DEG2RAD;
 
-extern "C" {
-// zero vectors the push-edge point copies start from, picked by edge end
-Vec lbl_8035A8F4[2];
-}
-
 static inline Vec PushEdgePoint(const XObj* obj, s32 index, bool first, f32 height)
 {
 	const Vec& point = first ? obj->mEdges[index].mFrom : obj->mEdges[index].mTo;
-	Vec v            = lbl_8035A8F4[first];
-	v.x              = obj->mMoveTranslate.x + point.x;
-	v.y              = height;
-	v.z              = obj->mMoveTranslate.z + point.z;
+	Vec v            = { obj->mMoveTranslate.x + point.x, height, obj->mMoveTranslate.z + point.z };
 	return v;
 }
 static inline f32 FacingPushEdge(XObj* edgeObject, XObjChr* owner)
