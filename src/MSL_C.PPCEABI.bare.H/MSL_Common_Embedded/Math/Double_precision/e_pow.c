@@ -168,12 +168,10 @@ f64 x, y;
 	f64 z, ax, z_h, z_l, p_h, p_l;
 	f64 y1, t1, t2, r, s, t, u, v, w;
 	f64 qqq; // necessary temp
-	int i0, i1, i, j, k, yisint, n;
+	int i, j, k, yisint, n;
 	int hx, hy, ix, iy;
 	u32 lx, ly;
 
-	i0 = 0;
-	i1 = 1 - i0;
 	hx = __HI(x);
 	lx = __LO(x);
 	hy = __HI(y);
