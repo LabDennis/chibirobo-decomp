@@ -769,14 +769,6 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
 	StepChannel(color->mColor.a, color->mTarget.a, color->mSpeed.a, frames);
 }
 
-static inline void SetColorSpeed(ScrnColorF& speed, f32 r, f32 g, f32 b, f32 a)
-{
-	speed.r = r;
-	speed.g = g;
-	speed.b = b;
-	speed.a = a;
-}
-
 /**
  * @note Address: 0x80023D74
  * @note Size: 0x16C
@@ -798,8 +790,8 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.a = 0.0f;
 	} else {
 		time = FRAME_RATE * time;
-		SetColorSpeed(color->mSpeed, ((f32)r - color->mColor.r) / time, ((f32)g - color->mColor.g) / time,
-		              ((f32)b - color->mColor.b) / time, ((f32)a - color->mColor.a) / time);
+		color->mSpeed.Set(((f32)r - color->mColor.r) / time, ((f32)g - color->mColor.g) / time, ((f32)b - color->mColor.b) / time,
+		                  ((f32)a - color->mColor.a) / time);
 	}
 }
 
