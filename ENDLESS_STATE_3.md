@@ -1,12 +1,51 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 78 fertig, Branch devin/lane3.
-R24J01: 6642/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 79 fertig, Branch devin/lane3 @ e354beca.
+R24J01: 6643/8284 matched, main.dol: OK; GC: je 17 files OK;
 --non-matching linkt; callcheck ohne neuen Eintrag; format ok;
 keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 79 — DrawPlayerLookMarker MATCHED (100,0 %)
+
+- `DrawPlayerLookMarker(XObjChrLook*)` (.text:0x800E8AA0, size
+  0x864) in src/game/wii/xobj_chr.cpp hinter dem OctaMenu-Block —
+  Wii-Port des GC-DrawPlayerLookMarker (obja_chr.cpp:3763).
+  MATCHED: matched 6642→**6643**, erste volle Match in diesem
+  Block der Unit.
+- **Semantik:** Gate auf !IsAction(CAMACTION_SCROLL2) &&
+  look->mFade>0. CTexObj-Temp; scale = fade + 0.5*sin(PI*fade);
+  Deskriptor 111 (Wii: _30 waehlt 111 vs 112; JPN-Offset
+  StatusTextureOffset); pos via mObject->ProjectOffsetToScreen,
+  Phase-Shift 4*sin(DEG2RAD*mPhase); Blend/ZMode/TevStage ueber
+  gGame.mGs.mCurRenderState/mCurTevStage; Textur-Quad, Maske,
+  Glow-Quad (SRCCOL/SRCALPHA), optional Ziel-Textur bei
+  mMode>=0; Zustand zurueck, InvalidateCaptureGraphics.
+- **Match-Schluessel:** (a) alpha als Ternaer
+  `look->_30 ? look->mFade : 0.5f * look->mFade` — Retail beq→
+  Block + b→Join; ein `if(!_30) alpha*=0.5f` erzeugt bne-ueber
+  statt beq-zu (98,16→98,59). (b) Glow-Faktor als Ternaer ueber
+  den GANZEN Ausdruck `_30 ? 0.5+0.5*sin(PI*mPulse) : 0.5` —
+  Retail else laedt 0.5 direkt, ein Ternaer ueber pulse
+  materialisiert fmadds(0.5,0.0,0.5) (98,59→99,76→100 im
+  Report; Rest waren nur @pool-Label-Artefakte).
+- **GC-vs-Wii-Diffs:** Wii hat zusaetzliches _30-Gate (halbe
+  Alpha, kein Glow, zweite Textur) und Farbfaltung pro Ecke
+  statt einmal pro Quad; CTexObj 0x104; Init(TPLDescriptor*,
+  u32) ohne Rueckgabe (kein Chaining).
+- **Gate:** R24J01 main.dol OK 6643/8284; --non-matching linkt;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Baseline-Diff: einzige
+  "drop" DrawGroundShadowAt 99,98→96,63 ist das seit Lauf 77
+  dokumentierte Pool-Order-Artefakt (unveraendert, kein
+  Codegen-Diff); config-Status sauber; Symbol-Dubs 0.
+- **Liegt:** check.py --source-only weiterhin clang-format
+  18.1.8 vs 23.1.4 (bekannt); keine neuen Bloecke.
+- **Naechstes:** `HandleEquipmentRingInput` (.text:0x800E96CC,
+  size 0x660) — gleiche Unit, folgt direkt; danach Adressfolge
+  weiter (fn_800E32B8 ~93,94, DrawWithView ~92,03,
+  ResetObjectState ~89,88) bzw. obja-Reste.
 
 ## Lauf 78 — RestorePlayerHeldItem MATCHED (100,0 %)
 
