@@ -1,13 +1,54 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 76 fertig, Branch devin/lane3 (Tip 76399b35).
+Stand: Lauf 77 fertig, Branch devin/lane3 (Tip 376e5afd).
 R24J01: 6641/8284 matched, main.dol: OK; GC: je 17 files OK;
---non-matching linkt; callcheck ohne Release-Eintrag; format ok;
+--non-matching linkt; callcheck ohne neuen Eintrag; format ok;
 keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
 
+## Lauf 77 — XObjChr::LoadFromPlacement committet (93,96 % fuzzy)
+
+- **Commit 376e5afd** `wii xobj_chr: XObjChr::LoadFromPlacement
+  rekonstruiert (93,96 %)` — 4 Dateien: xobj_chr.cpp (Funktion,
+  _158), cgame.h (mHeadNodes[7] _9AC, mLoadStep _9E18 +
+  STATIC_ASSERTs), xobj.h (AnmFlag-Enum + SetAnmFlag +
+  UseQuaternionBlend/UseAccurateScaleBlend auf AnmChr,
+  virtual _158-Override), symbols.txt
+  (LoadFromPlacement__7XObjChrFRC9CoordInfo .text:0x800CCE68
+  size 0x840).
+- Stufe-Loader komplett: Basis-Load + 7 ResNodes per Name,
+  EnableScnObjCallbackExecOp(EXECOP_CALC_WORLD), AnmFlags 8+0x10,
+  case 0 Grundmodell, 1 Plug(15), 2 Copter(17)+"head", 3
+  Popper(18)+"l_arm_chn", 4 Radar(19)+"head", 5 O/X(20, Wii ist
+  Japan-only — kein 44-Fall), 6 O/X-Menue, 7 Suit[3] via
+  SpawnData 0x24, 8 Suit[6] via 0x25, 9 Stage-Setup, 10/11
+  weitere Stufen + CTexObj-Init (Deskriptoren +0x3D8/+0x3E0
+  des Spiel-Texturarchivs), 12 Attachment/Radar-Logik, 13
+  AnimSfxActor-Create-Muster. mLoadStep>0xC => Reset+Bit 0x4
+  (oris), TRUE, sonst FALSE.
+- **Wichtig (Pattern):** `if (call()) { ++step } else break;`
+  erzeugt retails `cmpwi/beq`; `if (!call()) break` und
+  `== FALSE` erzeugen cntlzw/srwi.-Normalisierung. Damit alle
+  7 Last-Checks richtig.
+- **Restdiff (register/schedule/pool):** Prolog r26-r31+0x80 vs
+  r29-r31+0x70; strbase r28 vs r31 + lis/addi-Reihenfolge;
+  'placed'-Merge li r0,1/li r0,0 vs mr r29; case-0
+  Store-Verzahnung; Pool-Referenzen @labels (100.0f, u8-Magic,
+  Sprungtabelle, Stringbasis) — loesen sich mit
+  Unit-Vollstaendigkeit. NICHTMATCHING-Kommentar im Source.
+- **Report-Vergleich:** better 4 (LoadFromPlacement 0->93,96;
+  Release 0->98,11; ApplyPlayerSuit ->99,98; UpdatePlayerSuitChange
+  ->97,55), gone@100 0. DrawGroundShadowAt 99,98->96,63 =
+  Pool-Order-Artefakt (nur @label/sda21-Referenzen, keine
+  Codegen-Aenderung).
+- **GC-Gate:** GGTE01/GGTJ01_01/GGTP01 je 17 files OK.
+- **Naechstes Ziel:** Adressfolge ab 0x800CD6A8
+  (SetObjectStatusFlags ist schon da — die naechste
+  unbenannte/Luecken-Funktion im Unit, z.B. fn-Bereich
+  0x800CD708+ UpdatePlayerSuitChange ist vorhanden;
+  weiter die naechste Luecke in wii_units.md Einheiten 29-46).
 ## Lauf 76 — XObjChr::Release committet (96,27 %); fn_800CCE68 dekodiert
 
 - **Commit 76399b35** `wii xobj_chr: XObjChr::Release rekonstruiert
