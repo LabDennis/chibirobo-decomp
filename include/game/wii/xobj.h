@@ -338,9 +338,9 @@ struct ResLightSetData {
 	static const u32 INVALID_ID = 0xFFFF;
 
 	u8 _00[0x1A];
-	u8 numLight;              // _1A
+	u8 numLight; // _1A
 	u8 _1B[0x3C - 0x1B];
-	u16 lightId[8];           // _3C, INVALID_ID for an empty slot
+	u16 lightId[8]; // _3C, INVALID_ID for an empty slot
 };
 
 class ResLightSet {
@@ -819,26 +819,26 @@ class AnmScnRes;
 // nothing past it is needed yet
 class AnmScn : public G3dObj {
 public:
-	virtual void SetFrame(f32 frame);                      // _1C
-	virtual f32 GetFrame() const;                          // _20
-	virtual void SetUpdateRate(f32 rate);                  // _24
-	virtual f32 GetUpdateRate() const;                     // _28
-	virtual void UpdateFrame();                            // _2C
-	virtual AnmScnRes* Attach(int idx, AnmScnRes* pRes);   // _30
-	virtual AnmScnRes* Detach(int idx);                    // _34
-	virtual u32 GetNumLightSet() const;                    // _38
-	virtual u32 GetNumAmbLight() const;                    // _3C
-	virtual u32 GetNumDiffuseLight() const;                // _40
-	virtual u32 GetNumSpecularLight() const;               // _44
-	virtual u32 GetNumFog() const;                         // _48
-	virtual u32 GetNumCamera() const;                      // _4C
-	virtual u32 GetLightSetMaxRefNumber() const;           // _50
-	virtual u32 GetAmbLightMaxRefNumber() const;           // _54
-	virtual u32 GetDiffuseLightMaxRefNumber() const;       // _58
-	virtual u32 GetFogMaxRefNumber() const;                // _5C
-	virtual u32 GetCameraMaxRefNumber() const;             // _60
-	virtual void vf064();                                  // _64, GetLightSet
-	virtual void vf068();                                  // _68, GetAmbLightColor
+	virtual void SetFrame(f32 frame);                                       // _1C
+	virtual f32 GetFrame() const;                                           // _20
+	virtual void SetUpdateRate(f32 rate);                                   // _24
+	virtual f32 GetUpdateRate() const;                                      // _28
+	virtual void UpdateFrame();                                             // _2C
+	virtual AnmScnRes* Attach(int idx, AnmScnRes* pRes);                    // _30
+	virtual AnmScnRes* Detach(int idx);                                     // _34
+	virtual u32 GetNumLightSet() const;                                     // _38
+	virtual u32 GetNumAmbLight() const;                                     // _3C
+	virtual u32 GetNumDiffuseLight() const;                                 // _40
+	virtual u32 GetNumSpecularLight() const;                                // _44
+	virtual u32 GetNumFog() const;                                          // _48
+	virtual u32 GetNumCamera() const;                                       // _4C
+	virtual u32 GetLightSetMaxRefNumber() const;                            // _50
+	virtual u32 GetAmbLightMaxRefNumber() const;                            // _54
+	virtual u32 GetDiffuseLightMaxRefNumber() const;                        // _58
+	virtual u32 GetFogMaxRefNumber() const;                                 // _5C
+	virtual u32 GetCameraMaxRefNumber() const;                              // _60
+	virtual void vf064();                                                   // _64, GetLightSet
+	virtual void vf068();                                                   // _68, GetAmbLightColor
 	virtual void GetLight(LightObj* pDiff, LightObj* pSpec, u32 refNumber); // _6C
 };
 
@@ -1463,7 +1463,7 @@ public:
 	f32 mScreenBottom;        // _6E4
 	f32 mScreenLeft;          // _6E8
 	f32 mScreenRight;         // _6EC
-	f32 mFloorTop; // _6F0, the highest projected floor top
+	f32 mFloorTop;            // _6F0, the highest projected floor top
 	u8 _6F4[0x6F8 - 0x6F4];
 	CVec mToppleOffset; // _6F8
 	// _708, the map triangle under the object and its height; cjanim's floor queries refresh it

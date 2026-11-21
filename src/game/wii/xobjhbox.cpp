@@ -143,7 +143,7 @@ BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 		mStatus.mFlags |= 0x18100000ULL;
 		f32 end = GetAnimEndFrame();
 		if (end > 0.0f) {
-			f32 frame = fmod((f32)rand(), end); // a random start frame
+			f32 frame              = fmod((f32)rand(), end); // a random start frame
 			UnkStageObj* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, frame, 1.0f, 1.0f, 15.0f);
 		}

@@ -347,8 +347,7 @@ inline void AddCopy(CVec& a, Vec b)
  * @note Address: 0x80156E7C
  * @note Size: 0x2D8
  */
-extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping,
-                           f32 restDistance)
+extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance)
 {
 	CVec displacement;
 	CVec velocity;
@@ -367,8 +366,8 @@ extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f3
 	if (__fpclassifyf(position.x) == FP_NAN || __fpclassifyf(position.y) == FP_NAN || __fpclassifyf(position.z) == FP_NAN) {
 		// retail's format and args don't line up
 		OSPanic("ccameraactionmap2.cpp", 206,
-		        FormatToStaticBuffer("CCameraActionMap ... (%f, %f, %f), %f, %f, %f, %s\n", displacement.x, displacement.y,
-		                             displacement.z, distance, force, velocity, 206));
+		        FormatToStaticBuffer("CCameraActionMap ... (%f, %f, %f), %f, %f, %f, %s\n", displacement.x, displacement.y, displacement.z,
+		                             distance, force, velocity, 206));
 	}
 	return position;
 }

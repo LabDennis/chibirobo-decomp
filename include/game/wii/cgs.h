@@ -721,8 +721,8 @@ struct WiiGsSlot {
 	u8 _05[0x08 - 0x05];
 	u8 mPosSet; // _08
 	u8 _09[0x0C - 0x09];
-	Vec mPos;   // _0C
-	u8 _18;     // _18
+	Vec mPos; // _0C
+	u8 _18;   // _18
 	u8 _19[0xF];
 
 	// LIGHT @COLOR and @POS write through these

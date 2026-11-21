@@ -1555,7 +1555,6 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 fla
 	return FALSE;
 }
 
-
 /**
  * @note Address: 0x801A2D68
  * @note Size: 0x1D0

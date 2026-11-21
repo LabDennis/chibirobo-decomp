@@ -69,15 +69,15 @@ STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 // the money, scrap, battery and experience pickups; two sound actors of their own
 class XObjCoin : public XObjFlags {
 public:
-	virtual void InitializeObject();                                                 // _14C
-	virtual void ResetObjectState();                                                 // _154
-	virtual BOOL LoadFromPlacement(const CoordInfo& info);                           // _158
-	virtual void Release();                                                          // _40
-	virtual void UpdateObject(u32 frames);                                           // _164
-	virtual s32 OnPlayerContact(s32 unused, s32 value);                              // _1CC
-	virtual s32 HandleEventCommand(s32 count, s32* args);                            // _1E8
+	virtual void InitializeObject();                                              // _14C
+	virtual void ResetObjectState();                                              // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                        // _158
+	virtual void Release();                                                       // _40
+	virtual void UpdateObject(u32 frames);                                        // _164
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                           // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);                         // _1E8
 	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed); // _208
-	virtual s32 GetFlagIndex();                                                      // _28C
+	virtual s32 GetFlagIndex();                                                   // _28C
 
 	// the item index its data record names, -1 without one (the GameCube XObj's inline)
 	s32 GetItem() const { return mAttr.mObjData != NULL ? mAttr.mObjData->GetItem() : -1; }
@@ -121,15 +121,15 @@ public:
 	XObjDust();
 	virtual ~XObjDust();
 
-	virtual void Release();                     // _40
+	virtual void Release(); // _40
 	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend,
-	                     f32 blendRate);        // _108, forwards to XObj's
-	virtual void ResetObjectState();            // _154
-	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
-	virtual void UpdateObject(u32 frames);                 // _164
-	virtual void DrawWithView(Mtx view);                   // _178
-	virtual void DrawObjectEffects();                      // _188
-	virtual s32 OnPlayerContact(s32 unused, s32 value);    // _1CC
+	                     f32 blendRate);                               // _108, forwards to XObj's
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawWithView(Mtx view);                               // _178
+	virtual void DrawObjectEffects();                                  // _188
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);           // _204
 	virtual s32 GetFlagIndex();                                        // _28C

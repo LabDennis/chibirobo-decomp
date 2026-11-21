@@ -2578,7 +2578,7 @@ extern "C" XObjSource* GetObjectSources()
 #if defined(VERSION_JP)
 extern "C" const char* gGlobalResourceFileName = "bin/globals.bin";
 #else
-extern "C" const char* gGlobalResourceFileName = "globals.bin";
+extern "C" const char* gGlobalResourceFileName              = "globals.bin";
 extern "C" const char* gResourceDirectorySuffixByLanguage[] = {
 	"/e", "/g", "/f", "/s", "/i", "/e", "",
 };
@@ -2660,15 +2660,13 @@ extern const char* gItalianPCDialogue[];
 extern const char* gJapanesePCDialogue[];
 
 const char** gInterfaceTextByLanguage[] = {
-	gEnglishInterfaceText, gGermanInterfaceText, gFrenchInterfaceText,
-	gSpanishInterfaceText, gItalianInterfaceText, gEnglishInterfaceText,
-	gJapaneseInterfaceText,
+	gEnglishInterfaceText, gGermanInterfaceText,  gFrenchInterfaceText,   gSpanishInterfaceText,
+	gItalianInterfaceText, gEnglishInterfaceText, gJapaneseInterfaceText,
 };
 
 const char** gPCDialogueByLanguage[] = {
-	gEnglishPCDialogue, gGermanPCDialogue, gFrenchPCDialogue,
-	gSpanishPCDialogue, gItalianPCDialogue, gEnglishPCDialogue,
-	gJapanesePCDialogue,
+	gEnglishPCDialogue, gGermanPCDialogue,  gFrenchPCDialogue,   gSpanishPCDialogue,
+	gItalianPCDialogue, gEnglishPCDialogue, gJapanesePCDialogue,
 };
 }
 #endif

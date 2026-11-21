@@ -61,9 +61,9 @@ s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when th
 void AddMainMenuExtraRow(void* menu, s32 arg1, s32 arg2);
 }
 
-void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex);      // 0x800D2B50
-void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                   // 0x800EF58C
-BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);                           // xobj_chr.cpp
+void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex); // 0x800D2B50
+void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                              // 0x800EF58C
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);                      // xobj_chr.cpp
 
 #include "game/fbtexeff.h"
 
@@ -87,8 +87,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt);
 extern "C" void CEvt_EvalSet(CEvt* evt);
 extern "C" void StopSceneCameraAnm(CGame* game);
 extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate);
-extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control,
-                                                 f32 time);
+extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
 extern "C" void ResumeAreaCameraControl(CCameraActionArea* area);
 extern "C" void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 
@@ -1149,10 +1148,10 @@ s32 CEvt::_cmd_BORN(u8, s32)
 s32 CEvt::_cmd_CAMERA(u8, s32)
 {
 	StopSceneCameraAnm(&gGame);
-	CCameraActionEvt* action   = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
-	CCameraActionArea* area    = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
-	CCameraActionReset* reset  = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
-	u16 command                = CEvt_Evaluate(this);
+	CCameraActionEvt* action  = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
+	CCameraActionArea* area   = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
+	CCameraActionReset* reset = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
+	u16 command               = CEvt_Evaluate(this);
 	switch (command) {
 	case EVT_ATOM_AREA: {
 		s32 areaIndex = CEvt_Evaluate(this);
@@ -1413,8 +1412,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		s16 id    = args[0];
 		s32 flags = args[1];
 		if (flags == -1) {
-			XObj* obj                   = CEvt_GetObj(this, id);
-			obj->mAnmQueue.mMarkerOverride  = 0;
+			XObj* obj                      = CEvt_GetObj(this, id);
+			obj->mAnmQueue.mMarkerOverride = 0;
 			obj->mAnmQueue.mMarkerOverride |= 0x80000000;
 		} else {
 			XObj* obj = CEvt_GetObj(this, id);
@@ -1468,8 +1467,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		} else if (args[0] == EVT_ATOM_CAM) {
 			Vec pos;
 			pos.x = args[1] / 100.0f;
-			pos.y   = args[2] / 100.0f;
-			pos.z   = args[3] / 100.0f;
+			pos.y = args[2] / 100.0f;
+			pos.z = args[3] / 100.0f;
 			ConfigureSubwindowCamera(&gGame.mSubwin, pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
 			gGame.mSubwin.mEnabled      = 1;
 			gGame.mSubwin.mFlags.mFlags = 0;
@@ -1592,11 +1591,11 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			}
 			if (mask & 0x20000) {
 				u32 flags[5];
-				flags[0]     = obj->mStatus.mFlags & 0x800000;
-				flags[1]     = obj->mStatus.mFlags & 0x200000;
-				flags[2]     = obj->mStatus.mFlags & 0x40;
-				flags[3]     = obj->mStatus.mFlags & 0x20000;
-				flags[4]     = obj->mStatus.mFlags & 0x400000;
+				flags[0] = obj->mStatus.mFlags & 0x800000;
+				flags[1] = obj->mStatus.mFlags & 0x200000;
+				flags[2] = obj->mStatus.mFlags & 0x40;
+				flags[3] = obj->mStatus.mFlags & 0x20000;
+				flags[4] = obj->mStatus.mFlags & 0x400000;
 				obj->ApplyMaterialPresets(flags);
 			}
 			if (mask & ((u64)0x4000 << 32)) {

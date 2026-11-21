@@ -667,9 +667,9 @@ extern "C" void fn_800B4988(XObj* object)
 	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
 		return;
 
-	CCamera camera = gGame.mMotionControlCamera;
-	object->_6DC   = object->_6D8;
-	object->_6D8   = 0;
+	CCamera camera        = gGame.mMotionControlCamera;
+	object->_6DC          = object->_6D8;
+	object->_6D8          = 0;
 	object->mScreenBottom = NAN;
 	object->mScreenRight  = NAN;
 	object->mScreenTop    = NAN;
@@ -739,24 +739,23 @@ extern "C" void fn_800B4988(XObj* object)
 		switch (floor->mId) {
 		case 0:
 		case 1: {
-			f32 angle   = camera.mView.mAngle.y;
+			f32 angle     = camera.mView.mAngle.y;
 			f32 angles[4] = { angle, HALF_PI + angle, PI + angle, (PI + HALF_PI) + angle };
-			f32 xs[4] = { extent.x * (f32)sin(angles[0]), extent.x * (f32)sin(angles[1]), extent.x * (f32)sin(angles[2]),
-				          extent.x * (f32)sin(angles[3]) };
-			f32 zs[4] = { extent.z * (f32)cos(angles[0]), extent.z * (f32)cos(angles[1]), extent.z * (f32)cos(angles[2]),
-				          extent.z * (f32)cos(angles[3]) };
+			f32 xs[4]     = { extent.x * (f32)sin(angles[0]), extent.x * (f32)sin(angles[1]), extent.x * (f32)sin(angles[2]),
+				              extent.x * (f32)sin(angles[3]) };
+			f32 zs[4]     = { extent.z * (f32)cos(angles[0]), extent.z * (f32)cos(angles[1]), extent.z * (f32)cos(angles[2]),
+				              extent.z * (f32)cos(angles[3]) };
 			Vec points[8] = {};
-			points[0] = origin + (Vec) { xs[0], extent.y, zs[0] };
-			points[1] = origin + (Vec) { xs[1], extent.y, zs[1] };
-			points[2] = origin + (Vec) { xs[2], extent.y, zs[2] };
-			points[3] = origin + (Vec) { xs[3], extent.y, zs[3] };
-			points[4] = origin + (Vec) { xs[0], -extent.y, zs[0] };
-			points[5] = origin + (Vec) { xs[1], -extent.y, zs[1] };
-			points[6] = origin + (Vec) { xs[2], -extent.y, zs[2] };
-			points[7] = origin + (Vec) { xs[3], -extent.y, zs[3] };
+			points[0]     = origin + (Vec) { xs[0], extent.y, zs[0] };
+			points[1]     = origin + (Vec) { xs[1], extent.y, zs[1] };
+			points[2]     = origin + (Vec) { xs[2], extent.y, zs[2] };
+			points[3]     = origin + (Vec) { xs[3], extent.y, zs[3] };
+			points[4]     = origin + (Vec) { xs[0], -extent.y, zs[0] };
+			points[5]     = origin + (Vec) { xs[1], -extent.y, zs[1] };
+			points[6]     = origin + (Vec) { xs[2], -extent.y, zs[2] };
+			points[7]     = origin + (Vec) { xs[3], -extent.y, zs[3] };
 			for (s32 j = 0; j < 8; ++j) {
-				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
-				          &z);
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y, &z);
 				x *= camera.mScale;
 				if (z <= 0.0f || z >= 1.0f)
 					goto nextFloor;
@@ -772,8 +771,7 @@ extern "C" void fn_800B4988(XObj* object)
 			Vec points[8];
 			PSMTXMultVecArray(transform, corners, points, 8);
 			for (s32 j = 0; j < 8; ++j) {
-				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y,
-				          &z);
+				GXProject(points[j].x, points[j].y, points[j].z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &x, &y, &z);
 				x *= camera.mScale;
 				if (z <= 0.0f || z >= 1.0f)
 					goto nextFloor;
@@ -789,16 +787,13 @@ extern "C" void fn_800B4988(XObj* object)
 			object->mToppleOffset.y /= count;
 			object->mToppleOffset.z /= count;
 		}
-		if (__fpclassifyf(minX) != FP_NAN
-		    && (__fpclassifyf(object->mScreenLeft) == FP_NAN || minX < object->mScreenLeft))
+		if (__fpclassifyf(minX) != FP_NAN && (__fpclassifyf(object->mScreenLeft) == FP_NAN || minX < object->mScreenLeft))
 			object->mScreenLeft = minX;
 		if (__fpclassifyf(minY) != FP_NAN && (__fpclassifyf(object->mScreenTop) == FP_NAN || minY < object->mScreenTop))
 			object->mScreenTop = minY;
-		if (__fpclassifyf(maxX) != FP_NAN
-		    && (__fpclassifyf(object->mScreenRight) == FP_NAN || maxX > object->mScreenRight))
+		if (__fpclassifyf(maxX) != FP_NAN && (__fpclassifyf(object->mScreenRight) == FP_NAN || maxX > object->mScreenRight))
 			object->mScreenRight = maxX;
-		if (__fpclassifyf(maxY) != FP_NAN
-		    && (__fpclassifyf(object->mScreenBottom) == FP_NAN || maxY > object->mScreenBottom))
+		if (__fpclassifyf(maxY) != FP_NAN && (__fpclassifyf(object->mScreenBottom) == FP_NAN || maxY > object->mScreenBottom))
 			object->mScreenBottom = maxY;
 		if (__fpclassifyf(object->mFloorTop) == FP_NAN || height > object->mFloorTop)
 			object->mFloorTop = height;
@@ -1603,18 +1598,14 @@ static void AnimEventEnergyPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
 	} else if (kind == 3) {
 		if (frame == 0.0f || prev > frame) {
 			StartNodeEffect(object, "energy_ptcl_root", 0x6f, 0);
-		} else if ((prev < 12.0f && frame >= 12.0f) || (prev < 24.0f && frame >= 24.0f)
-		           || (prev < 36.0f && frame >= 36.0f) || (prev < 48.0f && frame >= 48.0f)
-		           || (prev < 60.0f && frame >= 60.0f) || (prev < 72.0f && frame >= 72.0f)
-		           || (prev < 84.0f && frame >= 84.0f) || (prev < 96.0f && frame >= 96.0f)
-		           || (prev < 108.0f && frame >= 108.0f) || (prev < 120.0f && frame >= 120.0f)
-		           || (prev < 132.0f && frame >= 132.0f) || (prev < 144.0f && frame >= 144.0f)
-		           || (prev < 156.0f && frame >= 156.0f) || (prev < 168.0f && frame >= 168.0f)
-		           || (prev < 180.0f && frame >= 180.0f) || (prev < 192.0f && frame >= 192.0f)
-		           || (prev < 204.0f && frame >= 204.0f) || (prev < 216.0f && frame >= 216.0f)
-		           || (prev < 228.0f && frame >= 228.0f) || (prev < 240.0f && frame >= 240.0f)
-		           || (prev < 252.0f && frame >= 252.0f) || (prev < 264.0f && frame >= 264.0f)
-		           || (prev < 276.0f && frame >= 276.0f)) {
+		} else if ((prev < 12.0f && frame >= 12.0f) || (prev < 24.0f && frame >= 24.0f) || (prev < 36.0f && frame >= 36.0f)
+		           || (prev < 48.0f && frame >= 48.0f) || (prev < 60.0f && frame >= 60.0f) || (prev < 72.0f && frame >= 72.0f)
+		           || (prev < 84.0f && frame >= 84.0f) || (prev < 96.0f && frame >= 96.0f) || (prev < 108.0f && frame >= 108.0f)
+		           || (prev < 120.0f && frame >= 120.0f) || (prev < 132.0f && frame >= 132.0f) || (prev < 144.0f && frame >= 144.0f)
+		           || (prev < 156.0f && frame >= 156.0f) || (prev < 168.0f && frame >= 168.0f) || (prev < 180.0f && frame >= 180.0f)
+		           || (prev < 192.0f && frame >= 192.0f) || (prev < 204.0f && frame >= 204.0f) || (prev < 216.0f && frame >= 216.0f)
+		           || (prev < 228.0f && frame >= 228.0f) || (prev < 240.0f && frame >= 240.0f) || (prev < 252.0f && frame >= 252.0f)
+		           || (prev < 264.0f && frame >= 264.0f) || (prev < 276.0f && frame >= 276.0f)) {
 			StartNodeEffect(object, "energy_ptcl_root", 0x6f, 0);
 		}
 	}
@@ -1774,46 +1765,125 @@ static void AnimEventDeca(XObj* object, s32 kind, f32 prev, f32 frame)
 extern "C" void AssignAnimEventCallback(XObj* object)
 {
 	switch (object->GetKind()) {
-	case 302: object->mAnimEventCallback = AnimEventCyl295; break;
-	case 397: object->mAnimEventCallback = AnimEventPtcl397; break;
-	case 405: object->mAnimEventCallback = AnimEventKettle; break;
-	case 406: object->mAnimEventCallback = AnimEventTeacup; break;
-	case 424: object->mAnimEventCallback = AnimEventPtcl; break;
-	case 428: object->mAnimEventCallback = AnimEventEyes; break;
-	case 431: object->mAnimEventCallback = AnimEventBbNikki; break;
-	case 435: object->mAnimEventCallback = AnimEventTompScare; break;
-	case 486: object->mAnimEventCallback = AnimEventFan; break;
-	case 614: object->mAnimEventCallback = AnimEventLeticWarp; break;
-	case 626: object->mAnimEventCallback = AnimEventZactGicco; break;
-	case 628: object->mAnimEventCallback = AnimEventZactFrog; break;
-	case 629: object->mAnimEventCallback = AnimEventZactInjured; break;
-	case 630: object->mAnimEventCallback = AnimEventPajamas; break;
-	case 786: object->mAnimEventCallback = AnimEventFxPtcl; break;
-	case 787: object->mAnimEventCallback = AnimEventWarpzone; break;
-	case 832: object->mAnimEventCallback = AnimEventGhost; break;
-	case 842: object->mAnimEventCallback = AnimEventCbDoor; break;
-	case 849: object->mAnimEventCallback = AnimEventTorch849; break;
-	case 854: object->mAnimEventCallback = AnimEventTorchPtcl; break;
-	case 856: object->mAnimEventCallback = AnimEventWeldingTools; break;
-	case 870: object->mAnimEventCallback = AnimEventObj30; break;
-	case 881: object->mAnimEventCallback = AnimEventEyeShort; break;
-	case 930: object->mAnimEventCallback = AnimEventGiccoTwinB01; break;
-	case 931: object->mAnimEventCallback = AnimEventTb01; break;
-	case 932: object->mAnimEventCallback = AnimEventGiccoTwinB03; break;
-	case 934: object->mAnimEventCallback = AnimEventRain; break;
-	case 939: object->mAnimEventCallback = AnimEventCatchACold; break;
-	case 995: object->mAnimEventCallback = AnimEventSecond; break;
-	case 1034: object->mAnimEventCallback = AnimEventPtcl01; break;
-	case 1035: object->mAnimEventCallback = AnimEventPirateBoat; break;
-	case 1036: object->mAnimEventCallback = AnimEventEnergyPtcl; break;
-	case 1037: object->mAnimEventCallback = AnimEventPtclExp1; break;
-	case 1038: object->mAnimEventCallback = AnimEventRedPtcl; break;
-	case 1082: object->mAnimEventCallback = AnimEventPtclExp02; break;
-	case 1122: object->mAnimEventCallback = AnimEventTmTakeoff; break;
-	case 1155: object->mAnimEventCallback = AnimEventLaserShock; break;
-	case 1156: object->mAnimEventCallback = AnimEventDeca; break;
-	case 1161: object->mAnimEventCallback = AnimEventSphere; break;
-	default: object->mAnimEventCallback = NULL;
+	case 302:
+		object->mAnimEventCallback = AnimEventCyl295;
+		break;
+	case 397:
+		object->mAnimEventCallback = AnimEventPtcl397;
+		break;
+	case 405:
+		object->mAnimEventCallback = AnimEventKettle;
+		break;
+	case 406:
+		object->mAnimEventCallback = AnimEventTeacup;
+		break;
+	case 424:
+		object->mAnimEventCallback = AnimEventPtcl;
+		break;
+	case 428:
+		object->mAnimEventCallback = AnimEventEyes;
+		break;
+	case 431:
+		object->mAnimEventCallback = AnimEventBbNikki;
+		break;
+	case 435:
+		object->mAnimEventCallback = AnimEventTompScare;
+		break;
+	case 486:
+		object->mAnimEventCallback = AnimEventFan;
+		break;
+	case 614:
+		object->mAnimEventCallback = AnimEventLeticWarp;
+		break;
+	case 626:
+		object->mAnimEventCallback = AnimEventZactGicco;
+		break;
+	case 628:
+		object->mAnimEventCallback = AnimEventZactFrog;
+		break;
+	case 629:
+		object->mAnimEventCallback = AnimEventZactInjured;
+		break;
+	case 630:
+		object->mAnimEventCallback = AnimEventPajamas;
+		break;
+	case 786:
+		object->mAnimEventCallback = AnimEventFxPtcl;
+		break;
+	case 787:
+		object->mAnimEventCallback = AnimEventWarpzone;
+		break;
+	case 832:
+		object->mAnimEventCallback = AnimEventGhost;
+		break;
+	case 842:
+		object->mAnimEventCallback = AnimEventCbDoor;
+		break;
+	case 849:
+		object->mAnimEventCallback = AnimEventTorch849;
+		break;
+	case 854:
+		object->mAnimEventCallback = AnimEventTorchPtcl;
+		break;
+	case 856:
+		object->mAnimEventCallback = AnimEventWeldingTools;
+		break;
+	case 870:
+		object->mAnimEventCallback = AnimEventObj30;
+		break;
+	case 881:
+		object->mAnimEventCallback = AnimEventEyeShort;
+		break;
+	case 930:
+		object->mAnimEventCallback = AnimEventGiccoTwinB01;
+		break;
+	case 931:
+		object->mAnimEventCallback = AnimEventTb01;
+		break;
+	case 932:
+		object->mAnimEventCallback = AnimEventGiccoTwinB03;
+		break;
+	case 934:
+		object->mAnimEventCallback = AnimEventRain;
+		break;
+	case 939:
+		object->mAnimEventCallback = AnimEventCatchACold;
+		break;
+	case 995:
+		object->mAnimEventCallback = AnimEventSecond;
+		break;
+	case 1034:
+		object->mAnimEventCallback = AnimEventPtcl01;
+		break;
+	case 1035:
+		object->mAnimEventCallback = AnimEventPirateBoat;
+		break;
+	case 1036:
+		object->mAnimEventCallback = AnimEventEnergyPtcl;
+		break;
+	case 1037:
+		object->mAnimEventCallback = AnimEventPtclExp1;
+		break;
+	case 1038:
+		object->mAnimEventCallback = AnimEventRedPtcl;
+		break;
+	case 1082:
+		object->mAnimEventCallback = AnimEventPtclExp02;
+		break;
+	case 1122:
+		object->mAnimEventCallback = AnimEventTmTakeoff;
+		break;
+	case 1155:
+		object->mAnimEventCallback = AnimEventLaserShock;
+		break;
+	case 1156:
+		object->mAnimEventCallback = AnimEventDeca;
+		break;
+	case 1161:
+		object->mAnimEventCallback = AnimEventSphere;
+		break;
+	default:
+		object->mAnimEventCallback = NULL;
 	}
 }
 #endif

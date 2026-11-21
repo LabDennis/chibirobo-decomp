@@ -627,68 +627,68 @@ public:
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
 	u8 _E8[0x4EC - 0xE8];
-	s32 mInsideCllCount;                               // _4EC
-	s32 mInsideCll0;                                   // _4F0
-	s32 mInsideCll1;                                   // _4F4
-	s32 mInsideCll2;                                   // _4F8
-	u8 _4FC[0x570 - 0x4FC];                            // _4FC
-	CamMapEntry mIntersectionEntries[32];              // _570
-	s32 mIntersectionCount;                            // _970
-	CamMapEntry* mNearestTargetEntry;                  // _974
-	s32 mNearestTargetIndex;                           // _978
-	CamMapEntry* mNearestEyeEntry;                     // _97C
-	s32 mNearestEyeIndex;                              // _980
-	Vec mSideStart;                                    // _984, one end of the picked side
-	Vec mSideEnd;                                      // _990, the other end
-	s32 mSideSign;                                     // _99C, 1 or -1, which way round they are
-	CamMapEntry mAreaIntersections[32];                // _9A0
-	s32 mAreaIntersectionCount;                        // _DA0, count of mAreaIntersections
-	s32 mPrevMapArea;                                  // _DA4
-	s32 mMapArea;                                      // _DA8
-	s32 mPadControlEnabled;                            // _DAC
-	s32 _DB0;                                          // _DB0
-	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
-	CVectorEaseInOutInterpolation mTurnEaseInOut;      // _DB8
-	CInterpolationEaseInOut mHeightEaseInOut;          // _E14
-	CInterfaceInterpolation* mHeightInterp;            // _E30, camera height above the target
-	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	CInterfaceInterpolation* mAbsHeightInterp;     // _E50, absolute camera height
-	f32 mTargetHeight;                             // _E54, the height kept once no area is picked
-	s32 mHeightMode;                               // _E58, 0 height above the target, 1 absolute
-	s32 mUseAreaHeight;                            // _E5C, 1 keeps the area's height outside it
-	f32 mCurrentHeight; // _E60, current camera height
+	s32 mInsideCllCount;                                 // _4EC
+	s32 mInsideCll0;                                     // _4F0
+	s32 mInsideCll1;                                     // _4F4
+	s32 mInsideCll2;                                     // _4F8
+	u8 _4FC[0x570 - 0x4FC];                              // _4FC
+	CamMapEntry mIntersectionEntries[32];                // _570
+	s32 mIntersectionCount;                              // _970
+	CamMapEntry* mNearestTargetEntry;                    // _974
+	s32 mNearestTargetIndex;                             // _978
+	CamMapEntry* mNearestEyeEntry;                       // _97C
+	s32 mNearestEyeIndex;                                // _980
+	Vec mSideStart;                                      // _984, one end of the picked side
+	Vec mSideEnd;                                        // _990, the other end
+	s32 mSideSign;                                       // _99C, 1 or -1, which way round they are
+	CamMapEntry mAreaIntersections[32];                  // _9A0
+	s32 mAreaIntersectionCount;                          // _DA0, count of mAreaIntersections
+	s32 mPrevMapArea;                                    // _DA4
+	s32 mMapArea;                                        // _DA8
+	s32 mPadControlEnabled;                              // _DAC
+	s32 _DB0;                                            // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation;   // _DB4
+	CVectorEaseInOutInterpolation mTurnEaseInOut;        // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;            // _E14
+	CInterfaceInterpolation* mHeightInterp;              // _E30, camera height above the target
+	CInterpolationEaseInOut mAbsHeightEaseInOut;         // _E34
+	CInterfaceInterpolation* mAbsHeightInterp;           // _E50, absolute camera height
+	f32 mTargetHeight;                                   // _E54, the height kept once no area is picked
+	s32 mHeightMode;                                     // _E58, 0 height above the target, 1 absolute
+	s32 mUseAreaHeight;                                  // _E5C, 1 keeps the area's height outside it
+	f32 mCurrentHeight;                                  // _E60, current camera height
 	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
-	CInterfaceInterpolation* mEyeYOffsetInterp; // _E78
-	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	f32 mEyeYOffset;                              // _E98
-	s32 mTurnBlocked; // _E9C, 1 while area corners keep the camera from turning
-	s32 mManualInput; // _EA0, manual camera input this frame
+	CInterfaceInterpolation* mEyeYOffsetInterp;          // _E78
+	CInterpolationEaseInOut mEyeYOffsetEaseInOut;        // _E7C
+	f32 mEyeYOffset;                                     // _E98
+	s32 mTurnBlocked;                                    // _E9C, 1 while area corners keep the camera from turning
+	s32 mManualInput;                                    // _EA0, manual camera input this frame
 	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
 	s32 mInsideAreas[32];                                // _EA8, areas containing the player
 	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
-	f32 mEyeInterpTime; // _F64, target-eye interpolation time
-	CVec mTargetEye;      // _F68
-	CVec mPrevTargetEye;  // _F78
-	CVec mOrbitEye;       // _F88
-	CVec mOrbitAngle;     // _F98
-	CVec mPrevOrbitEye;   // _FA8
-	CVec mPrevOrbitAngle; // _FB8
+	f32 mEyeInterpTime;                                  // _F64, target-eye interpolation time
+	CVec mTargetEye;                                     // _F68
+	CVec mPrevTargetEye;                                 // _F78
+	CVec mOrbitEye;                                      // _F88
+	CVec mOrbitAngle;                                    // _F98
+	CVec mPrevOrbitEye;                                  // _FA8
+	CVec mPrevOrbitAngle;                                // _FB8
 	u8 _FC8[0x11D8 - 0xFC8];
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
 	BOOL mKeepPreviousEye;   // _11E8
-	f32 mOrbitInput; // _11EC, the pad's orbit input, shaped by the curve at _126C (name inferred)
-	f32 _11F0;       // _11F0, second orbit axis, only cleared by the pad controls
-	f32 mPointerHoldTime; // _11F4, frames the pointer button has been held (name inferred)
-	u8 mPointerHeld; // _11F8, set while the map action wants the pointer's cursor
+	f32 mOrbitInput;         // _11EC, the pad's orbit input, shaped by the curve at _126C (name inferred)
+	f32 _11F0;               // _11F0, second orbit axis, only cleared by the pad controls
+	f32 mPointerHoldTime;    // _11F4, frames the pointer button has been held (name inferred)
+	u8 mPointerHeld;         // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	CObjVec _11FC;
 	u8 mOrbiting;    // _122C, 1 while the orbit keeps placing the eye (name inferred)
 	u8 mOrbitReseed; // _122D, reseeds the orbit target from the camera angle on the next input (name inferred)
 	u8 _122E[0x1230 - 0x122E];
-	Vec mOrbitPointer; // _1230, the pointer position clamped to the screen limits (name inferred)
+	Vec mOrbitPointer;       // _1230, the pointer position clamped to the screen limits (name inferred)
 	CamEdgeArrow mArrows[2]; // _123C, left and right
 	f32 _126C;               // _126C
 	f32 _1270;               // _1270
@@ -699,17 +699,17 @@ public:
 	f32 _1284;               // _1284
 	f32 _1288;               // _1288
 
-	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
-	virtual void PreviousUpdate();  // _0C
-	virtual void Update(u32 step);  // _10
-	virtual void Reset();           // _14
+	virtual ~CCameraActionMap() { }          // _08, 0x8002E5C4
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18, takes eye, interest, angle, distance and fov
-	virtual void Init();            // _1C
-	virtual void vf24();            // _24, draws the turn arrows at the screen edges (fn_80160788 in retail)
-	virtual void DrawDebug2d();     // _28
-	virtual u32 GetCameraFlags();   // _58
-	virtual f32 GetFollowDivisor(); // _5C
-	virtual u32 GetInterestMode();  // _60
+	virtual void Init();                     // _1C
+	virtual void vf24();                     // _24, draws the turn arrows at the screen edges (fn_80160788 in retail)
+	virtual void DrawDebug2d();              // _28
+	virtual u32 GetCameraFlags();            // _58
+	virtual f32 GetFollowDivisor();          // _5C
+	virtual u32 GetInterestMode();           // _60
 
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 	void Reset2(); // 0x80157384, resets eye and interest behind the target; called directly, not virtual

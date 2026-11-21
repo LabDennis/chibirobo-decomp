@@ -641,7 +641,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
-			gGame.mGs._1FE4[i]._18      = FALSE;
+			gGame.mGs._1FE4[i]._18       = FALSE;
 			gGame.mGs._1FE4[i].mPosSet   = FALSE;
 			gGame.mGs._1FE4[i].mColorSet = FALSE;
 		}
@@ -992,7 +992,8 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 	if (!game->GetStatusFlags(0x100) && game->GetPlayer()->GetAttachment() != 2
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
-	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
+	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP)
+	         && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
 		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent[0];
 		if (scope->mObj == NULL || dist < scope->mDist) {
