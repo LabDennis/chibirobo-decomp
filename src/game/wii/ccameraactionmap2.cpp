@@ -44,6 +44,7 @@ void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 f32 MapAreaHeight(CCameraActionMap* map, s32 index);
 void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
 void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step);
+void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32 mode);
 // clamps the screen point into the per-axis limits, in cmotioncontrolcamera.cpp
 void fn_8016AA78(f32* out, f32* in, f32* limits);
 CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance);
@@ -61,6 +62,8 @@ extern "C" f32 sMapCameraSpringParameters[] = { 0.5f, 2.5f, 4.5f };
 // the collision modes Update hands to ResolveMapCameraEyeCollision, for the spring eye and the orbit eye
 extern "C" s32 sMapCameraCollisionMode0[1];
 extern "C" s32 sMapCameraCollisionMode1 = 1;
+
+static inline void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map);
 
 extern s32 lbl_805A1D14;
 extern s32 lbl_805A1D18;
@@ -171,6 +174,30 @@ void CCameraActionMap::Reset()
 		SetInterest(mTarget->GetCameraTarget());
 	}
 	mPadControlEnabled = 1;
+}
+
+/**
+ * @note Address: 0x80157384
+ * @note Size: 0x320
+ */
+void CCameraActionMap::Reset2()
+{
+	SetInterest(mTarget->GetCameraTarget());
+	Vec eye;
+	GetMapCameraEyeBehindTarget(this, eye, 0);
+	SetEye(eye);
+	SetMapCameraAnglesFromEyeAndInterest(this);
+	if (__fpclassifyf(mAngle.x) == FP_NAN || __fpclassifyf(mAngle.y) == FP_NAN || __fpclassifyf(mAngle.z) == FP_NAN) {
+		OSPanic("ccameraactionmap2.cpp", 316,
+		        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+		                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+		                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+		                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+		                             mPreviousStatus.mFlags, mManualInput, lbl_805A1D1C, lbl_805A1D18, mTargetEye.x, mTargetEye.y,
+		                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp, mTurnInterpolation,
+		                             mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y, mOrbitAngle.z,
+		                             mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_805A1D14));
+	}
 }
 
 extern "C" void SetMapCameraKeepPreviousEye(CCameraActionMap* map)
