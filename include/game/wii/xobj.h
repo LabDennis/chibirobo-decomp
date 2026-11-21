@@ -1965,15 +1965,15 @@ private:
 	u8 _9CC[8]; // its own little class: ctor 0x800BF148, dtor 0x8002E67C
 	CObjVec mMotion;
 	u8 _A04[0xA34 - 0xA04];
-	CVec mContactPos;              // _A34
+	CVec mContactPos; // _A34
 	u8 _A44[4];
 	CVec mEdgePos;                 // _A48
 	u8 _A58[0x9810 - 0xA58];       // the action members and everything to the camera records
 	XObjScnCamInitRec mEyeAimRec;  // _9810
 	XObjScnCamInitRec mHeadAimRec; // _987C
 	u8 _98E8[0x995C - 0x98E8];
-	CObjVec mSlopeMotion; // _995C
-	CVec mFloorSlope;     // _998C
+	CObjVec mSlopeMotion;       // _995C
+	CVec mFloorSlope;           // _998C
 	u8 _999C[0x18BE8 - 0x999C]; // Params, the XObj attachments, the suit objects
 	XPad mPad;                  // _18BE8
 	u8 _19E98[0x19EE4 - 0x19E98];
@@ -1984,7 +1984,7 @@ private:
 	u8 _1C97C[0x1C9A8 - 0x1C97C];
 	CVec _1C9A8;
 	u8 _1C9B8[0x1C9CC - 0x1C9B8];
-	CObjVec mEyeAim;         // _1C9CC
+	CObjVec mEyeAim;          // _1C9CC
 	CJArchive mAttachmentAnm; // _1C9FC
 	CJArchive mSuitAnm;       // _1CB44
 	u8 _1CC8C[0x1CC90 - 0x1CC8C];

@@ -222,7 +222,7 @@ public:
 
 	// inline like the GameCube header: retail expands both into the derived
 	// ctors, no XObjAttachment ctor or dtor symbol exists in the unit
-	virtual ~XObjAttachment() { }                                                                                                  // _08
+	virtual ~XObjAttachment() { }                                                                                               // _08
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
 	virtual void Release();                                                                                                     // _40
 	virtual void InitializeObject();                                                                                            // _14C
