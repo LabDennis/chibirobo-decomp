@@ -280,7 +280,9 @@ BOOL fn_800CDDAC(const XObj* object)
 }
 
 // the player's suit step of the stage setup: puts on the suit the save asked for, TRUE once it is on
-// NONMATCHING: retail recomputes the suits' address into r4 and reads mCurrent before mRequested
+// NONMATCHING: pure register allocation — retail puts the +0x10000 base in r4, mCurrent in r0
+// and mRequested in r3 (param reg reused); our build bases in r3 and loads mRequested into r4
+// first. Identical instruction stream otherwise, every spelling tried converges to ours.
 BOOL fn_800CDC08(WiiPlayerState* player)
 {
 	if (player->mSuits.mLoadStep == 0) {
