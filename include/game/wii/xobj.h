@@ -1884,6 +1884,7 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
+	virtual void SetMoveDir(const Vec* dir, f32 speed);                          // _100
 	virtual void ResetObjectState();                                 // _154, the player state back to its defaults
 	virtual void DrawWithView(Mtx view);                             // _178, himself or the current suit, then the attachments
 	virtual void DrawReflection(Mtx view);                           // _17C
@@ -1897,6 +1898,8 @@ public:
 	virtual void vf1BC(s32 mode);                                    // _1BC, culls him and the visible attachments
 	virtual void SetCullMode(s32 mode);                              // _1C0
 	virtual void ResetCullMode();                                    // _1C4
+	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);    // _1F0
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
 
 private:
 	u8 _9A8[0x1B7BC - 0x9A8];

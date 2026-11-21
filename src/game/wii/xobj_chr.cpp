@@ -158,6 +158,12 @@ static inline void StopMoving(WiiPlayerState* chr)
 	}
 }
 
+// the y angle a direction faces
+static inline f32 GetYAngle(const Vec& dir)
+{
+	return atan2(dir.x, dir.z);
+}
+
 // the ground type of a map triangle, 0 for none
 static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
 {
@@ -1699,6 +1705,20 @@ CVec fn_800E5A48(XObj* player)
 	return player->GetJointTranslate("carry_obj_nll");
 }
 
+// XObjChr::SetMoveDir, stops whatever push is running and keeps the heading he walks towards
+// NONMATCHING: only the pool label names and the order of the two argument loads for atan2
+void XObjChr::SetMoveDir(const Vec* direction, f32 speed)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	StopMoving(chr);
+	CObj::SetMoveDir(direction, speed);
+	CVec horizontal   = chr->mMoveSpeed0;
+	horizontal.y      = 0.0f;
+	if (PSVECMag((Vec*)&horizontal) > 0.0f) {
+		chr->mWalkHeading = WrapAngle(GetYAngle(chr->mMoveTarget0 - chr->mMoveTranslate));
+	}
+}
+
 // how high the carried object sits: half again his scale, and with a mug the carry joint's height on top
 // except while the anims 10 and 11 lift and lower it
 // NONMATCHING: the joint name's place, as for fn_800E5A2C
@@ -1712,6 +1732,36 @@ f32 fn_800E5BFC(WiiPlayerState* chr)
 		height += 4.0f * scale.x;
 	}
 	return height;
+}
+
+// XObjChr::SetColor, the color goes to everything he wears and carries too. while a costume
+// change is running, blend 2 turns into 1 and 1 is dropped; the Wii also tints the two
+// extra parts suits 3 and 6 bring
+void XObjChr::SetColor(s32 blend, u8 red, u8 green, u8 blue, f32 time)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mSuits.mChangeStep != 0) {
+		if (blend == 2) {
+			blend = 1;
+		} else if (blend == 1) {
+			return;
+		}
+	}
+	XObj::SetColor(blend, red, green, blue, time);
+	chr->mPlug.SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mCopterObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mPopperObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mRadarObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mOXObj)->SetColor(blend, red, green, blue, time);
+	for (s32 i = 0; i < 9; ++i) {
+		chr->mSuits.mObjects[i].SetColor(blend, red, green, blue, time);
+		if (i == 3 || i == 6) {
+			chr->mSuitParts[i].SetColor(blend, red, green, blue, time);
+		}
+	}
+	if (IsCarryingMug(&chr->mLift)) {
+		chr->mLift.mTarget->SetColor(blend, red, green, blue, time);
+	}
 }
 
 // between his eyes, a little behind them
@@ -1861,6 +1911,18 @@ void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 va
 		chr->mFlashTimer  = gRefreshRate;
 		chr->mFlashCount  = 0;
 		chr->mHitStrength = value;
+	}
+}
+
+// XObjChr::OnHitFromPosition, hit from a position. flashes what he carries instead when he lifts something
+void XObjChr::OnHitFromPosition(const Vec&, f32 strength)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (IsCarryingMug(&chr->mLift)) {
+		chr->mLift.mTarget->SetColor(1, 150, 150, 0, 0.0f);
+		chr->mLift.mTarget->SetColor(1, 0, 0, 0, 0.2f);
+	} else if (chr->mFlashTimer <= 0) {
+		ApplyPlayerHitReaction(chr, TRUE, TRUE, strength);
 	}
 }
 
