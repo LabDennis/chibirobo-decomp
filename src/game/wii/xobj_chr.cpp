@@ -30,6 +30,7 @@
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
 extern CustomShadow gCustomShadow;
 
 // the GameCube kept a weak copy of it
@@ -1908,6 +1909,22 @@ void XObjChr::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 
 void XObjChr::vf1A8(f32)
 {
+}
+
+// queues the models he wears on the scene root and steps the queued draws for the frame:
+// himself, the suit he has on (suits 3 and 6 carry an extra part), and the popper mount
+extern "C" void fn_800E7EA8(WiiPlayerState* chr)
+{
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mObject.m_pScnMdl);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+		}
+	}
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)chr->mPopperObj)->mObject.m_pScnMdl);
+	fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
 }
 
 void XObjChr::SetBaseMtx(Mtx mtx)
