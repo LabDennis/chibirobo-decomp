@@ -1,14 +1,71 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 90 fertig, Branch devin/lane3 @ 861115b4.
-R24J01: 6654/8284 matched, main.dol: OK; GC: je 17 files OK;
-Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
+Stand: Lauf 91 fertig, Branch devin/lane3 @ ef7fd00e.
+R24J01: 6655/8284 matched, main.dol: OK; GC: je 17 files OK;
+Format-Gate: clang-format 18.1.8 auf diesem Host nicht auffindbar
+(check.py fand nur 23.1.4) — Stil der neuen Bloecke = Dateikonvention.
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 91 — fn_800F2CF4 100 % + DrawSpiralTrail 99,7 % + fn_800F35E8 94 %
+
+- **Drei Commits:** `93521364` DrawSpiralTrail-Port + fn_800F2CF4-Fix
+  (fn_800F2CF4 100 %), `ef7fd00e` fn_800F35E8 (94 %, NONMATCHING).
+- **fn_800F2CF4 @0x800F2CF4 (0x1B0): 100 %.** Retail-Asm-Vergleich
+  zeigte die rand()-Kanalreihenfolge `<<16, <<24, <<8` (erstes rand
+  geht ins Byte 2, zweites ins Alpha). Source-Farbexpression
+  entsprechend: `(rand%156+100)<<24 | <<16 | <<8` — Reihenfolge im
+  Source `<<24`(zweites rand)… wichtig: MWCC isst die rand()-Calls
+  in der Reihenfolge, in der sie im OR-Ausdruck stehen; Retail
+  belegt r16 mit slwi<<16 → zweites rand() im Ausdruck ist der
+  <<16-Term. Jetzt identisch, matched +1 (6654→6655).
+- **DrawSpiralTrail @0x800F3140 (0x4A8): 99,73 % Report /
+  99,61 % objdiff.** GC-Vorlage obja_chr.cpp:79 wortnah portiert
+  auf Wii-APIs: CGsRenderState->Apply (cur+cleanup),
+  DrawGsCircle(glow=4fach/Ecke, core=3fach), gGame.mGs.mBillboardEnabled
+  auf 0 am Ende. KEY-ERKENNTNIS (wie UpdateOXMenuTransition, Lauf 87):
+  direkte `trail->rings[i][j]`-Zugriffe OHNE Zeiger-Lokale erzeugen
+  Retail's zwei Induktionszeiger; Locals-Reihenfolge angle vor radius.
+  Rest <1 %: Register-/Scheduling-/Stack-Temp-Residuum, ehrlich
+  NONMATCHING-Kommentar.
+- **fn_800F35E8 @0x800F35E8 (0x12C): 93,84 %, NONMATCHING.**
+  LoadFromPlacement-Override einer Geschwisterklasse im selben
+  Retail-File (vtable-Slot direkt nach ResetObjectState__4XObjFv,
+  zwei vtables referenzieren ihn, @4@-Thunk → Mehrfachvererbung).
+  Verhalten: `XObj::LoadFromPlacement(info)` qualifiziert; bei
+  mObject.m_pScnMdl(+0xF0)!=NULL sieben `GetResNode` (vtable+0x50)-
+  Lookups second_null/head_chn/head_cap/l+r_mabuta_down/up →
+  ResNode[7] @0x9AC (WiiPlayerState::mHeadNodes, cgame.h:957),
+  dann EnableScnObjCallbackExecOp(EXECOP_CALC_WORLD). IDENTISCHER
+  Instruktionsstrom zu xobj_chr.cpp:537-553 case-0-Block (dort
+  inline in LoadFromPlacement). Restdiff = NUR Referenz-/@label-
+  Rauschen (String-Pool), keine Instruktionsdifferenz.
+- **Gate vollstaendig:** R24J01 main.dol OK 6655/8284;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Report-Diff lost100=[],
+  einzige Regression = bekanntes DrawGroundShadowAt 99,98→96,62
+  (Fuzzy-Artefakt); config/splits/symbols unveraendert;
+  Format-Gate NICHT fahrbar (kein clang-format 18.1.8 auf Host,
+  nur 23.1.4 — neue Bloecke folgen Dateistil).
+- **Naechster Schritt (Adressfolge Unit 66):** fn_800F3714 (0x474),
+  fn_800F3B88 (0x2EC), fn_800F3E74/E88 (je 0x14: stb bool→+0x9C8/
+  +0x9C9 + Tailcall), fn_800F3E9C (0x1A0), fn_800F403C (0x170),
+  fn_800F41AC (0x44), fn_800F41F0 (0x90), fn_800F4280 (0x28C),
+  fn_800F450C (0x28C), fn_800F4798 (0x130), Stubs fn_800F48C8/D0/D8
+  (je 0x8, Deletethunks — aus Klassen, nicht von Hand). Offen:
+  Klassenidentitaet fn_800F35E8 (vtable in auto_07_802FF340/
+  auto_07_803030D4_data.s, LoadFromPlacement-Slot nach
+  ResetObjectState; @4@-Thunk = zweite Basis).
+- Liegt: (a) zentrale .claude/devin/progress.md + ENDLESS_STATE_3.md
+  vom Worktree aus nicht beschreibbar — diese Kopie ist Stand;
+  (b) Format-Gate blockiert durch fehlendes clang-format 18.1.8
+  (Host hat 23.1.4, env CLANG_FORMAT nicht gesetzt);
+  (c) callcheck-Skript fehlt weiterhin in tools/ — Randpruefung
+  ueber objdiff-Instruktionsdiff (fn_800F35E8: Call-Set matchend,
+  kein neuer Call-Target-Diff).
 
 ## Lauf 90 — StartPointParticles 100 % + UpdatePointParticleDisplay 83,4 %
 
