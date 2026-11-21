@@ -1443,7 +1443,7 @@ void CGame::Update(u32 frames)
 	StepSceneDraws(frames);
 	if (!GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800A13D0(&lbl_8044EE4C, GetCamera());
-		fn_800A13D0(mEvtPtcl.mEmitters, GetCamera());
+		fn_800A13D0(mEvtPtcl.mEffects, GetCamera());
 	}
 
 	// the effects follow the camera: the stage camera object's when its scene brings one, else the game's

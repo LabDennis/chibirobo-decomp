@@ -3,6 +3,7 @@
 
 #include "Dolphin/mtx.h"
 #include "game/wii/cpad.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
@@ -1631,7 +1632,7 @@ STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
 // the emitter handles, stepped with the camera like the global at 0x8044EE4C
 class CEvtPtcl {
 public:
-	u8 mEmitters[0x80][0x74]; // _00
+	EffectInstance mEffects[0x80]; // _00
 	// _3A00 vtable
 
 	virtual ~CEvtPtcl() { }

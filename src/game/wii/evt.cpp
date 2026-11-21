@@ -188,7 +188,7 @@ static inline void CEvt_Detach(CEvt* evt)
 	if (evt->mOwner == NULL) {
 		if (gGame.mEffects.mResources[1].mNumEmitter != 0) {
 			for (s32 i = 0; i < 0x80; i++) {
-				EffectInstance* effect = (EffectInstance*)gEventPtcl.mEmitters[i];
+				EffectInstance* effect = &gEventPtcl.mEffects[i];
 				if (!effect->IsFinished() && effect->group == 3) {
 					RetireEffect(&effect->handle, TRUE);
 				}
@@ -3548,7 +3548,7 @@ extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlo
 		}
 		if (clearEffects) {
 			for (s32 i = 0; i < 0x80; i++) {
-				EffectInstance* effect = (EffectInstance*)gEventPtcl.mEmitters[i];
+				EffectInstance* effect = gEventPtcl.mEffects + i;
 				if (!effect->IsFinished()) {
 					RetireEffect(&effect->handle, TRUE);
 				}
