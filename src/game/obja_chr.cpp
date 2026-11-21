@@ -1607,20 +1607,6 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 extern "C" {
-// this unit's .bss in retail order: the player update code addresses the section through
-// one base register anchored at its head, so every global sits at a fixed offset
-u8 lbl_803567B8[0x74]; // unused block, only its address anchors the .bss base register
-Vec lbl_80378234[2];   // zero vectors copied by SetLookTargetPosition and the look-offset update
-Vec lbl_8037824C;      // zero vector copied by SecondEdgePoint
-Vec lbl_80378258[3];   // zero vectors, the first copied by FirstEdgePoint
-Vec gPlayerFloorCenterDefault;
-Vec gPlayerFloorExtentDefault;
-u8 lbl_8035688C[0x48]; // unused retail block
-#if defined(VERSION_JP)
-u8 lbl_803568D4[0x18]; // unused retail block
-#else
-u8 lbl_803568D4[0x24]; // unused retail block
-#endif
 PointPtcl gPointParticlePool[10];
 PointPtcl* gPointParticleSlots[10];
 SuitChangeEffect gPlayerSuitChangeEffect;
@@ -1645,12 +1631,6 @@ extern "C" void UpdateRadarBeamAnimation(XActRadar*, u32);
 extern "C" void UpdatePointParticleDisplay(PointPtcl*, u32);
 extern "C" void UpdateSpiralTrail(SuitChangeEffect*, u32);
 
-// unreferenced retail table; DrawEquipmentRing and ~XObjChr anchor their .data
-// accesses at the section head, so the retail layout starts with these words
-s32 lbl_80225730[26] = {
-	0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0,
-};
-
 // the joints an item's animation runs on, by item
 XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ 3, 8, { 0, 1, 0, 1, 2, 0, 1, 0 }, 0.0f },
@@ -1668,7 +1648,8 @@ const char* gAttachmentAnimationPaths[] = {
 
 // the animation file of each suit
 const char* gSuitAnimationPaths[] = {
-	NULL, "cb_robo_13.dat", "cb_robo_15.dat", "cb_robo_14.dat", "cb_robo_25.dat", NULL, "cb_robo_16.dat", "cb_robo_17.dat", "cb_robo_24.dat",
+	NULL, "cb_robo_13.dat", "cb_robo_15.dat", "cb_robo_14.dat", "cb_robo_25.dat",
+	NULL, "cb_robo_16.dat", "cb_robo_17.dat", "cb_robo_24.dat",
 };
 
 // spawn ids of the three special suits
@@ -1946,11 +1927,7 @@ void XObjChr::UpdateObject(u32 frames)
 	UpdatePlayerFrameEffects(this, frames);
 	s32 path[]    = { 0, 1, 0, 1, 2, 0, 1 };
 	f32 height    = GetEventJointWorldPosition(this, 7, path).y - mMoveTranslate.y;
-	Vec offset    = lbl_80378234[1];
-	offset.x      = 0.0f;
-	offset.y      = height + 3.0f * mMoveScale.y;
-	offset.z      = 0.0f;
-	mLook.mOffset = offset;
+	mLook.mOffset = (Vec) { 0, height + 3.0f * mMoveScale.y, 0 };
 	UpdatePlayerLookMarker(&mLook, frames);
 	XObj* plug = &mPlug;
 	plug->UpdateObject(frames);
@@ -2066,9 +2043,14 @@ static inline u8* AnimationHead(HSD_JObj* joint)
 	return frame ? frame->ad_head : NULL;
 }
 
+extern "C" {
+extern Vec lbl_80378258;
+extern Vec lbl_8037824C;
+}
+
 static inline Vec FirstEdgePoint(const XObj* object, s32 index, f32 height)
 {
-	Vec point = lbl_80378258[0];
+	Vec point = lbl_80378258;
 	point.x   = object->mMoveTranslate.x + object->mEdges[index].mFrom.x;
 	point.y   = height;
 	point.z   = object->mMoveTranslate.z + object->mEdges[index].mFrom.z;
@@ -4343,17 +4325,14 @@ extern "C" void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* p
  * @note Address: 0x8009F7D0
  * @note Size: 0x490
  */
-static inline f32 ScaleByRandomPercent(f32 value)
-{
-	return value * (rand() % 100) / 1000.0f;
-}
-
 extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 {
-	f32 angle = DEG2RAD * (rand() % 360);
-	f32 vx    = ScaleByRandomPercent(sin(angle));
-	f32 vz    = ScaleByRandomPercent(cos(angle));
-	f32 vy    = (rand() % 100) / 800.0f;
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = std::sinf(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = std::cosf(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
 	Vec position;
 	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
 	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
@@ -8253,7 +8232,7 @@ extern "C" CVec* GetCameraAngles(CCamera* camera)
  */
 extern "C" void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z)
 {
-	Vec target    = lbl_80378234[0];
+	Vec target    = { 0.0f, 0.0f, 0.0f };
 	target.x      = x;
 	target.y      = y;
 	target.z      = z;
