@@ -9,35 +9,6 @@ extern "C" double cos(double x);
 extern "C" double atan2(double y, double x);
 extern "C" f32 PSVECDistance(Vec* a, Vec* b);
 
-// first aobj on the jobj or below it
-static inline HSD_AObj* FindAnim(HSD_JObj* jobj)
-{
-	if (jobj != NULL) {
-		HSD_AObj* aobj = FindJointAnimationInTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindMaterialOrTextureAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindPolygonAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-	}
-	return NULL;
-}
-
-static inline f32 GetAnimFrame(HSD_JObj* jobj)
-{
-	HSD_AObj* aobj = FindAnim(jobj);
-	if (aobj != NULL) {
-		return HSD_AObjGetCurrentFrame(aobj);
-	}
-	return 0.0f;
-}
-
 struct TrashObj;
 
 struct UnkKindData {
@@ -165,6 +136,14 @@ struct TrashObj {
 	TrashObj* mLiftTarget; // _A64 in Japan _A54
 
 	Vec* GetPos() { return &mMoveTranslate; }
+	f32 GetAnimFrame()
+	{
+		HSD_AObj* aobj = GetAObj(jobj);
+		if (aobj != NULL) {
+			return HSD_AObjGetCurrentFrame(aobj);
+		}
+		return 0.0f;
+	}
 };
 
 #if defined(VERSION_JP)
@@ -409,7 +388,6 @@ static inline s16 GetKindId(TrashObj* obj)
  */
 extern "C" void UpdateTrash(u32 frames)
 {
-	// NONMATCHING: regalloc
 	Vec impactPos;
 	TrashObj* robot;
 
@@ -436,7 +414,7 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 2:
-			if (15.0f <= GetAnimFrame(robot->jobj)) { // the toss anim's release frame
+			if (15.0f <= robot->GetAnimFrame()) { // the toss anim's release frame
 				robot->mLiftTarget = NULL;
 				trashObj->mStatus &= ~0x400000000000000ULL; // no longer carried
 				trashDest.x = trashTarget->GetPos()->x;
@@ -454,7 +432,7 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 3: {
-			if (30.0f <= GetAnimFrame(robot->jobj) && GetAnimFrame(robot->jobj) < 33.0f) {
+			if (30.0f <= robot->GetAnimFrame() && robot->GetAnimFrame() < 33.0f) {
 				// the toss sound's window
 				XSound* obj = &gGame.mSound;
 				if (!IsGameSoundPlaying(obj, 0x1B9)) {
@@ -1092,11 +1070,12 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 
-	count   = trashStackNum;
+	s32 n   = trashStackNum;
+	count   = n;
 	Vec pos = actor->mMoveTranslate;
 	angle   = THIRD_PI + actor->mMoveRotateY;
 	jobj    = actor->jobj;
-	if (count < 0) {
+	if (n < 0) {
 		count = 0;
 	}
 	if (count > 10) {
