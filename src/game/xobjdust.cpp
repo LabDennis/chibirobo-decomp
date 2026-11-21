@@ -160,16 +160,11 @@ void XObjDust::DrawWithView(Mtx view)
  * @note Size: 0x37C
  */
 // event 16 waits for its own anim, event 56 shrinks it towards mTo while chibi robo plays anim 0x8C0
-static inline _HSD_AObj* GetObjAObj(XObj* obj)
-{
-	return GetAObj(obj->mJObj);
-}
-
 extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 {
 	if (dust->mStatus.mFlags & 0x4000000000000000ULL) {
 		if (dust->mEventId == 16) {
-			HSD_AObj* aobj = GetObjAObj(dust);
+			HSD_AObj* aobj = GetAObj(dust->mJObj);
 			if (aobj != NULL) {
 				if (aobj->flags & 0x44000000) {
 					if (dust->mStatus.mFlags & 0xC0000000000ULL) {
