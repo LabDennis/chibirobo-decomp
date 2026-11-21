@@ -1934,7 +1934,7 @@ void CMsgFont_Update(CMsgFont* font, u32 step);
 void CMsgFont_AddChar(CMsgFont* font, const char* text);
 }
 
-static inline void MsgNextLine(CMsg* msg)
+static inline BOOL MsgNextLine(CMsg* msg)
 {
 	msg->mFont.mLine++;
 	f32 width           = msg->mFont.mFitLine ? msg->mFont.mData->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
@@ -1942,12 +1942,48 @@ static inline void MsgNextLine(CMsg* msg)
 	s32 previous        = msg->mFont.mLine - 1;
 	msg->mFont.mCursorY += msg->mFont.mData->mHeights[previous];
 	msg->mFont.mLineY[msg->mFont.mLine] = msg->mFont.mCursorY + (msg->mFont.mData->mHeights[msg->mFont.mLine] - 22.0f) / 2.0f;
+	return FALSE;
+}
+
+static inline BOOL CMsg__cmd_SPEED(CMsg* msg)
+{
+	s32 delay = ReadMsgU8(msg);
+	if (delay == 255) {
+		if (msg->mCommand == EVT_CMD_MSG) {
+			delay = 2;
+		} else {
+			delay = 0;
+		}
+	}
+	msg->mCharDelay = delay;
+	return FALSE;
+}
+
+static inline BOOL CMsg__cmd_QUESTION(CMsg* msg)
+{
+	u32 crossMask     = ReadMsgU8(msg);
+	u32 selectedIndex = ReadMsgU8(msg);
+	if (gGame.GetPlayer()->mOXMenu.mStarted == 0) {
+		OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, selectedIndex);
+		msg->mData.mCursor -= 3;
+		return TRUE;
+	}
+	CPad pad(0);
+	HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
+	if (pad.mPad->mTrigger & PAD_BUTTON_A) {
+		gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+	} else {
+		msg->mData.mCursor -= 3;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
  * @note Address: 0x8008159C
  * @note Size: 0x6D8
  */
+// NONMATCHING: r3/r4 swap in MsgNextLine, CMsg__cmd_SPEED, and MSG_CODE_DEFAULT (all instructions match 1:1)
 extern "C" void CMsg_Update(CMsg* msg, u32 step)
 {
 	if (msg->mData.mCursor == NULL) {
@@ -1989,29 +2025,17 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 		u8 command = ReadMsgU8(msg);
 		switch (command) {
 		case MSG_CODE_NEWLINE:
-			MsgNextLine(msg);
-			waiting = FALSE;
+			waiting = MsgNextLine(msg);
 			break;
 		case MSG_CODE_NEWLINE_VT:
-			MsgNextLine(msg);
-			waiting = FALSE;
+			waiting = MsgNextLine(msg);
 			break;
 		case MSG_CODE_END:
 			waiting = CMsg__cmd_END(msg);
 			break;
-		case MSG_CODE_SPEED: {
-			s32 delay = ReadMsgU8(msg);
-			if (delay == 255) {
-				if (msg->mCommand == EVT_CMD_MSG) {
-					delay = 2;
-				} else {
-					delay = 0;
-				}
-			}
-			msg->mCharDelay = delay;
-			waiting         = FALSE;
+		case MSG_CODE_SPEED:
+			waiting = CMsg__cmd_SPEED(msg);
 			break;
-		}
 		case MSG_CODE_WAIT:
 			waiting = CMsg__cmd_WAIT(msg);
 			break;
@@ -2077,27 +2101,9 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			}
 			waiting = FALSE;
 			break;
-		case MSG_CODE_QUESTION: {
-			u32 crossMask     = ReadMsgU8(msg);
-			u32 selectedIndex = ReadMsgU8(msg);
-			if (gGame.GetPlayer()->mOXMenu.mStarted == 0) {
-				OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, selectedIndex);
-				msg->mData.mCursor -= 3;
-				waiting = TRUE;
-			} else {
-				CPad pad(0);
-				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
-				if (pad.mPad->mTrigger & PAD_BUTTON_A) {
-					gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
-				} else {
-					msg->mData.mCursor -= 3;
-					waiting = TRUE;
-					break;
-				}
-				waiting = FALSE;
-			}
+		case MSG_CODE_QUESTION:
+			waiting = CMsg__cmd_QUESTION(msg);
 			break;
-		}
 		case MSG_CODE_STAY:
 			msg->mStay = 1;
 			waiting    = FALSE;
