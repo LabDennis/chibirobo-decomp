@@ -1,13 +1,68 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 99 fertig, Branch devin/lane3 @ f5b7cb35.
-R24J01: 6664/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 100 fertig, Branch devin/lane3 @ 0a433d47.
+R24J01: 6667/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 100 — xobjs: XObjDrawList::Initialize + zwei Hand-Dtoren (+3)
+
+- **Commit `0a433d47`** (4 Dateien, +46): xobjs 16/23 -> 19/23.
+  - `fn_800C5CD4` = `XObjDrawList::Initialize` (100 %): allokiert
+    `mRefs` = 1024 WiiObjectRef (0x2000) aus `gWiiMem1Heap` (extern-
+    Dekl wie in delete.cpp/gamedraw.cpp), nullt jedes `mObj` in einer
+    Schleife (MWCC unrolled x2 -> exakt Retails 8-stw/0x40-Muster mit
+    per-Store-`lwz mRefs`), dann `mCount=0`. Deklaration in cgame.h
+    (+1 Zeile), Symbol `Initialize__12XObjDrawListFv` in symbols.txt.
+  - `__dt__8XObjReadFv`/`__dt__9CMsgQueueFv` (je 100 %): extern-"C"-
+    Hand-Dtoren nach dem xobjmapdtor.cpp-Idiom (`if (o && flags>0)
+    ::operator delete(o)`), NICHT als Member-Definitionen — Retail
+    inlined den leeren Basis-Dtor in XObjReadAll/One (~-Dtoren sind
+    reine deleting-Formen), die Member-Variante hatte deren 100 %
+    zunaechst auf 61,19 gezogen; Fix per Inline-Body im Header +
+    Hand-Kopie im .cpp (Kommentar `todo: weak copies`).
+- **Gate vollstaendig:** R24J01 `main.dol: OK` 6667/8284;
+  `--non-matching` linkt (609/609); GGTE01/GGTJ01_01/GGTP01 je
+  `17 files OK`; GC-Report-Diffs 0; R24J01-Report-Diff nur die 3
+  neuen + bekannte Umbenennungen/Fuzzy-Drift (kein matched-Verlust);
+  callcheck R24J01 im Worktree: 7 Alt-Eintraege (objb_act
+  UpdateHeldObject/UpdateLiftActionAnimation), keine neuen;
+  check.py --source-only mit ~/.local/opt/clang-format-18 (18.1.8):
+  `format: ok, disc files: ok` — clang-format-Luecke aus Lauf 99
+  damit geschlossen; symbols.txt Dups unveraendert (nur die 2 alten).
+- **xaction-Stand:** `__dt__11XObjReadAllFv`/`__dt__11XObjReadOneFv`
+  wieder 100 %. Offen dort: `vf08__Q27XBullet8CPtclSetFv` (16 B,
+  delegierender Vtable-Thunk `m10->vt[0xC]` — braucht XBullet-
+  Klassenmodell, siehe NONMATCHING-Kommentar) und `__sinit` (78,08,
+  Retail folded die zwei Reader-Vptrs auf ein Basis-Register).
+- **xobj_map-Erkundung (dokumentiert):** Die zwoelf 0-%-Funktionen
+  sind (a) die Grid-Builds `fn_800C85EC` (0x814), `fn_800C8E00`/
+  `fn_800C92A8` (je 0x4A8) — Zellraster ueber die Trigon-Dreiecke,
+  10x10-Grid, echte Portierungsarbeit; (b) Klassen-Maschinerie am
+  Dateiende: `fn_800C9BEC`/`fn_800C9C7C` (Deleting-Dtoren, geben
+  Zeiger bei +8 ueber fn_802319C8 frei), `dtor_800C9BA4`/`9D10`/
+  `9DDC`/`9E3C` (Unwind-Dtoren der Stack-Locals aus 85ECs extab —
+  DESTROYLOCAL 0x60/0x68/0x70/0xC0(FP), DESTROYBASE 0x0(r18/r19)),
+  `fn_800C9D88` (strcmp-Lookup -> this+0xC, Ziel lbl_805A10C8),
+  `fn_800C9BE4` (`lwz r3,0x4`-Getter), `fn_800C9DD4`
+  (`lwz r3,0xC; b __dla__FPv`), `fn_800C9E7C` (@4@-Thunk ->
+  __dt__7XObjMapFv — die liegt in xobjmember, 100 %). Die Dtoren
+  fallen erst mit den Grid-Build-Locals an (Struktur zuerst).
+- **xobj_camera-Thunks:** fn_800C6584/658C/6594 (@4@ -> fn_800F41AC/
+  dtor_800C0B74/dtor_800C20EC, fremde Klassen-Vtables — Lauf-96-
+  Strukturprojekt), fn_800C7C4C/7C54/7CB4/7CBC (XObjScnCam-/XObjLight-
+  Dtor-Thunks + `b`-Forwarder auf XObj::InitializeObject/Release —
+  kommen mit den Vtable-Emissionen der Unit).
+- **Naechster Schritt:** die drei Grid-Builds in xobj_map portieren
+  (fn_800C85EC zuerst; XObjMapListA/B-Records + TRIGON_CELL bereits
+  vorhanden), danach deren Local-Klassen -> Tail-Dtoren gratis.
+  Alternativ obja-Rest (fn_800AE9F0 72,91, fn_800AF51C 71,44,
+  TestFloorCollision 94,78, LoadFromPlacement 90,18) oder
+  cjanim/gxb/msg-Offene.
 
 ## Lauf 99 — FindPlugCordFloor: echtes __fpclassifyf + Arg-Slots
 
