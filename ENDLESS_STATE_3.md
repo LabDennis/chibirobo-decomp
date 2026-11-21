@@ -1,12 +1,81 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 80 fertig, Branch devin/lane3 @ 756e5538.
-R24J01: 6643/8284 matched, main.dol: OK; GC: je 17 files OK;
---non-matching linkt; callcheck ohne neuen Eintrag; format ok;
-keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
+Stand: Lauf 81 fertig, Branch devin/lane3 @ 29c97499.
+R24J01: 6647/8284 matched, main.dol: OK; GC: je 17 files OK;
+callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
+all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 81 — NEUE TU game/wii/ringmenu.cpp (Unit 63), 4 Matches
+
+- **TU-Befund (wichtig für den Rest der Ring-Region):** Unit 63
+  (.text 0x800E9FC4-0x800ED3B8) ist NICHT Teil von xobj_chr.cpp —
+  dtk meldete "Cyclic dependency" beim Erweitern der xobj_chr-
+  Range. Beweis: Retail-.text ist pro TU kontig; ringmenupointer.o
+  (UpdatePointedItem, .text 0x800E9D30-0x800E9FC4, extab
+  0x8000C4EC, eti 0x80014534) liegt zwischen xobj_chr .text-Ende
+  und Unit 63; deren extab (0x8000C4F4-0x8000C584) liegt hinter
+  ringmenupointers extab — gleiche Interleaving-Struktur wie
+  .text. wii_units.md hatte die Unit dem xobj_chr zugeschrieben,
+  das war falsch. METHODE FÜR WEITERE UNITS: extab-Adressen der
+  auto_*.s-Header (# 0x8000C504.. Kommentar) verraten die
+  TU-Grenzen — extabindex kontig => evtl. gleiche TU, Lücke =>
+  andere TU. Unit 65 beginnt mit eigener extabindex @0x800145C4
+  (UpdatePlayerEquipmentRings extab @0x8000C5BC), Unit 66
+  (DrawOXMenu) @0x80014618 — beide sind wieder eigene TUs, NICHT
+  ringmenu.cpp und NICHT xobj_chr.cpp.
+- **Commit 29c97499:** neue Datei src/game/wii/ringmenu.cpp +
+  Object(NonMatching, ..., GC/3.0a5, -Cpp_exceptions on, -ipa
+  file) in configure.py (hinter xobj_chr-Eintrag) + splits.txt-
+  Unit `game/wii/ringmenu.cpp` (extab 0x8000C4F4-0x8000C584,
+  extabindex 0x80014540-0x80014570, .text 0x800E9FC4-0x800ED3B8).
+  Unit 63 enthält auch AtcMenu::Open (0x800ECAE0, noch auto) —
+  Dateiname ist Schätzung, die TU ist der Ring-Menü-Code.
+- **Funktionen (Retail-Reihenfolge im File):**
+  - `UpdateEquipmentRingAnimation` (0x800E9FC4, 0x974): GC-Port
+    mit `1.0f/(k*gRefreshRate)` statt IDLE_SECOND. MATCH-KEY:
+    Item-Loop als direkte `ring->mItems[i].`-Zugriffe, KEIN
+    `OctaMenuItem& item` — Retail faltet die mItems-Basis+0x14 in
+    die Feld-Offsets (r3=this+i*0x28, lfs f6,0x24 = mScale).
+    Helpers RaiseRingValue/LowerRingValue/ApproachItemScale/
+    AddPulse wie GC. Score **99,67** — Rest nur f4↔f5-Regallok im
+    letzten Highlight-Loop (`mOpen>0`, mFade>=0.5): Retail haelt
+    Frames-Double+1.0 in f4/f5 getauscht. NONMATCHING-Kommentar
+    dokumentiert.
+  - `OctaMenu::FinishClose` (0x800EA938): `mOpen = 0` — **MATCHED**.
+  - `OctaMenu::GetItemColor` (0x800EA944): identisch zum GC-Source
+    (0x20-Grau / Typ3 50,50,200 / Cursor 200,100,100 + AddPulse
+    sin(1.2*phase)*25+25). Score 93,77 — gleiche Regalloc-Wand wie
+    die GC-Kopie (Farbregs r28-r30 Bindung + li-Scheduling).
+  - `GetItemIconTextureIndex`/`IsItemEquipped`: `return 0` — beide
+    **MATCHED**.
+  - `OctaMenu::GetItemLabel` (0x800ECAD8): Retail gibt
+    lbl_805A1108 = **8-Byte-Null-.sdata** zurück, NICHT "" →
+    `static char sLabel[8] = ""` als Funktions-Static — **MATCHED**.
+- **Zahlen:** 6643→**6647** (+4 matched), fuzzy 68,98→69,08.
+  Baseline-Diff: 0 Regressionen.
+- **Gate:** R24J01 main.dol OK; GGTE01/GGTJ01_01/GGTP01 je
+  "17 files OK"; callcheck: nur 7 bekannte bahnfremde
+  objb_act-Eintraege; config/ sauber (nur eigene splits-Zeilen);
+  Symbol-Dubs 0. Format-Gate: clang-format 18.1.8 fehlt
+  (23.1.4), Befehl vom Interface abgelehnt — Stil haendisch an
+  obja_chr.cpp angelehnt.
+- **Liegt:** clang-format-Versionskonflikt (bekannt). Restwaende
+  unveraendert + neu: UpdateEquipmentRingAnimation 99,67
+  (f4/f5), GetItemColor 93,77 (regalloc), HandleEquipmentRingInput
+  81,52, LoadFromPlacement 93,96, Release 96,27,
+  DrawGroundShadowAt 96,63.
+- **Naechstes:** in src/game/wii/ringmenu.cpp weiter —
+  `DrawEquipmentRing` (0x800EAA88, 0x2040, gross: unrolled
+  8-Item-Row + Label-Draw + CTexObj) und `AtcMenu::Open`
+  (0x800ECAE0, 0x8D8: 8-Item-Loop mit ausgerollter
+  9-Attachment-Count-Suche, Wii-Layout mChr) — beide Retail-Asm
+  liegt vor (auto_DrawEquipmentRing_text.s,
+  auto_Open__7AtcMenuFl_text.s), GC-Vorlage obja_chr.cpp.
+  Units 65/66 sind eigene TUs — Namen/Dateizuordnung vor dem
+  Splitten per extab-Index + .rodata/.data-Referenzen festlegen.
 
 ## Lauf 80 — HandleEquipmentRingInput 81,52 % NONMATCHING (committet)
 
