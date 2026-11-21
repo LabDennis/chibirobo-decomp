@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 84 fertig, Branch devin/lane3 @ a2056260.
+Stand: Lauf 85 fertig, Branch devin/lane3 @ 369f63ae.
 R24J01: 6652/8284 matched, main.dol: OK; GC: je 17 files OK;
 callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
@@ -8,6 +8,51 @@ all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 85 — DrawPlayerEquipmentRings (85,69 %, ehrlich NONMATCHING)
+
+- **Neu:** `DrawPlayerEquipmentRings(XObjChrMenu*)` 0x800EE8B0
+  (0x9FC), extern "C" — der grosse Rest der Unit-65-Menuegruppe,
+  Wii-Port des GC-Pendants aus obja_chr.cpp:2517.
+  DrawEquipmentRing in mSel-Reihenfolge; Typ-3-Zweig: Target/
+  Cursor-Tracking (snap <1.0f, sonst 0.7f-Lerp), radius=40*fade,
+  quad[5]-Corners (Retail rechnet sie, zeichnet sie aber NICHT —
+  kein DrawGsVertexQuad-Aufruf im Retail, qua[] ist dort tot),
+  show-Dim-Logik: dim wenn Skript NULL && mSel==0&&mAtc.pointed<0
+  bzw. mSel==1&&mDrs.pointed<0, es sei denn Dpad-Override
+  (mMenuControls&2 && (!(mc&1)||!mPointerValid)); alpha=show?fade:
+  0.5*fade. Wii-API statt GC-Helfer: mCurRenderState->SetZMode
+  (NEQUAL/LESS/LEQUAL), mCurTevStage->SetMode(MODULATE/PASSCLR),
+  (&gGame.mTpl)->mTex.Init(desc[110-off]) + lokale Kopie,
+  DrawGsTexturedQuad mit VIER separaten `0xFFFFFF00|(u32)(255*alpha)`
+  (Retail ruft __cvt_fp2unsigned 4x — kein color-Local!).
+  Pointer-Tail: mc&2 && RingReady && !pointer -> fn_8002BBD8
+  (blr-Stub, pos=x+0.6r,y+0.4r) sonst fn_8002BBDC (blr-Stub).
+  Else-Zweig: Hint hints[3]={8,5,5}+GetLocalizedInterfaceText
+  (10/11/12), order[2][2]={{0,1},{0,2}}, edge=safeRight-16+
+  100*(1-sinf(HALF_PI*fade)), Text=20f/Icon=1.2*20f,
+  4 Outline-Labels + Hauptlabel + icon-quad desc[119-off],
+  PSMTXScale mTexMtx.mMtx[2]=1/17, Trans mMtx[0]=icon/17.
+  Neue File-Lokals: gEquipmentHintOutlineX/Y[4] (Retail .data
+  lbl_80305B38/48), extern-decls fn_8002BBD8/DC (blr-Stubs!),
+  DrawEquipmentRing, GetLocalizedInterfaceText, gScreenSafe*.
+- **Restdiff 82,46 objdiff / 85,69 fuzzy:** Frame 0x360 vs 0x380
+  (Retail nutzt f21/f22 fuer Hint-x/y+alpha), Retail haelt die
+  pointed/override-Flags in getrennten Registern wo MWCC ueber
+  Branches short-circuitet, Pool-@labels statt Unit-.sdata2-
+  Namen, 0x4330-Magic + Scheduling. Semantik decodiert und
+  verifiziert; keine bekannten semantischen Luecken.
+- **Gate:** R24J01 main.dol: OK 6652/8284; GGTE01/GGTJ01_01/
+  GGTP01 je 17 files OK; Baseline-Diff: nur Umbenennungen +
+  bekanntes DrawGroundShadowAt-Pool-Artefakt (96,62);
+  callcheck R24J01 52 bekannte Eintraege, keiner in
+  xobjchrmenu; Format 474 ok (1 Datei nachformatiert);
+  Dups nur SDK-Vorbestand. config/ unveraendert.
+- **Naechstes:** HandleOXMenuInput 0x800EF58C (0x804),
+  fn_800EFD90 (0x370), danach Unit 66 (0x800F0100-0x800F48E0)
+  in Adressfolge (DrawMenuRing, DrawOXMenu, UpdateSpiralTrail).
+- **Liegt:** --non-matching-Linktest diesen Lauf nicht erneut
+  gefahren (Unit 65 ist NonMatching und linkt seit Lauf 84).
 
 ## Lauf 84 — UpdatePlayerEquipmentRings (93,95 %, ehrlich NONMATCHING)
 
