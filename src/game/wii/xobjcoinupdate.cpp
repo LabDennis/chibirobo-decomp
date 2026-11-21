@@ -15,8 +15,6 @@ extern "C" u32 GetPickupRewardValue(s32 index);
 extern "C" void AdjustPlayerMoney(WiiPlayerParams* params, s32 amount);
 extern "C" void AddPlayerScrap(WiiPlayerParams* params, s32 amount);
 extern "C" void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
-extern "C" u32 GetStageCollectionFlagBase(s32 set);
-extern "C" void* GetSpawnData(s32 id);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 extern "C" void PlayGameSound(XSound* sound, s32 id, s32 volume);
 
@@ -131,8 +129,7 @@ void XObjSound::PauseSounds(f32 fade)
  */
 s32 XObjItem::GetFlagIndex()
 {
-	s32 index = mPlacementParam1;
-	return index > 0 ? GetStageCollectionFlagBase(0) + index : 0;
+	return GetPlacementFlagIndex(0);
 }
 
 /**
@@ -228,8 +225,7 @@ void XObjCoin::InitializeObject()
  */
 s32 XObjCoin::GetFlagIndex()
 {
-	s32 index = mPlacementParam1;
-	return index > 0 ? GetStageCollectionFlagBase(1) + index : 0;
+	return GetPlacementFlagIndex(1);
 }
 
 /**

@@ -3,6 +3,7 @@
 
 #include "game/wii/animsfx.h"
 #include "game/wii/xobj.h"
+#include "game/stagedata.h"
 
 // the Wii XObjFlags family: flag-backed pickups and the sound objects. Pulled out of
 // xobj.h because AnimSfx needs the nw4r sound headers, which only the units that use
@@ -37,6 +38,17 @@ public:
 
 	virtual void ResetForNewGame(); // _150, clears every flag
 	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
+
+	// the GameCube's inline, same body: the flag base of the group plus the placement id
+	s32 GetPlacementFlagIndex(s32 group) const
+	{
+		s32 id = mPlacementParam1;
+		if (id > 0) {
+			u32 base = GetStageCollectionFlagBase(group);
+			return (s32)(base + (u32)id);
+		}
+		return 0;
+	}
 
 	CEvtFlags* mFlags; // _9A8
 
