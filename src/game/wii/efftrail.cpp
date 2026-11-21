@@ -1,6 +1,7 @@
 #include "Dolphin/vec.h"
 #include "Dolphin/mtx.h"
 #include "game/gmath.h"
+#include "game/pointptcl.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
@@ -194,6 +195,53 @@ extern "C" void DrawOXMenu(WiiOXMenu* menu)
 	gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+}
+
+/**
+ * @note Address: 0x800F1110
+ * @note Size: 0x250
+ */
+extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
+{
+	ptcl->mType           = type;
+	ptcl->display.mState  = 1;
+	ptcl->display.mAmount = amount;
+	switch (type) {
+	case 0: // a negative amount draws in red
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
+		ptcl->burst.mNum             = __fabsf(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -1; // -1 draws texture 154
+		break;
+	case 2:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
+		ptcl->burst.mNum             = __fabsf(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -2; // -2 draws texture 152
+		break;
+	case 3:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
+		ptcl->burst.mNum             = __fabsf(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -3; // -3 draws texture 153
+		break;
+	default:
+		ptcl->display.colors.mColor  = 0xFFFFFF00;
+		ptcl->display.colors.mColor2 = 0xFFFFFF00;
+		ptcl->burst.mNum             = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = 5; // a positive state is a polygon's sides
+		break;
+	}
 }
 
 // the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect: xobj_chr.cpp
