@@ -1,17 +1,57 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 93 fertig, Branch devin/lane3 @ 5547c3c9.
-R24J01: 6655/8284 matched, main.dol: OK; GC: je 17 files OK;
-Format-Gate: clang-format 18.1.8 liegt unter
-~/.local/opt/clang-format-18/bin/clang-format (check.py-Aufruf in
-diesem Lauf vom Nutzer abgelehnt) — Stil der neuen Bloecke =
-Dateikonvention.
+Stand: Lauf 94 fertig, Branch devin/lane3 @ 9efda6ef.
+R24J01: 6658/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 94 — sieben Funktionen in efftrail.cpp (XObjDress/XObjDressOpt/XObjChr)
+
+- **Commit `9efda6ef`** (3 Dateien): fn_800F3E74/3E88 = XObjDress
+  (unsere WiiSuitObject) vf28C/vf290 — 100 %/100 %. fn_800F3E9C/403C =
+  Sichtbarkeits-Walker ueber lokale `const char*`-Node-Listen
+  (Kopf: 11 Namen @802DA8C0, linker Arm: 5 @802DA928) — 99,6 %/99,57 %.
+  fn_800F41AC = ExecCallback-Selector 4 (spielt die gespeicherten
+  Hide-Flags nach) — 100 %. fn_800F41F0 = XObjDressOpt::ExecCallbackB
+  (unsere WiiSuitPart, graftet `mOwner->GetWorldMtx("head")` auf
+  pResult->mpMtx) — 99,97 %, Rest nur String-Pool-Referent.
+  fn_800F4798 = XObjChr::GetCollisionHeight — 57,9 %, NONMATCHING:
+  sechs s32/100-Konversionen + zwei `Vec` als by-value Returns
+  (Retail's stfs/lwz/stw-Pattern = Return-Slot-Kopien, das war der
+  Schluessel: kein f32-Array, sondern `static inline Vec`-Helfer mit
+  v.x/v.z/v.y-Zuweisungen), Residuum reine Scheduling-Freiheit
+  (Konstanten- und Vtable-Loads gehoben vs. gesunken).
+- **Klassen geklaert:** lbl_80302DBC = XObjDress-vtable,
+  lbl_80305DA0 = XObjChr, lbl_80306060 = XObjDressOpt. fn_800F3E9C
+  wird sowohl vom Spieler (xobj_chr.cpp fn_800E3BCC, WiiPlayerState*)
+  als auch vom Dress aufgerufen → Receiver XObj*.
+- **xobj.h-Erweiterungen:** ResNodeData `mFlags` @_14 (bit 8 =
+  Sichtbarkeit); `ResNode::SetVisibility` mit g3d_resnode_ac.h:175-
+  Panic + Re-Guard (exakt Retail); `ScnMdl::CopiedVisAccess`
+  (ScnMdl*, u32 id) mit IsValid()=mpScnMdl!=NULL, SetVisibilityEx —
+  wie Retail gebaut: `access.IsValid() ? SetVisibilityEx(v) :
+  node.SetVisibility(v)`-Verzweigung. `GetID()` liefert den :56-Panic
+  bereits. Achtung: include/nw4r/g3d/g3d_scnmdl.h NICHT anfassen —
+  das ist der SDK-Header; das Spielmodell lebt in xobj.h.
+- **cgame.h:** WiiSuitObject bekam `m_9C8`/`m_9C9` (XObjDress-
+  Hide-Flags, Pad-Verbrauch, Groesse gleich); WiiSuitPart `XObj*
+  mOwner` @_9A8.
+- **Gate:** 4 Editionen gebaut, R24J01 main.dol OK, GC je 17 files OK,
+  Report-Diff vs. Baseline: nur Fortschritt (u.a. ApplyPlayerSuit
+  96,8→99,98, UpdatePlayerSuitChange 95,98→97,55 — vermutlich weil
+  xobj.h-Klassen jetzt vollstaendiger sind); clang-format-Aufruf
+  wieder abgelehnt → Stil manuell an Dateikonvention angeglichen.
+- **Naechstes Ziel (Adressfolge):** fn_800F4280 + fn_800F450C
+  (PauseSounds/ResumeSounds, je 0x28C — 10×2-Soundtabellen ab
+  self+0x1B08 (Stride 0xD9C) mit BasicSound* @+0x80, Pause(bool,int)
+  und IsPause(); Fade-Frames aus f1*gRefreshRate via 0x4330/fctiwz;
+  Member-Typen fuer die 0x1B08-Tabelle und self+0x1CC94 noch zu
+  identifizieren), dann Dtor-Thunks 48C8/48D0/48D8 (nur
+  Symbol/vtable-Integration, falls nicht schon durch sinit erzeugt).
 
 ## Lauf 93 — fn_800F3B88 (ExecCallbackB Kopf-/Augen-Aim) 98,93 % + Aim-Records typisiert
 
