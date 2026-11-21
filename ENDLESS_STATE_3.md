@@ -1,13 +1,71 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 64 fertig, Branch devin/lane3 @a979c5dc. R24J01: 6614/8284 matched, main.dol: OK (+1
-gegenueber Lauf 63, kein Regress); GC: 17 files OK (alle drei).
-check.py --source-only jetzt GRUEN (CLANG_FORMAT=cf18 ueber env).
+Stand: Lauf 65 fertig, Branch devin/lane3 @2bca7191. R24J01: 6625/8284 matched, main.dol: OK (+11
+gegenueber Lauf 64, kein Regress); GC: 17 files OK (alle drei).
+check.py --source-only GRUEN (CLANG_FORMAT=cf18 ueber env/subprocess).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
 — Signatur-Renames zeigen sich darin als lost/new).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 65 — xobj_chr: 11 fn_-Namen dekodiert und gematcht (+11)
+
+- **Commit 2bca7191** `wii xobj_chr: 11 weitere Accessoren und
+  XObjChr/XObjAttachment-Virtuals matcht` — 4 Dateien, +107/-1.
+- Methode: unbekannte fn_-Symbole gegen Retail-Asm, Vtables und die
+  GameCube-extern-"C"-Namen (obja_chr.cpp) gemappt. 10 Eintraege in
+  config/R24J01/symbols.txt ergaenzt.
+- **100 % gematcht:** `Hide__14XObjAttachmentFv` 0x800CCD18 (Slot
+  _290, mVisible=FALSE — Inline aus dem Header in out-of-line
+  Definition im cpp verlegt, wie der dtor schon war),
+  `DrawWithView`/`Hide` brauchten `virtual` in xobjattachment.h;
+  `GetPlayerPlugConnection` 0x800D5864 (plug->mConnection 0xD64);
+  `GetPlayerPlugCordPull` 0x800DB914 (&plug->mCord.mPull, 0xA14);
+  `ResetPlayerPlugState` 0x800DB924 (Wii nur mConnection=0, GC setzte
+  auch den Joint zurueck); `fn_800DB958` (mTrigon.mTri[hit->mTriangle]
+  .mGetVtx-Tail-Call); `GetObjectMarkerOverride` 0x800DBF14 +
+  `GetMaskedObjectMarkerOverride` 0x800DBF1C (mAnmQueue.
+  mMarkerOverride 0x7D4); `fn_800D1740` (__fabsf-Wrapper);
+  `vf1A8__7XObjChrFf` 0x800D26FC (leer);
+  `SetBaseMtx__7XObjChrFPA4_f` 0x800E8304 + `ClearBaseMtx__7XObjChrFv`
+  0x800E8388 (mBaseMtxPtr + PSMTXCopy + Loop ueber 9 Suits via
+  `(WiiPlayerState*)this->mSuits.mObjects[i]`).
+- **Bleibt NONMATCHING:** `DrawWithView__14XObjAttachmentFPA4_f` 75 %
+  — identisch bis auf toten `blr` nach dem Tail-Call, den unser MWCC
+  immer anhaengt (alle Guard-Schreibweisen probiert).
+  `ScaleVectorInPlace` 40,7 % — ruft PSVECScale; Retail interleaved
+  die ps-Ops (andere SDK-Inline-Reihenfolge), ehrlich dokumentiert.
+- Erkenntnis XObjChr-Vtable: fn_800D2344/_251C/_26FC = vf1A0/vf1A4/
+  vf1A8-Overrides; fn_800E8304/_8388 = SetBaseMtx/ClearBaseMtx;
+  fn_800E05F0/_0780/_083C = DrawWithView/DrawReflection/DrawGround-
+  Shadow-Overrides; fn_800D1F34 = _1BC-Slot — noch alle offen.
+- XObjAttachment hat jetzt `virtual void DrawWithView(Mtx)` (_178)
+  und `virtual void Hide()` (_290) deklariert; XObjChr hat die drei
+  Override-Deklarationen.
+
+## Liegt (Blocker, kein Stopp)
+
+- `DrawWithView__14XObjAttachmentFPA4_f` (75): toter `blr` nach
+  Tail-Call, Compiler-Emissions-Unterschied.
+- `ScaleVectorInPlace` (40,7): JMathInlineVEC-Statement-Reihenfolge
+  weicht von Retail-SDK ab (shared header nicht angefasst).
+- Bekannte Alt-Waende unveraendert: StopPlayerMotion (f1/f2/f3-
+  Nummerierung), SelectPlayerEquipmentRing (bool-Materialisierung),
+  GetCharacterObjectApproachResult (Load-Hoist), EyePosition +
+  fn_800E59DC (String-Pool), GetPlayerGroundType (clrlwi.-Fold),
+  FindPlayerSupportingFloor (Regalloc), fn_800E32B8 (Early-Load).
+
+## Naechster Schritt
+
+- XObjChr-Draw-Overrides fn_800E05F0 (0x190), fn_800E0780 (0xBC),
+  fn_800E083C — Deklarationen wie Lauf-65-Muster.
+- fn_800D2344/fn_800D251C (vf1A0/vf1A4-Overrides) + fn_800D1F34
+  (_1BC) dekodieren.
+- Weitere kleine fehlende fn_ in xobj_chr via Vtable/extern-"C"-
+  Mapping (GC-Namen aus obja_chr.cpp).
+- obja-Folge: LoadFromPlacement 0x800AC238, fn_800AE9F0, fn_800AF098,
+  fn_800AF12C, fn_800AF51C, TestFloorCollision 0x800B034C.
 
 
 ## Lauf 64 — xobj_chr: fn_800E3AE4 matched (+1), Format-Gate gruen
