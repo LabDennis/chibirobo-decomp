@@ -1,12 +1,63 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 81 fertig, Branch devin/lane3 @ 29c97499.
+Stand: Lauf 82 fertig, Branch devin/lane3 @ 3bf0a530.
 R24J01: 6647/8284 matched, main.dol: OK; GC: je 17 files OK;
 callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
+Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
 all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 82 — ringmenu: AtcMenu::Open 99,58 % + mAttachments typisiert (3bf0a530)
+
+- **Commit 3bf0a530:** `AtcMenu::Open` (0x800ECAE0, 0x8D8) ehrlich
+  rekonstruiert. Retail-Shape: 8× mAvailable-Loop (Typ 2 → 1, sonst
+  GetPlayerAttachmentCount → Find ausgerollt ueber 9 Slots direkt
+  auf mChr+0x19E9C), `UpdateAttachmentAvailability` holt den Player
+  intern frisch via `gGame.GetPlayer()` und schreibt SetCount auf
+  IDs 4(0x10)/6(0x16)/5(0x15)/7(0x38)/8(0), dann
+  `OctaMenu::Open(focus)` und der Typ-3-Block
+  (mPendingFirstVisibleItem / GetAttachment / mLastPointedItem
+  relativ zu mFirstVisibleItem, mKeepPointedItemOnOpen→0).
+- **Schluessel:** `WiiPlayerState::mAttachments` in cgame.h von
+  `u8[0x48]` auf `AttachmentValues` typisiert (gleiche Groesse,
+  GC-xchr.h typisiert es ebenfalls). Erst dann faltet MWCC die
+  Zugriffe zu mChr-basierten Split-Immediate-Loads statt einen
+  values-Zeiger in ein Register zu materialisieren:
+  74,78 → 98,45 → (gGame.GetPlayer im Helfer) 99,30 →
+  (Signatur WiiPlayerState*) 99,58.
+- **Ripple (Shared-Header-Folge, minimal):** `(AttachmentValues*)`-
+  Casts auf `&` umgestellt in evt.cpp, savemanager.cpp,
+  xactradar.cpp (Bahn 3), gameupdate.cpp (Bahn 1),
+  xobjspider.cpp/xobjspiderboss.cpp (Bahn 5). Gleiche Adresse,
+  gleiche IR — Report-Diff zeigt 0 Codegen-Aenderung in diesen
+  Units. GC-Dateien unberuehrt (Member dort schon typisiert,
+  `&`-Form stand dort schon).
+- **Restdiff:** identischer Instruktionsstrom (566/566), nur eine
+  Register-Permutation — Retail haelt CanUseTool-Ergebnis in r26
+  und die Slot-8-0 in r21, wir r21/r22 + aeussere Vierer um 1
+  verschoben. Nach zwei ehrlichen Schreibweisen als Regalloc-Wand
+  dokumentiert (NONMATCHING-Kommentar). NICHT forcieren.
+- **Gate:** R24J01 `main.dol: OK` 6647/8284; --non-matching linkt;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Report-Diff: nur das
+  seit Lauf 77 bekannte DrawGroundShadowAt-Pool-Artefakt
+  (99,98→96,62), 14 Gains; callcheck R24J01 52 Eintraege
+  ausschliesslich bekannter Klassen (_savegpr/_restgpr-Regfarben,
+  Namensaliase, Overload-Mangling) — kein Eintrag in
+  ringmenu/atcmenu; GGTE01 8 Eintraege (objb_act, bahnfremd).
+  Keine neuen Symbol-Dubs, config/ sauber.
+  Format-Gate GRUEN: clang-format-18 liegt unter
+  `~/.local/opt/clang-format-18/bin/clang-format` — Aufruf:
+  `env CLANG_FORMAT=<pfad> python3 tools/check.py --source-only`
+  → 473 files, 0 need formatting (zwei whitespace-only
+  Nachformatierungen: cgame.h-Kommentarspalte, drei Umbrueche in
+  xobj_chr.cpp; Codegen unveraendert, main.dol bleibt OK).
+- **Naechstes:** ringmenu-TU weiter in Adressfolge — verbleibende
+  Funktionen unterhalb 0x800ECAE0 (Unit .text 0x800E9FC4–
+  0x800ED3B8); offene Fuzzies derselben Unit: GetItemColor 93,77,
+  UpdateEquipmentRingAnimation 99,67. Danach xobj_chr-Rest
+  (fn_800E32B8 93,94, DrawWithView 92,03, ResetObjectState 89,88).
 
 ## Lauf 81 — NEUE TU game/wii/ringmenu.cpp (Unit 63), 4 Matches
 
