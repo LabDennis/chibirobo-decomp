@@ -2854,7 +2854,6 @@ void DrsMenu::ConfirmSelection()
 }
 
 // OctaMenu::Open, ahead of the two menus that inline it
-static const Vec sEquipmentOpenScreenOffset = { 0.0f, 8.8f, 0.0f };
 /**
  * @note Address: 0x8009BF14
  * @note Size: 0x2A8
@@ -2871,7 +2870,7 @@ void OctaMenu::Open(s32 focus)
 	if (mFocus != 0) {
 		mGlow = 1.0f;
 	}
-	Vec offset = sEquipmentOpenScreenOffset;
+	Vec offset = { 0.0f, 8.8f, 0.0f };
 	mChr->ProjectOffsetToScreen(&offset, &mOpenScreenX, &mOpenScreenY, NULL, 0);
 	for (int i = 0; i < 8; i++) {
 		mItems[i].mPulsePhase = DEG2RAD * (rand() % 360);
@@ -3122,7 +3121,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		originX = 320;
 		originY = 228;
 	} else {
-		Vec offset = sEquipmentOpenScreenOffset;
+		Vec offset = { 0, 8.8f, 0 };
 		menu->mChr->ProjectOffsetToScreen(&offset, &originX, &originY, 0, NULL);
 	}
 	f32 fade = menu->mFade;
