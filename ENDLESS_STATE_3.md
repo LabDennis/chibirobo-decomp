@@ -1,14 +1,44 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 71 fertig, Branch devin/lane3 @34038430+. R24J01: 6638/8284 matched, main.dol: OK (+1,
-kein Regress); GC: 17 files OK (alle drei); --non-matching linkt;
-callcheck R24J01: keine neuen Eintraege; check.py ueber
-CLANG_FORMAT=~/.local/opt/clang-format-18 + subprocess-Wrapper:
-471 files ok. Baselines .lane3_baseline/report_<V>.json auf
-Lauf-71-Stand (nach 34038430 erneuert).
+Stand: Lauf 72 fertig, Branch devin/lane3 @2fa01204+2 Uebergabe-Commits.
+R24J01: 6638/8284 matched, main.dol: OK (kein Regress); GC: 17 files OK
+(alle drei); --non-matching linkt; callcheck R24J01+GGTE01: nur alte
+objb_act-Eintraege; check.py --source-only via python3-subprocess-
+Wrapper: format ok, disc ok. Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 72 — xobj_chr: XObjChr::ResetObjectState (2fa01204)
+
+- **Commit 2fa01204:** `XObjChr::ResetObjectState` (0x800CC294, 0x574 B,
+  Slot _154) in src/game/wii/xobj_chr.cpp vor SetVectorComponents —
+  komplette Rekonstruktion nach Retail-Asm + GC-Vorlage obja_chr.cpp:
+  Basis-Reset, vf28C(0), mMotion/Stick/Kontakt-Indizes, alle XAct-Init
+  virtuell, Copter-Zeit aus gRefreshRate, Popper/Radar-Init, zwei
+  Kamera-Records via fn_800C659C, mLook, Plug+Attachments+9 Suits,
+  mMenu (Atc/Drs-Ring-Highlights), mOXMenu, Status-Bit 0x800000,
+  mDustPool + 10 PointPtcl + gPointParticleSlots, SuitChangeTrail
+  (lbl_8045BBD0, 0x258 B, contiguous mit Pool+Slots im .bss), Ground/
+  EyeAim/HeadOffset, mActor.Reset(). Neue Member in cgame.h mit Pads:
+  mStick[4], mFloorContactObjects, mNearDistance, mLetickerIndex,
+  mLiftPlugFlags, mFrameTime (FrameEventTime), zwei 0x68-Kamera-Recs
+  _9810/_987C, WiiOXMenu.mFade/_10. fn_800C659C in xobj_camera.cpp
+  von u32 auf XObj* korrigiert (gleicher Code, ehrlicher Typ).
+  ClearRingHighlights-Helfer fuer mAtc/mDrs.
+- **Score:** 89,88 % fuzzy, NONMATCHING-Kommentar vor der Funktion.
+  Restdiff rein Register-Allokation: Retail haelt gPointParticlePool-
+  Basis in r31 ab Prolog und leitet Slots (+0x3D18) und Trail (+0x3D40)
+  daraus ab (contiguous .bss); unser Build materialisiert jede Basis
+  neu. Gleiche Instruktions-Menge (349), gleiche Calls, gleiche
+  Store-Reihenfolge — Wand-Klasse register/schedule wie fn_800CDC08.
+- **Gate:** voll bestanden (s. Stand oben); Objdiff-Unit-Name:
+  `main/game/wii/xobj_chr`.
+- **Liegt:** ResetObjectState-Regalloc-Wand — Permuter-Kandidat;
+  mOXMenu._10 und WiiPlayerState._0A70/_969C semantisch unbenannt.
+- **Naechstes:** xobj_chr weitermachen — Restfunktionen der Unit in
+  Adressreihenfolge; sonst obja-Rest-Fuzzies LoadFromPlacement 90,18,
+  fn_800AE9F0 72,91, fn_800AF51C 71,44.
 
 ## Lauf 71 — fn_800E8140 gematcht (+1); ResetObjectState dekodiert (Vorlage unten)
 
