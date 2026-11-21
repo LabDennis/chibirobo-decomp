@@ -17,8 +17,6 @@ u32 GXGetTexBufferSize(u16 width, u16 height, u32 format, GXBool mipmap, u8 maxL
 }
 #endif
 
-static const char sSubwindowAllocationName[] = "(subwin)";
-
 #if defined(VERSION_R24J01)
 /**
  * @note Address: 0x8001A704
@@ -26,7 +24,7 @@ static const char sSubwindowAllocationName[] = "(subwin)";
  */
 void FbSubwin::Init()
 {
-	CreateFbTexture(&mTexture, gGame.mGs.mScreen.fbWidth / 2, gGame.mGs.mScreen.efbHeight / 2, GX_TF_RGB565, FALSE, NULL, sSubwindowAllocationName);
+	CreateFbTexture(&mTexture, gGame.mGs.mScreen.fbWidth / 2, gGame.mGs.mScreen.efbHeight / 2, GX_TF_RGB565, FALSE, NULL, "(subwin)");
 	f32 scale = 640.0f / gPointerScreenWidth;
 	PSMTXTrans(mTexture.mTex.mTexMtx.mMtx[0], (1.0f - scale) / 2.0f, 0.0f, 0.0f);
 	mTexture.mTex.mTexMtx.mDirty = TRUE;
@@ -91,7 +89,7 @@ void FbSubwin::Init()
 	texture->mX        = 0.0f;
 	texture->mY        = 0.0f;
 	texture->mMipmap   = FALSE;
-	texture->mImage    = mm::Alloc(GXGetTexBufferSize(width, height, GX_TF_RGB565, FALSE, 0), sSubwindowAllocationName);
+	texture->mImage    = mm::Alloc(GXGetTexBufferSize(width, height, GX_TF_RGB565, FALSE, 0), "(subwin)");
 	mActive            = TRUE;
 	texture->mTex.Init(texture->mImage, texture->mWidth, texture->mHeight, texture->mFormat, GX_CLAMP, GX_CLAMP, FALSE);
 	InitGamePerspectiveCamera(&mCamera, &gGame.mGs.mScreen);
