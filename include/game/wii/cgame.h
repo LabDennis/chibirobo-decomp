@@ -905,6 +905,9 @@ STATIC_ASSERT(sizeof(XAction) == 0x2C);
 // hanging from a ledge
 class XActHang : public XAction {
 public:
+	XActHang();
+	~XActHang();
+
 	BOOL mStickAway;      // _2C, set when the stick points away
 	Vec mHangStartOffset; // _30, player position relative to the target
 	Vec mFloorCenter;     // _3C
@@ -923,6 +926,9 @@ STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
 
 class XActTumble : public XAction {
 public:
+	XActTumble();
+	~XActTumble();
+
 	XActTumbleFade mFade;        // _2C
 	f32 mSavedYaw;               // _40
 	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
@@ -931,6 +937,9 @@ STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
 class XActCopter : public XAction {
 public:
+	XActCopter();
+	~XActCopter();
+
 	f32 mTime;  // _2C, flight time left, a copter parameter count of hundredths of a second in frames
 	f32 mPhase; // _30, where the propeller bob is in its sine
 	f32 mBob;   // _34, the height the copter joint rides at

@@ -1,5 +1,6 @@
 #include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
+#include "game/wii/xact.h"
 
 // retail .text 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49, guessed "CPtcl"):
 // the XObjMapList record types, XObjMap's dtor, XObjChr's ctor and the run of
@@ -41,5 +42,93 @@ XObjMapListB::~XObjMapListB()
 
 // the two record arrays unwind through __destroy_arr, list B first
 XObjMap::~XObjMap()
+{
+}
+
+// the member classes XObjChr's constructor builds out of line: the action kinds
+// (wii/xact.h, wii/cgame.h) get one weak copy each here, the deleting destructors
+// ride along with the vtables. The CStatus32 copy at 0x800BF148 stays missing: its
+// retail callers inline it, so an out-of-line declaration would break them
+XActLift::XActLift()
+{
+}
+
+XActLift::~XActLift()
+{
+}
+
+XActHang::XActHang()
+{
+}
+
+XActHang::~XActHang()
+{
+}
+
+XActJump::XActJump()
+{
+}
+
+XActJump::~XActJump()
+{
+}
+
+XActLadder::XActLadder()
+{
+}
+
+XActLadder::~XActLadder()
+{
+}
+
+XActRope::XActRope()
+{
+}
+
+XActRope::~XActRope()
+{
+}
+
+XActPush::XActPush()
+{
+}
+
+XActPush::~XActPush()
+{
+}
+
+XActTumble::XActTumble()
+{
+}
+
+XActTumble::~XActTumble()
+{
+}
+
+XActCopter::XActCopter()
+{
+}
+
+XActCopter::~XActCopter()
+{
+}
+
+XActPopper::XActPopper()
+{
+}
+
+// destroys the ten shots and the two charge sound actors through __destroy_arr,
+// which pulls each element class's deleting destructor into this unit
+XActPopper::~XActPopper()
+{
+}
+
+// one of an object's sound sources; the popper's charge builds its array out of line
+AnimSfxActor::AnimSfxActor()
+    : mActor(NULL)
+{
+}
+
+AnimSfxActor::~AnimSfxActor()
 {
 }

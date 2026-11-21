@@ -14,6 +14,9 @@
 // picking things up and carrying them; the Wii's is 0x34 bytes longer than the GameCube's
 class XActLift : public XAction {
 public:
+	XActLift();
+	~XActLift();
+
 	f32 mTimer;            // _2C, frames left in a timed lift state
 	CVec mLiftStartOffset; // _30
 	f32 mYawOffset;        // _40, held object yaw relative to the player
@@ -44,6 +47,9 @@ STATIC_ASSERT(sizeof(XActLift) == 0xB0);
 
 class XActJump : public XAction {
 public:
+	XActJump();
+	~XActJump();
+
 	Vec mArcPosition;    // _2C, horizontal position and starting height
 	f32 mRise;           // _38
 	f32 mArcAngle;       // _3C
@@ -57,6 +63,9 @@ STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
 class XActLadder : public XAction {
 public:
+	XActLadder();
+	~XActLadder();
+
 	BOOL mBPressed; // _2C
 	Vec mPos;       // _30, where he hangs, in front of the ladder
 	f32 mDist;      // _3C
@@ -66,6 +75,9 @@ STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 
 class XActRope : public XAction {
 public:
+	XActRope();
+	~XActRope();
+
 	Vec mPos;   // _2C, horizontal approach point
 	f32 mDist;  // _38
 	f32 mAngle; // _3C
@@ -74,6 +86,9 @@ STATIC_ASSERT(sizeof(XActRope) == 0x40);
 
 class XActPush : public XAction {
 public:
+	XActPush();
+	~XActPush();
+
 	u8 _2C[0x34 - 0x2C];       // _2C
 	CVec _34;                  // _34
 	CVec _44;                  // _44
@@ -152,6 +167,9 @@ STATIC_ASSERT(sizeof(PopperShots) == 0x8818);
 // at _0D50 out to mRadar at _95D4
 class XActPopper : public XAction {
 public:
+	XActPopper();
+	~XActPopper();
+
 	f32 mShotStrength;        // _2C
 	PopperShots mShots;       // _30
 	XActPopperCharge mCharge; // _8848
