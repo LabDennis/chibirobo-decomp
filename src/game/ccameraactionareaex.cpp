@@ -14,14 +14,8 @@
 
 extern "C" void OSReport(const char* format, ...);
 #if !defined(VERSION_R24J01)
-extern "C" {
-Vec lbl_805A0400[6];
-#if defined(VERSION_JP)
-u8 lbl_805A0448[0xEC];
-#else
-u8 lbl_805A0448[0xF8];
-#endif
-}
+// NONMATCHING: retail's .bss starts with the header-made 0x140 (JP 0x134) prefix; this file can't make it yet
+extern "C" Vec lbl_805A0400[];
 
 // the file's __sinit builds it and registers its dtor; placed before InitCameraAreaEntries
 // so gCameraAreaState precedes the function-local gCameraAreaEntries in .bss
