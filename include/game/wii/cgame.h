@@ -750,8 +750,9 @@ struct WiiCameraActions {
 STATIC_ASSERT(sizeof(WiiCameraActions) == 0x30);
 
 // chibi robo's numbers, watts, happy points and the items he holds -- same layout
-// as the GameCube Params the Wii code was ported from
-struct WiiPlayerParams {
+// as the GameCube Params the Wii code was ported from; the Wii class keeps the
+// GameCube name in the symbols and vtable
+struct Params {
 	s32 mExperience;      // _00
 	s32 mLevel;           // _04
 	s32 mRank;            // _08
@@ -762,6 +763,9 @@ struct WiiPlayerParams {
 	u32 _1C[8];           // _1C, [0] above 0 is an unlimited battery; saved as mActive
 	Inventory mInventory; // _3C
 	// _440 vtable
+
+	Params();
+	virtual ~Params(); // _08
 
 	void SetBattery(f32 value)
 	{
@@ -800,7 +804,8 @@ struct WiiPlayerParams {
 			mScrap = 99999;
 	}
 };
-STATIC_ASSERT(sizeof(WiiPlayerParams) == 0x440);
+STATIC_ASSERT(sizeof(Params) == 0x444);
+typedef Params WiiPlayerParams;
 
 // the objects behind a suit, the GameCube's PlayerSuits.mObjects: XObjs with two virtuals of their own that the
 // player forwards to the one he wears. The class has no name of its own in retail, the name is ours
@@ -1042,8 +1047,7 @@ struct WiiPlayerState : public XObj {
 	s32 mClimbType;         // _9934, the climb he is on
 	u8 _9938[0x998C - 0x9938];
 	CVec mFloorSlope;               // _998C, the GameCube's mFloorSlope
-	WiiPlayerParams mParams;        // _999C
-	u8 _9DDC[4];                    // _9DDC
+	Params mParams;                 // _999C
 	f32 mFallDistance;              // _9DE0
 	f32 mCameraTarget[3];           // _9DE4, NANed while the camera keeps no target point
 	f32 mCameraTargetMargin;        // _9DF0

@@ -2,6 +2,8 @@
 #include "game/wii/xobj.h"
 #include "game/wii/xact.h"
 #include "game/wii/xobjcamera.h"
+#include "game/xobjattachment.h"
+#include "game/wii/cgame.h"
 
 // retail .text 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49, guessed "CPtcl"):
 // the XObjMapList record types, XObjMap's dtor, XObjChr's ctor and the run of
@@ -151,5 +153,50 @@ XObjScnCamInitRec::XObjScnCamInitRec()
 }
 
 XObjScnCamInitRec::~XObjScnCamInitRec()
+{
+}
+
+// retail 0x800BFA08 on: the XObjChr aggregate's member ctors in address order.
+// The bodies stay empty: retail's ctors are pure member-expansions -- the
+// XObj/CObj base chain, the member vtables and the cord node array the
+// compiler builds with __construct_array.
+
+Params::Params()
+{
+}
+
+Params::~Params()
+{
+}
+
+XObjPlug::XObjPlug()
+{
+}
+
+XObjPlugCordNode::XObjPlugCordNode()
+{
+}
+
+XObjPlugCordNode::~XObjPlugCordNode()
+{
+}
+
+// the deleting dtors of the classes above emit weak: each ctor's extab unwind
+// table references them for partial-construction cleanup, so this TU pulls a
+// weak copy like retail's (defining them out of line steals the vtable home
+// and the @4@ thunks in xobjattachment/xobjplug)
+XObjCopter::XObjCopter()
+{
+}
+
+XObjPopper::XObjPopper()
+{
+}
+
+XObjRadar::XObjRadar()
+{
+}
+
+XObjOX::XObjOX()
 {
 }

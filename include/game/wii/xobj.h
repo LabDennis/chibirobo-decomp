@@ -1291,10 +1291,11 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 // go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
-	// stays out of line: retail expands the NW_Anm and CFile construction into
-	// every derived XObj ctor, but an in-class body drops the weak
-	// __ct__9CJArchiveFv copy (100 %) that the XObjChr ctor calls out of line
-	CJArchive();
+	// inline: retail expands the NW_Anm and CFile construction into every
+	// derived XObj ctor; the standalone weak __ct__9CJArchiveFv copy in the
+	// xobjmember unit exists only because the huge XObjChr ctor did not
+	// inline the call
+	CJArchive() { }
 
 	NW_Anm mAnm; // _00, its vtable at _58 and its CFile at _5C
 };
@@ -2539,7 +2540,7 @@ public:
 	s32 mSparkMode;             // _9B8
 	s32 mSparkTimer;            // _9BC
 
-	XObjWireEff();
+	XObjWireEff() { }
 
 	virtual ~XObjWireEff() { }             // _08 (weak)
 	virtual void Release();                // _40
