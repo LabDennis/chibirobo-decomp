@@ -1435,7 +1435,9 @@ public:
 	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
-	u8 _190[0x194 - 0x190];
+	// _190, the animation event callback for the object's kind; AssignAnimEventCallback
+	// (cjanim.cpp) sets it, the animation stepper calls it at the events' frames
+	void (*mAnimEventCallback)(XObj* object, s32 kind, f32 prev, f32 frame);
 	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C

@@ -10,6 +10,7 @@
 #if defined(VERSION_R24J01)
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
 #include "game/globals.h"
@@ -861,5 +862,160 @@ CVec XObj::vf288(s32 count, s32* args)
 	if (name != NULL)
 		return GetJointWorldPos(name);
 	return GetJointWorldPos((u32)0);
+}
+
+// the per-kind animation event callbacks (retail 0x800B6F00-0x800BCBC4):
+// AssignAnimEventCallback puts the one for the object's kind on it; the
+// animation stepper calls it while an animation with event frames plays.
+// Each starts the kind's effect on the named model node when the frame
+// condition holds; kind is the event's kind, frame the animation's current
+// frame and target the event's frame (0 marks an event without one)
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+
+static inline void StartNodeEffect(XObj* object, const char* node, u32 effect, s32 group)
+{
+	MtxP mtx             = object->GetWorldMtx(node);
+	EffectInstance* inst = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, effect, group);
+	if (inst != NULL) {
+		inst->mtx = mtx;
+		UpdateEffectMtx(inst);
+	}
+}
+
+// kind 302: the cylinder node's loop effect
+static void AnimEventCyl295(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 3)
+		return;
+	if (frame == 0.0f || prev > frame)
+		StartNodeEffect(object, "cyl295", 0x83, 0);
+}
+
+// kind 405: the kettle's steam
+static void AnimEventKettle(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 4.0f && frame >= 4.0f)
+		StartNodeEffect(object, "kettle_ptcl01", 0x43, 0);
+}
+
+// kind 406: the teacup's steam
+static void AnimEventTeacup(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "ptcl_teacup", 0x44, 0);
+}
+
+// kind 424: one effect per event kind on the same node
+static void AnimEventPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "ptcl", 0x30, 0);
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "ptcl", 0x31, 0);
+	}
+}
+
+// kind 626
+static void AnimEventZactGicco(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (prev < 76.0f && frame >= 76.0f)
+		StartNodeEffect(object, "fx_zact_gicco1", 0x24, 1);
+}
+
+// kind 832: the ghost's effect
+static void AnimEventGhost(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "fx_ghost_ptcl", 0x47, 1);
+}
+
+// kind 842
+static void AnimEventCbDoor(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 2)
+		return;
+	if (prev < 2.0f && frame >= 2.0f)
+		StartNodeEffect(object, "fx_cbdoor_ptcl", 0x49, 0);
+}
+
+// kind 856: the welding tools' sparks
+static void AnimEventWeldingTools(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame)
+		StartNodeEffect(object, "welding_tools", 0x80, 0);
+}
+
+// kind 870: two effects on the same node
+static void AnimEventObj30(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 2)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "obj30", 0x66, 0);
+		StartNodeEffect(object, "obj30", 0x67, 0);
+	}
+}
+
+// kind 934: the rain effect
+static void AnimEventRain(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if ((prev < 1.0f && frame >= 1.0f) || (prev > frame && frame >= 1.0f))
+		StartNodeEffect(object, "rain_ptcl1", 0x56, 0);
+}
+
+// kind 995: the clock's second hand, one effect per event kind
+static void AnimEventSecond(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind == 1) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "second", 0x61, 0);
+	} else if (kind == 2) {
+		if (frame == 0.0f || prev > frame)
+			StartNodeEffect(object, "second", 0x62, 0);
+	}
+}
+
+// kind 1034: two effects on two nodes
+static void AnimEventPtcl01(XObj* object, s32 kind, f32 prev, f32 frame)
+{
+	if (kind != 1)
+		return;
+	if (frame == 0.0f || prev > frame) {
+		StartNodeEffect(object, "ptcl01", 0x6b, 0);
+		StartNodeEffect(object, "ptcl2", 0x6c, 0);
+	}
+}
+
+// fn_800BD064: sets the object's animation event callback for its kind
+extern "C" void AssignAnimEventCallback(XObj* object)
+{
+	switch (object->GetKind()) {
+	case 302: object->mAnimEventCallback = AnimEventCyl295; break;
+	case 405: object->mAnimEventCallback = AnimEventKettle; break;
+	case 406: object->mAnimEventCallback = AnimEventTeacup; break;
+	case 424: object->mAnimEventCallback = AnimEventPtcl; break;
+	case 626: object->mAnimEventCallback = AnimEventZactGicco; break;
+	case 832: object->mAnimEventCallback = AnimEventGhost; break;
+	case 842: object->mAnimEventCallback = AnimEventCbDoor; break;
+	case 856: object->mAnimEventCallback = AnimEventWeldingTools; break;
+	case 870: object->mAnimEventCallback = AnimEventObj30; break;
+	case 934: object->mAnimEventCallback = AnimEventRain; break;
+	case 995: object->mAnimEventCallback = AnimEventSecond; break;
+	case 1034: object->mAnimEventCallback = AnimEventPtcl01; break;
+	}
 }
 #endif
