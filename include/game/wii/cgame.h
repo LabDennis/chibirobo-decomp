@@ -711,6 +711,7 @@ public:
 	virtual u32 GetInterestMode();  // _60
 
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
+	void Reset2(); // 0x80157384, resets eye and interest behind the target; called directly, not virtual
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);
