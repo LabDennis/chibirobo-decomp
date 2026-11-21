@@ -1,7 +1,7 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 67 fertig, Branch devin/lane3 @91eb5fd8. R24J01: 6632/8284 matched, main.dol: OK (+5
-gegenueber Lauf 66, kein Regress); GC: 17 files OK (alle drei);
+Stand: Lauf 68 fertig, Branch devin/lane3 @8b04dc42. R24J01: 6635/8284 matched, main.dol: OK (+3
+gegenueber Lauf 67, kein Regress); GC: 17 files OK (alle drei);
 --non-matching linkt; callcheck R24J01: 7 bekannte objb_act-Diffs,
 keine neuen in Bahn-3-Units. check.py --source-only: clang-format
 auf dem Host ist 23.1.4, Script verlangt 18.1.8 — Umgebungslimit,
@@ -12,6 +12,34 @@ Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 68 — xobj_chr: drei Suit-Helper, alle 100 % (+3)
+
+- **Commit 8b04dc42** `wii: XObjChr anim-rate scaling and suit flag
+  forwarders, all matched` — 2 Dateien, +47/-1.
+- **100 % gematcht:** `fn_800E3968` 0x800E3968 (0x17C) — rate =
+  1.135f nur bei mLift.mState==4 && IsLiftTargetPlug(&mLift) &&
+  anim!=0x13B, sonst 1.0f, mal (60.0f/gRefreshRate), mal frame;
+  auf chr via `chr->CObj::SetAnimRate` (qualifizierter Basis-Call →
+  direkter bl, kein Vtable-Slot!) und auf den aktuellen Suit via
+  virtual SetAnimRate _114; GetAnimId() (_11C) wird je Site als
+  Argument frueh geholt. Logik als `static inline
+  PlayerAnimRateScale(chr, anim)` geteilt — identisch zum Koerper
+  von fn_800E32B8. Suit-Test als `(mStatus.mFlags & 1) == TRUE`
+  (xori-Idiom), Suit inline indiziert wie in fn_800E3AE4 — ein
+  benannter Suit-Zeiger kostet die r30-Belegung (89,8 % → 100 %).
+  `fn_800E3BCC` 0x800E3BCC (0x84) — m_9C8 = held!=0 (neg/or/srwi),
+  extern-"C" fn_800F3E9C(chr, held!=0), dann
+  mSuits.mObjects[mCurrent].vf28C(held) wenn aktiv.
+  `fn_800E3C50` 0x800E3C50 (0x84) — Zwilling: m_9C9,
+  fn_800F403C, vf290. Beide extern-"C"-Deklarationen lokal.
+- Neues Member `u8 m_9C9` _9C9 in WiiPlayerState (cgame.h).
+- Erkenntnisse: (a) qualifizierter `chr->CObj::SetAnimRate(...)` ist
+  Retail-Idiom fuer "Basis-Implementierung direkt"; (b) Retail
+  materialisiert KEINE Suit-Pointer-Lokale — immer
+  `mSuits.mObjects[mCurrent]` inline wiederholen; (c) `(flags & 1)
+  == TRUE` erzeugt clrlwi+xori+cmpwi+bne, `IsObjectActive()`
+  erzeugt clrlwi.+beq — je nach Retail-Asm waehlen.
 
 ## Lauf 67 — xobj_chr: fuenf Forwarder + Slot-Korrekturen, alle 100 % (+5)
 
@@ -128,12 +156,15 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Naechster Schritt
 
-- fn_800D2344/fn_800D251C (vf1A0/vf1A4-Overrides) + fn_800D1F34
-  (_1BC) dekodieren — Vtable-Mapping steht in Lauf 65/66.
+- fn_800E7EA8 dekodieren (auto_fn_800E7EA8_text.s liegt bereit, noch
+  nicht analysiert); weitere kleine fn_ in xobj_chr in Adress-Reihenfolge:
+  fn_800E3CD4 (GetCameraTarget-Gegend), SetAnim 0x800E333C (gross).
 - DrawWithView (92 %)/DrawGroundShadowAt (99,7 %) Reste nur bei
   klarer Compiler-Ursache nachfassen, kein Permuter.
-- Weitere kleine fehlende fn_ in xobj_chr via Vtable/extern-"C"-
-  Mapping (GC-Namen aus obja_chr.cpp).
+- XObjChr::ResetObjectState 0x800CC294 (0x574) und
+  ResetPlayerAttachment 0x800CC83C (0x4D4): GC-Vorlagen in
+  obja_chr.cpp komplett, Wii-Offsets teils gemappt (s. Lauf-66/67-
+  Notizen) — groesserer Port, Header-Mapping noetig.
 - obja-Folge: LoadFromPlacement 0x800AC238, fn_800AE9F0, fn_800AF098,
   fn_800AF12C, fn_800AF51C, TestFloorCollision 0x800B034C.
 
