@@ -1,12 +1,70 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 79 fertig, Branch devin/lane3 @ e354beca.
+Stand: Lauf 80 fertig, Branch devin/lane3 @ 756e5538.
 R24J01: 6643/8284 matched, main.dol: OK; GC: je 17 files OK;
 --non-matching linkt; callcheck ohne neuen Eintrag; format ok;
 keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 80 — HandleEquipmentRingInput 81,52 % NONMATCHING (committet)
+
+- **Commit 756e5538** `wii xobj_chr: HandleEquipmentRingInput
+  rekonstruiert (81,52 %)` — .text:0x800E96CC, size 0x660, in
+  src/game/wii/xobj_chr.cpp zwischen OctaMenu::Select und
+  ConfirmSelection; Wii-Port von obja_chr.cpp:3564. Kein Match-
+  Zuwachs (Funktion war vorher gar nicht im Report), 0 Drops in
+  allen 4 Report-Baselines.
+- **Semantik:** `settled = mOpen>1 && (mGlow==0||mGlow==1)` als
+  BOOL-Lokalmaterialisierung; settled && mPointedItem>=0 &&
+  mFocus!=0 -> return 1. Rumpf unter `if (mOpen>0 && mFocus==0)`
+  (positive GC-Form, gemeinsamer return-0-Block!). Typ 3
+  (Reihenmenue): nur bei (mMenuControls&2) && (!(mc&1) ||
+  !gWiiPointer.mPointerValid) Dpad-Lauf ueber mRepeat &
+  0x0F000000001E0000, links -1 (wrap 6) / rechts +1 (wrap 0),
+  beide mit Sound 0xF4; Cursor = (mFirstVisibleItem +
+  mLastPointedItem) % 7 (-1 bei mFocus). Sonst Okta:
+  `dirs = mButton & 0x0F000000001E0000` (hi=Remote-, lo=GC-Pad-
+  Richtungsbits), 8 Richtungspaare -> Slot 0..7, Fallback
+  mCursorIndex. Kopfziel-Record (XObjScnCamInitRec @
+  WiiPlayerState._987C): in ALLEN vier classify-Armen je
+  kompletter 7-Store-Block (mSnap[0]=mSnap[1]=1, m_0C=NULL,
+  mTarget.x=NAN, m_20=NULL, m_24, m_28) — wie GCs TurnJoint-
+  Duplikate, nur eben Store-Sequenz. m_28 = DEG2RAD*Yaw-Tabelle
+  (Typ3: gEquipmentRowHeadYaw[mLastPointedItem], sonst
+  gEquipmentHeadYaw[cursor+1]); m_24 = mHeadTurn oder bei NaN:
+  Typ3 DEG2RAD*(6*rowOffset^3), sonst DEG2RAD*pitch[cursor+1].
+  Sound 0xF4 bei Cursor-Aenderung ODER Pointer-Wechsel.
+  mCursorIndex=cursor. Dann active && mFade>=1: Check(1)=A ->
+  Gate mPointedItem>=0 || (mc&2 && (!(mc&1) || !valid)); cursor<0
+  oder mItems[cursor].mAvailable==0 -> Sound 0xF2; sonst
+  ConfirmSelection (vtable+0x1C), 10x ResetPopperShot ab
+  mChr+0xD80 stride 0xD9C, return 1. Check(2)=B oder Check(0x100)
+  -> return -1. Sonst 0.
+- **Neu deklariert (xobj_chr.cpp):** f32 gEquipmentRowHeadYaw[7],
+  gEquipmentHeadYaw[9] (=GC-Inhalt), gEquipmentHeadPitch[9]
+  (Wii-Retune {-30,-20,-10,0,10,0,-10,-3,-2}), extern "C"
+  ResetPopperShot; include cpadact.h.
+- **Restdiff (alle Klasse pool/regalloc/sched):** Retail ankt die
+  3 Tabellen ueber r31 = jumptable_80304008 + 0x1A4C/68/8C —
+  Anchor existiert erst mit kompletter Unit-.data; Cursor sitzt
+  dadurch bei uns in r31 statt r30 (Kaskade), Store-Interleaving
+  in den Armen weicht zeitlich. Keine semantischen Diffs mehr.
+- **Gate:** R24J01 main.dol OK 6643/8284; --non-matching linkt
+  (606 Obj.); GGTE01/GGTJ01_01/GGTP01 je "17 files OK";
+  Baseline-Diff 0 Drops; callcheck: 0 Eintraege xobj_chr/obja_chr
+  (7 alte objb_act-Reste fremder Bahn); config/ sauber;
+  Symbol-Dubs 0.
+- **Liegt:** check.py --source-only weiterhin clang-format
+  18.1.8 vs 23.1.4 (bekannt). Restwaende: LoadFromPlacement
+  93,96; Release 96,27; DrawGroundShadowAt 96,63; neu
+  HandleEquipmentRingInput 81,52.
+- **Naechstes:** Adressfolge xobj_chr ab ~0x800E9D30 (Ring-
+  Pointer-Unit DrawEquipmentRing & Co. pruefen, wer die drei
+  Tabellen sonst liest — Anker kommt mit Unit-Vollstaendigkeit);
+  oder fn_800E32B8 ~93,94, DrawWithView ~92,03, ResetObjectState
+  ~89,88, obja-Reste.
 
 ## Lauf 79 — DrawPlayerLookMarker MATCHED (100,0 %)
 
