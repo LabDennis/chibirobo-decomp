@@ -60,9 +60,6 @@ extern "C" XObjFloor sSmallSpiderHighFloor[] = {
 	{ -1 },
 };
 extern "C" XObjFloor* sSmallSpiderFloors[2] = { sSmallSpiderLowFloor, sSmallSpiderHighFloor };
-
-// the ground shadow circle's fixed rotation
-static const Vec sSmallSpiderCircleRotation = { -HALF_PI, 0.0f, 0.0f };
 extern "C" {
 AnimSfxEvent gSmallSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
@@ -1933,7 +1930,7 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 {
 	if ((mStatus.mFlags & 8) && (mSpiderStatus.mFlags & 0x40) && (mStatus.mFlags & 0x10000)) {
 		Vec p    = *pos;
-		Vec rot  = sSmallSpiderCircleRotation;
+		Vec rot  = { -HALF_PI, 0.0f, 0.0f };
 		Vec size = mMoveScale * (mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 		size.x   = mRadius;
 		size.y   = mRadius;
