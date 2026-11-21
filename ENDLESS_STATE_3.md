@@ -2073,3 +2073,48 @@ Möglicherweise `path`/`file`-Slot-Tausch oder joined-Aufbau
   cjanim.cpp macht das schon so.
 - Vier Kanten in f32-Lokale gehoben (l,r,t,b in DER Reihenfolge =
   f3,f2,f1,f0), sonst zerlegt MWCC die Vertex-Stores pro Feld.
+
+### Lauf 86 — HandleOXMenuInput (~83 %, ehrlich NONMATCHING)
+
+- Commit `46a30073` auf `devin/lane3`. Nur `src/game/wii/xobjchrmenu.cpp`,
+  +121 Zeilen, 4 fehlende externs ergaenzt (`gPointerScreenWidth`,
+  `gScreenSafeLeft/Right/Top/Bottom` komplett im Block).
+- `HandleOXMenuInput(WiiOXMenu*, CPad*)` @0x800EF58C, size 0x804:
+  Wii-Variante der GC-Funktion, gross wegen Pointer-Steuerung.
+  Dekodiert: mStarted>0-Gate; !GetStatusFlags(0x100) -> SetRotateY
+  (PI + MotionCam mView.mAngle.y, DEG2RAD*8); menu->_10 = Hover-Index
+  (-1 default, alter Wert in lastPointed); Pointer gueltig ->
+  Basispunkt = gPointerScreenWidth/2 x gScreenSafeBottom (Flag 0x100)
+  ODER GetJointWorldPos("neck")-Projektion (dy = joint.y - GetPos()->y,
+  Retail baut ZWEI Stack-Vecs: pos@0x20 dann Kopie arg@0x2C, uebergibt
+  &arg an ProjectOffsetToScreen); Vorab-Check ob beide Marken
+  (90*i-45 gespreizt, y=sy-70*sin(130deg)-21) im Safe-Bereich, sonst
+  Fallback Bottom-Center; baseY flag-abhaengig (0x100: sy-0.8*70,
+  sonst sy-70*sin(130deg*mFade)-21); Hover-Test pro Marke i:
+  half=(4+70)*mMark[i].mScale*sin(120deg*mFade), mx flag-abhaengig
+  (gesetzt: sx+90*(i-.5), sonst sx+1.0*(mFade*(90*(i-.5)))),
+  my=baseY+4*sin(mMark[i].mSpin), Box-Test pointer.x/y -> menu->_10=i.
+  Pointer ungueltig: Sound 0xF4 nur wenn mc&2 && mc&1 && mPointerChanged.
+  Hover >=0: mSelectedIndex=_10 + 0xF4 bei Wechsel/erstem Pick.
+  Sonst Stick: mc&2 && (!mc&1 || !mPointerValid) -> Check(0x20)=rechts
+  sel+1<2, Check(0x10)=links sel-1>=0, je 0xF4.
+  Kopf-Aim (chr->_987C XObjScnCamInitRec) IMMER geschrieben:
+  Reset-Variante (snap=2, _0C/_20=NULL, target.x/_24/_28=NAN,
+  _2C/_30/_4C/_50/_54=0) wenn _10<0 && (!mc&2 || (mc&1 && !pv));
+  sonst Winkel-Variante snap=1, _28 = sel==0 ? -20deg : +20deg.
+  Confirm-Ende: !GetStatusFlags(0x20) && mFade==1.0 &&
+  (_10>=0 || (mc&2 && (!mc&1 || !pv))) && gWiiPointer.Check(1)
+  -> ConfirmOXMenuSelection(menu,1).
+- objdiff .text fuzzy ~82,8 %. Sound ueberall 0xF4 (GC war 0x87).
+- Gate: ninja R24J01 main.dol OK 6652/8284 (kein +1, NonMatching,
+  keine Regression); GGTE01/GGTJ01_01/GGTP01 je 17 files OK;
+  check.py --source-only mit CLANG_FORMAT=~/.local/bin/clang-format
+  (18.1.8) ok, --fix lief einmal ueber die Datei. Config-Splits/
+  Symbols unberuehrt (git checkout zurueckgenommen wo dtk schrieb).
+- Naechster Schritt: fn_800EFD90 @0x800EFD90 size 0x370, dann Unit 66
+  (DrawMenuRing @0x800F0100, DrawOXMenu @0x800F055C, UpdateSpiralTrail)
+  in Adressreihenfolge. Bekannte Muster der Unit fuer den naechsten
+  Lauf: externs schon da, WiiOXMenu-Mark-Spacing 0x9B8, Konstanten
+  90.0f Spreizung, 70.0f Radius, 4.0f Bob, 120deg*mFade-Blende,
+  0x4330-int-Konvertierung durch normale s32->f32-Arithmetik.
+- Liegt: nichts. Kontext war knapp, deshalb nach Funktion+Gate Stopp.
