@@ -1883,9 +1883,13 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
-	virtual void vf1A8(f32);          // _1A8, empty on the player
-	virtual void SetBaseMtx(Mtx mtx); // _1B4, his own plus the nine suits'
-	virtual void ClearBaseMtx();      // _1B8, same
+	virtual void DrawWithView(Mtx view);                             // _178, himself or the current suit, then the attachments
+	virtual void DrawReflection(Mtx view);                           // _17C
+	virtual void DrawGroundShadow(f32 opacity);                      // _180, nothing up close to the camera
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184, the mug's blob or the joint's
+	virtual void vf1A8(f32);                                         // _1A8, empty on the player
+	virtual void SetBaseMtx(Mtx mtx);                                // _1B4, his own plus the nine suits'
+	virtual void ClearBaseMtx();                                     // _1B8, same
 
 private:
 	u8 _9A8[0x1B7BC - 0x9A8];

@@ -936,11 +936,15 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 // members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
 // todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
 struct WiiPlayerState : public XObj {
-	u8 _09A8[0x9CC - 0x9A8];
+	u8 _09A8[0x9C8 - 0x9A8];
+	u8 m_9C8; // _9C8, DrawWithView skips the transition suit part while it is set
+	u8 _09C9[0x9CC - 0x9C9];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
-	u8 _0A04[0xA20 - 0xA04];
+	u8 _0A04[0xA18 - 0xA04];
+	s32 m_0A18;                  // _0A18, an object index DrawWithView clears once the object is gone
+	s32 m_0A1C;                  // _0A1C, same
 	s32 mFloorContactObjects[5]; // _0A20, the object under each floor group, -1 for none; [4] the one he stands in front of
 	u8 _0A34[0xA88 - 0xA34];
 	s32 mIdleLoops;      // _0A88, idle anim loops before the next idle move

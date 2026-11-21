@@ -30,6 +30,7 @@
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+extern CustomShadow gCustomShadow;
 
 // the GameCube kept a weak copy of it
 static inline BOOL IsObjectActive(XObj* object)
@@ -1581,6 +1582,133 @@ void XObjAttachment::DrawWithView(Mtx view)
 void XObjAttachment::Hide()
 {
 	mVisible = FALSE;
+}
+
+// drops the stale object indexes first, then draws himself or the current suit and the
+// attachments; the popper turns with the camera while the menu flag is up
+// NONMATCHING (92 %): retail's register and schedule residue over the five index cleanups
+void XObjChr::DrawWithView(Mtx view)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->m_0A18 >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A18])) {
+		chr->m_0A18 = -1;
+	}
+	if (chr->mFloorContactObjects[0] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[0]])) {
+		chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
+	}
+	if (chr->mFloorContactObjects[2] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[2]])) {
+		chr->mFloorContactObjects[2] = -1;
+	}
+	if (chr->m_0A1C >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A1C])) {
+		chr->m_0A1C = -1;
+	}
+	if (chr->mFloorContactObjects[4] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[4]])) {
+		chr->mFloorContactObjects[4] = -1;
+	}
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (!IsObjectActive(suit) || chr->mSuits.mChangeStep == 3) {
+		XObj::DrawWithView(view);
+	} else {
+		suit->DrawWithView(view);
+		if (chr->m_9C8 == 0 && (chr->mSuits.mChangeStep == 3 || chr->mSuits.mChangeStep == 6)) {
+			chr->mSuitParts[chr->mSuits.mChangeStep].DrawWithView(view);
+		}
+	}
+	if (!(gGame.GetStatusFlags(0x100) && chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift))) {
+		// no plug in this lift state
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawWithView(view);
+		}
+	}
+	((XObj*)chr->mCopterObj)->DrawWithView(view);
+	if (gGame.GetStatusFlags(0x100)) {
+		Mtx rotation;
+		Mtx combined;
+		PSMTXRotRad(rotation, 'x', -gGame.mMotionControlCamera.mView.mAngle.x);
+		if (view != NULL) {
+			PSMTXConcat(rotation, view, combined);
+		} else {
+			PSMTXConcat(rotation, gGame.mMotionControlCamera.mViewMtx, combined);
+		}
+		((XObj*)chr->mPopperObj)->DrawWithView(combined);
+	} else {
+		((XObj*)chr->mPopperObj)->DrawWithView(view);
+	}
+	((XObj*)chr->mRadarObj)->DrawWithView(view);
+	((XObj*)chr->mOXObj)->DrawWithView(view);
+}
+
+// the eye highlight would light the reflection, so it goes off for the draw and back on
+void XObjChr::DrawReflection(Mtx view)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (gGame.GetStatusFlags(0x100)) {
+		chr->vf28C(0);
+	}
+	DrawWithView(view);
+	if (gGame.GetStatusFlags(0x100)) {
+		chr->vf28C(1);
+	}
+	if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+		chr->mPlug.DrawReflection(view);
+	}
+	((XObj*)chr->mCopterObj)->DrawReflection(view);
+	((XObj*)chr->mPopperObj)->DrawReflection(view);
+	((XObj*)chr->mRadarObj)->DrawReflection(view);
+	((XObj*)chr->mOXObj)->DrawReflection(view);
+}
+
+// the carried object's shadow while he holds something up, his own otherwise
+void XObjChr::DrawGroundShadow(f32 opacity)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (mStatus.mFlags & 4) {
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawGroundShadow(opacity);
+		}
+	} else {
+		XObj::DrawGroundShadow(opacity);
+	}
+}
+
+// the mug casts a blob under itself scaled by its carry joint; on the koshi anims the shadow
+// follows that joint instead
+// NONMATCHING (99.7 %): a single residue left, body matches otherwise
+void XObjChr::DrawGroundShadowAt(const Vec* origin, f32 opacity)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (mStatus.mFlags & 4) {
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawGroundShadow(opacity);
+		}
+	} else {
+		Vec position = GetJointWorldPos("second_null");
+		if (chr->mLift.mState != 0 && IsCarryingMug(&chr->mLift)) {
+			CVec jointScale;
+			chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &jointScale);
+			u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
+			Vec size       = mMoveScale * (f32)shadowSize + jointScale * 2.5f;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gCustomShadow.Draw(position, size, (u32)(170.0f * opacity));
+		} else {
+			if ((u32)(GetAnimId() - 0x14D) <= 4) {
+				position = GetJointWorldPos("koshi_model");
+			}
+			XObj::DrawGroundShadowAt(&position, opacity);
+		}
+	}
 }
 
 void XObjChr::vf1A8(f32)
