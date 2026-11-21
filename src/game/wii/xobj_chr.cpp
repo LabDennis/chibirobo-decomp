@@ -1957,6 +1957,52 @@ extern "C" void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidd
 	}
 }
 
+// swings the eye camera's aim at a new target: 3 degrees a frame on each axis,
+// both angles wrapped into [0, 2pi) and the target swung round when the other way is shorter
+extern "C" void fn_800E8140(WiiPlayerState* player, f32 targetY, f32 targetX)
+{
+	player->mEyeAimTarget.y = targetY;
+	player->mEyeAimStep.y   = DEG2RAD * 3;
+	f32 curY                = WrapAngle(player->mEyeAim.y);
+	f32 tgtY                = WrapAngle(player->mEyeAimTarget.y);
+	player->mEyeAim.y       = curY;
+	player->mEyeAimTarget.y = tgtY;
+	if (tgtY != curY) {
+		f32 diff = tgtY - curY;
+		diff     = __fabsf(diff);
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (tgtY < curY) {
+				player->mEyeAimTarget.y = TWO_PI + tgtY;
+			} else {
+				player->mEyeAimTarget.y = tgtY - TWO_PI;
+			}
+		}
+	}
+	player->mEyeAimTarget.x = targetX;
+	player->mEyeAimStep.x   = DEG2RAD * 3;
+	f32 curX                = WrapAngle(player->mEyeAim.x);
+	f32 tgtX                = WrapAngle(player->mEyeAimTarget.x);
+	player->mEyeAim.x       = curX;
+	player->mEyeAimTarget.x = tgtX;
+	if (tgtX != curX) {
+		f32 diff = tgtX - curX;
+		diff     = __fabsf(diff);
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (tgtX < curX) {
+				player->mEyeAimTarget.x = TWO_PI + tgtX;
+			} else {
+				player->mEyeAimTarget.x = tgtX - TWO_PI;
+			}
+		}
+	}
+}
+
 void XObjChr::SetBaseMtx(Mtx mtx)
 {
 	mBaseMtxPtr = mBaseMtx;
