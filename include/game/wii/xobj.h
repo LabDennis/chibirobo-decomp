@@ -134,7 +134,8 @@ struct ResNodeData {
 	u8 _00[0x0C];
 	u32 mID;    // _0C
 	u32 mMtxID; // _10, the node's index in the model's world matrix array
-	u8 _14[0x18];
+	u32 mFlags; // _14, bit 8 is the node's visibility
+	u8 _18[0x14];
 	Vec mRotate;    // _2C, in degrees
 	Vec mTranslate; // _38
 };
@@ -177,6 +178,21 @@ public:
 			return ptr()->mMtxID;
 		}
 		return 0;
+	}
+	// the flag write is g3d_resnode_ac.h's, check and all
+	void SetVisibility(bool visible)
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 175, "NW4R:Failed assertion IsValid()");
+		}
+		if (!IsValid()) {
+			return;
+		}
+		if (visible) {
+			ptr()->mFlags |= 0x100;
+		} else {
+			ptr()->mFlags &= ~0x100;
+		}
 	}
 	void SetTranslate(f32 x, f32 y, f32 z); // 0x8026173C
 	void SetRotate(f32 x, f32 y, f32 z);    // 0x802617C4
@@ -905,6 +921,22 @@ public:
 
 	private:
 		u8 _00[0x34];
+	};
+
+	// the per-view visibility copy, as far as the game reads it: the model it was opened
+	// on, the node and the view's flag buffer
+	class CopiedVisAccess {
+	public:
+		CopiedVisAccess(ScnMdl* pScnMdl, u32 id);
+		bool IsValid() const { return mpScnMdl != NULL; }
+		bool IsVisible() const;
+		bool SetVisibility(bool visible);
+		bool SetVisibilityEx(bool visible);
+
+	private:
+		ScnMdl* mpScnMdl; // _00
+		u32 mNodeID;      // _04
+		u8* mpVis;        // _08
 	};
 
 	static ScnMdl* Construct(MEMAllocator* pAllocator, u32* pSize, ResMdl mdl, u32 bufferOption, int numView);

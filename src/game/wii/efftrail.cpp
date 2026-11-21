@@ -849,3 +849,142 @@ extern "C" void fn_800F3B88(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 		pFuncObj->SetCallbackNodeID(self->mHeadNodes[2].GetID());
 	}
 }
+
+// the suit objects' hide flags: the player's vf28C/vf290 store his own and forward to the
+// worn suit (XObjDress, our WiiSuitObject), which stores the same flag on itself and then
+// walks the same node list. the lists are local arrays.
+extern "C" void fn_800F3E9C(XObj* self, BOOL hide);
+extern "C" void fn_800F403C(XObj* self, BOOL hide);
+
+/**
+ * @note Address: 0x800F3E74
+ * @note Size: 0x14
+ */
+extern "C" void fn_800F3E74(WiiSuitObject* self, BOOL hide)
+{
+	self->m_9C8 = hide != 0;
+	fn_800F3E9C(self, hide != 0);
+}
+
+/**
+ * @note Address: 0x800F3E88
+ * @note Size: 0x14
+ */
+extern "C" void fn_800F3E88(WiiSuitObject* self, BOOL hide)
+{
+	self->m_9C9 = hide != 0;
+	fn_800F403C(self, hide != 0);
+}
+
+/**
+ * @note Address: 0x800F3E9C
+ * @note Size: 0x1A0
+ */
+extern "C" void fn_800F3E9C(XObj* self, BOOL hide)
+{
+	if (self->mObject.m_pScnMdl != NULL) {
+		const char* nodeNames[] = {
+			"head",        "head_cap",      "L_eye",       "l_mabuta_down", "l_mabuta_up", "R_eye",
+			"r_mabuta_down", "r_mabuta_up", "neck",        "body_model",    "koshi_model", NULL,
+		};
+		const bool visible = !hide;
+		for (const char** p = nodeNames; *p != NULL; p++) {
+			if (!self->GetResNode(*p).IsValid()) {
+				continue;
+			}
+			nw4r::g3d::ResNode node = self->GetResNode(*p);
+			nw4r::g3d::ScnMdl::CopiedVisAccess access(self->mObject.m_pScnMdl, node.GetID());
+			if (access.IsValid()) {
+				access.SetVisibilityEx(visible);
+			} else {
+				node.SetVisibility(visible);
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x800F403C
+ * @note Size: 0x170
+ */
+extern "C" void fn_800F403C(XObj* self, BOOL hide)
+{
+	if (self->mObject.m_pScnMdl != NULL) {
+		const char* nodeNames[] = {
+			"l_upperarm", "l_lowerarm", "l_hand", "l_finger_down", "l_finger_up", NULL,
+		};
+		const bool visible = !hide;
+		for (const char** p = nodeNames; *p != NULL; p++) {
+			if (!self->GetResNode(*p).IsValid()) {
+				continue;
+			}
+			nw4r::g3d::ResNode node = self->GetResNode(*p);
+			nw4r::g3d::ScnMdl::CopiedVisAccess access(self->mObject.m_pScnMdl, node.GetID());
+			if (access.IsValid()) {
+				access.SetVisibilityEx(visible);
+			} else {
+				node.SetVisibility(visible);
+			}
+		}
+	}
+}
+
+// the dresses' ExecCallback selector: 4 replays the stored hide flags, anything else
+// does nothing
+/**
+ * @note Address: 0x800F41AC
+ * @note Size: 0x44
+ */
+extern "C" void fn_800F41AC(WiiSuitObject* self, s32 op)
+{
+	if (op == 4) {
+		fn_800F3E9C(self, self->m_9C8);
+		fn_800F403C(self, self->m_9C9);
+	}
+}
+
+/**
+ * @note Address: 0x800F41F0
+ * @note Size: 0x90
+ */
+extern "C" void fn_800F41F0(WiiSuitPart* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl,
+                            nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	self->XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	if (pFuncObj->GetCallbackNodeID() == 0) {
+		Mtx m;
+		PSMTXCopy(self->mOwner->GetWorldMtx("head"), m);
+		PSMTXCopy(m, pResult->mpMtx);
+	}
+}
+
+// NONMATCHING: the six conversions, the by-value Vec stores (the stfs/lwz/stw copies are
+// the return slots) and the return expression all match retail; the residue is scheduling:
+// retail sinks the 100.0f constant, the magic pair and the GetScale vtable fetch into the
+// conversion block, this build hoists them.
+/**
+ * @note Address: 0x800F4798
+ * @note Size: 0x130
+ */
+static inline Vec FloorExtent(XObjFloor* floor)
+{
+	Vec v;
+	v.x = floor->mExtent[0] / 100.0f;
+	v.z = floor->mExtent[1] / 100.0f;
+	v.y = floor->mExtent[2] / 100.0f;
+	return v;
+}
+
+static inline Vec FloorCenter(XObjFloor* floor)
+{
+	Vec v;
+	v.y = floor->mCenterOffset[1] / 100.0f;
+	v.x = floor->mCenterOffset[0] / 100.0f;
+	v.z = floor->mCenterOffset[2] / 100.0f;
+	return v;
+}
+
+extern "C" f32 fn_800F4798(XObj* self)
+{
+	return self->GetScale()->x * (FloorCenter(self->mFloors).y + FloorExtent(self->mFloors).y);
+}

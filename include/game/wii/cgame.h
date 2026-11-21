@@ -807,14 +807,19 @@ public:
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	u8 _9A8[0x9D0 - 0x9A8];
+	u8 _9A8[0x9C8 - 0x9A8];
+	u8 m_9C8; // _9C8, retail's XObjDress: vf28C hides the head nodes while it is set
+	u8 m_9C9; // _9C9, vf290 hides the left-arm nodes
+	u8 _9CA[0x9D0 - 0x9CA];
 };
 STATIC_ASSERT(sizeof(WiiSuitObject) == 0x9D0);
 
 // the extra model suits 3 and 6 bring, updated and drawn with the suit; the name is ours
+// (retail's XObjDressOpt: its ExecCallbackB grafts the owner's head matrix onto the callback result)
 class WiiSuitPart : public XObj {
 public:
-	u8 _9A8[0x9B0 - 0x9A8];
+	XObj* mOwner; // _9A8, the object whose head joint this part follows
+	u8 _9AC[0x9B0 - 0x9AC];
 };
 STATIC_ASSERT(sizeof(WiiSuitPart) == 0x9B0);
 
