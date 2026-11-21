@@ -24,6 +24,7 @@
 #include "game/wii/xobjs.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xchrmenu.h"
+#include "game/playeranimationdata.h"
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
 #
@@ -851,7 +852,8 @@ struct WiiOXMenu {
 	s32 mStarted;           // _04
 	s32 mCrossMask;         // _08
 	s32 mSelectedIndex;     // _0C
-	u8 _10[0x18 - 0x10];    // _10
+	s32 _10;                // _10, -1 while nothing is picked
+	f32 mFade;              // _14, cleared on reset
 	WiiOXMenuMark mMark[2]; // _18
 	XObj* mChr;             // _1388
 	f32 mStartRot;          // _138C, the chr's y rotation when it opened
@@ -943,11 +945,22 @@ struct WiiPlayerState : public XObj {
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
-	u8 _0A04[0xA18 - 0xA04];
+	u8 _0A04[4];     // _0A04
+	f32 mStick[4];
 	s32 m_0A18;                  // _0A18, an object index DrawWithView clears once the object is gone
 	s32 m_0A1C;                  // _0A1C, same
 	s32 mFloorContactObjects[5]; // _0A20, the object under each floor group, -1 for none; [4] the one he stands in front of
-	u8 _0A34[0xA88 - 0xA34];
+	u8 _0A34[0xA44 - 0xA34];
+	s32 mLastContactFloorIndex; // _0A44, the last floor contact's object index, -1 for none
+	u8 _0A48[0xA58 - 0xA48];
+	f32 mNearDistance; // _0A58, 2.0 while nothing is near
+	u8 _0A5C[0xA6C - 0xA5C];
+	s32 mLetickerIndex; // _0A6C, the clear leticker's object index, -1 for none
+	s32 _0A70;          // _0A70, cleared on reset
+	u32 mLiftPlugFlags; // _0A74, the GameCube's word; bit 0x80 is the lifted plug's
+	s32 mAPressed;      // _0A78
+	s32 mPressTimer;    // _0A7C, frames A has been held
+	u8 _0A80[0xA88 - 0xA80];
 	s32 mIdleLoops;      // _0A88, idle anim loops before the next idle move
 	f32 mIdleTimer;      // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
 	s32 mFlashTimer;     // _0A90
@@ -978,22 +991,41 @@ struct WiiPlayerState : public XObj {
 	// only the two are reached and the radar action follows at _95D4
 	u8 mSfx[0x28];  // _95AC
 	XAction mRadar; // _95D4
-	u8 _9600[0x96A0 - 0x9600];
-	s32 mBlinkWait;        // _96A0, frames until he blinks again
-	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
-	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
-	XObjChrLook mLook;     // _98E8
+	u8 _9600[0x9694 - 0x9600];
+	FrameEventTime mFrameTime; // _9694, where the running anim's frame events are
+	s32 _969C;                 // _969C, cleared on reset; maybe the GameCube's mIdleJointCooldown
+	s32 mBlinkWait;            // _96A0, frames until he blinks again
+	s32 mBlinkFrame;           // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x168];     // _96A8, by anim id % 1000, set where he may blink
+	u8 _9810[0x68];            // _9810, a camera aim record fn_800C659C fills (xobj_camera.cpp's XObjScnCamInitRec)
+	u8 _9878[4];               // _9878
+	u8 _987C[0x68];            // _987C, a second one
+	u8 _98E4[4];               // _98E4
+	XObjChrLook mLook;         // _98E8
 	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
-	u8 _992C[0x998C - 0x992C];
-	CVec mFloorSlope;        // _998C, the GameCube's mFloorSlope
-	WiiPlayerParams mParams; // _999C
-	u8 _9DDC[0x9DF8 - 0x9DDC];
-	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
-	f32 mMoveAngle;     // _9DFC
-	u8 _9E00[0x9E20 - 0x9E00];
+	s32 mScriptAttach;      // _992C, an attachment the running script asks for
+	s32 mNextClimbType;     // _9930, the climb queued for the next grab
+	s32 mClimbType;         // _9934, the climb he is on
+	u8 _9938[0x998C - 0x9938];
+	CVec mFloorSlope;               // _998C, the GameCube's mFloorSlope
+	WiiPlayerParams mParams;        // _999C
+	u8 _9DDC[4];                    // _9DDC
+	f32 mFallDistance;              // _9DE0
+	f32 mCameraTarget[3];           // _9DE4, NANed while the camera keeps no target point
+	f32 mCameraTargetMargin;        // _9DF0
+	f32 mCameraTargetMarginSetting; // _9DF4
+	f32 mHeldMoveAngle;             // _9DF8, the heading the player snaps back to after a look
+	f32 mMoveAngle;                 // _9DFC
+	f32 mHeldStickAngle;            // _9E00, NANed while no stick direction is held
+	s32 mBatteryWarningFrames;      // _9E04
+	f32 mBatteryWarningAngle;       // _9E08
+	f32 mBatteryWarningFade;        // _9E0C
+	XObj* mGaugeTarget;             // _9E10, the object the battery gauge sits over
+	f32 mGaugeTime;                 // _9E14
+	u8 _9E18[0x9E20 - 0x9E18];
 	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
 	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
@@ -1004,10 +1036,11 @@ struct WiiPlayerState : public XObj {
 	WiiPlayerSuits mSuits;     // _DC50
 	WiiSuitPart mSuitParts[9]; // _134B8, by suit
 	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad
-	u8 _19E90[0x19E9C - 0x19E90];
-	u8 mAttachments[0x48]; // _19E9C
-	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
-	WiiOXMenu mOXMenu;     // _1A420
+	u8 _19E90[8];              // _19E90
+	f32 mWalkHeading;          // _19E98, NANed until he walks
+	u8 mAttachments[0x48];     // _19E9C
+	XObjChrMenu mMenu;         // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;         // _1A420
 	u8 _1B7B4[0x1B7B8 - 0x1B7B4];
 	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
 	// writers are decoded so far, the word reads as a whole
@@ -1025,7 +1058,7 @@ struct WiiPlayerState : public XObj {
 	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
 	u8 _1C9B4[4];          // _1C9B4
 	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
-	u8 _1C9C4[8];          // _1C9C4
+	f32 _1C9C4[2];         // _1C9C4, two more of the same block, cleared with it on reset
 	CVec mEyeAim;          // _1C9CC, the pitch and yaw the eye camera aims shots with
 	CVec mEyeAimTarget;    // _1C9DC, where the eye camera eases the aim toward
 	CVec mEyeAimStep;      // _1C9EC, the per-frame aim step while the eye camera runs
@@ -1046,6 +1079,15 @@ STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mStick) == 0x0A08);
+STATIC_ASSERT(offsetof(WiiPlayerState, mNearDistance) == 0x0A58);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLiftPlugFlags) == 0x0A74);
+STATIC_ASSERT(offsetof(WiiPlayerState, mFrameTime) == 0x9694);
+STATIC_ASSERT(offsetof(WiiPlayerState, mBlinkAnims) == 0x96A8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mScriptAttach) == 0x992C);
+STATIC_ASSERT(offsetof(WiiPlayerState, mCameraTarget) == 0x9DE4);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeldStickAngle) == 0x9E00);
+STATIC_ASSERT(offsetof(WiiPlayerState, mWalkHeading) == 0x19E98);
 STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
 STATIC_ASSERT(offsetof(WiiPlayerState, mMenu) == 0x19EE4);
 

@@ -13,6 +13,7 @@
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
 #include "game/pointptcl.h"
+#include "game/wii/xact.h"
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
@@ -174,6 +175,8 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 	return ret;
 }
 
+struct XObjScnCamInitRec; // xobj_camera.cpp's camera aim record
+
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsCarryingMug(XAction* action);
@@ -186,9 +189,145 @@ void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
 BOOL fn_800CDC98(WiiPlayerState* player);
 void fn_800CDDC0(WiiPlayerState* player);
+void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
+void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
+void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
+void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
+
+// the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect (the .bss
+// object at lbl_8045BBD0): the Wii's records are 0x18 bytes with the scale at +0
+// and the angle at +8; what the rest of the 0x258 holds only the spiral code knows
+struct SuitChangeTrail {
+	s32 mActive; // _00, nonzero while the spiral runs
+	u8 _04[0xC];
+	struct {
+		f32 scale; // _00
+		u8 _04[4];
+		f32 angle; // _08
+		u8 _0C[0xC];
+	} mParticles[20]; // _10
+	u8 _1F0[0x258 - 0x1F0];
+};
+extern SuitChangeTrail lbl_8045BBD0;
+
+static inline void ResetSuitChangeTrail(SuitChangeTrail& trail)
+{
+	trail.mActive = 0;
+	for (s32 i = 0; i < 20; ++i) {
+		trail.mParticles[i].scale = 0.0f;
+		trail.mParticles[i].angle = 0.0f;
+	}
+}
+
+static inline void ClearRingHighlights(OctaMenu& ring)
+{
+	ring.mOpen = 0;
+	ring.mFade = 0.0f;
+	for (s32 i = 0; i < 8; ++i)
+		ring.mItems[i].mHighlight = 0.0f;
+}
+
+// _154, the GameCube's XObjChr::ResetObjectState: the player state, his actions,
+// the embedded objects, the menus and the pools all go back to their defaults
+// NONMATCHING (~90 %): same instruction multiset, call set and store order; retail colours
+// this into r30 and keeps gPointParticlePool's base live in r31 from the prologue, deriving
+// gPointParticleSlots (+0x3D18) and lbl_8045BBD0 (+0x3D40) from it as contiguous .bss. Ours
+// rematerializes each base inside the loop region — register-allocation wall, no logic diff.
+void XObjChr::ResetObjectState()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	XObj::ResetObjectState();
+	chr->vf28C(0);
+	chr->mMotion.Reset(0.0f, 0.0f, 0.0f);
+	chr->mStick[2] = chr->mStick[3] = chr->mStick[0] = chr->mStick[1] = 0.0f;
+	chr->m_0A1C = chr->m_0A18    = -1;
+	chr->mFloorContactObjects[4] = chr->mFloorContactObjects[2] = chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
+	chr->mLastContactFloorIndex                                                                                               = -1;
+	chr->mNearDistance                                                                                                        = 2.0f;
+	chr->mLetickerIndex                                                                                                       = -1;
+	chr->_0A70                                                                                                                = 0;
+	chr->mLiftPlugFlags &= ~0x80;
+	chr->mPressTimer = chr->mAPressed = 0;
+	chr->mIdleLoops                   = 0;
+	chr->mIdleTimer                   = 0.0f;
+	chr->mFlashTimer = chr->mFlashCount = 0;
+	chr->mHitStrength                   = 0.0f;
+	chr->mMoveSpeedScale                = 1.0f;
+	chr->mHang.Init(chr);
+	chr->mHang.mStickAway = FALSE;
+	chr->mJump.Init(chr);
+	((XActJump*)&chr->mJump)->mStrength = ((XActJump*)&chr->mJump)->mTargetStrength = 0.0f;
+	chr->mLadder.Init(chr);
+	((XActLadder*)&chr->mLadder)->mBPressed = FALSE;
+	chr->mRope.Init(chr);
+	chr->mPush.Init(chr);
+	chr->mTumble.Init(chr);
+	chr->mCopter.Init(chr);
+	chr->mCopter.mTime = gRefreshRate;
+	InitializePlayerPopperAction((XActPopper*)&chr->mPopper, chr);
+	InitRadarAction((XActRadar*)&chr->mRadar, chr);
+	chr->_969C             = 0;
+	chr->mFrameTime.mFrame = chr->mFrameTime.mLastFrame = -1.0f;
+	chr->mBlinkWait                                     = 0;
+	chr->mBlinkFrame                                    = 0;
+	fn_800C659C((XObjScnCamInitRec*)chr->_9810, this);
+	fn_800C659C((XObjScnCamInitRec*)chr->_987C, this);
+	chr->mLook.mActive = FALSE;
+	chr->mLook.mMode   = -1;
+	chr->mLook.mObject = NULL;
+	Vec zero           = { 0.0f, 0.0f, 0.0f };
+	chr->mLook.mOffset = zero;
+	chr->mLook.mPulse = chr->mLook.mPhase = chr->mLook.mFade = 0.0f;
+	chr->mLook.mObject                                       = this;
+	chr->mAttachmentRequest                                  = -1;
+	chr->mNextClimbType = chr->mClimbType = chr->mScriptAttach = chr->mAttachmentStep = 0;
+	chr->mFallDistance                                                                = 0.0f;
+	chr->mCameraTarget[0] = chr->mCameraTarget[1] = chr->mCameraTarget[2] = NAN;
+	chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting = 1.0f;
+	chr->mHeldMoveAngle = chr->mMoveAngle = chr->mHeldStickAngle = NAN;
+	chr->mBatteryWarningFrames                                   = 0;
+	chr->mBatteryWarningFade = chr->mBatteryWarningAngle = 0.0f;
+	chr->mGaugeTarget                                    = NULL;
+	chr->mGaugeTime                                      = 0.0f;
+	chr->mPlug.ResetObjectState();
+	((XObj*)chr->mCopterObj)->ResetObjectState();
+	((XObj*)chr->mPopperObj)->ResetObjectState();
+	((XObj*)chr->mRadarObj)->ResetObjectState();
+	((XObj*)chr->mOXObj)->ResetObjectState();
+	for (s32 i = 0; i < 9; ++i)
+		chr->mSuits.mObjects[i].ResetObjectState();
+	chr->mWalkHeading = NAN;
+	ClearRingHighlights(chr->mMenu.mAtc);
+	ClearRingHighlights(chr->mMenu.mDrs);
+	chr->mMenu.mTargetY = chr->mMenu.mCursorY = chr->mMenu.mFade = 0.0f;
+	chr->mOXMenu.mStarted                                        = FALSE;
+	chr->mOXMenu._10                                             = -1;
+	chr->mOXMenu.mFade                                           = 0.0f;
+	chr->mOnGround                                               = 0;
+	mStatus.mFlags &= ~0x800000ULL;
+	InitParticlePool(&mDustPool.mPtcl, mDustPool.mPtcls, sizeof(mDustPool.mPtcls[0]), ARRAY_SIZE(mDustPool.mPtcls));
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.burst.mState = p.display.mState = 0;
+		gPointParticleSlots[i]            = NULL;
+	}
+	ResetSuitChangeTrail(lbl_8045BBD0);
+	chr->mGroundType = 0;
+	chr->_1C9A8.x    = 0.0f;
+	chr->_1C9A8.y    = 0.0f;
+	chr->_1C9A8.z    = 0.0f;
+	chr->_1C9B8[0] = chr->_1C9B8[1] = chr->_1C9B8[2] = chr->_1C9C4[0] = chr->_1C9C4[1] = 0.0f;
+	chr->mEyeAim.Set(0.0f, 0.0f, 0.0f);
+	chr->mEyeAimTarget.Set(0.0f, 0.0f, 0.0f);
+	chr->mEyeAimStep.Set(0.0f, 0.0f, 0.0f);
+	chr->mHeadOffset      = 5.0f;
+	chr->mHeadOffsetReady = FALSE;
+	mActor.Reset();
+}
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 {

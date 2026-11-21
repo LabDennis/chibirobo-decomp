@@ -1884,6 +1884,7 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
+	virtual void ResetObjectState();                                 // _154, the player state back to its defaults
 	virtual void DrawWithView(Mtx view);                             // _178, himself or the current suit, then the attachments
 	virtual void DrawReflection(Mtx view);                           // _17C
 	virtual void DrawGroundShadow(f32 opacity);                      // _180, nothing up close to the camera

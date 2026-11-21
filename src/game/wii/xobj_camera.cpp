@@ -36,7 +36,7 @@ struct XObjScnCamInitRec {
 	u16 m_00;
 	s16 mSnap[2]; // _02, fn_800C6CF0's per-axis snap counters
 	u16 m_06;
-	u32 m_08;
+	XObj* m_08;
 	XObj* m_0C;  // the object the aim tracks when set
 	Vec mTarget; // _10, a fixed aim position; x stays NAN when unused
 	u32 m_1C;
@@ -60,9 +60,9 @@ struct XObjScnCamInitRec {
 	f32 m_64;
 };
 
-extern "C" void fn_800C659C(XObjScnCamInitRec* self, u32 arg)
+extern "C" void fn_800C659C(XObjScnCamInitRec* self, XObj* obj)
 {
-	self->m_08      = arg;
+	self->m_08      = obj;
 	self->mSnap[1]  = 0;
 	self->mSnap[0]  = 0;
 	self->m_0C      = NULL;
@@ -155,8 +155,8 @@ extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj)
 // m_3C/m_40 toward them by m_5C/m_60 * frames, or snaps when the counter protocol runs
 extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 {
-	CVec head = fn_800C6CEC(rec, (XObj*)rec->m_08);
-	CVec rot  = ((XObj*)rec->m_08)->mMoveRotate;
+	CVec head = fn_800C6CEC(rec, rec->m_08);
+	CVec rot  = rec->m_08->mMoveRotate;
 	f32 outB;
 	f32 outA;
 	fn_800C66C8(rec, &head, &rot, &outA, &outB);
