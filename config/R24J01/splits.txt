@@ -306,6 +306,9 @@ game/wii/atcmenuselection.cpp:
 game/wii/xobjchrmenu.cpp:
 	.text start:0x800ED45C end:0x800F0100
 
+game/wii/efftrail.cpp:
+	.text start:0x800F0100 end:0x800F48E0
+
 game/wii/cfile.cpp:
 	extab start:0x80010920 end:0x800109A0
 	extabindex start:0x800171F8 end:0x800172B8

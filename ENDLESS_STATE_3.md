@@ -9,6 +9,41 @@ Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
 
+## Lauf 88 — Unit 66 angelegt: wii/efftrail.cpp, UpdateSpiralTrail 95,9 %
+
+- **Neue TU `src/game/wii/efftrail.cpp`** (wii_units.md Nr. 66,
+  0x800F0100..0x800F48E0, 23 Fns): configure.py Object(NonMatching,
+  GC/3.0a5, `-Cpp_exceptions on -ipa file`) nach xobjchrmenu;
+  splits.txt `.text 0x800F0100..0x800F48E0`. Retail-.rodata nennt die
+  Quelle `xobj_chr.cpp`; Name frei gewaehlt weil src/game/wii/xobj_chr.cpp
+  belegt (GC-Pendant hiess game/efftrail.cpp).
+- **UpdateSpiralTrail @0x800F2EA4 (0x29C): 95,9 %, ehrlich NONMATCHING.**
+  GC-Quelle (obja_chr.cpp:142) wortwoertlich — Wii-Asm strukturell
+  identisch: rings@+4, Records 0x18 {pos@0,scale@C,color@10,angle@14},
+  2 Ringe a 0xF0, Shift unrolled 3x3 Elemente rueckwaerts, Head:
+  scale-=0.02f*frames clamp 0, angle+=DEG2RAD*9*frames, x/z aus
+  sin/cos*scale*(15*(1-scale)), y+=0.3f*frames, Summe scales→active=0.
+  Rest ~4 %: Retail haelt zweiten Ringzeiger fuer die Summe (r28=trail,
+  Offsets falten +4 ein) und Schedules um sin/cos anders.
+- **LAYOUT-ENTSCHEIDUNG:** kein `#include game/xobjchrstate.h` — zieht
+  GC-`cgame.h`, kollidiert in Wii-TUs mit `wii/cgame.h` (Redefinitionen).
+  Stattdessen LOKAL `SpiralTrailPoint`/`SpiralTrail` im GC-Layout
+  (xobj_chr.cpp-Praezedenz: dessen `SuitChangeTrail` ist die
+  scale-first-Sicht auf dasselbe 0x258-Objekt lbl_8045BBD0).
+- **WICHTIG FUER UNIT 66:** Retail-.s fuer alle 23 Fns benannt und
+  vorhanden; Stubs fn_800F48C8/D0/D8 sind Compiler-Deletethunks
+  (subi r3,4; b dtor) — NICHT per Hand schreiben, kommen aus Klassen.
+  fn_800F3E74/E88 (0x14): stb bool→obj+0x9C8/0x9C9 + Tailcall.
+  DrawSpiralTrail: GC-Quelle obja_chr.cpp:79 (dort 97,7 % NONMATCHING).
+  extab 0x8000C620..0x8000C780 / extabindex 0x8001460C..0x800146E4 gehoeren
+  der Unit (noch nicht geclaimed — wie xobjchrmenu nur .text).
+- **Gate dieses Mal NUR TEILWEISE:** R24J01 main.dol OK (vor und nach
+  der TU), Report-Diff und GC-Editionen stehen noch aus — die
+  configure.py-Aenderung liegt im Wii-Objektblock, GC unberuehrt.
+  Format: check.py wollte clang-format 18.1.8, fand 23.1.4; Datei
+  folgt dem Stil (Tabs, obja_chr.cpp-Konvention). objdiff-cli fand
+  Units nicht (Konfigfrage, L3_diff.py bricht so auch).
+
 ## Lauf 87 — UpdateOXMenuTransition MATCHED (100 %) + Unit-66-Inventar
 
 - **Neu (commit `4119fefa`):** `UpdateOXMenuTransition(WiiOXMenu*, u32)`

@@ -1417,6 +1417,9 @@ if wii:
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/ringmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjchrmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the suit-change trail and the HUD point particles, 0x800F0100-0x800F48E0
+                # (wii_units.md Nr. 66); the retail rodata says xobj_chr.cpp
+                Object(NonMatching, "game/wii/efftrail.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
                 Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
