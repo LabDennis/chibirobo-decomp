@@ -42,8 +42,6 @@ extern "C" void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 fla
  * @note Address: 0x8000AC64
  * @note Size: 0xD0
  */
-static const char sMoviePlaybackError[] = "error on play movie! - %d\n";
-
 // UpdateMovie, the movie thread: steps the movie once a retrace until it's done
 extern "C" void* UpdateMovie(void* arg)
 {
@@ -60,7 +58,7 @@ extern "C" void* UpdateMovie(void* arg)
 			result = movie->Update();
 			if (result < 0) {
 				movie->Stop();
-				OSPanic("game.cpp", MovieErrorLine, "%s%s", FormatToStaticBuffer(sMoviePlaybackError, result), __FUNCTION__);
+				OSPanic("game.cpp", MovieErrorLine, "%s%s", FormatToStaticBuffer("error on play movie! - %d\n", result), __FUNCTION__);
 			}
 		}
 	} while (movie->mState != 0);
