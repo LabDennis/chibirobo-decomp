@@ -246,21 +246,19 @@ extern "C" char* FormatToStaticBuffer(const char* fmt, ...)
  * @note Address: 0x80190E60
  * @note Size: 0x354
  */
-// the view z axis the billboards align to
-static const Vec sBillboardViewZAxis = { 0.0f, 0.0f, 1.0f };
-
 // src turned so its z axis is (0, 0, 1). its y axis only loses its z part, scale and position stay
 void BuildBillboardMatrixFromUp(Mtx src, Mtx dst)
 {
 	Vec x, y;
+	Vec z  = { 0.0f, 0.0f, 1.0f };
 	f32 sx = sqrtf(src[0][0] * src[0][0] + src[1][0] * src[1][0] + src[2][0] * src[2][0]);
 	f32 sz = sqrtf(src[0][2] * src[0][2] + src[1][2] * src[1][2] + src[2][2] * src[2][2]);
 	y.x    = src[0][1];
 	y.y    = src[1][1];
 	y.z    = src[2][1];
 	f32 sy = PSVECMag(&y);
-	C_VECCrossProduct(&y, &sBillboardViewZAxis, &x);
-	C_VECCrossProduct(&sBillboardViewZAxis, &x, &y);
+	C_VECCrossProduct(&y, &z, &x);
+	C_VECCrossProduct(&z, &x, &y);
 	sx /= PSVECMag(&x);
 	sy /= PSVECMag(&y);
 	dst[0][0] = sx * x.x;
@@ -269,9 +267,9 @@ void BuildBillboardMatrixFromUp(Mtx src, Mtx dst)
 	dst[0][1] = sy * y.x;
 	dst[1][1] = sy * y.y;
 	dst[2][1] = sy * y.z;
-	dst[0][2] = sz * sBillboardViewZAxis.x;
-	dst[1][2] = sz * sBillboardViewZAxis.y;
-	dst[2][2] = sz * sBillboardViewZAxis.z;
+	dst[0][2] = sz * z.x;
+	dst[1][2] = sz * z.y;
+	dst[2][2] = sz * z.z;
 	dst[0][3] = src[0][3];
 	dst[1][3] = src[1][3];
 	dst[2][3] = src[2][3];
