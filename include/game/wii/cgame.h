@@ -1558,7 +1558,7 @@ public:
 	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
-	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
+	u32 mMdl;                     // _EC, the model's nw4r ResMdl handle
 	nw4r::g3d::ScnMdlSimple* mF0; // _F0, the model the node matrices live in
 	u8 _F4[0x150 - 0xF4];
 	u64 mStatus; // _150, the object's status flags
