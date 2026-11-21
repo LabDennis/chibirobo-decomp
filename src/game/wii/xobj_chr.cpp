@@ -8,6 +8,7 @@
 #include "game/ringmenu.h"
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
+#include "game/xobjattachment.h"
 #include "game/wii/xchrmenu.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
@@ -16,8 +17,15 @@
 #include "game/gmath.h"
 #include "game/globals.h"
 #include "arithmetic.h"
+#include "JSystem/JMath/Inline.h"
 #include <math.h>
 #include <stdlib.h>
+
+// the Wii build inlines PSVECScale as paired-single code like the other units
+#define PSVECScale JMathInlineVEC::PSVECScale
+// NONMATCHING: ScaleVectorInPlace's retail body interleaves the paired-single loads,
+// multiplies and stores (its SDK inline's statement order); ours loads both pairs
+// first, so the wrapper stays below a match
 
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
@@ -1513,7 +1521,90 @@ void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 va
 	}
 }
 
+f32 fn_800D1740(f32 x)
+{
+	return __fabsf(x);
+}
+
+// nonzero while the plug sits in a socket
+s32 GetPlayerPlugConnection(const XObjPlug* plug)
+{
+	return plug->mConnection;
+}
+
+// the cord's pull on the player while the plug is connected
+CVec* GetPlayerPlugCordPull(XObjPlug* plug)
+{
+	return &plug->mCord.mPull;
+}
+
+// unplug: only the socket flag; the GameCube's ClearPlugState also reset the joint,
+// the Wii's joint handling lives in ExecCallbackB instead
+void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint)
+{
+	plug->mConnection = 0;
+}
+
+// the vertex position of the map triangle a floor hit rests on
+void fn_800DB958(XObjMap* map, XObjMapHit* hit, Vec* out)
+{
+	TRIGON_INFO* tri = &map->mTrigon.mTri[hit->mTriangle];
+	tri->mGetVtx(tri, out);
+}
+
+void ScaleVectorInPlace(Vec* value, f32 scale)
+{
+	PSVECScale(value, value, scale);
+}
+
+u32 GetObjectMarkerOverride(XObj* object)
+{
+	return object->mAnmQueue.mMarkerOverride;
+}
+
+u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask)
+{
+	return object->mAnmQueue.mMarkerOverride & mask;
+}
+
 } // extern "C"
+
+// NONMATCHING: identical except our compiler appends a dead blr after the tail call;
+// every guard spelling tried keeps it
+void XObjAttachment::DrawWithView(Mtx view)
+{
+	if (mVisible) {
+		XObj::DrawWithView(view);
+	}
+}
+
+void XObjAttachment::Hide()
+{
+	mVisible = FALSE;
+}
+
+void XObjChr::vf1A8(f32)
+{
+}
+
+void XObjChr::SetBaseMtx(Mtx mtx)
+{
+	mBaseMtxPtr = mBaseMtx;
+	PSMTXCopy(mtx, mBaseMtx);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	for (int i = 0; i < 9; i++) {
+		chr->mSuits.mObjects[i].SetBaseMtx(mtx);
+	}
+}
+
+void XObjChr::ClearBaseMtx()
+{
+	mBaseMtxPtr         = NULL;
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	for (int i = 0; i < 9; i++) {
+		chr->mSuits.mObjects[i].ClearBaseMtx();
+	}
+}
 
 // nothing to decide on the base menu
 void OctaMenu::ConfirmSelection()

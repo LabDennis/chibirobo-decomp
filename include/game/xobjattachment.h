@@ -228,8 +228,9 @@ public:
 	virtual void InitializeObject();                                                                                            // _14C
 	virtual void ResetForNewGame();                                                                                             // _150
 	virtual void ResetObjectState();                                                                                            // _154
+	virtual void DrawWithView(Mtx view);                                                                                        // _178
 	virtual void Show();                                                                                                        // _28C
-	virtual void Hide() { mVisible = FALSE; }                                                                                   // _290
+	virtual void Hide();                                                                                                        // _290
 	virtual void SetParent(MtxP parent, BOOL fromPlacement);                                                                    // _294
 };
 STATIC_ASSERT(sizeof(XObjAttachment) == 0x9B0);

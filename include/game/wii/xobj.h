@@ -1883,6 +1883,10 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
+	virtual void vf1A8(f32);          // _1A8, empty on the player
+	virtual void SetBaseMtx(Mtx mtx); // _1B4, his own plus the nine suits'
+	virtual void ClearBaseMtx();      // _1B8, same
+
 private:
 	u8 _9A8[0x1B7BC - 0x9A8];
 	CPtclSet mDustPool; // _1B7BC
