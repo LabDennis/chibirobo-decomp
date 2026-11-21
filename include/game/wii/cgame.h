@@ -951,7 +951,7 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 // members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
 // todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
 struct WiiPlayerState : public XObj {
-	u8 _09A8[4];
+	WiiPlayerState* mPlayer; // _9A8, the player object these head joints belong to
 	// the player's head bones, fetched out of the loaded model by name in LoadFromPlacement:
 	// second_null, head_chn, head_cap and both eyelid pairs, down then up
 	nw4r::g3d::ResNode mHeadNodes[7]; // _9AC

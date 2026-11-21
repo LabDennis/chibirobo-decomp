@@ -674,3 +674,112 @@ extern "C" BOOL fn_800F35E8(WiiPlayerState* self, const CoordInfo& info)
 	}
 	return TRUE;
 }
+
+// the eyelid rotation keyframes ExecCallbackA applies while the player blinks: down lid,
+// then up lid, left eye then right eye, each indexed by WiiPlayerState::mBlinkFrame.
+// the values are bit-exact retail data; they read as designer-authored near-zero noise.
+static nw4r::math::VEC3 sBlinkRotLDown[11] = {
+    nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f), nw4r::math::VEC3(-32.45600128173828f, 180.0f, 0.00003f),
+    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+    nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
+    nw4r::math::VEC3(-16.78667449951172f, 180.0f, 0.00003f), nw4r::math::VEC3(-48.125328063964844f, 180.0f, 0.00003f),
+    nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f),
+};
+static nw4r::math::VEC3 sBlinkRotLUp[11] = {
+    nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f), nw4r::math::VEC3(-32.45599365234375f, 0.0f, 0.000004f),
+    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+    nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),        nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
+    nw4r::math::VEC3(-16.786663055419922f, 0.0f, 0.000004f), nw4r::math::VEC3(-48.125343322753906f, 0.0f, 0.000004f),
+    nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),
+};
+static nw4r::math::VEC3 sBlinkRotRDown[11] = {
+    nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f), nw4r::math::VEC3(-32.45600891113281f, 180.0f, -0.000013f),
+    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+    nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
+    nw4r::math::VEC3(-16.786680221557617f, 180.0f, -0.000013f), nw4r::math::VEC3(-48.12534713745117f, 180.0f, -0.000013f),
+    nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),
+};
+static nw4r::math::VEC3 sBlinkRotRUp[11] = {
+    nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f), nw4r::math::VEC3(-32.455989837646484f, -0.000001f, 0.0f),
+    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+    nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),        nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
+    nw4r::math::VEC3(-16.786659240722656f, -0.000001f, 0.0f), nw4r::math::VEC3(-48.125328063964844f, -0.000001f, 0.0f),
+    nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),
+};
+
+// the player character's ExecCallbackA: after the base handling it drives the head-cap
+// and the four eyelid joints. head_cap gets a fixed nod rotation while an attachment is
+// worn; each eyelid gets the blink keyframe at mBlinkFrame and hands the next joint id
+// back to the CalcWorld walker.
+// NONMATCHING: the chain compiles through ResNode::GetID()/IsValid(), but the retail
+// accessor emits an extra NW4R "IsValid()" assertion (g3d_resnode_ac.h:56/:175) that our
+// rescommon port does not carry, so every node check lacks its unreachable Panic block.
+/**
+ * @note Address: 0x800F3714
+ * @note Size: 0x474
+ */
+extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl,
+                            nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	self->XObj::ExecCallbackA(pResult, mdl, pFuncObj);
+	u16 nodeId           = pFuncObj->GetCallbackNodeID();
+	WiiPlayerState* player = self->mPlayer;
+
+	if (self->mHeadNodes[2].IsValid() && nodeId == self->mHeadNodes[2].GetID()) {
+		if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0) {
+			s32 animId = self->GetAnimId();
+			if (animId != 0x817 && animId != 0x814) {
+				static nw4r::math::MTX33 sHeadRot;
+				static u8 sHeadRotInit;
+				if (!sHeadRotInit) {
+					sHeadRot._00 = -0.0f;
+					sHeadRot._01 = -0.970757f;
+					sHeadRot._02 = 0.239911f;
+					sHeadRot._10 = -0.0f;
+					sHeadRot._11 = -0.239911f;
+					sHeadRot._12 = -0.970757f;
+					sHeadRot._20 = 1.0f;
+					sHeadRot._21 = -0.0f;
+					sHeadRot._22 = -0.0f;
+					sHeadRotInit = TRUE;
+				}
+				pResult->SetRotateMtx(&sHeadRot);
+			}
+		}
+		if (player->mBlinkFrame < 0) {
+			return;
+		}
+		if (self->mHeadNodes[3].IsValid()) {
+			pFuncObj->SetCallbackNodeID(self->mHeadNodes[3].GetID());
+		}
+		return;
+	}
+	if (self->mHeadNodes[3].IsValid() && nodeId == self->mHeadNodes[3].GetID()) {
+		pResult->SetRotateDeg(&sBlinkRotLDown[player->mBlinkFrame]);
+		if (self->mHeadNodes[4].IsValid()) {
+			pFuncObj->SetCallbackNodeID(self->mHeadNodes[4].GetID());
+		}
+		return;
+	}
+	if (self->mHeadNodes[4].IsValid() && nodeId == self->mHeadNodes[4].GetID()) {
+		pResult->SetRotateDeg(&sBlinkRotLUp[player->mBlinkFrame]);
+		if (self->mHeadNodes[5].IsValid()) {
+			pFuncObj->SetCallbackNodeID(self->mHeadNodes[5].GetID());
+		}
+		return;
+	}
+	if (self->mHeadNodes[5].IsValid() && nodeId == self->mHeadNodes[5].GetID()) {
+		pResult->SetRotateDeg(&sBlinkRotRDown[player->mBlinkFrame]);
+		if (self->mHeadNodes[6].IsValid()) {
+			pFuncObj->SetCallbackNodeID(self->mHeadNodes[6].GetID());
+		}
+		return;
+	}
+	if (self->mHeadNodes[6].IsValid() && nodeId == self->mHeadNodes[6].GetID()) {
+		pResult->SetRotateDeg(&sBlinkRotRUp[player->mBlinkFrame]);
+	}
+}

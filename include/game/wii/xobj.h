@@ -89,12 +89,15 @@ struct ChrAnmResult {
 
 	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
 	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
+	void SetRotateDeg(const math::VEC3* pRotate);
+	void SetRotateMtx(const math::MTX33* pRot);
 };
 
 // the callback's node binding; the members are nw4r's
 class FuncObjCalcWorld {
 public:
 	u16 GetCallbackNodeID() const { return mNodeID; }
+	void SetCallbackNodeID(u16 id) { mNodeID = id; }
 
 private:
 	void* mpCallback; // _00
