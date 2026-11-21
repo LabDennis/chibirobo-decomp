@@ -1,17 +1,53 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 68 fertig, Branch devin/lane3 @8b04dc42. R24J01: 6635/8284 matched, main.dol: OK (+3
-gegenueber Lauf 67, kein Regress); GC: 17 files OK (alle drei);
---non-matching linkt; callcheck R24J01: 7 bekannte objb_act-Diffs,
-keine neuen in Bahn-3-Units. check.py --source-only: clang-format
-auf dem Host ist 23.1.4, Script verlangt 18.1.8 — Umgebungslimit,
-kein Formatfehler (cf18-Pfad ~/.local/opt/clang-format-18 wurde vom
-Shell-Wrapper abgelehnt).
-Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
-— Signatur-Renames zeigen sich darin als lost/new).
+Stand: Lauf 69 fertig, Branch devin/lane3 @bbc85e92. R24J01: 6636/8284 matched, main.dol: OK (+1,
+kein Regress); GC: 17 files OK (alle drei); --non-matching linkt;
+callcheck R24J01: 52 bekannte Eintraege, keine neuen; check.py ueber
+CLANG_FORMAT=~/.local/opt/clang-format-18 + subprocess-Wrapper:
+471 files ok. Baselines .lane3_baseline/report_<V>.json jetzt auf
+Lauf-69-Stand (vorher veraltet).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 69 — xobj_chr: fn_800E7EA8 gematcht (+1)
+
+- **Commit bbc85e92** `wii xobj_chr: match fn_800E7EA8 (queue worn
+  models, step scene draws)` — 1 Datei, +17.
+- **`fn_800E7EA8` (0x108) = 100 %.** Dekod: `mScene.mHead` ist ein
+  ScnRoot* (ScnGroup): Vtable-Slot 0x34 = `Insert(u32,ScnObj*)`,
+  Member _E4 = `mNumScnObj` — der WiiGsSceneObj-Stellvertreter in
+  cgs.h modelliert das als `vf034(s32 index, void* model)` +
+  `mPending`. Vier Queue-Aufrufe
+  `head->vf034(head->mPending, X->mObject.m_pScnMdl)`: this (XObj+0xF0
+  = NW_Obj::m_pScnMdl), aktiver Suit (mSuits.mObjects[mCurrent], Flag
+  = Low-Word von mStatus.mFlags bei +0x154, `clrlwi.` =
+  `IsObjectActive`), SuitPart bei mCurrent==3||6 (Stride 0x9B0),
+  mPopperObj+0xF0 (=0xC020, u8-Blob -> XObj*-Cast). Danach
+  `fn_802AEDA0(&mScene.mHead, 0)` = G3dReset + UpdateFrame + CalcVtx
+  + CalcWorld + CalcMaterial auf *mHead (extern "C", Dekl wie
+  gameupdate.cpp). WICHTIG: kein `scene`-Local — Retail laedt mHead
+  vor JEDEM Call neu (bctrl kann gGame aendern); voller Ausdruck je
+  Statement schreiben.
+- Definition `extern "C"` (fn_-Auto-Name), steht nach dem
+  extern-C-Block (Zeile ~1617). Platz: zwischen vf1A8 und SetBaseMtx.
+- Aufrufer: fn_80151344 (Bahn 5, noch asm) ruft nach ClearBaseMtx.
+- Gate: R24J01 OK 6636/8284 (+1); GC 3x `17 files OK`; config/
+  unberuehrt (kein symbols.txt-Eintrag noetig, Auto-Name);
+  Report-Diff nur fn_800E7EA8 0->100; callcheck keine neuen Treffer.
+
+## Naechster Schritt
+
+- xobj_chr weiter in Adress-Reihenfolge: fn_800E3CD4
+  (GetCameraTarget-Gegend), SetAnim 0x800E333C (gross);
+  SetPlayerEyeCameraJointsHidden 0x800E7FB0 (0x190, liegt direkt
+  hinter fn_800E7EA8 im Retail — auto_fn_800E7FB0-Asm ziehen);
+  ResetObjectState 0x800CC294 / ResetPlayerAttachment 0x800CC83C
+  (GC-Vorlagen in obja_chr.cpp, Wii-Offsets gemappt).
+- obja-Folge: LoadFromPlacement 0x800AC238, fn_800AE9F0, fn_800AF098,
+  fn_800AF12C, fn_800AF51C, TestFloorCollision 0x800B034C.
+- Alt-Liegt: DrawWithView 92,0 (Schedule), DrawGroundShadowAt 99,7
+  (1 Instr.), Attachment-DrawWithView 75 (toter blr), Walls s. unten.
 
 ## Lauf 68 — xobj_chr: drei Suit-Helper, alle 100 % (+3)
 
