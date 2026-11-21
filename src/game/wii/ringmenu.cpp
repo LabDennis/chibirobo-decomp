@@ -2,12 +2,22 @@
 // (its .text ends at 0x800E9D30; retail links ringmenupointer.cpp between the two). The GameCube
 // keeps all of it inside obja_chr.cpp; here the refresh rate is gRefreshRate instead of the
 // IDLE_SECOND constant and the pointer input is the Wii Remote's.
+#include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
+#include "game/inventory.h"
+#include "game/wii/cgame.h"
 #include "game/globals.h"
 #include "game/gmath.h"
 #include <math.h>
 
 extern s32 gRefreshRate;
+
+extern "C" {
+BOOL IsCarryingMug(XAction* action);
+BOOL IsCarryingSquirter(XAction* action);
+BOOL IsCarryingSpoon(XAction* action);
+BOOL IsCarryingToothbrush(XAction* action);
+}
 
 static inline void RaiseRingValue(f32& value, f32 target, f32 rate, u32 frames)
 {
@@ -209,4 +219,90 @@ const char* OctaMenu::GetItemLabel(s32 index)
 {
 	static char sLabel[8] = "";
 	return sLabel;
+}
+
+// one of his tools is out
+static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
+{
+	switch (item) {
+	case 0x10:
+		return IsCarryingToothbrush(&chr->mLift);
+	case 0x16:
+		return IsCarryingMug(&chr->mLift);
+	case 0x15:
+		return IsCarryingSpoon(&chr->mLift);
+	default:
+		return IsCarryingSquirter(&chr->mLift);
+	}
+}
+
+// he can use the tool, he has it or it is out
+static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
+{
+	s32 has = 1;
+	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
+		has = 0;
+	return has;
+}
+
+// which of his tools he can use, he has them or one of them is going; the same
+// helper xobj_chr.cpp inlines into GetAttachmentCountById
+static inline void UpdateAttachmentAvailability(AttachmentValues* values)
+{
+	WiiPlayerState* chr = gGame.GetPlayer();
+	values->SetCount(4, CanUseTool(chr, 0x10));
+	values->SetCount(6, CanUseTool(chr, 0x16));
+	values->SetCount(5, CanUseTool(chr, 0x15));
+	values->SetCount(7, CanUseTool(chr, 0x38));
+	values->SetCount(8, FALSE);
+}
+
+// how many of an attachment chibi robo has, the GameCube's helper of the same
+// name; on the Wii the availability refresh is inlined in the count lookup
+static inline s32 GetPlayerAttachmentCount(WiiPlayerState* player, s32 type)
+{
+	s32 index = player->mAttachments.Find(type);
+	if (index >= 0) {
+		UpdateAttachmentAvailability(&player->mAttachments);
+		return player->mAttachments.mEntries[index].mValue;
+	}
+	return -1;
+}
+
+// AtcMenu::Open, OctaMenu's plus the item counts. The row menu's start item is
+// not scrolled to on the Wii, the equipped one's row slot goes to
+// mLastPointedItem instead, pending or found; the keep flag clears on the way out
+/**
+ * @note Address: 0x800ECAE0
+ * @note Size: 0x8D8
+ */
+// NONMATCHING: register allocation only: identical instruction stream, retail keeps the
+// CanUseTool result in r26 and the slot-8 FALSE constant in r21, we put them in r21/r22 and
+// shift this/focus/i/item one register up
+void AtcMenu::Open(s32 focus)
+{
+	for (s32 i = 0; i < 8; ++i) {
+		if (mMenuType == 2)
+			mItems[i].mAvailable = 1;
+		else
+			mItems[i].mAvailable = GetPlayerAttachmentCount((WiiPlayerState*)mChr, mItems[i].mType);
+	}
+	OctaMenu::Open(focus);
+	if (mMenuType == 3) {
+		if (mPendingFirstVisibleItem >= 0) {
+			mLastPointedItem = mPendingFirstVisibleItem - 1;
+			if (mLastPointedItem < 0)
+				mLastPointedItem += 7;
+			mPendingFirstVisibleItem = -1;
+		} else if (((WiiPlayerState*)mChr)->GetAttachment() != 0 && !mKeepPointedItemOnOpen) {
+			for (s32 i = 0; i < 8; ++i) {
+				if (mItems[i].mType == ((WiiPlayerState*)mChr)->GetAttachment()) {
+					mLastPointedItem = i - mFirstVisibleItem;
+					if (mLastPointedItem < 0)
+						mLastPointedItem += 7;
+				}
+			}
+		}
+	}
+	mKeepPointedItemOnOpen = 0;
 }

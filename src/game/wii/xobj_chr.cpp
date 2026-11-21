@@ -2851,8 +2851,8 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		Vec rotation = { 0.0f, 0.0f, 0.0f };
 		DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
-		                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z,
-		                   width, height, rotation.x, rotation.y, rotation.z);
+		                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z, width, height,
+		                   rotation.x, rotation.y, rotation.z);
 
 		f32 glow = alpha * (look->_30 ? 0.5f + 0.5f * (f32)sin(PI * look->mPulse) : 0.5f);
 		if (glow < 0.0f)
@@ -2860,15 +2860,15 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 		if (look->_30) {
 			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, TRUE);
 			Vec maskRotation = { 0.0f, 0.0f, 0.0f };
-			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z,
-			                   0.99f * width, 0.99f * height, maskRotation.x, maskRotation.y, maskRotation.z);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z, 0.99f * width,
+			                   0.99f * height, maskRotation.x, maskRotation.y, maskRotation.z);
 			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
 			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_EQUAL, FALSE);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
-			DrawGsQuad(&gGame.mGs, 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow),
-			           0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow), pos.x, pos.y, pos.z, width,
-			           height, glowRotation.x, glowRotation.y, glowRotation.z);
+			DrawGsQuad(&gGame.mGs, 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow),
+			           0xFFFFFF00 | (u32)(255.0f * glow), pos.x, pos.y, pos.z, width, height, glowRotation.x, glowRotation.y,
+			           glowRotation.z);
 		}
 
 		if (look->mMode >= 0) {
@@ -2878,8 +2878,8 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, FALSE);
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
-			                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z,
-			                   width, height, look->mTarget.x, look->mTarget.y, look->mTarget.z);
+			                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z, width, height,
+			                   look->mTarget.x, look->mTarget.y, look->mTarget.z);
 		}
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
@@ -3077,8 +3077,7 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
 		menu->mCursorIndex = cursor;
 		if (active && menu->mFade >= 1.0f) {
 			if (gWiiPointer.Check(1)) {
-				if (menu->mPointedItem >= 0
-				    || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
+				if (menu->mPointedItem >= 0 || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
 					if (menu->mCursorIndex < 0) {
 						PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
 					} else if (menu->mItems[menu->mCursorIndex].mAvailable == 0) {

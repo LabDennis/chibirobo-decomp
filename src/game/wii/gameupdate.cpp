@@ -271,15 +271,15 @@ static inline BOOL LoadStartingAttachments(CGame* game)
 	if (LoadGlobalResourceData()) {
 		if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes its starting level from the global resource table
 			u32 level = GetStartingAttachmentLevel(0);
-			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 1, level);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 1, level);
 		}
 		if (!gCmdLineArgs.mPopperLevelOverride) { // slot 2
 			u32 level = GetStartingAttachmentLevel(1);
-			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 2, level);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 2, level);
 		}
 		if (!gCmdLineArgs.mRadarLevelOverride) { // slot 3
 			u32 level = GetStartingAttachmentLevel(2);
-			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 3, level);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 3, level);
 		}
 		return TRUE;
 	}

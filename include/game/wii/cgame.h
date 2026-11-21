@@ -2,6 +2,7 @@
 #define GAME_WII_CGAME_H
 
 #include "Dolphin/mtx.h"
+#include "game/attachmentvalues.h"
 #include "game/wii/cpad.h"
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
@@ -1049,9 +1050,9 @@ struct WiiPlayerState : public XObj {
 	BOOL mPadReset;            // _19E90, the GameCube's mPad.mReset, moved behind the Wii pad
 	u8 _19E94[4];              // _19E94
 	f32 mWalkHeading;          // _19E98, NANed until he walks
-	u8 mAttachments[0x48];     // _19E9C
-	XObjChrMenu mMenu;         // _19EE4, the attachment and costume rings
-	WiiOXMenu mOXMenu;         // _1A420
+	AttachmentValues mAttachments; // _19E9C, goes in the save as is
+	XObjChrMenu mMenu;             // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;             // _1A420
 	u8 _1B7B4[0x1B7B8 - 0x1B7B4];
 	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
 	// writers are decoded so far, the word reads as a whole

@@ -1104,7 +1104,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 				if (act->mOwner->mBatteryDrains) {
 					act->mOwner->mParams.SetBattery(act->mOwner->mParams.mBattery - act->mShotStrength);
 				}
-				s32 kind = GetAttachmentCountById((AttachmentValues*)act->mOwner->mAttachments, 2);
+				s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, 2);
 				for (s32 i = 0; i < 10; ++i) {
 					if (!act->mShots.mShot[i].mActive) {
 						StartPopperShot(&act->mShots.mShot[i], pos, kind, NULL, yaw, pitch, power, speed, range, act->mShotStrength);
