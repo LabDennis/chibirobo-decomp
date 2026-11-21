@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 94 fertig, Branch devin/lane3 @ 9efda6ef.
+Stand: Lauf 95 fertig, Branch devin/lane3 @ a5db3cc5.
 R24J01: 6658/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
@@ -8,6 +8,50 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 95 — XObjChr::ResumeSounds/PauseSounds (vtable _210/_20C) je 94,74 %
+
+- **Commit `a5db3cc5`** (3 Dateien): `void XObjChr::ResumeSounds(f32)`
+  @0x800F4280 und `void XObjChr::PauseSounds(f32)` @0x800F450C, je 0x28C.
+  Als echte Member implementiert (nicht extern "C"): Retail-Overrides
+  der XObj-Slots _20C/_210 — `li r4,1`=Pause @450C, `li r4,0`=Resume
+  @4280. Decls in xobj.h auf XObjChr (+2 Zeilen), Symbole in
+  R24J01/symbols.txt (+2 Zeilen, Mangled-Names wie ueberall).
+- **Layout aufgeloest:** Tabelle 1 = eigener `AnimSfxActor mActor`
+  @_1CC90 (mActor-Ptr +0x1CC94 — XObjChr-privates Member, direkter
+  Zugriff als Member-Funktion). Tabelle 2 (10×2 ab +0x1B08) =
+  `mPopper.mShots.mShot[i].mSfxActors[j]` (XActPopper@+0xD50, Shots
+  @+0x30, Shot 0xD9C, mSfxActors@_D84, mActor@+4). Tabelle 3 (2er ab
+  +0x95B8) = `mCharge.mSfxActors[2]` (Charge @Popper+0x8848 →
+  +0x9598, Actors @+0x20) — ctor-Beweis: XActPopper-ctor baut
+  AnimSfxActor-Array (ctor fn_800BF6BC, 0xC, ×2) an popper+0x8868;
+  "u8 mSfx[0x28]" in cgame.h ist der Charge-Tail (mMtx ab +0x14).
+- **Quell-Idiom:** exakt das aus AnimSfx::Pause/Resume (sound.cpp):
+  `if (slot->GetHandle() != NULL) { actor = slot->mActor;
+  if (actor != NULL) actor->mHandle.Pause/Resume(gRefreshRate*fade); }`
+  — GetHandle liefert (mActor!=0, mSound!=0, &mHandle), danach erneuter
+  mActor-Check, dann Resume=IsPause→BasicSound::Pause(false,f) bzw.
+  Pause=!IsPause→Pause(true,f). Framezahl = implizite f32→s32-Konversion
+  `gRefreshRate * fade` (0x4330/fctiwz @sda21).
+- **NONMATCHING (~94,74 %):** Instruktions-Multiset, Kontrollfluss und
+  Call-Set identisch (callcheck: keine Call-Diffs in beiden Fn). Rest =
+  Register-/Scheduling-Farbwahl: Retail haelt `this` in r31 und faltet
+  +0xD50 in Member-Offsets (Original-Header hatte typisiertes
+  `XActPopper mPopper`); unsere opaque-XAction-Deklaration erzwingt den
+  Cast — Inline-Cast-Schreibweise `((XActPopper*)&chr->mPopper)->...`
+  gehoert am naechsten dran (94,16→94,74), MWCC CSEt die Basis
+  trotzdem einmal in ein Register. Kandidat fuer Permuter/Schreib-
+  varianten, kein Trick niedergeschrieben.
+- **Gate:** 4 Editionen gebaut: R24J01 main.dol OK, 6658/8284
+  (matched-Count unveraendert, kein matched-Verlust vs. Baseline);
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK. callcheck R24J01: einziger
+  efftrail-Eintrag UpdateSpiralTrail _savegpr_25/26 (altbekannt).
+  check.py --source-only: disc files ok, format FAILED weil nur
+  clang-format 23.1.4 da ist (18.1.8 gefordert) — bekannter Blocker.
+- **Naechstes Ziel (Adressfolge):** Dtor-Thunks 0x800F48C8/48D0/48D8
+  (Symbol/vtable-Integration, falls nicht schon emittiert), dann
+  GetTargetFloorPosition @0x800F48E0 (0x304), danach IsLiftTargetPlug
+  0x800F4D70, IsCarryingToothbrush 0x800F4DB4, ... in Adressfolge.
 
 ## Lauf 94 — sieben Funktionen in efftrail.cpp (XObjDress/XObjDressOpt/XObjChr)
 
