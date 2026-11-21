@@ -1,14 +1,184 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 70 fertig, Branch devin/lane3 @8c490ad5. R24J01: 6637/8284 matched, main.dol: OK (+1,
+Stand: Lauf 71 fertig, Branch devin/lane3 @34038430+. R24J01: 6638/8284 matched, main.dol: OK (+1,
 kein Regress); GC: 17 files OK (alle drei); --non-matching linkt;
 callcheck R24J01: keine neuen Eintraege; check.py ueber
 CLANG_FORMAT=~/.local/opt/clang-format-18 + subprocess-Wrapper:
 471 files ok. Baselines .lane3_baseline/report_<V>.json auf
-Lauf-70-Stand.
+Lauf-71-Stand (nach 34038430 erneuert).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 71 — fn_800E8140 gematcht (+1); ResetObjectState dekodiert (Vorlage unten)
+
+- **Commit 34038430** `wii xobj_chr: match fn_800E8140 (eye camera
+  aim, 3-deg step both axes)` — 1 Datei, +42.
+- **`fn_800E8140` (0x1C4) = 100 %.** Setzt mEyeAimTarget.y/x auf
+  die Aufrufwinkel, mEyeAimStep.y/x = `DEG2RAD * 3` (ergibt exakt
+  das Pool-Literal 0x3D567750), wickelt Ist+Ziel mit `WrapAngle`
+  (gmath.h) nach [0,2pi), und bei |Ziel-Ist| > PI dreht es das Ziel
+  um +/-TWO_PI (Kuerzester Weg). Struktur identisch zu
+  `CObj::SetRotateY` (cobj.cpp ~1086) — zweimal hintereinander
+  (y dann x). Hilfsmittel alle vorhanden: WrapAngle/TWO_PI/DEG2RAD
+  aus gmath.h, PI ueber <math.h> bzw. stl/math.h, __fabsf.
+- Gate komplett gruen: R24J01 6638/8284 `main.dol: OK`; GC 3x
+  `17 files OK`; --non-matching linkt; Report-Diff nur die neue
+  Funktion; Format 471 ok; keine neuen Symbol-Dubs.
+- **fn_800CDC08 bleibt 98.69 %** — reine Registerwand, jetzt im
+  Kommentar dokumentiert: Retail legt die +0x10000-Basis in r4,
+  mCurrent in r0 und mRequested in r3 (Parameter-Register
+  wiederverwendet); unser Build basiert in r3 und laedt mRequested
+  zuerst in r4. Vier ehrliche Schreibweisen (Locals current/
+  requested, Operandentausch) erzeugen alle identischen Code —
+  Allokator fest verdrahtet. Nur Kommentar-Commit.
+- **GetPlayerFirstPersonEyePosition (0x800E589C, 99.975 %)** und
+  fn_800E59DC (95 %): Rest ist nur die Lage der String-Literale
+  "L_eye"/"R_eye"/"carry_obj_nll" im Pool (Retail +0x249/+0x24F
+  vs. unser +0x0E/+0x14) — Unit-Stringreihenfolge, loest sich erst
+  mit weiteren String-Benutzern in der Unit. Nicht erzwingen.
+
+## Naechster Schritt: ResetObjectState__7XObjChrFv (0x800CC294, 0x574)
+
+**Der grosse offene Brocken in xobj_chr.cpp.** GC-Vorlage komplett:
+`XObjChr::ResetObjectState` in src/game/obja_chr.cpp ~Zeile 10644.
+Wii-Asm: build/R24J01/asm/game/wii/xobj_chr.s Zeilen 6076-6428.
+r30 = this. Dekodierte Reihenfolge (Store-Offsets -> GC-Quelle):
+
+1. `XObj::ResetObjectState()` (direkter bl auf Basis-Impl).
+2. `vf28C(0)` — virtual Slot 0x28C (in cgame.h deklariert); ersetzt
+   GCs `SetPlayerEyeCameraJointsHidden(this,FALSE)`.
+3. Float-Loads: f2=lbl_805A4EB0 (0.0f), f1=lbl_805A4EBC (Wert
+   pruefen — vermutlich 2.0f -> mNearDistance), f0=lbl_805A4EC0
+   (1.0f -> mMoveSpeedScale), r29=-1, r28=0; r0 = *(0xA74) mit
+   `rlwinm 0,25,23` = &= ~0x80 gemaske (mLiftPlugFlags).
+4. Stores in Asm-Reihenfolge:
+   - stfs f2: 0x9D4,9D8,9DC,9E4,9E8,9EC,9F4,9F8,9FC,A0C,A08,A14,A10
+     = `mMotion.Reset(0,0,0)` + Stick-Nullen; vptr-Plaetze 9E0,9F0,
+     A00,A04 frei (CObjVec _09D4 enthaelt CVecs, vptr +0xC).
+     CObjVec::Reset-Definition nachschlagen.
+   - stw r29: A18=m_0A18 (mActionObjectIndex), A1C=m_0A1C
+     (mHitObjectIndex), dann A24,A20,A28,A30 =
+     `mFloorContactObjects[4]=[2]=[0]=[1]=-1` (Kette, RTL).
+   - A44 stw -1 -> mLastContactFloorIndex (NEU deklarieren).
+   - A58 stfs f1 -> mNearDistance (NEU, f32).
+   - A6C stw -1 -> mLetickerIndex (NEU, s32).
+   - A70 stw 0 -> GCs _A14 (NEU, s32).
+   - A74 stw r0(maskiert) -> mLiftPlugFlags &= ~0x80 (NEU, u32).
+   - A78 stw 0 -> mAPressed, A7C stw 0 -> mPressTimer (NEU, s32).
+   - A88 mIdleLoops=0, A8C mIdleTimer=0.0f (vorhanden).
+   - A94 mFlashCount, A90 mFlashTimer = `mFlashTimer = mFlashCount
+     = 0` (Count zuerst gespeichert — beide vorhanden).
+   - A98 mHitStrength=0.0f, A9C mMoveSpeedScale=1.0f (vorhanden).
+5. Sieben Action-`Init(this)` ueber Vtable-Slot _08 (vptr sitzt
+   bei Objekt+8 — 8 Bytes vor dem vptr): `addi r3,r30,off;
+   mr r4,r30; lwz r12,off+8(r30); lwz r12,8(r12); bctrl`.
+   B50 mHang (danach stw 0 -> 0xB7C = mHang.mStickAway=FALSE);
+   BA0 mJump (danach stfs f0 BEC,BE8 = mTargetStrength/mStrength
+   -> `mStrength = mTargetStrength = 0.0f`); BF4 mLadder (danach
+   stw 0 -> 0xC20 = mLadder.mBPressed); C38 mRope; C78 mPush;
+   CD0 mTumble; D18 mCopter (danach stfs 0xD44 = mCopter.mTime =
+   (f32)(u32)gRefreshRate — xoris/0x4330/lfd-Idiom).
+   `InitializePlayerPopperAction(&mPopper /*_D50*/, this)` und
+   `InitRadarAction(&mRadar /*_95D4*/, this)` — externe C-Fns in
+   src/game/wii/xactradar.cpp:850/1214.
+6. +0x9694..96A4: stfs -1.0 (lbl_805A4EB4) 9698 dann 9694 =
+   mFrameTime.mLastFrame/mFrame (Kette `mFrame = mLastFrame =
+   -1.0f`, NEU); stw 0 969C (drittes FrameTime-Feld o.
+   mIdleJointCooldown — Beleg pruefen); stw 0 96A0/96A4 =
+   mBlinkWait/mBlinkFrame (vorhandene Namen) ODER GCs
+   mAttachmentJoint/mAttachmentJointAnim=NULL — nach Nutzung
+   entscheiden.
+7. ZWEI `fn_800C659C(obj, this)`-Calls: obj = this+0x9810 und
+   this+0x987C — vermutlich mHeadTurn.mNeck/mHead (GC hatte drei
+   Joint-Rots: mJointRot + Neck + Head). fn_800C659C-Asm lesen,
+   Signatur/Typ bestimmen, Member deklarieren.
+8. mLook (XObjChrLook _98E8, cgame.h:921): stw 0 98E8=mActive;
+   stw -1 98EC=mMode; stw r30 98F0=mObject=this (GCs NULL-then-this
+   faellt zu einem Store zusammen — einmal `mLook.mObject = this`);
+   Stack-Null-Vec -> stfs 98F4/98F8/98FC = mOffset {0,0,0} (+0xC);
+   stfs 0.0 990C/9910/9914 = mPulse/mPhase/mFade.
+9. stw -1 9924 = mAttachmentRequest; stw 0 9928 = mAttachmentStep
+   (deklariert!), dann 992C/9930/9934 = mScriptAttach/
+   mNextClimbType/mClimbType (NEU, Kette `mClimbType =
+   mNextClimbType = mScriptAttach = mAttachmentStep = 0` — Step
+   zuerst).
+10. stfs 0.0 9DE0 = mFallDistance (NEU). NAN (__float_nan):
+    stfs 9DEC,9DE8,9DE4 = `mCameraTarget[0]=[1]=[2]=NAN` (f32[3]
+    _9DE4, NEU). stfs 1.0 9DF4 dann 9DF0 =
+    `mCameraTargetMargin = mCameraTargetMarginSetting = 1.0f`
+    (Margin _9DF0, Setting _9DF4, NEU). NAN: 9E00,9DFC,9DF8 =
+    `mHeldMoveAngle = mMoveAngle = mHeldStickAngle = NAN`
+    (HeldStickAngle _9E00 NEU; Reihenfolge: Stick zuerst).
+    stw 0 9E04 = mBatteryWarningFrames (NEU); stfs 0.0 9E08 =
+    mBatteryWarningAngle, 9E0C = mBatteryWarningFade (NEU —
+    Asm-Reihenfolge angle vor fade beachten);
+    stw 0 9E10 = mGaugeTarget=NULL; stfs 0.0 9E14 = mGaugeTime.
+11. FUENF `lwzu`-Vtable-Calls Slot 0x154 (= ResetObjectState):
+    `addis r3,r30,1; lwzu r12,-off(r3); lwz r12,0x154(r12); bctrl`
+    — r3 zeigt danach auf das Member (eingebettet, vptr bei +0):
+    9E20 mPlug (WiiPlayerPlug) -> `mPlug.ResetObjectState()`;
+    B580 mCopterObj, BF30 mPopperObj, C8E0 mRadarObj, D2A0 mOXObj
+    (u8-Blobs -> `((XObj*)mXObj)->ResetObjectState()` oder
+    entsprechender Cast — siehe Lauf-67-Notiz).
+12. Suit-Loop: r26 = this+0xDC68 = &mSuits.mObjects[0] (mObjects
+    bei WiiPlayerSuits+0x18), i=0..8, Stride 0x9D0, je
+    `->ResetObjectState()` -> `for (s32 i=0;i<9;++i)
+    mSuits.mObjects[i].ResetObjectState()`.
+13. Statusmaske: `lwz r0,0x150; lwz r6,0x154; r5=0xFF80FFFF;
+    and r7,r6,r5; and r0,r0,r8(-1)` -> `mStatus.mFlags &=
+    ~0x7F0000ULL` (Low-Word & 0xFF80FFFF, High-Word & -1; MWCC
+    emittiert die Identitaets-AND).
+14. r3 = this+0x20000: mMenu/mOXMenu/mDust-Bereich —
+    stw 0 +0x19EE4 = mMenu+0; zwei Highlight-Ringe unrolled:
+    stfs 0.0 x9 Stride 0x28 ab +0x19EEC (mMenu.mAtc) und ab
+    +0x1A17C (mMenu.mDrs) — `ClearRingHighlights(...)` zweimal
+    (Helfer-Def suchen); stw 0 +0x1A174; stw 0 +0x1A424 =
+    mOXMenu.mStarted=FALSE (+4), stw -1 +0x1A430, stfs 0.0
+    +0x1A434 = mOXMenu.mFade (WiiOXMenu cgame.h:849, XObjChrMenu
+    xchrmenu.h:9 — Feldnamen pruefen); stw 0 +0x1B7B8 =
+    mOnGround=0 (GCs `mInAir = TRUE`-Gegenstueck!);
+    `InitParticlePool(&mDust.mPtcl /*_1B7BC*/, mDust.mPtcls
+    /*_1B7D0*/, 0x50, 0x32)` — Signatur include/game/cptcl.h:88,
+    mDust-Member NEU.
+15. Point-Pool-Loop x10 (r31=gPointParticlePool, xobjchrstate.h):
+    `GetHudPointParticleOrigin(&gGame.mInfoScrn /*gGame+0xAF58*/,
+    &p.+0, &p.+4); stw 0 p+0xC; stw 0 p+0x74;
+    gPointParticleSlots[i]=NULL` — PointPtcl Stride 0x61C, Felder
+    +0xC/+0x74 pruefen (GC: burst.mState/display.mState).
+    Danach stw 0 gPointParticlePool+0x3D40 + ~40 stfs 0.0f ab
+    +0x3D50 Stride 8 — grosser Pool-Bereich genullt (Symbol/
+    Struktur fuer +0x3D40 ermitteln; evtl. memset oder unrolled
+    Loop in pointptcl.h-Dekl).
+16. Tail: stw 0 +0x1C9A4 = mGroundType=0; stfs 0.0 x17:
+    +0x1C9A8,AC,B0 (Vec _1C9A8 = GCs _158C4.Set(0,0,0)),
+    +0x1C9B8..C8 fuenf Floats (_1C9B8[3] + _1C9C4[2] — _1C9C4 als
+    f32[2] umdeklarieren), +0x1C9CC..D4 mEyeAim, +0x1C9DC..E4
+    mEyeAimTarget, +0x1C9EC..F4 mEyeAimStep (vptr-Slots D8/E8/F8
+    frei — CVecs bestaetigt); stfs 5.0 (lbl_805A4EC4) +0x1C99C =
+    mHeadOffset; stw 0 +0x1C9A0 = mHeadOffsetReady=FALSE;
+    `bl Reset__12AnimSfxActorFv` r3 = this+0x1CC90 — ZWEITER
+    AnimSfxActor (nicht mSfx _95AC): GCs
+    `gPlayerSuitChangeEffect.Reset()`-Gegenstueck ist hier ein
+    MEMBER — deklarieren (Groesse aus animsfx.h).
+17. Epilog _restgpr_25.
+
+Direkt danach: ResetPlayerAttachment (0x800CC83C) — gleiche
+Behandlung, Asm folgt in xobj_chr.s ab ~6430.
+
+### Liegt
+
+- fn_800CDC08: Registerwand (s.o.), dokumentiert, nicht
+  erzwingbar ohne Tricks.
+- String-Pool-Reste bei 0x800E589C/0x800E59DC: Unit-Reihenfolge,
+  wartet auf weitere String-Benutzer in der Unit.
+- ResetObjectState: Asm vollstaendig dekodiert (oben), Source noch
+  nicht geschrieben — naechster Lauf schreibt ihn in
+  src/game/wii/xobj_chr.cpp (Adressfolge: nach dem vorhandenen
+  Block, vor ResetPlayerAttachment 0x800CC83C), deklariert die
+  ~20 neuen Member in cgame.h an ihren Offsets (+STATIC_ASSERTs),
+  baut iterativ R24J01 und gleicht Store-Reihenfolgen ab.
+
 
 ## Lauf 70 — xobj_chr: SetPlayerEyeCameraJointsHidden gematcht (+1)
 
