@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 100 fertig, Branch devin/lane3 @ 0a433d47.
+Stand: Lauf 101 fertig, Branch devin/lane3 @ 5bf758d3.
 R24J01: 6667/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
@@ -8,6 +8,51 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 101 — xobj_map: die beiden Grid-Sorts portiert (je ~65 %)
+
+- **Commit `5bf758d3`** (2 Dateien): `fn_800C8E00` + `fn_800C92A8` in
+  src/game/wii/xobj_map.cpp geschrieben — 2 x 0x4A8, vorher 0 %,
+  jetzt 64,72 / 66,65 fuzzy (NONMATCHING-Kommentare stehen).
+- **Modell (an Retail-Asm verifiziert):** der MSL-Introsort aus
+  include/rvl_msl/algorithm, aber mit TIt*/TCmp*-ABI — Iterator-
+  Slots UND Komparator kommen per Zeiger (r3=rec**, r4=rec**,
+  r5=cmp*); der Loop liest *pfirst/*plast pro Runde neu und die
+  Partition schreibt den Resume-Iterator zurueck. Elemente sind
+  8-Byte-Records `XObjMapSortRec` (fn_800C9750 tauscht beide Worte),
+  der Komparator `fn_800C85D4` wird auf den ITERATOR-Werten
+  gerufen (`(*cmp)(m, j)` mit m:rec*).
+- **Zwei Instanzen:** fn_800C8E00 = oeffentlicher Einstieg, ruft in
+  den Partitions-Aesten den Worker fn_800C92A8; der Worker ruft
+  sich selbst rekursiv — deckt sich mit dem MSL-Muster
+  `sort<TIt,TCmp>` → `sort<TIt,TCmp&>` (zwei Template-Instanzen,
+  je eigener `static int shuffle` in .sdata → Retail lbl_805A1090 /
+  lbl_805A1094, unclaimed/auto, Reihenfolge stimmt).
+- **fn_800C85EC NICHT portiert** — der Grid-Build braucht Retails
+  Vektor-Grow MIT `std::length_error`/`std::logic_error` und dem
+  `std::tr1::detail::shared_ptr_deleter<char, default_delete<char[]>>`
+  -Rep (Vtables 0x80303FA0/0x80303FC8/0x80303FE4 — wii_units.md Nr. 59
+  bestaetigt alle drei als Wii-eigen). Kein rvl_msl <stdexcept>/
+  <vector>/<memory> im Repo → ehrliche Rekonstruktion des MSL-
+  shared_ptr-Reps ist ein eigenes Projekt. Liegt-Eintrag unten.
+- **Gate:** R24J01 `main.dol: OK` 6667/8284 (= Stand, keine neuen
+  matched, kein Verlust); GGTE01/GGTJ01_01/GGTP01 je `17 files OK`;
+  clang-format 18.1.8 `--dry-run --Werror` auf der Datei sauber;
+  splits.txt/symbols.txt unberuehrt. check.py --source-only als
+  Ganzes lief diese Sitzung nicht (Tool-Call abgelehnt) — Format-
+  Teil ist mit exakt dem CI-Binary auf der geaenderten Datei geprueft.
+- **Liegt:** fn_800C85EC (0x814, Frame 0x160, f30/f31 + r18-r31):
+  Vektor-Grow mit length_error-Würfen (Strings ab lbl_802DA4B4),
+  CTrigon-Iterierung → Zellbereich → push {tri,y} → Sort-Calls auf
+  fn_800C8E00(&first,&last,&cmp). Options: (a) rvl_msl <stdexcept>+
+  <memory>+<vector> ehrlich nachbauen (gross, loest auch die
+  Tail-Dtoren/Getter fn_800C9BEC..9E7C mit), (b) Grow ohne Throw
+  schreiben und NONMATCHING stehen lassen (~70-80 % erwartbar),
+  (c) auslassen und obja-Rest/cjanim weiter (siehe Lauf-100-Liste).
+- **Naechster Schritt:** fn_800C85EC — Variante (b) als erstes,
+  damit Struktur + Sort-Calls stehen; Throw-Maschinerie (a) nur mit
+  grossem Zeitbudget. Sonst Adressreihenfolge: xacttumble/xactradar/
+  xobjattachment/xobjplug/xobjplugcord oder objb_act UpdatePlayerJumpAction.
 
 ## Lauf 100 — xobjs: XObjDrawList::Initialize + zwei Hand-Dtoren (+3)
 

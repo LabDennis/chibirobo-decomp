@@ -259,6 +259,268 @@ extern "C" void fn_800C9B84(XObjMap* map)
 
 typedef s32 (*XObjMapSortCmp)(XObjMapSortRec*, XObjMapSortRec*);
 
+extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortRec** c, XObjMapSortCmp* cmp);
+extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp);
+
+// the record introsort the grid build runs once over each finished cell list:
+// the MSL algorithm's sort, but the caller's iterator slots and the comparator
+// arrive by pointer, so the loop re-reads *pfirst/*plast and the partition tail
+// writes back where the next pass should resume. retail emits the algorithm
+// twice — this public entry hands its smaller partition to the loop worker
+// fn_800C92A8 below, which recurses to itself; each instantiation keeps its
+// own shuffle counter in .sdata
+/**
+ * @note Address: 0x800C8E00
+ * @note Size: 0x4A8
+ */
+extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp)
+{
+	static int shuffle = -4;
+
+	while (TRUE) {
+		XObjMapSortRec* first = *pfirst;
+		XObjMapSortRec* last  = *plast;
+		s32 len               = last - first;
+		if (len <= 1) {
+			return;
+		}
+		if (len <= 20) {
+			if (first != last) {
+				for (XObjMapSortRec* j = last - 1; first != j; first++) {
+					XObjMapSortRec* it = first;
+					for (XObjMapSortRec* i = first + 1; i != last; i++) {
+						if ((*cmp)(i, it) != 0) {
+							it = i;
+						}
+					}
+					if (it != first) {
+						XObjMapSortRec t = *it;
+						*it              = *first;
+						*first           = t;
+					}
+				}
+			}
+			return;
+		}
+
+		XObjMapSortRec* m = first + (len / 4 + shuffle % 5);
+		if (++shuffle >= 5) {
+			shuffle = -4;
+		}
+		XObjMapSortRec* i1 = first + (len * 3 / 4 + shuffle % 5);
+		if (++shuffle >= 5) {
+			shuffle = -4;
+		}
+		XObjMapSortRec* j = last - 1;
+		fn_800C9750(&m, &i1, &j, cmp);
+
+		m  = first;
+		i1 = j;
+		while ((*cmp)(m, j) != 0) {
+			m++;
+		}
+		do {
+			i1--;
+			if (m == i1) {
+				break;
+			}
+		} while ((*cmp)(i1, j) == 0);
+
+		if (m < i1) {
+			XObjMapSortRec t = *m;
+			*m               = *i1;
+			*i1              = t;
+			m++;
+			while (TRUE) {
+				while ((*cmp)(m, j) != 0) {
+					m++;
+				}
+				while ((*cmp)(--i1, j) == 0) { }
+				if (m < i1) {
+					XObjMapSortRec t = *m;
+					*m               = *i1;
+					*i1              = t;
+					m++;
+				} else {
+					break;
+				}
+			}
+		}
+
+		if (m == first) {
+			XObjMapSortRec t = *m;
+			*m               = *j;
+			*j               = t;
+			m++;
+
+			i1 = last;
+			if ((*cmp)(first, --i1) == 0) {
+				while (m != last && (*cmp)(first, m) == 0) {
+					m++;
+				}
+				if (m < i1) {
+					XObjMapSortRec t = *m;
+					*m               = *i1;
+					*i1              = t;
+				}
+			}
+			if (m < i1) {
+				while (TRUE) {
+					while ((*cmp)(first, m) == 0) {
+						m++;
+					}
+					while ((*cmp)(first, --i1) != 0) { }
+					if (m < i1) {
+						XObjMapSortRec t = *m;
+						*m               = *i1;
+						*i1              = t;
+						m++;
+					} else {
+						break;
+					}
+				}
+			}
+			*pfirst = m;
+		} else if (m - first < last - m) {
+			XObjMapSortRec* nf = first;
+			fn_800C92A8(&nf, &m, cmp);
+			*pfirst = m;
+		} else {
+			XObjMapSortRec* nl = last;
+			fn_800C92A8(&m, &nl, cmp);
+			*plast = m;
+		}
+	}
+}
+
+// NONMATCHING: same algorithm as the public entry but its partition recursion
+// stays inside itself; the residue is register and frame allocation — retail
+// lays the locals out differently between the two instantiations
+// 0x800C92A8, the sort's loop worker: same MSL introsort, recursing to itself
+/**
+ * @note Address: 0x800C92A8
+ * @note Size: 0x4A8
+ */
+extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp* cmp)
+{
+	static int shuffle = -4;
+
+	while (TRUE) {
+		XObjMapSortRec* first = *pfirst;
+		XObjMapSortRec* last  = *plast;
+		s32 len               = last - first;
+		if (len <= 1) {
+			return;
+		}
+		if (len <= 20) {
+			if (first != last) {
+				for (XObjMapSortRec* j = last - 1; first != j; first++) {
+					XObjMapSortRec* it = first;
+					for (XObjMapSortRec* i = first + 1; i != last; i++) {
+						if ((*cmp)(i, it) != 0) {
+							it = i;
+						}
+					}
+					if (it != first) {
+						XObjMapSortRec t = *it;
+						*it              = *first;
+						*first           = t;
+					}
+				}
+			}
+			return;
+		}
+
+		XObjMapSortRec* m = first + (len / 4 + shuffle % 5);
+		if (++shuffle >= 5) {
+			shuffle = -4;
+		}
+		XObjMapSortRec* i1 = first + (len * 3 / 4 + shuffle % 5);
+		if (++shuffle >= 5) {
+			shuffle = -4;
+		}
+		XObjMapSortRec* j = last - 1;
+		fn_800C9750(&m, &i1, &j, cmp);
+
+		m  = first;
+		i1 = j;
+		while ((*cmp)(m, j) != 0) {
+			m++;
+		}
+		do {
+			i1--;
+			if (m == i1) {
+				break;
+			}
+		} while ((*cmp)(i1, j) == 0);
+
+		if (m < i1) {
+			XObjMapSortRec t = *m;
+			*m               = *i1;
+			*i1              = t;
+			m++;
+			while (TRUE) {
+				while ((*cmp)(m, j) != 0) {
+					m++;
+				}
+				while ((*cmp)(--i1, j) == 0) { }
+				if (m < i1) {
+					XObjMapSortRec t = *m;
+					*m               = *i1;
+					*i1              = t;
+					m++;
+				} else {
+					break;
+				}
+			}
+		}
+
+		if (m == first) {
+			XObjMapSortRec t = *m;
+			*m               = *j;
+			*j               = t;
+			m++;
+
+			i1 = last;
+			if ((*cmp)(first, --i1) == 0) {
+				while (m != last && (*cmp)(first, m) == 0) {
+					m++;
+				}
+				if (m < i1) {
+					XObjMapSortRec t = *m;
+					*m               = *i1;
+					*i1              = t;
+				}
+			}
+			if (m < i1) {
+				while (TRUE) {
+					while ((*cmp)(first, m) == 0) {
+						m++;
+					}
+					while ((*cmp)(first, --i1) != 0) { }
+					if (m < i1) {
+						XObjMapSortRec t = *m;
+						*m               = *i1;
+						*i1              = t;
+						m++;
+					} else {
+						break;
+					}
+				}
+			}
+			*pfirst = m;
+		} else if (m - first < last - m) {
+			XObjMapSortRec* nf = first;
+			fn_800C92A8(&nf, &m, cmp);
+			*pfirst = m;
+		} else {
+			XObjMapSortRec* nl = last;
+			fn_800C92A8(&m, &nl, cmp);
+			*plast = m;
+		}
+	}
+}
+
 // NONMATCHING: same instruction list; retail saves the four arguments into
 // r27-r30 in order and keeps the second record pointer for the final stores,
 // our build reorders the saved registers and reloads it once
