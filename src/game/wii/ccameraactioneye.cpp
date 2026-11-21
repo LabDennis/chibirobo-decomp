@@ -54,23 +54,17 @@ extern "C" WiiCameraPoint fn_8016A844(const EyeCurve* curve, f32 t);
 inline bool PlayerCanLook()
 {
 	WiiPlayerState* player = EYE_PLAYER;
-	bool busy              = player->mLift.mState == 7 || player->mLift.mState == 8;
-	busy                   = busy || player->mLift.mState == 9;
-	busy                   = busy || player->mLift.mState == 11;
-	busy                   = busy || player->mLift.mState == 12;
-	busy                   = busy || player->mLift.mState == 13;
-	busy                   = busy || player->mLift.mState == 14;
-	busy                   = busy || player->mLift.mState == 15;
-	busy                   = busy || player->mLift.mState == 16;
-	busy                   = busy || player->mLift.mState == 17;
-	busy                   = busy || player->mLift.mState == 18;
-	busy                   = busy || player->mLift.mState == 19;
-	bool result            = !busy && player->mHang.mState == 0;
-	result                 = result && player->mJump.mState == 0;
-	result                 = result && player->mLadder.mState == 0;
-	result                 = result && player->mRope.mState == 0;
-	result                 = result && player->mPush.mState == 0;
-	result                 = result && player->mTumble.mState == 0;
+	bool result            = false;
+	bool busy              = false;
+	if (!(player->mLift.mState != 7 && player->mLift.mState != 8 && player->mLift.mState != 9 && player->mLift.mState != 11
+	      && player->mLift.mState != 12 && player->mLift.mState != 13 && player->mLift.mState != 14 && player->mLift.mState != 15
+	      && player->mLift.mState != 16 && player->mLift.mState != 17 && player->mLift.mState != 18 && player->mLift.mState != 19)) {
+		busy = true;
+	}
+	if (!busy && player->mHang.mState == 0 && player->mJump.mState == 0 && player->mLadder.mState == 0 && player->mRope.mState == 0
+	    && player->mPush.mState == 0 && player->mTumble.mState == 0) {
+		result = true;
+	}
 	return result;
 }
 
