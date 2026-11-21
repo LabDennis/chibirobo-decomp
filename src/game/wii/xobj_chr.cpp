@@ -12,6 +12,7 @@
 #include "game/wii/cgame.h"
 #include "game/xobjattachment.h"
 #include "game/wii/xchrmenu.h"
+#include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
 #include "game/pointptcl.h"
@@ -2961,6 +2962,142 @@ void OctaMenu::Select(s32 result)
 		aim->m_54                     = 0.0f;
 	}
 	mPointedItem = mPreviousPointedItem = -1;
+}
+
+// the head-aim yaw for the row menu's seven visible slots, degrees; the octa ring's
+// per-slot aims keep the GameCube's gEquipmentHeadYaw/gEquipmentHeadPitch names and
+// its cursor+1 indexing, the Wii retuned the pitch table's tail
+f32 gEquipmentRowHeadYaw[7] = { -30, -20, -10, 0, 10, 20, 30 };
+f32 gEquipmentHeadYaw[9]    = { 0, -20, 0, 20, 20, 20, 0, -20, -20 };
+f32 gEquipmentHeadPitch[9]  = { -30, -20, -10, 0, 10, 0, -10, -3, -2 };
+
+extern "C" void ResetPopperShot(XActPopperShot* shot);
+
+// HandleEquipmentRingInput, the GameCube's function of the same name: the remote's
+// direction codes sit in the high word of the pad's u64 button fields, the GameCube
+// pad's in the low. The row menu (type 3) scrolls its seven slots with the dpad, the
+// octa ring maps a direction straight to a slot; where the GameCube turned the
+// neck/head joints the Wii writes the head-aim record at WiiPlayerState _987C.
+// 1 picked an item, -1 closed the ring
+// NONMATCHING (~81%): retail anchors the three aim tables at the unit's .data
+// jumptable (r31 + 0x1A4C/0x1A68/0x1A8C) — that anchor resolves only once this
+// unit's .data is complete; the rest is the register-allocation and scheduling
+// fallout of the missing anchor
+/**
+ * @note Address: 0x800E96CC
+ * @note Size: 0x660
+ */
+extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
+{
+	BOOL settled = menu->mOpen > 1 && (menu->mGlow == 0.0f || menu->mGlow == 1.0f);
+	if (settled && menu->mPointedItem >= 0 && menu->mFocus != 0) {
+		return 1;
+	}
+	if (menu->mOpen > 0 && menu->mFocus == 0) {
+		s32 cursor;
+		if (menu->mMenuType == 3) {
+			if ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)) {
+				u64 dirs = active ? gWiiPointer.mRepeat & 0x0F000000001E0000 : 0;
+				if (dirs & 0x0100000000020000) {
+					if (--menu->mLastPointedItem < 0) {
+						menu->mLastPointedItem = 6;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (dirs & 0x0200000000040000) {
+					if (++menu->mLastPointedItem >= 7) {
+						menu->mLastPointedItem = 0;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+			}
+			if (menu->mFocus != 0) {
+				cursor = menu->mCursorIndex = -1;
+			} else {
+				cursor = menu->mCursorIndex = (menu->mFirstVisibleItem + menu->mLastPointedItem) % 7;
+			}
+		} else {
+			u64 dirs = active ? gWiiPointer.mButton & 0x0F000000001E0000 : 0;
+			if (dirs == 0x120000 || dirs == 0x0900000000000000) {
+				cursor = 0;
+			} else if (dirs == 0x100000 || dirs == 0x0800000000000000) {
+				cursor = 1;
+			} else if (dirs == 0x140000 || dirs == 0x0A00000000000000) {
+				cursor = 2;
+			} else if (dirs == 0x040000 || dirs == 0x0200000000000000) {
+				cursor = 3;
+			} else if (dirs == 0x0C0000 || dirs == 0x0600000000000000) {
+				cursor = 4;
+			} else if (dirs == 0x080000 || dirs == 0x0400000000000000) {
+				cursor = 5;
+			} else if (dirs == 0x0A0000 || dirs == 0x0500000000000000) {
+				cursor = 6;
+			} else if (dirs == 0x020000 || dirs == 0x0100000000000000) {
+				cursor = 7;
+			} else {
+				cursor = menu->mCursorIndex;
+			}
+		}
+		XObjScnCamInitRec* aim = (XObjScnCamInitRec*)((WiiPlayerState*)menu->mChr)->_987C;
+		if (menu->mMenuType == 3) {
+			if (__fpclassifyf(menu->mHeadTurn) == FP_NAN) {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = DEG2RAD * (6.0f * (menu->mRowOffset * menu->mRowOffset * menu->mRowOffset));
+				aim->m_28                     = DEG2RAD * gEquipmentRowHeadYaw[menu->mLastPointedItem];
+			} else {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = menu->mHeadTurn;
+				aim->m_28                     = DEG2RAD * gEquipmentRowHeadYaw[menu->mLastPointedItem];
+			}
+		} else {
+			if (__fpclassifyf(menu->mHeadTurn) == FP_NAN) {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = DEG2RAD * gEquipmentHeadPitch[cursor + 1];
+				aim->m_28                     = DEG2RAD * gEquipmentHeadYaw[cursor + 1];
+			} else {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = menu->mHeadTurn;
+				aim->m_28                     = DEG2RAD * gEquipmentHeadYaw[cursor + 1];
+			}
+		}
+		if (menu->mCursorIndex != cursor || (menu->mPointedItem >= 0 && menu->mPointedItem != menu->mPreviousPointedItem)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		menu->mCursorIndex = cursor;
+		if (active && menu->mFade >= 1.0f) {
+			if (gWiiPointer.Check(1)) {
+				if (menu->mPointedItem >= 0
+				    || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
+					if (menu->mCursorIndex < 0) {
+						PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					} else if (menu->mItems[menu->mCursorIndex].mAvailable == 0) {
+						PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					} else {
+						menu->ConfirmSelection();
+						XActPopper* popper = (XActPopper*)&((WiiPlayerState*)menu->mChr)->mPopper;
+						for (s32 i = 0; i < 10; i++) {
+							ResetPopperShot(&popper->mShots.mShot[i]);
+						}
+						return 1;
+					}
+				}
+			} else if (gWiiPointer.Check(2) || gWiiPointer.Check(0x100)) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }
 
 // nothing to decide on the base menu
