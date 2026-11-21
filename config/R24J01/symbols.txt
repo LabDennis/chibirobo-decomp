@@ -492,6 +492,7 @@ __dt__10XActCopterFv = .text:0x800BF44C; // type:function size:0x40 scope:weak
 __ct__10XActPopperFv = .text:0x800BF48C; // type:function size:0x88 scope:weak
 __ct__14XActPopperShotFv = .text:0x800BF514; // type:function size:0x9C scope:weak
 dtor_800BF5B0 = .text:0x800BF5B0; // type:function size:0x40 scope:weak
+__ct__10CPtclDust2Fv = .text:0x800BF5F0; // type:function size:0x24 scope:weak
 __dt__14PopperShotDustFv = .text:0x800BF654; // type:function size:0x68 scope:weak
 __ct__12AnimSfxActorFv = .text:0x800BF6BC; // type:function size:0x18 scope:weak
 __dt__12AnimSfxActorFv = .text:0x800BF6D4; // type:function size:0x40 scope:weak
