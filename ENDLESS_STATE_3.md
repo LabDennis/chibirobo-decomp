@@ -1,18 +1,113 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 75 fertig, Branch devin/lane3 (Tip 2fe44eaf).
-R24J01: 6641/8284 matched (+2 ggue. Header-Stand Lauf 74), main.dol:
-OK (kein Regress; fuzzy 68,64 %); GC: alle drei gebaut, 17 files OK
-je Edition; --non-matching-Link: OK (606 Objekte, main.dol linkt);
-callcheck R24J01+GGTE01: kein xobj_chr-Eintrag (nur bekannte
-objb_act-Funde); clang-format-18.1.8-Binary GEFUNDEN unter
-~/.local/opt/clang-format-18/bin/clang-format — beide geaenderten
-Dateien sind format-sauber (dry-run), check.py selbst vom Bediener
-verworfen (s. Liegt); disc ok.
+Stand: Lauf 76 fertig, Branch devin/lane3 (Tip 76399b35).
+R24J01: 6641/8284 matched, main.dol: OK; GC: je 17 files OK;
+--non-matching linkt; callcheck ohne Release-Eintrag; format ok;
+keine neuen Symbol-Dubs; all-releases@8a3860d3 ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
-Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
- .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 76 — XObjChr::Release committet (96,27 %); fn_800CCE68 dekodiert
+
+- **Commit 76399b35** `wii xobj_chr: XObjChr::Release rekonstruiert
+  (96,27 %)` — 4 Dateien: xobj_chr.cpp (_40, GC-Release +
+  RemovePlayerSuit), xobj.h (virtual void Release(); _40),
+  cgame.h (mPadReset _19E90, mSavedTarget/_Anim/_State
+  _1C980/_1C984/_1C988), symbols.txt (Release__7XObjChrFv
+  .text:0x800CE054 size 0x438). Restdiff = dokumentierte
+  Unit-Vollstaendigkeits-Wand (this in r30 vs r31, Pool-Label).
+- **fn_800CCE68 = XObjChr::LoadFromPlacement (Wii)** — komplett
+  dekodiert, siehe eigenen Abschnitt unten. Naechster Schritt:
+  schreiben + Member deklarieren.
+
+## fn_800CCE68 = XObjChr::LoadFromPlacement — Dekodierung (Lauf 76)
+
+Signatur: `BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)`
+(vslot _158-Override; r3=this, r4=&info wird an XObj::LoadFromPlacement
+weitergereicht). 0x840 B, Sprungtabelle jumptable_80304008, Faelle
+0..0xD auf `chr->mLoadStep` (this+0x9E18, NEU `s32` — Pad `u8
+_9E18[8]` in cgame.h vorhanden). GC-Vorlage: `XObjChr::LoadFromPlacement`
+in src/game/obja_chr.cpp (~Zeile 10268, mLoadStep-Maschine bis 12).
+this in r30. Pattern `++mLoadStep` pro Fall (Retail: lwz/addi/stw auf
+this+0x9E18 via addis+(-0x61e8)).
+
+**Neue Member (cgame.h):**
+- `s32 mLoadStep; // _9E18` (+ `u8 _9E1C[4]`)
+- this+0x9AC..0x9C4: SIEBEN `nw4r::g3d::ResNode` (Stride 4) im Pad
+  `u8 _09A8[0x9C8-0x9A8]` — GetResNode-Ergebnisse, Namen aus
+  lbl_802DAA6C: _9AC "second_null", _9B0 "head_chn", _9B4 "head_cap",
+  _9B8 "l_mabuta_down", _9BC "l_mabuta_up", _9C0 "r_mabuta_down",
+  _9C4 "r_mabuta_up" (mabuta=Lid, gehoert zu mBlinkAnims). Als Array
+  `ResNode mHeadNodes[7]` oder einzeln — Retail speichert in Folge.
+- this+0x1C774 und +0x1C878 (Stride 0x104): zwei TPL-Bloecke
+  (CTexObj-Felder + 0xC4-Byte-Block), Typ z.B. `u8 mTexBlocks[2][0x104]`
+  oder Struktur {CTexObj tex; u8 data[0xC4];} — pruefen.
+- this+0x1CC90: Manager-Objekt (+4=SoundArchivePlayer*, +8=Sound3DManager*);
+  this+0x1CC94: `CSound3DActor* mSoundActor` (new 0xA0, vtbls
+  CSound3DActor+0x1C bei +0x54, NULL bei +0x80).
+
+**Vorhandene Helfer/Member:** mPlug _9E20 (WiiPlayerPlug, vslot
+0x158 = LoadFromPlacement), mCopterObj _B580 / mPopperObj _BF30 /
+mRadarObj _C8E0 / mOXObj _D2A0 (u8-Blobs -> `(XObj*)`), mSuitParts[3]
+= this+0x151C8 (WiiSuitPart, LoadFromPlacement), GetAttachment() =
+`mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment`
+(cgame.h:1079), mPopper+4 = mPopper.mState (this+0xD54),
+mBlinkWait _96A0 + mBlinkFrame _96A4 (beide =0), mStatus.mFlags.
+`EnableScnObjCallbackExecOp(op)` am ScnObj, ExecOp 1 = EXECOP_CALC_WORLD
+(xobj.h:800/820). mObject _E8: m_pScnMdl bei +8 (=0xF0).
+
+**Faelle:**
+- case 0: `if (XObj::LoadFromPlacement(this,&info))` — nein: direkter
+  `bl LoadFromPlacement__4XObjFRC9CoordInfo` (Basis-Call). Bei TRUE
+  && mObject.m_pScnMdl!=NULL: 7x GetResNode(name) (vslot _50) ->
+  obige Member, dann `m_pScnMdl->EnableScnObjCallbackExecOp(
+  EXECOP_CALC_WORLD)`. ok-Flag -> bei FALSE break (Exit). Danach:
+  `mStatus.mFlags |= 0x200000000000ULL` (hi-Word 0x150 |= 0x2000),
+  `mBlinkWait = mBlinkFrame = 0`, SetAnmFlag(mObject+0xC =
+  &m_blend /*NW_ChrBlend, AnmObj*/, 8, TRUE) und (…,0x10,TRUE);
+  `++mLoadStep`; Fallthrough.
+- case 1: `if (!chr->mPlug.LoadFromPlacement(CoordInfo(GetSpawnData
+  (0xF)))) break; ++mLoadStep;` Fallthrough.
+- case 2: Copter: LoadFromPlacement(GetSpawnData(0x11)), dann
+  `((XObjAttachment*)mCopterObj)->SetParent(GetWorldMtx("head"),TRUE)`
+  (vslot _A4 GetWorldMtx(name), _294 SetParent). `++mLoadStep`.
+- case 3: Popper: GetSpawnData(0x12), SetParent("l_arm_chn",TRUE). ++.
+- case 4: Radar: GetSpawnData(0x13), SetParent("head",TRUE). ++.
+- case 5: OX: GetSpawnData(0x14), SetParent("head",TRUE). ++.
+- case 6: `++mLoadStep` (leer — GCs OX-Mark-Load faellt weg).
+- case 7: `mSuitParts[3].LoadFromPlacement(CoordInfo(GetSpawnData
+  (0x24)))`; bei FALSE break. `++mLoadStep`.
+- case 8: `u32 flags[5] = {mFlags&0x800000, mFlags&0x200000,
+  mFlags&0x40, mFlags&0x20000, mFlags&0x400000}` (lo-Word 0x154,
+  rlwinm-Bits 8,10,25,14,9); `vf1A0(flags)`; dann `if ((mFlags &
+  0x1000000) && IsStageDataLoaded()) vf1A8((*(u8**)GetStageEnvironment())
+  [9] / 100.0f);` (u8->f32 via xoris/0x4330/lfd lbl_805A4ED8, fdivs
+  lbl_805A4ED4=100.0f). `++mLoadStep`.
+- case 9: `gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->
+  descriptorArray[123],0)` + `[124]` — Retail: tpl=gGame+0x4C30,
+  desc=+0x8 -> +0x3D8 (=Idx 123), +0x3E0 (=124); CTexObj ab
+  gGame+0x4C34. Kopiert je Block: 13 Worte CTexObj + 0xC4 Bytes
+  ab gGame+0x4C6C -> this+0x1C774 / +0x1C878 (memcpy-Loop 24x8+4).
+  `++mLoadStep`.
+- case 10: `++mLoadStep` (leer).
+- case 11: `switch (GetAttachment()) {1: ShowIdlePlayerCopter((XObjCopter*)
+  mCopterObj); 2: mPopper.mState=3; 3: ShowIdlePlayerRadar((XObjRadar*)
+  mRadarObj);}` — Retail-Form: r0 = mAttachmentRequest>=0?req:mAttachment;
+  dreifach cmpwi-Kette 1/2/3. `++mLoadStep`.
+- case 12: `if (this+0x1CC94==NULL) { mgr=this+0x1CC90; CSound3DActor*
+  a = new(0xA0) CSound3DActor(mgr->+4, mgr->+8); setze vtbl +0/+0x54,
+  +0x80=0; this+0x1CC94 = a; }` `++mLoadStep`.
+- case 13 = leer? -> Exit-Pfad: `if (mLoadStep > 0xD) { mStatus.mFlags
+  |= 0x40000ULL; mLoadStep = 0; return TRUE; } return FALSE;`
+
+**Beleg-Details:** Extab vorhanden (CoordInfo-Temps mit vtbl auf
+Stack). Strings fuellen den Unit-Pool in Retail-Reihenfolge nach
+(hilft ApplyPlayerSuit/Release/UpdatePlayerSuitChange gegen 100).
+Callcheck beachten: kein neuer externer Name ausser ggf.
+EnableScnObjCallbackExecOp/CSound3DActor-Ctor (beide in symbols.txt
+pruefen). symbols.txt: `LoadFromPlacement__7XObjChrFRC9CoordInfo =
+.text:0x800CCE68; size:0x840` eintragen.
 
 ## Lauf 75 — xobj_chr: UpdatePlayerSuitChange rekonstruiert (95,98 %)
 
