@@ -1,13 +1,67 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 97 fertig, Branch devin/lane3 @ 90e99c75.
-R24J01: 6662/8284 matched, main.dol: OK; GC: je 17 files OK;
+Stand: Lauf 98 fertig, Branch devin/lane3 @ 15eb683b.
+R24J01: 6664/8284 matched, main.dol: OK; GC: je 17 files OK;
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 98 — InitializeObject-Signatur + xobjplug-Datenclaims
+
+- **Commits:** `14237d71` (Signatur), `15eb683b` (Splits), plus die
+  beiden aus dem Lauf-97-Nachgang: `ae855ebc` (Thunk-/Dtor-Namen,
+  +2 matched auf 6664) und `d0b5156d` (clang-format-18).
+- **Echter Header-Befund:** `XObjPlug::InitializeObject` ist `Fv`,
+  nicht `FUl` — Retail-0x8010F944 liest r4 nie und ruft
+  `XObj::InitializeObject()`. Unsere `u32`-Deklaration hing einen
+  zusaetzlichen Virtual-Slot ans Vtable-Ende (0x290 statt 0x28C);
+  Slot _14C enthielt die geerbte `__4XObjFv` statt des Overrides.
+  Gefunden ueber Vtable-Eintragsvergleich mit xobjattachment/
+  xobjwireeff (gleiche Slotposition, andere Signatur = eigener Slot
+  kann es nicht sein). Fix: Deklaration (R24J01-Klasse in
+  xobjattachment.h), Definition (xobjplug.cpp), Symbolname `FUl→Fv`.
+  Codegen-neutral (weiterhin 100 %), aber Layout jetzt exakt Retail.
+- **Neue Splits-Claims xobjplug** (ehrliche Datenmodellierung):
+  `.sdata 0x805A1140-0x805A1150` (unsere __RTTI__8XObjPlug/
+  __RTTI__11XObjWireEff landen exakt auf lbl_805A1140/lbl_805A1148)
+  und `.sdata2 0x805A5368-0x805A5390` (unsere 9 Float-Literale
+  decken sich 1:1 mit Retails Pool). Ergebnis: saemtliche
+  `@sda21`-Argument-Diffs in UpdateObject weg (objdiff-Objekt
+  .text 99,73→99,86). Fuzzy-Score unveraendert 99,94723.
+- **Nicht claimbar, dokumentiert:** `.data` braechte
+  Start 0x80307804 (hang$+0x34→lbl_80307838, Vtables exakt) —
+  dtk verbietet Split mitten in lbl_803077E8; kein gueltiger
+  Start alignet unsere Section (wir emittieren FSqrt-Statics +
+  RTTI vor den Vtables, Retail hat dort RTTI-Records).
+  `.rodata` ebenso: unsere Section traegt 4 extra weak RTTI-Strings
+  (nw4r-Callbacks, CordInfo) vor der Stringtabelle — kein Start
+  bildet @stringBase0 auf 0x802DADE0 ab, ohne Objekte zu ueberlappen.
+- **UpdateObject__8XObjPlugFUl (99,947):** verbleibende 12
+  Instruktionsdiffs = 6 String-Refs (@stringBase0), 2 hang$-Refs
+  (lwzu lbl_80307838), 4 f2/f3-Operandentausch bei
+  tip.x/tip.z-Loads (NONMATCHING-Kommentar steht bereits, Zeile 211).
+  Instruktionsstrom sonst 379/379 identisch.
+- **xobjplug: 25/26** — nur UpdateObject <100.
+- **Gate:** R24J01 main.dol OK 6664/8284; GGTE01/GGTJ01_01/GGTP01
+  je 17 files OK; check.py --source-only 475 files clean
+  (clang-format-18 via ~/.local/opt/clang-format-18, python-subprocess-
+  Umweg); Dups 18; kein matched-Verlust.
+- **Liegt:** UpdateObject-Rest (Regalloc+Pool-Labels, siehe oben);
+  .data/.rodata-Claims der Unit; die vier xobjattachment-
+  Destruktoren (Retail 0x40 trivial / unser 0x58 mit Basis-Call,
+  weiter NICHT umbenennen); CustomShadow-Layout-Notizen aus Lauf 95.
+- **Naechster Schritt:** xobjplugcord (10/17: ResetPlugCordPoints
+  99,84; DrawPlugCordSparks 98,49; PushPlugCordPointFromObject 97,63;
+  PushPlugCordPointsFromObjects 98,23; UpdatePlugCordSimulation 94,27;
+  DrawPlugCordSegments 91,90; FindPlugCordFloor 91,77), danach
+  Adressliste: fn_800F3B88, fn_800F3E74/88/9C, fn_800F403C, fn_800F41AC,
+  fn_800F41F0, fn_800F4280, fn_800F450C, fn_800F4798, Dtor-Thunks
+  0x800F48C8-0x800F48D8; obja: fn_800AD498, LoadFromPlacement
+  0x800AC238, fn_800AE9F0, fn_800AF098/12C/51C, TestFloorCollision
+  0x800B034C.
 
 ## Lauf 97 — drei 100 %-Matches durch ehrliche Temporaere (xobjattachment/xactradar)
 
