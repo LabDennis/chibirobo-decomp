@@ -647,3 +647,30 @@ extern "C" void DrawSpiralTrail(SpiralTrail* trail, const CVec& origin)
 	}
 	gGame.mGs.mBillboardEnabled = 0;
 }
+
+// a LoadFromPlacement override from a sibling class in this unit's retail file: the same
+// head-node block XObjChr::LoadFromPlacement keeps inline in xobj_chr.cpp. Whoever the class
+// is, the seven joint names and the ScnMdl slot are WiiPlayerState's layout.
+// NONMATCHING (94 %): identical instruction stream; the remaining diff is string-pool
+// referents that land in @labels until the unit's own literal section is split out
+/**
+ * @note Address: 0x800F35E8
+ * @note Size: 0x12C
+ */
+extern "C" BOOL fn_800F35E8(WiiPlayerState* self, const CoordInfo& info)
+{
+	if (!self->XObj::LoadFromPlacement(info)) {
+		return FALSE;
+	}
+	if (self->mObject.m_pScnMdl != NULL) {
+		self->mHeadNodes[0] = self->GetResNode("second_null");
+		self->mHeadNodes[1] = self->GetResNode("head_chn");
+		self->mHeadNodes[2] = self->GetResNode("head_cap");
+		self->mHeadNodes[3] = self->GetResNode("l_mabuta_down");
+		self->mHeadNodes[4] = self->GetResNode("l_mabuta_up");
+		self->mHeadNodes[5] = self->GetResNode("r_mabuta_down");
+		self->mHeadNodes[6] = self->GetResNode("r_mabuta_up");
+		self->mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+	}
+	return TRUE;
+}
