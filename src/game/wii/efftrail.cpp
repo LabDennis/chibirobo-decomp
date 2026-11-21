@@ -5,6 +5,7 @@
 #include "game/wii/cgs.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/xact.h"
 #include "game/wii/xobj.h"
 #include <math.h>
 #include <stdlib.h>
@@ -955,6 +956,86 @@ extern "C" void fn_800F41F0(WiiSuitPart* self, nw4r::g3d::ChrAnmResult* pResult,
 		Mtx m;
 		PSMTXCopy(self->mOwner->GetWorldMtx("head"), m);
 		PSMTXCopy(m, pResult->mpMtx);
+	}
+}
+
+// _210, resumes his own actor, the two sound slots of each popper shot and the charge's
+// two; the same GetHandle-and-recheck idiom AnimSfx::Resume uses
+// NONMATCHING (~94.7%): instruction multiset, control flow and call set all match; retail
+// colours the actor slot r24 and keeps `this` in r31, folding the popper's +0xD50 into each
+// member offset — the original header declared `XActPopper mPopper`, our opaque XAction slot
+// forces the cast, and MWCC CSEs it into a register instead. Register/schedule residue.
+/**
+ * @note Address: 0x800F4280
+ * @note Size: 0x28C
+ */
+void XObjChr::ResumeSounds(f32 fade)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	s32 i, j;
+
+	if (mActor.GetHandle() != NULL) {
+		CSound3DActor* actor = mActor.mActor;
+		if (actor != NULL) {
+			actor->mHandle.Resume(gRefreshRate * fade);
+		}
+	}
+	for (i = 0; i < 10; i++) {
+		for (j = 0; j < 2; j++) {
+			if (((XActPopper*)&chr->mPopper)->mShots.mShot[i].mSfxActors[j].GetHandle() != NULL) {
+				CSound3DActor* actor = ((XActPopper*)&chr->mPopper)->mShots.mShot[i].mSfxActors[j].mActor;
+				if (actor != NULL) {
+					actor->mHandle.Resume(gRefreshRate * fade);
+				}
+			}
+		}
+	}
+	for (j = 0; j < 2; j++) {
+		if (((XActPopper*)&chr->mPopper)->mCharge.mSfxActors[j].GetHandle() != NULL) {
+			CSound3DActor* actor = ((XActPopper*)&chr->mPopper)->mCharge.mSfxActors[j].mActor;
+			if (actor != NULL) {
+				actor->mHandle.Resume(gRefreshRate * fade);
+			}
+		}
+	}
+}
+
+// _20C, the PauseSounds counterpart: pauses the same three sets of sound slots
+// NONMATCHING (~94.7%): same register/schedule residue as ResumeSounds above — identical
+// instruction multiset and control flow, different callee-saved colouring around the
+// popper base and the int-conversion constant.
+/**
+ * @note Address: 0x800F450C
+ * @note Size: 0x28C
+ */
+void XObjChr::PauseSounds(f32 fade)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	s32 i, j;
+
+	if (mActor.GetHandle() != NULL) {
+		CSound3DActor* actor = mActor.mActor;
+		if (actor != NULL) {
+			actor->mHandle.Pause(gRefreshRate * fade);
+		}
+	}
+	for (i = 0; i < 10; i++) {
+		for (j = 0; j < 2; j++) {
+			if (((XActPopper*)&chr->mPopper)->mShots.mShot[i].mSfxActors[j].GetHandle() != NULL) {
+				CSound3DActor* actor = ((XActPopper*)&chr->mPopper)->mShots.mShot[i].mSfxActors[j].mActor;
+				if (actor != NULL) {
+					actor->mHandle.Pause(gRefreshRate * fade);
+				}
+			}
+		}
+	}
+	for (j = 0; j < 2; j++) {
+		if (((XActPopper*)&chr->mPopper)->mCharge.mSfxActors[j].GetHandle() != NULL) {
+			CSound3DActor* actor = ((XActPopper*)&chr->mPopper)->mCharge.mSfxActors[j].mActor;
+			if (actor != NULL) {
+				actor->mHandle.Pause(gRefreshRate * fade);
+			}
+		}
 	}
 }
 
