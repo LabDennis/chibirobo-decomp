@@ -1,13 +1,41 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 65 fertig, Branch devin/lane3 @2bca7191. R24J01: 6625/8284 matched, main.dol: OK (+11
-gegenueber Lauf 64, kein Regress); GC: 17 files OK (alle drei).
+Stand: Lauf 66 fertig, Branch devin/lane3 @b2e63c06. R24J01: 6627/8284 matched, main.dol: OK (+2
+gegenueber Lauf 65, kein Regress); GC: 17 files OK (alle drei).
 check.py --source-only GRUEN (CLANG_FORMAT=cf18 ueber env/subprocess).
 Baselines: .lane3_baseline/report_<V>.json (Lauf-44-Stand, veraltet
 — Signatur-Renames zeigen sich darin als lost/new).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 66 — xobj_chr: XObjChr Draw-Overrides (+2 matched, 2 knapp drunter)
+
+- **Commit b2e63c06** `xobj_chr: XObjChr's four draw overrides
+  reconstructed` — 4 Dateien, +145/-5.
+- Vier Retail-Asm-Dekodes aus auto_fn_*.s (Vtable _178/_17C/_180/_184),
+  4 Symbol-Eintraege in config/R24J01/symbols.txt, vier Override-
+  Deklarationen in xobj.h (XObjChr, Slots wie Retail).
+- **100 % gematcht:** `DrawReflection__7XObjChrFPA4_f` 0x800E05F0
+  (vf28C(0)/DrawWithView/vf28C(1) um die Reflexion, dann
+  mPlug/mCopterObj/mPopperObj/mRadarObj/mOXObj->_17C) und
+  `DrawGroundShadow__7XObjChrFf` 0x800E0780 (MapDistance<1.0f → return;
+  mStatus.mFlags&4 → GetStatusFlags(0x0040...ULL)→mPlug._180,
+  sonst XObj::DrawGroundShadow).
+- **NONMATCHING:** `DrawGroundShadowAt` 0x800E083C 99,66 % — eine
+  Instruktion Rest; Ablauf sonst identisch (mug: FindResNode
+  "carry_obj_nll" + GetJointScale + CustomShadow-Draw, sonst
+  GetAnimId()-0x14D<=4 → "koshi_model" + Basis). `DrawWithView`
+  0x800E0234 92,03 % — fuenf Index-Cleanups + Suit-/Attachment-Draws
+  stimmen, Register-/Schedule-Rest ueber dem Kopfteil.
+- Neue Member in WiiPlayerState (cgame.h, Offsets aus Retail):
+  `m_9C8` (u8, blockiert den Uebergangs-Suit-Part), `m_0A18`, `m_0A1C`
+  (s32 Objekt-Indizes, DrawWithView invalidiert bei inaktivem Objekt
+  gegen gGame.mXObjs.mObjects[i] = gGame+0xF8B0).
+- Erkenntnis: `mSuits.mCurrent` _DC58, `mChangeStep` _DC54,
+  `mSuitParts[9]` _134B8 (stride 0x9B0), `mLift.mState` _0AA4,
+  Plug _9E20; Kamera `mMotionControlCamera.mView.mAngle.x` +0xB0,
+  `.mViewMtx` +0xD8.
 
 ## Lauf 65 — xobj_chr: 11 fn_-Namen dekodiert und gematcht (+11)
 
@@ -50,6 +78,9 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
   Tail-Call, Compiler-Emissions-Unterschied.
 - `ScaleVectorInPlace` (40,7): JMathInlineVEC-Statement-Reihenfolge
   weicht von Retail-SDK ab (shared header nicht angefasst).
+- `DrawWithView__7XObjChrFPA4_f` (92,0): Register-/Schedule-Rest im
+  Index-Cleanup-Kopf, Inhalt stimmt.
+- `DrawGroundShadowAt__7XObjChrFPC3Vecf` (99,7): ein Rest.
 - Bekannte Alt-Waende unveraendert: StopPlayerMotion (f1/f2/f3-
   Nummerierung), SelectPlayerEquipmentRing (bool-Materialisierung),
   GetCharacterObjectApproachResult (Load-Hoist), EyePosition +
@@ -58,10 +89,10 @@ Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
 
 ## Naechster Schritt
 
-- XObjChr-Draw-Overrides fn_800E05F0 (0x190), fn_800E0780 (0xBC),
-  fn_800E083C — Deklarationen wie Lauf-65-Muster.
 - fn_800D2344/fn_800D251C (vf1A0/vf1A4-Overrides) + fn_800D1F34
-  (_1BC) dekodieren.
+  (_1BC) dekodieren — Vtable-Mapping steht in Lauf 65/66.
+- DrawWithView (92 %)/DrawGroundShadowAt (99,7 %) Reste nur bei
+  klarer Compiler-Ursache nachfassen, kein Permuter.
 - Weitere kleine fehlende fn_ in xobj_chr via Vtable/extern-"C"-
   Mapping (GC-Namen aus obja_chr.cpp).
 - obja-Folge: LoadFromPlacement 0x800AC238, fn_800AE9F0, fn_800AF098,
