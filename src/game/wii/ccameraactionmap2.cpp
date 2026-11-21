@@ -2176,6 +2176,93 @@ static inline void ResetMapCameraTargetEye(CCameraActionMap* map)
 	FlatDistance(map->mTargetEye, map->mSpringTarget); // retail computes and drops it (bl PSVECDistance at 0x80160350)
 }
 
+static inline void SetMapCameraPreviousEye(CCameraActionMap* map, Vec v)
+{
+	map->mPreviousEye.Set(v);
+}
+
+static inline void SetMapCameraPreviousInterest(CCameraActionMap* map, Vec v)
+{
+	map->mPreviousInterest.Set(v);
+}
+
+/**
+ * @note Address: 0x801576A4
+ * @note Size: 0x4F4
+ */
+void CCameraActionMap::SetCamera(CCamera* camera)
+{
+	// CMotionControlCamera::Interpolate takes the interest's height at once and follows it in on x and z
+	mInterestMode = 3;
+	SetEye(camera->mView.mEye);
+	SetMapCameraPreviousEye(this, camera->mView.mEye);
+	SetInterest(camera->mView.mInterest);
+	SetDistance(camera->mView.mDistance);
+	SetFov(camera->mFov);
+	SetAngle(camera->mView.mAngle);
+	mTarget = gGame.GetPlayer();
+	if (mTarget != NULL) {
+		SetInterest(mTarget->GetCameraTarget());
+	}
+	mTargetHeightOffsetInterp = NULL;
+	mTargetHeightOffsetEase.Start(0.0f, 0.0f, 0.1f);
+	if (mTarget != NULL) {
+		Mtx mtx;
+		PSMTXCopy(mTarget->GetWorldMtx(), mtx);
+		// start the spring at rest on the point Update tracks (GetMapCameraTargetOffsetPosition)
+		CVec pos(0.0f, 13.0f, -1.0f);
+		PSMTXMultVec(mtx, &pos, &pos);
+		Vec target = pos;
+		mSpringTarget.Set(target);
+		mSpringPrevTarget.Set(target);
+	}
+	_8C.x               = 0.0f;
+	_8C.y               = 0.0f;
+	_8C.z               = 0.0f;
+	_8C.mTarget.x       = 0.0f;
+	_8C.mTarget.y       = 0.0f;
+	_8C.mTarget.z       = 0.0f;
+	_8C.mSpeed.x        = 0.0f;
+	_8C.mSpeed.y        = 0.0f;
+	_8C.mSpeed.z        = 0.0f;
+	mTargetRestDistance = 60.0f;
+	mRestDistance       = mTargetRestDistance;
+	mFlatDistance       = mTargetRestDistance;
+	SetFovStep(this, gCameraAreaState.mZoomLevel, 15.0f);
+	mPadControlEnabled = 1;
+	_DB0               = 1;
+	mTurnInterpolation = NULL;
+	mHeightInterp      = &mHeightEaseInOut;
+	mHeightInterp->Start(13.0f, 13.0f, 1.0f);
+	mMapArea         = -1;
+	mPrevMapArea     = -1;
+	mAbsHeightInterp = &mAbsHeightEaseInOut;
+	mAbsHeightInterp->Start(mEye.y, mEye.y, 1.0f);
+	mHeightMode    = 0;
+	mUseAreaHeight = 0;
+	mTargetHeight  = 13.0f;
+	mTurnBlocked   = 1;
+	ResetMapCameraTargetEye(this);
+	mStatus.mFlags = 0;
+	// mode bit 0x10000 (of SetMapCameraModeFlags's 0x70000): Update springs the eye after mSpringTarget
+	mStatus.mFlags |= 0x10000;
+	sMapCameraOrbitAtRestDistance = 0;
+	mEyeYOffsetInterp             = &mEyeYOffsetEaseInOut;
+	mEyeYOffsetEaseInOut.Start(0.0f, 0.0f, 1.0f);
+	mEyeYOffset = 0.0f;
+	SetMapCameraPreviousInterest(this, mInterest);
+	// set by SetMapCameraKeepPreviousEye when memcardpos restores a saved camera: mPreviousEye then keeps camera->mEye.
+	// the FALSE store only runs while the flag is already clear, so nothing here resets it
+	if (!mKeepPreviousEye) {
+		SetMapCameraPreviousEye(this, mInterest);
+		mKeepPreviousEye = FALSE;
+	}
+	mPointerHeld    = FALSE;
+	mOrbitReseed    = TRUE;
+	mArrows[0]._14  = 0.0f;
+	mArrows[1]._14  = 0.0f;
+}
+
 static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
 {
 	map->mSpringTarget     = pos;

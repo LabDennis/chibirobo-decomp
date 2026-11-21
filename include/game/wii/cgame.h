@@ -702,6 +702,7 @@ public:
 	virtual void PreviousUpdate();  // _0C
 	virtual void Update(u32 step);  // _10
 	virtual void Reset();           // _14
+	virtual void SetCamera(CCamera* camera); // _18, takes eye, interest, angle, distance and fov
 	virtual void Init();            // _1C
 	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
