@@ -188,8 +188,10 @@ void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
-BOOL fn_800CDC98(WiiPlayerState* player);
-void fn_800CDDC0(WiiPlayerState* player);
+UnkStageObj* GetSpawnData(s32 index);
+extern s32 gSpecialSuitSpawnIds[];
+BOOL LoadPlayerSuitItem(WiiPlayerState* player);
+void ApplyPlayerSuit(WiiPlayerState* player);
 void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
 void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
 void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
@@ -526,12 +528,70 @@ BOOL fn_800CDC08(WiiPlayerState* player)
 		player->mSuits.mCurrent    = player->mSuits.mRequested;
 		player->mSuits.mChangeStep = 1;
 	}
-	if (fn_800CDC98(player)) {
+	if (LoadPlayerSuitItem(player)) {
 		player->mSuits.mChangeStep = 0;
-		fn_800CDDC0(player);
+		ApplyPlayerSuit(player);
 		return TRUE;
 	}
 	return FALSE;
+}
+
+// loads the suit the change asked for, one call a frame: TRUE once its object is placed and
+// reading the player's animations. The GameCube's LoadPlayerSuitItem; its second step (the
+// suit's own animation file) is gone — the suit sources the player's NW_Obj instead
+BOOL LoadPlayerSuitItem(WiiPlayerState* player)
+{
+	if (player->mSuits.mCurrent == 0) {
+		player->mSuits.mLoadStep = 0;
+	}
+	if (player->mSuits.mLoadStep == 0) {
+		return TRUE;
+	}
+	switch (player->mSuits.mLoadStep) {
+	case 1: {
+		WiiSuitObject* suit = &player->mSuits.mObjects[player->mSuits.mCurrent];
+		s32 id              = player->mSuits.mCurrent == 7 ? gSpecialSuitSpawnIds[player->mSuits.mSpecial] : player->mSuits.mCurrent + 25;
+		if (suit->LoadFromPlacement(CoordInfo(GetSpawnData(id)))) {
+			suit->SetAnmSource(&player->mObject);
+			player->mSuits.mLoadStep = 0;
+			return TRUE;
+		}
+		break;
+	}
+	case 2:
+		player->mSuits.mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// mounts the attachment objects on the player's joints once the new suit's model is there,
+// then restarts the idle animation. The GameCube's ApplyPlayerSuit; the Wii version finds
+// the mount joints by name on the nw4r model instead of grafting HSD joint trees
+void ApplyPlayerSuit(WiiPlayerState* player)
+{
+	if ((player->mStatus.mFlags & 1) && player->mSuits.mObjects[player->mSuits.mCurrent].mObject.m_pScnMdl != NULL) {
+		player->ClearAnim();
+		if (player->GetAttachment() == 2) {
+			player->vf290(FALSE);
+		}
+		((XObjAttachment*)player->mCopterObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		((XObjAttachment*)player->mPopperObj)->SetParent(player->GetWorldMtx("l_arm_chn"), FALSE);
+		((XObjAttachment*)player->mRadarObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		((XObjAttachment*)player->mOXObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		if (!gGame.GetStatusFlags(0x100)) {
+			player->vf28C(FALSE);
+		}
+		if (player->GetAttachment() == 2) {
+			player->vf290(TRUE);
+		}
+	}
+	if (player->GetAttachment() == 1 || player->GetAttachment() == 3) {
+		player->SetAnim(0x4A, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	} else {
+		player->SetAnim(17, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+		player->mIdleLoops = 3;
+	}
 }
 
 // reads the player's pad once more
