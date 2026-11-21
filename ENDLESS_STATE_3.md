@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 83 fertig, Branch devin/lane3 @ 547c3319.
+Stand: Lauf 84 fertig, Branch devin/lane3 @ a2056260.
 R24J01: 6652/8284 matched, main.dol: OK; GC: je 17 files OK;
 callcheck ohne neuen Bahn-Eintrag; keine neuen Symbol-Dubs;
 Format-Gate gruen (clang-format-18 via env CLANG_FORMAT=).
@@ -8,6 +8,45 @@ all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json.
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 84 — UpdatePlayerEquipmentRings (93,95 %, ehrlich NONMATCHING)
+
+- **Vorarbeit:** uncommitteter Lauf-84-Entwurf der Funktion aus dem
+  abgebrochenen Vorgängerlauf fertiggestellt, NONMATCHING-Kommentar,
+  Gate, Commit `a2056260` (xobjchrmenu.cpp, +174/-2).
+- **Neu:** `UpdatePlayerEquipmentRings(XObjChrMenu*, u32 frames)`
+  0x800EDF8C (0x924), extern "C". Wii-Port des GC-Pendants:
+  Ringpaar Atc/Drs, `active = mEvt.mData.mScript == NULL`,
+  CanSelectEquipmentRing (RingReady mOpen>1 && mGlow∈{0,1}),
+  Pointer-Modus UpdatePointedItem, Typ-3-Reihenmenue Dpad-Wechsel
+  (Check 4/8, mSel, Fokus/Cursor-Spiegelung), sonst Trigger-Maske
+  0x6400000000000200 -> mSel-Toggle. HeadTurn NAN/0.0 je nach
+  beide-ready. HandleEquipmentRingInput je Ring + Fallback-Wechsel,
+  !active -> LastPointedItem-Kopie + KeepPointedItemOnOpen=0.
+  SetRotateY(PI+view yaw, DEG2RAD*8) ausser FirstPerson(0x100).
+  Check(2) -> result=-1 -> ClosePlayerEquipmentRings.
+  UpdateEquipmentRingAnimation x2. mFade via FadeEquipmentRingIn/Out
+  (0.18f/0.25f * gRefreshRate). Beide zu + StatusFlag 0x400 ->
+  ClearStatusFlags + mPad.Update(gWiiGameCubePads,0).
+  Neue lokale Inlines: RingReady/CanSelectEquipmentRing/
+  FocusEquipmentRing/FadeEquipmentRingIn/Out; +includes cpad.h,
+  cpadact.h; extern-decls HandleEquipmentRingInput/
+  UpdateEquipmentRingAnimation/ClosePlayerEquipmentRings/gRefreshRate.
+- **Restdiff 93,58 objdiff / 93,95 fuzzy:** bekannte Klassen —
+  Float-Refs auf lokalen @labels statt benannter sdata2-Globals
+  (loesen sich mit Unit-.sdata2), 0x4330-u32->f64-Magic + Sound-
+  Call-Scheduling, Regalloc; MWCC cached den zweiten
+  mEvt.mData.mScript-Test in einem bool, Retail laedt neu.
+- **Gate:** R24J01 main.dol: OK 6652/8284; --non-matching linkt;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; Baseline-Diff: nur
+  Umbenennungen + das bekannte DrawGroundShadowAt-Pool-Artefakt
+  (96,62), Unit-65-Werte identisch zu Lauf 83 (kein Ripple durch
+  die neuen Includes); callcheck R24J01 52 bekannte Eintraege,
+  keiner in xobjchrmenu; GGTE01 7 bahnfremde objb_act-Eintraege;
+  Format 474 ok; Dups nur SDK-Vorbestand.
+- **Naechstes:** DrawPlayerEquipmentRings 0x800EE8B0 (0x9FC),
+  dann HandleOXMenuInput 0x800EF58C (0x804), fn_800EFD90 (0x370),
+  danach Unit 66 (0x800F0100-0x800F48E0) in Adressfolge.
 
 ## Lauf 83 — NEUE TU game/wii/xobjchrmenu.cpp (Unit 65), +5 matched
 
