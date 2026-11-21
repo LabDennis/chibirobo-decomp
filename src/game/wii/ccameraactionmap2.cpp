@@ -149,7 +149,12 @@ void CCameraActionMap::Init()
 
 extern s32 gScreenSafeRight;
 extern s32 gScreenSafeTop;
+extern s32 gScreenSafeBottom;
 extern "C" void fn_8016AA74(const f32* params);
+extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
+extern "C" Vec GetCornerIconPosition(CGame* game);
+// the pulse scale the arrows fade with, 1.0f; cmotioncontrolcamera.cpp's data
+extern f32 lbl_805A12B0;
 
 void CCameraActionMap::Reset()
 {
@@ -2441,6 +2446,74 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+// the cinema bars' lower edge, clamped to the safe screen area; the arrows stay 58 + 40 + 50 above it
+static inline f32 GetCineBarBottom()
+{
+	f32 y = gGame.mWipeCine.mHeight / 2.0f + gGame.mWipeCine.mY;
+	if (y >= gScreenSafeBottom) {
+		y = gScreenSafeBottom;
+	}
+	return y;
+}
+
+/**
+ * @note Address: 0x80160788
+ * @note Size: 0x494
+ */
+void CCameraActionMap::vf24()
+{
+	f32 y = GetCornerIconPosition(&gGame).y;
+	if (y > GetCineBarBottom()) {
+		y = GetCineBarBottom();
+	}
+	f32 minY = y - 58.0f - 40.0f - 50.0f;
+	f32 zero = 0.0f;
+
+	for (s32 i = 0; i < 2; i++) {
+		CamEdgeArrow* arrow = &mArrows[i];
+		if (mPointerHeld) {
+			arrow->_10 = 0.5f;
+		}
+		if (arrow->mShown) {
+			arrow->_10 = 1.0f;
+		}
+		// retail runs the same pulse call on both branches
+		f32 pulse;
+		if (mPointerHeld) {
+			pulse = fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A12B0);
+		} else {
+			pulse = fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A12B0);
+		}
+		f32 fade = arrow->_10 * pulse;
+		if (fade > zero) {
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			if (i == 1) {
+				gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+			}
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[262], 0);
+			CTexObj tex = gGame.mTpl.mTex;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			// white with the fade in the alpha byte
+			u32 rgba             = 0xFFFFFFFF;
+			((GXColor*)&rgba)->a = (u8)(((GXColor*)&rgba)->a * fade);
+			f32 x                = gPointerScreenWidth / 2.0f + arrow->mPos.x;
+			f32 arrowY           = gPointerScreenHeight / 2.0f + arrow->mPos.y;
+			if (arrowY > minY) {
+				arrowY = minY;
+			}
+			f32 w = GXGetTexObjWidth(&tex);
+			f32 h = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, rgba, rgba, rgba, rgba, x, arrowY, zero, w, h, zero, arrow->mPos.z, zero);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+		}
+	}
 }
 
 /**
