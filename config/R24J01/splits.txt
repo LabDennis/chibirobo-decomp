@@ -1241,6 +1241,8 @@ game/wii/xobjattachment.cpp:
 
 game/wii/xobjplug.cpp:
 	.text start:0x8010F944 end:0x80110C2C
+	.sdata start:0x805A1140 end:0x805A1150
+	.sdata2 start:0x805A5368 end:0x805A5390
 
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
