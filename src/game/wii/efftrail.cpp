@@ -342,6 +342,156 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 	}
 }
 
+static inline void ProjectPoint(const CCamera& camera, const Vec& pos, f32* x, f32* y)
+{
+	f32 sx, sy, sz;
+	GXProject(pos.x, pos.y, pos.z, camera.mViewMtx, &camera.mIsOrtho, camera.mViewport, &sx, &sy, &sz);
+	if (x)
+		*x = sx * camera.mScale;
+	if (y)
+		*y = sy;
+}
+
+static inline CTexObj& PointTexture(CTexObj& texture, int id)
+{
+	texture.Init(&gGame.mTpl.mPalette->descriptorArray[id], 0);
+	return texture;
+}
+
+static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y, f32 w, f32 h, f32 rotation)
+{
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
+}
+
+// NONMATCHING: identical call set and instruction count (990 insns, same 11 sin/4 cos calls);
+// the wall is register allocation: retail pins the gGame/camera/display/burst bases in callee-saved
+// GPRs across the whole function, so the allocator spills the f64 conversion magic and float
+// constants to eight stack slots (frame 0x5d0 vs 0x5b0), rematerializes 8.5f as 17*0.5 in an fmadds,
+// and re-truncates the u8 alpha at every color argument; this build keeps the constants in FPRs and
+// CSEs the truncation instead.
+/**
+ * @note Address: 0x800F1E58
+ * @note Size: 0xE9C
+ */
+extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
+{
+	CMotionControlCamera& camera = gGame.mMotionControlCamera;
+	if (camera.IsAction(4)) // that camera action hides the points
+		return;
+	PointDisplay& display = ptcl->display;
+	PointBurst& burst     = ptcl->burst;
+	XObj* player          = gGame.GetPlayer();
+	CVec origin           = player->GetWorldPos();
+	Vec jointOffset       = { 0, 0, 0 };
+	jointOffset.y         = player->GetJointWorldPos("neck").y - origin.y;
+	Vec offset            = jointOffset;
+	offset.y += 4.5f;
+	Vec half = offset;
+	half.y *= .5f;
+	f32 x, y, centerX, centerY;
+	ProjectPoint(camera, origin + half, &centerX, &centerY);
+	if (display.mAmount < 0) {
+		ProjectPoint(camera, origin + offset, &x, &y);
+		y -= 19.8f * row;
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	if (burst.mState) {
+		f32 radius = 64;
+		for (int i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& p = burst.mPtcls[i];
+			if (!(p.mFade > 0 && p.mFade < 1))
+				continue;
+			if (display.mAmount >= 0) {
+				x = centerX + 300 * std::sinf(p.mAngle);
+				y = centerY + 300 * std::cosf(p.mAngle);
+			}
+			f32 phase = p.mFade;
+			if (phase > 1)
+				phase = 1;
+			f32 alpha = std::sinf(PI * p.mFade); // strongest halfway through the fade
+			if (alpha > 1)
+				alpha = 1;
+			f32 angle = PI * phase, arc = 1.5f * std::sinf(angle);
+			f32 px = x + (centerX - x) * (1 - std::sinf(angle / 2)), py = y + (centerY - y) * (1 - std::sinf(angle / 2));
+			if (p.mState > 0 || display.mAmount < 0) {
+				f32 a  = (2 * PI / burst.mNum) * i;
+				f32 tx = x + 200 * std::sinf(a), ty = y + 200 * std::cosf(a);
+				px = x + (tx - x) * (1 - std::sinf(angle / 2));
+				py = y + (ty - y) * (1 - std::sinf(angle / 2));
+			}
+			f32 dx = p.mSpeed * (arc * std::sinf(p.mAngle)), dy = p.mSpeed * (arc * std::cosf(p.mAngle));
+			f32 shrink = 1 - std::sinf(angle / 2), rotation = PI * p.mAngle;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			if (p.mState > 0) { // a polygon with mState sides
+				u32 color = p.mColor | (u8)(s32)(128 * alpha);
+				DrawGsCircle(&gGame.mGs, p.mState, color, color, px + dx, py + dy, 0, (2 + radius) - shrink * radius,
+				             (2 + radius) - shrink * radius, 0, 0, rotation);
+			} else if (p.mState < 0) {
+				CTexObj tex;
+				if (p.mState == -1) { // texture 155, turned toward where it was last frame
+					tex = PointTexture(gGame.mTpl.mTex, 155);
+					if (p.mLastScreenX == px + dx && p.mLastScreenY == py + dy)
+						rotation = p.mLastAngle;
+					else
+						rotation = (f32)atan2(p.mLastScreenX - (px + dx), p.mLastScreenY - (py + dy)) - .52359879f;
+				} else if (p.mState == -2) {
+					tex      = PointTexture(gGame.mTpl.mTex, 153);
+					rotation = 0;
+				} else if (p.mState == -3) {
+					tex      = PointTexture(gGame.mTpl.mTex, 154);
+					rotation = 0;
+				}
+				shrink /= 2;
+				radius    = 44;
+				u32 color = display.mAmount >= 0 ? (0xffffff00 | (u32)(200 * alpha)) : (0xff000000 | (u32)(128 * alpha));
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 size = (2 + radius) - shrink * radius;
+				DrawPointQuad(tex, color, color, px + dx, py + dy, size, size, rotation);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				p.mLastScreenX = px + dx;
+				p.mLastScreenY = py + dy;
+				p.mLastAngle   = rotation;
+			}
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	}
+	if (display.mState && ptcl->mType != 1) {
+		ProjectPoint(camera, origin + offset, &x, &y);
+		y -= 19.8f * row;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		CTexObj& texture = gGame.mTpl.mTex;
+		CTexObj icon = PointTexture(texture, 128), digits = PointTexture(texture, 126);
+		// the digit atlas is the digits 0-9 in a column
+		PSMTXScale(digits.mTexMtx.mMtx[2], 1, .1f, 1);
+		digits.mTexMtx.mDirty = TRUE;
+		for (int i = display.mCount - 1; i >= 0; --i) {
+			const PointDigit& digit = display.digits[i];
+			if (!(digit.fade > 0))
+				continue;
+			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f / 2), py = y;
+			f32 fade = digit.fade;
+			if (fade > 1)
+				fade = 1;
+			f32 angle = PI * fade;
+			f32 rise = 8 * std::sinf(angle), expand = 16 * std::cosf(angle / 2);
+			if (display.mState == 3)
+				expand = 0;
+			u8 alpha = (u8)(s32)(255 * fade);
+			u32 top = display.colors.mColor | alpha, bottom = display.colors.mColor2 | alpha;
+			if (digit.glyph == 76) { // the icon
+				DrawPointQuad(icon, alpha, alpha, px, py - rise, 1.2f * (19 + expand), 24 + expand, 0);
+				DrawPointQuad(icon, top, bottom, px, py - rise, 19 + expand, .8f * (24 + expand), 0);
+			} else {
+				PSMTXTrans(digits.mTexMtx.mMtx[0], 0, .1f * digit.glyph, 0);
+				digits.mTexMtx.mDirty = TRUE;
+				DrawPointQuad(digits, top, bottom, px, py - rise, 19 + expand, 24 + expand, 0);
+			}
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+}
+
 // the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect: xobj_chr.cpp
 // models the same 0x258-byte object as SuitChangeTrail (scale-first records at +0x10).
 // This file's functions index it the way the GameCube's spiral code does -- an active
