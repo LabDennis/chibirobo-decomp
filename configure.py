@@ -1327,7 +1327,7 @@ if wii:
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
                 Object(NonMatching, "game/wii/ccameraactionarea.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # noauto: retail keeps MapAreaHeight out of line for
-                # StartMapCameraAreaHeightInterpolation's two calls
+                # StartMapCameraAreaHeightInterpolation's two calls; no other function of the unit changes with or without it
                 Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
