@@ -295,6 +295,11 @@ game/ringmenupointer.cpp:
 	extabindex start:0x80014534 end:0x80014540
 	.text start:0x800E9D30 end:0x800E9FC4
 
+game/wii/ringmenu.cpp:
+	extab start:0x8000C4F4 end:0x8000C584
+	extabindex start:0x80014540 end:0x80014570
+	.text start:0x800E9FC4 end:0x800ED3B8
+
 game/wii/atcmenuselection.cpp:
 	.text start:0x800ED3B8 end:0x800ED45C
 
