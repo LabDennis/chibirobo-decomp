@@ -148,21 +148,14 @@ static inline void SetMode(XObjArmy* army, s32 mode)
  * @note Address: 0x800E6A5C
  * @note Size: 0x114
  */
-static inline void UpdateArmyAnimationSound(XObjArmy* army, s32 id, u8 volume)
-{
-	f32 frame = GetAnimFrame(army->mJObj);
-	army->mSfx.Update(id, frame, volume);
-}
+// NONMATCHING: retail keeps the volume in its own saved register (li/mr r29)
+// and loads the joint before the anim id; this build re-extends the volume.
 
 void XObjArmy::UpdateAnimationSounds()
 {
-	u8 volume;
-	if (mFlags.mFlags & 0x100) {
-		volume = 255;
-	} else {
-		volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
-	}
-	UpdateArmyAnimationSound(this, mAnimId, volume);
+	u8 volume = (mFlags.mFlags & 0x100) ? 0xFF : GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
+	s32 anim  = mAnimId;
+	mSfx.Update(anim, GetAnimFrame(mJObj), volume);
 }
 
 extern "C" {
