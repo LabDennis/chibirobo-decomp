@@ -1,15 +1,61 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 92 fertig, Branch devin/lane3 @ c9d21f5d.
+Stand: Lauf 93 fertig, Branch devin/lane3 @ 5547c3c9.
 R24J01: 6655/8284 matched, main.dol: OK; GC: je 17 files OK;
-Format-Gate: clang-format 18.1.8 auf diesem Host nicht auffindbar
-(check.py fand nur 23.1.4) — Stil der neuen Bloecke = Dateikonvention.
+Format-Gate: clang-format 18.1.8 liegt unter
+~/.local/opt/clang-format-18/bin/clang-format (check.py-Aufruf in
+diesem Lauf vom Nutzer abgelehnt) — Stil der neuen Bloecke =
+Dateikonvention.
 all-releases@cb115b0c ist Vorfahre.
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 93 — fn_800F3B88 (ExecCallbackB Kopf-/Augen-Aim) 98,93 % + Aim-Records typisiert
+
+- **Commit `5547c3c9`** (4 Dateien): `fn_800F3B88` @0x800F3B88 (0x2EC)
+  neu in efftrail.cpp, extern-"C"-Stil. 98,93 % — instruktionsidentischer
+  Strom (187/187 Befehle); Rest nur Registerfarben in der Aim-Record-
+  Auswertung + String-Pool-Labels auf den Panic-Calls. NONMATCHING
+  dokumentiert.
+- **Semantik:** XObj::ExecCallbackB-Base-Call, dann Kopf-Kette:
+  nodeId==0 → mHeadNodes[0] (second_null); ==Nodes[0] → Nodes[1]
+  (head_chn); !=Nodes[1] → return. Auf head_chn: Ziel-Aim = Kopf-Record
+  (0x987C) wenn eine seiner Snap-Achsen !=0, sonst Augen-Record
+  (0x9810) wenn dessen Snap !=0; beide frei → keine Mtx-Arbeit.
+  Sonst `self->GetResNode(nodeId)` (Accessor-Effekt-Call wie Retail),
+  PSMTXCopy mpMtx→lokal, RotRad 'y'(m_40), RotRad 'z'(m_3C), 2×Concat,
+  Copy zurueck. Zum Schluss Nodes[2].IsValid()→SetCallbackNodeID (head_cap).
+- **cgame.h:** `_9810`/`_987C` zu `XObjScnCamInitRec mEyeAimRecord` /
+  `mHeadAimRecord` typisiert (STATIC_ASSERTs, xobjcamera.h-Inklude).
+  Alle Roh-Casts ersetzt: xobj_chr.cpp (ResetObjectState, OctaMenu::Open/
+  Select, HandleEquipmentRingInput), xobjchrmenu.cpp (ConfirmOXMenuSelection,
+  HandleOXMenuInput). Report-Diff: 0 Codegen-Aenderung an den Aufrufstellen.
+- **Schluessel-Form:** Snap-Paar-Test ueber dateilokalen
+  `static inline bool AimFree(const XObjScnCamInitRec*)` — Retail
+  materialisiert Record-Zeiger UND Bool call-förmig; flache
+  `&&`-Kette verliert beides (85,7→95,4). `eyeAim` erst im Else-Zweig
+  deklarieren (Retail materialisiert &eye erst in der Picker-Auswertung):
+  96,3→97,4→98,93.
+- **Korrektur zu Lauf 92:** der dortige Rest-Diff-Hinweis war falsch —
+  die ResNode-GetID/IsValid-Panics (g3d_resnode_ac.h:56) emittiert unser
+  xobj.h-Shim LAENGST korrekt; der echte fn_800F3714-Rest ist
+  Registerfarbung (Retail r27-r31, wir r26-r31), mPlayer-Load-Platzierung
+  und Jump-Table-Pool-Label. Source-Kommentar entsprechend berichtigt.
+- **Gate:** R24J01 `main.dol: OK` normal + --non-matching linkt;
+  GGTE01 4588 / GGTJ01_01 4601 / GGTP01 4588 / R24J01 6655 matched,
+  je 17 files OK; Report-Diffs 0 Regressionen in allen Editionen
+  (nur das bekannte DrawGroundShadowAt-Pool-Artefakt, fuzzy-only);
+  callcheck R24J01: 7 Eintraege, alle objb_act-Altfaelle, 0 in
+  efftrail/xobj_chr/xobjchrmenu/cgame; symbols.txt unangetastet →
+  keine neuen Dubs moeglich; config/ sauber.
+- **Naechstes Ziel (Adressfolge):** fn_800F3E74/3E88 (klein),
+  fn_800F3E9C/403C (Sichtbarkeits-Listen ueber CopiedVisAccess,
+  Node-Id-Listen @802DA8C0/@802DA928), fn_800F41AC (Selector 4),
+  fn_800F41F0 (ExecCallbackB Schwesterklasse), fn_800F4280/450C/4798,
+  Dtor-Thunks 48C8-48D8.
 
 ## Lauf 92 — fn_800F3714 (ExecCallbackA Kopf/Lider) 87,7 %
 
