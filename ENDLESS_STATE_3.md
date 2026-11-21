@@ -1,6 +1,6 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 91 fertig, Branch devin/lane3 @ ef7fd00e.
+Stand: Lauf 92 fertig, Branch devin/lane3 @ c9d21f5d.
 R24J01: 6655/8284 matched, main.dol: OK; GC: je 17 files OK;
 Format-Gate: clang-format 18.1.8 auf diesem Host nicht auffindbar
 (check.py fand nur 23.1.4) — Stil der neuen Bloecke = Dateikonvention.
@@ -10,6 +10,37 @@ aeltere Commits danach driften Einzelscores, z.B. DrawGroundShadowAt
 99,98->96,62; KEIN matched-Verlust, nur fuzzy).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
+
+## Lauf 92 — fn_800F3714 (ExecCallbackA Kopf/Lider) 87,7 %
+
+- **Commit `c9d21f5d`** (3 Dateien): `fn_800F3714` @0x800F3714 (0x474)
+  neu in efftrail.cpp, extern-"C"-Stil wie fn_800F35E8. 87,68 %.
+- **Semantik:** XObjChr/XObjChrBase-ExecCallbackA — Base-Call, dann
+  head_cap (mHeadNodes[2]): statische MTX33-Nickrotation, gated auf
+  `GetAttachment()∈{1,3} && mAttachmentRequest<0 && animId!=0x817&&!=0x814`;
+  danach mBlinkFrame<0→return; jeder Lid-Case (Nodes[3..6]=l_down,l_up,
+  r_down,r_up) ruft `SetRotateDeg(&tabelle[mBlinkFrame])` und setzt
+  `pFuncObj->SetCallbackNodeID(next.GetID())` (Cursor-Weitergabe), return.
+- **Neue Header-Dekl.:** `WiiPlayerState* mPlayer` in cgame.h (+0x9A8,
+  Pad→Member, layoutneutral); `ChrAnmResult::SetRotateDeg/SetRotateMtx`
+  und `FuncObjCalcWorld::SetCallbackNodeID` in xobj.h (Unit-eigene
+  Minimaldeklarationen erweitert, nicht g3d_resanmchr.h inkludiert).
+- **Blink-Tabellen** 4×VEC3[11] in .data, bitgenaue Retail-Literale.
+- **Rest-Diff (ehrlich):** Retail-ResNode-Accessor emittiert
+  `Panic(IsValid)`-Bloecke (g3d_resnode_ac.h:56/:175), unser rescommon.h
+  traegt keine Asserts — jeder Node-Check hat daher einen toten
+  Panic-Block weniger; aendern waere ein Shared-Header-Eingriff.
+- **Naechstes Ziel (Adressfolge):** `fn_800F3B88` (0x2EC, ExecCallbackB:
+  Augen-/Kopf-Aim — rec2@+0x987C sonst rec1@+0x9810 wenn Snap-Paare 0;
+  `self->GetResNode(nodeId)` Effekt-Call, dann PSMTXCopy/RotRad y,z
+  Concat auf `pManip->mpM`). Danach fn_800F3E74/3E88 (klein),
+  fn_800F3E9C/403C (Sichtbarkeits-Listen ueber CopiedVisAccess,
+  Node-Id-Listen @802DA8C0/@802DA928), fn_800F41AC (Selector 4),
+  fn_800F41F0 (ExecCallbackB Schwesterklasse), fn_800F4280/450C/4798,
+  Dtor-Thunks 48C8-48D8.
+- **Gate:** alle 4 Editionen gebaut, main.dol OK je Edition,
+  0 verlorene Matches (GGTE01 4588, GGTJ01_01 4601, GGTP01 4588,
+  R24J01 6655).
 
 ## Lauf 91 — fn_800F2CF4 100 % + DrawSpiralTrail 99,7 % + fn_800F35E8 94 %
 
