@@ -676,6 +676,7 @@ DrawDebug2d__16CCameraActionMapFv = .text:0x8015F0DC; // type:function size:0x27
 GetMapCameraEyeBehindTarget = .text:0x8015F460; // type:function size:0x264
 RefreshMapCameraArea = .text:0x8015F6C4; // type:function size:0x44
 StartMapCameraTargetHeightInterpolation = .text:0x801604F4; // type:function size:0x2C
+vf24__16CCameraActionMapFv = .text:0x80160788; // type:function size:0x494
 GetFollowDivisor__16CCameraActionMapFv = .text:0x80160C1C; // type:function size:0x8
 GetInterestMode__16CCameraActionMapFv = .text:0x80160C24; // type:function size:0x8
 GetCameraFlags__16CCameraActionMapFv = .text:0x80160C2C; // type:function size:0x8

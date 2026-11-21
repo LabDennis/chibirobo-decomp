@@ -704,6 +704,7 @@ public:
 	virtual void Reset();           // _14
 	virtual void SetCamera(CCamera* camera); // _18, takes eye, interest, angle, distance and fov
 	virtual void Init();            // _1C
+	virtual void vf24();            // _24, draws the turn arrows at the screen edges (fn_80160788 in retail)
 	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
