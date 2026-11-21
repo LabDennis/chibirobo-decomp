@@ -669,14 +669,10 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 	}
 }
 
-// NONMATCHING: 58.4% - the GameCube's exact body, but GC/3.0a5 folds the local
-// CVec into the sret slot while retail keeps it as a real stack temp (frame 0x20,
-// word copies to the temp, float read-modify-writes on it, then a word copy plus
-// vtable store to the out object). `t = v` assignment and `return CVec(t)` fold
-// the same way; the older GC compiler emits retail's shape for this exact source.
-
 // the GameCube's AddScalarToVectorComponents, the homing aim's lift over the
-// target's center
+// target's center. The separate `CVec r(t); return r;` is real: GC/3.0a5 folds a
+// directly returned local into the sret slot, while retail keeps the working
+// copy on the stack and word-copies it out with the vtable
 /**
  * @note Address: 0x80109C18
  * @note Size: 0x70
@@ -687,7 +683,8 @@ CVec AddScalarToVectorComponents(const CVec& v, f32 d)
 	t.x += d;
 	t.y += d;
 	t.z += d;
-	return t;
+	CVec r(t);
+	return r;
 }
 
 // NONMATCHING: 96.2% - same instruction count and frame; the residue is register
@@ -1198,12 +1195,12 @@ void fn_8010BE94(XActPopper* act)
  * @note Address: 0x8010BEE0
  * @note Size: 0x68
  */
-// NONMATCHING: retail copies the returned vector with three word load/stores and
-// schedules the mOwner load ahead of the string's address; this build does the copy
-// as float member stores
-void fn_8010BEE0(Vec* out, XActPopper* act)
+// NONMATCHING: 87.7% - identical instruction stream; the residue is the mOwner
+// load scheduled after the string's address and the string's pool label
+Vec fn_8010BEE0(XAction* act)
 {
-	*out = ((XObj*)act->mOwner->mPopperObj)->GetJointPos("cannon_C");
+	XObj* popper = (XObj*)act->mOwner->mPopperObj;
+	return popper->GetJointPos("cannon_C");
 }
 
 // the GameCube's InitRadarAction: initialize the action, then its full reset

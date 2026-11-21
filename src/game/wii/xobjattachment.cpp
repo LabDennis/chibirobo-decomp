@@ -73,17 +73,19 @@ void XObjAttachment::Release()
  */
 void XObjAttachment::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
+	const u16 nodeId = pFuncObj->GetCallbackNodeID();
 	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
-	if (pFuncObj->GetCallbackNodeID() == 0 && mVisible && mParent != NULL) {
-		if (mParent != NULL) {
-			PSMTXCopy(mParent, pResult->mpMtx);
+	if (nodeId == 0 && mVisible && mParent != NULL) {
+		MtxP parent = mParent;
+		if (parent != NULL) {
+			PSMTXCopy(parent, pResult->mpMtx);
 		} else {
 			PSMTXIdentity(pResult->mpMtx);
 		}
-		mMoveTranslate.x = mParent[0][3];
-		mMoveTranslate.y = mParent[1][3];
-		mMoveTranslate.z = mParent[2][3];
-		HSD_MtxGetScale(mParent, &mMoveScale);
+		mMoveTranslate.x = parent[0][3];
+		mMoveTranslate.y = parent[1][3];
+		mMoveTranslate.z = parent[2][3];
+		HSD_MtxGetScale(parent, &mMoveScale);
 	}
 }
 
@@ -399,8 +401,10 @@ void XObjRadar::InitializeObject()
 BOOL XObjRadar::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ok = XObj::LoadFromPlacement(info);
-	mYaw    = 0.0f;
-	mPitch  = 0.0f;
+	if (ok) {
+		mYaw   = 0.0f;
+		mPitch = 0.0f;
+	}
 	return ok;
 }
 
