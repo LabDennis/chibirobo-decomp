@@ -1,12 +1,74 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 60 fertig, Branch devin/lane3. R24J01:
-6605/8284 matched (kein Regress), xobj_camera 69,12 % fuzzy;
+Stand: Lauf 61 fertig, Branch devin/lane3, Tip 76c49cf2. R24J01:
+6613/8284 matched (+8 gegenueber Lauf-60-Stand, kein neuer Regress);
 GC: 17 files OK (alle drei). Baselines:
 .lane3_baseline/report_<V>.json (Lauf-44-Stand).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.
  .claude/devin/ENDLESS_STATE_3.md IM Worktree ist veraltet, Lauf 43.)
+
+## Lauf 61 — XObjMap-Fortsetzung: fn_800C85D4 matcht, fn_800C9750 ehrlich
+
+- **Commit a5b50037** `wii xobj_map: map rebuild + ANIM reset + mark
+  draw proc, sort-grid fields` — uebernommener WIP (fand ich
+  uncommittet vor, gatefaehig gemacht):
+  - `fn_800C7F70` 81,5 %: Map-Rebuild — Szene-Modul pruefen,
+    Modul auf Szene queuen (`vf03C` neu in `WiiGsSceneObj`,
+    am Ende der deklarierten Virtuals = kein Slot-Shift),
+    `CalcWorld`, dequeuen, `fn_802BA4F4` (Trigon aufbauen);
+    >1000 Tri => Sort-Bounds/Cell-Size fuellen + `fn_800C85EC` +
+    `fn_800C9B84`, sonst `mSortValid=0`.
+  - `fn_800C807C` 78,2 %: Listen-Reset + `fn_800929EC` +
+    Trigon-Release + Rebuild.
+  - `fn_800C83DC` 74,7 %: 16 Debug-Marks, GX-State, markierte
+    Dreiecke +0,1f y, Tri-Strip zeichnen, Mark loeschen.
+  - `fn_800C9B84` 11,9 %: ehrlicher Wrapper um `fn_800929EC`;
+    Retail hat eigenen Frame/Extab-Eintrag — Wand dokumentiert.
+  - xobj.h: Sort-Grid-Felder `_9EC mSortValid`, `_9F0 mSortMin`,
+    `_9FC mSortMax`, `_A08 mSortCellX`, `_A10 mSortCellZ`
+    (STATIC_ASSERTs gesetzt); Listen bleiben `_A14`/`_EC4`.
+  - cgs.h: `vf03C(void* model)` an `WiiGsSceneObj` angehaengt.
+  - callcheck-Fix: `fn_802AEE44` hatte C++-Mangling; Retail nutzt
+    Auto-Namen → `extern "C"` wie die anderen Deklarationen.
+    Eintrag weg (53→52).
+- **Commit 76c49cf2** `Wii xobj_map: fn_800C85D4 matcht,
+  fn_800C9750 ehrlich 94.75%`:
+  - `fn_800C85D4` **100 % MATCHED** — Komparator ueber
+    `{u32 tri; f32 height}`-Records (Hoehenvergleich). Wird per
+    `lis/addi` als Funktionszeiger in `fn_800C85EC` uebergeben.
+  - `fn_800C9750` 94,75 % NONMATCHING (dokumentiert): Sort3 ueber
+    drei Records via `(*cmp)`-Zeiger + `Rec t=**x; **x=**y; **y=t`-Swaps.
+    Identische Befehlsliste (104 Ins); Retail sichert Args nach
+    r27-r30 in Reihenfolge und haelt den 2. Record-Ptr fuer die
+    letzten Stores, unser Build nummeriert r28-r31 um und laedt ein
+    Mal neu — reine Regalloc-/Reload-Wand, ehrlich liegen gelassen.
+- **Bekannte Alt-Deltas (NICHT aus diesem Lauf):** `UpdateObject`
+  91,51→91,08 und `fn_800AF098` 98,38→95,27 kommen aus Commit
+  df3bf9f5 (Pool-Regression, in Lauf-59/60-Uebergaben dokumentiert);
+  per Stash+Rebuild verifiziert identisch auf HEAD vor dem WIP.
+  `vf170`/`vf1A8` `None` = Signatur-Renames (`FPA4_f`/`Ff`,
+  beide 100 % unter neuem Namen).
+- **Tail von xobj_map nicht machbar ehrlich:** `fn_800C9BE4`/
+  `fn_800C9C3C`/Dtor-Thunks/`@4@`-Stubs sind MSL-Exception-Klassen-
+  Teile (vtable `what()`/deleting dtors) aus dem `throw` in
+  `fn_800C85EC` — Compiler-Artefakte, nicht per Hand schreiben.
+- **Gate:** R24J01 main.dol OK 6613/8284; `--non-matching` linkt;
+  GGTE01/GGTJ01_01/GGTP01 je 17 files OK; kein xobj_map-callcheck-
+  Eintrag; config/ sauber; check.py-Format weiterhin durch
+  clang-format 23.1.4-vs-18.1.8-Hostproblem blockiert (Zeilen folgen
+  dem Tab-Stil der Datei).
+- **Liegt:** `fn_800C9750` Regalloc-Wand (s.o.); `fn_800C9B84`
+  separater Retail-Frame/Extab (Inline-Grenze); `fn_800C85EC`
+  (0x814, Grid-Aufbau + Exception-Machinerie) noch offen;
+  `fn_800C98E0` angefangen analysiert: Cell-Index → Trigon-Tri →
+  `IsPointInsideTriangleXZ` + `IntersectVerticalLineWithTrianglePlane`
+  → schreibt `{tri,flags,y}` nach r31-Arg.
+- **Naechstes:** `fn_800C98E0` zu Ende (dann `fn_800C85EC` Monster
+  oder besser: obja-Adressfolge fn_800AE9F0, fn_800AF098 (Regress
+  schauen), fn_800AF12C, fn_800AF51C, TestFloorCollision 0x800B034C).
+  Retail-Disassembly des xobj_map-Objekts liegt in /tmp/xmap_dis
+  (sessionfluechtig — neu erzeugen mit dtk/objdump).
 
 ## Lauf 60 — CustomShadow-Layout korrigiert + Ctor implementiert (90,5 %)
 
