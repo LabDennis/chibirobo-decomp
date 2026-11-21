@@ -1,14 +1,50 @@
 # ENDLESS_STATE_3 — Bahn 3 (devin/lane3) — Worktree-Kopie
 
-Stand: Lauf 105 fertig, Branch devin/lane3 (commit nach Gate).
-R24J01: 6696/8284 matched, xobjmember 32/64, main.dol OK;
-GC: je 0 Regressionen, 17 files OK; symbols.txt +1 (__vt__4TVec).
+Stand: Lauf 106 fertig, Branch devin/lane3 (commit nach Gate).
+R24J01: 6697/8284 matched, xobjmember 33/64, main.dol OK;
+GC: je 0 Regressionen, 17 files OK (Stand Lauf 105; Lauf 106 aenderte
+nur config/R24J01/symbols.txt — GC unberuehrt);
+symbols.txt +2 (__vt__4TVec, __ct__10CPtclDust2Fv).
 Baselines .lane3_baseline/report_<V>.json (Stand 21.11. 06:36 —
 aeltere Commits danach driften Einzelscores; KEIN matched-Verlust).
 (HINWEIS: zentrale .claude/devin/ENDLESS_STATE_3.md ist aus dem
 Worktree nicht beschreibbar — diese Kopie ist der aktuelle Stand.)
 
-## Lauf 105 — XObjScnCamInitRec-Layout gehoben, Ctor+Dtor 2x 100 % (NEU)
+## Lauf 106 — fn_800BF5F0 = __ct__10CPtclDust2Fv benannt (+1) (NEU)
+
+- **+1 auf 100 %:** `__ct__10CPtclDust2Fv`@0x800BF5F0 (0x24) — Rename
+  von fn_800BF5F0. Befund: `__ct__14XActPopperShotFv` ruft
+  `__construct_array(this+0xF8, fn_800BF5F0, __dt__10CPtclDust2Fv,
+  0x50, 0x28)` — Element = `CPtclDust2 mPtcls[40]` (xact.h:113).
+  Der Ctor speichert CVec-vptr @+0x10/+0x20/+0x30 (CVec-Member
+  @0x04/0x14/0x24) und die CPtclDust2-Vtable @+0x4C (CPtclOne-Basis
+  @0x40 — vptr auf Offset 0xC des Basisobjekts). Unser xobjmember.o
+  emittierte den Weak-Namen bereits implizit; Name in symbols.txt
+  genuegte. dol OK.
+- **Nicht benennbar (Doppelname-Falle / unbekannte Klasse):**
+  - `fn_800BF614`@0x800BF614 (0x40): zweite Weak-Kopie von
+    `__dt__10CPtclDust2Fv` (Name belegt 0x800432CC, gxb) — bleibt
+    fn_-Symbol, permanent unmatchbar per Name.
+  - `dtor_800BF108`@0x800BF108 (0x40): DESTROYBASE + letzter Call in
+    `__dt__7XObjChrFv` = Weak-Kopie von `__dt__4XObjFv` (Name belegt
+    0x8002D57C) — selbe Falle.
+  - `dtor_800BF1C0`@0x800BF1C0 (0x40): DESTROYMEMBER @0xAA0 im
+    XObjChr-Ctor-Unwind + `bl` in `__dt__7XObjChrFv` (r3=this+0xAA0,
+    flags -1). Klasse an XObjChr+0xAA0 ist im opaken _9A8-Bereich
+    unbekannt — kein belegbarer Name.
+- **Gate:** R24J01 `main.dol: OK` (byte-identisch), xobjmember
+  33/64, total 6697/8284; callcheck R24J01 49 Eintraege, alle
+  bekannt, keine Neuzugaenge. GC-Rebuilds ausgelassen (einzige
+  Aenderung: config/R24J01/symbols.txt — GC liest die nicht).
+- **Naechster Schritt:** `__ct__6ParamsFv`@0x800BFA08 (0x10: stw
+  RTTI-Vtable @+0x440, Member @0x999C in WiiPlayerState) und
+  `__ct__8XObjPlugFv`@0x800BFA58 (0x3BC, baut XObjPlugCordNode)
+  emittieren; XObjChr-Ctor 0x800BECE8 (0x1E4) bleibt der Schluessel
+  fuer die grossen Member-Ctors. Member-Klasse @XObjChr+0xAA0
+  (dtor_800BF1C0) aus Ctor-Code identifizieren sobald der XObjChr-
+  Ctor dekompiliert ist.
+
+## Lauf 105 — XObjScnCamInitRec-Layout gehoben, Ctor+Dtor 2x 100 %
 
 - **+2 auf 100 %:** `__ct__17XObjScnCamInitRecFv`@0x800BF9A4 (0x24) +
   `__dt__17XObjScnCamInitRecFv`@0x800BF9C8 (0x40), out-of-line in
