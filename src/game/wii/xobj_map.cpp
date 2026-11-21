@@ -96,14 +96,14 @@ extern "C" void fn_800C807C(XObjMap* map)
 	if (map->mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				map->mListB[i * 10 + k].mUsed = map->mListB[i * 10 + k].mUsed - map->mListB[i * 10 + k].mUsed;
+				map->mListB[i][k].mUsed = map->mListB[i][k].mUsed - map->mListB[i][k].mUsed;
 			}
 		}
 	}
 	if (fn_800929EC() != 0 && map->mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				map->mListA[i * 10 + k].mUsed -= map->mListA[i * 10 + k].mUsed;
+				map->mListA[i][k].mUsed -= map->mListA[i][k].mUsed;
 			}
 		}
 	}
@@ -129,14 +129,14 @@ void XObjMap::Release()
 	if (mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				mListB[i * 10 + k].mUsed = mListB[i * 10 + k].mUsed - mListB[i * 10 + k].mUsed;
+				mListB[i][k].mUsed = mListB[i][k].mUsed - mListB[i][k].mUsed;
 			}
 		}
 	}
 	if (fn_800929EC() != 0 && mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				mListA[i * 10 + k].mUsed -= mListA[i * 10 + k].mUsed;
+				mListA[i][k].mUsed -= mListA[i][k].mUsed;
 			}
 		}
 	}
@@ -295,4 +295,70 @@ extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortR
 		**a = **c;
 		**c = t;
 	}
+}
+
+// NONMATCHING: same instruction count and sequence; the residue is register
+// and stack-slot allocation — retail keeps each probe's tri pointer in a
+// callee-saved register across the calls (we rematerialize it), gives the
+// grid loop's Vec locals lower frame slots than the hint probe's, saves one
+// GPR fewer and holds the found flag in an argument register
+// 0x800C98E0, the Wii's out-of-line FindMapFloor: fills hit with the floor
+// triangle under pos — first trying the start triangle itself, then the
+// record list of the sort-grid cell the point falls in, then the trigon's
+// own check — and reports whether any of them found a floor. hit->mTrigon
+// keeps the found triangle's grid cell, -1 when there is no floor
+/**
+ * @note Address: 0x800C98E0
+ * @note Size: 0x2A4
+ */
+extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit)
+{
+	BOOL found = FALSE;
+	if (start >= 0 && start < map->mTrigon.mNum) {
+		TRIGON_INFO* tri = &map->mTrigon.mTri[start];
+		Vec v[3];
+		Vec at;
+		tri->mGetVtx(tri, v);
+		if (IsPointInsideTriangleXZ((Vec*)pos, &v[0], &v[1], &v[2])) {
+			IntersectVerticalLineWithTrianglePlane((Vec*)pos, &v[0], &v[1], &v[2], &at);
+			hit->mTriangle = start;
+			hit->mTrigon   = tri->mCell;
+			hit->mHeight   = at.y;
+			found          = TRUE;
+		}
+	}
+	if (!found) {
+		if (map->mSortValid != 0) {
+			s32 cellX = (pos->x - map->mSortMin.x) / map->mSortCellX;
+			s32 cellZ = (pos->z - map->mSortMin.z) / map->mSortCellZ;
+			if (cellX >= 0 && cellX < 10.0f && cellZ >= 0 && cellZ < 10.0f) {
+				f32 limit          = pos->y + 7.5f;
+				XObjMapListB* cell = &map->mListB[cellX][cellZ];
+				for (u32 i = 0; i < cell->mUsed; i++) {
+					s32 index        = ((XObjMapSortRec*)cell->mItems)[i].mTri;
+					TRIGON_INFO* tri = &map->mTrigon.mTri[index];
+					Vec v[3];
+					Vec at;
+					tri->mGetVtx(tri, v);
+					if (IsPointInsideTriangleXZ((Vec*)pos, &v[0], &v[1], &v[2])) {
+						IntersectVerticalLineWithTrianglePlane((Vec*)pos, &v[0], &v[1], &v[2], &at);
+						if (limit >= at.y) {
+							hit->mTriangle = index;
+							hit->mTrigon   = tri->mCell;
+							hit->mHeight   = at.y;
+							return TRUE;
+						}
+					}
+				}
+			}
+		}
+		hit->mTriangle = map->mTrigon.Check((Vec*)pos, -1, &hit->mHeight);
+		if (hit->mTriangle >= 0) {
+			hit->mTrigon = map->mTrigon.mTri[hit->mTriangle].mCell;
+			return TRUE;
+		}
+		hit->mTrigon = -1;
+		return FALSE;
+	}
+	return TRUE;
 }
