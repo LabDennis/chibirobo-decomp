@@ -536,8 +536,9 @@ static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
 	}
 }
 
-// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and both start the open flag at TRUE but
-// retail clears it through a cntlzw/rlwnm. value of mDrs.mOpen > 0 where this build branches on the compare
+// NONMATCHING (98.5 %): the mDrs.mOpen test is a branch here; retail materializes mOpen <= 0
+// through cntlzw/rlwnm into the open flag (init TRUE). Tried &&/||/ternary/!/bool spellings,
+// MWCC lowers each to branches or neg/andc/srwi. Also the rotation copy as in StopPlayerMotion.
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
 {
 	if (selection >= 0) {
@@ -1310,11 +1311,10 @@ static inline void SetModelFrame(XObj* object, f32 frame)
 }
 
 // his anims and the worn suit's to frame
-// NONMATCHING: retail tests the suit's active bit as a negated value (xori), this build branches on it directly
 void fn_800E3AE4(WiiPlayerState* chr, f32 frame)
 {
 	SetModelFrame(chr, frame);
-	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+	if ((chr->mSuits.mObjects[chr->mSuits.mCurrent].mStatus.mFlags & 1) == TRUE) {
 		SetModelFrame(&chr->mSuits.mObjects[chr->mSuits.mCurrent], frame);
 	}
 }

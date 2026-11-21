@@ -1859,11 +1859,11 @@ public:
 	Vec mSortMax;   // _9FC
 	f32 mSortCellX; // _A08, a tenth of the x span
 	u8 _A0C[4];
-	f32 mSortCellZ;        // _A10, a tenth of the z span
+	f32 mSortCellZ;              // _A10, a tenth of the z span
 	XObjMapListA mListA[10][10]; // _A14, a 10x10 cell grid over the sort bounds
 	XObjMapListB mListB[10][10]; // _EC4
-	nw4r::g3d::ScnProc* m_1374; // the translucent draw proc LoadFromPlacement plants, InitializeObject clears it
-	u8 _1378[0x80];            // ResetObjectState drops every other word of the two 0x40 records
+	nw4r::g3d::ScnProc* m_1374;  // the translucent draw proc LoadFromPlacement plants, InitializeObject clears it
+	u8 _1378[0x80];              // ResetObjectState drops every other word of the two 0x40 records
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
 // the Chibi-Robo character object: its dtor (0x800C14A0) unwinds a CPtclSet at

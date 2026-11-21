@@ -277,23 +277,23 @@ extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortR
 	}
 	if (!ca && !bc) {
 		XObjMapSortRec t = **a;
-		**a = **b;
-		**b = t;
+		**a              = **b;
+		**b              = t;
 		return;
 	}
 	if ((*cmp)(*b, *a) != 0) {
 		XObjMapSortRec t = **a;
-		**a = **b;
-		**b = t;
+		**a              = **b;
+		**b              = t;
 	}
 	if (ca) {
 		XObjMapSortRec t = **b;
-		**b = **c;
-		**c = t;
+		**b              = **c;
+		**c              = t;
 	} else {
 		XObjMapSortRec t = **a;
-		**a = **c;
-		**c = t;
+		**a              = **c;
+		**c              = t;
 	}
 }
 
