@@ -577,7 +577,8 @@ public:
 	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
 	// _294 to _2FC: the Wii's pointer controls, Reset and SetCamera clear them; the names are not recovered
 	CamEdgeArrow mArrows[2]; // _294, left and right
-	u8 _2C4[0x2CC - 0x2C4];
+	f32 _2C4;
+	f32 _2C8;
 	f32 _2CC;
 	u8 _2D0;
 	u8 _2D1;
@@ -586,7 +587,8 @@ public:
 	u8 _2E0[0x2E8 - 0x2E0];
 	s32 _2E8;
 	s32 _2EC;
-	u8 _2F0[0x2F8 - 0x2F0];
+	s32 _2F0;
+	s32 _2F4;
 	s32 _2F8;
 
 	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0

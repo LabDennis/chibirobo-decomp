@@ -1,8 +1,10 @@
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "nw4r/math/math_types.h"
+#include "nw4r/math/math_arithmetic.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #endif
 #include "game/gmath.h"
 #include "game/ut.h"
@@ -48,6 +50,10 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time);
 void InitCameraAreaEntries(CamAreaState* state);
 void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
 void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 force, f32 time);
+void UpdateAreaCameraEntrySelection(CCameraActionArea* area);
+f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
+void fn_8016AA78(f32* out, f32* in, f32* limits);
+f32 fn_8016A81C(f32 value, f32 min, f32 max);
 }
 
 // the Wii build resolves the current area's action in a second, C++ step that falls back to
@@ -55,6 +61,16 @@ void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode
 s32 GetCameraAreaMode(CamAreaState* state);
 
 extern s32 gScreenSafeWidth;
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
+extern s32 gRefreshRate;
+extern f32 lbl_805A1290[2];
+extern s32 lbl_805A1CF8;
+extern s32 lbl_805A1CFC;
+extern s32 lbl_805A1D00;
+extern s32 lbl_805A1D04;
+
+static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 
 /**
  * @note Address: 0x80154320
@@ -164,12 +180,279 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 }
 
 /**
+ * @note Address: 0x801546F4
+ * @note Size: 0xEB8
+ */
+// NONMATCHING: reconstructed against the Wii disassembly; register allocation and some pointer-state stores differ
+void CCameraActionArea::Update(u32 step)
+{
+	mPadControlEnabled = gGame.GetStatusFlags(0xC00) ? FALSE : TRUE;
+	if (mTarget != NULL && mTarget->HasModel()) {
+		Mtx mtx;
+		PSMTXCopy(mTarget->GetWorldMtx(), mtx);
+		CVec flatEye(mEye);
+		flatEye.y    = mTarget->GetPos()->y;
+		f32 distance = PSVECDistance(&flatEye, mTarget->GetPos());
+		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
+		PSMTXMultVec(mtx, &localEye, &localEye);
+		CVec pos = *mTarget->GetPos();
+	}
+
+	lbl_805A1CF8 = (gWiiPointer.mFlags & 2) != 0;
+	lbl_805A1CFC = (gWiiPointer.mFlags & 0x80000000) != 0;
+	lbl_805A1D00 = (gWiiPointer.mFlags & 0x100000000ULL) != 0;
+	lbl_805A1D04 = (gWiiPointer.mFlags & 0x200000000ULL) != 0;
+	gWiiPointer.mFlags &= ~0xC0000000ULL;
+	gWiiPointer.mFlags &= ~0x300000000ULL;
+	_2C4 = 0.0f;
+	_2C8 = 0.0f;
+
+	s32 entryCount = 0;
+	if (gCameraAreaState.mActiveArea >= 0) {
+		entryCount = gCameraAreaState.mGroups[gCameraAreaState.mActiveArea].mEntryCount;
+	}
+	BOOL padControl = mPadControlEnabled && entryCount > 1;
+	if ((gWiiPointer.mButton & 4) && padControl) {
+		if (_2CC > 12.0f) {
+			if (!_2D0) {
+				_2D0 = 1;
+			}
+		} else {
+			_2CC += step;
+		}
+	} else {
+		_2D0     = 0;
+		_2CC     = 0.0f;
+		Vec zero = { 0.0f, 0.0f, 0.0f };
+		_2D4     = zero;
+	}
+
+	Vec input = { 0.0f, 0.0f, 0.0f };
+	if (gWiiPointer.mPointerValid) {
+		Vec pointer;
+		pointer.x = 1.0f - 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth);
+		pointer.y = 1.0f - 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight);
+		pointer.z = 0.0f;
+		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
+		_2D4 = input;
+	} else if (!(gGame._41B0 & 8)) {
+		input = _2D4;
+	}
+
+	f32 direction = 0.0f;
+	if ((gWiiPointer.mButton & 2) && padControl) {
+		direction = 1.0f;
+	} else if ((gWiiPointer.mButton & 1) && padControl) {
+		direction = -1.0f;
+	}
+	if (_2D0) {
+		if (gWiiPointer.mPointerValid) {
+			f32 x = fn_8016A81C(1.0f - 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth), -sDebugParams[0], sDebugParams[0]);
+			f32 y = fn_8016A81C(1.0f - 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight), -sDebugParams[0], sDebugParams[0]);
+			if (nw4r::math::FAbs(x) < sDebugParams[2] && nw4r::math::FAbs(y) < sDebugParams[3]) {
+				_2F8 = 1;
+			}
+		}
+		if (_2F8) {
+			_2C4 = input.y;
+		}
+	} else {
+		_2F8 = 0;
+		_2C4 = direction;
+	}
+
+	if (_2C4 > 0.0f) {
+		_2F0 += step;
+	} else {
+		_2F0 = 0;
+	}
+	if (_2C4 < 0.0f) {
+		_2F4 += step;
+	} else {
+		_2F4 = 0;
+	}
+
+	BOOL changed = FALSE;
+	if (_2C4 > 0.0f) {
+		if (_2E8 == 0) {
+			_2E8    = 1;
+			changed = TRUE;
+		}
+	} else {
+		_2E8 = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 1;
+		_2E8 = 1;
+	}
+	if (_2E8 && _2F0 >= 30 && _2F0 >= 60) {
+		gWiiPointer.mFlags |= 1;
+		_2F0 = 30;
+	}
+
+	changed = FALSE;
+	if (_2C4 < 0.0f) {
+		if (_2EC == 0) {
+			_2EC    = 1;
+			changed = TRUE;
+		}
+	} else if (_2EC != 0) {
+		_2EC = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 2;
+		_2EC = 1;
+	}
+	if (_2EC && _2F4 >= 30 && _2F4 >= 60) {
+		gWiiPointer.mFlags |= 2;
+		_2F4 = 30;
+	}
+
+	mArrows[0]._0D    = 0;
+	mArrows[1]._0D    = 0;
+	mArrows[0].mShown = 0;
+	mArrows[1].mShown = 0;
+	if (_2D0) {
+		mArrows[0]._0D = 1;
+		mArrows[1]._0D = 1;
+		if (_2C4 > 0.0f) {
+			mArrows[0].mShown = 1;
+		} else if (_2C4 < 0.0f) {
+			mArrows[1].mShown = 1;
+		}
+	} else {
+		if (_2C4 > 0.0f) {
+			mArrows[0]._0D    = 1;
+			mArrows[0].mShown = 1;
+		} else if (_2C4 < 0.0f) {
+			mArrows[1]._0D    = 1;
+			mArrows[1].mShown = 1;
+		}
+	}
+
+	if (mArrows[0]._0D) {
+		if (mArrows[0]._14 < 1.0f) {
+			mArrows[0]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[0]._14 > 1.0f) {
+				mArrows[0]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[0]._14 > 0.0f) {
+		mArrows[0]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[0]._14 < 0.0f) {
+			mArrows[0]._14 = 0.0f;
+		}
+	}
+	if (mArrows[1]._0D) {
+		if (mArrows[1]._14 < 1.0f) {
+			mArrows[1]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[1]._14 > 1.0f) {
+				mArrows[1]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[1]._14 > 0.0f) {
+		mArrows[1]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[1]._14 < 0.0f) {
+			mArrows[1]._14 = 0.0f;
+		}
+	}
+
+	if (mPadControlEnabled && (gWiiPointer.mTrigger & 8)) {
+		if (gCameraAreaState.mZoomLevel > 1) {
+			gWiiPointer.mFlags |= 0x40000000;
+		}
+		if (gCameraAreaState.mZoomLevel < 2) {
+			gWiiPointer.mFlags |= 0x80000000;
+		}
+	}
+	if (mControlEnabled == 1 && mPadControlEnabled) {
+		UpdateAreaCameraEntrySelection(this);
+	}
+	s32 currentArea  = gCameraAreaState.mCurrentArea;
+	s32 previousArea = gCameraAreaState.mPrevArea;
+	if (mEntry->mId != mPrevEntry->mId || mForceApply) {
+		if (currentArea != previousArea && currentArea != -1) {
+			mTransitionTime = 2.0f;
+			ApplyAreaCameraEntry(this, mEntry, 1, 1, mTransitionTime);
+		} else if (mForceApply) {
+			mTransitionTime = 15.0f;
+			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
+			mForceApply = FALSE;
+		} else if (currentArea == previousArea) {
+			mTransitionTime = 15.0f;
+			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
+		}
+		gGame.GetPlayer()->ResetCameraValue();
+		mPrevEntryIndex = mEntryIndex;
+		mPrevEntry      = mEntry;
+		if (mKeepViewDirection != 0) {
+			mKeepViewDirection = 0;
+		}
+	}
+	s32 zoomLevel = gCameraAreaState.mZoomLevel;
+	if (zoomLevel != gCameraAreaState.mPrevZoomLevel) {
+		f32 fov    = GetAreaCameraFovForHeightLevel(&gCameraAreaState, zoomLevel);
+		mFovInterp = mFovInterps[4];
+		if (mFovInterp != NULL) {
+			mFovInterp->Start(mFov, fov, 15.0f);
+		}
+		gGame.GetPlayer()->ResetCameraValue();
+		gCameraAreaState.mZoomLevel     = zoomLevel;
+		gCameraAreaState.mPrevZoomLevel = zoomLevel;
+	}
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetEye(mEyeInterp->Get());
+		} else {
+			mEyeInterp = NULL;
+		}
+	}
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetFov(mFovInterp->Get());
+		} else {
+			mFovInterp = NULL;
+		}
+	}
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetInterest(mInterestInterp->Get());
+		} else {
+			mInterestInterp = NULL;
+		}
+	}
+	if (mInterestInterp == NULL && mTarget != NULL) {
+		SetInterest(mTarget->GetCameraTarget());
+	}
+
+	if (lbl_805A1CF8) {
+		gWiiPointer.mFlags |= 0x40000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x40000000ULL;
+	}
+	if (lbl_805A1CFC) {
+		gWiiPointer.mFlags |= 0x80000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x80000000ULL;
+	}
+	if (lbl_805A1D04) {
+		gWiiPointer.mFlags |= 0x200000000ULL;
+	} else {
+		gWiiPointer.mFlags &= ~0x200000000ULL;
+	}
+	if (lbl_805A1D00) {
+		gWiiPointer.mFlags |= 0x100000000ULL;
+	} else {
+		gWiiPointer.mFlags &= ~0x100000000ULL;
+	}
+}
+
+/**
  * @note Address: 0x801555AC
  * @note Size: 0x12C
  */
 void CCameraActionArea::DrawDebug2d()
 {
-	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 	fn_8016AA74(sDebugParams);
 	f32 z = 0.0f;
 	f32 y, x;
