@@ -1620,8 +1620,8 @@ public:
 	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198(f32 margin, f32 alpha, u32 color);            // _198, frames the on-screen bounds while hovered
 	virtual void vf19C(u32 color, f32 z, f32 x, f32 y);              // _19C, CGame::DrawHud calls it on its mHudObject
-	// _1A0, the GameCube's ApplyMaterialPresets: SYSCALL_SET_OBJSTAT's 0x20000 passes the object's material bits
-	virtual void vf1A0(const u32* flags);
+	// _1A0, as on the GameCube: SYSCALL_SET_OBJSTAT's 0x20000 passes the object's material bits
+	virtual void ApplyMaterialPresets(const u32* flags);
 	// _1A4, the material fade the plug and the attachments implement; the GameCube had it at _DC
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
 	virtual void vf1A8(f32 value);               // takes the stage's ambient level; LoadFromPlacement passes it
@@ -2026,7 +2026,7 @@ public:
 	virtual void DrawReflection(Mtx view);                             // _17C
 	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184, the mug's blob or the joint's
-	virtual void vf1A0(const u32* flags);                              // _1A0, forwards the flags to everything he wears
+	virtual void ApplyMaterialPresets(const u32* flags);               // _1A0, forwards the flags to everything he wears
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);          // _1A4, the fade on himself and his attachments
 	virtual void vf1A8(f32);                                           // _1A8, empty on the player
 	virtual void SetBaseMtx(Mtx mtx);                                  // _1B4, his own plus the nine suits'

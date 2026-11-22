@@ -244,12 +244,12 @@ extern "C" void ClearActiveObjectFloors(XObj* object)
 	}
 }
 
-static inline void ExpandRadius(f32 x, f32 z, f64& maxX, f64& maxZ)
+static inline void ExpandRadius(f32 x, f32 z, f32& maxX, f32& maxZ)
 {
-	if (nw4r::math::FAbs(x) > maxX)
-		maxX = nw4r::math::FAbs(x);
-	if (nw4r::math::FAbs(z) > maxZ)
-		maxZ = nw4r::math::FAbs(z);
+	if (__fabsf(x) > maxX)
+		maxX = __fabsf(x);
+	if (__fabsf(z) > maxZ)
+		maxZ = __fabsf(z);
 }
 
 extern "C" void UpdateObjectFloorXZExtent(XObj* object)
@@ -257,7 +257,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	object->mFloorXZExtent[0] = object->mFloorXZExtent[1] = NAN;
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return;
-	f64 maxX = 0.0, maxZ = 0.0;
+	f32 maxX = 0.0f, maxZ = 0.0f;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
 		if (!(object->mFloors[i].mFlags & 1))
 			continue;
@@ -427,9 +427,7 @@ extern "C" void SelectHighestActiveFloor(XObj* object)
 {
 	object->mSelectedFloorHeight = NAN;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
-		if (!(object->mFloors[i].mFlags & 1))
-			continue;
-		if (object->mFloorMasks[0] & (1U << i)) {
+		if ((object->mFloors[i].mFlags & 1) && object->IsFloorOn(i)) {
 			if (__fpclassifyf(object->mSelectedFloorHeight) == FP_NAN || object->mFloorHeights[i] > object->mSelectedFloorHeight) {
 				object->mSelectedFloorIndex  = i;
 				object->mSelectedFloorHeight = object->mFloorHeights[i];
@@ -593,17 +591,17 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 	return FALSE;
 }
 
-// NONMATCHING: retail lays out the four f32 locals as x, scaledX, y, z in that order
-// (an extra dead store of the scaled x survives); the rest matches
+// NONMATCHING: retail stores the scaled x in a stack slot of its own, after the raw one, and loads mScale
+// first; ours scales in place
 void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera)
 {
 	camera       = camera != NULL ? camera : &gGame.mMotionControlCamera;
 	Vec position = mMoveTranslate + *offset;
-	f32 screenX, scaledX, screenY, screenZ;
+	f32 screenZ, screenY, screenX;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
-	scaledX = screenX * camera->mScale;
+	screenX *= camera->mScale;
 	if (x != NULL)
-		*x = scaledX;
+		*x = screenX;
 	if (y != NULL)
 		*y = screenY;
 	if (z != NULL)
