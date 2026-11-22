@@ -281,6 +281,8 @@ void XObjLeticker::StateLift()
 	}
 }
 
+// NONMATCHING: regalloc, retail loads mCurrentLevel into r3 and the 1 for mUnwindWatch into r0;
+// ours swaps the two
 /**
  * @note Address: 0x8011A9DC
  * @note Size: 0x444
@@ -360,10 +362,10 @@ void XObjLeticker::StateRide()
 void XObjLeticker::DrawObject()
 {
 	DrawWithView(NULL);
-	GetPos();
+	GetPos(); // unused: retail keeps the vcall, the GameCube's segment-draw loop that read it is gone
 	switch (mState) {
 	case 1:
-		gGame.mXObjs.mObjects[mLinked[0]]->GetResNodeOrFirst(7);
+		gGame.mXObjs.mObjects[mLinked[0]]->GetResNodeOrFirst(7); // unused, as GetPos above
 		break;
 	case 2:
 		gGame.mXObjs.mObjects[mLinked[0]]->mStatus.mFlags &= ~0x80000000ULL;
@@ -373,6 +375,8 @@ void XObjLeticker::DrawObject()
 	}
 }
 
+// NONMATCHING: ours keeps one more float in a saved register (f21, a 0x10 bigger frame);
+// retail's int-to-float conversion carries an xoris ours lacks
 /**
  * @note Address: 0x8011B1A0
  * @note Size: 0x3D0
@@ -455,6 +459,7 @@ s32 GetClearLetickerApproachSide(XObj* obj, const Vec* pos)
 }
 
 // whether the spot under the joint is free, nothing near it in the way
+// NONMATCHING: regalloc, target and loop walker swap r26/r27 and an f1/f2 temp swaps against retail
 /**
  * @note Address: 0x8011B7BC
  * @note Size: 0x244
@@ -508,6 +513,9 @@ void XObjLeticker::OnHitFromPosition(const Vec& position, f32 strength)
 {
 }
 
+// NONMATCHING: retail fetches the player's position before the lift's for the heading and
+// re-reads mObjects[mLinked[0]] for each call in the ride case; ours keeps the part in a register
+// and inlines the bounds setter's loads in a different order
 /**
  * @note Address: 0x8011C504
  * @note Size: 0x95C
@@ -609,13 +617,13 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		gGame.mXObjs.mObjects[mLinked[0]]->SetRotateY(mMoveRotate.y, 1.0f);
 		if (mMaxLevelProgress <= mLevelProgress + amount) {
 			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			part->mStatus.mFlags |= 0x10000ULL;
+			part->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
 			if (part->GetAnimId() != 0) {
 				part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			}
-		} else {
-			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
-			part->mStatus.mFlags |= 0x10000ULL;
-			part->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 		break;
 	}
@@ -662,6 +670,8 @@ void XObjLeticker::OnUnplugged()
 	SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 }
 
+// NONMATCHING: retail loads GetPos()->x/z straight from r3 before moving the part into r3;
+// ours copies the result to r4 first, and the loop registers r28-r30 rotate
 /**
  * @note Address: 0x8011D030
  * @note Size: 0x1B8
@@ -693,6 +703,8 @@ extern "C" {
  * turn helpers, is not ported yet
  */
 
+// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf where our math.h inlines it,
+// and copies the CVec with float loads where ours copies words
 /**
  * @note Address: 0x8011D34C
  * @note Size: 0x3A0
@@ -740,7 +752,7 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 			if (__fpclassifyf(floor) == FP_NAN) {
 				return FALSE;
 			}
-			if (pos.y > floor) {
+			if (pos.y <= floor) {
 				return FALSE;
 			}
 		}
@@ -748,6 +760,8 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 	return TRUE;
 }
 
+// NONMATCHING: retail adds angle and the lift's rotation once into f31; ours keeps the rotation
+// and adds again, and the zero Vec's stores are scheduled later
 /**
  * @note Address: 0x8011D6EC
  * @note Size: 0x1B0
