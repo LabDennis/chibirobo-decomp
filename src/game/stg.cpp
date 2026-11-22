@@ -3653,10 +3653,10 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 
 static f32 sBannerScrollX, sBannerScrollY;
 
-static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f32 alpha)
+static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f32 height, f32 alpha)
 {
-	Vec vertices[5] = { (Vec) { x, y, -10.0f }, (Vec) { x + 660.0f, y, -10.0f }, (Vec) { x + 660.0f, y + height, -10.0f },
-		                (Vec) { x, y + height, -10.0f }, (Vec) { x, y, -10.0f } };
+	Vec vertices[5] = { (Vec) { x, y, -10.0f }, (Vec) { x + width, y, -10.0f }, (Vec) { x + width, height + y, -10.0f },
+		                (Vec) { x, height + y, -10.0f }, (Vec) { x, y, -10.0f } };
 	CGs& gs         = gGame.mGs;
 	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
 	u32 fill = (u32)(255.0f * alpha) | 0xFFB62800;
@@ -3670,26 +3670,30 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f
 	PSMTXTrans(tex.mMtx[0], sBannerScrollX, sBannerScrollY, 0.0f);
 	tex.mMtxDirty = TRUE;
 	u16 h = tex.GetHeight(), w = tex.GetWidth();
-	PSMTXScale(tex.mMtx[1], 660.0f / w, height / h, 1.0f);
+	PSMTXScale(tex.mMtx[1], width / w, height / h, 1.0f);
 	tex.mMtxDirty = TRUE;
 	SetGsDepthMode(gs.mCurRenderMode, 1, 4, 1);
 	SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
 	SetGsTevMode(gs.mCurTevStage, 2);
 	u32 overlay = (u32)(16.0f * alpha) | 0xFFFFFF00;
-	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + 330.0f, height / 2.0f + y, -11.0f, 660.0f, height, 0, 0, 0);
+	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + width / 2.0f, height / 2.0f + y, -11.0f, width, height, 0, 0, 0);
 	SetGsTevMode(gs.mCurTevStage, 4);
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gs.mCurRenderMode, 0, 3, 0);
 }
 
+// NONMATCHING: the five corner temporaries of each strip sit in the frame in the opposite order (retail's first corner
+// is the highest slot), and one mr before the first DrawGsTrianglePrimitive is scheduled a slot later
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
+	// the strip takes y + top as an expression and adds it again for its quad (US 0x80054CC8), so top is a variable
+	f32 top    = 10.0f;
 	f32 height = 88.0f;
 	sBannerScrollX -= 0.008f;
 	sBannerScrollY -= 0.008f;
 
-	DrawMenuBannerStrip(tex, x, y + 10.0f, height, alpha);
+	DrawMenuBannerStrip(tex, x, y + top, 660.0f, height, alpha);
 	if (title) {
 		char text[256];
 		sprintf(text, "%s", title);
@@ -3702,7 +3706,7 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 	height -= slide;
 	if (height < 8.0f)
 		height = 8.0f;
-	DrawMenuBannerStrip(tex, x, bottomY, height, alpha);
+	DrawMenuBannerStrip(tex, x, bottomY, 660.0f, height, alpha);
 }
 
 // a ring of 64 segments around a status icon, 0.09817477 is 2 pi / 64
