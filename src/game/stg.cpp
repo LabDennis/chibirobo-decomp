@@ -7048,6 +7048,9 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
 }
 
+// NONMATCHING: registers (retail numbers id above choice, r30/r29, and the choice-bar colour below its texture pointers),
+// the schedule of the choice-bar coordinates (US 0x80042B80), and one copy of the s16 id that ours keeps for the second
+// name lookup of each branch (mr r21) where retail passes the register again
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -7067,7 +7070,9 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters like its other
+	// temporaries (US fmuls f20 at 0x80042AF0, size and rowY above them in f27/f26)
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 
 	char text[256];
 #if defined(VERSION_JP)
@@ -7078,7 +7083,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset, 1.0f);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7105,7 +7110,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 #endif
 	}
 	if (choice != 2)
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, white);
 	s32 icon;
 	f32 w, h;
 	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
