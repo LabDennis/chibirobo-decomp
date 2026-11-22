@@ -75,6 +75,7 @@ static inline u16 ReadMsgU16(CMsg* msg)
  * @note Address: 0x8007FFB4
  * @note Size: 0x2D0
  */
+// NONMATCHING: the reads keep the cursor and the byte in each other's register, as in CMsg__cmd_ANIM
 extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
 {
 	switch (command) {
@@ -1158,6 +1159,7 @@ static inline void MsgSetDigits(CMsg* msg, const s8* digits, s32 count, s32 firs
  * @note Address: 0x80080B88
  * @note Size: 0x944
  */
+// NONMATCHING: retail reloads the font flag byte at the last two fade outs and tests mStarted with beq and bge; this keeps the byte in r5
 extern "C" s32 CMsg__cmd_END(CMsg* msg)
 {
 	if (msg->mFont.mActive) {
@@ -6457,14 +6459,17 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
  * @note Address: 0x80085444
  * @note Size: 0x6F0
  */
+// NONMATCHING: float colouring (scaleX/angle/scaleY, cellWidth with width still live), the SetChar glyph read as lwzx in retail
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
-	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->_04_04, font->mSize);
 	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
-	f32 spacing;
 #if defined(VERSION_JP)
-	spacing = (font->mSize - font->mPrevSize) / 2.0f;
+	f32 width   = MeasureGameTextWidth(&gGame.mGs, text, font->_04_04, font->mSize);
+	f32 spacing = (font->mSize - font->mPrevSize) / 2.0f;
 #else
+	// declared ahead of width: retail gives spacing the first saved float register here, japan gives it width
+	f32 spacing;
+	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->_04_04, font->mSize);
 	if (__fpclassifyf(font->mPrevSize) == FP_NAN) {
 		spacing = 0.0f;
 	} else {
