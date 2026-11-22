@@ -517,8 +517,14 @@ gamecube_libs = [
             # only deferred codegen of the file written last-address-first puts the destructors in front
             Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/obja_chr.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x800BD320-0x800D552C (xactradar + xacttumble + objb_act) shares
+            # one six-Vec .rodata block (0x8020A588), one .sdata2 pool (0x8065D6A8-0x8065D858), and one jobj.h string
+            # (0x8065D740). No extra flags: InitRadarAction and InitializePlayerLiftAction inline ResetPlayerRadarAction
+            # and ResetPlayerLiftAction (-inline noauto keeps them as calls), while -inline auto,deferred regresses
+            # UpdatePlayerCopterFlight (100% -> 77.6%), UpdateRadarTargeting, UpdatePlayerHangAction, UpdateLadderActionAnimation,
+            # UpdatePlayerRopeAction and UpdateLiftActionAnimation. Retail's .rodata initializers (0x8020A5AC..0x8020A71C)
+            # and Wii R24J01's function order lie in reverse GC .text order, which only deferred gives; code order stays
+            # unresolved here as in game.cpp.
             Object(NonMatching, "game/objb_act.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows (JP addresses): the .rodata path initializers are in reverse function order
             # (sRadarPlacementPath 0x8020B4B8 of LoadFromPlacement 0x800D8858, then ActivatePlayerRadar's,
