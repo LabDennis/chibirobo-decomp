@@ -9,13 +9,16 @@
 // archive becomes the anims' name source; name from the panic file/line it carries
 static inline void UpdateArchiveAnmSource(XObj* object)
 {
-	BOOL ok    = FALSE;
+	BOOL ok;
 	s32 result = object->mArchive.mAnm.mFile.GetResult();
 	if (result == 0) {
 		((CResFile*)&object->mArchive.mAnm)->Init(object->mArchive.mAnm.mFile.mBuffer, TRUE, FALSE);
 		ok = TRUE;
-	} else if (result < 0) {
-		OSPanic("xobj_ut2.h", 0xee, "");
+	} else {
+		if (result < 0) {
+			OSPanic("xobj_ut2.h", 0xee, "");
+		}
+		ok = FALSE;
 	}
 	if (ok) {
 		nw4r::g3d::ResFile file = object->mArchive.mAnm.m_resFile;

@@ -576,12 +576,12 @@ void XObj::UpdateObject(u32 frames)
 		CEvt_Update(&mEvt, frames);
 	}
 	if (mAnimEventCallback != NULL && !(mStatus.mFlags & 0x800ULL)) {
-		mAnimEventCallback(this, GetAnimId(), mLastAnimFrame, GetAnimFrame());
+		f32 prev = mLastAnimFrame;
+		mAnimEventCallback(this, GetAnimId(), prev, GetAnimFrame());
 	}
 	if (PSVECMag(&mMoveScale) > 0.0f) {
-		WiiObjectRef* ref = &gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount];
-		ref->mObj         = this;
-		ref->mIndex       = 0;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mObj   = this;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mIndex = 0;
 		gGame.mDrawLists[1].mCount++;
 	}
 }
