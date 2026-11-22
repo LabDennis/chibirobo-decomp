@@ -258,8 +258,16 @@ game/wii/homemenu.cpp:
 	.sbss start:0x805A1C38 end:0x805A1C40
 	.sdata2 start:0x805A4470 end:0x805A44D0
 
+game/wii/obja.cpp:
+	.text start:0x800AC07C end:0x800B1558
+
 game/wii/evt.cpp:
 	.text start:0x8009453C end:0x800A18B8
+
+game/wii/xobjctor.cpp:
+	extab start:0x8000B2E4 end:0x8000B7B4
+	extabindex start:0x80013BB0 end:0x80013DFC
+	.text start:0x800C13B0 end:0x800C5424
 
 game/wii/xobjs.cpp:
 	extab start:0x8000B7B4 end:0x8000B884
@@ -269,6 +277,16 @@ game/wii/xobjs.cpp:
 game/wii/xaction.cpp:
 	.text start:0x800C6428 end:0x800C6584
 
+game/wii/xobj_camera.cpp:
+	extab start:0x8000B89C end:0x8000B954
+	extabindex start:0x80013EF8 end:0x80013FA0
+	.text start:0x800C6584 end:0x800C7DC0
+
+game/wii/xobj_map.cpp:
+	extab start:0x8000B954 end:0x8000BAC0
+	extabindex start:0x80013FA0 end:0x80014090
+	.text start:0x800C7DC0 end:0x800C9E84
+
 game/wii/xobj_chr.cpp:
 	.text start:0x800C9E84 end:0x800E9D30
 
@@ -277,8 +295,19 @@ game/ringmenupointer.cpp:
 	extabindex start:0x80014534 end:0x80014540
 	.text start:0x800E9D30 end:0x800E9FC4
 
+game/wii/ringmenu.cpp:
+	extab start:0x8000C4F4 end:0x8000C584
+	extabindex start:0x80014540 end:0x80014570
+	.text start:0x800E9FC4 end:0x800ED3B8
+
 game/wii/atcmenuselection.cpp:
 	.text start:0x800ED3B8 end:0x800ED45C
+
+game/wii/xobjchrmenu.cpp:
+	.text start:0x800ED45C end:0x800F0100
+
+game/wii/efftrail.cpp:
+	.text start:0x800F0100 end:0x800F48E0
 
 game/wii/cfile.cpp:
 	extab start:0x80010920 end:0x800109A0
@@ -1201,6 +1230,20 @@ game/wii/cmotioncontrolcamera.cpp:
 game/wii/objb_act.cpp:
 	.text start:0x800F48E0 end:0x801067C0
 
+game/wii/xacttumble.cpp:
+	.text start:0x801067C0 end:0x801078C8
+
+game/wii/xactradar.cpp:
+	.text start:0x801078C8 end:0x8010E548
+
+game/wii/xobjattachment.cpp:
+	.text start:0x8010E548 end:0x8010F944
+
+game/wii/xobjplug.cpp:
+	.text start:0x8010F944 end:0x80110C2C
+	.sdata start:0x805A1140 end:0x805A1150
+	.sdata2 start:0x805A5368 end:0x805A5390
+
 game/wii/xobjplugcord.cpp:
 	extab start:0x8000D644 end:0x8000D724
 	extabindex start:0x80014B7C end:0x80014C18
@@ -1230,6 +1273,11 @@ game/wii/xobjhboxpart.cpp:
 	extab start:0x8000D814 end:0x8000D84C
 	extabindex start:0x80014D20 end:0x80014D5C
 	.text start:0x80116528 end:0x8011701C
+
+game/wii/xobjhbox.cpp:
+	extab start:0x8000D84C end:0x8000D87C
+	extabindex start:0x80014D5C end:0x80014DA4
+	.text start:0x8011701C end:0x801178E4
 
 game/wii/xobjspider.cpp:
 	extab start:0x8000DB4C end:0x8000DD0C
@@ -1316,6 +1364,9 @@ game/wii/cjanim.cpp:
 game/wii/xobj_ut.cpp:
 	.text start:0x800BD66C end:0x800BEB0C
 	.rodata start:0x802DA21C end:0x802DA320
+
+game/wii/xobjmember.cpp:
+	.text start:0x800BEB4C end:0x800C0EF0
 
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4

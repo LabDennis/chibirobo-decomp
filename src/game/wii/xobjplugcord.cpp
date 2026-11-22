@@ -1,3 +1,4 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "game/xobjattachment.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
@@ -20,11 +21,9 @@ void fn_802A5A84(Mtx m, Vec* scale, Vec* rotation, Vec* translation);
 void fn_802AD130(CGs* gs, Mtx m, u32 color, s32 sides);
 // the Wii map-floor probe: writes the hit record, returns nonzero when it found a floor
 s32 fn_800C98E0(void* map, const Vec* pos, s32 triangle, XObjMapHit* hit);
-// the Wii MSL's out-of-line __fpclassifyf
-s32 ClassifyFloatBits(f32 value);
 // the Wii wire effect, the GameCube's XObjWireEff calls
-void ConfigurePlugWireEffect(WiiCordWire* wire, s32 anim, s32 effect, f32 rate, u32 color);
-void ClearWireEffect(WiiCordWire* wire);
+void ConfigurePlugWireEffect(XObjWireEff* wire, s32 anim, s32 effect, f32 rate, u32 color);
+void ClearWireEffect(XObjWireEff* wire);
 // the Wii's stand-alone object-push pass, the GameCube had it inside UpdatePlugCordSimulation
 void PushPlugCordPointsFromObjects(XObjPlugCord* cord);
 }
@@ -634,7 +633,7 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 h
 			CVec from(pos->x, pos->y, pos->z), to(pos->x, pos->y, pos->z);
 			if (object->vf1C8(&from, &to, &push, &contact, &floor, 0, radius, height, pos->y, pos->z) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
-				if (ClassifyFloatBits(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
+				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
 			}
 		}

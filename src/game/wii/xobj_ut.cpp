@@ -64,11 +64,6 @@ XObjLight::XObjLight()
 {
 }
 
-// everything is the member classes' own constructors
-XObj::XObj()
-{
-}
-
 // the member ctors install the three vtables (TVec, then the two CVecs)
 CObjVec::CObjVec()
 {
@@ -84,10 +79,6 @@ XObjLight::~XObjLight()
 }
 
 XObjMap::XObjMap()
-{
-}
-
-XObjMap::~XObjMap()
 {
 }
 #endif

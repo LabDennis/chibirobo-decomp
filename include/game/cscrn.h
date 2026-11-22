@@ -15,6 +15,14 @@ struct ScrnColorF {
 	f32 g; // _04
 	f32 b; // _08
 	f32 a; // _0C
+
+	void Set(f32 r, f32 g, f32 b, f32 a)
+	{
+		this->r = r;
+		this->g = g;
+		this->b = b;
+		this->a = a;
+	}
 };
 
 // a flat color over the whole screen that fades to its target

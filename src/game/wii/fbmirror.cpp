@@ -250,6 +250,16 @@ void FbMirror::Update(u32 frames)
 	}
 }
 
+// NONMATCHING: retail reads the node's data pointer once, ahead of the mF0 test, and tests that
+// register for both the assertion and the index; ours reads it again after the mF0 test.
+MtxP CMirrorObj::vfA0(nw4r::g3d::ResNode node)
+{
+	if (mF0 != NULL) {
+		return mF0->mpWorldMtxArray[node.GetMtxID()];
+	}
+	return NULL;
+}
+
 /**
  * @note Address: 0x8001A450
  * @note Size: 0xC

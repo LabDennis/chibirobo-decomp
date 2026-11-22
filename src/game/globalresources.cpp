@@ -15,12 +15,20 @@ extern "C" {
 // japan has one language, so one table each
 extern const char* gJapanesePCDialogue[];
 extern const char* gJapaneseInterfaceText[];
+#if defined(VERSION_R24J01)
 const char* gGlobalResourceFileName = "bin/globals.bin";
+#else
+extern const char* gGlobalResourceFileName;
+#endif
 #else
 // a string table per language
 extern const char** gPCDialogueByLanguage[];
 extern const char** gInterfaceTextByLanguage[];
+#if defined(VERSION_R24J01)
 const char* gGlobalResourceFileName = "globals.bin";
+#else
+extern const char* gGlobalResourceFileName;
+#endif
 #endif
 extern s32 gObjectCollisionIdRemap[];
 }

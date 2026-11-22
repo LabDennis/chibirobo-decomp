@@ -1,6 +1,7 @@
 #include "game/ccameraaction.h"
 #include "game/cthread.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/csoundfx.h"
 #include "revolution/mem.h"
 
 // The Wii unit 0x80032C48-0x8003366C (wii_units.md #19): the tail of the game's main file, the one
@@ -30,8 +31,7 @@ CThread gMovieUpdateThread;
 // that constructs gGame (CThread::Create, 0x800331D4, among them):
 //   0x80033058 CFile::IsLoaded                          include/game/cfile.h
 //   0x80033080 CScrnWipeTile::Start                     include/game/cscrn.h
-//   0x80033084 CSoundFxReverbHiDpl2::SetParam           include/game/wii/csoundfx.h
-//   0x80033140 CSoundFx::SetParam                       include/game/wii/csoundfx.h
+//   0x80033140 CSoundFx::Setup                          include/game/wii/csoundfx.h
 //   0x80033148 nw4r::snd::SoundArchivePlayer::detail_ConvertLabelStringToSoundId
 //   0x800331B0 nw4r::snd::DvdSoundArchive::detail_GetWaveDataFileAddress
 //   0x800331B8 nw4r::snd::DvdSoundArchive::detail_GetFileAddress
@@ -46,3 +46,19 @@ CThread gMovieUpdateThread;
 //              Its vtable (0x802E6A10) has six slots, not the 75 of xobj.h.
 //   0x80033040 an empty virtual, the fourth of the base Title and MenuSave share (RTTI:
 //              CContainCallback, MenuPad); title.h derives Title from MenuUtil alone.
+
+// 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. Written there, it
+// is emitted by unit_8003366C.cpp instead, so it stays out of line here.
+BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param)
+{
+	if (mWorkBuffer != NULL) {
+		Shutdown();
+		ReleaseWorkBuffer();
+		SoundHeapFree(&mWorkBuffer);
+	}
+	if (SetParam(param)) {
+		u32 size = GetRequiredMemSize();
+		return AssignWorkBuffer(SoundHeapAlloc(&mWorkBuffer, size), size);
+	}
+	return FALSE;
+}

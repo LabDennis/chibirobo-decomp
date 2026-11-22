@@ -116,6 +116,10 @@ public:
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
 	virtual BOOL IsItemEquipped(s32 index);         // _2C
+
+#if defined(VERSION_R24J01)
+	void Init(XObjChr* chr); // 0x800ED7E0, the costume ring's spawn-time init
+#endif
 };
 
 #endif

@@ -1556,105 +1556,6 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 fla
 }
 
 /**
- * @note Address: 0x801A2F38
- * @note Size: 0x134
- */
-// NONMATCHING: retail keeps &mTranslate, &mRotate and &mScale in a register, the code MWCC gives when
-// CJObj::Attach runs on a member (mIntp.Attach in CXObjIntp::ReadCheck) and not on the base of this.
-// Retail calls both Attach and the base ReadCheck out of line.
-void CXObj::Attach(HSD_JObj* jobj)
-{
-	CJObj::Attach(jobj);
-	SyncMoveFromJoint(this);
-}
-// CXObj::Attach(_HSD_JObj*)
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    stw      r30, 0x18(r1)
-    stw      r29, 0x14(r1)
-    mr       r29, r3
-    stw      r4, 0x0(r3)
-    lwz      r31, 0x0(r3)
-    cmplwi   r31, 0x0
-    bne      .L_801A2F74
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x3e4
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A2F74:
-    addic.   r30, r29, 0x4
-    bne      .L_801A2F90
-    lis      r4, sObjectTranslationCondition@ha
-    li       r3, lbl_8065F6F8@sda21
-    addi     r5, r4, sObjectTranslationCondition@l
-    li       r4, 0x3e5
-    bl       __assert
-.L_801A2F90:
-    lfs      f0, 0x38(r31)
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x3c(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x40(r31)
-    stfs     f0, 0x8(r30)
-    lwz      r31, 0x0(r29)
-    cmplwi   r31, 0x0
-    bne      .L_801A2FC4
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2dd
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A2FC4:
-    addic.   r30, r29, 0x14
-    bne      .L_801A2FDC
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2de
-    li       r5, lbl_8065F710@sda21
-    bl       __assert
-.L_801A2FDC:
-    lfs      f0, 0x1c(r31)
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x20(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x24(r31)
-    stfs     f0, 0x8(r30)
-    lfs      f0, 0x28(r31)
-    stfs     f0, 0xc(r30)
-    lwz      r31, 0x0(r29)
-    cmplwi   r31, 0x0
-    bne      .L_801A3018
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x351
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A3018:
-    addic.   r30, r29, 0x24
-    bne      .L_801A3030
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x352
-    li       r5, lbl_8065F708@sda21
-    bl       __assert
-.L_801A3030:
-    lfs      f0, 0x2c(r31)
-    mr       r3, r29
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x30(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x34(r31)
-    stfs     f0, 0x8(r30)
-    bl       SyncMoveFromJoint
-    lwz      r0, 0x24(r1)
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
-/**
  * @note Address: 0x801A2D68
  * @note Size: 0x1D0
  */
@@ -1800,6 +1701,105 @@ BOOL CXObj::ReadCheck()
     lwz      r30, 0x18(r1)
     extrwi   r3, r0, 8, 19
     lwz      r0, 0x24(r1)
+    lwz      r29, 0x14(r1)
+    mtlr     r0
+    addi     r1, r1, 0x20
+    blr
+*/
+
+/**
+ * @note Address: 0x801A2F38
+ * @note Size: 0x134
+ */
+// NONMATCHING: retail keeps &mTranslate, &mRotate and &mScale in a register, the code MWCC gives when
+// CJObj::Attach runs on a member (mIntp.Attach in CXObjIntp::ReadCheck) and not on the base of this.
+// Retail calls both Attach and the base ReadCheck out of line.
+void CXObj::Attach(HSD_JObj* jobj)
+{
+	CJObj::Attach(jobj);
+	SyncMoveFromJoint(this);
+}
+// CXObj::Attach(_HSD_JObj*)
+/*
+    stwu     r1, -0x20(r1)
+    mflr     r0
+    stw      r0, 0x24(r1)
+    stw      r31, 0x1c(r1)
+    stw      r30, 0x18(r1)
+    stw      r29, 0x14(r1)
+    mr       r29, r3
+    stw      r4, 0x0(r3)
+    lwz      r31, 0x0(r3)
+    cmplwi   r31, 0x0
+    bne      .L_801A2F74
+    li       r3, lbl_8065F6F8@sda21
+    li       r4, 0x3e4
+    li       r5, lbl_8065F700@sda21
+    bl       __assert
+.L_801A2F74:
+    addic.   r30, r29, 0x4
+    bne      .L_801A2F90
+    lis      r4, sObjectTranslationCondition@ha
+    li       r3, lbl_8065F6F8@sda21
+    addi     r5, r4, sObjectTranslationCondition@l
+    li       r4, 0x3e5
+    bl       __assert
+.L_801A2F90:
+    lfs      f0, 0x38(r31)
+    stfs     f0, 0x0(r30)
+    lfs      f0, 0x3c(r31)
+    stfs     f0, 0x4(r30)
+    lfs      f0, 0x40(r31)
+    stfs     f0, 0x8(r30)
+    lwz      r31, 0x0(r29)
+    cmplwi   r31, 0x0
+    bne      .L_801A2FC4
+    li       r3, lbl_8065F6F8@sda21
+    li       r4, 0x2dd
+    li       r5, lbl_8065F700@sda21
+    bl       __assert
+.L_801A2FC4:
+    addic.   r30, r29, 0x14
+    bne      .L_801A2FDC
+    li       r3, lbl_8065F6F8@sda21
+    li       r4, 0x2de
+    li       r5, lbl_8065F710@sda21
+    bl       __assert
+.L_801A2FDC:
+    lfs      f0, 0x1c(r31)
+    stfs     f0, 0x0(r30)
+    lfs      f0, 0x20(r31)
+    stfs     f0, 0x4(r30)
+    lfs      f0, 0x24(r31)
+    stfs     f0, 0x8(r30)
+    lfs      f0, 0x28(r31)
+    stfs     f0, 0xc(r30)
+    lwz      r31, 0x0(r29)
+    cmplwi   r31, 0x0
+    bne      .L_801A3018
+    li       r3, lbl_8065F6F8@sda21
+    li       r4, 0x351
+    li       r5, lbl_8065F700@sda21
+    bl       __assert
+.L_801A3018:
+    addic.   r30, r29, 0x24
+    bne      .L_801A3030
+    li       r3, lbl_8065F6F8@sda21
+    li       r4, 0x352
+    li       r5, lbl_8065F708@sda21
+    bl       __assert
+.L_801A3030:
+    lfs      f0, 0x2c(r31)
+    mr       r3, r29
+    stfs     f0, 0x0(r30)
+    lfs      f0, 0x30(r31)
+    stfs     f0, 0x4(r30)
+    lfs      f0, 0x34(r31)
+    stfs     f0, 0x8(r30)
+    bl       SyncMoveFromJoint
+    lwz      r0, 0x24(r1)
+    lwz      r31, 0x1c(r1)
+    lwz      r30, 0x18(r1)
     lwz      r29, 0x14(r1)
     mtlr     r0
     addi     r1, r1, 0x20

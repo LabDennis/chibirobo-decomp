@@ -4,24 +4,38 @@
 // NONMATCHING: the small accessors and helpers have source, the player's update, draw and menu code is
 // still to do. The state checks call the action accessors above them, which -inline auto expands.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
+#include "game/wii/xobjflags.h" // its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
-#include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjcamera.h"
+#include "game/wii/cgame.h"
+#include "game/xobjattachment.h"
 #include "game/wii/xchrmenu.h"
+#include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
 #include "game/pointptcl.h"
+#include "game/wii/xact.h"
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include "arithmetic.h"
+#include "JSystem/JMath/Inline.h"
 #include <math.h>
 #include <stdlib.h>
+
+// the Wii build inlines PSVECScale as paired-single code like the other units
+#define PSVECScale JMathInlineVEC::PSVECScale
+// NONMATCHING: ScaleVectorInPlace's retail body interleaves the paired-single loads,
+// multiplies and stores (its SDK inline's statement order); ours loads both pairs
+// first, so the wrapper stays below a match
 
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
+extern CustomShadow gCustomShadow;
 
 // the GameCube kept a weak copy of it
 static inline BOOL IsObjectActive(XObj* object)
@@ -128,9 +142,9 @@ static inline void OpenMenus(WiiPlayerState* chr)
 // he stops where he is, and lets go of what he pushes
 static inline void StopMoving(WiiPlayerState* chr)
 {
-	chr->mMotion.x         = 0.0f;
-	chr->mMotion.y         = 0.0f;
-	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mValue.x  = 0.0f;
+	chr->mMotion.mValue.y  = 0.0f;
+	chr->mMotion.mValue.z  = 0.0f;
 	chr->mMotion.mTarget.x = 0.0f;
 	chr->mMotion.mTarget.y = 0.0f;
 	chr->mMotion.mTarget.z = 0.0f;
@@ -144,6 +158,12 @@ static inline void StopMoving(WiiPlayerState* chr)
 		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
 		chr->mIdleLoops = 3;
 	}
+}
+
+// the y angle a direction faces
+static inline f32 GetYAngle(const Vec& dir)
+{
+	return atan2(dir.x, dir.z);
 }
 
 // the ground type of a map triangle, 0 for none
@@ -164,9 +184,15 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 	return ret;
 }
 
+class EnvInfo;
+
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsCarryingMug(XAction* action);
+BOOL IsCarryingSquirter(XAction* action);
+BOOL IsCarryingSpoon(XAction* action);
+BOOL IsCarryingToothbrush(XAction* action);
+void ApplyPlayerItemTintToTarget(XAction* action);
 BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 void UpdateHeldObject(XAction* action, u32 frames);
 void UpdatePushedObject(XAction* action, u32 frames);
@@ -174,11 +200,174 @@ void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
-BOOL fn_800CDC98(WiiPlayerState* player);
-void fn_800CDDC0(WiiPlayerState* player);
+UnkStageObj* GetSpawnData(s32 index);
+s32 IsStageDataLoaded(void);
+EnvInfo* GetStageEnvironment(void);
+UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
+extern s32 gSpecialSuitSpawnIds[];
+BOOL LoadPlayerSuitItem(WiiPlayerState* player);
+void ApplyPlayerSuit(WiiPlayerState* player);
+void UpdatePlayerSuitChange(WiiPlayerState* player);
+void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
+void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
+void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
+void ResetPlayerLiftAction(XActLift* act);
+void ResetPlayerJumpAction(XActJump* act);
+void ResetTumbleAction(XActTumble* act);
+void ResetPlayerRadarAction(XActRadar* act);
+void ResetPopperCharge(XActPopperCharge* charge);
+void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
+void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object's own file, then releases the archive
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
+
+// the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect (the .bss
+// object at lbl_8045BBD0): the Wii's records are 0x18 bytes with the scale at +0
+// and the angle at +8; what the rest of the 0x258 holds only the spiral code knows
+struct SuitChangeTrail {
+	s32 mActive; // _00, nonzero while the spiral runs
+	u8 _04[0xC];
+	struct {
+		f32 scale; // _00
+		u8 _04[4];
+		f32 angle; // _08
+		u8 _0C[0xC];
+	} mParticles[20]; // _10
+	u8 _1F0[0x258 - 0x1F0];
+};
+extern SuitChangeTrail lbl_8045BBD0;
+extern "C" void fn_800F2CF4(SuitChangeTrail* trail); // starts the suit-change spiral
+
+// the delay the suit change keeps the old suit's resources around, the GameCube's
+// gPlayerSuitChangeTimer; the Wii resets it to 0.0f and waits on the file itself
+static f32 gPlayerSuitChangeTimer;
+
+static inline void ClearRingHighlights(OctaMenu& ring)
+{
+	ring.mOpen = 0;
+	ring.mFade = 0.0f;
+	for (s32 i = 0; i < 8; ++i)
+		ring.mItems[i].mHighlight = 0.0f;
+}
+
+// the head of the stage's info record, as far as LoadFromPlacement reads it: the GameCube's
+// UnkStageInfo (game/cgameutil.h, which the Wii cannot include). The loaded stage's EnvInfo
+// starts with a pointer to it
+struct WiiStageInfo {
+	u8 _00[0x9];
+	u8 _09; // _09, the ambient light level in percent, vf1A8's argument
+};
+
+static inline WiiStageInfo* GetStageInfo()
+{
+	return *(WiiStageInfo**)GetStageEnvironment();
+}
+
+// _154, the GameCube's XObjChr::ResetObjectState: the player state, his actions,
+// the embedded objects, the menus and the pools all go back to their defaults
+// NONMATCHING (~90 %): same instruction multiset, call set and store order; retail colours
+// this into r30 and keeps gPointParticlePool's base live in r31 from the prologue, deriving
+// gPointParticleSlots (+0x3D18) and lbl_8045BBD0 (+0x3D40) from it as contiguous .bss. Ours
+// rematerializes each base inside the loop region — register-allocation wall, no logic diff.
+void XObjChr::ResetObjectState()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	XObj::ResetObjectState();
+	chr->vf28C(0);
+	chr->mMotion.Reset(0.0f, 0.0f, 0.0f);
+	chr->mStick[2] = chr->mStick[3] = chr->mStick[0] = chr->mStick[1] = 0.0f;
+	chr->m_0A1C = chr->m_0A18    = -1;
+	chr->mFloorContactObjects[4] = chr->mFloorContactObjects[2] = chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
+	chr->mLastContactFloorIndex                                                                                               = -1;
+	chr->mNearDistance                                                                                                        = 2.0f;
+	chr->mLetickerIndex                                                                                                       = -1;
+	chr->_0A70                                                                                                                = 0;
+	chr->mLiftPlugFlags &= ~0x80;
+	chr->mPressTimer = chr->mAPressed = 0;
+	chr->mIdleLoops                   = 0;
+	chr->mIdleTimer                   = 0.0f;
+	chr->mFlashTimer = chr->mFlashCount = 0;
+	chr->mHitStrength                   = 0.0f;
+	chr->mMoveSpeedScale                = 1.0f;
+	chr->mHang.Init(chr);
+	chr->mHang.mStickAway = FALSE;
+	chr->mJump.Init(chr);
+	((XActJump*)&chr->mJump)->mStrength = ((XActJump*)&chr->mJump)->mTargetStrength = 0.0f;
+	chr->mLadder.Init(chr);
+	((XActLadder*)&chr->mLadder)->mBPressed = FALSE;
+	chr->mRope.Init(chr);
+	chr->mPush.Init(chr);
+	chr->mTumble.Init(chr);
+	chr->mCopter.Init(chr);
+	chr->mCopter.mTime = gRefreshRate;
+	InitializePlayerPopperAction((XActPopper*)&chr->mPopper, chr);
+	InitRadarAction((XActRadar*)&chr->mRadar, chr);
+	chr->_969C             = 0;
+	chr->mFrameTime.mFrame = chr->mFrameTime.mLastFrame = -1.0f;
+	chr->mBlinkWait                                     = 0;
+	chr->mBlinkFrame                                    = 0;
+	fn_800C659C(&chr->mEyeAimRecord, this);
+	fn_800C659C(&chr->mHeadAimRecord, this);
+	chr->mLook.mActive = FALSE;
+	chr->mLook.mMode   = -1;
+	chr->mLook.mObject = NULL;
+	Vec zero           = { 0.0f, 0.0f, 0.0f };
+	chr->mLook.mOffset = zero;
+	chr->mLook.mPulse = chr->mLook.mPhase = chr->mLook.mFade = 0.0f;
+	chr->mLook.mObject                                       = this;
+	chr->mAttachmentRequest                                  = -1;
+	chr->mNextClimbType = chr->mClimbType = chr->mScriptAttach = chr->mAttachmentStep = 0;
+	chr->mFallDistance                                                                = 0.0f;
+	chr->mCameraTarget[0] = chr->mCameraTarget[1] = chr->mCameraTarget[2] = NAN;
+	chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting = 1.0f;
+	chr->mHeldMoveAngle = chr->mMoveAngle = chr->mHeldStickAngle = NAN;
+	chr->mBatteryWarningFrames                                   = 0;
+	chr->mBatteryWarningFade = chr->mBatteryWarningAngle = 0.0f;
+	chr->mGaugeTarget                                    = NULL;
+	chr->mGaugeTime                                      = 0.0f;
+	chr->mPlug.ResetObjectState();
+	((XObj*)chr->mCopterObj)->ResetObjectState();
+	((XObj*)chr->mPopperObj)->ResetObjectState();
+	((XObj*)chr->mRadarObj)->ResetObjectState();
+	((XObj*)chr->mOXObj)->ResetObjectState();
+	for (s32 i = 0; i < 9; ++i)
+		chr->mSuits.mObjects[i].ResetObjectState();
+	chr->mWalkHeading = NAN;
+	ClearRingHighlights(chr->mMenu.mAtc);
+	ClearRingHighlights(chr->mMenu.mDrs);
+	chr->mMenu.mTargetY = chr->mMenu.mCursorY = chr->mMenu.mFade = 0.0f;
+	chr->mOXMenu.mStarted                                        = FALSE;
+	chr->mOXMenu._10                                             = -1;
+	chr->mOXMenu.mFade                                           = 0.0f;
+	chr->mOnGround                                               = 0;
+	mStatus.mFlags &= ~0x800000ULL;
+	InitParticlePool(&mDustPool.mPtcl, mDustPool.mPtcls, sizeof(mDustPool.mPtcls[0]), ARRAY_SIZE(mDustPool.mPtcls));
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.burst.mState = p.display.mState = 0;
+		gPointParticleSlots[i]            = NULL;
+	}
+	lbl_8045BBD0.mActive = 0;
+	for (s32 i = 0; i < 20; ++i) {
+		lbl_8045BBD0.mParticles[i].scale = 0.0f;
+		lbl_8045BBD0.mParticles[i].angle = 0.0f;
+	}
+	chr->mGroundType = 0;
+	chr->_1C9A8.x    = 0.0f;
+	chr->_1C9A8.y    = 0.0f;
+	chr->_1C9A8.z    = 0.0f;
+	chr->_1C9B8[0] = chr->_1C9B8[1] = chr->_1C9B8[2] = chr->_1C9C4[0] = chr->_1C9C4[1] = 0.0f;
+	chr->mEyeAim.Set(0.0f, 0.0f, 0.0f);
+	chr->mEyeAimTarget.Set(0.0f, 0.0f, 0.0f);
+	chr->mEyeAimStep.Set(0.0f, 0.0f, 0.0f);
+	chr->mHeadOffset      = 5.0f;
+	chr->mHeadOffsetReady = FALSE;
+	mActor.Reset();
+}
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 {
@@ -188,6 +377,93 @@ void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 void ClearObjectStatusFlags(XObj* object, u64 mask)
 {
 	object->mStatus.mFlags &= ~mask;
+}
+
+// the attachment goes away: its sounds stop, its object hides, and the actions and
+// the carried object all reset; the GameCube's ResetPlayerAttachment (obja_chr.cpp).
+// On the Wii the put-away is shared with the attachment switch, so the lift's early
+// states keep the held item from jumping straight back into the inventory
+// NONMATCHING (94 %): retail evaluates the lift-state test through nested bool inlines (each
+// level clamped to a byte) that are not recovered; this plain test folds them
+void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
+{
+	switch (chr->GetAttachment()) {
+	case 1:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x75)) {
+			StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
+		}
+		((XObjAttachment*)chr->mCopterObj)->Hide();
+		break;
+	case 2:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F3)) {
+			StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F8)) {
+			StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+		}
+		((XObjAttachment*)chr->mPopperObj)->Hide();
+		chr->vf290(FALSE);
+		ResetPopperCharge(&((XActPopper*)&chr->mPopper)->mCharge);
+		break;
+	case 3:
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1F9)) {
+			StopWiiSfx(&gGame.mSound, 0x1F9, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1FA)) {
+			StopWiiSfx(&gGame.mSound, 0x1FA, 0.0f);
+		}
+		if (IsWiiSfxPlaying(&gGame.mSound, 0x1FB)) {
+			StopWiiSfx(&gGame.mSound, 0x1FB, 0.0f);
+		}
+		((XObjAttachment*)chr->mRadarObj)->Hide();
+		break;
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	default:
+		if (chr->mLift.mTarget != NULL) {
+			if (chr->mLift.mTarget->GetPool() == 8) {
+				if (!((chr->mLift.mState == 1 || chr->mLift.mState == 2 || chr->mLift.mState == 3) && ((XActLift*)&chr->mLift)->_AC)) {
+					SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, chr->mLift.mTarget->GetItem(), 1, TRUE);
+					((XObjItem*)chr->mLift.mTarget)->SetFlag();
+				}
+			}
+			if (chr->mLift.mTarget->GetPool() != 24) {
+				// the Wii schedules the release over two frames; the GameCube called Release here
+				chr->mLift.mTarget->mStatus.mFlags &= ~0x10000ULL;
+				chr->mLift.mTarget->mReleaseCountdown = 2;
+			}
+		}
+		break;
+	}
+	ResetPlayerLiftAction((XActLift*)&chr->mLift);
+	chr->mHang.Reset();
+	ResetPlayerJumpAction((XActJump*)&chr->mJump);
+	chr->mLadder.Reset();
+	chr->mRope.Reset();
+	ReleasePushAction(&chr->mPush);
+	ResetTumbleAction(&chr->mTumble);
+	chr->mCopter.Reset();
+	chr->mPopper.Reset();
+	ResetPlayerRadarAction((XActRadar*)&chr->mRadar);
+	chr->mAttachment             = 0;
+	chr->mAttachmentRequest      = -1;
+	chr->mAttachmentStep         = 0;
+	chr->mScriptAttach           = 0;
+	chr->mClimbType              = 0;
+	chr->mNextClimbType          = 0;
+	chr->m_0A18                  = -1;
+	chr->m_0A1C                  = -1;
+	chr->mFloorContactObjects[2] = -1;
+	if (nextAnimation >= 0) {
+		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+	}
+	chr->mFallDistance = 0.0f;
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
 }
 
 XSound* GetGameSound(CGame* game)
@@ -243,6 +519,129 @@ void SetPushActionState(XAction* act, s32 state)
 	act->mState = state;
 }
 
+// _158, the GameCube's XObjChr::LoadFromPlacement: the stage load runs one step a frame.
+// The Wii model's head joints come out of the scene graph by name, the attachments mount on
+// world matrices instead of joint paths, and his two status textures and the suit-change
+// sound actor are made here; the GameCube's pose samples, O/X marks and idle joints are gone
+// NONMATCHING (93 %): same instruction multiset, call set and control flow; retail colours six
+// callee-saves (r26-r31, this in r30, the unit string base in r28, the new actor's manager and
+// vtable halves in r26/r27/r28/r29), ours three - and materializes the case-0 'placed' bool at
+// the merge instead of keeping it in r29. Pool referents (100.0f, the u8 magic, the jump table
+// and the string base) still land in @labels; they resolve as the unit fills in
+BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	// Each ready model falls through to the next load. A pending one resumes at the same step.
+	switch (chr->mLoadStep) {
+	case 0: {
+		BOOL placed = XObj::LoadFromPlacement(info);
+		if (placed && chr->mObject.m_pScnMdl != NULL) {
+			chr->mHeadNodes[0] = GetResNode("second_null");
+			chr->mHeadNodes[1] = GetResNode("head_chn");
+			chr->mHeadNodes[2] = GetResNode("head_cap");
+			chr->mHeadNodes[3] = GetResNode("l_mabuta_down");
+			chr->mHeadNodes[4] = GetResNode("l_mabuta_up");
+			chr->mHeadNodes[5] = GetResNode("r_mabuta_down");
+			chr->mHeadNodes[6] = GetResNode("r_mabuta_up");
+			chr->mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+		}
+		if (!placed)
+			break;
+		mStatus.mFlags |= 0x200000000000ULL;
+		chr->mBlinkWait  = 0;
+		chr->mBlinkFrame = 0;
+		mObject.m_blend.m_pBlend->UseQuaternionBlend(true);
+		mObject.m_blend.m_pBlend->UseAccurateScaleBlend(true);
+		++chr->mLoadStep;
+	}
+	case 1: // the plug
+		if (chr->mPlug.LoadFromPlacement(CoordInfo(GetSpawnData(15)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 2: // the copter
+		if (((XObjCopter*)chr->mCopterObj)->LoadFromPlacement(CoordInfo(GetSpawnData(17)))) {
+			((XObjCopter*)chr->mCopterObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 3: // the popper
+		if (((XObjPopper*)chr->mPopperObj)->LoadFromPlacement(CoordInfo(GetSpawnData(18)))) {
+			((XObjPopper*)chr->mPopperObj)->SetParent(GetWorldMtx("l_arm_chn"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 4: // the radar
+		if (((XObjRadar*)chr->mRadarObj)->LoadFromPlacement(CoordInfo(GetSpawnData(19)))) {
+			((XObjRadar*)chr->mRadarObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 5: // the O/X mark attachment; a Japan-only game always loads entry 20
+		if (((XObjOX*)chr->mOXObj)->LoadFromPlacement(CoordInfo(GetSpawnData(20)))) {
+			((XObjOX*)chr->mOXObj)->SetParent(GetWorldMtx("head"), TRUE);
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 6:
+		// the GameCube's other editions loaded the two O/X menu marks here, in their own steps
+		++chr->mLoadStep;
+	case 7: // the suit parts the stage itself provides
+		if (chr->mSuitParts[3].LoadFromPlacement(CoordInfo(GetSpawnData(36)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 8:
+		if (chr->mSuitParts[6].LoadFromPlacement(CoordInfo(GetSpawnData(37)))) {
+			++chr->mLoadStep;
+		} else {
+			break;
+		}
+	case 9: {
+		u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
+			            mStatus.mFlags & 0x400000 };
+		vf1A0(flags);
+		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded()) {
+			vf1A8(GetStageInfo()->_09 / 100.0f);
+		}
+		++chr->mLoadStep;
+	}
+	case 10: // his two status textures, out of the global tpl's palette
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[123], 0);
+		mTex[0] = gGame.mTpl.mTex;
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[124], 0);
+		mTex[1] = gGame.mTpl.mTex;
+		++chr->mLoadStep;
+	case 11:
+		++chr->mLoadStep;
+	case 12:
+		if (chr->GetAttachment() == 1) {
+			ShowIdlePlayerCopter((XObjCopter*)chr->mCopterObj);
+		} else if (chr->GetAttachment() == 2) {
+			chr->mPopper.mState = 3;
+		} else if (chr->GetAttachment() == 3) {
+			ShowIdlePlayerRadar((XObjRadar*)chr->mRadarObj);
+		}
+		++chr->mLoadStep;
+		break;
+	case 13: // the suit change's sound actor
+		mActor.Create();
+		++chr->mLoadStep;
+	}
+	if (chr->mLoadStep > 0xD) {
+		mStatus.mFlags |= 0x40000ULL;
+		chr->mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void SetObjectStatusFlags(XObj* object, u64 mask)
 {
 	object->mStatus.mFlags |= mask;
@@ -264,13 +663,107 @@ BOOL LoadPlayerAttachmentAnimation(WiiPlayerState*)
 	return TRUE;
 }
 
+// the GameCube's SuitFadeFinished: the fade SetColor queues is done once the second color
+// step's speed ran out; the Wii keeps the pair inside the animation queue
+static inline bool SuitFadeFinished(const WiiPlayerState* player)
+{
+	const Vec& speed = player->mAnmQueue.mColorStep[1].mSpeed;
+	return speed.x == 0.0f && speed.y == 0.0f && speed.z == 0.0f;
+}
+
+// the queued suit change, one call a frame: flashes him white, swaps the worn suit for the
+// requested one, mounts the attachments back on his joints and fades back to its tint.
+// The GameCube's UpdatePlayerSuitChange; on the Wii its RemovePlayerSuit work is inlined and
+// the suit's own animation file is a CJArchive instead of a CJAnim
+// _0x500, the GameCube's UpdatePlayerSuitChange: fades to white, starts the spiral, frees
+// the old suit and its animation file, loads the new one through LoadPlayerSuitItem, then
+// ApplyPlayerSuit and fades back. Step 3 commits mCurrent=mRequested and drops through 4->5
+// NONMATCHING (~96 %): same instruction multiset, call set and control flow. Retail dedicates
+// r30 to the unit's shared string block (lbl_802DAA6C+0x95/"head", +0x9A/"l_arm_chn") and
+// keeps `player` in r31; our pool still carries only this function's two strings, so MWCC
+// keeps `player` in r30 and no register goes to the strings — every remaining diff is that
+// rename, the same-value float labels (@-labels vs lbl_805A4Exx), the timer's .sbss address
+// (lbl_805A1C50) and the scheduling it drags with it. Closes when the unit's rodata/.sbss
+// fill in in retail order (fn_800CE054 also binds these strings)
+void UpdatePlayerSuitChange(WiiPlayerState* player)
+{
+	switch (player->mSuits.mChangeStep) {
+	case 1:
+		player->SetColor(2, 255, 255, 255, 0.5f);
+		fn_800F2CF4(&lbl_8045BBD0);
+		PlayWiiSoundEffect(&gGame.mSound, 0xB2, 1.0f, 0.0f);
+		++player->mSuits.mChangeStep;
+		break;
+	case 2:
+		if (SuitFadeFinished(player)) {
+			++player->mSuits.mChangeStep;
+		}
+		break;
+	case 3:
+		if (player->mSuits.mCurrent != 0) {
+			s32 anim  = player->GetAnimId();
+			f32 frame = player->GetAnimFrame();
+			player->ClearAnim();
+			((XObjAttachment*)player->mCopterObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			((XObjAttachment*)player->mPopperObj)->SetParent(player->GetWorldMtx("l_arm_chn"), FALSE);
+			((XObjAttachment*)player->mRadarObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			((XObjAttachment*)player->mOXObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+			if (IsObjectActive(&player->mSuits.mObjects[player->mSuits.mCurrent])) {
+				if (player->GetAttachment() == 2) {
+					player->mSuits.mObjects[player->mSuits.mCurrent].vf290(FALSE);
+				}
+				player->mSuits.mObjects[player->mSuits.mCurrent].ClearAnim();
+				player->mSuits.mObjects[player->mSuits.mCurrent].Release();
+			}
+			if (player->mSuitAnm.mAnm.mFile.IsLoaded()) {
+				player->mSuitAnm.mAnm.Release(TRUE);
+				player->mSuitAnm.mAnm.mFile.Close();
+			}
+			player->SetAnim(anim, TRUE, frame, 1.0f, 1.0f, 15.0f);
+			player->SetColor(2, 255, 255, 255, 0.0f);
+		}
+		player->mSuits.mLoadStep = 1;
+		player->mSuits.mCurrent  = player->mSuits.mRequested;
+		++player->mSuits.mChangeStep;
+		gPlayerSuitChangeTimer = 0.0f;
+		// fall through
+	case 4:
+		gPlayerSuitChangeTimer -= 2.0f;
+		if (gPlayerSuitChangeTimer <= 0.0f) {
+			gPlayerSuitChangeTimer = 0.0f;
+		}
+		if (!LoadPlayerSuitItem(player) || gPlayerSuitChangeTimer != 0.0f) {
+			break;
+		}
+		++player->mSuits.mChangeStep;
+		// fall through
+	case 5: {
+		ApplyPlayerSuit(player);
+		player->SetColor(2, 255, 255, 255, 0.0f);
+		player->SetColor(2, 0, 0, 0, 0.5f);
+		const Vec& tint = player->mAnmQueue.mColorStep[0].mValue;
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
+		++player->mSuits.mChangeStep;
+		break;
+	}
+	case 6:
+		if (SuitFadeFinished(player)) {
+			player->mSuits.mChangeStep = 0;
+		}
+		break;
+	}
+}
+
 BOOL fn_800CDDAC(const XObj* object)
 {
 	return (object->mStatus.mFlags & 1) != 0;
 }
 
 // the player's suit step of the stage setup: puts on the suit the save asked for, TRUE once it is on
-// NONMATCHING: retail recomputes the suits' address into r4 and reads mCurrent before mRequested
+// NONMATCHING: pure register allocation — retail puts the +0x10000 base in r4, mCurrent in r0
+// and mRequested in r3 (param reg reused); our build bases in r3 and loads mRequested into r4
+// first. Identical instruction stream otherwise, every spelling tried converges to ours.
 BOOL fn_800CDC08(WiiPlayerState* player)
 {
 	if (player->mSuits.mLoadStep == 0) {
@@ -280,18 +773,203 @@ BOOL fn_800CDC08(WiiPlayerState* player)
 		player->mSuits.mCurrent    = player->mSuits.mRequested;
 		player->mSuits.mChangeStep = 1;
 	}
-	if (fn_800CDC98(player)) {
+	if (LoadPlayerSuitItem(player)) {
 		player->mSuits.mChangeStep = 0;
-		fn_800CDDC0(player);
+		ApplyPlayerSuit(player);
 		return TRUE;
 	}
 	return FALSE;
+}
+
+// loads the suit the change asked for, one call a frame: TRUE once its object is placed and
+// reading the player's animations. The GameCube's LoadPlayerSuitItem; its second step (the
+// suit's own animation file) is gone — the suit sources the player's NW_Obj instead
+BOOL LoadPlayerSuitItem(WiiPlayerState* player)
+{
+	if (player->mSuits.mCurrent == 0) {
+		player->mSuits.mLoadStep = 0;
+	}
+	if (player->mSuits.mLoadStep == 0) {
+		return TRUE;
+	}
+	switch (player->mSuits.mLoadStep) {
+	case 1: {
+		WiiSuitObject* suit = &player->mSuits.mObjects[player->mSuits.mCurrent];
+		s32 id              = player->mSuits.mCurrent == 7 ? gSpecialSuitSpawnIds[player->mSuits.mSpecial] : player->mSuits.mCurrent + 25;
+		if (suit->LoadFromPlacement(CoordInfo(GetSpawnData(id)))) {
+			suit->SetAnmSource(&player->mObject);
+			player->mSuits.mLoadStep = 0;
+			return TRUE;
+		}
+		break;
+	}
+	case 2:
+		player->mSuits.mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// mounts the attachment objects on the player's joints once the new suit's model is there,
+// then restarts the idle animation. The GameCube's ApplyPlayerSuit; the Wii version finds
+// the mount joints by name on the nw4r model instead of grafting HSD joint trees
+void ApplyPlayerSuit(WiiPlayerState* player)
+{
+	if ((player->mStatus.mFlags & 1) && player->mSuits.mObjects[player->mSuits.mCurrent].mObject.m_pScnMdl != NULL) {
+		player->ClearAnim();
+		if (player->GetAttachment() == 2) {
+			player->vf290(FALSE);
+		}
+		((XObjAttachment*)player->mCopterObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		((XObjAttachment*)player->mPopperObj)->SetParent(player->GetWorldMtx("l_arm_chn"), FALSE);
+		((XObjAttachment*)player->mRadarObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		((XObjAttachment*)player->mOXObj)->SetParent(player->GetWorldMtx("head"), FALSE);
+		if (!gGame.GetStatusFlags(0x100)) {
+			player->vf28C(FALSE);
+		}
+		if (player->GetAttachment() == 2) {
+			player->vf290(TRUE);
+		}
+	}
+	if (player->GetAttachment() == 1 || player->GetAttachment() == 3) {
+		player->SetAnim(0x4A, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	} else {
+		player->SetAnim(17, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+		player->mIdleLoops = 3;
+	}
+}
+
+// NONMATCHING (96 %): same instruction multiset, call set and control flow; retail keeps this in
+// r31 and the unit string table lbl_802DAA6C in r30, this build swaps both down one register
+// (this in r30, the two new strings at the top of the pool in r29) — closes with unit
+// completeness, as in ApplyPlayerSuit and UpdatePlayerSuitChange
+
+// _40, the GameCube's XObjChr::Release with RemovePlayerSuit folded in: the player flags and
+// the pad reset, the base matrix, the carried object's saved state, both animation archives,
+// the four attachments back on his own joints, the worn suit and the event script
+void XObjChr::Release()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	chr->mPadReset      = TRUE;
+	chr->mPlayerFlags   = 0;
+	chr->mPlayerFlags |= 0x20000000;
+	chr->mPlayerFlags |= 7;
+	if (HasModel()) {
+		ClearBaseMtx();
+	}
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 8) {
+				chr->mSavedTarget      = target->GetObjFlags();
+				chr->mSavedTargetAnim  = chr->mLift.mTarget->GetAnimId();
+				chr->mSavedTargetState = chr->mLift.mTargetState;
+			}
+		}
+	} else {
+		switch (chr->GetAttachment()) {
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			chr->mAttachment = 0;
+			break;
+		}
+	}
+	fn_800AF12C(this);
+	if (chr->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+		chr->mAttachmentAnm.mAnm.Release(TRUE);
+		chr->mAttachmentAnm.mAnm.mFile.Close();
+	}
+	if (chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		chr->mSuitAnm.mAnm.Release(TRUE);
+		chr->mSuitAnm.mAnm.mFile.Close();
+	}
+	s32 anim  = GetAnimId();
+	f32 frame = GetAnimFrame();
+	ClearAnim();
+	((XObjAttachment*)chr->mCopterObj)->SetParent(GetWorldMtx("head"), FALSE);
+	((XObjAttachment*)chr->mPopperObj)->SetParent(GetWorldMtx("l_arm_chn"), FALSE);
+	((XObjAttachment*)chr->mRadarObj)->SetParent(GetWorldMtx("head"), FALSE);
+	((XObjAttachment*)chr->mOXObj)->SetParent(GetWorldMtx("head"), FALSE);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+		if (chr->GetAttachment() == 2) {
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].vf290(FALSE);
+		}
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].ClearAnim();
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].Release();
+	}
+	if (chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		chr->mSuitAnm.mAnm.Release(TRUE);
+		chr->mSuitAnm.mAnm.mFile.Close();
+	}
+	SetAnim(anim, TRUE, frame, 1.0f, 1.0f, 15.0f);
+	if (chr->mEvt.mData.mScript != NULL) {
+		ResetEventScriptState(&chr->mEvt, FALSE, FALSE, FALSE, FALSE);
+	}
 }
 
 // reads the player's pad once more
 void fn_800CE48C(WiiPlayerState* player)
 {
 	player->mPad.Update(gWiiGameCubePads, 0);
+}
+
+// picks up again what he was holding before the reset, TRUE once it is back in his hands;
+// the GameCube's RestorePlayerHeldItem. The Wii flags the respawned object as carried
+// (0x10000, what ResetPlayerAttachment clears) and, while he holds a tool, mirrors his
+// own hidden flag into the target's 0x20000000
+extern "C" BOOL RestorePlayerHeldItem(WiiPlayerState* chr)
+{
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 24) {
+				chr->mLift.mTarget      = &chr->mPlug;
+				chr->mLift.mTargetFloor = chr->mLift.mTarget->mSelectedFloorIndex;
+				chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+				chr->SetAnim(8, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+				return TRUE;
+			}
+		}
+		ResetPlayerLiftAction((XActLift*)&chr->mLift);
+	}
+
+	s16 id = chr->mSavedTarget;
+	if (id >= 0) {
+		chr->mPendingTarget = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(id)), 0, TRUE);
+		chr->mSavedTarget   = -1;
+	}
+	if (chr->mPendingTarget != NULL) {
+		if (!(chr->mPendingTarget->mStatus.mFlags & 0x0040000000000000ULL)) {
+			chr->mPendingTarget->mStatus.mFlags |= 0x10000;
+			ResetPlayerLiftAction((XActLift*)&chr->mLift);
+			chr->mLift.mState = 4;
+			chr->mLift.SetTarget(chr->mPendingTarget);
+			chr->mLift.mTargetState = 4;
+			chr->mLift.mTarget->SetAnim(chr->mSavedTargetAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->mLift.mTarget->mStatus.mFlags |= 0x0400000000000000ULL;
+			chr->SetAnim(8, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->mPendingTarget = NULL;
+			if (IsCarryingSquirter(&chr->mLift)) {
+				ApplyPlayerItemTintToTarget(&chr->mLift);
+			}
+			if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingMug(&chr->mLift)
+			    || IsCarryingSquirter(&chr->mLift)) {
+				if ((chr->mStatus.mFlags & 0x20000000) != 0) {
+					if ((chr->mLift.mTarget->mStatus.mFlags & 0x20000000) == 0) {
+						chr->mLift.mTarget->mStatus.mFlags |= 0x20000000;
+					}
+				} else if ((chr->mLift.mTarget->mStatus.mFlags & 0x20000000) != 0) {
+					chr->mLift.mTarget->mStatus.mFlags &= ~0x20000000ULL;
+				}
+			}
+			return TRUE;
+		}
+	} else {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)
@@ -312,7 +990,7 @@ TVec* GetObjectMoveRotation(CObj* object)
 
 void SetObjectYAndTarget(CObjVec* value, f32 y)
 {
-	value->y         = y;
+	value->mValue.y  = y;
 	value->mTarget.y = y;
 }
 
@@ -536,8 +1214,9 @@ static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
 	}
 }
 
-// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and both start the open flag at TRUE but
-// retail clears it through a cntlzw/rlwnm. value of mDrs.mOpen > 0 where this build branches on the compare
+// NONMATCHING (98.5 %): the mDrs.mOpen test is a branch here; retail materializes mOpen <= 0
+// through cntlzw/rlwnm into the open flag (init TRUE). Tried &&/||/ternary/!/bool spellings,
+// MWCC lowers each to branches or neg/andc/srwi. Also the rotation copy as in StopPlayerMotion.
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
 {
 	if (selection >= 0) {
@@ -674,18 +1353,18 @@ f32 GetVectorMagnitude(const Vec* value)
 
 Vec* GetObjectVectorCurrent(CObjVec* value)
 {
-	return value;
+	return &value->mValue;
 }
 
 void SetObjectXAndTarget(CObjVec* value, f32 x)
 {
-	value->x         = x;
+	value->mValue.x  = x;
 	value->mTarget.x = x;
 }
 
 void SetObjectZAndTarget(CObjVec* value, f32 z)
 {
-	value->z         = z;
+	value->mValue.z  = z;
 	value->mTarget.z = z;
 }
 
@@ -775,9 +1454,9 @@ u32 GetPlayerActionMoveDirection(const XAction* action)
 
 void SetObjectVectorAndTargetXYZ(CObjVec* value, f32 x, f32 y, f32 z)
 {
-	value->x         = x;
-	value->y         = y;
-	value->z         = z;
+	value->mValue.x  = x;
+	value->mValue.y  = y;
+	value->mValue.z  = z;
 	value->mTarget.x = x;
 	value->mTarget.y = y;
 	value->mTarget.z = z;
@@ -906,9 +1585,9 @@ XObjFloor** GetObjectFloorTableAddress(XObj* object)
 void SetObjectVectorAndTargetFromVec(CObjVec* value, const Vec& v)
 {
 	f32 z = v.z, y = v.y, x = v.x;
-	value->x         = x;
-	value->y         = y;
-	value->z         = z;
+	value->mValue.x  = x;
+	value->mValue.y  = y;
+	value->mValue.z  = z;
 	value->mTarget.x = x;
 	value->mTarget.y = y;
 	value->mTarget.z = z;
@@ -1309,13 +1988,57 @@ static inline void SetModelFrame(XObj* object, f32 frame)
 	}
 }
 
+// the anim rate scale of fn_800E32B8 shared with fn_800E3968
+static inline f32 PlayerAnimRateScale(WiiPlayerState* chr, s32 anim)
+{
+	f32 rate;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && anim != 0x13B) {
+		rate = 1.135f;
+	} else {
+		rate = 1.0f;
+	}
+	return rate * (60.0f / gRefreshRate);
+}
+
+// scales his own anim rate and the worn suit's by frame
+void fn_800E3968(WiiPlayerState* chr, f32 frame)
+{
+	chr->CObj::SetAnimRate(frame * PlayerAnimRateScale(chr, chr->GetAnimId()));
+	if ((chr->mSuits.mObjects[chr->mSuits.mCurrent].mStatus.mFlags & 1) == TRUE) {
+		chr->mSuits.mObjects[chr->mSuits.mCurrent].SetAnimRate(frame * PlayerAnimRateScale(chr, chr->GetAnimId()));
+	}
+}
+
 // his anims and the worn suit's to frame
-// NONMATCHING: retail tests the suit's active bit as a negated value (xori), this build branches on it directly
 void fn_800E3AE4(WiiPlayerState* chr, f32 frame)
 {
 	SetModelFrame(chr, frame);
-	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+	if ((chr->mSuits.mObjects[chr->mSuits.mCurrent].mStatus.mFlags & 1) == TRUE) {
 		SetModelFrame(&chr->mSuits.mObjects[chr->mSuits.mCurrent], frame);
+	}
+}
+
+// the eye camera takes and frees his motion: the flag the draw checks, and the worn suit's vf28C
+extern "C" void fn_800F3E9C(WiiPlayerState* chr, BOOL held);
+void fn_800E3BCC(WiiPlayerState* chr, s32 held)
+{
+	chr->m_9C8 = held != 0;
+	fn_800F3E9C(chr, held != 0);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if ((suit->mStatus.mFlags & 1) == TRUE) {
+		suit->vf28C(held);
+	}
+}
+
+// the same for the popper mount while the popper is out
+extern "C" void fn_800F403C(WiiPlayerState* chr, BOOL on);
+void fn_800E3C50(WiiPlayerState* chr, s32 on)
+{
+	chr->m_9C9 = on != 0;
+	fn_800F403C(chr, on != 0);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if ((suit->mStatus.mFlags & 1) == TRUE) {
+		suit->vf290(on);
 	}
 }
 
@@ -1348,6 +2071,20 @@ CVec fn_800E5A48(XObj* player)
 	return player->GetJointTranslate("carry_obj_nll");
 }
 
+// XObjChr::SetMoveDir, stops whatever push is running and keeps the heading he walks towards
+// NONMATCHING: only the pool label names and the order of the two argument loads for atan2
+void XObjChr::SetMoveDir(const Vec* direction, f32 speed)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	StopMoving(chr);
+	CObj::SetMoveDir(direction, speed);
+	CVec horizontal = chr->mMoveSpeed0;
+	horizontal.y    = 0.0f;
+	if (PSVECMag((Vec*)&horizontal) > 0.0f) {
+		chr->mWalkHeading = WrapAngle(GetYAngle(chr->mMoveTarget0 - chr->mMoveTranslate));
+	}
+}
+
 // how high the carried object sits: half again his scale, and with a mug the carry joint's height on top
 // except while the anims 10 and 11 lift and lower it
 // NONMATCHING: the joint name's place, as for fn_800E5A2C
@@ -1361,6 +2098,36 @@ f32 fn_800E5BFC(WiiPlayerState* chr)
 		height += 4.0f * scale.x;
 	}
 	return height;
+}
+
+// XObjChr::SetColor, the color goes to everything he wears and carries too. while a costume
+// change is running, blend 2 turns into 1 and 1 is dropped; the Wii also tints the two
+// extra parts suits 3 and 6 bring
+void XObjChr::SetColor(s32 blend, u8 red, u8 green, u8 blue, f32 time)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mSuits.mChangeStep != 0) {
+		if (blend == 2) {
+			blend = 1;
+		} else if (blend == 1) {
+			return;
+		}
+	}
+	XObj::SetColor(blend, red, green, blue, time);
+	chr->mPlug.SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mCopterObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mPopperObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mRadarObj)->SetColor(blend, red, green, blue, time);
+	((XObj*)chr->mOXObj)->SetColor(blend, red, green, blue, time);
+	for (s32 i = 0; i < 9; ++i) {
+		chr->mSuits.mObjects[i].SetColor(blend, red, green, blue, time);
+		if (i == 3 || i == 6) {
+			chr->mSuitParts[i].SetColor(blend, red, green, blue, time);
+		}
+	}
+	if (IsCarryingMug(&chr->mLift)) {
+		chr->mLift.mTarget->SetColor(blend, red, green, blue, time);
+	}
 }
 
 // between his eyes, a little behind them
@@ -1513,7 +2280,814 @@ void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 va
 	}
 }
 
+// XObjChr::OnHitFromPosition, hit from a position. flashes what he carries instead when he lifts something
+void XObjChr::OnHitFromPosition(const Vec&, f32 strength)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (IsCarryingMug(&chr->mLift)) {
+		chr->mLift.mTarget->SetColor(1, 150, 150, 0, 0.0f);
+		chr->mLift.mTarget->SetColor(1, 0, 0, 0, 0.2f);
+	} else if (chr->mFlashTimer <= 0) {
+		ApplyPlayerHitReaction(chr, TRUE, TRUE, strength);
+	}
+}
+
+f32 fn_800D1740(f32 x)
+{
+	return __fabsf(x);
+}
+
+// nonzero while the plug sits in a socket
+s32 GetPlayerPlugConnection(const XObjPlug* plug)
+{
+	return plug->mConnection;
+}
+
+// the cord's pull on the player while the plug is connected
+CVec* GetPlayerPlugCordPull(XObjPlug* plug)
+{
+	return &plug->mCord.mPull;
+}
+
+// unplug: only the socket flag; the GameCube's ClearPlugState also reset the joint,
+// the Wii's joint handling lives in ExecCallbackB instead
+void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint)
+{
+	plug->mConnection = 0;
+}
+
+// the vertex position of the map triangle a floor hit rests on
+void fn_800DB958(XObjMap* map, XObjMapHit* hit, Vec* out)
+{
+	TRIGON_INFO* tri = &map->mTrigon.mTri[hit->mTriangle];
+	tri->mGetVtx(tri, out);
+}
+
+void ScaleVectorInPlace(Vec* value, f32 scale)
+{
+	PSVECScale(value, value, scale);
+}
+
+u32 GetObjectMarkerOverride(XObj* object)
+{
+	return object->mAnmQueue.mMarkerOverride;
+}
+
+u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask)
+{
+	return object->mAnmQueue.mMarkerOverride & mask;
+}
+
 } // extern "C"
+
+// NONMATCHING: identical except our compiler appends a dead blr after the tail call;
+// every guard spelling tried keeps it
+void XObjAttachment::DrawWithView(Mtx view)
+{
+	if (mVisible) {
+		XObj::DrawWithView(view);
+	}
+}
+
+void XObjAttachment::Hide()
+{
+	mVisible = FALSE;
+}
+
+// _1BC, the guarded cull mode forward: himself, the plug, the visible attachments and the
+// suit he wears, plus the extra part suits 3 and 6 bring
+void XObjChr::vf1BC(s32 mode)
+{
+	XObj::vf1BC(mode);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->vf1BC(mode);
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->vf1BC(mode);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->vf1BC(mode);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].vf1BC(mode);
+		}
+	}
+}
+
+// _1C0, the same forward at the tag-preserving cull mode slot
+void XObjChr::SetCullMode(s32 mode)
+{
+	XObj::SetCullMode(mode);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->SetCullMode(mode);
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->SetCullMode(mode);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->SetCullMode(mode);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].SetCullMode(mode);
+		}
+	}
+}
+
+// _1C4, and back to the materials' own cull modes
+void XObjChr::ResetCullMode()
+{
+	XObj::ResetCullMode();
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		((XObjAttachment*)chr->mCopterObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mPopperObj)->mVisible) {
+		((XObjAttachment*)chr->mPopperObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mRadarObj)->mVisible) {
+		((XObjAttachment*)chr->mRadarObj)->ResetCullMode();
+	}
+	if (((XObjAttachment*)chr->mOXObj)->mVisible) {
+		((XObjAttachment*)chr->mOXObj)->ResetCullMode();
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->ResetCullMode();
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			chr->mSuitParts[chr->mSuits.mCurrent].ResetCullMode();
+		}
+	}
+}
+
+// _1A0, the dst-alpha flags go to every model he carries: the plug and attachments when
+// they have one, all nine suits and their extra parts
+void XObjChr::vf1A0(const u32* flags)
+{
+	XObj::vf1A0(flags);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.vf1A0(flags);
+	}
+	if (((XObj*)chr->mCopterObj)->HasModel()) {
+		((XObj*)chr->mCopterObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mPopperObj)->HasModel()) {
+		((XObj*)chr->mPopperObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mRadarObj)->HasModel()) {
+		((XObj*)chr->mRadarObj)->vf1A0(flags);
+	}
+	if (((XObj*)chr->mOXObj)->HasModel()) {
+		((XObj*)chr->mOXObj)->vf1A0(flags);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (chr->mSuits.mObjects[i].HasModel()) {
+			chr->mSuits.mObjects[i].vf1A0(flags);
+		}
+		if (chr->mSuitParts[i].HasModel()) {
+			chr->mSuitParts[i].vf1A0(flags);
+		}
+	}
+}
+
+// _1A4, the fade on himself and every model he carries, the GameCube's
+// XObjChr::SetDestinationAlpha with the suit parts added
+void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
+{
+	XObj::SetDestinationAlpha(enabled, value);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->mPlug.HasModel()) {
+		chr->mPlug.SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mCopterObj)->HasModel()) {
+		((XObj*)chr->mCopterObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mPopperObj)->HasModel()) {
+		((XObj*)chr->mPopperObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mRadarObj)->HasModel()) {
+		((XObj*)chr->mRadarObj)->SetDestinationAlpha(enabled, value);
+	}
+	if (((XObj*)chr->mOXObj)->HasModel()) {
+		((XObj*)chr->mOXObj)->SetDestinationAlpha(enabled, value);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (chr->mSuits.mObjects[i].HasModel()) {
+			chr->mSuits.mObjects[i].SetDestinationAlpha(enabled, value);
+		}
+		if (chr->mSuitParts[i].HasModel()) {
+			chr->mSuitParts[i].SetDestinationAlpha(enabled, value);
+		}
+	}
+}
+
+// drops the stale object indexes first, then draws himself or the current suit and the
+// attachments; the popper turns with the camera while the menu flag is up
+// NONMATCHING (92 %): retail's register and schedule residue over the five index cleanups
+void XObjChr::DrawWithView(Mtx view)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->m_0A18 >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A18])) {
+		chr->m_0A18 = -1;
+	}
+	if (chr->mFloorContactObjects[0] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[0]])) {
+		chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
+	}
+	if (chr->mFloorContactObjects[2] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[2]])) {
+		chr->mFloorContactObjects[2] = -1;
+	}
+	if (chr->m_0A1C >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A1C])) {
+		chr->m_0A1C = -1;
+	}
+	if (chr->mFloorContactObjects[4] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[4]])) {
+		chr->mFloorContactObjects[4] = -1;
+	}
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (!IsObjectActive(suit) || chr->mSuits.mChangeStep == 3) {
+		XObj::DrawWithView(view);
+	} else {
+		suit->DrawWithView(view);
+		if (chr->m_9C8 == 0 && (chr->mSuits.mChangeStep == 3 || chr->mSuits.mChangeStep == 6)) {
+			chr->mSuitParts[chr->mSuits.mChangeStep].DrawWithView(view);
+		}
+	}
+	if (!(gGame.GetStatusFlags(0x100) && chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift))) {
+		// no plug in this lift state
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawWithView(view);
+		}
+	}
+	((XObj*)chr->mCopterObj)->DrawWithView(view);
+	if (gGame.GetStatusFlags(0x100)) {
+		Mtx rotation;
+		Mtx combined;
+		PSMTXRotRad(rotation, 'x', -gGame.mMotionControlCamera.mView.mAngle.x);
+		if (view != NULL) {
+			PSMTXConcat(rotation, view, combined);
+		} else {
+			PSMTXConcat(rotation, gGame.mMotionControlCamera.mViewMtx, combined);
+		}
+		((XObj*)chr->mPopperObj)->DrawWithView(combined);
+	} else {
+		((XObj*)chr->mPopperObj)->DrawWithView(view);
+	}
+	((XObj*)chr->mRadarObj)->DrawWithView(view);
+	((XObj*)chr->mOXObj)->DrawWithView(view);
+}
+
+// the eye highlight would light the reflection, so it goes off for the draw and back on
+void XObjChr::DrawReflection(Mtx view)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (gGame.GetStatusFlags(0x100)) {
+		chr->vf28C(0);
+	}
+	DrawWithView(view);
+	if (gGame.GetStatusFlags(0x100)) {
+		chr->vf28C(1);
+	}
+	if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+		chr->mPlug.DrawReflection(view);
+	}
+	((XObj*)chr->mCopterObj)->DrawReflection(view);
+	((XObj*)chr->mPopperObj)->DrawReflection(view);
+	((XObj*)chr->mRadarObj)->DrawReflection(view);
+	((XObj*)chr->mOXObj)->DrawReflection(view);
+}
+
+// the carried object's shadow while he holds something up, his own otherwise
+void XObjChr::DrawGroundShadow(f32 opacity)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (mStatus.mFlags & 4) {
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawGroundShadow(opacity);
+		}
+	} else {
+		XObj::DrawGroundShadow(opacity);
+	}
+}
+
+// the mug casts a blob under itself scaled by its carry joint; on the koshi anims the shadow
+// follows that joint instead
+// NONMATCHING (99.7 %): a single residue left, body matches otherwise
+void XObjChr::DrawGroundShadowAt(const Vec* origin, f32 opacity)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
+		return;
+	}
+	if (mStatus.mFlags & 4) {
+		if (gGame.GetStatusFlags(0x0040000000000000ULL)) {
+			chr->mPlug.DrawGroundShadow(opacity);
+		}
+	} else {
+		Vec position = GetJointWorldPos("second_null");
+		if (chr->mLift.mState != 0 && IsCarryingMug(&chr->mLift)) {
+			CVec jointScale;
+			chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &jointScale);
+			u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
+			Vec size       = mMoveScale * (f32)shadowSize + jointScale * 2.5f;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gCustomShadow.Draw(position, size, (u32)(170.0f * opacity));
+		} else {
+			if ((u32)(GetAnimId() - 0x14D) <= 4) {
+				position = GetJointWorldPos("koshi_model");
+			}
+			XObj::DrawGroundShadowAt(&position, opacity);
+		}
+	}
+}
+
+void XObjChr::vf1A8(f32)
+{
+}
+
+// queues the models he wears on the scene root and steps the queued draws for the frame:
+// himself, the suit he has on (suits 3 and 6 carry an extra part), and the popper mount
+extern "C" void fn_800E7EA8(WiiPlayerState* chr)
+{
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mObject.m_pScnMdl);
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+		}
+	}
+	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)chr->mPopperObj)->mObject.m_pScnMdl);
+	fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+}
+
+// the eye camera setup: resets the aim state to his facing, and while he holds attachment 2
+// (the eye camera) it queues the same worn models as fn_800E7EA8, steps the scene draws once,
+// then drains the queue again
+extern "C" void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidden, f32 rotY, f32 unused)
+{
+	player->mEyeAim.Set(unused, rotY, 0.0f);
+	player->mEyeAimTarget.Set(unused, rotY, 0.0f);
+	player->mEyeAimStep.Set(0.0f, 0.0f, 0.0f);
+	if (player->GetAttachment() == 2 && hidden) {
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mObject.m_pScnMdl);
+		WiiSuitObject* suit = &player->mSuits.mObjects[player->mSuits.mCurrent];
+		if (IsObjectActive(suit)) {
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+			if (player->mSuits.mCurrent == 3 || player->mSuits.mCurrent == 6) {
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending,
+				                              player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
+			}
+		}
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)player->mPopperObj)->mObject.m_pScnMdl);
+		fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+		WiiGsSceneObj* head = gGame.mGs.mScene.mHead;
+		while (head->mPending != 0)
+			head->PopPending();
+	}
+}
+
+// swings the eye camera's aim at a new target: 3 degrees a frame on each axis,
+// both angles wrapped into [0, 2pi) and the target swung round when the other way is shorter
+extern "C" void fn_800E8140(WiiPlayerState* player, f32 targetY, f32 targetX)
+{
+	player->mEyeAimTarget.y = targetY;
+	player->mEyeAimStep.y   = DEG2RAD * 3;
+	f32 curY                = WrapAngle(player->mEyeAim.y);
+	f32 tgtY                = WrapAngle(player->mEyeAimTarget.y);
+	player->mEyeAim.y       = curY;
+	player->mEyeAimTarget.y = tgtY;
+	if (tgtY != curY) {
+		f32 diff = tgtY - curY;
+		diff     = __fabsf(diff);
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (tgtY < curY) {
+				player->mEyeAimTarget.y = TWO_PI + tgtY;
+			} else {
+				player->mEyeAimTarget.y = tgtY - TWO_PI;
+			}
+		}
+	}
+	player->mEyeAimTarget.x = targetX;
+	player->mEyeAimStep.x   = DEG2RAD * 3;
+	f32 curX                = WrapAngle(player->mEyeAim.x);
+	f32 tgtX                = WrapAngle(player->mEyeAimTarget.x);
+	player->mEyeAim.x       = curX;
+	player->mEyeAimTarget.x = tgtX;
+	if (tgtX != curX) {
+		f32 diff = tgtX - curX;
+		diff     = __fabsf(diff);
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (tgtX < curX) {
+				player->mEyeAimTarget.x = TWO_PI + tgtX;
+			} else {
+				player->mEyeAimTarget.x = tgtX - TWO_PI;
+			}
+		}
+	}
+}
+
+void XObjChr::SetBaseMtx(Mtx mtx)
+{
+	mBaseMtxPtr = mBaseMtx;
+	PSMTXCopy(mtx, mBaseMtx);
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	for (int i = 0; i < 9; i++) {
+		chr->mSuits.mObjects[i].SetBaseMtx(mtx);
+	}
+}
+
+void XObjChr::ClearBaseMtx()
+{
+	mBaseMtxPtr         = NULL;
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	for (int i = 0; i < 9; i++) {
+		chr->mSuits.mObjects[i].ClearBaseMtx();
+	}
+}
+
+// one of his tools is out
+static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
+{
+	switch (item) {
+	case 0x10:
+		return IsCarryingToothbrush(&chr->mLift);
+	case 0x16:
+		return IsCarryingMug(&chr->mLift);
+	case 0x15:
+		return IsCarryingSpoon(&chr->mLift);
+	default:
+		return IsCarryingSquirter(&chr->mLift);
+	}
+}
+
+// he can use the tool, he has it or it is out
+static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
+{
+	s32 has = 1;
+	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
+		has = 0;
+	return has;
+}
+
+static inline void SetAttachmentOn(AttachmentValues* values, s32 id, s32 on)
+{
+	s32 index = values->Find(id);
+	if (index >= 0)
+		values->mEntries[index].mValue = on;
+}
+
+// which of his tools he can use, he has them or one of them is going; the
+// GameCube's UpdateAttachmentAvailability, only ever inlined here on the Wii
+static inline void UpdateAttachmentAvailability(AttachmentValues* values)
+{
+	WiiPlayerState* chr = gGame.GetPlayer();
+	SetAttachmentOn(values, 4, CanUseTool(chr, 0x10));
+	SetAttachmentOn(values, 6, CanUseTool(chr, 0x16));
+	SetAttachmentOn(values, 5, CanUseTool(chr, 0x15));
+	SetAttachmentOn(values, 7, CanUseTool(chr, 0x38));
+	SetAttachmentOn(values, 8, FALSE);
+}
+
+// the count for an attachment id, -1 when it isn't in the list
+// NONMATCHING: register allocation only (values in r29 vs retail's r30 and
+// vice versa), the inlined Find/CanUseTool chains are instruction-identical
+/**
+ * @note Address: 0x800E84BC
+ * @note Size: 0x5E4
+ */
+extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
+{
+	s32 index = values->Find(id);
+	if (index >= 0) {
+		UpdateAttachmentAvailability(values);
+		return values->mEntries[index].mValue;
+	}
+	return -1;
+}
+
+// the marker over what chibi robo looks at, ported from the GameCube's
+// DrawPlayerLookMarker; on the Wii _30 dims the marker to half and drops its
+// glow, and it picks the second look texture, and the color fold is spelled
+// out at each corner instead of once per quad
+// NONMATCHING: literal-pool slots only (@ labels vs the unit's shared pool);
+// the instruction stream is identical
+/**
+ * @note Address: 0x800E8AA0
+ * @note Size: 0x864
+ */
+extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
+{
+	if (!gGame.mMotionControlCamera.IsAction(CAMACTION_SCROLL2) && look->mFade > 0.0f) {
+		CTexObj tex;
+		f32 scale = look->mFade + 0.5f * (f32)sin(PI * look->mFade);
+		f32 alpha = look->_30 ? look->mFade : 0.5f * look->mFade;
+		if (look->_30) {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[111], 0);
+			tex = gGame.mTpl.mTex;
+		} else {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[112], 0);
+			tex = gGame.mTpl.mTex;
+		}
+		f32 width  = scale * GXGetTexObjWidth(&tex);
+		f32 height = scale * GXGetTexObjHeight(&tex);
+		Vec pos;
+		look->mObject->ProjectOffsetToScreen(&look->mOffset, &pos.x, &pos.y, NULL, NULL);
+		pos.x += width / 2.0f;
+		pos.y -= height / 2.0f;
+		pos.z = 0.0f;
+		pos.y += 4.0f * (f32)sin(DEG2RAD * look->mPhase);
+
+		gGame.mGs.mCurRenderState->SetZCompLoc(FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		Vec rotation = { 0.0f, 0.0f, 0.0f };
+		DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
+		                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z, width, height,
+		                   rotation.x, rotation.y, rotation.z);
+
+		f32 glow = alpha * (look->_30 ? 0.5f + 0.5f * (f32)sin(PI * look->mPulse) : 0.5f);
+		if (glow < 0.0f)
+			glow = 0.0f;
+		if (look->_30) {
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, TRUE);
+			Vec maskRotation = { 0.0f, 0.0f, 0.0f };
+			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z, 0.99f * width,
+			                   0.99f * height, maskRotation.x, maskRotation.y, maskRotation.z);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_EQUAL, FALSE);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+			DrawGsQuad(&gGame.mGs, 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow), 0xFFFFFF00 | (u32)(255.0f * glow),
+			           0xFFFFFF00 | (u32)(255.0f * glow), pos.x, pos.y, pos.z, width, height, glowRotation.x, glowRotation.y,
+			           glowRotation.z);
+		}
+
+		if (look->mMode >= 0) {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[look->mMode], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_ALWAYS, FALSE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha),
+			                   0xFFFFFF00 | (u32)(255.0f * alpha), 0xFFFFFF00 | (u32)(255.0f * alpha), pos.x, pos.y, pos.z, width, height,
+			                   look->mTarget.x, look->mTarget.y, look->mTarget.z);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, GX_LEQUAL, FALSE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(TRUE);
+	}
+}
+
+// OctaMenu::Open, ahead of the two menus that inline it; the Wii's head aim is the
+// scene-camera record at WiiPlayerState _987C (snapped to its neutral angle here,
+// released in Select), not the GameCube's neck/head CJointRot pair
+// NONMATCHING: register allocation in the head-aim block (mChr held in r7 vs
+// retail's r6), the instruction stream is otherwise identical
+/**
+ * @note Address: 0x800E9304
+ * @note Size: 0x2AC
+ */
+void OctaMenu::Open(s32 focus)
+{
+	if (mOpen == 0) {
+		mOpeningHeading        = mChr->mMoveRotate.y;
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)mChr)->mHeadAimRecord;
+		aim->mSnap[0] = aim->mSnap[1] = 1;
+		aim->m_0C                     = NULL;
+		aim->mTarget.x                = NAN;
+		aim->m_20                     = NULL;
+		aim->m_24                     = 0.0f;
+		aim->m_28                     = 0.0f;
+	}
+	mOpen  = 1;
+	mFocus = focus;
+	if (mFocus != 0) {
+		mGlow = 1.0f;
+	}
+	Vec offset = { 0.0f, 8.8f, 0.0f };
+	mChr->ProjectOffsetToScreen(&offset, &mOpenScreenX, &mOpenScreenY, NULL, NULL);
+	for (int i = 0; i < 8; i++) {
+		mItems[i].mPulsePhase = DEG2RAD * (rand() % 360);
+		mItems[i]._0C         = DEG2RAD * (rand() % 360);
+		mItems[i].mScale      = mFocus != 0 ? 0.3f : 0.5f;
+	}
+	mCursorIndex = -1;
+	mLabelLength = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(mLabelChars); i++) {
+		mLabelChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mLabelChars[i].mAngle1 = DEG2RAD * (rand() % 360);
+	}
+	mChr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	mPointedItem = mPreviousPointedItem = -1;
+}
+
+// OctaMenu::Select, closes the ring and turns chibi robo back
+// NONMATCHING: register/schedule noise only, the instruction stream is identical
+/**
+ * @note Address: 0x800E95B0
+ * @note Size: 0x11C
+ */
+void OctaMenu::Select(s32 result)
+{
+	if (result > 0 && mFocus == 0)
+		mOpen = -1;
+	else
+		mOpen = -2;
+	mPendingFirstVisibleItem = -1;
+	mFocus                   = 0;
+	if (((WiiPlayerState*)mChr)->mTumble.mState == 0) {
+		mChr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		mChr->SetRotateY(mOpeningHeading, DEG2RAD * 12.0f);
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)mChr)->mHeadAimRecord;
+		aim->mSnap[0] = aim->mSnap[1] = 2;
+		aim->m_0C                     = NULL;
+		aim->mTarget.x                = NAN;
+		aim->m_20                     = NULL;
+		aim->m_24                     = NAN;
+		aim->m_28                     = NAN;
+		aim->m_2C                     = 0.0f;
+		aim->m_30                     = 0.0f;
+		aim->m_4C.x                   = 0.0f;
+		aim->m_4C.y                   = 0.0f;
+		aim->m_4C.z                   = 0.0f;
+	}
+	mPointedItem = mPreviousPointedItem = -1;
+}
+
+// the head-aim yaw for the row menu's seven visible slots, degrees; the octa ring's
+// per-slot aims keep the GameCube's gEquipmentHeadYaw/gEquipmentHeadPitch names and
+// its cursor+1 indexing, the Wii retuned the pitch table's tail
+f32 gEquipmentRowHeadYaw[7] = { -30, -20, -10, 0, 10, 20, 30 };
+f32 gEquipmentHeadYaw[9]    = { 0, -20, 0, 20, 20, 20, 0, -20, -20 };
+f32 gEquipmentHeadPitch[9]  = { -30, -20, -10, 0, 10, 0, -10, -3, -2 };
+
+extern "C" void ResetPopperShot(XActPopperShot* shot);
+
+// HandleEquipmentRingInput, the GameCube's function of the same name: the remote's
+// direction codes sit in the high word of the pad's u64 button fields, the GameCube
+// pad's in the low. The row menu (type 3) scrolls its seven slots with the dpad, the
+// octa ring maps a direction straight to a slot; where the GameCube turned the
+// neck/head joints the Wii writes the head-aim record at WiiPlayerState _987C.
+// 1 picked an item, -1 closed the ring
+// NONMATCHING (~81%): retail anchors the three aim tables at the unit's .data
+// jumptable (r31 + 0x1A4C/0x1A68/0x1A8C) — that anchor resolves only once this
+// unit's .data is complete; the rest is the register-allocation and scheduling
+// fallout of the missing anchor
+/**
+ * @note Address: 0x800E96CC
+ * @note Size: 0x660
+ */
+extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
+{
+	BOOL settled = menu->mOpen > 1 && (menu->mGlow == 0.0f || menu->mGlow == 1.0f);
+	if (settled && menu->mPointedItem >= 0 && menu->mFocus != 0) {
+		return 1;
+	}
+	if (menu->mOpen > 0 && menu->mFocus == 0) {
+		s32 cursor;
+		if (menu->mMenuType == 3) {
+			if ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid)) {
+				u64 dirs = active ? gWiiPointer.mRepeat & 0x0F000000001E0000 : 0;
+				if (dirs & 0x0100000000020000) {
+					if (--menu->mLastPointedItem < 0) {
+						menu->mLastPointedItem = 6;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (dirs & 0x0200000000040000) {
+					if (++menu->mLastPointedItem >= 7) {
+						menu->mLastPointedItem = 0;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+			}
+			if (menu->mFocus != 0) {
+				cursor = menu->mCursorIndex = -1;
+			} else {
+				cursor = menu->mCursorIndex = (menu->mFirstVisibleItem + menu->mLastPointedItem) % 7;
+			}
+		} else {
+			u64 dirs = active ? gWiiPointer.mButton & 0x0F000000001E0000 : 0;
+			if (dirs == 0x120000 || dirs == 0x0900000000000000) {
+				cursor = 0;
+			} else if (dirs == 0x100000 || dirs == 0x0800000000000000) {
+				cursor = 1;
+			} else if (dirs == 0x140000 || dirs == 0x0A00000000000000) {
+				cursor = 2;
+			} else if (dirs == 0x040000 || dirs == 0x0200000000000000) {
+				cursor = 3;
+			} else if (dirs == 0x0C0000 || dirs == 0x0600000000000000) {
+				cursor = 4;
+			} else if (dirs == 0x080000 || dirs == 0x0400000000000000) {
+				cursor = 5;
+			} else if (dirs == 0x0A0000 || dirs == 0x0500000000000000) {
+				cursor = 6;
+			} else if (dirs == 0x020000 || dirs == 0x0100000000000000) {
+				cursor = 7;
+			} else {
+				cursor = menu->mCursorIndex;
+			}
+		}
+		XObjScnCamInitRec* aim = &((WiiPlayerState*)menu->mChr)->mHeadAimRecord;
+		if (menu->mMenuType == 3) {
+			if (__fpclassifyf(menu->mHeadTurn) == FP_NAN) {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = DEG2RAD * (6.0f * (menu->mRowOffset * menu->mRowOffset * menu->mRowOffset));
+				aim->m_28                     = DEG2RAD * gEquipmentRowHeadYaw[menu->mLastPointedItem];
+			} else {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = menu->mHeadTurn;
+				aim->m_28                     = DEG2RAD * gEquipmentRowHeadYaw[menu->mLastPointedItem];
+			}
+		} else {
+			if (__fpclassifyf(menu->mHeadTurn) == FP_NAN) {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = DEG2RAD * gEquipmentHeadPitch[cursor + 1];
+				aim->m_28                     = DEG2RAD * gEquipmentHeadYaw[cursor + 1];
+			} else {
+				aim->mSnap[0] = aim->mSnap[1] = 1;
+				aim->m_0C                     = NULL;
+				aim->mTarget.x                = NAN;
+				aim->m_20                     = NULL;
+				aim->m_24                     = menu->mHeadTurn;
+				aim->m_28                     = DEG2RAD * gEquipmentHeadYaw[cursor + 1];
+			}
+		}
+		if (menu->mCursorIndex != cursor || (menu->mPointedItem >= 0 && menu->mPointedItem != menu->mPreviousPointedItem)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		menu->mCursorIndex = cursor;
+		if (active && menu->mFade >= 1.0f) {
+			if (gWiiPointer.Check(1)) {
+				if (menu->mPointedItem >= 0 || ((gGame.mMenuControls & 2) && (!(gGame.mMenuControls & 1) || !gWiiPointer.mPointerValid))) {
+					if (menu->mCursorIndex < 0) {
+						PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					} else if (menu->mItems[menu->mCursorIndex].mAvailable == 0) {
+						PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					} else {
+						menu->ConfirmSelection();
+						XActPopper* popper = (XActPopper*)&((WiiPlayerState*)menu->mChr)->mPopper;
+						for (s32 i = 0; i < 10; i++) {
+							ResetPopperShot(&popper->mShots.mShot[i]);
+						}
+						return 1;
+					}
+				}
+			} else if (gWiiPointer.Check(2) || gWiiPointer.Check(0x100)) {
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
 
 // nothing to decide on the base menu
 void OctaMenu::ConfirmSelection()

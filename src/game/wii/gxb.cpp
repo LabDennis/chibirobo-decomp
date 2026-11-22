@@ -268,14 +268,8 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		f32 speedA      = ((f32)a1 - (f32)a0) / (gRefreshRate * time);
-		f32 speedB      = ((f32)b1 - (f32)b0) / (gRefreshRate * time);
-		f32 speedG      = ((f32)g1 - (f32)g0) / (gRefreshRate * time);
-		f32 speedR      = ((f32)r1 - (f32)r0) / (gRefreshRate * time);
-		color->mSpeed.r = speedR;
-		color->mSpeed.g = speedG;
-		color->mSpeed.b = speedB;
-		color->mSpeed.a = speedA;
+		color->mSpeed.Set(((f32)r1 - (f32)r0) / (gRefreshRate * time), ((f32)g1 - (f32)g0) / (gRefreshRate * time),
+		                  ((f32)b1 - (f32)b0) / (gRefreshRate * time), ((f32)a1 - (f32)a0) / (gRefreshRate * time));
 	}
 }
 
@@ -283,8 +277,6 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
  * @note Address: 0x8003D404
  * @note Size: 0x178
  */
-// NONMATCHING: register choice only: retail has the green and blue speeds in f5/f7, this build in f6/f5.
-// The speeds are computed alpha first, as retail orders its loads.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -301,14 +293,8 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		f32 speedA      = ((f32)a - color->mColor.a) / (gRefreshRate * time);
-		f32 speedB      = ((f32)b - color->mColor.b) / (gRefreshRate * time);
-		f32 speedG      = ((f32)g - color->mColor.g) / (gRefreshRate * time);
-		f32 speedR      = ((f32)r - color->mColor.r) / (gRefreshRate * time);
-		color->mSpeed.r = speedR;
-		color->mSpeed.g = speedG;
-		color->mSpeed.b = speedB;
-		color->mSpeed.a = speedA;
+		color->mSpeed.Set(((f32)r - color->mColor.r) / (gRefreshRate * time), ((f32)g - color->mColor.g) / (gRefreshRate * time),
+		                  ((f32)b - color->mColor.b) / (gRefreshRate * time), ((f32)a - color->mColor.a) / (gRefreshRate * time));
 	}
 }
 
@@ -691,14 +677,8 @@ void CScrnRoboeyes::StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targe
 		mSpeed.b = 0.0f;
 		mSpeed.a = 0.0f;
 	} else {
-		f32 speedA = ((f32)targetA - (f32)a) / (gRefreshRate * time);
-		f32 speedB = ((f32)targetB - (f32)b) / (gRefreshRate * time);
-		f32 speedG = ((f32)targetG - (f32)g) / (gRefreshRate * time);
-		f32 speedR = ((f32)targetR - (f32)r) / (gRefreshRate * time);
-		mSpeed.r   = speedR;
-		mSpeed.g   = speedG;
-		mSpeed.b   = speedB;
-		mSpeed.a   = speedA;
+		mSpeed.Set(((f32)targetR - (f32)r) / (gRefreshRate * time), ((f32)targetG - (f32)g) / (gRefreshRate * time),
+		           ((f32)targetB - (f32)b) / (gRefreshRate * time), ((f32)targetA - (f32)a) / (gRefreshRate * time));
 	}
 	if (mHideWhenDone && SizeStopped(this))
 		mActive = FALSE;

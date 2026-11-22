@@ -9,35 +9,6 @@ extern "C" double cos(double x);
 extern "C" double atan2(double y, double x);
 extern "C" f32 PSVECDistance(Vec* a, Vec* b);
 
-// first aobj on the jobj or below it
-static inline HSD_AObj* FindAnim(HSD_JObj* jobj)
-{
-	if (jobj != NULL) {
-		HSD_AObj* aobj = FindJointAnimationInTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindMaterialOrTextureAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindPolygonAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-	}
-	return NULL;
-}
-
-static inline f32 GetAnimFrame(HSD_JObj* jobj)
-{
-	HSD_AObj* aobj = FindAnim(jobj);
-	if (aobj != NULL) {
-		return HSD_AObjGetCurrentFrame(aobj);
-	}
-	return 0.0f;
-}
-
 struct TrashObj;
 
 struct UnkKindData {
@@ -165,6 +136,14 @@ struct TrashObj {
 	TrashObj* mLiftTarget; // _A64 in Japan _A54
 
 	Vec* GetPos() { return &mMoveTranslate; }
+	f32 GetAnimFrame()
+	{
+		HSD_AObj* aobj = GetAObj(jobj);
+		if (aobj != NULL) {
+			return HSD_AObjGetCurrentFrame(aobj);
+		}
+		return 0.0f;
+	}
 };
 
 #if defined(VERSION_JP)
@@ -257,18 +236,19 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-// needed as an inline for the stack layout of the two CVec copies
-static inline s32 IsNearXZ(const Vec& p, const Vec& q)
+// whether pos is within reach of object index's position, on the XZ plane
+static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
 {
 	CVec a, b;
-	a.x = p.x;
-	a.y = p.y;
-	a.z = p.z;
-	b.x = q.x;
-	b.y = q.y;
-	b.z = q.z;
-	b.y = 0.0f;
-	a.y = 0.0f;
+	a.x           = pos.x;
+	a.y           = pos.y;
+	a.z           = pos.z;
+	TrashObj* obj = (TrashObj*)gGame.GetObject(index);
+	b.x           = obj->mMoveTranslate.x;
+	b.y           = obj->mMoveTranslate.y;
+	b.z           = obj->mMoveTranslate.z;
+	b.y           = 0.0f;
+	a.y           = 0.0f;
 	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
 		return 0;
 	}
@@ -281,11 +261,8 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  */
 extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 {
-	// NONMATCHING: count regs — the instruction sequence is identical, but trashboxIndex,
-	// the gGame+0x10000 base, robot and the CVec vtable land one slot over.
 	CGame* game;
 	TrashObj* robot;
-	TrashObj* box;
 
 	if (trashboxIndex < 0) {
 		return 0;
@@ -295,8 +272,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 	if (trashboxIndex != robot->mFloorContacts) { // the box must be the contacted object
 		return 0;
 	}
-	box = (TrashObj*)game->mXObjs.mObjects[trashboxIndex];
-	return IsNearXZ(robot->mMoveTranslate, box->mMoveTranslate);
+	return IsNearObjectXZ(robot->mMoveTranslate, trashboxIndex);
 }
 // CmdIsNearTrashbox
 /*
@@ -412,7 +388,6 @@ static inline s16 GetKindId(TrashObj* obj)
  */
 extern "C" void UpdateTrash(u32 frames)
 {
-	// NONMATCHING: regalloc
 	Vec impactPos;
 	TrashObj* robot;
 
@@ -439,7 +414,7 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 2:
-			if (15.0f <= GetAnimFrame(robot->jobj)) { // the toss anim's release frame
+			if (15.0f <= robot->GetAnimFrame()) { // the toss anim's release frame
 				robot->mLiftTarget = NULL;
 				trashObj->mStatus &= ~0x400000000000000ULL; // no longer carried
 				trashDest.x = trashTarget->GetPos()->x;
@@ -457,7 +432,7 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 3: {
-			if (30.0f <= GetAnimFrame(robot->jobj) && GetAnimFrame(robot->jobj) < 33.0f) {
+			if (30.0f <= robot->GetAnimFrame() && robot->GetAnimFrame() < 33.0f) {
 				// the toss sound's window
 				XSound* obj = &gGame.mSound;
 				if (!IsGameSoundPlaying(obj, 0x1B9)) {

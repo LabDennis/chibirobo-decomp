@@ -7,7 +7,8 @@
 inline bool CObjVec::IsMoving() const
 {
 	bool result = false;
-	if ((x != mTarget.x && 0.0f != mSpeed.x) || (y != mTarget.y && 0.0f != mSpeed.y) || (z != mTarget.z && 0.0f != mSpeed.z)) {
+	if ((mValue.x != mTarget.x && 0.0f != mSpeed.x) || (mValue.y != mTarget.y && 0.0f != mSpeed.y)
+	    || (mValue.z != mTarget.z && 0.0f != mSpeed.z)) {
 		result = true;
 	}
 	return result;
@@ -21,31 +22,31 @@ u8 CObjVec::Step(f32 frames)
 {
 	u8 moving = IsMoving();
 
-	if (x < mTarget.x) {
-		if ((x += mSpeed.x * frames) > mTarget.x) {
-			x = mTarget.x;
+	if (mValue.x < mTarget.x) {
+		if ((mValue.x += mSpeed.x * frames) > mTarget.x) {
+			mValue.x = mTarget.x;
 		}
-	} else if (x > mTarget.x) {
-		if ((x -= mSpeed.x * frames) < mTarget.x) {
-			x = mTarget.x;
-		}
-	}
-	if (y < mTarget.y) {
-		if ((y += mSpeed.y * frames) > mTarget.y) {
-			y = mTarget.y;
-		}
-	} else if (y > mTarget.y) {
-		if ((y -= mSpeed.y * frames) < mTarget.y) {
-			y = mTarget.y;
+	} else if (mValue.x > mTarget.x) {
+		if ((mValue.x -= mSpeed.x * frames) < mTarget.x) {
+			mValue.x = mTarget.x;
 		}
 	}
-	if (z < mTarget.z) {
-		if ((z += mSpeed.z * frames) > mTarget.z) {
-			z = mTarget.z;
+	if (mValue.y < mTarget.y) {
+		if ((mValue.y += mSpeed.y * frames) > mTarget.y) {
+			mValue.y = mTarget.y;
 		}
-	} else if (z > mTarget.z) {
-		if ((z -= mSpeed.z * frames) < mTarget.z) {
-			z = mTarget.z;
+	} else if (mValue.y > mTarget.y) {
+		if ((mValue.y -= mSpeed.y * frames) < mTarget.y) {
+			mValue.y = mTarget.y;
+		}
+	}
+	if (mValue.z < mTarget.z) {
+		if ((mValue.z += mSpeed.z * frames) > mTarget.z) {
+			mValue.z = mTarget.z;
+		}
+	} else if (mValue.z > mTarget.z) {
+		if ((mValue.z -= mSpeed.z * frames) < mTarget.z) {
+			mValue.z = mTarget.z;
 		}
 	}
 	return moving;

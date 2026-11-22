@@ -706,6 +706,14 @@ public:
 	virtual void vf030();
 	virtual void vf034(s32 index, void* model); // queues a model's draw
 	virtual void vf038(s32 index);
+	virtual void vf03C(void* model); // unqueues a model's draw, the map calls it after CalcWorld
+
+	// pops the last queued draw; retail's drain loops test mPending a second time, inside this inline
+	void PopPending()
+	{
+		if (mPending != 0)
+			vf038(mPending - 1);
+	}
 
 	u8 _004[0xE4 - 0x004];
 	s32 mPending; // _E4, the queued draws still waiting
@@ -713,14 +721,34 @@ public:
 	void* _2888; // _2888, set when the stage's scene brings its own lights and fog
 };
 
-// nine of these sit in the CGs at _1FE4; only the three flag bytes the stage setup clears are known
+// nine of these sit in the CGs at _1FE4; LIGHT @COLOR fills the color half, LIGHT @POS the position
+// half, the stage setup clears the three flag bytes (_00, _08, _18)
 struct WiiGsSlot {
-	u8 _00;
-	u8 _01[7];
-	u8 _08;
-	u8 _09[0xF];
-	u8 _18;
+	u8 mColorSet;   // _00
+	GXColor mColor; // _01
+	u8 _05[0x08 - 0x05];
+	u8 mPosSet; // _08
+	u8 _09[0x0C - 0x09];
+	Vec mPos; // _0C
+	u8 _18;   // _18
 	u8 _19[0xF];
+
+	// LIGHT @COLOR and @POS write through these
+	void SetColor(GXColor color)
+	{
+		mColorSet = TRUE;
+		mColor.r  = color.r;
+		mColor.g  = color.g;
+		mColor.b  = color.b;
+		mColor.a  = color.a;
+	}
+	void SetPos(Vec pos)
+	{
+		mPosSet = TRUE;
+		mPos.x  = pos.x;
+		mPos.y  = pos.y;
+		mPos.z  = pos.z;
+	}
 };
 STATIC_ASSERT(sizeof(WiiGsSlot) == 0x28);
 

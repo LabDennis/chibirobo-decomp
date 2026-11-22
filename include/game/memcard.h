@@ -179,6 +179,12 @@ BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel);
 BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 file);
 // "CHIBIROBO(%d...", a slot's file name
 extern const char gSaveFileNameFormat[];
+// a slot's file name while reading previews
+extern char gSaveReadFileName[0xC8];
+// CARDRead's DMA target, so the buffer itself is 32-byte aligned
+extern struct SaveFile gSavePreviewFileBuffer[2];
+// a slot's file name while scanning
+extern char gSaveScanFileName[0x80];
 // the card jobs, each runs on the card thread and returns FALSE while one is still busy
 BOOL StartMemoryCardSaveDeletion(Memcard* card, s32 channel, s32 file, BOOL logResults);
 BOOL StartMemoryCardFormatCheck(Memcard* card, s32 channel, BOOL logResults);

@@ -3,9 +3,14 @@
 // NONMATCHING: the script control, the queue, the effect slots and the small commands have source; the
 // expression evaluator and the big commands (CALL, CAMERA, WAIT, SCRN, ...) do not yet.
 #include "nw4r/ef/ef_resource.h"
+#include "game/wii/xobjflags.h" // ahead of cgame.h: its AnimSfx needs the real nw4r::math, before xobj.h's shim
 #include "game/wii/ceffect.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
+#include "game/wii/infoscrn.h"
+#include "game/ccameraaction.h"
+#include "game/ccameraactioneye.h"
+#include "game/cmotioncontrolcamera.h"
 #include "game/wii/cpad.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/xobjs.h"
@@ -30,6 +35,7 @@ extern s32 gRefreshRate;
 extern f32 gScreenWidthScale;
 extern s32 gScreenSafeBottom;
 extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
 void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags, f32 volume);
 void StopGameMovie(CGame* game);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
@@ -42,6 +48,7 @@ void UpdateHeldObject(XAction* action, u32 frames);
 void CancelPlayerPushAction(XAction* action);
 void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
+void ClearActiveObjectFloors(XObj* object);
 BOOL fn_800AF098(XObj* obj, const char* path); // reads an object's animation file
 void fn_800AF12C(XObj* obj);                   // drops the animation file READ gave it
 void fn_800C807C(XObj* obj);                   // a category 3 object's follow-up to a new anim
@@ -51,7 +58,14 @@ void AdjustPlayerExperience(WiiPlayerParams* params, s32 amount);
 void AdjustPlayerLevel(WiiPlayerParams* params, s32 amount);
 void AddPlayerRank(WiiPlayerParams* params, s32 amount);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id); // below 0 when there is none
+void AddMainMenuExtraRow(void* menu, s32 arg1, s32 arg2);
 }
+
+void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex); // 0x800D2B50
+void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                              // 0x800EF58C
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);                      // xobj_chr.cpp
+
+#include "game/fbtexeff.h"
 
 CEvtFlags gEventFlags;
 CEvtVars gEventVars;
@@ -62,11 +76,20 @@ CEvtPtcl gEventPtcl;
 EvtObjIdTable gEventObjectIds = { 0 };
 // the message window's color after WIN @RESET
 GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
+// the alpha LIGHT @COLOR writes with the color
+u8 sEvtLightAlpha = 255;
 // the event system's own object
 XObj gEventScriptObject;
 
+CCameraMemento gEventCameraMementos[4];
+
 extern "C" s32 CEvt_Evaluate(CEvt* evt);
 extern "C" void CEvt_EvalSet(CEvt* evt);
+extern "C" void StopSceneCameraAnm(CGame* game);
+extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate);
+extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, s32 control, f32 time);
+extern "C" void ResumeAreaCameraControl(CCameraActionArea* area);
+extern "C" void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 
 // the object registered under a script name from 10000 up, NULL unless it's in use
 static inline XObj* CEvt_FindObj(s16 id)
@@ -101,6 +124,12 @@ static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 		return evt->mData.mContext;
 	}
 	return (XObj*)id;
+}
+
+// the header only declares it: the body needs XObjFlags, which not every unit can afford to include
+inline CEvtFlags& XOBJS::GetCollectionFlags(CollectionPool pool) const
+{
+	return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags;
 }
 
 static inline s32 EvtRead16(const u8* p)
@@ -158,7 +187,7 @@ static inline void CEvt_Detach(CEvt* evt)
 	if (evt->mOwner == NULL) {
 		if (gGame.mEffects.mResources[1].mNumEmitter != 0) {
 			for (s32 i = 0; i < 0x80; i++) {
-				EffectInstance* effect = (EffectInstance*)gEventPtcl.mEmitters[i];
+				EffectInstance* effect = &gEventPtcl.mEffects[i];
 				if (!effect->IsFinished() && effect->group == 3) {
 					RetireEffect(&effect->handle, TRUE);
 				}
@@ -264,6 +293,309 @@ s32 CEvt::_cmd_WARP(u8, s32)
 	return 1;
 }
 
+extern "C" s32 InfoScrn_IsBatteryGaugeFull(void* hud);
+extern "C" s32 IsSceneCameraAnmEnd(CGame* game);
+extern "C" void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mode);
+
+#define EVT_CAMERA_ACTION(type) (gGame.mCameraActions.mTable[type])
+
+static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& yield)
+{
+	if (command == EVT_CMD_WAIT) {
+		if (ready == 0) {
+			evt->mData.mScript = start;
+			yield              = 1;
+		}
+	} else
+		evt->mSelectResult = ready;
+}
+
+// a wipe is done once its size stops
+static inline s32 EvtZero2(const CScrnWipe& wipe)
+{
+	s32 done = false;
+	if (wipe.mSpeedWidth == 0.0f && wipe.mSpeedHeight == 0.0f) {
+		done = true;
+	}
+	return done;
+}
+
+static inline s32 EvtZero3(const f32* p)
+{
+	s32 done = false;
+	if (p[0] == 0.0f && p[1] == 0.0f && p[2] == 0.0f) {
+		done = true;
+	}
+	return done;
+}
+
+// a screen color is done once its speed is all zero
+static inline s32 EvtZero4(const ScrnColorF& speed)
+{
+	return speed.r == 0.0f && speed.g == 0.0f && speed.b == 0.0f && speed.a == 0.0f;
+}
+
+/**
+ * @note Address: 0x8009F87C
+ * @note Size: 0x1290
+ */
+s32 CEvt::_cmd_WAIT(u8 command, s32 step)
+{
+	u8* start = mData.mScript - 1;
+	s32 yield = 0;
+	u16 mode  = CEvt_Evaluate(this);
+	switch (mode) {
+	case EVT_ATOM_TIME: {
+		s32 duration = CEvt_Evaluate(this);
+		if (command == EVT_CMD_WAIT) {
+			if (mWaitTimer == 0) {
+				// duration is in hundredths of a second, mWaitTimer counts hundredths of a frame
+				mWaitTimer = (duration / 100) * gRefreshRate * 100;
+				mWaitTimer += 100.0f * ((duration % 100 * gRefreshRate) / 100.0f);
+				mData.mScript = start;
+				yield         = 1;
+			} else {
+				s32 remain = mWaitTimer - step * 100;
+				mWaitTimer = remain;
+				if (remain <= 0)
+					mWaitTimer = 0;
+				else {
+					mData.mScript = start;
+					yield         = 1;
+				}
+			}
+		} else
+			mSelectResult = 1;
+		break;
+	}
+	case EVT_ATOM_FADE: {
+		s32 ready = EvtZero4(gGame.mFade.mSpeed) != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_MONO: {
+		s32 ready = EvtZero4(gGame.mColor0.mColor.mSpeed) != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_WIPE: {
+		bool done = false;
+		if (EvtZero2(gGame.mWipeCircle) && EvtZero2(gGame.mWipeTex) && EvtZero2(gGame.mWipeCustom) && EvtZero2(gGame.mWipeTile)) {
+			done = true;
+		}
+		s32 ready = done != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_LETTERBOX: {
+		s32 ready = EvtZero2(gGame.mWipeCine) != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case 203:
+		if (command != EVT_CMD_WAIT)
+			mSelectResult = 1;
+		break;
+	case EVT_ATOM_ANIM: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		f32 frame = CEvt_Evaluate(this);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL)
+				CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d) ... obj(%d) is collision!", id, id));
+			const nw4r::g3d::ScnMdl* mdl = obj->mObject.m_pScnMdl;
+			if (mdl != NULL) {
+				const nw4r::g3d::AnmObj* anim = mdl->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_CHR);
+				if (anim == NULL) {
+					yield = 1;
+					if (command != EVT_CMD_WAIT)
+						mSelectResult = 1;
+				} else {
+					if (frame >= 0.0f) {
+						s32 ready = obj->GetAnimFrame() >= frame || obj->IsAnimDone();
+						EvtWaitFor(this, command, start, ready, yield);
+					} else
+						EvtWaitFor(this, command, start, obj->IsAnimDone(), yield);
+				}
+			} else if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_DIR: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL)
+				CEvt_Warn(FormatToStaticBuffer("wait(@DIR, %d) ... obj(%d) is collision!", id, id));
+			EvtWaitFor(this, command, start, obj->mMoveRotate.y == obj->mMoveTarget1.y, yield);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@DIR, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_MOVE: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL)
+				CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d) ... obj(%d) is collision!", id, id));
+			EvtWaitFor(this, command, start, !(*obj->GetPos() != obj->mMoveTarget0), yield);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_SCALE: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL)
+				CEvt_Warn(FormatToStaticBuffer("wait(@SCALE, %d) ... obj(%d) is collision!", id, id));
+			EvtWaitFor(this, command, start, obj->GetScale()->y == obj->mMoveTarget2.y, yield);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@SCALE, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_SFX: {
+		s32 sfx = CEvt_Evaluate(this);
+		EvtWaitFor(this, command, start, !IsWiiSfxPlaying(&gGame.mSound, sfx), yield);
+		break;
+	}
+	case EVT_ATOM_COLOR: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mObject.m_pScnMdl == NULL)
+				CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d) ... obj(%d) is collision!", id, id));
+			bool done = false;
+			if (EvtZero3(&obj->mAnmQueue.mColorStep[0].mSpeed.x) && EvtZero3(&obj->mAnmQueue.mColorStep[1].mSpeed.x)) {
+				done = true;
+			}
+			s32 ready = done;
+			EvtWaitFor(this, command, start, ready, yield);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_REAL: {
+		s32 index = CEvt_Evaluate(this);
+		if (index == 1)
+			EvtWaitFor(this, command, start, InfoScrn_IsBatteryGaugeFull(&gGame.mInfoScrn), yield);
+		else
+			OSPanic(__FILE__, 4465, FormatToStaticBuffer("wait(@REEL, %d) - unresolved!\n", index));
+		break;
+	}
+	case EVT_ATOM_CAM: {
+		s32 ready = 1;
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_RESET))
+			ready = 0;
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_AREA)) {
+			CCameraActionArea* area = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
+			BOOL busy;
+			if (area->mEyeInterp != NULL || area->mInterestInterp != NULL || area->mFovInterp != NULL)
+				busy = TRUE;
+			else
+				busy = FALSE;
+			ready = !busy;
+		}
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_EVT)) {
+			CCameraActionEvt* action = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
+			BOOL busy;
+			if (action->mEyeInterp != NULL || action->mInterestInterp != NULL || action->mDistanceInterp != NULL
+			    || action->mFovInterp != NULL || action->mAngleInterp != NULL)
+				busy = TRUE;
+			else
+				busy = FALSE;
+			ready = !busy;
+		}
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_ANIM))
+			ready = IsSceneCameraAnmEnd(&gGame);
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_READ: {
+		s16 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL) {
+			if (obj->mStatus.mFlags & 0x0080000000000000ULL) {
+				EvtWaitFor(this, command, start, 0, yield);
+			} else {
+				EvtWaitFor(this, command, start, !(obj->mStatus.mFlags & 0x0040000000000000ULL), yield);
+			}
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("wait(@READ, %d, ...) obj(%d) killed!", id, id));
+			if (command == EVT_CMD_CHECK)
+				mSelectResult = 1;
+		}
+		break;
+	}
+	case EVT_ATOM_ZBLUR: {
+		s32 speed = gGame.mBlur.mSpeed == 0.0f;
+		s32 ready = speed != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_SHAKE: {
+		s32 ready = EvtZero3(&gGame.mQuake.mShake[2].x) != 0;
+		EvtWaitFor(this, command, start, ready, yield);
+		break;
+	}
+	case EVT_ATOM_CUE: {
+		s32 beat = GetGameMusicSlot(&gGame.mSound) != NULL;
+		if (beat != 0) {
+			beat = 1001; // 1 + 1000, so beat 0 is told apart from no beat
+		}
+		if (command == EVT_CMD_WAIT) {
+			if (beat == 0) {
+				mData.mScript = start;
+				yield         = 1;
+			} else
+				mSelectResult = beat;
+		} else
+			mSelectResult = beat;
+		break;
+	}
+	case EVT_ATOM_MOVIE: {
+		s32 frame = CEvt_Evaluate(this);
+		s32 ready = gGame.mMovie.mState == 0;
+		if (!ready && frame >= 0)
+			ready = gGame.mMovie.mFrame >= frame;
+		if (command == EVT_CMD_WAIT) {
+			if (ready == 0) {
+				mData.mScript = start;
+				yield         = 1;
+			} else
+				mSelectResult = ready;
+		} else
+			mSelectResult = ready;
+		break;
+	}
+	default:
+		if (command == EVT_CMD_WAIT) {
+			OSPanic(__FILE__, 4646, FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode));
+		} else {
+			OSPanic(__FILE__, 4648, FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode));
+		}
+		break;
+	}
+	return yield;
+}
+
 /**
  * @note Address: 0x8009F7E0
  * @note Size: 0x9C
@@ -287,6 +619,207 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 	return 0;
 }
 
+struct EvtHudCommand {
+	u8 enabled; // _00
+	s32 mode;   // _04
+};
+
+/**
+ * @note Address: 0x8009E4C0
+ * @note Size: 0xED8
+ */
+s32 CEvt::_cmd_SCRN(u8, s32)
+{
+	u16 mode = CEvt_Evaluate(this);
+	switch (mode) {
+	case EVT_ATOM_FADE: {
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenFade(&gGame.mFade, r0, g0, b0, a0, r1, g1, b1, a1, time);
+		break;
+	}
+	case EVT_ATOM_MONO: {
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenFade(&gGame.mColor0.mColor, r0, g0, b0, a0, r1, g1, b1, a1, time);
+		break;
+	}
+	case EVT_ATOM_WIPE: {
+		s32 type = CEvt_Evaluate(this);
+		s32 open = CEvt_Evaluate(this);
+		s32 x    = CEvt_Evaluate(this);
+		s32 y    = CEvt_Evaluate(this);
+		s32 w0   = CEvt_Evaluate(this);
+		s32 h0   = CEvt_Evaluate(this);
+		u8 r0    = CEvt_Evaluate(this);
+		u8 g0    = CEvt_Evaluate(this);
+		u8 b0    = CEvt_Evaluate(this);
+		u8 a0    = CEvt_Evaluate(this);
+		s32 w1   = CEvt_Evaluate(this);
+		s32 h1   = CEvt_Evaluate(this);
+		u8 r1    = CEvt_Evaluate(this);
+		u8 g1    = CEvt_Evaluate(this);
+		u8 b1    = CEvt_Evaluate(this);
+		u8 a1    = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		switch (type) {
+		case 0:
+			gGame.mWipeCircle.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			break;
+		case 1:
+			gGame.mWipeTile.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			break;
+		default:
+			if (type >= 2000) {
+				if (open) {
+					gGame.mWipeCustom.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, 57.0f, 57.0f, 0.0f, 0.0f, time, a1, !open);
+				} else {
+					gGame.mWipeCustom.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, 0.0f, 0.0f, 57.0f, 57.0f, time, a1, !open);
+				}
+			} else if (type >= 1000) {
+				TPLPalette* palette = gGame.mTpl.mPalette;
+				gGame.mTpl.mTex.Init(&palette->descriptorArray[type - 1000], 0);
+				gGame.mWipeTex.mTex = gGame.mTpl.mTex;
+				gGame.mWipeTex.StartTransition(r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
+			} else {
+				OSPanic(__FILE__, 3792, FormatToStaticBuffer("scrn(@WIPE, %d,...) - unresolved!\n", type));
+			}
+			break;
+		}
+		break;
+	}
+	case EVT_ATOM_LETTERBOX: {
+		s32 open    = CEvt_Evaluate(this);
+		s32 centerX = gPointerScreenWidth / 2;
+		s32 height0 = open ? gPointerScreenHeight : 314;
+		u8 r0       = CEvt_Evaluate(this);
+		u8 g0       = CEvt_Evaluate(this);
+		u8 b0       = CEvt_Evaluate(this);
+		u8 a0       = CEvt_Evaluate(this);
+		s32 height1 = open ? 314 : gPointerScreenHeight;
+		u8 r1       = CEvt_Evaluate(this);
+		u8 g1       = CEvt_Evaluate(this);
+		u8 b1       = CEvt_Evaluate(this);
+		u8 a1       = CEvt_Evaluate(this);
+		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		s32 centerY = 200;
+		gGame.mWipeCine.StartTransition(r0, g0, b0, a0, r1, g1, b1, centerX, centerY, gPointerScreenWidth, height0, gPointerScreenWidth,
+		                                height1, time, a1, !open);
+		break;
+	}
+	case EVT_ATOM_HUD:
+		switch (CEvt_Evaluate(this)) {
+		case EVT_HUD_BATTERY: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 0, 2 }, { 1, 2 }, { 0, 3 }, { 1, 3 } };
+			InfoScrn_ApplyBatteryHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			break;
+		}
+		case EVT_HUD_CLOCK: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, 2 }, { 1, 3 }, { 0, 4 }, { 1, 4 } };
+			InfoScrn_ApplyClockHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode, 0);
+			break;
+		}
+		case EVT_HUD_SCORE: {
+			s32 index                 = CEvt_Evaluate(this);
+			EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			break;
+		}
+		case 3:
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this);
+			CEvt_Evaluate(this) / 100.0f;
+			break;
+		case EVT_HUD_TIMER: {
+			s32 index = CEvt_Evaluate(this);
+			if (index >= 0) {
+				EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+				InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
+			} else {
+				switch (index) {
+				case -1:
+					InfoScrn_ShowTimer(&gGame.mInfoScrn);
+					break;
+				case -2:
+					InfoScrn_HideTimer(&gGame.mInfoScrn);
+					break;
+				case -3: {
+					s32 hundredths = CEvt_Evaluate(this);
+					InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, hundredths);
+					break;
+				}
+				case -4:
+					mSelectResult = InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
+					break;
+				}
+			}
+			break;
+		}
+		}
+		break;
+	case EVT_ATOM_ZBLUR: {
+		u8 a0       = CEvt_Evaluate(this);
+		u8 a1       = CEvt_Evaluate(this);
+		s32 offsetX = CEvt_Evaluate(this);
+		s32 offsetY = CEvt_Evaluate(this);
+		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		f32 start   = a0 / 255.0f;
+		f32 end     = a1 / 255.0f;
+		f32 step;
+		if (time == 0.0f) {
+			start = end;
+			step  = 0.0f;
+		} else {
+			step = (end - start) / (gRefreshRate * time);
+		}
+		f32 x = offsetX;
+		f32 y = offsetY;
+		if (start >= 0.0f)
+			gGame.mBlur.mAlpha = start;
+		if (end >= 0.0f)
+			gGame.mBlur.mTarget = end;
+		step                 = __fabsf(step);
+		gGame.mBlur.mOffsetX = x;
+		gGame.mBlur.mOffsetY = y;
+		gGame.mBlur.mSpeed   = step;
+		gGame.mBlur.CalcMtx();
+		break;
+	}
+	case EVT_ATOM_SHAKE: {
+		f32 x0   = CEvt_Evaluate(this) / 100.0f;
+		f32 y0   = CEvt_Evaluate(this) / 100.0f;
+		f32 z0   = CEvt_Evaluate(this) / 100.0f;
+		f32 x1   = CEvt_Evaluate(this) / 100.0f;
+		f32 y1   = CEvt_Evaluate(this) / 100.0f;
+		f32 z1   = CEvt_Evaluate(this) / 100.0f;
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		StartScreenShake(&gGame.mQuake, x0, y0, z0, x1, y1, z1, time);
+		break;
+	}
+	default:
+		OSPanic(__FILE__, 3987, FormatToStaticBuffer("scrn(%d,...) - unresolved!\n", mode));
+		break;
+	}
+	return 0;
+}
+
 /**
  * @note Address: 0x8009D5A4
  * @note Size: 0x20
@@ -301,6 +834,64 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
 		c             = *str;
 		mData.mScript = str + 1;
 	} while (c != 0);
+	return 0;
+}
+
+/**
+ * @note Address: 0x8009BF68
+ * @note Size: 0x42C
+ */
+// the stage's scene animation carries the light the script's index names; COLOR and POS
+// override its color and position in the CGs's slots
+s32 CEvt::_cmd_LIGHT(u8, s32)
+{
+	s32 index = CEvt_Evaluate(this);
+	nw4r::g3d::LightObj diff, spec;
+	nw4r::g3d::AnmScnRes* anm = (nw4r::g3d::AnmScnRes*)gGame.mGs.mScene.mHead->_2888;
+	if (anm != NULL) {
+		u32 numSets = anm->GetNumLightSet();
+		for (u32 s = 0; s < numSets; s++) {
+			nw4r::g3d::ResLightSet lightSet = anm->GetResAnm().GetResLightSet(s);
+			for (u32 l = 0; l < lightSet.GetNumLight(); l++) {
+				if (l == index - 1) {
+					anm->GetLight(&diff, &spec, lightSet.GetLightID(l));
+					break;
+				}
+			}
+		}
+	}
+	u16 type = CEvt_Evaluate(this);
+	switch (type) {
+	case EVT_ATOM_COLOR: {
+		u8 r = CEvt_Evaluate(this);
+		u8 g = CEvt_Evaluate(this);
+		u8 b = CEvt_Evaluate(this);
+		if (diff.IsEnable()) {
+			GXColor color = { r, g, b, sEvtLightAlpha };
+			gGame.mGs._1FE4[index].SetColor(color);
+		}
+		break;
+	}
+	case EVT_ATOM_POS: {
+		f32 x = CEvt_Evaluate(this) / 100.0f;
+		f32 y = CEvt_Evaluate(this) / 100.0f;
+		f32 z = CEvt_Evaluate(this) / 100.0f;
+		if (diff.IsEnable()) {
+			Vec pos = { x, y, z };
+			gGame.mGs._1FE4[index].SetPos(pos);
+		}
+		break;
+	}
+	case EVT_ATOM_INTEREST:
+		// read and dropped, the Wii does not aim the light
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this) / 100.0f;
+		break;
+	default:
+		OSPanic(__FILE__, 3008, FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type));
+		break;
+	}
 	return 0;
 }
 
@@ -548,6 +1139,649 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		OSPanic(__FILE__, 1778, FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id));
 	}
 	return 0;
+}
+
+/**
+ * @note Address: 0x8009A224
+ * @note Size: 0xC7C
+ */
+s32 CEvt::_cmd_CAMERA(u8, s32)
+{
+	StopSceneCameraAnm(&gGame);
+	CCameraActionEvt* action  = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
+	CCameraActionArea* area   = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
+	CCameraActionReset* reset = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
+	u16 command               = CEvt_Evaluate(this);
+	switch (command) {
+	case EVT_ATOM_AREA: {
+		s32 areaIndex = CEvt_Evaluate(this);
+		s32 entry     = CEvt_Evaluate(this);
+		s32 mode      = CEvt_Evaluate(this);
+		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(areaIndex) != 0) {
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_AREA);
+			SelectAreaCameraEntryWithControl(area, areaIndex, entry, mode, 0, time);
+			// mode 3 jumps straight to the entry instead of easing, so apply it now
+			if (mode == 3) {
+				gGame.mMotionControlCamera.ApplyAction();
+			}
+		}
+		break;
+	}
+	case EVT_ATOM_POS: {
+		f32 x    = CEvt_Evaluate(this) / 100.0f;
+		f32 y    = CEvt_Evaluate(this) / 100.0f;
+		f32 z    = CEvt_Evaluate(this) / 100.0f;
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = 11;
+		action->SetEye_Interp(mode, (Vec) { x, y, z }, time);
+		break;
+	}
+	case 240:
+	case 243:
+	case 251:
+	case 252: {
+		s32 axis      = CEvt_Evaluate(this);
+		f32 degrees   = CEvt_Evaluate(this);
+		s32 mode      = CEvt_Evaluate(this);
+		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		u32 type      = command == 240 ? 2 : 1;
+		BOOL relative = (command == 251 || command == 252) ? TRUE : FALSE;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		switch (axis) {
+		case 2: {
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, DEG2RAD * degrees, 0.0f }, 2, type, relative, time);
+			break;
+		}
+		case 3: {
+			action->SetAngle_Interp(mode, (Vec) { DEG2RAD * degrees, 0.0f, 0.0f }, 1, type, relative, time);
+			break;
+		}
+		case 5: {
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, 0.0f, DEG2RAD * degrees }, 4, type, relative, time);
+			break;
+		}
+		}
+		break;
+	}
+	case EVT_ATOM_INTEREST: {
+		f32 x    = CEvt_Evaluate(this) / 100.0f;
+		f32 y    = CEvt_Evaluate(this) / 100.0f;
+		f32 z    = CEvt_Evaluate(this) / 100.0f;
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = 11;
+		action->SetInterest_Interp(mode, (Vec) { x, y, z }, time);
+		break;
+	}
+	case EVT_ATOM_OBJ: {
+		s32 id    = CEvt_Evaluate(this);
+		s32 mode  = CEvt_Evaluate(this);
+		f32 time  = CEvt_Evaluate(this) / 100.0f;
+		XObj* obj = CEvt_GetObj(this, (s16)id);
+		if (obj != NULL) {
+			Vec target = obj->GetCameraTarget();
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+			action->mCameraFlags = 11;
+			action->SetInterest_Interp(mode, target, time);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("cam(@OBJ, %d, ...): obj(%d) killed!", id, id));
+		}
+		break;
+	}
+	case EVT_ATOM_LEAD: {
+		s32 id    = CEvt_Evaluate(this);
+		XObj* obj = CEvt_GetObj(this, (s16)id);
+		if (obj != NULL) {
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+			action->mCameraFlags = 11;
+			action->SetInterest_Interp(3, obj, 0.0f);
+		} else {
+			CEvt_Warn(FormatToStaticBuffer("cam(@LEAD, %d): obj(%d) killed!", id, id));
+		}
+		break;
+	}
+	case EVT_ATOM_DISTANCE:
+		CEvt_Evaluate(this) / 100.0f;
+		CEvt_Evaluate(this);
+		CEvt_Evaluate(this) / 100.0f;
+		break;
+	case EVT_ATOM_FOV: {
+		f32 fov  = CEvt_Evaluate(this);
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
+		action->mCameraFlags = action->GetCameraFlags() | 8;
+		action->SetFov_Interp(mode, fov, time);
+		break;
+	}
+	case EVT_ATOM_ANIM: {
+		s32 anim = CEvt_Evaluate(this);
+		CEvt_Evaluate(this);
+		CEvt_Evaluate(this) / 100.0f;
+		gGame.mMotionControlCamera.ChangeAction(CAMACTION_ANIM);
+		Vec offset;
+		s32 degrees;
+		if (anim >= 0) {
+			offset.x = 0.0f;
+			offset.y = 0.0f;
+			offset.z = 0.0f;
+			degrees  = 0;
+		}
+		if (anim >= 0) {
+			XObjScnCam* camera = (XObjScnCam*)StartSceneCameraAnm(&gGame, anim, 0.0f, 1.0f);
+			if (camera != NULL) {
+				camera->mAnimOffset = offset;
+				camera->mAnimAngle  = DEG2RAD * degrees;
+			}
+		} else {
+			StopSceneCameraAnm(&gGame);
+		}
+		break;
+	}
+	case EVT_ATOM_RESET: {
+		s32 mode = CEvt_Evaluate(this);
+		f32 time = CEvt_Evaluate(this) / 100.0f;
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_EVT)) {
+			reset->mMode      = mode;
+			reset->mTime      = time;
+			reset->mImmediate = FALSE;
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_RESET);
+		}
+		break;
+	}
+	case 230: { // finish the active scripted camera
+		if (gGame.mMotionControlCamera.IsAction(CAMACTION_AREA)) {
+			ResumeAreaCameraControl((CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA));
+		} else if (gGame.mMotionControlCamera.IsAction(CAMACTION_EVT)) {
+			reset->mMode      = 0;
+			reset->mTime      = 0.0f;
+			reset->mImmediate = TRUE;
+			gGame.mMotionControlCamera.ChangeAction(CAMACTION_RESET);
+		}
+		break;
+	}
+	case EVT_ATOM_SAVE: {
+		gGame.mMotionControlCamera.EndEye();
+		s32 slot = CEvt_Evaluate(this);
+		if (slot >= 0) {
+			gGame.mMotionControlCamera.CreateMemento(&gEventCameraMementos[slot]);
+		} else {
+			mCameraMemento = gGame.mMotionControlCamera.CreateMemento(NULL);
+		}
+		break;
+	}
+	case EVT_ATOM_LOAD: {
+		s32 slot = CEvt_Evaluate(this);
+		if (slot >= 0) {
+			gGame.mMotionControlCamera.SetMemento(&gEventCameraMementos[slot]);
+		} else if (mCameraMemento != NULL) {
+			gGame.mMotionControlCamera.SetMemento(mCameraMemento);
+			mCameraMemento = NULL;
+		}
+		break;
+	}
+	case 238: { // area camera zoom level, passed negated; values above 0 do nothing
+		s32 zoom = CEvt_Evaluate(this);
+		if (zoom <= 0) {
+			SetAreaCameraHeightIndex(&gGame.mMotionControlCamera, labs(zoom));
+		}
+		break;
+	}
+	case 232: // first-person controls
+		switch (CEvt_Evaluate(this)) {
+		case -1:
+			gGame.ClearStatusFlags(0x80);
+			break;
+		case -2:
+			gGame.SetStatusFlags(0x80);
+			break;
+		case 0:
+			gGame.mMotionControlCamera.EndEye();
+			break;
+		case 1:
+			gGame.mMotionControlCamera.StartEye();
+			break;
+		case 2: {
+			f32 degrees                                                                  = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.y = DEG2RAD * degrees;
+			break;
+		}
+		case 3: {
+			f32 degrees                                                                  = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.x = DEG2RAD * degrees;
+			break;
+		}
+		case 4: {
+			f32 fov                                                                      = CEvt_Evaluate(this);
+			((CCameraActionEye*)gGame.mCameraActions.mTable[CAMACTION_EYE])->mOverride.z = fov;
+			break;
+		}
+		}
+		break;
+	default:
+		OSPanic(__FILE__, 2627, FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command));
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x800988AC
+ * @note Size: 0x1978
+ */
+// the GameCube's _cmd_CALL: runs one syscall on the target object. The Wii adds case -46 and
+// reads the game status through CBase's virtuals instead of the flags member
+s32 CEvt::_cmd_CALL(u8, s32)
+{
+	s32 yield  = 0;
+	u8* start  = mData.mScript - 1;
+	u8* begin  = mData.mScript;
+	u16 length = EvtRead16(begin);
+	mData.mScript += 2;
+	u8* end      = begin + length;
+	s16 id       = CEvt_Evaluate(this);
+	XObj* target = CEvt_GetObj(this, id);
+	s32 count    = 0;
+	s32 args[24];
+	for (s32 i = 0;; i++) {
+		if (mData.mScript >= end)
+			break;
+		if (i < 24) {
+			args[i] = CEvt_Evaluate(this);
+			count++;
+		}
+	}
+
+	switch ((s32)target) {
+	case -10: { // keeps the object inside these limits around where it stands now
+		XObj* obj = CEvt_GetObj(this, (s16)args[0]);
+		f32 negZ = args[4], posZ = args[3], negX = args[2], posX = args[1];
+		obj->mAnmQueue.mAnchorX   = obj->mMoveTranslate.x;
+		obj->mAnmQueue.mAnchorZ   = obj->mMoveTranslate.z;
+		obj->mAnmQueue.mLimitPosX = posX;
+		obj->mAnmQueue.mLimitNegX = negX;
+		obj->mAnmQueue.mLimitPosZ = posZ;
+		obj->mAnmQueue.mLimitNegZ = negZ;
+		break;
+	}
+	case -11: {
+		s16 id    = args[0];
+		s32 flags = args[1];
+		if (flags == -1) {
+			XObj* obj                      = CEvt_GetObj(this, id);
+			obj->mAnmQueue.mMarkerOverride = 0;
+			obj->mAnmQueue.mMarkerOverride |= 0x80000000;
+		} else {
+			XObj* obj = CEvt_GetObj(this, id);
+			obj->mAnmQueue.mMarkerOverride &= ~0x80000000;
+			obj->mAnmQueue.mMarkerOverride |= flags;
+		}
+		break;
+	}
+	case -12:
+	case -13:
+	case -14:
+	case -15:
+		if (mYesNoActive != 0) {
+			// OpenPlayerYesNoMenu sets 0x800, it clears once the marks have faded out after the answer
+			if (gGame.GetStatusFlags(0x800)) {
+				CPad pad(0);
+				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
+				mData.mScript = start;
+				yield         = 1;
+			} else {
+				mYesNoActive  = 0;
+				mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+			}
+		} else {
+			if (gGame.GetPlayer()->mAttachmentRequest < 0) {
+				s32 crossMask = 2;
+				if ((s32)target == -12)
+					crossMask = 2;
+				else if ((s32)target == -13)
+					crossMask = 1;
+				else if ((s32)target == -14)
+					crossMask = 0;
+				else if ((s32)target == -15)
+					crossMask = 3;
+				OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, args[0]);
+				mYesNoActive = 1;
+			}
+			mData.mScript = start;
+			yield         = 1;
+		}
+		break;
+	case -16:
+		// the subwindow: 231 sets its rect, @CAM aims its camera and shows it, @RESET and 230 (the two
+		// atoms that end the scripted camera in _cmd_CAMERA) hide it. The Wii scales the rect's x
+		// by the screen's width scale, its centre is in pixels of the widescreen frame
+		if (args[0] == 231) {
+			gGame.mSubwin.mRectX      = args[1] * gScreenWidthScale;
+			gGame.mSubwin.mRectY      = args[2];
+			gGame.mSubwin.mRectWidth  = args[3];
+			gGame.mSubwin.mRectHeight = args[4];
+		} else if (args[0] == EVT_ATOM_CAM) {
+			Vec pos;
+			pos.x = args[1] / 100.0f;
+			pos.y = args[2] / 100.0f;
+			pos.z = args[3] / 100.0f;
+			ConfigureSubwindowCamera(&gGame.mSubwin, pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
+			gGame.mSubwin.mEnabled      = 1;
+			gGame.mSubwin.mFlags.mFlags = 0;
+		} else if (args[0] == EVT_ATOM_RESET || args[0] == 230) {
+			gGame.mSubwin.mEnabled = 0;
+		}
+		break;
+	// -17 to -19 set, clear and test an item's collection flag, -20 to -22 a coin's, -23 to -25 a dust pile's;
+	// id -2 sets or clears all of them
+	case -17: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -18: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -19: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case -20: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -21: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -22: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case -23: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			bits[(u32)id >> 5] |= 1U << (id & 31);
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = -1;
+		}
+		break;
+	}
+	case -24: {
+		s16 id = args[0];
+		if (id > 0) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			bits[(u32)id >> 5] &= ~(1U << (id & 31));
+		}
+		if (id == -2) {
+			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
+			for (int i = 0; i < 128; i++)
+				bits[i] = 0;
+		}
+		break;
+	}
+	case -25: {
+		s16 id        = args[0];
+		mSelectResult = (gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		break;
+	}
+	case SYSCALL_SET_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL) {
+			// the Wii learns the floor reflection here: the first time an object asks for it,
+			// its floor data is refreshed so the reflection has something to stand on
+			if (mask == 0x200000000000000ULL && !(obj->mStatus.mFlags & mask)) {
+				obj->mStatus.mFlags |= mask;
+				if ((obj->mStatus.mFlags & 1) == 1) {
+					UpdateObjectFloorHeights(obj);
+					UpdateObjectFloorXZExtent(obj);
+					ClearActiveObjectFloors(obj);
+				}
+			} else {
+				obj->mStatus.mFlags |= mask;
+			}
+			if (mask & 0x20000) {
+				u32 flags[5];
+				flags[0] = obj->mStatus.mFlags & 0x800000;
+				flags[1] = obj->mStatus.mFlags & 0x200000;
+				flags[2] = obj->mStatus.mFlags & 0x40;
+				flags[3] = obj->mStatus.mFlags & 0x20000;
+				flags[4] = obj->mStatus.mFlags & 0x400000;
+				obj->vf1A0(flags);
+			}
+			if (mask & ((u64)0x4000 << 32)) {
+				WiiPlayerState* player = gGame.GetPlayer();
+				if ((s16)obj->GetPool() == 8 && obj == player->mLift.mTarget) {
+					s16 item = obj->GetObjFlags();
+					switch (item) {
+					case 16:
+						player->mAttachment = 4;
+						break;
+					case 21:
+						player->mAttachment = 5;
+						break;
+					case 22:
+						player->mAttachment = 6;
+						break;
+					case 56:
+						player->mAttachment = 7;
+						break;
+					}
+					switch (item) {
+					case 16:
+					case 21:
+					case 22:
+					case 56:
+						if (!LoadPlayerAttachmentAnimation(player)) {
+							mData.mScript = start;
+							yield         = 1;
+						}
+						break;
+					}
+				}
+			}
+		} else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_SET_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case SYSCALL_CLR_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL) {
+			obj->mStatus.mFlags &= ~mask;
+			if (mask & 0x20000)
+				obj->SetDestinationAlpha(0, 0);
+			if (mask & ((u64)0x4000 << 32)) {
+				WiiPlayerState* player = gGame.GetPlayer();
+				if ((s16)obj->GetPool() == 8 && obj == player->mLift.mTarget) {
+					s16 item = obj->GetObjFlags();
+					switch (item) {
+					case 16:
+					case 21:
+					case 22:
+					case 56:
+						player->mAttachment = 0;
+						// the GameCube released the CJAnim here; the Wii's archive releases
+						// its model and closes its file
+						if (player->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+							player->mAttachmentAnm.mAnm.Release(TRUE);
+							player->mAttachmentAnm.mAnm.mFile.Close();
+						}
+						break;
+					}
+				}
+			}
+		} else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CLR_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case SYSCALL_CHK_OBJSTAT: {
+		s16 id    = args[0];
+		s32 bit   = args[1];
+		u64 mask  = (u64)1 << bit;
+		XObj* obj = CEvt_GetObj(this, id);
+		if (obj != NULL)
+			mSelectResult = (obj->mStatus.mFlags & mask) ? 1 : 0;
+		else
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CHK_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
+		break;
+	}
+	case -29:
+		SetItemFlags((s16)args[0], (u16)args[1]);
+		break;
+	case -30:
+		ClearItemFlags((s16)args[0], (u16)args[1]);
+		break;
+	case -31:
+		mSelectResult = (u16)GetItemFlagsMasked((s16)args[0], (u16)args[1]);
+		break;
+	case -41:
+		gGame.SetStatusFlags((u64)1 << args[0]);
+		break;
+	case -42:
+		gGame.ClearStatusFlags((u64)1 << args[0]);
+		break;
+	case -43:
+		mSelectResult = gGame.GetStatusFlags((u64)1 << args[0]) ? 1 : 0;
+		break;
+	case -32:
+		gGame.SetStatusFlags((u64)0x8000 << 32);
+		break;
+	case -33:
+		gGame.ClearStatusFlags((u64)0x8000 << 32);
+		break;
+	case -37:
+		gGame.SetStatusFlags((u64)0x10000 << 32);
+		break;
+	case -38:
+		gGame.ClearStatusFlags((u64)0x10000 << 32);
+		break;
+	case -34:
+		gGame.SetStatusFlags((u64)0x20 << 32);
+		break;
+	case -35:
+		gGame.ClearStatusFlags((u64)0x20 << 32);
+		break;
+	case -36:
+		// the GameCube walked the objects for one with the reflection bit here; the Wii keeps
+		// its answer on the pointer, an object asks for the floor reflection through -26
+		if (gGame.mPointer.mFloorReflect) {
+			gGame.SetStatusFlags((u64)0x20 << 32);
+		} else {
+			gGame.ClearStatusFlags((u64)0x20 << 32);
+		}
+		break;
+	// -44 turns back on and -45 turns off every camera area record whose mCameraAction is the id
+	case -44: {
+		s16 id                 = args[0];
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
+		for (s32 i = 0; i < areaCount; i++) {
+			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
+			if (id == record->mCameraAction)
+				record->mFlags &= ~0x80;
+		}
+		break;
+	}
+	case -45: {
+		s16 id                 = args[0];
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
+		for (s32 i = 0; i < areaCount; i++) {
+			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
+			if (id == record->mCameraAction)
+				record->mFlags |= 0x80;
+		}
+		break;
+	}
+	case -39: {
+		s16 result    = GetItemScrapValue(args[0]);
+		mSelectResult = result;
+		break;
+	}
+	case -40:
+		mSelectResult = (s16)GetItemHappyPointValue(args[0]);
+		break;
+	case -46:
+		// Wii only: wakes the script's owner, CEvt's end clears the word again
+		if (mOwner != NULL)
+			mOwner->_9A4 = 1;
+		break;
+	case SYSCALL_STGFUNC:
+		if (count > 0)
+			mSelectResult = CallStageModule(args[0] + 7, count - 1, &args[1]);
+		else
+			OSPanic(__FILE__, 2244, "SYSCALL_STGFUNC, noargs\n");
+		break;
+	case -200:
+		AddMainMenuExtraRow(gGame.mMenu.mMenus[0], args[0], args[1]);
+		break;
+	default:
+		if (target != NULL && (target->mStatus.mFlags & 1)) {
+			s32 result = target->HandleEventCommand(count, args);
+			if ((s16)target->GetPool() == 2) {
+				if (result == -1 && args[0] != 101)
+					yield = 1;
+				else
+					mSelectResult = result;
+			} else
+				mSelectResult = result;
+			for (s32 i = 0; i < count; i++) { }
+		}
+		break;
+	}
+	return yield;
 }
 
 /**
@@ -1641,7 +2875,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_ATC:
 			index = CEvt_Evaluate(evt);
 			if (index >= 0 && index < 9) {
-				SetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, index, value);
+				SetAttachmentCountById(&gGame.GetPlayer()->mAttachments, index, value);
 			} else {
 				OSPanic(__FILE__, 1243, FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9));
 			}
@@ -1907,7 +3141,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_ATC:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 9) {
-			result = GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, result);
+			result = GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, result);
 			if (result < 0)
 				result = 0;
 		} else
@@ -2301,6 +3535,8 @@ extern "C" BOOL LoadEventResources(CEvt* evt)
  * @note Address: 0x80094904
  * @note Size: 0x200
  */
+// NONMATCHING: r29 and r30 swap since CEvtPtcl holds typed EffectInstance entries (6f2c2466); index, pointer-walk and
+// direct-member spellings of the effect loop all give the same swap
 extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal, BOOL clearEffects, BOOL clearQueue)
 {
 	ClearScript(evt);
@@ -2313,7 +3549,7 @@ extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlo
 		}
 		if (clearEffects) {
 			for (s32 i = 0; i < 0x80; i++) {
-				EffectInstance* effect = (EffectInstance*)gEventPtcl.mEmitters[i];
+				EffectInstance* effect = gEventPtcl.mEffects + i;
 				if (!effect->IsFinished()) {
 					RetireEffect(&effect->handle, TRUE);
 				}
