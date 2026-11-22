@@ -833,6 +833,23 @@ void MenuPaneFadePair::Update(u32 frames)
 	}
 }
 
+// the pointer came on screen while both controls work: nothing is picked until it points
+void MenuItem::vf18(nw4r::math::VEC2*)
+{
+	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2) {
+		mSelection = -1;
+	}
+}
+
+// the pointer went away while both controls work: the stick's row comes back
+void MenuItem::vf1C(nw4r::math::VEC2*)
+{
+	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2 && mSelection == -1
+	    && mStickSelection != -1) {
+		mSelection = mStickSelection;
+	}
+}
+
 static inline f32 MenuRectStart(f32 center, f32 size)
 {
 	return center - size / 2;
@@ -2845,23 +2862,6 @@ extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
 		return 1;
 	}
 	return 2;
-}
-
-// the pointer came on screen while both controls work: nothing is picked until it points
-void MenuItem::vf18(nw4r::math::VEC2*)
-{
-	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2) {
-		mSelection = -1;
-	}
-}
-
-// the pointer went away while both controls work: the stick's row comes back
-void MenuItem::vf1C(nw4r::math::VEC2*)
-{
-	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2 && mSelection == -1
-	    && mStickSelection != -1) {
-		mSelection = mStickSelection;
-	}
 }
 
 // the save menu's pointer events, the slots of its CContainCallback base
