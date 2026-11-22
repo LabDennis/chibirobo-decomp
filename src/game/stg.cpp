@@ -7294,6 +7294,9 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 #endif
 }
 
+// NONMATCHING: registers: retail keeps left in f24 above the parameter copies and reuses y's f14 for the choice bar's x,
+// the build has left in f15; the order of the two camera-matrix and primitive-type operands before DrawGsTrianglePrimitive
+// (US 0x8003FC88) and one fmr before the done label's conversion differ in schedule
 extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 scrap, f32 money, f32 scroll, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -7305,12 +7308,14 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	u32 opacity  = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, opacity, 5);
 	y += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale;
-	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters with its temporaries
+	// (US fmuls f20 at 0x8003FCA8), the named size, labelOffset and rowOffset above them in f30-f28
+	f32 size        = 17.0f * scale;
+	f32 labelOffset = 155.0f * scale + 20.0f * scale, rowOffset = 204.0f * scale;
 	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f);
 		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7344,7 +7349,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	const s32 question1 = 0x4D, question2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
 #endif
 	if (choice != 2) {
-		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
+		f32 textX = PCRecycleTextX(originX, size, scale, 20.0f * scale, labelOffset);
 		DrawPCRecycleLabel(question1, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
 		                   opacity | 0xFFFFFF00);
 		DrawPCRecycleLabel(question2, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size, opacity | 0xFFFFFF00);
@@ -7357,7 +7362,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 		const char* text = GetLocalizedInterfaceText(done);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(done), 1, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFFFFF00, text,
-		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f) - textWidth / 2.0f,
 		                             (originY + rowOffset) - 4.0f * scale, 0, size, size);
 #endif
 	}
