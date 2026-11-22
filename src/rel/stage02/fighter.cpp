@@ -2691,6 +2691,8 @@ extern "C" void DrawFighterHud(void)
  * @note Address: stage02 .text 0x1B38
  * @note Size: 0x2FC
  */
+// NONMATCHING: the four up vectors sit in the frame in reverse order (retail has the trail's lowest), and one
+// register swap in the trail loop.
 extern "C" void DrawShots(void)
 {
 	u32 i;
