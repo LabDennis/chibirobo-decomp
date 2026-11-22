@@ -615,16 +615,12 @@ game/xobjspiderboss.cpp:
 	.sbss       start:0x80662188 end:0x80662190
 	.sdata2     start:0x80665120 end:0x80665218
 
-game/xobjactordtor.cpp:
-	.text       start:0x8010926C end:0x801092E4
-
-game/xobjactorse.cpp:
-	.text       start:0x801092E4 end:0x801094FC
-
 game/xobjactor.cpp:
-	.text       start:0x801094FC end:0x8010AC48
+	.text       start:0x8010926C end:0x8010AC48
 	.rodata     start:0x80211AD0 end:0x80211C28
-	.sdata2     start:0x80665230 end:0x806652B0
+	.data       start:0x80232930 end:0x80232B10
+	.sdata      start:0x80661698 end:0x806616C0
+	.sdata2     start:0x80665218 end:0x806652B0
 
 game/xobjactor3.cpp:
 	.text       start:0x8010AC48 end:0x80117D44

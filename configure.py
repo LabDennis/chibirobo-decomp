@@ -552,7 +552,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjactordtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/infopointdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -624,7 +623,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjcamera.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
-            Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
             # what deferred codegen does to one source; the Wii build of the same file has no deferred

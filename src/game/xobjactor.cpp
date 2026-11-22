@@ -1,4 +1,5 @@
 #include "game/xobjactor.h"
+#include "game/xobjspidersmall.h"
 #include "game/objectfloorquery.h"
 #include "game/cgame.h"
 #include "game/xchr.h"
@@ -7,7 +8,102 @@
 #include "game/actorupdateconstants.h"
 #include <math.h>
 
+// NONMATCHING: besides UpdateGroundMovement below, .rodata (0x8020B248 in GGTE01) lacks the
+// header-originated six-Vec prefix (0x48 bytes) and keeps gActorUpdateConstants extern so
+// ResetForNewGame and ResetObjectState stay at 100%, and .data/.sdata emit additional weak
+// base-class vtables/RTTI records beyond retail's XObjActor RTTI block.
+
 extern "C" void OSReport(const char*, ...);
+
+/**
+ * @note Address: 0x80106A14
+ * @note Size: 0x78
+ */
+XObjActor::~XObjActor()
+{
+}
+
+/**
+ * @note Address: 0x80106A8C
+ * @note Size: 0x4
+ */
+void XObjActor::ResetActorState()
+{
+}
+
+/**
+ * @note Address: 0x80106A90
+ * @note Size: 0x8
+ */
+HSD_JObj* XObjActor::GetHeadJoint()
+{
+	return mJObj;
+}
+
+/**
+ * @note Address: 0x80106A98
+ * @note Size: 0x28
+ */
+CVec XObjActor::GetHeadWorldPosition()
+{
+	return mMoveTranslate;
+}
+
+/**
+ * @note Address: 0x80106AC0
+ * @note Size: 0x90
+ */
+extern "C" s32 CountEmergedSmallSpiders()
+{
+	s32 count = 0;
+	for (s32 i = 0; i < 16; ++i) {
+		XObjSpiderSmall* spider = (XObjSpiderSmall*)(gGame.mXObjs.mPools[18].mObjects + i * gGame.mXObjs.mPools[18].mStride);
+		if (spider->mStatus.mFlags & 1ULL) {
+			if (HasSmallSpiderEmerged(spider)) {
+				++count;
+			}
+		}
+	}
+	return count;
+}
+
+/**
+ * @note Address: 0x80106B50
+ * @note Size: 0x90
+ */
+// small spiders holding on to chibi robo
+extern "C" s32 CountSmallSpidersGrabbingPlayer()
+{
+	s32 count = 0;
+	for (s32 i = 0; i < 16; ++i) {
+		XObjSpiderSmall* spider = (XObjSpiderSmall*)(gGame.mXObjs.mPools[18].mObjects + i * gGame.mXObjs.mPools[18].mStride);
+		if (spider->mStatus.mFlags & 1ULL) {
+			if (IsSmallSpiderGrabbingPlayer(spider)) {
+				++count;
+			}
+		}
+	}
+	return count;
+}
+
+/**
+ * @note Address: 0x80106BE0
+ * @note Size: 0xC4
+ */
+void XObjActor::UpdateAnimationSounds(f32 frame)
+{
+	if (mStatus.mFlags & 1ULL) {
+		if (mStatus.mFlags & 0x10000ULL) {
+			u8 volume;
+			if (mActorStatus.mFlags & 0x800) {
+				volume = 255;
+			} else {
+				volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
+			}
+			mAnimSfx.Update(mAnimId, frame, volume);
+		}
+	}
+}
 
 static inline void SetGroundPosition(CObjVec& position, const CVec& next)
 {
