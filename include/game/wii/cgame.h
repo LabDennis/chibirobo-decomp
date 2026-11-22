@@ -1641,19 +1641,20 @@ public:
 	u8 _160[0x518 - 0x160];
 	s32 mMode; // _518
 	u8 _51C[0x524 - 0x51C];
-	s32 mOverviewSelection; // _524
-	u8 _528[0x52C - 0x528];
+	s32 mOverviewSelection;      // _524
+	s32 mPrevOverviewSelection;  // _528
 	s32 mStickOverviewSelection; // _52C
 	s32 mIconSelection;          // _530
-	u8 _534[0x538 - 0x534];
-	s32 mStickIconSelection; // _538
+	s32 mPrevIconSelection;      // _534
+	s32 mStickIconSelection;     // _538
 	u8 _53C[0x544 - 0x53C];
 	s32 mStickSelection; // _544
-	u8 _548[0x66C - 0x548];
+	s32 mPrevSelection;  // _548
+	u8 _54C[0x66C - 0x54C];
 	s32 mPhase; // _66C
 	u8 _670[0x6AC - 0x670];
-	s32 mItemSelection; // _6AC
-	u8 _6B0[0x6B4 - 0x6B0];
+	s32 mItemSelection;      // _6AC
+	s32 mPrevItemSelection;  // _6B0
 	s32 mStickItemSelection; // _6B4
 	MenuTitle mTitle;        // _6B8
 	u8 _854[0x1938 - 0x854];
