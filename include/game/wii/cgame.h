@@ -548,6 +548,7 @@ struct CamEdgeArrow {
 // fields between and behind them are not reconstructed, and neither are the virtuals it overrides
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
+	virtual void vf24();        // _24, 0x801569B4, the edge arrows
 	virtual void DrawDebug3d(); // _28, 0x80156E58
 
 	f32 mTransitionTime;                                 // _40

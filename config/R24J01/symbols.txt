@@ -847,6 +847,7 @@ FindActiveAreaCameraEntriesByBearing = .text:0x80155C84; // type:function size:0
 ResumeAreaCameraControl = .text:0x80155E24; // type:function size:0x1C
 SelectActiveAreaCameraEntryByViewDirection = .text:0x80155E40; // type:function size:0xF0
 ApplyAreaCameraEntry = .text:0x80156200; // type:function size:0x7A0
+vf24__17CCameraActionAreaFv = .text:0x801569B4; // type:function size:0x4A4
 SetAreaCameraHeightIndices = .text:0x801569A0; // type:function size:0x14
 GetTarget__17CCameraActionAreaFv = .text:0x80156E64; // type:function size:0x8
 GetInterestMode__17CCameraActionAreaFv = .text:0x80156E6C; // type:function size:0x8

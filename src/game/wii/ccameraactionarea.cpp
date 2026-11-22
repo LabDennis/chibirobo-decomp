@@ -54,6 +54,8 @@ void UpdateAreaCameraEntrySelection(CCameraActionArea* area);
 f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
 void fn_8016AA78(f32* out, f32* in, f32* limits);
 f32 fn_8016A81C(f32 value, f32 min, f32 max);
+f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
+Vec GetCornerIconPosition(CGame* game);
 }
 
 // the Wii build resolves the current area's action in a second, C++ step that falls back to
@@ -63,8 +65,10 @@ s32 GetCameraAreaMode(CamAreaState* state);
 extern s32 gScreenSafeWidth;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
+extern s32 gScreenSafeBottom;
 extern s32 gRefreshRate;
 extern f32 lbl_805A1290[2];
+extern f32 lbl_805A1298[2];
 extern s32 lbl_805A1CF8;
 extern s32 lbl_805A1CFC;
 extern s32 lbl_805A1D00;
@@ -665,6 +669,68 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
 {
 	area->mControlEnabled           = 1;
 	gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
+}
+
+/**
+ * @note Address: 0x801569B4
+ * @note Size: 0x4A4
+ */
+// NONMATCHING: the arrow loop and calls are reconstructed; stack copies and floating-point schedules differ
+void CCameraActionArea::vf24()
+{
+	if (mControlEnabled == 0) {
+		return;
+	}
+	Vec corner = GetCornerIconPosition(&gGame);
+	f32 limit  = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mSpeedHeight;
+	if (limit > gScreenSafeBottom) {
+		limit = gScreenSafeBottom;
+	}
+	if (corner.y > limit) {
+		limit = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mSpeedHeight;
+		if (limit > gScreenSafeBottom) {
+			limit = gScreenSafeBottom;
+		}
+	}
+	f32 maxY = ((limit - 58.0f) - 40.0f) - 50.0f;
+	for (s32 i = 0; i < 2; i++) {
+		CamEdgeArrow* arrow = &mArrows[i];
+		f32 scale;
+		if (arrow->_0D) {
+			arrow->_10 = 0.5f;
+			if (arrow->mShown) {
+				arrow->_10 = 1.0f;
+			}
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1298[0]);
+		} else {
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1298[0]);
+		}
+		if (scale <= 0.0f) {
+			continue;
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		if (i == 1) {
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+		}
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[263], 0);
+		CTexObj tex = gGame.mTpl.mTex;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+		tex.mTexMtx.mDirty = true;
+		u32 color          = 0xFFFFFF00 | (u8)(255.0f * scale);
+		f32 x              = arrow->mPos.x + 0.5f * gPointerScreenWidth;
+		f32 y              = arrow->mPos.y + 0.5f * gPointerScreenHeight;
+		if (y > maxY) {
+			y = maxY;
+		}
+		f32 width  = GXGetTexObjWidth(&tex);
+		f32 height = GXGetTexObjHeight(&tex);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, arrow->mPos.z, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+	}
 }
 
 // the area tables' debug shapes, the GameCube's DrawDebug3d of both area actions
