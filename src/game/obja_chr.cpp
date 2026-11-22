@@ -10339,6 +10339,13 @@ static inline BOOL LoadPlayerModel(XObj& model, s32 id)
 	return model.LoadFromPlacement(CoordInfo(GetSpawnData(id)));
 }
 
+// retail builds the CVec copy of each sampled offset after the SetRotationY quaternion (US 0x800B98D8 at 0x90,
+// copy at 0x800B9AB8 at 0x80, result at 0xFC): the conversion happens inside an inline
+static inline void SetTargetOffset(XAction& action, const Vec& offset)
+{
+	action.mTargetOffset = offset;
+}
+
 static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachment, s32* path, int depth)
 {
 	attachment.SetParent(FindJointByPath(player->mJObj, path, depth), TRUE);
@@ -10348,8 +10355,9 @@ static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachme
  * @note Address: 0x800B97FC
  * @note Size: 0x1584
  */
-// NONMATCHING: stack slots of the tumble path, the joint table and the CVec copies of the sampled offsets differ,
-// and a few register picks (idle joint walk, attachment walk, the light level conversion)
+// NONMATCHING: the OX marks' CoordInfo temporaries sit in swapped slots and retail forms the mark's address before
+// the vcall (US 0x800BA944); left are register picks (idle joint walk, attachment walk, the light level conversion)
+// and this unit's .rodata layout
 BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 {
 	u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
@@ -10361,26 +10369,25 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			break;
 		CJObj::SetRotationY(0.0f, TRUE);
 		SamplePlayerPose(this, 8);
-		mLift.mTargetOffset = (Vec)GetPlayerCarryJointLocalTranslation(this);
+		SetTargetOffset(mLift, GetPlayerCarryJointLocalTranslation(this));
 		// the root joint's offset in the hang and rope poses; SetObjectJointTranslationByPath is
 		// defined above in this file, so a helper wrapping it is no longer inlined here
 		SamplePlayerPose(this, 0x13);
 		{
-			s32 root[]          = { 0 };
-			mHang.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
-			s32 path[]          = { 0 };
+			s32 root[] = { 0 };
+			SetTargetOffset(mHang, GetPlayerJointLocalTranslationByPath(this, 1, root));
+			s32 path[] = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x8A);
 		{
-			s32 root[]          = { 0 };
-			mRope.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
-			s32 path[]          = { 0 };
+			s32 root[] = { 0 };
+			SetTargetOffset(mRope, GetPlayerJointLocalTranslationByPath(this, 1, root));
+			s32 path[] = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x36);
-		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
-		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
+		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, (s32[7]) { 0, 1, 0, 1, 2, 0, 1 }) - mMoveTranslate;
 		mTumble.mFade.mAmount = 0.0f;
 		mTumble.mFade.mActive = FALSE;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
@@ -10405,13 +10412,10 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 				mIdleJoints[i].mAnimJoint  = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
 				mIdleJoints[i].mLastAdHead = NULL;
 			}
-			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
-			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
-			s32 animationPath[]  = { 0, 1, 0, 1, 2, 0, 0, 5 };
-			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, 8, animationPath);
+			mAttachmentJoint     = FindJointByPath(mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 }, 8);
+			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, 8, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 });
 			if (!mSuits.mJoints[0]) {
-				s32 suit[]        = { 0, 1, 0, 0 };
-				mSuits.mJoints[0] = FindJointByPath(mJObj, suit, 4);
+				mSuits.mJoints[0] = FindJointByPath(mJObj, (s32[4]) { 0, 1, 0, 0 }, 4);
 			}
 		}
 		mStatus.mFlags |= 0x0000200000000000ULL;
@@ -10425,24 +10429,21 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 
 		if (!LoadPlayerModel(mCopterObj, 17))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mCopterObj, path, 8);
+		SetAttachmentParent(this, mCopterObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 3: { // the popper
 
 		if (!LoadPlayerModel(mPopperObj, 18))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 3 };
-		SetAttachmentParent(this, mPopperObj, path, 5);
+		SetAttachmentParent(this, mPopperObj, (s32[5]) { 0, 1, 0, 1, 3 }, 5);
 		++mLoadStep;
 	}
 	case 4: { // the radar
 
 		if (!LoadPlayerModel(mRadarObj, 19))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mRadarObj, path, 8);
+		SetAttachmentParent(this, mRadarObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 5: {
@@ -10454,8 +10455,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 #endif
 		if (!LoadPlayerModel(mOXObj, modelId))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mOXObj, path, 8);
+		SetAttachmentParent(this, mOXObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 6:
