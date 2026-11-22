@@ -621,7 +621,6 @@ void CScrnWipe::Update(u32 frames)
  * @note Size: 0x2B4
  */
 // starts a wipe, the color and the hole size both go from the first values to the second
-// NONMATCHING: regalloc
 extern "C" void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0,
                                                f32 height0, f32 width1, f32 height1, f32 time, u8 a1, BOOL hideWhenDone)
 {
@@ -658,11 +657,8 @@ extern "C" void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8
 		wipe->mSpeed.b = 0.0f;
 		wipe->mSpeed.a = 0.0f;
 	} else {
-		time           = FRAME_RATE * time;
-		wipe->mSpeed.r = ((f32)r1 - (f32)r0) / time;
-		wipe->mSpeed.g = ((f32)g1 - (f32)g0) / time;
-		wipe->mSpeed.b = ((f32)b1 - (f32)b0) / time;
-		wipe->mSpeed.a = ((f32)a1 - (f32)a0) / time;
+		wipe->mSpeed.Set(((f32)r1 - (f32)r0) / (FRAME_RATE * time), ((f32)g1 - (f32)g0) / (FRAME_RATE * time),
+		                 ((f32)b1 - (f32)b0) / (FRAME_RATE * time), ((f32)a1 - (f32)a0) / (FRAME_RATE * time));
 	}
 	if (wipe->mHideWhenDone && SizeStopped(wipe))
 		wipe->mActive = FALSE;
