@@ -521,14 +521,8 @@ game/inventory.cpp:
 game/params.cpp:
 	.text       start:0x800DF400 end:0x800DF9FC
 
-game/xobjfree.cpp:
-	.text       start:0x800DFC70 end:0x800E4BF0
-	.data       start:0x8022FDE8 end:0x8022FF34
-
-game/xobjflagsinit.cpp:
-	.text       start:0x800E4BF0 end:0x800E4C7C
-	.ctors      start:0x80200084 end:0x80200088
-	.bss        start:0x80384A70 end:0x803851E0
+game/xobjfreedtor.cpp:
+	.text       start:0x800DFC70 end:0x800DFCD0
 
 game/objb_sound.cpp:
 	.text       start:0x800DF9FC end:0x800DFC70
@@ -621,8 +615,14 @@ game/xobjspiderboss.cpp:
 	.sbss       start:0x80662188 end:0x80662190
 	.sdata2     start:0x80665120 end:0x80665218
 
+game/xobjactordtor.cpp:
+	.text       start:0x8010926C end:0x801092E4
+
+game/xobjactorse.cpp:
+	.text       start:0x801092E4 end:0x801094FC
+
 game/xobjactor.cpp:
-	.text       start:0x8010926C end:0x8010AC48
+	.text       start:0x801094FC end:0x8010AC48
 	.rodata     start:0x80211AD0 end:0x80211C28
 	.sdata2     start:0x80665230 end:0x806652B0
 
