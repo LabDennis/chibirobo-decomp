@@ -141,13 +141,13 @@ void CCameraActionEye::Update(u32 step)
 				mLook.mTarget.y = -HALF_PI * x;
 				mLook.mTarget.x = -0.87266463f * y;
 			} else {
-				f32 turn = pad.mPad->mStickX;
-				ClampStick(turn);
+				x = pad.mPad->mStickX;
+				ClampStick(x);
 				y = pad.mPad->mStickY;
 				ClampStick(y);
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
-					y    = 0.0f;
-					turn = y;
+					y = 0.0f;
+					x = y;
 				}
 				f32 pitch       = 0.0f;
 				mLook.mTarget.y = 0.0f;
@@ -174,7 +174,7 @@ void CCameraActionEye::Update(u32 step)
 				} else {
 					mLook.mTarget.x = mOverride.x;
 				}
-				gGame.GetPlayer()->SetRotationY(EYE_PLAYER->mMoveRotate.y - 0.034906585f * turn * step, 0); // 2 degrees per step
+				gGame.GetPlayer()->SetRotationY(EYE_PLAYER->mMoveRotate.y - 0.034906585f * x * step, 0); // 2 degrees per step
 
 				f32 zoom = pad.mPad->mSubStickY;
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
