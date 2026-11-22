@@ -565,7 +565,8 @@ BOOL OctaMenu::IsItemEquipped(s32 index)
 	return 0;
 }
 
-// the base menu has no labels; the Wii keeps an empty buffer where the GameCube returned ""
+// the base menu has no labels; the Wii keeps an empty buffer where the GameCube returned "":
+// retail reads lbl_805A1108, eight zero bytes in writable .sdata, not the unit's pooled strings
 /**
  * @note Address: 0x800ECAD8
  * @note Size: 0x8

@@ -413,7 +413,9 @@ static inline void FadeEquipmentRingOut(XObjChrMenu* menu, u32 frames)
 // float refs land on local @labels instead of retail's named sdata2 globals
 // (they resolve once the unit owns its .sdata2), the 0x4330 u32→f64 magic and
 // the sound-call sites reschedule, and MWCC caches the second
-// gGame.mEvt.mData.mScript check in a bool where retail reloads it
+// gGame.mEvt.mData.mScript check in a bool where retail reloads it. After each row switch
+// retail also carries a few unreachable focus/cursor stores (0x800EE14C, 0x800EE1B4) that no
+// branch reaches; a pointed item on the other row ends the block without a switch or sound
 /**
  * @note Address: 0x800EDF8C
  * @note Size: 0x924
@@ -437,25 +439,16 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
 								menu->mAtc.mFocus       = 0;
 								menu->mDrs.mFocus       = 1;
 								menu->mDrs.mCursorIndex = -1;
-							} else {
-								menu->mAtc.mFocus       = -1;
-								menu->mAtc.mCursorIndex = -1;
-								menu->mDrs.mFocus       = 0;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 							}
-							PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-						}
-						if (gWiiPointer.Check(8) && (menu->mSel == 0 || menu->mSel < 0)) {
+						} else if (gWiiPointer.Check(8) && (menu->mSel == 0 || menu->mSel < 0)) {
 							if (menu->mAtc.mPointedItem < 0) {
 								menu->mSel              = 1;
 								menu->mAtc.mFocus       = 1;
 								menu->mAtc.mCursorIndex = -1;
 								menu->mDrs.mFocus       = 0;
-							} else {
-								menu->mAtc.mFocus       = menu->mAtc.mPointedItem;
-								menu->mDrs.mFocus       = 1;
-								menu->mDrs.mCursorIndex = menu->mAtc.mPointedItem;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 							}
-							PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 						}
 					}
 				} else if (gWiiPointer.mTrigger & 0x6400000000000200) {
@@ -846,7 +839,7 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 		}
 		WiiPlayerState* chr    = (WiiPlayerState*)menu->mChr;
 		XObjScnCamInitRec* aim = &chr->mHeadAimRecord;
-		if (menu->_10 < 0 && (!(gGame.mMenuControls & 2) || ((gGame.mMenuControls & 1) && !gWiiPointer.mPointerValid))) {
+		if (menu->_10 < 0 && (!(gGame.mMenuControls & 2) || ((gGame.mMenuControls & 1) && gWiiPointer.mPointerValid))) {
 			aim->mSnap[0] = aim->mSnap[1] = 2;
 			aim->m_0C                     = NULL;
 			aim->mTarget.x                = NAN;

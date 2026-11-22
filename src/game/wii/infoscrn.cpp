@@ -890,8 +890,8 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 // (125/126/127/168), the x anchor is gScreenSafeRight - 105 instead of 512, the background quad
 // sits at z 1 and _1E4.y over 0.3 makes it draw behind the digits with the z test and comp loc
 // flipped, and _1E4.y over 0 draws an orange glow quad and a black one under DrawGsQuad. Retail
-// also keeps a dead mBatteryValue == max compare inside the digit-change block, written below as
-// the roll reset it most plausibly was; the rest is register and schedule noise in the big loop
+// also keeps a dead mBatteryValue == max compare inside the digit-change block that this source
+// does not reproduce; the rest is register and schedule noise in the big loop
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
@@ -900,7 +900,6 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	else
 		h->mTargetDimAlpha = 0;
 	f32 target = 10.f * gGame.GetPlayer()->mParams.mBattery;
-	f32 max    = 10.f * gGame.GetPlayer()->mParams.mMaxBattery;
 	f32 y      = 22.f + (GetHudBottomEdge() - 50.f);
 	if (target <= 0 && h->mBatteryValue > 0) {
 		h->mBatteryEmpty      = 1;
@@ -977,8 +976,6 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		if (h->mDigitValue[i] != digit) {
 			h->mDigitRoll[i]    = 0;
 			h->mDigitRolling[i] = 1;
-			if (h->mBatteryValue == max)
-				h->mDigitRoll[i] = 0;
 		}
 		if (!gGame.GetStatusFlags(0x200000000000ULL))
 			h->mDigitRoll[i] += .08f;
@@ -1627,20 +1624,12 @@ extern "C" void InfoScrn_SetTimerHundredths(InfoScrn* scrn, s32 hundredths)
  * @note Address: 0x8008EA5C
  * @note Size: 0x114
  */
-// NONMATCHING: same body as TimerFramesToHundredths — the GameCube shares FramesToClock for both,
-// but the Wii compiler gives the inline's conversion temps the wrong stack slots; the open body
-// fixes those. Remaining diff: our literal refs sit at other .sdata2 offsets, and retail defers
-// the minutes reload one instruction later.
+// NONMATCHING: as on the GameCube, the body is FramesToClock; the Wii compiler gives the inline's
+// conversion temps other stack slots than retail, our literal refs sit at other .sdata2 offsets,
+// and retail defers the minutes reload one instruction later.
 extern "C" s32 InfoScrn_GetTimerHundredths(InfoScrn* scrn)
 {
-	f32 seconds    = scrn->mTimer / (f32)TIMER_RATE;
-	s32 hundredths = ((s32)scrn->mTimer % TIMER_RATE) * 100 / TIMER_RATE;
-	if (scrn->mTimer >= (f32)TIMER_MAX) {
-		hundredths = 99;
-	}
-	s32 secs    = ((s32)seconds % 60) * 100;
-	f32 minutes = seconds / 60.0f;
-	return (s32)(hundredths + (secs + 6000.0f * (s32)minutes));
+	return (s32)FramesToClock(scrn->mTimer);
 }
 
 /**
