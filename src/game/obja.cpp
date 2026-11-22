@@ -60,12 +60,6 @@ static inline void CountCrossedEdge(Vec& from, Vec& to, Vec* a, Vec* b, s32& out
 	}
 }
 
-// Polygon rotation rounds to single precision before adding the object yaw.
-static inline f32 FloorRotationRadians(const s32& degrees)
-{
-	return 0.017453292f * degrees;
-}
-
 extern "C" {
 #include <dolphin/mtx/vec.h>
 }
@@ -1407,22 +1401,23 @@ extern "C" void SelectHighestActiveFloor(XObj* object)
  * @note Address: 0x8008C274
  * @note Size: 0x558
  */
-// NONMATCHING: retail keeps index in the frame and reads it again for each of the floor's values, as if
-// its address were taken (a `const s32&` bound to it gives that code, 76.6 %); the helper that takes
-// the index by reference is not found.
+// NONMATCHING: instructions match; retail's zero offset is a named .rodata Vec (0x8020928C) where the
+// compound literal here is an anonymous one.
 extern "C" CVec GetFloorContactPosition(const XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate; // that flag off: no floor contact to compute
 
-	Vec displacement       = offset ? *offset : (Vec) { 0.0f, 0.0f, 0.0f };
-	Vec position           = object->mMoveTranslate + displacement;
-	Vec center             = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index]));
-	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
-	const XObjFloor& floor = object->mFloors[index];
-	f32 yaw                = object->mMoveRotate.y + FloorRotationRadians(floor.mYawDegrees);
+	Vec displacement = offset ? *offset : (Vec) { 0.0f, 0.0f, 0.0f };
+	Vec position     = object->mMoveTranslate + displacement;
+	// retail stores index to the frame on entry (0x8008C2B4) and reloads it before each floor read
+	// (0x8008C360, 0x8008C470, 0x8008C55C): a reference is bound to it
+	const s32& i = index;
+	Vec center   = object->mMoveScale * (object->mToppleOffset + GetFloorCenterOffset(&object->mFloors, i));
+	Vec extent   = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+	f32 yaw      = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
 	f32 height;
-	switch (floor.mId) {
+	switch (object->mFloors[i].mId) {
 	case 0:
 	case 1: // a disc touches at its bottom, one unit down
 		height = -1.0f;

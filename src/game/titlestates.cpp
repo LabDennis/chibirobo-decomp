@@ -2048,8 +2048,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
 #else
 			u32 color = LoadTextColor(title->mLoadAlpha);
-			f32 top   = 8.0f + (356.0f - panelY);
-			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->mLoadOffset, color);
+			f32 top = 8.0f + (356.0f - panelY), y = (top - 6.0f) + title->mLoadOffset;
+			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, y, color);
 			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
 			lines = 2;
