@@ -5861,8 +5861,8 @@ extern "C" s32 GetPlayerLevel(Params* params)
 // and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
 // (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand. Under -inline
 // auto,deferred ours makes retail's exact call list in all three editions; the frame is still 0x10 larger (US
-// 0x860 against 0x850), retail recomputes &gShopHistoryPage / &gShopCatalogPage at each use, and the register
-// allocation differs
+// 0x860 against 0x850), the two loading-bar quads' addresses are formed once up front where retail forms them at
+// the call, three digit loops test place < i once more than retail, and the register allocation differs
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -6043,9 +6043,8 @@ BOOL MenuPC::Draw()
 #else
 			const f32 scroll = 8.0f;
 #endif
-			MenuPCPage* page = &gShopHistoryPage;
-			s32 selected     = this->mPurchaseSelection;
-			f32 alpha        = this->mListAlpha;
+			s32 selected = this->mPurchaseSelection;
+			f32 alpha    = this->mListAlpha;
 #if defined(VERSION_JP)
 			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f);
 #else
@@ -6055,13 +6054,13 @@ BOOL MenuPC::Draw()
 			// the bar's top is a variable moved up by the scroll: US/PAL hold 76 in f20 from here and subtract 8
 			// right before the call (US 0x80045B44, 0x80045BBC)
 			f32 barY      = 76.0f;
-			s32 positions = CountShopHistoryEntries(page) - 8;
+			s32 positions = CountShopHistoryEntries(&gShopHistoryPage) - 8;
 			f32 first, last;
 			if (positions <= 1) {
 				first = 0.f;
 				last  = 1.f;
 			} else {
-				s32 start = GetShopHistoryFirstRow(page);
+				s32 start = GetShopHistoryFirstRow(&gShopHistoryPage);
 				f32 step  = 1.0f / (f32)positions;
 				f32 row   = (f32)start;
 				first     = step * row;
@@ -6079,8 +6078,7 @@ BOOL MenuPC::Draw()
 #else
 			const f32 scroll = 8.0f;
 #endif
-			MenuPCPage* page = &gShopCatalogPage;
-			s32 selected     = this->mShopSelection;
+			s32 selected = this->mShopSelection;
 #if defined(VERSION_JP)
 			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f);
 #else
@@ -6089,13 +6087,13 @@ BOOL MenuPC::Draw()
 			DrawPCBlueNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mScrapDisplay.shown);
 			// the same variable top as the history bar (US 0x80045C34, 0x80045CAC); JP's scroll is 0, so 76 stays
 			f32 barY      = 76.0f;
-			s32 positions = CountShopCatalogEntries(page) - 8;
+			s32 positions = CountShopCatalogEntries(&gShopCatalogPage) - 8;
 			f32 first, last;
 			if (positions <= 1) {
 				first = 0.f;
 				last  = 1.f;
 			} else {
-				s32 start = GetShopCatalogFirstRow(page);
+				s32 start = GetShopCatalogFirstRow(&gShopCatalogPage);
 				f32 step  = 1.0f / (f32)positions;
 				f32 row   = (f32)start;
 				first     = step * row;
@@ -6120,12 +6118,13 @@ BOOL MenuPC::Draw()
 			                             18);
 			{
 				const f32 scale = 1.2f;
+				s32 balance     = this->mDepositBalance;
 
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 				f32 w = scale * GetMenuTextureWidth(&tex);
 				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
-				mDepositDisplay.target = this->mDepositBalance;
+				mDepositDisplay.target = balance;
 				PC_EASE_CALL(mDepositDisplay.shown, mDepositDisplay.target);
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
@@ -6154,13 +6153,14 @@ BOOL MenuPC::Draw()
 				                             18);
 				{
 					const f32 scale = 1.4f;
+					s32 amount      = this->mAmount;
 
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 					f32 w = scale * GetMenuTextureWidth(&tex);
 					f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
 					PCAmount entry = {};
-					entry.shown = entry.target = this->mAmount;
+					entry.shown = entry.target = amount;
 					SetMenuTextureScale(&tex, 1, 0.1f);
 
 					f32 step   = w + 1.4f;
@@ -6219,13 +6219,14 @@ BOOL MenuPC::Draw()
 			}
 			case 2: {
 				const f32 scale = 1.2f;
+				s32 amount      = this->mAmount;
 
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 				f32 w = scale * GetMenuTextureWidth(&tex);
 				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
 				PCAmount entry = {};
-				entry.shown = entry.target = this->mAmount;
+				entry.shown = entry.target = amount;
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
 				f32 step   = w - 2.4f;
