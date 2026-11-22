@@ -6,6 +6,7 @@
 #include "game/ctpl.h"
 #include "game/cfont.h"
 #include "game/wii/csound.h"
+#include "nw4r/snd/snd_SoundSystem.h"
 #include "Dolphin/ai.h"
 #include "Dolphin/os.h"
 #include "Dolphin/GX/GXFifo.h"
@@ -27,7 +28,6 @@ u32 fn_80295D88(CSound* sound);
 BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
 s32 fn_8029AC28(void* group, u32 priority);
 void fn_8029A458(void* heap);
-void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
 u32 fn_802958C0(void* actor, void* arg);
 void fn_80295914(void* actor, void* arg, void* data, u32 size);
@@ -338,7 +338,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 {
 	AIInit(NULL);
 	AXInit();
-	fn_8029AFAC(4, 3);
+	nw4r::snd::SoundSystem::InitSoundSystem(4, 3);
 	sound->mSound3DManager.Init(sound, &sound->mArchivePlayer);
 	sLoaderStack          = (u8*)MEMAllocFromExpHeapEx(gWiiGameHeap, 0x1000, 0x20);
 	sound->mSoundHeapSize = heapSize;
