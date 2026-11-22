@@ -6,6 +6,10 @@
 #include <math.h>
 #include <stdlib.h>
 
+// NONMATCHING: UpdateAfterAnim still differs from retail; in data (GGTE01), .rodata
+// (0x8020BF88) lacks the header-originated six-Vec prefix (0x48 bytes), and
+// .data/.sdata/.sdata2 differ in weak RTTI records and literal pool entries.
+
 extern "C" {
 void Attach__5CJObjFP9_HSD_JObj(CJObj* obj, HSD_JObj* joint);
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);

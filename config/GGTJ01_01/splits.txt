@@ -652,6 +652,10 @@ game/xobjactormama.cpp:
 
 game/xobjactorpapa.cpp:
 	.text       start:0x8012AEFC end:0x8012E438
+	.rodata     start:0x8020CC90 end:0x8020CE80
+	.data       start:0x8022CE28 end:0x8022D088
+	.sdata      start:0x80634D48 end:0x80634D78
+	.sdata2     start:0x80638950 end:0x806389F0
 
 game/xobjactortao.cpp:
 	.text       start:0x8012E438 end:0x80131008
