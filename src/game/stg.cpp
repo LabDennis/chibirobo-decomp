@@ -1,3 +1,17 @@
+// NONMATCHING: the file's data does not equal retail's yet (US addresses; JP and PAL alike):
+// - .rodata starts with the 0x48-byte block of six Vecs (0x801FF4B8) that CGame's particle inlines make in every
+//   file; none of this file's headers makes it. Retail also keeps the vertex lists (e.g. 0x801FFCA8, 0x78 bytes) as
+//   whole initialised tables, where this source builds them from (Vec){...} literals of 0xC bytes each.
+// - .data starts with the 26-word header block (0x80211DA0, 0x68 bytes) no header here makes; __vt__10MenuCursor
+//   is 0x1FC bytes in retail and 0x148 here (MenuCursor's header lacks virtual slots), and the build adds base lists
+//   and vtables of header classes retail does not keep in this file.
+// - .bss starts with the 0x140-byte (JP 0x134) header prefix; lbl_80361F68, lbl_8036203C and lbl_80362048 below
+//   stand in for it, removing them would move every .bss offset the functions use.
+// - .sdata/.sdata2: the build emits RTTI records and names of weak header classes (CFont, CPad, CEvt, ...) and two
+//   header constants (0x80, 4) retail does not have here, and the literal pool order differs in places.
+// - .text: the two DrawPCShopList instances and the inline MenuMain::Open/Resume and MenuMCTest::Open come out at
+//   the end of the build's code, retail has them in place; JP's retail file had its menu classes in another order.
+
 #include "game/menuselectionbar.h"
 #include "game/drawhelptext.h"
 #include "game/hsd_jobj.h"
