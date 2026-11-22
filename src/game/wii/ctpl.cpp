@@ -26,7 +26,6 @@ void* fn_80298978(void* player, u32 index);
 u32 fn_80295D88(CSound* sound);
 BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
 s32 fn_8029AC28(void* group, u32 priority);
-BOOL fn_8029A3E0(void* heap, void* data, u32 size);
 void fn_8029A458(void* heap);
 void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
@@ -320,7 +319,7 @@ static BOOL InitSoundArchivePlayer(CSoundArchivePlayer* player, CSound* sound)
 static BOOL InitSoundHeap(void* heap, u32 size)
 {
 	void* data = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
-	return fn_8029A3E0(heap, data, size);
+	return ((nw4r::snd::SoundHeap*)heap)->Create(data, size);
 }
 
 void* SoundHeapAlloc(void** slot, u32 size)
