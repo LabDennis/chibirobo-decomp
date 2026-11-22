@@ -758,7 +758,8 @@ extern "C" void ApplyGsRenderMode(CGsRenderMode* mode, BOOL force)
  * @note Address: 0x8019B128
  * @note Size: 0x150
  */
-// NONMATCHING: retail orders the field stores and the 0x3c immediate differently.
+// NONMATCHING: retail orders the field stores and the 0x3c immediate differently. flags stored before stage,
+// the struct's order and retail's store order, frees r4 early and drops to 91.5
 extern "C" void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTevOrder order, GsTevOp colorOp, GsTevIn colorIn,
                                                GsTevOp alphaOp, GsTevIn alphaIn)
 {

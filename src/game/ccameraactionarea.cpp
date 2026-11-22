@@ -1014,7 +1014,8 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  */
 // NONMATCHING: register allocation (yaw in f29 and best in f28 instead of retail's f28/f29, where retail's best shares
 // the register of WrapAngle's 2*pi, plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below
-// SelectActiveAreaCameraEntryFacing's look/facing
+// SelectActiveAreaCameraEntryFacing's look/facing. best declared after yaw, or just before the loop, shares the 2*pi
+// load but copies it with fmr and swaps the registers again (96.58)
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1617,7 +1618,8 @@ void CCameraActionArea::DrawDebug2d()
  * @note Size: 0x544
  */
 // NONMATCHING: for the zoom change retail still builds the table index from 4 at run time (li r0, 4; slwi; add), here the
-// fov interpolator slot is read directly
+// fov interpolator slot is read directly. retail also keeps the dead tail of the SetFov branch (0x80139968). in
+// SetFovInterpolation, mode itself set to 4 (95.9) or time <= 0.0f tested first (ApplyAreaCameraEntry 95.5) score lower
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {
