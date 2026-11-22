@@ -245,15 +245,6 @@ extern "C" void fn_800F2CF4(SuitChangeTrail* trail); // starts the suit-change s
 // gPlayerSuitChangeTimer; the Wii resets it to 0.0f and waits on the file itself
 static f32 gPlayerSuitChangeTimer;
 
-static inline void ResetSuitChangeTrail(SuitChangeTrail& trail)
-{
-	trail.mActive = 0;
-	for (s32 i = 0; i < 20; ++i) {
-		trail.mParticles[i].scale = 0.0f;
-		trail.mParticles[i].angle = 0.0f;
-	}
-}
-
 static inline void ClearRingHighlights(OctaMenu& ring)
 {
 	ring.mOpen = 0;
@@ -360,7 +351,11 @@ void XObjChr::ResetObjectState()
 		p.burst.mState = p.display.mState = 0;
 		gPointParticleSlots[i]            = NULL;
 	}
-	ResetSuitChangeTrail(lbl_8045BBD0);
+	lbl_8045BBD0.mActive = 0;
+	for (s32 i = 0; i < 20; ++i) {
+		lbl_8045BBD0.mParticles[i].scale = 0.0f;
+		lbl_8045BBD0.mParticles[i].angle = 0.0f;
+	}
 	chr->mGroundType = 0;
 	chr->_1C9A8.x    = 0.0f;
 	chr->_1C9A8.y    = 0.0f;
@@ -388,6 +383,8 @@ void ClearObjectStatusFlags(XObj* object, u64 mask)
 // the carried object all reset; the GameCube's ResetPlayerAttachment (obja_chr.cpp).
 // On the Wii the put-away is shared with the attachment switch, so the lift's early
 // states keep the held item from jumping straight back into the inventory
+// NONMATCHING (94 %): retail evaluates the lift-state test through nested bool inlines (each
+// level clamped to a byte) that are not recovered; this plain test folds them
 void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 {
 	switch (chr->GetAttachment()) {
@@ -427,10 +424,7 @@ void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 	default:
 		if (chr->mLift.mTarget != NULL) {
 			if (chr->mLift.mTarget->GetPool() == 8) {
-				BOOL inLift = (u8)(chr->mLift.mState == 1 || chr->mLift.mState == 2);
-				inLift      = inLift || (u8)(chr->mLift.mState == 3);
-				inLift      = inLift && ((XActLift*)&chr->mLift)->_AC;
-				if (!inLift) {
+				if (!((chr->mLift.mState == 1 || chr->mLift.mState == 2 || chr->mLift.mState == 3) && ((XActLift*)&chr->mLift)->_AC)) {
 					SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, chr->mLift.mTarget->GetItem(), 1, TRUE);
 					((XObjItem*)chr->mLift.mTarget)->SetFlag();
 				}
@@ -2678,12 +2672,8 @@ extern "C" void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidd
 		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)player->mPopperObj)->mObject.m_pScnMdl);
 		fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
 		WiiGsSceneObj* head = gGame.mGs.mScene.mHead;
-		s32 pending;
-		while ((pending = head->mPending) != 0) {
-			if (pending != 0) {
-				head->vf038(pending - 1);
-			}
-		}
+		while (head->mPending != 0)
+			head->PopPending();
 	}
 }
 

@@ -708,6 +708,13 @@ public:
 	virtual void vf038(s32 index);
 	virtual void vf03C(void* model); // unqueues a model's draw, the map calls it after CalcWorld
 
+	// pops the last queued draw; retail's drain loops test mPending a second time, inside this inline
+	void PopPending()
+	{
+		if (mPending != 0)
+			vf038(mPending - 1);
+	}
+
 	u8 _004[0xE4 - 0x004];
 	s32 mPending; // _E4, the queued draws still waiting
 	u8 _E8[0x2888 - 0xE8];
