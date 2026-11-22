@@ -1936,7 +1936,6 @@ void XObjSpiderSmall::DrawGroundShadow()
  * @note Address: 0x800FDBBC
  * @note Size: 0x330
  */
-// NONMATCHING: float register order
 void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 {
 	if ((mStatus.mFlags & 8) && (mSpiderStatus.mFlags & 0x40) && (mStatus.mFlags & 0x10000)) {
@@ -1954,8 +1953,8 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 
 		// a soft rim around it, a pair of points every 30 degrees (0.5235988), fading out over 1.5
 		for (s32 i = 0; i < 13; i++) {
-			f32 hx               = size.x * 0.5f;
-			f32 hz               = size.z * 0.5f;
+			f32 hx               = size.x / 2.0f;
+			f32 hz               = size.z / 2.0f;
 			f32 ang              = 0.5235988f * i;
 			vtx[i * 2].pos.x     = p.x - hx * std::sinf(ang);
 			vtx[i * 2].pos.z     = p.z + hz * std::cosf(ang);
@@ -2175,13 +2174,15 @@ void XObjSpiderSmall::ResetObjectState()
  * @note Address: 0x800FEDD0
  * @note Size: 0x398
  */
-// NONMATCHING: the spider pool loop folds 0x9B4 into the index
+// NONMATCHING: register allocation in the inlined FindWebs: retail keeps &gSmallSpiderEffectObjects[0] from the
+// clearing loop in r27 (US 0x800FF014) and walks it for the found webs, this build forms it a second time
 BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if (mPoolIndex == 0) {
 			for (int i = 0; i < 16; i++) {
-				((XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i))->Hide();
+				XObj* obj = gGame.mXObjs.mPools[18].Get(i);
+				((XObjSpiderSmall*)obj)->Hide();
 			}
 			if (mTimeMode != gGame.mTimeState.mMode) {
 				for (s32 i = 0; i < 0x27; i++) {
@@ -2274,7 +2275,10 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
  * @note Address: 0x800FF168
  * @note Size: 0x998
  */
-// NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
+// NONMATCHING: the three stage tests of case 0 compare the stage first (US 0x800FF73C, 0x800FF77C, 0x800FF7F8
+// cmpw r28, r3) where IsStage, as everywhere else in this file, compares the lookup first (0x800FCC78 cmpw r3, r27).
+// Reading the stage into a local and testing stage == FindStageIndexByName(name) gives retail's code, but only as a
+// second IsStage; gGame.mStage == FindStageIndexByName(name) written at the sites moves the gGame base (97.5 %)
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
 	spider->SetColor(1, 0, 0, 0, 0.0f);

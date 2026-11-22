@@ -43,6 +43,11 @@ void XObjActorMama::ResetActorState()
 	ResetActorMovementStep(this);
 }
 
+// NONMATCHING: case 6 builds the effect's rotation straight in CreateSRT's by-value slot (US 0x8012918C stores the
+// { 0, 0, 0 } copy to 0x20(r1), 0x801291E8 its y), this build makes the local and copies it, so the frame is 0xC larger
+// and one more saved register is used. Tried: { 0, rotY, 0 } as the initialiser, scale declared first, both Vecs as
+// compound literals at the call (the rotation is then built where retail builds it, but still copied) and a Vec-returning
+// inline, all lower or equal
 void XObjActorMama::ProcessPendingEvents(u32)
 {
 	CJObj jobj;
