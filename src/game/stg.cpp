@@ -3257,7 +3257,12 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 // no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
 // function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
 // (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
-// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f
+// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f.
+// The other constants retail adds with the variable first are the first stat row's 8 (0x80055AA8), the stat rows'
+// 44/88/132 (0x80055AF4, while their 8 and 40 are literal-first), the 14 of y + 14, (y - 82) + 14 and
+// (y - 18) + 14 (0x80055D74, 0x80055DC4, 0x800560A0, while the entry rows' 14 + ((y - 82) + 52) has the 14 first),
+// and the entry rows' 52/104/156 (0x80055E14): each row's offset reached its call as a variable, the first row of
+// each column through another spelling than the rest.
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -3404,6 +3409,8 @@ static inline void DrawStatusDot(CTexObj& tex, u32 color, f32 x, f32 y, f32 size
 	DrawCalloutSprite(tex, color, x, y, size);
 }
 
+// NONMATCHING: x and y sit in f28/f29, retail has them in f31/f30 (US 0x80054B8C); one lfs of 0.0 in the outline loop
+// is scheduled after the text pointer load
 extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX, f32 targetY)
 {
 	CTexObj tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
@@ -4009,7 +4016,7 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 }
 
 // NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
-// uses one; the float temporaries of the vertex set-up and the saved registers are numbered differently
+// uses one; the saved registers are numbered differently, and one ori and one lwz are scheduled a slot apart
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
@@ -8949,8 +8956,10 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
 }
 
-// NONMATCHING: retail computes 8.0f + labelY before the bar colour and adds 2.0f again at each quad of the
-// selection bar, the build passes one folded value; the rest is register allocation.
+// NONMATCHING: retail computes 8.0f + labelY before the bar colour (US 0x8003A6F4) and adds 2.0f again at each
+// quad of the selection bar with the variable first (0x8003A83C, 0x8003A8A4, 0x8003A910, 0x8003A9EC); the build
+// passes one folded value. DrawTitleLoadScreen has the same block and the same shape (0x8002A7B4), so the 2 came
+// through a parameter of a helper both shared, which DrawMenuSelectionBar is not. The rest is register allocation.
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
@@ -9231,6 +9240,9 @@ static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f
 }
 #endif
 
+// NONMATCHING: register allocation. Retail writes 23 * sx and the message top back into the parameters' registers
+// (US 0x8003936C fmuls f29,f2,f29; 0x800393CC fnmsubs f28); the build gives them new ones, and the icon quad's
+// arguments are scheduled in another order
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
                                     f32 alpha, f32 sx, f32 sy)
 {
@@ -10669,7 +10681,9 @@ static inline u8 StageRowBlue(int row, u8 normal, u8 current)
  * @note Address: 0x80033128
  * @note Size: 0x5F8
  */
-// NONMATCHING: register allocation and loop scheduling
+// NONMATCHING: register allocation and loop scheduling. Retail numbers the locals step, maxWidth, fontSize, x, y,
+// 60, 1, 15, 12, 0.5, cx, cy from f31 down (US 0x800331FC..0x80033248), the build puts cx and cy first;
+// declaring step first or cx and cy last or const moves other registers without reaching that order.
 BOOL MenuStageSelect::Draw()
 {
 	if (CMenu::Draw()) {
