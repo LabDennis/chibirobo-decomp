@@ -2,17 +2,21 @@
 // included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
 // order, plus the Wii's own text helpers.
 //
-// NONMATCHING: in the frame buffer queue QueueFrameCopy (99 %) and OnCopyDone (95 %) give the new
-// entry's address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height
-// before the width for the aspect; CLight::GetPosition (83 %) tests the light kind before it saves its registers and
-// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
+// NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) emits the identical instruction stream and only colours the new
+// entry's address and the popped request into other registers than retail; OnCopyDone (95 %) materialises the Peek() result twice
+// in retail (an inline sret slot plus the caller's copy, one copy is elided for us). The perspective CCamera::Init (79 %) reads the
+// frame buffer height before the width for the aspect. CLight::GetPosition (83 %) shrink-wraps its callee saves behind the light-kind
+// test in retail and CLight::GetViewDirection (93 %): retail zeroes a second, unused Vec on the stack (0x8-0x10) that this source
+// form does not produce.
+// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
 // read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
 // (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
 // GetGlyph (99 %) differs only in callee-saved colouring; DrawGsText (92 %) and DrawGsStrokeText (87 %) diverge in float allocation and
 // stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference
 // in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the light color's components for the color channel in other
-// registers and computes the material components where it tests them, not ahead of the tests. Not written yet: CGs::Init (0x802AA610) and
-// the scene list helper (0x802AB860).
+// registers and computes the material components where it tests them, not ahead of the tests. CGs::Init (98 %): every call, argument and
+// store matches; retail packs the GS* by-value temporaries one slot higher (a 0x78 hole that here holds the second GSTevOrder) and pools
+// the tev index and channel ids into .sdata2 where we emit li, so the frame stays 0x270 instead of 0x280.
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void
@@ -31,6 +35,7 @@ extern "C" u16 GXReadDrawSync(void);
 
 #include "arithmetic.h"
 #include "game/gmath.h"
+#include "nw4r/g3d/g3d_init.h"
 #include <math.h>
 #include <cmath>
 #include <string.h>
@@ -42,8 +47,10 @@ void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
 void PSMTX44Identity(Mtx44 mtx);
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
+void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 channels, u32 texGens);
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
 CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
+extern MEMiHeapHead* gWiiMem1Heap;
 }
 
 // The camera, light and fog code in front of the screen code, 0x802A80FC-0x802A90C8. It belongs to this
@@ -368,12 +375,12 @@ CVec CLight::GetPosition()
 CVec CLight::GetViewDirection(Mtx view)
 {
 	CVec direction;
-	if (0.0f != PSVECMag(&mInterest)) {
+	if (PSVECMag(&mInterest) != 0.0f) {
 		PSMTXMultVecSR(view, &mInterest, &direction);
 		PSVECNormalize(&direction, &direction);
 	} else {
-		Vec zero        = { 0.0f, 0.0f, 0.0f };
-		(Vec&)direction = zero;
+		Vec zero = { 0.0f, 0.0f, 0.0f };
+		direction.Set(zero);
 	}
 	return direction;
 }
@@ -726,6 +733,71 @@ static inline void SetColor(CTile* tile, u32 color)
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
+void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
+{
+	mFifoBuffer = MEMAllocFromExpHeapEx(gWiiMem1Heap, 0x80000, 4);
+	mFifo       = GXInit(mFifoBuffer, 0x80000);
+	mCamera     = NULL;
+	mLight      = NULL;
+
+	SetRenderState(NULL, GSBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET), GSZMode(GX_FALSE, GX_LEQUAL, GX_FALSE),
+	               GSAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF), GSColorUpdate(GX_TRUE), GSAlphaUpdate(GX_FALSE),
+	               GSDstAlpha(GX_FALSE, 0), GSZCompLoc(GX_TRUE), GSDither(GX_TRUE), GSLineWidth(12, GX_TO_ONE), GSPointSize(24, GX_TO_ZERO),
+	               GSCullMode(GX_CULL_BACK), GSClipMode(GX_CLIP_ENABLE));
+
+	SetTevStage(NULL, 0, GSTevOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0),
+	            GSTevColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
+	            GSTevColorIn(GX_CC_RASC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO),
+	            GSTevAlphaOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
+	            GSTevAlphaIn(GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO));
+	SetTevStage(&mTevStages[1], 1, GSTevOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR1A1),
+	            GSTevColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
+	            GSTevColorIn(GX_CC_ZERO, GX_CC_RASC, GX_CC_ONE, GX_CC_CPREV),
+	            GSTevAlphaOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV),
+	            GSTevAlphaIn(GX_CA_ZERO, GX_CA_RASA, GX_CA_KONST, GX_CA_APREV));
+
+	SetChannel(NULL, GX_COLOR0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_SPOT), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_ALPHA0, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_COLOR1, GSChanCtrl(GX_TRUE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_SPEC), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+	SetChannel(NULL, GX_ALPHA1, GSChanCtrl(GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE), (GXColor) { 0, 0, 0, 0xFF },
+	           (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
+
+	mBillboardEnabled = FALSE;
+	mSprite.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mSprite.mTex = &mTex;
+	mPoint.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mLine.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mTriangle.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mCircline.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mCircle.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mTile.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mSprite2.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mCube.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mOctahedron.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mDodeca.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mIcosahedron.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mSphere.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mCylinder.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mTorus.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	mRotOrder = 5;
+
+	mTextChars            = (TextChar*)MEMAllocFromExpHeapEx(gWiiGameHeap, 0x41400, 4);
+	mShiftJisWidthScale   = 1.0f;
+	mSingleByteWidthScale = 1.0f;
+	Vec zero;
+	zero.x    = 0.0f;
+	zero.y    = 0.0f;
+	zero.z    = 0.0f;
+	mTextRot  = zero;
+	mTextFont = 0;
+
+	nw4r::g3d::G3dInit(false);
+	fn_802AEBF0(&mScene.mHead, renderStates, tevStages, channels, texGens);
+}
+
 void CGs::SetScreenMode(s32 mode, u16 hor, u16 ver)
 {
 	mScreen.SetMode(mode, hor, ver);
@@ -830,6 +902,12 @@ extern "C" void EndGsCamera(CGs* gs)
 {
 	gs->mCamera->EndCurrent();
 	gs->mCamera = NULL;
+}
+
+// the one call CGame::Draw makes between RenderSceneShadow and SetCameraLight is a no-op on the
+// Wii; on the GameCube that slot is HSD_StartRender(HSD_RP_SCREEN)
+void CGs::fn_802AB860()
+{
 }
 
 void CGs::ResetZMode()

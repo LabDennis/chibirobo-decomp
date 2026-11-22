@@ -10,6 +10,7 @@
 #include "arithmetic.h"
 #include <math.h>
 #include <cmath>
+#include "nw4r/math/math_arithmetic.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -104,6 +105,9 @@ extern "C" char* FormatToStaticBuffer(const char* fmt, ...)
 
 // HSD_MtxGetScale from sysdolphin/baselib/mtx.c; on the Wii the square test uses
 // FLT_EPSILON and the square root is the FSqrt inline of arithmetic.h
+// NONMATCHING: retail materializes the dot-product results in three stack temporaries
+// (0x38/0x3c/0x40, stfs+frsp after each call) and keeps the dead `dot *= inverse_length`
+// store; our MWCC holds them in registers, so the frame is 0x50 instead of 0x60
 extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 {
 	float square;
@@ -122,7 +126,8 @@ extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 		y.x = m[0][1];
 		y.y = m[1][1];
 		y.z = m[2][1];
-		PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &y));
+		dot = PSVECDotProduct(&x, &y);
+		PSVECScale(&x, &projection, dot);
 		PSVECSubtract(&y, &projection, &y);
 		square = PSVECSquareMag(&y);
 		if (square > FLT_EPSILON) {
@@ -130,12 +135,14 @@ extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 			out->y         = 1.0F / inverse_length;
 			dot *= inverse_length;
 			PSVECScale(&y, &y, inverse_length);
-			z.x = m[0][2];
-			z.y = m[1][2];
-			z.z = m[2][2];
-			PSVECScale(&y, &projection, dot = PSVECDotProduct(&y, &z));
+			z.x          = m[0][2];
+			z.y          = m[1][2];
+			z.z          = m[2][2];
+			float dot_yz = PSVECDotProduct(&y, &z);
+			PSVECScale(&y, &projection, dot_yz);
 			PSVECSubtract(&z, &projection, &z);
-			PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &z));
+			float dot_xz = PSVECDotProduct(&x, &z);
+			PSVECScale(&x, &projection, dot_xz);
 			PSVECSubtract(&z, &projection, &z);
 			square = PSVECSquareMag(&z);
 			if (square > FLT_EPSILON) {
@@ -151,11 +158,12 @@ extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 				out->z = 0.0F;
 			}
 		} else {
-			out->y = 0.0F;
-			z.x    = m[0][2];
-			z.y    = m[1][2];
-			z.z    = m[2][2];
-			PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &z));
+			out->y       = 0.0F;
+			z.x          = m[0][2];
+			z.y          = m[1][2];
+			z.z          = m[2][2];
+			float dot_xz = PSVECDotProduct(&x, &z);
+			PSVECScale(&x, &projection, dot_xz);
 			PSVECSubtract(&z, &projection, &z);
 			square = PSVECSquareMag(&z);
 			if (square > FLT_EPSILON)
@@ -168,46 +176,24 @@ extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 		y.x    = m[0][1];
 		y.y    = m[1][1];
 		y.z    = m[2][1];
-		PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &y));
-		PSVECSubtract(&y, &projection, &y);
 		square = PSVECSquareMag(&y);
 		if (square > FLT_EPSILON) {
 			inverse_length = FSqrt(1.0F / square);
 			out->y         = 1.0F / inverse_length;
-			dot *= inverse_length;
 			PSVECScale(&y, &y, inverse_length);
-			z.x = m[0][2];
-			z.y = m[1][2];
-			z.z = m[2][2];
-			PSVECScale(&y, &projection, dot = PSVECDotProduct(&y, &z));
+			z.x          = m[0][2];
+			z.y          = m[1][2];
+			z.z          = m[2][2];
+			float dot_yz = PSVECDotProduct(&y, &z);
+			PSVECScale(&y, &projection, dot_yz);
 			PSVECSubtract(&z, &projection, &z);
-			PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &z));
-			PSVECSubtract(&z, &projection, &z);
-			square = PSVECSquareMag(&z);
-			if (square > FLT_EPSILON) {
-				out->z = FSqrt(square);
-				PSVECCrossProduct(&y, &z, &projection);
-				if (PSVECDotProduct(&x, &projection) < 0.0) {
-					sign = -1.0;
-					out->x *= sign;
-					out->y *= sign;
-					out->z *= sign;
-				}
-			} else {
-				out->z = 0.0F;
-			}
+			out->z = PSVECMag(&z);
 		} else {
 			out->y = 0.0F;
 			z.x    = m[0][2];
 			z.y    = m[1][2];
 			z.z    = m[2][2];
-			PSVECScale(&x, &projection, dot = PSVECDotProduct(&x, &z));
-			PSVECSubtract(&z, &projection, &z);
-			square = PSVECSquareMag(&z);
-			if (square > FLT_EPSILON)
-				out->z = FSqrt(square);
-			else
-				out->z = 0.0F;
+			out->z = PSVECMag(&z);
 		}
 	}
 }
@@ -438,7 +424,7 @@ extern "C" int IntersectLineWithPlane(Vec* p0, Vec* p1, Vec* point, Vec* normal,
 	PSVECScale(&dir, out, t);
 	PSVECAdd(out, p0, out);
 
-	if (Abs(t) <= 0.00001f || Abs(1.0f - t) <= 0.00001f) {
+	if (nw4r::math::FAbs(t) <= 0.00001f || nw4r::math::FAbs(1.0f - t) <= 0.00001f) {
 		return 1;
 	}
 	if (t > 0.0f && t < 1.0f) {

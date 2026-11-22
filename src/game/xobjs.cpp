@@ -211,11 +211,13 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
-// NONMATCHING: retail is ReadStart's own out-of-line body (its loop walks the
-// incoming this in r3; writing the loop here directly matches the code). The
-// shared __FUNCTION__ "ReadStart" says this vtable slot is really
-// XObjRead::ReadStart, with the overrides calling XObjRead::ReadStart inline;
-// matching needs that rename of the _10 slot in symbols.txt.
+// NONMATCHING: same loop the overrides emit at 100%, but here the free-slot
+// walk lands on r6 and the index on r3 while retail walks the incoming this in
+// r3 with the index in r6 — register colouring of the inlined body, no lever
+// left in the one-line forwarding body. Renaming the _10 slot to ReadStart
+// can't fix it either: callers above (QueueObjectAnimationRead and the
+// overrides) inline the early-defined ReadStart while this body is emitted
+// where the definition sits, so one function can't be both.
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
 	return ReadStart(object, info);
@@ -331,6 +333,13 @@ extern "C" s32 FindStageObjectIndex(XOBJS* list, CXObj* obj)
  * @note Address: 0x80132698
  * @note Size: 0x230
  */
+// NONMATCHING: same instruction stream as retail; the rest is two scheduling
+// swaps in the async branch (retail loads info->mPlacement one slot earlier and
+// orders stw/li/mtctr differently — a named placement local doesn't move it)
+// plus the anonymous .rodata pool names (@NNNN vs sPathXobjsCpp/
+// sObjectReaderFullMessage/sObjectReadStartName/lbl_8065E828). Calling the
+// gSingleObjectReader.QueueRead inline instead of flag+ReadStart emits the
+// same ops one notch worse (97.1), so retail likely wrote the open form too.
 extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unused, BOOL async)
 {
 	XObj* obj;

@@ -29,9 +29,12 @@ extern "C" void InitToonTexture(ToonTexture* toon, u8 min, u8 max, u8 steps)
 	u16 color        = ((u32)min << 11) | ((u32)min << 6) | min;
 	toon->mTexels[0] = color;
 
-	// NONMATCHING (Wii): retail re-evaluates 256/steps inside the branch
-	// (a second divw at 0x802BD310) where this build reuses the hoisted divisor;
-	// the rest of the loop and the desc stores match.
+	// NONMATCHING (Wii): retail re-evaluates both 256/steps and i/(256/steps) inside the
+	// branch (divw at 0x802BD310 and 0x802BD31C) and keeps steps-1 branch-local, while
+	// this compiler CSEs the modulo's i/d into the quotient and hoists steps-1 out of
+	// the loop. The same source matches GC retail at 100 %, so the Wii unit was likely
+	// compiled differently; every spelling tried (branch-local or hoisted step variable,
+	// u16/int, -O3, -inline auto, GC/2.6, GC/3.0a3.4, GC/3.0a5.2) scores the same or worse.
 	for (int i = 1; i < 256; i++) {
 		if (i % (256 / steps) == 0) {
 			u8 level = ((256 / (steps - 1)) * (i / (256 / steps)) - 1) >> 3;
