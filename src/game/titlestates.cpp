@@ -391,7 +391,11 @@ extern "C" void ResetTitleScreenState(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
-// NONMATCHING: retail reaches the card's busy and found flags in two steps (addis 0xF, addis 1)
+// NONMATCHING: the second name loop walks the chars from title (US 0x8002EAD0 mr r5, r31) with i a copy of visible;
+// this build scales visible into the pointer. Retail loads mChannel before the mReady/mWrongDevice stores
+// (0x8002ED4C), this build after them. In state 14 retail loads mMenuAlpha and gGame.mFade.mSpeed.r (0x80030B70)
+// before the first compare. The rest is register allocation. The card's busy and found flags are read through
+// a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
@@ -502,8 +506,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		StartMemoryCardScan(&gGame.mMemcard.mCard, title->mChannel, FALSE);
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0);
 		break;
-	case 2:
-		if (gGame.mMemcard.mCard.mFound) {
+	case 2: {
+		Memcard& card = gGame.mMemcard.mCard;
+		if (card.mFound) {
 			title->mSelection = 1;
 			title->mSaveFound = 1;
 			ApplyTitleControllerSetting(title);
@@ -519,6 +524,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		} else {
 			title->mSpawnIndex = gCmdLineArgs.mTitleCursor % 11;
 		}
+	}
 		// fall through: loading starts on the same frame as cursor selection
 	case 3:
 		if (title->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex))))
