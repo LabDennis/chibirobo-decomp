@@ -103,6 +103,8 @@ static MenuItem sMenuItem;
 static MenuPC sMenuPC;
 static MenuSave sMenuSave;
 static MenuStatusTable sStatusItemTable;
+// shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
+static f32 sInventoryPhase;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
@@ -783,6 +785,244 @@ extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
 		}
 	}
 	LayoutMainMenuRows(menu);
+}
+
+static inline s32 CountMenuItems();
+
+// NONMATCHING: the call list matches retail; 32 bytes of float constant/register lifetime and scheduling differences remain
+extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
+{
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	for (int i = 0; i < 8; i++) {
+		f32 w = 92.0f * scale, h = 80.0f * scale;
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + ((i / 4) * dy + y));
+		CTexObj tex;
+		s16 id = sStatusItemTable.mItems[i].mItem, count = sStatusItemTable.mItems[i].mCount;
+		scale = 1.0f;
+		if (id >= 0 && count > 0) {
+			f32 bob = 0.0f;
+			if (selected == i)
+				bob = 4.0f * (f32)sin(0.017453292f * (20.0f * (f32)fmod(sInventoryPhase, 360.0)));
+			s32 icon = GetItemIconTextureIndex(id);
+			if (icon >= 0) {
+				gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+				tex = gGame.mTpl.mTex;
+				gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+				gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 iw = scale * GXGetTexObjWidth(&tex);
+				f32 ih = scale * GXGetTexObjHeight(&tex);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy + bob, 1.0f, iw, ih, 0.0f,
+				                   0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+				if (selected == i) {
+					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+					f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+					if (pulse < 0.0f)
+						pulse = 0.0f;
+					DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+					           (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, xx, yy + bob, 1.0f, iw, ih, 0.0f,
+					           0.0f, 0.0f);
+					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+				}
+			}
+			f32 enlarged = 1.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
+			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
+			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			f32 countX         = xx + 22.0f * scale;
+			f32 countY         = bob + (yy + 14.0f * scale);
+			if (count >= 10) {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count / 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX - digitWidth / 3.0f,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count % 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, digitWidth / 3.0f + countX,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			} else {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * count, 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX, countY, 0.0f, digitWidth,
+				                   digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+		} else {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
+			                   0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	f32 w = 92.0f * scale, h = 80.0f * scale;
+	for (int i = 0; i < 4; i++) {
+		if (sStatusItemTable.mPage >= (CountMenuItems() - 1) / 4 - 1)
+			break;
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + (2 * dy + y));
+		CTexObj tex;
+		s16 id = sStatusItemTable.mNext[i].mItem, count = sStatusItemTable.mNext[i].mCount;
+		if (id >= 0 && count > 0) {
+			s32 icon = GetItemIconTextureIndex(id);
+			if (icon >= 0) {
+				gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+				tex = gGame.mTpl.mTex;
+				GXGetTexObjWidth(&tex);
+				GXGetTexObjHeight(&tex);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * iw,
+				                   scale * ih, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			f32 enlarged = 1.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
+			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
+			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			f32 countX         = xx + 22.0f * scale;
+			f32 countY         = yy + 14.0f * scale;
+			if (count >= 10) {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count / 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX - digitWidth / 3.0f,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count % 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, digitWidth / 3.0f + countX,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			} else {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * count, 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX, countY, 0.0f, digitWidth,
+				                   digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+		} else {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
+			                   0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	for (int i = 0; i < 4; i++) {
+		CountMenuItems();
+		if (sStatusItemTable.mPage <= 0)
+			break;
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + (-1 * dy + y));
+		CTexObj tex;
+		s16 id = sStatusItemTable.mPrev[i].mItem, count = sStatusItemTable.mPrev[i].mCount;
+		if (id >= 0 && count > 0) {
+			s32 icon = GetItemIconTextureIndex(id);
+			if (icon >= 0) {
+				gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+				tex = gGame.mTpl.mTex;
+				GXGetTexObjWidth(&tex);
+				GXGetTexObjHeight(&tex);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+				                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, xx, yy, 0.0f, scale * iw,
+				                   scale * ih, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			f32 enlarged = 1.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
+			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
+			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			f32 countX         = xx + 22.0f * scale;
+			f32 countY         = yy + 14.0f * scale;
+			if (count >= 10) {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count / 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX - digitWidth / 3.0f,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (count % 10), 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, digitWidth / 3.0f + countX,
+				                   countY, 0.0f, digitWidth, digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			} else {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * count, 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, countX, countY, 0.0f, digitWidth,
+				                   digitHeight, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+		} else {
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
+			tex = gGame.mTpl.mTex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
+			                   0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
 }
 
 // an item's card: its description, its name and its icon. NONMATCHING: only the place of "%s" in the string

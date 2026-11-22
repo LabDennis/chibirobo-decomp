@@ -293,7 +293,6 @@ void CBase::DrawSystemMessage()
 		f32 x;
 		f32 y;
 		Vec quad[4];
-		PrimVertex vtx[12];
 		if (_41C0) {
 			x         = (f32)(gPointerScreenWidth / 2) - textWidth * 0.5f;
 			y         = (f32)(gPointerScreenHeight / 2) - size * 0.5f;
@@ -309,31 +308,30 @@ void CBase::DrawSystemMessage()
 			quad[3].x = x - size - extra;
 			quad[3].y = y + size + size;
 			quad[3].z = 0.0f;
-			u8 a      = (u8)(200.0f * alpha);
+			u32 a     = (u32)(200.0f * alpha);
 			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, a, quad[1].x, quad[1].y, quad[1].z, a, quad[2].x, quad[2].y,
 			                 quad[2].z, a, quad[3].x, quad[3].y, quad[3].z, a);
-			DrawGsProportionalTextFormat(&gGame.mGs, (u8)(255.0f * alpha) | 0xFFFFFF00, text, x, y, 0.0f, size, size);
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x, y, 0.0f, size, size);
 		} else {
-			x                   = (f32)(gPointerScreenWidth / 2) - textWidth * 0.5f;
-			f32 slide           = sin(3.1415927f * alpha * 0.5f);
-			y                   = (f32)gScreenSafeTop - (1.0f - slide) * 24.0f;
-			u32 textColor       = (u8)(255.0f * alpha) | 0xFFFFFF00;
-			f32 bottom          = (y + size) + 2.0f;
-			f32 top             = y - 2.0f;
-			f32 midX            = (f32)(gPointerScreenWidth / 2);
-			f32 halfW           = (textWidth * alpha) * 0.5f;
-			f32 x0              = midX - halfW;
-			f32 x1              = midX + halfW;
-			f32 left            = (f32)gScreenLeft;
-			f32 right           = (f32)gScreenRight;
-			u32 bgColor         = (u8)(160.0f * alpha);
-			PrimVertex init[12] = {
+			x                  = (f32)(gPointerScreenWidth / 2) - textWidth * 0.5f;
+			f32 slide          = sin(3.1415927f * alpha * 0.5f);
+			y                  = (f32)gScreenSafeTop - (1.0f - slide) * 24.0f;
+			u32 textColor      = (u32)(255.0f * alpha) | 0xFFFFFF00;
+			f32 bottom         = (y + size) + 2.0f;
+			f32 top            = y - 2.0f;
+			f32 midX           = (f32)(gPointerScreenWidth / 2);
+			f32 halfW          = (textWidth * alpha) * 0.5f;
+			f32 x0             = midX - halfW;
+			f32 x1             = midX + halfW;
+			f32 left           = (f32)gScreenLeft;
+			f32 right          = (f32)gScreenRight;
+			u32 bgColor        = (u32)(160.0f * alpha);
+			PrimVertex vtx[12] = {
 				{ { left, top, 0.0f }, 0 },        { { x0, top, 0.0f }, bgColor },    { { left, bottom, 0.0f }, 0 },
 				{ { x0, bottom, 0.0f }, bgColor }, { { x0, top, 0.0f }, bgColor },    { { x1, top, 0.0f }, bgColor },
 				{ { x0, bottom, 0.0f }, bgColor }, { { x1, bottom, 0.0f }, bgColor }, { { x1, top, 0.0f }, bgColor },
 				{ { right, top, 0.0f }, 0 },       { { x1, bottom, 0.0f }, bgColor }, { { right, bottom, 0.0f }, 0 },
 			};
-			memcpy(vtx, init, sizeof(vtx));
 			DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vtx, 12);
 			DrawGsProportionalTextFormat(&gGame.mGs, textColor, text, x, y, 0.0f, size, size);
 		}
@@ -342,12 +340,12 @@ void CBase::DrawSystemMessage()
 			f32 iconY = y + 0.5f * size;
 			f32 blink = (mSystemMessageBlink > 0.5f) ? 220.0f : 150.0f;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u32 iconColor = (u8)(blink * alpha) | 0xFFFFFF00;
-			DrawGsTexturedQuad(&gGame.mGs, _41E0, iconColor, iconColor, iconColor, iconColor, iconX, iconY, 0.0f, size, size, 0.0f, 0.0f,
-			                   0.0f);
-			iconColor = (u8)(blink * alpha) | 0xFFFFFF00;
-			DrawGsTexturedQuad(&gGame.mGs, _41E0, iconColor, iconColor, iconColor, iconColor, iconX + textWidth + 1.6f * size, iconY, 0.0f,
-			                   size, size, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, _41E0, (u32)(blink * alpha) | 0xFFFFFF00, (u32)(blink * alpha) | 0xFFFFFF00,
+			                   (u32)(blink * alpha) | 0xFFFFFF00, (u32)(blink * alpha) | 0xFFFFFF00, iconX, iconY, 0.0f, size, size, 0.0f,
+			                   0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, _41E0, (u32)(blink * alpha) | 0xFFFFFF00, (u32)(blink * alpha) | 0xFFFFFF00,
+			                   (u32)(blink * alpha) | 0xFFFFFF00, (u32)(blink * alpha) | 0xFFFFFF00, iconX + textWidth + 1.6f * size, iconY,
+			                   0.0f, size, size, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		}
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -357,7 +355,6 @@ void CBase::DrawSystemMessage()
 	if (mBatteryAlpha > 0.0f) {
 		mIconTpl.mTex.Init(&mIconTpl.mPalette->descriptorArray[1], 0);
 		CTexObj tex = mIconTpl.mTex;
-		u32 color   = (u8)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000;
 		f32 w       = GXGetTexObjWidth(&tex);
 		f32 h       = GXGetTexObjHeight(&tex);
 		f32 slide   = sin(3.1415927f * mBatteryAlpha * 0.5f);
@@ -366,7 +363,10 @@ void CBase::DrawSystemMessage()
 		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000,
+		                   (u32)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000,
+		                   (u32)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000,
+		                   (u32)(200.0f * mBatteryAlpha * mBatteryBlink) | 0xFF808000, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
