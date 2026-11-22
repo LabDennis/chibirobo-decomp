@@ -102,6 +102,7 @@ static MenuStatus sMenuStatus;
 static MenuItem sMenuItem;
 static MenuPC sMenuPC;
 static MenuSave sMenuSave;
+static MenuStatusTable sStatusItemTable;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
@@ -833,6 +834,22 @@ void MenuPaneFadePair::Update(u32 frames)
 	}
 }
 
+static inline s32 CountMenuItems()
+{
+	s16 num;
+	s16 id;
+	s32 count = 0;
+	for (int i = 255; i >= 0; i--) {
+		InventoryItem* pairs = gGame.GetPlayer()->mParams.mInventory.mItems;
+		id                   = pairs[i].mId;
+		num                  = pairs[i].mCount;
+		if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
 // the pointer left a pane
 void MenuItem::vf0C(CbPane* pane)
 {
@@ -847,6 +864,23 @@ void MenuItem::vf0C(CbPane* pane)
 	}
 	if (mSelection == kind && mSelection != -1) {
 		mSelection = -1;
+	}
+}
+
+// the pointer came onto a pane
+// NONMATCHING: 98 %, MWCC folds &mParams (0x999C) + mInventory (0x3C) into -0x6628(r3) instead of keeping 0x3C(r3)
+void MenuItem::vf10(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	if (kind >= 0 && kind <= 7 && mSelection != kind) {
+		if (CountMenuItems() > 0 && sStatusItemTable.mItems[kind].mItem >= 0) {
+			mSelection = kind;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 8 && kind <= 9 && mMode == 2) {
+		mPaneFades.mFades[(u32)(kind - 8)].mHovered = 1;
 	}
 }
 
