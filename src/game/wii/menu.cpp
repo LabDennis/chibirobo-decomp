@@ -2400,6 +2400,39 @@ void MenuStatus::State6(u32)
 {
 }
 
+void MenuStatus::vf0C(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = 0;
+	switch (mMode) {
+	case 1:
+		if (mSelection == kind && mSelection != -1) {
+			mSelection = -1;
+		}
+		break;
+	case 2:
+		if (kind < 49 || kind > 50) {
+			if (mItemSelection == kind - 4 && mItemSelection != -1) {
+				mItemSelection = -1;
+			}
+		}
+		break;
+	case 9:
+		if (mOverviewSelection == kind - 12 && mOverviewSelection != -1) {
+			mOverviewSelection = -1;
+		}
+		break;
+	case 8:
+		if (mIconSelection == kind - 25 && mIconSelection != -1) {
+			mIconSelection = -1;
+		}
+		break;
+	}
+	if (kind >= 49 && kind <= 50 && mMode == 2 && mPhase == 0) {
+		mPaneFades.mFades[(u32)(kind - 49)].mHovered = 0;
+	}
+}
+
 void MenuStatus::vf18(nw4r::math::VEC2*)
 {
 	ClearSelections();
