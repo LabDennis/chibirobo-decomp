@@ -7048,6 +7048,9 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
 }
 
+// NONMATCHING: registers (retail numbers id above choice, r30/r29, and the choice-bar colour below its texture pointers),
+// the schedule of the choice-bar coordinates (US 0x80042B80), and one copy of the s16 id that ours keeps for the second
+// name lookup of each branch (mr r21) where retail passes the register again
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -7067,7 +7070,9 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters like its other
+	// temporaries (US fmuls f20 at 0x80042AF0, size and rowY above them in f27/f26)
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 
 	char text[256];
 #if defined(VERSION_JP)
@@ -7078,7 +7083,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset, 1.0f);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7105,7 +7110,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 #endif
 	}
 	if (choice != 2)
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, white);
 	s32 icon;
 	f32 w, h;
 	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
@@ -7201,6 +7206,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 #endif
 }
 
+// NONMATCHING: as DrawPCItemPurchasePanel: registers (id above choice, the choice-bar colour below its texture pointers),
+// the schedule of the choice-bar coordinates (US 0x80040A0C) and one copy of the s16 id for the name lookup (mr r22)
 extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -7220,7 +7227,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	// the 20 * scale margin is an expression at its uses, as in DrawPCItemPurchasePanel (US fmuls f20 at 0x8004097C)
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 
 	char text[256];
 #if defined(VERSION_JP)
@@ -7231,7 +7239,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset, 1.0f);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7251,7 +7259,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 #endif
 	}
 	if (choice != 2)
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, white);
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon;
@@ -7286,6 +7294,9 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 #endif
 }
 
+// NONMATCHING: registers: retail keeps left in f24 above the parameter copies and reuses y's f14 for the choice bar's x,
+// the build has left in f15; the order of the two camera-matrix and primitive-type operands before DrawGsTrianglePrimitive
+// (US 0x8003FC88) and one fmr before the done label's conversion differ in schedule
 extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 scrap, f32 money, f32 scroll, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -7297,12 +7308,14 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	u32 opacity  = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, opacity, 5);
 	y += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale;
-	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters with its temporaries
+	// (US fmuls f20 at 0x8003FCA8), the named size, labelOffset and rowOffset above them in f30-f28
+	f32 size        = 17.0f * scale;
+	f32 labelOffset = 155.0f * scale + 20.0f * scale, rowOffset = 204.0f * scale;
 	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f);
 		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7336,7 +7349,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	const s32 question1 = 0x4D, question2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
 #endif
 	if (choice != 2) {
-		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
+		f32 textX = PCRecycleTextX(originX, size, scale, 20.0f * scale, labelOffset);
 		DrawPCRecycleLabel(question1, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
 		                   opacity | 0xFFFFFF00);
 		DrawPCRecycleLabel(question2, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size, opacity | 0xFFFFFF00);
@@ -7349,7 +7362,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 		const char* text = GetLocalizedInterfaceText(done);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(done), 1, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFFFFF00, text,
-		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f) - textWidth / 2.0f,
 		                             (originY + rowOffset) - 4.0f * scale, 0, size, size);
 #endif
 	}
