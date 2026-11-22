@@ -132,6 +132,8 @@ extern "C" s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 
 extern "C" f32 gSaveSlotSpacing;
 extern "C" f32 gStatusTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gStatusTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+extern "C" f32 gSaveTitleOutlineX[4]   = { -1.0f, 1.0f, 1.0f, -1.0f };
+extern "C" f32 gSaveTitleOutlineY[4]   = { -1.0f, -1.0f, 1.0f, 1.0f };
 
 struct PCChoiceArt {
 	s32 icon, label;
@@ -4596,6 +4598,66 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
 	                   0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: the complete 19-call list matches; a 12-byte code-layout and register-allocation difference remains
+extern "C" void DrawSaveMenuTitle(MenuSave* menu)
+{
+	if (menu->mTitle.mActive) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		CTexObj blob;
+		InitPCPanelTexture(blob, 108);
+		f32 t;
+		f32 s0;
+		f32 bob;
+		f32 rot;
+		f32 s1;
+		f32 s2;
+		f32 scale;
+		f32 x;
+		f32 y;
+		f32 pad;
+		u32 color  = menu->mTitle.mColor & 0xFFFFFF00;
+		f32 zero   = 0.0f;
+		f32 center = gPointerScreenWidth / 2;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			MenuTitleChar* glyph = &menu->mTitle.mChars[i];
+			t                    = glyph->mFade;
+			if (!(t <= 0.0f)) {
+				CFont font;
+				s32 width;
+				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
+				s0          = std::sinf(glyph->mAngle0);
+				bob         = 4.0f * s0;
+				rot         = std::sinf(0.7f * glyph->mAngle1);
+				s1          = std::sinf(3.1415927f * t);
+				s2          = std::sinf(1.5707964f * t);
+				scale       = 0.2f * s1 + s2;
+				x           = 24.0f + (48.0f * i + (center - 48.0f * menu->mTitle.mCount / 2.0f));
+				rot         = -(0.017453292f * (10.0f * rot));
+				y           = 64.0f + bob;
+				u32 c       = (u32)(255.0f * t) | 0xFFFFFF00;
+				DrawGsTexturedQuad(&gGame.mGs, &blob, c, c, c, c, x, y, 0.0f, 20.0f * (2.0f * scale), 20.0f * (2.0f * scale), 0.0f, -zero,
+				                   rot);
+				scale = 20.0f * (1.7f * scale);
+				pad   = (width / 24.0f) * scale;
+				pad   = scale - pad;
+				c     = (u32)(255.0f * t) | 0xFFFFFF00;
+				for (int j = 0; j < 4; j++) {
+					DrawGsTexturedQuad(&gGame.mGs, &tex, c, c, c, c, pad / 2.0f + (x + gSaveTitleOutlineX[j]),
+					                   bob + (64.0f + gSaveTitleOutlineY[j]), 0.0f, scale, scale, 0.0f, -zero, rot);
+				}
+				c = color | (u32)(255.0f * t);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, c, c, c, c, pad / 2.0f + x, y, 0.0f, scale, scale, 0.0f, -zero, rot);
+			}
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	}
 }
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
