@@ -3711,7 +3711,8 @@ static inline BOOL AdvanceJumpArc(XActJump* act, u32 frames)
  */
 // NONMATCHING: retail keeps the cleared playing flag in r4 and loads its other zeros where they are stored; here that zero sits
 // in r0 from the switch on and the state resets use it. Saved registers: retail has the frame count in r27 below the interrupt
-// flag, the game pointer and next (r28 to r30), here it is in r30 above them
+// flag, the game pointer and next (r28 to r30), here it is in r30 above them. playing declared before next is
+// flat, a bool playing drops to 98.2
 void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	BOOL interrupt = FALSE;
@@ -3939,7 +3940,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 						u32 touch = ProbeObjectFloor(obj, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, NULL) & 3;
 						if (touch == 3) {
 							act->mForward = 0;
-							act->mRise *= .8f;
+							act->mRise    = .8f * act->mRise;
 							break;
 						}
 					}
