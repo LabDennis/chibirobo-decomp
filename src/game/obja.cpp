@@ -1083,7 +1083,10 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 // GetFloorYawRadians(&object->mFloors, index), the corners through floors with the yaw through
 // object->mFloors (89-90 %); GetFloorCenterOffset(&floors, k) gives the lwzx reads but stores floors to the
 // frame (90.0 %); ReadObjectFloorOffset(floors[k]) and ReadFloorCoordinates(floors[k].mCenterOffset, ...)
-// form floors + k * 32 first (89.3 %)
+// form floors + k * 32 first (89.3 %). The corner index is index - 3 + j: that keeps retail's add/subi/slwi
+// (0x8008E75C), index + j - 3 folds the -3 into the displacement (lwz -0x5c). The lwzx reads come only from
+// (*p)[k] through an address-taken local (dead store) or from a member reload; the reads written out in the loop,
+// with or without a named k, and a by-value or by-reference pointer parameter all form floors + k * 32 once
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
@@ -1472,7 +1475,9 @@ CVec CVec::operator*(Vec other) const
 // floors to the frame (stw 0x8(r1)), which retail does not, so the frame is 4 bytes off and registers shift by
 // one. The quad case loads mFloors once before its corner loop (0x8008BE50, r15, kept across the loop's
 // operator+ call) and reads the corners from it with lwzx; a plain local pointer there forms the element
-// address instead (94.8 %)
+// address instead (94.8 %). Also ruled out: a by-value XObjFloor* parameter, an XObjFloor* const& parameter and
+// a const local, which all give the element address (93.6-93.8 %), and a by-value wrapper around the by-address
+// reader, which drops the prologue store but stores both parameter copies inside the loop instead (95.4 %)
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 {
 	XObjFloor* floors = mFloors;
