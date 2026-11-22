@@ -68,6 +68,7 @@ void DrawSaveMenuTitle(MenuSave* menu);
 s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 id, f32 x, f32 y, f32 size, f32 alpha);
 s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha);
 void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide);
+void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
@@ -4347,6 +4348,58 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.0f,
 	                   0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+static f32 sBannerScrollX, sBannerScrollY;
+
+static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f32 height, f32 alpha)
+{
+	Vec vertices[5] = { (Vec) { x, y, -10.0f }, (Vec) { x + width, y, -10.0f }, (Vec) { x + width, height + y, -10.0f },
+		                (Vec) { x, height + y, -10.0f }, (Vec) { x, y, -10.0f } };
+	CGs& gs         = gGame.mGs;
+	gs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	u32 fill = (u32)(255.0f * alpha) | 0xFFB62800;
+	DrawGsTrianglePrimitive(&gs, GX_TRIANGLEFAN, gs.mCamera->mViewMtx, vertices, fill, 5);
+	InitPCPanelTexture(tex, 139);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], sBannerScrollX, sBannerScrollY, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	u16 h = GXGetTexObjHeight(&tex), w = GXGetTexObjWidth(&tex);
+	PSMTXScale(tex.mTexMtx.mMtx[2], width / w, height / h, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	gs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_TRUE);
+	gs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+	gs.mCurTevStage->SetMode(GX_BLEND);
+	u32 overlay = (u32)(16.0f * alpha) | 0xFFFFFF00;
+	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + width / 2.0f, height / 2.0f + y, -11.0f, width, height, 0.0f,
+	                   0.0f, 0.0f);
+	gs.mCurTevStage->SetMode(GX_PASSCLR);
+	gs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+}
+
+// NONMATCHING: the complete 33-call list matches; the current spelling needs 136 more bytes and a different stack/vertex layout
+extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
+{
+	CTexObj tex;
+	f32 top    = 10.0f;
+	f32 height = 88.0f;
+	sBannerScrollX -= 0.008f;
+	sBannerScrollY -= 0.008f;
+	DrawMenuBannerStrip(tex, x, y + top, 660.0f, height, alpha);
+	if (title) {
+		char text[256];
+		sprintf(text, "%s", title);
+		u32 count   = strlen(text) / 2;
+		f32 left    = (320.0f + x) - ((count - 1) * 30) / 2;
+		f32 textTop = 4.0f + (8.0f + (22.0f + y));
+		DrawDoubleByteMenuText(text, 8.0f + left, 8.0f + (15.0f + textTop), -10.0f, 30.0f, 30.0f, alpha);
+	}
+	f32 bottomY = (356.0f - y) - 6.0f + slide;
+	height -= slide;
+	if (height < 8.0f) {
+		height = 8.0f;
+	}
+	DrawMenuBannerStrip(tex, x, bottomY, 660.0f, height, alpha);
 }
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
