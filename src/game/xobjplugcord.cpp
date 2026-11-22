@@ -325,9 +325,9 @@ static inline void ResetSparks(XObjPlugCordNodes& nodes, u32 color, s32 mode, s3
 	nodes.mEnabled        = enabled;
 }
 
-// NONMATCHING: retail contains three dead/redundant constructs we intentionally do not reproduce:
-// an empty loop over cord->mCount after gravity, a duplicate store to points[mCount - back].mPos.y
-// in PinTail's mEndHeight branch, and a redundant state >= 0 check after state < 0.
+// NONMATCHING: retail stores points[mCount - back].mPos.y twice in PinTail's mEndHeight branch (0x800DACC0,
+// mPos where end 0 sets mTarget); written so, the function's inline estimate passes the budget and
+// PinCordEnds becomes a call (77 %), so our helpers still weigh more than retail's code there
 extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	static f32 floorHeight;
@@ -349,6 +349,8 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			else
 				points[i].mPos.y += 0.98f * -gravity;
 		}
+		// retail walks the points once more with nothing left in the body (0x800DAB9C..0x800DABE8)
+		for (int i = 0; i < cord->mCount; ++i) { }
 		for (s32 pass = 0; pass < 10; ++pass) { // ten relaxation passes
 			PinCordEnds(cord, points);
 			for (s32 i = 0; i < cord->mCount - 1; ++i) {
@@ -399,7 +401,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 	s32 state = gGame.GetPlayer()->mPlug.mConnection;
 	if (state < 0)
 		cord->mMode = 3;
-	else {
+	if (state >= 0) { // tested again, not an else (0x800DB4C0)
 		s32 kind = (state >> 8) & 255;
 		if (kind == 0)
 			cord->mMode = 0;
