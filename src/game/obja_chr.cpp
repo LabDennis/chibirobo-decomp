@@ -6691,20 +6691,20 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 	}
 
 	UpdatePlayerIdleJointAnimations(player, frames);
-	if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0
-	    && player->mAttachmentJoint->aobj == NULL) {
-		HSD_JObjAddAnimAll(player->mAttachmentJoint, player->mAttachmentJointAnim, NULL, NULL);
-		HSD_JObjReqAnimAll(player->mAttachmentJoint, 0.0f);
+	HSD_JObj* const& attachment          = player->mAttachmentJoint;
+	HSD_AnimJoint* const& attachmentAnim = player->mAttachmentJointAnim;
+	if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0 && attachment->aobj == NULL) {
+		HSD_JObjAddAnimAll(attachment, attachmentAnim, NULL, NULL);
+		HSD_JObjReqAnimAll(attachment, 0.0f);
 	}
 	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
 		if (entry->mItem == player->mSuits.mCurrent) {
 			HSD_JObj* joint = GetJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
-				XObj& suit                = player->mSuits.mObjects[player->mSuits.mCurrent];
-				HSD_AnimJoint* anim       = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_MatAnimJoint* mat     = suit.mArchive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_ShapeAnimJoint* shape = suit.mArchive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_JObjAddAnim(joint, anim, mat, shape);
+				XObj& suit            = player->mSuits.mObjects[player->mSuits.mCurrent];
+				HSD_AnimJoint* anim   = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_MatAnimJoint* mat = suit.mArchive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_JObjAddAnim(joint, anim, mat, suit.mArchive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath));
 				HSD_JObjReqAnim(joint, entry->mFrame);
 			}
 		}
