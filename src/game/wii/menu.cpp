@@ -61,6 +61,14 @@ void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale);
 u8* GetPCRankingName(s32 index);
+void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
+                         f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
+void DrawSaveHelpText(MenuSave* menu);
+void DrawSaveMenuTitle(MenuSave* menu);
+s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 id, f32 x, f32 y, f32 size, f32 alpha);
+s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha);
+void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide);
+void OSFatal(GXColor fg, GXColor bg, const char* msg);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -120,6 +128,7 @@ static f32 sInventoryPhase;
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
 
 extern "C" s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+extern "C" f32 gSaveSlotSpacing;
 
 struct PCChoiceArt {
 	s32 icon, label;
@@ -3774,6 +3783,193 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 	u32 mask;
 	DrawPCRankingMask(130.0f, 100.0f, 510.0f, 140.0f, alpha, mask, true);
 	DrawPCRankingMask(130.0f, 290.0f, 510.0f, 330.0f, alpha, mask, false);
+}
+
+static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
+{
+	u32 color        = (u32)(255.0f * menu->mDrawAlpha);
+	const char* text = GetLocalizedInterfaceText(id);
+	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, y, 0.0f, 21.0f, 21.0f);
+}
+
+static inline s32 DrawSaveLinesAt(MenuSave* menu, s32 id, f32 x, f32 y)
+{
+	return DrawJapaneseSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->mDrawAlpha);
+}
+
+static inline f32 SaveMessageX(f32 panelX)
+{
+	return 320.0f + panelX;
+}
+
+static inline f32 SaveMessageY(MenuSave* menu, f32 panelY)
+{
+	return ((8.0f + (356.0f - panelY)) - 6.0f) + menu->mBannerSlide;
+}
+
+static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY)
+{
+	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
+}
+
+// NONMATCHING: the complete 73-call list matches; the current spelling is 776 bytes smaller and saves GPRs from r22 instead of r21
+BOOL MenuSave::Draw()
+{
+	if (CMenu::Draw()) {
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		DrawPanelBackground<SavePanel>(mDrawAlpha);
+		switch (mMode) {
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			for (int i = 0; i < 3; i++) {
+				f32 width   = 154.0f + gSaveSlotSpacing;
+				f32 x       = 49.0f + (width / 2.0f + i * (40.0f + width)) - (3.0f * gSaveSlotSpacing) / 2.0f;
+				u8 selected = mFile == i;
+				u8 newest   = mNewestFile == i;
+				DrawSaveSlotDetails(&mSlots[i], 0, i, selected, newest, x, 223.0f, width, 230.0f, mDrawAlpha, mFileAlpha[i], 1.0f, 1.0f);
+			}
+			DrawSaveHelpText(this);
+			break;
+		}
+		f32 panelX = mPanelX;
+		f32 panelY = mPanelY - 8.0f;
+		DrawMenuBannerPanels(NULL, panelX, panelY, mDrawAlpha, mBannerSlide);
+		DrawSaveMenuTitle(this);
+		s32 lines        = 2;
+		bool showMessage = false;
+		char text[256];
+		switch (mMode) {
+		case 1:
+			if (mSaved == 1) {
+				lines = SaveStatusLines(this, 4, panelX, panelY);
+			}
+			break;
+		case 2:
+			sprintf(text, "%s", GetLocalizedInterfaceText(0xEF));
+			showMessage = true;
+			break;
+		case 3:
+			sprintf(text, "%s", GetLocalizedInterfaceText(0xAE));
+			showMessage = true;
+			break;
+		case 4:
+			if (mPhase == 0) {
+				lines = SaveStatusLines(this, 4, panelX, panelY);
+			} else {
+				sprintf(text, "%s", GetLocalizedInterfaceText(0xEA));
+				showMessage = true;
+			}
+			break;
+		case 5:
+			lines = SaveStatusLines(this, 4, panelX, panelY);
+			break;
+		case 8: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0) {
+				lines = DrawSaveLinesAt(this, 5, x, y);
+			} else {
+				lines = DrawSaveLinesAt(this, 6, x, y);
+			}
+			break;
+		}
+		case 9:
+			lines = SaveStatusLines(this, 7, panelX, panelY);
+			break;
+		case 10: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0) {
+				lines = DrawSaveLinesAt(this, 7, x, y);
+			} else {
+				lines = DrawSaveLinesAt(this, 9, x, y);
+			}
+			break;
+		}
+		case 6:
+		case 11:
+			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 320.0f + panelX, SaveMessageY(this, panelY), 21.0f, mDrawAlpha);
+			break;
+		case 12:
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
+			break;
+		case 13:
+			if (mResult == -4) {
+				lines = SaveStatusLines(this, 13, panelX, panelY);
+			} else if ((u32)(mResult + 3) <= 1) {
+				lines = SaveStatusLines(this, 16, panelX, panelY);
+			} else {
+				lines = SaveStatusLines(this, 17, panelX, panelY);
+			}
+			break;
+		case 14:
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
+			break;
+		case 15:
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
+			break;
+		case 19:
+			lines = SaveStatusLines(this, 10, panelX, panelY);
+			break;
+		case 18:
+			lines = SaveStatusLines(this, 11, panelX, panelY);
+			break;
+		case 16:
+		case 17:
+			break;
+		}
+		if (lines <= 2) {
+			lines = 2;
+		}
+		mOffset = -(lines - 2) * 21;
+		if (showMessage) {
+			f32 y     = SaveMessageY(this, panelY);
+			u32 color = (u32)(255.0f * mDrawAlpha);
+			f32 x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f;
+			DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, 21.0f, 21.0f);
+		}
+		switch (mMode) {
+		case 3:
+		case 8: {
+			f32 lineOffset = 0.0f;
+			if (lines > 1) {
+				lineOffset = (lines - 2) * 21;
+			}
+			f32 barX       = mChoice == 0 ? 281.25f : 358.75f;
+			f32 barWidth   = 61.5f;
+			f32 baseLabelY = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
+			f32 labelY     = lineOffset + (baseLabelY + mBannerSlide);
+			{
+				CTexObj tex;
+				f32 opacity = mDrawAlpha, textureOffset = mTexScroll;
+				u32 barColor = (u32)(200.0f * opacity) | 0x181CC600;
+				InitMenuSelectionBar(tex);
+				DrawMenuSelectionBar(tex, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f, opacity, textureOffset, barColor);
+			}
+			labelY = lineOffset + (baseLabelY + mBannerSlide);
+			if (IsJapanese()) {
+				DrawSaveChoiceLabel(this, 0x66, 281.25f, labelY);
+				DrawSaveChoiceLabel(this, 0x67, 358.75f, labelY);
+			} else {
+				DrawSaveChoiceLabel(this, 0x66, 283.25f, labelY - 1.0f);
+				DrawSaveChoiceLabel(this, 0x67, 360.75f, labelY - 1.0f);
+			}
+			break;
+		}
+		}
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		if ((mMode == 13 || mMode == 11) && gSaveFatal.mActive && gSaveFatal.mMessage != NULL) {
+			OSFatal(gSaveFatal.mFg, gSaveFatal.mBg, gSaveFatal.mMessage);
+		}
+		return TRUE;
+	}
+	return FALSE;
 }
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
