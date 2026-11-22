@@ -283,7 +283,7 @@ void CCameraActionScroll2::Update(u32 step)
 	}
 
 	f32 zoom = gWiiPointer.mStick.y;
-	if (fabs(zoom) != 0.0f) {
+	if (nw4r::math::FAbs(zoom) != 0.0f) {
 		zoom *= gFrameRateScale;
 	}
 	if (zoom != 0.0f) {
