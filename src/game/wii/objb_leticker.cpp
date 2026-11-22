@@ -13,8 +13,9 @@
 
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 extern "C" void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // retires the event effect with that id
-
-extern const AnimSfxEvent lbl_80309360[]; // the leticker's lid sound event table
+extern "C" void UpdateObjectFloorXZExtent(XObj* object);
+extern "C" void UpdateObjectFloorHeights(XObj* object);
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 
 // which of the leticker's four sides angle is closest to, counting quarter turns
 // counterclockwise; the GameCube reads Cos/Sin off a table, the Wii uses MSL cosf/sinf
@@ -31,6 +32,109 @@ static inline s32 GetSide(f32 angle)
 		side = 3;
 	}
 	return side;
+}
+
+// the floor boxes; the GameCube tables carry the same numbers minus mFlags
+static XObjFloor sLetickerLiftFloor0[2] = {
+	{ 2, 0, 1, { 0, 0, 0 }, 0, { 1200, 5000, 1200 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLiftFloor1[2] = {
+	{ 2, 0, 3, { 0, 517, 0 }, 0, { 1216, 878, 1216 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel10Floors[5] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -22750 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -28600 }, 0, { 600, 150, 2650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel9Floors[4] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -22750 }, 0, { 600, 150, 7650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel8Floors[4] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -21300 }, 0, { 600, 150, 5000 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel7Floors[4] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -19600 }, 0, { 600, 150, 2650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel6Floors[3] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel5Floors[3] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -12350 }, 0, { 600, 150, 5000 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel4Floors[3] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ 2, 0, 1, { 0, 1000, -10650 }, 0, { 600, 150, 2650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel3Floors[2] = {
+	{ 2, 0, 1, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel2Floors[2] = {
+	{ 2, 0, 1, { 0, 1000, -3200 }, 0, { 600, 150, 5000 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel1Floors[2] = {
+	{ 2, 0, 1, { 0, 1000, -1500 }, 0, { 600, 150, 2650 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+static XObjFloor sLetickerLevel0Floors[2] = {
+	{ 2, 0, 1, { 0, 2564, 6 }, 0, { 604, 2827, 121 } },
+	{ -1, 0, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
+};
+
+// the floor boxes active at each level, picked by mCurrentLevel
+static XObjFloor* sLetickerFloorsByLevel[] = {
+	sLetickerLevel0Floors, sLetickerLevel1Floors, sLetickerLevel2Floors,  sLetickerLevel3Floors,
+	sLetickerLevel4Floors, sLetickerLevel5Floors, sLetickerLevel6Floors,  sLetickerLevel7Floors,
+	sLetickerLevel8Floors, sLetickerLevel9Floors, sLetickerLevel10Floors,
+};
+
+// anim 7 plays sound 0x1FD at frame 10
+static AnimSfxEvent sLetickerAnimSfxEvents[] = {
+	{ 7, 10.0f, -1.0f, 1, 5, 0x1FD, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static XObjFloor* sLetickerLiftFloors[2] = { sLetickerLiftFloor0, sLetickerLiftFloor1 };
+
+// sets the object's floor boxes, they take effect at once
+static inline void SetFloors(XObj* obj, XObjFloor* floors)
+{
+	obj->mFloors        = floors;
+	obj->mFloorMasks[1] = 0;
+	obj->mFloorMasks[0] = 0;
+	UpdateObjectFloorXZExtent(obj);
+	UpdateObjectFloorHeights(obj);
 }
 
 /**
@@ -71,7 +175,7 @@ void XObjLeticker::ResetObjectState()
 	mHeading       = 0.0f;
 	mBox[0].mId    = -1;
 	mBox[1].mId    = -1;
-	mSfx.Init((WiiPlayerState*)this, (AnimSfxEvent*)lbl_80309360);
+	mSfx.Init((WiiPlayerState*)this, sLetickerAnimSfxEvents);
 }
 
 /**
@@ -82,11 +186,11 @@ void XObjLeticker::UpdateObject(u32 frames)
 {
 	if (GetAnimId() == 1) {
 		if (GetAnimEndFrame() <= frames + GetAnimFrame()) {
-			SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 	} else if (GetAnimId() == 3) {
 		if (GetAnimEndFrame() <= frames + GetAnimFrame()) {
-			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 	}
 	XObj::UpdateObject(frames);
@@ -99,122 +203,199 @@ void XObjLeticker::UpdateObject(u32 frames)
 }
 
 /**
- * @note Address: 0x8011C504
- * @note Size: 0x95C
- * @note NONMATCHING: ported from the GameCube body; the Wii retail function is
- * present but the port is not written yet
+ * @note Address: 0x8011A608
+ * @note Size: 0x3D4
  */
-
-/**
- * @note Address: 0x8011D030
- * @note Size: 0x1B8
- */
-void XObjLeticker::OnPushDisplacement(const Vec& displacement)
+void XObjLeticker::StateLift()
 {
-	for (s32 i = 0; i < mLinkedCount; i++) {
-		XObj* part = gGame.mXObjs.mObjects[mLinked[i]];
-		part->SetTranslateX(GetPos()->x);
-		part->SetTranslateZ(GetPos()->z);
+	XObj* base = gGame.mXObjs.mObjects[mLinked[0]];
+	XObj* top  = gGame.mXObjs.mObjects[mLinked[1]];
+	if (base == NULL || top == NULL) {
+		return;
 	}
-	if (0.0f < PSVECMag(&displacement)) {
-		SetColor(1, 0, 0, 0, 0.5f);
-		SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+	f32 height = 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f;
+	if (mHeight == height) {
+		mReachedTargetHeight = TRUE;
+	} else if (mHeight < height) {
+		mHeight += 0.5f;
+		if (height < mHeight) {
+			mHeight = height;
+		}
+	} else if (height < mHeight && 0.0f < mHeight) {
+		mHeight -= 0.5f;
+		if (mHeight < 0.0f) {
+			mHeight = 0.0f;
+		}
+	}
+	if (mHeight <= 2.5f) {
+		mHeight = 2.5f;
+	}
+	s32 step = mHeight / 4.0f; // each level is four units of height
+	if (mCurrentLevel != step) {
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0x115)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x115, 1.0f, 0.0f);
+		}
+		SetGameSfxPitch(&gGame.mSound, 0x115, (s16)(600.0f * (mSpeedScale - 1.0f)), 0.0f);
+		mCurrentLevel        = step;
+		mReachedTargetHeight = FALSE;
+	}
+	top->SetTranslateY(9.0f + (mHeight + GetPos()->y));
+	mStackTopPosition = *top->GetPos();
+	if (mStatus.mFlags & 0x0800000000000000ULL) {
+		f32 h;
+		if (mHeight < 10.0f) {
+			h = 19.0f;
+		} else {
+			h = 5.0f + (9.0f + mHeight) - 2.0f;
+		}
+		sLetickerLiftFloors[0]->mExtent[1]       = (s32)h * 100;
+		sLetickerLiftFloors[0]->mCenterOffset[1] = (s32)(h / FSqrt(3.0f)) * 100;
+		SetFloors(this, sLetickerLiftFloors[0]);
 	} else {
-		SetColor(1, 0xFF, 0, 0, 1.0f);
-		SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		mBox[0].mCenterOffset[1] = (s32)((mHeight - 12.5f) / 4.0f) * 0xA9 + 0x654;
+		mBox[0].mExtent[1]       = (s32)((mHeight - 12.5f) / 4.0f) * 400 + 1000;
+		base->mFloors            = mBox;
+		base->mFloorMasks[1]     = 0;
+		base->mFloorMasks[0]     = 0;
+		UpdateObjectFloorHeights(base);
+		SetFloors(this, sLetickerLiftFloors[1]);
+		SetColor(1, 0, 0, 0, 0.5f);
+		SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	}
-	if (mPtcl) {
-		fn_800A12F8(&gGame.mEvtPtcl, 0xA5, FALSE);
-		mPtcl = FALSE;
+}
+
+/**
+ * @note Address: 0x8011A9DC
+ * @note Size: 0x444
+ */
+void XObjLeticker::StateCount()
+{
+	XObj* part;
+	s32 count = (s32)mLevelProgress / 10;
+	if (mMaxLevel < count) {
+		count = 10;
+	}
+	part = gGame.mXObjs.mObjects[mLinked[0]];
+	if (mUnwindWatch && mUnwindAnim != part->GetAnimId()) { // another anim cut in ahead of the queued unwind
+		mUnwindSuperseded = TRUE;
+		mUnwindWatch      = FALSE;
+	}
+	if (mCurrentLevel != count) {
+		if (part->GetAnimEndFrame() + part->GetAnimRate(1) <= part->GetAnimFrame()) {
+			if (mCurrentLevel < count) {
+				mCurrentLevel++;
+				f32 rate = 1.0f;
+				if (!mPowered) {
+					rate = 8.0f;
+				}
+				part->SetAnim(mCurrentLevel, FALSE, 0.0f, rate, 0.0f, 15.0f);
+			} else if (mPowered) { // a powered unwind steps back down at double rate
+				mCurrentLevel--;
+				part->SetAnim(24 - mCurrentLevel, FALSE, 0.0f, 2.0f, 0.0f, 15.0f);
+				if (mCurrentLevel == 0) {
+					part->PushAnim(0, 0, 100);
+					mUnwindWatch = TRUE;
+					mUnwindAnim  = 24 - mCurrentLevel;
+				}
+			} else {
+				mLevelProgress = (mCurrentLevel - 1) * 10;
+			}
+			if (mPowered) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x119, 1.0f, 0.0f);
+				SetGameSfxPitch(&gGame.mSound, 0x119, (s16)(600.0f * (mSpeedScale - 1.0f)), 0.0f);
+			}
+		}
+		SetFloors(part, sLetickerFloorsByLevel[mCurrentLevel]);
+	}
+	if (!(mStatus.mFlags & 0x0800000000000000ULL)) {
+		SetColor(1, 0, 0, 0, 0.5f);
+		SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	}
 }
 
 /**
- * @note Address: 0x8011CE60
- * @note Size: 0x1D0
+ * @note Address: 0x8011AE20
+ * @note Size: 0xE4
  */
-void XObjLeticker::OnUnplugged()
+void XObjLeticker::StateRide()
 {
-	if (mState != 3) {
-		gGame.ClearStatusFlags(0x80);
-		gGame.mMotionControlCamera.PopAction();
+	WiiPlayerState* player  = gGame.GetPlayer();
+	nw4r::g3d::ResNode node = GetResNodeOrFirst(0xD);
+	switch (mStep) {
+	case 0:
+		break;
+	case 10: {
+		Vec pos;
+		pos.x = pos.z = 0.0f;
+		pos.y         = 0.5f;
+		PSMTXMultVec(GetWorldMtx(node), &pos, &pos);
+		player->SetPos(pos);
+		player->SetRotationY(player->mMoveRotate.y - 0.5235988f);
+		break;
 	}
-	mPowered    = FALSE;
-	mPowerTimer = 0;
-	if (mState == 2) {
-		mMaxLevel         = mLevelBySide[GetSide(mHeading)];
-		mMaxLevelProgress = 10.0f * mMaxLevel;
-		mLevelProgress    = 10.0f * mCurrentLevel;
 	}
-	SetColor(1, 0, 0, 0, 0.5f);
-	SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
 /**
- * @note Address: 0x8011C500
- * @note Size: 0x4
+ * @note Address: 0x8011AF04
+ * @note Size: 0xE4
  */
-void XObjLeticker::OnHitFromPosition(const Vec& position, f32 strength)
+void XObjLeticker::DrawObject()
 {
+	DrawWithView(NULL);
+	GetPos();
+	switch (mState) {
+	case 1:
+		gGame.mXObjs.mObjects[mLinked[0]]->GetResNodeOrFirst(7);
+		break;
+	case 2:
+		gGame.mXObjs.mObjects[mLinked[0]]->mStatus.mFlags &= ~0x80000000ULL;
+		break;
+	case 3:
+		break;
+	}
 }
 
 /**
- * @note Address: 0x8011D89C
- * @note Size: 0x14
+ * @note Address: 0x8011B1A0
+ * @note Size: 0x3D0
  */
-void XObjLeticker::ResumeSounds(f32 fade)
+void XObjLeticker::DrawObjectEffects()
 {
-	mSfx.Resume(fade);
-}
-
-/**
- * @note Address: 0x8011D8B0
- * @note Size: 0x14
- */
-void XObjLeticker::PauseSounds(f32 fade)
-{
-	mSfx.Pause(fade);
-}
-
-/**
- * @note Address: 0x8011D8C4
- * @note Size: 0x8
- */
-f32 CCameraActionLeticker::GetFollowDivisor()
-{
-	return 0.1f;
-}
-
-/**
- * @note Address: 0x8011D8CC
- * @note Size: 0x8
- */
-u32 CCameraActionLeticker::GetCameraFlags()
-{
-	return 11;
-}
-
-/**
- * @note Address: 0x8011D8DC - the deleting destructor sits between GetCameraFlags
- * and GetMode in retail, the compiler picks its own spot
- */
-
-/**
- * @note Address: 0x8011D8D4
- * @note Size: 0x8
- */
-u32 CCameraActionLeticker::GetMode()
-{
-	return 0;
-}
-
-/**
- * @note Address: 0x8011D91C
- * @note Size: 0x20
- */
-Vec CCameraActionLeticker::GetCameraTarget()
-{
-	return *mTarget;
+	XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+	switch (mState) {
+	case 3:
+		if (!(0.0f < mLevelProgress) || (!mPowered && part->GetAnimId() != 1)) {
+			break;
+		}
+		Mtx mtx;
+		u32 colors[50];
+		Vec pts[50];
+		Vec pos = *GetPos();
+		PSMTXTrans(mtx, pos.x, pos.y, pos.z);
+		f32 twist = 6.0f * (mLevelProgress / mMaxLevelProgress) * (f32)sin(DEG2RAD * (mFuncTime * 5)) + 72.0f;
+		u32 i;
+		for (i = 0; i < 50; i++) { // a helix of points rising and twisting with progress
+			f32 angle = DEG2RAD * mFuncTime + DEG2RAD * (twist * (s32)i);
+			f32 y     = 12.0f + 0.2f * (24.0f * (s32)i / 50.0f) * mLevelProgress / mMaxLevelProgress;
+			pts[i].x  = 7.1f * (f32)sin(angle);
+			pts[i].y  = y;
+			pts[i].z  = 7.1f * (f32)cos(angle);
+			colors[i] = ((48 - (s32)i) * 32 / 48 + 32) | 0x40F000; // the low channel fades along the strip
+		}
+		pts[49].x = pts[44].x;
+		pts[49].y = pts[44].y;
+		pts[49].z = pts[44].z;
+		PSMTXMultVecArray(mtx, pts, pts, 50);
+		DrawGsColoredLineStrip(&gGame.mGs, pts, colors, 50);
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0x11D)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x11D, GetSoundVolumeAtPosition(&gGame.mSound, part->GetPos(), 0), 0.0f);
+			SetGameSfxPitch(&gGame.mSound, 0x11D, (s16)(600.0f * (mSpeedScale - 1.0f)), 0.0f);
+		} else {
+			SetWiiSfxVolume(&gGame.mSound, 0x11D, GetSoundVolumeAtPosition(&gGame.mSound, part->GetPos(), 0), 0.0f);
+		}
+		break;
+	}
 }
 
 extern "C" {
@@ -292,6 +473,131 @@ bool IsLetickerJointClearOfObjects(XObj* obj, nw4r::g3d::ResNode node)
 }
 
 } // extern "C"
+
+/**
+ * @note Address: 0x8011BA00
+ * @note Size: 0xB00
+ * @note NONMATCHING: HandleEventCommand - the Wii port is not written yet
+ */
+
+/**
+ * @note Address: 0x8011C500
+ * @note Size: 0x4
+ */
+void XObjLeticker::OnHitFromPosition(const Vec& position, f32 strength)
+{
+}
+
+/**
+ * @note Address: 0x8011C504
+ * @note Size: 0x95C
+ * @note NONMATCHING: ported from the GameCube body; the Wii retail function is
+ * present but the port is not written yet
+ */
+
+/**
+ * @note Address: 0x8011CE60
+ * @note Size: 0x1D0
+ */
+void XObjLeticker::OnUnplugged()
+{
+	if (mState != 3) {
+		gGame.ClearStatusFlags(0x80);
+		gGame.mMotionControlCamera.PopAction();
+	}
+	mPowered    = FALSE;
+	mPowerTimer = 0;
+	if (mState == 2) {
+		mMaxLevel         = mLevelBySide[GetSide(mHeading)];
+		mMaxLevelProgress = 10.0f * mMaxLevel;
+		mLevelProgress    = 10.0f * mCurrentLevel;
+	}
+	SetColor(1, 0, 0, 0, 0.5f);
+	SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+/**
+ * @note Address: 0x8011D030
+ * @note Size: 0x1B8
+ */
+void XObjLeticker::OnPushDisplacement(const Vec& displacement)
+{
+	for (s32 i = 0; i < mLinkedCount; i++) {
+		XObj* part = gGame.mXObjs.mObjects[mLinked[i]];
+		part->SetTranslateX(GetPos()->x);
+		part->SetTranslateZ(GetPos()->z);
+	}
+	if (0.0f < PSVECMag(&displacement)) {
+		SetColor(1, 0, 0, 0, 0.5f);
+		SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	} else {
+		SetColor(1, 0xFF, 0, 0, 1.0f);
+		SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	}
+	if (mPtcl) {
+		fn_800A12F8(&gGame.mEvtPtcl, 0xA5, FALSE);
+		mPtcl = FALSE;
+	}
+}
+
+/**
+ * @note Address: 0x8011D89C
+ * @note Size: 0x14
+ */
+void XObjLeticker::ResumeSounds(f32 fade)
+{
+	mSfx.Resume(fade);
+}
+
+/**
+ * @note Address: 0x8011D8B0
+ * @note Size: 0x14
+ */
+void XObjLeticker::PauseSounds(f32 fade)
+{
+	mSfx.Pause(fade);
+}
+
+/**
+ * @note Address: 0x8011D8C4
+ * @note Size: 0x8
+ */
+f32 CCameraActionLeticker::GetFollowDivisor()
+{
+	return 0.1f;
+}
+
+/**
+ * @note Address: 0x8011D8CC
+ * @note Size: 0x8
+ */
+u32 CCameraActionLeticker::GetCameraFlags()
+{
+	return 11;
+}
+
+/**
+ * @note Address: 0x8011D8DC - the deleting destructor sits between GetCameraFlags
+ * and GetMode in retail, the compiler picks its own spot
+ */
+
+/**
+ * @note Address: 0x8011D8D4
+ * @note Size: 0x8
+ */
+u32 CCameraActionLeticker::GetMode()
+{
+	return 0;
+}
+
+/**
+ * @note Address: 0x8011D91C
+ * @note Size: 0x20
+ */
+Vec CCameraActionLeticker::GetCameraTarget()
+{
+	return *mTarget;
+}
 
 // the action HandleEventCommand pushes while the leticker's camera is bounded;
 // retail's __sinit constructs it in this unit

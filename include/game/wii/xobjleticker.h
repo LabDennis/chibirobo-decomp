@@ -59,7 +59,10 @@ public:
 	f32 mSpeedScale;         // _A5C, the placement's speed multiplier
 	s32 mState;              // _A60, the leticker's state (0 idle, 2 unplugged, 3 riding); retail compares it signed
 	AnimSfx mSfx;            // _A64, the lid's animation sound effects
-	u8 _AC0[8];              // _AC0, the pool stride runs to 0xAC8
+	u8 mUnwindSuperseded;    // _AC0, the queued unwind anim was replaced, StateCount watches it
+	u8 mUnwindWatch;         // _AC1, StateCount queued an unwind anim on the linked part
+	u8 _AC2[2];
+	s32 mUnwindAnim; // _AC4, the anim id StateCount expects the queue to reach
 };
 STATIC_ASSERT(sizeof(XObjLeticker) == 0xAC8);
 STATIC_ASSERT(offsetof(XObjLeticker, mLinkedCount) == 0x9C0);
