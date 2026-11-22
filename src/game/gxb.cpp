@@ -2186,7 +2186,8 @@ static inline void MoveYesNo(Title* title, CPad& pad)
  * @note Address: 0x80028BAC
  * @note Size: 0x5BC
  */
-// NONMATCHING: the loop's float registers are assigned in another order
+// NONMATCHING: the loop's float registers are assigned in another order (the rot and pop products after the alpha
+// conversion take f0/f4 in retail, f1/f5/f0 here; i and the colour mask swap r25/r26)
 // draws the title's name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawTitleNameBubbles(Title* title)
 {
