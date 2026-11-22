@@ -16,11 +16,13 @@ Sections:
 game/game.cpp:
 	.text       start:0x800078A0 end:0x8001BFBC
 	.ctors      start:0x80200064 end:0x80200068
-	.data       start:0x8021631C end:0x8021633C
-	.bss        start:0x80262F40 end:0x80368A10 align:4
-	.sdata      start:0x80660D40 end:0x80660D44
-	.sbss       start:0x80661FE8 end:0x80662018
-	.sbss2      start:0x806670A8 end:0x806670B8
+	.rodata     start:0x802000E0 end:0x80200908
+	.data       start:0x802162C0 end:0x80216C08
+	.bss        start:0x80262E00 end:0x80368A10 align:4
+	.sdata      start:0x80660D40 end:0x8066101C
+	.sbss       start:0x80661FE0 end:0x80662018
+	.sdata2     start:0x80662BE0 end:0x80662E48
+	.sbss2      start:0x806670A0 end:0x806670B8
 game/fbmirrorex.cpp:
 	.text       start:0x8001BFBC end:0x8001CBDC
 

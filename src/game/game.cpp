@@ -777,6 +777,10 @@ extern f32 gScreenWidthScale; // against the GameCube's 640
 
 CmdLineArgs gCmdLineArgs = { -1, -1, 3, 0, 0, 0, { 0, 0, 0 }, 3, 2, 1, 0, 0, -1 };
 
+#if defined(VERSION_PAL)
+extern "C" u8 gGameLanguageMap[12] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 0 };
+#endif
+
 /**
  * @note Address: 0x80013580
  * @note Size: 0xCC
