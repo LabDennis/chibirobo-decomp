@@ -208,7 +208,10 @@ static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 }
 
 // Positions the props Jenny holds and turns the carried player toward her head.
-// NONMATCHING: regalloc, the path walks hold the joint and the path pointer in each other's register; the stack matches
+// NONMATCHING: regalloc, the path walks hold the joint and the path pointer in each other's register (US 0x80123364
+// lwz r9, 0x0(r29) / addi r10, r1, 0x230); the stack matches. The same swap is in Mama's, Tao's, Deca's and Papa's
+// UpdateAfterAnim. Not moved by: GetJointByPath (keeps the joint in r9 but forms the path late), a joint local, a named
+// path array, other loop spellings of FindJointByPath, or a wrapper taking the object
 void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
 	UpdateAfterAnim__9XObjActorFUl(this, frames);

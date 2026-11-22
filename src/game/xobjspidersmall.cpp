@@ -2275,7 +2275,10 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
  * @note Address: 0x800FF168
  * @note Size: 0x998
  */
-// NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
+// NONMATCHING: the three stage tests of case 0 compare the stage first (US 0x800FF73C, 0x800FF77C, 0x800FF7F8
+// cmpw r28, r3) where IsStage, as everywhere else in this file, compares the lookup first (0x800FCC78 cmpw r3, r27).
+// Reading the stage into a local and testing stage == FindStageIndexByName(name) gives retail's code, but only as a
+// second IsStage; gGame.mStage == FindStageIndexByName(name) written at the sites moves the gGame base (97.5 %)
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
 	spider->SetColor(1, 0, 0, 0, 0.0f);

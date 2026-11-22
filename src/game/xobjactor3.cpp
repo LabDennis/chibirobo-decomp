@@ -493,7 +493,8 @@ void XObjActor3::Kind5(u32 frames)
  * @note Address: 0x8011463C
  * @note Size: 0xB8
  */
-// NONMATCHING: register allocation
+// NONMATCHING: register allocation, retail holds the item id in r29 and the count in r28 (US 0x8011468C); the ids
+// declared in the loop body read the same, an InventoryItem& for the slot scores lower
 void XObjActor3::Kind6(u32 frames)
 {
 	s16 id;
@@ -1318,7 +1319,8 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
  * @note Size: 0xC8
  */
 // starts the n-th kind 0xB actor
-// NONMATCHING: register allocation
+// NONMATCHING: register allocation (retail loads the stride into r11 before the zero offset in r8, US 0x8010FDC0);
+// a Get(i) loop and reading the pool through gGame at each use both score lower
 extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 {
 	XObjActor3* obj;

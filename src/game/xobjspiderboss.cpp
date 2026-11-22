@@ -1232,7 +1232,9 @@ static inline void TurnTowardPoint(XObjSpiderBoss* boss, s32 readyStep)
 
 // NONMATCHING: retail's frame is 0x20 smaller, it builds each patrol effect's rotation straight in the copy it passes to
 // CreateSRT where this build makes the local and copies it (same in OnHitFromPosition, no source form found). The patrol
-// points and effect vectors also sit 0x24 lower in .rodata, for the unread Vecs named at State3.
+// points and effect vectors also sit 0x24 lower in .rodata, for the unread Vecs named at State3. Case 0 forms the
+// patrol-point pointer before the candidates' (US 0x8010064C addi r4, r29, 0x12c); copying by index (candidates[n++])
+// instead of the walked pointer is worse (93.9 %), and (Vec) { 0, mTargetRotY, 0 } at the call keeps the copy.
 void XObjSpiderBoss::State4(u32 frames)
 {
 	CPad pad(0);
