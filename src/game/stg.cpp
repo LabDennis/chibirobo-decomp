@@ -3397,18 +3397,6 @@ static inline void SetStatusIconCell(CTexObj& tex, int cell)
 	tex.mMtxDirty = TRUE;
 }
 
-static inline void DrawCalloutIcon(CTexObj& tex, s32 cell, u32 white, f32 x, f32 y)
-{
-	if (cell == 14) {
-		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusSingleIcon], 0);
-		DrawCalloutSprite(tex, white, x - 10.8f, y + 9.0f, 21.6f);
-	} else {
-		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
-		SetStatusIconCell(tex, cell);
-		DrawCalloutSprite(tex, white, x - 10.8f, y + 9.0f, 21.6f);
-	}
-}
-
 static inline void DrawStatusDot(CTexObj& tex, u32 color, f32 x, f32 y, f32 size)
 {
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
@@ -3429,18 +3417,28 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 		                 { 10, GetLocalizedInterfaceText(StatusTextBase + 5) }, { 11, GetLocalizedInterfaceText(StatusTextBase + 6) },
 		                 { 12, GetLocalizedInterfaceText(StatusTextBase + 7) }, { 13, GetLocalizedInterfaceText(StatusTextBase + 8) },
 		                 { 14, GetLocalizedInterfaceText(StatusTextBase + 9) } };
-	MeasureGameTextWidth(&gGame.mGs, labels[id].text, 1, 18.0f);
-	f32 alpha   = 255.0f;
-	u32 opacity = (u32)alpha;
+	f32 size         = 18.0f;
+	MeasureGameTextWidth(&gGame.mGs, labels[id].text, 1, size);
+	f32 alpha = 255.0f;
 	for (int i = 0; i < 4; i++)
-		DrawGsProportionalTextFormat(&gGame.mGs, opacity, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, 18.0f,
-		                             18.0f);
-	u32 white = opacity | 0xFFFFFF00;
-	DrawGsProportionalTextFormat(&gGame.mGs, white, labels[id].text, x, y, 0.0f, 18.0f, 18.0f);
-	DrawCalloutIcon(tex, labels[id].cell, white, x, y);
+		DrawGsProportionalTextFormat(&gGame.mGs, (u32)alpha, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, size,
+		                             size);
+	u32 white = (u32)alpha | 0xFFFFFF00;
+	DrawGsProportionalTextFormat(&gGame.mGs, white, labels[id].text, x, y, 0.0f, size, size);
+	if (labels[id].cell == 14) {
+		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusSingleIcon], 0);
+		DrawCalloutSprite(tex, white, x - 10.8f, y + size / 2.0f, 21.6f);
+	} else {
+		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
+		PSMTXScale(tex.mMtx[1], 1.0f / StatusIconCells, 1.0f, 1.0f);
+		tex.mMtxDirty = TRUE;
+		PSMTXTrans(tex.mMtx[0], (1.0f / StatusIconCells) * labels[id].cell, 0.0f, 0.0f);
+		tex.mMtxDirty = TRUE;
+		DrawCalloutSprite(tex, white, x - 10.8f, y + size / 2.0f, 21.6f);
+	}
 	x = (x - 21.6f) - 10.8f;
 	y += 10.8f;
-	u32 shadow    = opacity | 0x14141400;
+	u32 shadow    = (u32)alpha | 0x14141400;
 	Vec border[3] = { { x, y, 0.0f }, { targetX, y, 0.0f }, { targetX, targetY, 0.0f } };
 	SetGsLineWidth(gGame.mGs.mCurRenderMode, 18, 5);
 	DrawGsLineStrip(&gGame.mGs, border, shadow, 3);
