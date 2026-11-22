@@ -2016,7 +2016,11 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 // NONMATCHING: float and saved registers (lines and the text color swap r26/r27); the bar's last quad adds 2.0f to barX
 // variable-first in retail (US 0x8002A95C fadds f1, f29, f0), constant-first here. The bar's y is barY + inset: retail adds
 // the 2.0f at each quad, variable-first (US 0x8002A7B4, 0x8002A81C fadds f2, f25, f0), which a literal 2.0f folds into one
-// add. JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
+// add; the same 2.0f register feeds the x add, so that 2 was a variable here and in MenuSave::Draw (0x8003A9E4), while
+// DrawPCShopList adds a literal (0x800422F0 fadds f1, f1, f27, and one y add at 0x80042158). An inset parameter of
+// DrawMenuSelectionBar, a local inside it, or barX + 2.0f give the variable-first x here but also in DrawPCShopList
+// (a literal bound to an inline parameter keeps the body's operand order), so one inline cannot produce both shapes.
+// JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
 // forwards them past it (a color local and a JP DrawLoadText inline taking x by value are identical)
 extern "C" void DrawTitleLoadScreen(Title* title)
 {

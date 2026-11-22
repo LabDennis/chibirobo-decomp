@@ -8999,10 +8999,9 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
 }
 
-// NONMATCHING: retail computes 8.0f + labelY before the bar colour (US 0x8003A6F4) and adds 2.0f again at each
-// quad of the selection bar with the variable first (0x8003A83C, 0x8003A8A4, 0x8003A910, 0x8003A9EC); the build
-// passes one folded value. DrawTitleLoadScreen has the same block and the same shape (0x8002A7B4), so the 2 came
-// through a parameter of a helper both shared, which DrawMenuSelectionBar is not. The rest is register allocation.
+// NONMATCHING: the selection bar's fill quad adds 2.0f to barX variable-first in retail (US 0x8003A9E4 fadds f1, f30,
+// f0, the same register as barY's inset), constant-first here; see DrawTitleLoadScreen for the forms tried. The rest
+// is register allocation.
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
@@ -9160,16 +9159,16 @@ BOOL MenuSave::Draw()
 			f32 barWidth = 61.5f;
 #endif
 			f32 baseLabelY = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
-			f32 labelY     = lineOffset + (baseLabelY + mBannerSlide);
 
 			{
 				CTexObj tex;
 				f32 opacity = mDrawAlpha, textureOffset = mTexScroll;
+				f32 barY = 8.0f + (lineOffset + (baseLabelY + mBannerSlide)), inset = 2.0f;
 				u32 barColor = (u32)(200.0f * opacity) | 0x181CC600;
 				InitMenuSelectionBar(tex);
-				DrawMenuSelectionBar(tex, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f, opacity, textureOffset, barColor);
+				DrawMenuSelectionBar(tex, barX, barY + inset, barWidth, 22.0f, opacity, textureOffset, barColor);
 			}
-			labelY = lineOffset + (baseLabelY + mBannerSlide);
+			f32 labelY = lineOffset + (baseLabelY + mBannerSlide);
 #if defined(VERSION_JP)
 			f32 labelX = 320.0f + panelX - SavePromptHalfWidth(cells);
 			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mDrawAlpha), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
