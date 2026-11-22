@@ -1312,6 +1312,7 @@ typedef struct HSD_SynthSFXEntry {
  * @note Address: 0x801ED444
  * @note Size: 0x740
  */
+// NONMATCHING: register allocation only; linking the second voices (sfxID -1, -3) retail swaps the voice pointer and constant registers
 s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clamp1, u8 clamp2, u8 pan, f32 mixMain, f32 mixAuxA,
                 f32 mixAuxB, u8 span, s32 priority, s32 channel, s32 rear, s32 panItd)
 {
@@ -2567,6 +2568,7 @@ s32 HSD_SynthSFXCheck(s32 id)
  * @note Address: 0x801EE0DC
  * @note Size: 0x220
  */
+// NONMATCHING: register allocation only; retail has frames, changed in r29, r30 and the user_vol offset, pointer in r28, r27
 void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
 {
 	HSD_SynthSFXNode* node;
