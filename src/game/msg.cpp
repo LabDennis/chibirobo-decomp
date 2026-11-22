@@ -6459,7 +6459,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
  * @note Address: 0x80085444
  * @note Size: 0x6F0
  */
-// NONMATCHING: float colouring (scaleX/angle/scaleY, cellWidth with width still live), the SetChar glyph read as lwzx in retail
+// NONMATCHING: float colouring (retail has scaleX in f29, angle in f28), the icon index copied out of r0, the SetChar read as lwzx
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
 	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
@@ -6536,14 +6536,14 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 scaleY = (-font->mSize / 2.0f) * sy;
 	font->mGlyphs[font->mCharCount].mSprite.SetScale(scaleX, scaleY, 1.0f);
 	f32 angle;
-	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
+	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle, the range is worked out in angle
 	if (font->mGlyphAngle >= 0.0f) {
 		angle = font->mGlyphAngle;
 	} else {
-		f32 range = 2.0f * font->mGlyphAngle;
-		if (range < 0.0f)
-			range = -range;
-		f32 delta = fmod((f32)rand(), RAD2DEG * range);
+		angle = 2.0f * font->mGlyphAngle;
+		if (angle < 0.0f)
+			angle = -angle;
+		f32 delta = fmod((f32)rand(), RAD2DEG * angle);
 		angle     = DEG2RAD * delta + font->mGlyphAngle;
 	}
 	font->mGlyphs[font->mCharCount].mSprite.SetRot(0.0f, 0.0f, angle);
