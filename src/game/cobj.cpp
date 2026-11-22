@@ -176,6 +176,11 @@ void ObjectArchiveReadDone(s32, s32* state)
  * @note Address: 0x801A415C
  * @note Size: 0x1AC
  */
+// NONMATCHING: identical instruction stream; retail binds path/this/result to
+// r31/r30/r29, ours to r30/r29/r31 (register colouring of the three saved
+// values) and the halt-path literals are anonymous pools on our side
+// (@NNNN vs sObjectHaltMessage/lbl_8065F750/sPathCobjCpp/sObjectReadAsyncName/
+// lbl_8065F738) — allocation + referent naming, no source lever.
 BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32 aramAddr, u32 size)
 {
 	mArchive  = archive;
@@ -1712,8 +1717,12 @@ BOOL CXObj::ReadCheck()
  * @note Size: 0x134
  */
 // NONMATCHING: retail keeps &mTranslate, &mRotate and &mScale in a register, the code MWCC gives when
-// CJObj::Attach runs on a member (mIntp.Attach in CXObjIntp::ReadCheck) and not on the base of this.
-// Retail calls both Attach and the base ReadCheck out of line.
+// CJObj::Attach runs on a member (mIntp.Attach in CXObjIntp::ReadCheck) and not on the base of this —
+// there dst = this+0x1EC is materialized by the getter's assert (addic.) and stays live for the copy.
+// Here the assert materializes this+4 into a scratch register and MWCC rematerializes this+off into
+// every store instead of keeping the pointer (frame 0x10 vs 0x20). Named Vec* locals do materialize
+// dst, but as addi up front plus cmplwi (90.4, 4 saved regs), never the fused addic. form — so the
+// assert-and-keep shape is a rematerialization decision of the compiler, not a source form.
 void CXObj::Attach(HSD_JObj* jobj)
 {
 	CJObj::Attach(jobj);

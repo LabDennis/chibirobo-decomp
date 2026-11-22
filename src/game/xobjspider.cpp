@@ -1995,7 +1995,11 @@ void XObjSpider::UpdateAnimationSounds()
  * @note Address: 0x800EA554
  * @note Size: 0x22C
  */
-// NONMATCHING: the pool loop steps another register
+// NONMATCHING: same instruction stream; the rest is scratch-register colouring
+// in the pool loop (r8/r6/r5 vs r3/r7/r6), the fadds operand naming for
+// `position->y + 0.2f` (y in f1/const in f0 vs swapped) and the anonymous
+// .sdata2 pool names (@NNNN vs lbl_8065DD74/lbl_8065DD40/lbl_8065DD78/
+// lbl_8065DD7C) — allocation + referent naming, no source lever.
 // puts one of the free coins at position and plays its anim
 extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 {

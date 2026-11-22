@@ -1210,7 +1210,9 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 {
 	Vec* corner2;
 	Vec* corner1;
-	// NONMATCHING: the initial joint-pointer load is scheduled too late.
+	// NONMATCHING: retail interleaves the mJObj load into the prologue (right
+	// after mflr), ours emits it after the stmw/arg moves — a pure scheduling
+	// pair swap; a named local for the joint doesn't change it.
 	if (mJObj->flags & HIDDEN) {
 		return -1;
 	}
