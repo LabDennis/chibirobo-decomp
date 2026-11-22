@@ -572,7 +572,13 @@ gamecube_libs = [
             Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
             Object(EquivalentFor(JP), "game/memcardload.cpp", cflags=cflags_game),
             Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US .text 0x80027A98..0x8003135C: CXObj::SetScale*, XObjDemo, title draw/options/states,
+            # ResetTitleScreenState, InitTitleScreen and __sinit_titlestates_cpp). -inline auto,deferred, as retail
+            # shows: GC .text runs XObjDemo..InitTitleScreen, the exact reverse of the Wii file (game/wii/title.cpp:
+            # InitTitleScreen first, XObjDemo last); .rodata has UpdateTitleScreen's gTitleDemoStartPosition ahead of
+            # XObjDemo's RTTI name, and .data has gTitleTextureSuffixes/gTitleModeUpdates (UpdateTitleScreen) ahead of
+            # gTitleNameOutline*/gTitleHelpOutline* and __vt__8XObjDemo
+            Object(NonMatching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
