@@ -1,16 +1,21 @@
-// NONMATCHING: the file's data does not equal retail's yet (US addresses; JP and PAL alike):
+// NONMATCHING: the file's data does not equal retail's yet (US addresses; PAL alike, JP where noted):
 // - .rodata starts with the 0x48-byte block of six Vecs (0x801FF4B8) that CGame's particle inlines make in every
 //   file; none of this file's headers makes it. Retail also keeps the vertex lists (e.g. 0x801FFCA8, 0x78 bytes) as
 //   whole initialised tables, where this source builds them from (Vec){...} literals of 0xC bytes each.
 // - .data starts with the 26-word header block (0x80211DA0, 0x68 bytes) no header here makes; __vt__10MenuCursor
 //   is 0x1FC bytes in retail and 0x148 here (MenuCursor's header lacks virtual slots), and the build adds base lists
-//   and vtables of header classes retail does not keep in this file.
+//   and vtables of header classes retail does not keep in this file. JP's .data has its own order (settings rows,
+//   card test rows and stage list behind the item outlines, sound rows behind gStatusGridTextures), which the source
+//   follows, and a zero word behind the sound rows (0x80212E04) nothing here defines. The JP row labels' strings come
+//   first in the build's .rodata, retail has them among the functions' literals (0x802011D8, 0x80201F14).
 // - .bss starts with the 0x140-byte (JP 0x134) header prefix; lbl_80361F68, lbl_8036203C and lbl_80362048 below
 //   stand in for it, removing them would move every .bss offset the functions use.
 // - .sdata/.sdata2: the build emits RTTI records and names of weak header classes (CFont, CPad, CEvt, ...) and two
 //   header constants (0x80, 4) retail does not have here, and the literal pool order differs in places.
 // - .text: the two DrawPCShopList instances and the inline MenuMain::Open/Resume and MenuMCTest::Open come out at
 //   the end of the build's code, retail has them in place; JP's retail file had its menu classes in another order.
+//   JP DrawPanelBackground<0> is 98.3567 % (98.3586 % before the retail order): its table lands at .rodata 0x818,
+//   retail's at 0xB30, so a register-only difference no longer sits on a matching offset.
 
 #include "game/menuselectionbar.h"
 #include "game/drawhelptext.h"
@@ -132,12 +137,33 @@ static MenuPCItem sShopHistoryEntries[20];
 PCRankingRow gPCRankingRows[10];
 static MenuPCItem sShopCatalogEntries[20];
 
-// the file's initialized data, in retail's .data order
+// the file's initialized data, in retail's .data order; JP keeps its settings rows, the card test rows and the
+// stage list right behind the item outlines, the other editions have the last two behind the save outlines
 extern "C" {
-f32 gItemHelpOutlineX[4]     = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gItemHelpOutlineY[4]     = { -1.0f, -1.0f, 1.0f, 1.0f };
-f32 gItemTitleOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gItemTitleOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gItemHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gItemHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gItemTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gItemTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+}
+#if defined(VERSION_JP)
+// the debug settings menu's rows, the %s fill in the option's state
+extern "C" {
+const char* gSettingsMenuRowLabels[5] = {
+	"\x83\x70\x83\x62\x83\x68\x83\x41\x83\x54\x83\x43\x83\x93\x81\x40[%s%s%s]",
+	"\x83\x4A\x83\x81\x83\x89\x95\xE2\x8A\xD4\x81\x40\x81\x40\x81\x40[%s%s%s]",
+	"\x83\x4C\x83\x83\x83\x89\x89\x42\x82\xEA\x8F\x88\x97\x9D\x81\x40[%s%s%s]",
+	"\x83\x8F\x83\x43\x83\x84\x81\x5B\x83\x71\x83\x62\x83\x67\x81\x40[%s%s%s]",
+	"\x82\x60\x82\x73\x82\x62\x83\x81\x83\x6A\x83\x85\x81\x5B\x81\x40[%s%s%s]",
+};
+}
+// the card test popup's rows
+static MenuMCTestAction sMemoryCardTestRows[]
+    = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
+
+// the stages the stage select offers, in its order
+static s32 sStageSelectOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+#endif
+extern "C" {
 s32 gStatusTabTextOffsets[4] = { 1, 3, 2, 4 };
 }
 static void (MenuStatus::*gStatusStepHandlers[])(u32)
@@ -161,6 +187,12 @@ s32 gStatusGridTextures[48] = {
 	220, 221, 182, 183, 228, 229, 226, 227, 198, 199, 206, 207, 196, 197, 214, 215, 192, 193, 212, 213, 218, 219, 222, 223,
 #endif
 };
+#if defined(VERSION_JP)
+// the debug sound menu's rows
+extern "C" {
+const char* gSoundMenuRowLabels[4] = { "CANCEL  %d", "IDOU    %d", "KETTEI  %d", "" };
+}
+#endif
 static void (MenuPC::*gPCStepHandlers[])(u32)
     = { &MenuPC::State0, &MenuPC::State1, &MenuPC::State2, &MenuPC::State3, &MenuPC::State4,  &MenuPC::State5,
 	    &MenuPC::State6, &MenuPC::State7, &MenuPC::State8, &MenuPC::State9, &MenuPC::State10, &MenuPC::State11 };
@@ -184,14 +216,11 @@ f32 gSaveTextShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 #endif
 }
 
+#if !defined(VERSION_JP)
 // the stages the stage select offers, in its order
 static s32 sStageSelectOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
 
 // the card test popup's rows
-#if defined(VERSION_JP)
-static MenuMCTestAction sMemoryCardTestRows[]
-    = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
-#else
 static MenuMCTestAction sMemoryCardTestRows[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
 #endif
 
@@ -4232,9 +4261,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 }
 
 #if defined(VERSION_JP)
-extern "C" const char* gSoundMenuRowLabels[4];
-extern "C" const char* gSettingsMenuRowLabels[5];
-
 void MenuSound::Init()
 {
 	CMenu::Init();
