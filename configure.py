@@ -483,15 +483,6 @@ gamecube_libs = [
             # the floor tables in .data and the constants in .rodata lie in the reverse of the code order, and the
             # Wii build (no deferred) starts the same code with InitializeObject and ends it with CJAnim::Release
             Object(NonMatching, "game/obja.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/xobjmapdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/ctrigondtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/cjanim.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjfloor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/obja.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjwalk.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/xobjinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjinitialize.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (US addresses): .text 0x80093134-0x80093B7C opens with the weak ~XObjMap and
             # ~CTrigon, then GetMapTriangleFloorType to InitializeObject; -inline deferred, as retail shows:
             # only deferred codegen of the file written last-address-first puts the destructors in front
@@ -567,8 +558,6 @@ gamecube_libs = [
             Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
             # StartPlugCordNode (0x800DE180), the reverse of the Wii file's StartPlugCordNode-first order
