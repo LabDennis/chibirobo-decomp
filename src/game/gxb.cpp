@@ -2445,7 +2445,7 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 	DrawLoadText(GetLocalizedInterfaceText(label), center, y, color);
 }
 #endif
-
+// NONMATCHING: retail adds the bar's 2.0f to its y at each quad (fadds y, 2), this build once before the call; rest is float regs
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
 	switch (title->mMode) {
@@ -2817,7 +2817,7 @@ static inline f32 TitleOptionWidth(s32 first)
 	return 2.0f * ((label > largest ? label : largest) + 8.0f);
 }
 #endif
-
+// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
