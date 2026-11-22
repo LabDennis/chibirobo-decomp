@@ -6903,6 +6903,8 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
  * @note Address: stage02 .text 0x53E4
  * @note Size: 0x664
  */
+// NONMATCHING: retail holds the spoke inner radius in two registers (fmr f29, f28: one for the sin, one for the cos term)
+// and so saves f18 too (frame 0x10 bigger); two equal locals fold into one here. The rest is FPR colouring.
 extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx fighterMtx)
 {
 	Vec pos;
