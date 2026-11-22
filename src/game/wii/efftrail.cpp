@@ -719,9 +719,7 @@ static nw4r::math::VEC3 sBlinkRotRUp[11] = {
 // NONMATCHING: the node-walk compiles through the same ResNode::GetID()/IsValid()
 // asserts retail emits (g3d_resnode_ac.h:56); the residue is register coloring
 // (retail saves r27-r31, we r26-r31), the mPlayer load folded to its first use vs
-// hoisted once early, and the jump table's pool label. Retail keeps the head-cap rotation in a
-// guarded function static built by NW4R's nine-float MTX33 constructor, which our
-// nw4r/math/math_types.h does not declare yet, so it is a plain local here.
+// hoisted once early, and the jump table's pool label.
 /**
  * @note Address: 0x800F3714
  * @note Size: 0x474
@@ -737,17 +735,8 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 		if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0) {
 			s32 animId = self->GetAnimId();
 			if (animId != 0x817 && animId != 0x814) {
-				nw4r::math::MTX33 headRot;
-				headRot._00 = -0.0f;
-				headRot._01 = -0.970757f;
-				headRot._02 = 0.239911f;
-				headRot._10 = -0.0f;
-				headRot._11 = -0.239911f;
-				headRot._12 = -0.970757f;
-				headRot._20 = 1.0f;
-				headRot._21 = -0.0f;
-				headRot._22 = -0.0f;
-				pResult->SetRotateMtx(&headRot);
+				static nw4r::math::MTX33 sHeadRot(-0.0f, -0.970757f, 0.239911f, -0.0f, -0.239911f, -0.970757f, 1.0f, -0.0f, -0.0f);
+				pResult->SetRotateMtx(&sHeadRot);
 			}
 		}
 		if (player->mBlinkFrame < 0) {

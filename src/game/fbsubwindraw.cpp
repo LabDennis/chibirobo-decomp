@@ -21,6 +21,7 @@ static inline void DrawCorner(u32 color, f32 x, f32 y, f32 z, f32 w, f32 h)
 }
 
 // NaN dimensions select the circular frame. Explicit dimensions select the tiled frame.
+// NONMATCHING: structurally identical; remaining diffs are register allocation (r30/r31, f14-f31) and rodata offsets.
 void FbSubwin::Draw()
 {
 	if (mFlags.mFlags & 4)
@@ -51,28 +52,28 @@ void FbSubwin::Draw()
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		DrawQuad(frame, 0xc8c8c800 | (u32)(255 * amount), 160, 80, 1.1f * w, 1.1f * h);
+		DrawQuad(frame, 0xc8c8c800 | (u32)(255 * amount), 160, 80, w * 1.1f, h * 1.1f);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	} else {
 		f32 w = mRectWidth * fade, h = mRectHeight * fade, corner = 24 * fade;
 		f32 x = mRectX, y = mRectY;
 		Vec pos[10] = { (Vec) { x, y, 0 },
-			            (Vec) { (fade + (x - w * .5f)), corner + (fade + (y - h * .5f)), 0 },
-			            (Vec) { corner + (fade + (x - w * .5f)), (fade + (y - h * .5f)), 0 },
-			            (Vec) { ((x + w * .5f) - fade) - corner, (fade + (y - h * .5f)), 0 },
-			            (Vec) { ((x + w * .5f) - fade), corner + (fade + (y - h * .5f)), 0 },
-			            (Vec) { ((x + w * .5f) - fade), ((y + h * .5f) - fade) - corner, 0 },
-			            (Vec) { ((x + w * .5f) - fade) - corner, ((y + h * .5f) - fade), 0 },
-			            (Vec) { corner + (fade + (x - w * .5f)), ((y + h * .5f) - fade), 0 },
-			            (Vec) { (fade + (x - w * .5f)), ((y + h * .5f) - fade) - corner, 0 },
-			            (Vec) { (fade + (x - w * .5f)), corner + (fade + (y - h * .5f)), 0 } };
+			            (Vec) { (fade + (x - w / 2.0f)), corner + (fade + (y - h / 2.0f)), 0 },
+			            (Vec) { corner + (fade + (x - w / 2.0f)), (fade + (y - h / 2.0f)), 0 },
+			            (Vec) { ((x + w / 2.0f) - fade) - corner, (fade + (y - h / 2.0f)), 0 },
+			            (Vec) { ((x + w / 2.0f) - fade), corner + (fade + (y - h / 2.0f)), 0 },
+			            (Vec) { ((x + w / 2.0f) - fade), ((y + h / 2.0f) - fade) - corner, 0 },
+			            (Vec) { ((x + w / 2.0f) - fade) - corner, ((y + h / 2.0f) - fade), 0 },
+			            (Vec) { corner + (fade + (x - w / 2.0f)), ((y + h / 2.0f) - fade), 0 },
+			            (Vec) { (fade + (x - w / 2.0f)), ((y + h / 2.0f) - fade) - corner, 0 },
+			            (Vec) { (fade + (x - w / 2.0f)), corner + (fade + (y - h / 2.0f)), 0 } };
 		DrawGsTrianglePrimitive(&gGame.mGs, (GXPrimitive)0xa0, gGame.mGs.mCamera->mViewMtx, pos, 0xff000000, 10);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
 		f32 diameter = 2 * corner;
-		DrawCorner(0xff000000, corner + (fade + (x - w * .5f)), corner + (fade + (y - h * .5f)), 0, diameter, diameter);
-		DrawCorner(0xff000000, ((x + w * .5f) - fade) - corner, corner + (fade + (y - h * .5f)), 0, diameter, diameter);
-		DrawCorner(0xff000000, corner + (fade + (x - w * .5f)), ((y + h * .5f) - fade) - corner, 0, diameter, diameter);
-		DrawCorner(0xff000000, ((x + w * .5f) - fade) - corner, ((y + h * .5f) - fade) - corner, 0, diameter, diameter);
+		DrawCorner(0xff000000, corner + (fade + (x - w / 2.0f)), corner + (fade + (y - h / 2.0f)), 0, diameter, diameter);
+		DrawCorner(0xff000000, ((x + w / 2.0f) - fade) - corner, corner + (fade + (y - h / 2.0f)), 0, diameter, diameter);
+		DrawCorner(0xff000000, corner + (fade + (x - w / 2.0f)), ((y + h / 2.0f) - fade) - corner, 0, diameter, diameter);
+		DrawCorner(0xff000000, ((x + w / 2.0f) - fade) - corner, ((y + h / 2.0f) - fade) - corner, 0, diameter, diameter);
 		u32 shadow = (u32)(96 * amount);
 		for (int i = 0; i < 10; ++i) {
 			pos[i].x += 6;
@@ -80,10 +81,10 @@ void FbSubwin::Draw()
 			pos[i].z = -.1f;
 		}
 		DrawGsTrianglePrimitive(&gGame.mGs, (GXPrimitive)0xa0, gGame.mGs.mCamera->mViewMtx, pos, shadow, 10);
-		DrawCorner(shadow, (corner + (fade + ((6 + x) - w * .5f))), (corner + (fade + ((4 + y) - h * .5f))), -.1f, diameter, diameter);
-		DrawCorner(shadow, (((((6 + x) + w * .5f) - fade) - corner)), (corner + (fade + ((4 + y) - h * .5f))), -.1f, diameter, diameter);
-		DrawCorner(shadow, (corner + (fade + ((6 + x) - w * .5f))), (((((4 + y) + h * .5f) - fade) - corner)), -.1f, diameter, diameter);
-		DrawCorner(shadow, (((((6 + x) + w * .5f) - fade) - corner)), (((((4 + y) + h * .5f) - fade) - corner)), -.1f, diameter, diameter);
+		DrawCorner(shadow, (corner + (fade + ((6 + x) - w / 2.0f))), (corner + (fade + ((4 + y) - h / 2.0f))), -.1f, diameter, diameter);
+		DrawCorner(shadow, (((w / 2.0f + (6 + x)) - fade) - corner), (corner + (fade + ((4 + y) - h / 2.0f))), -.1f, diameter, diameter);
+		DrawCorner(shadow, (corner + (fade + ((6 + x) - w / 2.0f))), (((h / 2.0f + (4 + y)) - fade) - corner), -.1f, diameter, diameter);
+		DrawCorner(shadow, (((w / 2.0f + (6 + x)) - fade) - corner), (((h / 2.0f + (4 + y)) - fade) - corner), -.1f, diameter, diameter);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		if (mTexture.mImage)
@@ -93,14 +94,14 @@ void FbSubwin::Draw()
 		CTexObj frame   = WindowFrameTexture();
 		u16 tw          = GXGetTexObjWidth(&frame);
 		u16 th          = GXGetTexObjHeight(&frame);
-		f32 tiles[8][8] = { { 0, 0, .5f, .5f, ((x - w * .5f) + corner * .5f), ((y - h * .5f) + corner * .5f), corner, corner },
-			                { .5f, 0, 1.0f / tw, .5f, x, ((y - h * .5f) + corner * .5f), w - diameter, corner },
-			                { .5f, 0, .5f, .5f, ((x + w * .5f) - corner * .5f), ((y - h * .5f) + corner * .5f), corner, corner },
-			                { 0, .5f, .5f, 1.0f / th, ((x - w * .5f) + corner * .5f), y, corner, h - diameter },
-			                { .5f, .5f, .5f, 1.0f / th, ((x + w * .5f) - corner * .5f), y, corner, h - diameter },
-			                { 0, .5f, .5f, .5f, ((x - w * .5f) + corner * .5f), ((y + h * .5f) - corner * .5f), corner, corner },
-			                { .5f, .5f, 1.0f / tw, .5f, x, ((y + h * .5f) - corner * .5f), w - diameter, corner },
-			                { .5f, .5f, .5f, .5f, ((x + w * .5f) - corner * .5f), ((y + h * .5f) - corner * .5f), corner, corner } };
+		f32 tiles[8][8] = { { 0, 0, .5f, .5f, ((x - w / 2.0f) + corner / 2.0f), ((y - h / 2.0f) + corner / 2.0f), corner, corner },
+			                { .5f, 0, 1.0f / tw, .5f, x, ((y - h / 2.0f) + corner / 2.0f), w - diameter, corner },
+			                { .5f, 0, .5f, .5f, ((x + w / 2.0f) - corner / 2.0f), ((y - h / 2.0f) + corner / 2.0f), corner, corner },
+			                { 0, .5f, .5f, 1.0f / th, ((x - w / 2.0f) + corner / 2.0f), y, corner, h - diameter },
+			                { .5f, .5f, .5f, 1.0f / th, ((x + w / 2.0f) - corner / 2.0f), y, corner, h - diameter },
+			                { 0, .5f, .5f, .5f, ((x - w / 2.0f) + corner / 2.0f), ((y + h / 2.0f) - corner / 2.0f), corner, corner },
+			                { .5f, .5f, 1.0f / tw, .5f, x, ((y + h / 2.0f) - corner / 2.0f), w - diameter, corner },
+			                { .5f, .5f, .5f, .5f, ((x + w / 2.0f) - corner / 2.0f), ((y + h / 2.0f) - corner / 2.0f), corner, corner } };
 		u32 color       = 0xffffff00 | (u32)(255 * amount);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		for (int i = 0; i < 8; ++i) {

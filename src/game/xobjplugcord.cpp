@@ -289,8 +289,9 @@ static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
 		CopyCordPos(points[0].mPos, *cord->mEndSource[0]);
 		CopyCordPos(points[0].mTarget, points[0].mPos);
 	} else if (cord->mEndHeight[0]) {
-		points[0].mPos.y    = *cord->mEndHeight[0];
-		points[0].mTarget.y = *cord->mEndHeight[0];
+		f32 y               = *cord->mEndHeight[0];
+		points[0].mPos.y    = y;
+		points[0].mTarget.y = y;
 	}
 	PinTail(cord, points, 1, 2);
 	PinTail(cord, points, 2, 1);
@@ -307,16 +308,25 @@ static inline void SubStep(CVec& position, Vec step)
 
 static inline void ResetSparks(XObjPlugCordNodes& nodes, u32 color, s32 mode, s32 count, s32 enabled)
 {
-	nodes.mColor = color;
-	nodes.mMode  = mode;
-	nodes.mCount = count;
-	for (s32 i = 0; i < 10; i++)
-		nodes.mNode[i].mState = 0;
-	nodes.mEnabled = enabled;
+	nodes.mColor          = color;
+	nodes.mMode           = mode;
+	nodes.mCount          = count;
+	nodes.mNode[0].mState = 0;
+	nodes.mNode[1].mState = 0;
+	nodes.mNode[2].mState = 0;
+	nodes.mNode[3].mState = 0;
+	nodes.mNode[4].mState = 0;
+	nodes.mNode[5].mState = 0;
+	nodes.mNode[6].mState = 0;
+	nodes.mNode[7].mState = 0;
+	nodes.mNode[8].mState = 0;
+	nodes.mNode[9].mState = 0;
+	nodes.mEnabled        = enabled;
 }
 
-// NONMATCHING: retail emits an extra compare/clamp sequence (cmpw/bge/cmpwi/subi) in the point loop
-// that the current source doesn't produce; the rest is scheduling
+// NONMATCHING: retail contains three dead/redundant constructs we intentionally do not reproduce:
+// an empty loop over cord->mCount after gravity, a duplicate store to points[mCount - back].mPos.y
+// in PinTail's mEndHeight branch, and a redundant state >= 0 check after state < 0.
 extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	static f32 floorHeight;
@@ -334,7 +344,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			if (i < 4)
 				points[i].mPos.y += 0.0049f; // the near ends drift up
 			else if (i < 10)
-				points[i].mPos.y += 0.5f * (0.98f * -gravity); // half gravity on the middle
+				points[i].mPos.y += (0.98f * -gravity) * 0.5f; // half gravity on the middle
 			else
 				points[i].mPos.y += 0.98f * -gravity;
 		}
@@ -582,10 +592,10 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius)
  * @note Address: 0x800D9B10
  * @note Size: 0x44C
  */
+// NONMATCHING: r29/r30 swap between map pointer and start index inside shared FindMapFloor inline.
 extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 height)
 {
-	XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].mObjects;
-	if (!FindMapFloor(map, &pos, &cord->mFloorHit, NULL)) {
+	if (!FindMapFloor((XObjMap*)gGame.mXObjs.mPools[3].mObjects, &pos, &cord->mFloorHit, NULL)) {
 		cord->mFloorHit.mTriangle = -1;
 		cord->mFloorHit.mTrigon   = -1;
 		cord->mFloorHit.mHeight   = pos.y;
@@ -602,10 +612,7 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 he
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos.z;
-			f32 y = pos.y;
-			f32 x = pos.x;
-			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+			if (ProbeObjectFloor(object, CVec(pos), CVec(pos), radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				if (__fpclassifyf(floorHeight) != FP_NAN && pos.y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
