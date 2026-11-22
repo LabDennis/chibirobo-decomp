@@ -5904,6 +5904,7 @@ extern "C" void Fighter_Init(Fighter* work, UnkDolObj* body, UnkDolObj* path, vo
  */
 // NONMATCHING: registers only. Retail copies the halved opening of the center panel into a new
 // register and forms 180.0f - half through a temporary; the build halves it in place.
+// NONMATCHING: loop regalloc rotates r28/r29/r30 (i, pool base, obj) and center panel swaps f30/f31 between half and h.
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
 	CTexObj tex;
@@ -5935,8 +5936,8 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 				tw   = GXGetTexObjWidth(&tex);
 				w    = 1.1f * (scale * tw);
 				th   = GXGetTexObjHeight(&tex);
-				y    = 320.0f;
 				half = fade->mLowerOpen * (scale * th);
+				y    = 320.0f;
 #if !defined(VERSION_JP)
 				y -= 32.0f;
 #endif
