@@ -14,7 +14,7 @@ public:
 	typedef void (XObjLeticker::*Func)();
 
 	XObjLeticker();
-	virtual ~XObjLeticker() { }                                        // _08
+	virtual ~XObjLeticker();                                           // _08, defined in xobjctor.cpp
 	virtual void ResetObjectState();                                   // _154
 	virtual void UpdateObject(u32 frames);                             // _164
 	virtual void DrawObject();                                         // _174
@@ -23,8 +23,8 @@ public:
 	virtual void OnPushDisplacement(const Vec& displacement);          // _1F4
 	virtual BOOL ReceivePlugPower(f32 amount);                         // _1F8
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
-	virtual void PauseSounds(f32 fade) { mSfx.Pause(fade); }           // _20C
-	virtual void ResumeSounds(f32 fade) { mSfx.Resume(fade); }         // _210
+	virtual void PauseSounds(f32 fade);                                // _20C
+	virtual void ResumeSounds(f32 fade);                               // _210
 	virtual void OnUnplugged();                                        // _228 (slot unverified)
 	virtual void DrawLate();                                           // _28C, CGame::DrawScene's last pass
 

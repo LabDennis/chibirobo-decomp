@@ -1,6 +1,7 @@
 #include "game/wii/xobj.h"
 #include "game/wii/xobjflags.h"
 #include "game/wii/xobjfree.h"
+#include "game/wii/xobjleticker.h"
 
 // the Wii pool subclasses' constructors and destructors, emitted together in
 // retail .text 0x800C13B0-0x800C5424; this unit is the Wii counterpart of the

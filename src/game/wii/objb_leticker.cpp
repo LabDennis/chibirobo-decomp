@@ -157,6 +157,24 @@ void XObjLeticker::OnHitFromPosition(const Vec& position, f32 strength)
 }
 
 /**
+ * @note Address: 0x8011D89C
+ * @note Size: 0x14
+ */
+void XObjLeticker::ResumeSounds(f32 fade)
+{
+	mSfx.Resume(fade);
+}
+
+/**
+ * @note Address: 0x8011D8B0
+ * @note Size: 0x14
+ */
+void XObjLeticker::PauseSounds(f32 fade)
+{
+	mSfx.Pause(fade);
+}
+
+/**
  * @note Address: 0x8011D8C4
  * @note Size: 0x8
  */

@@ -49,17 +49,6 @@ public:
 
 	CEvtFlags* mFlags; // _9A8
 
-	// the placement's flag id over the kind's collection group, 0 without one
-	s32 GetPlacementFlagIndex(s32 group) const
-	{
-		s32 id = mPlacementParam1;
-		if (id > 0) {
-			u32 base = GetStageCollectionFlagBase(group);
-			return (s32)(base + (u32)id);
-		}
-		return 0;
-	}
-
 	// the collected bit, FALSE without one
 	u32 IsFlagSet()
 	{
