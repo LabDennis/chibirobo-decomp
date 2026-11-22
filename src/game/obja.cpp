@@ -1081,6 +1081,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 
 // NONMATCHING: retail reads the quad corners through floors (lwzx off the held pointer) but the quad's yaw through
 // object->mFloors, keeps index * 32 apart from the pointer, and allocates registers differently
+// (tried: reading yaw and id through object->mFloors, GetFloorYawRadians(&object->mFloors, index), and the
+// quad corners through floors with its yaw through object->mFloors; each drops to 89-90 %)
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
