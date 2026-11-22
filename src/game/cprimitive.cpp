@@ -16,24 +16,25 @@ void GXDrawCube(void);
 // NONMATCHING: the nine CLine/CTriangle Draw and DrawLit vertex loops (70-82 %) share one cause.
 // Retail reads the vertices ahead of the FIFO writes (lfs x; lfs y; stfs x; lfs z; stfs y; stfs z,
 // the next vertex's loads before this one's stores): its compiler let the loads through the Vec*,
-// PrimVertex* and u32* parameters pass the volatile GXWGFifo stores. Every shipped mwcc, GC/1.0 to
-// 3.0a5.2 and Wii/1.0 to 1.7, orders every pointer load after every FIFO store, because it treats
-// the `GXWGFifo : 0xCC008000` object as a dereferenced constant pointer, not as a named object: its
-// store also blocks loads from a distinct global array, while a store to an ordinary global lets
-// them pass, and no spelling of the FIFO (static, extern, non-volatile, C or C++ linkage, a scalar,
-// a smaller union, a const pointer, a cast, a reference) changes that; a non-volatile object even
-// crashes 2.6 (Operands.c:939). The only loads that pass are through a `const T*` parameter (the
-// parameter itself: a const local copy, cast, reference or inlined const-parameter helper is
-// copy-propagated back to the parameter) or `T* __restrict`. The mangled names (P3Vec, PUl,
-// P10PrimVertex) rule out const, and __restrict is a codegen qualifier that stops working in
-// DrawLit, where pos is passed to CalcTriangleNormal first. With `const Vec*` the six Draws match
-// to the instruction and the three DrawLits keep one difference: retail reloads normal.x after each
-// vertex's position stores and hoists normal.y/.z; 2.6 hoists all three, 3.0a5 none, and no flag or
-// `#pragma opt_pointer_analysis` moves either trait. The retail dol's own HSD display-list loop
-// (pobj.c, FIFO through a cast pointer) keeps the loads behind the stores, so retail's compiler
-// distinguished the absolute-address object from a cast pointer; none of ours does. Also tried: a
-// Vec copy, a pointer walk, explicit temporaries, three GXWGFifo.f32 statements (87.9 %, right
-// skeleton, loads still ordered). The Wii file shows the same loops the same way.
+// PrimVertex* and u32* parameters pass the volatile GXWGFifo stores. Every mwcc checked (GC/1.3.2,
+// 2.6, 2.7, 3.0a3, 3.0a5.2; Wii/1.0, 1.3, 1.7) orders every pointer load after every FIFO store,
+// because it treats the `GXWGFifo : 0xCC008000` object as a dereferenced constant pointer, not as a
+// named object: its store also blocks loads from a distinct global array, while a store to an
+// ordinary global lets them pass, and no spelling of the FIFO (static, extern, non-volatile, C or
+// C++ linkage, a scalar, a smaller union, a const pointer, a cast, a reference) changes that; a
+// non-volatile object even crashes 2.6 (Operands.c:939). The only loads that pass are through a
+// `const T*` parameter (the parameter itself: a const local copy, cast, reference or inlined
+// const-parameter helper is copy-propagated back to the parameter) or `T* __restrict`. The mangled
+// names (P3Vec, PUl, P10PrimVertex) rule out const, and __restrict is a codegen qualifier that
+// stops working in DrawLit, where pos is passed to CalcTriangleNormal first. With `const Vec*` the
+// six Draws match to the instruction and the three DrawLits keep one difference: retail reloads
+// normal.x after each vertex's position stores and hoists normal.y/.z; 2.6 hoists all three, 3.0a5
+// none, and no flag or `#pragma opt_pointer_analysis` moves either trait. The retail dol's HSD
+// display-list loop (pobj.c, 801AD408) keeps each vector's loads behind the previous one's stores,
+// but it passes the values by value to a GXPosition3f32 inline and is a separate library unit, so
+// it does not show which compiler or FIFO form cprimitive was built with. Also tried: a Vec copy, a
+// pointer walk, explicit temporaries, three GXWGFifo.f32 statements (87.9 %, right skeleton, loads
+// still ordered). The Wii file shows the same loops the same way.
 
 // normals take the inverse transpose of the position matrix, so a non-uniform scale doesn't skew them
 static inline void LoadNrmMtx(MtxP mtx)

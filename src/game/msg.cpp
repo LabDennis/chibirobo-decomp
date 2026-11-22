@@ -6339,7 +6339,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
  * @note Address: 0x80084C78
  * @note Size: 0x148
  */
-// CJObj::CJObj(HSD_JObj*): the weak copy of the cjobjinlineattach.h constructor, which CMsgFont_Draw could not expand
+// NONMATCHING: CJObj::CJObj(HSD_JObj*) is the weak copy of the cjobjinlineattach.h constructor; retail emits it
+// right behind CMsgFont_Draw (its "rotate" literal sits between Draw's and Update's in .sdata2), ours after
+// CMsgFont_Init
 
 #if defined(VERSION_PAL)
 #define MSG_FADE_RATE (1.0f / (0.3f * gVideoFramesPerSecond))

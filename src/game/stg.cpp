@@ -323,7 +323,7 @@ enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
 
 #if defined(VERSION_JP)
 // macros: MenuPC::Draw, their only user, could not expand inlines, yet retail stores the glyphs itself (JP 0x800468A0)
-// one halfword load (JP 0x800469B0), not two bytes
+// one halfword load (JP 0x800468B4), not two bytes
 #define PC_READ_DIALOGUE_GLYPH(text) (*(const u16*)(text))
 #define PC_SET_DIALOGUE_GLYPH(menu, code)                        \
 	do {                                                         \
@@ -5905,7 +5905,7 @@ extern "C" s32 GetPlayerLevel(Params* params)
 // (retail gives the choice loop's i r17 and its colour r16, the recycle rate r15, the amount blocks' 7 * w f28; ours
 // the other way round) and the schedule of the two digit markers' vertex blocks (US 0x80046438, 0x80047064: retail
 // starts the height / 10 chain before the digit's conversion). Three small forms are not found: retail loads the 320
-// of the shop panels before adding 215 + mScroll (US 0x80045604), keeps mTextX/mTextY in f22/f23 across the
+// of the shop panels before adding 215 + mScroll (US 0x80045B00 to 0x80045B0C), keeps mTextX/mTextY in f22/f23 across the
 // colour's conversion (US 0x80048450), and JP computes the 142 icon's x and y before the colour (JP 0x800460B8)
 BOOL MenuPC::Draw()
 {
@@ -6198,7 +6198,8 @@ BOOL MenuPC::Draw()
 				u32 rgb    = 0xFFB62800;
 
 				// s32 like PC_DIGIT_DIVISOR's place: with an int the loop entry is a second compare (retail re-uses i > 0, US 0x80045F60).
-				// The digit pitch is written in the loop: retail hoists 7 * w ahead of w - 2.4 (US 0x80045F38), a local would come first
+				// The digit pitch is written in the loop: retail hoists 7 * w ahead of w - 2.4 (US 0x80045F20, 0x80045F28), a local would
+				// come first
 				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
@@ -6217,7 +6218,7 @@ BOOL MenuPC::Draw()
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
 				                             18);
 				{
-					// not const: retail adds w + scale variable-first (US 0x80046248)
+					// not const: retail adds w + scale variable-first (US 0x80046238)
 					f32 scale  = 1.4f;
 					s32 amount = this->mAmount;
 
@@ -6353,9 +6354,9 @@ BOOL MenuPC::Draw()
 #endif
 				}
 				{
-					// not const: step adds width + scale variable-first, after SetMenuTextureScale (US 0x80046E60); the marker
-					// adds it again (US 0x80047084) while 2 * step is kept from the loop, and / 2 stays in the loop's fnmsubs (US
-					// 0x80046FDC)
+					// not const: step adds width + scale variable-first, after SetMenuTextureScale (US 0x80046E1C); the marker
+					// adds it again (US 0x8004703C) while 2 * step is kept from the loop, and / 2 stays in the loop's fnmsubs (US
+					// 0x80046F98)
 					f32 scale  = 1.4f;
 					s32 amount = this->mAmount;
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
@@ -6424,7 +6425,7 @@ BOOL MenuPC::Draw()
 		{
 			textureScrollU -= 0.008f;
 			textureScrollV -= 0.008f;
-			// the frame top is a variable: height + top and half + top add it second (US 0x80047430, 0x80047964)
+			// the frame top is a variable: height + top and half + top add it second (US 0x800473A4, 0x800478D8)
 			f32 height = this->mFrameHeight;
 			f32 top    = 40.0f;
 			{
@@ -6465,8 +6466,8 @@ BOOL MenuPC::Draw()
 				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, bandColor, 5);
 			}
 			{
-				// retail keeps half + top across the depth call and takes half off right before the loop (US 0x800479FC); the
-				// alpha byte is masked after the call (0x80047980) and the gray is or'ed per loop (0x80047A00, 0x80047B94)
+				// retail keeps half + top across the depth call and takes half off right before the loop (US 0x80047970); the
+				// alpha byte is masked after the call (0x800478F4) and the gray is or'ed per block (0x80047974, 0x80047B04)
 				f32 mid = half + top;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
 				u32 alpha = bandColor & 0xFF;
@@ -6486,7 +6487,7 @@ BOOL MenuPC::Draw()
 				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
 			}
 			{
-				// half / 2 (variable first, US 0x80047AF4), the same shape as the block above
+				// half / 2 (variable first, US 0x80047A68), the same shape as the block above
 				f32 quarter = half / 2.0f;
 				f32 mid     = 360.0f - quarter;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
@@ -6542,7 +6543,7 @@ BOOL MenuPC::Draw()
 						break;
 					}
 #if defined(VERSION_JP)
-					// 20 bytes: JP's frame puts it at 0x274, between the 24-byte points and the 48-byte ones (JP 0x80045984)
+					// 20 bytes: JP's frame puts it at 0x274, between the 24-byte points and the 48-byte ones (JP 0x800458E4)
 					char joined[20];
 					sprintf(joined, "%s", GetPCMenuLabelText(0));
 					strcat(joined, labelText);
@@ -6688,7 +6689,7 @@ BOOL MenuPC::Draw()
 						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
 						f32 height = GetMenuTextureHeight(&tex);
 						f32 x      = width / 2.0f + 204;
-						// the icons sit one below the 334 text row: retail adds the 1 last (US 0x800487A4, 0x80048928)
+						// the icons sit one below the 334 text row: retail adds the 1 last (US 0x80048868, 0x80048884, 0x80048928)
 						f32 y     = 1.0f + (height / 2.0f + 334.0f);
 						u32 color = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
@@ -6833,7 +6834,7 @@ BOOL MenuPC::Draw()
 					this->mCharFlags[this->mNextGlyph] = 1;
 
 					if (this->mInsertsNumber) {
-						// 256 bytes: JP's frame puts it with the big arrays at 0x4b0 (JP 0x80046980)
+						// 256 bytes: JP's frame puts it with the big arrays at 0x4b0 (JP 0x80046898)
 						char number[256];
 						sprintf(number, "%d", (s32)GetPCDialogueNumber(this));
 						ConvertHudTextToFullWidth(number);
@@ -6844,7 +6845,7 @@ BOOL MenuPC::Draw()
 							this->mInsertsNumber = 0;
 						}
 					} else if (!*text) {
-						// a full-width space copied to the stack (JP 0x80046A2C) and read back as one halfword
+						// a full-width space copied to the stack (JP 0x80046908 to 0x8004691C) and read back as one halfword
 						char blank[] = "　";
 						PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(blank));
 						this->mCharIndex      = 0;
@@ -9347,11 +9348,11 @@ static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f
 // (US 0x8003936C fmuls f29,f2,f29; 0x800393CC fnmsubs f28); the build gives them new ones, and the icon quad's
 // arguments are scheduled in another order. The message helpers as macros on the caller's own sx and y reproduce
 // both writes but score 88.09, because the parameter numbering stays: retail puts the first parameter of each
-// class on top (slot r31, x f31) and the rest in reverse order (selected r30; sy f30, sx f29, y f28, alpha f22,
-// width f20, height f19), the build gives slot r30, selected r31, x f28, y f29, sx f30, sy f31. Scratch compiles
-// with this unit's flags (2026-11-23) number parameters in reverse order whatever their use order, loop use or
-// branch count; a parameter copied into a local, or f32 width and height at the icon's texture read, is coalesced
-// away and changes nothing. What lifts x and slot above the others is not found.
+// class on top (slot r31, x f31), then selected r30 and sy f30, sx f29, y f28, alpha f22, width f20, height f19,
+// the build gives slot r30, selected r31, x f28, y f29, sx f30, sy f31. Scratch compiles with this unit's flags
+// (2026-11-23) number parameters in reverse order whatever their use order, loop use or branch count; a parameter
+// copied into a local, or f32 width and height at the icon's texture read, is coalesced away and changes nothing.
+// What lifts x and slot above the others is not found.
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
                                     f32 alpha, f32 sx, f32 sy)
 {

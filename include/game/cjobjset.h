@@ -5,10 +5,8 @@
 
 // the three CJObj setters that compare against a Vec built on the stack. retail copies it
 // from a zeroed Vec in .bss (the Vec() temporary) and then fills in x, y and z. only the
-// files that emit or inline these include this. the helper takes the Vec by value: that
-// form gives retail's stack at every inlined site, and it keeps the three-float setters
-// over 256 inline units, where CMsgFont_Draw calls them (US 0x80082970, limit 256: the
-// CJObj constructor and SetRotationY are calls there too, SetScale(const Vec&) is expanded)
+// files that emit or inline these include this. the helper takes the Vec by value: the
+// form that gives retail's stack at every inlined site
 
 #pragma push
 #pragma pool_data on
