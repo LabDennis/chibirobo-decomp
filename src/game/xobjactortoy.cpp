@@ -423,7 +423,8 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 // NONMATCHING: retail calls HandleToyScreenShakeCommand where this build expands it (and calls StartScreenShake inside);
 // the heading to the walk target comes from an inline whose vector temporary dies before SetRotationY. The 31 calls of
 // the cjobj.h inline GetObjectJointByPath weigh in the inline estimate and lower the limit so the other small helpers
-// and CJObj's destructor are called as in retail (GC 98.0 %)
+// and CJObj's destructor are called as in retail (GC 98.0 %). Probe: up to 2100 filler units at the top keep
+// HandleToyScreenShakeCommand (about 51 units) expanded, at 2400 this function is over budget and calls everything
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -489,7 +490,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		toy->_9AC = 1.0f;
 		toy->_9A4 = 0;
 	}
-	f32 step = Abs((toy->_9AC - toy->_9A8) * 0.25f);
+	f32 step = Abs((toy->_9AC - toy->_9A8) / 4.0f);
 	if (step < 0.01f)
 		step = 0.01f;
 	ApproachHudValue(&toy->_9A8, &toy->_9AC, step);

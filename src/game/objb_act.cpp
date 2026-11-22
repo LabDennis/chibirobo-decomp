@@ -1036,8 +1036,8 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 // NONMATCHING: the position is read once too few: retail reloads pos for mRing[0] after the history
 // stores, this build reuses the three loads the mPos copy's CVec temporary made. With a const Vec& (or
 // const Vec*) MWCC treats pos as invariant over the stores; a non-const Vec& reloads it as retail does but
-// then also keeps the first loads below the mHitTarget store (90.4). Struct copies for mPos, mHistory[i]
-// and mRing[0].mPos and the mPos/mHitTarget statement order are flat
+// then also keeps the first loads below the mHitTarget store (90.4), and with mPos stored before mHitTarget
+// as well 90.9. Struct copies for mPos, mHistory[i] and mRing[0].mPos and the mPos/mHitTarget statement order are flat
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
                      f32 strength)
 {
@@ -1267,7 +1267,7 @@ void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle)
 		Vec rot    = { -HALF_PI, 0.0f, 0.0f };
 		DrawGsCircle(&gGame.mGs, 0x18, color, color, center.x, center.y, center.z, size, size, rot.x, rot.y, rot.z);
 		PrimVertex verts[50];
-		f32 outer = size * 0.5f + 1.0f;
+		f32 outer = size / 2.0f + 1.0f;
 		for (int i = 0; i < 25; i++) {
 			f32 ringAngle          = (TWO_PI / 24) * i;
 			verts[i * 2].pos.x     = center.x - size * std::sinf(ringAngle) / 2.0f;
@@ -2173,6 +2173,12 @@ static inline void AddVec(CVec& a, Vec b)
 	PSVECAdd(&a, &b, &a);
 }
 
+// a -= b, the same way
+static inline void SubVec(CVec& a, Vec b)
+{
+	PSVECSubtract(&a, &b, &a);
+}
+
 // a held object of the given pool and kind
 static inline bool IsHolding(XAction* act)
 {
@@ -2561,7 +2567,9 @@ inline void SetJointTranslationFromVectorByPath(CJObj* obj, s32 depth, s32* path
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
-// NONMATCHING: the 16-byte locals of the hang-start branches still sit in a different order
+// NONMATCHING: case 5 steps the yaw from mMoveRotate.y read again in each branch (US 0x800C7198, 0x800C7204 lfs 0xfc(r3)),
+// here the value read for the test is reused; writing the field read in both branches compiles the same. The
+// GetEventJointWorldPosition path pair at 0x800C6FF4 is two .sdata labels in retail's symbols, one literal here
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -2581,8 +2589,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				Vec delta = offset;
-				PSVECSubtract(&rope, &delta, &rope);
+				SubVec(rope, offset);
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
@@ -3704,7 +3711,8 @@ static inline BOOL AdvanceJumpArc(XActJump* act, u32 frames)
  */
 // NONMATCHING: retail keeps the cleared playing flag in r4 and loads its other zeros where they are stored; here that zero sits
 // in r0 from the switch on and the state resets use it. Saved registers: retail has the frame count in r27 below the interrupt
-// flag, the game pointer and next (r28 to r30), here it is in r30 above them
+// flag, the game pointer and next (r28 to r30), here it is in r30 above them. playing declared before next is
+// flat, a bool playing drops to 98.2
 void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	BOOL interrupt = FALSE;
@@ -3932,7 +3940,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 						u32 touch = ProbeObjectFloor(obj, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, NULL) & 3;
 						if (touch == 3) {
 							act->mForward = 0;
-							act->mRise *= .8f;
+							act->mRise    = .8f * act->mRise;
 							break;
 						}
 					}
