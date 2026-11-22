@@ -812,11 +812,7 @@ public:
 	ResTexObj GetResTexObj() { return ResTexObj(&ref().texObjData); }
 	ResTev GetResTev();
 	ResTexSrt GetResTexSrt() { return ResTexSrt(&ref().texSrtData); }
-	ResUserData GetResUserData()
-	{
-		s32 ofs = ref().toResUserData;
-		return ResUserData(ofs != 0 ? (u8*)mpData + ofs : NULL);
-	}
+	ResUserData GetResUserData();
 	void DCStore(bool sync);
 };
 

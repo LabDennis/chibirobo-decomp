@@ -106,7 +106,9 @@ void XObj::ResetObjectState()
 	mFloorHit.mTriangle = -1;
 	mFloorHit.mTrigon   = 0;
 	mFloorHit.mHeight   = 0.0f;
-	mVec714.x = mVec714.y = mVec714.z = 0.0f;
+	mVec714.x           = 0.0f;
+	mVec714.y           = 0.0f;
+	mVec714.z           = 0.0f;
 	ClearAnimQueue();
 	mLastPos           = mMoveTranslate;
 	mLastRot           = mMoveRotate;
@@ -125,19 +127,20 @@ void XObj::ResetObjectState()
 
 // 0x800AC238, the placement read: copies the stage entry's transform, flags and parameters
 // into the object, starts its animation, wires the event script and records its scope
+// NONMATCHING: ~91% fuzzy - the object-id compare chains allocate their per-id flags to different
+// registers and retail tests the id ranges with subtract/compare forms ours does not produce
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
 	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) { // the placement opts out of loading
 		return TRUE;
 	}
-	AttrInfo* attr = &mAttr;
-	if (mStatus.mFlags & 1) {
+	if ((mStatus.mFlags & 1) == 1) {
 		ready = TRUE;
 	} else {
-		if (attr->mObjData == NULL) {
+		if (mAttr.mObjData == NULL) {
 			mCoord.mPlacement = info.mPlacement;
-			attr->Init((CoordInfo*)&info);
+			mAttr.Init((CoordInfo*)&info);
 		}
 		if (mFloors == NULL) {
 			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
@@ -147,15 +150,15 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				mFloors = NULL;
 			}
 		}
-		if (!ModelName(*attr)) {
+		if (!ModelName(mAttr)) {
 			ready = TRUE;
-		} else if (Source(*attr)) {
+		} else if (Source(mAttr)) {
 			ready = fn_800AD498(this);
 		}
 	}
 	if (ready) {
 		mStatus.mFlags = (mStatus.mFlags & 0x0040000000000000ULL) | ((u64)info.mPlacement->mFlags << 16)
-		               | (attr->mObjData != NULL ? attr->mObjData->mFlags : 0) | 1;
+		               | (mAttr.mObjData != NULL ? mAttr.mObjData->mFlags : 0) | 1;
 		Vec pos = PlacementPosition(info);
 		SetPos(pos);
 		if (mStatus.mFlags & 0x800ULL) {
@@ -367,8 +370,10 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 // 0x800AD498, the load half of LoadFromPlacement: the kind's archive, model id and a tex-stage
 // count out of the object data, "<name>.brres" through CObj::Load. the GameCube keeps this
 // inline in xobjinit.cpp (there with "%s.dat" and ARAM flags instead of the stage count)
-// NONMATCHING: ~87% fuzzy - retail CSEs GetPool()'s mObjData load across the two &&-range tests
-// and schedules the selects differently; the generated logic is otherwise identical
+// NONMATCHING: ~92% fuzzy - the pool-range clause binds the pool once for both compares, like
+// retail (two GetPool evals per block), but retail also materializes that && as a bool; the rest is
+// register/scheduling debris: retail drops the dead inner select-else in the first eval, keeps an unexplained li r3,0
+// per status block, and schedules the "ufo/wall2" address before the ModelName checks
 extern "C" BOOL fn_800AD498(XObj* obj)
 {
 	AttrInfo& attr     = obj->mAttr;
@@ -380,7 +385,7 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 		flags |= 0x10000;
 	}
 	BOOL isWall2 = FALSE;
-	if (HasSource(attr) && ModelName(attr) != NULL && strcmp(ModelName(attr), "ufo/wall2") == 0) {
+	if (ModelName(attr) != NULL && strcmp(ModelName(attr), "ufo/wall2") == 0) {
 		isWall2 = TRUE;
 	}
 	if (isWall2) {
@@ -392,12 +397,14 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 		texNum = 4;
 	}
 	if (gGame.GetStatusFlags(0x2000000000ULL) != 0) {
-		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+		s32 pool;
+		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16)) {
 			texNum += 1;
 		}
 	}
 	if (gGame.GetStatusFlags(0x100000000000ULL) != 0) {
-		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+		s32 pool;
+		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16)) {
 			texNum += 5;
 		}
 	}
@@ -488,13 +495,11 @@ void XObj::Release()
 {
 	if (mArchive.mAnm.IsLoaded()) {
 		if (GetAnimId() >= 0) {
-			XObjSource* source = NULL;
-			if (mAttr.mObjData != NULL) {
-				source = mAttr.mObjData->mSource;
-			}
-			if (source != NULL && source->mAnimNames != NULL
-			    && mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
-				SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			XObjSource* source = mAttr.mObjData != NULL ? mAttr.mObjData->mSource : NULL;
+			if (source != NULL && source->mAnimNames != NULL) {
+				if (mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
+					SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+				}
 			}
 			SetAnim(GetAnimId(), TRUE, GetAnimFrame(), 1.0f, 1.0f, 15.0f);
 		}
@@ -517,6 +522,8 @@ void XObj::Release()
 }
 
 // 0x800ADD28
+// NONMATCHING: ~96% fuzzy - retail keeps the placement's object id in saved r29 across the id
+// tests (ours uses a scratch register), plus a few literal-pool and scheduling differences
 void XObj::UpdateObject(u32 frames)
 {
 	if (mObject.m_pScnMdl != NULL) {
@@ -540,7 +547,9 @@ void XObj::UpdateObject(u32 frames)
 				mMoveTranslate.x += mVec714.x;
 				mMoveTranslate.z += mVec714.z;
 				mMoveTranslate.y = mFloorHit.mHeight;
-				mVec714.x = mVec714.y = mVec714.z = 0.0f;
+				mVec714.x        = 0.0f;
+				mVec714.y        = 0.0f;
+				mVec714.z        = 0.0f;
 				SetRotationX(0.0f);
 				SetRotationZ(0.0f);
 				mStatus.mFlags &= ~0x1000000000000000ULL;
@@ -570,12 +579,12 @@ void XObj::UpdateObject(u32 frames)
 		CEvt_Update(&mEvt, frames);
 	}
 	if (mAnimEventCallback != NULL && !(mStatus.mFlags & 0x800ULL)) {
-		mAnimEventCallback(this, GetAnimId(), mLastAnimFrame, GetAnimFrame());
+		f32 prev = mLastAnimFrame;
+		mAnimEventCallback(this, GetAnimId(), prev, GetAnimFrame());
 	}
 	if (PSVECMag(&mMoveScale) > 0.0f) {
-		WiiObjectRef* ref = &gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount];
-		ref->mObj         = this;
-		ref->mIndex       = 0;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mObj   = this;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mIndex = 0;
 		gGame.mDrawLists[1].mCount++;
 	}
 }
@@ -895,31 +904,38 @@ extern "C" void fn_800AF51C(XObj* obj)
 		ResMat mat = obj->mObject.m_resMdl.GetResMat(i);
 		ScnMdl::CopiedMatAccess access(obj->mObject.m_pScnMdl, i);
 
-		ResGenMode genMode = access.GetResGenMode(false);
+		ResGenMode genMode;
+		genMode = access.GetResGenMode(false);
 		if (!genMode.IsValid()) {
 			genMode = mat.GetResGenMode();
 		}
-		ResMatTevColor tevColor = access.GetResMatTevColor(false);
+		XOBJ_ASSERT_LINE(0x749, genMode.IsValid());
+		ResMatTevColor tevColor;
+		tevColor = access.GetResMatTevColor(false);
 		if (!tevColor.IsValid()) {
 			tevColor = mat.GetResMatTevColor();
 		}
 		XOBJ_ASSERT_LINE(0x74F, tevColor.IsValid());
-		ResMatTexCoordGen texCoordGen = access.GetResMatTexCoordGen(false);
+		ResMatTexCoordGen texCoordGen;
+		texCoordGen = access.GetResMatTexCoordGen(false);
 		if (!texCoordGen.IsValid()) {
 			texCoordGen = mat.GetResMatTexCoordGen();
 		}
 		XOBJ_ASSERT_LINE(0x755, texCoordGen.IsValid());
-		ResTexObj texObj = access.GetResTexObj(false);
+		ResTexObj texObj;
+		texObj = access.GetResTexObj(false);
 		if (!texObj.IsValid()) {
 			texObj = mat.GetResTexObj();
 		}
 		XOBJ_ASSERT_LINE(0x75B, texObj.IsValid());
-		ResTexSrt texSrt = access.GetResTexSrt(false);
+		ResTexSrt texSrt;
+		texSrt = access.GetResTexSrt(false);
 		if (!texSrt.IsValid()) {
 			texSrt = mat.GetResTexSrt();
 		}
 		XOBJ_ASSERT_LINE(0x761, texSrt.IsValid());
-		ResTev tev = access.GetResTev(false);
+		ResTev tev;
+		tev = access.GetResTev(false);
 		if (!tev.IsValid()) {
 			tev = mat.GetResTev();
 		}
