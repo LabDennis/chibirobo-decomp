@@ -57,6 +57,8 @@ void fn_80061DBC(MenuStatus* menu);
 void DrawStatusIconGrid(MenuStatus* menu);
 void DrawStatusHelpText(MenuStatus* menu);
 void DrawStatusMenuTitle(MenuStatus* menu);
+void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
+void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -2140,6 +2142,70 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	DrawPCChoicePiece(tex, color, 0.0f, cx, y, barWidth, barHeight);
 	DrawPCChoicePiece(tex, color, 0.0f, (cx - barWidth / 2.0f) - gap, y, 8.0f * scale, barHeight);
 	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
+}
+
+static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 alpha)
+{
+	const char* units = GetLocalizedInterfaceText(0x50);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xC8C8C800, units, 216.0f * scale + originX, 147.0f * scale + originY,
+	                             0.0f, 18.0f * scale, 18.0f * scale);
+}
+
+// NONMATCHING: the complete call list matches; the current spelling needs 88 more bytes and a different stack/register layout
+extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 scrap, f32 money, f32 scroll, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 width = 296.0f * scale, height = 156.0f * scale;
+	f32 left = x - width / 2.0f, top = y - height / 2.0f;
+	f32 right = width + left, bottom = height + top;
+	Vec panel[5] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+		             (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+	u32 opacity  = (u32)(255.0f * alpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, opacity, 5);
+	y += scale;
+	f32 margin = 20.0f * scale, size = 17.0f * scale;
+	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
+	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
+	if (choice != 2) {
+		f32 inset    = 2.0f * scale;
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
+		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
+		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
+		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
+	}
+	DrawPCBlueNumber(false, (130.0f * scale + originX) - 60.0f * scale, originY + height, alpha, scale, scrap);
+	DrawPCRecycleUnit(originX, originY, scale, menu->mAlpha);
+	int places = 1;
+	for (;; places++) {
+		f32 divisor = 1.0f;
+		for (int j = 0; j < places; j++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)((s32)money / divisor) == 0) {
+			break;
+		}
+	}
+	InitPCPanelTexture(tex, 126);
+	u16 digitWidth = GXGetTexObjWidth(&tex);
+	f32 numberX    = places * (scale * digitWidth) + (120.0f * scale + originX);
+	DrawPCGoldNumber(false, numberX, originY + height, alpha, scale, money);
+	if (choice != 2) {
+		f32 textX = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		DrawPCRecycleLabel(0x4E, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
+		DrawPCRecycleLabel(0x4F, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
+		DrawPCRecycleLabel(0x41, textX, labelOffset, 40.0f * scale, rowOffset + (originY + size), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
+		DrawPCRecycleLabel(0x42, textX, labelOffset, 40.0f * scale, rowOffset + (2 * size + originY), size,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
+	} else {
+		const char* text = GetLocalizedInterfaceText(0x48);
+		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x48), TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text,
+		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             (originY + rowOffset) - 4.0f * scale, 0.0f, size, size);
+	}
 }
 
 // NONMATCHING: the complete call list matches; a 48-byte stack/layout and register-allocation difference remains
