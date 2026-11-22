@@ -516,58 +516,22 @@ game/inventory.cpp:
 game/params.cpp:
 	.text       start:0x800DEA74 end:0x800DF070
 
-game/xobjfreedtor.cpp:
-	.text       start:0x800DF2E4 end:0x800DF344
-
 game/objb_sound.cpp:
 	.text       start:0x800DF070 end:0x800DF2E4
 	.rodata     start:0x8020B620 end:0x8020B638
-	.data       start:0x80228640 end:0x80228834
+	.data       start:0x80228640 end:0x80228838
 	.sdata      start:0x80634A88 end:0x80634AB0
 	.sdata2     start:0x80637C88 end:0x80637CB8
 
 game/xobjfree.cpp:
-	.text       start:0x800DF344 end:0x800DF8D0
-
-game/xobjfreeupdate.cpp:
-	.text       start:0x800DF8D0 end:0x800DFD7C
-
-game/xobjfreeevent.cpp:
-	.text       start:0x800DFD7C end:0x800E034C
-
-game/xobjdust.cpp:
-	.text       start:0x800E034C end:0x800E2EFC
-	.data       start:0x80228A30 end:0x80228B7C
-	.sbss2      start:0x8063A510 end:0x8063A520
-
-game/xobjcoinfall.cpp:
-	.text       start:0x800E2EFC end:0x800E3108
-
-game/xobjcoinparam.cpp:
-	.text       start:0x800E3108 end:0x800E3184
-
-game/xobjcoinupdate.cpp:
-	.text       start:0x800E3184 end:0x800E3BA4
-
-game/xobjcoin.cpp:
-	.text       start:0x800E3BA4 end:0x800E3F84
-
-game/xobjflagsdtor.cpp:
-	.text       start:0x800E3F84 end:0x800E4044
-
-game/xobjflagsclear.cpp:
-	.text       start:0x800E4044 end:0x800E40E0
-
-game/xobjhboxdtor.cpp:
-	.text       start:0x800E40E0 end:0x800E4150
-
-game/xobjcoindtor.cpp:
-	.text       start:0x800E4150 end:0x800E4264
-
-game/xobjflagsinit.cpp:
-	.text       start:0x800E4264 end:0x800E42F0
+	.text       start:0x800DF2E4 end:0x800E42F0
 	.ctors      start:0x801FEF40 end:0x801FEF44
+	.rodata     start:0x8020B638 end:0x8020B6F0
+	.data       start:0x80228838 end:0x80229128
 	.bss        start:0x8035C250 end:0x8035C9B8
+	.sdata      start:0x80634AB0 end:0x80634B00
+	.sdata2     start:0x80637CB8 end:0x80637DC0
+	.sbss2      start:0x8063A510 end:0x8063A520
 
 game/objb_leticker.cpp:
 	.text       start:0x800E42F0 end:0x800E8694

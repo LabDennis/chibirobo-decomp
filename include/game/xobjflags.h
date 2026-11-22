@@ -12,8 +12,14 @@ public:
 
 	XObjFlags();
 
-	virtual void ResetForNewGame(); // _94 (weak), clears every flag
-	virtual s32 GetFlagIndex();     // _148, the bit in mFlags, 0 and below have none
+	virtual void ResetForNewGame() // _94 (weak), clears every flag
+	{
+		u32* flags = mFlags->mFlags;
+		for (u32 i = 0; i < ARRAY_SIZE(mFlags->mFlags); ++i) {
+			flags[i] = 0;
+		}
+	}
+	virtual s32 GetFlagIndex(); // _148, the bit in mFlags, 0 and below have none
 
 	s32 GetPlacementFlagIndex(s32 group) const
 	{
