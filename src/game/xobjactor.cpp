@@ -16,14 +16,6 @@
 extern "C" void OSReport(const char*, ...);
 
 /**
- * @note Address: 0x80106A14
- * @note Size: 0x78
- */
-XObjActor::~XObjActor()
-{
-}
-
-/**
  * @note Address: 0x80106A8C
  * @note Size: 0x4
  */
