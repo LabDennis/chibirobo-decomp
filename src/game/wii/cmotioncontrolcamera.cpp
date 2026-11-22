@@ -718,8 +718,8 @@ extern "C" WiiCameraPoint fn_8016A844(const WiiCameraCurve* curve, f32 t)
  */
 extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale)
 {
-	f32 curve = to + std::sinf(6.2831855f * t) * (scale / 6.2831855f);
-	return from + (1.0f - curve) * to;
+	f32 curve = t + std::sinf(6.2831855f * t) * (scale / 6.2831855f);
+	return from * (1.0f - curve) + to * curve;
 }
 
 /**
@@ -748,22 +748,28 @@ extern "C" void fn_8016AA74()
  * @note Address: 0x8016AA78
  * @note Size: 0x158
  */
+// NONMATCHING: clamp scheduling. Retail returns the Vec by value (r3 is the return slot, three stw out, z
+// uninitialised); the three callers in the camera actions still pass an out pointer. x comes from in[1], y from in[0].
 extern "C" void fn_8016AA78(f32* out, f32* in, f32* limits)
 {
-	out[0] = fn_8016A81C(in[0], -limits[0], limits[0]);
-	out[1] = fn_8016A81C(in[1], -limits[1], limits[1]);
-	if (fabs(out[0]) < limits[2]) {
-		out[0] = 0.0f;
-	} else if (out[0] >= 0.0f) {
-		out[0] = (out[0] - limits[2]) / (limits[0] - limits[2]);
+	Vec result;
+	result.x = fn_8016A81C(in[1], -limits[0], limits[0]);
+	result.y = fn_8016A81C(in[0], -limits[1], limits[1]);
+	f32 x    = fabs(result.x);
+	if (x < limits[2]) {
+		result.x = 0.0f;
+	} else if (result.x >= 0.0f) {
+		result.x = (result.x - limits[2]) / (limits[0] - limits[2]);
 	} else {
-		out[0] = -(out[0] + limits[2]) / (limits[0] - limits[2]);
+		result.x = -(x - limits[2]) / (limits[0] - limits[2]);
 	}
-	if (fabs(out[1]) < limits[3]) {
-		out[1] = 0.0f;
-	} else if (out[1] >= 0.0f) {
-		out[1] = (out[1] - limits[3]) / (limits[1] - limits[3]);
+	f32 y = fabs(result.y);
+	if (y < limits[3]) {
+		result.y = 0.0f;
+	} else if (result.y >= 0.0f) {
+		result.y = (result.y - limits[3]) / (limits[1] - limits[3]);
 	} else {
-		out[1] = -(out[1] + limits[3]) / (limits[1] - limits[3]);
+		result.y = -(y - limits[3]) / (limits[1] - limits[3]);
 	}
+	*(Vec*)out = result;
 }

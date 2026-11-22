@@ -102,6 +102,7 @@ static MenuStatus sMenuStatus;
 static MenuItem sMenuItem;
 static MenuPC sMenuPC;
 static MenuSave sMenuSave;
+static MenuStatusTable sStatusItemTable;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
@@ -830,6 +831,56 @@ void MenuPaneFadePair::Update(u32 frames)
 {
 	for (s32 i = 0; i < 2; i++) {
 		mFades[i].Update(frames);
+	}
+}
+
+static inline s32 CountMenuItems()
+{
+	s16 num;
+	s16 id;
+	s32 count = 0;
+	for (int i = 255; i >= 0; i--) {
+		InventoryItem* pairs = gGame.GetPlayer()->mParams.mInventory.mItems;
+		id                   = pairs[i].mId;
+		num                  = pairs[i].mCount;
+		if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
+// the pointer left a pane
+void MenuItem::vf0C(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = 0;
+	if (mMode != 2) {
+		return;
+	}
+	if (kind >= 8 && kind <= 9) {
+		mPaneFades.mFades[(u32)(kind - 8)].mHovered = 0;
+		return;
+	}
+	if (mSelection == kind && mSelection != -1) {
+		mSelection = -1;
+	}
+}
+
+// the pointer came onto a pane
+// NONMATCHING: 98 %, MWCC folds &mParams (0x999C) + mInventory (0x3C) into -0x6628(r3) instead of keeping 0x3C(r3)
+void MenuItem::vf10(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	if (kind >= 0 && kind <= 7 && mSelection != kind) {
+		if (CountMenuItems() > 0 && sStatusItemTable.mItems[kind].mItem >= 0) {
+			mSelection = kind;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 8 && kind <= 9 && mMode == 2) {
+		mPaneFades.mFades[(u32)(kind - 8)].mHovered = 1;
 	}
 }
 
@@ -2400,6 +2451,148 @@ void MenuStatus::State6(u32)
 {
 }
 
+void MenuStatus::vf0C(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = 0;
+	switch (mMode) {
+	case 1:
+		if (mSelection == kind && mSelection != -1) {
+			mSelection = -1;
+		}
+		break;
+	case 2:
+		if (kind < 49 || kind > 50) {
+			if (mItemSelection == kind - 4 && mItemSelection != -1) {
+				mItemSelection = -1;
+			}
+		}
+		break;
+	case 9:
+		if (mOverviewSelection == kind - 12 && mOverviewSelection != -1) {
+			mOverviewSelection = -1;
+		}
+		break;
+	case 8:
+		if (mIconSelection == kind - 25 && mIconSelection != -1) {
+			mIconSelection = -1;
+		}
+		break;
+	}
+	if (kind >= 49 && kind <= 50 && mMode == 2 && mPhase == 0) {
+		mPaneFades.mFades[(u32)(kind - 49)].mHovered = 0;
+	}
+}
+
+// NONMATCHING: MWCC folds &mParams (0x999C) + mInventory (0x3C) into -0x6628(r3), as in MenuItem::vf10
+void MenuStatus::vf10(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	if (kind >= 25 && kind <= 48) {
+		if (mIconSelection != kind - 25) {
+			mIconSelection = kind - 25;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 12 && kind <= 24) {
+		if (mOverviewSelection != kind - 12) {
+			mOverviewSelection = kind - 12;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 4 && kind <= 11 && mItemSelection != kind - 4) {
+		if (CountMenuItems() > 0) {
+			s32 slot = kind - 4;
+			if (sStatusItemTable.mItems[slot].mItem >= 0) {
+				mItemSelection = slot;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		return;
+	}
+	switch (kind) {
+	case 0:
+		if (mSelection != 0) {
+			mSelection = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 1:
+		if (mSelection != 1) {
+			mSelection = 1;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 2:
+		if (mSelection != 2) {
+			mSelection = 2;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 3:
+		if (mSelection != 3) {
+			mSelection = 3;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	}
+	if (kind >= 49 && kind <= 50 && mMode == 2 && mPhase == 0) {
+		mPaneFades.mFades[(u32)(kind - 49)].mHovered = 1;
+	}
+}
+
+void MenuStatus::vf18(nw4r::math::VEC2*)
+{
+	ClearSelections();
+}
+
+void MenuStatus::ClearSelections()
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (mMode == 1 && mPhase == 0) {
+		mSelection = -1;
+	}
+	if (mMode == 2 && mPhase == 0) {
+		mItemSelection = -1;
+	}
+	if (mMode == 9 && mPhase == 0) {
+		mOverviewSelection = -1;
+	}
+	if (mMode == 8 && mPhase == 0) {
+		mIconSelection = -1;
+	}
+}
+
+void MenuStatus::vf1C(nw4r::math::VEC2*)
+{
+	RestoreSelections();
+}
+
+void MenuStatus::RestoreSelections()
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (mMode == 1 && mPhase == 0 && mSelection == -1 && mStickSelection != -1) {
+		mSelection = mStickSelection;
+	}
+	if (mMode == 2 && mPhase == 0 && mItemSelection == -1 && mStickItemSelection != -1) {
+		mItemSelection = mStickItemSelection;
+	}
+	if (mMode == 9 && mPhase == 0 && mOverviewSelection == -1 && mStickOverviewSelection != -1) {
+		mOverviewSelection = mStickOverviewSelection;
+	}
+	if (mMode == 8 && mPhase == 0 && mIconSelection == -1 && mStickIconSelection != -1) {
+		mIconSelection = mStickIconSelection;
+	}
+}
+
 // the PC's dialogue line back to full-width spaces; on the Wii the characters start off the right edge of a wide screen.
 // NONMATCHING: retail picks the first width as 854 with the 640 copied in from a second register (0x8006D2FC), the one
 // difference left; an if or either ternary gives the plain two-load form
@@ -3080,15 +3273,13 @@ extern "C" void PopulateOwnedItemPage(MenuStatusTable* table)
 	}
 }
 
-// how many of the item chibi robo holds, the GameCube's. NONMATCHING: the slot walk and the player reload are
-// retail's; register allocation still differs (MarkAvailableStatusEntries inlines it nine times)
+// how many of the item chibi robo holds, the GameCube's. NONMATCHING: 91 %, retail hoists addis r5, r4, 1 before the loop instead of
+// folding addi r5, r4, 0x3fc
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
-	const WiiPlayerState* player = gGame.GetPlayer();
-	const InventoryItem* item    = &player->mParams.mInventory.mItems[255];
-	s16 count                    = 0;
-	for (int i = 255; i >= 0; i--, item--) {
-		if (id == item->mId) {
+	s16 count = 0;
+	for (int i = 255; i >= 0; i--) {
+		if (id == gGame.GetPlayer()->mParams.mInventory.mItems[i].mId) {
 			count = gGame.GetPlayer()->mParams.mInventory.mItems[i].mCount;
 			break;
 		}

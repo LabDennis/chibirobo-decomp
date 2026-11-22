@@ -1510,6 +1510,7 @@ struct MenuPaneFade {
 	CbPane* mPane; // _00
 	f32 mAlpha;    // _04
 	u8 mShown;     // _08, the pane's mEnabled as of the last update
+	u8 mHovered;   // _09, pointer is over this pane
 
 	void Update(u32 frames)
 	{
@@ -1552,7 +1553,9 @@ public:
 	s32 mStickSelection; // _1A8, the row the stick is on, mSelection again when the pointer goes
 	u8 _1AC[0x1C0 - 0x1AC];
 	MenuTitle mTitle; // _1C0
-	u8 _35C[0x774 - 0x35C];
+	u8 _35C[0x770 - 0x35C];
+	u8 mHovered; // _770
+	u8 _771[0x774 - 0x771];
 	MenuPaneFadePair mPaneFades; // _774
 };
 STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
@@ -1611,9 +1614,30 @@ public:
 	virtual void vf18(nw4r::math::VEC2* pos);
 	virtual void vf1C(nw4r::math::VEC2* pos);
 
-	u8 _160[0x6B8 - 0x160];
-	MenuTitle mTitle; // _6B8
-	u8 _854[0x193C - 0x854];
+	void ClearSelections();
+	void RestoreSelections();
+
+	u8 _160[0x518 - 0x160];
+	s32 mMode; // _518
+	u8 _51C[0x524 - 0x51C];
+	s32 mOverviewSelection; // _524
+	u8 _528[0x52C - 0x528];
+	s32 mStickOverviewSelection; // _52C
+	s32 mIconSelection;          // _530
+	u8 _534[0x538 - 0x534];
+	s32 mStickIconSelection; // _538
+	u8 _53C[0x544 - 0x53C];
+	s32 mStickSelection; // _544
+	u8 _548[0x66C - 0x548];
+	s32 mPhase; // _66C
+	u8 _670[0x6AC - 0x670];
+	s32 mItemSelection; // _6AC
+	u8 _6B0[0x6B4 - 0x6B0];
+	s32 mStickItemSelection; // _6B4
+	MenuTitle mTitle;        // _6B8
+	u8 _854[0x1938 - 0x854];
+	u8 mHovered; // _1938
+	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
 	u8 _1954[0x1958 - 0x1954];
 };
