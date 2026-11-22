@@ -3959,6 +3959,7 @@ void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
  * @note Address: 0x8009DAA8
  * @note Size: 0x1DC
  */
+// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C)
 extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 {
 	s32 type = 0;
@@ -3998,6 +3999,9 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  * @note Address: 0x8009DC84
  * @note Size: 0x134
  */
+// NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
+// (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
+// if moved the NAN load further from retail
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -4060,6 +4064,9 @@ static inline XObj* FindEventObj(s32 id)
  * @note Address: 0x8009DDB8
  * @note Size: 0x1740
  */
+// NONMATCHING: case 202 returns !(mode > 0) as a BOOL in retail (neg, andc, srwi, cntlzw, extrwi from US 0x8009ED50);
+// every spelling here (<= 0, !(> 0), ?:, == FALSE, a BOOL local) folds to the shorter rlwnm form. The anim lookup
+// keeps the GetAObj result in r3 up to its test instead of copying it in each return path
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 {
 	s32 result = 0;
@@ -4617,6 +4624,7 @@ extern "C" CVec GetPlayerCarryJointWorldPosition(CJObj* object)
  * @note Address: 0x800A09BC
  * @note Size: 0x21C
  */
+// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after
 extern "C" Vec GetPlayerFirstPersonEyePosition(XObjChr* chr)
 {
 	s32 left[8]  = { 0, 1, 0, 1, 2, 0, 0, 0 };
@@ -5473,6 +5481,9 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  * @note Address: 0x800A551C
  * @note Size: 0x73C
  */
+// NONMATCHING: retail keeps the anim gauge's frame, fraction and left edge in three saved float registers (fdivs f30,
+// f31, f0 at US 0x800A59C8) where the build reuses the frame's for the fraction; an unnamed frame or a separate end
+// local changed nothing
 void XObjChr::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
@@ -5756,6 +5767,8 @@ void XObjAttachment::DrawWithView(Mtx view)
  * @note Address: 0x800A7C70
  * @note Size: 0x1AC
  */
+// NONMATCHING: retail hands CreateSRT the rotation straight out of the particle copy (addi r8, r1, 0x74 at
+// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help
 extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
 {
 	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
@@ -6892,7 +6905,9 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 
 // NONMATCHING: register numbers in the object loops; retail also jumps from the hang loop's two put-backs straight past the
 // `if (!supported)` test (here they set the flag and test it), branches twice after each leticker index test, and computes
-// marker & 0x80 again for the look mode instead of keeping the count chain's result
+// marker & 0x80 again for the look mode instead of keeping the count chain's result. The turn rate multiplies the turn
+// first (US 0x800AD2C0 fmuls f25, f27, f0) into a register of its own: turn * k puts the literal first, and turn *= k
+// or rate *= k fixes the order but shares the register
 extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32 speed, f32 direction)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
@@ -10210,6 +10225,9 @@ static inline bool SuitFadeFinished(const XObjChr* player)
  * @note Address: 0x800B9134
  * @note Size: 0x624
  */
+// NONMATCHING: retail puts the ring start position below the suit item's joint path in the frame (stw r0, 0x10(r1) at
+// US 0x800B91E8, the path at 0x1C), the build above it, and keeps the player in r31 (the build r25); a
+// compound literal for the position moved nothing
 extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 {
 	switch (player->mSuits.mChangeStep) {
