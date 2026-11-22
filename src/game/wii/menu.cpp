@@ -3273,9 +3273,8 @@ extern "C" void PopulateOwnedItemPage(MenuStatusTable* table)
 	}
 }
 
-// how many of the item chibi robo holds, the GameCube's. NONMATCHING: the slot walk and the player reload are
-// retail's; register allocation still differs (MarkAvailableStatusEntries inlines it nine times)
-// NONMATCHING: 91 %, retail hoists addis r5, r4, 1 before the loop instead of folding addi r5, r4, 0x3fc
+// how many of the item chibi robo holds, the GameCube's. NONMATCHING: 91 %, retail hoists addis r5, r4, 1 before the loop instead of
+// folding addi r5, r4, 0x3fc
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
 	s16 count = 0;
