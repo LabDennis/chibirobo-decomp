@@ -853,8 +853,8 @@ static void InitQuads(CCameraActionScroll2* camera)
 		{ 0.0f, y },
 		{ 0.0f, -y },
 	};
-	const f32 sQuadRot[4]    = { 0.0f, PI, -HALF_PI, HALF_PI };
-	const f32 sQuadDir[4][2] = {
+	const f32 rot[4]    = { 0.0f, PI, -HALF_PI, HALF_PI };
+	const f32 dir[4][2] = {
 		{ 0.0f, 1.0f },
 		{ 0.0f, -1.0f },
 		{ 1.0f, 0.0f },
@@ -867,10 +867,10 @@ static void InitQuads(CCameraActionScroll2* camera)
 		quad->mUnk24         = FALSE;
 		quad->mX             = positions[i][0];
 		quad->mY             = positions[i][1];
-		quad->mUnk0C         = sQuadDir[i][0];
-		quad->mUnk10         = sQuadDir[i][1];
+		quad->mUnk0C         = dir[i][0];
+		quad->mUnk10         = dir[i][1];
 		quad->mScale         = 1.0f;
-		quad->mRot           = sQuadRot[i];
+		quad->mRot           = rot[i];
 		quad->mUnk1C         = i;
 	}
 }
