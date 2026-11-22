@@ -9286,7 +9286,9 @@ static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f
 
 // NONMATCHING: register allocation. Retail writes 23 * sx and the message top back into the parameters' registers
 // (US 0x8003936C fmuls f29,f2,f29; 0x800393CC fnmsubs f28); the build gives them new ones, and the icon quad's
-// arguments are scheduled in another order
+// arguments are scheduled in another order. Retail numbers x first (f31) and y below sx and sy (f28); the build
+// numbers them in reverse parameter order. The message helpers as macros on the caller's own variables, or f32
+// width and height at the icon's texture read, do not move the parameter registers (lower or unchanged).
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
                                     f32 alpha, f32 sx, f32 sy)
 {
