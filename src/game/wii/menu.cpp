@@ -42,6 +42,7 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 void ResumeGameSounds(CGame* game, f32 fadeSeconds);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
+u8* GetAttachmentDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
 u8* GetStatusIconDescription(s32 id);
 u8* GetUtilibotName(s32 id);
@@ -105,6 +106,7 @@ static MenuItem sMenuItem;
 static MenuPC sMenuPC;
 static MenuSave sMenuSave;
 static MenuStatusTable sStatusItemTable;
+MenuPCPage gShopHistoryPage;
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 
@@ -2012,6 +2014,204 @@ static inline void DrawSolidQuad(CGs* gs, const Vec* quad, u32 color)
 {
 	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
 	                 color, quad[3].x, quad[3].y, quad[3].z, color);
+}
+
+static inline void InitPCPanelTexture(CTexObj& tex, s32 icon)
+{
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+	tex = gGame.mTpl.mTex;
+}
+
+static inline void DrawOverviewTexture(CTexObj& tex, u32 color, f32 x, f32 y, f32 width, f32 height)
+{
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+static inline void DrawPCShopCenteredText(const char* text, u32 color, f32 x, f32 y, f32 size)
+{
+	f32 width = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, y, 0.0f, size, size);
+}
+
+static inline void DrawPCPurchaseResult(char (&)[256], s32 bought, f32 x, f32 y, f32 size, u32 white)
+{
+	f32 labelWidth = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(bought), TRUE, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, white, GetLocalizedInterfaceText(bought), x - labelWidth / 2.0f, y, 0.0f, size, size);
+}
+
+static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 offset, f32 margin, f32 y, f32 size, u32 color)
+{
+	const char* text = GetLocalizedInterfaceText(id);
+	x -= MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), TRUE, size) / 2.0f;
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, size, size);
+}
+
+static inline f32 PCRecycleChoiceX(f32 x, f32 size, f32 scale, f32 margin, f32 offset, f32 widthScale)
+{
+	f32 base = (4.0f * scale + ((widthScale * size) / 2.0f + (x + size))) - 40.0f * scale;
+	return 40.0f * scale + (margin + (offset + base));
+}
+
+static inline void DrawPCPurchaseLabels(s32 question, s32 yes, s32 no, f32 left, f32 top, f32 size, f32 scale, f32 margin, f32 offset,
+                                        f32 rowY, f32 extraW, u32 white)
+{
+	f32 textX = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+	DrawPCRecycleLabel(question, textX, offset, 40.0f * scale, (top + rowY) - 4.0f * scale, size, white);
+	DrawPCRecycleLabel(yes, textX, offset, 40.0f * scale, rowY + (top + size), size, white);
+	DrawPCRecycleLabel(no, textX, offset, 40.0f * scale, rowY + (2.0f * size + top), size, white);
+}
+
+enum PCShopListKind { PriceList, ItemPriceList };
+
+template <PCShopListKind kind>
+static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top, f32 scale, f32 extraW,
+                                      f32 extraH)
+{
+	InitPCPanelTexture(tex, 126);
+	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	f32 digitY         = extraH * scale + (156.0f * scale + top);
+	for (int i = 0; i < 4; i++) {
+		f32 divisor = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				divisor *= 10.0f;
+			}
+		}
+		s32 digit = (s32)(page.mRows[selected].mPrice / divisor);
+		if (i && digit == 0) {
+			continue;
+		}
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (digit % 10), 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 upper  = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
+		u32 lower  = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		f32 digitX = 287.0f * scale + (left - i * w);
+		digitX     = (extraW / 2.0f) * scale + (18.0f * scale + digitX);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, digitX, digitY, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	return digitY;
+}
+
+template <PCShopListKind kind>
+static inline void DrawPCPriceUnit(CTexObj& tex, f32 scale, f32 left, f32 digitY, f32 opacity)
+{
+	InitPCPanelTexture(tex, kind == ItemPriceList ? 145 : 149);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u16 unitW = GXGetTexObjWidth(&tex), unitH = GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)opacity | 0xFFFFFF00, (u32)opacity | 0xFFFFFF00, (u32)opacity | 0xFFFFFF00,
+	                   (u32)opacity | 0xFFFFFF00, 287.0f * scale + (18.0f * scale + left), digitY, 0.0f, 1.1f * unitW, unitH, 0.0f, 0.0f,
+	                   0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+static inline void DrawPCChoiceStripe(f32 x, f32 y, f32 barWidth, f32 barHeight, f32 alpha, f32 scroll)
+{
+	CTexObj stripe;
+	InitPCPanelTexture(stripe, 119);
+	PSMTXTrans(stripe.mTexMtx.mMtx[0], scroll, 0.0f, 0.0f);
+	stripe.mTexMtx.mDirty = TRUE;
+	PSMTXScale(stripe.mTexMtx.mMtx[2], 0.5f * (barWidth / GXGetTexObjWidth(&stripe)), 0.5f, 1.0f);
+	stripe.mTexMtx.mDirty = TRUE;
+	DrawOverviewTexture(stripe, (u32)(40.0f * alpha) | 0xFFFFFF00, x, y, barWidth, barHeight);
+}
+
+static inline void DrawPCChoicePiece(CTexObj& tex, u32 color, f32 u, f32 x, f32 y, f32 width, f32 height)
+{
+	PSMTXTrans(tex.mTexMtx.mMtx[0], u, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+}
+
+static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f32 barHeight, f32 scale, f32 alpha)
+{
+	f32 gap   = 4.0f * scale;
+	u32 color = (u32)(200.0f * alpha) | 0x181CC600;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	InitPCPanelTexture(tex, 118);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawPCChoicePiece(tex, color, 0.0f, cx, y, barWidth, barHeight);
+	DrawPCChoicePiece(tex, color, 0.0f, (cx - barWidth / 2.0f) - gap, y, 8.0f * scale, barHeight);
+	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
+}
+
+// NONMATCHING: the complete call list matches; a 48-byte stack/layout and register-allocation difference remains
+extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
+{
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	if (scale <= 0.0f) {
+		return;
+	}
+	f32 extraH = IsJapanese() ? 0.0f : 17.0f;
+	f32 extraW = IsJapanese() ? 0.0f : 8.0f;
+	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
+	f32 left    = (x - width / 2.0f) - 34.0f * scale;
+	f32 top     = ((y - extraH / 2.0f) - height / 2.0f) - 13.0f * scale;
+	s16 id      = gShopHistoryPage.mRows[selected].mItem;
+	f32 opacity = 255.0f * alpha;
+	DrawTexturedWindowFrame((u32)(255.0f * alpha), (u32)(255.0f * alpha) | 0xFFFFFF00, x, top + 13.0f * scale, width, height, alpha, 1.0f,
+	                        1.0f);
+	top += scale;
+	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	char text[256];
+	if (choice == 2) {
+		DrawPCPurchaseResult(text, 0x3F, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	} else {
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
+		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
+		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
+		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
+	}
+	if (id < 0) {
+		return;
+	}
+	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
+		sprintf(text, "%s", GetAttachmentDescription(id));
+		if (choice != 2) {
+			DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFFFFF00, x,
+			                       (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
+		}
+		sprintf(text, "%s", GetAttachmentName(id));
+	} else {
+		sprintf(text, "%s", GetItemDescription(id));
+		if (choice != 2) {
+			DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFFFFF00, x,
+			                       (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
+		}
+		sprintf(text, "%s", GetItemName(id));
+	}
+	DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
+	if (choice != 2) {
+		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, gShopHistoryPage, selected, opacity, left, top, scale, extraW, extraH);
+		DrawPCPriceUnit<ItemPriceList>(tex, scale, left, digitY, 255.0f * alpha);
+		DrawPCPurchaseLabels(0x40, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	}
+	s32 icon;
+	f32 w, h;
+	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
+		icon = id == 2 ? 92 : 93;
+		InitPCPanelTexture(tex, icon);
+		w = 0.8f * (scale * GXGetTexObjWidth(&tex));
+		h = 0.8f * (scale * GXGetTexObjHeight(&tex));
+	} else {
+		icon = GetItemIconTextureIndex(id);
+		InitPCPanelTexture(tex, icon);
+		w = scale * GXGetTexObjWidth(&tex);
+		h = scale * GXGetTexObjHeight(&tex);
+	}
+	if (icon >= 0) {
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		DrawOverviewTexture(tex, color, 52.0f * scale + left, 48.0f * scale + top, w, h);
+	}
 }
 
 // NONMATCHING: the call list matches; a 36-byte stack/layout and register-allocation difference remains
