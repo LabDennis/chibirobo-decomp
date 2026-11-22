@@ -414,7 +414,12 @@ void psApplyGeneratorJObj(HSD_Generator* gen)
  */
 f32 generateParticle(HSD_Generator* gen)
 {
-	// NONMATCHING: scalar registers, a latitude-result move and pooled diagnostic strings
+	// NONMATCHING: scalar registers, a latitude-result move and pooled diagnostic strings. Retail keeps
+	// cur in f31 and step in f30 (ours swaps them) and colours the GEN_ANGLE temps f24/f23/f25/f26 where we
+	// use f22/f25/f23/f26 — one global colouring, not separate mistakes. gen_randLat's else-branch result is
+	// materialised in f0 then moved into r's register in retail; ours coalesces it, so one fmr is missing.
+	// .sdata2 literal order follows the same shift. Tried: single-exit and temp-less gen_randLat (99.5),
+	// cur = step * rand + min reuse (97.0), declaration order (no change).
 	Vec vel;
 	Vec pos;
 	Vec rvec;
