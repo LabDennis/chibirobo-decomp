@@ -46,19 +46,15 @@ extern "C" {
 #include <sysdolphin/initialize.h>
 }
 
-// --- game/cgameinit.cpp ---
-// NONMATCHING: __sinit_cgameinit_cpp is the compiler's and its code is the same as retail's, but retail's .bss
+// NONMATCHING: __sinit_game_cpp is the compiler's and its code is the same as retail's, but retail's .bss
 // holds more data ahead of these objects, so the offsets from the section base differ
 CGame gGame;
 ARCacheInfo gARAMCacheInfo;
 FbMirrorEx gFramebufferMirrors[5];
-extern "C" {
 ARPreCache gAramPrecache;
 CThread gMovieUpdateThread;
 u8 gMovieUpdateThreadStack[0x1000];
-}
 
-// --- game/gameosreport.cpp ---
 /**
  * @note Address: 0x8001580C
  * @note Size: 0x50
@@ -68,7 +64,6 @@ extern "C" void OSReport(const char* format, ...)
 {
 }
 
-// --- game/gamemain.cpp ---
 extern "C" {
 u32 VIGetRetraceCount(void);
 void OSInitStopwatch(void* sw, char* name);
@@ -82,10 +77,13 @@ void InitGameARAM();
 void InitGameDVD();
 #if defined(VERSION_PAL)
 u8 OSGetLanguage();
+#endif
+}
+
+#if defined(VERSION_PAL)
 // os language and game language pairs
 extern u8 gGameLanguageMap[12];
 #endif
-}
 
 /**
  * @note Address: 0x80014D4C
@@ -392,7 +390,6 @@ void main(int argc, char** argv)
 	}
 }
 
-// --- game/gamefbmirror.cpp ---
 /**
  * @note Address: 0x80014A64
  * @note Size: 0x144
@@ -440,7 +437,6 @@ void FbMirror::Copy()
 	}
 }
 
-// --- game/gamefbsubwinfade.cpp ---
 #if defined(VERSION_R24J01)
 
 extern s32 gPointerScreenWidth, gRefreshRate;
@@ -571,7 +567,6 @@ void FbSubwin::Update(u32 frames)
 }
 #endif
 
-// --- game/gamefbsubwin.cpp ---
 /**
  * @note Address: 0x800146D0
  * @note Size: 0x1F0
@@ -587,7 +582,6 @@ void FbSubwin::Copy()
 	CopyCaptureTexture(&mTexture, graphics);
 }
 
-// --- game/fbsubwindraw.cpp ---
 extern "C" void PSMTXTrans(Mtx, f32, f32, f32);
 extern "C" void PSMTXScale(Mtx, f32, f32, f32);
 
@@ -705,7 +699,6 @@ void FbSubwin::Draw()
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }
 
-// --- game/gamefbsubwincam.cpp ---
 /**
  * @note Address: 0x800136B4
  * @note Size: 0xD0
@@ -720,7 +713,6 @@ extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, 
 	subwin->mCamera.CalcEye();
 }
 
-// --- game/gameptcllink.cpp ---
 /**
  * @note Address: 0x8001364C
  * @note Size: 0x34
@@ -745,7 +737,6 @@ extern "C" HSD_Generator* LinkJointSoundGenerator(int linkNo, int bank, int kind
 	return psCreateQueuedJointGenerator(linkNo, bank, kind, jobj);
 }
 
-// --- game/gameinit.cpp ---
 extern "C" {
 char* strtok(char* str, const char* delim);
 int strcmp(const char* a, const char* b);
@@ -778,7 +769,7 @@ extern f32 gScreenWidthScale; // against the GameCube's 640
 CmdLineArgs gCmdLineArgs = { -1, -1, 3, 0, 0, 0, { 0, 0, 0 }, 3, 2, 1, 0, 0, -1 };
 
 #if defined(VERSION_PAL)
-extern "C" u8 gGameLanguageMap[12] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 0 };
+u8 gGameLanguageMap[12] = { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 0 };
 #endif
 
 /**
@@ -897,7 +888,6 @@ void CScrnFade::Reset()
 {
 }
 
-// --- game/gameccameraview.cpp ---
 /**
  * @note Address: 0x8001353C
  * @note Size: 0x20
@@ -916,7 +906,6 @@ void CCamera::SetViewport(f32 left, f32 right, f32 top, f32 bottom)
 	HSD_CObjSetViewportfx4(this, left, right, top, bottom);
 }
 
-// --- game/gamestart.cpp ---
 extern "C" {
 void InitGameSound(XSound*);
 void InitMemoryCardManager(Memcard*);
@@ -1028,7 +1017,6 @@ void CGame::Start()
 	mMovieRect[0] = mMovieRect[1] = mMovieRect[2] = mMovieRect[3] = NAN; // no movie rect
 }
 
-// --- game/gamecounter.cpp ---
 /**
  * @note Address: 0x80012A7C
  * @note Size: 0x10
@@ -1038,13 +1026,11 @@ extern "C" u32 TakeNextCounterValue(void* unused, u32* counter)
 	return (*counter)++;
 }
 
-// --- game/gameobjsetup.cpp ---
 extern "C" {
 u32 GXGetTexBufferSize(u16 width, u16 height, u32 format, GXBool mipmap, u8 maxLod);
 void BuildObjectDrawList(CGame* game);
 void SelectSceneLights(CGame* game);
 BOOL UpdateStageObjectLoading(XOBJS* objs);
-void Reset2__16CCameraActionMapFv(CInterfaceCameraAction* action);
 }
 
 static inline HSD_JObj* GetChild(HSD_JObj* jobj)
@@ -1086,7 +1072,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->mMotionControlCamera.Init();
 		if (mode == 1 || mode == 7) { // both modes start on the map camera
 			game->mMotionControlCamera.ChangeAction(7);
-			Reset2__16CCameraActionMapFv(game->mCameraActions.mTable[7]);
+			((CCameraActionMap*)game->mCameraActions.mTable[7])->Reset2();
 			game->mMotionControlCamera.ApplyAction();
 		} else {
 			game->mMotionControlCamera.ChangeAction(mode);
@@ -1179,7 +1165,6 @@ u32 CheckStageFlag(s32, u32);
 BOOL LoadStageByIndex(s32);
 void ApplyStageClearColor();
 void RegisterEventObjectId(CEvt*, s16, s16);
-extern ARPreCache gAramPrecache;
 u32 TakeNextCounterValue(void*, u32*);
 s32 HSD_DevComRequest(s32, u32, void*, u32, s32, s32, u32 (*)(void*, u32*), void*);
 u32 ARGetSize();
@@ -1436,43 +1421,18 @@ BOOL CGame::BeforeUpdate()
 	return IsLoading() == false;
 }
 
-// --- game/gamecamarea.cpp ---
 /**
  * @note Address: 0x8001160C
  * @note Size: 0x28
  */
-// CCameraActionAreaExM's LoadAreaState, resets the shared area camera state
-extern "C" void LoadAreaState__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
+// resets the shared area camera state
+void CCameraActionAreaExM::LoadAreaState()
 {
 	LoadStageCameraAreaState(&gCameraAreaState);
 }
 
-// --- game/gameupdate.cpp ---
 extern "C" {
 void UpdateStageMicrophone(u32 frames);
-}
-
-/**
- * @note Address: 0x80010CD0
- * @note Size: 0x48
- */
-// CMenu::Open
-extern "C" void Open__5CMenuFv(CMenu* menu)
-{
-	menu->mState = 1;
-	menu->Resume();
-	menu->mWindow.mOpen = TRUE;
-}
-
-/**
- * @note Address: 0x80010D18
- * @note Size: 0x10
- */
-// CMenu::Resume
-extern "C" void Resume__5CMenuFv(CMenu* menu)
-{
-	menu->mSuspended   = FALSE;
-	menu->mSuspendFade = FALSE;
 }
 
 extern "C" {
@@ -1857,7 +1817,6 @@ extern "C" void SelectSceneLights(CGame* game)
 	}
 }
 
-// --- game/gamereset.cpp ---
 extern "C" {
 void VIFlush();
 void VIWaitForRetrace();
@@ -1893,7 +1852,6 @@ void CGame::Reset(u32 code)
 	OSResetSystem(code, 0, FALSE);
 }
 
-// --- game/gameccameraset.cpp ---
 extern "C" {
 void GXSetScissor(u32, u32, u32, u32);
 void BuildSceneDrawLists(CGame*);
@@ -2203,7 +2161,6 @@ CVec CVec::operator*(f32 s) const
 	return product;
 }
 
-// --- game/gamemirrorfloor.cpp ---
 extern "C" {
 void PSMTXReflect(Mtx m, const Vec* p, const Vec* n);
 void PSMTXTranspose(const Mtx src, Mtx xPose);
@@ -2294,7 +2251,6 @@ extern "C" void RenderFloorReflection(CGame* game)
 	}
 }
 
-// --- game/gamexobjdraw.cpp ---
 /**
  * @note Address: 0x8000DA50
  * @note Size: 0x2C
@@ -2305,7 +2261,6 @@ void XObj::DrawReflection(Mtx view)
 	DrawWithView(view);
 }
 
-// --- game/gamexobjshadow.cpp ---
 extern "C" void FindHighestJointBelowHeightLimit(HSD_JObj* jobj, f32* limits);
 
 // an object that is drawn into the shadow, or onto it with the mask
@@ -2691,7 +2646,6 @@ extern "C" void RenderMirrorTextures(CGame* game)
 	}
 }
 
-// --- game/gameobjupdate.cpp ---
 /**
  * @note Address: 0x8000C398
  * @note Size: 0xB8
@@ -2709,7 +2663,6 @@ void CGame::DrawHud()
 	}
 }
 
-// --- game/cgame.cpp ---
 // the stage name's four shadow copies, one pixel off to each corner
 f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
@@ -3004,11 +2957,8 @@ extern "C" void DrawGameMovie(CGame* game)
 	}
 }
 
-// --- game/gamemovie.cpp ---
 extern "C" {
 void* UpdateMovie(void* arg);
-extern CThread gMovieUpdateThread;
-extern u8 gMovieUpdateThreadStack[0x1000];
 }
 
 #if defined(VERSION_JP)
@@ -3068,7 +3018,6 @@ extern "C" void* UpdateMovie(void* arg)
 	return NULL;
 }
 
-// --- game/stagemicrophone.cpp ---
 /**
  * @note Address: 0x8000A858
  * @note Size: 0x18
@@ -3169,7 +3118,6 @@ void XObj::OnMicrophonePeak(s32, s32)
 {
 }
 
-// --- game/gamemicrophone.cpp ---
 extern "C" void OnMicrophoneDetached(s32 index, s32 result);
 
 extern "C" {
@@ -3259,7 +3207,6 @@ failed:
 	}
 }
 
-// --- game/micaudio.cpp ---
 extern "C" {
 s32 M2SGetActiveChannel(void);
 s32 M2SGetSamplesLeft(void);
@@ -3324,7 +3271,6 @@ extern "C" void OnMicAudioDMA(void)
 	gMicDMABufferIndex ^= 1;
 }
 
-// --- game/gameinterval.cpp ---
 // todo: cleanup
 static inline u8 LogoActive(CGame* game)
 {
@@ -3422,7 +3368,6 @@ CLight* CBase::GetScreenLight()
 	return &mLights[4];
 }
 
-// --- game/game.cpp ---
 /**
  * @note Address: 0x80007880
  * @note Size: 0x6BC
@@ -3439,7 +3384,6 @@ CBase::~CBase()
 {
 }
 
-// --- game/cinterpolationnone.cpp ---
 /**
  * @note Address: 0x8001585C
  * @note Size: 0x1C
@@ -3525,7 +3469,6 @@ Vec CVectorNoneInterpolation::Get()
 	return CVec(mAxes[0].Get(), mAxes[1].Get(), mAxes[2].Get());
 }
 
-// --- game/ccameraactionareaexm.cpp ---
 // CCameraActionAreaExM's _68 to _74, they all go to the shared area state
 
 /**
@@ -3559,16 +3502,11 @@ void CCameraActionAreaExM::SetZoomLevel(s32 mode)
  * @note Address: 0x80015C84
  * @note Size: 0x44
  */
-#if defined(VERSION_R24J01)
-extern "C" s32 FindAreaContainingPoint__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, Vec pos)
-#else
-extern "C" s32 FindAreaContainingPoint__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, const Vec& pos)
-#endif
+s32 CCameraActionAreaExM::FindAreaContainingPoint(Vec pos)
 {
 	return FindFirstCameraAreaContainingPoint(&gCameraAreaState, pos);
 }
 
-// --- game/cinterfacecameraaction.cpp ---
 #if defined(VERSION_R24J01)
 #else
 #endif
@@ -3788,7 +3726,6 @@ BOOL CCameraActionAreaExM::IsAreaEnabled(s32 index)
 	return TRUE;
 }
 
-// --- game/cinterpolationeaseoutdivide.cpp ---
 /**
  * @note Address: 0x800169E4
  * @note Size: 0xD8
@@ -3897,7 +3834,6 @@ f32 CInterpolationEaseOutDivide::Get()
 	return mValue;
 }
 
-// --- game/cinterpolationlinearupdate.cpp ---
 /**
  * @note Address: 0x80016EA0
  * @note Size: 0x2C
@@ -3907,193 +3843,13 @@ bool CInterpolationLinear::Update(u32 step, f32 dt)
 	return Step(dt);
 }
 
-// --- game/cjobj.cpp ---
-// CJObj's weak copies, everything in it is inline
+// CJObj's setters and CInterfaceCameraAction's destructor are the compiler's weak copies of the class inlines
 
-/**
- * @note Address: 0x80016ECC
- * @note Size: 0x88
- */
-// extern "C" thunks into the inline setters
-/**
- * @note Address: 0x80017244
- * @note Size: 0xC4
- */
-extern "C" void SetTranslateX__5CJObjFfl(CJObj* jobj, f32 x, s32 force)
-{
-	jobj->CJObj::SetTranslateX(x, force);
-}
-
-/**
- * @note Address: 0x80017308
- * @note Size: 0xC4
- */
-extern "C" void SetTranslateY__5CJObjFfl(CJObj* jobj, f32 y, s32 force)
-{
-	jobj->CJObj::SetTranslateY(y, force);
-}
-
-/**
- * @note Address: 0x800173CC
- * @note Size: 0xC4
- */
-extern "C" void SetTranslateZ__5CJObjFfl(CJObj* jobj, f32 z, s32 force)
-{
-	jobj->CJObj::SetTranslateZ(z, force);
-}
-
-/**
- * @note Address: 0x80017490
- * @note Size: 0xC4
- */
-extern "C" void SetScaleX__5CJObjFfl(CJObj* jobj, f32 x, s32 force)
-{
-	jobj->CJObj::SetScaleX(x, force);
-}
-
-/**
- * @note Address: 0x80017554
- * @note Size: 0xC4
- */
-extern "C" void SetScaleY__5CJObjFfl(CJObj* jobj, f32 y, s32 force)
-{
-	jobj->CJObj::SetScaleY(y, force);
-}
-
-/**
- * @note Address: 0x80017618
- * @note Size: 0xC4
- */
-extern "C" void SetScaleZ__5CJObjFfl(CJObj* jobj, f32 z, s32 force)
-{
-	jobj->CJObj::SetScaleZ(z, force);
-}
-
-/**
- * @note Address: 0x800176DC
- * @note Size: 0x19C
- */
-extern "C" void SetRotationX__5CJObjFfl(CJObj* jobj, f32 x, s32 force)
-{
-	jobj->CJObj::SetRotationX(x, force);
-}
-
-/**
- * @note Address: 0x80017878
- * @note Size: 0x19C
- */
-extern "C" void SetRotationY__5CJObjFfl(CJObj* jobj, f32 y, s32 force)
-{
-	jobj->CJObj::SetRotationY(y, force);
-}
-
-/**
- * @note Address: 0x80017A14
- * @note Size: 0x19C
- */
-extern "C" void SetRotationZ__5CJObjFfl(CJObj* jobj, f32 z, s32 force)
-{
-	jobj->CJObj::SetRotationZ(z, force);
-}
-
-/**
- * @note Address: 0x80017BB0
- * @note Size: 0x16C
- */
-extern "C" void SetTranslate__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 force)
-{
-	jobj->CJObj::SetTranslate(x, y, z, force);
-}
-
-/**
- * @note Address: 0x80017D1C
- * @note Size: 0x14C
- */
-extern "C" void SetTranslate__5CJObjFRC3Vecl(CJObj* jobj, const Vec& v, s32 force)
-{
-	jobj->CJObj::SetTranslate(v, force);
-}
-
-/**
- * @note Address: 0x80017E68
- * @note Size: 0x168
- */
-extern "C" void SetScale__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 force)
-{
-	jobj->CJObj::SetScale(x, y, z, force);
-}
-
-/**
- * @note Address: 0x80017FD0
- * @note Size: 0x148
- */
-extern "C" void SetScale__5CJObjFRC3Vecl(CJObj* jobj, const Vec& v, s32 force)
-{
-	jobj->CJObj::SetScale(v, force);
-}
-
-/**
- * @note Address: 0x80018118
- * @note Size: 0x21C
- */
-extern "C" void SetRotation__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 force)
-{
-	Quaternion q;
-
-	if (force == 0) {
-		static Vec zero;
-		// retail tests the cached translation here
-		if (!(jobj->mTranslate != MakeJObjVec(zero, x, y, z))) {
-			return;
-		}
-	}
-	jobj->mRotate.x = x;
-	jobj->mRotate.y = y;
-	jobj->mRotate.z = z;
-	if (jobj->mJObj->flags & USE_QUATERNION) { // quaternion joints need the euler angles converted
-		EulerToQuat(&jobj->mRotate, &q);
-		HSD_JObjSetRotation(jobj->mJObj, &q);
-	} else {
-		HSD_JObjSetRotation(jobj->mJObj, (Quaternion*)&jobj->mRotate);
-	}
-}
-
-/**
- * @note Address: 0x80018334
- * @note Size: 0x1FC
- */
-extern "C" void SetRotation__5CJObjFRC3Vecl(CJObj* jobj, const Vec& v, s32 force)
-{
-	if (force == 0 && !(jobj->mRotate != v)) { // skip a no-op change unless forced
-		return;
-	}
-	jobj->mRotate.x = v.x;
-	jobj->mRotate.y = v.y;
-	jobj->mRotate.z = v.z;
-	if (jobj->mJObj->flags & USE_QUATERNION) { // same euler-to-quat conversion
-		Quaternion q;
-		EulerToQuat(&jobj->mRotate, &q);
-		HSD_JObjSetRotation(jobj->mJObj, &q);
-	} else {
-		HSD_JObjSetRotation(jobj->mJObj, (Quaternion*)&jobj->mRotate);
-	}
-}
-
-/**
- * @note Address: 0x80018530
- * @note Size: 0x80
- */
-extern "C" void SetAnimRate__5CJObjFfUl(CJObj* jobj, f32 rate, u32 mask)
-{
-	jobj->CJObj::SetAnimRate(rate, mask);
-}
-
-// --- game/cfbtexeffvirt.cpp ---
 /**
  * @note Address: 0x80018CCC
  * @note Size: 0x4
  */
-extern "C" void Init__9CFbTexEffFv(CFbTexEff* effect)
+void CFbTexEff::Init()
 {
 }
 
@@ -4101,7 +3857,7 @@ extern "C" void Init__9CFbTexEffFv(CFbTexEff* effect)
  * @note Address: 0x80018CD0
  * @note Size: 0x4
  */
-extern "C" void Reset__9CFbTexEffFv(CFbTexEff* effect)
+void CFbTexEff::Reset()
 {
 }
 
@@ -4109,7 +3865,7 @@ extern "C" void Reset__9CFbTexEffFv(CFbTexEff* effect)
  * @note Address: 0x80018CD4
  * @note Size: 0x4
  */
-extern "C" void Copy__9CFbTexEffFv(CFbTexEff* effect)
+void CFbTexEff::Copy()
 {
 }
 
@@ -4117,7 +3873,7 @@ extern "C" void Copy__9CFbTexEffFv(CFbTexEff* effect)
  * @note Address: 0x80018CD8
  * @note Size: 0x4
  */
-extern "C" void Update__9CFbTexEffFUl(CFbTexEff* effect, u32 frames)
+void CFbTexEff::Update(u32 frames)
 {
 }
 
@@ -4125,11 +3881,10 @@ extern "C" void Update__9CFbTexEffFUl(CFbTexEff* effect, u32 frames)
  * @note Address: 0x80018CDC
  * @note Size: 0x4
  */
-extern "C" void Draw__9CFbTexEffFv(CFbTexEff* effect)
+void CFbTexEff::Draw()
 {
 }
 
-// --- game/gamecbaselight.cpp ---
 /**
  * @note Address: 0x80019310
  * @note Size: 0x2C
@@ -4139,24 +3894,21 @@ CLight* CBase::GetLight()
 	return GetDefaultLight();
 }
 
-// --- game/cthread.cpp ---
 /**
  * @note Address: 0x80019480
  * @note Size: 0x8C
  */
-extern "C" BOOL Create__7CThreadFPFPv_PvPvUllUs(CThread* thread, OSThreadStartFunction func, void* arg, u32 stackSize, OSPriority prio,
-                                                u16 attr)
+BOOL CThread::Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr)
 {
-	thread->mStack     = (u8*)OSAllocFromHeap(__OSCurrHeap, stackSize);
-	thread->mStackSize = stackSize;
-	if (OSCreateThread(&thread->mThread, func, arg, (u8*)thread->mStack + thread->mStackSize, thread->mStackSize, prio, attr)) {
-		thread->mStackSize = stackSize;
+	mStack     = (u8*)OSAllocFromHeap(__OSCurrHeap, stackSize);
+	mStackSize = stackSize;
+	if (OSCreateThread(&mThread, func, param, mStack + mStackSize, mStackSize, priority, attr)) {
+		mStackSize = stackSize;
 		return TRUE;
 	}
 	return FALSE;
 }
 
-// --- game/fbmirrorexdtor.cpp ---
 /**
  * @note Address: 0x80019600
  * @note Size: 0x100
@@ -4173,7 +3925,6 @@ FbMirrorEx::FbMirrorEx()
 {
 }
 
-// --- game/cgamector.cpp ---
 // CGame's constructor and the constructors and destructors the compiler writes for the
 // objects it owns
 
@@ -4201,7 +3952,6 @@ CCameraActions::CCameraActions()
 {
 }
 
-// --- game/cmsgcursorctor.cpp ---
 /**
  * @note Address: 0x8001AF40
  * @note Size: 0x30
@@ -4210,7 +3960,6 @@ MsgCursor::MsgCursor()
 {
 }
 
-// --- game/cobjarchivector.cpp ---
 /**
  * @note Address: 0x8001B2EC
  * @note Size: 0x40
@@ -4220,7 +3969,6 @@ CObjArchive::CObjArchive()
 	mRefCount = 0;
 }
 
-// --- game/clightctor.cpp ---
 /**
  * @note Address: 0x8001B538
  * @note Size: 0x6C
@@ -4229,7 +3977,6 @@ CLight::CLight()
 {
 }
 
-// --- game/cbasector.cpp ---
 /**
  * @note Address: 0x8001B8A0
  * @note Size: 0xDC
@@ -4238,7 +3985,6 @@ CBase::CBase()
 {
 }
 
-// --- game/cgschannelctor.cpp ---
 /**
  * @note Address: 0x8001BC14
  * @note Size: 0x10
@@ -4255,7 +4001,6 @@ CGsTevStage::CGsTevStage()
 {
 }
 
-// --- FbMirrorEx::Init (from game/fbmirrorex.cpp) ---
 /**
  * @note Address: 0x8001BC34
  * @note Size: 0xC8

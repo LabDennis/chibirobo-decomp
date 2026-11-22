@@ -367,13 +367,11 @@ gamecube_libs = [
         "cflags": cflags_game,
         "progress_category": "game",
         "objects": [
-            # -inline noauto,deferred, as retail shows (US addresses): normal functions lie in reverse source order
-            # (CGame::~CGame 0x80007880 down to OSReport 0x8001580C, matching the reverse of R24J01); weak inline
-            # dtors/ctors/virtuals follow their callers (0x80007F3C-0x8000A4B8 after ~CGame), the vtable flush
-            # (0x8001585C-0x8001933C), and __sinit_game_cpp (0x8001933C-0x8001BCFC, ending with FbMirrorEx::Init).
-            # -inline noauto keeps non-inline file functions (e.g. BuildSceneDrawLists, SelectSceneLights,
-            # FinalizeStageObjectSetup callees) as calls as in retail, while inline-declared helpers still inline.
-            Object(NonMatching, "game/game.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
+            # no extra flags: retail's inlining fits the unit's -inline auto. CGame::Start holds the body of CBase::Start
+            # (US 0x80015534, written above it), which -inline noauto would keep a call. FinalizeStageObjectSetup and
+            # CGame::Update call BuildObjectDrawList and SelectSceneLights (written below them), which -inline deferred
+            # would expand. The code order is unresolved: retail's lies in reverse source order, which only deferred gives.
+            Object(NonMatching, "game/game.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbmirrorex.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cpaddtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/progressive.cpp", cflags=with_hsd_headers(cflags_game)),
