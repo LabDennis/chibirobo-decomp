@@ -504,6 +504,17 @@ static inline f32 FSqrt(f32 x)
 	return x <= 0.0f ? 0.0f : x * nw4r::math::FrSqrt(x);
 }
 
+inline void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
+{
+	Vec bc;
+	Vec ba;
+	Vec n;
+	PSVECSubtract(b, c, &bc);
+	PSVECSubtract(b, a, &ba);
+	PSVECCrossProduct(&ba, &bc, &n);
+	PSVECCrossProduct(&bc, &n, out);
+}
+
 static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
 {
 	return IsPointInsideQuadXZ((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
@@ -535,7 +546,7 @@ static inline void ResetMapCameraInterpolation(CCameraActionMap* map)
 }
 
 // NONMATCHING: the logic matches throughout; what remains is scheduling and register allocation
-// (retail's frame is 0x160 larger and assigns the loop variables to different registers) (85,1 %)
+// (retail's frame is 0x160 larger and assigns the loop variables to different registers) (88,3 %)
 /**
  * @note Address: 0x80159D70
  * @note Size: 0x308C
