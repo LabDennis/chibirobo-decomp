@@ -1896,7 +1896,8 @@ void XObjChr::UpdateObject(u32 frames)
 			mLift.mTarget->mColors[1 - i] = ((u32)rgb.x << 24) | ((u32)rgb.y << 16) | ((u32)rgb.z << 8);
 		}
 	}
-	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
+	for (s32 i = 0; gPlayerItemAnimationTable[i].mItem >= 0; i++) {
+		XObjChrItemAnim* entry = &gPlayerItemAnimationTable[i];
 		if (entry->mItem == mSuits.mCurrent) {
 			HSD_AObj* anim = GetAObj(GetJointByPath(mJObj, entry->mPath, entry->mDepth));
 			if (anim)
@@ -6697,7 +6698,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		HSD_JObjAddAnimAll(attachment, attachmentAnim, NULL, NULL);
 		HSD_JObjReqAnimAll(attachment, 0.0f);
 	}
-	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
+	for (s32 i = 0; gPlayerItemAnimationTable[i].mItem >= 0; i++) {
+		XObjChrItemAnim* entry = &gPlayerItemAnimationTable[i];
 		if (entry->mItem == player->mSuits.mCurrent) {
 			HSD_JObj* joint = GetJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
