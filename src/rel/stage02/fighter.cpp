@@ -2948,7 +2948,7 @@ extern "C" void DrawFighterStage(void)
  * @note Address: stage02 .text 0x1E44
  * @note Size: 0x514
  */
-// NONMATCHING: register colouring only (loop pointers and best swap with retail), and mLastTarget reloads &fighterWork
+// NONMATCHING: register colouring (loop pointers and best swap with retail), and mLastTarget reloads &fighterWork
 // where retail reuses the lock block's base.
 extern "C" void UpdateFighter(u32 dt)
 {
