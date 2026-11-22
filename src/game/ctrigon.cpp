@@ -1215,8 +1215,8 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 	Vec* corner1;
 	// NONMATCHING: retail interleaves the mJObj load into the prologue (right
 	// after mflr), ours emits it after the stmw/arg moves — a pure scheduling
-	// pair swap; a named local for the joint doesn't change it. (0x801A4430 lwz r6, 0x14(r3)), and neither
-	// does the test before the corner declarations. GC 2.0 to 2.7 and -inline auto without deferred agree
+	// pair swap (0x801A4430 lwz r6, 0x14(r3)); neither a named local for the joint nor the test before the
+	// corner declarations changes it. GC 2.0 to 2.7 and -inline auto without deferred agree
 	if (mJObj->flags & HIDDEN) {
 		return -1;
 	}

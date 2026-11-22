@@ -2466,7 +2466,7 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
  */
 // NONMATCHING: the volatile float registers and one product's place differ: after the alpha conversion retail takes f0/f4
 // for the rot and pop products (0x80028F10), this build f1/f5/f0, and retail multiplies 1.7 * pop behind the width
-// conversion's lfd (0x80028FB4), this build ahead of it. The locals declared at the top, alpha first, give retail's saved
+// conversion's lfd (multiply at 0x80028FB0), this build ahead of it. The locals declared at the top, alpha first, give retail's saved
 // registers; inside the loop i and the colour mask swapped r25/r26 and the floats came out in another order
 // draws the title's name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawTitleNameBubbles(Title* title)

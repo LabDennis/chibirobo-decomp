@@ -324,10 +324,10 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
 				if ((flags & 2) && FitsInAram(archive)) {
-					u32 size = archive->mFile.mSize;
+					u32 fileSize = archive->mFile.mSize;
 					if (attr.mObjData && attr.mObjData->mSource) {
 						attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress; // remember the ARAM copy
-						attr.mObjData->mSource->mCache.size    = size;
+						attr.mObjData->mSource->mCache.size    = fileSize;
 					}
 				}
 				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') { // untagged archives get a state tag

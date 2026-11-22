@@ -2672,7 +2672,7 @@ f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
  * @note Size: 0x600
  */
 // NONMATCHING: the scale sits in f22 in retail (0x8000AF1C lfs f22), f24 here, the volatile float scratch after the alpha
-// conversion differs, and retail multiplies 1.5 * pop behind the width conversion's lfd (0x8000B180), this build ahead of
+// conversion differs, and retail multiplies 1.5 * pop behind the width conversion's lfd (multiply at 0x8000B17C), this build ahead of
 // it. The locals declared at the top, alpha first, give retail's saved GPRs and the other saved floats
 // draws the stage name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawStageNameBubbles(CGame* game)
