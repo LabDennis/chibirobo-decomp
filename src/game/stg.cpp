@@ -564,8 +564,8 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 // NONMATCHING: the five corner temporaries of each DrawPCListMask sit in the frame in the opposite order (as in
 // DrawMenuBannerPanels), and the argument schedule of the background's DrawGsTrianglePrimitive and of one width
 // conversion differs; the rodata offsets differ with the file's data. Retail forms the page-count table straight
-// into the loop register (US 0x80042384 addi r6), the build materialises items first and copies it; PCShopMaxPage
-// by value gives that here but costs MenuPC::State7 its in-place walk (100 -> 99.76), so the reference stays
+// into the loop register (US 0x80042374 addi r6), the build materialises items first and copies it; PCShopMaxPage
+// by value gives that here but costs MenuPC::State7 its in-place walk (100 -> 99.76), so the reference stays.
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
 void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
@@ -3257,15 +3257,16 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	// each text width is used straight from f1 (US 0x80050110, 0x80050144), not kept in the panel width
+	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
-	                             0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
+	                             size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
-	                             0.0f, helpSize, helpSize);
+	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
+	                             helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
@@ -3342,7 +3343,7 @@ static inline f32 StatusLabelColumn(f32 center, bool right)
  * @note Size: 0x51C
  */
 // NONMATCHING: coordinate lifetimes and register allocation: retail keeps x in f27 and y in f28 from the first
-// loads to their last assignments (US 0x8005552C fadds f27; 0x80055918 fsubs f27) and numbers labelX, labelY and
+// loads to their last assignments (US 0x8005552C fadds f27; 0x80055914 fsubs f27) and numbers labelX, labelY and
 // targetY f29-f31 above them, saving one register more; the build reuses x's register for targetY. Declaring the
 // five at the block top in either order or `x += 42.0f` does not change it.
 extern "C" void DrawStatusDiagram(MenuStatus* menu)
@@ -4033,7 +4034,7 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 	vertices[3].y = bottom;
 }
 
-// NONMATCHING: retail holds the white of the left cap in a second register (US 0x800505EC mr r23, r28 after the or,
+// NONMATCHING: retail holds the white of the left cap in a second register (US 0x800505E8 mr r23, r28 after the or,
 // the register that held the 100 * alpha shade before), the build uses one; naming the shade and that copy one
 // variable does not bring the copy back. The saved registers are numbered differently, and one ori and one lwz
 // are scheduled a slot apart
@@ -4504,8 +4505,8 @@ static inline void ResetPCCharacters(MenuPC* menu)
 #endif
 }
 
-// NONMATCHING: the two ClearPCShopPage expansions: retail addresses the rows from the page itself (US 0x8004EAC8
-// sth r3,0x4(r5) with r5 = page) and unrolls the catalog's loop ten times (0x8004EB74 li r0,2), the build forms
+// NONMATCHING: the two ClearPCShopPage expansions: retail addresses the rows from the page itself (US 0x8004EAC4
+// sth r3,0x4(r5) with r5 = page) and unrolls the catalog's loop ten times (0x8004EB6C li r0,2), the build forms
 // page->mRows and unrolls five times; indexing the rows (plain, reference, pointer per iteration, direct global,
 // u32 or s32 counter) gives retail's addressing but five-fold unrolling in both loops and 88 bytes less
 void MenuPC::Open()
@@ -10643,7 +10644,7 @@ static inline void FinishStageLabel(char* text)
  * @note Address: 0x80033A68
  * @note Size: 0x6A0
  */
-// NONMATCHING: retail starts the file-name copy's count and index with two li (US 0x80033BC4, 0x80033BC8), the
+// NONMATCHING: retail starts the file-name copy's count and index with two li (US 0x80033BC0, 0x80033BC4), the
 // build copies one zero into the other (mr); u32 count, a split count++, a while loop, an if/else store and a
 // function-scope i keep the mr. The rest is register numbering.
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
@@ -11003,7 +11004,7 @@ extern "C" void DispatchMemoryCardTestOperation(MenuMCTest* menu, s32 id)
  * @note Size: 0x750
  */
 // NONMATCHING: register numbering (retail keeps card in r22, this copy in r24, i in r28; the build r26/r29/r24) and
-// the popup's schedule: retail stores the sub menu's mState (US 0x80032C18 stwu) before its mY and mX, the build
+// the popup's schedule: retail stores the sub menu's mState (US 0x80032C08 stwu) before its mY and mX, the build
 // after mY. Open() before the coordinates moves its Resume() call ahead of them (lower); mX first, a step local
 // and the reversed operand order do not move the stwu.
 BOOL MenuMCTest::Update(u32 frames)
