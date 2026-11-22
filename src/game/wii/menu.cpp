@@ -3972,6 +3972,156 @@ BOOL MenuSave::Draw()
 	return FALSE;
 }
 
+static inline void SetStatusRing(Vec* outline, f32 x, f32 y, f32 radius)
+{
+	for (int i = 0; i < 65; i++) {
+		f32 angle    = 0.09817477f * i - 1.5707964f;
+		f32 sine     = (f32)sin(angle);
+		f32 cosine   = (f32)cos(angle);
+		outline[i].x = sine * radius + x;
+		outline[i].y = -cosine * radius + y;
+		outline[i].z = 0.0f;
+	}
+}
+
+static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
+{
+	CGs& gs = gGame.mGs;
+	gs.mCurRenderState->SetLineWidth(18, GX_TO_ONE);
+	DrawGsLineStrip(&gs, outline, color, count);
+	gs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+}
+
+// NONMATCHING: the complete 55-call list matches; the current spelling is 128 bytes smaller and saves GPRs from r15 instead of r20
+extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase)
+{
+	if (!(alpha > 0.0f)) {
+		return;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	CTexObj tex;
+	f32 bob = 0.0f;
+	if (selected) {
+		static u32 frame = 0;
+		++frame;
+		bob = 4.0f * (f32)sin(0.017453292f * (f32)fmod(frame * 20, 360.0));
+	}
+	s32 places = 1;
+	for (;; places++) {
+		f32 divisor = 1.0f;
+		for (s32 j = 0; j < places; j++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)(value / divisor) == 0) {
+			break;
+		}
+	}
+	Vec outline[65];
+	f32 centerY = y - 6.0f * 1.2f;
+	SetStatusRing(outline, x, centerY, 12.0f * 1.2f);
+	f32 opacity = 255.0f * alpha;
+	u32 color   = (u32)opacity;
+	InitPCPanelTexture(tex, 265);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+	                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, centerY, 0.0f, 33.0f, 33.0f, 0.0f, 0.0f,
+	                   0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	InitPCPanelTexture(tex, 126);
+	f32 width = 1.2f * GXGetTexObjWidth(&tex);
+	StrokeStatusOutline(outline, color, 65);
+	outline[0].x = x;
+	outline[0].y = centerY + 12.0f * 1.2f;
+	outline[1].x = x + (places * (width - 3.0f * 1.2f) + 34.0f);
+	outline[1].y = outline[0].y;
+	InitPCPanelTexture(tex, 156);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u16 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, outline[1].x, outline[1].y, 0.0f,
+	                   1.2f * markerWidth, 1.2f * markerHeight, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	f32 scale = 0.8f;
+	if (icon == 180) {
+		scale = 0.7f;
+	}
+	InitPCPanelTexture(tex, icon);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	width      = scale * GXGetTexObjWidth(&tex);
+	f32 height = scale * GXGetTexObjHeight(&tex);
+	f32 base   = bob + (y - 9.0f);
+	f32 iconY  = base;
+	if (icon == 154) {
+		iconY = 4.0f + base;
+	}
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, iconY, 1.0f, width, height, 0.0f, 0.0f,
+	                   0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+	if (selected) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+		f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+		if (pulse < 0.0f) {
+			pulse = 0.0f;
+		}
+		DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+		           (u32)(255.0f * pulse) | 0xFFFFFF00, x, iconY, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	}
+	InitPCPanelTexture(tex, 126);
+	x -= 12.0f;
+	y -= 4.0f;
+	width  = 1.2f * GXGetTexObjWidth(&tex);
+	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	u8 a               = (u8)opacity;
+	f32 offset         = places * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
+	for (s32 i = 0; i < 7; i++) {
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(value / divisor);
+		if (i != 0 && digit == 0) {
+			continue;
+		}
+		digit %= 10;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 top, bottom;
+		switch (icon) {
+		case 154:
+			top    = 0xCECEFF00 | a;
+			bottom = 0xE037EE00 | a;
+			break;
+		case 152:
+			top    = 0xEFEBC500 | a;
+			bottom = 0xEDA83600 | a;
+			break;
+		case 153:
+			top    = 0xCECEFF00 | a;
+			bottom = 0x5959FF00 | a;
+			break;
+		case 180:
+			top    = 0xBFDDFB00 | a;
+			bottom = 0x0E72D600 | a;
+			break;
+		default:
+			top = bottom = 0xFFFFFF00 | a;
+		}
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f,
+		                   0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
