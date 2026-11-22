@@ -5860,9 +5860,8 @@ extern "C" s32 GetPlayerLevel(Params* params)
 // NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
 // and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
 // (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand. Under -inline
-// auto,deferred ours makes retail's exact call list in all three editions; the frame is still 0x10 larger (US
-// 0x860 against 0x850), the two loading-bar quads' addresses are formed once up front where retail forms them at
-// the call, three digit loops test place < i once more than retail, and the register allocation differs
+// auto,deferred ours makes retail's exact call list in all three editions; what is left is register allocation
+// and scheduling (retail numbers the saved registers of the choice loop and the amount blocks differently)
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -5913,7 +5912,8 @@ BOOL MenuPC::Draw()
 			SetGsChannelEnabled(GetGameGraphics(&gGame), 0, 0);
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 			SetMenuDepthMode(GetGameGraphics(&gGame), 0, 3, 0);
-			// the loading bar: [0-4] its outline, [4-7] the filled part, [8-11] the rest
+			// the loading bar: [0-4] its outline, [4-7] the filled part, [8-11] the rest. The quads' addresses are formed
+			// at their calls (US 0x80045474, 0x800454A0); bar + 4 would share bar[4]'s address and be kept from the stores on
 			f32 fill    = 281.0f + 80.0f * this->mProgress;
 			Vec bar[12] = {};
 			bar[0].x    = 281;
@@ -5940,10 +5940,13 @@ BOOL MenuPC::Draw()
 			bar[10].y   = 253;
 			bar[11].x   = fill;
 			bar[11].y   = 253;
-			DrawGsLineStrip(GetGameGraphics(&gGame), bar, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
+			Vec* quad   = bar;
+			DrawGsLineStrip(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
 			SetMenuLineWidth(GetGameGraphics(&gGame), 6, 5);
-			DrawSolidQuad(GetGameGraphics(&gGame), bar + 4, (u32)(255.0f * this->mAlpha) | 0xFFB62800);
-			DrawSolidQuad(GetGameGraphics(&gGame), bar + 8, (u32)(255.0f * this->mAlpha) | 0xC8000000);
+			quad += 4;
+			DrawSolidQuad(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xFFB62800);
+			quad += 4;
+			DrawSolidQuad(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xC8000000);
 			SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
 		} break;
 		case 2: {
@@ -5970,8 +5973,6 @@ BOOL MenuPC::Draw()
 				step   = 0;
 				break;
 			}
-			const f32 top = origin - 20.0f;
-
 			f32 center, width;
 			if (PC_USES_FIXED_CHOICE_LABELS()) {
 
@@ -5987,35 +5988,37 @@ BOOL MenuPC::Draw()
 				         + textWidth);
 				center = 204.0f + width / 2.0f;
 			}
-			f32 y = 2.0f + (step * this->mChoice + (8.0f + top));
+			// retail adds a pooled -20 with the literal first (US 0x80045698), after the label block; the quads sit 2 below
+			// the row and retail adds that 2 once, after the first GetGameGraphics (US 0x8004573C)
+			const f32 top = -20.0f + origin;
+			f32 y         = step * this->mChoice + (8.0f + top);
 			{
 				u32 color = 0x181CC600 | (u32)(200.0f * this->mAlpha);
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 117 - StatusTextureOffset));
 				SetMenuTextureScale(&tex, 0.25f, 1.0f);
 				SetMenuTextureTranslation(&tex, 0.25f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, 2.0f + y, 0, width, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, 2.0f + y, 0, 8, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0.5f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), 2.0f + y, 0, 8, 24, 0, 0, 0);
 				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
 				SetMenuTextureTranslation(fill, this->mTexScroll, 0);
 				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
 				color = 0xFFFFFF00 | (u32)(40.0f * this->mAlpha);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, y, 0, width, 20, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, 2.0f + y, 0, width, 20, 0, 0, 0);
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 			}
 			for (s32 i = 0; i < this->mChoiceCount; ++i) {
-				s32 choice = this->mChoices[i];
-				if (choice == -1)
+				// retail reads mAlpha before the -1 test (US 0x800458D8) and mChoices[i] again for the icon (0x80045918)
+				f32 alpha = this->mAlpha;
+				if (this->mChoices[i] == -1)
 					continue;
-				const PCChoiceArt& row = pcChoiceArt[choice];
-				f32 alpha              = this->mAlpha;
-				if (choice == 7 && !this->mCanSelect)
+				if (this->mChoices[i] == 7 && !this->mCanSelect)
 					alpha *= 0.4f;
 				f32 rowY = step * i + top;
-				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, row.icon));
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, pcChoiceArt[this->mChoices[i]].icon));
 
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
 				f32 w     = 1.1f * GetMenuTextureWidth(&tex);
@@ -6134,7 +6137,8 @@ BOOL MenuPC::Draw()
 				f32 y      = 184;
 				u32 rgb    = 0xFFB62800;
 
-				for (int i = 0; i < 5; i++) {
+				// s32 like PC_DIGIT_DIVISOR's place: with an int the loop entry is a second compare (retail re-uses i > 0, US 0x80045F60)
+				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
 					s32 digit = (s32)(mDepositDisplay.shown / divisor) % 10;
@@ -6169,7 +6173,7 @@ BOOL MenuPC::Draw()
 					f32 y      = 256;
 					u32 rgb    = 0xC8C8C800;
 
-					for (int i = 0; i < 5; i++) {
+					for (s32 i = 0; i < 5; i++) {
 						f32 divisor;
 						PC_DIGIT_DIVISOR(divisor, i);
 						s32 digit = (s32)(entry.shown / divisor) % 10;
@@ -6225,8 +6229,8 @@ BOOL MenuPC::Draw()
 				f32 w = scale * GetMenuTextureWidth(&tex);
 				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
-				PCAmount entry = {};
-				entry.shown = entry.target = amount;
+				// no PCAmount here: retail divides the converted amount itself (US 0x80046A8C), the other two blocks read a struct
+				f32 shown = amount;
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
 				f32 step   = w - 2.4f;
@@ -6235,10 +6239,10 @@ BOOL MenuPC::Draw()
 				f32 y      = 240;
 				u32 rgb    = 0xFFFFFF00;
 
-				for (int i = 0; i < 5; i++) {
+				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
-					s32 digit = (s32)(entry.shown / divisor) % 10;
+					s32 digit = (s32)(shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
 					f32 x = (7.0f * w + (start - i * step)) - offset;
