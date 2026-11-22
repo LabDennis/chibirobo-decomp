@@ -493,26 +493,11 @@ void CScrnWipeTex::Draw(CGs* gs, s32 mode)
 	FinishWipe(this, gs, mode);
 }
 
-static inline void SetTilePoint(Vec& v, f32 x, f32 y)
-{
-	v.x = x;
-	v.y = y;
-}
-
-static inline void SetTileEdge(Vec* vertices, f32 x, f32 y, f32 outerX, f32 outerY, f32 nextX, f32 nextY)
-{
-	SetTilePoint(vertices[0], x, y);
-	SetTilePoint(vertices[1], outerX, outerY);
-	SetTilePoint(vertices[2], nextX, nextY);
-	SetTilePoint(vertices[3], x, y);
-}
-
 /**
  * @note Address: 0x800220DC
  * @note Size: 0x7C0
  */
-// NONMATCHING: retail computes each outer edge as its own fused half-plus-offset (fmadds/fmsubs)
-// where this build reuses the inner edge; the quad data also sits elsewhere in .rodata
+// NONMATCHING: stack offsets of BeginWipe/Mtx locals (+0x30) and .rodata offsets; all instructions and registers match
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -529,16 +514,42 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 
 	Vec vertices[18] = {};
 	const f32 dx = edgeWidth / 2.0f, dy = edgeHeight / 2.0f;
-	f32 left = -mWidth / 2.0f, right = mWidth / 2.0f;
-	f32 outerLeft = -mWidth / 2.0f - dx, outerRight = mWidth / 2.0f + dx;
-	f32 top = -mHeight / 2.0f, bottom = mHeight / 2.0f;
-	f32 outerTop = -mHeight / 2.0f - dy, outerBottom = mHeight / 2.0f + dy;
-	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
-	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
-	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
-	SetTileEdge(vertices + 12, left, bottom, outerLeft, outerBottom, outerLeft, outerTop);
-	SetTilePoint(vertices[16], left, top);
-	SetTilePoint(vertices[17], outerLeft, outerTop);
+	vertices[0].x  = -mWidth / 2.0f;
+	vertices[0].y  = -mHeight / 2.0f;
+	vertices[1].x  = -mWidth / 2.0f - dx;
+	vertices[1].y  = -mHeight / 2.0f - dy;
+	vertices[2].x  = mWidth / 2.0f + dx;
+	vertices[2].y  = -mHeight / 2.0f - dy;
+	vertices[3].x  = -mWidth / 2.0f;
+	vertices[3].y  = -mHeight / 2.0f;
+	vertices[4].x  = mWidth / 2.0f;
+	vertices[4].y  = -mHeight / 2.0f;
+	vertices[5].x  = mWidth / 2.0f + dx;
+	vertices[5].y  = -mHeight / 2.0f - dy;
+	vertices[6].x  = mWidth / 2.0f + dx;
+	vertices[6].y  = mHeight / 2.0f + dy;
+	vertices[7].x  = mWidth / 2.0f;
+	vertices[7].y  = -mHeight / 2.0f;
+	vertices[8].x  = mWidth / 2.0f;
+	vertices[8].y  = mHeight / 2.0f;
+	vertices[9].x  = mWidth / 2.0f + dx;
+	vertices[9].y  = mHeight / 2.0f + dy;
+	vertices[10].x = -mWidth / 2.0f - dx;
+	vertices[10].y = mHeight / 2.0f + dy;
+	vertices[11].x = mWidth / 2.0f;
+	vertices[11].y = mHeight / 2.0f;
+	vertices[12].x = -mWidth / 2.0f;
+	vertices[12].y = mHeight / 2.0f;
+	vertices[13].x = -mWidth / 2.0f - dx;
+	vertices[13].y = mHeight / 2.0f + dy;
+	vertices[14].x = -mWidth / 2.0f - dx;
+	vertices[14].y = -mHeight / 2.0f - dy;
+	vertices[15].x = -mWidth / 2.0f;
+	vertices[15].y = mHeight / 2.0f;
+	vertices[16].x = -mWidth / 2.0f;
+	vertices[16].y = -mHeight / 2.0f;
+	vertices[17].x = -mWidth / 2.0f - dx;
+	vertices[17].y = -mHeight / 2.0f - dy;
 	u32 colors[18] = { 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0 };
 	Mtx translation, rotation, transform;
 	PSMTXTrans(translation, mX, mY, 0.0f);
