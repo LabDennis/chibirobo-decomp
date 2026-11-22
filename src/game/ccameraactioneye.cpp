@@ -100,6 +100,7 @@ inline void PlayEyeCameraTurnSound()
  * @note Address: 0x801469EC
  * @note Size: 0x96C
  */
+// NONMATCHING: regalloc swaps f1 and f2 for stick and Abs(speedZ - sPreviousZoomSpeed)
 void CCameraActionEye::Update(u32 step)
 {
 	SetEye(GetPlayerFirstPersonEyePosition(gGame.GetPlayer()));
@@ -118,15 +119,16 @@ void CCameraActionEye::Update(u32 step)
 				}
 			}
 
+			f32 x, y;
 			if (gGame.mStatus.mFlags & 0x200) { // free-look: the C-stick aims
 				// the limits test the pad's own value here, not the copy
-				f32 x = pad.mPad->mSubStickX;
+				x = pad.mPad->mSubStickX;
 				if (pad.mPad->mSubStickX > 0.8f) {
 					x = 0.8f;
 				} else if (pad.mPad->mSubStickX < -0.8f) {
 					x = -0.8f;
 				}
-				f32 y = pad.mPad->mSubStickY;
+				y = pad.mPad->mSubStickY;
 				if (pad.mPad->mSubStickY > 0.8f) {
 					y = 0.8f;
 				} else if (pad.mPad->mSubStickY < -0.8f) {
@@ -141,21 +143,21 @@ void CCameraActionEye::Update(u32 step)
 			} else {
 				f32 turn = pad.mPad->mStickX;
 				ClampStick(turn);
-				f32 tilt = pad.mPad->mStickY;
-				ClampStick(tilt);
+				y = pad.mPad->mStickY;
+				ClampStick(y);
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
-					tilt = 0.0f;
-					turn = tilt;
+					y    = 0.0f;
+					turn = y;
 				}
 				f32 pitch       = 0.0f;
 				mLook.mTarget.y = 0.0f;
-				if (tilt > 0.0f) {
-					pitch = mLook.x + 0.06981317f * Abs(tilt); // up to 4 degrees per update, scaled by the stick
+				if (y > 0.0f) {
+					pitch = mLook.x + 0.06981317f * Abs(y); // up to 4 degrees per update, scaled by the stick
 					if (pitch > 0.87266463f) {
 						pitch = 0.87266463f; // 50 degrees up
 					}
-				} else if (tilt < 0.0f) {
-					pitch = mLook.x - 0.06981317f * Abs(tilt);
+				} else if (y < 0.0f) {
+					pitch = mLook.x - 0.06981317f * Abs(y);
 					if (pitch < -0.87266463f) {
 						pitch = -0.87266463f; // 50 degrees down
 					}
