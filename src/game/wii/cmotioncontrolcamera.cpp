@@ -333,14 +333,14 @@ void CMotionControlCamera::Interpolate(u32 step)
 			vec.SetTarget(mEye);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
 			vec.Step(step);
-			SetEye(vec);
+			SetEye(vec.mValue);
 		}
 		if (mFlags & CAMFLAG_INTEREST) {
 			vec.Reset(mView.mInterest);
 			vec.SetTarget(mInterest);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
 			vec.Step(step);
-			SetInterest(vec);
+			SetInterest(vec.mValue);
 		}
 		break;
 	}

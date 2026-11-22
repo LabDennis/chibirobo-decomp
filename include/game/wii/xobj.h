@@ -9,6 +9,8 @@
 #include "Dolphin/gx.h"
 #include "Dolphin/mtx.h"
 
+#include "game/cptcl.h"
+#include "game/ctpl.h"
 #include "game/cfile.h"
 #include "game/coordinfo.h"
 #include "game/cstatus64.h"
@@ -19,6 +21,9 @@
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xobjcamera.h"
+#include "game/xpad.h"
+#include "game/wii/xchrmenu.h"
 #include "revolution/mem.h"
 
 extern "C" {
@@ -79,23 +84,31 @@ namespace g3d {
 
 class ScnObj;
 class ResMdl;
+class ScnProc;
 
 // what the world callback writes for a node, as far as the game uses it
 struct ChrAnmResult {
+	MtxP mpMtx; // _00, the node's world matrix slot
+
 	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
 	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
+	void SetRotateDeg(const math::VEC3* pRotate);
+	void SetRotateMtx(const math::MTX33* pRot);
 };
 
 // the callback's node binding; the members are nw4r's
 class FuncObjCalcWorld {
 public:
 	u16 GetCallbackNodeID() const { return mNodeID; }
+	void SetCallbackNodeID(u16 id) { mNodeID = id; }
 
 private:
 	void* mpCallback; // _00
 	u8 mTiming;       // _04
 	u8 _05;
-	u16 mNodeID; // _06
+
+public:
+	u16 mNodeID; // _06, the binding code writes the node it hooks up
 };
 
 // the three hooks of nw4r's world-matrix pass; their parameters are not recovered
@@ -121,9 +134,11 @@ public:
 
 // a node (bone) of a model resource, as far as the game reads it
 struct ResNodeData {
-	u8 _00[0x10];
+	u8 _00[0x0C];
+	u32 mID;    // _0C
 	u32 mMtxID; // _10, the node's index in the model's world matrix array
-	u8 _14[0x18];
+	u32 mFlags; // _14, bit 8 is the node's visibility
+	u8 _18[0x14];
 	Vec mRotate;    // _2C, in degrees
 	Vec mTranslate; // _38
 };
@@ -133,6 +148,11 @@ class ResNode {
 public:
 	ResNodeData* mpData; // _00
 
+	explicit ResNode(void* pData = NULL)
+	    : mpData((ResNodeData*)pData)
+	{
+	}
+
 	bool IsValid() const { return mpData != NULL; }
 	ResNodeData* ptr() const { return mpData; }
 	ResNodeData& ref() const
@@ -141,6 +161,16 @@ public:
 			db::Panic("g3d_resnode_ac.h", 44, "%s::%s: Object not valid.", "ResNode", "ref");
 		}
 		return *mpData;
+	}
+	u32 GetID() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 56, "NW4R:Failed assertion IsValid()");
+		}
+		if (IsValid()) {
+			return ptr()->mID;
+		}
+		return 0;
 	}
 	u32 GetMtxID() const
 	{
@@ -152,6 +182,23 @@ public:
 		}
 		return 0;
 	}
+	// the flag write is g3d_resnode_ac.h's, check and all
+	void SetVisibility(bool visible)
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 175, "NW4R:Failed assertion IsValid()");
+		}
+		if (!IsValid()) {
+			return;
+		}
+		if (visible) {
+			ptr()->mFlags |= 0x100;
+		} else {
+			ptr()->mFlags &= ~0x100;
+		}
+	}
+	void SetTranslate(f32 x, f32 y, f32 z); // 0x8026173C
+	void SetRotate(f32 x, f32 y, f32 z);    // 0x802617C4
 };
 
 // the animation resources a brres file holds, each nw4r's handle with the name accessor and the
@@ -330,6 +377,43 @@ struct ResAnmScnData {
 	u16 mNumFrame; // _34
 };
 
+// a light set of a scene animation, as far as LIGHT reads it: a plain handle like the other
+// shims here, so ResAnmScn::GetResLightSet hands it back in r3
+struct ResLightSetData {
+	static const u32 INVALID_ID = 0xFFFF;
+
+	u8 _00[0x1A];
+	u8 numLight; // _1A
+	u8 _1B[0x3C - 0x1B];
+	u16 lightId[8]; // _3C, INVALID_ID for an empty slot
+};
+
+class ResLightSet {
+public:
+	ResLightSetData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	const ResLightSetData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_reslightset_ac.h", 39, "%s::%s: Object not valid.", "ResLightSet", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetNumLight() const { return ref().numLight; }
+	u32 GetLightID(u32 index) const
+	{
+		if (index > ref().numLight - 1) {
+			db::Panic("g3d_reslightset_ac.h", 113, "index is out of bounds(%d)\n%d <= index <= %d not satisfied.", index, 0,
+			          ref().numLight - 1);
+		}
+		if (ref().lightId[index] == ResLightSetData::INVALID_ID) {
+			db::Panic("g3d_reslightset_ac.h", 114, "NW4R:Failed assertion ref().lightId[index] != DataType::INVALID_ID");
+		}
+		return ref().lightId[index];
+	}
+};
+
 class ResAnmScn {
 public:
 	void* mpData; // _00
@@ -343,6 +427,8 @@ public:
 		return *(const ResAnmScnData*)mpData;
 	}
 	u16 GetNumFrame() const { return ref().mNumFrame; }
+	ResLightSet GetResLightSet(u32 idx) const;
+	u32 GetResLightSetNumEntries() const;
 	bool Bind(const ResAnmScn scene); // 0x80265718
 	void Release();
 	bool Bind() { return Bind(*this); }
@@ -384,6 +470,8 @@ public:
 	bool HasResAnmShp() const;
 	bool HasResAnmScn() const;
 
+	bool Bind(const ResFile file); // 0x8025D1EC
+
 	void Release();
 	void Terminate();
 };
@@ -411,7 +499,15 @@ public:
 	}
 	bool IsValid() const { return mpData != NULL; }
 	ResGenModeData* ptr() const { return mpData; }
+	void GXSetNumTexGens(u8 num);
 	void GXSetNumTevStages(u8 num);
+	u8 GXGetNumTexGens() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 195, "NW4R:Failed assertion IsValid()");
+		}
+		return IsValid() ? ptr()->nTexGens : 0;
+	}
 	u8 GXGetNumTevStages() const
 	{
 		if (!IsValid()) {
@@ -419,6 +515,31 @@ public:
 		}
 		return IsValid() ? ptr()->nTevs : 0;
 	}
+	GXCullMode GXGetCullMode() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 223, "NW4R:Failed assertion IsValid()");
+		}
+		return IsValid() ? (GXCullMode)ptr()->cullMode : GX_CULL_ALL;
+	}
+	void GXSetCullMode(GXCullMode mode);
+};
+
+class ResMatPix {
+public:
+	void* mpData; // _00
+
+	ResMatPix(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x1f) {
+			db::Panic("g3d_resmat_ac.h", 340, "NW4R:Failed assertion !((u32)p & 0x1f)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	void GXSetDstAlpha(GXBool enable, u8 alpha);
+	void DCStore(bool sync);
+	void EndEdit() { DCStore(false); }
 };
 
 class ResMatTevColor {
@@ -466,6 +587,7 @@ public:
 		}
 		return *mpData;
 	}
+	void GXSetTevDirect(GXTevStageID stage);
 	void GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXChannelID channel);
 	void GXSetTevColorIn(GXTevStageID stage, GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d);
 	void GXSetTevColorOp(GXTevStageID stage, GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg);
@@ -478,6 +600,158 @@ public:
 	void EndEdit() { DCStore(false); }
 };
 
+// the tex srt block's per-texture flag nibble is all the game reaches
+struct ResTexSrtData {
+	u32 flag; // _00, four TexSrt::Flag bits per texture, lowest nibble first
+	u8 _04[0x28 - 0x4];
+};
+
+class ResTexSrt {
+public:
+	ResTexSrtData* mpData; // _00
+
+	ResTexSrt(void* p = NULL)
+	    : mpData((ResTexSrtData*)p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resmat_ac.h", 107, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResTexSrtData* ptr() const { return mpData; }
+	void SetTexSrtFlag(u32 id, u32 flag) { ptr()->flag = (ptr()->flag & ~(0xF << id * 4)) | (flag << id * 4); }
+	bool SetEffectMtx(u32 id, const math::MTX34* pMtx);
+	bool SetMapMode(u32 id, u32 mode, int camRef, int lightRef);
+};
+
+// the tex coord gen and texture object blocks, same g3d_resmat_ac.h guard style
+class ResMatTexCoordGen {
+public:
+	void* mpData; // _00
+
+	ResMatTexCoordGen(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x1f) {
+			db::Panic("g3d_resmat_ac.h", 513, "NW4R:Failed assertion !((u32)p & 0x1f)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	void GXSetTexCoordGen2(GXTexCoordID id, GXTexGenType func, GXTexGenSrc param, GXBool normalize, u32 postMtx);
+	void DCStore(bool sync);
+};
+
+class ResTexObj {
+public:
+	void* mpData; // _00
+
+	ResTexObj(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resmat_ac.h", 40, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	bool IsValidTexObj(GXTexMapID id) const;
+	GXTexObj* GetTexObj(GXTexMapID id);
+	void Validate(GXTexMapID id);
+};
+
+// the material user data: a resource dictionary of typed items, g3d_resdict_ac.h /
+// g3d_resuser_ac.h guards as retail reaches them
+struct ResDicNodeData {
+	u16 ref;       // _00
+	u16 flag;      // _02
+	u16 idxLeft;   // _04
+	u16 idxRight;  // _06
+	s32 ofsString; // _08
+	s32 ofsData;   // _0C
+};
+
+struct ResDicData {
+	u32 size;               // _00
+	u32 numData;            // _04
+	ResDicNodeData data[1]; // _08
+};
+
+class ResDic {
+public:
+	void* mpData; // _00
+
+	ResDic(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resdict_ac.h", 84, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	void* operator[](const char* pName) const;
+};
+
+struct ResUserDataItemData {
+	enum DataType { S32 };
+
+	u32 nameID;    // _00
+	s32 ofsData;   // _04
+	u32 numData;   // _08
+	u32 valueType; // _0C
+};
+
+class ResUserDataItem {
+public:
+	ResUserDataItemData* mpData; // _00
+
+	ResUserDataItem(void* p = NULL)
+	    : mpData((ResUserDataItemData*)p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resuser_ac.h", 38, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResUserDataItemData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resuser_ac.h", 38, "%s::%s: Object not valid.", "ResUserDataItem", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetValueType() const { return ref().valueType; }
+	s32 GetS32(u32 idx) const
+	{
+		if (GetValueType() != ResUserDataItemData::S32) {
+			db::Panic("g3d_resuser_ac.h", 54, "NW4R:Failed assertion GetValueType() == ResUserDataItemData::S32");
+		}
+		const s32* data = ref().ofsData != 0 ? (const s32*)((const u8*)mpData + ref().ofsData) : NULL;
+		return data[idx];
+	}
+};
+
+struct ResUserDataData {
+	u32 size;       // _00
+	ResDicData dic; // _04
+};
+
+class ResUserData {
+public:
+	ResUserDataData* mpData; // _00
+
+	ResUserData(void* p = NULL)
+	    : mpData((ResUserDataData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResUserDataData& ref()
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resuser_ac.h", 87, "%s::%s: Object not valid.", "ResUserData", "ref");
+		}
+		return *mpData;
+	}
+	ResDic GetResDic() { return ResDic(&ref().dic); }
+};
+
 struct ResMatData {
 	u32 size;               // _00
 	s32 toResMdlData;       // _04
@@ -485,13 +759,21 @@ struct ResMatData {
 	u32 id;                 // _0C
 	u32 flag;               // _10
 	ResGenModeData genMode; // _14
-	u8 _1C[0x3C - 0x1C];
-	s32 toResMatDLData; // _3C
+	u8 _1C[0x2C - 0x1C];
+	u32 numResTexPlttInfo; // _2C
+	u8 _30[0x38 - 0x30];
+	s32 toResUserData;    // _38
+	s32 toResMatDLData;   // _3C
+	u8 texObjData[0x104]; // _40, the embedded ResTexObjData the shadow texture lands in
+	u8 _144[0x1A8 - 0x144];
+	ResTexSrtData texSrtData; // _1A8
 };
 
 struct ResMatDLData {
 	u8 dlPix[0x20];      // _00
 	u8 dlTevColor[0x80]; // _20
+	u8 _A0[0xE0 - 0xA0];
+	u8 dlTexCoordGen[0xA0]; // _E0
 };
 
 class ResMat {
@@ -524,8 +806,18 @@ public:
 		s32 ofs = ref().toResMatDLData;
 		return ofs != 0 ? (ResMatDLData*)((u8*)mpData + ofs) : NULL;
 	}
+	ResMatPix GetResMatPix() { return ResMatPix(&GetResMatDLData()->dlPix); }
 	ResMatTevColor GetResMatTevColor() { return ResMatTevColor(&GetResMatDLData()->dlTevColor); }
+	ResMatTexCoordGen GetResMatTexCoordGen() { return ResMatTexCoordGen(&GetResMatDLData()->dlTexCoordGen); }
+	ResTexObj GetResTexObj() { return ResTexObj(&ref().texObjData); }
 	ResTev GetResTev();
+	ResTexSrt GetResTexSrt() { return ResTexSrt(&ref().texSrtData); }
+	ResUserData GetResUserData()
+	{
+		s32 ofs = ref().toResUserData;
+		return ResUserData(ofs != 0 ? (u8*)mpData + ofs : NULL);
+	}
+	void DCStore(bool sync);
 };
 
 // nw4r's handle to a model resource
@@ -601,6 +893,23 @@ private:
 	u8 mScale[0xC]; // _DC, nw4r's VEC3
 };
 
+// the user-drawn leaf: the draw callback and a user pointer at _F0, where the
+// map object stashes its state record (retail stw at 0x800C7EFC)
+class ScnProc : public ScnLeaf {
+public:
+	typedef void (*DrawProc)(ScnProc* pProc, bool opa);
+
+	static ScnProc* Construct(MEMAllocator* pAllocator, u32* pSize, DrawProc pDrawProc, bool opa, bool xlu, u32 userData);
+
+	void SetUserData(void* pData) { mpUserData = pData; }
+	void* GetUserData() { return mpUserData; }
+
+private:
+	u32 mFlag;           // _E8, nw4r's opa/xlu bits
+	DrawProc mpDrawProc; // _EC
+	void* mpUserData;    // _F0
+};
+
 class AnmObj;
 class AnmObjChr;
 
@@ -645,11 +954,31 @@ public:
 		CopiedMatAccess(ScnMdl* pScnMdl, u32 id);
 
 		ResGenMode GetResGenMode(bool markDirty);
+		ResMatPix GetResMatPix(bool markDirty);
 		ResMatTevColor GetResMatTevColor(bool markDirty);
+		ResMatTexCoordGen GetResMatTexCoordGen(bool markDirty);
+		ResTexObj GetResTexObj(bool markDirty);
 		ResTev GetResTev(bool markDirty);
+		ResTexSrt GetResTexSrt(bool markDirty);
 
 	private:
 		u8 _00[0x34];
+	};
+
+	// the per-view visibility copy, as far as the game reads it: the model it was opened
+	// on, the node and the view's flag buffer
+	class CopiedVisAccess {
+	public:
+		CopiedVisAccess(ScnMdl* pScnMdl, u32 id);
+		bool IsValid() const { return mpScnMdl != NULL; }
+		bool IsVisible() const;
+		bool SetVisibility(bool visible);
+		bool SetVisibilityEx(bool visible);
+
+	private:
+		ScnMdl* mpScnMdl; // _00
+		u32 mNodeID;      // _04
+		u8* mpVis;        // _08
 	};
 
 	static ScnMdl* Construct(MEMAllocator* pAllocator, u32* pSize, ResMdl mdl, u32 bufferOption, int numView);
@@ -665,6 +994,15 @@ public:
 	virtual f32 GetUpdateRate() const;    // _2C
 	virtual bool Bind(const ResMdl mdl);  // _30
 	virtual void Release();               // _34
+
+	enum AnmFlag {
+		FLAG_NEED_UPDATE                   = (1 << 0),
+		FLAG_CACHE_OBSOLETE                = (1 << 1),
+		FLAG_ANM_BOUND                     = (1 << 2),
+		FLAG_USE_QUATERNION_ROTATION_BLEND = (1 << 3),
+		FLAG_USE_ACCURATE_SCALE_BLEND      = (1 << 4)
+	};
+	void SetAnmFlag(AnmFlag flag, bool value);
 
 private:
 	u32 mFlags; // _0C
@@ -687,6 +1025,9 @@ public:
 
 	using AnmObj::Bind;
 	using AnmObj::Release;
+
+	void UseQuaternionBlend(bool enable) { SetAnmFlag(FLAG_USE_QUATERNION_ROTATION_BLEND, enable); }
+	void UseAccurateScaleBlend(bool enable) { SetAnmFlag(FLAG_USE_ACCURATE_SCALE_BLEND, enable); }
 
 protected:
 	int mNumBinding;      // _10
@@ -754,26 +1095,79 @@ public:
 	static AnmObjShpRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmShp shp, ResMdl mdl, bool cache);
 };
 
-// the scene animation (lights, fog, cameras)
+// nw4r's light object, as far as LIGHT reads it: the enable flag in front of the GX light
+class LightObj {
+public:
+	LightObj()
+	    : mFlag(0)
+	{
+	}
+	~LightObj() { }
+
+	bool IsEnable() const { return (mFlag & FLAG_ENABLE_LIGHT) ? true : false; }
+
+private:
+	enum LightObjFlag { FLAG_ENABLE_LIGHT = (1 << 2) };
+
+	u32 mFlag;       // _00
+	GXLightObj mObj; // _04
+};
+
+class AnmScnRes;
+
+// the scene animation (lights, fog, cameras); the virtuals in nw4r's order through GetLight,
+// nothing past it is needed yet
 class AnmScn : public G3dObj {
 public:
-	virtual void SetFrame(f32 frame);     // _1C
-	virtual f32 GetFrame() const;         // _20
-	virtual void SetUpdateRate(f32 rate); // _24
+	virtual void SetFrame(f32 frame);                                       // _1C
+	virtual f32 GetFrame() const;                                           // _20
+	virtual void SetUpdateRate(f32 rate);                                   // _24
+	virtual f32 GetUpdateRate() const;                                      // _28
+	virtual void UpdateFrame();                                             // _2C
+	virtual AnmScnRes* Attach(int idx, AnmScnRes* pRes);                    // _30
+	virtual AnmScnRes* Detach(int idx);                                     // _34
+	virtual u32 GetNumLightSet() const;                                     // _38
+	virtual u32 GetNumAmbLight() const;                                     // _3C
+	virtual u32 GetNumDiffuseLight() const;                                 // _40
+	virtual u32 GetNumSpecularLight() const;                                // _44
+	virtual u32 GetNumFog() const;                                          // _48
+	virtual u32 GetNumCamera() const;                                       // _4C
+	virtual u32 GetLightSetMaxRefNumber() const;                            // _50
+	virtual u32 GetAmbLightMaxRefNumber() const;                            // _54
+	virtual u32 GetDiffuseLightMaxRefNumber() const;                        // _58
+	virtual u32 GetFogMaxRefNumber() const;                                 // _5C
+	virtual u32 GetCameraMaxRefNumber() const;                              // _60
+	virtual void vf064();                                                   // _64, GetLightSet
+	virtual void vf068();                                                   // _68, GetAmbLightColor
+	virtual void GetLight(LightObj* pDiff, LightObj* pSpec, u32 refNumber); // _6C
 };
 
 class AnmScnRes : public AnmScn {
 public:
 	static AnmScnRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmScn scn, bool cache);
 
+	// inline: retail's only copy is in the game's range
+	virtual u32 GetNumLightSet() const { return mRes.GetResLightSetNumEntries(); } // _38
+
+	ResAnmScn GetResAnm() { return mRes; }
+
 	u8 _0C[0x20 - 0x0C];
 	ResAnmScn mRes; // _20, the resource it plays; IsAnmScnEnd reads its frame count
 };
 
 // the scene root, as far as the game calls it: the current camera's handle is reduced to its data
-class ScnRoot {
+class ScnRoot : public G3dObj {
 public:
-	MtxP GetCurrentCamera(); // 0x8027ADC8
+	// the allocator, the size out and the four counts, all 1 for the stage's scene
+	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
+	                          u32 numLightSet); // 0x8027AB88
+	// Destroy is G3dObj's, 0x8026C574, frees the constructed buffers
+	bool SetAnmScn(AnmScn* pAnmScn); // 0x8027AE70
+	AnmScn* RemoveAnmScn();          // 0x8027AF0C
+	void UpdateFrame();              // 0x8027AF78
+	void CalcWorld();                // 0x8027B388
+	void CalcView();                 // 0x8027B40C
+	MtxP GetCurrentCamera();         // 0x8027ADC8
 };
 
 } // namespace g3d
@@ -781,41 +1175,31 @@ public:
 
 class CCamera;
 
-// the Wii's CVec sibling: same {x,y,z,vtable} shape with its own vtable, base of
-// the Wii CObjVec (retail __ct__7CObjVecFv at 0x800BE7C0 stores the TVec vtable
-// for its first member and CVec vtables for the two behind it)
-class TVec : public CVec {
-public:
-	TVec() { }
-	TVec(f32 x, f32 y, f32 z)
-	    : CVec(x, y, z)
-	{
-	}
-	virtual ~TVec() { } // _08
-};
-
 // same shape and role as the GameCube CObjVec: a current vec with the target it
-// walks to and the step's speed, only the current vec is a TVec here
+// walks to and the step's speed, only the current vec is a TVec here (ut.h)
 // ccameraactioneye.h (which cgame.h includes) carries a second copy of the class for the camera
 // code; until the two are one, a file that needs both headers includes that one first and takes it
 #ifndef _GAME_CCAMERAACTIONEYE_H
-class CObjVec : public TVec {
+class CObjVec {
 public:
+	// the retail ctor stores __vt__4TVec at _0C: the current vec is a member,
+	// not a base, so the class has no vtable of its own. defined in xobj_ut.cpp;
+	// XObj and the actor ctors never call it (their nine vecs are flat
+	// TVec/CVec members); the only callers are XObjChr's own CObjVec members
 	CObjVec();
-	u8 Step(f32 frames); // 0x802A7FB4
-	bool IsMoving() const;
-
+	TVec mValue;  // _00
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
 
-	virtual ~CObjVec() { }
+	u8 Step(f32 frames); // 0x802A7FB4
+	bool IsMoving() const;
 
 	// puts it at a value with nowhere to go
 	void Reset(f32 x, f32 y, f32 z)
 	{
-		this->x   = x;
-		this->y   = y;
-		this->z   = z;
+		mValue.x  = x;
+		mValue.y  = y;
+		mValue.z  = z;
 		mTarget.x = x;
 		mTarget.y = y;
 		mTarget.z = z;
@@ -834,7 +1218,7 @@ public:
 	// puts it at a value with its target there too, the speed stays
 	void SetNow(const Vec& v)
 	{
-		Set(v);
+		mValue.Set(v);
 		SetTarget(v);
 	}
 };
@@ -942,13 +1326,19 @@ public:
 	const char* mTexPatName;    // _54, the pattern anim playing
 
 	virtual ~NW_Obj() { } // _58
+	// _0C, the base's own reading is "has a resource"; NW_Anm overrides it with its file's read state
+	virtual BOOL IsLoaded() { return m_resFile.mpData != NULL; }
 };
 STATIC_ASSERT(sizeof(NW_Obj) == 0x5C);
 
 class NW_Anm : public NW_Obj {
 public:
-	virtual ~NW_Anm() { }
+	virtual ~NW_Anm() { }                                // _08
+	virtual BOOL IsLoaded() { return mFile.IsLoaded(); } // _0C
+
+	CFile mFile; // _5C, the archive read the extra animation file comes through
 };
+STATIC_ASSERT(sizeof(NW_Anm) == 0x148);
 
 // anims waiting to play after the current one. unlike the GameCube layout the
 // vtable leads the object on the Wii (retail stores __vt__9CAnmQueue at _7B8
@@ -968,13 +1358,13 @@ public:
 
 	// the push anchor and the per-axis move limits the GameCube kept on XObj itself
 	// (SetClampedPushPositionXZ at 0x800B61FC reads _7BC.._7D0, inside the queue)
-	f32 mAnchorX;   // _04
-	f32 mAnchorZ;   // _08
-	f32 mLimitPosX; // _0C
-	f32 mLimitNegX; // _10
-	f32 mLimitPosZ; // _14
-	f32 mLimitNegZ; // _18
-	u8 _1C[4];
+	f32 mAnchorX;        // _04
+	f32 mAnchorZ;        // _08
+	f32 mLimitPosX;      // _0C
+	f32 mLimitNegX;      // _10
+	f32 mLimitPosZ;      // _14
+	f32 mLimitNegZ;      // _18
+	u32 mMarkerOverride; // _1C, ResetObjectState puts 0x80000000 here, the GameCube kept it on XObj
 
 	// _20, XObj::SetColor writes them (verified at 0x800B67F8); the rest of the queue's
 	// members are not yet recovered
@@ -987,33 +1377,40 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 // go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
+	// defined in xobj_ut.cpp (retail 0x800BE7E0, right behind CObjVec's ctor)
 	CJArchive();
 
-	NW_Anm mAnm; // _00, its vtable at _58
-	CFile mFile; // _5C
+	NW_Anm mAnm; // _00, its vtable at _58 and its CFile at _5C
 };
 STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
-// element of XObjMap's two 100-entry record lists: 0xC bytes with a ctor and
-// dtor in the CPtcl unit (retail fn_800BEB4C/dtor_800BEB60 and
-// fn_800BEBDC/dtor_800BEBF0). their real names and members are not recovered yet
+// element of XObjMap's two 100-entry record lists: 0xC bytes. the ctor
+// (0x800BEB4C/0x800BEBDC) zeroes all three words, the dtor
+// (0x800BEB60/0x800BEBF0) frees the buffer at _00 and clears _04 as a
+// self-subtract. the pointee type is not recovered yet
 class XObjMapListA {
+	friend class XObjMap;
+
 public:
 	XObjMapListA();
 	~XObjMapListA();
 
-private:
-	u8 _00[0xC];
+	u32* mItems; // _00
+	s32 mUsed;   // _04
+	s32 mCap;    // _08
 };
 STATIC_ASSERT(sizeof(XObjMapListA) == 0xC);
 
 class XObjMapListB {
+	friend class XObjMap;
+
 public:
 	XObjMapListB();
 	~XObjMapListB();
 
-private:
-	u8 _00[0xC];
+	u32* mItems; // _00
+	s32 mUsed;   // _04
+	s32 mCap;    // _08
 };
 STATIC_ASSERT(sizeof(XObjMapListB) == 0xC);
 
@@ -1191,7 +1588,11 @@ STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
 
 class XObj : public CObj {
 public:
-	XObj();
+	// retail's derived ctors expand this inline; a weak __ct__4XObjFv copy is
+	// emitted wherever an out-of-line call survives (0x800BE5B0 in xobj_ut's
+	// range, plus the unnamed second copy 0x800BEECC that only XObjChr's ctor
+	// calls -- MWCC stops inlining the base once the aggregate ctor gets big)
+	XObj() { }
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
 	virtual ~XObj() { }
@@ -1203,10 +1604,15 @@ public:
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
 	virtual void vf160() { mLastAnimFrame = GetAnimFrame(); }
+	// the animation crossed frame f during the last update
+	BOOL PassedAnimFrame(f32 f) { return mLastAnimFrame < f && GetAnimFrame() >= f; }
 	virtual void UpdateObject(u32 frames); // _164
-	virtual void vf168();
-	virtual void vf16C(); // _16C, empty
-	virtual void vf170();
+	virtual void vf168(u32 frames);        // _168, steps the two queued material colors to their targets
+	virtual void vf16C();                  // _16C, empty
+	// queues the model on the scene draw list; the view argument is unused in the
+	// body but callers pass it: DrawWithView hands its view through (retail emits
+	// no argument setup), the DrawGroundShadow call sites pass NULL (li r4, 0)
+	virtual void vf170(Mtx view);
 	virtual void DrawObject();                                       // _174
 	virtual void DrawWithView(Mtx view);                             // _178
 	virtual void DrawReflection(Mtx view);                           // _17C
@@ -1216,16 +1622,18 @@ public:
 	virtual void DrawCollisionShapes();                              // _18C
 	virtual void DrawScreenOverlay();                                // _190
 	virtual void DrawDebugStatus();                                  // _194
-	virtual void vf198();
-	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
-	virtual void vf1A0();
-	virtual void vf1A4();
-	virtual void vf1A8();
-	virtual void SetDiffuseColor(GXColor color); // _1AC, the item tint the carry code passes (the GameCube set the materials' diffuse)
+	virtual void vf198(f32 margin, f32 alpha, u32 color);            // _198, frames the on-screen bounds while hovered
+	virtual void vf19C(u32 color, f32 z, f32 x, f32 y);              // _19C, CGame::DrawHud calls it on its mHudObject
+	// _1A0, the GameCube's ApplyMaterialPresets: SYSCALL_SET_OBJSTAT's 0x20000 passes the object's material bits
+	virtual void vf1A0(const u32* flags);
+	// _1A4, the material fade the plug and the attachments implement; the GameCube had it at _DC
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
+	virtual void vf1A8(f32 value);               // takes the stage's ambient level; LoadFromPlacement passes it
+	virtual void SetDiffuseColor(GXColor color); // _1AC, by value: the carry code materializes a copy on the caller's stack
 	virtual Vec GetCameraTarget();               // _1B0, where a camera looks at this object
 	virtual void SetBaseMtx(Mtx mtx);            // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
 	virtual void ClearBaseMtx();                 // _1B8
-	virtual void vf1BC();
+	virtual void vf1BC(s32 mode);
 	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
 	virtual void ResetCullMode();       // _1C4, and puts it back after
 	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
@@ -1337,7 +1745,10 @@ public:
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
-	BOOL IsFloorOn(s32 i) const { return mFloorMasks[0] & (1 << i); }
+	// picks the kind's animation event callback (0x800BD064, name invented)
+	void AssignAnimEventCallback();
+
+	BOOL IsFloorOn(s32 i) const { return (1 << i) & mFloorMasks[0]; }
 	void ClearFloor(s32 i) { mFloorMasks[0] &= ~(1 << i); }
 
 	CStatus64 mStatus;  // _150
@@ -1350,14 +1761,16 @@ public:
 	u8 _188;            // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
-	u8 _190[0x194 - 0x190];
+	// _190, the animation event callback for the object's kind; AssignAnimEventCallback
+	// (cjanim.cpp) sets it, the animation stepper calls it at the events' frames
+	void (*mAnimEventCallback)(XObj* object, s32 kind, f32 prev, f32 frame);
 	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
-	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex;  // _1BC
-	XObjEdge mEdges[32]; // _1C0, one per floor
+	Vec mLastRot;         // _1AC, the last update's rotation, ResetObjectState refills it from mMoveRotate
+	f32 mLastAnimFrame;   // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;   // _1BC
+	XObjEdge mEdges[32];  // _1C0, one per floor
 	// _640, the collision floors' reach on the ground plane: [0] the wider of the x and z radii,
 	// [1] the narrower; UpdateObjectFloorXZExtent fills both with NAN while there are no floors
 	f32 mFloorXZExtent[2];    // xobj_chr.cpp reads them by index, [0] is GetFloorXZExtent's
@@ -1372,7 +1785,8 @@ public:
 	f32 mScreenBottom;        // _6E4
 	f32 mScreenLeft;          // _6E8
 	f32 mScreenRight;         // _6EC
-	u8 _6F0[0x6F8 - 0x6F0];
+	f32 mFloorTop;            // _6F0, the floors' highest top edge, NAN while none projected
+	u8 _6F4[0x6F8 - 0x6F4];
 	CVec mToppleOffset; // _6F8
 	// _708, the map triangle under the object and its height; cjanim's floor queries refresh it
 	XObjMapHit mFloorHit;
@@ -1386,24 +1800,76 @@ public:
 	CJArchive mArchive;         // _820
 	Mtx mBaseMtx;               // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;           // _998, NULL or mBaseMtx
-	u8 _99C[0x9A4 - 0x99C];
-	s32 _9A4; // _9A4, the end of a script it owns clears it
+	u32 _99C;                   // _99C, ResetObjectState clears it
+	s32 mReleaseCountdown;      // _9A0, >0 ticks down to a Release call while the keep flag is clear
+	s32 _9A4;                   // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
-// the base of the people and toys, the GameCube's members shifted by +0x28
+// one of an actor's eight joint parts, the GameCube's XObjJointPart; the ctor's NULL
+// store at _00 is the ResNode default constructor
+struct XObjJointPart {
+	nw4r::g3d::ResNode mJoint; // _00
+	XObj* mObj;                // _04, cleared by ResetForNewGame
+	Mtx mMtx;                  // _08
+};
+STATIC_ASSERT(sizeof(XObjJointPart) == 0x38);
+
+// the base of the people and toys, the GameCube class behind the Wii XObj; member offsets
+// come from the ctor's vptr stores and ResetForNewGame's clear list, sizes +0x28 over the
+// GameCube's through the look block, then the Wii AnimSfx/AnimSfxActor pair and mParts
 class XObjActor : public XObj {
 public:
+	XObjActor();
+	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
 
-	f32 mHeading;   // _9A8, the way it walks
-	f32 mMoveSpeed; // _9AC, move speed
-	u8 _9B0[0x9B8 - 0x9B0];
-	s32 mKindStep;    // _9B8, the kind's own step
-	u32 mKindCounter; // _9BC, cleared with mKindStep
+	f32 mHeading;           // _9A8, the way it walks
+	f32 mMoveSpeed;         // _9AC, move speed
+	f32 mFacing;            // _9B0, the yaw the model is turned to
+	f32 _9B4;               // _9B4, set to PI in ResetForNewGame
+	s32 mKindStep;          // _9B8, the kind's own step
+	u32 mKindCounter;       // _9BC, cleared with mKindStep
+	CStatus32 mActorStatus; // _9C0, 2 a sound is due, 0x2000 busy
+	u32 _9C8;               // _9C8
+	s32 _9CC;               // _9CC
+	f32 _9D0;               // _9D0, set to 1.0 on reset
+	f32 _9D4;               // _9D4, set to 1.0 on reset
+	Vec mHitPos;            // _9D8
+	Vec mHomePos;           // _9E4, where a knocked toy stood before it hopped away
+	Vec mVelocity;          // _9F0
+	f32 mHitStrength;       // _9FC
+	f32 mFallSpeed;         // _A00, vertical speed added to y each tick
+	f32 mGroundHeight;      // _A04, floor height under the actor plus the kind's offset
+	s32 mCmd[20];           // _A08, the event command HandleEventCommand got and its args
+	u8 _A58[4];
+	s32 mMovePhase;  // _A5C, index into the movement speed cycle
+	f32 _A60;        // _A60
+	f32 _A64;        // _A64
+	Vec _A68;        // _A68, set from the fourth Vec of the reset/init table
+	s16 mAttachedId; // _A74, id of the attached object, -1 for none
+	u8 _A76[0xA78 - 0xA76];
+	XObj* mAttached;       // _A78, the attached object
+	Mtx mAttachedMtx;      // _A7C, where the attached object is held
+	XObj* mHeldObjects[2]; // _AAC, Mama can carry a pair
+	u8 _AB4[0xAC4 - 0xAB4];
+	CVec _AC4; // _AC4, its vptr ends it at _AD0
+	u8 _AD4[0xAF0 - 0xAD4];
+	CObjVec _AF0;               // _AF0, a TVec and two CVecs, head-look tween shape
+	AnimSfx mSfx;               // _B20, the sounds UpdateAnimationSounds plays
+	AnimSfxActor mSfxActors[2]; // _B7C, the secondary sound slots
+	s32 mLookMode;              // _B94, 0 ahead, 1 at mLookTarget, 3 at mLookAngle
+	f32 mHeadYaw;               // _B98
+	f32 mLookAngle;             // _B9C
+	f32 mLookRate;              // _BA0
+	const Vec* mLookTarget;     // _BA4
+	f32 mHeadPitch;             // _BA8
+	XObjJointPart mParts[8];    // _BAC
+	u8 _D6C[0xD78 - 0xD6C];
 
 	Vec GetCameraTarget();
 };
+STATIC_ASSERT(sizeof(XObjActor) == 0xD78);
 
 // the plain object an XObjHBox carries
 struct XObjHBoxPart {
@@ -1418,6 +1884,9 @@ STATIC_ASSERT(sizeof(XObjHBoxPart) == 0x9B8);
 // a box that reads a second object (placement 36) and draws it inside itself
 class XObjHBox : public XObj {
 public:
+	XObjHBox();
+	virtual ~XObjHBox();
+
 	virtual void Release();                                            // _40 override
 	virtual void InitializeObject();                                   // _14C override, fn_801164D8
 	virtual void ResetForNewGame();                                    // _150 override, fn_80116518
@@ -1427,7 +1896,7 @@ public:
 	virtual void DrawWithView(Mtx view);                               // _178 override
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184 override
 	virtual void DrawScreenOverlay();                                  // _190 override
-	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC override
+	virtual s32 OnPlayerContact(s32 unused, s32 flags);                // _1CC override
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC override
 
 	s32 mLoadState;     // _9A8
@@ -1471,8 +1940,18 @@ public:
 	XObjScnCam();
 	virtual ~XObjScnCam();
 
+	virtual void Release();                                // _40
+	virtual void SetAnmScn(u32 id, f32 frame, f32 rate);   // _138
+	virtual void ReleaseModelWork();                       // _13C
+	virtual void InitializeObject();                       // _14C, only drops the scene, no base call in retail
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164
+	virtual void DrawObjectEffects();                      // _188
+
 	WiiGsSceneObj* mScene; // _9A8
-	u8 _9AC[0x9C0 - 0x9AC];
+	Vec mAnimOffset;       // _9AC, zeroed when an event starts a scene camera animation (SetAnmScn)
+	f32 mAnimAngle;        // _9B8, DEG2RAD-scaled, zeroed with mAnimOffset
+	u8 _9BC[0x9C0 - 0x9BC];
 };
 STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
@@ -1483,10 +1962,15 @@ public:
 	XObjLight();
 	virtual ~XObjLight();
 
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164, retail's is empty
+	virtual void ResetObjectState();                       // _154
+
 private:
-	u8 _9A8[4];
+	u32 m_9A8;         // ResetObjectState clears it
 	CLight mLights[8]; // _9AC
-	u8 _D0C[0x24];
+	s32 mLightIds[8];  // _D0C, ResetObjectState fills it with -1
+	u8 _D2C[0xD30 - 0xD2C];
 };
 STATIC_ASSERT(sizeof(XObjLight) == 0xD30);
 
@@ -1497,24 +1981,255 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
+	virtual void Release();                                // _40
+	virtual void InitializeObject();                       // _14C
+	virtual void ResetObjectState();                       // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void UpdateObject(u32 frames);                 // _164
+	virtual void DrawWithView(Mtx view);                   // _178
+	virtual void DrawGroundShadow(f32 opacity);            // _180
+
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
-	u8 _9EC[0x28];
-	XObjMapListA mListA[0x64]; // _A14
-	XObjMapListB mListB[0x64]; // _EC4
-	u8 _1374[0x84];
+	u8 mSortValid;   // _9EC, the grid below holds entries while it is set
+	u8 _9ED[3];
+	Vec mSortMin;   // _9F0, the trigon's bounds
+	Vec mSortMax;   // _9FC
+	f32 mSortCellX; // _A08, a tenth of the x span
+	u8 _A0C[4];
+	f32 mSortCellZ;              // _A10, a tenth of the z span
+	XObjMapListA mListA[10][10]; // _A14, a 10x10 cell grid over the sort bounds
+	XObjMapListB mListB[10][10]; // _EC4
+	nw4r::g3d::ScnProc* m_1374;  // the translucent draw proc LoadFromPlacement plants, InitializeObject clears it
+	u8 _1378[0x80];              // ResetObjectState drops every other word of the two 0x40 records
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
-WII_XOBJ_DECL(XObjChr, 0x1CCA0);
-WII_XOBJ_DECL(XObjActor3, 0x21C8);
-// XObjLeticker lives in game/wii/xobjleticker.h; XObjArmy keeps the shell for now
-WII_XOBJ_DECL(XObjActorToy, 0x2208);
-WII_XOBJ_DECL(XObjActorJenny, 0xD98);
-WII_XOBJ_DECL(XObjActorMama, 0xD88);
-WII_XOBJ_DECL(XObjActorPapa, 0xD90);
-WII_XOBJ_DECL(XObjActorTao, 0xDF8);
-WII_XOBJ_DECL(XObjActorDeca, 0xDA0);
-WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
+
+// the Chibi-Robo character object: its dtor (0x800C14A0) unwinds a CPtclSet at
+// _1B7BC, a CTexObj[2] at _1C774 and one AnimSfxActor at _1CC90 among many
+// members whose types are not recovered yet
+class XObjChr : public XObj {
+public:
+	// the dust pool the character's own effects draw from: retail RTTI names it
+	// XObjChr::CPtclSet, a DustParticlePool that adds a virtual at _08
+	class CPtclSet : public DustParticlePool {
+	public:
+		CPtclSet();
+		~CPtclSet();
+		virtual void vf08(); // _08
+	};
+
+	XObjChr();
+	virtual ~XObjChr();
+
+	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
+	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
+	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
+	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
+	virtual void DrawReflection(Mtx view);                             // _17C
+	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184, the mug's blob or the joint's
+	virtual void vf1A0(const u32* flags);                              // _1A0, forwards the flags to everything he wears
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);          // _1A4, the fade on himself and his attachments
+	virtual void vf1A8(f32);                                           // _1A8, empty on the player
+	virtual void SetBaseMtx(Mtx mtx);                                  // _1B4, his own plus the nine suits'
+	virtual void ClearBaseMtx();                                       // _1B8, same
+	virtual void vf1BC(s32 mode);                                      // _1BC, culls him and the visible attachments
+	virtual void SetCullMode(s32 mode);                                // _1C0
+	virtual void ResetCullMode();                                      // _1C4
+	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);      // _1F0
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade);                                // _20C
+	virtual void ResumeSounds(f32 fade);                               // _210
+
+private:
+	// the member offsets come from the ctor's call sequence (0x800BECE8) and the
+	// extab unwind types; gaps hold the members whose classes live in cgame.h or
+	// are not recovered yet: the XAct actions _AA0-_D50, XActRadar _95D4, Params
+	// _999C, the XObj attachment set _9E20-_D2A0, XObjChrBase _DC50, OXMenu _1A420
+	u8 _9A8[0x9CC - 0x9A8];
+	u8 _9CC[8]; // its own little class: ctor 0x800BF148, dtor 0x8002E67C
+	CObjVec mMotion;
+	u8 _A04[0xA34 - 0xA04];
+	CVec mContactPos; // _A34
+	u8 _A44[4];
+	CVec mEdgePos;                 // _A48
+	u8 _A58[0x9810 - 0xA58];       // the action members and everything to the camera records
+	XObjScnCamInitRec mEyeAimRec;  // _9810
+	XObjScnCamInitRec mHeadAimRec; // _987C
+	u8 _98E8[0x995C - 0x98E8];
+	CObjVec mSlopeMotion;       // _995C
+	CVec mFloorSlope;           // _998C
+	u8 _999C[0x18BE8 - 0x999C]; // Params, the XObj attachments, the suit objects
+	XPad mPad;                  // _18BE8
+	u8 _19E98[0x19EE4 - 0x19E98];
+	XObjChrMenu mMenu;            // _19EE4
+	u8 _1A420[0x1B7BC - 0x1A420]; // OXMenu's class pulls in the GameCube xobj.h
+	CPtclSet mDustPool;           // _1B7BC
+	CTexObj mTex[2];              // _1C774
+	u8 _1C97C[0x1C9A8 - 0x1C97C];
+	CVec _1C9A8;
+	u8 _1C9B8[0x1C9CC - 0x1C9B8];
+	CObjVec mEyeAim;          // _1C9CC
+	CJArchive mAttachmentAnm; // _1C9FC
+	CJArchive mSuitAnm;       // _1CB44
+	u8 _1CC8C[0x1CC90 - 0x1CC8C];
+	AnimSfxActor mActor; // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
+	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
+};
+STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);
+
+// the three-object actor: like XObjChr it carries a dust pool (its own nested
+// CPtclSet at _C3C), a CTexObj[2] at _1BF4 and an AnimSfx at _1E28
+class XObjActor3 : public XObj {
+public:
+	class CPtclSet : public DustParticlePool {
+	public:
+		CPtclSet();
+		~CPtclSet();
+		virtual void vf08(); // _08
+	};
+
+	XObjActor3();
+	virtual ~XObjActor3();
+
+private:
+	u8 _9A8[0xC3C - 0x9A8];
+	CPtclSet mDustPool; // _C3C
+	CTexObj mTex[2];    // _1BF4
+	u8 _1DFC[0x1E28 - 0x1DFC];
+	AnimSfx mSfx; // _1E28
+	u8 _1E84[0x21C8 - 0x1E84];
+};
+STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
+
+// XObjLeticker's recovered fields live in game/wii/xobjleticker.h
+
+// toys made of two more objects, read after the toy itself; the retail ctor
+// (0x800C2404) calls the member ctors out of line: CStatus32 at _D78, the two
+// embedded XObj at _D88 and _1730, CVec at _20DC and a second CStatus32 at
+// _21E4. the GameCube keeps the pieces read in by id at the same tail
+class XObjActorToy : public XObjActor {
+public:
+	XObjActorToy();
+	virtual ~XObjActorToy();
+
+private:
+	CStatus32 mHideKinds; // _D78, kinds queued to hide
+	u8 _D80[8];
+	XObj mFirst;               // _D88
+	XObj mSecond;              // _1730
+	s32 mShownPart;            // _20D8
+	CVec mPendingMove;         // _20DC
+	u8 _20EC[0x21E4 - 0x20EC]; // the piece records and pending state, ctor writes none of it
+	CStatus32 mKindFlags;      // _21E4
+	u8 _21EC[0x2208 - 0x21EC];
+};
+STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
+
+// the people: the GameCube heads each tail with a StateFunc mState PTMF (0xC);
+// the Wii drops it, every other member keeps its order and lands at
+// GameCube+0xF4 -- the ctors' CStatus32 stores pin the offsets (retail Jenny
+// 0x800C2844: {0,vt} at _D84 and _D8C; Mama/Papa/Tao: one at _D80; Deca: two
+// at _D84/_D8C)
+class XObjActorJenny : public XObjActor {
+public:
+	XObjActorJenny();
+	virtual ~XObjActorJenny();
+
+private:
+	f32 _D78;              // _D78, the GameCube's _C84
+	f32 _D7C;              // _D7C, the GameCube's _C88
+	u32 _D80;              // _D80, the GameCube's _C8C
+	CStatus32 mJointFlags; // _D84, the GameCube's _C90, 4 head joint, 8 joint shown
+	CStatus32 mHideKinds;  // _D8C, the GameCube's _C98, kinds queued to hide
+	u8 mJointHidden;       // _D94, hides joint 0-3-0-0-4 below the head while drawn
+	u8 _D95[0xD98 - 0xD95];
+};
+STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
+
+// the same decode holds for Mama/Papa/Tao: their retail ctors end with one
+// CStatus32 init pair at _D80, the rest of the tail matches the GameCube
+// layout at +0xF4 (_D78/_D7C scalars, mHideKinds _D80; Papa adds mJointShown
+// _D88; Tao mCarryMtx _D88, mMountMtx _DB8, mMountObjId _DE8, mMountState
+// _DEC, mMountObj _DF0) -- but declaring the member drops their ctor scores
+// 48.07 -> 45.45 while emitting the same tail stores, so the pads stay until
+// the member-init block matches
+class XObjActorMama : public XObjActor {
+public:
+	XObjActorMama();
+	virtual ~XObjActorMama();
+
+private:
+	u8 _tail[0xD88 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
+
+class XObjActorPapa : public XObjActor {
+public:
+	XObjActorPapa();
+	virtual ~XObjActorPapa();
+
+private:
+	u8 _tail[0xD90 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorPapa) == 0xD90);
+
+class XObjActorTao : public XObjActor {
+public:
+	XObjActorTao();
+	virtual ~XObjActorTao();
+
+private:
+	u8 _tail[0xDF8 - sizeof(XObjActor)];
+};
+STATIC_ASSERT(sizeof(XObjActorTao) == 0xDF8);
+
+class XObjActorDeca : public XObjActor {
+public:
+	XObjActorDeca();
+	virtual ~XObjActorDeca();
+
+private:
+	f32 _D78;              // _D78, the GameCube's _C84
+	f32 _D7C;              // _D7C, the GameCube's _C88
+	u32 _D80;              // _D80, the GameCube's _C8C
+	CStatus32 mJointFlags; // _D84, 4 head joint
+	CStatus32 _D8C;        // _D8C, the GameCube's _C98
+	f32 mJointYaw;         // _D94, eases toward mJointYawTarget in steps of 0.1
+	f32 mJointYawTarget;   // _D98, command 3 sets PI (arg 0) or 0 (arg 1)
+	u8 _D9C[0xDA0 - 0xD9C];
+};
+STATIC_ASSERT(sizeof(XObjActorDeca) == 0xDA0);
+
+// one entry of XObjArmy's five-slot list at _9E4: retail element ctor
+// 0x800C50E4 / dtor 0x800C50F8, stride 0x30; the ctor plants a CVec vptr at
+// _14 and _24, so the list element carries a CVec at _08 and one at _18
+struct XObjArmySlot {
+	XObjArmySlot();
+	~XObjArmySlot();
+
+	u8 _00[0x8];
+	CVec _08;
+	CVec _18;
+	u8 _28[0x8];
+};
+STATIC_ASSERT(sizeof(XObjArmySlot) == 0x30);
+
+// the army object: five slot records at _9E4, then its own AnimSfx at _AD4
+class XObjArmy : public XObj {
+public:
+	XObjArmy();
+	virtual ~XObjArmy();
+	virtual void DrawLate(); // _28C
+
+private:
+	u8 _9A8[0x9E4 - 0x9A8];
+	XObjArmySlot mSlots[5]; // _9E4
+	AnimSfx mSfx;           // _AD4
+};
+STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);
 
 // a carried model, drawn with the object 0x13C model the spider claimed a slot for (the GameCube's CarryInfo)
 struct CarryInfo {
@@ -1861,14 +2576,32 @@ public:
 	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
+
 // XObjDust lives in game/wii/xobjflags.h, behind XObjFlags; XObjFree in game/wii/xobjfree.h
 
-// a small shadow helper the unit defines; only its trivial dtor is verified so
-// far (retail 0x800BD66C, the deleting variant with no member calls)
-class CustomShadow {
-public:
-	virtual ~CustomShadow();
+// the object's blob shadow: a dark fan (center plus a 33-point rim) over a fading
+// ring of (outer, inner) vertex pairs, built once in the constructor (retail
+// 0x800C6F60) and transformed per Draw (0x800C7130). Its dtor is 0x800BD66C.
+// The retail ctor stores the vtable pointer behind the data at _A68, so the
+// shadow's arrays live in a non-polymorphic base and the vptr lands after them.
+struct CustomShadowData {
+	Vec mCenter;              // _000
+	Vec mCircle[33];          // _00C, unit rim: (cos(a), 0, sin(a)), a = i * step
+	Vec mFan[34];             // _198, mCenter+mCircle in the Draw transform
+	Vec mRing[66];            // _330, (rim, scaled rim) pairs
+	Vec mRingTransformed[66]; // _648
+	u32 mColors[66];          // _960, ring vertex colors: [2i] = alpha, [2i+1] = i
 };
+STATIC_ASSERT(sizeof(CustomShadowData) == 0xA68);
+
+class CustomShadow : public CustomShadowData {
+public:
+	CustomShadow();
+	void Draw(Vec pos, Vec scale, u32 alpha); // 0x800C7130
+
+	virtual ~CustomShadow(); // _A68 vtable
+};
+STATIC_ASSERT(sizeof(CustomShadow) == 0xA6C);
 
 // the Wii object readers: retail RTTI names XObjRead, XObjReadAll and
 // XObjReadOne, with XObjRead deriving straight from the SDK OSThread (the
@@ -1889,6 +2622,8 @@ public:
 };
 STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
 
+// retail emits the out-of-line deleting copy in xobjs.cpp; the inline body
+// keeps every derived dtor folding it to nothing, like retail's
 inline CMsgQueue::~CMsgQueue()
 {
 }
@@ -1898,6 +2633,30 @@ struct XObjReadReq {
 	void* mObj;  // _00, null when the slot is free
 	void* mInfo; // _04
 };
+
+struct EffectInstance; // game/wii/ceffect.h
+
+// the wire effect along the plug's cord, the GameCube's XObjWireEff: own anim,
+// own effect instance and the spark timer XObjPlug::UpdateObject paces
+class XObjWireEff : public XObj {
+public:
+	s32 mAnim;                  // _9A8, -1 when off
+	f32 mRate;                  // _9AC
+	s32 mEffect;                // _9B0, -1 when off
+	EffectInstance* mGenerator; // _9B4
+	s32 mSparkMode;             // _9B8
+	s32 mSparkTimer;            // _9BC
+
+	XObjWireEff() { }
+
+	virtual ~XObjWireEff() { }             // _08 (weak)
+	virtual void Release();                // _40
+	virtual void ResetObjectState();       // _154
+	virtual void UpdateObject(u32 frames); // _164
+	virtual void DrawWithView(Mtx view);   // _178
+};
+STATIC_ASSERT(sizeof(XObjWireEff) == 0x9C0);
+STATIC_ASSERT(offsetof(XObjWireEff, mSparkMode) == 0x9B8);
 
 class XObjRead : public OSThread {
 public:
@@ -1928,6 +2687,7 @@ STATIC_ASSERT(sizeof(XObjRead) == 0x3A0);
 STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);
 STATIC_ASSERT(offsetof(XObjRead, mReqs) == 0x34C);
 
+// same weak-copy split as CMsgQueue: inline here, the deleting copy lives in xobjs.cpp
 inline XObjRead::~XObjRead()
 {
 }

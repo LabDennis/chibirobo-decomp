@@ -550,7 +550,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorpapa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/infopointinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjactordtor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -738,7 +737,7 @@ gamecube_libs = [
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/file_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c"),
-            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c"),
+            Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem.c", padding="small_data"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/printf.c", extra_cflags=["-str pool"]),
@@ -994,7 +993,7 @@ gamecube_libs = [
         "progress_category": "game",
         "objects": [
             Object(NonMatching, "game/ut.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/mem.cpp"),
+            Object(NonMatching, "game/mem.cpp", padding="small_data"),
             Object(NonMatching, "game/ccamera.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/clight.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
@@ -1058,7 +1057,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/tev.c"),
             Object(Matching, "sysdolphin/baselib/mobj.c"),
             Object(Matching, "sysdolphin/baselib/aobj.c", padding="small_data+data"),
-            Object(NonMatching, "sysdolphin/baselib/lobj.c"),
+            Object(Matching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/jobj.c"),
@@ -1317,9 +1316,21 @@ if wii:
                 # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
                 # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
                 Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the tumble action's front half, 0x801067C0-0x80106D60: ResetTumbleAction (the
+                # GameCube's xacttumble.cpp), FinishTumbleAction and HandleTumbleActionInput;
+                # UpdatePlayerTumbleAnimation follows, still to port
+                Object(NonMatching, "game/wii/xacttumble.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the tumble fade and the floor ring (the GameCube's xactradar.cpp tail, retail
+                # 0x801078C8-0x80107C50); HandleCopterActionInput and the rest of Nr. 68 follow
+                Object(NonMatching, "game/wii/xactradar.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the attachment objects (copter, popper, radar, OX mark), retail
+                # 0x8010E548-0x8010F944: the action code calls their anim helpers with plain
+                # bl, so they were a separate file; in xactradar.cpp -ipa file inlines them
+                Object(NonMatching, "game/wii/xobjattachment.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
+                Object(NonMatching, "game/wii/xobjplug.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
                 # first function of ccameraactionarea.cpp (retail 0x80154310)
@@ -1327,7 +1338,9 @@ if wii:
                 # the area and map camera halves are two retail files, each with its own __FILE__ string pool
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
                 Object(NonMatching, "game/wii/ccameraactionarea.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # noauto: retail keeps MapAreaHeight out of line for
+                # StartMapCameraAreaHeightInterpolation's two calls; no other function of the unit changes with or without it
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
@@ -1354,6 +1367,12 @@ if wii:
                 Object(Matching, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the XObj core methods, 0x800AC07C-0x800B1558 (wii_units.md Nr. 45):
+                # init/reset, the draw dispatch virtuals, the screen-list queue pair and
+                # ClearAnim are written; load, release, update, the material helpers and
+                # the floor test still come from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/obja.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the XObj floors, projections and event virtuals, 0x800B1558-0x800BD66C
                 # (wii_units.md Nr. 46); the GameCube's cjanim.cpp plus obja.cpp's and
                 # xobjfloor.cpp's floor helpers - the stepper, callbacks and __sinit
@@ -1364,8 +1383,18 @@ if wii:
                 # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
                 # headers, which want the Wii MSL
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the member-class ctor/dtor block behind the XObj ctors,
+                # 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49): XObjMapListA/B,
+                # ~XObjMap, XObjChr's ctor and the weak emissions it references
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobjmember.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the pool-subclass ctor/dtor run, 0x800C13B0-0x800C5424 (the first half of
+                # wii_units.md Nr. 56): XObjChr/Actor3/Sound/Coin/Item, the XObjActor children,
+                # spiders, dust, hbox, scncam, leticker, army and free
+                # -i include/rvl_msl for the AnimSfx members like the other xobj units
+                Object(NonMatching, "game/wii/xobjctor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the second half of retail's xobj_ut.cpp: pool walks, stage spawn, reader threads,
-                # 0x800C5424-0x800C6408 (wii_units.md Nr. 56); the subclass ctor block stays auto for now;
+                # 0x800C5424-0x800C6408 (wii_units.md Nr. 56);
                 # -i include/rvl_msl like the first half, for XObjFlags from game/wii/xobjflags.h
                 Object(NonMatching, "game/wii/xobjs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
@@ -1374,8 +1403,24 @@ if wii:
                 Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
                 Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the scene camera file, 0x800C6584-0x800C7DC0 (wii_units.md Nr. 58): the CCamera
+                # virtuals defined here, XObjScnCam's overrides, XObjLight's and XObjMap's
+                # ResetObjectState and the CustomShadow pair; the thunks and the big decodes
+                # (fn_800C66C8, fn_800C6CF0, fn_800C7764) still come from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobj_camera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the map object, 0x800C7DC0-0x800C9E84 (wii_units.md Nr. 59): XObjMap's overrides
+                # are written; the record-list helpers and the scene-proc draw callback still come
+                # from the retail asm
+                # -i include/rvl_msl like the other xobj units
+                Object(NonMatching, "game/wii/xobj_map.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/ringmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/xobjchrmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the suit-change trail and the HUD point particles, 0x800F0100-0x800F48E0
+                # (wii_units.md Nr. 66); the retail rodata says xobj_chr.cpp
+                Object(NonMatching, "game/wii/efftrail.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
                 Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
@@ -1447,6 +1492,10 @@ if wii:
                 # shifted 0x28 behind the bigger XObj; the camera's Update and most of
                 # the leticker's bodies are not ported yet. -i include/rvl_msl: AnimSfx
                 Object(NonMatching, "game/wii/objb_leticker.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # unit 79: the XObjHBox overlay/hit/contact functions and XObjDust's flag index,
+                # reset, load and release. -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx
+                # member pulls the nw4r sound headers
+                Object(NonMatching, "game/wii/xobjhbox.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
                 # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not

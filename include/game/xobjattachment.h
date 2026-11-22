@@ -5,10 +5,9 @@
 #if defined(VERSION_R24J01)
 #include "Dolphin/mtx.h"
 #include "game/ut.h"
-class XObj;
+#include "game/wii/xobj.h"
 class WiiTitleObject;
 class XObjPlug;
-class XObjCopter;
 #else
 #include "game/xobj.h"
 #endif
@@ -210,6 +209,111 @@ public:
 };
 #endif
 
+#if defined(VERSION_R24J01)
+// the Wii base of the copter, the blaster, the radar and the OX marks: the same
+// class as the GameCube's below, but XObj runs to _9A8 on the Wii and the parent
+// handle is a plain matrix pointer the callback copies
+class XObjAttachment : public XObj {
+public:
+	MtxP mParent;  // _9A8, the owner's matrix it copies its transform from, NULL while detached
+	BOOL mVisible; // _9AC, cleared when it's put away
+
+	XObjAttachment() { }
+
+	// inline like the GameCube header: retail expands both into the derived
+	// ctors, no XObjAttachment ctor or dtor symbol exists in the unit
+	virtual ~XObjAttachment() { }                                                                                               // _08
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void Release();                                                                                                     // _40
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual void ResetForNewGame();                                                                                             // _150
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual void DrawWithView(Mtx view);                                                                                        // _178
+	virtual void Show();                                                                                                        // _28C
+	virtual void Hide();                                                                                                        // _290
+	virtual void SetParent(MtxP parent, BOOL fromPlacement);                                                                    // _294
+};
+STATIC_ASSERT(sizeof(XObjAttachment) == 0x9B0);
+
+class XObjCopter : public XObjAttachment {
+public:
+	XObjCopter();
+
+	virtual ~XObjCopter() { }              // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _164
+};
+
+class XObjPopper : public XObjAttachment {
+public:
+	XObjPopper();
+
+	virtual ~XObjPopper() { } // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+};
+
+class XObjRadar : public XObjAttachment {
+public:
+	s32 mState;             // _9B0
+	f32 mYaw;               // _9B4, the dish's turning inside the scan
+	f32 mPitch;             // _9B8
+	u8 _9BC[0x9C0 - 0x9BC]; // _9BC
+
+	XObjRadar();
+
+	virtual ~XObjRadar() { } // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+};
+STATIC_ASSERT(sizeof(XObjRadar) == 0x9C0);
+
+class XObjOX : public XObjAttachment {
+public:
+	XObjOX();
+
+	virtual ~XObjOX() { }                  // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _164
+};
+
+// the plug at the end of chibi robo's cord: same members as the GameCube class,
+// the wire effect at _DA0, and a joint matrix + roll the callback maintains
+// instead of the GameCube's HSD_JObj parenting
+class XObjPlug : public XObj {
+public:
+	XObjPlugCord mCord;  // _9A8
+	Vec mCordAnchor;     // _D3C, source for the first cord endpoint
+	Vec mCordJointPos;   // _D48
+	Vec mCordJointTip;   // _D54
+	s32 mCordEndsPinned; // _D60, 1 while cord ends 1 and 2 follow mCordJointPos and mCordJointTip (plug held or connected), 0 once
+	                     // they are let go
+	s32 mConnection;     // _D64, nonzero while the plug sits in a socket
+	Mtx mPlugMtx;        // _D68, the transform ExecCallbackB hands the plug joint
+	f32 mPlugRot;        // _D98, the joint's Z roll while carried
+	s32 mLoadState;      // _D9C
+	XObjWireEff mWire;   // _DA0
+
+	XObjPlug();
+
+	virtual ~XObjPlug() { } // _08 (weak)
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void Release();                                                                                                     // _40
+	virtual void InitializeObject();                                                                                            // _14C
+	virtual void ResetForNewGame();                                                                                             // _150
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                                                                      // _158
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+	virtual void DrawWithView(Mtx view);                                                                                        // _178
+	virtual void DrawReflection(Mtx view);                                                                                      // _17C
+	virtual void DrawGroundShadow(f32 opacity);                                                                                 // _180
+	virtual void DrawObjectEffects();                                                                                           // _188
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value); // _1A4, the base's vf1A4 slot
+};
+STATIC_ASSERT(sizeof(XObjPlug) == 0x1760);
+STATIC_ASSERT(offsetof(XObjPlug, mWire) == 0xDA0);
+#endif
+
 extern "C" {
 CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index);
 void GetPlayerPlugCordAnchorTransform(void*, Vec* position, Vec* rotation, Vec* scale);
@@ -227,7 +331,11 @@ void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, 
 void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha);
 void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source);
 void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z);
+#if defined(VERSION_R24J01)
 f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height);
+#else
+f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 height);
+#endif
 // the Wii object class is not reconstructed; the cord passes the table's WiiTitleObject
 #if defined(VERSION_R24J01)
 BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f32 radius);

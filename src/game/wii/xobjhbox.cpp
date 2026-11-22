@@ -1,43 +1,41 @@
 #include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
-#include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
+#include "game/wii/xobj.h"
 #include "game/wii/cgs.h"
 #include "game/wii/csound.h"
-#include "game/coordinfo.h"
 #include "game/evt.h"
-#include "game/globals.h"
 #include "game/gmath.h"
+#include "game/globals.h"
 #include "game/stagedata.h"
-#include "nw4r/snd/snd_BasicSound.h"
-#include "JSystem/JMath/Inline.h"
-extern "C" {
-#include <Dolphin/mtx.h>
-#include <Dolphin/vec.h>
-}
 #include <math.h>
 #include <stdlib.h>
 
-// retail inlines the vec scale as paired-single code (psq_l/ps_muls0), like
-// ccameraactionscroll2.cpp and ccameraactionchase.cpp
+#include "JSystem/JMath/Inline.h"
 #define PSVECScale JMathInlineVEC::PSVECScale
 
 // the Wii's hit-box overlay and the dust pile's state half. The GameCube keeps the dust in
 // xobjdust.cpp and the box pieces in xobjhbox.cpp; this unit carries the box's screen ring,
 // its hit handling and the dust's flag/reset/placement code in retail order.
 
+// the Wii player state; xobj_chr.cpp's definition
 extern "C" BOOL IsPlayerBlockingEvents(const WiiPlayerState* player);
 
+static inline void TriggerEvent(XObj* object, s32 first, s32 second)
+{
+	const void* script = object->GetEventScript();
+	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
+}
 /**
  * @note Address: 0x8011701C
  * @note Size: 0x264
  */
 void XObjHBox::DrawScreenOverlay()
 {
-	// NONMATCHING: retail zeroes a second 12-byte local beside pos (stw 0x10/0x14/0x18) —
-	// an unnamed Vec the source had; a Vec[2] spelling gets the stores back but moves the
-	// vcall's vptr loads, so the plain Vec scores higher.
 	if (mRing > 0.0f) {
 		Vec pos = { 0.0f, 0.0f, 0.0f };
+		// retail zeroes a second vector on the stack it never reads
+		Vec unused = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
 		ProjectOffsetToScreen(&pos, &x, &y, NULL, NULL);
 		f32 ring  = mRing;
@@ -45,6 +43,7 @@ void XObjHBox::DrawScreenOverlay()
 		f32 outer = 400.0f * (1.0f - ring);
 		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCCOL, GX_BL_SRCALPHA, GX_LO_SET);
+		// each ring is a loop over its width, and the width is one
 		s32 i;
 		for (i = 0; i < 1; i++) {
 			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * ring) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, inner + i, inner + i, 0.0f, 0.0f, 0.0f);
@@ -61,13 +60,12 @@ void XObjHBox::DrawScreenOverlay()
  * @note Address: 0x80117280
  * @note Size: 0xC0
  */
-void XObjHBox::OnHitFromPosition(const Vec& position, f32 strength)
+void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
 {
 	if (GetAnimId() <= 0) {
-		XObj::OnHitFromPosition(position, strength);
-		if ((mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-			mStatus.mFlags |= 0x2000000000000000ULL;
-		}
+		XObj::OnHitFromPosition(pos, strength);
+		if ((mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f) // param 31, in 1/100
+			mStatus.mFlags |= 0x2000000000000000ULL;                                                    // strong enough hits open it
 	}
 }
 
@@ -75,33 +73,27 @@ void XObjHBox::OnHitFromPosition(const Vec& position, f32 strength)
  * @note Address: 0x80117340
  * @note Size: 0x194
  */
-s32 XObjHBox::OnPlayerContact(s32 unused, s32 value)
+s32 XObjHBox::OnPlayerContact(s32, s32 flags)
 {
-	if (((u32)value & 3) == 1) {
-		return value;
-	}
-	if (GetAnimId() == 0) {
-		return value;
-	}
+	if ((flags & 3) == 1U) // not a new touch
+		return flags;
+	if (GetAnimId() == 0)
+		return flags;
 	mStatus.mFlags |= 0x4000000000000000ULL;
 	mPart.mHit = 1.0f;
-	Mtx scaleMtx;
-	PSMTXScale(scaleMtx, 5.0f, 5.0f, 5.0f);
-	Mtx outMtx;
-	PSMTXConcat(mPart.mObj.GetWorldMtx("obj2"), scaleMtx, outMtx);
-	mPart.mObj.SetBaseMtx(outMtx);
+	Mtx scale, result;
+	PSMTXScale(scale, 5.0f, 5.0f, 5.0f); // the part's reach, like mPart.mRange
+	PSMTXConcat(mPart.mObj.GetWorldMtx("obj2"), scale, result);
+	mPart.mObj.SetBaseMtx(result);
 	mPart.mObj.SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	PlayWiiSoundEffect(&gGame.mSound, 0x18A, 1.0f, 0.0f);
-	const void* script = GetEventScript();
-	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1, -1);
+	TriggerEvent(this, -1, -1);
+	if (mPart.mSfx != 0) {
+		nw4r::snd::detail::BasicSound* sound = *(nw4r::snd::detail::BasicSound**)mPart.mSfx;
+		if (sound != NULL)
+			sound->Stop(0);
+		mPart.mSfx = 0;
 	}
-	// mSfx holds a handle to the still-playing hit sound; key it off
-	nw4r::snd::detail::BasicSound** sfx = (nw4r::snd::detail::BasicSound**)mPart.mSfx;
-	if (sfx != NULL && *sfx != NULL) {
-		(*sfx)->Stop(0);
-	}
-	mPart.mSfx = 0;
 	return 0;
 }
 
@@ -121,7 +113,7 @@ s32 XObjDust::GetFlagIndex()
 void XObjDust::ResetObjectState()
 {
 	XObj::ResetObjectState();
-	if (GetObjFlags() & 1) {
+	if (GetObjFlags() & 1) { // flag 1: the drifting dust gets a random phase
 		mBaseY        = mMoveTranslate.y;
 		mPhase        = fmod((f32)rand(), TWO_PI);
 		mPhaseStep    = (rand() % 200 + 200) / 10000.0f;
@@ -131,7 +123,7 @@ void XObjDust::ResetObjectState()
 		mSpeed        = 0.0f;
 		mFade         = 1.0f;
 	}
-	mEventId  = -1;
+	mEventId  = -1; // no event
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (HasModel() && (mStatus.mFlags & 0x1000ULL)) {
@@ -147,26 +139,27 @@ void XObjDust::ResetObjectState()
 BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 {
 	mPlacementParam1 = info.mPlacement->mParam1;
-	if (IsFlagSet()) {
+	if (IsFlagSet())
 		return TRUE;
-	}
 	BOOL result = XObj::LoadFromPlacement(info);
 	if (result) {
 		mStatus.mFlags |= 0x18100000ULL;
 		f32 end = GetAnimEndFrame();
 		if (end > 0.0f) {
-			f32 frame              = fmod((f32)rand(), end);
+			f32 frame              = fmod((f32)rand(), end); // a random start frame
 			UnkStageObj* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, frame, 1.0f, 1.0f, 15.0f);
 		}
 		mAnimId2   = GetAnimId();
 		mAnimCount = mObject.m_resFile.GetResAnmChrNumEntries();
 		if (GetObjFlags() & 1) {
-			f32 scale = (rand() % 100 + 100) / 100.0f;
+			f32 scale = (rand() % 100 + 100) / 100.0f; // scale 1.00-1.99
 			PSVECScale((Vec*)&mMoveScale, (Vec*)&mMoveScale, scale);
 		}
 		if (GetObjFlags() & 2) {
-			mStartScale = mMoveScale;
+			mStartScale.x = mMoveScale.x;
+			mStartScale.y = mMoveScale.y;
+			mStartScale.z = mMoveScale.z;
 		}
 	}
 	return result;

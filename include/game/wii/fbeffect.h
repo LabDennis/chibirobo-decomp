@@ -61,6 +61,21 @@ public:
 	virtual void Copy();             // _18
 	virtual void CalcMtx();          // _20
 	virtual ~FbBlur() { }            // _24 (weak)
+
+	// starts a blur toward the target; a negative alpha or target keeps the current one
+	void Start(f32 alpha, f32 target, f32 offsetX, f32 offsetY, f32 speed)
+	{
+		if (alpha >= 0.0f) {
+			mAlpha = alpha;
+		}
+		if (target >= 0.0f) {
+			mTarget = target;
+		}
+		mOffsetX = offsetX;
+		mOffsetY = offsetY;
+		mSpeed   = __fabsf(speed);
+		CalcMtx();
+	}
 };
 STATIC_ASSERT(sizeof(FbBlur) == 0x1A8);
 

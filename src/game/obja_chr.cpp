@@ -1640,6 +1640,22 @@ XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ -1, 0, { 0 }, 0.0f },
 };
 
+extern "C" {
+// the animation file of each attachment
+const char* gAttachmentAnimationPaths[] = {
+	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
+};
+
+// the animation file of each suit
+const char* gSuitAnimationPaths[] = {
+	NULL, "cb_robo_13.dat", "cb_robo_15.dat", "cb_robo_14.dat", "cb_robo_25.dat",
+	NULL, "cb_robo_16.dat", "cb_robo_17.dat", "cb_robo_24.dat",
+};
+
+// spawn ids of the three special suits
+s32 gSpecialSuitSpawnIds[] = { 32, 34, 35 };
+}
+
 // closes both rings, 0 cancels, above 0 confirms, below 0 backs out
 /**
  * @note Address: 0x80097284
@@ -2489,11 +2505,6 @@ static inline void TakeOutTool(XObjChr* chr, s16 item)
 	}
 }
 
-// the anim archive each attachment needs
-static const char* sAttachmentAnims[9] = {
-	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
-};
-
 extern "C" {
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 }
@@ -2551,8 +2562,8 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		Vec quad[] = { { left, top, 0.0f }, { right, top, 0.0f }, { right, bottom, 0.0f }, { left, bottom, 0.0f }, { left, top, 0.0f } };
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 5, 0);
 		u32 color = (u32)(255.0f * menu->mFade);
-		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y,
-		                 quad[2].z, color, quad[3].x, quad[3].y, quad[3].z, color);
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
+		                 quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[110 - StatusTextureOffset], 0);
@@ -4316,10 +4327,12 @@ extern "C" void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* p
  */
 extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 {
-	f32 angle = DEG2RAD * (rand() % 360);
-	f32 vx    = (rand() % 100) * (f32)sin(angle) / 1000.0f;
-	f32 vz    = (rand() % 100) * (f32)cos(angle) / 1000.0f;
-	f32 vy    = (rand() % 100) / 800.0f;
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = std::sinf(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = std::cosf(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
 	Vec position;
 	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
 	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
@@ -5904,8 +5917,6 @@ static inline f32 GetActionBatteryCost(s32 index)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
-// NONMATCHING: GGTP01 only, for the lift's drain retail converts the idle quotient in f1 and loads the battery cost into
-// f0, swapping the two registers
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -6176,9 +6187,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	// battery per second, the table holds hundredths; row 9 instead drains about the lift's mBatteryCost each update
 	f32 drain = 0.0f;
 	if (index >= 0) {
-		if (index == 9)
-			drain = (f32)((u32)IDLE_SECOND / frames) * p->mLift.mBatteryCost;
-		else
+		if (index == 9) {
+			f32 rate = (u32)IDLE_SECOND / frames;
+			drain    = rate * p->mLift.mBatteryCost;
+		} else
 			drain = GetActionBatteryCost(index);
 	}
 	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
@@ -6396,21 +6408,35 @@ extern "C" {
 extern s32 lbl_8065B268;
 }
 
+static inline f32 GetStickMotion(CPadOne* pad)
+{
+	u8 blocked = (gGame.mStatus.mFlags & 0x20) != 0;
+	if (!blocked) {
+		blocked = gGame.mEvt.mData.mScript != NULL;
+	}
+	if (blocked) {
+		return 0.0f;
+	}
+	f32 x = pad->mStickX;
+	f32 y = pad->mStickY;
+	return sqrtf(x * x + y * y);
+}
+
 static inline f32 PlayerGaitRate(f32 speed, bool slow)
 {
-	f32 rate;
 	if (slow) {
-		rate = speed > 1.0f ? 1.0f : speed;
+		f32 rate = speed > 1.0f ? 1.0f : speed;
 		if (rate < 0.5f)
 			rate = 0.5f;
+		return rate;
 	} else {
-		rate = 0.5f * speed;
+		f32 rate = 0.5f * speed;
 		if (rate > 1.0f)
 			rate = 1.0f;
 		if (rate < 0.7f)
 			rate = 0.7f;
+		return rate;
 	}
-	return rate;
 }
 
 static inline f32 PlayerGaitEndFrame(XObjChr* p)
@@ -6441,14 +6467,7 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
 extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim, u32, f32, f32)
 {
 	CPadOne* pad = &p->mPad;
-	f32 motion;
-	if ((gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript) {
-		motion = 0.0f;
-	} else {
-		f32 x  = pad->mStickX;
-		f32 y  = pad->mStickY;
-		motion = sqrtf(x * x + y * y);
-	}
+	f32 motion   = GetStickMotion(pad);
 	if (motion == 0.0f && p->mFloorContacts[4].objectIndex >= 0)
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.mStatus.mFlags & 0x100) && !(gGame.mStatus.mFlags & 0x200))
@@ -6574,9 +6593,12 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 		case 0x88:
 		case 0x882:
 		case 0x897:
-			if (speed < 1.25f)
-				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-			else if (speed >= 1.9f)
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed >= 1.9f)
 				ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
 			else
 				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
@@ -6586,11 +6608,17 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 		case 0xD:
 		case 0x819:
 		case 0x898:
-			if (speed < 1.25f)
-				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-			else if (speed < 1.9f)
-				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, true));
-			else
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed < 1.9f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 0x77, rate);
+			} else
 				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
 			break;
 		}
@@ -9506,8 +9534,8 @@ extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
 			// fall through
 		case 15: { // load the attachment's anim archive
 			BOOL done;
-			if (sAttachmentAnims[chr->mAttachment] != NULL) {
-				if (LoadJointAnimationAsync(&chr->mAttachmentAnim, sAttachmentAnims[chr->mAttachment])) {
+			if (gAttachmentAnimationPaths[chr->mAttachment] != NULL) {
+				if (LoadJointAnimationAsync(&chr->mAttachmentAnim, gAttachmentAnimationPaths[chr->mAttachment])) {
 					chr->SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 					done = TRUE;
 				} else {
@@ -10127,7 +10155,7 @@ extern "C" BOOL LoadRequestedHeldItem(XObjChr* chr)
 #include <stdlib.h>
 
 extern "C" {
-extern f32 gPlayerSuitChangeTimer;
+f32 gPlayerSuitChangeTimer;
 }
 
 static inline bool SuitFadeFinished(const XObjChr* player)
@@ -10203,11 +10231,6 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 }
 
 #include "game/xchr.h"
-
-// the animation file of each attachment
-const char* gAttachmentAnimationPaths[] = {
-	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
-};
 
 /**
  * @note Address: 0x800B9758

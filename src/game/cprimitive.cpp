@@ -1839,8 +1839,8 @@ void CTriangle::DrawLit(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 void CCircle::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	Vec zero = { 0.0f, 0.0f, 0.0f };
-	mCenter  = zero;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**
@@ -2225,8 +2225,8 @@ void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 void CTile::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	Vec zero = { 0.0f, 0.0f, 0.0f };
-	mCenter  = zero;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**
@@ -2595,9 +2595,9 @@ void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 void CSprite::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz)
 {
 	CPrimitive::Init(tx, ty, tz, sx, sy, sz, rx, ry, rz);
-	mTex     = NULL;
-	Vec zero = { 0.0f, 0.0f, 0.0f };
-	mCenter  = zero;
+	mTex       = NULL;
+	Vec center = { 0.0f, 0.0f, 0.0f };
+	mCenter    = center;
 }
 
 /**

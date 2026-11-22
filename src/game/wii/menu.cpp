@@ -1390,7 +1390,7 @@ static inline void PCSlide(f32& value, f32& target, f32 speed)
 
 static inline void PCEase(f32& value, f32& target)
 {
-	f32 rate = fabs((target - value) * 0.25f);
+	f32 rate = __fabsf((target - value) / 4.0f);
 	if (rate < 1.0f)
 		rate = 1.0f;
 	PCSlide(value, target, rate);
@@ -1412,7 +1412,6 @@ static inline XObj* PCWorldObject(s32 index)
 	return gGame.mXObjs.mPools[22].Get(index);
 }
 
-// NONMATCHING: retail's absolute values in the easing are single precision, fabs adds an frsp each time
 BOOL MenuPC::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
@@ -2382,10 +2381,11 @@ static inline s32 GetScrap()
 
 static inline void RecyclePCAmount(MenuPC* menu)
 {
+	s32 money;
 	s32 scrap = GetScrap();
 	scrap -= menu->mAmount;
 	gGame.GetPlayer()->mParams.SetScrap(scrap);
-	s32 money = GetMoney();
+	money = GetMoney();
 	money += menu->mAmount * menu->mScrapRate;
 	gGame.GetPlayer()->mParams.SetMoney(money);
 	menu->mScrapDisplay.target = scrap;

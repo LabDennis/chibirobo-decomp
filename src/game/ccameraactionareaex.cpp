@@ -14,7 +14,12 @@
 
 extern "C" void OSReport(const char* format, ...);
 #if !defined(VERSION_R24J01)
+// NONMATCHING: retail's .bss starts with the header-made 0x140 (JP 0x134) prefix; this file can't make it yet
 extern "C" Vec lbl_805A0400[];
+
+// the file's __sinit builds it and registers its dtor; placed before InitCameraAreaEntries
+// so gCameraAreaState precedes the function-local gCameraAreaEntries in .bss
+CCameraActionAreaEx gCameraAreaState;
 
 class CGs;
 
@@ -549,12 +554,11 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
  * @note Address: 0x80137D00
  * @note Size: 0x1B8
  */
-// NONMATCHING: retail has the two loads of the -1 test in r0 and r3 the other way round (as for a -1L compare)
 extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 unused)
 {
 	if (state->mAreaRecords != NULL && state->mCameraInfo != NULL) {
 		UpdateCameraAreaIndexFromPlayer(state, unused);
-		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
+		if (state->mPrevArea != state->mCurrentArea && -1 != state->mCurrentArea) {
 			f32 fov;
 			s32 mode = GetCameraAreaMode(state);
 			if (mode == 1) {
@@ -611,10 +615,6 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 }
 
 #if !defined(VERSION_R24J01)
-// the file's __sinit builds it and registers its dtor; the Wii build keeps this global and the destructors
-// in the separate game/wii/ccameraactionareaexinit.cpp and game/wii/ccameraactionareaexdtor.cpp
-CCameraActionAreaEx gCameraAreaState;
-
 /**
  * @note Address: 0x801381C0
  * @note Size: 0x70

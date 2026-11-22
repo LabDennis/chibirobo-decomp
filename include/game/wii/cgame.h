@@ -2,7 +2,9 @@
 #define GAME_WII_CGAME_H
 
 #include "Dolphin/mtx.h"
+#include "game/attachmentvalues.h"
 #include "game/wii/cpad.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
@@ -24,7 +26,9 @@
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xobjcamera.h"
 #include "game/wii/xchrmenu.h"
+#include "game/playeranimationdata.h"
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
 #
@@ -50,6 +54,8 @@ struct WiiObjectRef {
 struct XObjDrawList {
 	WiiObjectRef* mRefs; // _00
 	s32 mCount;          // _04
+
+	void Initialize(); // 0x800C5CD4, allocates the 1024-entry ref table off MEM1
 };
 
 // where a camera looks from and at. The class has no RTTI of its own, so its name is made up
@@ -131,7 +137,7 @@ public:
 		mView.mDirty = TRUE;
 	}
 	virtual void SetAngle(const Vec& angle); // _50
-	virtual void vf54();                     // _54
+	virtual void SetUp(const Vec& up);       // _54, xobj_camera.cpp's copy into mView.mUp
 	virtual void SetAngleY(f32 y)            // _58, ConfigureSubwindowCamera passes angleY here
 	{
 		mView.mAngle.y = y;
@@ -169,30 +175,39 @@ public:
 		mViewportDirty = TRUE;
 	}
 
-	u8 mType;            // _04, 0 perspective, 1 frustum, 2 orthographic
-	f32 mFov;            // _08
-	f32 mAspect;         // _0C
-	f32 mNear;           // _10
-	f32 mFar;            // _14
-	f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
-	f32 mBottom;         // _1C
-	f32 mLeft;           // _20
-	f32 mRight;          // _24
-	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
-	u8 _29[0x2C - 0x29];
-	Mtx44 mProjection;      // _2C
-	MtxP mProjectionSource; // _6C
-	f32 mIsOrtho;           // _70, 1.0 for the orthographic camera
-	f32 mProjParams[6];     // _74, the six entries of mProjection GXSetProjection takes
-	f32 mScale;             // _8C
-	CCameraView mView;      // _90
-	Mtx44 mViewMtx;         // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
-	CMtxP mViewSource;      // _118, an external view matrix the camera follows; clearing it dirties the view
-	f32 mViewport[6];       // _11C
-	u8 mViewportDirty;      // _134
-	Mtx44 mViewportMtx;     // _138, clip space to the viewport's pixels
-	Mtx44 mScreenMtx;       // _178, viewport * projection * view
-	Mtx44 mScreenInv;       // _1B8
+	union {
+		struct {
+			u8 mType;            // _04, 0 perspective, 1 frustum, 2 orthographic
+			f32 mFov;            // _08
+			f32 mAspect;         // _0C
+			f32 mNear;           // _10
+			f32 mFar;            // _14
+			f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
+			f32 mBottom;         // _1C
+			f32 mLeft;           // _20
+			f32 mRight;          // _24
+			u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
+			u8 _29[0x2C - 0x29];
+			Mtx44 mProjection;      // _2C
+			MtxP mProjectionSource; // _6C
+			f32 mIsOrtho;           // _70, 1.0 for the orthographic camera
+			f32 mProjParams[6];     // _74, the six entries of mProjection GXSetProjection takes
+			f32 mScale;             // _8C
+		};
+	};
+	CCameraView mView; // _90
+	Mtx44 mViewMtx;    // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
+	CMtxP mViewSource; // _118, an external view matrix the camera follows; clearing it dirties the view
+	union {
+		struct {
+			f32 mViewport[6];  // _11C
+			u8 mViewportDirty; // _134
+			u8 _135[0x138 - 0x135];
+			Mtx44 mViewportMtx; // _138, clip space to the viewport's pixels
+		};
+	};
+	Mtx44 mScreenMtx; // _178, viewport * projection * view
+	Mtx44 mScreenInv; // _1B8
 
 	void InitView(const GXRenderModeObj* rmode); // 0x802A80FC, the view at its defaults and the full-screen viewport
 	BOOL SetCurrent();                           // 0x802A82FC, rebuilds whatever matrix is out of date
@@ -627,57 +642,68 @@ public:
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
 	u8 _E8[0x4EC - 0xE8];
-	s32 mInsideCllCount;                               // _4EC
-	s32 mInsideCll0;                                   // _4F0
-	s32 mInsideCll1;                                   // _4F4
-	s32 mInsideCll2;                                   // _4F8
-	u8 _4FC[0x570 - 0x4FC];                            // _4FC
-	CamMapEntry mIntersectionEntries[32];              // _570
-	s32 mIntersectionCount;                            // _970
-	CamMapEntry* mNearestTargetEntry;                  // _974
-	s32 mNearestTargetIndex;                           // _978
-	CamMapEntry* mNearestEyeEntry;                     // _97C
-	s32 mNearestEyeIndex;                              // _980
-	Vec mSideStart;                                    // _984, one end of the picked side
-	Vec mSideEnd;                                      // _990, the other end
-	s32 mSideSign;                                     // _99C, 1 or -1, which way round they are
-	CamMapEntry mAreaIntersections[32];                // _9A0
-	s32 mAreaIntersectionCount;                        // _DA0, count of mAreaIntersections
-	s32 mPrevMapArea;                                  // _DA4
-	s32 mMapArea;                                      // _DA8
-	s32 mPadControlEnabled;                            // _DAC
-	s32 _DB0;                                          // _DB0
-	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
-	CVectorEaseInOutInterpolation mTurnEaseInOut;      // _DB8
-	CInterpolationEaseInOut mHeightEaseInOut;          // _E14
-	u8 _E30[0xE34 - 0xE30];
-	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	u8 _E50[0xE64 - 0xE50];
+	s32 mInsideCllCount;                                 // _4EC
+	s32 mInsideCll0;                                     // _4F0
+	s32 mInsideCll1;                                     // _4F4
+	s32 mInsideCll2;                                     // _4F8
+	u8 _4FC[0x570 - 0x4FC];                              // _4FC
+	CamMapEntry mIntersectionEntries[32];                // _570
+	s32 mIntersectionCount;                              // _970
+	CamMapEntry* mNearestTargetEntry;                    // _974
+	s32 mNearestTargetIndex;                             // _978
+	CamMapEntry* mNearestEyeEntry;                       // _97C
+	s32 mNearestEyeIndex;                                // _980
+	Vec mSideStart;                                      // _984, one end of the picked side
+	Vec mSideEnd;                                        // _990, the other end
+	s32 mSideSign;                                       // _99C, 1 or -1, which way round they are
+	CamMapEntry mAreaIntersections[32];                  // _9A0
+	s32 mAreaIntersectionCount;                          // _DA0, count of mAreaIntersections
+	s32 mPrevMapArea;                                    // _DA4
+	s32 mMapArea;                                        // _DA8
+	s32 mPadControlEnabled;                              // _DAC
+	s32 _DB0;                                            // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation;   // _DB4
+	CVectorEaseInOutInterpolation mTurnEaseInOut;        // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;            // _E14
+	CInterfaceInterpolation* mHeightInterp;              // _E30, camera height above the target
+	CInterpolationEaseInOut mAbsHeightEaseInOut;         // _E34
+	CInterfaceInterpolation* mAbsHeightInterp;           // _E50, absolute camera height
+	f32 mTargetHeight;                                   // _E54, the height kept once no area is picked
+	s32 mHeightMode;                                     // _E58, 0 height above the target, 1 absolute
+	s32 mUseAreaHeight;                                  // _E5C, 1 keeps the area's height outside it
+	f32 mCurrentHeight;                                  // _E60, current camera height
 	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
-	u8 _E78[0xE7C - 0xE78];
-	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	u8 _E98[0xEA4 - 0xE98];
+	CInterfaceInterpolation* mEyeYOffsetInterp;          // _E78
+	CInterpolationEaseInOut mEyeYOffsetEaseInOut;        // _E7C
+	f32 mEyeYOffset;                                     // _E98
+	s32 mTurnBlocked;                                    // _E9C, 1 while area corners keep the camera from turning
+	s32 mManualInput;                                    // _EA0, manual camera input this frame
 	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
 	s32 mInsideAreas[32];                                // _EA8, areas containing the player
 	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
-	u8 _F64[0xF68 - 0xF64];
-	CVec mTargetEye;      // _F68
-	CVec mPrevTargetEye;  // _F78
-	CVec mOrbitEye;       // _F88
-	CVec mOrbitAngle;     // _F98
-	CVec mPrevOrbitEye;   // _FA8
-	CVec mPrevOrbitAngle; // _FB8
+	f32 mEyeInterpTime;                                  // _F64, target-eye interpolation time
+	CVec mTargetEye;                                     // _F68
+	CVec mPrevTargetEye;                                 // _F78
+	CVec mOrbitEye;                                      // _F88
+	CVec mOrbitAngle;                                    // _F98
+	CVec mPrevOrbitEye;                                  // _FA8
+	CVec mPrevOrbitAngle;                                // _FB8
 	u8 _FC8[0x11D8 - 0xFC8];
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
 	BOOL mKeepPreviousEye;   // _11E8
-	u8 _11EC[0x11F8 - 0x11EC];
-	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
+	f32 mOrbitInput;         // _11EC, the pad's orbit input, shaped by the curve at _126C (name inferred)
+	f32 _11F0;               // _11F0, second orbit axis, only cleared by the pad controls
+	f32 mPointerHoldTime;    // _11F4, frames the pointer button has been held (name inferred)
+	u8 mPointerHeld;         // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	CObjVec _11FC;
-	u8 _122C[0x123C - 0x122C];
+	u8 mOrbiting;    // _122C, 1 while the orbit keeps placing the eye (name inferred)
+	u8 mOrbitReseed; // _122D, reseeds the orbit target from the camera angle on the next input (name inferred)
+	u8 _122E[0x1230 - 0x122E];
+	Vec mOrbitPointer;       // _1230, the pointer position clamped to the screen limits (name inferred)
 	CamEdgeArrow mArrows[2]; // _123C, left and right
 	f32 _126C;               // _126C
 	f32 _1270;               // _1270
@@ -688,17 +714,20 @@ public:
 	f32 _1284;               // _1284
 	f32 _1288;               // _1288
 
-	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
-	virtual void PreviousUpdate();  // _0C
-	virtual void Update(u32 step);  // _10
-	virtual void Reset();           // _14
-	virtual void Init();            // _1C
-	virtual void DrawDebug2d();     // _28
-	virtual u32 GetCameraFlags();   // _58
-	virtual f32 GetFollowDivisor(); // _5C
-	virtual u32 GetInterestMode();  // _60
+	virtual ~CCameraActionMap() { }          // _08, 0x8002E5C4
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18, takes eye, interest, angle, distance and fov
+	virtual void Init();                     // _1C
+	virtual void vf24();                     // _24, draws the turn arrows at the screen edges (fn_80160788 in retail)
+	virtual void DrawDebug2d();              // _28
+	virtual u32 GetCameraFlags();            // _58
+	virtual f32 GetFollowDivisor();          // _5C
+	virtual u32 GetInterestMode();           // _60
 
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
+	void Reset2(); // 0x80157384, resets eye and interest behind the target; called directly, not virtual
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 STATIC_ASSERT(offsetof(CCameraActionMap, mTurnSpeed) == 0xBC);
@@ -737,8 +766,9 @@ struct WiiCameraActions {
 STATIC_ASSERT(sizeof(WiiCameraActions) == 0x30);
 
 // chibi robo's numbers, watts, happy points and the items he holds -- same layout
-// as the GameCube Params the Wii code was ported from
-struct WiiPlayerParams {
+// as the GameCube Params the Wii code was ported from; the Wii class keeps the
+// GameCube name in the symbols and vtable
+struct Params {
 	s32 mExperience;      // _00
 	s32 mLevel;           // _04
 	s32 mRank;            // _08
@@ -749,6 +779,9 @@ struct WiiPlayerParams {
 	u32 _1C[8];           // _1C, [0] above 0 is an unlimited battery; saved as mActive
 	Inventory mInventory; // _3C
 	// _440 vtable
+
+	Params();
+	virtual ~Params(); // _08
 
 	void SetBattery(f32 value)
 	{
@@ -787,7 +820,8 @@ struct WiiPlayerParams {
 			mScrap = 99999;
 	}
 };
-STATIC_ASSERT(sizeof(WiiPlayerParams) == 0x440);
+STATIC_ASSERT(sizeof(Params) == 0x444);
+typedef Params WiiPlayerParams;
 
 // the objects behind a suit, the GameCube's PlayerSuits.mObjects: XObjs with two virtuals of their own that the
 // player forwards to the one he wears. The class has no name of its own in retail, the name is ours
@@ -796,14 +830,19 @@ public:
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	u8 _9A8[0x9D0 - 0x9A8];
+	u8 _9A8[0x9C8 - 0x9A8];
+	u8 m_9C8; // _9C8, retail's XObjDress: vf28C hides the head nodes while it is set
+	u8 m_9C9; // _9C9, vf290 hides the left-arm nodes
+	u8 _9CA[0x9D0 - 0x9CA];
 };
 STATIC_ASSERT(sizeof(WiiSuitObject) == 0x9D0);
 
 // the extra model suits 3 and 6 bring, updated and drawn with the suit; the name is ours
+// (retail's XObjDressOpt: its ExecCallbackB grafts the owner's head matrix onto the callback result)
 class WiiSuitPart : public XObj {
 public:
-	u8 _9A8[0x9B0 - 0x9A8];
+	XObj* mOwner; // _9A8, the object whose head joint this part follows
+	u8 _9AC[0x9B0 - 0x9AC];
 };
 STATIC_ASSERT(sizeof(WiiSuitPart) == 0x9B0);
 
@@ -819,10 +858,6 @@ struct WiiPlayerSuits {
 };
 STATIC_ASSERT(sizeof(WiiPlayerSuits) == 0x5868);
 
-// the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire (XObjWireEff):
-// an XObj whose model the player queues with the plug's and whose SetPos the cord simulation moves
-struct WiiCordWire : public XObj { };
-
 // the plug object embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug): ResetPlayerPlug
 // reaches its XObj status and virtuals. The anchor transform takes the whole block; of its own members only
 // the connection word the cord simulation reads is verified
@@ -835,19 +870,26 @@ STATIC_ASSERT(sizeof(WiiPlayerPlug) == 0xDA0);
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenuMarkObj {
+	u8 _0[0x9A8]; // the mark's own XObj (retail __destroy_arr walks mMark[2] in
+	              // 0x800C1348); kept opaque so WiiOXMenu stays POD
+};
 struct WiiOXMenuMark {
-	f32 mSpin;           // _00
-	f32 mTilt;           // _04
-	f32 mScale;          // _08
-	u8 _0C[0x9B8 - 0xC]; // the mark's own object, not reconstructed
+	f32 mSpin;             // _00
+	f32 mTilt;             // _04
+	f32 mScale;            // _08
+	u32 _0C;               // _0C, the GameCube's dropped random angle
+	WiiOXMenuMarkObj mObj; // _10, the GameCube's XObj mObj
 };
 STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
+STATIC_ASSERT(offsetof(WiiOXMenuMark, mObj) == 0x10);
 struct WiiOXMenu {
 	u8 _00[4];
 	s32 mStarted;           // _04
 	s32 mCrossMask;         // _08
 	s32 mSelectedIndex;     // _0C
-	u8 _10[0x18 - 0x10];    // _10
+	s32 _10;                // _10, -1 while nothing is picked
+	f32 mFade;              // _14, cleared on reset
 	WiiOXMenuMark mMark[2]; // _18
 	XObj* mChr;             // _1388
 	f32 mStartRot;          // _138C, the chr's y rotation when it opened
@@ -857,6 +899,7 @@ struct WiiOXMenu {
 // one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
 // mState to tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
 struct WiiPlayerState;
+struct EffectInstance; // game/wii/ceffect.h
 class XAction {
 public:
 	WiiPlayerState* mOwner; // _00
@@ -871,12 +914,21 @@ public:
 	XObj* mTarget;      // _20
 	s32 mTargetState;   // _24
 	s32 mTargetFloor;   // _28, the selected floor when the target was picked
+
+	void SetTarget(XObj* target)
+	{
+		mTarget      = target;
+		mTargetFloor = mTarget->mSelectedFloorIndex;
+	}
 };
 STATIC_ASSERT(sizeof(XAction) == 0x2C);
 
 // hanging from a ledge
 class XActHang : public XAction {
 public:
+	XActHang();
+	~XActHang();
+
 	BOOL mStickAway;      // _2C, set when the stick points away
 	Vec mHangStartOffset; // _30, player position relative to the target
 	Vec mFloorCenter;     // _3C
@@ -895,11 +947,25 @@ STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
 
 class XActTumble : public XAction {
 public:
-	XActTumbleFade mFade; // _2C
-	f32 mSavedYaw;        // _40
-	u8 _44[0x48 - 0x44];  // _44, the GameCube's idle particle
+	XActTumble();
+	~XActTumble();
+
+	XActTumbleFade mFade;        // _2C
+	f32 mSavedYaw;               // _40
+	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
+
+class XActCopter : public XAction {
+public:
+	XActCopter();
+	~XActCopter();
+
+	f32 mTime;  // _2C, flight time left, a copter parameter count of hundredths of a second in frames
+	f32 mPhase; // _30, where the propeller bob is in its sine
+	f32 mBob;   // _34, the height the copter joint rides at
+};
+STATIC_ASSERT(sizeof(XActCopter) == 0x38);
 
 class CSound3DActor;
 class XObj;
@@ -923,13 +989,32 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 // members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
 // todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
 struct WiiPlayerState : public XObj {
-	u8 _09A8[0x9CC - 0x9A8];
+	WiiPlayerState* mPlayer; // _9A8, the player object these head joints belong to
+	// the player's head bones, fetched out of the loaded model by name in LoadFromPlacement:
+	// second_null, head_chn, head_cap and both eyelid pairs, down then up
+	nw4r::g3d::ResNode mHeadNodes[7]; // _9AC
+	u8 m_9C8;                         // _9C8, DrawWithView skips the transition suit part while it is set
+	u8 m_9C9;                         // _9C9, the same for the popper mount, fn_800E3C50 sets it
+	u8 _09CA[0x9CC - 0x9CA];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
-	u8 _0A04[0xA20 - 0xA04];
+	u8 _0A04[4];     // _0A04
+	f32 mStick[4];
+	s32 m_0A18;                  // _0A18, an object index DrawWithView clears once the object is gone
+	s32 m_0A1C;                  // _0A1C, same
 	s32 mFloorContactObjects[5]; // _0A20, the object under each floor group, -1 for none; [4] the one he stands in front of
-	u8 _0A34[0xA88 - 0xA34];
+	u8 _0A34[0xA44 - 0xA34];
+	s32 mLastContactFloorIndex; // _0A44, the last floor contact's object index, -1 for none
+	u8 _0A48[0xA58 - 0xA48];
+	f32 mNearDistance; // _0A58, 2.0 while nothing is near
+	u8 _0A5C[0xA6C - 0xA5C];
+	s32 mLetickerIndex; // _0A6C, the clear leticker's object index, -1 for none
+	s32 _0A70;          // _0A70, cleared on reset
+	u32 mLiftPlugFlags; // _0A74, the GameCube's word; bit 0x80 is the lifted plug's
+	s32 mAPressed;      // _0A78
+	s32 mPressTimer;    // _0A7C, frames A has been held
+	u8 _0A80[0xA88 - 0xA80];
 	s32 mIdleLoops;      // _0A88, idle anim loops before the next idle move
 	f32 mIdleTimer;      // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
 	s32 mFlashTimer;     // _0A90
@@ -953,66 +1038,127 @@ struct WiiPlayerState : public XObj {
 	XAction mPush; // _0C78
 	u8 _0CA4[0xCD0 - 0xCA4];
 	XActTumble mTumble; // _0CD0
-	XAction mCopter;    // _0D18
-	u8 _0D44[0xD50 - 0xD44];
-	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
+	XActCopter mCopter; // _0D18
+	XAction mPopper;    // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	// his sounds: AnimSfx's head (game/wii/animsfx.h, which needs this header) with two actors, as XObjCoin's;
 	// only the two are reached and the radar action follows at _95D4
 	u8 mSfx[0x28];  // _95AC
 	XAction mRadar; // _95D4
-	u8 _9600[0x96A0 - 0x9600];
-	s32 mBlinkWait;        // _96A0, frames until he blinks again
-	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
-	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
-	XObjChrLook mLook;     // _98E8
+	u8 _9600[0x9694 - 0x9600];
+	FrameEventTime mFrameTime;        // _9694, where the running anim's frame events are
+	s32 _969C;                        // _969C, cleared on reset; maybe the GameCube's mIdleJointCooldown
+	s32 mBlinkWait;                   // _96A0, frames until he blinks again
+	s32 mBlinkFrame;                  // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x168];            // _96A8, by anim id % 1000, set where he may blink
+	XObjScnCamInitRec mEyeAimRecord;  // _9810, a camera aim record fn_800C659C fills; the eye aim
+	XObjScnCamInitRec mHeadAimRecord; // _987C, the head aim; the menus snap it and ExecCallbackB applies it to head_chn
+	XObjChrLook mLook;                // _98E8
 	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
-	u8 _992C[0x998C - 0x992C];
-	CVec mFloorSlope;        // _998C, the GameCube's mFloorSlope
-	WiiPlayerParams mParams; // _999C
-	u8 _9DDC[0x9DF8 - 0x9DDC];
-	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
-	f32 mMoveAngle;     // _9DFC
-	u8 _9E00[0x9E20 - 0x9E00];
-	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
-	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
-	u8 _B568[0xDC50 - 0xB568];
+	s32 mScriptAttach;      // _992C, an attachment the running script asks for
+	s32 mNextClimbType;     // _9930, the climb queued for the next grab
+	s32 mClimbType;         // _9934, the climb he is on
+	u8 _9938[0x998C - 0x9938];
+	CVec mFloorSlope;               // _998C, the GameCube's mFloorSlope
+	Params mParams;                 // _999C
+	f32 mFallDistance;              // _9DE0
+	f32 mCameraTarget[3];           // _9DE4, NANed while the camera keeps no target point
+	f32 mCameraTargetMargin;        // _9DF0
+	f32 mCameraTargetMarginSetting; // _9DF4
+	f32 mHeldMoveAngle;             // _9DF8, the heading the player snaps back to after a look
+	f32 mMoveAngle;                 // _9DFC
+	f32 mHeldStickAngle;            // _9E00, NANed while no stick direction is held
+	s32 mBatteryWarningFrames;      // _9E04
+	f32 mBatteryWarningAngle;       // _9E08
+	f32 mBatteryWarningFade;        // _9E0C
+	XObj* mGaugeTarget;             // _9E10, the object the battery gauge sits over
+	f32 mGaugeTime;                 // _9E14
+	s32 mLoadStep;                  // _9E18, the step of LoadFromPlacement's stage load to resume at
+	u8 _9E1C[0x9E20 - 0x9E1C];
+	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
+	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
+	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
+	                           // through XObj's vtable
+	u8 mPopperObj[0x9B0];      // _BF30, the popper attachment object, the GameCube's mPopperObj
+	u8 mRadarObj[0x9C0];       // _C8E0, the radar attachment object, the GameCube's mRadarObj
+	u8 mOXObj[0x9B0];          // _D2A0, the OX attachment object, the GameCube's mOXObj
 	WiiPlayerSuits mSuits;     // _DC50
 	WiiSuitPart mSuitParts[9]; // _134B8, by suit
 	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad
-	u8 _19E90[0x19E9C - 0x19E90];
-	u8 mAttachments[0x48]; // _19E9C
-	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
-	WiiOXMenu mOXMenu;     // _1A420
-	u8 _1B7B4[8];
-	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, the GameCube's mDust
-	u8 _1C770[0x1C990 - 0x1C770];
-	BOOL mBatteryDrains;  // _1C990, TRUE while his battery runs down and an empty battery stops him
-	s32 mSquirterContent; // _1C994
+	BOOL mPadReset;            // _19E90, the GameCube's mPad.mReset, moved behind the Wii pad
+	u8 _19E94[4];              // _19E94
+	f32 mWalkHeading;          // _19E98, NANed until he walks
+	AttachmentValues mAttachments; // _19E9C, goes in the save as is
+	XObjChrMenu mMenu;             // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;             // _1A420
+	u8 _1B7B4[0x1B7B8 - 0x1B7B4];
+	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
+	// writers are decoded so far, the word reads as a whole
+	u32 mOnGround; // _1B7B8
+	u8 _1B7BC[0x1C980 - 0x1B7BC];
+	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
+	u8 _1C982[2];          // _1C982
+	s32 mSavedTargetAnim;  // _1C984, its playing anim
+	s32 mSavedTargetState; // _1C988, mLift's target state at the release
+	XObj* mPendingTarget;  // _1C98C, the respawned carry object RestorePlayerHeldItem waits on
+	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
+	s32 mSquirterContent;  // _1C994
 	union {
 		GXColor mItemTint; // _1C998, tints the held item
 		s32 mItemTintWord; // _1C998, the save copies it as a word
 	};
-	f32 mHeadOffset;       // _1C99C
-	BOOL mHeadOffsetReady; // _1C9A0
-	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
-	Vec _1C9A8;            // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
-	u8 _1C9B4[4];          // _1C9B4
-	f32 _1C9B8[3];         // _1C9B8, read by index; the movement code tests [2] above 0
+	f32 mHeadOffset;          // _1C99C
+	BOOL mHeadOffsetReady;    // _1C9A0
+	s32 mGroundType;          // _1C9A4, the floor he walks on, picks the footstep sounds
+	Vec _1C9A8;               // _1C9A8, the GameCube's _158C4; the spider boss zeroes it while flag 0x400 is up
+	u8 _1C9B4[4];             // _1C9B4
+	f32 _1C9B8[3];            // _1C9B8, read by index; the movement code tests [2] above 0
+	f32 _1C9C4[2];            // _1C9C4, two more of the same block, cleared with it on reset
+	CVec mEyeAim;             // _1C9CC, the pitch and yaw the eye camera aims shots with
+	CVec mEyeAimTarget;       // _1C9DC, where the eye camera eases the aim toward
+	CVec mEyeAimStep;         // _1C9EC, the per-frame aim step while the eye camera runs
+	CJArchive mAttachmentAnm; // _1C9FC, the attachment's own animation file, the GameCube's mAttachmentAnim
+	CJArchive mSuitAnm;       // _1CB44, the worn suit's animation file, the GameCube's mSuitAnim
 
 	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
 	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
+	virtual void vf290(BOOL on);  // _290, hides the popper mount while the popper is out
+	// snaps his heading back unless a hang, rope, ladder or push action holds it
+	void ResetCameraValue()
+	{
+		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
+			mHeldMoveAngle = mMoveAngle;
+		}
+	}
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
+	// the GameCube's GetHeight with the flag inverted: _1B7B8 is up while he stands on the floor, so the
+	// height above it only counts while it's clear
+	f32 GetHeight() const { return mOnGround ? 0.0f : mMoveTranslate.y - mFloorHit.mHeight; }
+	// a copy of the aim the eye camera steers with; the popper's muzzle math takes it by value
+	Vec GetEyeAim() const { return mEyeAim; }
 };
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeadNodes) == 0x9AC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLoadStep) == 0x9E18);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mEyeAimRecord) == 0x9810);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeadAimRecord) == 0x987C);
+STATIC_ASSERT(offsetof(WiiPlayerState, mStick) == 0x0A08);
+STATIC_ASSERT(offsetof(WiiPlayerState, mNearDistance) == 0x0A58);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLiftPlugFlags) == 0x0A74);
+STATIC_ASSERT(offsetof(WiiPlayerState, mFrameTime) == 0x9694);
+STATIC_ASSERT(offsetof(WiiPlayerState, mBlinkAnims) == 0x96A8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mScriptAttach) == 0x992C);
+STATIC_ASSERT(offsetof(WiiPlayerState, mCameraTarget) == 0x9DE4);
+STATIC_ASSERT(offsetof(WiiPlayerState, mHeldStickAngle) == 0x9E00);
+STATIC_ASSERT(offsetof(WiiPlayerState, mWalkHeading) == 0x19E98);
 STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
 STATIC_ASSERT(offsetof(WiiPlayerState, mMenu) == 0x19EE4);
 
@@ -1537,8 +1683,8 @@ public:
 	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
-	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
-	void* mF0; // _F0, the object the node matrices live in
+	u32 mMdl;                     // _EC, the model's nw4r ResMdl handle
+	nw4r::g3d::ScnMdlSimple* mF0; // _F0, the model the node matrices live in
 	u8 _F4[0x150 - 0xF4];
 	u64 mStatus; // _150, the object's status flags
 };
@@ -1611,7 +1757,7 @@ STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
 // the emitter handles, stepped with the camera like the global at 0x8044EE4C
 class CEvtPtcl {
 public:
-	u8 mEmitters[0x80][0x74]; // _00
+	EffectInstance mEffects[0x80]; // _00
 	// _3A00 vtable
 
 	virtual ~CEvtPtcl() { }
