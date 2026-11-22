@@ -58,8 +58,8 @@ inline s32 FindFacing(const Vec& dir, s32 slotIndex)
 	return bestIndex;
 }
 
-// sets area->mEntryIndex to the entry in the active slot facing closest to dir
-inline void SetFacingEntry(CCameraActionArea* area, const Vec& dir)
+// sets area->mEntryIndex to the entry in the active slot facing closest to dir; the Wii keeps it out of line (0x80155B28)
+inline void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir)
 {
 	CVec look(dir);
 	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
@@ -1013,7 +1013,7 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Size: 0x6E0
  */
 // NONMATCHING: register allocation (yaw in f29 and best in f28 with an extra fmr instead of retail's f28/f29,
-// plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below SetFacingEntry's look/facing
+// plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below SelectActiveAreaCameraEntryFacing's look/facing
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1098,7 +1098,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		} else {
 			YawDir(dir, area->mEntry->mAngle);
 		}
-		SetFacingEntry(area, dir);
+		SelectActiveAreaCameraEntryFacing(area, dir);
 	}
 	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
 	return area->mEntry->mId;
