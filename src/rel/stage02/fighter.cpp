@@ -2483,6 +2483,9 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
  */
 // NONMATCHING: retail loads 1.0f through one pointer for the compare and again for the
 // assignment (a literal bound to a const reference in an inline).
+// Tried: a max(const T&, const T&) returning a reference (halfW spilled to the stack, 85.0), the same with the call
+// results passed straight in (90.2), returning by value (94.97), a void inline (f32&, const f32&) (95.66, the literal
+// is folded to a value again).
 extern "C" void DrawFighterHud(void)
 {
 	MatoList* targets;
@@ -2693,6 +2696,7 @@ extern "C" void DrawFighterHud(void)
  */
 // NONMATCHING: the four up vectors sit in the frame in reverse order (retail has the trail's lowest), and one
 // register swap in the trail loop.
+// Tried: the up vectors as locals of an inline circle helper: they keep this order (96.91).
 extern "C" void DrawShots(void)
 {
 	u32 i;
@@ -2949,6 +2953,7 @@ extern "C" void DrawFighterStage(void)
  * @note Size: 0x514
  */
 // NONMATCHING: register colouring (loop pointers and best swap with retail).
+// Tried: four declaration orders of work/pos/best/bestDist and the first loop without the item pointer: no change.
 extern "C" void UpdateFighter(u32 dt)
 {
 	if (fighterWork.mBody == NULL) {
@@ -6908,6 +6913,7 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
  */
 // NONMATCHING: retail holds the spoke inner radius in two registers (fmr f29, f28: one for the sin, one for the cos term)
 // and so saves f18 too (frame 0x10 bigger); two equal locals fold into one here. The rest is FPR colouring.
+// Tried: radius - 10.0f written at both uses (same code), an inner local in the spoke loop (94.69).
 extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx fighterMtx)
 {
 	Vec pos;

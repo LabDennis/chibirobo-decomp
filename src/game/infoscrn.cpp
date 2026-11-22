@@ -1227,6 +1227,8 @@ extern "C" void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mod
  * @note Size: 0x274
  */
 // NONMATCHING: regalloc in the item loop (the counter and the items pointer swap r5 and r7)
+// Tried in ItemMax: the item read without the items pointer, an item pointer, the fields tested in place, s32 i, the
+// items pointer above the loop: all give the same code.
 extern "C" void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode, s32 flag)
 {
 	switch (mode) {
