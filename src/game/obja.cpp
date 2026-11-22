@@ -323,9 +323,12 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			sprintf(path, "%s.dat", name);
 			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
-				if ((flags & 2) && FitsInAram(archive) && attr.mObjData && attr.mObjData->mSource) {
-					attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress; // remember the ARAM copy
-					attr.mObjData->mSource->mCache.size    = archive->mFile.mSize;
+				if ((flags & 2) && FitsInAram(archive)) {
+					u32 size = archive->mFile.mSize;
+					if (attr.mObjData && attr.mObjData->mSource) {
+						attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress; // remember the ARAM copy
+						attr.mObjData->mSource->mCache.size    = size;
+					}
 				}
 				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') { // untagged archives get a state tag
 					char label[64];
@@ -345,7 +348,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				if ((flags & 2) && FitsInAram(archive)) {
 					const char* cachedName = ModelName(attr);
 					s32 id                 = attr.mPlacement ? attr.mPlacement->mObjectId : -1;
-					u32 padded             = PaddedSize(archive);
+					u32 padded             = (PaddedSize(archive) + 31) & ~31u;
 
 					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
 					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].size     = padded;
