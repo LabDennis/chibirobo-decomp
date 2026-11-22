@@ -2235,10 +2235,14 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  * @note Address: 0x80029760
  * @note Size: 0x69C
  */
-// NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
-// then converts alpha again for normal; this build folds both into one conversion after the call.
-// An s32 local converted before the call is forwarded past it and merged with normal's conversion
-// (93.85). The rest is float register order
+// NONMATCHING: retail converts alpha to an integer before the window frame (US 0x800297BC fctiwz, 0x800297C8
+// lwz r27) and forms lit from it right after the call (0x80029824 rlwimi r29, r27), next to normal's own
+// conversion (0x80029814); this build forms lit whole before the call. A single-use s32, int or u8 local
+// (explicit or implicit conversion, from alpha or from 255.0f * title->mOptionAlpha, declared in the block
+// or at function scope, initialised or assigned, lit as a second CSE'd use) is sunk past the call and merged
+// with normal's conversion (93.07-93.85). Only (u8)a | 0xFFFFFF00 written at every use keeps the conversion
+// before the call, and then the OR lands at the first ternary, not after the call (94.13). The rest is float
+// register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
