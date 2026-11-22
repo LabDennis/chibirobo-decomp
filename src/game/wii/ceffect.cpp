@@ -1,5 +1,5 @@
 // the Wii effect unit: the nw4r::ef effect system with its memory managers, and behind it the
-// 2d particle pools the GameCube keeps in gxb.cpp. Only the pools are here, the rest needs the
+// 2d particle pools the GameCube keeps in cptcl.cpp (once part of gxb.cpp). Only the pools are here, the rest needs the
 // nw4r::ef headers.
 #define NW4R_ASSERT
 #include "nw4r/ef/ef_effect.h"

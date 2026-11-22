@@ -738,6 +738,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
  * @note Address: 0x800A3B5C
  * @note Size: 0x20E0
  */
+// NONMATCHING: the window slices and glyph drawing still schedule differently, and parts of the constant pool differ
 extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 {
 	WiiTitleObject* anchor = font->mPlacement;
@@ -745,19 +746,23 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		anchor->vf1D4(&font->mPosition, &font->mWindowX, &font->mWindowY, 0, 0);
 		font->mWindowY -= font->mHeight;
 	}
-	if (font->mWindowX - font->mWidth * 0.5f < gScreenSafeLeft)
-		font->mWindowX = gScreenSafeLeft + font->mWidth * 0.5f;
-	if (font->mWindowX + font->mWidth * 0.5f > gScreenSafeRight)
-		font->mWindowX = gScreenSafeRight - font->mWidth * 0.5f;
-	if (font->mWindowY < gScreenSafeTop)
-		font->mWindowY = gScreenSafeTop;
-	if (font->mWindowY + font->mHeight > gScreenSafeBottom)
-		font->mWindowY = gScreenSafeBottom - font->mHeight;
+	f32& winX      = font->mWindowX;
+	f32& winWidth  = font->mWidth;
+	f32& winY      = font->mWindowY;
+	f32& winHeight = font->mHeight;
+	if (winX - winWidth * 0.5f < gScreenSafeLeft)
+		winX = gScreenSafeLeft + winWidth * 0.5f;
+	if (winX + winWidth * 0.5f > gScreenSafeRight)
+		winX = gScreenSafeRight - winWidth * 0.5f;
+	if (winY < gScreenSafeTop)
+		winY = gScreenSafeTop;
+	if (winY + winHeight > gScreenSafeBottom)
+		winY = gScreenSafeBottom - winHeight;
 	f32 portraitScale;
 	if (gGame.mWipeCine.mActive != 0 && font->_1484 == 0)
 		portraitScale = 0.84615386f;
 	else
-		portraitScale = font->mHeight / 52.0f;
+		portraitScale = winHeight / 52.0f;
 	if (portraitScale > 1.1f)
 		portraitScale = 1.1f;
 	if (portraitScale < 0.5f)
@@ -772,10 +777,10 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 	if (font->mAlpha > 0.0f) {
 		gGame.mGs.mCurRenderState->SetLineWidth(12, (GXTexOffset)5);
 		f32 halfPortrait = portraitWidth / 2.0f;
-		f32 left         = ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - expandX) - halfPortrait;
-		f32 right        = halfPortrait + (expandX + (40.0f + (font->mWindowX + font->mWidth * 0.5f)));
-		f32 top          = (font->mWindowY - 8.0f) - expandY;
-		f32 bottom       = expandY + (8.0f + (font->mWindowY + font->mHeight));
+		f32 left         = ((winX - winWidth * 0.5f) - 40.0f - expandX) - halfPortrait;
+		f32 right        = halfPortrait + (expandX + (40.0f + (winX + winWidth * 0.5f)));
+		f32 top          = (winY - 8.0f) - expandY;
+		f32 bottom       = expandY + (8.0f + (winY + winHeight));
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 		f32 outerRight  = 9.0f + (8.0f + right);
@@ -787,7 +792,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		f32 innerTop = 1.0f + top, innerBottom = bottom - 1.0f;
 		f32 roundLeft = 8.0f + innerLeft, roundRight = innerRight - 8.0f;
 		f32 roundTop = 8.0f + innerTop, roundBottom = innerBottom - 8.0f;
-		Vec fan[10] = { (Vec) { font->mWindowX, font->mWindowY, 0.0f },
+		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
 			            (Vec) { innerLeft, roundTop, 0.0f },
 			            (Vec) { roundLeft, innerTop, 0.0f },
 			            (Vec) { roundRight, innerTop, 0.0f },
@@ -840,23 +845,23 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		slices[1].scaleU = 1.0f / textureWidth;
 		slices[0].x      = edgeLeft;
 		slices[0].y      = edgeTop;
-		slices[1].x      = font->mWindowX;
+		slices[1].x      = winX;
 		slices[1].y      = edgeTop;
 		slices[1].width  = 6.0f + stretchX;
 		slices[2].x      = edgeRight;
 		slices[2].y      = edgeTop;
 		slices[3].scaleV = 1.0f / textureHeight;
 		slices[3].x      = edgeLeft;
-		slices[3].y      = 4.0f + (font->mHeight * 0.5f + font->mWindowY);
+		slices[3].y      = 4.0f + (winHeight * 0.5f + winY);
 		slices[3].height = (20.0f + stretchY) - 8.0f;
 		slices[4].scaleV = 1.0f / textureHeight;
 		slices[4].x      = edgeRight;
-		slices[4].y      = 4.0f + (font->mHeight * 0.5f + font->mWindowY);
+		slices[4].y      = 4.0f + (winHeight * 0.5f + winY);
 		slices[4].height = (20.0f + stretchY) - 8.0f;
 		slices[5].x      = edgeLeft;
 		slices[5].y      = edgeBottom;
 		slices[6].scaleU = 1.0f / textureWidth;
-		slices[6].x      = font->mWindowX;
+		slices[6].x      = winX;
 		slices[6].y      = edgeBottom;
 		slices[6].width  = 6.0f + stretchX;
 		slices[7].x      = edgeRight;
@@ -880,14 +885,14 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 
 		if (font->mMode == 0) {
 			if (font->mColor.a != 0) {
-				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + font->mHeight);
-				u32 clipWidth  = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + font->mWidth);
-				u32 clipY      = (u32)(1.0f + ((font->mWindowY - 8.0f) - expandY));
-				u32 clipX      = (u32)(1.0f + (((font->mWindowX - font->mWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
+				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight);
+				u32 clipWidth  = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
+				u32 clipY      = (u32)(1.0f + ((winY - 8.0f) - expandY));
+				u32 clipX      = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
 			}
-			f32 portraitX            = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
-			f32 portraitY            = 12.0f * portraitScale + (font->mHeight / 2.0f + font->mWindowY);
+			f32 portraitX            = 44.0f * portraitScale + ((winX - winWidth * 0.5f) - 40.0f - halfPortrait);
+			f32 portraitY            = 12.0f * portraitScale + (winHeight / 2.0f + winY);
 			WiiTitleObject* portrait = NULL;
 			s32 objectCount          = gGame.mXObjs.mPools[10].mUsed;
 			s32 stride               = gGame.mXObjs.mPools[10].mStride;
@@ -940,8 +945,8 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 			}
 		}
 		if (font->mSelectedLine >= 0) {
-			f32 x      = textOffset / 2.0f + font->mWindowX;
-			f32 y      = font->mCurLineY + (8.0f + font->mWindowY);
+			f32 x      = textOffset / 2.0f + winX;
+			f32 y      = font->mCurLineY + (8.0f + winY);
 			f32 width  = 24.0f + font->mCurLineWidth;
 			f32 height = font->mData->mHeights[font->mSelectedLine];
 			u32 color  = 0xC87F1600 | (u32)(200.0f * font->mHighlightAlpha);
@@ -974,9 +979,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		}
 		if (font->mOtherSelection >= 0) {
 			s32 line    = font->mGlyphs[font->mCharCount - 1].mLine;
-			f32 center  = textOffset / 2.0f + font->mWindowX;
+			f32 center  = textOffset / 2.0f + winX;
 			f32 x       = ((font->mDigitCount * font->mSize) / 2.0f + center) - (font->mOtherSelection + 1) * font->mSize;
-			f32 y       = 3.0f + ((font->mLineY[line] + (8.0f + font->mWindowY)) - font->mData->mHeights[line] / 2.0f);
+			f32 y       = 3.0f + ((font->mLineY[line] + (8.0f + winY)) - font->mData->mHeights[line] / 2.0f);
 			Vec quad[4] = { (Vec) { x, y, 0.0f }, (Vec) { x + font->mSize, y, 0.0f }, (Vec) { x + font->mSize, y + font->mSize, 0.0f },
 				            (Vec) { x, y + font->mSize, 0.0f } };
 			u32 color   = 0xFF00 | (u32)(200.0f * font->mHighlightAlpha);
@@ -1014,7 +1019,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		f32 alpha      = font->mTextAlpha;
 		f32 last       = alpha * lastAlpha;
 		Mtx translation, view;
-		PSMTXTrans(translation, 2.0f + (font->mWindowX + halfOffset), 1.0f + font->mWindowY, 0.0f);
+		PSMTXTrans(translation, 2.0f + (winX + halfOffset), 1.0f + winY, 0.0f);
 		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, translation, view);
 		for (s32 i = 0; i < font->mCharCount; i++) {
 			MsgFontGlyph& glyph = font->mGlyphs[i];
@@ -1024,7 +1029,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				glyph.mSprite.Draw(view, GX_TEXMAP0, 30, GX_MTX2x4, color, color, color, color);
 			}
 		}
-		PSMTXTrans(translation, font->mWindowX + halfOffset, font->mWindowY, 0.0f);
+		PSMTXTrans(translation, winX + halfOffset, winY, 0.0f);
 		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, translation, view);
 		for (s32 i = 0; i < font->mCharCount; i++) {
 			MsgFontGlyph& glyph = font->mGlyphs[i];
@@ -1097,8 +1102,8 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 			cursor->mTexMtx.mDirty = true;
 		}
 		s32 line = font->mGlyphs[font->mCharCount - 1].mLine;
-		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + font->mWindowX));
-		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + font->mWindowY))) - height / 4.0f;
+		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + winX));
+		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + winY))) - height / 4.0f;
 		f32 wave = sin(font->mBlinkPhase);
 		if (wave < 0.0f)
 			wave = 0.0f;

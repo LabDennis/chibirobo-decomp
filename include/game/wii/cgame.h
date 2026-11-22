@@ -548,6 +548,7 @@ struct CamEdgeArrow {
 // fields between and behind them are not reconstructed, and neither are the virtuals it overrides
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
+	virtual void vf24();        // _24, 0x801569B4, the edge arrows
 	virtual void DrawDebug3d(); // _28, 0x80156E58
 
 	f32 mTransitionTime;                                 // _40
@@ -577,7 +578,8 @@ public:
 	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
 	// _294 to _2FC: the Wii's pointer controls, Reset and SetCamera clear them; the names are not recovered
 	CamEdgeArrow mArrows[2]; // _294, left and right
-	u8 _2C4[0x2CC - 0x2C4];
+	f32 _2C4;
+	f32 _2C8;
 	f32 _2CC;
 	u8 _2D0;
 	u8 _2D1;
@@ -586,7 +588,8 @@ public:
 	u8 _2E0[0x2E8 - 0x2E0];
 	s32 _2E8;
 	s32 _2EC;
-	u8 _2F0[0x2F8 - 0x2F0];
+	u32 _2F0;
+	u32 _2F4;
 	s32 _2F8;
 
 	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0
@@ -598,6 +601,40 @@ public:
 	virtual void DrawDebug2d();              // _28
 
 	s32 FindFacing(s32 slotIndex, const Vec& dir);
+
+	void SetEye_I(s32 mode, Vec from, Vec to, f32 time);
+	void SetEyeInterpolation(s32 mode, Vec from, Vec to, f32 time)
+	{
+		if (mode == 5) {
+			mode = 4;
+		}
+		Vec target = to;
+		if (mode == 3 || time <= 0.0f) {
+			mEyeInterp = NULL;
+			SetEye(target);
+		} else {
+			mEyeInterp = mEyeInterps[mode];
+			if (mEyeInterp != NULL) {
+				mEyeInterp->Start(from, target, time);
+			}
+		}
+	}
+	void SetFovInterpolation(s32 mode, f32 from, f32 to, f32 time)
+	{
+		s32 kind = mode;
+		if (mode == 5) {
+			kind = 4;
+		}
+		if (kind == 3 || time <= 0.0f) {
+			mFovInterp = NULL;
+			SetFov(to);
+		} else {
+			mFovInterp = mFovInterps[kind];
+			if (mFovInterp != NULL) {
+				mFovInterp->Start(from, to, time);
+			}
+		}
+	}
 
 	// the vectors are passed by value, hence the copies
 	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
