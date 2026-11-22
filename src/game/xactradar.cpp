@@ -58,7 +58,12 @@ static inline f32 TargetPitch(const Vec& from, const Vec& to)
 }
 
 // NONMATCHING: retail takes the yaw's z difference before the x one and numbers the float registers otherwise;
-// ShadeRadarBeam's loop counters get their own zero in retail
+// ShadeRadarBeam's loop counters get their own zero in retail. The dol has 129 atan2(a.x - b.x, a.z - b.z)
+// calls and evaluates the x argument first at all but four: this one, UpdateRadarTargeting's dish case,
+// UpdatePopperShotFlight and one spider boss site where the z operand was already in a register. Only an
+// extra operation on the z argument (fneg, a double subtraction) moves it first in this build; casts,
+// unary plus, 1.0f *, dz/dx locals, an atan2f-style inline, a yaw local and a const CVec& for the target
+// all keep x first
 extern "C" void DrawRadarTargetBeam(XActRadar* act)
 {
 	if (!(act->mFade > 0))
