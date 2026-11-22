@@ -380,7 +380,7 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 		flags |= 0x10000;
 	}
 	BOOL isWall2 = FALSE;
-	if (HasSource(attr) && ModelName(attr) != NULL && strcmp(ModelName(attr), "ufo/wall2") == 0) {
+	if (ModelName(attr) != NULL && strcmp(ModelName(attr), "ufo/wall2") == 0) {
 		isWall2 = TRUE;
 	}
 	if (isWall2) {
