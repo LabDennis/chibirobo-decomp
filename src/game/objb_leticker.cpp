@@ -1,7 +1,7 @@
 // NONMATCHING: TurnLetickerLinkedPartAndTrackJoint and ReceivePlugPower differ in registers (see there),
 // and the data does not match:
-// - .data opens with the 26-word block a header makes in many files; sUnused below stands in for it.
-//   It is kept because without it every .data offset moves by 0x68 and HandleEventCommand drops.
+// - .data is left out of the split: retail's opens with the 26-word block a header makes in many
+//   files, and sUnused below is not that header's definition, so it may not claim the range.
 // - behind the two vtables retail keeps other weak vtables and base lists than this file emits
 //   (0xE4 bytes behind XObjLeticker's, a zeroed CInterfaceCameraAction vtable behind the camera's).
 // - retail's file has no weak CJObj::SetTranslate/SetRotation, so no "translate"/"rotate" here, and

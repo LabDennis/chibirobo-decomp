@@ -578,7 +578,6 @@ game/objb_leticker.cpp:
 	.text       start:0x800E42F0 end:0x800E8694
 	.ctors      start:0x801FEF44 end:0x801FEF48
 	.rodata     start:0x8020B6F0 end:0x8020B868
-	.data       start:0x80229128 end:0x80229A50
 	.bss        start:0x8035C9B8 end:0x8035CA2C
 	.sdata      start:0x80634B00 end:0x80634B58
 	.sdata2     start:0x80637DC0 end:0x80637F00
