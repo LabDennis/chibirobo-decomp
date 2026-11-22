@@ -539,7 +539,9 @@ void CScrnWipeTex::Draw(CGs* gs, s32 mode)
  * @note Size: 0x528
  */
 // NONMATCHING: the circle size's fused multiply-adds are scheduled differently and BeginWipe's colour table
-// sits elsewhere in .data. y gets its half cell in a statement of its own: retail multiplies, then adds.
+// sits elsewhere in .data. y gets its half cell in a statement of its own: retail multiplies, then adds
+// the half cell first (0x800217A4 fadds f27, f30, f0). extra as a ternary (97.6) or x passed as the
+// expression (93.3) score lower.
 // The cell size is a variable as on the Wii, where it comes from the pointer screen's width.
 void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 {
@@ -549,7 +551,7 @@ void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 	f32 cell = 640.0f / 16.0f;
 	for (s32 row = 0; row < 448.0f / cell; ++row) {
 		f32 y = row * cell;
-		y += cell * 0.5f;
+		y     = cell * 0.5f + y;
 		for (s32 col = 0; col < 640.0f / cell; ++col) {
 			f32 x = col * cell + cell * 0.5f;
 			f32 extra;
