@@ -10,6 +10,10 @@ extern "C" {
 #include <sysdolphin/random.h>
 }
 
+// NONMATCHING: ProcessPendingEvents and UpdateAfterAnim still differ from retail; in data
+// (GGTE01), .rodata (0x8020BE08) lacks the header-originated six-Vec prefix (0x48 bytes),
+// and .data/.sdata/.sdata2/.sbss2 differ in weak RTTI records and literal pool entries.
+
 static inline u32 MaskedFlags(const CStatus& status, u32 mask)
 {
 	return status.mFlags & mask;
