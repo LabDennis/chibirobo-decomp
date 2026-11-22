@@ -1849,6 +1849,43 @@ void CGame::Update(u32 frames)
 	}
 }
 
+/**
+ * @note Address: 0x80024008
+ * @note Size: 0x258
+ */
+// NONMATCHING: both queue loops and the call match; the selected slot's values use other registers and stack slots
+void XObj::vf15C()
+{
+	if (mMoveTranslate.y != mLastPos.y) {
+		mStatus.mFlags |= 0x10000000000000ULL;
+	}
+	mLastPos = mMoveTranslate;
+	mLastRot = mMoveRotate;
+	if (IsAnimDone()) {
+		BOOL queued = FALSE;
+		for (s32 i = 0; i < 4; i++) {
+			if (mAnimSlots[(mAnimHead + i) % 4].mAnim != -1) {
+				queued = TRUE;
+				break;
+			}
+		}
+		if (queued) {
+			for (s32 i = 0; i < 4; i++) {
+				XObjAnimSlot* slot = &mAnimSlots[(mAnimHead + i) % 4];
+				if (slot->mAnim != -1) {
+					s32 anim    = slot->mAnim;
+					u16 a       = slot->mA;
+					s16 b       = slot->mB;
+					slot->mAnim = -1;
+					mAnimHead   = (mAnimHead + i + 1) % 4;
+					SetAnim(anim, FALSE, a, b / 100.0f, 0.0f, 15.0f);
+					break;
+				}
+			}
+		}
+	}
+}
+
 // the greatest current frame among the model's animation objects; the default
 // texture-pattern animation does not participate
 // NONMATCHING: the loop and calls match; retail assigns the prologue's object and
