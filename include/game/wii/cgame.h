@@ -2007,12 +2007,12 @@ public:
 	f32 mOutlineWidth;        // _5974
 	Logo mLogo;               // _5978
 	Title mTitle;             // _5C70
-	MenuEx mMenu;           // _AE00
-	InfoScrn mInfoScrn;     // _AF58
-	WiiHomeMenu mHomeMenu;  // _B148
-	CEffectSystem mEffects; // _B7A8
-	CEvtPtcl mEvtPtcl;      // _BCA8
-	CScrnQuake mQuake;      // _F6AC
+	MenuEx mMenu;             // _AE00
+	InfoScrn mInfoScrn;       // _AF58
+	WiiHomeMenu mHomeMenu;    // _B148
+	CEffectSystem mEffects;   // _B7A8
+	CEvtPtcl mEvtPtcl;        // _BCA8
+	CScrnQuake mQuake;        // _F6AC
 	// the objects, as on the GameCube: pool 0 is the scene camera, 2 chibi robo, 3 the stage map, 7 the coins, 8 the items,
 	// 10 the spawn pool CMsgFont_Draw scans for the portrait object, 20 the dust; mObjects is the table
 	// ResolveEventObjectId indexes. The coin, item and dust pools each lead with a WiiFlagSource
