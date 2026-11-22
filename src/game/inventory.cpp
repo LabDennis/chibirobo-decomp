@@ -74,6 +74,7 @@ extern "C" s32 RemoveInventoryItemCount(Inventory* inventory, s16 id, s32 amount
  * @note Address: 0x800DC9B0
  * @note Size: 0x380
  */
+// NONMATCHING: register colouring at the cap; retail keeps the count in r4 and the 10 in r3, this build swaps them
 extern "C" s32 SetOrAddInventoryItemCount(Inventory* inventory, s16 id, s16 amount, BOOL add)
 {
 	s32 index = FindAvailableSlot(inventory, id);

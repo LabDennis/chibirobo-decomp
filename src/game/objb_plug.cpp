@@ -173,6 +173,8 @@ extern "C" CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index)
 }
 
 // XObjPlug::UpdateObject
+// NONMATCHING: frame slots; retail has the spark's pos and scale below the CVec(0.5f) temporary, as if unnamed,
+// and the pitch block's f4/f6 swapped
 void XObjPlug::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);

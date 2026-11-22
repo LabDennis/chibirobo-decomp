@@ -216,6 +216,7 @@ BOOL CBase::BeforeUpdate()
  * @note Size: 0xDC
  */
 // CBase's Start
+// NONMATCHING: the stopwatch names sit 0x424 bytes into retail's string pool, which this unit shares with the rest of its original file
 void CBase::Start()
 {
 	InitGameRuntime();

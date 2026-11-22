@@ -25,6 +25,7 @@ extern "C" s32 FindOwnedInventoryItemIndex(InventoryItem* entries, s16 id)
  * @note Address: 0x800DCE70
  * @note Size: 0x15C
  */
+// NONMATCHING: the inlined FindOwnedInventoryItemIndex loop, retail steps the pointer by 4 in every unrolled copy
 extern "C" s32 GetOwnedInventoryItemCount(Params* stats, s16 id)
 {
 	s32 index = FindOwnedInventoryItemIndex(stats->mInventory.mItems, id);
