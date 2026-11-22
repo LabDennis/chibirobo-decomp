@@ -294,7 +294,7 @@ public:
 	                           // _17B0 vtable, _17B4 in europe
 #endif
 
-	CGs();
+	CGs() { }
 	virtual ~CGs() { } // _08
 
 #if !defined(VERSION_JP)
