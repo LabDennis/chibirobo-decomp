@@ -1721,6 +1721,30 @@ public:
 			}
 		}
 	}
+	BOOL HasQueuedAnim() const
+	{
+		for (s32 i = 0; i < 4; i++) {
+			if (mAnimSlots[(mAnimHead + i) % 4].mAnim != -1) {
+				return TRUE;
+			}
+		}
+		return FALSE;
+	}
+	// takes the first queued anim from the head on and moves the head past it
+	void PopAnim(s32& id, u16& frame, s16& rate)
+	{
+		for (s32 i = 0; i < 4; i++) {
+			s32 j = (mAnimHead + i) % 4;
+			if (mAnimSlots[j].mAnim != -1) {
+				id                  = mAnimSlots[j].mAnim;
+				frame               = mAnimSlots[j].mA;
+				rate                = mAnimSlots[j].mB;
+				mAnimSlots[j].mAnim = -1;
+				mAnimHead           = (j + 1) % 4;
+				return;
+			}
+		}
+	}
 
 	// the object's kind, -1 without its data record
 	s16 GetCategory() const
