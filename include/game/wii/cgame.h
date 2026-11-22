@@ -601,6 +601,40 @@ public:
 
 	s32 FindFacing(s32 slotIndex, const Vec& dir);
 
+	void SetEye_I(s32 mode, Vec from, Vec to, f32 time);
+	void SetEyeInterpolation(s32 mode, Vec from, Vec to, f32 time)
+	{
+		if (mode == 5) {
+			mode = 4;
+		}
+		Vec target = to;
+		if (mode == 3 || time <= 0.0f) {
+			mEyeInterp = NULL;
+			SetEye(target);
+		} else {
+			mEyeInterp = mEyeInterps[mode];
+			if (mEyeInterp != NULL) {
+				mEyeInterp->Start(from, target, time);
+			}
+		}
+	}
+	void SetFovInterpolation(s32 mode, f32 from, f32 to, f32 time)
+	{
+		s32 kind = mode;
+		if (mode == 5) {
+			kind = 4;
+		}
+		if (kind == 3 || time <= 0.0f) {
+			mFovInterp = NULL;
+			SetFov(to);
+		} else {
+			mFovInterp = mFovInterps[kind];
+			if (mFovInterp != NULL) {
+				mFovInterp->Start(from, to, time);
+			}
+		}
+	}
+
 	// the vectors are passed by value, hence the copies
 	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
 	{

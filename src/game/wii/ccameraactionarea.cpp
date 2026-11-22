@@ -598,6 +598,63 @@ extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 sl
 	SelectAreaCameraEntry(area, slotIndex, entryIndex, mode, time);
 }
 
+inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
+{
+	if (mode == 5) {
+		OSPanic("ccameraactionarea.cpp", 1415, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", __FUNCTION__);
+		return;
+	}
+	CVec(0.0f, 0.0f, 0.0f);
+	SetEyeInterpolation(mode, from, to, time);
+	gGame.GetPlayer()->ResetCameraValue();
+}
+
+/**
+ * @note Address: 0x80156200
+ * @note Size: 0x7A0
+ */
+// NONMATCHING: the by-value vectors and interpolation starts use other stack slots and schedules
+extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time)
+{
+	switch (mode) {
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+		area->SetEye_I(mode, area->mEye, entry->mEye, time);
+		break;
+	case 5:
+		area->SetEyeInterpolation(mode, area->mEye, entry->mEye, time);
+		gGame.GetPlayer()->ResetCameraValue();
+		break;
+	}
+	f32 fov = gCameraAreaState.mBaseFov;
+	if (adjustFov) {
+		switch (gCameraAreaState.mZoomLevel) {
+		case 0:
+			area->SetFovInterpolation(mode, area->mFov, 0.8f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		default:
+			area->SetFovInterpolation(mode, area->mFov, fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		case 2:
+			area->SetFovInterpolation(mode, area->mFov, 1.5f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		case 3:
+			area->SetFovInterpolation(mode, area->mFov, 2.0f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		}
+	} else {
+		area->SetFovInterpolation(mode, area->mFov, fov, time);
+		gGame.GetPlayer()->ResetCameraValue();
+	}
+}
+
 extern "C" void SetAreaCameraHeightIndices(CCameraActionArea*, s32 zoomLevel)
 {
 	gCameraAreaState.mZoomLevel     = zoomLevel;
