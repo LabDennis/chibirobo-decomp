@@ -1692,6 +1692,8 @@ static inline bool IsStopped(const XObjChr* chr)
 	return ret;
 }
 
+// NONMATCHING: retail keeps IsStopped's result in r26 (US 0x800B6968), ours in r27; the look offset is copied from a
+// header Vec() in the unit's .bss prefix (+0x80, 0x800B74DC), which this split unit does not have
 void XObjChr::UpdateObject(u32 frames)
 {
 	XPad* pad = &mPad;
@@ -1738,6 +1740,7 @@ void XObjChr::UpdateObject(u32 frames)
 	}
 	mLiftPlugFlags &= ~0x80;
 
+	f32 direction;
 	f32 speed = 1.2f * mStick[0];
 
 	s32 hangState = mHang.mState;
@@ -1751,7 +1754,6 @@ void XObjChr::UpdateObject(u32 frames)
 
 	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
 	// WrapAngle inline leaves a copy (fmr) behind each one
-	f32 direction;
 	if (speed > 0) {
 
 		if (gGame.mStatus.mFlags & 0x100) {
@@ -3458,7 +3460,8 @@ s32 OctaMenu::GetItemIconTextureIndex(s32 index)
  * @note Address: 0x8009AFEC
  * @note Size: 0x130
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc; retail has red, green, blue in r31, r30, r29 and the pulse phase offset in r28. Every
+// declaration order keeps the offset in r31, and AddPulse written out or taking the phase by reference is longer
 u32 OctaMenu::GetItemColor(s32 index)
 {
 	s32 green, blue, red;
@@ -4001,7 +4004,7 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  */
 // NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
 // (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
-// if moved the NAN load further from retail
+// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -4066,7 +4069,8 @@ static inline XObj* FindEventObj(s32 id)
  */
 // NONMATCHING: case 202 returns !(mode > 0) as a BOOL in retail (neg, andc, srwi, cntlzw, extrwi from US 0x8009ED50);
 // every spelling here (<= 0, !(> 0), ?:, == FALSE, a BOOL local) folds to the shorter rlwnm form. The anim lookup
-// keeps the GetAObj result in r3 up to its test instead of copying it in each return path
+// keeps the GetAObj result in r3 up to its test instead of copying it in each return path (assigning in the
+// test or comparing with NULL changes nothing)
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 {
 	s32 result = 0;
@@ -4624,7 +4628,8 @@ extern "C" CVec GetPlayerCarryJointWorldPosition(CJObj* object)
  * @note Address: 0x800A09BC
  * @note Size: 0x21C
  */
-// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after
+// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after;
+// assigning point after its declaration, * 0.5f or the half difference first are all lower
 extern "C" Vec GetPlayerFirstPersonEyePosition(XObjChr* chr)
 {
 	s32 left[8]  = { 0, 1, 0, 1, 2, 0, 0, 0 };
@@ -5787,7 +5792,7 @@ extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
  * @note Size: 0x638
  */
 // NONMATCHING: saved register numbers; retail has the result pointer in r31, the anim object in the joint's register (r29) and
-// walks the table in the object's (r26)
+// walks the table in the object's (r26). Declaring aobj before particle moves the particle copy behind the anim lookup
 extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* frames, const FrameEvent* table)
 {
 	PlayerFrameParticle particle = { -1 };
@@ -6838,7 +6843,8 @@ static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  * @note Size: 0x868
  */
 // NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
-// gives the radii the upper registers
+// gives the radii the upper registers. Declaring x, y and z first loads them at the top (retail loads them after
+// PSMTXMultVec)
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -10339,6 +10345,13 @@ static inline BOOL LoadPlayerModel(XObj& model, s32 id)
 	return model.LoadFromPlacement(CoordInfo(GetSpawnData(id)));
 }
 
+// retail builds the CVec copy of each sampled offset after the SetRotationY quaternion (US 0x800B98D8 at 0x90,
+// copy at 0x800B9AB8 at 0x80, result at 0xFC): the conversion happens inside an inline
+static inline void SetTargetOffset(XAction& action, const Vec& offset)
+{
+	action.mTargetOffset = offset;
+}
+
 static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachment, s32* path, int depth)
 {
 	attachment.SetParent(FindJointByPath(player->mJObj, path, depth), TRUE);
@@ -10348,8 +10361,9 @@ static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachme
  * @note Address: 0x800B97FC
  * @note Size: 0x1584
  */
-// NONMATCHING: stack slots of the tumble path, the joint table and the CVec copies of the sampled offsets differ,
-// and a few register picks (idle joint walk, attachment walk, the light level conversion)
+// NONMATCHING: the OX marks' CoordInfo temporaries sit in swapped slots and retail forms the mark's address before
+// the vcall (US 0x800BA944); left are register picks (idle joint walk, attachment walk, the light level conversion)
+// and this unit's .rodata layout
 BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 {
 	u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
@@ -10361,26 +10375,25 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			break;
 		CJObj::SetRotationY(0.0f, TRUE);
 		SamplePlayerPose(this, 8);
-		mLift.mTargetOffset = (Vec)GetPlayerCarryJointLocalTranslation(this);
+		SetTargetOffset(mLift, GetPlayerCarryJointLocalTranslation(this));
 		// the root joint's offset in the hang and rope poses; SetObjectJointTranslationByPath is
 		// defined above in this file, so a helper wrapping it is no longer inlined here
 		SamplePlayerPose(this, 0x13);
 		{
-			s32 root[]          = { 0 };
-			mHang.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
-			s32 path[]          = { 0 };
+			s32 root[] = { 0 };
+			SetTargetOffset(mHang, GetPlayerJointLocalTranslationByPath(this, 1, root));
+			s32 path[] = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x8A);
 		{
-			s32 root[]          = { 0 };
-			mRope.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
-			s32 path[]          = { 0 };
+			s32 root[] = { 0 };
+			SetTargetOffset(mRope, GetPlayerJointLocalTranslationByPath(this, 1, root));
+			s32 path[] = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x36);
-		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
-		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
+		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, (s32[7]) { 0, 1, 0, 1, 2, 0, 1 }) - mMoveTranslate;
 		mTumble.mFade.mAmount = 0.0f;
 		mTumble.mFade.mActive = FALSE;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
@@ -10405,13 +10418,10 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 				mIdleJoints[i].mAnimJoint  = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
 				mIdleJoints[i].mLastAdHead = NULL;
 			}
-			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
-			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
-			s32 animationPath[]  = { 0, 1, 0, 1, 2, 0, 0, 5 };
-			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, 8, animationPath);
+			mAttachmentJoint     = FindJointByPath(mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 }, 8);
+			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, 8, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 });
 			if (!mSuits.mJoints[0]) {
-				s32 suit[]        = { 0, 1, 0, 0 };
-				mSuits.mJoints[0] = FindJointByPath(mJObj, suit, 4);
+				mSuits.mJoints[0] = FindJointByPath(mJObj, (s32[4]) { 0, 1, 0, 0 }, 4);
 			}
 		}
 		mStatus.mFlags |= 0x0000200000000000ULL;
@@ -10425,24 +10435,21 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 
 		if (!LoadPlayerModel(mCopterObj, 17))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mCopterObj, path, 8);
+		SetAttachmentParent(this, mCopterObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 3: { // the popper
 
 		if (!LoadPlayerModel(mPopperObj, 18))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 3 };
-		SetAttachmentParent(this, mPopperObj, path, 5);
+		SetAttachmentParent(this, mPopperObj, (s32[5]) { 0, 1, 0, 1, 3 }, 5);
 		++mLoadStep;
 	}
 	case 4: { // the radar
 
 		if (!LoadPlayerModel(mRadarObj, 19))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mRadarObj, path, 8);
+		SetAttachmentParent(this, mRadarObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 5: {
@@ -10454,8 +10461,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 #endif
 		if (!LoadPlayerModel(mOXObj, modelId))
 			break;
-		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		SetAttachmentParent(this, mOXObj, path, 8);
+		SetAttachmentParent(this, mOXObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8);
 		++mLoadStep;
 	}
 	case 6:
