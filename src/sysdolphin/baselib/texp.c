@@ -1141,6 +1141,7 @@ int TExpAssignReg(HSD_TExp* texp, HSD_TExpRes* res)
  * @note Address: N/A
  * @note Size: 0x400
  */
+// NONMATCHING: register allocation only; retail has desc, texp, .data base, init_aprev, init_cprev in r31-r27, we the parameters in r27-r30
 void TExp2TevDesc(HSD_TExp* texp, HSD_TExpTevDesc* desc, int* init_cprev, int* init_aprev)
 {
 	static u32 dst[4] = { GX_TEVREG0, GX_TEVREG1, GX_TEVREG2, GX_TEVPREV };
