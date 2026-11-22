@@ -4402,6 +4402,67 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 	DrawMenuBannerStrip(tex, x, bottomY, 660.0f, height, alpha);
 }
 
+// NONMATCHING: the complete 22-call list matches; the current spelling is 64 bytes smaller and saves GPRs from r19 instead of r21
+template <PanelLayout layout>
+void DrawPanelBackground(f32 alpha)
+{
+	f32 t      = sin(1.5707964f * alpha);
+	f32 expand = (layout == SavePanel ? 44.4f : 42.0f) * t;
+	f32 spread = 20.0f * t + 60.0f;
+	f32 x      = 320.0f;
+	x += -2.2f * spread;
+	u32 opacity       = (u32)(160.0f * alpha);
+	f32 lowerAlpha    = 0.0f;
+	u32 bottomOpacity = (u32)lowerAlpha;
+	f32 lowerY = layout == SavePanel ? 248.0f : 252.0f, upperY = layout == SavePanel ? 224.0f : 228.0f;
+	u32 clear = 0;
+	PrimVertex vertices[24]
+	    = { { (Vec) { ((x - expand) - 2.0f * expand), ((upperY - expand) - 2.0f * expand), 0.0f }, clear },
+		    { (Vec) { (x - expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), (2.0f * expand + (upperY + expand)), 0.0f }, clear },
+		    { (Vec) { (x - expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), ((upperY - expand) - 2.0f * expand), 0.0f }, clear },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (upperY + expand)), 0.0f }, clear },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), lowerY, 0.0f }, clear },
+		    { (Vec) { (x - expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), (2.0f * expand + (lowerY + expand)), 0.0f }, clear },
+		    { (Vec) { (x - expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), lowerY, 0.0f }, clear },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (lowerY + expand)), 0.0f }, clear },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity } };
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, 4);
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &vertices[4], 4);
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &vertices[8], 4);
+	u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	DrawGsLineSegment(&gGame.mGs, NULL, x - expand, (upperY - expand) - 2.0f * expand, 0.0f, color, (2.2f * spread + 320.0f) + expand,
+	                  (upperY - expand) - 2.0f * expand, 0.0f, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, (x - expand) - 2.0f * expand, (upperY - expand) - 2.0f * expand, 0.0f, 0xFFFFFF00, x - expand,
+	                  (upperY - expand) - 2.0f * expand, 0.0f, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, (2.2f * spread + 320.0f) + expand, (upperY - expand) - 2.0f * expand, 0.0f,
+	                  (u32)(255.0f * alpha) | 0xFFFFFF00, 2.0f * expand + ((2.2f * spread + 320.0f) + expand),
+	                  (upperY - expand) - 2.0f * expand, 0.0f, 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, x - expand, 2.0f * expand + (upperY + expand), 0.0f, (u32)(255.0f * alpha) | 0xFFFFFF00,
+	                  (2.2f * spread + 320.0f) + expand, 2.0f * expand + (upperY + expand), 0.0f, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, (x - expand) - 2.0f * expand, 2.0f * expand + (upperY + expand), 0.0f, 0xFFFFFF00, x - expand,
+	                  2.0f * expand + (upperY + expand), 0.0f, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, (2.2f * spread + 320.0f) + expand, 2.0f * expand + (upperY + expand), 0.0f,
+	                  (u32)(255.0f * alpha) | 0xFFFFFF00, 2.0f * expand + ((2.2f * spread + 320.0f) + expand),
+	                  2.0f * expand + (upperY + expand), 0.0f, 0xFFFFFF00);
+}
+
+template void DrawPanelBackground<ItemStatusPanel>(f32);
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
