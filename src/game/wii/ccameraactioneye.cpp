@@ -1,6 +1,7 @@
 // the Wii first person view: the remote's pointer aims the look
 #include "game/ccameraactioneye.h"
 
+#include "nw4r/math/math_arithmetic.h"
 #include "game/gmath.h"
 #include "game/cscrn.h"
 #include "game/wii/cgame.h"
@@ -142,6 +143,7 @@ void CCameraActionEye::Reset()
  * @note Address: 0x80164E00
  * @note Size: 0x118C
  */
+// NONMATCHING: the call set and control flow match; retail uses a 0x160 frame and saves r21, ours 0x110 and r27
 void CCameraActionEye::Update(u32 step)
 {
 	CPad pad(0);
@@ -227,7 +229,7 @@ void CCameraActionEye::Update(u32 step)
 
 				f32 track         = TrackPointer(step, -aimX, aimY);
 				f32 pitchT        = track * -1.0f;
-				WiiCameraPoint pt = fn_8016A844(&mCurveX, __fabsf(aimY));
+				WiiCameraPoint pt = fn_8016A844(&mCurveX, nw4r::math::FAbs(aimY));
 				f32 pitch         = aimY;
 				if (aimY > 0.0f) {
 					pitch = 0.8f * pt.y;
@@ -270,16 +272,16 @@ void CCameraActionEye::Update(u32 step)
 				}
 			}
 
-			f32 speedY = __fabsf(mLook.mTarget.y - mLook.mValue.y) / mVecC0.y;
-			f32 speedX = __fabsf(mLook.mTarget.x - mLook.mValue.x) / mVecC0.x;
-			f32 speedZ = __fabsf(mLook.mTarget.z - mLook.mValue.z) / mVecC0.z;
+			f32 speedY = nw4r::math::FAbs(mLook.mTarget.y - mLook.mValue.y) / mVecC0.y;
+			f32 speedX = nw4r::math::FAbs(mLook.mTarget.x - mLook.mValue.x) / mVecC0.x;
+			f32 speedZ = nw4r::math::FAbs(mLook.mTarget.z - mLook.mValue.z) / mVecC0.z;
 
 			// the turn speed may only grow a tenth of a degree per update
 			static f32 sPrevSpeedX = speedX;
 			f32 diff               = speedX - sPrevSpeedX;
 			f32 thresh             = 0.1f * DEG2RAD;
-			if (__fabsf(diff) > thresh) {
-				speedX = sPrevSpeedX + thresh / __fabsf(diff) * diff;
+			if (nw4r::math::FAbs(diff) > thresh) {
+				speedX = sPrevSpeedX + thresh / nw4r::math::FAbs(diff) * diff;
 			}
 			sPrevSpeedX = speedX;
 			if (gWiiPointer.mPointerValid) {
@@ -291,7 +293,8 @@ void CCameraActionEye::Update(u32 step)
 			mLook.mSpeed.z = speedZ;
 
 			static CVec sPrevTarget;
-			if (RAD2DEG * __fabsf(mLook.mTarget.x - sPrevTarget.x) > 0.2f || RAD2DEG * __fabsf(mLook.mTarget.y - sPrevTarget.y) > 0.2f) {
+			if (RAD2DEG * nw4r::math::FAbs(mLook.mTarget.x - sPrevTarget.x) > 0.2f
+			    || RAD2DEG * nw4r::math::FAbs(mLook.mTarget.y - sPrevTarget.y) > 0.2f) {
 				// still turning fast: keep the sound on
 				if (!IsWiiSfxPlaying(&gGame.mSound, 0x70)) {
 					PlayWiiSoundEffect(&gGame.mSound, 0x70, 1.0f, 0.0f);
@@ -317,7 +320,7 @@ void CCameraActionEye::Update(u32 step)
 
 			static f32 sPrevZoomSpeed = 0.0f;
 			f32 stick                 = pad.mPad->mStick.y;
-			if (__fabsf(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
+			if (nw4r::math::FAbs(speedZ - sPrevZoomSpeed) < 0.02f) { // zoom settled
 				gGame.mBlur.Start(-1.0f, 0.0f, 2.0f * -stick, 2.0f * -stick, 0.1f);
 			} else { // zooming: kick the blur to 0.8, it decays back to 0
 				gGame.mBlur.Start(0.8f, 0.0f, 2.0f * -stick, 2.0f * -stick, 0.1f);
