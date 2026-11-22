@@ -783,34 +783,29 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		f32 bottom       = expandY + (8.0f + (winY + winHeight));
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
-		f32 outerRight  = 9.0f + (8.0f + right);
-		f32 outerBottom = 9.0f + (8.0f + bottom);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+		                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+		                 0xFF000000);
 
-		f32 innerLeft = 1.0f + left, innerRight = right - 1.0f;
-		f32 innerTop = 1.0f + top, innerBottom = bottom - 1.0f;
-		f32 roundLeft = 8.0f + innerLeft, roundRight = innerRight - 8.0f;
-		f32 roundTop = 8.0f + innerTop, roundBottom = innerBottom - 8.0f;
 		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
-			            (Vec) { innerLeft, roundTop, 0.0f },
-			            (Vec) { roundLeft, innerTop, 0.0f },
-			            (Vec) { roundRight, innerTop, 0.0f },
-			            (Vec) { innerRight, roundTop, 0.0f },
-			            (Vec) { innerRight, roundBottom, 0.0f },
-			            (Vec) { roundRight, innerBottom, 0.0f },
-			            (Vec) { roundLeft, innerBottom, 0.0f },
-			            (Vec) { innerLeft, roundBottom, 0.0f },
-			            (Vec) { innerLeft, roundTop, 0.0f } };
+			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f },
+			            (Vec) { 8.0f + (1.0f + left), 1.0f + top, 0.0f },
+			            (Vec) { (right - 1.0f) - 8.0f, 1.0f + top, 0.0f },
+			            (Vec) { right - 1.0f, 8.0f + (1.0f + top), 0.0f },
+			            (Vec) { right - 1.0f, (bottom - 1.0f) - 8.0f, 0.0f },
+			            (Vec) { (right - 1.0f) - 8.0f, bottom - 1.0f, 0.0f },
+			            (Vec) { 8.0f + (1.0f + left), bottom - 1.0f, 0.0f },
+			            (Vec) { 1.0f + left, (bottom - 1.0f) - 8.0f, 0.0f },
+			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f } };
 		u32 color
 		    = ((u32)font->mColor.r << 24) | ((u32)font->mColor.g << 16) | ((u32)font->mColor.b << 8) | (u32)(font->mColor.a * font->mAlpha);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fan, color, 10);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundLeft, roundTop, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundRight, roundTop, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundLeft, roundBottom, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, color, roundRight, roundBottom, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, 8.0f + (1.0f + left), 8.0f + (1.0f + top), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, (right - 1.0f) - 8.0f, 8.0f + (1.0f + top), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, 8.0f + (1.0f + left), (bottom - 1.0f) - 8.0f, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, color, (right - 1.0f) - 8.0f, (bottom - 1.0f) - 8.0f, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
 		color = (u32)(64.0f * windowAlpha);
 		for (u32 i = 0; i < 10; i++) {
 			fan[i].x += 9.0f;
@@ -879,16 +874,17 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		}
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+		                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+		                 0xFF000000);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 
 		if (font->mMode == 0) {
 			if (font->mColor.a != 0) {
-				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight);
-				u32 clipWidth  = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
-				u32 clipY      = (u32)(1.0f + ((winY - 8.0f) - expandY));
-				u32 clipX      = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
+				s32 clipHeight = (s32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight);
+				s32 clipWidth  = (s32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
+				s32 clipY      = (s32)(1.0f + ((winY - 8.0f) - expandY));
+				s32 clipX      = (s32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
 			}
 			f32 portraitX            = 44.0f * portraitScale + ((winX - winWidth * 0.5f) - 40.0f - halfPortrait);
@@ -1107,9 +1103,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 		f32 wave = sin(font->mBlinkPhase);
 		if (wave < 0.0f)
 			wave = 0.0f;
-		u32 shadow = (u32)(200.0f * wave);
-		u32 color  = 0xFFFFFF00 | shadow;
-		DrawGsTexturedQuad(&gGame.mGs, cursor, shadow, shadow, shadow, shadow, 2.0f + x, 2.0f + y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		u32 color = 0xFFFFFF00 | (u32)(200.0f * wave);
+		DrawGsTexturedQuad(&gGame.mGs, cursor, (u32)(200.0f * wave), (u32)(200.0f * wave), (u32)(200.0f * wave), (u32)(200.0f * wave),
+		                   2.0f + x, 2.0f + y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
 		DrawGsTexturedQuad(&gGame.mGs, cursor, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetOrder(255, 255, 4);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
