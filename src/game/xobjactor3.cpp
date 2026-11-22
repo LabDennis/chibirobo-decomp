@@ -157,8 +157,8 @@ static inline void DrawTimerLabel(f32 scale)
 	// before the label calls, destroyed right after); it is never read
 	CTexObj labelTex;
 	const f32 size = 20.0f;
-	f32 width      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size);
-	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, scale * (width - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
+	f32 width      = scale * (MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) - 4.0f);
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, width, 12.0f, 0.0f, 0.0f, 0.0f);
 	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) / 2.0f;
 	for (int i = 0; i < 4; ++i)
 		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
@@ -2605,26 +2605,31 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 #endif
 	u16 h = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, scale * h, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #if !defined(VERSION_JP)
 	DrawTimerLabel(scale);
 #endif
-	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
-	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
-	f32 dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
-	f32 x  = 110.0f;
+	tex = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
+	f32 x;
+	s32 tw = GXGetTexObjWidth(&tex) / 11;
+	f32 dw = 1.4f * (scale * tw);
+	u16 th = GXGetTexObjHeight(&tex);
+	f32 dh = 1.4f * (scale * th);
+	x      = 110.0f;
 #if !defined(VERSION_JP)
 	x += 11.0f;
 #endif
 	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
 	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
 	tex.mMtxDirty = TRUE;
-	u32 a         = 255.0f * alpha;
 	u32 c0;
-	u32 c1 = a | 0x1F33FF00;
-	c0     = a | 0xFFFFFF00;
-	for (s32 i = 0; i < 2; i++) {
+	u32 c1;
+	s32 i = 0;
+	u32 a = 255.0f * alpha;
+	c0    = a | 0xFFFFFF00;
+	c1    = a | 0x1F33FF00;
+	for (; i < 2; i++) {
 		f32 p = 1.0f;
 		if (i > 0) {
 			for (s32 k = 0; k < i; k++) {
@@ -2643,8 +2648,10 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 		}
 	}
 
-	dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
-	dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	tw = GXGetTexObjWidth(&tex) / 11;
+	dw = 1.4f * (scale * tw);
+	th = GXGetTexObjHeight(&tex);
+	dh = 1.4f * (scale * th);
 	x  = 110.0f;
 #if !defined(VERSION_JP)
 	x += 11.0f;
