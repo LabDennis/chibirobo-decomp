@@ -522,7 +522,7 @@ static inline void DrawPCListMask(f32 top, f32 height, u32 color)
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, mask, color, 5);
 }
 // how many rows the nine-row list can start at: the filled rows less eight, at least one
-static inline s32 PCShopMaxPage(MenuPCItem*& table)
+static inline s32 PCShopMaxPage(MenuPCItem* table)
 {
 	s16 item, quantity;
 	int i;
@@ -561,6 +561,9 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32);
 void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 #endif
 
+// NONMATCHING: the five corner temporaries of each DrawPCListMask sit in the frame in the opposite order (as in
+// DrawMenuBannerPanels), and the argument schedule of the background's DrawGsTrianglePrimitive and of one width
+// conversion differs; the rodata offsets differ with the file's data
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
 void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
@@ -589,8 +592,8 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 		barW = 0.9f * (14.0f * step);
 	} else {
 		CTexObj& label = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
-		barX           = x - 4.0f;
 		barW           = (0.7f * (scale * (1.1f * (2 * label.GetWidth()))) + width) - 5.0f * scale;
+		barX           = x - 4.0f;
 	}
 	f32 barH     = step + scale;
 	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
