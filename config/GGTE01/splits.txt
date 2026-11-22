@@ -574,13 +574,14 @@ game/xobjflagsinit.cpp:
 	.ctors      start:0x801FD680 end:0x801FD684
 	.bss        start:0x8037DC70 end:0x8037E3E0
 
-game/xobjletickerdtor.cpp:
-	.text       start:0x800E25AC end:0x800E260C
-
 game/objb_leticker.cpp:
-	.text       start:0x800E260C end:0x800E6950
+	.text       start:0x800E25AC end:0x800E6950
 	.ctors      start:0x801FD684 end:0x801FD688
+	.rodata     start:0x8020A9E8 end:0x8020AB60
+	.data       start:0x80229AE0 end:0x8022A408
 	.bss        start:0x8037E3E0 end:0x8037E454
+	.sdata      start:0x8065A6D0 end:0x8065A728
+	.sdata2     start:0x8065DAF8 end:0x8065DC38
 	.sbss2      start:0x80660260 end:0x80660268
 
 game/objb_army.cpp:

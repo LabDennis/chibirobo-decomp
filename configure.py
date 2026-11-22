@@ -508,8 +508,11 @@ gamecube_libs = [
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjletickerdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x800E25AC-0x800E6950 opens with the weak ~XObjLeticker,
+            # then TurnLetickerLinkedPartAndTrackJoint to GetCameraTarget, the camera's weak ~ and getters and
+            # __sinit_objb_leticker_cpp; -inline deferred, as retail shows: only deferred codegen of the file
+            # written last-address-first puts ~XObjLeticker in front and the camera's weak functions behind
+            Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/objb_army.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspider.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspidersmall.cpp", cflags=with_hsd_headers(cflags_game)),
