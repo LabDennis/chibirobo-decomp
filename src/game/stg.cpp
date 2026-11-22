@@ -7573,8 +7573,8 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 }
 
 // NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
-// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once; retail also
-// has an unreachable branch in front of case 0.
+// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once (a loop, a struct
+// copy, a pointer parameter and a row reference all keep the base+4 form or lose the per-field index reload).
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -7622,6 +7622,10 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 						ClearRankingRow(menu->mRankingRows[0]);
 				}
 			}
+			break;
+		case 2:
+			// the list stands still; the empty case is what puts retail's second branch to the end of the switch
+			// (US 0x8003D900) in front of case 0's body
 			break;
 		}
 		CTexObj tex;
