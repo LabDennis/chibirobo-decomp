@@ -310,7 +310,8 @@ void CFbOutline::Update(s32 frames)
  */
 void CFbOutline::Draw(u32 flags)
 {
-	// NONMATCHING: retail reloads the offsets for every vertex
+	// NONMATCHING: retail reloads the offsets for every vertex (0x801A7B38 and 0x801A7B3C load offset[i][0]
+	// twice in a row); GX_WRITE_F32 per value in place of GXPosition2f32 compiles the same as now
 	Mtx mtx;
 	Mtx44 proj;
 	Mtx texMtx;
