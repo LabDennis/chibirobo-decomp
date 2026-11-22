@@ -1537,10 +1537,17 @@ HSD_Generator* CreateScaledParticleAtPosition(CGame*, u32, u32, s32, const Vec&,
 static const s32 sSquirterChargeLevels[11] = { 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3 };
 f32 GetJointAnimationCurrentFrame(CJObj*);
 BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOOL, Vec*);
-// NONMATCHING: retail calls ~CVec (10 times), ~CJObj, GetObjectJointByPath and even the one-store setters here, so its
-// inline limit sits at the bottom: the function alone weighed about 7000 units for the inliner. This one is about 1500
-// units short of that, so it still expands all of them. GetItemSoundIndex returned s8 in retail: the release sound's
-// index is sign-extended for its test and again for the call (0x800D249C, 0x800D24A4); our u8 return extends once.
+// NONMATCHING: the bl lists differ in four inlines only: retail calls GetObjectJointByPath (5), ~CJObj, CVec(const Vec&)
+// and ~CVec (10) that this one expands. Retail still expands CVec::Length (bl PSVECMag at US 0x800D3874, no bl Length)
+// and GetStagePlacementIndex (bl GetStagePlacementByIndex at 0x800D0F9C), so its inline limit was 16: our Length leaves
+// at the 16 -> 8 drop and GetStagePlacementIndex together with ~CVec at 32 -> 16, so retail's placement index weighed
+// 16 units or less (a pointer difference) and the lift state setters it calls 17 or more. Measured with 3-unit fillers,
+// this function is 1035 units under the 128 -> 64 drop, 1758 under 32 -> 16 and 2010 under 16 -> 8. The missing weight
+// is not in this file: the helpers retail calls here are declared below or in obja_chr.cpp and weigh a call each.
+// GetItemSoundIndex: retail extends the release sound's index for its test and again for the call (0x800D249C,
+// 0x800D24A4), which only an s8 prototype gives (a u8 local with two (s8) casts is extended once); that prototype
+// needs the definitions in stage_data.cpp/globalresources.cpp and the s8 local in obja_chr's ProcessPlayerFrameEvents
+// (one extension, 0x800A80A4) to follow.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
