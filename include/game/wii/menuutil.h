@@ -18,13 +18,13 @@ enum {
 // gGame.mMenuControls: how the menus are worked
 enum { MenuControlPointer = 1 << 0, MenuControlStick = 1 << 1 };
 
-// What the menus and the title screen ask the first controller. The class name is in the menu file's
-// RTTI; that these functions are its members is our reading: the title code passes its object to them
-// and they never use it. They are defined in menu.cpp. Their names are ours
-class MenuUtil {
-public:
-	virtual ~MenuUtil() { }
+struct CbPane;
 
+// What the menus and the title screen ask the first controller. RTTI names the class and gives it no
+// bases; its functions never use the object, so it holds nothing and has no vtable. They are defined in
+// menu.cpp. Their names are ours
+class MenuPad {
+public:
 	bool IsConfirmPressed();
 	bool IsCancelPressed();
 	// the stick counts only where gGame.mMenuControls has MenuControlStick
@@ -36,6 +36,18 @@ public:
 	bool IsPointerActive();
 	// the stick moved while the pointer is the one choosing
 	bool IsStickUsedOverPointer();
+};
+
+// What the pointer code calls on the object in gPointerPanes.mMenu: RTTI names the class and gives it no
+// bases, and the six slots after its vtable header are these. Their names are ours
+class CContainCallback {
+public:
+	virtual void vf08(CbPane*) { }
+	virtual void vf0C(CbPane*) { }
+	virtual void vf10(CbPane*) { }
+	virtual void vf14(CbPane*) { }
+	virtual void vf18(nw4r::math::VEC2*) { }
+	virtual void vf1C(nw4r::math::VEC2*) { }
 };
 
 struct WiiMenuSaveSlot {
@@ -109,9 +121,9 @@ STATIC_ASSERT(sizeof(CbPaneLayout) == 0x28);
 
 // the panes the pointer is tested against this frame
 struct CbPaneList {
-	CbPane* mPanes[0x100]; // _000
-	s32 mCount;            // _400
-	MenuUtil* mMenu;       // _404, the menu whose panes are tested, NULL disables the pointer
+	CbPane* mPanes[0x100];   // _000
+	s32 mCount;              // _400
+	CContainCallback* mMenu; // _404, the menu whose panes are tested, NULL disables the pointer
 	u8 _408[2];
 	u8 mEnabled; // _40A
 	u8 mActive;  // _40B

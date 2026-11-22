@@ -302,7 +302,7 @@ extern "C" void ResetTitleScreenState(Title* title)
 // NONMATCHING: the frame skeleton, the save scan and states 1-9, 13, 14 and 22 are as retail read
 // them. Inside state 9 the newest slot's saved pointer/stick bits are restored (the block after
 // IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input
-// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuUtil methods the
+// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the
 // binary shares with UpdateTitleOptions.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {

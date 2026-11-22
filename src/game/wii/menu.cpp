@@ -192,56 +192,56 @@ extern s32 gRingScreenWidth;
 static MenuPCItem sShopHistoryEntries[20];
 static MenuPCItem sShopCatalogEntries[20];
 
-bool MenuUtil::IsConfirmPressed()
+bool MenuPad::IsConfirmPressed()
 {
 	if (gWiiPointer.Check(PadActConfirm))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsCancelPressed()
+bool MenuPad::IsCancelPressed()
 {
 	if (gWiiPointer.Check(PadActCancel))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsStickRight()
+bool MenuPad::IsStickRight()
 {
 	if (gWiiPointer.Check(PadActStickRight) && (gGame.mMenuControls & MenuControlStick))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsStickLeft()
+bool MenuPad::IsStickLeft()
 {
 	if (gWiiPointer.Check(PadActStickLeft) && (gGame.mMenuControls & MenuControlStick))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsStickUp()
+bool MenuPad::IsStickUp()
 {
 	if (gWiiPointer.Check(PadActStickUp) && (gGame.mMenuControls & MenuControlStick))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsStickDown()
+bool MenuPad::IsStickDown()
 {
 	if (gWiiPointer.Check(PadActStickDown) && (gGame.mMenuControls & MenuControlStick))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsPointerActive()
+bool MenuPad::IsPointerActive()
 {
 	if (gWiiPointer.mPointerValid && (gGame.mMenuControls & MenuControlPointer))
 		return true;
 	return false;
 }
 
-bool MenuUtil::IsStickUsedOverPointer()
+bool MenuPad::IsStickUsedOverPointer()
 {
 	if (IsPointerActive()) {
 		if (gWiiPointer.Check(PadActStickLeft) || gWiiPointer.Check(PadActStickRight) || gWiiPointer.Check(PadActStickUp)
@@ -2847,27 +2847,44 @@ extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
 	return 2;
 }
 
-// the save menu's pointer events, the slots its MenuUtil base has in the vtable
-extern "C" void fn_80083048()
+// the pointer came on screen while both controls work: nothing is picked until it points
+void MenuItem::vf18(nw4r::math::VEC2*)
+{
+	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2) {
+		mSelection = -1;
+	}
+}
+
+// the pointer went away while both controls work: the stick's row comes back
+void MenuItem::vf1C(nw4r::math::VEC2*)
+{
+	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer) && mMode == 2 && mSelection == -1
+	    && mStickSelection != -1) {
+		mSelection = mStickSelection;
+	}
+}
+
+// the save menu's pointer events, the slots of its CContainCallback base
+void MenuSave::vf08(CbPane*)
 {
 }
 
 // the pointer left a pane
-extern "C" void fn_8008304C(MenuSave* menu, CbPane* pane)
+void MenuSave::vf0C(CbPane* pane)
 {
 	switch (pane->mKind) {
 	case 0:
 	case 1:
 	case 2:
-		if (menu->mFile == pane->mKind && menu->mFile != -1) {
-			menu->mFile = -1;
+		if (mFile == pane->mKind && mFile != -1) {
+			mFile = -1;
 		}
 		break;
 	case 3:
 	case 4:
-		if (menu->mMode == 8 || menu->mMode == 3 || menu->mMode == 18 || menu->mMode == 19) {
-			if (menu->mChoice == pane->mKind - 3 && menu->mChoice != -1) {
-				menu->mChoice = -1;
+		if (mMode == 8 || mMode == 3 || mMode == 18 || mMode == 19) {
+			if (mChoice == pane->mKind - 3 && mChoice != -1) {
+				mChoice = -1;
 			}
 		}
 		break;
@@ -2875,39 +2892,39 @@ extern "C" void fn_8008304C(MenuSave* menu, CbPane* pane)
 }
 
 // the pointer came onto a pane
-extern "C" void fn_800830D4(MenuSave* menu, CbPane* pane)
+void MenuSave::vf10(CbPane* pane)
 {
 	switch (pane->mKind) {
 	case 0:
-		if (menu->mFile != 0) {
-			menu->mFile = 0;
+		if (mFile != 0) {
+			mFile = 0;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 		}
 		break;
 	case 1:
-		if (menu->mFile != 1) {
-			menu->mFile = 1;
+		if (mFile != 1) {
+			mFile = 1;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 		}
 		break;
 	case 2:
-		if (menu->mFile != 2) {
-			menu->mFile = 2;
+		if (mFile != 2) {
+			mFile = 2;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 		}
 		break;
 	}
-	if (menu->mMode == 8 || menu->mMode == 3 || menu->mMode == 18 || menu->mMode == 19) {
+	if (mMode == 8 || mMode == 3 || mMode == 18 || mMode == 19) {
 		switch (pane->mKind) {
 		case 3:
-			if (menu->mChoice != 0) {
-				menu->mChoice = 0;
+			if (mChoice != 0) {
+				mChoice = 0;
 				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 			}
 			break;
 		case 4:
-			if (menu->mChoice != 1) {
-				menu->mChoice = 1;
+			if (mChoice != 1) {
+				mChoice = 1;
 				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 			}
 			break;
@@ -2916,28 +2933,27 @@ extern "C" void fn_800830D4(MenuSave* menu, CbPane* pane)
 }
 
 // the pointer came on screen while both controls work: nothing is picked until it points
-extern "C" void fn_80083268(MenuSave* menu)
+void MenuSave::vf18(nw4r::math::VEC2*)
 {
 	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer)) {
-		if (menu->mMode == 2) {
-			menu->mFile = -1;
+		if (mMode == 2) {
+			mFile = -1;
 		}
-		if (menu->mMode == 8 || menu->mMode == 3 || menu->mMode == 18 || menu->mMode == 19) {
-			menu->mChoice = -1;
+		if (mMode == 8 || mMode == 3 || mMode == 18 || mMode == 19) {
+			mChoice = -1;
 		}
 	}
 }
 
 // the pointer went away while both controls work: the stick's file and choice come back
-extern "C" void fn_800832C8(MenuSave* menu)
+void MenuSave::vf1C(nw4r::math::VEC2*)
 {
 	if ((gGame.mMenuControls & MenuControlStick) && (gGame.mMenuControls & MenuControlPointer)) {
-		if (menu->mMode == 2 && menu->mFile == -1 && menu->mStickFile != -1) {
-			menu->mFile = menu->mStickFile;
+		if (mMode == 2 && mFile == -1 && mStickFile != -1) {
+			mFile = mStickFile;
 		}
-		if ((menu->mMode == 8 || menu->mMode == 3 || menu->mMode == 18 || menu->mMode == 19) && menu->mChoice == -1
-		    && menu->mStickChoice != -1) {
-			menu->mChoice = menu->mStickChoice;
+		if ((mMode == 8 || mMode == 3 || mMode == 18 || mMode == 19) && mChoice == -1 && mStickChoice != -1) {
+			mChoice = mStickChoice;
 		}
 	}
 }
