@@ -589,7 +589,7 @@ extern "C" void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s3
 }
 
 // the entry of the active area's group that faces most along dir becomes the current one, the first
-// when none does; the GameCube writes this out in UpdateAreaCameraEntrySelection
+// when none does; the GameCube inlines it in UpdateAreaCameraEntrySelection
 // NONMATCHING: the dot product's paired-single registers differ, as in FindFacing (99.4 %)
 extern "C" void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir)
 {

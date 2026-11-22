@@ -3192,22 +3192,32 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		}
 	}
 }
+// a stat row under the rank: retail adds the row's 44, 88 or 132 with the variable first (US 0x80055AF4, 0x80055B40,
+// 0x80055B8C), a product of the row number, where a written literal would come first
+static inline void DrawOverviewStatRow(MenuStatus* menu, s32 icon, s32 value, u8 selected, f32 x, f32 top, s32 row)
+{
+	DrawPlayerStatusValue(icon - StatusTextureOffset, value, selected, x, 40.0f + (8.0f + (top + row * 44.0f)), menu->mAlpha,
+	                      menu->mPulsePhase);
+}
 static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 y)
 {
 	f32 statX = 20.0f + (x - 280.0f);
 	DrawPlayerStatusValue(0xB4 - StatusTextureOffset, gGame.GetPlayer()->mParams.mRank, selected == 0, statX, (y - 80.0f) + 8.0f,
 	                      menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x9A - StatusTextureOffset, gGame.GetPlayer()->mParams.mExperience, selected == 2, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x98 - StatusTextureOffset, gGame.GetPlayer()->mParams.mMoney, selected == 3, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
+	DrawOverviewStatRow(menu, 0x9A, gGame.GetPlayer()->mParams.mExperience, selected == 2, statX, y - 80.0f, 1);
+	DrawOverviewStatRow(menu, 0x98, gGame.GetPlayer()->mParams.mMoney, selected == 3, statX, y - 80.0f, 2);
+	DrawOverviewStatRow(menu, 0x99, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX, y - 80.0f, 3);
 }
 static inline void DrawStatusOverviewEntry(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 y)
 {
 	DrawPlayerStatusIcon(icon - StatusTextureOffset, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f,
 	                     menu->mPulsePhase);
+}
+// an entry row under the first: retail adds the row's 52, 104 or 156 with the variable first (US 0x80055E14,
+// 0x80055E60, 0x80055EAC), a product of the row number
+static inline void DrawStatusOverviewEntryRow(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 top, s32 row)
+{
+	DrawStatusOverviewEntry(menu, icon, cell, selected, x, 14.0f + (top + row * 52.0f));
 }
 static inline void BeginOverviewTexture(CTexObj& tex)
 {
@@ -3257,7 +3267,14 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 // no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
 // function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
 // (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
-// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f
+// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f.
+// The other constants retail adds with the variable first are the first stat row's 8 (0x80055AA8), the stat rows'
+// 44/88/132 (0x80055AF4, while their 8 and 40 are literal-first), the 14 of y + 14, (y - 82) + 14 and
+// (y - 18) + 14 (0x80055D74, 0x80055DC4, 0x800560A0, while the entry rows' 14 + ((y - 82) + 52) has the 14 first),
+// and the entry rows' 52/104/156 (0x80055E14): each row's offset reached its call as a variable, the first row of
+// each column through another spelling than the rest. The rows under the first now add a row number times the
+// spacing; the first rows still add their 8 and 14 as literals (constant first, retail variable first), and the
+// rows' availability byte is loaded earlier than retail's (US 0x80055E24 lbz r4, 0x6(r4) right before the call).
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -3274,12 +3291,9 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 left = ((48.0f + x) - 48.0f) - 12.0f;
 		f32 row0 = (y - 82.0f) + 14.0f;
 		DrawStatusOverviewEntry(menu, 0xAA, 5, selected, left, row0);
-		f32 row1 = 14.0f + ((y - 82.0f) + 52.0f);
-		DrawStatusOverviewEntry(menu, 0xB3, 6, selected, left, row1);
-		f32 row2 = 14.0f + ((y - 82.0f) + 104.0f);
-		DrawStatusOverviewEntry(menu, 0xA9, 7, selected, left, row2);
-		f32 row3 = 14.0f + ((y - 82.0f) + 156.0f);
-		DrawStatusOverviewEntry(menu, 0xAC, 8, selected, left, row3);
+		DrawStatusOverviewEntryRow(menu, 0xB3, 6, selected, left, y - 82.0f, 1);
+		DrawStatusOverviewEntryRow(menu, 0xA9, 7, selected, left, y - 82.0f, 2);
+		DrawStatusOverviewEntryRow(menu, 0xAC, 8, selected, left, y - 82.0f, 3);
 		LoadOverviewTexture(tex, 178);
 		f32 w = 1.4f * (1.1f * tex.GetWidth()), h = 1.4f * tex.GetHeight();
 		BeginOverviewTexture(tex);
@@ -3302,9 +3316,9 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
 		f32 right = (192.0f + (72.0f + x)) - 12.0f;
 		DrawStatusOverviewEntry(menu, 0xAE, 9, selected, right, row0);
-		DrawStatusOverviewEntry(menu, 0xAF, 10, selected, right, row1);
-		DrawStatusOverviewEntry(menu, 0xB0, 11, selected, right, row2);
-		DrawStatusOverviewEntry(menu, 0xB1, 12, selected, right, row3);
+		DrawStatusOverviewEntryRow(menu, 0xAF, 10, selected, right, y - 82.0f, 1);
+		DrawStatusOverviewEntryRow(menu, 0xB0, 11, selected, right, y - 82.0f, 2);
+		DrawStatusOverviewEntryRow(menu, 0xB1, 12, selected, right, y - 82.0f, 3);
 		DrawStatusGridDescription(menu, false);
 	}
 }
@@ -3397,18 +3411,6 @@ static inline void SetStatusIconCell(CTexObj& tex, int cell)
 	tex.mMtxDirty = TRUE;
 }
 
-static inline void DrawCalloutIcon(CTexObj& tex, s32 cell, u32 white, f32 x, f32 y)
-{
-	if (cell == 14) {
-		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusSingleIcon], 0);
-		DrawCalloutSprite(tex, white, x - 10.8f, y + 9.0f, 21.6f);
-	} else {
-		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
-		SetStatusIconCell(tex, cell);
-		DrawCalloutSprite(tex, white, x - 10.8f, y + 9.0f, 21.6f);
-	}
-}
-
 static inline void DrawStatusDot(CTexObj& tex, u32 color, f32 x, f32 y, f32 size)
 {
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
@@ -3416,6 +3418,8 @@ static inline void DrawStatusDot(CTexObj& tex, u32 color, f32 x, f32 y, f32 size
 	DrawCalloutSprite(tex, color, x, y, size);
 }
 
+// NONMATCHING: x and y sit in f28/f29, retail has them in f31/f30 (US 0x80054B8C); one lfs of 0.0 in the outline loop
+// is scheduled after the text pointer load
 extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX, f32 targetY)
 {
 	CTexObj tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
@@ -3429,18 +3433,28 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 		                 { 10, GetLocalizedInterfaceText(StatusTextBase + 5) }, { 11, GetLocalizedInterfaceText(StatusTextBase + 6) },
 		                 { 12, GetLocalizedInterfaceText(StatusTextBase + 7) }, { 13, GetLocalizedInterfaceText(StatusTextBase + 8) },
 		                 { 14, GetLocalizedInterfaceText(StatusTextBase + 9) } };
-	MeasureGameTextWidth(&gGame.mGs, labels[id].text, 1, 18.0f);
-	f32 alpha   = 255.0f;
-	u32 opacity = (u32)alpha;
+	f32 size         = 18.0f;
+	MeasureGameTextWidth(&gGame.mGs, labels[id].text, 1, size);
+	f32 alpha = 255.0f;
 	for (int i = 0; i < 4; i++)
-		DrawGsProportionalTextFormat(&gGame.mGs, opacity, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, 18.0f,
-		                             18.0f);
-	u32 white = opacity | 0xFFFFFF00;
-	DrawGsProportionalTextFormat(&gGame.mGs, white, labels[id].text, x, y, 0.0f, 18.0f, 18.0f);
-	DrawCalloutIcon(tex, labels[id].cell, white, x, y);
+		DrawGsProportionalTextFormat(&gGame.mGs, (u32)alpha, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, size,
+		                             size);
+	u32 white = (u32)alpha | 0xFFFFFF00;
+	DrawGsProportionalTextFormat(&gGame.mGs, white, labels[id].text, x, y, 0.0f, size, size);
+	if (labels[id].cell == 14) {
+		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusSingleIcon], 0);
+		DrawCalloutSprite(tex, white, x - 10.8f, y + size / 2.0f, 21.6f);
+	} else {
+		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[StatusIconAtlas], 0);
+		PSMTXScale(tex.mMtx[1], 1.0f / StatusIconCells, 1.0f, 1.0f);
+		tex.mMtxDirty = TRUE;
+		PSMTXTrans(tex.mMtx[0], (1.0f / StatusIconCells) * labels[id].cell, 0.0f, 0.0f);
+		tex.mMtxDirty = TRUE;
+		DrawCalloutSprite(tex, white, x - 10.8f, y + size / 2.0f, 21.6f);
+	}
 	x = (x - 21.6f) - 10.8f;
 	y += 10.8f;
-	u32 shadow    = opacity | 0x14141400;
+	u32 shadow    = (u32)alpha | 0x14141400;
 	Vec border[3] = { { x, y, 0.0f }, { targetX, y, 0.0f }, { targetX, targetY, 0.0f } };
 	SetGsLineWidth(gGame.mGs.mCurRenderMode, 18, 5);
 	DrawGsLineStrip(&gGame.mGs, border, shadow, 3);
@@ -4011,7 +4025,7 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 }
 
 // NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
-// uses one; the float temporaries of the vertex set-up and the saved registers are numbered differently
+// uses one; the saved registers are numbered differently, and one ori and one lwz are scheduled a slot apart
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
@@ -4023,16 +4037,17 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	SetGsLineWidth(gGame.mGs.mCurRenderMode, 6, 5);
 
 	f32 left         = 16.0f + x;
+	f32 shadowX      = 4.0f + left;
 	f32 right        = 168.0f + left;
 	f32 fill         = 168.0f * value + left;
-	f32 bottom       = 16.0f + y;
+	f32 shadowRight  = 168.0f + shadowX;
 	Vec vertices[20] = {};
+	f32 bottom       = 16.0f + y;
+	f32 shadowY      = 4.0f + y;
 	SetGaugeQuad(vertices, left, right, y, bottom);
 	SetGaugeQuad(vertices + 4, left, fill, y, bottom);
 	SetGaugeQuad(vertices + 8, fill, right, y, bottom);
-	f32 shadowX = 4.0f + left;
-	f32 shadowY = 4.0f + y;
-	SetGaugeQuad(vertices + 12, shadowX, 168.0f + shadowX, shadowY, 16.0f + shadowY);
+	SetGaugeQuad(vertices + 12, shadowX, shadowRight, shadowY, 16.0f + shadowY);
 	SetGaugeQuad(vertices + 16, left, fill, shadowY, (bottom - 4.0f) - 1.0f);
 	u32 shade = (u32)(100.0f * alpha);
 	DrawSolidQuad(&gGame.mGs, vertices + 12, shade | 0x0A0A0A00);
@@ -4207,10 +4222,11 @@ static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f
 // place or with a literal depth does not change that
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
-	f32 wave = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
-	f32 x    = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
-	f32 y    = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
-	DrawMenuRectWithShadow(menu, (u32)(255.0f * menu->mAlpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
+	f32 alpha = 1.0f;
+	f32 wave  = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
+	f32 x     = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
+	f32 y     = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
+	DrawMenuRectWithShadow(menu, (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
 	if (menu->mCount == 0) {
 		DrawDiscardOutline(menu, x, y);
 	}
@@ -4219,7 +4235,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	u32 halfWidth = (24 * (strlen(label) / 2 - 1)) / 2;
 	f32 labelX    = 12.0f + ((12.0f + (4.0f + ((40.0f + ((72.0f + x) - halfWidth)) - 120.0f))) - 20.0f);
 	f32 labelY    = (12.0f + ((2.0f + (((22.0f + y) - 12.0f) - 2.0f)) - 22.0f)) - 36.0f;
-	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha);
+	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
 
 	CTexObj tex;
 	f32 radius = 30.0f + wave;
@@ -4229,7 +4245,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		LoadOverviewTexture(tex, 128);
 		u16 width = tex.GetWidth(), height = tex.GetHeight();
-		u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFEA0000;
+		u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFEA0000;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0,
 		                   1.4f * (1.1f * width), 1.4f * height, 0, 0, 3.1415927f + angle);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -4247,10 +4263,10 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 		tex.mMtxDirty = TRUE;
 		if (count >= 10) {
-			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, 1.0f);
-			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, 1.0f);
+			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, alpha);
+			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, alpha);
 		} else {
-			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, 1.0f);
+			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, alpha);
 		}
 		break;
 	}
@@ -4258,7 +4274,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		char message[256];
 		// Retail measures the confirmation label even though it draws it at a fixed position.
 		(void)strlen(message);
-		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha);
+		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
 		break;
 	}
 	}
@@ -5860,9 +5876,8 @@ extern "C" s32 GetPlayerLevel(Params* params)
 // NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
 // and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
 // (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand. Under -inline
-// auto,deferred ours makes retail's exact call list in all three editions; the frame is still 0x10 larger (US
-// 0x860 against 0x850), the two loading-bar quads' addresses are formed once up front where retail forms them at
-// the call, three digit loops test place < i once more than retail, and the register allocation differs
+// auto,deferred ours makes retail's exact call list in all three editions; what is left is register allocation
+// and scheduling (retail numbers the saved registers of the choice loop and the amount blocks differently)
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -5913,7 +5928,8 @@ BOOL MenuPC::Draw()
 			SetGsChannelEnabled(GetGameGraphics(&gGame), 0, 0);
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 			SetMenuDepthMode(GetGameGraphics(&gGame), 0, 3, 0);
-			// the loading bar: [0-4] its outline, [4-7] the filled part, [8-11] the rest
+			// the loading bar: [0-4] its outline, [4-7] the filled part, [8-11] the rest. The quads' addresses are formed
+			// at their calls (US 0x80045474, 0x800454A0); bar + 4 would share bar[4]'s address and be kept from the stores on
 			f32 fill    = 281.0f + 80.0f * this->mProgress;
 			Vec bar[12] = {};
 			bar[0].x    = 281;
@@ -5940,10 +5956,13 @@ BOOL MenuPC::Draw()
 			bar[10].y   = 253;
 			bar[11].x   = fill;
 			bar[11].y   = 253;
-			DrawGsLineStrip(GetGameGraphics(&gGame), bar, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
+			Vec* quad   = bar;
+			DrawGsLineStrip(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
 			SetMenuLineWidth(GetGameGraphics(&gGame), 6, 5);
-			DrawSolidQuad(GetGameGraphics(&gGame), bar + 4, (u32)(255.0f * this->mAlpha) | 0xFFB62800);
-			DrawSolidQuad(GetGameGraphics(&gGame), bar + 8, (u32)(255.0f * this->mAlpha) | 0xC8000000);
+			quad += 4;
+			DrawSolidQuad(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xFFB62800);
+			quad += 4;
+			DrawSolidQuad(GetGameGraphics(&gGame), quad, (u32)(255.0f * this->mAlpha) | 0xC8000000);
 			SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
 		} break;
 		case 2: {
@@ -5970,8 +5989,6 @@ BOOL MenuPC::Draw()
 				step   = 0;
 				break;
 			}
-			const f32 top = origin - 20.0f;
-
 			f32 center, width;
 			if (PC_USES_FIXED_CHOICE_LABELS()) {
 
@@ -5987,35 +6004,37 @@ BOOL MenuPC::Draw()
 				         + textWidth);
 				center = 204.0f + width / 2.0f;
 			}
-			f32 y = 2.0f + (step * this->mChoice + (8.0f + top));
+			// retail adds a pooled -20 with the literal first (US 0x80045698), after the label block; the quads sit 2 below
+			// the row and retail adds that 2 once, after the first GetGameGraphics (US 0x8004573C)
+			const f32 top = -20.0f + origin;
+			f32 y         = step * this->mChoice + (8.0f + top);
 			{
 				u32 color = 0x181CC600 | (u32)(200.0f * this->mAlpha);
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 117 - StatusTextureOffset));
 				SetMenuTextureScale(&tex, 0.25f, 1.0f);
 				SetMenuTextureTranslation(&tex, 0.25f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, 2.0f + y, 0, width, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width / 2.0f) - 4.0f, 2.0f + y, 0, 8, 24, 0, 0, 0);
 				SetMenuTextureTranslation(&tex, 0.5f, 0);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), y, 0, 8, 24, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width / 2.0f), 2.0f + y, 0, 8, 24, 0, 0, 0);
 				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
 				SetMenuTextureTranslation(fill, this->mTexScroll, 0);
 				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
 				color = 0xFFFFFF00 | (u32)(40.0f * this->mAlpha);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, y, 0, width, 20, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, 2.0f + y, 0, width, 20, 0, 0, 0);
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 			}
 			for (s32 i = 0; i < this->mChoiceCount; ++i) {
-				s32 choice = this->mChoices[i];
-				if (choice == -1)
+				// retail reads mAlpha before the -1 test (US 0x800458D8) and mChoices[i] again for the icon (0x80045918)
+				f32 alpha = this->mAlpha;
+				if (this->mChoices[i] == -1)
 					continue;
-				const PCChoiceArt& row = pcChoiceArt[choice];
-				f32 alpha              = this->mAlpha;
-				if (choice == 7 && !this->mCanSelect)
+				if (this->mChoices[i] == 7 && !this->mCanSelect)
 					alpha *= 0.4f;
 				f32 rowY = step * i + top;
-				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, row.icon));
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, pcChoiceArt[this->mChoices[i]].icon));
 
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
 				f32 w     = 1.1f * GetMenuTextureWidth(&tex);
@@ -6134,7 +6153,8 @@ BOOL MenuPC::Draw()
 				f32 y      = 184;
 				u32 rgb    = 0xFFB62800;
 
-				for (int i = 0; i < 5; i++) {
+				// s32 like PC_DIGIT_DIVISOR's place: with an int the loop entry is a second compare (retail re-uses i > 0, US 0x80045F60)
+				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
 					s32 digit = (s32)(mDepositDisplay.shown / divisor) % 10;
@@ -6169,7 +6189,7 @@ BOOL MenuPC::Draw()
 					f32 y      = 256;
 					u32 rgb    = 0xC8C8C800;
 
-					for (int i = 0; i < 5; i++) {
+					for (s32 i = 0; i < 5; i++) {
 						f32 divisor;
 						PC_DIGIT_DIVISOR(divisor, i);
 						s32 digit = (s32)(entry.shown / divisor) % 10;
@@ -6225,8 +6245,8 @@ BOOL MenuPC::Draw()
 				f32 w = scale * GetMenuTextureWidth(&tex);
 				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
 
-				PCAmount entry = {};
-				entry.shown = entry.target = amount;
+				// no PCAmount here: retail divides the converted amount itself (US 0x80046A8C), the other two blocks read a struct
+				f32 shown = amount;
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
 				f32 step   = w - 2.4f;
@@ -6235,10 +6255,10 @@ BOOL MenuPC::Draw()
 				f32 y      = 240;
 				u32 rgb    = 0xFFFFFF00;
 
-				for (int i = 0; i < 5; i++) {
+				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
-					s32 digit = (s32)(entry.shown / divisor) % 10;
+					s32 digit = (s32)(shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
 					f32 x = (7.0f * w + (start - i * step)) - offset;
@@ -6983,11 +7003,14 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 select
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u32 upper  = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
-		u32 lower  = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		u32 upper = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
+		u32 lower = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		// one expression: a reassigned digitX lets the compiler add the two invariant terms first (retail adds 287 * scale,
+		// then 18 * scale, then the inset, US 0x80043424 - 0x80043430)
+#if defined(VERSION_JP)
 		f32 digitX = 287.0f * scale + (left - i * w);
-#if !defined(VERSION_JP)
-		digitX = (extraW / 2.0f) * scale + (18.0f * scale + digitX);
+#else
+		f32 digitX = (extraW / 2.0f) * scale + (18.0f * scale + (287.0f * scale + (left - i * w)));
 #endif
 		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, digitX, digitY, 0, w, h, 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7034,6 +7057,9 @@ static inline void DrawPCChoiceCaps(CTexObj& tex, f32 cx, f32 y, f32 barWidth, f
 	DrawPCChoicePiece(tex, color, 0.5f, gap + (cx + barWidth / 2.0f), y, 8.0f * scale, barHeight);
 }
 
+// NONMATCHING: registers (retail numbers id above choice, r30/r29, and the choice-bar colour below its texture pointers),
+// the schedule of the choice-bar coordinates (US 0x80042B80), and one copy of the s16 id that ours keeps for the second
+// name lookup of each branch (mr r21) where retail passes the register again
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -7053,7 +7079,9 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters like its other
+	// temporaries (US fmuls f20 at 0x80042AF0, size and rowY above them in f27/f26)
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 
 	char text[256];
 #if defined(VERSION_JP)
@@ -7064,7 +7092,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset, 1.0f);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7091,7 +7119,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 #endif
 	}
 	if (choice != 2)
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, white);
 	s32 icon;
 	f32 w, h;
 	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
@@ -7187,6 +7215,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 #endif
 }
 
+// NONMATCHING: as DrawPCItemPurchasePanel: registers (id above choice, the choice-bar colour below its texture pointers),
+// the schedule of the choice-bar coordinates (US 0x80040A0C) and one copy of the s16 id for the name lookup (mr r22)
 extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -7206,7 +7236,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	// the 20 * scale margin is an expression at its uses, as in DrawPCItemPurchasePanel (US fmuls f20 at 0x8004097C)
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 
 	char text[256];
 #if defined(VERSION_JP)
@@ -7217,7 +7248,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset, 1.0f);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7237,7 +7268,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 #endif
 	}
 	if (choice != 2)
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, white);
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon;
@@ -7272,6 +7303,9 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 #endif
 }
 
+// NONMATCHING: registers: retail keeps left in f24 above the parameter copies and reuses y's f14 for the choice bar's x,
+// the build has left in f15; the order of the two camera-matrix and primitive-type operands before DrawGsTrianglePrimitive
+// (US 0x8003FC88) and one fmr before the done label's conversion differ in schedule
 extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 scrap, f32 money, f32 scroll, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -7283,12 +7317,14 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	u32 opacity  = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, opacity, 5);
 	y += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale;
-	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
+	// the 20 * scale margin is an expression at its uses: retail keeps it below the parameters with its temporaries
+	// (US fmuls f20 at 0x8003FCA8), the named size, labelOffset and rowOffset above them in f30-f28
+	f32 size        = 17.0f * scale;
+	f32 labelOffset = 155.0f * scale + 20.0f * scale, rowOffset = 204.0f * scale;
 	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f);
 		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -7322,7 +7358,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	const s32 question1 = 0x4D, question2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
 #endif
 	if (choice != 2) {
-		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
+		f32 textX = PCRecycleTextX(originX, size, scale, 20.0f * scale, labelOffset);
 		DrawPCRecycleLabel(question1, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
 		                   opacity | 0xFFFFFF00);
 		DrawPCRecycleLabel(question2, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size, opacity | 0xFFFFFF00);
@@ -7335,7 +7371,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 		const char* text = GetLocalizedInterfaceText(done);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(done), 1, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFFFFF00, text,
-		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset, 1.0f) - textWidth / 2.0f,
 		                             (originY + rowOffset) - 4.0f * scale, 0, size, size);
 #endif
 	}
@@ -7534,11 +7570,19 @@ static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
 }
 
+// the row `offset` places before the end of the list. Read through this accessor, retail forms each row's address
+// anew and loads the field from it (US 0x8003D9EC add r4, r3, r0; lwz r0, 0x4(r4)); a direct subscript on the array
+// folds the field into the base once (lwzx from gPCRankingRows + 4)
+static inline const PCRankingRow& GetRankingRowFromEnd(MenuPC* menu, int offset)
+{
+	return gPCRankingRows[menu->mRankingEnd - offset];
+}
+
 static inline void LoadRankingRow(MenuPC* menu, int slot, int offset)
 {
-	menu->mRankingRows[slot].rank      = gPCRankingRows[menu->mRankingEnd - offset].rank;
-	menu->mRankingRows[slot].nameIndex = gPCRankingRows[menu->mRankingEnd - offset].nameIndex;
-	menu->mRankingRows[slot].score     = gPCRankingRows[menu->mRankingEnd - offset].score;
+	menu->mRankingRows[slot].rank      = GetRankingRowFromEnd(menu, offset).rank;
+	menu->mRankingRows[slot].nameIndex = GetRankingRowFromEnd(menu, offset).nameIndex;
+	menu->mRankingRows[slot].score     = GetRankingRowFromEnd(menu, offset).score;
 }
 
 static inline void ClearRankingRow(PCRankingRow& row)
@@ -7572,9 +7616,9 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 	}
 }
 
-// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
-// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once; retail also
-// has an unreachable branch in front of case 0.
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently), and retail
+// forms the list top (168 + y) before the opacity conversion where the build hoists it after it and keeps y alive
+// across the call for that (fmr f14, f2)
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -7623,17 +7667,22 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				}
 			}
 			break;
+		case 2:
+			// the list stands still; the empty case is what puts retail's second branch to the end of the switch
+			// (US 0x8003D900) in front of case 0's body
+			break;
 		}
 		CTexObj tex;
 		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
-		f32 top     = 168.0f + y;
 		f32 opacity = 255.0f * alpha;
 		u32 light   = (u32)opacity | 0xC8C8C800;
 		u8 a        = (u8)opacity;
 		for (int i = 0; i < 5; i++) {
 			if (gPCRankingRows[i].nameIndex == -1)
 				continue;
-			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
+			// retail keeps the list top on the stack and 10 * scale in a register (US 0x8003DC78 stfs f0, 0x31c(r1);
+			// 0x8003DD24 fmuls f25), the other way round from a named top, so the top is part of this expression
+			f32 rowY = (menu->mRankingOffsets[i] + ((168.0f + y) + i * 48)) - 48.0f;
 			tex      = InitPCPanelTexture(180);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 w = 1.1f * (1.1f * tex.GetWidth()), h = 1.1f * tex.GetHeight();
@@ -8949,8 +8998,10 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
 }
 
-// NONMATCHING: retail computes 8.0f + labelY before the bar colour and adds 2.0f again at each quad of the
-// selection bar, the build passes one folded value; the rest is register allocation.
+// NONMATCHING: retail computes 8.0f + labelY before the bar colour (US 0x8003A6F4) and adds 2.0f again at each
+// quad of the selection bar with the variable first (0x8003A83C, 0x8003A8A4, 0x8003A910, 0x8003A9EC); the build
+// passes one folded value. DrawTitleLoadScreen has the same block and the same shape (0x8002A7B4), so the 2 came
+// through a parameter of a helper both shared, which DrawMenuSelectionBar is not. The rest is register allocation.
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
@@ -9198,10 +9249,10 @@ static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size
 }
 static inline void DrawColoredSlotCaption(const char* text, f32 x, f32 y, f32 size, u32 shadow, u32 color)
 {
-	const f32 glyphSize = 0.8f * size;
+	size *= 0.8f;
 	for (int i = 0; i < 4; i++)
-		DrawCenteredSaveLine(text, x + gSaveTextShadowX[i], y + gSaveTextShadowY[i], glyphSize, shadow, 0.0f);
-	DrawCenteredSaveLine(text, x, y, glyphSize, color, 0.0f);
+		DrawCenteredSaveLine(text, x + gSaveTextShadowX[i], y + gSaveTextShadowY[i], size, shadow, 0.0f);
+	DrawCenteredSaveLine(text, x, y, size, color, 0.0f);
 }
 static inline void DrawSaveSlotCaption(const char* text, f32 x, f32 y, f32 size, f32 alpha)
 {
@@ -9209,21 +9260,31 @@ static inline void DrawSaveSlotCaption(const char* text, f32 x, f32 y, f32 size,
 	u32 shadow = (u32)(255.0f * alpha);
 	DrawColoredSlotCaption(text, x, y, size, shadow, color);
 }
-static inline void DrawSaveSlotMessage(s32 id, bool twoLines, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
+static inline void DrawSaveSlotMessage(s32 id, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
 {
 	char* text = GetLocalizedInterfaceText(id);
 	sx         = 23.0f * sx;
 	u32 color  = (u8)(255.0f * alpha) | 0xEDA83600;
 	u32 shadow = (u32)(255.0f * alpha);
 	y          = (y - 5.0f * (17.0f * sy)) - 6.0f * sy;
-	DrawColoredSlotCaption(text, x, (twoLines ? 76.0f : 86.0f) * sy + y, sx, shadow, color);
-	if (twoLines) {
-		text = GetLocalizedInterfaceText(id + 1);
-		DrawColoredSlotCaption(text, x, 96.0f * sy + y, sx, shadow, color);
-	}
+	DrawColoredSlotCaption(text, x, 86.0f * sy + y, sx, shadow, color);
+}
+static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
+{
+	char* text = GetLocalizedInterfaceText(id);
+	sx         = 23.0f * sx;
+	u32 color  = (u8)(255.0f * alpha) | 0xEDA83600;
+	u32 shadow = (u32)(255.0f * alpha);
+	y          = (y - 5.0f * (17.0f * sy)) - 6.0f * sy;
+	DrawColoredSlotCaption(text, x, 76.0f * sy + y, sx, shadow, color);
+	text = GetLocalizedInterfaceText(id + 1);
+	DrawColoredSlotCaption(text, x, 96.0f * sy + y, sx, shadow, color);
 }
 #endif
 
+// NONMATCHING: register allocation. Retail writes 23 * sx and the message top back into the parameters' registers
+// (US 0x8003936C fmuls f29,f2,f29; 0x800393CC fnmsubs f28); the build gives them new ones, and the icon quad's
+// arguments are scheduled in another order
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
                                     f32 alpha, f32 sx, f32 sy)
 {
@@ -9242,7 +9303,7 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 		DrawSaveSlotMessage(message, 0x39, 76.0f, x, y, alpha, sx, sy);
 		DrawSaveSlotMessage(message, 0x3A, 96.0f, x, y, alpha, sx, sy);
 #else
-		DrawSaveSlotMessage(0x9E, true, x, y, alpha, sx, sy);
+		DrawSaveSlotTwoLineMessage(0x9E, x, y, alpha, sx, sy);
 #endif
 	} else if (slot->mUsed) {
 		f32 offsetY = -24.0f * sy;
@@ -9250,12 +9311,12 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u16 w = tex.GetWidth(), h = tex.GetHeight();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		f32 iconX = 100.0f * sx + (x - 10.0f * (17.0f * sx));
-#if !defined(VERSION_JP)
-		iconX -= (gSaveSlotSpacing * 0.5f) * sx;
-#endif
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 		f32 top   = y - 5.0f * (17.0f * sy);
+		f32 iconX = 100.0f * sx + (x - 10.0f * (17.0f * sx));
+#if !defined(VERSION_JP)
+		iconX -= (gSaveSlotSpacing / 2.0f) * sx;
+#endif
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, iconX, offsetY + (218.0f * sy + (top - 6.0f * sy)), 0,
 		                   0.6f * (sx * w), 0.6f * (sy * h), 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -9281,16 +9342,16 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x3B, 86.0f, x, y, alpha, sx, sy);
 #else
-		DrawSaveSlotMessage(0x63, false, x, y, alpha, sx, sy);
+		DrawSaveSlotMessage(0x63, x, y, alpha, sx, sy);
 #endif
 	} else {
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x3C, 86.0f, x, y, alpha, sx, sy);
 #else
 		if (IsJapanese())
-			DrawSaveSlotMessage(0x99, false, x, y, alpha, sx, sy);
+			DrawSaveSlotMessage(0x99, x, y, alpha, sx, sy);
 		else
-			DrawSaveSlotMessage(0x99, true, x, y, alpha, sx, sy);
+			DrawSaveSlotTwoLineMessage(0x99, x, y, alpha, sx, sy);
 #endif
 	}
 }
@@ -10662,7 +10723,9 @@ static inline u8 StageRowBlue(int row, u8 normal, u8 current)
  * @note Address: 0x80033128
  * @note Size: 0x5F8
  */
-// NONMATCHING: register allocation and loop scheduling
+// NONMATCHING: register allocation and loop scheduling. Retail numbers the locals step, maxWidth, fontSize, x, y,
+// 60, 1, 15, 12, 0.5, cx, cy from f31 down (US 0x800331FC..0x80033248), the build puts cx and cy first;
+// declaring step first or cx and cy last or const moves other registers without reaching that order.
 BOOL MenuStageSelect::Draw()
 {
 	if (CMenu::Draw()) {
