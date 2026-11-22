@@ -2946,12 +2946,13 @@ extern "C" void DrawFighterStage(void)
  * @note Address: stage02 .text 0x1E44
  * @note Size: 0x514
  */
+// NONMATCHING: register colouring only (loop pointers and best swap with retail), and mLastTarget reloads &fighterWork
+// where retail reuses the lock block's base.
 extern "C" void UpdateFighter(u32 dt)
 {
 	Mato* best;
 	f32 bestDist;
 	s32 i;
-	void* sfx;
 
 	if (fighterWork.mBody == NULL) {
 		return;
@@ -2973,9 +2974,9 @@ extern "C" void UpdateFighter(u32 dt)
 	fighterWork.mPlayerRotY = -80.0f * DEG2RAD * pad.mPad->mStickX;
 	Fighter_Update(&fighterWork, dt);
 	PilotNwing_Update(&pilotNwing, dt, fighterWork.mFrame);
-	matoList.mFrameCount++;
 	matoList.mProgress = fighterWork.mFrame / fighterWork.mEndFrame;
 	matoList.mTimeLeft = fighterWork.mTimeLeft / 60;
+	matoList.mFrameCount++;
 	for (i = 0; i < matoList.mCount; i++) {
 		Mato* item = &matoList.mMatos[i];
 		if (!item->mOnScreen) {
@@ -2989,9 +2990,8 @@ extern "C" void UpdateFighter(u32 dt)
 			item->mMarkerPhase += 1.0f;
 		}
 	}
-	sfx = gGame + GAME_OFS(0xE7E24, 0xE713C);
 	// re-lock the aim only once the flight is past its first percent and the lock-on sound 0x20006 isn't playing
-	if (IsGameSoundPlaying(sfx, 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+	if (IsGameSoundPlaying(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
 		Vec pos;
 		best                     = NULL;
 		fighterWork.mAim.mTarget = NULL;
@@ -3021,7 +3021,8 @@ extern "C" void UpdateFighter(u32 dt)
 		}
 		if (best != NULL && !best->mPending) {
 			if (best != NULL && fighterWork.mLastTarget != best) {
-				PlayGameSound(sfx, 0x20006, 0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
+				PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006,
+				              0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
 			}
 			fighterWork.mAim.mTarget = best;
 		}
@@ -3032,7 +3033,7 @@ extern "C" void UpdateFighter(u32 dt)
 		s32 frame = GET_LE32(&soundCueTable[0][i * 8]);
 		s32 id    = GET_LE32(&soundCueTable[0][i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
-			PlayGameSound(sfx, id, 0xFF);
+			PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), id, 0xFF);
 		}
 	}
 }
