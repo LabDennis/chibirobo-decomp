@@ -21,8 +21,6 @@
 extern "C" {
 // the nw4r archive, player, group, heap, track and 3D calls; the library they
 // belong to is still the unnamed unit block around 0x8028A000/0x80296000
-BOOL fn_8028CF6C(void* archive, const char* path);
-s32 fn_8028D220(void* archive, void* data, u32 size);
 u32 fn_80297EF4(void* player);
 u32 fn_80298040(void* player, CSound* sound);
 s32 fn_80297DF0(void* player, CSound* sound, void* data, u32 dataSize, void* data2, u32 data2Size);
@@ -33,7 +31,6 @@ BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
 s32 fn_8029AC28(void* group, u32 priority);
 BOOL fn_8029A3E0(void* heap, void* data, u32 size);
 void fn_8029A458(void* heap);
-void fn_8029A4AC(void* heap, s32 level);
 void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
 u32 fn_802958C0(void* actor, void* arg);
@@ -304,11 +301,11 @@ BOOL CSound::OpenArchiveFile(const char* path)
 {
 	char name[0x80];
 	sprintf(name, "%s.brsar", path);
-	if (fn_8028CF6C(this, name)) {
-		u32 size               = *(u32*)((u8*)&mDvdSoundArchive + 0x124);
+	if (mDvdSoundArchive.Open(name)) {
+		u32 size               = mDvdSoundArchive.GetHeaderSize();
 		void* data             = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
 		mDvdSoundArchive.mData = data;
-		return fn_8028D220(this, data, size);
+		return mDvdSoundArchive.LoadHeader(data, size);
 	}
 	return FALSE;
 }
@@ -426,7 +423,7 @@ BOOL CSound::LoadGroupAsync(s32 groupId)
 
 void CSound::RestoreHeapLevel(s32 level)
 {
-	fn_8029A4AC(&mSoundHeap, level);
+	mSoundHeap.LoadState(level);
 }
 
 // NONMATCHING: retail keeps the slot counter in r31 and the slot walker in r30,
