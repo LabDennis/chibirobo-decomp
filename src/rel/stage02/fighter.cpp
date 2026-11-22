@@ -4525,6 +4525,8 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
  * @note Address: stage02 .text 0x333C
  * @note Size: 0x874
  */
+// NONMATCHING: retail keeps the player + 0x10000 base across the inlined SetBattery clamps where the build forms it
+// again, and two literal loads after atan2 swap order.
 extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 {
 	Mato* item = work->mAim.mTarget;
