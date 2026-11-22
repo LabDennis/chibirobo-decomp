@@ -582,10 +582,10 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius)
  * @note Address: 0x800D9B10
  * @note Size: 0x44C
  */
+// NONMATCHING: r29/r30 swap between map pointer and start index inside shared FindMapFloor inline.
 extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 height)
 {
-	XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].mObjects;
-	if (!FindMapFloor(map, &pos, &cord->mFloorHit, NULL)) {
+	if (!FindMapFloor((XObjMap*)gGame.mXObjs.mPools[3].mObjects, &pos, &cord->mFloorHit, NULL)) {
 		cord->mFloorHit.mTriangle = -1;
 		cord->mFloorHit.mTrigon   = -1;
 		cord->mFloorHit.mHeight   = pos.y;
@@ -602,10 +602,7 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec pos, f32 radius, f32 he
 			continue;
 		s32 floor = 0;
 		while (floor != -1) {
-			f32 z = pos.z;
-			f32 y = pos.y;
-			f32 x = pos.x;
-			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+			if (ProbeObjectFloor(object, CVec(pos), CVec(pos), radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				if (__fpclassifyf(floorHeight) != FP_NAN && pos.y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
