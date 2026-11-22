@@ -175,6 +175,25 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args);
 
+// whether pos is within reach of object index's position, on the XZ plane
+static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
+{
+	CVec a, b;
+	a.x           = pos.x;
+	a.y           = pos.y;
+	a.z           = pos.z;
+	TrashObj* obj = (TrashObj*)gGame.GetObject(index);
+	b.x           = obj->mMoveTranslate.x;
+	b.y           = obj->mMoveTranslate.y;
+	b.z           = obj->mMoveTranslate.z;
+	b.y           = 0.0f;
+	a.y           = 0.0f;
+	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
+		return 0;
+	}
+	return 1;
+}
+
 /**
  * @note Address: stage04 .text 0x28C0
  * @note Size: 0xA8
@@ -234,25 +253,6 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 		trashObj = NULL;
 	}
 	return 0;
-}
-
-// whether pos is within reach of object index's position, on the XZ plane
-static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
-{
-	CVec a, b;
-	a.x           = pos.x;
-	a.y           = pos.y;
-	a.z           = pos.z;
-	TrashObj* obj = (TrashObj*)gGame.GetObject(index);
-	b.x           = obj->mMoveTranslate.x;
-	b.y           = obj->mMoveTranslate.y;
-	b.z           = obj->mMoveTranslate.z;
-	b.y           = 0.0f;
-	a.y           = 0.0f;
-	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
-		return 0;
-	}
-	return 1;
 }
 
 /**
@@ -1048,7 +1048,8 @@ extern "C" void UpdateTrash(u32 frames)
  */
 extern "C" void DrawTrashStack(void* arg)
 {
-	// NONMATCHING: regalloc
+	// NONMATCHING: retail keeps trashStackNum and the clamped count in separate registers
+	// (lwz/cmpwi/mr); one jobj-load/pos-store swap; rest is literal-pool label layout
 	TrashObj* actor;
 	HSD_JObj* jobj;
 	f32 a;
