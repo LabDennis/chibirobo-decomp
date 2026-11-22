@@ -7,6 +7,7 @@ extern "C" {
 #include "game/scrollroomdata.h"
 #include "game/ctpl.h"
 #include "game/gmath.h"
+#include "nw4r/math/math_arithmetic.h"
 #include "Version.h"
 #include <math.h>
 #include <string.h>
@@ -460,8 +461,8 @@ static void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
  * @note Address: 0x80163250
  * @note Size: 0xD08
  */
-// NONMATCHING: the object and status passes are verified in retail; our object loops recompute the blink values,
-// and register allocation and scheduling differ
+// NONMATCHING: the object and status passes and the call set are verified in retail; register allocation,
+// scheduling and the 0x20 frame-size difference remain
 void CCameraActionScroll2::Draw()
 {
 	static s32 sOverlayFrameCount = 0;
@@ -470,8 +471,8 @@ void CCameraActionScroll2::Draw()
 	f32 y;
 
 	sOverlayFrameCount++;
-	f32 blink     = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
-	f32 fastBlink = ABS(std::sinf(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
+	f32 blink     = nw4r::math::FAbs(std::sinf(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
+	f32 fastBlink = nw4r::math::FAbs(std::sinf(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
 	Vec pos = { 0.0f, 0.0f, 0.0f };
 	for (s32 i = 0; i < gGame.mXObjs.mPools[10].mUsed; i++) {
