@@ -155,7 +155,8 @@ static inline void BeginWipeMask(CGs* gs, f32 opacity)
 	gs->mCurRenderState->SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0xFF);
 	gs->mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 	gs->mCurTevStage->SetMode(GX_PASSCLR);
-	DrawWipeQuad(gs, quad, 0xFF000000 | (u32)(255.0f - opacity));
+	u32 color = 0xFF000000 | (u32)(255.0f - opacity);
+	DrawWipeQuad(gs, quad, color);
 	gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gs->mCurRenderState->SetAlphaCompare(GX_GREATER, (u8)(s32)(255.0f - opacity), GX_AOP_AND, GX_LEQUAL, 0xFF);
 }
@@ -538,6 +539,7 @@ void CScrnWipeTile::SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f3
  * @note Address: 0x8003EE14
  * @note Size: 0xC08
  */
+// NONMATCHING: the call set matches; vertex scheduling and register allocation differ
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
