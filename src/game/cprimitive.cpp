@@ -13,6 +13,21 @@ void GXDrawCube(void);
 // tev_state.h's value; that is an HSD header and this file builds with the Dolphin ones
 #define HSD_STATE_VTX_ATTR 2
 
+// NONMATCHING: the eight CLine/CTriangle Draw and DrawLit vertex loops (70-76 %) share one cause.
+// Retail reads the vertices ahead of the FIFO writes (lfs x; lfs y; stfs x; lfs z; stfs y; stfs z,
+// the next vertex's loads before this one's stores): its compiler let the loads through the Vec*,
+// PrimVertex* and u32* parameters pass the volatile GXWGFifo stores. GC/2.6, like every 1.x to
+// 3.0a5 build, orders every pointer load after every FIFO store. Only a `const T*` or
+// `T* __restrict` parameter lifts that; the mangled names (P3Vec, PUl, P10PrimVertex) rule out
+// const, and __restrict is a codegen qualifier that stops working in DrawLit, where pos is passed
+// to CalcTriangleNormal first. Tried without effect: the FIFO as static, extern, non-volatile, C
+// or C++ linkage, a cast or local pointer, a smaller union; a const or restrict copy of the pointer
+// in a local, a reference, an inline, static or template helper with a const parameter (the
+// inliner drops it), a Vec copy, a pointer walk, three GXWGFifo.f32 statements (87.9 %, right
+// skeleton, loads still ordered) and every mwcc flag near aliasing. DrawLit adds a second
+// difference: retail reloads normal.x each vertex and keeps normal.y/.z hoisted; 2.6 hoists all
+// three, 3.0a5 none. The Wii file shows the same loops the same way.
+
 // normals take the inverse transpose of the position matrix, so a non-uniform scale doesn't skew them
 static inline void LoadNrmMtx(MtxP mtx)
 {
