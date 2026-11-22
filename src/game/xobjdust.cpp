@@ -444,7 +444,9 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-// NONMATCHING: same work; different spill/restore scheduling and argument setup order
+// NONMATCHING: retail frame 0x300 vs 0x2f0: before SetPos it copies pos (12 B) and the 16-byte
+// HSD_MtxGetRotation result to second temps that SetRotationY reads at +4; Quaternion/CVec
+// spellings of rot do not reproduce it
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
