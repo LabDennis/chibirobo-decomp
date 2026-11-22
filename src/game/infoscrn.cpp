@@ -1683,7 +1683,8 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 	return inactive;
 }
 // NONMATCHING: registers. retail keeps opacity on the stack (0x1C4) instead of a saved float register, and the
-// gauge pointer and the three gGame bases sit in r29/r26..r28 where ours take r20/r17..r19
+// gauge pointer and the three gGame bases sit in r29/r26..r28 where ours take r20/r17..r19. Retail scales
+// smallScale, smallX, largeX, gap in that order (0x800690DC); no declaration order of the four gives it
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
@@ -1695,7 +1696,8 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	f32 y      = 22.f + (GetHudBottomEdge() - 50.f);
 	if (target <= 0 && h->mBatteryValue > 0) {
 		h->mBatteryEmpty      = 1;
-		h->mBatteryEmptyTimer = h->mBatteryEmptyStep = 0;
+		h->mBatteryEmptyTimer = 0;
+		h->mBatteryEmptyStep  = 0;
 	}
 	if (target > 0)
 		h->mBatteryEmpty = 0;
@@ -1731,9 +1733,9 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
+	u32 gray         = 0x50505000 | digitAlpha;
 	u32 red          = 0xff646400 | digitAlpha;
 	u32 green        = 0x89ff2900 | digitAlpha;
-	u32 gray         = 0x50505000 | digitAlpha;
 	for (int i = 0; i < 4; ++i) {
 		f32 digitScale = scale, offset = largeX, verticalOffset = 0.f;
 		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
