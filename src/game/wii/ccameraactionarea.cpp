@@ -1,8 +1,10 @@
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "nw4r/math/math_types.h"
+#include "nw4r/math/math_arithmetic.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #endif
 #include "game/gmath.h"
 #include "game/ut.h"
@@ -48,6 +50,14 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time);
 void InitCameraAreaEntries(CamAreaState* state);
 void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
 void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 force, f32 time);
+s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area);
+void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices);
+void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir);
+f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
+void fn_8016AA78(f32* out, f32* in, f32* limits);
+f32 fn_8016A81C(f32 value, f32 min, f32 max);
+f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
+Vec GetCornerIconPosition(CGame* game);
 }
 
 // the Wii build resolves the current area's action in a second, C++ step that falls back to
@@ -55,6 +65,19 @@ void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode
 s32 GetCameraAreaMode(CamAreaState* state);
 
 extern s32 gScreenSafeWidth;
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
+extern s32 gScreenSafeBottom;
+extern s32 gRefreshRate;
+extern f32 lbl_805A1288[2];
+extern f32 lbl_805A1290[2];
+extern f32 lbl_805A1298[2];
+extern s32 lbl_805A1CF8;
+extern s32 lbl_805A1CFC;
+extern s32 lbl_805A1D00;
+extern s32 lbl_805A1D04;
+
+static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 
 /**
  * @note Address: 0x80154320
@@ -164,12 +187,280 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 }
 
 /**
+ * @note Address: 0x801546F4
+ * @note Size: 0xEB8
+ */
+// NONMATCHING: reconstructed against the Wii disassembly; register allocation and some pointer-state stores differ
+void CCameraActionArea::Update(u32 step)
+{
+	mPadControlEnabled = gGame.GetStatusFlags(0xC00) ? FALSE : TRUE;
+	if (mTarget != NULL && mTarget->HasModel()) {
+		Mtx mtx;
+		PSMTXCopy(mTarget->GetWorldMtx(), mtx);
+		CVec flatEye(mEye);
+		flatEye.y    = mTarget->GetPos()->y;
+		f32 distance = PSVECDistance(&flatEye, mTarget->GetPos());
+		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
+		PSMTXMultVec(mtx, &localEye, &localEye);
+		CVec pos = *mTarget->GetPos();
+	}
+
+	lbl_805A1CF8 = (gWiiPointer.mFlags & 0x40000000) != 0;
+	lbl_805A1CFC = (gWiiPointer.mFlags & 0x80000000) != 0;
+	lbl_805A1D00 = (gWiiPointer.mFlags & 0x100000000ULL) != 0;
+	lbl_805A1D04 = (gWiiPointer.mFlags & 0x200000000ULL) != 0;
+	gWiiPointer.mFlags &= ~0xC0000000ULL;
+	gWiiPointer.mFlags &= ~0x300000000ULL;
+	_2C4 = 0.0f;
+	_2C8 = 0.0f;
+
+	s32 entryCount = 0;
+	if (gCameraAreaState.mActiveArea >= 0) {
+		entryCount = gCameraAreaState.mGroups[gCameraAreaState.mActiveArea].mEntryCount;
+	}
+	BOOL padControl = mPadControlEnabled && entryCount > 1;
+	if ((gWiiPointer.mButton & 4) && padControl) {
+		if (_2CC > lbl_805A1288[0]) {
+			if (!_2D0) {
+				_2D0 = 1;
+			}
+		} else {
+			_2CC += step;
+		}
+	} else {
+		_2D0     = 0;
+		_2CC     = 0.0f;
+		Vec zero = { 0.0f, 0.0f, 0.0f };
+		_2D4     = zero;
+	}
+
+	Vec input = { 0.0f, 0.0f, 0.0f };
+	if (gWiiPointer.mPointerValid) {
+		Vec pointer;
+		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
+		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
+		pointer.z = gWiiPointer.mPointer.z;
+		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
+		_2D4 = input;
+	} else if (!(gGame._41B0 & 8)) {
+		input = _2D4;
+	}
+
+	f32 direction = 0.0f;
+	if ((gWiiPointer.mButton & 2) && padControl) {
+		direction = 1.0f;
+	} else if ((gWiiPointer.mButton & 1) && padControl) {
+		direction = -1.0f;
+	}
+	if (_2D0) {
+		if (gWiiPointer.mPointerValid) {
+			f32 y = fn_8016A81C(2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, -sDebugParams[0], sDebugParams[0]);
+			f32 x = fn_8016A81C(2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f, -sDebugParams[0], sDebugParams[0]);
+			if (nw4r::math::FAbs(y) < sDebugParams[2] && nw4r::math::FAbs(x) < sDebugParams[3]) {
+				_2F8 = 1;
+			}
+		}
+		if (_2F8) {
+			_2C4 = input.y;
+		}
+	} else {
+		_2F8 = 0;
+		_2C4 = direction;
+	}
+
+	if (_2C4 > 0.0f) {
+		_2F0 += step;
+	} else {
+		_2F0 = 0;
+	}
+	if (_2C4 < 0.0f) {
+		_2F4 += step;
+	} else {
+		_2F4 = 0;
+	}
+
+	BOOL changed = FALSE;
+	if (_2C4 > 0.0f) {
+		if (_2E8 == 0) {
+			_2E8    = 1;
+			changed = TRUE;
+		}
+	} else {
+		_2E8 = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 0x100000000ULL;
+		_2E8 = 1;
+	}
+	// retail tests both limits in turn (cmplwi 30, cmplwi 60 at 0x80154DF0), the repeat delay and its step
+	if (_2E8 && _2F0 >= 30 && _2F0 >= 60) {
+		gWiiPointer.mFlags |= 0x100000000ULL;
+		_2F0 = 30;
+	}
+
+	changed = FALSE;
+	if (_2C4 < 0.0f) {
+		if (_2EC == 0) {
+			_2EC    = 1;
+			changed = TRUE;
+		}
+	} else if (_2EC != 0) {
+		_2EC = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 0x200000000ULL;
+		_2EC = 1;
+	}
+	if (_2EC && _2F4 >= 30 && _2F4 >= 60) {
+		gWiiPointer.mFlags |= 0x200000000ULL;
+		_2F4 = 30;
+	}
+
+	mArrows[0]._0D    = 0;
+	mArrows[1]._0D    = 0;
+	mArrows[0].mShown = 0;
+	mArrows[1].mShown = 0;
+	if (_2D0) {
+		mArrows[0]._0D = 1;
+		mArrows[1]._0D = 1;
+		if (_2C4 > 0.0f) {
+			mArrows[0].mShown = 1;
+		} else if (_2C4 < 0.0f) {
+			mArrows[1].mShown = 1;
+		}
+	} else {
+		if (_2C4 > 0.0f) {
+			mArrows[0]._0D    = 1;
+			mArrows[0].mShown = 1;
+		} else if (_2C4 < 0.0f) {
+			mArrows[1]._0D    = 1;
+			mArrows[1].mShown = 1;
+		}
+	}
+
+	if (mArrows[0]._0D) {
+		if (mArrows[0]._14 < 1.0f) {
+			mArrows[0]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[0]._14 > 1.0f) {
+				mArrows[0]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[0]._14 > 0.0f) {
+		mArrows[0]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[0]._14 < 0.0f) {
+			mArrows[0]._14 = 0.0f;
+		}
+	}
+	if (mArrows[1]._0D) {
+		if (mArrows[1]._14 < 1.0f) {
+			mArrows[1]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[1]._14 > 1.0f) {
+				mArrows[1]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[1]._14 > 0.0f) {
+		mArrows[1]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[1]._14 < 0.0f) {
+			mArrows[1]._14 = 0.0f;
+		}
+	}
+
+	if (mPadControlEnabled && (gWiiPointer.mTrigger & 8)) {
+		if (gCameraAreaState.mZoomLevel > 1) {
+			gWiiPointer.mFlags |= 0x40000000;
+		}
+		if (gCameraAreaState.mZoomLevel < 2) {
+			gWiiPointer.mFlags |= 0x80000000;
+		}
+	}
+	if (mControlEnabled == 1 && mPadControlEnabled) {
+		UpdateAreaCameraEntrySelection(this);
+	}
+	s32 currentArea  = gCameraAreaState.mCurrentArea;
+	s32 previousArea = gCameraAreaState.mPrevArea;
+	if (mEntry->mId != mPrevEntry->mId || mForceApply) {
+		if (currentArea != previousArea && currentArea != -1) {
+			mTransitionTime = 2.0f;
+			ApplyAreaCameraEntry(this, mEntry, 1, 1, mTransitionTime);
+		} else if (mForceApply) {
+			mTransitionTime = 15.0f;
+			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
+			mForceApply = FALSE;
+		} else if (currentArea == previousArea) {
+			mTransitionTime = 15.0f;
+			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
+		}
+		gGame.GetPlayer()->ResetCameraValue();
+		mPrevEntryIndex = mEntryIndex;
+		mPrevEntry      = mEntry;
+		if (mKeepViewDirection != 0) {
+			mKeepViewDirection = 0;
+		}
+	}
+	s32 zoomLevel = gCameraAreaState.mZoomLevel;
+	if (zoomLevel != gCameraAreaState.mPrevZoomLevel) {
+		f32 fov    = GetAreaCameraFovForHeightLevel(&gCameraAreaState, zoomLevel);
+		mFovInterp = mFovInterps[4];
+		if (mFovInterp != NULL) {
+			mFovInterp->Start(mFov, fov, 15.0f);
+		}
+		gGame.GetPlayer()->ResetCameraValue();
+		gCameraAreaState.mZoomLevel     = zoomLevel;
+		gCameraAreaState.mPrevZoomLevel = zoomLevel;
+	}
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetEye(mEyeInterp->Get());
+		} else {
+			mEyeInterp = NULL;
+		}
+	}
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetFov(mFovInterp->Get());
+		} else {
+			mFovInterp = NULL;
+		}
+	}
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, 1.0f / gRefreshRate)) {
+			SetInterest(mInterestInterp->Get());
+		} else {
+			mInterestInterp = NULL;
+		}
+	}
+	if (mInterestInterp == NULL && mTarget != NULL) {
+		SetInterest(mTarget->GetCameraTarget());
+	}
+
+	if (lbl_805A1CF8) {
+		gWiiPointer.mFlags |= 0x40000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x40000000ULL;
+	}
+	if (lbl_805A1CFC) {
+		gWiiPointer.mFlags |= 0x80000000;
+	} else {
+		gWiiPointer.mFlags &= ~0x80000000ULL;
+	}
+	if (lbl_805A1D04) {
+		gWiiPointer.mFlags |= 0x200000000ULL;
+	} else {
+		gWiiPointer.mFlags &= ~0x200000000ULL;
+	}
+	if (lbl_805A1D00) {
+		gWiiPointer.mFlags |= 0x100000000ULL;
+	} else {
+		gWiiPointer.mFlags &= ~0x100000000ULL;
+	}
+}
+
+/**
  * @note Address: 0x801555AC
  * @note Size: 0x12C
  */
 void CCameraActionArea::DrawDebug2d()
 {
-	static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 	fn_8016AA74(sDebugParams);
 	f32 z = 0.0f;
 	f32 y, x;
@@ -178,6 +469,66 @@ void CCameraActionArea::DrawDebug2d()
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
 	                       mEntryIndex, gCameraAreaState.mCurrentArea);
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", x, y + 9.0f, z, 9.0f, 9.0f);
+}
+
+inline void YawDir(CVec& dir, const Vec& angle);
+
+/**
+ * @note Address: 0x801556D8
+ * @note Size: 0x2F8
+ */
+// NONMATCHING: the control flow and calls match; register allocation and the direction vectors' stack slots differ
+extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
+{
+	s32 slotIndex    = gCameraAreaState.mActiveArea;
+	s32 currentArea  = gCameraAreaState.mCurrentArea;
+	s32 previousArea = gCameraAreaState.mPrevArea;
+	s32 zoomLevel    = gCameraAreaState.mZoomLevel;
+	if (gGame.GetStatusFlags(0x20)) {
+		return area->mEntry->mId;
+	}
+	if (gWiiPointer.mFlags & 0x40000000) {
+		if (zoomLevel > 1) {
+			gCameraAreaState.mZoomLevel = zoomLevel - 1;
+			return area->mEntry->mId;
+		}
+	} else if (gWiiPointer.mFlags & 0x80000000) {
+		if (zoomLevel < 2) {
+			gCameraAreaState.mZoomLevel = zoomLevel + 1;
+			return area->mEntry->mId;
+		}
+	} else if (area->mKeepViewDirection == 1 && (gWiiPointer.mFlags & 0x100000000ULL)) {
+		s32 indices[2];
+		FindActiveAreaCameraEntriesByBearing(area, indices);
+		area->mEntryIndex = indices[0];
+		area->mForceApply = TRUE;
+	} else if (area->mKeepViewDirection == 1 && (gWiiPointer.mFlags & 0x200000000ULL)) {
+		s32 indices[2];
+		FindActiveAreaCameraEntriesByBearing(area, indices);
+		area->mEntryIndex = indices[1];
+		area->mForceApply = TRUE;
+	} else if (gWiiPointer.mFlags & 0x100000000ULL) {
+		if (++area->mEntryIndex >= gCameraAreaState.mGroups[slotIndex].mEntryCount) {
+			area->mEntryIndex = 0;
+		}
+	} else if (gWiiPointer.mFlags & 0x200000000ULL) {
+		CamAreaSlot* slot = &gCameraAreaState.mGroups[slotIndex];
+		if (--area->mEntryIndex < 0) {
+			area->mEntryIndex = slot->mEntryCount - 1;
+		}
+	} else if (currentArea != previousArea && currentArea != -1) {
+		CVec dir;
+		if (area->mKeepViewDirection != 0) {
+			CVec delta = area->mInterest - area->mEye;
+			delta.Normalize();
+			dir.Set(delta);
+		} else {
+			YawDir(dir, area->mEntry->mAngle);
+		}
+		SelectActiveAreaCameraEntryFacing(area, dir);
+	}
+	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
+	return area->mEntry->mId;
 }
 
 // the GameCube's SelectAreaCameraEntry, which the Wii expands here
@@ -315,6 +666,63 @@ extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 sl
 	SelectAreaCameraEntry(area, slotIndex, entryIndex, mode, time);
 }
 
+inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
+{
+	if (mode == 5) {
+		OSPanic("ccameraactionarea.cpp", 1415, "error ! : CCameraActionArea::SetEye_I()\n");
+		return;
+	}
+	CVec(0.0f, 0.0f, 0.0f);
+	SetEyeInterpolation(mode, from, to, time);
+	gGame.GetPlayer()->ResetCameraValue();
+}
+
+/**
+ * @note Address: 0x80156200
+ * @note Size: 0x7A0
+ */
+// NONMATCHING: the by-value vectors and interpolation starts use other stack slots and schedules
+extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time)
+{
+	switch (mode) {
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+		area->SetEye_I(mode, area->mEye, entry->mEye, time);
+		break;
+	case 5:
+		area->SetEyeInterpolation(mode, area->mEye, entry->mEye, time);
+		gGame.GetPlayer()->ResetCameraValue();
+		break;
+	}
+	f32 fov = gCameraAreaState.mBaseFov;
+	if (adjustFov) {
+		switch (gCameraAreaState.mZoomLevel) {
+		case 0:
+			area->SetFovInterpolation(mode, area->mFov, 0.8f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		default:
+			area->SetFovInterpolation(mode, area->mFov, fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		case 2:
+			area->SetFovInterpolation(mode, area->mFov, 1.5f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		case 3:
+			area->SetFovInterpolation(mode, area->mFov, 2.0f * fov, time);
+			gGame.GetPlayer()->ResetCameraValue();
+			break;
+		}
+	} else {
+		area->SetFovInterpolation(mode, area->mFov, fov, time);
+		gGame.GetPlayer()->ResetCameraValue();
+	}
+}
+
 extern "C" void SetAreaCameraHeightIndices(CCameraActionArea*, s32 zoomLevel)
 {
 	gCameraAreaState.mZoomLevel     = zoomLevel;
@@ -325,6 +733,71 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
 {
 	area->mControlEnabled           = 1;
 	gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
+}
+
+/**
+ * @note Address: 0x801569B4
+ * @note Size: 0x4A4
+ */
+// NONMATCHING: the arrow loop and calls are reconstructed; stack copies and floating-point schedules differ
+void CCameraActionArea::vf24()
+{
+	if (mControlEnabled == 0) {
+		return;
+	}
+	Vec corner = GetCornerIconPosition(&gGame);
+	f32 limit  = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mSpeedHeight;
+	if (limit >= gScreenSafeBottom) {
+		limit = gScreenSafeBottom;
+	}
+	f32 bottom = corner.y;
+	if (bottom > limit) {
+		bottom = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mSpeedHeight;
+		if (bottom >= gScreenSafeBottom) {
+			bottom = gScreenSafeBottom;
+		}
+	}
+	f32 maxY = ((bottom - 58.0f) - 40.0f) - 50.0f;
+	for (s32 i = 0; i < 2; i++) {
+		CamEdgeArrow* arrow = &mArrows[i];
+		f32 scale;
+		if (arrow->_0D) {
+			arrow->_10 = 0.5f;
+			if (arrow->mShown) {
+				arrow->_10 = 1.0f;
+			}
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1298[0]);
+		} else {
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1298[0]);
+		}
+		if (scale <= 0.0f) {
+			continue;
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		if (i == 1) {
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+		}
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[263], 0);
+		CTexObj tex = gGame.mTpl.mTex;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+		tex.mTexMtx.mDirty = true;
+		GXColor color      = { 0xFF, 0xFF, 0x00, 0xFF };
+		color.a            = color.a * scale;
+		f32 x              = arrow->mPos.x + 0.5f * gPointerScreenWidth;
+		f32 y              = arrow->mPos.y + 0.5f * gPointerScreenHeight;
+		if (y > maxY) {
+			y = maxY;
+		}
+		f32 width  = GXGetTexObjWidth(&tex);
+		f32 height = GXGetTexObjHeight(&tex);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, *(u32*)&color, *(u32*)&color, *(u32*)&color, *(u32*)&color, x, y, 0.0f, width, height, 0.0f,
+		                   arrow->mPos.z, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+	}
 }
 
 // the area tables' debug shapes, the GameCube's DrawDebug3d of both area actions

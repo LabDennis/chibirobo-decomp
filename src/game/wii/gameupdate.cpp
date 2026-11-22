@@ -981,8 +981,6 @@ extern const ScopeStageSounds lbl_802C49C8[];
 
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
-// gamesound.cpp's, the track playing an archive sound
-CSoundHandle* FindSound(CSound* sound, u32 id);
 
 // the scope takes obj if nothing keeps it from looking and it is nearer to the eye than its pick so far.
 // Retail has these lines twice, the name is ours
@@ -1056,12 +1054,11 @@ static inline bool IsScopeRareItem(s32 item)
  * @note Address: 0x8001E830
  * @note Size: 0x57C4
  */
-// NONMATCHING: the source calls PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown where retail
-// expands them (they are defined in the next file's range), and gamesound.cpp's FindSound, which retail
-// expands in the scope's night check; it calls vf16C without the frame count retail passes; the three
-// nw4r camera reads of the stage camera object (the GameCube had none) stand as their CCamera fallback
-// only; isnan is fdlibm's function where retail calls the Wii MSL's __fpclassifyf. The rest is
-// register and stack placement that follows from those
+// NONMATCHING: retail auto-inlines PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown (one
+// original game.cpp; here they sit in gamedraw.cpp's unit) and fn_80114564; vf16C is called without the
+// frame count retail passes; the three nw4r camera reads of the stage camera object (the GameCube had none)
+// stand as their CCamera fallback only; isnan is fdlibm's function where retail calls the Wii MSL's
+// __fpclassifyf. The rest is register and stack placement that follows from those
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
@@ -1670,7 +1667,7 @@ void CGame::Update(u32 frames)
 			} else if (mPointer.mScopeItem >= 0) {
 				if (mTimeState.mMode == 1 && mTimeState.mTime > 0.5f
 				    && (gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0) == 0
-				    && FindSound(&gGame.mSound, 0x10) == NULL) {
+				    && gGame.mSound.FindTrack(0x10) == NULL) {
 					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
 						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.1f);
 					}
@@ -1747,6 +1744,27 @@ void CGame::Update(u32 frames)
 	}
 	if (mPointer.mScopeZoom > 0.0f) {
 		mPointer.mScopeAngle += frames * (DEG2RAD * 3.0f * (mPointer.mScopeZoom * mPointer.mScopeZoom));
+	}
+}
+
+/**
+ * @note Address: 0x80024008
+ * @note Size: 0x258
+ */
+// NONMATCHING: both queue loops and the call match; the selected slot's values use other registers and stack slots
+void XObj::vf15C()
+{
+	if (mMoveTranslate.y != mLastPos.y) {
+		mStatus.mFlags |= 0x10000000000000ULL;
+	}
+	mLastPos = mMoveTranslate;
+	mLastRot = mMoveRotate;
+	if (IsAnimDone() && HasQueuedAnim()) {
+		s32 id;
+		u16 frame;
+		s16 rate;
+		PopAnim(id, frame, rate);
+		SetAnim(id, FALSE, frame, rate / 100.0f, 0.0f, 15.0f);
 	}
 }
 

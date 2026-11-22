@@ -76,6 +76,9 @@ void DrawTexturedWindowFrame(u32 color, s32 a, f32 x, f32 y, f32 w, f32 h, f32 s
 void PSMTXRotRad(Mtx m, char axis, f32 rad);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern f32 gFrameRateScale;
+void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha);
+extern s32 gScreenSafeLeft;
+extern s32 gScreenSafeBottom;
 }
 
 // mSavedInfo while SaveCamInfo holds a camera info, NULL otherwise
@@ -84,6 +87,8 @@ void* gSavedScrollCameraInfo;
 // the objects hidden while this camera runs and what they were before
 s32 gScrollCameraHiddenObjectIds[256];
 s32 gScrollCameraHiddenObjectStates[256];
+
+static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
 
 // the drag frame's accumulated impulse, written on press and while dragging
 static Vec sDragImpulse;
@@ -454,8 +459,8 @@ static void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
  * @note Address: 0x80163250
  * @note Size: 0xD08
  */
-// NONMATCHING: the GameCube flow carried over; the Wii object pool, the kind reads through
-// mSpawnData and the vf1D4 projection are verified in retail, the rest is guessed
+// NONMATCHING: the object and status passes are verified in retail; our object loops recompute the blink values,
+// and register allocation and scheduling differ
 void CCameraActionScroll2::Draw()
 {
 	static s32 sOverlayFrameCount = 0;
@@ -602,9 +607,12 @@ void CCameraActionScroll2::Draw()
 			// 135 degrees, the results go unused
 			sin(2.356194496154785);
 			cos(2.356194496154785);
-			f32 width = MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) / 2.0f;
-			DrawTexturedWindowFrame(0x141414A0, -1, MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) / 2.0f + nameX, nameY - 18.0f, width,
-			                        18.0f, 1.0f, 1.0f, 1.0f);
+			u32 cells = strlen(name) / 2 + 1;
+			if (cells < 4) {
+				cells = 4;
+			}
+			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f * 0.5f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
+			                        1.0f, 1.0f);
 			DrawGsProportionalTextFormat(&gGame.mGs, -1, name, nameX, nameY - 18.0f, 0.0f, 18.0f, 18.0f);
 			break;
 		}
@@ -660,25 +668,34 @@ void CCameraActionScroll2::Draw()
 		break;
 	}
 
-	CTexObj tex;
-	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[160 - StatusTextureOffset], 0);
-	GXGetTexObjWidth(&tex);
-	GXGetTexObjHeight(&tex);
-	std::sinf(angle);
-	std::cosf(angle);
 	f32 pulse = std::sinf(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
-	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[166 - StatusTextureOffset], 0);
-	f32 zoom   = 1.0f;
-	f32 arrowW = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	u16 arrowH = GXGetTexObjHeight(&tex);
-	f32 radius = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
-	f32 arrowX = radius * std::sinf(angle) + x;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mTpl.mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[166 - StatusTextureOffset], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	f32 zoom    = 1.0f;
+	f32 arrowW  = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
+	u16 arrowH  = GXGetTexObjHeight(&tex);
+	f32 radius  = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
+	f32 arrowX  = radius * std::sinf(angle) + x;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * std::cosf(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
 	                   0.0f, PI + angle);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 	// the wipe sits over the room view, the edge quads round the drag frame
 	DrawQuads();
 	mWipe.Draw(&gGame.mGs, 0);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	if (gGame.mStage >= 0 && gGame.mStage < 10) {
+		s32 base  = sRoomBaseCounts[gGame.mStage];
+		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
+		s32 value = base + count * 100;
+		if (base > 0) {
+			DrawSeparatedStatusValue(0xAC, value, false, gScreenSafeLeft + 40, gScreenSafeBottom - 40, 1.0f);
+		}
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 }
 
 // draws one blinking marker centred on a screen point; the colour the callers pass goes unused.
