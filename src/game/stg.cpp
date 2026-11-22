@@ -522,7 +522,7 @@ static inline void DrawPCListMask(f32 top, f32 height, u32 color)
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, mask, color, 5);
 }
 // how many rows the nine-row list can start at: the filled rows less eight, at least one
-static inline s32 PCShopMaxPage(MenuPCItem* table)
+static inline s32 PCShopMaxPage(MenuPCItem*& table)
 {
 	s16 item, quantity;
 	int i;
@@ -563,7 +563,9 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 
 // NONMATCHING: the five corner temporaries of each DrawPCListMask sit in the frame in the opposite order (as in
 // DrawMenuBannerPanels), and the argument schedule of the background's DrawGsTrianglePrimitive and of one width
-// conversion differs; the rodata offsets differ with the file's data
+// conversion differs; the rodata offsets differ with the file's data. Retail forms the page-count table straight
+// into the loop register (US 0x80042384 addi r6), the build materialises items first and copies it; PCShopMaxPage
+// by value gives that here but costs MenuPC::State7 its in-place walk (100 -> 99.76), so the reference stays
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
 void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
