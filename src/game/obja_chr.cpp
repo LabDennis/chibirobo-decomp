@@ -1692,6 +1692,8 @@ static inline bool IsStopped(const XObjChr* chr)
 	return ret;
 }
 
+// NONMATCHING: retail keeps IsStopped's result in r26 (US 0x800B6968), ours in r27; the look offset is copied from a
+// header Vec() in the unit's .bss prefix (+0x80, 0x800B74DC), which this split unit does not have
 void XObjChr::UpdateObject(u32 frames)
 {
 	XPad* pad = &mPad;
@@ -1738,6 +1740,7 @@ void XObjChr::UpdateObject(u32 frames)
 	}
 	mLiftPlugFlags &= ~0x80;
 
+	f32 direction;
 	f32 speed = 1.2f * mStick[0];
 
 	s32 hangState = mHang.mState;
@@ -1751,7 +1754,6 @@ void XObjChr::UpdateObject(u32 frames)
 
 	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
 	// WrapAngle inline leaves a copy (fmr) behind each one
-	f32 direction;
 	if (speed > 0) {
 
 		if (gGame.mStatus.mFlags & 0x100) {
