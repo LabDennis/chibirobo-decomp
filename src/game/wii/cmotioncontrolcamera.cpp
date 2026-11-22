@@ -718,8 +718,8 @@ extern "C" WiiCameraPoint fn_8016A844(const WiiCameraCurve* curve, f32 t)
  */
 extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale)
 {
-	f32 curve = to + std::sinf(6.2831855f * t) * (scale / 6.2831855f);
-	return from + (1.0f - curve) * to;
+	f32 curve = t + std::sinf(6.2831855f * t) * (scale / 6.2831855f);
+	return from * (1.0f - curve) + to * curve;
 }
 
 /**
