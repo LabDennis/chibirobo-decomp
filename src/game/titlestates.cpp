@@ -1829,7 +1829,9 @@ static inline f32 TitleOptionWidth(s32 first)
 // -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level. Retail also loads the entry text's
 // 0.0f, 24.0f and size into f3-f5 before the selection test (0x8002B50C) where this build loads them at the call, and the
 // inner of the two widest-width picks goes to a fresh register in both arms (fmr f0 at 0x8002B79C, 0x8002B928 and 0x8002B9D4); a
-// WiderOf(a, b) inline compiles to the same bytes as the ternaries
+// WiderOf(a, b) inline compiles to the same bytes as the ternaries. The dust alpha hoisted before the loop or read in place
+// in the colour scores lower; declaring it uninitialised ahead of the loop and a pointer local for the logo texture
+// compile to the same bytes
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
