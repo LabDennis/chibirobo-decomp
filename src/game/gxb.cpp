@@ -2817,7 +2817,7 @@ static inline f32 TitleOptionWidth(s32 first)
 	return 2.0f * ((label > largest ? label : largest) + 8.0f);
 }
 #endif
-
+// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
