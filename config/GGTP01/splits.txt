@@ -597,13 +597,14 @@ game/xobjspider.cpp:
 	.sbss2      start:0x806673B0 end:0x806673B8
 
 game/xobjspidersmall.cpp:
-	.text       start:0x800F723C end:0x80102984
+	.text       start:0x800F723C end:0x80102ACC
 	.ctors      start:0x80200094 end:0x80200098
+	.rodata     start:0x80211678 end:0x802117B8
+	.data       start:0x80231A88 end:0x802322F0
 	.bss        start:0x803855D0 end:0x80386B00
+	.sdata      start:0x80661620 end:0x80661660
 	.sbss       start:0x80662168 end:0x80662181
-
-game/xobjspidersmallstatus.cpp:
-	.text       start:0x80102984 end:0x80102ACC
+	.sdata2     start:0x80664FB0 end:0x80665120
 
 game/xobjspiderboss.cpp:
 	.text       start:0x80102ACC end:0x8010926C
