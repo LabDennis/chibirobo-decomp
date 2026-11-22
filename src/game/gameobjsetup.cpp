@@ -75,8 +75,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->mStatus.mFlags &= ~0x2000000000;
 		game->mStatus.mFlags &= ~0x8000000000;
 		game->mStatus.mFlags &= ~0x100000000000;
-		FbMirrorEx* mirror = gFramebufferMirrors;
-		s32 mirrors        = 0;
+		s32 mirrors = 0;
 		for (s32 i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = game->mXObjs.mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
@@ -88,6 +87,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 					game->mStatus.mFlags |= 0x100000000000;
 					jobj = obj->mJObj;
 					if (jobj != NULL) {
+						FbMirrorEx* mirror       = &gFramebufferMirrors[mirrors];
 						mirror->mOwner           = obj;
 						jobj                     = GetLeaf(jobj);
 						mirror->mJoint           = jobj;
@@ -113,7 +113,6 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 								}
 							}
 						}
-						mirror++;
 						mirrors++;
 					}
 				}
