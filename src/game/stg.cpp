@@ -7597,6 +7597,7 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 	f32 w = scale * tex.GetWidth(), h = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
+	f32 digitY    = y + 8.0f * scale;
 	for (int i = 0; i < (rank ? 7 : 6); i++) {
 		f32 div = 1.0f;
 		if (i > 0)
@@ -7610,14 +7611,16 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		f32 dx = 7.0f * w + (x - i * (w - 4.0f * scale));
 		dx     = rank ? dx - 24.0f * scale : 106.0f * scale + dx;
-		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, dx, y + 8.0f * scale, 0, w, h, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, dx, digitY, 0, w, h, 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 }
 
-// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently), and retail
-// forms the list top (168 + y) before the opacity conversion where the build hoists it after it and keeps y alive
-// across the call for that (fmr f14, f2)
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently). The opacity
+// conversion is a loop invariant that the compiler hoists (US 0x8003DCA8 bl __cvt_fp2unsigned behind the loop
+// set-up), so light is declared in the loop; the list top (168 + y) is spilled before it (0x8003DC78 stfs f0,
+// 0x31c(r1)), so it is part of the row expression, not a local. In the digits, retail hoists the value's conversion
+// behind 7 * w (0x8003E05C xoris r27); dx before the digit, or value by value, scores lower.
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -7674,16 +7677,14 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 		CTexObj tex;
 		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
 		f32 opacity = 255.0f * alpha;
-		u32 light   = (u32)opacity | 0xC8C8C800;
 		u8 a        = (u8)opacity;
 		for (int i = 0; i < 5; i++) {
 			if (gPCRankingRows[i].nameIndex == -1)
 				continue;
-			// retail keeps the list top on the stack and 10 * scale in a register (US 0x8003DC78 stfs f0, 0x31c(r1);
-			// 0x8003DD24 fmuls f25), the other way round from a named top, so the top is part of this expression
 			f32 rowY = (menu->mRankingOffsets[i] + ((168.0f + y) + i * 48)) - 48.0f;
 			tex      = InitPCPanelTexture(180);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			u32 light = (u32)opacity | 0xC8C8C800;
 			f32 w = 1.1f * (1.1f * tex.GetWidth()), h = 1.1f * tex.GetHeight();
 			DrawOverviewTexture(tex, light, (w / 2.0f + left) - 34.0f, 1.0f + (h / 2.0f + rowY), w, h);
 			const PCRankingRow& row = menu->mRankingRows[i];
