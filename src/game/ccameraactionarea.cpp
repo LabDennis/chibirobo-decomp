@@ -1012,8 +1012,9 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Address: 0x80138ED8
  * @note Size: 0x6E0
  */
-// NONMATCHING: register allocation (yaw in f29 and best in f28 with an extra fmr instead of retail's f28/f29,
-// plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below SelectActiveAreaCameraEntryFacing's look/facing
+// NONMATCHING: register allocation (yaw in f29 and best in f28 instead of retail's f28/f29, where retail's best shares
+// the register of WrapAngle's 2*pi, plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below
+// SelectActiveAreaCameraEntryFacing's look/facing
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1043,8 +1044,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		}
 	} else if (area->mKeepViewDirection == 1 && (buttons & next)) {
 		// after SetCamera, go by the view instead of mEntryIndex: the entry whose eye bearing is nearest at or below the camera's
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
+		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		s32 index;
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
@@ -1060,8 +1061,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		area->mForceApply = TRUE;
 	} else if (area->mKeepViewDirection == 1 && (buttons & previous)) {
 		// the same pick as above, then one entry back
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
+		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		s32 index;
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
