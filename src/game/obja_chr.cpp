@@ -3460,7 +3460,8 @@ s32 OctaMenu::GetItemIconTextureIndex(s32 index)
  * @note Address: 0x8009AFEC
  * @note Size: 0x130
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc; retail has red, green, blue in r31, r30, r29 and the pulse phase offset in r28. Every
+// declaration order keeps the offset in r31, and AddPulse written out or taking the phase by reference is longer
 u32 OctaMenu::GetItemColor(s32 index)
 {
 	s32 green, blue, red;
@@ -4003,7 +4004,7 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  */
 // NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
 // (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
-// if moved the NAN load further from retail
+// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -4068,7 +4069,8 @@ static inline XObj* FindEventObj(s32 id)
  */
 // NONMATCHING: case 202 returns !(mode > 0) as a BOOL in retail (neg, andc, srwi, cntlzw, extrwi from US 0x8009ED50);
 // every spelling here (<= 0, !(> 0), ?:, == FALSE, a BOOL local) folds to the shorter rlwnm form. The anim lookup
-// keeps the GetAObj result in r3 up to its test instead of copying it in each return path
+// keeps the GetAObj result in r3 up to its test instead of copying it in each return path (assigning in the
+// test or comparing with NULL changes nothing)
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 {
 	s32 result = 0;
@@ -4626,7 +4628,8 @@ extern "C" CVec GetPlayerCarryJointWorldPosition(CJObj* object)
  * @note Address: 0x800A09BC
  * @note Size: 0x21C
  */
-// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after
+// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after;
+// assigning point after its declaration, * 0.5f or the half difference first are all lower
 extern "C" Vec GetPlayerFirstPersonEyePosition(XObjChr* chr)
 {
 	s32 left[8]  = { 0, 1, 0, 1, 2, 0, 0, 0 };
@@ -5789,7 +5792,7 @@ extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
  * @note Size: 0x638
  */
 // NONMATCHING: saved register numbers; retail has the result pointer in r31, the anim object in the joint's register (r29) and
-// walks the table in the object's (r26)
+// walks the table in the object's (r26). Declaring aobj before particle moves the particle copy behind the anim lookup
 extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* frames, const FrameEvent* table)
 {
 	PlayerFrameParticle particle = { -1 };
@@ -6840,7 +6843,8 @@ static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  * @note Size: 0x868
  */
 // NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
-// gives the radii the upper registers
+// gives the radii the upper registers. Declaring x, y and z first loads them at the top (retail loads them after
+// PSMTXMultVec)
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
