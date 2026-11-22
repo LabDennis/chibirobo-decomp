@@ -191,6 +191,41 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 x, f32
 	return width;
 }
 
+static inline void DrawTitleCursors(Title* title, BOOL options, f32 width, f32 y, u32 color, f32 alpha)
+{
+	CColor fade;
+	fade.Set((s32)(color >> 24), (s32)((color >> 16) & 0xFF), (s32)((color >> 8) & 0xFF), (s32)(color & 0xFF));
+	f32 rate      = 1.0f;
+	s32 selection = options ? title->mOptionLine : title->mSelection;
+	if (selection == -1) {
+		fade.Set((s32)(fade.r * 0.3f), (s32)(fade.g * 0.3f), (s32)(fade.b * 0.3f), (s32)(fade.a * 0.3f));
+		rate = 0.0f;
+	}
+	f32 center = gPointerScreenWidth / 2;
+	title->mCursor[0].SetAnimRate(rate);
+	title->mCursor[0].SetColor(0, fade.r, fade.g, fade.b, 0.0f);
+	title->mCursor[0].SetPos((center - width * 0.5f) - 30.0f, y, 10.0f);
+	title->mCursor[0].SetRotationY(0.2617994f);
+	title->mCursor[0].DrawObject();
+	title->mCursor[1].SetAnimRate(rate);
+	title->mCursor[1].SetColor(0, fade.r, fade.g, fade.b, 0.0f);
+	title->mCursor[1].SetPos(30.0f + (center + width * 0.5f), y, 10.0f);
+	title->mCursor[1].SetRotationY(-0.2617994f);
+	title->mCursor[1].DrawObject();
+	if (title->mOptionBarSnap) {
+		title->mOptionBar[2] = center;
+		title->mOptionBar[1] = 0.0f;
+	}
+	title->mOptionBarTarget[0] = 2.0f * 30.0f + width;
+	title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
+	if (title->mOptionBarSnap) {
+		title->mOptionBarSnap = 0;
+	}
+	fade.Set((s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.x, (s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.y,
+	         (s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.z, (s32)fade.a);
+	fn_8004E6EC(title, options, title->mOptionBar[2], title->mOptionBar[0], alpha * (fade.a / 255.0f), title->mOptionBar[1]);
+}
+
 // the shared ease for the panel offset pair, the GameCube's ApproachTitleOffset; the Wii takes the absolute value with fabsf, which its MSL
 // inlines to __fabsf
 static inline void ApproachTitleOffset(f32& value, f32& target)
@@ -1581,10 +1616,9 @@ void Title::State25(u32)
  * @note Address: 0x80048E54
  * @note Size: 0x1950
  */
-// NONMATCHING: the pass structure, the overlay, the dust, the logo, the figures, the footer and the
-// save-fatal check are as retail. What follows the option block in retail -- the cursor halves the
-// demo object draws at interpolated positions, the option bar snap behind _5174 and the three
-// options-page lines -- is still being read; the entries and the guards match the GameCube shape.
+// NONMATCHING: the pass structure, both cursor tails and the options-page selection are reconstructed,
+// with retail's complete call list. The remaining difference is inline CbPane/CColor layout and float
+// scheduling; explicit pane-width stores add code but lower the match.
 extern "C" void DrawTitleScreen(Title* title)
 {
 	enum { dustTexture = 2, footerTexture = 1 };
@@ -1711,9 +1745,37 @@ extern "C" void DrawTitleScreen(Title* title)
 			y     = top + ((f32)(gScreenSafeBottom - 0x36) + 2.0f * gap) - 30.0f;
 			break;
 		}
-		// retail draws the cursor halves here through the demo object at the option-line's y
+		f32 widest = w0 > w1 ? w0 : w1;
+		width      = w2 > widest ? w2 : widest;
+		DrawTitleCursors(title, FALSE, width, y, normal, title->mMenuAlpha);
 	}
-	// state 0x15's options-page lines and the cursor draws end the pass in retail
+	if (title->mMode == 0x15) {
+		f32 labelW      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x11), TRUE, 24.0f);
+		f32 labelW2     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x14), TRUE, 24.0f);
+		labelW          = labelW > labelW2 ? labelW : labelW2;
+		u32 optionWidth = 2.0f * (labelW + 8.0f);
+		f32 okWidth     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, 24.0f);
+		f32 width;
+		f32 y;
+		switch (title->mOptionLine != -1 ? title->mOptionLine : title->mLastOptionLine) {
+		case -1:
+			OSPanic("title.cpp", 0x1117, "ここにはこない");
+			break;
+		case 0:
+			width = optionWidth;
+			y     = gScreenSafeBottom - 0xD2;
+			break;
+		case 1:
+			width = optionWidth;
+			y     = (gScreenSafeBottom - 0xD2) + 48.0f;
+			break;
+		case 2:
+			width = okWidth;
+			y     = (gScreenSafeBottom - 0xD2) + 2.0f * 48.0f;
+			break;
+		}
+		DrawTitleCursors(title, TRUE, width, y, 0xFFFFFFFF, title->mOptionAlpha);
+	}
 	((CBase*)&gGame)->vf54();
 }
 
