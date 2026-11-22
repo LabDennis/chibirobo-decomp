@@ -2665,7 +2665,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  */
 // NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
 // then converts alpha again for normal; this build folds both into one conversion after the call.
-// The rest is float register order
+// An s32 local converted before the call is forwarded past it and merged with normal's conversion
+// (93.85). The rest is float register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
