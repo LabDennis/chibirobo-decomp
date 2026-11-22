@@ -15,6 +15,18 @@ class CVec;
 struct UnkStageObj;
 struct XObjFloor;
 
+// the pending fatal the save system leaves for the title screen; MenuSave also fills the text at _15
+struct WiiFatalInfo {
+	const char* mMessage; // _00
+	GXColor mFg;          // _04
+	u8 _08[4];
+	GXColor mBg; // _0C
+	u8 _10[4];
+	u8 mActive;      // _14
+	char mText[256]; // _15
+};
+extern WiiFatalInfo gSaveFatal;
+
 // The Wii title screen (title.cpp), CGame keeps it at _5C70. The layout follows the GameCube Title
 // (game/title.h) with a vtable in front, a remembered value behind each selection the pointer can drop,
 // and the pointer's panes at the end. Only what the reconstructed functions reach is here; the names are
