@@ -1063,8 +1063,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 						if (point.y > eye.y) {
 							end.y = eye.y;
 						}
-						Vec plane[2] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
-						plane[0]     = pos;
+						Vec plane[2] = { pos, { 0.0f, 1.0f, 0.0f } };
 						if (gGame.GetStatusFlags(0x100)) {
 							plane[0].y = eye.y;
 						}
@@ -1249,8 +1248,8 @@ void fn_8010C0F4(XActRadar* act)
 	StartScreenFade(&act->mBeam.mColor[0], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
 	StartScreenFade(&act->mBeam.mColor[1], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
 	act->mFade                                   = 0.0f;
-	*(f32*)((u8*)act->mOwner->mRadarObj + 0x9B4) = act->mYaw.angle;
-	*(f32*)((u8*)act->mOwner->mRadarObj + 0x9B8) = act->mPitch.angle;
+	((XObjRadar*)act->mOwner->mRadarObj)->mYaw   = act->mYaw.angle;
+	((XObjRadar*)act->mOwner->mRadarObj)->mPitch = act->mPitch.angle;
 	if (IsWiiSfxPlaying(&gGame.mSound, 0xB1)) {
 		StopWiiSfx(&gGame.mSound, 0xB1, 0.0f);
 	}

@@ -4,7 +4,7 @@
 // source is the GameCube's obja.cpp carried over onto the nw4r model and queue types.
 #include "Version.h"
 #if defined(VERSION_R24J01)
-#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's fpclassify, out of line
 #include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/spiderplacement.h"
 #include "game/wii/xobj.h"
@@ -147,9 +147,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				mFloors = NULL;
 			}
 		}
-		if (!HasSource(*attr) || attr->mObjData->mSource->mName == NULL) {
+		if (!ModelName(*attr)) {
 			ready = TRUE;
-		} else if (HasSource(*attr)) {
+		} else if (Source(*attr)) {
 			ready = fn_800AD498(this);
 		}
 	}
@@ -175,31 +175,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			}
 		}
 		ResetObjectState();
-		if (mColor1.r != 0xFF) {
-			mColor1.r = 0xFF;
-		}
-		if (mColor1.g != 0xFF) {
-			mColor1.g = 0xFF;
-		}
-		if (mColor1.b != 0xFF) {
-			mColor1.b = 0xFF;
-		}
-		if (mColor1.a != 0) {
-			mColor1.a = 0;
-		}
+		mColor1.Set(0xFF, 0xFF, 0xFF, 0);
 		mColorsChanged = TRUE;
-		if (mColor0.r != 0) {
-			mColor0.r = 0;
-		}
-		if (mColor0.g != 0) {
-			mColor0.g = 0;
-		}
-		if (mColor0.b != 0) {
-			mColor0.b = 0;
-		}
-		if (mColor0.a != 0) {
-			mColor0.a = 0;
-		}
+		mColor0.Set(0, 0, 0, 0);
 		mColorsChanged = TRUE;
 		if (mStatus.mFlags & 0x2ULL) {
 			fn_800AF51C(this);
@@ -241,9 +219,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		}
 		UpdateObjectFloorHeights(this);
 		UpdateObjectFloorXZExtent(this);
-		if (__fpclassifyf(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
+		if (fpclassify(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
 			s16 cat = GetCategory();
-			if (cat == 7 || cat == 8 || (u16)(cat - 0x14) <= 2) {
+			if (cat == 7 || cat == 8 || (cat >= 0x14 && cat <= 0x16)) {
 				mStatus.mFlags |= 0x80000000ULL;
 			}
 		}
@@ -367,11 +345,11 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			break;
 		}
 		s16 cat            = GetCategory();
-		mScreenBoundsValid = cat == 2 || cat == 7 || (cat == 8 && (mStatus.mFlags & 0x100000000ULL)) || (u16)(cat - 9) <= 0xA || _18C >= 0
-		                  || GetKind() == 0xE || GetKind() == 0x3AE || GetKind() == 0x1D0 || GetKind() == 0x260 || GetKind() == 0x24E
-		                  || GetKind() == 0x23F || GetKind() == 0x23D || GetKind() == 0x41D || GetKind() == 0x2A0 || GetKind() == 0x30D
-		                  || GetKind() == 0x30E || GetKind() == 0x46F || GetKind() == 0x34B || GetKind() == 0x324 || GetKind() == 0x2C9
-		                  || (GetKind() == 0x6A && mPlacementParam0 == 1);
+		mScreenBoundsValid = cat == 2 || cat == 7 || (cat == 8 && (mStatus.mFlags & 0x100000000ULL)) || (cat >= 9 && cat <= 0x13)
+		                  || _18C >= 0 || GetKind() == 0xE || GetKind() == 0x3AE || GetKind() == 0x1D0 || GetKind() == 0x260
+		                  || GetKind() == 0x24E || GetKind() == 0x23F || GetKind() == 0x23D || GetKind() == 0x41D || GetKind() == 0x2A0
+		                  || GetKind() == 0x30D || GetKind() == 0x30E || GetKind() == 0x46F || GetKind() == 0x34B || GetKind() == 0x324
+		                  || GetKind() == 0x2C9 || (GetKind() == 0x6A && mPlacementParam0 == 1);
 		_6DC       = 0;
 		_6D8       = 0;
 		mScreenTop = mScreenBottom = mScreenLeft = mScreenRight = NAN;
@@ -516,9 +494,9 @@ void XObj::Release()
 			}
 			if (source != NULL && source->mAnimNames != NULL
 			    && mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
-				SetAnim(0, TRUE, 0.0f, 15.0f, 15.0f, 1.0f);
+				SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 			}
-			SetAnim(GetAnimId(), TRUE, GetAnimFrame(), 15.0f, 15.0f, 1.0f);
+			SetAnim(GetAnimId(), TRUE, GetAnimFrame(), 1.0f, 1.0f, 15.0f);
 		}
 		ClearAnmSource();
 		if (mArchive.mAnm.mFile.IsLoaded()) {
@@ -718,8 +696,8 @@ void XObj::vf198(f32 margin, f32 alpha, u32 color)
 	if (mStatus.mFlags & 0x1000000000800) {
 		return;
 	}
-	BOOL onScreen = mScreenBoundsValid && __fpclassifyf(mScreenLeft) != FP_NAN && __fpclassifyf(mScreenTop) != FP_NAN
-	             && __fpclassifyf(mScreenRight) != FP_NAN && __fpclassifyf(mScreenBottom) != FP_NAN && mScreenLeft <= gScreenRight
+	BOOL onScreen = mScreenBoundsValid && fpclassify(mScreenLeft) != FP_NAN && fpclassify(mScreenTop) != FP_NAN
+	             && fpclassify(mScreenRight) != FP_NAN && fpclassify(mScreenBottom) != FP_NAN && mScreenLeft <= gScreenRight
 	             && mScreenTop <= gScreenBottom && mScreenRight >= gScreenLeft && mScreenBottom >= gScreenTop;
 	if (onScreen && _6D8 != 0) {
 		SetGsChannelEnabled(&gGame.mGs, 0, 0);
@@ -897,10 +875,8 @@ void XObj::ClearAnim()
 
 // the marker the material pass writes into ResTev's padding, and the "xobj.cpp" assert the
 // retail's Panic calls name (the GameCube's obja.cpp is xobj.cpp here)
-#ifndef UPDATED_TEV_MAGIC_NUMBER
 #define UPDATED_TEV_MAGIC_NUMBER    0xC3
 #define XOBJ_ASSERT_LINE(line, exp) ((void)((exp) || (nw4r::db::Panic("xobj.cpp", line, "NW4R:Failed assertion " #exp), 0)))
-#endif
 
 // 0x800AF51C, the material pass LoadFromPlacement runs while the placement flag is set: every
 // material gains a final TEV stage multiplying the previous colour by the rendered shadow
@@ -978,8 +954,7 @@ extern "C" void fn_800AF51C(XObj* obj)
 			continue;
 		}
 
-		static const GXColor sdwKColor[] = { { 0x00, 0x00, 0x00, 0xFF } };
-		GXColor color                    = sdwKColor[numTexGens];
+		GXColor color = { 0x00, 0x00, 0x00, 0xFF };
 		XOBJ_ASSERT_LINE(0x846, !texObj.IsValidTexObj((GXTexMapID)sdwTexMapId));
 		*texObj.GetTexObj((GXTexMapID)sdwTexMapId) = gGame.mShadow.mTex;
 		texObj.Validate((GXTexMapID)sdwTexMapId);

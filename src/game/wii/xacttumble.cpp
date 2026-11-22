@@ -169,7 +169,8 @@ static inline void RecoverTumble(XActTumble* act, s32 anim, WiiPlayerState* owne
  * @note Address: 0x80106D60
  * @note Size: 0xB68
  */
-// NONMATCHING: 99.75% - semantics match; the residue is pure codegen. In the state-10
+// NONMATCHING: 99.45% - semantics match; the residue is pure codegen. State 11's anim id
+// test written as a plain range costs 0.3 % against the folded unsigned form. In the state-10
 // carry guard MWCC picks different callee registers (r5/r6/r7/r8 swaps, same code), and
 // its stack layout puts the effect temporaries at rot@0x8 / pos@0x18 / offset@0x28 while
 // this source orders them offset@0x8 / rot@0x14 / pos@0x20; no plausible declaration
@@ -246,7 +247,7 @@ extern "C" void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, WiiPlayer
 	}
 	case 11: {
 		s32 id = owner->GetAnimId();
-		if (id == 0xE6 || (u32)(id - 0x164) <= 2) {
+		if (id == 0xE6 || (id >= 0x164 && id <= 0x166)) {
 			if (owner->IsAnimDone())
 				FinishTumble(act, 0.0f);
 		} else {
