@@ -505,14 +505,11 @@ gamecube_libs = [
             # (802284D4/802284F8, 80634A80), which only deferred codegen of the Wii-order source gives
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (US addresses): .text 0x800E25AC-0x800E6950 opens with the weak ~XObjLeticker,
             # then TurnLetickerLinkedPartAndTrackJoint to GetCameraTarget, the camera's weak ~ and getters and
             # __sinit_objb_leticker_cpp; -inline deferred, as retail shows: only deferred codegen of the file
             # written last-address-first puts ~XObjLeticker in front and the camera's weak functions behind
             Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/xobjletickerdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_army.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspider.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspidersmall.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -555,11 +552,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
