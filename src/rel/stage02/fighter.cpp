@@ -502,6 +502,17 @@ struct UnkGame_96BC {
 	u8 _984[0x8CD4];   // _984
 	f32 mBattery;      // _9658, XObjChr::mParams.mBattery (Params at _964C + 0xC); each shot takes batteryCost off it
 	f32 mMaxBattery;   // _965C, XObjChr::mParams.mMaxBattery (Params at _964C + 0x10)
+
+	void SetBattery(f32 value)
+	{
+		mBattery = value > 0.0f ? value : 0.0f;
+		if (mBattery < 0.0f) {
+			mBattery = 0.0f;
+		}
+		if (mBattery > mMaxBattery) {
+			mBattery = mMaxBattery;
+		}
+	}
 #if defined(VERSION_JP)
 	u8 _9660[0x96A4]; // _9660
 #else
@@ -4521,31 +4532,25 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 	UnkGame_96BC* player;
 	f32 dist;
 
-	// the shot runs from the aim point (or the locked target) to a point 10 above the fighter
+	// the shot runs from a point 10 above the fighter to the aim point (or the locked target)
 	local.x = local.z = local.y = 0.0f;
 	local.y                     = 10.0f;
 	PSMTXMultVec(work->mBodyMtx, &local, &end);
 	if (item == NULL) {
 		local = work->mAim.mPos;
 		PSMTXMultVec(work->mBodyMtx, &local, &start);
-		work->mShots.Add(start, end, item);
+		work->mShots.Add(end, start, item);
 	} else {
 		item->mShotsLeft--;
 		if (item->mShotsLeft <= 0) {
 			item->mPending = true;
 		}
 		work->mLastTarget = NULL;
-		work->mShots.Add(item->GetPos(), end, item);
+		work->mShots.Add(end, item->GetPos(), item);
 	}
-	player           = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
-	f32 battery      = player->mBattery - batteryCost;
-	player->mBattery = battery > 0.0f ? battery : 0.0f;
-	if (player->mBattery < 0.0f) {
-		player->mBattery = 0.0f;
-	}
-	if (player->mBattery > player->mMaxBattery) {
-		player->mBattery = player->mMaxBattery;
-	}
+	player      = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
+	f32 battery = player->mBattery - batteryCost;
+	player->SetBattery(battery);
 	{
 		f32 dx = start.x - end.x;
 		f32 dz = start.z - end.z;
