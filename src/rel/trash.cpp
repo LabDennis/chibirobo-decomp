@@ -1048,7 +1048,8 @@ extern "C" void UpdateTrash(u32 frames)
  */
 extern "C" void DrawTrashStack(void* arg)
 {
-	// NONMATCHING: regalloc
+	// NONMATCHING: one jobj-load/pos-store scheduling swap remains; the rest is
+	// literal-pool label layout (sTrashSignedConversionBias, sTrashScalePercent)
 	TrashObj* actor;
 	HSD_JObj* jobj;
 	f32 a;
@@ -1070,11 +1071,12 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 
-	count   = trashStackNum;
+	s32 num = trashStackNum;
+	count   = num;
 	Vec pos = actor->mMoveTranslate;
-	angle   = THIRD_PI + actor->mMoveRotateY;
 	jobj    = actor->jobj;
-	if (count < 0) {
+	angle   = THIRD_PI + actor->mMoveRotateY;
+	if (num < 0) {
 		count = 0;
 	}
 	if (count > 10) {
