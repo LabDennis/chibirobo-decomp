@@ -70,10 +70,9 @@ void BuildObjectDrawList(CGame* game);
 void Reset2__16CCameraActionMapFv(CInterfaceCameraAction* action);
 void LoadStageCameraAreaState(CCameraActionAreaEx* state);
 // only the addresses are retail's, the signatures are read off the calls in this file
-BOOL fn_800C54A4(XObjPool* pools);        // the objects' loading step, true once they are all read
 void fn_800C7F70(void* map);              // takes the map object, the first of pool 3
 BOOL fn_800CDC08(WiiPlayerState* player); // three steps of the player's own setup, each true when done
-BOOL fn_800CE4B0(WiiPlayerState* player);
+BOOL RestorePlayerHeldItem(WiiPlayerState* player);
 BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
@@ -92,7 +91,6 @@ BOOL LoadStageByIndex(s32 stage);
 void ApplyStageClearColor();
 BOOL fn_80084848(void* menu);             // the menus' resources, the GameCube's LoadMenuGroupResources
 void fn_8008492C(void* menu, s32 frames); // steps the open menus
-void fn_800C5814(XObjPool* pools);        // reads the stage's objects in again
 }
 
 extern s32 gRefreshRate;
@@ -362,7 +360,7 @@ static inline BOOL IsStageBusy(CGame* game)
 	if (game->_41F0 > 0) {
 		if (--game->_41F0 <= 0) {
 			game->mLightList = game->mLights;
-			fn_800C5814(game->mXObjs.mPools);
+			ReleaseStageObjectList(&game->mXObjs);
 		} else {
 			return TRUE;
 		}
@@ -663,7 +661,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 	s32 i;
 	switch (game->mSetupStep) {
 	case 0:
-		if (!fn_800C54A4(game->mXObjs.mPools)) {
+		if (!UpdateStageObjectLoading(&game->mXObjs)) {
 			break;
 		}
 		if (game->mResetRequested) {
@@ -729,7 +727,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->mSetupStep++;
 	case 3:
-		if (!fn_800CE4B0(game->GetPlayer())) {
+		if (!RestorePlayerHeldItem(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
