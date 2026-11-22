@@ -561,6 +561,11 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32);
 void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 #endif
 
+// NONMATCHING: the five corner temporaries of each DrawPCListMask sit in the frame in the opposite order (as in
+// DrawMenuBannerPanels), and the argument schedule of the background's DrawGsTrianglePrimitive and of one width
+// conversion differs; the rodata offsets differ with the file's data. Retail forms the page-count table straight
+// into the loop register (US 0x80042384 addi r6), the build materialises items first and copies it; PCShopMaxPage
+// by value gives that here but costs MenuPC::State7 its in-place walk (100 -> 99.76), so the reference stays
 template <PCShopListKind kind>
 #if defined(VERSION_JP)
 void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
@@ -589,8 +594,8 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 		barW = 0.9f * (14.0f * step);
 	} else {
 		CTexObj& label = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
-		barX           = x - 4.0f;
 		barW           = (0.7f * (scale * (1.1f * (2 * label.GetWidth()))) + width) - 5.0f * scale;
+		barX           = x - 4.0f;
 	}
 	f32 barH     = step + scale;
 	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
@@ -3233,9 +3238,9 @@ static inline void LoadOverviewTexture(CTexObj& tex, s32 icon)
 }
 static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 {
-	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
 	f32 scale = menu->mDetailScale;
 	f32 alpha = menu->mAlpha;
+	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
 	// The original constructs a texture and advances its panel counter even when closed.
 	static u32 frame = 0;
 	CTexObj panelTexture;
@@ -3252,15 +3257,15 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
-	                             size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
+	                             0.0f, size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
-	                             helpSize, helpSize);
+	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
+	                             0.0f, helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
@@ -3336,7 +3341,10 @@ static inline f32 StatusLabelColumn(f32 center, bool right)
  * @note Address: 0x800554A8
  * @note Size: 0x51C
  */
-// NONMATCHING: coordinate lifetimes and register allocation
+// NONMATCHING: coordinate lifetimes and register allocation: retail keeps x in f27 and y in f28 from the first
+// loads to their last assignments (US 0x8005552C fadds f27; 0x80055918 fsubs f27) and numbers labelX, labelY and
+// targetY f29-f31 above them, saving one register more; the build reuses x's register for targetY. Declaring the
+// five at the block top in either order or `x += 42.0f` does not change it.
 extern "C" void DrawStatusDiagram(MenuStatus* menu)
 {
 	CTexObj tex;
@@ -4025,8 +4033,10 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 	vertices[3].y = bottom;
 }
 
-// NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
-// uses one; the saved registers are numbered differently, and one ori and one lwz are scheduled a slot apart
+// NONMATCHING: retail holds the white of the left cap in a second register (US 0x800505EC mr r23, r28 after the or,
+// the register that held the 100 * alpha shade before), the build uses one; naming the shade and that copy one
+// variable does not bring the copy back. The saved registers are numbered differently, and one ori and one lwz
+// are scheduled a slot apart
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
@@ -4148,7 +4158,9 @@ static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32
 }
 
 // NONMATCHING: same instructions, other registers: retail has selected in r31, i in r30 and menu in r29,
-// the build menu in r31 and the two locals in r21 and r20; the float registers follow
+// the build menu in r31 and the two locals in r21 and r20; the float registers follow. Declaring selected first
+// or as an if/else does not move them. The cell products are variable-first in retail (US 0x8004FB18 fmadds
+// f0,f0,f28,f23 and f2,f2,f27,f24), so the 80 and 60 are locals.
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	// drawn on its own page (mode 8) and during the mode 4 slide between pages
@@ -4163,9 +4175,10 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			f32 cellWidth = 80.0f, cellHeight = 60.0f;
 			for (int i = 0; i < 24; i++) {
-				f32 x     = 2.0f + ((i % 6) * 80.0f + left);
-				f32 y     = 2.0f + ((i / 6) * 60.0f + top);
+				f32 x     = 2.0f + ((i % 6) * cellWidth + left);
+				f32 y     = 2.0f + ((i / 6) * cellHeight + top);
 				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				if (gStatusIconUnlocked[i] != 0) {
 					int id = i * 2 + 1;
@@ -4491,6 +4504,10 @@ static inline void ResetPCCharacters(MenuPC* menu)
 #endif
 }
 
+// NONMATCHING: the two ClearPCShopPage expansions: retail addresses the rows from the page itself (US 0x8004EAC8
+// sth r3,0x4(r5) with r5 = page) and unrolls the catalog's loop ten times (0x8004EB74 li r0,2), the build forms
+// page->mRows and unrolls five times; indexing the rows (plain, reference, pointer per iteration, direct global,
+// u32 or s32 counter) gives retail's addressing but five-fold unrolling in both loops and 88 bytes less
 void MenuPC::Open()
 {
 	CMenu::Open();
@@ -9523,7 +9540,9 @@ template void DrawPanelBackground<SavePanel>(f32);
  * @note Address: 0x800373D4
  * @note Size: 0x5A4
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc: retail numbers scale f28, y f27, t f26, bob f25 and reuses t's register for x (US
+// 0x80037718 fadds f26), the build t f28, bob f27, scale f26, x f25, y f24; no order of the eleven declarations
+// reaches it (best t, y, x, bob, scale +0.15). The same holds for DrawItemMenuTitle and DrawStatusMenuTitle.
 extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 {
 	if (menu->mTitle.mActive) {
@@ -10322,7 +10341,8 @@ static inline void ClearShopHistoryRows(MenuPCPage* list)
  * @note Address: 0x80034A6C
  * @note Size: 0x3E0
  */
-// NONMATCHING: register allocation and instruction scheduling
+// NONMATCHING: register numbering: retail has the three fields in r5-r7 below the entry and the two row pointers
+// (r8-r10), the build the other way round; declaring the fields at the top in any order does not move them
 extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 {
 	s32 count;
@@ -10336,7 +10356,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart && count < list->mStart + 9 && n < 9) {
 				list->mRows[n].mItem  = itemId;
 				list->mRows[n].mCount = stock;
@@ -10364,7 +10384,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart + 9 && count < list->mStart + 10) {
 				list->mNext[n].mItem  = itemId;
 				list->mNext[n].mCount = stock;
@@ -10385,7 +10405,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart - 1 && count < list->mStart) {
 				list->mPrev[n].mItem  = itemId;
 				list->mPrev[n].mCount = stock;
@@ -10623,8 +10643,9 @@ static inline void FinishStageLabel(char* text)
  * @note Address: 0x80033A68
  * @note Size: 0x6A0
  */
-// NONMATCHING: retail keeps a second counter in the file-name copy loop and indexes the label by offset in
-// FinishStageLabel where the build walks a pointer; the rest is register allocation.
+// NONMATCHING: retail starts the file-name copy's count and index with two li (US 0x80033BC4, 0x80033BC8), the
+// build copies one zero into the other (mr); u32 count, a split count++, a while loop, an if/else store and a
+// function-scope i keep the mr. The rest is register numbering.
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 {
 	menu->mCount = 0;
@@ -10981,7 +11002,10 @@ extern "C" void DispatchMemoryCardTestOperation(MenuMCTest* menu, s32 id)
  * @note Address: 0x8003255C
  * @note Size: 0x750
  */
-// NONMATCHING: register allocation and popup coordinate scheduling
+// NONMATCHING: register numbering (retail keeps card in r22, this copy in r24, i in r28; the build r26/r29/r24) and
+// the popup's schedule: retail stores the sub menu's mState (US 0x80032C18 stwu) before its mY and mX, the build
+// after mY. Open() before the coordinates moves its Resume() call ahead of them (lower); mX first, a step local
+// and the reversed operand order do not move the stwu.
 BOOL MenuMCTest::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
@@ -11024,7 +11048,7 @@ BOOL MenuMCTest::Update(u32 frames)
 		case 3: // a save or a delete finished: read the list again
 		case 7:
 			if (result == 0) {
-				StartMemoryCardPreviewRead(card, sMenuMain.mChannel, 1);
+				StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 				mOperation = 1;
 			} else {
 				mOperation = 0;
