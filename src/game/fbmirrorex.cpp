@@ -19,22 +19,8 @@ extern "C" {
 #include <sysdolphin/initialize.h>
 }
 
-// the scan mode prompt, the boot config, and the game core's start-up pieces
-
-/**
- * @note Address: 0x8001BC34
- * @note Size: 0xC8
- */
-// sets the mirror's camera up for its 256 square texture
-void FbMirrorEx::Init()
-{
-	mJoint = NULL;
-	mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
-	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
-	mCamera.SetScissor(0, 0x100, 0, 0x100);
-	Reset();
-	mOwner = NULL;
-}
+// the scan mode prompt, the boot config, and the game core's start-up pieces (FbMirrorEx::Init at the
+// head of this range is game.cpp's weak copy and lives there)
 
 // draws a NULL-terminated list of lines centered on the screen, returns how many there were
 static inline s32 DrawCenteredLines(const char** lines, s32 color)

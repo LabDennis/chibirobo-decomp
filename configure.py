@@ -367,6 +367,10 @@ gamecube_libs = [
         "cflags": cflags_game,
         "progress_category": "game",
         "objects": [
+            # no extra flags: retail's inlining fits the unit's -inline auto. CGame::Start holds the body of CBase::Start
+            # (US 0x80015534, written above it), which -inline noauto would keep a call. FinalizeStageObjectSetup and
+            # CGame::Update call BuildObjectDrawList and SelectSceneLights (written below them), which -inline deferred
+            # would expand. The code order is unresolved: retail's lies in reverse source order, which only deferred gives.
             Object(NonMatching, "game/game.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecgschan.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecpadone.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -552,7 +556,6 @@ gamecube_libs = [
             Object(EquivalentFor(JP), "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(JP), "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/cgameinit.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
             # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
             # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
@@ -603,7 +606,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
