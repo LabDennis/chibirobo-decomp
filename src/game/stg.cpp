@@ -9198,10 +9198,10 @@ static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size
 }
 static inline void DrawColoredSlotCaption(const char* text, f32 x, f32 y, f32 size, u32 shadow, u32 color)
 {
-	const f32 glyphSize = 0.8f * size;
+	size *= 0.8f;
 	for (int i = 0; i < 4; i++)
-		DrawCenteredSaveLine(text, x + gSaveTextShadowX[i], y + gSaveTextShadowY[i], glyphSize, shadow, 0.0f);
-	DrawCenteredSaveLine(text, x, y, glyphSize, color, 0.0f);
+		DrawCenteredSaveLine(text, x + gSaveTextShadowX[i], y + gSaveTextShadowY[i], size, shadow, 0.0f);
+	DrawCenteredSaveLine(text, x, y, size, color, 0.0f);
 }
 static inline void DrawSaveSlotCaption(const char* text, f32 x, f32 y, f32 size, f32 alpha)
 {
@@ -9209,18 +9209,25 @@ static inline void DrawSaveSlotCaption(const char* text, f32 x, f32 y, f32 size,
 	u32 shadow = (u32)(255.0f * alpha);
 	DrawColoredSlotCaption(text, x, y, size, shadow, color);
 }
-static inline void DrawSaveSlotMessage(s32 id, bool twoLines, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
+static inline void DrawSaveSlotMessage(s32 id, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
 {
 	char* text = GetLocalizedInterfaceText(id);
 	sx         = 23.0f * sx;
 	u32 color  = (u8)(255.0f * alpha) | 0xEDA83600;
 	u32 shadow = (u32)(255.0f * alpha);
 	y          = (y - 5.0f * (17.0f * sy)) - 6.0f * sy;
-	DrawColoredSlotCaption(text, x, (twoLines ? 76.0f : 86.0f) * sy + y, sx, shadow, color);
-	if (twoLines) {
-		text = GetLocalizedInterfaceText(id + 1);
-		DrawColoredSlotCaption(text, x, 96.0f * sy + y, sx, shadow, color);
-	}
+	DrawColoredSlotCaption(text, x, 86.0f * sy + y, sx, shadow, color);
+}
+static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
+{
+	char* text = GetLocalizedInterfaceText(id);
+	sx         = 23.0f * sx;
+	u32 color  = (u8)(255.0f * alpha) | 0xEDA83600;
+	u32 shadow = (u32)(255.0f * alpha);
+	y          = (y - 5.0f * (17.0f * sy)) - 6.0f * sy;
+	DrawColoredSlotCaption(text, x, 76.0f * sy + y, sx, shadow, color);
+	text = GetLocalizedInterfaceText(id + 1);
+	DrawColoredSlotCaption(text, x, 96.0f * sy + y, sx, shadow, color);
 }
 #endif
 
@@ -9242,7 +9249,7 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 		DrawSaveSlotMessage(message, 0x39, 76.0f, x, y, alpha, sx, sy);
 		DrawSaveSlotMessage(message, 0x3A, 96.0f, x, y, alpha, sx, sy);
 #else
-		DrawSaveSlotMessage(0x9E, true, x, y, alpha, sx, sy);
+		DrawSaveSlotTwoLineMessage(0x9E, x, y, alpha, sx, sy);
 #endif
 	} else if (slot->mUsed) {
 		f32 offsetY = -24.0f * sy;
@@ -9250,12 +9257,12 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u16 w = tex.GetWidth(), h = tex.GetHeight();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		f32 iconX = 100.0f * sx + (x - 10.0f * (17.0f * sx));
-#if !defined(VERSION_JP)
-		iconX -= (gSaveSlotSpacing * 0.5f) * sx;
-#endif
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 		f32 top   = y - 5.0f * (17.0f * sy);
+		f32 iconX = 100.0f * sx + (x - 10.0f * (17.0f * sx));
+#if !defined(VERSION_JP)
+		iconX -= (gSaveSlotSpacing / 2.0f) * sx;
+#endif
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, iconX, offsetY + (218.0f * sy + (top - 6.0f * sy)), 0,
 		                   0.6f * (sx * w), 0.6f * (sy * h), 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -9281,16 +9288,16 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x3B, 86.0f, x, y, alpha, sx, sy);
 #else
-		DrawSaveSlotMessage(0x63, false, x, y, alpha, sx, sy);
+		DrawSaveSlotMessage(0x63, x, y, alpha, sx, sy);
 #endif
 	} else {
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x3C, 86.0f, x, y, alpha, sx, sy);
 #else
 		if (IsJapanese())
-			DrawSaveSlotMessage(0x99, false, x, y, alpha, sx, sy);
+			DrawSaveSlotMessage(0x99, x, y, alpha, sx, sy);
 		else
-			DrawSaveSlotMessage(0x99, true, x, y, alpha, sx, sy);
+			DrawSaveSlotTwoLineMessage(0x99, x, y, alpha, sx, sy);
 #endif
 	}
 }
