@@ -10981,7 +10981,10 @@ extern "C" void DispatchMemoryCardTestOperation(MenuMCTest* menu, s32 id)
  * @note Address: 0x8003255C
  * @note Size: 0x750
  */
-// NONMATCHING: register allocation and popup coordinate scheduling
+// NONMATCHING: register numbering (retail keeps card in r22, this copy in r24, i in r28; the build r26/r29/r24) and
+// the popup's schedule: retail stores the sub menu's mState (US 0x80032C18 stwu) before its mY and mX, the build
+// after mY. Open() before the coordinates moves its Resume() call ahead of them (lower); mX first, a step local
+// and the reversed operand order do not move the stwu.
 BOOL MenuMCTest::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
@@ -11024,7 +11027,7 @@ BOOL MenuMCTest::Update(u32 frames)
 		case 3: // a save or a delete finished: read the list again
 		case 7:
 			if (result == 0) {
-				StartMemoryCardPreviewRead(card, sMenuMain.mChannel, 1);
+				StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, sMenuMain.mChannel, 1);
 				mOperation = 1;
 			} else {
 				mOperation = 0;
