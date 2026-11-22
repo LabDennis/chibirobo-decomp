@@ -2620,6 +2620,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 }
 
 template void DrawPCShopList<ItemPriceList>(s32, f32, f32, f32, f32, f32);
+template void DrawPCShopList<PriceList>(s32, f32, f32, f32, f32, f32);
 
 static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32 scale, f32 opacity)
 {
