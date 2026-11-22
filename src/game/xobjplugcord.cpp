@@ -289,8 +289,9 @@ static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
 		CopyCordPos(points[0].mPos, *cord->mEndSource[0]);
 		CopyCordPos(points[0].mTarget, points[0].mPos);
 	} else if (cord->mEndHeight[0]) {
-		points[0].mPos.y    = *cord->mEndHeight[0];
-		points[0].mTarget.y = *cord->mEndHeight[0];
+		f32 y               = *cord->mEndHeight[0];
+		points[0].mPos.y    = y;
+		points[0].mTarget.y = y;
 	}
 	PinTail(cord, points, 1, 2);
 	PinTail(cord, points, 2, 1);
@@ -307,16 +308,25 @@ static inline void SubStep(CVec& position, Vec step)
 
 static inline void ResetSparks(XObjPlugCordNodes& nodes, u32 color, s32 mode, s32 count, s32 enabled)
 {
-	nodes.mColor = color;
-	nodes.mMode  = mode;
-	nodes.mCount = count;
-	for (s32 i = 0; i < 10; i++)
-		nodes.mNode[i].mState = 0;
-	nodes.mEnabled = enabled;
+	nodes.mColor          = color;
+	nodes.mMode           = mode;
+	nodes.mCount          = count;
+	nodes.mNode[0].mState = 0;
+	nodes.mNode[1].mState = 0;
+	nodes.mNode[2].mState = 0;
+	nodes.mNode[3].mState = 0;
+	nodes.mNode[4].mState = 0;
+	nodes.mNode[5].mState = 0;
+	nodes.mNode[6].mState = 0;
+	nodes.mNode[7].mState = 0;
+	nodes.mNode[8].mState = 0;
+	nodes.mNode[9].mState = 0;
+	nodes.mEnabled        = enabled;
 }
 
-// NONMATCHING: retail emits an extra compare/clamp sequence (cmpw/bge/cmpwi/subi) in the point loop
-// that the current source doesn't produce; the rest is scheduling
+// NONMATCHING: retail contains three dead/redundant constructs we intentionally do not reproduce:
+// an empty loop over cord->mCount after gravity, a duplicate store to points[mCount - back].mPos.y
+// in PinTail's mEndHeight branch, and a redundant state >= 0 check after state < 0.
 extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	static f32 floorHeight;
@@ -334,7 +344,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			if (i < 4)
 				points[i].mPos.y += 0.0049f; // the near ends drift up
 			else if (i < 10)
-				points[i].mPos.y += 0.5f * (0.98f * -gravity); // half gravity on the middle
+				points[i].mPos.y += (0.98f * -gravity) * 0.5f; // half gravity on the middle
 			else
 				points[i].mPos.y += 0.98f * -gravity;
 		}
