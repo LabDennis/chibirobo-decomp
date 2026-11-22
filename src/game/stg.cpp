@@ -79,17 +79,6 @@ static MenuMainItem sMainMenuRows[] = {
 };
 #endif
 
-// the stages the stage select offers, in its order
-static s32 sStageSelectOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
-
-// the card test popup's rows
-#if defined(VERSION_JP)
-static MenuMCTestAction sMemoryCardTestRows[]
-    = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
-#else
-static MenuMCTestAction sMemoryCardTestRows[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
-#endif
-
 // the file's statics in .bss order, what the first ones hold isn't known yet
 u8 lbl_80361F68[0xD4];
 Vec lbl_8036203C;
@@ -138,6 +127,69 @@ u8 gStatusEntryAvailable[16];
 static MenuPCItem sShopHistoryEntries[20];
 PCRankingRow gPCRankingRows[10];
 static MenuPCItem sShopCatalogEntries[20];
+
+// the file's initialized data, in retail's .data order
+extern "C" {
+f32 gItemHelpOutlineX[4]     = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gItemHelpOutlineY[4]     = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gItemTitleOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gItemTitleOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
+s32 gStatusTabTextOffsets[4] = { 1, 3, 2, 4 };
+}
+static void (MenuStatus::*gStatusStepHandlers[])(u32)
+    = { &MenuStatus::State0, &MenuStatus::State1, &MenuStatus::State2, &MenuStatus::State3, &MenuStatus::State4,
+	    &MenuStatus::State5, &MenuStatus::State6, &MenuStatus::State7, &MenuStatus::State8, &MenuStatus::State9 };
+extern "C" {
+f32 gStatusOutlineX[4]      = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gStatusOutlineY[4]      = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gStatusTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gStatusTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gStatusHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gStatusHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
+}
+// the texture of each status icon while locked and once unlocked
+s32 gStatusGridTextures[48] = {
+#if defined(VERSION_JP)
+	192, 193, 222, 223, 188, 189, 208, 209, 200, 201, 198, 199, 186, 187, 214, 215, 202, 203, 184, 185, 182, 183, 206, 207,
+	218, 219, 180, 181, 226, 227, 224, 225, 196, 197, 204, 205, 194, 195, 212, 213, 190, 191, 210, 211, 216, 217, 220, 221,
+#else
+	194, 195, 224, 225, 190, 191, 210, 211, 202, 203, 200, 201, 188, 189, 216, 217, 204, 205, 186, 187, 184, 185, 208, 209,
+	220, 221, 182, 183, 228, 229, 226, 227, 198, 199, 206, 207, 196, 197, 214, 215, 192, 193, 212, 213, 218, 219, 222, 223,
+#endif
+};
+static void (MenuPC::*gPCStepHandlers[])(u32)
+    = { &MenuPC::State0, &MenuPC::State1, &MenuPC::State2, &MenuPC::State3, &MenuPC::State4,  &MenuPC::State5,
+	    &MenuPC::State6, &MenuPC::State7, &MenuPC::State8, &MenuPC::State9, &MenuPC::State10, &MenuPC::State11 };
+extern "C" {
+s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+}
+static void (MenuSave::*gSaveStepHandlers[])(u32)
+    = { &MenuSave::State0,  &MenuSave::State1,  &MenuSave::State2,  &MenuSave::State3,  &MenuSave::State4,  &MenuSave::State5,
+	    &MenuSave::State6,  &MenuSave::State7,  &MenuSave::State8,  &MenuSave::State9,  &MenuSave::State10, &MenuSave::State11,
+	    &MenuSave::State12, &MenuSave::State13, &MenuSave::State14, &MenuSave::State15, &MenuSave::State16, &MenuSave::State17 };
+extern "C" {
+f32 gSaveTitleOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gSaveTitleOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gSaveHelpOutlineX[4]     = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gSaveHelpOutlineY[4]     = { -1.0f, -1.0f, 1.0f, 1.0f };
+f32 gGradientTextOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gGradientTextOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+#if !defined(VERSION_JP)
+f32 gSaveTextShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gSaveTextShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+#endif
+}
+
+// the stages the stage select offers, in its order
+static s32 sStageSelectOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+
+// the card test popup's rows
+#if defined(VERSION_JP)
+static MenuMCTestAction sMemoryCardTestRows[]
+    = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
+#else
+static MenuMCTestAction sMemoryCardTestRows[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
+#endif
 
 extern "C" CTexObj* CopyMenuTextureObject(CTexObj* dst, const CTexObj* src);
 extern "C" s32 CountShopCatalogEntries(const MenuPCPage*);
@@ -199,30 +251,6 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32);
 void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 #endif
 
-extern "C" {
-f32 gItemHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gItemHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
-f32 gItemTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gItemTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-f32 gStatusOutlineX[4]      = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gStatusOutlineY[4]      = { -1.0f, -1.0f, 1.0f, 1.0f };
-f32 gStatusTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gStatusTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-f32 gStatusHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gStatusHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-f32 gSaveTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gSaveTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-f32 gSaveHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gSaveHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
-#if defined(VERSION_JP)
-f32 gGradientTextOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gGradientTextOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-#endif
-
-s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
-}
 struct PCScreenAnimation {
 	f32 textureU, textureV;
 	f32 topPhase, bottomPhase;
@@ -276,17 +304,6 @@ enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
 	} while (0)
 #endif
 
-static void (MenuStatus::*gStatusStepHandlers[])(u32)
-    = { &MenuStatus::State0, &MenuStatus::State1, &MenuStatus::State2, &MenuStatus::State3, &MenuStatus::State4,
-	    &MenuStatus::State5, &MenuStatus::State6, &MenuStatus::State7, &MenuStatus::State8, &MenuStatus::State9 };
-static void (MenuPC::*gPCStepHandlers[])(u32)
-    = { &MenuPC::State0, &MenuPC::State1, &MenuPC::State2, &MenuPC::State3, &MenuPC::State4,  &MenuPC::State5,
-	    &MenuPC::State6, &MenuPC::State7, &MenuPC::State8, &MenuPC::State9, &MenuPC::State10, &MenuPC::State11 };
-static void (MenuSave::*gSaveStepHandlers[])(u32)
-    = { &MenuSave::State0,  &MenuSave::State1,  &MenuSave::State2,  &MenuSave::State3,  &MenuSave::State4,  &MenuSave::State5,
-	    &MenuSave::State6,  &MenuSave::State7,  &MenuSave::State8,  &MenuSave::State9,  &MenuSave::State10, &MenuSave::State11,
-	    &MenuSave::State12, &MenuSave::State13, &MenuSave::State14, &MenuSave::State15, &MenuSave::State16, &MenuSave::State17 };
-
 #if defined(VERSION_JP)
 enum {
 	StatusTitleText       = 0x50,
@@ -308,10 +325,6 @@ enum {
 	FirstStatusTabTexture = 235
 };
 #endif
-
-extern "C" {
-s32 gStatusTabTextOffsets[4] = { 1, 3, 2, 4 };
-}
 
 inline void MenuMain::Open()
 {
@@ -1105,11 +1118,6 @@ static inline void DrawSaveSlotMessage(char (&message)[256], s32 id, f32 row, f3
 }
 
 #else
-extern "C" {
-f32 gSaveTextShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
-f32 gSaveTextShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-}
-
 static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size, u32 color, f32 offsetY)
 {
 	f32 top   = (offsetY + y) - size / 2.0f;
@@ -1262,16 +1270,6 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 }
 #endif
 
-// the texture of each status icon while locked and once unlocked
-s32 gStatusGridTextures[48] = {
-#if defined(VERSION_JP)
-	192, 193, 222, 223, 188, 189, 208, 209, 200, 201, 198, 199, 186, 187, 214, 215, 202, 203, 184, 185, 182, 183, 206, 207,
-	218, 219, 180, 181, 226, 227, 224, 225, 196, 197, 204, 205, 194, 195, 212, 213, 190, 191, 210, 211, 216, 217, 220, 221,
-#else
-	194, 195, 224, 225, 190, 191, 210, 211, 202, 203, 200, 201, 188, 189, 216, 217, 204, 205, 186, 187, 184, 185, 208, 209,
-	220, 221, 182, 183, 228, 229, 226, 227, 198, 199, 206, 207, 196, 197, 214, 215, 192, 193, 212, 213, 218, 219, 222, 223,
-#endif
-};
 extern "C" u8* GetStatusIconDescription(s32 id);
 
 static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32 bob, f32& width, f32& height, bool selected)
