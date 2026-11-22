@@ -3134,6 +3134,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
  * @note Address: 0x80196708
  * @note Size: 0x1B4
  */
+// NONMATCHING: inlined GetGlyph sign-extends glyph.mStr[0] on store (extsb) where retail moves the raw byte (mr)
 // how tall the text is, one line height per line
 extern "C" f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size)
 {
