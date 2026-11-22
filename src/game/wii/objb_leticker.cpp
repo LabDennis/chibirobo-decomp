@@ -3,6 +3,7 @@
 #include "game/wii/cgame.h"
 #include "game/ccameraaction.h"
 #include "game/evt.h"
+#include "arithmetic.h"
 #include <math.h>
 
 // the rising lifts and their camera action. The GameCube's objb_leticker.cpp carries
@@ -215,6 +216,82 @@ Vec CCameraActionLeticker::GetCameraTarget()
 {
 	return *mTarget;
 }
+
+extern "C" {
+
+// forward, GetClearLetickerApproachSide runs ahead of it in retail .text
+bool IsLetickerJointClearOfObjects(XObj* obj, nw4r::g3d::ResNode node);
+
+/**
+ * @note Address: 0x8011B570
+ * @note Size: 0x224
+ */
+s32 GetClearLetickerApproachSide(XObj* obj, const Vec* pos)
+{
+	const Vec* objPos = obj->GetPos();
+	f32 angle         = WrapAngle((f32)atan2(pos->x - objPos->x, pos->z - objPos->z) - obj->mMoveRotate.y);
+	if (3.0f + obj->GetPos()->y < gGame.GetPlayer()->GetPos()->y) {
+		return 0;
+	}
+	if ((f32)cos(0.7853982) < (f32)cos(angle)) { // 45 degrees
+		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(6))) {
+			return -1;
+		}
+	} else if ((f32)cos(angle) < (f32)cos(3.9269907)) { // 225 degrees
+		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(10))) {
+			return -2;
+		}
+	} else if (0.0f < (f32)sin(angle)) {
+		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(8))) {
+			return -3;
+		}
+	} else {
+		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(12))) {
+			return -4;
+		}
+	}
+	return 0;
+}
+
+// whether the spot under the joint is free, nothing near it in the way
+/**
+ * @note Address: 0x8011B7BC
+ * @note Size: 0x244
+ */
+bool IsLetickerJointClearOfObjects(XObj* obj, nw4r::g3d::ResNode node)
+{
+	CVec pos;
+	MtxP mtx = obj->GetWorldMtx(node);
+	pos.x = pos.y = pos.z = 0.0f;
+	PSMTXMultVec(mtx, &pos, &pos);
+	pos.y -= 6.0f;
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		if (!(gGame.mXObjs.mObjects[i]->mStatus.mFlags & 1) || !(gGame.mXObjs.mObjects[i]->mStatus.mFlags & 0x10000)) {
+			continue;
+		}
+		if (obj == gGame.mXObjs.mObjects[i]) {
+			continue;
+		}
+		if ((s16)gGame.mXObjs.mObjects[i]->GetPool() == 2) {
+			continue;
+		}
+		XObj* target    = gGame.mXObjs.mObjects[i];
+		CVec* targetPos = target->GetPos();
+		f32 z           = targetPos->z - pos.z;
+		f32 x           = targetPos->x - pos.x;
+		f32 dist        = FSqrt(x * x + z * z);
+		if (dist > 100.0f + (5.0f + target->mFloorXZExtent[0])) {
+			continue;
+		}
+		CVec hit, normal;
+		if (target->TestFloorCollision(&pos, &pos, 5.0f, 12.0f, &hit, &normal, 0, 0) & 2) {
+			return false;
+		}
+	}
+	return true;
+}
+
+} // extern "C"
 
 // the action HandleEventCommand pushes while the leticker's camera is bounded;
 // retail's __sinit constructs it in this unit
