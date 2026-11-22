@@ -1063,7 +1063,6 @@ void SetPushActionState(XActPush* act, s32 state);
 void SetPlayerActionTarget(XAction* action, XObj* target);
 void SetPushTargetState(XActPush* act, s32 value);
 f32 WrapPlayerActionAngle(f32 angle);
-extern s32 lbl_8065B268;
 f32 GetPlayerAnimationRateMultiplier(XObjChr* chr);
 Vec* GetObjectVectorCurrent(CObjVec* value);
 void* GetMapPoolEntry(const CGame* game, s32 index);
@@ -6406,10 +6405,8 @@ extern "C" void UpdatePlayerIdleJointAnimations(XObjChr* chr, u32 frames)
 	}
 }
 
-extern "C" {
 // the obstacles that held him back this frame; the walk code slows him 15% for each, down to 70%
-extern s32 lbl_8065B268;
-}
+static s32 sBlockedObstacleCount;
 
 static inline f32 GetStickMotion(CPadOne* pad)
 {
@@ -6480,8 +6477,8 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 
 	// the gait goes by the speed he tries to go: divide out what the walk code scaled him by (obstacles or the rate multiplier)
 	f32 speed;
-	if (lbl_8065B268 >= 1) {
-		f32 scale = 1.0f - 0.15f * (f32)lbl_8065B268;
+	if (sBlockedObstacleCount >= 1) {
+		f32 scale = 1.0f - 0.15f * (f32)sBlockedObstacleCount;
 		if (scale < 0.7f)
 			scale = 0.7f;
 		speed = p->mMoveSpeed / scale;
@@ -6918,8 +6915,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			f32 angle = direction >= 0.0f ? direction : -direction;
 			if (angle > TWO_PI)
 				angle -= TWO_PI;
-			if (lbl_8065B268 >= 1) {
-				f32 scale = 1.0f - 0.15f * lbl_8065B268;
+			if (sBlockedObstacleCount >= 1) {
+				f32 scale = 1.0f - 0.15f * sBlockedObstacleCount;
 				if (scale < 0.7f)
 					scale = 0.7f;
 				f32 factor = GetPlayerMoveSpeedScale(player);
@@ -7263,7 +7260,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	s32 floorIndex   = -1;
 	BOOL canRise     = FALSE;
 	CVec push, contact;
-	lbl_8065B268 = 0;
+	sBlockedObstacleCount = 0;
 	if (player->mInAir) {
 		if (CanFallDuringHangAction(&player->mHang) || IsHangActionState(&player->mHang, 9)) {
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
@@ -7328,7 +7325,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							}
 						}
 						if (blocked)
-							++lbl_8065B268;
+							++sBlockedObstacleCount;
 					}
 					contactFlags |= hit;
 				}
