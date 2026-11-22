@@ -1607,12 +1607,12 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 extern "C" {
-extern PointPtcl gPointParticlePool[10];
-extern PointPtcl* gPointParticleSlots[10];
-extern SuitChangeEffect gPlayerSuitChangeEffect;
+PointPtcl gPointParticlePool[10];
+PointPtcl* gPointParticleSlots[10];
+SuitChangeEffect gPlayerSuitChangeEffect;
 PlayerTurnState gPlayerTurnState;
-extern f32 gEquipmentIconWidth[8];
-extern f32 gEquipmentIconHeight[8];
+f32 gEquipmentIconWidth[8];
+f32 gEquipmentIconHeight[8];
 }
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
@@ -1692,8 +1692,7 @@ static inline bool IsStopped(const XObjChr* chr)
 
 void XObjChr::UpdateObject(u32 frames)
 {
-	PlayerTurnState& turn = gPlayerTurnState;
-	XPad* pad             = &mPad;
+	XPad* pad = &mPad;
 	if (pad->mReset && !mMenu.IsOpen() && !mOXMenu.mStarted && !gGame.mMenu.mActive && !mSuits.mChangeStep)
 		pad->Update(frames);
 	else
@@ -1944,28 +1943,28 @@ void XObjChr::UpdateObject(u32 frames)
 	}
 	UpdateSpiralTrail(&gPlayerSuitChangeEffect, frames);
 	if (mPad.mReset) {
-		turn.previousHeading = turn.heading;
-		turn.heading         = WrapAngle(mMoveRotate.y);
-		turn.previousChange  = turn.change;
-		turn.change          = turn.heading - turn.previousHeading;
-		if (turn.change > PI)
-			turn.change -= TWO_PI;
-		else if (turn.change < -PI)
-			turn.change += TWO_PI;
+		gPlayerTurnState.previousHeading = gPlayerTurnState.heading;
+		gPlayerTurnState.heading         = WrapAngle(mMoveRotate.y);
+		gPlayerTurnState.previousChange  = gPlayerTurnState.change;
+		gPlayerTurnState.change          = gPlayerTurnState.heading - gPlayerTurnState.previousHeading;
+		if (gPlayerTurnState.change > PI)
+			gPlayerTurnState.change -= TWO_PI;
+		else if (gPlayerTurnState.change < -PI)
+			gPlayerTurnState.change += TWO_PI;
 
 		if (mLift.mState || mCopter.mState || mPopper.mState == 4) {
-			turn.total = 0.0f;
+			gPlayerTurnState.total = 0.0f;
 		} else {
-			turn.total += turn.change;
-			if (turn.change * turn.previousChange <= 0.0f)
-				turn.total = 0.0f;
-			else if (Abs(turn.change) < 10.0f * DEG2RAD)
-				turn.total = 0.0f;
+			gPlayerTurnState.total += gPlayerTurnState.change;
+			if (gPlayerTurnState.change * gPlayerTurnState.previousChange <= 0.0f)
+				gPlayerTurnState.total = 0.0f;
+			else if (Abs(gPlayerTurnState.change) < 10.0f * DEG2RAD)
+				gPlayerTurnState.total = 0.0f;
 		}
-		s32 turns = (s32)(turn.total / TWO_PI);
+		s32 turns = (s32)(gPlayerTurnState.total / TWO_PI);
 		if ((turns < 0 ? -turns : turns) >= 5) {
-			mTumble.mState = 10;
-			turn.total     = 0.0f;
+			mTumble.mState         = 10;
+			gPlayerTurnState.total = 0.0f;
 		}
 	}
 	if (mCameraTargetMargin < mCameraTargetMarginSetting) {
