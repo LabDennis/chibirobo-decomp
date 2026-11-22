@@ -50,7 +50,9 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 time);
 void InitCameraAreaEntries(CamAreaState* state);
 void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
 void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 force, f32 time);
-void UpdateAreaCameraEntrySelection(CCameraActionArea* area);
+s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area);
+void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices);
+void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir);
 f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
 void fn_8016AA78(f32* out, f32* in, f32* limits);
 f32 fn_8016A81C(f32 value, f32 min, f32 max);
@@ -465,6 +467,66 @@ void CCameraActionArea::DrawDebug2d()
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", x, y, z, 9.0f, 9.0f, gCameraAreaState.mActiveArea,
 	                       mEntryIndex, gCameraAreaState.mCurrentArea);
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", x, y + 9.0f, z, 9.0f, 9.0f);
+}
+
+inline void YawDir(CVec& dir, const Vec& angle);
+
+/**
+ * @note Address: 0x801556D8
+ * @note Size: 0x2F8
+ */
+// NONMATCHING: the control flow and calls match; register allocation and the direction vectors' stack slots differ
+extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
+{
+	s32 slotIndex    = gCameraAreaState.mActiveArea;
+	s32 currentArea  = gCameraAreaState.mCurrentArea;
+	s32 previousArea = gCameraAreaState.mPrevArea;
+	s32 zoomLevel    = gCameraAreaState.mZoomLevel;
+	if (gGame.GetStatusFlags(0x20)) {
+		return area->mEntry->mId;
+	}
+	if (gWiiPointer.mFlags & 2) {
+		if (zoomLevel > 1) {
+			gCameraAreaState.mZoomLevel = zoomLevel - 1;
+			return area->mEntry->mId;
+		}
+	} else if (gWiiPointer.mFlags & 0x80000000) {
+		if (zoomLevel < 2) {
+			gCameraAreaState.mZoomLevel = zoomLevel + 1;
+			return area->mEntry->mId;
+		}
+	} else if (area->mKeepViewDirection == 1 && (gWiiPointer.mFlags & 1)) {
+		s32 indices[2];
+		FindActiveAreaCameraEntriesByBearing(area, indices);
+		area->mEntryIndex = indices[0];
+		area->mForceApply = TRUE;
+	} else if (area->mKeepViewDirection == 1 && (gWiiPointer.mFlags & 2)) {
+		s32 indices[2];
+		FindActiveAreaCameraEntriesByBearing(area, indices);
+		area->mEntryIndex = indices[1];
+		area->mForceApply = TRUE;
+	} else if (gWiiPointer.mFlags & 1) {
+		if (++area->mEntryIndex >= gCameraAreaState.mGroups[slotIndex].mEntryCount) {
+			area->mEntryIndex = 0;
+		}
+	} else if (gWiiPointer.mFlags & 2) {
+		CamAreaSlot* slot = &gCameraAreaState.mGroups[slotIndex];
+		if (--area->mEntryIndex < 0) {
+			area->mEntryIndex = slot->mEntryCount - 1;
+		}
+	} else if (currentArea != previousArea && currentArea != -1) {
+		CVec dir;
+		if (area->mKeepViewDirection != 0) {
+			CVec delta = area->mInterest - area->mEye;
+			delta.Normalize();
+			dir.Set(delta);
+		} else {
+			YawDir(dir, area->mEntry->mAngle);
+		}
+		SelectActiveAreaCameraEntryFacing(area, dir);
+	}
+	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
+	return area->mEntry->mId;
 }
 
 // the GameCube's SelectAreaCameraEntry, which the Wii expands here
