@@ -313,12 +313,11 @@ void CBase::Start()
 	OSInitStopwatch(&mStopwatch[0], "__$dsync$ ");
 	OSInitStopwatch(&mStopwatch[1], "__$update$");
 	OSInitStopwatch(&mStopwatch[2], "__$draw$  ");
-	mPrevDvdStatus = 0;
-	mDvdStatus     = 0;
-	mDiskOk        = 1;
-	mDvdError      = 0;
-	mResetHold     = 0;
-	mReset         = 0;
+	mDvdStatus = mPrevDvdStatus = 0;
+	mDiskOk                     = 1;
+	mDvdError                   = 0;
+	mResetHold                  = 0;
+	mReset                      = 0;
 }
 
 /**
@@ -926,7 +925,7 @@ void InitMessageWindow(CMsg*);
  * @note Address: 0x80012A8C
  * @note Size: 0xAB0
  */
-// NONMATCHING: retail has CBase::Start's body inline here, the two are in one file there
+// NONMATCHING: PAL forms &gGame again for mBlur.Init's arguments (0x80012F10) where this build keeps it from mOutline.Init's
 void CGame::Start()
 {
 	CBase::Start();

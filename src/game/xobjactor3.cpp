@@ -2599,13 +2599,17 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
 	f32 scale = 1.0f;
 #if defined(VERSION_JP)
-	f32 w = GXGetTexObjWidth(&tex);
+	f32 w = scale * GXGetTexObjWidth(&tex);
 #else
 	u16 w = GXGetTexObjWidth(&tex);
 #endif
 	u16 h = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+#if defined(VERSION_JP)
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, scale * h, 0.0f, 0.0f, 0.0f);
+#else
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, scale * h, 0.0f, 0.0f, 0.0f);
+#endif
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #if !defined(VERSION_JP)
 	DrawTimerLabel(scale);
