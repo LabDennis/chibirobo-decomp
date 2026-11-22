@@ -3192,22 +3192,32 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		}
 	}
 }
+// a stat row under the rank: retail adds the row's 44, 88 or 132 with the variable first (US 0x80055AF4, 0x80055B40,
+// 0x80055B8C), a product of the row number, where a written literal would come first
+static inline void DrawOverviewStatRow(MenuStatus* menu, s32 icon, s32 value, u8 selected, f32 x, f32 top, s32 row)
+{
+	DrawPlayerStatusValue(icon - StatusTextureOffset, value, selected, x, 40.0f + (8.0f + (top + row * 44.0f)), menu->mAlpha,
+	                      menu->mPulsePhase);
+}
 static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 y)
 {
 	f32 statX = 20.0f + (x - 280.0f);
 	DrawPlayerStatusValue(0xB4 - StatusTextureOffset, gGame.GetPlayer()->mParams.mRank, selected == 0, statX, (y - 80.0f) + 8.0f,
 	                      menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x9A - StatusTextureOffset, gGame.GetPlayer()->mParams.mExperience, selected == 2, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x98 - StatusTextureOffset, gGame.GetPlayer()->mParams.mMoney, selected == 3, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
+	DrawOverviewStatRow(menu, 0x9A, gGame.GetPlayer()->mParams.mExperience, selected == 2, statX, y - 80.0f, 1);
+	DrawOverviewStatRow(menu, 0x98, gGame.GetPlayer()->mParams.mMoney, selected == 3, statX, y - 80.0f, 2);
+	DrawOverviewStatRow(menu, 0x99, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX, y - 80.0f, 3);
 }
 static inline void DrawStatusOverviewEntry(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 y)
 {
 	DrawPlayerStatusIcon(icon - StatusTextureOffset, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f,
 	                     menu->mPulsePhase);
+}
+// an entry row under the first: retail adds the row's 52, 104 or 156 with the variable first (US 0x80055E14,
+// 0x80055E60, 0x80055EAC), a product of the row number
+static inline void DrawStatusOverviewEntryRow(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 top, s32 row)
+{
+	DrawStatusOverviewEntry(menu, icon, cell, selected, x, 14.0f + (top + row * 52.0f));
 }
 static inline void BeginOverviewTexture(CTexObj& tex)
 {
@@ -3262,7 +3272,9 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 // 44/88/132 (0x80055AF4, while their 8 and 40 are literal-first), the 14 of y + 14, (y - 82) + 14 and
 // (y - 18) + 14 (0x80055D74, 0x80055DC4, 0x800560A0, while the entry rows' 14 + ((y - 82) + 52) has the 14 first),
 // and the entry rows' 52/104/156 (0x80055E14): each row's offset reached its call as a variable, the first row of
-// each column through another spelling than the rest.
+// each column through another spelling than the rest. The rows under the first now add a row number times the
+// spacing; the first rows still add their 8 and 14 as literals (constant first, retail variable first), and the
+// rows' availability byte is loaded earlier than retail's (US 0x80055E24 lbz r4, 0x6(r4) right before the call).
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -3279,12 +3291,9 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 left = ((48.0f + x) - 48.0f) - 12.0f;
 		f32 row0 = (y - 82.0f) + 14.0f;
 		DrawStatusOverviewEntry(menu, 0xAA, 5, selected, left, row0);
-		f32 row1 = 14.0f + ((y - 82.0f) + 52.0f);
-		DrawStatusOverviewEntry(menu, 0xB3, 6, selected, left, row1);
-		f32 row2 = 14.0f + ((y - 82.0f) + 104.0f);
-		DrawStatusOverviewEntry(menu, 0xA9, 7, selected, left, row2);
-		f32 row3 = 14.0f + ((y - 82.0f) + 156.0f);
-		DrawStatusOverviewEntry(menu, 0xAC, 8, selected, left, row3);
+		DrawStatusOverviewEntryRow(menu, 0xB3, 6, selected, left, y - 82.0f, 1);
+		DrawStatusOverviewEntryRow(menu, 0xA9, 7, selected, left, y - 82.0f, 2);
+		DrawStatusOverviewEntryRow(menu, 0xAC, 8, selected, left, y - 82.0f, 3);
 		LoadOverviewTexture(tex, 178);
 		f32 w = 1.4f * (1.1f * tex.GetWidth()), h = 1.4f * tex.GetHeight();
 		BeginOverviewTexture(tex);
@@ -3307,9 +3316,9 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
 		f32 right = (192.0f + (72.0f + x)) - 12.0f;
 		DrawStatusOverviewEntry(menu, 0xAE, 9, selected, right, row0);
-		DrawStatusOverviewEntry(menu, 0xAF, 10, selected, right, row1);
-		DrawStatusOverviewEntry(menu, 0xB0, 11, selected, right, row2);
-		DrawStatusOverviewEntry(menu, 0xB1, 12, selected, right, row3);
+		DrawStatusOverviewEntryRow(menu, 0xAF, 10, selected, right, y - 82.0f, 1);
+		DrawStatusOverviewEntryRow(menu, 0xB0, 11, selected, right, y - 82.0f, 2);
+		DrawStatusOverviewEntryRow(menu, 0xB1, 12, selected, right, y - 82.0f, 3);
 		DrawStatusGridDescription(menu, false);
 	}
 }
@@ -7561,11 +7570,19 @@ static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
 }
 
+// the row `offset` places before the end of the list. Read through this accessor, retail forms each row's address
+// anew and loads the field from it (US 0x8003D9EC add r4, r3, r0; lwz r0, 0x4(r4)); a direct subscript on the array
+// folds the field into the base once (lwzx from gPCRankingRows + 4)
+static inline const PCRankingRow& GetRankingRowFromEnd(MenuPC* menu, int offset)
+{
+	return gPCRankingRows[menu->mRankingEnd - offset];
+}
+
 static inline void LoadRankingRow(MenuPC* menu, int slot, int offset)
 {
-	menu->mRankingRows[slot].rank      = gPCRankingRows[menu->mRankingEnd - offset].rank;
-	menu->mRankingRows[slot].nameIndex = gPCRankingRows[menu->mRankingEnd - offset].nameIndex;
-	menu->mRankingRows[slot].score     = gPCRankingRows[menu->mRankingEnd - offset].score;
+	menu->mRankingRows[slot].rank      = GetRankingRowFromEnd(menu, offset).rank;
+	menu->mRankingRows[slot].nameIndex = GetRankingRowFromEnd(menu, offset).nameIndex;
+	menu->mRankingRows[slot].score     = GetRankingRowFromEnd(menu, offset).score;
 }
 
 static inline void ClearRankingRow(PCRankingRow& row)
@@ -7599,9 +7616,9 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 	}
 }
 
-// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
-// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once (a loop, a struct
-// copy, a pointer parameter and a row reference all keep the base+4 form or lose the per-field index reload).
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently), and retail
+// forms the list top (168 + y) before the opacity conversion where the build hoists it after it and keeps y alive
+// across the call for that (fmr f14, f2)
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -7657,14 +7674,15 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 		}
 		CTexObj tex;
 		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
-		f32 top     = 168.0f + y;
 		f32 opacity = 255.0f * alpha;
 		u32 light   = (u32)opacity | 0xC8C8C800;
 		u8 a        = (u8)opacity;
 		for (int i = 0; i < 5; i++) {
 			if (gPCRankingRows[i].nameIndex == -1)
 				continue;
-			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
+			// retail keeps the list top on the stack and 10 * scale in a register (US 0x8003DC78 stfs f0, 0x31c(r1);
+			// 0x8003DD24 fmuls f25), the other way round from a named top, so the top is part of this expression
+			f32 rowY = (menu->mRankingOffsets[i] + ((168.0f + y) + i * 48)) - 48.0f;
 			tex      = InitPCPanelTexture(180);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 w = 1.1f * (1.1f * tex.GetWidth()), h = 1.1f * tex.GetHeight();
