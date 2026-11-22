@@ -2484,6 +2484,65 @@ void MenuStatus::vf0C(CbPane* pane)
 	}
 }
 
+// NONMATCHING: MWCC folds &mParams (0x999C) + mInventory (0x3C) into -0x6628(r3), as in MenuItem::vf10
+void MenuStatus::vf10(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	if (kind >= 25 && kind <= 48) {
+		if (mIconSelection != kind - 25) {
+			mIconSelection = kind - 25;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 12 && kind <= 24) {
+		if (mOverviewSelection != kind - 12) {
+			mOverviewSelection = kind - 12;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		return;
+	}
+	if (kind >= 4 && kind <= 11 && mItemSelection != kind - 4) {
+		if (CountMenuItems() > 0) {
+			s32 slot = kind - 4;
+			if (sStatusItemTable.mItems[slot].mItem >= 0) {
+				mItemSelection = slot;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		return;
+	}
+	switch (kind) {
+	case 0:
+		if (mSelection != 0) {
+			mSelection = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 1:
+		if (mSelection != 1) {
+			mSelection = 1;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 2:
+		if (mSelection != 2) {
+			mSelection = 2;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	case 3:
+		if (mSelection != 3) {
+			mSelection = 3;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		break;
+	}
+	if (kind >= 49 && kind <= 50 && mMode == 2 && mPhase == 0) {
+		mPaneFades.mFades[(u32)(kind - 49)].mHovered = 1;
+	}
+}
+
 void MenuStatus::vf18(nw4r::math::VEC2*)
 {
 	ClearSelections();
