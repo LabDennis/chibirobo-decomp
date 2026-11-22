@@ -126,6 +126,31 @@ static inline void ExpandRadius(f32 x, f32 z, f32& maxX, f32& maxZ)
 		maxZ = ABS(z);
 }
 
+// the floor readers the Wii build's cjanim.cpp keeps; retail GameCube has GetFloorYawRadians out of line
+// in obja_chr.cpp (0x800B247C) with the same signature
+static inline Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index)
+{
+	Vec offset = gObjectFloorOffsetTemplate;
+	offset.x   = (*floors)[index].mCenterOffset[0] / 100.0f;
+	offset.y   = (*floors)[index].mCenterOffset[1] / 100.0f;
+	offset.z   = (*floors)[index].mCenterOffset[2] / 100.0f;
+	return offset;
+}
+
+static inline Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
+{
+	Vec extent = lbl_80378148;
+	extent.x   = (*floors)[index].mExtent[0] / 100.0f;
+	extent.y   = (*floors)[index].mExtent[1] / 100.0f;
+	extent.z   = (*floors)[index].mExtent[2] / 100.0f;
+	return extent;
+}
+
+static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
+}
+
 static inline s32 IntersectFloorRay(const Vec& start, const Vec& end, const Vec& a, const Vec& b, CVec& hit, s32 segment)
 {
 	return IntersectLinesXZ(&start, &end, &a, &b, &hit, segment);
@@ -1056,6 +1081,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 
 // NONMATCHING: retail reads the quad corners through floors (lwzx off the held pointer) but the quad's yaw through
 // object->mFloors, keeps index * 32 apart from the pointer, and allocates registers differently
+// (tried: reading yaw and id through object->mFloors, GetFloorYawRadians(&object->mFloors, index), and the
+// quad corners through floors with its yaw through object->mFloors; each drops to 89-90 %)
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
@@ -1438,8 +1465,9 @@ CVec CVec::operator*(Vec other) const
 	return result;
 }
 
-// NONMATCHING: retail reads each floor field as floors + (i * 0x20 + offset) with lwzx, here floors + i * 0x20 is formed
-// once per pass; registers follow from that
+// NONMATCHING: the floor readers take the table by address, as the Wii build's do, which gives retail's
+// floors + (i * 0x20 + offset) lwzx reads; passing the local's address also spills floors to the frame
+// (stw 0x8(r1)), which retail does not, so the frame is 4 bytes off and registers shift by one
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 {
 	XObjFloor* floors = mFloors;
@@ -1457,9 +1485,9 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
-		Vec center   = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
-		Vec extent   = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
-		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
+		Vec center   = mMoveScale * (mToppleOffset + GetFloorCenterOffset(&floors, i));
+		Vec extent   = mMoveScale * GetFloorExtent(&floors, i);
+		f32 localYaw = GetFloorYawRadians(&floors, i);
 		f32 yaw      = rotation + localYaw;
 		switch (floors[i].mId) {
 		case 0:
@@ -1526,13 +1554,12 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			break;
 		}
 		case 5: { // a four-point polygon built from this and the next three floors
-			XObjFloor* polygon = mFloors;
 			Mtx translate, rotate, scale, transform;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = mToppleOffset + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
-			Vec size  = mMoveScale * ReadFloorCoordinates(polygon[i].mExtent, lbl_80378148);
-			f32 angle = mMoveRotate.y + FloorRotationRadians(polygon[i].mYawDegrees);
+				corners[j] = mToppleOffset + GetFloorCenterOffset(&mFloors, i + j);
+			Vec size  = mMoveScale * GetFloorExtent(&mFloors, i);
+			f32 angle = mMoveRotate.y + GetFloorYawRadians(&mFloors, i);
 			PSMTXTrans(translate, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXScale(scale, size.x, size.y, size.z);
 			PSMTXRotRad(rotate, 'y', angle);
