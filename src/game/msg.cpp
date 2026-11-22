@@ -75,6 +75,7 @@ static inline u16 ReadMsgU16(CMsg* msg)
  * @note Address: 0x8007FFB4
  * @note Size: 0x2D0
  */
+// NONMATCHING: the reads keep the cursor and the byte in each other's register, as in CMsg__cmd_ANIM
 extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
 {
 	switch (command) {
@@ -1158,6 +1159,7 @@ static inline void MsgSetDigits(CMsg* msg, const s8* digits, s32 count, s32 firs
  * @note Address: 0x80080B88
  * @note Size: 0x944
  */
+// NONMATCHING: retail reloads the font flag byte at the last two fade outs and tests mStarted with beq and bge; this keeps the byte in r5
 extern "C" s32 CMsg__cmd_END(CMsg* msg)
 {
 	if (msg->mFont.mActive) {

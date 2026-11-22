@@ -328,6 +328,7 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue 
  * @note Address: 0x8007E97C
  * @note Size: 0x528
  */
+// NONMATCHING: regalloc (retail starts the timer loop from the zero of the 64-bit flag test, r5, and walks gEventTimers in r9)
 void CEvt::Update(s32 step)
 {
 	if (mData.mScript != NULL) {
@@ -763,6 +764,7 @@ extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj)
  * @note Address: 0x8007E7F4
  * @note Size: 0xAC
  */
+// NONMATCHING: retail schedules the mJObj load and test into the prologue; Get/Find/GetObjectJointByPath, a jobj local keep them after
 extern "C" CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path)
 {
 	// CJObj::mJObj, game/cjobj.h would pull 0x24 bytes of .rodata into this file
@@ -893,6 +895,7 @@ static inline s32 EvtRead16(const u8* p)
  * @note Address: 0x8007CAAC
  * @note Size: 0x1D1C
  */
+// NONMATCHING: pad[7] gives srwi (a bool) in retail, extrwi 8,19 here; r3/r4 swaps around the 64-bit flag tests
 s32 CEvt::Evaluate()
 {
 	s32 op = *mData.mScript;
@@ -3443,6 +3446,7 @@ static inline void Compare(BOOL& result, s32 opcode, s32 lhs, s32 rhs)
  * @note Address: 0x8007C054
  * @note Size: 0xA58
  */
+// NONMATCHING: retail switches on a clrlwi copy of the op in r4 and keeps the read in r29; this switches on r29
 void CEvt::EvalSet()
 {
 	s32 code = *mData.mScript;
@@ -6497,6 +6501,7 @@ void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
  * @note Address: 0x80078754
  * @note Size: 0x1D38
  */
+// NONMATCHING: regalloc (end, args pointer, count and i swap registers; retail reads mScript twice at the start), declaration orders tried
 s32 CEvt::_cmd_CALL(u8, s32)
 {
 	s32 yield  = 0;
@@ -8978,6 +8983,7 @@ extern "C" void SetStageCameraAnimation(XObj* obj, s32 anim, f32 frame);
  * @note Address: 0x80077858
  * @note Size: 0xEFC
  */
+// NONMATCHING: regalloc (retail keeps the evt action in r31 and this in r30)
 s32 CEvt::_cmd_CAMERA(u8, s32)
 {
 	CCameraActionEvt* action   = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
@@ -13502,6 +13508,7 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
  * @note Address: 0x80073C38
  * @note Size: 0x9DC
  */
+// NONMATCHING: retail builds the by-value rotation in its argument slot (frame 0x110); this copies it first (0x120)
 s32 CEvt::_cmd_PTCL(u8, s32)
 {
 	u32 code = Evaluate();
@@ -15737,6 +15744,7 @@ static inline bool EvtZero4(const ScrnColorF& speed)
  * @note Address: 0x80070304
  * @note Size: 0x1B9C
  */
+// NONMATCHING: regalloc (the first EvtZero2 of @WIPE copies its zero from done, mr r0, r4, in retail)
 s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 {
 	u8* start = mData.mScript - 1;
