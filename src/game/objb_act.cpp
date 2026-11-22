@@ -1539,7 +1539,8 @@ f32 GetJointAnimationCurrentFrame(CJObj*);
 BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOOL, Vec*);
 // NONMATCHING: retail calls ~CVec (10 times), ~CJObj, GetObjectJointByPath and even the one-store setters here, so its
 // inline limit sits at the bottom: the function alone weighed about 7000 units for the inliner. This one is about 1500
-// units short of that, so it still expands all of them.
+// units short of that, so it still expands all of them. GetItemSoundIndex returned s8 in retail: the release sound's
+// index is sign-extended for its test and again for the call (0x800D249C, 0x800D24A4); our u8 return extends once.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
@@ -1974,8 +1975,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		if (aobj->flags & 0x44000000) {
 			act->mOwner->SetAnim(0x8ae, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			SetLiftActionState(act, 4);
-			Vec pos = act->mOwner->mMoveTranslate;
 			f32 yaw = act->mOwner->mMoveRotate.y;
+			Vec pos = act->mOwner->mMoveTranslate;
 			pos.x += 3.0f * (f32)sin(yaw);
 			pos.z += 3.0f * (f32)cos(yaw);
 			if (!CheckCarriedObjectContacts(act, &pos, 1, 1, TRUE, FALSE, FALSE, NULL)) {
@@ -2016,8 +2017,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	// the squirter fills up from what's in front of him, low (0x8d2) or high (0x8c1), or else squirts.
 	// its inventory count (at most 10) is how full it is, sSquirterChargeLevels turns that into a squirt level, 3 to 0
 	case 35: {
-		Vec point = act->mOwner->mMoveTranslate;
 		f32 angle = act->mOwner->mMoveRotate.y;
+		Vec point = act->mOwner->mMoveTranslate;
 		point.x += 2.0f * (f32)sin(angle);
 		point.z += 2.0f * (f32)cos(angle);
 		if (CheckCarriedObjectContacts(act, &point, 2, 1, TRUE, FALSE, FALSE, NULL)) {
