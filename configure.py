@@ -475,7 +475,6 @@ gamecube_libs = [
             # order Draw first calls them (GetGameGraphics first, GetPlayerLevel last); only GetPCDialogueText
             # (0x800493F8) stands apart, last
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),

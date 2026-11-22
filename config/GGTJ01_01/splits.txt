@@ -341,11 +341,15 @@ game/titlestates.cpp:
 	.data       start:0x80212370 end:0x80212648
 
 game/stg.cpp:
-	.text       start:0x80031180 end:0x80065480
+	.text       start:0x80031180 end:0x80065CD0
+	.ctors      start:0x801FEF2C end:0x801FEF30
+	.rodata     start:0x80200D70 end:0x80203020
+	.data       start:0x80212A88 end:0x80213B90
 	.bss        start:0x8033FB68 end:0x8034541C
-
-game/menu_cleanup.cpp:
-	.text       start:0x80065480 end:0x80065CD0
+	.sdata      start:0x806346E0 end:0x806347A0
+	.sbss       start:0x806355C0 end:0x80635638
+	.sdata2     start:0x80636848 end:0x80636CD8
+	.sbss2      start:0x8063A250 end:0x8063A260
 
 game/infoscrn.cpp:
 	.text       start:0x80065CD0 end:0x8006FF94
