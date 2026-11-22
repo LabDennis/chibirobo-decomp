@@ -3687,7 +3687,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f3
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
-	// the strip takes y + top as an expression and adds it again for its quad (US 0x80054CC8), so top is a variable
+	// the strip takes y + top as an expression and adds it again for its quad (US 0x80053200), so top is a variable
 	f32 top    = 10.0f;
 	f32 height = 88.0f;
 	sBannerScrollX -= 0.008f;
