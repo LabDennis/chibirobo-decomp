@@ -521,6 +521,13 @@ static inline bool SoldierBlocksMarch(XObjArmy* self, CVec& next)
 	return false;
 }
 
+// NONMATCHING: retail rematerializes mMoveTranslate.y for target.y (a second
+// lfs 0xc4(r31) instead of reusing the f2 it loaded for height), picks r29 over
+// r30 for the mJObj reads in the rotation asserts, and keeps a named .sdata2
+// pool our build leaves anonymous. Every source form that produced two loads
+// (height after the fills, copy-then-override-y, CVec::Set, Abs inline in
+// case 1) also moved the height fsubs or the stores and scored lower; with the
+// same member access on both sides the compiler always folds to one load.
 void XObjArmy::StateMarch()
 {
 	f32 angle    = GetAngleY(gGame.GetPlayer()->mMoveTranslate, mMoveTranslate);
