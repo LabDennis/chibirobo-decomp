@@ -2822,7 +2822,9 @@ static inline f32 TitleOptionWidth(s32 first)
 	return 2.0f * ((label > largest ? label : largest) + 8.0f);
 }
 #endif
-// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule
+// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule.
+// Both save f26-f31; the alpha, the later progress and the three entry widths are coloured onto other slots. -O4 without p,
+// -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
