@@ -3502,7 +3502,12 @@ void ApplyPlayerItemTintToTarget(XAction* act)
  * @note Address: 0x800D4998
  * @note Size: 0x1C8
  */
-// NONMATCHING: regalloc
+// NONMATCHING: identical instruction stream; retail binds act to r30 and the
+// late item load to r31, ours binds act to r31 and item to r30 — a callee-save
+// colouring swap. The same inlined PutAway body in ApplyPlayerJumpStrength
+// binds act to r30 on both sides (100%), so the choice is context-dependent;
+// named-local forms (item hoisted, item used for the target accesses, no chr
+// local) all scored worse or identical.
 void PutAwayLiftedObject(XActLift* act)
 {
 	PutAway(act);

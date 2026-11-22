@@ -116,7 +116,12 @@ void CMotionControlCamera::RestoreAction()
  * @note Address: 0x80149E24
  * @note Size: 0xB1C
  */
-// NONMATCHING: retail takes &PLAYER->mLift before it tests the lift's state, and PlayerCanLook's two flags swap registers
+// NONMATCHING: one scheduling pair — retail materializes &PLAYER->mLift (the
+// IsCarryingMug arg) right before the mState load, ours right before the call;
+// the position is bound to the !(mFlags & 0xC00) combine's register choice
+// (retail puts the combine in r3 so the addi can't sit there, ours uses r4 and
+// frees r3). A named XActLift* local hoists the addi too early or changes the
+// mState load to lift+4 — both score lower.
 void CMotionControlCamera::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0x20) {
