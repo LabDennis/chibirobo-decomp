@@ -58,6 +58,27 @@ inline s32 FindFacing(const Vec& dir, s32 slotIndex)
 	return bestIndex;
 }
 
+// sets area->mEntryIndex to the entry in the active slot facing closest to dir; the Wii keeps it out of line (0x80155B28)
+inline void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir)
+{
+	CVec look(dir);
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
+	f32 best            = -1.0f;
+	CamAreaEntry* entry = slot->mEntries;
+	for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+		CVec facing;
+		YawDir(facing, entry->mAngle);
+		f32 dot = PSVECDotProduct(&look, &facing);
+		if (dot > best) {
+			area->mEntryIndex = i;
+			best              = dot;
+		}
+	}
+	if (best == -1.0f) {
+		area->mEntryIndex = 0;
+	}
+}
+
 extern "C" void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, f32 time);
 extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time);
 
@@ -991,8 +1012,9 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Address: 0x80138ED8
  * @note Size: 0x6E0
  */
-// NONMATCHING: registers only. retail keeps the view yaw in f28 and best in f29, best taking 2 pi from the wrap's own load
-// and lays the facing loop's look and facing vectors out below the function's other locals
+// NONMATCHING: register allocation (yaw in f29 and best in f28 instead of retail's f28/f29, where retail's best shares
+// the register of WrapAngle's 2*pi, plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below
+// SelectActiveAreaCameraEntryFacing's look/facing
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1022,12 +1044,12 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		}
 	} else if (area->mKeepViewDirection == 1 && (buttons & next)) {
 		// after SetCamera, go by the view instead of mEntryIndex: the entry whose eye bearing is nearest at or below the camera's
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
+		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		s32 index;
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
-		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
 			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
 			f32 turn   = WrapAngle(yaw - facing);
 			if (turn <= best) {
@@ -1039,12 +1061,12 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		area->mForceApply = TRUE;
 	} else if (area->mKeepViewDirection == 1 && (buttons & previous)) {
 		// the same pick as above, then one entry back
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
+		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		s32 index;
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
-		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
 			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
 			f32 turn   = WrapAngle(yaw - facing);
 			if (turn <= best) {
@@ -1052,10 +1074,11 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 				index = i;
 			}
 		}
-		if (--index < 0) {
-			index = slot->mEntryCount - 1;
+		s32 prevIndex = index - 1;
+		if (prevIndex < 0) {
+			prevIndex = slot->mEntryCount - 1;
 		}
-		area->mEntryIndex = index;
+		area->mEntryIndex = prevIndex;
 		area->mForceApply = TRUE;
 	} else if (buttons & next) {
 		if (++area->mEntryIndex >= gCameraAreaState.mGroups[slotIndex].mEntryCount) {
@@ -1076,22 +1099,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		} else {
 			YawDir(dir, area->mEntry->mAngle);
 		}
-		CVec look(dir);
-		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
-		f32 best            = -1.0f;
-		CamAreaEntry* entry = slot->mEntries;
-		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
-			CVec facing;
-			YawDir(facing, entry->mAngle);
-			f32 dot = PSVECDotProduct(&look, &facing);
-			if (dot > best) {
-				area->mEntryIndex = i;
-				best              = dot;
-			}
-		}
-		if (best == -1.0f) {
-			area->mEntryIndex = 0;
-		}
+		SelectActiveAreaCameraEntryFacing(area, dir);
 	}
 	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
 	return area->mEntry->mId;

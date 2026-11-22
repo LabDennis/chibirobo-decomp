@@ -28,7 +28,7 @@ extern "C" void fn_800C85EC(XObjMap* map);
 // the map's stage-mode check, an out-of-line wrapper over stage_data's stub
 extern "C" void fn_800C9B84(XObjMap* map);
 // the ctrigon unit's ScnMdl triangle build (its own lane still has it as asm)
-extern "C" void fn_802BA4F4(CTrigon* trigon, nw4r::g3d::ScnMdl* mdl);
+extern "C" struct TRIGON_INFO* fn_802BA4F4(CTrigon* trigon, nw4r::g3d::ScnMdl* mdl);
 
 // nw4r's db pointer check (db_assert.h) as the game's sources use it; the line is the game's own
 #define NW4R_ASSERT_VALID_PTR_LINE(line, exp)                                                                                              \
