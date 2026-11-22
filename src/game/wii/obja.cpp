@@ -895,31 +895,38 @@ extern "C" void fn_800AF51C(XObj* obj)
 		ResMat mat = obj->mObject.m_resMdl.GetResMat(i);
 		ScnMdl::CopiedMatAccess access(obj->mObject.m_pScnMdl, i);
 
-		ResGenMode genMode = access.GetResGenMode(false);
+		ResGenMode genMode;
+		genMode = access.GetResGenMode(false);
 		if (!genMode.IsValid()) {
 			genMode = mat.GetResGenMode();
 		}
-		ResMatTevColor tevColor = access.GetResMatTevColor(false);
+		XOBJ_ASSERT_LINE(0x749, genMode.IsValid());
+		ResMatTevColor tevColor;
+		tevColor = access.GetResMatTevColor(false);
 		if (!tevColor.IsValid()) {
 			tevColor = mat.GetResMatTevColor();
 		}
 		XOBJ_ASSERT_LINE(0x74F, tevColor.IsValid());
-		ResMatTexCoordGen texCoordGen = access.GetResMatTexCoordGen(false);
+		ResMatTexCoordGen texCoordGen;
+		texCoordGen = access.GetResMatTexCoordGen(false);
 		if (!texCoordGen.IsValid()) {
 			texCoordGen = mat.GetResMatTexCoordGen();
 		}
 		XOBJ_ASSERT_LINE(0x755, texCoordGen.IsValid());
-		ResTexObj texObj = access.GetResTexObj(false);
+		ResTexObj texObj;
+		texObj = access.GetResTexObj(false);
 		if (!texObj.IsValid()) {
 			texObj = mat.GetResTexObj();
 		}
 		XOBJ_ASSERT_LINE(0x75B, texObj.IsValid());
-		ResTexSrt texSrt = access.GetResTexSrt(false);
+		ResTexSrt texSrt;
+		texSrt = access.GetResTexSrt(false);
 		if (!texSrt.IsValid()) {
 			texSrt = mat.GetResTexSrt();
 		}
 		XOBJ_ASSERT_LINE(0x761, texSrt.IsValid());
-		ResTev tev = access.GetResTev(false);
+		ResTev tev;
+		tev = access.GetResTev(false);
 		if (!tev.IsValid()) {
 			tev = mat.GetResTev();
 		}
