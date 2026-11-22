@@ -588,8 +588,8 @@ public:
 	u8 _2E0[0x2E8 - 0x2E0];
 	s32 _2E8;
 	s32 _2EC;
-	s32 _2F0;
-	s32 _2F4;
+	u32 _2F0;
+	u32 _2F4;
 	s32 _2F8;
 
 	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0
