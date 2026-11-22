@@ -4526,6 +4526,78 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
+static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
+{
+	return gSaveSlotSpacing * offsetScale + x;
+}
+
+// NONMATCHING: the complete 20-call list matches; the current spelling is 100 bytes smaller and saves GPRs from r23 instead of r22
+extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
+{
+	if (!(alpha > 0.0f)) {
+		return;
+	}
+	CTexObj tex;
+	f32 scale = 1.2f;
+	s32 value = hours * 100 + minutes;
+	if (value >= 9959) {
+		value = 9959;
+	}
+	for (int places = 1;; places++) {
+		f32 divisor = 1.0f;
+		for (int j = 0; j < places; j++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)(value / divisor) == 0) {
+			break;
+		}
+	}
+	InitPCPanelTexture(tex, icon);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 w       = 0.6f * GXGetTexObjWidth(&tex);
+	f32 h       = 0.6f * GXGetTexObjHeight(&tex);
+	f32 opacity = 255.0f * alpha;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+	InitPCPanelTexture(tex, 126);
+	w = scale * GXGetTexObjWidth(&tex);
+	h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	f32 offset         = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
+	u8 alphaByte       = opacity;
+	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
+	for (int i = 0; i < 4; i++) {
+		f32 div = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 digit = value / div;
+		if (i != 3 || digit != 0) {
+			digit %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			f32 gap = 0.0f;
+			if (i < 2) {
+				gap = w - 3.0f * scale;
+			}
+			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))), offsetScale);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		}
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	InitPCPanelTexture(tex, 168);
+	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * scale), offsetScale);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	                   0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
