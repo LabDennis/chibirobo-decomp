@@ -76,18 +76,6 @@ bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
 }
 
-// the pending fatal the save system left for the title screen: the message, two colors and the flag
-// that raises it while a menu state still owns the frame
-struct WiiFatalInfo {
-	const char* mMessage; // _00
-	GXColor mFg;          // _04
-	u8 _08[4];
-	GXColor mBg; // _0C
-	u8 _10[4];
-	u8 mActive; // _14
-};
-extern WiiFatalInfo gSaveFatal;
-
 // the title screen's background and text colors, the logo's textures and which of each is in use
 struct TitlePaletteEntry {
 	GXColor background;

@@ -8,6 +8,7 @@
 // take the state as a parameter, which their names in symbols.txt (no parameter) do not show yet; cgame.h declares
 // Close(s32 state), MenuPC::State11 and MenuSave::State17 pass 5.
 #include "game/wii/menuutil.h"
+#include "Dolphin/card.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/nandfile.h"
@@ -3260,6 +3261,260 @@ static void UpdateMenuTitle(MenuSave* menu, u32 frames)
 			menu->mTitle.mActive = FALSE;
 		}
 	}
+}
+
+static inline void DrawJapaneseCardLine(f32 x, s32 id, f32 y, f32 size, u32 color)
+{
+	const char* text = GetLocalizedInterfaceText(id);
+	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width * 0.5f, y, 0.0f, size, size);
+}
+
+static inline void SetJapaneseSaveFatalText(const s32* ids)
+{
+	strcpy(gSaveFatal.mText, GetLocalizedInterfaceText(ids[0]));
+	for (int i = 1; ids[i] != 0; i++) {
+		strcat(gSaveFatal.mText, "\n");
+		strcat(gSaveFatal.mText, GetLocalizedInterfaceText(ids[i]));
+	}
+	gSaveFatal.mMessage = gSaveFatal.mText;
+}
+
+// the save menu reserves extra space below some prompts for the choice labels
+// NONMATCHING: the error cases and call list match; 96 bytes of register allocation and fatal-text
+// scheduling remain
+extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 size, f32 alpha)
+{
+	s32 lines   = 0;
+	u32 color   = (u32)(255.0f * alpha);
+	f32 centerX = (f32)(gPointerScreenWidth / 2);
+	switch (error) {
+	case CARD_RESULT_FATAL_ERROR:
+	case -64:
+	case -15:
+	case CARD_RESULT_CANCELED:
+	case CARD_RESULT_ENCODING:
+	case CARD_RESULT_NAMETOOLONG:
+	case CARD_RESULT_NOPERM:
+	case CARD_RESULT_NOENT:
+	case CARD_RESULT_BROKEN:
+	case CARD_RESULT_IOERROR:
+	case CARD_RESULT_BUSY:
+		if (gGame.mLanguage == 0) {
+			DrawJapaneseCardLine(centerX, 0x127, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x128, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0x129, 2.0f * size + y, size, color);
+			s32 ids[] = { 0x127, 0x128, 0x129, 0 };
+			SetJapaneseSaveFatalText(ids);
+			lines = 3;
+		} else {
+			DrawJapaneseCardLine(centerX, 0xCC, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xCD, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0xCE, 2.0f * size + y, size, color);
+			lines = 3;
+		}
+		break;
+	case CARD_RESULT_WRONGDEVICE:
+	case CARD_RESULT_NOCARD: {
+		DrawJapaneseCardLine(centerX, 0x123, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x124, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x125, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x126, 3.0f * size + y, size, color);
+		s32 ids[] = { 0x123, 0x124, 0x125, 0x126, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 4;
+		break;
+	}
+	case CARD_RESULT_NOFILE: {
+		DrawJapaneseCardLine(centerX, 0x10D, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x10E, y + size, size, color);
+		s32 ids[] = { 0x10D, 0x10E, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 2;
+		break;
+	}
+	case CARD_RESULT_LIMIT:
+		DrawJapaneseCardLine(centerX, 0x113, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x114, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x115, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x116, 3.0f * size + y, size, color);
+		lines = 4;
+		break;
+	case CARD_RESULT_INSSPACE:
+		DrawJapaneseCardLine(centerX, 0x10F, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x110, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x111, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x112, 3.0f * size + y, size, color);
+		lines = 4;
+		break;
+	}
+	return lines;
+}
+
+// NONMATCHING: the switch layout and call list match; 160 bytes of register allocation and fatal-text
+// loop scheduling remain, including a _savegpr_27/_restgpr_27 pair absent from retail
+extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 size, f32 alpha)
+{
+	s32 lines   = 0;
+	u32 color   = (u32)(255.0f * alpha);
+	f32 centerX = (f32)(gPointerScreenWidth / 2);
+	switch (status) {
+	case 1:
+		DrawJapaneseCardLine(centerX, 0x117, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x118, y + size, size, color);
+		lines = 2;
+		break;
+	case 3:
+		if (gGame.mLanguage == 2 || gGame.mLanguage == 3) {
+			DrawJapaneseCardLine(centerX, 0xBD, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xBE, y + size, size, color);
+			lines = 2;
+		} else {
+			DrawJapaneseCardLine(centerX, 0xBD, y, size, color);
+			lines = 1;
+		}
+		break;
+	case 8:
+		if (gGame.mLanguage == 0) {
+			DrawJapaneseCardLine(centerX, 0x86, y, size, color);
+			lines = 1;
+		} else {
+			DrawJapaneseCardLine(centerX, 0x86, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x87, y + size, size, color);
+			lines = 2;
+		}
+		break;
+	case 19:
+		if (gGame.mLanguage == 2) {
+			DrawJapaneseCardLine(centerX, 0xF4, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xF5, y + size, size, color);
+			lines = 2;
+		} else {
+			DrawJapaneseCardLine(centerX, 0xF4, y, size, color);
+			lines = 1;
+		}
+		break;
+	case 4:
+		if (gGame.mLanguage == 2) {
+			DrawJapaneseCardLine(centerX, 0xB8, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xB9, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0xBA, 2.0f * size + y, size, color);
+			DrawJapaneseCardLine(centerX, 0xBB, 3.0f * size + y, size, color);
+			lines = 4;
+		} else {
+			DrawJapaneseCardLine(centerX, 0xB8, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xB9, y + size, size, color);
+			lines = 2;
+		}
+		break;
+	case 5:
+		DrawJapaneseCardLine(centerX, 0x77, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x78, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x79, 2.0f * size + y, size, color);
+		lines = 4;
+		break;
+	case 6:
+		if (gGame.mLanguage == 2) {
+			DrawJapaneseCardLine(centerX, 0x7C, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x7D, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0x7E, 2.0f * size + y, size, color);
+			DrawJapaneseCardLine(centerX, 0x7F, 3.0f * size + y, size, color);
+			lines = 4;
+		} else if (gGame.mLanguage == 2 || gGame.mLanguage == 3) {
+			DrawJapaneseCardLine(centerX, 0x7C, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x7D, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0x7E, 2.0f * size + y, size, color);
+			lines = 3;
+		} else {
+			DrawJapaneseCardLine(centerX, 0x7C, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x7D, y + size, size, color);
+			lines = 2;
+		}
+		break;
+	case 7:
+		DrawJapaneseCardLine(centerX, 0x81, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x82, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x83, 2.0f * size + y, size, color);
+		lines = 3;
+		break;
+	case 9:
+		if (gGame.mLanguage == 0) {
+			DrawJapaneseCardLine(centerX, 0x8B, y, size, color);
+			lines = 1;
+		} else {
+			DrawJapaneseCardLine(centerX, 0x8B, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x8C, y + size, size, color);
+			lines = 2;
+		}
+		break;
+	case 10:
+		DrawJapaneseCardLine(centerX, 0x119, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x11A, y + size, size, color);
+		lines = 3;
+		break;
+	case 11:
+		DrawJapaneseCardLine(centerX, 0x11B, y, size, color);
+		lines = 2;
+		break;
+	case 12:
+		DrawJapaneseCardLine(centerX, 0xD1, y, size, color);
+		DrawJapaneseCardLine(centerX, 0xD2, y + size, size, color);
+		lines = 3;
+		break;
+	case 13: {
+		DrawJapaneseCardLine(centerX, 0x10D, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x10E, y + size, size, color);
+		s32 ids[] = { 0x10D, 0x10E, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 2;
+		break;
+	}
+	case 14: {
+		OSPanic("menu_save.cpp", 0xF2B, "_CARDWARN_UNUSABLE_MAXBLOCKS_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
+		DrawJapaneseCardLine(centerX, 0x11D, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x11E, y + size, size, color);
+		s32 ids[] = { 0x11D, 0x11E, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 2;
+		break;
+	}
+	case 15: {
+		OSPanic("menu_save.cpp", 0xF32, "_CARDWARN_UNUSABLE_MAXFILES_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
+		DrawJapaneseCardLine(centerX, 0x120, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x121, y + size, size, color);
+		s32 ids[] = { 0x120, 0x121, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 2;
+		break;
+	}
+	case 16: {
+		DrawJapaneseCardLine(centerX, 0x123, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x124, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x125, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x126, 3.0f * size + y, size, color);
+		s32 ids[] = { 0x123, 0x124, 0x125, 0x126, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 4;
+		break;
+	}
+	case 17: {
+		DrawJapaneseCardLine(centerX, 0x127, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x128, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x129, 2.0f * size + y, size, color);
+		s32 ids[] = { 0x127, 0x128, 0x129, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 3;
+		break;
+	}
+	case 18:
+		DrawJapaneseCardLine(centerX, 0xE0, y, size, color);
+		DrawJapaneseCardLine(centerX, 0xE1, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0xE2, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0xE3, 3.0f * size + y, size, color);
+		lines = 4;
+		break;
+	}
+	return lines;
 }
 
 // the outline the save file details are drawn with
