@@ -764,7 +764,9 @@ extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj)
  * @note Address: 0x8007E7F4
  * @note Size: 0xAC
  */
-// NONMATCHING: retail schedules the mJObj load and test into the prologue; Get/Find/GetObjectJointByPath, a jobj local keep them after
+// NONMATCHING: retail schedules the mJObj load and test into the prologue; Get/Find/GetObjectJointByPath, a jobj local keep them after.
+// JP retail loads it into r30 after the saves and matches; only the US/PAL volatile r7 is free to rise above stw r31 / mr r31, r3 and
+// this build does not hoist it. HSD_JObj* jobj = *(HSD_JObj**)obj gives 88.37, the inline written out with a goto 78.3
 extern "C" CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path)
 {
 	// CJObj::mJObj, game/cjobj.h would pull 0x24 bytes of .rodata into this file
