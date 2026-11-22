@@ -13,7 +13,7 @@ void GXDrawCube(void);
 // tev_state.h's value; that is an HSD header and this file builds with the Dolphin ones
 #define HSD_STATE_VTX_ATTR 2
 
-// NONMATCHING: the eight CLine/CTriangle Draw and DrawLit vertex loops (70-76 %) share one cause.
+// NONMATCHING: the nine CLine/CTriangle Draw and DrawLit vertex loops (70-82 %) share one cause.
 // Retail reads the vertices ahead of the FIFO writes (lfs x; lfs y; stfs x; lfs z; stfs y; stfs z,
 // the next vertex's loads before this one's stores): its compiler let the loads through the Vec*,
 // PrimVertex* and u32* parameters pass the volatile GXWGFifo stores. GC/2.6, like every 1.x to
