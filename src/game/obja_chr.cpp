@@ -291,11 +291,12 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		// the digit atlas is the digits 0-9 in a column
 		PSMTXScale(digits.mMtx[1], 1, .1f, 1);
 		digits.mMtxDirty = TRUE;
+		f32 spacing      = 17.f;
 		for (int i = display.mCount - 1; i >= 0; --i) {
 			const PointDigit& digit = display.digits[i];
 			if (!(digit.fade > 0))
 				continue;
-			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f / 2), py = y;
+			f32 px = spacing * (display.mCount - 1 - i) + ((x + spacing / 2) - display.mCount * spacing / 2), py = y;
 			f32 fade = digit.fade;
 			if (fade > 1)
 				fade = 1;
