@@ -211,15 +211,14 @@ game/obja_chr.cpp:
 	.sdata2     start:0x80664410 end:0x806647B8
 	.sbss2      start:0x80667128 end:0x806671E8
 
-game/xactradar.cpp:
-	.text       start:0x800BF8D0 end:0x800C6F28
-
-game/xacttumble.cpp:
-	.text       start:0x800C6F28 end:0x800C6F68
-
 game/objb_act.cpp:
-	.text       start:0x800C6F68 end:0x800D7BFC
-	.sbss2      start:0x806671E8 end:0x80667368
+	.text       start:0x800BF8D0 end:0x800D7BFC
+	.rodata     start:0x80210F10 end:0x802110F0
+	.data       start:0x8022EC70 end:0x8022EF20
+	.bss        start:0x80383078 end:0x80383210
+	.sbss       start:0x80662118 end:0x80662120
+	.sdata2     start:0x806647B8 end:0x80664978
+	.sbss2      start:0x806671E8 end:0x80667370
 
 game/objb_attach.cpp:
 	.text       start:0x800D7BFC end:0x800DA40C
