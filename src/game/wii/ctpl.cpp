@@ -28,7 +28,6 @@ u32 fn_80295D88(CSound* sound);
 BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
 s32 fn_8029AC28(void* group, u32 priority);
 void fn_8029A458(void* heap);
-void fn_8029B1AC();
 u32 fn_802958C0(void* actor, void* arg);
 void fn_80295914(void* actor, void* arg, void* data, u32 size);
 void fn_80295848(void* sound, f32 volume);
@@ -347,7 +346,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 
 extern "C" void ShutdownAudio(CSound* sound)
 {
-	fn_8029B1AC();
+	nw4r::snd::SoundSystem::ShutdownSoundSystem();
 	AXQuit();
 	AIStopDMA();
 }
