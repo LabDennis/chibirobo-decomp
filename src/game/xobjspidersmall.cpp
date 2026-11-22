@@ -1936,7 +1936,6 @@ void XObjSpiderSmall::DrawGroundShadow()
  * @note Address: 0x800FDBBC
  * @note Size: 0x330
  */
-// NONMATCHING: float register order
 void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 {
 	if ((mStatus.mFlags & 8) && (mSpiderStatus.mFlags & 0x40) && (mStatus.mFlags & 0x10000)) {
@@ -1954,8 +1953,8 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 
 		// a soft rim around it, a pair of points every 30 degrees (0.5235988), fading out over 1.5
 		for (s32 i = 0; i < 13; i++) {
-			f32 hx               = size.x * 0.5f;
-			f32 hz               = size.z * 0.5f;
+			f32 hx               = size.x / 2.0f;
+			f32 hz               = size.z / 2.0f;
 			f32 ang              = 0.5235988f * i;
 			vtx[i * 2].pos.x     = p.x - hx * std::sinf(ang);
 			vtx[i * 2].pos.z     = p.z + hz * std::cosf(ang);
