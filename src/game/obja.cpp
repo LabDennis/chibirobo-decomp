@@ -1,3 +1,16 @@
+// XObj's own file: InitializeObject to CJAnim::Release, written in the reverse of retail's code order
+// (-inline auto,deferred).
+// NONMATCHING: the data (US offsets; JP and PAL alike except where said). .rodata lacks the 0x48 block of six
+// Vecs at 0x00 that CGame's particle inlines make in every file, so the four HSD_PEDesc
+// presets at 0x5C stay behind the gObjectPixelEnginePresets stand-in: as the local initialisers retail copies
+// they come out at 0x14 and ApplyJointMaterialPEPresets drops to 99.95 %. .data lacks the 26-word header block
+// at 0x00 (0x68 bytes); the floor tables, CJAnim's and XObj's vtables and base lists behind it come out in
+// retail's order. .bss is the 0x140-byte (JP 0x134) header-made prefix of zeroed Vecs: the build has
+// LoadFromPlacement's placement defaults (initial, 0x24) and cjobjset.h's three static zero Vecs instead, and
+// the floor slots at 0xBC/0xC8 stay the gObjectFloorOffsetTemplate/lbl_80378148 externs. .sdata2 has 160.0f
+// before 128.0f (0x8065D1F0) where DrawGroundShadowAt's literals come out the other way round. The extra
+// header constants (unreferenced) and weak RTTI records (kept once) the build emits on top go at link time
+
 #include "game/xobj.h"
 #include "game/gmath.h"
 #include "game/objectfloorquery.h"
@@ -71,7 +84,7 @@ void C_VECReflect(const Vec* source, const Vec* normal, Vec* result);
 #define ANIMATION_RATE(rate) (rate)
 #endif
 
-// the pe presets sit 0x5C into this unit's rodata, which isn't split out yet
+// the pe presets sit 0x5C into the file's .rodata, behind the header-made six Vecs
 struct XObjPEPresets {
 	u8 _00[0x5C];          // _00
 	HSD_PEDesc mReset;     // _5C
@@ -236,7 +249,7 @@ void XObj::ResetObjectState()
 }
 
 // NONMATCHING: retail reads the placement defaults (initial) at 0xD4 into the file's shared .bss block
-// (lbl_80378080) through one base register; this unit holds only part of that file
+// (lbl_80378080) through one base register; that prefix is header-made (see the top of the file)
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;

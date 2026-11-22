@@ -430,7 +430,12 @@ game/memcardinit.cpp:
 
 game/obja.cpp:
 	.text       start:0x8008A360 end:0x80092AA4
-	.sbss       start:0x8065B250 end:0x8065B254
+	.rodata     start:0x802091E8 end:0x80209320
+	.data       start:0x8022565C end:0x80225B90
+	.bss        start:0x80378080 end:0x803781C0
+	.sdata      start:0x8065A430 end:0x8065A470
+	.sbss       start:0x8065B250 end:0x8065B258
+	.sdata2     start:0x8065D160 end:0x8065D248
 	.sbss2      start:0x8065FFB8 end:0x8065FFD4
 
 game/xobjcamera.cpp:
