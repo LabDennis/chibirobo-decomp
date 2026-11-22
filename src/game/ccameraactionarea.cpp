@@ -15,11 +15,12 @@ extern "C" {
 inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
 {
 	if (mode == 5) {
-		OSPanic("ccameraactionarea.cpp", 660, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", "SetEye_I");
+		OSPanic("ccameraactionarea.cpp", 660, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", __FUNCTION__);
 		return;
 	}
 	CVec(0.0f, 0.0f, 0.0f); // retail builds this temporary and drops it at once
 	SetEyeInterpolation(mode, from, to, time);
+	gGame.GetPlayer()->ResetCameraValue();
 }
 
 // a flat unit direction from an angle's y
@@ -111,6 +112,8 @@ extern "C" void SetAreaCameraHeightIndices(CCameraActionArea*, s32 zoomLevel)
  * @note Address: 0x801382E8
  * @note Size: 0x7B4
  */
+// NONMATCHING: SetEyeInterpolation's target copy and Start's by-value Vec arguments swap stack slots, and case 5 puts mode in r8 instead of
+// r5
 extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time)
 {
 	switch (mode) {
@@ -120,7 +123,6 @@ extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entr
 	case 3:
 	case 4:
 		area->SetEye_I(mode, area->mEye, entry->mEye, time);
-		gGame.GetPlayer()->ResetCameraValue();
 		break;
 	case 5:
 		// SetEye_I panics on mode 5; SetEyeInterpolation takes it as 4
@@ -1607,7 +1609,7 @@ void CCameraActionArea::DrawDebug2d()
  * @note Size: 0x544
  */
 // NONMATCHING: for the zoom change retail still builds the table index from 4 at run time (li r0, 4; slwi; add), here the
-// fov interpolator slot is read directly. Saved registers are numbered differently
+// fov interpolator slot is read directly
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {
