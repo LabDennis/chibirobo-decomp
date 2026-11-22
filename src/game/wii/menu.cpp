@@ -806,7 +806,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 		if (id >= 0 && count > 0) {
 			f32 bob = 0.0f;
 			if (selected == i)
-				bob = 4.0f * (f32)sin(0.017453292f * (f32)fmod(sInventoryPhase, 360.0));
+				bob = 4.0f * (f32)sin(0.017453292f * (20.0f * (f32)fmod(sInventoryPhase, 360.0)));
 			s32 icon = GetItemIconTextureIndex(id);
 			if (icon >= 0) {
 				gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
@@ -835,7 +835,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				}
 			}
 			f32 enlarged = 1.0f;
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[125], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
@@ -871,7 +871,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			}
 		} else {
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[234], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
@@ -906,7 +906,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			}
 			f32 enlarged = 1.0f;
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[125], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
@@ -942,7 +942,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			}
 		} else {
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[234], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
@@ -977,7 +977,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			}
 			f32 enlarged = 1.0f;
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[125], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
@@ -1013,7 +1013,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			}
 		} else {
-			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[234], 0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
