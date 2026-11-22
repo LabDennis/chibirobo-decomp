@@ -14,6 +14,11 @@ extern "C" {
 #include <sysdolphin/tobj.h>
 }
 
+// NONMATCHING: twelve functions (ProcessPendingEvents, UpdateAfterAnim, UpdateToy* helpers,
+// and StateCarry/StateHitRecovery/StatePickUp) still differ from retail; in data (GGTE01),
+// .rodata (0x8020B6C8) lacks the header-originated six-Vec prefix (0x48 bytes), and
+// .data/.sdata/.sdata2 differ in weak RTTI records and literal pool entries.
+
 extern "C" {
 void PSMTXRotRad(Mtx mtx, char axis, f32 angle);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
@@ -323,7 +328,8 @@ void XObjActorToy::DrawScreenOverlay()
 }
 
 extern "C" {
-extern Vec gToyPlacementPosition, gToyPlacementRotation;
+Vec gToyPlacementPosition;
+Vec gToyPlacementRotation;
 }
 
 static inline Vec ToyPlacementPosition(const CoordInfo& place)

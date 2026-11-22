@@ -635,9 +635,12 @@ game/xobjactor3.cpp:
 
 game/xobjactortoy.cpp:
 	.text       start:0x80115538 end:0x80122E0C
-	.data       start:0x8022C7E0 end:0x8022CFA4
+	.rodata     start:0x8020B6C8 end:0x8020BBB8
+	.data       start:0x8022C7E0 end:0x8022D370
 	.bss        start:0x8037FE58 end:0x8037FE94
+	.sdata      start:0x8065A878 end:0x8065A8B8
 	.sbss       start:0x8065B2F8 end:0x8065B305
+	.sdata2     start:0x8065E358 end:0x8065E548
 	.sbss2      start:0x80660290 end:0x80660298
 
 game/xobjactorjenny.cpp:
