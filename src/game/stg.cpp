@@ -3271,8 +3271,10 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
-// no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
-// function scores lower, so it stays u8. The -12.0f column shift and the 14.0f of the first rows
+// no extrwi mask); declared bool here (2026-11-23), the four arguments get retail's cntlzw/srwi but the register
+// allocation moves and the function falls to 90.29 with nothing else in the unit changing; as BOOL (int) the
+// callee drops 0.14, and retail's callee tests the low byte (US 0x800521E0 clrlwi. r0, r19, 24), so the
+// parameter is a byte and stays u8. The -12.0f column shift and the 14.0f of the first rows
 // and the two icons reach their adds as variables (US 0x80055D38 fadds f10, f5, f4 with -12; 0x80055D74,
 // 0x80055DC4, 0x800560A0 with 14), so they are the locals shift and lift; the first quad's x is 0.0f + that sum
 // in retail (0x80055D6C fadds f1, f3, f10 with a literal 0.0f), no spelling for that found. The first stat row's
@@ -9343,9 +9345,13 @@ static inline void DrawSaveSlotTwoLineMessage(s32 id, f32 x, f32 y, f32 alpha, f
 
 // NONMATCHING: register allocation. Retail writes 23 * sx and the message top back into the parameters' registers
 // (US 0x8003936C fmuls f29,f2,f29; 0x800393CC fnmsubs f28); the build gives them new ones, and the icon quad's
-// arguments are scheduled in another order. Retail numbers x first (f31) and y below sx and sy (f28); the build
-// numbers them in reverse parameter order. The message helpers as macros on the caller's own variables, or f32
-// width and height at the icon's texture read, do not move the parameter registers (lower or unchanged).
+// arguments are scheduled in another order. The message helpers as macros on the caller's own sx and y reproduce
+// both writes but score 88.09, because the parameter numbering stays: retail puts the first parameter of each
+// class on top (slot r31, x f31) and the rest in reverse order (selected r30; sy f30, sx f29, y f28, alpha f22,
+// width f20, height f19), the build gives slot r30, selected r31, x f28, y f29, sx f30, sy f31. Scratch compiles
+// with this unit's flags (2026-11-23) number parameters in reverse order whatever their use order, loop use or
+// branch count; a parameter copied into a local, or f32 width and height at the icon's texture read, is coalesced
+// away and changes nothing. What lifts x and slot above the others is not found.
 extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, f32 x, f32 y, f32 width, f32 height,
                                     f32 alpha, f32 sx, f32 sy)
 {
