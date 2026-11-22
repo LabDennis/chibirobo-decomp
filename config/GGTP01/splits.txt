@@ -462,14 +462,13 @@ game/xobjlight.cpp:
 	.sdata      start:0x80661320 end:0x80661348
 	.sdata2     start:0x806643B0 end:0x806643D8
 
-game/xobjmapdtor.cpp:
-	.text       start:0x800951E0 end:0x80095274
-
-game/ctrigondtor.cpp:
-	.text       start:0x80095274 end:0x800952BC
-
 game/obja_map.cpp:
-	.text       start:0x800952BC end:0x80095C28
+	.text       start:0x800951E0 end:0x80095C28
+	.rodata     start:0x8020FCD8 end:0x8020FCE8
+	.data       start:0x8022C8E0 end:0x8022CAC8
+	.sdata      start:0x80661348 end:0x80661378
+	.sdata2     start:0x806643D8 end:0x80664410
+	.sbss       start:0x806620F8 end:0x80662100 align:4
 	.sbss2      start:0x80667120 end:0x80667124
 
 game/obja_chr.cpp:

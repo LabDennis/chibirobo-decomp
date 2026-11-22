@@ -485,9 +485,10 @@ gamecube_libs = [
             Object(Matching, "game/xobjwalk.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/xobjinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjinitialize.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjmapdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/ctrigondtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x80093134-0x80093B7C opens with the weak ~XObjMap and
+            # ~CTrigon, then GetMapTriangleFloorType to InitializeObject; -inline deferred, as retail shows:
+            # only deferred codegen of the file written last-address-first puts the destructors in front
+            Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/obja_chr.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
