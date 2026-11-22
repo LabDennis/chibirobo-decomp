@@ -1896,6 +1896,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
  * @note Address: 0x8018E8A4
  * @note Size: 0x1AC
  */
+// NONMATCHING: retail schedules the pos->z load after the top/bottom aggregate initializer copies
 // out gets the point of abc's plane straight above or below pos. returns 1 when it lies at y 1 or -1,
 // 2 between them and 3 beyond
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out)
@@ -2056,6 +2057,7 @@ extern "C" void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
  * @note Address: 0x8018E640
  * @note Size: 0x1E4
  */
+// NONMATCHING: float register allocation (f6..f13, f27..f30) differs; all instructions and branches match
 extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check)
 {
 	f32 abx = b->x - a->x;
