@@ -25,8 +25,8 @@ public:
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
 	virtual void PauseSounds(f32 fade);                                // _20C
 	virtual void ResumeSounds(f32 fade);                               // _210
-	virtual void OnUnplugged();                                        // _228 (slot unverified)
 	virtual void DrawLate();                                           // _28C, CGame::DrawScene's last pass
+	virtual void OnUnplugged();                                        // _290, retail vtable lbl_803093BC's last slot
 
 	void StateRide();
 	void StateCount();
@@ -55,7 +55,7 @@ public:
 	u8 mPtcl;                // _A54, the dust particle has been made
 	u8 mPowered;             // _A55, ReceivePlugPower flipped the switch on
 	u8 mWaiting;             // _A56, waiting for a linked leticker to finish
-	u32 mPowerTimer;         // _A58, frames the power has been held
+	s32 mPowerTimer;         // _A58, frames the power has been held; retail counts it down signed (bgt)
 	f32 mSpeedScale;         // _A5C, the placement's speed multiplier
 	s32 mState;              // _A60, the leticker's state (0 idle, 2 unplugged, 3 riding); retail compares it signed
 	AnimSfx mSfx;            // _A64, the lid's animation sound effects

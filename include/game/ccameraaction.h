@@ -1005,7 +1005,7 @@ STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
 // the leticker's camera: a ladr the player turns in 90-degree steps while riding.
 // The GameCube fields keep their offsets (mTarget _44 through mMaxZ _64 verified
 // in the retail Reset at 0x801192EC); the Wii class adds a block behind them that
-// Reset also clears — three flags at _74-_76, words at _8C/_90/_A0/_A4/_A8 and a
+// Reset also clears: three flags at _74-_76, words at _8C/_90/_A0/_A4/_A8 and a
 // vector at _94-_9C. Their roles are not identified yet
 class CCameraActionLeticker : public CCameraActionLadr {
 public:
@@ -1039,7 +1039,16 @@ public:
 	virtual ~CCameraActionLeticker() { }
 
 	void SetTarget(Vec* target) { mTarget = target; }
-	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ);
+
+	// keeps the eye inside the box
+	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ)
+	{
+		mBounded = true;
+		mMinX    = minX;
+		mMaxX    = maxX;
+		mMinZ    = minZ;
+		mMaxZ    = maxZ;
+	}
 };
 STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0xAC);
 
