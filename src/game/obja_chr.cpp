@@ -4679,8 +4679,7 @@ Vec XObjChr::GetCameraTarget()
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetJointAnimationEndFrame(this);
-			f32 t      = GetJointAnimationCurrentFrame(this) / end;
-			t *= 1.7f;
+			f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 			if (t > 1.f)
 				t = 1.f;
 			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4716,8 +4715,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4737,8 +4735,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
