@@ -4206,10 +4206,11 @@ static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f
 // place or with a literal depth does not change that
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
-	f32 wave = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
-	f32 x    = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
-	f32 y    = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
-	DrawMenuRectWithShadow(menu, (u32)(255.0f * menu->mAlpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
+	f32 alpha = 1.0f;
+	f32 wave  = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
+	f32 x     = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
+	f32 y     = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
+	DrawMenuRectWithShadow(menu, (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
 	if (menu->mCount == 0) {
 		DrawDiscardOutline(menu, x, y);
 	}
@@ -4218,7 +4219,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	u32 halfWidth = (24 * (strlen(label) / 2 - 1)) / 2;
 	f32 labelX    = 12.0f + ((12.0f + (4.0f + ((40.0f + ((72.0f + x) - halfWidth)) - 120.0f))) - 20.0f);
 	f32 labelY    = (12.0f + ((2.0f + (((22.0f + y) - 12.0f) - 2.0f)) - 22.0f)) - 36.0f;
-	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha);
+	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
 
 	CTexObj tex;
 	f32 radius = 30.0f + wave;
@@ -4228,7 +4229,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		LoadOverviewTexture(tex, 128);
 		u16 width = tex.GetWidth(), height = tex.GetHeight();
-		u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFEA0000;
+		u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFEA0000;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0,
 		                   1.4f * (1.1f * width), 1.4f * height, 0, 0, 3.1415927f + angle);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -4246,10 +4247,10 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 		tex.mMtxDirty = TRUE;
 		if (count >= 10) {
-			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, 1.0f);
-			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, 1.0f);
+			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, alpha);
+			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, alpha);
 		} else {
-			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, 1.0f);
+			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, alpha);
 		}
 		break;
 	}
@@ -4257,7 +4258,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		char message[256];
 		// Retail measures the confirmation label even though it draws it at a fixed position.
 		(void)strlen(message);
-		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha);
+		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
 		break;
 	}
 	}
