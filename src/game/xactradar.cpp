@@ -4,6 +4,7 @@
 #include "game/video.h"
 #include "game/xobjflags.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/stagedata.h"
 #include "game/cjobjset.h"
 #include "game/cvec.h"
@@ -875,6 +876,7 @@ static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
  * @note Address: 0x800C186C
  * @note Size: 0x934
  */
+// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2.
 void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 {
 	if (shot->mActive) {
@@ -895,9 +897,7 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 		PSMTXRotRad(pitch, 'x', shot->mPitch);
 		PSMTXConcat(translation, yaw, transform);
 		PSMTXConcat(transform, pitch, transform);
-		Vec step    = { 0.0f, 0.0f, 0.0f };
-		step.z      = shot->mSpeed * frames;
-		Vec forward = step;
+		Vec forward = (Vec) { 0.0f, 0.0f, shot->mSpeed * frames };
 		PSMTXMultVec(transform, &forward, &shot->mPos);
 		if (shot->mGen || shot->mChargeGen) {
 			HSD_JObjSetTranslate(shot->mJoint, &shot->mPos);
@@ -1333,8 +1333,10 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		else if (aobj->flags & 0x44000000) {
 			// battery empty: the stage's script takes over, otherwise he lies there until a button (5)
 			if ((gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript() && gGame.GetPlayer()->mParams.mBattery <= 0.0f) {
-				if (gGame.mEvt.mData.mScript == NULL)
-					StartOrQueueEventScript(&gGame.mEvt, GetStageBatteryDepletedScript(), 0, -1, -1);
+				if (gGame.mEvt.mData.mScript == NULL) {
+					u8* script = GetStageBatteryDepletedScript();
+					StartOrQueueEventScript(&gGame.mEvt, script, 0, -1, -1);
+				}
 			} else {
 				act->mState = 5;
 			}
@@ -1357,8 +1359,7 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 	case 10: {
 		PlayTumbleAnimation(act->mOwner, 0xE6, 0.0f);
 		Vec offset = { 0.0f, 12.0f, 0.0f };
-		gGame.mParticle.CreateSRT(0x10005, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f },
-		                          FALSE);
+		CreateParticle(&gGame, 1, 5, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, FALSE);
 		act->mState = 11;
 		break;
 	}
@@ -1380,12 +1381,12 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 	case 14:
 		if (act->mOwner->mIdleModeTimer > 0) {
 			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos)) {
-				s32 effect         = (rand() & 1) ? 0x26 : 0x28;
-				s32 height         = act->mOwner->mLift.mState == 0 ? 2 : 4;
-				s32 path[]         = { 0, 1, 0, 1, 2, 0, 1 };
-				act->mIdleParticle = gGame.mParticle.CreateSRT(
-				    effect | 0x10000, 1, GetEventJointWorldPosition(act->mOwner, 7, path) + (Vec) { 0.0f, height, 0.0f },
-				    act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
+				s32 effect = (rand() & 1) ? 0x26 : 0x28;
+				s32 height = act->mOwner->mLift.mState == 0 ? 2 : 4;
+				s32 path[] = { 0, 1, 0, 1, 2, 0, 1 };
+				act->mIdleParticle
+				    = CreateParticle(&gGame, 1, effect, 1, GetEventJointWorldPosition(act->mOwner, 7, path) + (Vec) { 0.0f, height, 0.0f },
+				                     act->mOwner->mMoveScale, FALSE);
 			}
 		} else {
 			act->mIdleParticle = NULL;

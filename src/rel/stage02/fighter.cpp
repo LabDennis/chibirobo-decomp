@@ -775,6 +775,7 @@ inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
 // NONMATCHING: registers (the pool walk, the caption loop, digW/digH), the order of two literal
 // loads at PSMTXTrans, and where the digit loops set d = 0. Japan, which has no captions, scales the
 // time and gauge textures into locals before SetGsTevMode where the others scale them in the call.
+// NONMATCHING: remaining diffs are register numbering in the DrawCaption loops (r17-r21) and digit loops (f27-f29, r19-r21).
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
 	CTexObj tex;
@@ -786,7 +787,6 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	f32 left;
 	f32 digW;
 	f32 digH;
-	f32 onesOffset;
 	f32 w;
 	u32 base;
 	s32 hi;
@@ -802,10 +802,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	stage   = GAME_FIELD(s32, GAME_STAGE);
 	stage02 = FindStageIndexByName("stage02");
 	if (stage02 == stage) {
-		s32 stride = GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0));
-		u8* pool   = GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0));
 		for (i = 0; i < 48; i++) {
-			UnkDolObj* obj = (UnkDolObj*)(pool + i * stride);
+			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
 			s32 kind       = obj->mPlacement != NULL ? *obj->mPlacement : -1;
 			if (kind != 0x149) {
 				continue;
@@ -837,11 +835,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			digH = 0.8f * (scale * th);
 			PSMTXScale(tex.mMtx.mScale, 0.09090909f, 1.0f, 1.0f);
 			tex.mMtxDirty = 1;
+			d             = 0;
 			base          = alpha;
 			hi            = base | 0xFAE0CF00;
 			lo            = base | 0xE9813A00;
-			onesOffset    = 7.0f * digW;
-			for (d = 0; d < 4; d++) {
+			for (; d < 4; d++) {
 				f32 div = 1.0f;
 				s32 k;
 				s32 digit;
@@ -852,10 +850,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				}
 				digit = score / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex.mMtx.mTrans, 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					digit %= 10;
+					PSMTXTrans(tex.mMtx.mTrans, digit * 0.09090909f, 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, onesOffset + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f,
+					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, 7.0f * digW + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f,
 					                   0.0f, 0.0f);
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
@@ -894,7 +893,6 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			PSMTXScale(tex.mMtx.mScale, 0.09090909f, 1.0f, 1.0f);
 			hi            = base | 0x1F33FF00;
 			lo            = base | 0xFFFFFF00;
-			onesOffset    = 7.0f * digW;
 			tex.mMtxDirty = 1;
 			for (d = 0; d < 2; d++) {
 				f32 div = 1.0f;
@@ -907,10 +905,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				}
 				digit = time / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex.mMtx.mTrans, 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					digit %= 10;
+					PSMTXTrans(tex.mMtx.mTrans, digit * 0.09090909f, 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, onesOffset + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW,
+					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, 7.0f * digW + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW,
 					                   digH, 0.0f, 0.0f, 0.0f);
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
@@ -5145,6 +5144,26 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
  * @note Address: stage02 .text 0x3BB0
  * @note Size: 0x664
  */
+// Retail loads work->mSpeedRates and work->mFrame before the NULL check, while keeping the
+// float-to-int conversion inside the non-NULL branch; an inline taking (rates, frame) produces this.
+static inline f32 SampleSpeedRate(const u8* rates, f32 frame)
+{
+	f32 rate;
+	if (rates == NULL) {
+		rate = 0.0f;
+	} else {
+		// the script's percent rate for this frame: non-positive becomes 1, capped at 2.5
+		rate = rates[(s32)frame] / 100.0f;
+		if (rate <= 0.0f) {
+			rate = 1.0f;
+		}
+		if (2.5f < rate) {
+			rate = 2.5f;
+		}
+	}
+	return rate;
+}
+
 extern "C" void Fighter_Update(Fighter* work, u32 dt)
 {
 	Mtx rot;
@@ -5152,7 +5171,6 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	Mtx offset;
 	Vec zero;
 	HSD_JObj* jobj;
-	f32 rate;
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
@@ -5177,19 +5195,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 		work->mSpeed = work->mMaxSpeed;
 	}
 	work->mPrevFrame = work->mFrame;
-	if (work->mSpeedRates == NULL) {
-		rate = 0.0f;
-	} else {
-		// the script's percent rate for this frame: non-positive becomes 1, capped at 2.5
-		rate = work->mSpeedRates[(s32)work->mFrame] / 100.0f;
-		if (rate <= 0.0f) {
-			rate = 1.0f;
-		}
-		if (2.5f < rate) {
-			rate = 2.5f;
-		}
-	}
-	work->mFrame = work->mSpeed * rate + work->mFrame;
+	work->mFrame += work->mSpeed * SampleSpeedRate(work->mSpeedRates, work->mFrame);
 	work->mPath->SetAnim(0, TRUE, NULL, NULL, NULL, work->mFrame, 1.0f, 0.0f, 10.0f);
 	ShotList_Update(&work->mShots, dt);
 }
@@ -5897,6 +5903,7 @@ extern "C" void Fighter_Init(Fighter* work, UnkDolObj* body, UnkDolObj* path, vo
  */
 // NONMATCHING: registers only. Retail copies the halved opening of the center panel into a new
 // register and forms 180.0f - half through a temporary; the build halves it in place.
+// NONMATCHING: loop regalloc rotates r28/r29/r30 (i, pool base, obj) and center panel swaps f30/f31 between half and h.
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
 	CTexObj tex;
@@ -5928,8 +5935,8 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 				tw   = GXGetTexObjWidth(&tex);
 				w    = 1.1f * (scale * tw);
 				th   = GXGetTexObjHeight(&tex);
-				y    = 320.0f;
 				half = fade->mLowerOpen * (scale * th);
+				y    = 320.0f;
 #if !defined(VERSION_JP)
 				y -= 32.0f;
 #endif
