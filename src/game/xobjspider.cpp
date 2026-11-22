@@ -479,7 +479,6 @@ void XObjSpider::DrawGroundShadow()
  * @note Address: 0x800F2E44
  * @note Size: 0x33C
  */
-// NONMATCHING: the float registers of the ring loop are numbered the other way
 // the shadow, a disc and a ring around it that fades out
 void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
@@ -506,12 +505,12 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	PrimVertex verts[26];
 	for (int i = 0; i < 13; i++) {
 		f32 angle              = (PI / 6) * i;
-		verts[i * 2].pos.x     = pos.x - size.x * 0.5f * std::sinf(angle);
-		verts[i * 2].pos.z     = pos.z + size.z * 0.5f * std::cosf(angle);
+		verts[i * 2].pos.x     = pos.x - size.x / 2.0f * std::sinf(angle);
+		verts[i * 2].pos.z     = pos.z + size.z / 2.0f * std::cosf(angle);
 		verts[i * 2].pos.y     = pos.y;
 		verts[i * 2].color     = edge;
-		verts[i * 2 + 1].pos.x = pos.x - (1.5f + size.x * 0.5f) * std::sinf(angle);
-		verts[i * 2 + 1].pos.z = pos.z + (1.5f + size.z * 0.5f) * std::cosf(angle);
+		verts[i * 2 + 1].pos.x = pos.x - (1.5f + size.x / 2.0f) * std::sinf(angle);
+		verts[i * 2 + 1].pos.z = pos.z + (1.5f + size.z / 2.0f) * std::cosf(angle);
 		verts[i * 2 + 1].pos.y = pos.y;
 		verts[i * 2 + 1].color = 0;
 	}
