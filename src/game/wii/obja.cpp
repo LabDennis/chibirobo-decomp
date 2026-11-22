@@ -492,13 +492,11 @@ void XObj::Release()
 {
 	if (mArchive.mAnm.IsLoaded()) {
 		if (GetAnimId() >= 0) {
-			XObjSource* source = NULL;
-			if (mAttr.mObjData != NULL) {
-				source = mAttr.mObjData->mSource;
-			}
-			if (source != NULL && source->mAnimNames != NULL
-			    && mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
-				SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			XObjSource* source = mAttr.mObjData != NULL ? mAttr.mObjData->mSource : NULL;
+			if (source != NULL && source->mAnimNames != NULL) {
+				if (mObject.m_resFile.GetResAnmChr(source->mAnimNames[GetAnimId()]).mpData == NULL) {
+					SetAnim(0, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+				}
 			}
 			SetAnim(GetAnimId(), TRUE, GetAnimFrame(), 1.0f, 1.0f, 15.0f);
 		}
