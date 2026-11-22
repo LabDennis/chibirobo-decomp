@@ -881,7 +881,10 @@ static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
  * @note Address: 0x800C186C
  * @note Size: 0x934
  */
-// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2.
+// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2 (see
+// DrawRadarTargetBeam: the dol does this at four of 129 such calls). A yaw local, (f64) casts, a Vec& for
+// mPos, a CVec or const CVec& aim, dz declared before or after the call and 23000 permuter iterations all
+// leave x first; -(mPos.z - aim.z) is the only form that flips it (99.18 with its fneg)
 void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 {
 	if (shot->mActive) {
