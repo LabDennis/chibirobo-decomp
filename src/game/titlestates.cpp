@@ -1769,6 +1769,15 @@ static inline void DrawTitleCursors(Title* title, f32 halfWidth, f32 y)
 	title->mCursor.DrawObject();
 }
 
+// the text of one title entry, lit once the entry is selected and the highlight delay has passed
+static inline void DrawTitleEntryText(Title* title, s32 entry, u32 normal, u32 lit, const char* text, f32 x, f32 y, f32 size)
+{
+	bool selected = false;
+	if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
+		selected = true;
+	DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x, y, 0.0f, 24.0f, size);
+}
+
 static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32 progress, u32 normal, u32 lit)
 {
 	const char* text = GetTitleAndSaveMenuText(textId);
@@ -1784,13 +1793,8 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 		if (title->mSaveFound)
 			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width / 2.0f, (size - 24.0f) / 2.0f + (y - size), 0.0f, 24.0f,
 			                             size);
-	} else {
-		f32 x = 320.0f - width / 2.0f, top = (size - 24.0f) / 2.0f + (y - size);
-		bool selected = false;
-		if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
-			selected = true;
-		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x, top, 0.0f, 24.0f, size);
-	}
+	} else
+		DrawTitleEntryText(title, entry, normal, lit, text, 320.0f - width / 2.0f, (size - 24.0f) / 2.0f + (y - size), size);
 	return width;
 }
 
@@ -1807,7 +1811,10 @@ static inline f32 TitleOptionWidth(s32 first)
 
 // NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule.
 // Both save f26-f31; the alpha, the later progress and the three entry widths are coloured onto other slots. -O4 without p,
-// -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level
+// -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level. Retail also loads the entry text's
+// 0.0f, 24.0f and size into f3-f5 before the selection test (0x8002B50C) where this build loads them at the call, and the
+// inner of the two widest-width picks goes to a fresh register in both arms (fmr f0 at 0x8002B79C, 0x8002B928 and 0x8002B9D4); a
+// WiderOf(a, b) inline compiles to the same bytes as the ternaries
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
