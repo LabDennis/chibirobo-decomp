@@ -291,11 +291,12 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		// the digit atlas is the digits 0-9 in a column
 		PSMTXScale(digits.mMtx[1], 1, .1f, 1);
 		digits.mMtxDirty = TRUE;
+		f32 spacing      = 17.f;
 		for (int i = display.mCount - 1; i >= 0; --i) {
 			const PointDigit& digit = display.digits[i];
 			if (!(digit.fade > 0))
 				continue;
-			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f / 2), py = y;
+			f32 px = spacing * (display.mCount - 1 - i) + ((x + spacing / 2) - display.mCount * spacing / 2), py = y;
 			f32 fade = digit.fade;
 			if (fade > 1)
 				fade = 1;
@@ -632,8 +633,9 @@ static inline void DrawOXModel(XObj& model, f32** args)
 	BeginGsCamera(&gGame);
 }
 
-// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
-// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
+// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, and the label's
+// text rotation is a Vec() zero object in the shared .bss prefix (lbl_803782DC, US 0x80095F78), whose hoisted address
+// moves the loop's registers; retail also hoists the text colour (oris 0xf0f0 right after the alpha conversion)
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -654,7 +656,6 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * std::sinf(2.268928f * fade) - 42.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
 	f32 openAngle = 2.0943952f * fade;
-	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
 		f32 bob          = 4.0f * std::sinf(mark.mSpin);
@@ -693,7 +694,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		}
 		menu->mMark[kind].mObj.UpdateObject(1);
 		InvalidateAll();
-		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
+		f32 radius  = 74.0f;
+		f32 scaleXZ = radius * size, scaleY = -radius * size;
 		for (s32 j = 0; j < 8; ++j) {
 			f32 direction = (TWO_PI / 8.0f) * j;
 			f32 cosine    = std::cosf(direction);
@@ -733,8 +735,9 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		gGame.mGs.mTextRot = textRot;
 		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
 		f32 fontSize       = 2.0f * (30.0f * size * size);
-		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
-		f32 top            = pos.y - 0.5f * fontSize;
+		u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
+		f32 left = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
+		f32 top  = pos.y - 0.5f * fontSize;
 		for (s32 j = 0; j < 4; ++j)
 			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
 			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
@@ -3301,7 +3304,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		f32 iconAlpha = alpha;
 		if (menu->IsItemEquipped(i))
-			iconAlpha = alpha * .25f;
+			iconAlpha *= .25f;
 		u32 color = 0xffffff00 | (u32)(255.f * alpha);
 		f32 size  = 1.2f * pulse;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
@@ -3956,6 +3959,7 @@ void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
  * @note Address: 0x8009DAA8
  * @note Size: 0x1DC
  */
+// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C)
 extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 {
 	s32 type = 0;
@@ -3995,6 +3999,9 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  * @note Address: 0x8009DC84
  * @note Size: 0x134
  */
+// NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
+// (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
+// if moved the NAN load further from retail
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -4057,6 +4064,9 @@ static inline XObj* FindEventObj(s32 id)
  * @note Address: 0x8009DDB8
  * @note Size: 0x1740
  */
+// NONMATCHING: case 202 returns !(mode > 0) as a BOOL in retail (neg, andc, srwi, cntlzw, extrwi from US 0x8009ED50);
+// every spelling here (<= 0, !(> 0), ?:, == FALSE, a BOOL local) folds to the shorter rlwnm form. The anim lookup
+// keeps the GetAObj result in r3 up to its test instead of copying it in each return path
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 {
 	s32 result = 0;
@@ -4614,6 +4624,7 @@ extern "C" CVec GetPlayerCarryJointWorldPosition(CJObj* object)
  * @note Address: 0x800A09BC
  * @note Size: 0x21C
  */
+// NONMATCHING: retail stores the midpoint before the three temporaries' vtable resets (US 0x800A0B4C), the build after
 extern "C" Vec GetPlayerFirstPersonEyePosition(XObjChr* chr)
 {
 	s32 left[8]  = { 0, 1, 0, 1, 2, 0, 0, 0 };
@@ -4636,6 +4647,12 @@ BOOL IsRopeActionState(const XAction*, s32);
 s32 ClassifyFloatBits(f32);
 f32 GetJointAnimationEndFrame(CJObj*);
 f32 GetJointAnimationCurrentFrame(CJObj*);
+}
+
+// where the jump arc starts, by value
+static inline Vec GetJumpArcPosition(const XActJump* jump)
+{
+	return jump->mArcPosition;
 }
 
 /**
@@ -4670,8 +4687,7 @@ Vec XObjChr::GetCameraTarget()
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetJointAnimationEndFrame(this);
-			f32 t      = GetJointAnimationCurrentFrame(this) / end;
-			t *= 1.7f;
+			f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 			if (t > 1.f)
 				t = 1.f;
 			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4707,8 +4723,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
@@ -4728,8 +4743,7 @@ Vec XObjChr::GetCameraTarget()
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
-				f32 t      = GetJointAnimationCurrentFrame(this) / end;
-				t *= 1.7f;
+				f32 t      = 1.7f * (GetJointAnimationCurrentFrame(this) / end);
 				if (t > 1.f)
 					t = 1.f;
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
@@ -4780,10 +4794,10 @@ Vec XObjChr::GetCameraTarget()
 		} else if (IsJumpActionState(&mJump, 9) || IsJumpActionState(&mJump, 12) || IsJumpActionState(&mJump, 15)
 		           || IsJumpActionState(&mJump, 17)) {
 			target   = mMoveTranslate + (Vec) { 0, 10, 0 };
-			target.y = 10.f + mJump.mArcPosition.y;
+			target.y = 10.f + GetJumpArcPosition(&mJump).y;
 		} else if (IsJumpActionState(&mJump, 10) || IsJumpActionState(&mJump, 13) || IsJumpActionState(&mJump, 16)) {
 			CVec start = mMoveTranslate;
-			CVec arc   = mJump.mArcPosition;
+			CVec arc   = GetJumpArcPosition(&mJump);
 			f32 end    = GetJointAnimationEndFrame(this);
 			f32 t      = GetJointAnimationCurrentFrame(this) / end;
 			target     = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
@@ -5467,6 +5481,9 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  * @note Address: 0x800A551C
  * @note Size: 0x73C
  */
+// NONMATCHING: retail keeps the anim gauge's frame, fraction and left edge in three saved float registers (fdivs f30,
+// f31, f0 at US 0x800A59C8) where the build reuses the frame's for the fraction; an unnamed frame or a separate end
+// local changed nothing
 void XObjChr::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
@@ -5750,6 +5767,8 @@ void XObjAttachment::DrawWithView(Mtx view)
  * @note Address: 0x800A7C70
  * @note Size: 0x1AC
  */
+// NONMATCHING: retail hands CreateSRT the rotation straight out of the particle copy (addi r8, r1, 0x74 at
+// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help
 extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
 {
 	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
@@ -6886,7 +6905,9 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 
 // NONMATCHING: register numbers in the object loops; retail also jumps from the hang loop's two put-backs straight past the
 // `if (!supported)` test (here they set the flag and test it), branches twice after each leticker index test, and computes
-// marker & 0x80 again for the look mode instead of keeping the count chain's result
+// marker & 0x80 again for the look mode instead of keeping the count chain's result. The turn rate multiplies the turn
+// first (US 0x800AD2C0 fmuls f25, f27, f0) into a register of its own: turn * k puts the literal first, and turn *= k
+// or rate *= k fixes the order but shares the register
 extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32 speed, f32 direction)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
@@ -6955,17 +6976,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 scale = 1.0f - 0.15f * sBlockedObstacleCount;
 				if (scale < 0.7f)
 					scale = 0.7f;
-				f32 factor = GetPlayerMoveSpeedScale(player);
-				targetX    = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * factor));
-				factor     = GetPlayerMoveSpeedScale(player);
-				targetZ    = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * factor));
+				targetX = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
 			} else {
-				f32 factor = GetPlayerMoveSpeedScale(player);
-				f32 xSpeed = (speed * PlayerActionSine(angle)) * factor;
-				targetX    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * xSpeed);
-				factor     = GetPlayerMoveSpeedScale(player);
-				f32 zSpeed = (speed * PlayerActionCosine(angle)) * factor;
-				targetZ    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * zSpeed);
+				targetX
+				    = movementFrames
+				    * (GetPlayerAnimationRateMultiplier(player) * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ
+				    = movementFrames
+				    * (GetPlayerAnimationRateMultiplier(player) * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
 			}
 		} else {
 			targetX = targetZ = 0.0f;
@@ -7079,8 +7098,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					if (difference > 0.008726646f) {
 						if (difference >= TWO_PI)
 							difference -= TWO_PI;
-						if (difference > PI)
-							desired = desired < current ? desired + TWO_PI : desired - TWO_PI;
+						if (difference > PI) {
+							if (desired < current)
+								desired += TWO_PI;
+							else
+								desired -= TWO_PI;
+						}
 						f32 turn = desired - current;
 						if (turn < 0)
 							turn = -turn;
@@ -7274,8 +7297,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	Mtx rotation;
 	{
 		radius      = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
-		f32 extentY = GetFloorExtent(&player->mFloors, 0).y;
-		height      = player->mMoveScale.y * (GetFloorCenterOffset(&player->mFloors, 0).y + extentY);
+		height      = player->mMoveScale.y * (GetFloorCenterOffset(&player->mFloors, 0).y + GetFloorExtent(&player->mFloors, 0).y);
 		liftState22 = 0;
 		if (IsCarryingMug(&player->mLift)) {
 			s32 boundsPath[2] = { 0, 0 };
@@ -7478,8 +7500,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			index            = GetActionTargetFloor(&player->mPush);
 			Vec extent       = *GetObjectMoveScale(target) * GetFloorExtent(GetObjectFloorTableAddress(target), index);
 			index            = GetActionTargetFloor(&player->mPush);
-			f32 floorYaw     = GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
-			f32 yaw          = GetObjectMoveRotation(target)->y + floorYaw;
+			f32 yaw          = GetObjectMoveRotation(target)->y + GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
 			scaledOffset.y   = 0;
 			if (IsActionTargetFloorId(&player->mPush, 2)) {
 				extent.y *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
@@ -10204,6 +10225,9 @@ static inline bool SuitFadeFinished(const XObjChr* player)
  * @note Address: 0x800B9134
  * @note Size: 0x624
  */
+// NONMATCHING: retail puts the ring start position below the suit item's joint path in the frame (stw r0, 0x10(r1) at
+// US 0x800B91E8, the path at 0x1C), the build above it, and keeps the player in r31 (the build r25); a
+// compound literal for the position moved nothing
 extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 {
 	switch (player->mSuits.mChangeStep) {
