@@ -1408,11 +1408,13 @@ STATIC_ASSERT(offsetof(MenuSave, mResetOnClose) == 0x570);
 STATIC_ASSERT(sizeof(MenuSave) == 0x710);
 
 // the save file test menus, Wii only (RTTI); the first lists the save slots, the second what to do with one,
-// the third shows a save error. Only their sizes are known so far
+// the third shows a save error
 // one line of a save file test menu
 struct MenuTextRow {
 	char* mText; // _00
 	f32 mWidth;  // _04
+
+	BOOL IsSeparator() const { return mText != NULL && mText[0] == 1; } // "\x01" rows can't be picked
 };
 
 class MenuSFTest : public Menu {
@@ -1432,24 +1434,73 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
 
+// todo: retail's RTTI puts a common base under the three, MenuUtil : Menu, whose Init (0x80053410), empty InitRows
+// (0x800534D4) and row draw (0x80050314) Sub and Err inherit; this code's MenuUtil is the pointer mixin instead
 class MenuSFTestSub : public Menu {
 public:
-	u8 _15C[0x164 - 0x15C];
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
+	virtual void Open();
+	virtual ~MenuSFTestSub() { }
+	virtual void InitRows(); // _3C, 0x800548AC
+
+	MenuTextRow* mRows; // _15C, four of them
+	s32 mCount;         // _160
 };
 STATIC_ASSERT(sizeof(MenuSFTestSub) == 0x164);
 
 class MenuSFTestErr : public Menu {
 public:
-	u8 _15C[0x164 - 0x15C];
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
+	virtual void Open();
+	virtual ~MenuSFTestErr() { }
+	virtual void InitRows(); // _3C, 0x80055318
+
+	MenuTextRow* mRows; // _15C, the one error line
+	s32 mCount;         // _160
 };
 STATIC_ASSERT(sizeof(MenuSFTestErr) == 0x164);
 
 // the item menu, the GameCube class of the same name
+// a pointer pane whose picture fades in while the pane can be picked and out while it can't; the name is ours
+struct MenuPaneFade {
+	CbPane* mPane; // _00
+	f32 mAlpha;    // _04
+	u8 mShown;     // _08, the pane's mEnabled as of the last update
+
+	void Update(u32 frames)
+	{
+		mShown    = mPane->mEnabled;
+		f32 alpha = mAlpha;
+		if (mShown) {
+			alpha += 0.2f * frames;
+			if (alpha > 1.0f)
+				alpha = 1.0f;
+		} else {
+			alpha -= 0.2f * frames;
+			if (alpha < 0.0f)
+				alpha = 0.0f;
+		}
+		mAlpha = alpha;
+	}
+};
+
+// the two fading panes the item and status menus keep; the name is ours
+struct MenuPaneFadePair {
+	MenuPaneFade mFades[2]; // _00
+
+	void Update(u32 frames); // 0x8005A048
+};
+
 class MenuItem : public CMenu {
 public:
 	virtual void Open();
 
-	u8 _150[0x78C - 0x150];
+	u8 _150[0x1C0 - 0x150];
+	MenuTitle mTitle; // _1C0
+	u8 _35C[0x774 - 0x35C];
+	MenuPaneFadePair mPaneFades; // _774
 };
 STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 
@@ -1500,7 +1551,11 @@ public:
 	virtual BOOL Draw();
 	virtual void Open();
 
-	u8 _150[0x1958 - 0x150];
+	u8 _150[0x6B8 - 0x150];
+	MenuTitle mTitle; // _6B8
+	u8 _854[0x193C - 0x854];
+	MenuPaneFadePair mPaneFades; // _193C
+	u8 _1954[0x1958 - 0x1954];
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
