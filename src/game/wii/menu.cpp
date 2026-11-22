@@ -60,6 +60,7 @@ void DrawStatusMenuTitle(MenuStatus* menu);
 void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale);
+u8* GetPCRankingName(s32 index);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -211,6 +212,7 @@ extern s32 gRingScreenWidth;
 
 // what the PC shop sold and what it sells
 static MenuPCItem sShopHistoryEntries[20];
+PCRankingRow gPCRankingRows[10];
 static MenuPCItem sShopCatalogEntries[20];
 
 bool MenuPad::IsConfirmPressed()
@@ -3620,6 +3622,158 @@ BOOL MenuPC::Draw()
 		return TRUE;
 	}
 	return FALSE;
+}
+
+static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f32 alpha, u32& color, bool first)
+{
+	Vec vertices[5] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+		                (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	if (first) {
+		color = (u32)(255.0f * alpha) | 0x0A0A0A00;
+	}
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
+}
+
+static inline void LoadRankingRow(MenuPC* menu, int slot, int offset)
+{
+	menu->mRankingRows[slot].rank      = gPCRankingRows[menu->mRankingEnd - offset].rank;
+	menu->mRankingRows[slot].nameIndex = gPCRankingRows[menu->mRankingEnd - offset].nameIndex;
+	menu->mRankingRows[slot].score     = gPCRankingRows[menu->mRankingEnd - offset].score;
+}
+
+static inline void ClearRankingRow(PCRankingRow& row)
+{
+	row.rank      = 0;
+	row.nameIndex = -1;
+	row.score     = 0;
+}
+
+static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f32 y, f32 scale, u32 upper, u32 lower, bool rank)
+{
+	InitPCPanelTexture(tex, 126);
+	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	for (int i = 0; i < (rank ? 7 : 6); i++) {
+		f32 div = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 digit = (s32)(value / div);
+		if (i != 0 && digit == 0) {
+			continue;
+		}
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (digit % 10), 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 dx = 7.0f * w + (x - i * (w - 4.0f * scale));
+		dx     = rank ? dx - 24.0f * scale : 106.0f * scale + dx;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, dx, y + 8.0f * scale, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
+// NONMATCHING: the complete 45-call list matches; the current spelling needs 212 more bytes and a different stack/register layout
+extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	if (alpha > 0.0f) {
+		switch (menu->mPhase) {
+		case 0:
+			for (int i = 0; i < 5; i++) {
+				menu->mRankingOffsets[i]        = 0.0f;
+				menu->mRankingRows[i].nameIndex = 0;
+				menu->mRankingRows[i].score     = 0;
+			}
+			menu->mRankingEnd = 3;
+			if (menu->mRankingEnd <= 3) {
+				menu->mPhase          = 2;
+				menu->mRankingRows[3] = gPCRankingRows[2];
+				menu->mRankingRows[2] = gPCRankingRows[1];
+				menu->mRankingRows[1] = gPCRankingRows[0];
+				break;
+			}
+			ClearRankingRow(menu->mRankingRows[4]);
+			LoadRankingRow(menu, 3, 1);
+			LoadRankingRow(menu, 2, 2);
+			LoadRankingRow(menu, 1, 3);
+			LoadRankingRow(menu, 0, 4);
+			menu->mPhase++;
+		case 1:
+			for (int i = 0; i < 4; i++) {
+				menu->mRankingOffsets[i] += 0.4f;
+			}
+			if (menu->mRankingOffsets[0] >= 48.0f) {
+				menu->mRankingEnd--;
+				if (menu->mRankingEnd <= 3) {
+					menu->mPhase++;
+					for (int i = 0; i < 4; i++) {
+						menu->mRankingOffsets[i] = 48.0f;
+					}
+				} else {
+					for (int i = 0; i < 4; i++) {
+						menu->mRankingOffsets[i] = 0.0f;
+					}
+					menu->mRankingRows[3] = menu->mRankingRows[2];
+					menu->mRankingRows[2] = menu->mRankingRows[1];
+					menu->mRankingRows[1] = menu->mRankingRows[0];
+					if (menu->mRankingEnd >= 4) {
+						LoadRankingRow(menu, 0, 4);
+					} else {
+						ClearRankingRow(menu->mRankingRows[0]);
+					}
+				}
+			}
+			break;
+		}
+		CTexObj tex;
+		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
+		f32 top     = 168.0f + y;
+		f32 opacity = 255.0f * alpha;
+		u8 a        = (u8)opacity;
+		for (int i = 0; i < 5; i++) {
+			if (gPCRankingRows[i].nameIndex == -1) {
+				continue;
+			}
+			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
+			InitPCPanelTexture(tex, 181);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			f32 w = 1.1f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.1f * GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, (w / 2.0f + left) - 34.0f,
+			                   1.0f + (h / 2.0f + rowY), 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			const PCRankingRow& row = menu->mRankingRows[i];
+			s32 rankValue           = row.rank;
+			char text[256];
+			if (rankValue > 0 && rankValue <= 1000000) {
+				DrawPCRankingDigits(tex, rankValue, left, rowY, scale, a | 0xBFDDFB00, a | 0x0E72D600, true);
+				sprintf(text, "%s", GetLocalizedInterfaceText(0x44));
+				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 103.0f * scale + left, rowY, 0.0f, 18.0f * scale,
+				                             18.0f * scale);
+			} else {
+				sprintf(text, "%s", GetLocalizedInterfaceText(0x45));
+				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 48.0f * scale + left, rowY, 0.0f, 18.0f * scale,
+				                             18.0f * scale);
+			}
+			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
+			InitPCPanelTexture(tex, 155);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u16 iconWidth = GXGetTexObjWidth(&tex), iconHeight = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, 140.0f * scale + left,
+			                   rowY + 10.0f * scale, 0.0f, 0.6f * (scale * iconWidth), 0.6f * (scale * iconHeight), 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			sprintf(text, "%s", GetPCRankingName(row.nameIndex));
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
+			                             rowY + 20.0f * scale, 0.0f, 18.0f * scale, 18.0f * scale);
+		}
+	}
+	u32 mask;
+	DrawPCRankingMask(130.0f, 100.0f, 510.0f, 140.0f, alpha, mask, true);
+	DrawPCRankingMask(130.0f, 290.0f, 510.0f, 330.0f, alpha, mask, false);
 }
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
