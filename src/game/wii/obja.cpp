@@ -106,7 +106,9 @@ void XObj::ResetObjectState()
 	mFloorHit.mTriangle = -1;
 	mFloorHit.mTrigon   = 0;
 	mFloorHit.mHeight   = 0.0f;
-	mVec714.x = mVec714.y = mVec714.z = 0.0f;
+	mVec714.x           = 0.0f;
+	mVec714.y           = 0.0f;
+	mVec714.z           = 0.0f;
 	ClearAnimQueue();
 	mLastPos           = mMoveTranslate;
 	mLastRot           = mMoveRotate;
@@ -542,7 +544,9 @@ void XObj::UpdateObject(u32 frames)
 				mMoveTranslate.x += mVec714.x;
 				mMoveTranslate.z += mVec714.z;
 				mMoveTranslate.y = mFloorHit.mHeight;
-				mVec714.x = mVec714.y = mVec714.z = 0.0f;
+				mVec714.x        = 0.0f;
+				mVec714.y        = 0.0f;
+				mVec714.z        = 0.0f;
 				SetRotationX(0.0f);
 				SetRotationZ(0.0f);
 				mStatus.mFlags &= ~0x1000000000000000ULL;
