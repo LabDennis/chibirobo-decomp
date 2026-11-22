@@ -10328,7 +10328,8 @@ static inline void ClearShopHistoryRows(MenuPCPage* list)
  * @note Address: 0x80034A6C
  * @note Size: 0x3E0
  */
-// NONMATCHING: register allocation and instruction scheduling
+// NONMATCHING: register numbering: retail has the three fields in r5-r7 below the entry and the two row pointers
+// (r8-r10), the build the other way round; declaring the fields at the top in any order does not move them
 extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 {
 	s32 count;
@@ -10342,7 +10343,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart && count < list->mStart + 9 && n < 9) {
 				list->mRows[n].mItem  = itemId;
 				list->mRows[n].mCount = stock;
@@ -10370,7 +10371,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart + 9 && count < list->mStart + 10) {
 				list->mNext[n].mItem  = itemId;
 				list->mNext[n].mCount = stock;
@@ -10391,7 +10392,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
 		price                   = entry->mPrice;
-		if (itemId >= 0 && stock >= 0) {
+		if (entry->mItem >= 0 && entry->mCount >= 0) {
 			if (count >= list->mStart - 1 && count < list->mStart) {
 				list->mPrev[n].mItem  = itemId;
 				list->mPrev[n].mCount = stock;
