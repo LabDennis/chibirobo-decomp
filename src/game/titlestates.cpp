@@ -2007,10 +2007,10 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 }
 #endif
 
-// NONMATCHING: retail adds the bar's 2.0f to its y at each quad (fadds y, 2), this build once before the call; rest is float regs.
-// MenuSave::Draw (stg) passes 2.0f + (8.0f + labelY) to the same inline and differs the same way, DrawPCShopList passes a named
-// barY and matches there: retail re-evaluates the inline's y argument per use, which the shared menuselectionbar.h would have to
-// settle. JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
+// NONMATCHING: float and saved registers (lines and the text color swap r26/r27); the bar's last quad adds 2.0f to barX
+// variable-first in retail (US 0x8002A95C fadds f1, f29, f0), constant-first here. The bar's y is barY + inset: retail adds
+// the 2.0f at each quad, variable-first (US 0x8002A7B4, 0x8002A81C fadds f2, f25, f0), which a literal 2.0f folds into one
+// add. JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
 // forwards them past it (a color local and a JP DrawLoadText inline taking x by value are identical)
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
@@ -2183,10 +2183,10 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		{
 			CTexObj tex;
 			f32 alpha = title->mLoadAlpha, scroll = title->mLoadScroll;
-			f32 barY     = 8.0f + (extra + (base + title->mLoadOffset));
+			f32 barY = 8.0f + (extra + (base + title->mLoadOffset)), inset = 2.0f;
 			u32 barColor = 0x181CC600 | (u32)(200.0f * alpha);
 			InitMenuSelectionBar(tex);
-			DrawMenuSelectionBar(tex, barX, 2.0f + barY, width, 22.0f, alpha, scroll, barColor);
+			DrawMenuSelectionBar(tex, barX, barY + inset, width, 22.0f, alpha, scroll, barColor);
 		}
 		f32 y = extra + (base + title->mLoadOffset);
 #if defined(VERSION_JP)
