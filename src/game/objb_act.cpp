@@ -2173,6 +2173,12 @@ static inline void AddVec(CVec& a, Vec b)
 	PSVECAdd(&a, &b, &a);
 }
 
+// a -= b, the same way
+static inline void SubVec(CVec& a, Vec b)
+{
+	PSVECSubtract(&a, &b, &a);
+}
+
 // a held object of the given pool and kind
 static inline bool IsHolding(XAction* act)
 {
@@ -2561,7 +2567,9 @@ inline void SetJointTranslationFromVectorByPath(CJObj* obj, s32 depth, s32* path
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
-// NONMATCHING: the 16-byte locals of the hang-start branches still sit in a different order
+// NONMATCHING: case 5 steps the yaw from mMoveRotate.y read again in each branch (US 0x800C7198, 0x800C7204 lfs 0xfc(r3)),
+// here the value read for the test is reused; writing the field read in both branches compiles the same. The
+// GetEventJointWorldPosition path pair at 0x800C6FF4 is two .sdata labels in retail's symbols, one literal here
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -2581,8 +2589,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				Vec delta = offset;
-				PSVECSubtract(&rope, &delta, &rope);
+				SubVec(rope, offset);
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
