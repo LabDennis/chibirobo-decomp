@@ -4217,9 +4217,12 @@ static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f
 	DrawOverviewTexture(tex, color, x, y, width, height);
 }
 
-// NONMATCHING: retail saves one float register more (f17, frame 0x10 bigger) and builds the outline's five
-// compound literals at falling stack addresses (0x38, 0x2c, 0x20, 0x14, 0x8); ours rise. Writing the outline in
-// place or with a literal depth does not change that
+// NONMATCHING: registers. Retail builds the outline's five compound literals at falling stack addresses (US
+// 0x8004EFD8: 0x38, 0x2c, 0x20, 0x14, 0x8) under the array at 0x44; ours rise. An unnamed array written at
+// the call, `DrawGsLineStrip(&gGame.mGs, (Vec[5]) { ... }, ...)`, gives retail's frame exactly but numbers wave, x
+// and y above the loop's hoisted constants (f29, f27, f26 for retail's f25, f24, f23) and scores lower, so the
+// helper stays. Retail keeps wave, x and y below those constants, where temporaries go. Retail also saves one float
+// register more (f17, frame 0x10 bigger); writing the outline in place or with a literal depth does not change that
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
 	f32 alpha = 1.0f;
@@ -6557,28 +6560,24 @@ BOOL MenuPC::Draw()
 					case 3:
 						rotation = -3.14159274;
 						{
-							f32 startX       = 210.0f;
-							const f32 left   = startX - inset;
-							const f32 bottom = top + 172.0f;
-							Vec start        = { startX, top, -10 };
-							Vec upperLeft    = { left, top, -10 };
-							Vec lowerLeft    = { left, bottom, -10 };
-							Vec tip          = { this->mTextX, bottom, -10 };
-							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							f32 coord0   = 210;
+							f32 coord1   = top;
+							f32 coord2   = 210.0f - inset;
+							f32 coord3   = top + 172.0f;
+							Vec points[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+								             (Vec) { this->mTextX, coord3, -10 } };
 							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 						}
 						break;
 					case 4:
 						rotation = -3.14159274;
 						{
-							f32 startX       = 210.0f;
-							const f32 left   = startX - inset;
-							const f32 bottom = top + 172.0f;
-							Vec start        = { startX, top, -10 };
-							Vec upperLeft    = { left, top, -10 };
-							Vec lowerLeft    = { left, bottom, -10 };
-							Vec tip          = { this->mTextX, bottom, -10 };
-							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							f32 coord0   = 210;
+							f32 coord1   = top;
+							f32 coord2   = 210.0f - inset;
+							f32 coord3   = top + 172.0f;
+							Vec points[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+								             (Vec) { this->mTextX, coord3, -10 } };
 							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 						}
 						break;
@@ -10728,6 +10727,8 @@ static inline u8 StageRowBlue(int row, u8 normal, u8 current)
 // NONMATCHING: register allocation and loop scheduling. Retail numbers the locals step, maxWidth, fontSize, x, y,
 // 60, 1, 15, 12, 0.5, cx, cy from f31 down (US 0x800331FC..0x80033248), the build puts cx and cy first;
 // declaring step first or cx and cy last or const moves other registers without reaching that order.
+// Reading mWindow.mX/mY in place loses the hoisting (-6 %); the operand order of the row compare and the colour `|`
+// does not move (cmpw r4,r0 / or r4,r0,r3 at US 0x800332DC/0x80033310).
 BOOL MenuStageSelect::Draw()
 {
 	if (CMenu::Draw()) {
