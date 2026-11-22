@@ -1905,7 +1905,8 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
  */
 // NONMATCHING: retail passes the shake offset to operator+ without a second copy, and loads
 // gMicMeterPeak again after each store and before each use, as for a volatile (the audio DMA
-// callback raises it; volatile gives 99.3 %)
+// callback raises it; volatile gives 99.3 %). Tried for the copy: the product written into the call (98.00, the
+// temporary then dies after operator+), a const Vec& offset (97.96), a CVec offset (97.86).
 void CGame::Draw()
 {
 	s32 i;
@@ -3143,7 +3144,8 @@ void (*gPreviousAudioDMACallback)(void);
  * @note Address: 0x8000A6D8
  * @note Size: 0x180
  */
-// NONMATCHING: the work area isn't read back for the mount
+// NONMATCHING: the work area isn't read back for the mount (retail 0x8000A754 lwz r4,0x1c(r31) after the store)
+// Tried: no slot pointer (78.26), the mount argument or the store through gMicrophoneChannels[1] (97.24, 93.73).
 // mounts the mic in slot B and keeps it mounted
 extern "C" void UpdateMicrophoneMount(void)
 {

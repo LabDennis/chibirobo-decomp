@@ -6504,6 +6504,8 @@ void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
  * @note Size: 0x1D38
  */
 // NONMATCHING: regalloc (end, args pointer, count and i swap registers; retail reads mScript twice at the start), declaration orders tried
+// Also tried: EvtRead16(mData.mScript), end from start + 1, one shared i, while and ++i forms of the empty loop
+// (retail tests it with cmpw r4,r24 at 0x8007A430): all give the same code.
 s32 CEvt::_cmd_CALL(u8, s32)
 {
 	s32 yield  = 0;

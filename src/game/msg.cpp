@@ -6460,6 +6460,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
  * @note Size: 0x6F0
  */
 // NONMATCHING: float colouring (retail has scaleX in f29, angle in f28), the icon index copied out of r0, the SetChar read as lwzx
+// (retail forms 0xd14 + index * 0x2ac first, as for an inline's this; (&glyph)->mSprite.mTex gives the same code here)
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
 	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
