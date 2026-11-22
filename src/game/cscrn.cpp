@@ -451,7 +451,10 @@ void CScrnWipe::Draw(CGs* gs, s32 mode)
  * @note Address: 0x800220DC
  * @note Size: 0x7C0
  */
-// NONMATCHING: stack offsets of BeginWipe/Mtx locals (+0x30) and .rodata offsets; all instructions and registers match
+// NONMATCHING: stack offsets of BeginWipe/Mtx locals (+0x30) and .rodata offsets; all instructions and registers match.
+// retail has BeginWipe's quad below BeginWipeMask's (CScrnWipe::Draw 0x80022948 stw r3, 0x48(r1)), ours above it.
+// the order the three wipe inlines are defined in changes nothing, the depth quad as an inline of its own
+// moves it under FinishWipe's
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)

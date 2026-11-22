@@ -25,7 +25,9 @@ inline void AddCopy(CVec& a, Vec b)
  * @note Size: 0x2F0
  */
 // NONMATCHING: retail stores dir's and vel's vtables first and copies target from r5 (0x80142B70 lwz r7, 0x0(r5)),
-// ours copies target from r30 before the vtables. the same prologue schedule as ut's IsPointInsideTriangleXZ
+// ours copies target from r30 before the vtables. the same prologue schedule as ut's IsPointInsideTriangleXZ.
+// CVec dir, vel; in one declaration (same), CVec dir = eye - target (85.1) or vel declared at its
+// assignment (89.7) do not move it
 CVec CalcSpring(CVec& eye, const CVec& target, const CVec& last, f32 dt, f32 stiffness, f32 damping, f32 rest)
 {
 	CVec dir;

@@ -41,7 +41,9 @@ static inline s32 DrawCenteredLines(const char** lines, s32 color)
  * @note Address: 0x8001BCFC
  * @note Size: 0x5C8
  */
-// NONMATCHING: .rodata pool offsets, register coloring in DrawCenteredLines, and 0.0f/*line load order
+// NONMATCHING: .rodata pool offsets, register coloring in DrawCenteredLines, and 0.0f/*line load order.
+// retail has the line pointer in r24 above i in r23 (0x8001BEBC addi r24, r1, 0x28). i declared before line, ++i before ++line,
+// lines[i], a while loop for the count or one line pointer for both loops score the same or lower
 extern "C" void DrawScanModePrompt()
 {
 	if (!gVideoModePrompt.step)

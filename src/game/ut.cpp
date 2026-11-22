@@ -1901,7 +1901,8 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
  * @note Size: 0x1AC
  */
 // NONMATCHING: retail schedules the pos->z load after the top/bottom aggregate initializer copies. pos->x and
-// pos->z in the initializers (92.4) or stored after a { 0, 1, 0 } copy (90.0) score lower
+// pos->z in the initializers (92.4) or stored after a { 0, 1, 0 } copy (90.0) score lower, and so do
+// pos->z in the initializers with x a local (94.5) or pos->x with z a local (93.5)
 // out gets the point of abc's plane straight above or below pos. returns 1 when it lies at y 1 or -1,
 // 2 between them and 3 beyond
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out)

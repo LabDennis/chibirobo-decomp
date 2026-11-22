@@ -336,7 +336,9 @@ static inline TrigonGetVtxFunc GetVtxFunc(int compType)
 static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 {
 	// NONMATCHING: regalloc, retail picks the accessor in r3 and moves it to r25 after, and loads display a few lines later.
-	// GetIdxFunc with a return per case (97.16), the checker before dl (95.70) or end before dl (96.14) score lower
+	// GetIdxFunc with a return per case (97.16), the checker before dl (95.70) or end before dl (96.14) score lower.
+	// the move is 0x801A51CC mr r25, r3. a default that returns NULL (same), func = NULL with no default (96.68)
+	// or if/else for the ternaries (97.0) keep the accessor out of r3
 	int posSize             = 0;
 	int stride              = GetVtxSize(pobj->verts, &posSize, NULL, NULL, NULL);
 	int compType            = pobj->verts->comp_type;
@@ -1213,7 +1215,8 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 	Vec* corner1;
 	// NONMATCHING: retail interleaves the mJObj load into the prologue (right
 	// after mflr), ours emits it after the stmw/arg moves — a pure scheduling
-	// pair swap; a named local for the joint doesn't change it.
+	// pair swap; a named local for the joint doesn't change it. (0x801A4430 lwz r6, 0x14(r3)), and neither
+	// does the test before the corner declarations. GC 2.0 to 2.7 and -inline auto without deferred agree
 	if (mJObj->flags & HIDDEN) {
 		return -1;
 	}
