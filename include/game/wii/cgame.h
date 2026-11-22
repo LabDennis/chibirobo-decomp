@@ -1462,7 +1462,6 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTestErr) == 0x164);
 
-// the item menu, the GameCube class of the same name
 // a pointer pane whose picture fades in while the pane can be picked and out while it can't; the name is ours
 struct MenuPaneFade {
 	CbPane* mPane; // _00
@@ -1493,6 +1492,7 @@ struct MenuPaneFadePair {
 	void Update(u32 frames); // 0x8005A048
 };
 
+// the item menu, the GameCube class of the same name
 class MenuItem : public CMenu {
 public:
 	virtual void Open();
