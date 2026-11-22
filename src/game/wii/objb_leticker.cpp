@@ -2,6 +2,7 @@
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
 #include "game/ccameraaction.h"
+#include "game/gmath.h"
 #include "game/evt.h"
 #include "arithmetic.h"
 #include <math.h>
@@ -16,6 +17,7 @@ extern "C" void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // ret
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+extern CCameraActionLeticker gLetickerCameraAction;
 
 // which of the leticker's four sides angle is closest to, counting quarter turns
 // counterclockwise; the GameCube reads Cos/Sin off a table, the Wii uses MSL cosf/sinf
@@ -135,6 +137,21 @@ static inline void SetFloors(XObj* obj, XObjFloor* floors)
 	obj->mFloorMasks[0] = 0;
 	UpdateObjectFloorXZExtent(obj);
 	UpdateObjectFloorHeights(obj);
+}
+
+// whether the camera's eye still sits inside the lift's bounds when it faces angle;
+// ReceivePlugPower turns it a quarter turn at a time until it fits
+static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
+{
+	if (!camera->mBounded) {
+		return true;
+	}
+	Vec eye;
+	camera->CalcEye(&eye, angle);
+	if (eye.x < camera->mMinX || camera->mMaxX < eye.x || eye.z < camera->mMinZ || camera->mMaxZ < eye.z) {
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -402,6 +419,9 @@ extern "C" {
 
 // forward, GetClearLetickerApproachSide runs ahead of it in retail .text
 bool IsLetickerJointClearOfObjects(XObj* obj, nw4r::g3d::ResNode node);
+// forwards, ReceivePlugPower calls them, they follow OnPushDisplacement in retail .text
+BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle);
+BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle);
 
 /**
  * @note Address: 0x8011B570
@@ -491,9 +511,135 @@ void XObjLeticker::OnHitFromPosition(const Vec& position, f32 strength)
 /**
  * @note Address: 0x8011C504
  * @note Size: 0x95C
- * @note NONMATCHING: ported from the GameCube body; the Wii retail function is
- * present but the port is not written yet
  */
+BOOL XObjLeticker::ReceivePlugPower(f32 amount)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	if (player->GetPos()->y < GetPos()->y - 5.0f) {
+		return FALSE;
+	}
+	CPad pad(0);
+	f32 heading = (f32)atan2(player->GetPos()->x - GetPos()->x, player->GetPos()->z - GetPos()->z);
+	f32 angle   = heading - GetRotY();
+	// the pushed direction snaps the target rotation to a quarter turn
+	s32 side = GetSide(angle);
+	switch (side) {
+	case 0:
+		angle = 0.0f;
+		break;
+	case 1:
+		angle = HALF_PI;
+		break;
+	case 2:
+		angle = PI;
+		break;
+	case 3:
+		angle = -HALF_PI;
+		break;
+	}
+	if (!mPowered) {
+		mPowered = TRUE;
+		mWaiting = FALSE;
+		if (mState != 3) {
+			gGame.mMotionControlCamera.PushAction(&gLetickerCameraAction);
+			gLetickerCameraAction.mTarget = &mStackTopPosition;
+			if (mCameraBounded) {
+				gLetickerCameraAction.SetBounds(mCameraMinX, mCameraMaxX, mCameraMinZ, mCameraMaxZ);
+				for (s32 i = 0; i < 4; ++i) {
+					if (CanTurn(&gLetickerCameraAction, gLetickerCameraAction.mAngle)) {
+						break;
+					}
+					gLetickerCameraAction.mTurnTo = gLetickerCameraAction.mAngle += HALF_PI;
+				}
+			}
+		} else {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			part->mStatus.mFlags &= ~0x10000ULL;
+			part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		if (mState == 2) {
+			mMaxLevel         = mLevelBySide[side];
+			mMaxLevelProgress = 10.0f * mMaxLevel;
+			mUnwindSuperseded = FALSE;
+			mUnwindWatch      = FALSE;
+			mUnwindAnim       = 0;
+		}
+		if (mPtcl) {
+			fn_800A12F8(&gGame.mEvtPtcl, 0xA5, FALSE);
+			mPtcl = FALSE;
+		}
+	}
+	if (mWaiting) {
+		if (!(pad.mPad->mButton & (1ULL << (NunchukStick + 2)))) {
+			mPowerTimer -= 1;
+			if (mPowerTimer <= 0) {
+				return FALSE;
+			}
+			return TRUE;
+		}
+		mWaiting = FALSE;
+	}
+	amount *= mSpeedScale;
+	++mPowerTimer;
+	bool starting = mPowerTimer < 40;
+	switch (mState) {
+	case 1: // the lift
+		if (!TurnLetickerAndCheckClearance(this, angle)) {
+			if (mHeight == 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f) {
+				XObj* part = gGame.mXObjs.mObjects[mLinked[1]];
+				PlayWiiSoundEffect(&gGame.mSound, 0x1FE, 1.0f, 0.0f);
+				SetColor(1, 0xFF, 0, 0, 0.5f);
+				SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				part->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				part->PushAnim(0, 0, 100);
+				mPowerTimer = 30;
+				mWaiting    = TRUE;
+			}
+			return TRUE;
+		}
+		break;
+	case 2: // the counter
+		if (!TurnLetickerLinkedPartAndTrackJoint(this, angle)) {
+			return starting;
+		}
+		break;
+	case 3: // the ride
+		mStackTopPosition = *GetPos();
+		gGame.mXObjs.mObjects[mLinked[0]]->SetPos(*GetPos());
+		gGame.mXObjs.mObjects[mLinked[0]]->SetRotateY(mMoveRotate.y, 1.0f);
+		if (mMaxLevelProgress <= mLevelProgress + amount) {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			if (part->GetAnimId() != 0) {
+				part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		} else {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			part->mStatus.mFlags |= 0x10000ULL;
+			part->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	}
+	if (player->mParams.mBattery <= 0.0f) {
+		return FALSE;
+	}
+	if (pad.mPad->mButton & (1ULL << (NunchukStick + 2))) {
+		mLevelProgress -= amount;
+		if (mLevelProgress < 0.0f) {
+			mLevelProgress = 0.0f;
+			return starting;
+		}
+	} else {
+		mLevelProgress += amount;
+		if (mMaxLevelProgress <= mLevelProgress) {
+			mLevelProgress = mMaxLevelProgress;
+			return starting;
+		}
+	}
+	if (GetAnimId() != 1 && GetAnimId() != 2) {
+		SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	}
+	return TRUE;
+}
 
 /**
  * @note Address: 0x8011CE60
@@ -539,6 +685,101 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
 		mPtcl = FALSE;
 	}
 }
+
+extern "C" {
+
+/**
+ * @note Address: 0x8011D1E8, an unnamed helper between OnPushDisplacement and the
+ * turn helpers, is not ported yet
+ */
+
+/**
+ * @note Address: 0x8011D34C
+ * @note Size: 0x3A0
+ */
+BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
+{
+	CPad pad(0);
+	XObj* first    = gGame.mXObjs.mObjects[lift->mLinked[0]];
+	XObj* second   = gGame.mXObjs.mObjects[lift->mLinked[1]];
+	lift->mHeading = angle;
+	first->SetRotateY(angle + lift->GetRotY(), 0.1f);
+	second->SetRotateY(angle + lift->GetRotY(), 0.1f);
+	if (pad.mPad->mButton & (1ULL << (NunchukStick + 2))) {
+		return TRUE;
+	}
+
+	f32 offset = 4.0f * (s32)(lift->mLevelProgress / 3.0f) + 0.5f;
+	CVec pos(*second->GetPos());
+	pos.y = 6.0f + (3.0f + (9.0f + (offset + lift->GetPosY())));
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		XObj* target = gGame.mXObjs.mObjects[i];
+		if (!(target->mStatus.mFlags & 1) || !(target->mStatus.mFlags & 0x10000)) {
+			continue;
+		}
+		if (target == lift || target == first || target == second) {
+			continue;
+		}
+		XObjSource* source = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->mSource : NULL;
+		if (source == NULL) {
+			continue;
+		}
+		const Vec* targetPos = target->GetPos();
+		f32 dx               = targetPos->x - pos.x;
+		f32 dz               = targetPos->z - pos.z;
+		if (FSqrt(dx * dx + dz * dz) > 100.0f + (5.0f + target->mFloorXZExtent[0])) {
+			continue;
+		}
+		CVec hit, normal;
+		u32 flags = target->TestFloorCollision(&pos, &pos, 5.5f, 6.0f, &hit, &normal, 0, 0);
+		if (flags & 2) {
+			return FALSE;
+		}
+		if (flags & 1) {
+			f32 floor = target->mFloorHeights[target->mHitFloorIndex];
+			if (__fpclassifyf(floor) == FP_NAN) {
+				return FALSE;
+			}
+			if (pos.y > floor) {
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x8011D6EC
+ * @note Size: 0x1B0
+ */
+BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle)
+{
+	XObj* part = gGame.mXObjs.mObjects[leticker->mLinked[0]];
+	f32 my     = leticker->GetRotY();
+	f32 c      = cos(part->GetRotY() - (angle + my));
+	if (c < (f32)cos(0.08726646f)) { // the part is more than five degrees off
+		leticker->mLevelProgress = 0.0f;
+		leticker->mPowerTimer    = 0;
+		if (part->GetAnimId() == 0) {
+			part->SetRotateY(angle + leticker->GetRotY(), 0.1f);
+			leticker->mHeading = angle;
+		}
+	}
+	if (!leticker->mUnwindSuperseded) {
+		if (part->GetAnimFrame() < part->GetAnimEndFrame()) {
+			return TRUE;
+		}
+	}
+	if (leticker->mUnwindSuperseded) {
+		leticker->mUnwindSuperseded = FALSE;
+	}
+	Vec pos;
+	pos.x = pos.y = pos.z = 0.0f;
+	PSMTXMultVec(part->GetWorldMtx(leticker->mCurrentLevel + 1), &pos, &leticker->mStackTopPosition);
+	return TRUE;
+}
+
+} // extern "C"
 
 /**
  * @note Address: 0x8011D89C
@@ -599,6 +840,6 @@ Vec CCameraActionLeticker::GetCameraTarget()
 	return *mTarget;
 }
 
-// the action HandleEventCommand pushes while the leticker's camera is bounded;
+// the action ReceivePlugPower pushes while the leticker's camera is bounded;
 // retail's __sinit constructs it in this unit
-static CCameraActionLeticker gLetickerCameraAction;
+CCameraActionLeticker gLetickerCameraAction;
