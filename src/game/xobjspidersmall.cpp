@@ -2174,13 +2174,15 @@ void XObjSpiderSmall::ResetObjectState()
  * @note Address: 0x800FEDD0
  * @note Size: 0x398
  */
-// NONMATCHING: the spider pool loop folds 0x9B4 into the index
+// NONMATCHING: register allocation in the inlined FindWebs: retail keeps &gSmallSpiderEffectObjects[0] from the
+// clearing loop in r27 (US 0x800FF014) and walks it for the found webs, this build forms it a second time
 BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if (mPoolIndex == 0) {
 			for (int i = 0; i < 16; i++) {
-				((XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i))->Hide();
+				XObj* obj = gGame.mXObjs.mPools[18].Get(i);
+				((XObjSpiderSmall*)obj)->Hide();
 			}
 			if (mTimeMode != gGame.mTimeState.mMode) {
 				for (s32 i = 0; i < 0x27; i++) {
