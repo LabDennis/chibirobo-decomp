@@ -8359,10 +8359,7 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 		// start the spring at rest on the point Update tracks (GetMapCameraTargetOffsetPosition)
 		CVec pos(0.0f, 13.0f, -1.0f);
 		PSMTXMultVec(mtx, &pos, &pos);
-		mSpringTarget       = CVec(pos.x, pos.y, pos.z);
-		mSpringPrevTarget.x = mSpringTarget.x;
-		mSpringPrevTarget.y = mSpringTarget.y;
-		mSpringPrevTarget.z = mSpringTarget.z;
+		SetCenter(this, pos);
 	}
 	_8C.x               = 0.0f;
 	_8C.y               = 0.0f;
