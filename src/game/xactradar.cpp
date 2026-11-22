@@ -875,6 +875,7 @@ static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
  * @note Address: 0x800C186C
  * @note Size: 0x934
  */
+// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2.
 void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 {
 	if (shot->mActive) {
@@ -895,9 +896,7 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 		PSMTXRotRad(pitch, 'x', shot->mPitch);
 		PSMTXConcat(translation, yaw, transform);
 		PSMTXConcat(transform, pitch, transform);
-		Vec step    = { 0.0f, 0.0f, 0.0f };
-		step.z      = shot->mSpeed * frames;
-		Vec forward = step;
+		Vec forward = (Vec) { 0.0f, 0.0f, shot->mSpeed * frames };
 		PSMTXMultVec(transform, &forward, &shot->mPos);
 		if (shot->mGen || shot->mChargeGen) {
 			HSD_JObjSetTranslate(shot->mJoint, &shot->mPos);
