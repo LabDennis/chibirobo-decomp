@@ -5663,6 +5663,8 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
  * @note Address: stage02 .text 0x4214
  * @note Size: 0x2DC
  */
+// NONMATCHING: retail gives the three aim parameter int-to-float conversions one stack slot (frame 0x20); the build
+// gives each its own (frame 0x30). A member inline for the read and if/else arms did not share it.
 extern "C" void Fighter_Init(Fighter* work, UnkDolObj* body, UnkDolObj* path, void* extra)
 {
 	HSD_AObj* pathAnim;
