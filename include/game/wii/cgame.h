@@ -1539,6 +1539,7 @@ struct MenuPaneFadePair {
 // the item menu, the GameCube class of the same name
 class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
+	virtual BOOL Update(u32 frames);
 	virtual void Open();
 
 	virtual void vf08(CbPane* pane);
@@ -1548,13 +1549,33 @@ public:
 	virtual void vf18(nw4r::math::VEC2* pos);
 	virtual void vf1C(nw4r::math::VEC2* pos);
 
-	s32 mMode; // _160
-	u8 _164[0x1A8 - 0x164];
-	s32 mStickSelection; // _1A8, the row the stick is on, mSelection again when the pointer goes
-	u8 _1AC[0x1C0 - 0x1AC];
-	MenuTitle mTitle; // _1C0
-	u8 _35C[0x770 - 0x35C];
-	u8 mHovered; // _770
+	s32 mMode;         // _160, the item menu's phase
+	s32 mDelay;        // _164
+	f32 mGridX;        // _168
+	f32 mGridY;        // _16C
+	f32 mTargetGridX;  // _170
+	f32 mTargetGridY;  // _174
+	f32 mPanelX;       // _178
+	f32 mPanelY;       // _17C
+	f32 mTargetPanelX; // _180
+	f32 mTargetPanelY; // _184
+	u8 _188[0x198 - 0x188];
+	f32 _198; // _198
+	f32 _19C; // _19C
+	u8 _1A0[0x1A4 - 0x1A0];
+	s32 mPrevSelection;   // _1A4
+	s32 mStickSelection;  // _1A8, the row the stick is on, mSelection again when the pointer goes
+	s32 mShowHelp;        // _1AC
+	f32 mNameAlpha;       // _1B0
+	u8* mName;            // _1B4
+	u8* mHelp;            // _1B8
+	f32 mItemPhase;       // _1BC
+	MenuTitle mTitle;     // _1C0
+	MenuHelpChar mBg[20]; // _35C
+	u8 _44C[0x450 - 0x44C];
+	CbPane mCells[8]; // _450
+	CbPane mPanes[2]; // _6D0, previous and next item page
+	u8 mHovered;      // _770
 	u8 _771[0x774 - 0x771];
 	MenuPaneFadePair mPaneFades; // _774
 };

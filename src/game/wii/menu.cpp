@@ -789,6 +789,268 @@ extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
 }
 
 static inline s32 CountMenuItems();
+static inline void PCEase(f32& value, f32& target);
+extern "C" void fn_8005A9D0(MenuItem* menu, u32 frames);
+extern "C" void PopulateOwnedItemPage(MenuStatusTable* table);
+extern f32 gFrameRateScale;
+
+extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
+{
+	if (list->mCount < 0x100) {
+		list->mPanes[list->mCount++] = pane;
+	}
+}
+
+static inline void CheckPlayerInventoryFlags()
+{
+	for (s32 i = 255; i >= 0; --i) {
+		InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
+		GetItemFlagsMasked(items[i].mId, 4);
+	}
+}
+
+// NONMATCHING: all functional calls match, but this build expands MenuPaneFadePair::Update where retail calls it;
+// 24 bytes of register and scheduling differences remain
+BOOL MenuItem::Update(u32 frames)
+{
+	static s32 selectedItem = -1;
+	if (mState == 6) {
+		gPointerPanes.mMenu = NULL;
+	}
+	if (CMenu::Update(frames) == 4) {
+		gPointerPanes.mCount = 0;
+		mPaneFades.Update(frames);
+		sInventoryPhase += gFrameRateScale * (0.5f * frames);
+		if ((mItemPhase += (1.0f / (0.3f * gRefreshRate)) * frames) >= 2.0f)
+			mItemPhase = fmod(mItemPhase, 2.0);
+		PCEase(mGridX, mTargetGridX);
+		ApproachHudValue(&mGridY, &mTargetGridY, 20.0f);
+		PCEase(mPanelX, mTargetPanelX);
+		PCEase(mPanelY, mTargetPanelY);
+		ApproachHudValue(&_198, &_19C, 0.08f * frames);
+		if (mAlpha > 0.0f) {
+			f32 spinX = 0.08726646f * frames, spinY = 0.05235988f * frames;
+			for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
+				mBg[i].mAngle0 += spinX;
+				mBg[i].mAngle1 += spinY;
+			}
+		}
+		s32 count = CountMenuItems();
+		switch (mMode) {
+		case 0:
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mMode++;
+			break;
+		case 1:
+			if (mGridX == mTargetGridX) {
+				mMode++;
+				if (IsPointerActive()) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else {
+					mSelection     = mStickSelection;
+					mPrevSelection = mStickSelection;
+				}
+				s16 id = mSelection != -1 ? sStatusItemTable.mItems[mSelection].mItem : -1;
+				if (id >= 0 && CountMenuItems() > 0) {
+					mHelp     = GetItemName(id);
+					mShowHelp = 1;
+				} else {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				}
+			}
+			break;
+		case 2:
+			if (mSelection != -1)
+				mStickSelection = mSelection;
+			if (!IsStickUsedOverPointer()) {
+				if (count > 1) {
+					if (IsStickUp()) {
+						if (--mSelection < 0)
+							mSelection = count - 1;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					} else if (IsStickDown()) {
+						mSelection++;
+						if (sStatusItemTable.mItems[mSelection].mItem < 0)
+							mSelection = 0;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+				}
+				if (count > 4) {
+					if (mSelection >= 4) {
+						if (IsStickLeft()) {
+							if ((mSelection -= 4) < 0)
+								mSelection = count - 1;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+						if (IsStickRight() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+							mTargetGridY = -56.0f;
+							mMode        = 10;
+							break;
+						}
+					} else {
+						if (IsStickRight() && mSelection + 4 <= count - 1) {
+							mSelection += 4;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+						if (IsStickLeft()) {
+							CountMenuItems();
+							if (sStatusItemTable.mPage > 0) {
+								mTargetGridY = 128.0f;
+								mMode        = 20;
+								break;
+							}
+						}
+					}
+				}
+			}
+			if (mSelection != -1 && sStatusItemTable.mItems[mSelection].mItem < 0) {
+				do {
+					--mSelection;
+				} while (sStatusItemTable.mItems[mSelection].mItem < 0 && mSelection != 0);
+			}
+			if (mSelection != mPrevSelection) {
+				s16 id = sStatusItemTable.mItems[mSelection].mItem;
+				if (id >= 0 && CountMenuItems() > 0) {
+					mShowHelp = 1;
+					mHelp     = GetItemName(id);
+				} else {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				}
+			}
+			mPrevSelection = mSelection;
+			if (IsConfirmPressed() && mSelection != -1 && !mPanes[0].mPointed && !mPanes[1].mPointed) {
+				s16 id     = sStatusItemTable.mItems[mSelection].mItem;
+				s16 amount = sStatusItemTable.mItems[mSelection].mCount;
+				if (count > 0 && id >= 0 && amount > 0)
+					selectedItem = id;
+				else
+					selectedItem = -1;
+				mTargetGridX  = -640.0f;
+				mTargetPanelY = -200.0f;
+				mDelay        = 4 * frames;
+				mMode++;
+				for (int i = 0; i < (int)ARRAY_SIZE(mTitle.mChars); i++)
+					mTitle.mChars[i].mHold = 0.0f;
+			} else if (IsCancelPressed()) {
+				selectedItem  = -1;
+				mTargetGridX  = -640.0f;
+				mTargetPanelY = -200.0f;
+				mDelay        = 4 * frames;
+				mMode++;
+				for (int i = 0; i < (int)ARRAY_SIZE(mTitle.mChars); i++)
+					mTitle.mChars[i].mHold = 0.0f;
+			} else {
+				mPanes[0].mEnabled = FALSE;
+				mPanes[1].mEnabled = FALSE;
+				if (count > 4) {
+					CheckPlayerInventoryFlags();
+					mPanes[0].mEnabled = sStatusItemTable.mPage > 0;
+					mPanes[1].mEnabled = sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1;
+				}
+				for (int i = 0; i < 8; i++) {
+					AddPointerPane(&gPointerPanes, &mCells[i]);
+				}
+				AddPointerPane(&gPointerPanes, &mPanes[0]);
+				AddPointerPane(&gPointerPanes, &mPanes[1]);
+			}
+			break;
+		case 3:
+			if (--mDelay < 0) {
+				gGame.mEvt.mSelectResult = selectedItem;
+				gGame.ClearStatusFlags(2);
+				Close(5);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mMode++;
+			}
+			break;
+		case 10:
+			if (mGridY == mTargetGridY) {
+				mMode = 2;
+				if (sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+					++sStatusItemTable.mPage;
+					PopulateOwnedItemPage(&sStatusItemTable);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+				mGridY       = 36.0f;
+				mTargetGridY = 36.0f;
+				if (IsPointerActive()) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else {
+					mSelection     = mStickSelection;
+					mPrevSelection = mStickSelection;
+				}
+				if (mSelection == -1) {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				} else if (sStatusItemTable.mItems[mSelection].mItem != -1) {
+					mHelp          = GetItemName(sStatusItemTable.mItems[mSelection].mItem);
+					mShowHelp      = 1;
+					mPrevSelection = mSelection;
+				}
+			}
+			break;
+		case 20:
+			if (mGridY == mTargetGridY) {
+				mMode = 2;
+				CountMenuItems();
+				if (sStatusItemTable.mPage > 0) {
+					--sStatusItemTable.mPage;
+					PopulateOwnedItemPage(&sStatusItemTable);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+				mGridY       = 36.0f;
+				mTargetGridY = 36.0f;
+				if (IsPointerActive()) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+					mSelection     = -1;
+					mPrevSelection = -1;
+				} else {
+					mSelection     = mStickSelection;
+					mPrevSelection = mStickSelection;
+				}
+				if (mSelection == -1) {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				} else if (sStatusItemTable.mItems[mSelection].mItem != -1) {
+					mHelp          = GetItemName(sStatusItemTable.mItems[mSelection].mItem);
+					mShowHelp      = 1;
+					mPrevSelection = mSelection;
+				}
+			}
+			break;
+		}
+	}
+	fn_8005A9D0(this, frames);
+	switch (mShowHelp) {
+	case 0:
+		break;
+	case 1:
+		mNameAlpha = 0.0f;
+		mShowHelp++;
+		mName = mHelp;
+		break;
+	case 2:
+		mNameAlpha += 0.04f * frames;
+		if (mNameAlpha >= 1.0f) {
+			mNameAlpha = 1.0f;
+			mShowHelp  = 0;
+		}
+		break;
+	}
+	return IsOpen();
+}
 
 // NONMATCHING: the call list matches retail; 32 bytes of float constant/register lifetime and scheduling differences remain
 extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
@@ -1720,13 +1982,6 @@ extern "C" MenuRect fn_800556E4(const CbPane* pane)
 	rect.right  = origin.x + pane->mWidth;
 	rect.bottom = origin.y - pane->mHeight;
 	return rect;
-}
-
-extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
-{
-	if (list->mCount < 0x100) {
-		list->mPanes[list->mCount++] = pane;
-	}
 }
 
 // the pointer at x, y is on the pane, tested like an nw4r::lyt pane: through the inverse of its matrix.
