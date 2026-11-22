@@ -323,7 +323,8 @@ enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
 
 #if defined(VERSION_JP)
 // macros: MenuPC::Draw, their only user, could not expand inlines, yet retail stores the glyphs itself (JP 0x800468A0)
-#define PC_READ_DIALOGUE_GLYPH(text) ((((const u8*)(text))[0] << 8) | ((const u8*)(text))[1])
+// one halfword load (JP 0x800469B0), not two bytes
+#define PC_READ_DIALOGUE_GLYPH(text) (*(const u16*)(text))
 #define PC_SET_DIALOGUE_GLYPH(menu, code)                        \
 	do {                                                         \
 		*(u16*)(menu)->mCharCopies[(menu)->mNextGlyph] = (code); \
@@ -5898,8 +5899,12 @@ extern "C" s32 GetPlayerLevel(Params* params)
 // NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
 // and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
 // (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand. Under -inline
-// auto,deferred ours makes retail's exact call list in all three editions; what is left is register allocation
-// and scheduling (retail numbers the saved registers of the choice loop and the amount blocks differently)
+// auto,deferred ours makes retail's exact call list in all three editions; what is left is register numbering
+// (retail gives the choice loop's i r17 and its colour r16, the recycle rate r15, the amount blocks' 7 * w f28; ours
+// the other way round) and the schedule of the two digit markers' vertex blocks (US 0x80046438, 0x80047064: retail
+// starts the height / 10 chain before the digit's conversion). Three small forms are not found: retail loads the 320
+// of the shop panels before adding 215 + mScroll (US 0x80045604), keeps mTextX/mTextY in f22/f23 across the
+// colour's conversion (US 0x80048450), and JP computes the 142 icon's x and y before the colour (JP 0x800460B8)
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -6011,17 +6016,30 @@ BOOL MenuPC::Draw()
 				step   = 0;
 				break;
 			}
+			// the text size is a variable: the character counts multiply it variable-first (US 0x800455BC, JP 0x8004319C), and
+			// the centring halves with / 2 (the variable comes first in the fmadds)
+			f32 size = 20.0f;
 			f32 center, width;
+#if defined(VERSION_JP)
+			// JP's frame converts mChoice between the two character counts (JP 0x800431A4 between 0x80043170 and
+			// 0x80043184; a later conversion takes a lower slot), so its row y stood between the centre and the width
+			sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label));
+			u32 chars     = strlen(labelText) / 2;
+			const f32 top = -20.0f + origin;
+			center        = 224.0f + ((chars - 1) * size) / 2.0f;
+			f32 y         = step * this->mChoice + (8.0f + top);
+			width         = 0.9f * ((chars + 2) * size);
+#else
 			if (PC_USES_FIXED_CHOICE_LABELS()) {
 
 				sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label));
 				u32 chars = strlen(labelText) / 2;
-				center    = 224.0f + 0.5f * ((chars - 1) * 20.0f);
-				width     = 0.9f * ((chars + 2) * 20.0f);
+				center    = 224.0f + ((chars - 1) * size) / 2.0f;
+				width     = 0.9f * ((chars + 2) * size);
 			} else {
-				const char* text = GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label);
-				f32 textWidth    = MeasureGameTextWidth(GetGameGraphics(&gGame), text, TRUE, 20.0f);
-				width            = 6.0f
+				f32 textWidth = MeasureGameTextWidth(GetGameGraphics(&gGame),
+				                                     GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label), TRUE, size);
+				width         = 6.0f
 				      + (1.1f * GetMenuTextureWidth(LoadMenuPaletteTexture(&gGame, pcChoiceArt[this->mChoices[this->mChoice]].icon))
 				         + textWidth);
 				center = 204.0f + width / 2.0f;
@@ -6030,6 +6048,7 @@ BOOL MenuPC::Draw()
 			// the row and retail adds that 2 once, after the first GetGameGraphics (US 0x8004573C)
 			const f32 top = -20.0f + origin;
 			f32 y         = step * this->mChoice + (8.0f + top);
+#endif
 			{
 				u32 color = 0x181CC600 | (u32)(200.0f * this->mAlpha);
 				SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -6053,8 +6072,9 @@ BOOL MenuPC::Draw()
 				f32 alpha = this->mAlpha;
 				if (this->mChoices[i] == -1)
 					continue;
+				// retail dims from the member again: the first read stays in f1 and feeds a constant-first fmuls (US 0x80045904)
 				if (this->mChoices[i] == 7 && !this->mCanSelect)
-					alpha *= 0.4f;
+					alpha = 0.4f * this->mAlpha;
 				f32 rowY = step * i + top;
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, pcChoiceArt[this->mChoices[i]].icon));
 
@@ -6062,19 +6082,19 @@ BOOL MenuPC::Draw()
 				f32 w     = 1.1f * GetMenuTextureWidth(&tex);
 				f32 h     = GetMenuTextureHeight(&tex);
 				u32 color = 0xFFFFFF00 | (u32)(255.0f * alpha);
-				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 204.0f + 0.5f * w, 1.0f + (rowY + 0.5f * h), 0, w, h, 0, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 204.0f + w / 2.0f, 1.0f + (rowY + h / 2.0f), 0, w, h, 0, 0, 0);
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 				if (PC_USES_FIXED_CHOICE_LABELS()) {
 #if defined(VERSION_JP)
 					sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label));
-					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, labelText, 224, rowY, 0, 20, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, labelText, 224, rowY, 0, size, size);
 #else
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
-					                             224, rowY, 0, 20, 20);
+					                             224, rowY, 0, size, size);
 #endif
 				} else {
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
-					                             6.0f + (204.0f + w), rowY, 0, 20, 20);
+					                             6.0f + (204.0f + w), rowY, 0, size, size);
 				}
 			}
 		} break;
@@ -6101,9 +6121,10 @@ BOOL MenuPC::Draw()
 				first = 0.f;
 				last  = 1.f;
 			} else {
+				// row's conversion comes first: the later one takes the lower stack slot (US 0x80045B80, 0x730 for positions)
 				s32 start = GetShopHistoryFirstRow(&gShopHistoryPage);
-				f32 step  = 1.0f / (f32)positions;
 				f32 row   = (f32)start;
+				f32 step  = 1.0f / (f32)positions;
 				first     = step * row;
 				last      = step * (1.f + row);
 			}
@@ -6135,8 +6156,8 @@ BOOL MenuPC::Draw()
 				last  = 1.f;
 			} else {
 				s32 start = GetShopCatalogFirstRow(&gShopCatalogPage);
-				f32 step  = 1.0f / (f32)positions;
 				f32 row   = (f32)start;
+				f32 step  = 1.0f / (f32)positions;
 				first     = step * row;
 				last      = step * (1.f + row);
 			}
@@ -6169,20 +6190,20 @@ BOOL MenuPC::Draw()
 				PC_EASE_CALL(mDepositDisplay.shown, mDepositDisplay.target);
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
-				f32 step   = w - 2.4f;
 				f32 start  = 276;
 				f32 offset = 9.6f;
 				f32 y      = 184;
 				u32 rgb    = 0xFFB62800;
 
-				// s32 like PC_DIGIT_DIVISOR's place: with an int the loop entry is a second compare (retail re-uses i > 0, US 0x80045F60)
+				// s32 like PC_DIGIT_DIVISOR's place: with an int the loop entry is a second compare (retail re-uses i > 0, US 0x80045F60).
+				// The digit pitch is written in the loop: retail hoists 7 * w ahead of w - 2.4 (US 0x80045F38), a local would come first
 				for (s32 i = 0; i < 5; i++) {
 					f32 divisor;
 					PC_DIGIT_DIVISOR(divisor, i);
 					s32 digit = (s32)(mDepositDisplay.shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
-					f32 x = (7.0f * w + (start - i * step)) - offset;
+					f32 x = (7.0f * w + (start - i * (w - 2.4f))) - offset;
 					DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
 					SetMenuTevMode(GetGameGraphics(&gGame), 4);
 				}
@@ -6194,8 +6215,9 @@ BOOL MenuPC::Draw()
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
 				                             18);
 				{
-					const f32 scale = 1.4f;
-					s32 amount      = this->mAmount;
+					// not const: retail adds w + scale variable-first (US 0x80046248)
+					f32 scale  = 1.4f;
+					s32 amount = this->mAmount;
 
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 					f32 w = scale * GetMenuTextureWidth(&tex);
@@ -6205,7 +6227,6 @@ BOOL MenuPC::Draw()
 					entry.shown = entry.target = amount;
 					SetMenuTextureScale(&tex, 1, 0.1f);
 
-					f32 step   = w + 1.4f;
 					f32 start  = 256;
 					f32 offset = 30.8f;
 					f32 y      = 256;
@@ -6217,7 +6238,7 @@ BOOL MenuPC::Draw()
 						s32 digit = (s32)(entry.shown / divisor) % 10;
 						SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
-						f32 x = (7.0f * w + (start - i * step)) - offset;
+						f32 x = (7.0f * w + (start - i * (w + scale))) - offset;
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
 						SetMenuTevMode(GetGameGraphics(&gGame), 4);
 					}
@@ -6271,7 +6292,6 @@ BOOL MenuPC::Draw()
 				f32 shown = amount;
 				SetMenuTextureScale(&tex, 1, 0.1f);
 
-				f32 step   = w - 2.4f;
 				f32 start  = 372;
 				f32 offset = 136.8f;
 				f32 y      = 240;
@@ -6283,7 +6303,7 @@ BOOL MenuPC::Draw()
 					s32 digit = (s32)(shown / divisor) % 10;
 					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
 					SetMenuTevMode(GetGameGraphics(&gGame), 0);
-					f32 x = (7.0f * w + (start - i * step)) - offset;
+					f32 x = (7.0f * w + (start - i * (w - 2.4f))) - offset;
 					DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
 					SetMenuTevMode(GetGameGraphics(&gGame), 4);
 				}
@@ -6300,52 +6320,58 @@ BOOL MenuPC::Draw()
 			s32 rate = (s32)this->mScrapRate;
 			switch (this->mPhase) {
 			case 0: {
+				// the text size is a variable and the centring halves with / 2 (JP 0x8004479C, US 0x80046CCC: variable first)
+				f32 size = 20.0f;
 				{
 #if defined(VERSION_JP)
 					sprintf(labelText, "%s", GetPCMenuLabelText(29));
 					u32 chars = strlen(labelText) / 2;
-					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
+					f32 x     = (320.0f - ((chars - 1) * size) / 2.0f) - 10.0f;
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 148, 0,
-					                             20, 20);
+					                             size, size);
 #else
 					const char* localized = GetLocalizedInterfaceText(29 + 45);
 					u32 color             = (u32)(255.0f * this->mAlpha) | 0xFFFFFF00;
-					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(29 + 45), TRUE, 20);
-					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 148, 0, 20, 20);
+					f32 x = 320.0f - MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(29 + 45), TRUE, size) / 2.0f;
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 148, 0, size, size);
 #endif
 				}
 				{
 #if defined(VERSION_JP)
 					sprintf(labelText, "%s", GetPCMenuLabelText(30));
 					u32 chars = strlen(labelText) / 2;
-					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
+					f32 x     = (320.0f - ((chars - 1) * size) / 2.0f) - 10.0f;
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 220, 0,
-					                             20, 20);
+					                             size, size);
 #else
 					const char* localized = GetLocalizedInterfaceText(30 + 45);
 					u32 color             = (u32)(255.0f * this->mAlpha) | 0xFFFFFF00;
-					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(30 + 45), TRUE, 20);
-					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 220, 0, 20, 20);
+					f32 x = 320.0f - MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(30 + 45), TRUE, size) / 2.0f;
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 220, 0, size, size);
 #endif
 				}
 				{
+					// not const: step adds width + scale variable-first, after SetMenuTextureScale (US 0x80046E60); the marker
+					// adds it again (US 0x80047084) while 2 * step is kept from the loop, and / 2 stays in the loop's fnmsubs (US
+					// 0x80046FDC)
+					f32 scale  = 1.4f;
 					s32 amount = this->mAmount;
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
-					f32 width  = 1.4f * GetMenuTextureWidth(&tex);
-					f32 height = 1.4f * (GetMenuTextureHeight(&tex) / 10);
-					f32 step   = width + 1.4f;
+					f32 width  = scale * GetMenuTextureWidth(&tex);
+					f32 height = scale * (GetMenuTextureHeight(&tex) / 10);
 
 					PCAmount entry = {};
 					entry.shown = entry.target = amount;
 					SetMenuTextureScale(&tex, 1, 0.1f);
 
+					f32 step = width + scale;
 					for (s32 i = 0; i < 5; ++i) {
 						f32 divisor;
 						PC_DIGIT_DIVISOR(divisor, i);
 						int digit = (s32)(entry.shown / divisor) % 10;
 						SetMenuTextureTranslation(&tex, 0, digit * 0.1f);
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
-						f32 x = ((7.0f * width + (256.0f - i * step)) - 26.6f) - (2.0f * step) * 0.5f;
+						f32 x = ((7.0f * width + (256.0f - i * step)) - 26.6f) - (2.0f * step) / 2.0f;
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, x, 256, 0, width,
 						                     height, 0, 0, 0);
 						SetMenuTevMode(GetGameGraphics(&gGame), 4);
@@ -6354,7 +6380,7 @@ BOOL MenuPC::Draw()
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 					f32 markerW = 1.4f * GetMenuTextureWidth(&tex);
 					f32 markerH = 1.4f * (GetMenuTextureHeight(&tex) / 10);
-					f32 left    = ((388.0f - this->mScrapDigit * step) - 4.0f) - (2.0f * step) / 2.0f;
+					f32 left    = ((388.0f - this->mScrapDigit * (width + scale)) - 4.0f) - (2.0f * step) / 2.0f;
 					f32 right = left + markerW, bottom = 241.0f + markerH;
 					f32 coord0   = left;
 					f32 coord1   = 241;
@@ -6396,12 +6422,13 @@ BOOL MenuPC::Draw()
 		{
 			textureScrollU -= 0.008f;
 			textureScrollV -= 0.008f;
+			// the frame top is a variable: height + top and half + top add it second (US 0x80047430, 0x80047964)
 			f32 height = this->mFrameHeight;
+			f32 top    = 40.0f;
 			{
 				f32 left       = 130;
-				f32 top        = 40.0f;
 				f32 right      = 510;
-				f32 bottom     = 40.0f + height;
+				f32 bottom     = height + top;
 				Vec vertices[] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 },
 					               (Vec) { left, bottom, -10 }, (Vec) { left, top, -10 } };
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
@@ -6435,10 +6462,12 @@ BOOL MenuPC::Draw()
 				bandColor = (u32)(255.0f * this->mAlpha) | 0xFFB62800;
 				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, bandColor, 5);
 			}
-			u32 gray = (bandColor & 0xFF) | 0x30303000;
 			{
-				f32 start = (40.0f + half) - half;
+				// retail keeps half + top across the depth call and takes half off right before the loop (US 0x800479FC); the
+				// alpha byte is masked after the call (0x80047980) and the gray is or'ed per loop (0x80047A00, 0x80047B94)
+				f32 mid = half + top;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				u32 alpha = bandColor & 0xFF;
 				// a function static: retail's compiler guard byte is read with lbz/extsb (US 0x800478F0)
 				static f32 topScanPhase = 0.0f;
 				topScanPhase += 1.0f;
@@ -6446,16 +6475,20 @@ BOOL MenuPC::Draw()
 					topScanPhase = 0.0f;
 				SetMenuBlendMode(GetGameGraphics(&gGame), 3, 4, 5, 15);
 				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
-				for (s32 row = (s32)start; row < (s32)(start + height); row += 4.0f) {
+				f32 start = mid - half;
+				for (s32 row = (s32)start; row < (s32)(height + start); row += 4.0f) {
 					f32 y = row + topScanPhase;
-					DrawMenuLine(GetGameGraphics(&gGame), gray, 130, y, 0, 510, y, 0);
+					DrawMenuLine(GetGameGraphics(&gGame), alpha | 0x30303000, 130, y, 0, 510, y, 0);
 				}
 				SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
 			}
 			{
-				f32 start = (360.0f - half * 0.5f) - half * 0.5f;
+				// half / 2 (variable first, US 0x80047AF4), the same shape as the block above
+				f32 quarter = half / 2.0f;
+				f32 mid     = 360.0f - quarter;
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				u32 alpha = bandColor & 0xFF;
 				// a function static: retail's compiler guard byte is read with lbz/extsb (US 0x80047A84)
 				static f32 bottomScanPhase = 0.0f;
 				bottomScanPhase += 1.0f;
@@ -6463,9 +6496,10 @@ BOOL MenuPC::Draw()
 					bottomScanPhase = 0.0f;
 				SetMenuBlendMode(GetGameGraphics(&gGame), 3, 4, 5, 15);
 				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
-				for (s32 row = (s32)start; row < (s32)(start + half); row += 4.0f) {
+				f32 start = mid - quarter;
+				for (s32 row = (s32)start; row < (s32)(half + start); row += 4.0f) {
 					f32 y = row + bottomScanPhase;
-					DrawMenuLine(GetGameGraphics(&gGame), gray, 130, y, 0, 510, y, 0);
+					DrawMenuLine(GetGameGraphics(&gGame), alpha | 0x30303000, 130, y, 0, 510, y, 0);
 				}
 				SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
@@ -6506,7 +6540,8 @@ BOOL MenuPC::Draw()
 						break;
 					}
 #if defined(VERSION_JP)
-					char joined[256];
+					// 20 bytes: JP's frame puts it at 0x274, between the 24-byte points and the 48-byte ones (JP 0x80045984)
+					char joined[20];
 					sprintf(joined, "%s", GetPCMenuLabelText(0));
 					strcat(joined, labelText);
 					strcpy(labelText, joined);
@@ -6651,8 +6686,9 @@ BOOL MenuPC::Draw()
 						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
 						f32 height = GetMenuTextureHeight(&tex);
 						f32 x      = width / 2.0f + 204;
-						f32 y      = height * 0.5f + 335;
-						u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+						// the icons sit one below the 334 text row: retail adds the 1 last (US 0x800487A4, 0x80048928)
+						f32 y     = 1.0f + (height / 2.0f + 334.0f);
+						u32 color = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
 						SetMenuTevMode(GetGameGraphics(&gGame), 4);
 					}
@@ -6666,8 +6702,8 @@ BOOL MenuPC::Draw()
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
 						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
 						f32 height = GetMenuTextureHeight(&tex);
-						f32 x      = width * 0.5f + 344;
-						f32 y      = height * 0.5f + 335;
+						f32 x      = width / 2.0f + 344;
+						f32 y      = 1.0f + (height / 2.0f + 334.0f);
 						u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
 						SetMenuTevMode(GetGameGraphics(&gGame), 4);
@@ -6795,7 +6831,8 @@ BOOL MenuPC::Draw()
 					this->mCharFlags[this->mNextGlyph] = 1;
 
 					if (this->mInsertsNumber) {
-						char number[32];
+						// 256 bytes: JP's frame puts it with the big arrays at 0x4b0 (JP 0x80046980)
+						char number[256];
 						sprintf(number, "%d", (s32)GetPCDialogueNumber(this));
 						ConvertHudTextToFullWidth(number);
 						PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(number + this->mNumberOffset));
@@ -6805,7 +6842,9 @@ BOOL MenuPC::Draw()
 							this->mInsertsNumber = 0;
 						}
 					} else if (!*text) {
-						PC_SET_DIALOGUE_GLYPH(this, 0x8140);
+						// a full-width space copied to the stack (JP 0x80046A2C) and read back as one halfword
+						char blank[] = "　";
+						PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(blank));
 						this->mCharIndex      = 0;
 						this->mNumberOffset   = 0;
 						this->mKeeperAnimStep = 0;
