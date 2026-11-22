@@ -392,7 +392,8 @@ extern "C" void ResetTitleScreenState(Title* title)
  * @note Address: 0x8002E8D0
  */
 // NONMATCHING: the second name loop walks the chars from title (US 0x8002EAD0 mr r5, r31) with i a copy of visible;
-// this build scales visible into the pointer. Retail loads mChannel before the mReady/mWrongDevice stores
+// this build scales visible into the pointer. visible = i = 0 (and the other spellings of the two zeros) starts the walk
+// at title but gives i its own li and scores lower. Retail loads mChannel before the mReady/mWrongDevice stores
 // (0x8002ED4C), this build after them. In state 14 retail loads mMenuAlpha and gGame.mFade.mSpeed.r (0x80030B70)
 // before the first compare. The rest is register allocation. The card's busy and found flags are read through
 // a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site.
@@ -417,7 +418,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 						title->mName.mChars[i].mScale = 0;
 				}
 			}
-			s32 i, visible;
+			s32 visible, i;
 			for (i = visible = 0; i < title->mName.mCount; ++i) {
 				if (0 != title->mName.mChars[i].mScale) {
 					++visible;
