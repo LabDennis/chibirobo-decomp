@@ -191,39 +191,11 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 x, f32
 	return width;
 }
 
-static inline void DrawTitleCursors(Title* title, BOOL options, f32 width, f32 y, u32 color, f32 alpha)
+// the colour the cursor's animation queue fades to, packed as the knob reads it
+static inline u32 GetTitleCursorColor(Title* title)
 {
-	CColor fade;
-	fade.Set((s32)(color >> 24), (s32)((color >> 16) & 0xFF), (s32)((color >> 8) & 0xFF), (s32)(color & 0xFF));
-	f32 rate      = 1.0f;
-	s32 selection = options ? title->mOptionLine : title->mSelection;
-	if (selection == -1) {
-		fade.Set((s32)(fade.r * 0.3f), (s32)(fade.g * 0.3f), (s32)(fade.b * 0.3f), (s32)(fade.a * 0.3f));
-		rate = 0.0f;
-	}
-	f32 center = gPointerScreenWidth / 2;
-	title->mCursor[0].SetAnimRate(rate);
-	title->mCursor[0].SetColor(0, fade.r, fade.g, fade.b, 0.0f);
-	title->mCursor[0].SetPos((center - width * 0.5f) - 30.0f, y, 10.0f);
-	title->mCursor[0].SetRotationY(0.2617994f);
-	title->mCursor[0].DrawObject();
-	title->mCursor[1].SetAnimRate(rate);
-	title->mCursor[1].SetColor(0, fade.r, fade.g, fade.b, 0.0f);
-	title->mCursor[1].SetPos(30.0f + (center + width * 0.5f), y, 10.0f);
-	title->mCursor[1].SetRotationY(-0.2617994f);
-	title->mCursor[1].DrawObject();
-	if (title->mOptionBarSnap) {
-		title->mOptionBar[2] = center;
-		title->mOptionBar[1] = 0.0f;
-	}
-	title->mOptionBarTarget[0] = 2.0f * 30.0f + width;
-	title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
-	if (title->mOptionBarSnap) {
-		title->mOptionBarSnap = 0;
-	}
-	fade.Set((s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.x, (s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.y,
-	         (s32)(u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.z, (s32)fade.a);
-	fn_8004E6EC(title, options, title->mOptionBar[2], title->mOptionBar[0], alpha * (fade.a / 255.0f), title->mOptionBar[1]);
+	return ((u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.x << 24) | ((u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.y << 16)
+	     | ((u32)title->mCursor[0].mAnmQueue.mColorStep[0].mValue.z << 8);
 }
 
 // the shared ease for the panel offset pair, the GameCube's ApproachTitleOffset; the Wii takes the absolute value with fabsf, which its MSL
@@ -1616,9 +1588,9 @@ void Title::State25(u32)
  * @note Address: 0x80048E54
  * @note Size: 0x1950
  */
-// NONMATCHING: the pass structure, both cursor tails and the options-page selection are reconstructed,
-// with retail's complete call list. The remaining difference is inline CbPane/CColor layout and float
-// scheduling; explicit pane-width stores add code but lower the match.
+// NONMATCHING: the pass structure and both cursor tails (pane sizes, cursor pair, bar snap, knob) are as
+// retail, with its call list and literals. Retail builds each pane size in a stack temporary first, and
+// float registers and scheduling differ.
 extern "C" void DrawTitleScreen(Title* title)
 {
 	enum { dustTexture = 2, footerTexture = 1 };
@@ -1745,16 +1717,69 @@ extern "C" void DrawTitleScreen(Title* title)
 			y     = top + ((f32)(gScreenSafeBottom - 0x36) + 2.0f * gap) - 30.0f;
 			break;
 		}
-		f32 widest = w0 > w1 ? w0 : w1;
-		width      = w2 > widest ? w2 : widest;
-		DrawTitleCursors(title, FALSE, width, y, normal, title->mMenuAlpha);
+		// the pointer's rectangles around the three entries
+		f32 margin               = 24.0f;
+		title->mPanes[5].mWidth  = 40.0f + (2.0f * margin + w0);
+		title->mPanes[5].mHeight = 28.0f;
+		title->mPanes[6].mWidth  = 40.0f + (2.0f * margin + w1);
+		title->mPanes[6].mHeight = 28.0f;
+		title->mPanes[7].mWidth  = 40.0f + (2.0f * margin + w2);
+		title->mPanes[7].mHeight = 28.0f;
+		if ((title->mCursor[0].mRequest.mFile != NULL ? title->mCursor[0].mRequest.mFile->mSize : 0) == 0x3CA80) {
+			y -= 10.0f;
+		}
+		CColor fade;
+		fade.Set(255, 255, 255, 255);
+		f32 rate = 1.0f;
+		if (title->mSelection == -1) {
+			fade.Set((s32)(fade.r * 0.3f), (s32)(fade.g * 0.3f), (s32)(fade.b * 0.3f), (s32)(fade.a * 0.3f));
+			rate = 0.0f;
+		}
+		title->mCursor[0].SetAnimRate(rate);
+		title->mCursor[0].SetColor(0, fade.r, fade.g, fade.b, 0.1f);
+		title->mCursor[0].SetScale(1.2f, 1.2f, 1.2f);
+		title->mCursor[0].SetPos((x - width * 0.5f) - margin, y, 10.0f);
+		title->mCursor[0].SetRotationY(0.2617994f);
+		title->mCursor[0].DrawObject();
+		title->mCursor[1].SetAnimRate(rate);
+		title->mCursor[1].SetColor(0, fade.r, fade.g, fade.b, 0.1f);
+		title->mCursor[1].SetScale(1.2f, 1.2f, 1.2f);
+		title->mCursor[1].SetPos(margin + (x + width * 0.5f), y, 10.0f);
+		title->mCursor[1].SetRotationY(-0.2617994f);
+		title->mCursor[1].DrawObject();
+		if (title->mOptionBarSnap) {
+			title->mOptionBar[1] = title->mOptionBarTarget[0] = 2.0f * margin + width;
+			title->mOptionBar[2] = title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
+			title->mOptionBarSnap                             = 0;
+		} else {
+			title->mOptionBarTarget[0] = 2.0f * margin + width;
+			title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
+		}
+		u32 knob = GetTitleCursorColor(title);
+		CColor knobColor;
+		knobColor.Set((s32)(knob >> 24), (s32)((knob >> 16) & 0xFF), (s32)((knob >> 8) & 0xFF), (s32)(knob & 0xFF));
+		fn_8004E6EC(title, FALSE, title->mOptionBar[2], title->mOptionBar[0], title->mMenuAlpha * (knobColor.r / 255.0f),
+		            title->mOptionBar[1]);
 	}
 	if (title->mMode == 0x15) {
-		f32 labelW      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x11), TRUE, 24.0f);
-		f32 labelW2     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x14), TRUE, 24.0f);
+		f32 x           = gPointerScreenWidth / 2;
+		f32 size        = 24.0f;
+		f32 lineGap     = 4.0f * (size * 0.5f);
+		f32 gap         = 8.0f;
+		f32 margin      = 30.0f;
+		f32 labelW      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x11), TRUE, size);
+		f32 labelW2     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x14), TRUE, size);
 		labelW          = labelW > labelW2 ? labelW : labelW2;
-		u32 optionWidth = 2.0f * (labelW + 8.0f);
-		f32 okWidth     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, 24.0f);
+		u32 optionWidth = 2.0f * (labelW + gap);
+		f32 okWidth     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, size);
+		// the pointer's rectangles around the three lines keep the first one's height
+		f32 height                = title->mPanes[8].mHeight;
+		title->mPanes[8].mWidth   = 40.0f + (2.0f * margin + optionWidth);
+		title->mPanes[8].mHeight  = height;
+		title->mPanes[9].mWidth   = 40.0f + (2.0f * margin + optionWidth);
+		title->mPanes[9].mHeight  = height;
+		title->mPanes[10].mWidth  = 40.0f + (2.0f * margin + okWidth);
+		title->mPanes[10].mHeight = height;
 		f32 width;
 		f32 y;
 		switch (title->mOptionLine != -1 ? title->mOptionLine : title->mLastOptionLine) {
@@ -1767,14 +1792,45 @@ extern "C" void DrawTitleScreen(Title* title)
 			break;
 		case 1:
 			width = optionWidth;
-			y     = (gScreenSafeBottom - 0xD2) + 48.0f;
+			y     = (gScreenSafeBottom - 0xD2) + lineGap;
 			break;
 		case 2:
 			width = okWidth;
-			y     = (gScreenSafeBottom - 0xD2) + 2.0f * 48.0f;
+			y     = 2.0f * lineGap + (gScreenSafeBottom - 0xD2);
 			break;
 		}
-		DrawTitleCursors(title, TRUE, width, y, 0xFFFFFFFF, title->mOptionAlpha);
+		CColor fade;
+		fade.Set(255, 255, 255, 255);
+		f32 rate = 1.0f;
+		if (title->mOptionLine == -1) {
+			fade.Set((s32)(fade.r * 0.3f), (s32)(fade.g * 0.3f), (s32)(fade.b * 0.3f), (s32)(fade.a * 0.3f));
+			rate = 0.0f;
+		}
+		title->mCursor[0].SetAnimRate(rate);
+		title->mCursor[0].SetColor(0, fade.r, fade.g, fade.b, 0.1f);
+		title->mCursor[0].SetPos((x - width * 0.5f) - margin, y, 10.0f);
+		title->mCursor[0].SetRotationY(0.2617994f);
+		title->mCursor[0].DrawObject();
+		title->mCursor[1].SetAnimRate(rate);
+		title->mCursor[1].SetColor(0, fade.r, fade.g, fade.b, 0.1f);
+		title->mCursor[1].SetPos(margin + (x + width * 0.5f), y, 10.0f);
+		title->mCursor[1].SetRotationY(-0.2617994f);
+		title->mCursor[1].DrawObject();
+		if (title->mOptionBarSnap) {
+			title->mOptionBar[2]       = x;
+			title->mOptionBar[1]       = 0.0f;
+			title->mOptionBarTarget[0] = 2.0f * margin + width;
+			title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
+			title->mOptionBarSnap      = 0;
+		} else {
+			title->mOptionBarTarget[0] = 2.0f * margin + width;
+			title->mOptionBarTarget[1] = title->mCursor[0].GetPos()->x;
+		}
+		u32 knob = GetTitleCursorColor(title);
+		CColor knobColor;
+		knobColor.Set((s32)(knob >> 24), (s32)((knob >> 16) & 0xFF), (s32)((knob >> 8) & 0xFF), (s32)(knob & 0xFF));
+		fn_8004E6EC(title, TRUE, title->mOptionBar[2], title->mOptionBar[0], title->mOptionAlpha * (knobColor.r / 255.0f),
+		            title->mOptionBar[1]);
 	}
 	((CBase*)&gGame)->vf54();
 }
