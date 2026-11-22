@@ -150,7 +150,7 @@ STATIC_ASSERT(sizeof(Menu) == 0x158);
 #if defined(VERSION_JP)
 class MenuRequest : public Menu {
 public:
-	~MenuRequest();
+	~MenuRequest() { }
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -165,7 +165,7 @@ public:
 };
 class MenuRequestClear : public Menu {
 public:
-	~MenuRequestClear();
+	~MenuRequestClear() { }
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -188,7 +188,7 @@ public:
 };
 class MenuPadControl : public Menu {
 public:
-	~MenuPadControl();
+	~MenuPadControl() { }
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -196,7 +196,7 @@ public:
 };
 class MenuSound : public Menu {
 public:
-	~MenuSound();
+	~MenuSound() { }
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -207,7 +207,7 @@ public:
 };
 class MenuSettings : public Menu {
 public:
-	~MenuSettings();
+	~MenuSettings() { }
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -228,7 +228,7 @@ struct MenuMainItem {
 // the in-game menu, its last rows are added by whoever opens it
 class MenuMain : public Menu {
 public:
-	~MenuMain();
+	~MenuMain() { }
 
 	virtual void Init();             // _08
 	virtual void Reset();            // _10
@@ -289,7 +289,7 @@ STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
 // the status screen
 class MenuStatus : public Menu {
 public:
-	~MenuStatus();
+	~MenuStatus() { }
 	void State0(u32);
 	void State1(u32);
 	void State2(u32);
@@ -396,8 +396,8 @@ STATIC_ASSERT(sizeof(MenuStatus) == 0x940);
 
 // one of the status screen's item slots
 struct MenuStatusEntry {
-	MenuStatusEntry();
-	~MenuStatusEntry();
+	MenuStatusEntry() { }
+	~MenuStatusEntry() { }
 	s16 mItem;       // _00
 	s16 mCount;      // _02
 	CStatus mStatus; // _04
@@ -406,7 +406,7 @@ STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
 
 // the items the status screen pages through
 struct MenuStatusTable {
-	~MenuStatusTable();
+	~MenuStatusTable() { }
 	s32 mPage;                   // _00, in fours
 	MenuStatusEntry mItems[256]; // _04, the eight on screen
 	MenuStatusEntry mPrev[4];    // _C04, the four before them
@@ -418,7 +418,7 @@ STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
 
 class MenuItem : public Menu {
 public:
-	~MenuItem();
+	~MenuItem() { }
 
 	virtual void Init();             // _08
 	virtual BOOL Update(u32 frames); // _14
@@ -474,7 +474,7 @@ struct PCAmount {
 // the chibi-pc shop
 class MenuPC : public Menu {
 public:
-	~MenuPC();
+	~MenuPC() { }
 	void State0(u32);
 	void State1(u32);
 	void State2(u32);
@@ -575,7 +575,7 @@ STATIC_ASSERT(sizeof(MenuPC) == 0x450);
 // the save menu, its mode handlers sit in the table at 0x802122B4
 class MenuSave : public Menu {
 public:
-	~MenuSave();
+	~MenuSave() { }
 	void State0(u32);
 	void State1(u32);
 	void State2(u32);
@@ -667,7 +667,7 @@ STATIC_ASSERT(sizeof(MenuSave) == 0x53C);
 // the debug stage select, two columns of 20
 class MenuStageSelect : public Menu {
 public:
-	~MenuStageSelect();
+	~MenuStageSelect() { }
 
 	virtual void Init();             // _08
 	virtual BOOL Update(u32 frames); // _14
@@ -683,7 +683,7 @@ STATIC_ASSERT(sizeof(MenuStageSelect) == 0x1BEC);
 // the memory card test menu
 class MenuMCTest : public Menu {
 public:
-	~MenuMCTest();
+	~MenuMCTest() { }
 
 	virtual void Init();             // _08
 	virtual BOOL Update(u32 frames); // _14
@@ -700,7 +700,7 @@ STATIC_ASSERT(sizeof(MenuMCTest) == 0x490);
 // its popup with the four card actions
 class MenuMCTestSub : public Menu {
 public:
-	~MenuMCTestSub();
+	~MenuMCTestSub() { }
 
 	virtual void Init();             // _08
 	virtual BOOL Update(u32 frames); // _14
