@@ -4177,10 +4177,16 @@ f32 GetFirstFloorCollisionRadius(const XObj*);
  * @note Address: 0x800CECFC
  * @note Size: 0x2040
  */
-// NONMATCHING: retail calls ~CJObj for the eight pairs of joints (bl __dt__5CJObjFv) where this build still expands it; the
-// function is short of the estimate at which the compiler halves its inline limit to 64, so it expands the header inline
-// GetObjectJointByPath too; at that limit HSD_JObjGetMtxPtr (74 units here, expanded in retail) would be called. The two squirter SetAnim
-// calls keep the item count in r0 and sign-extend it after loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
+// NONMATCHING: the call set differs in one inline only: the four HSD_JObjGetMtxPtr sites are calls here (bl
+// HSD_JObjGetMtxPtr__FP9_HSD_JObj) and expanded in retail (the jobj.h 1148 and 605 asserts and bl HSD_JObjSetupMatrixSub stand in the
+// function, US 0x800CF174, 0x800CF470, 0x800D0780, 0x800D0AC0). Both sides are at inline limit 64 (GetObjectJointByPath, ~CJObj and
+// HSD_JObjCopyMtx are calls), so retail's HSD_JObjGetMtxPtr weighed 64 units or less; ours weighs about 68 because
+// HSD_JObjMtxIsDirty in include/game/hsd_jobj.h is written with a result local. The compact form (return !(flags &
+// USER_DEF_MTX) && (flags & MTX_DIRTY), as sysdolphin's jobj.h has it) expands the four sites and brings this function to
+// 98.81 (US), but the same header change takes CJObj::SetScale(f32, f32, f32, s32) and SetTranslate below 128 units and
+// CMsgFont_Draw (msg.cpp) then expands them where retail calls them (98.83 -> 90.71), so it has to land together with
+// the weight CMsgFont_Draw is missing. The two squirter SetAnim calls keep the item count in r0 and sign-extend it after
+// loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
 void UpdateHeldObject(XActLift* act, s32)
 {
 	if (!act->mTargetState)
