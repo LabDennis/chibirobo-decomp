@@ -293,7 +293,7 @@ void XObjSpiderBoss::OnHitFromPosition(const Vec& pos, f32 strength)
 	if (flags & 0x8000) {
 		return;
 	}
-	if (GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, 2) < 2) {
+	if (GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, 2) < 2) {
 		return;
 	}
 	XObj::OnHitFromPosition(pos, strength);

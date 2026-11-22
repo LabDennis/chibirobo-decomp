@@ -8,6 +8,12 @@
 #include "revolution/mem.h"
 #include "Dolphin/os.h"
 
+// the expanded heap mm::InitMem1 creates over the MEM1 arena; the draw lists'
+// ref tables come out of it
+extern MEMiHeapHead* gWiiMem1Heap;
+
+void operator delete(void* object) throw();
+
 // retail's xobj_ut.cpp, second half: the pool walks, the stage spawn and the two
 // reader threads (the panic strings name the unit). first of file 0x800C5424
 
@@ -197,6 +203,17 @@ extern "C" s32 FindStageObjectIndex(XOBJS* list, XObj* obj)
 	return -1;
 }
 
+// allocates the list's ref table off the MEM1 heap: 1024 slots, every one free
+// at boot; the GameCube kept the table inside the list itself
+void XObjDrawList::Initialize()
+{
+	mRefs = (WiiObjectRef*)MEMAllocFromExpHeapEx(gWiiMem1Heap, 0x2000, 4);
+	for (s32 i = 0; i < 1024; i++) {
+		mRefs[i].mObj = NULL;
+	}
+	mCount = 0;
+}
+
 // starts the queue, clears the request slots, makes the stack and runs the thread
 BOOL XObjRead::Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr)
 {
@@ -295,6 +312,29 @@ BOOL XObjRead::HasPendingReads()
 		}
 	}
 	return FALSE;
+}
+
+// todo: weak copies — the readers' empty inline dtors fold away in every
+// derived dtor, but the vtables the unit anchors still point at out-of-line
+// deleting copies, which retail emits here in this order
+extern "C" XObjRead* __dt__8XObjReadFv(XObjRead* object, s32 flags)
+{
+	if (object != NULL) {
+		if (flags > 0) {
+			::operator delete(object);
+		}
+	}
+	return object;
+}
+
+extern "C" CMsgQueue* __dt__9CMsgQueueFv(CMsgQueue* object, s32 flags)
+{
+	if (object != NULL) {
+		if (flags > 0) {
+			::operator delete(object);
+		}
+	}
+	return object;
 }
 
 // the placement's flag index

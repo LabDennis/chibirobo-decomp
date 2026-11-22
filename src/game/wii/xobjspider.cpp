@@ -573,7 +573,7 @@ void XObjSpider::OnHitFromPosition(const Vec& from, f32 strength)
 	if (mFlags.mFlags & 0x8000)
 		return;
 	// only the robot's blaster (attachment 2) at level 2 or up hurts it
-	if (GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, 2) < 2)
+	if (GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, 2) < 2)
 		return;
 	XObj::OnHitFromPosition(from, strength);
 	mFlags.mFlags |= 2;

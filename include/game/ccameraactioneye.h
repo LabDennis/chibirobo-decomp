@@ -12,24 +12,31 @@
 
 #if defined(VERSION_R24J01)
 
-// a value with a target and a per frame speed to step it there, the decl copied
-// from cobj.h which pulls the GameCube-only HSD headers; same pattern as
-// gxa_shared.h. when wii/xobj.h is already in, its CObjVec (the retail-verified
-// one, a TVec) is the class and this copy stays out
+// a value with a target and a per frame speed to step it there, the same class
+// wii/xobj.h declares (the decl copied since cobj.h pulls the GameCube-only HSD
+// headers; same pattern as gxa_shared.h). when wii/xobj.h is already in, its copy
+// stays out; both are the member model the retail ctor emits: the TVec vtable
+// goes to the first member and CVec vtables to the two behind it
 #ifndef GAME_WII_XOBJ_H
-class CObjVec : public CVec {
+class CObjVec {
 public:
+	// the camera constructors inline the member ctors (the retail aggregate
+	// ctors store the vtables themselves); the object side's copy declares it
+	// for xobj_ut.cpp's out-of-line definition, whose weak copy XObjChr calls
+	CObjVec() { }
+	TVec mValue;  // _00
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
 
 	u8 Step(f32 frames);
+	bool IsMoving() const;
 
 	// puts it at a value with nowhere to go
 	void Reset(f32 x, f32 y, f32 z)
 	{
-		this->x   = x;
-		this->y   = y;
-		this->z   = z;
+		mValue.x  = x;
+		mValue.y  = y;
+		mValue.z  = z;
 		mTarget.x = x;
 		mTarget.y = y;
 		mTarget.z = z;
@@ -48,7 +55,7 @@ public:
 	// puts it at a value with its target there too, the speed stays
 	void SetNow(const Vec& v)
 	{
-		Set(v);
+		mValue.Set(v);
 		SetTarget(v);
 	}
 };

@@ -125,8 +125,7 @@ void XObjSound::PauseSounds(f32 fade)
  */
 s32 XObjItem::GetFlagIndex()
 {
-	s32 index = mPlacementParam1;
-	return index > 0 ? GetStageCollectionFlagBase(0) + index : 0;
+	return GetPlacementFlagIndex(0);
 }
 
 /**
@@ -222,8 +221,7 @@ void XObjCoin::InitializeObject()
  */
 s32 XObjCoin::GetFlagIndex()
 {
-	s32 index = mPlacementParam1;
-	return index > 0 ? GetStageCollectionFlagBase(1) + index : 0;
+	return GetPlacementFlagIndex(1);
 }
 
 /**

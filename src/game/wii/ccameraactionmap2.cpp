@@ -1892,7 +1892,7 @@ void CCameraActionMap::Update(u32 step)
 					}
 				}
 			}
-			if (_8C.y == _8C.mTarget.y && mNearestEyeEntry != NULL && mTurnBlocked == 0) {
+			if (_8C.mValue.y == _8C.mTarget.y && mNearestEyeEntry != NULL && mTurnBlocked == 0) {
 				StartMapCameraTurnInterpolation(this, 0);
 			}
 		}
@@ -2088,12 +2088,12 @@ void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 			map->mOrbitReseed    = 0;
 			map->_11FC.mTarget.y = map->mOrbitAngle.y;
 		}
-		map->_11FC.y = map->mOrbitAngle.y;
+		map->_11FC.mValue.y = map->mOrbitAngle.y;
 		map->_11FC.mTarget.y += step * (0.040142573f * input);
 		f32 target = WrapAngle(map->_11FC.mTarget.y);
-		f32 yaw    = WrapAngle(map->_11FC.y);
+		f32 yaw    = WrapAngle(map->_11FC.mValue.y);
 		AdjustOrbitTargetAngle(target, yaw);
-		map->_11FC.y         = yaw;
+		map->_11FC.mValue.y  = yaw;
 		map->_11FC.mTarget.y = target;
 		if (yaw < target) {
 			lbl_805A1D28 = 1.0f;
@@ -2102,9 +2102,9 @@ void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 		}
 		map->_11FC.mSpeed.x = 0.0f;
 		map->_11FC.mSpeed.z = 0.0f;
-		map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.y) / lbl_8047F170.y;
+		map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.mValue.y) / lbl_8047F170.y;
 		map->_11FC.Step(step);
-		map->SetAngle(map->mOrbitAngle.x, map->_11FC.y, map->mOrbitAngle.z);
+		map->SetAngle(map->mOrbitAngle.x, map->_11FC.mValue.y, map->mOrbitAngle.z);
 		map->mPrevOrbitAngle = map->mOrbitAngle;
 		map->mOrbitAngle     = map->mAngle;
 		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
@@ -2124,21 +2124,21 @@ void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 			map->mOrbiting    = 0;
 			map->mOrbitReseed = 1;
 		} else if (map->mOrbiting) {
-			map->_11FC.y = map->mOrbitAngle.y;
-			f32 target   = WrapAngle(map->_11FC.mTarget.y);
-			f32 yaw      = WrapAngle(map->_11FC.y);
+			map->_11FC.mValue.y = map->mOrbitAngle.y;
+			f32 target          = WrapAngle(map->_11FC.mTarget.y);
+			f32 yaw             = WrapAngle(map->_11FC.mValue.y);
 			AdjustOrbitTargetAngle(target, yaw);
-			map->_11FC.y         = yaw;
+			map->_11FC.mValue.y  = yaw;
 			map->_11FC.mTarget.y = target;
 			if (input2 == 0.0f && input == 0.0f) {
 				f32 ease             = 0.3f;
-				map->_11FC.mTarget.y = (1.0f - ease) * map->_11FC.mTarget.y + ease * map->_11FC.y;
+				map->_11FC.mTarget.y = (1.0f - ease) * map->_11FC.mTarget.y + ease * map->_11FC.mValue.y;
 			} else {
 				map->_11FC.mTarget.y += step * (0.040142573f * input);
 			}
 			map->_11FC.mSpeed.x = 0.0f;
 			map->_11FC.mSpeed.z = 0.0f;
-			map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.y) / lbl_8047F170.y;
+			map->_11FC.mSpeed.y = __fabsf(map->_11FC.mTarget.y - map->_11FC.mValue.y) / lbl_8047F170.y;
 			map->_11FC.Step(step);
 			if (__fabsf(map->_11FC.mSpeed.y) > 0.01f) {
 				if (yaw < target) {
@@ -2146,7 +2146,7 @@ void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 				} else if (yaw > target) {
 					lbl_805A1D28 = -1.0f;
 				}
-				map->SetAngle(map->mOrbitAngle.x, map->_11FC.y, map->mOrbitAngle.z);
+				map->SetAngle(map->mOrbitAngle.x, map->_11FC.mValue.y, map->mOrbitAngle.z);
 				map->mPrevOrbitAngle = map->mOrbitAngle;
 				map->mOrbitAngle     = map->mAngle;
 				map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
@@ -2320,9 +2320,9 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 		mSpringTarget.Set(target);
 		mSpringPrevTarget.Set(target);
 	}
-	_8C.x               = 0.0f;
-	_8C.y               = 0.0f;
-	_8C.z               = 0.0f;
+	_8C.mValue.x        = 0.0f;
+	_8C.mValue.y        = 0.0f;
+	_8C.mValue.z        = 0.0f;
 	_8C.mTarget.x       = 0.0f;
 	_8C.mTarget.y       = 0.0f;
 	_8C.mTarget.z       = 0.0f;

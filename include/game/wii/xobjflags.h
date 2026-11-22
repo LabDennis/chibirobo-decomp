@@ -31,12 +31,12 @@ STATIC_ASSERT(sizeof(XObjSound) == 0xA10);
 // XObjFlags has the pointer at _980, the Wii moved it behind the object
 class XObjFlags : public XObj {
 public:
+	XObjFlags() { mFlags = NULL; }
+
 	virtual void ResetForNewGame(); // _150, clears every flag
 	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
 
-	CEvtFlags* mFlags; // _9A8
-
-	// the placement's collection flag index within the group, 0 and below have none
+	// the GameCube's inline, same body: the flag base of the group plus the placement id
 	s32 GetPlacementFlagIndex(s32 group) const
 	{
 		s32 id = mPlacementParam1;
@@ -46,6 +46,8 @@ public:
 		}
 		return 0;
 	}
+
+	CEvtFlags* mFlags; // _9A8
 
 	// the collected bit, FALSE without one
 	u32 IsFlagSet()
@@ -69,6 +71,9 @@ STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 // the money, scrap, battery and experience pickups; two sound actors of their own
 class XObjCoin : public XObjFlags {
 public:
+	XObjCoin();
+	virtual ~XObjCoin();
+
 	virtual void InitializeObject();                                              // _14C
 	virtual void ResetObjectState();                                              // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);                        // _158
@@ -103,6 +108,9 @@ STATIC_ASSERT(sizeof(XObjCoin) == 0xA30);
 // the item pickups; the Wii keeps one word of its own
 class XObjItem : public XObjFlags {
 public:
+	XObjItem();
+	virtual ~XObjItem();
+
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void UpdateObject(u32 frames);                 // _164
@@ -152,6 +160,10 @@ public:
 	s16 mEventArg;     // _9FE
 };
 STATIC_ASSERT(sizeof(XObjDust) == 0xA00);
+
+extern CEvtFlags gItemEventFlags; // items
+extern CEvtFlags gCoinEventFlags; // coins
+extern CEvtFlags gDustEventFlags; // dust
 
 extern "C" {
 void UpdateFallingCoin(XObjCoin* coin, u32 frames);

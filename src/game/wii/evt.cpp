@@ -1596,7 +1596,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 				flags[2] = obj->mStatus.mFlags & 0x40;
 				flags[3] = obj->mStatus.mFlags & 0x20000;
 				flags[4] = obj->mStatus.mFlags & 0x400000;
-				obj->ApplyMaterialPresets(flags);
+				obj->vf1A0(flags);
 			}
 			if (mask & ((u64)0x4000 << 32)) {
 				WiiPlayerState* player = gGame.GetPlayer();
@@ -1654,9 +1654,9 @@ s32 CEvt::_cmd_CALL(u8, s32)
 						player->mAttachment = 0;
 						// the GameCube released the CJAnim here; the Wii's archive releases
 						// its model and closes its file
-						if (player->mAttachmentAnim.mFile.IsLoaded()) {
-							player->mAttachmentAnim.mAnm.Release(TRUE);
-							player->mAttachmentAnim.mFile.Close();
+						if (player->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+							player->mAttachmentAnm.mAnm.Release(TRUE);
+							player->mAttachmentAnm.mAnm.mFile.Close();
 						}
 						break;
 					}
@@ -2875,7 +2875,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_ATC:
 			index = CEvt_Evaluate(evt);
 			if (index >= 0 && index < 9) {
-				SetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, index, value);
+				SetAttachmentCountById(&gGame.GetPlayer()->mAttachments, index, value);
 			} else {
 				OSPanic(__FILE__, 1243, FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9));
 			}
@@ -3141,7 +3141,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_ATC:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 9) {
-			result = GetAttachmentCountById((AttachmentValues*)gGame.GetPlayer()->mAttachments, result);
+			result = GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, result);
 			if (result < 0)
 				result = 0;
 		} else

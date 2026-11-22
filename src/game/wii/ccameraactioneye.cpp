@@ -97,9 +97,9 @@ void CCameraActionEye::Init()
  */
 void CCameraActionEye::Reset()
 {
-	mLook.x          = 0.0f;
-	mLook.y          = 0.0f;
-	mLook.z          = 0.0f;
+	mLook.mValue.x   = 0.0f;
+	mLook.mValue.y   = 0.0f;
+	mLook.mValue.z   = 0.0f;
 	mLook.mTarget.x  = 0.0f;
 	mLook.mTarget.y  = 0.0f;
 	mLook.mTarget.z  = 0.0f;
@@ -109,9 +109,9 @@ void CCameraActionEye::Reset()
 	mLook.mSpeed.x   = 0.05f;
 	mLook.mSpeed.y   = 0.05f;
 	mLook.mSpeed.z   = 0.05f;
-	mVec80.x         = 0.0f;
-	mVec80.y         = 0.0f;
-	mVec80.z         = 0.0f;
+	mVec80.mValue.x  = 0.0f;
+	mVec80.mValue.y  = 0.0f;
+	mVec80.mValue.z  = 0.0f;
 	mVec80.mTarget.x = 0.0f;
 	mVec80.mTarget.y = 0.0f;
 	mVec80.mTarget.z = 0.0f;
@@ -155,9 +155,9 @@ void CCameraActionEye::Update(u32 step)
 				if (gGame.GetStatusFlags(0x200)) {
 					gGame.mRoboeyes.StartTransition(0x80, 0x80, 0xFF, 0xFF, 0x80, 0x80, 0xFF, gPointerScreenWidth / 2,
 					                                gPointerScreenHeight / 2, 430.0f, 400.0f, 430.0f, 400.0f, 0.0f, 0xFF, FALSE);
-					mLook.y         = 0.0f;
-					mLook.x         = 0.05235988f;
-					mLook.z         = 0.0f;
+					mLook.mValue.y  = 0.0f;
+					mLook.mValue.x  = 0.05235988f;
+					mLook.mValue.z  = 0.0f;
 					mLook.mTarget.x = 0.05235988f;
 					mLook.mTarget.y = 0.0f;
 					mLook.mTarget.z = 0.0f;
@@ -238,7 +238,7 @@ void CCameraActionEye::Update(u32 step)
 
 				f32 targetY;
 				if (aimY == 0.0f && pitch == 0.0f) {
-					targetY = (1.0f - 0.3f) * EYE_PLAYER->mMoveRotate.y + 0.3f * mLook.y;
+					targetY = (1.0f - 0.3f) * EYE_PLAYER->mMoveRotate.y + 0.3f * mLook.mValue.y;
 				} else {
 					targetY = EYE_PLAYER->mMoveRotate.y - 0.034906585f * pitch * step;
 				}
@@ -270,9 +270,9 @@ void CCameraActionEye::Update(u32 step)
 				}
 			}
 
-			f32 speedY = __fabsf(mLook.mTarget.y - mLook.y) / mVecC0.y;
-			f32 speedX = __fabsf(mLook.mTarget.x - mLook.x) / mVecC0.x;
-			f32 speedZ = __fabsf(mLook.mTarget.z - mLook.z) / mVecC0.z;
+			f32 speedY = __fabsf(mLook.mTarget.y - mLook.mValue.y) / mVecC0.y;
+			f32 speedX = __fabsf(mLook.mTarget.x - mLook.mValue.x) / mVecC0.x;
+			f32 speedZ = __fabsf(mLook.mTarget.z - mLook.mValue.z) / mVecC0.z;
 
 			// the turn speed may only grow a tenth of a degree per update
 			static f32 sPrevSpeedX = speedX;
@@ -283,8 +283,8 @@ void CCameraActionEye::Update(u32 step)
 			}
 			sPrevSpeedX = speedX;
 			if (gWiiPointer.mPointerValid) {
-				speedY *= mVec80.y;
-				speedX *= mVec80.x;
+				speedY *= mVec80.mValue.y;
+				speedX *= mVec80.mValue.x;
 			}
 			mLook.mSpeed.x = speedX;
 			mLook.mSpeed.y = speedY;
@@ -302,18 +302,18 @@ void CCameraActionEye::Update(u32 step)
 
 			if (gGame.GetStatusFlags(0x200)) {
 				Vec look = { 0.0f, 0.0f, 0.0f };
-				look.x   = mLook.x;
-				look.y   = mLook.y;
+				look.x   = mLook.mValue.x;
+				look.y   = mLook.mValue.y;
 				SetAngle(EYE_PLAYER->mMoveRotate + look);
 			} else {
 				CVec base = EYE_PLAYER->mMoveRotate;
 				base.y    = 0.0f;
 				Vec look  = { 0.0f, 0.0f, 0.0f };
-				look.x    = mLook.x;
-				look.y    = mLook.y;
+				look.x    = mLook.mValue.x;
+				look.y    = mLook.mValue.y;
 				SetAngle(base + look);
 			}
-			SetFov(40.0f + mLook.z);
+			SetFov(40.0f + mLook.mValue.z);
 
 			static f32 sPrevZoomSpeed = 0.0f;
 			f32 stick                 = pad.mPad->mStick.y;

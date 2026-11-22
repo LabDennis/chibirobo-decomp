@@ -3,13 +3,18 @@
 // event virtuals. The Wii source merges the GameCube's cjanim.cpp with the floor
 // helpers obja.cpp and xobjfloor.cpp carried; the floor coordinate readers appear
 // open-coded here, the array-and-index pair's inline half.
-// NONMATCHING: ExecCallback_CALC_MAT (0x800B5CF0) and __sinit still come from the retail asm.
+// NONMATCHING: the per-frame animation stepper (0x800B4988), ExecCallback_CALC_MAT
+// (0x800B5CF0), the Cursor/XObjDemo ExecCallbackA (0x800BD4B8) and __sinit
+// (0x800BD624) still come from the retail asm. ExecCallbackA's mirror products
+// differ from retail only in register assignment.
 #include "Version.h"
 #if defined(VERSION_R24J01)
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "arithmetic.h"
 #include "game/wii/cgame.h"
-#include "game/wii/ceffect.h"
+#include "game/wii/cursor.h"
 #include "game/wii/xobj.h"
+#include "game/wii/ceffect.h"
 #include "JSystem/JMath/Inline.h"
 #include "game/gmath.h"
 #include "game/globals.h"
@@ -28,7 +33,16 @@ f64 fmin(f64 x, f64 y);
 // the map XObj's floor query in an unsplit unit: fills hit with the triangle
 // under pos, the previous triangle as a hint; FALSE when there is none
 s32 fn_800C98E0(XObj* map, const Vec* pos, s32 tri, XObjMapHit* hit);
+// evt.cpp's effect slot allocator/retirer (0x800A11A4/0x800A12F8)
+EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 }
+// set from the TV format in init.cpp (50 or 60)
+extern s32 gRefreshRate;
+
+// the unit's one static registration: the shadow helper xobj_chr queries
+// (retail bss 0x80456A5C, .ctors 0x802C45A8)
+CustomShadow gCustomShadow;
 
 // the floor coordinate readers this unit expands inline (retail shows the loads and
 // the hundredths conversion open-coded; xobj_chr.cpp keeps its own out-of-line copies)
@@ -72,6 +86,8 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 	PSMTXConcat(result, scale, result);
 }
 
+// NONMATCHING: retail builds the result in a stack CVec and copies it to the sret slot;
+// MWCC elides it into the sret object here (same source as the GameCube unit)
 // CVec::operator* per component
 CVec CVec::operator*(Vec other) const
 {
@@ -222,19 +238,19 @@ extern "C" void ClearActiveObjectFloors(XObj* object)
 	if (object->mStatus.mFlags & 0x0200000000000000ULL) {
 		object->mFloorMasks[1] = object->mFloorMasks[0];
 		for (s32 i = 0; object->mFloors[i].mId != -1; i++) {
-			if (object->IsFloorOn(i)) {
+			if ((object->mFloors[i].mFlags & 1) && object->IsFloorOn(i)) {
 				object->ClearFloor(i);
 			}
 		}
 	}
 }
 
-static inline void ExpandRadius(f32 x, f32 z, f32& maxX, f32& maxZ)
+static inline void ExpandRadius(f32 x, f32 z, f64& maxX, f64& maxZ)
 {
-	if (ABS(x) > maxX)
-		maxX = ABS(x);
-	if (ABS(z) > maxZ)
-		maxZ = ABS(z);
+	if (nw4r::math::FAbs(x) > maxX)
+		maxX = nw4r::math::FAbs(x);
+	if (nw4r::math::FAbs(z) > maxZ)
+		maxZ = nw4r::math::FAbs(z);
 }
 
 extern "C" void UpdateObjectFloorXZExtent(XObj* object)
@@ -242,14 +258,15 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	object->mFloorXZExtent[0] = object->mFloorXZExtent[1] = NAN;
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return;
-	f32 maxX = 0.0f, maxZ = 0.0f;
+	f64 maxX = 0.0, maxZ = 0.0;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		CVec origin((Vec) { 0, 0, 0 });
-		Vec center     = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
-		Vec extent     = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
-		f32 baseYaw    = object->mMoveRotate.y;
-		f32 floorAngle = GetFloorYawRadians(&object->mFloors, i);
-		f32 yaw        = baseYaw + floorAngle;
+		Vec center  = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
+		Vec extent  = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+		f32 baseYaw = object->mMoveRotate.y;
+		f32 yaw     = baseYaw + GetFloorYawRadians(&object->mFloors, i);
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: { // a disc
@@ -292,7 +309,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 			PSMTXTrans(local, center.x, center.y, center.z);
 			PSMTXScale(scale, extent.x, extent.y, extent.z);
 			PSMTXRotRad(rotate, 'y', baseYaw);
-			PSMTXRotRad(turn, 'y', floorAngle);
+			PSMTXRotRad(turn, 'y', GetFloorYawRadians(&object->mFloors, i));
 			PSMTXConcat(world, rotate, result);
 			PSMTXConcat(result, local, result);
 			PSMTXConcat(result, turn, result);
@@ -339,6 +356,8 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) { // the list ends at id -1
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		Vec center  = object->mMoveScale * (object->mVec714 + GetFloorCenterOffset(&object->mFloors, i));
 		Vec extent  = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
 		f32 baseYaw = object->mMoveRotate.y;
@@ -409,6 +428,8 @@ extern "C" void SelectHighestActiveFloor(XObj* object)
 {
 	object->mSelectedFloorHeight = NAN;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+		if (!(object->mFloors[i].mFlags & 1))
+			continue;
 		if (object->mFloorMasks[0] & (1U << i)) {
 			if (__fpclassifyf(object->mSelectedFloorHeight) == FP_NAN || object->mFloorHeights[i] > object->mSelectedFloorHeight) {
 				object->mSelectedFloorIndex  = i;
@@ -573,79 +594,91 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 	return FALSE;
 }
 
+// NONMATCHING: retail lays out the four f32 locals as x, scaledX, y, z in that order
+// (an extra dead store of the scaled x survives); the rest matches
 void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera)
 {
-	camera        = camera != NULL ? camera : &gGame.mMotionControlCamera;
-	CVec position = mMoveTranslate + *offset;
-	f32 screenX, screenY, screenZ;
+	camera       = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	Vec position = mMoveTranslate + *offset;
+	f32 screenX, scaledX, screenY, screenZ;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
-	screenX *= camera->mScale;
+	scaledX = screenX * camera->mScale;
 	if (x != NULL)
-		*x = screenX;
+		*x = scaledX;
 	if (y != NULL)
 		*y = screenY;
 	if (z != NULL)
 		*z = screenZ;
 }
 
-// NONMATCHING: retail keeps the four projected points in a Vec screen[4] (index 3
-// down to 0 in the calls' order: 3*pi/2, pi/2, pi, heading) and each raw screen x in
-// an f32 sx[4], then writes screen[i].x = sx[i] * mScale. Whether the source used
-// arrays or four named vectors is not recoverable yet.
+// NONMATCHING: retail keeps the four world points in a Vec pos[4], assigns each
+// element from a Vec temporary (the copy keeps an extra 12-byte slot), projects
+// into Vec screen[4] (index 3 down to 0 in the calls' order) and keeps each raw
+// screen x in f32 sx[4], then writes screen[i].x = sx[i] * mScale.
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
-	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera;
-	f32 heading     = camera->mView.mAngle.y;
-	f32* projection = &camera->mIsOrtho;
-	f32* viewport   = camera->mViewport;
+	camera      = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	f32 heading = camera->mView.mAngle.y;
+	Vec point;
+	Vec pos[4];
 	Vec screen[4];
 	f32 sx[4];
 	// three points on the circle and one raised by the height give its screen extent
-	f32 angle  = (PI + HALF_PI) + heading;
-	f32 sine   = (f32)sin(angle);
-	f32 cosine = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[3], &screen[3].y, &screen[3].z);
-	screen[3].x = sx[3] * camera->mScale;
-	angle       = HALF_PI + heading;
-	sine        = (f32)sin(angle);
-	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[2], &screen[2].y, &screen[2].z);
-	screen[2].x = sx[2] * camera->mScale;
-	angle       = PI + heading;
-	sine        = (f32)sin(angle);
-	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[1], &screen[1].y, &screen[1].z);
+	f32 angle = (PI + HALF_PI) + heading;
+	pos[3].x  = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[3].y  = mMoveTranslate.y;
+	pos[3].z  = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point     = pos[3];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[3], &screen[3].y, &screen[3].z);
+	f32 left = screen[3].x = sx[3] * camera->mScale;
+	angle                  = HALF_PI + heading;
+	pos[2].x               = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[2].y               = mMoveTranslate.y;
+	pos[2].z               = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point                  = pos[2];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[2], &screen[2].y, &screen[2].z);
+	f32 right = screen[2].x = sx[2] * camera->mScale;
+	angle                   = PI + heading;
+	pos[1].x                = radius * (f32)sin(angle) + mMoveTranslate.x;
+	pos[1].y                = mMoveTranslate.y;
+	pos[1].z                = radius * (f32)cos(angle) + mMoveTranslate.z;
+	point                   = pos[1];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[1], &screen[1].y, &screen[1].z);
 	screen[1].x = sx[1] * camera->mScale;
-	sine        = (f32)sin(heading);
-	cosine      = (f32)cos(heading);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, camera->mViewMtx,
-	          projection, viewport, &sx[0], &screen[0].y, &screen[0].z);
+	f32 bottom  = screen[1].y;
+	pos[0].x    = radius * (f32)sin(heading) + mMoveTranslate.x;
+	pos[0].y    = mMoveTranslate.y + objectHeight;
+	pos[0].z    = radius * (f32)cos(heading) + mMoveTranslate.z;
+	point       = pos[0];
+	GXProject(point.x, point.y, point.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &sx[0], &screen[0].y, &screen[0].z);
 	screen[0].x = sx[0] * camera->mScale;
-	if (screen[3].x >= gScreenLeft && screen[2].x < gScreenRight && screen[1].y >= gScreenTop && screen[0].y < gScreenBottom
-	    && screen[0].z > 0.0f && screen[0].z < 1.0f) {
+	f32 top     = screen[0].y;
+	if (left >= gScreenLeft && right < gScreenRight && bottom >= gScreenTop && top < gScreenBottom && screen[0].z > 0.0f
+	    && screen[0].z < 1.0f) {
 		if (width != NULL)
-			*width = __fabsf(screen[2].x - screen[3].x);
+			*width = __fabsf(right - left);
 		if (height != NULL)
-			*height = __fabsf(screen[0].y - screen[1].y);
+			*height = __fabsf(top - bottom);
 		return TRUE;
 	}
 	return FALSE;
 }
 
+// NONMATCHING: retail assigns the locals different stack slots (node before the screen floats,
+// a separate slot for the scaled screen x and a 0x50 frame instead of 0x40); control flow and
+// instruction sequence already match
 BOOL XObj::IsOutsideCameraDepth(CCamera* camera)
 {
-	if (mObject.m_pScnMdl == NULL)
+	if (mObject.m_pScnMdl != NULL) {
+		nw4r::g3d::ResNode node = GetRootResNode();
+		Vec position            = GetWorldPos(node);
+		f32 screenX, screenY, screenZ;
+		GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
+		screenX *= camera->mScale;
+		if (screenZ > 0.0f && screenZ < 1.0f)
+			return FALSE; // inside the depth range: visible
 		return TRUE;
-	nw4r::g3d::ResNode node = GetRootResNode();
-	CVec position           = GetWorldPos(node);
-	f32 screenX, screenY, screenZ;
-	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
-	screenX *= camera->mScale;
-	if (screenZ > 0.0f && screenZ < 1.0f)
-		return FALSE; // inside the depth range: visible
+	}
 	return TRUE;
 }
 
@@ -802,23 +835,23 @@ extern "C" void fn_800B4988(XObj* object)
 	}
 }
 
-// fn_800B5AE4: the mirror pass: with the screen camera flipped (the mirrors draw
-// through it with the projection's top and bottom swapped) the callback runs with
-// the model mirrored - the scale's x and z negated, y by the flip's sign and the
-// rotation turned by pi; the object's own values are restored afterwards
+// the object-world-callback's first pass: with the 0x800 flag the model draws mirrored - the
+// move scale's X and Z negate, Y flips with the screen camera's orientation, and the yaw gains pi
 void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	if ((mStatus.mFlags & 0x800) && pFuncObj->GetCallbackNodeID() == 0) {
+	if (mStatus.mFlags & 0x800 && pFuncObj->GetCallbackNodeID() == 0) {
 		CCamera* camera = gGame.GetScreenCamera();
-		s32 sign        = camera->mTop >= camera->mBottom ? 1 : -1;
+		f32 bottom      = camera->mBottom;
+		f32 top         = camera->mTop;
+		s32 sign        = top < bottom ? -1 : 1;
 		f32 scaleY      = mMoveScale.y;
 		f32 scaleX      = mMoveScale.x;
 		f32 scaleZ      = mMoveScale.z;
 		f32 rotateY     = mMoveRotate.y;
-		mMoveScale.x    = scaleX * -1.0f;
-		mMoveScale.y    = scaleY * sign;
-		mMoveScale.z    = scaleZ * -1.0f;
-		mMoveRotate.y   = rotateY + PI;
+		mMoveScale.x *= -1.0f;
+		mMoveScale.y *= sign;
+		mMoveScale.z *= -1.0f;
+		mMoveRotate.y += PI;
 		CObj::ExecCallbackA(pResult, mdl, pFuncObj);
 		mMoveScale.y  = scaleY;
 		mMoveScale.x  = scaleX;
@@ -829,23 +862,100 @@ void XObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl
 	}
 }
 
-// hands the node the object's base matrix; with the flag set the object follows
-// it: the matrix's translation becomes its position and its scale the object's
+// the object-world-callback's second pass: copy the base matrix into the node's
+// result slot, and with the flag set move the object's transform to the matrix's
 void XObj::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	if (pFuncObj->GetCallbackNodeID() != 0)
-		return;
-	if (mBaseMtxPtr == NULL)
-		return;
-	Mtx m;
-	PSMTXCopy(mBaseMtx, m);
-	PSMTXCopy(m, pResult->mMtx);
-	if (mStatus.mFlags & 0x400000000000ULL) {
-		mMoveTranslate.x = m[0][3];
-		mMoveTranslate.y = m[1][3];
-		mMoveTranslate.z = m[2][3];
-		HSD_MtxGetScale(m, (Vec*)&mMoveScale);
+	if (pFuncObj->GetCallbackNodeID() == 0 && mBaseMtxPtr != NULL) {
+		Mtx mtx;
+		PSMTXCopy(mBaseMtx, mtx);
+		PSMTXCopy(mtx, pResult->mpMtx);
+		if (mStatus.mFlags & 0x0000400000000000ULL) {
+			mMoveTranslate.x = mtx[0][3];
+			mMoveTranslate.y = mtx[1][3];
+			mMoveTranslate.z = mtx[2][3];
+			HSD_MtxGetScale(mtx, &mMoveScale);
+		}
 	}
+}
+
+// the tint stage the game appends to every material (NW_Obj::InitColorTev): on the map and
+// the tintable object kinds ExecCallback_CALC_MAT rewrites its last stage's inputs, on the
+// rest it passes the previous color through. The padding byte the marker lives in is the
+// original struct's dummy[6]; the asserts name the original files, xobj.cpp for the game's
+// own checks and g3d_resmat_ac.h for the resource accessors'.
+#define UPDATED_TEV_MAGIC_NUMBER    0xC3
+#define XOBJ_ASSERT_LINE(line, exp) ((void)((exp) || (nw4r::db::Panic("xobj.cpp", line, "NW4R:Failed assertion " #exp), 0)))
+
+void XObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
+{
+	if (timing == 4 && (mStatus.mFlags & 0x2)) {
+		u32 numMats = mObject.m_resMdl.GetResMatNumEntries();
+		if (numMats != 0) {
+			for (u32 i = 0; i < numMats; i++) {
+				nw4r::g3d::ResMat mat = mObject.m_resMdl.GetResMat(i);
+				nw4r::g3d::ScnMdl::CopiedMatAccess access(mObject.m_pScnMdl, i);
+				nw4r::g3d::ResTev tev(NULL);
+				tev = access.GetResTev(false);
+				if (!tev.IsValid()) {
+					tev = mat.GetResTev();
+				}
+				XOBJ_ASSERT_LINE(0xF0E, tev.IsValid());
+				if (tev.ptr()->PADDING_0x18[6] == UPDATED_TEV_MAGIC_NUMBER) {
+					nw4r::g3d::ResGenMode genMode = access.GetResGenMode(false);
+					if (!genMode.IsValid()) {
+						genMode = mat.GetResGenMode();
+					}
+					XOBJ_ASSERT_LINE(0xF15, genMode.IsValid());
+					nw4r::g3d::ResTexSrt texSrt = access.GetResTexSrt(false);
+					if (!texSrt.IsValid()) {
+						texSrt = mat.GetResTexSrt();
+					}
+					XOBJ_ASSERT_LINE(0xF1B, texSrt.IsValid());
+					// the last tex coord's flag nibble, TexSrt::FLAGSET_IDENTITY
+					texSrt.SetTexSrtFlag(genMode.GXGetNumTexGens() - 1, 0xF);
+					GXTevStageID stage = (GXTevStageID)(genMode.GXGetNumTevStages() - 1);
+					s32 floorIdx       = gGame.GetPlayer()->mFloorContactObjects[0];
+					if ((mAttr.mObjData != NULL ? mAttr.mObjData->GetCategory() : -1) == 3) {
+						// the map: blend while the object the player stands on is a
+						// tintable kind, or while he is within a meter above the map
+						if (floorIdx >= 0) {
+							XObj* stood = gGame.mXObjs.mObjects[floorIdx];
+							switch (stood->GetKind()) {
+							case 0x20:
+							case 0x54:
+							case 0x10C:
+								tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+								break;
+							default:
+								if (gGame.GetPlayer()->GetPos()->y - GetPos()->y < 1.0f) {
+									tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+								} else {
+									tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+								}
+							}
+						} else {
+							tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+						}
+						tev.DCStore(false);
+					} else {
+						switch (GetKind()) {
+						case 0x20:
+						case 0x54:
+						case 0x10C:
+							if (floorIdx < 0 || floorIdx == GetStagePlacementIndex(mCoord.mPlacement)) {
+								tev.GXSetTevColorIn(stage, GX_CC_CPREV, GX_CC_KONST, GX_CC_TEXA, GX_CC_ZERO);
+							} else {
+								tev.GXSetTevColorIn(stage, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_CPREV);
+							}
+							tev.DCStore(false);
+						}
+					}
+				}
+			}
+		}
+	}
+	CObj::ExecCallback_CALC_MAT(timing, obj, param, info);
 }
 
 // the GameCube's cjanim.cpp function, the Wii keeps it as a free function too;
@@ -898,11 +1008,12 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
 extern "C" BOOL QueryMapFloorHeight(XObj* object, f32 minHeight)
 {
 	XObj* map = (XObj*)gGame.mXObjs.mPools[3].mObjects;
-	if (!fn_800C98E0(map, object->GetPos(), -1, &object->mFloorHit))
-		return FALSE;
-	if (object->mFloorHit.mHeight < minHeight)
-		object->mFloorHit.mHeight = minHeight;
-	return TRUE;
+	if (fn_800C98E0(map, object->GetPos(), -1, &object->mFloorHit)) {
+		if (object->mFloorHit.mHeight < minHeight)
+			object->mFloorHit.mHeight = minHeight;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // fn_800B650C, the GameCube cjanim.cpp's QueryObjectFloorHeight: the highest floor
@@ -914,9 +1025,10 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	if (!fn_800C98E0(map, pos, self->mFloorHit.mTriangle, &self->mFloorHit)) {
 		self->mFloorHit.mTriangle = -1;
 		self->mFloorHit.mTrigon   = -1;
-		self->mFloorHit.mHeight   = pos->y;
+		self->mFloorHit.mHeight   = self->mMoveTranslate.y;
 	}
 	f32 best = self->mFloorHit.mHeight;
+	CVec push, contact;
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.mXObjs.mObjects[i];
 		if (!(object->mStatus.mFlags & 0x1) || !(object->mStatus.mFlags & 0x10000) || object->mStatus.mFlags & 0x100000 || object == self) {
@@ -926,19 +1038,18 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 		f32 dx         = otherPos->x - pos->x;
 		f32 dz         = otherPos->z - pos->z;
 		f32 dist       = FSqrt(dx * dx + dz * dz);
-		if (dist > 100.0f + radius + object->mFloorXZExtent[0])
+		if (dist > 100.0f + (radius + object->mFloorXZExtent[0]))
 			continue;
 		s32 cursor = 0;
-		do {
+		while (cursor != -1) {
 			CVec from(*pos), to(*pos);
-			Vec push, contact;
 			u32 hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, &cursor, 0);
 			if (hit & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
-				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= best)
+				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= best)
 					best = floorHeight;
 			}
-		} while (cursor != -1);
+		}
 	}
 	if (best > self->mFloorHit.mHeight)
 		self->mFloorHit.mHeight = best;
@@ -956,9 +1067,9 @@ void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
 		mAnmQueue.mColorStep[index].mValue.z = blue;
 		mAnmQueue.mColorStep[index].mSpeed.x = mAnmQueue.mColorStep[index].mSpeed.y = mAnmQueue.mColorStep[index].mSpeed.z = 0.0f;
 	} else {
-		mAnmQueue.mColorStep[index].mSpeed.x = ((f32)red - mAnmQueue.mColorStep[index].mValue.x) / (60.0f * time);
-		mAnmQueue.mColorStep[index].mSpeed.y = ((f32)green - mAnmQueue.mColorStep[index].mValue.y) / (60.0f * time);
-		mAnmQueue.mColorStep[index].mSpeed.z = ((f32)blue - mAnmQueue.mColorStep[index].mValue.z) / (60.0f * time);
+		mAnmQueue.mColorStep[index].mSpeed.x = ((f32)red - mAnmQueue.mColorStep[index].mValue.x) / (gRefreshRate * time);
+		mAnmQueue.mColorStep[index].mSpeed.y = ((f32)green - mAnmQueue.mColorStep[index].mValue.y) / (gRefreshRate * time);
+		mAnmQueue.mColorStep[index].mSpeed.z = ((f32)blue - mAnmQueue.mColorStep[index].mValue.z) / (gRefreshRate * time);
 	}
 }
 
@@ -1030,7 +1141,7 @@ static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 {
 	u64 key = 1;
 	for (s32 i = 0; i < count; ++i)
-		key = key << 4 | (args[i] & 0xF);
+		key = key << 4 | (args[i] & 0xFLL);
 	const AnimNodeRecord* records = NULL;
 	for (s32 i = 0; lbl_80302300[i].mKind >= 0; ++i) {
 		if (lbl_80302300[i].mKind == object->GetKind()) {
@@ -1038,12 +1149,17 @@ static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 			break;
 		}
 	}
+	const char* name = NULL;
 	if (records != NULL) {
 		for (s32 i = 0; records[i].mName != NULL; ++i) {
-			if (records[i].mKey == key)
-				return records[i].mName;
+			if (records[i].mKey == key) {
+				name = records[i].mName;
+				break;
+			}
 		}
 	}
+	if (name != NULL)
+		return name;
 	return NULL;
 }
 
@@ -1062,14 +1178,12 @@ CVec XObj::vf288(s32 count, s32* args)
 		return GetJointWorldPos(name);
 	return GetJointWorldPos((u32)0);
 }
-
 // the per-kind animation event callbacks (retail 0x800B6F00-0x800BCBC4):
 // AssignAnimEventCallback puts the one for the object's kind on it; the
 // animation stepper calls it while an animation with event frames plays.
 // Each starts the kind's effect on the named model node when the frame
 // condition holds; kind is the event's kind, frame the animation's current
 // frame and target the event's frame (0 marks an event without one)
-extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 
 static inline void StartNodeEffect(XObj* object, const char* node, u32 effect, s32 group)
 {
@@ -1404,14 +1518,20 @@ static void AnimEventTorch849(XObj* object, s32 kind, f32 prev, f32 frame)
 // kind 854: the torch, lit and burning
 static void AnimEventTorchPtcl(XObj* object, s32 kind, f32 prev, f32 frame)
 {
-	if (kind == 1 && prev < 2.0f && frame >= 2.0f) {
-		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
-		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
-	} else if (kind == 3 && prev < 2.0f && frame >= 2.0f) {
-		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
-		StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
-	} else if (kind == 4 && prev < 2.0f && frame >= 2.0f) {
-		StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+	if (kind == 1) {
+		if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+			StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+		}
+	} else if (kind == 3) {
+		if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+			StartNodeEffect(object, "torch_ptcl", 0x4c, 0);
+		}
+	} else if (kind == 4) {
+		if (prev < 2.0f && frame >= 2.0f) {
+			StartNodeEffect(object, "torch_ptcl", 0x4b, 0);
+		}
 	}
 }
 
@@ -1761,129 +1881,161 @@ static void AnimEventDeca(XObj* object, s32 kind, f32 prev, f32 frame)
 	}
 }
 
-// fn_800BD064: sets the object's animation event callback for its kind
-extern "C" void AssignAnimEventCallback(XObj* object)
+// the kind's anim keyframe hook picker (name invented): switches on GetKind()
+void XObj::AssignAnimEventCallback()
 {
-	switch (object->GetKind()) {
+	switch (GetKind()) {
 	case 302:
-		object->mAnimEventCallback = AnimEventCyl295;
+		mAnimEventCallback = AnimEventCyl295;
 		break;
 	case 397:
-		object->mAnimEventCallback = AnimEventPtcl397;
+		mAnimEventCallback = AnimEventPtcl397;
 		break;
 	case 405:
-		object->mAnimEventCallback = AnimEventKettle;
+		mAnimEventCallback = AnimEventKettle;
 		break;
 	case 406:
-		object->mAnimEventCallback = AnimEventTeacup;
+		mAnimEventCallback = AnimEventTeacup;
 		break;
 	case 424:
-		object->mAnimEventCallback = AnimEventPtcl;
+		mAnimEventCallback = AnimEventPtcl;
 		break;
 	case 428:
-		object->mAnimEventCallback = AnimEventEyes;
+		mAnimEventCallback = AnimEventEyes;
 		break;
 	case 431:
-		object->mAnimEventCallback = AnimEventBbNikki;
+		mAnimEventCallback = AnimEventBbNikki;
 		break;
 	case 435:
-		object->mAnimEventCallback = AnimEventTompScare;
+		mAnimEventCallback = AnimEventTompScare;
 		break;
 	case 486:
-		object->mAnimEventCallback = AnimEventFan;
+		mAnimEventCallback = AnimEventFan;
 		break;
 	case 614:
-		object->mAnimEventCallback = AnimEventLeticWarp;
+		mAnimEventCallback = AnimEventLeticWarp;
 		break;
 	case 626:
-		object->mAnimEventCallback = AnimEventZactGicco;
+		mAnimEventCallback = AnimEventZactGicco;
 		break;
 	case 628:
-		object->mAnimEventCallback = AnimEventZactFrog;
+		mAnimEventCallback = AnimEventZactFrog;
 		break;
 	case 629:
-		object->mAnimEventCallback = AnimEventZactInjured;
+		mAnimEventCallback = AnimEventZactInjured;
 		break;
 	case 630:
-		object->mAnimEventCallback = AnimEventPajamas;
+		mAnimEventCallback = AnimEventPajamas;
 		break;
 	case 786:
-		object->mAnimEventCallback = AnimEventFxPtcl;
+		mAnimEventCallback = AnimEventFxPtcl;
 		break;
 	case 787:
-		object->mAnimEventCallback = AnimEventWarpzone;
+		mAnimEventCallback = AnimEventWarpzone;
 		break;
 	case 832:
-		object->mAnimEventCallback = AnimEventGhost;
+		mAnimEventCallback = AnimEventGhost;
 		break;
 	case 842:
-		object->mAnimEventCallback = AnimEventCbDoor;
+		mAnimEventCallback = AnimEventCbDoor;
 		break;
 	case 849:
-		object->mAnimEventCallback = AnimEventTorch849;
+		mAnimEventCallback = AnimEventTorch849;
 		break;
 	case 854:
-		object->mAnimEventCallback = AnimEventTorchPtcl;
+		mAnimEventCallback = AnimEventTorchPtcl;
 		break;
 	case 856:
-		object->mAnimEventCallback = AnimEventWeldingTools;
+		mAnimEventCallback = AnimEventWeldingTools;
 		break;
 	case 870:
-		object->mAnimEventCallback = AnimEventObj30;
+		mAnimEventCallback = AnimEventObj30;
 		break;
 	case 881:
-		object->mAnimEventCallback = AnimEventEyeShort;
+		mAnimEventCallback = AnimEventEyeShort;
 		break;
 	case 930:
-		object->mAnimEventCallback = AnimEventGiccoTwinB01;
+		mAnimEventCallback = AnimEventGiccoTwinB01;
 		break;
 	case 931:
-		object->mAnimEventCallback = AnimEventTb01;
+		mAnimEventCallback = AnimEventTb01;
 		break;
 	case 932:
-		object->mAnimEventCallback = AnimEventGiccoTwinB03;
+		mAnimEventCallback = AnimEventGiccoTwinB03;
 		break;
 	case 934:
-		object->mAnimEventCallback = AnimEventRain;
+		mAnimEventCallback = AnimEventRain;
 		break;
 	case 939:
-		object->mAnimEventCallback = AnimEventCatchACold;
+		mAnimEventCallback = AnimEventCatchACold;
 		break;
 	case 995:
-		object->mAnimEventCallback = AnimEventSecond;
+		mAnimEventCallback = AnimEventSecond;
 		break;
 	case 1034:
-		object->mAnimEventCallback = AnimEventPtcl01;
+		mAnimEventCallback = AnimEventPtcl01;
 		break;
 	case 1035:
-		object->mAnimEventCallback = AnimEventPirateBoat;
+		mAnimEventCallback = AnimEventPirateBoat;
 		break;
 	case 1036:
-		object->mAnimEventCallback = AnimEventEnergyPtcl;
+		mAnimEventCallback = AnimEventEnergyPtcl;
 		break;
 	case 1037:
-		object->mAnimEventCallback = AnimEventPtclExp1;
+		mAnimEventCallback = AnimEventPtclExp1;
 		break;
 	case 1038:
-		object->mAnimEventCallback = AnimEventRedPtcl;
+		mAnimEventCallback = AnimEventRedPtcl;
 		break;
 	case 1082:
-		object->mAnimEventCallback = AnimEventPtclExp02;
+		mAnimEventCallback = AnimEventPtclExp02;
 		break;
 	case 1122:
-		object->mAnimEventCallback = AnimEventTmTakeoff;
+		mAnimEventCallback = AnimEventTmTakeoff;
 		break;
 	case 1155:
-		object->mAnimEventCallback = AnimEventLaserShock;
+		mAnimEventCallback = AnimEventLaserShock;
 		break;
 	case 1156:
-		object->mAnimEventCallback = AnimEventDeca;
+		mAnimEventCallback = AnimEventDeca;
 		break;
 	case 1161:
-		object->mAnimEventCallback = AnimEventSphere;
+		mAnimEventCallback = AnimEventSphere;
 		break;
+	case 855:
 	default:
-		object->mAnimEventCallback = NULL;
+		mAnimEventCallback = NULL;
 	}
 }
+
+// the screen objects' pass (XObj2D, shared by Cursor and XObjDemo): they mirror
+// unconditionally, so the flag only picks where the jitter happens - inside the
+// base's own pass when it is set, here when it is clear
+void XObj2D::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() == 0) {
+		if (mStatus.mFlags & 0x800) {
+			XObj::ExecCallbackA(pResult, mdl, pFuncObj);
+		} else {
+			CCamera* camera = gGame.GetScreenCamera();
+			f32 bottom      = camera->mBottom;
+			f32 top         = camera->mTop;
+			s32 sign        = top < bottom ? -1 : 1;
+			f32 scaleY      = mMoveScale.y;
+			f32 scaleX      = mMoveScale.x;
+			f32 scaleZ      = mMoveScale.z;
+			f32 rotateY     = mMoveRotate.y;
+			mMoveScale.x *= -1.0f;
+			mMoveScale.y *= sign;
+			mMoveScale.z *= -1.0f;
+			mMoveRotate.y += PI;
+			XObj::ExecCallbackA(pResult, mdl, pFuncObj);
+			mMoveScale.y  = scaleY;
+			mMoveScale.x  = scaleX;
+			mMoveScale.z  = scaleZ;
+			mMoveRotate.y = rotateY;
+		}
+	}
+}
+
 #endif

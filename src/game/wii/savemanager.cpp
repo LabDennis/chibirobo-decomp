@@ -472,7 +472,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	       sizeof(manager->mSlot.mData.mItemFlags));
 	memcpy(manager->mSlot.mData.mDustFlags, ((WiiFlagSource*)gGame.mXObjs.mPools[20].mObjects)->mFlags,
 	       sizeof(manager->mSlot.mData.mDustFlags));
-	memcpy(manager->mSlot.mData.mPlayerRecord, gGame.GetPlayer()->mAttachments, sizeof(manager->mSlot.mData.mPlayerRecord));
+	memcpy(manager->mSlot.mData.mPlayerRecord, &gGame.GetPlayer()->mAttachments, sizeof(manager->mSlot.mData.mPlayerRecord));
 	manager->mSlot.mData.mSuit = gGame.GetPlayer()->mSuits.mCurrent;
 	// the Wii player class is not reconstructed; the +0x244 getter returns its position Vec
 	const Vec* pos = gGame.GetPlayer()->GetPos();
