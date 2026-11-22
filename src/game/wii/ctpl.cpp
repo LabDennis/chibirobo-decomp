@@ -329,9 +329,10 @@ static BOOL InitSoundHeap(void* heap, u32 size)
 	return fn_8029A3E0(heap, data, size);
 }
 
-void SoundHeapAlloc(void** slot, u32 size)
+void* SoundHeapAlloc(void** slot, u32 size)
 {
 	*slot = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 4);
+	return *slot;
 }
 
 void SoundHeapFree(void** slot)

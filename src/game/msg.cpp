@@ -1934,7 +1934,7 @@ void CMsgFont_Update(CMsgFont* font, u32 step);
 void CMsgFont_AddChar(CMsgFont* font, const char* text);
 }
 
-static inline void MsgNextLine(CMsg* msg)
+static inline BOOL MsgNextLine(CMsg* msg)
 {
 	msg->mFont.mLine++;
 	f32 width           = msg->mFont.mFitLine ? msg->mFont.mData->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
@@ -1942,12 +1942,48 @@ static inline void MsgNextLine(CMsg* msg)
 	s32 previous        = msg->mFont.mLine - 1;
 	msg->mFont.mCursorY += msg->mFont.mData->mHeights[previous];
 	msg->mFont.mLineY[msg->mFont.mLine] = msg->mFont.mCursorY + (msg->mFont.mData->mHeights[msg->mFont.mLine] - 22.0f) / 2.0f;
+	return FALSE;
+}
+
+static inline BOOL CMsg__cmd_SPEED(CMsg* msg)
+{
+	s32 delay = ReadMsgU8(msg);
+	if (delay == 255) {
+		if (msg->mCommand == EVT_CMD_MSG) {
+			delay = 2;
+		} else {
+			delay = 0;
+		}
+	}
+	msg->mCharDelay = delay;
+	return FALSE;
+}
+
+static inline BOOL CMsg__cmd_QUESTION(CMsg* msg)
+{
+	u32 crossMask     = ReadMsgU8(msg);
+	u32 selectedIndex = ReadMsgU8(msg);
+	if (gGame.GetPlayer()->mOXMenu.mStarted == 0) {
+		OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, selectedIndex);
+		msg->mData.mCursor -= 3;
+		return TRUE;
+	}
+	CPad pad(0);
+	HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
+	if (pad.mPad->mTrigger & PAD_BUTTON_A) {
+		gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+	} else {
+		msg->mData.mCursor -= 3;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
  * @note Address: 0x8008159C
  * @note Size: 0x6D8
  */
+// NONMATCHING: r3/r4 swap in MsgNextLine, CMsg__cmd_SPEED, and MSG_CODE_DEFAULT (all instructions match 1:1)
 extern "C" void CMsg_Update(CMsg* msg, u32 step)
 {
 	if (msg->mData.mCursor == NULL) {
@@ -1989,29 +2025,17 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 		u8 command = ReadMsgU8(msg);
 		switch (command) {
 		case MSG_CODE_NEWLINE:
-			MsgNextLine(msg);
-			waiting = FALSE;
+			waiting = MsgNextLine(msg);
 			break;
 		case MSG_CODE_NEWLINE_VT:
-			MsgNextLine(msg);
-			waiting = FALSE;
+			waiting = MsgNextLine(msg);
 			break;
 		case MSG_CODE_END:
 			waiting = CMsg__cmd_END(msg);
 			break;
-		case MSG_CODE_SPEED: {
-			s32 delay = ReadMsgU8(msg);
-			if (delay == 255) {
-				if (msg->mCommand == EVT_CMD_MSG) {
-					delay = 2;
-				} else {
-					delay = 0;
-				}
-			}
-			msg->mCharDelay = delay;
-			waiting         = FALSE;
+		case MSG_CODE_SPEED:
+			waiting = CMsg__cmd_SPEED(msg);
 			break;
-		}
 		case MSG_CODE_WAIT:
 			waiting = CMsg__cmd_WAIT(msg);
 			break;
@@ -2077,27 +2101,9 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			}
 			waiting = FALSE;
 			break;
-		case MSG_CODE_QUESTION: {
-			u32 crossMask     = ReadMsgU8(msg);
-			u32 selectedIndex = ReadMsgU8(msg);
-			if (gGame.GetPlayer()->mOXMenu.mStarted == 0) {
-				OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, selectedIndex);
-				msg->mData.mCursor -= 3;
-				waiting = TRUE;
-			} else {
-				CPad pad(0);
-				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
-				if (pad.mPad->mTrigger & PAD_BUTTON_A) {
-					gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
-				} else {
-					msg->mData.mCursor -= 3;
-					waiting = TRUE;
-					break;
-				}
-				waiting = FALSE;
-			}
+		case MSG_CODE_QUESTION:
+			waiting = CMsg__cmd_QUESTION(msg);
 			break;
-		}
 		case MSG_CODE_STAY:
 			msg->mStay = 1;
 			waiting    = FALSE;
@@ -3633,8 +3639,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		f32 bottom       = expandY + (8.0f + (winY + winHeight));
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
-		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, right + 8.0f + 9.0f, top - 8.0f, -1.0f, right + 8.0f + 9.0f,
+		                 bottom + 8.0f + 9.0f, -1.0f, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
 		                 0xFF000000);
 
 		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
@@ -3729,8 +3735,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
-		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, right + 8.0f + 9.0f, top - 8.0f, -1.0f, right + 8.0f + 9.0f,
+		                 bottom + 8.0f + 9.0f, -1.0f, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
 		                 0xFF000000);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 
@@ -3858,8 +3864,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			Vec quad[4] = { (Vec) { x, y, 0.0f }, (Vec) { x + font->mSize, y, 0.0f }, (Vec) { x + font->mSize, y + font->mSize, 0.0f },
 				            (Vec) { x, y + font->mSize, 0.0f } };
 			u32 color   = 0xFF00 | (u32)(200.0f * font->mHighlightAlpha);
-			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x,
-			                 quad[2].y, quad[2].z, color, quad[3].x, quad[3].y, quad[3].z, color);
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
+			                 quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
 			for (s32 i = 0; i < font->mDigitCount; i++) {
 				f32 digitX = ((font->mDigitCount * font->mSize) / 2.0f + center) - (i + 1) * font->mSize;
 				u32 color;
@@ -6350,6 +6356,7 @@ CJObj::CJObj(HSD_JObj* jobj)
  * @note Address: 0x80084DC0
  * @note Size: 0x684
  */
+// NONMATCHING: regalloc (addis r30, r28, 4 kept across PSMTXTrans; retail reloads addis r3, r28, 4)
 extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 {
 	if (font->mActive) {

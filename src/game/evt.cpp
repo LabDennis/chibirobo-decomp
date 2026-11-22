@@ -4473,6 +4473,7 @@ s32 CEvt::_cmd_SET(u8, s32)
  * @note Address: 0x8007BE54
  * @note Size: 0x1DC
  */
+// NONMATCHING: regalloc (mScript in r4 instead of r5 defers mr r4, r30 for FormatToStaticBuffer into the default case)
 s32 CEvt::_cmd_IF(u8, s32)
 {
 	// a true test skips the 4 byte jump offset, a false one takes it

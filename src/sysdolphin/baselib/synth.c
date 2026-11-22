@@ -4155,11 +4155,11 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			} else {
 				clearFrontMix(&rearEntry->mixDst);
 				if (sSynthSoundMode == 2) {
-					sur *= 0.70710677f;
+					sur *= 0.7071678f;
 				}
 			}
 		} else if (sSynthSoundMode == 2) {
-			sur *= 0.70710677f;
+			sur *= 0.7071678f;
 		}
 
 		m = &node->mixDst;

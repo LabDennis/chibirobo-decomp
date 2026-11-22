@@ -388,8 +388,8 @@ static inline void StepChannel(f32& current, f32& target, f32& speed, u32 frames
 static inline void DrawWipeQuad(CGs* gs, const WipeQuad& shape, u32 color)
 {
 	const Vec* quad = shape.vertices;
-	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
-	                 color, quad[3].x, quad[3].y, quad[3].z, color);
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z, quad[3].x,
+	                 quad[3].y, quad[3].z, color, color, color, color);
 }
 
 static inline void BeginWipe(CGs* gs, s32 mode)
@@ -493,26 +493,11 @@ void CScrnWipeTex::Draw(CGs* gs, s32 mode)
 	FinishWipe(this, gs, mode);
 }
 
-static inline void SetTilePoint(Vec& v, f32 x, f32 y)
-{
-	v.x = x;
-	v.y = y;
-}
-
-static inline void SetTileEdge(Vec* vertices, f32 x, f32 y, f32 outerX, f32 outerY, f32 nextX, f32 nextY)
-{
-	SetTilePoint(vertices[0], x, y);
-	SetTilePoint(vertices[1], outerX, outerY);
-	SetTilePoint(vertices[2], nextX, nextY);
-	SetTilePoint(vertices[3], x, y);
-}
-
 /**
  * @note Address: 0x800220DC
  * @note Size: 0x7C0
  */
-// NONMATCHING: retail computes each outer edge as its own fused half-plus-offset (fmadds/fmsubs)
-// where this build reuses the inner edge; the quad data also sits elsewhere in .rodata
+// NONMATCHING: stack offsets of BeginWipe/Mtx locals (+0x30) and .rodata offsets; all instructions and registers match
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -529,16 +514,42 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 
 	Vec vertices[18] = {};
 	const f32 dx = edgeWidth / 2.0f, dy = edgeHeight / 2.0f;
-	f32 left = -mWidth / 2.0f, right = mWidth / 2.0f;
-	f32 outerLeft = -mWidth / 2.0f - dx, outerRight = mWidth / 2.0f + dx;
-	f32 top = -mHeight / 2.0f, bottom = mHeight / 2.0f;
-	f32 outerTop = -mHeight / 2.0f - dy, outerBottom = mHeight / 2.0f + dy;
-	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
-	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
-	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
-	SetTileEdge(vertices + 12, left, bottom, outerLeft, outerBottom, outerLeft, outerTop);
-	SetTilePoint(vertices[16], left, top);
-	SetTilePoint(vertices[17], outerLeft, outerTop);
+	vertices[0].x  = -mWidth / 2.0f;
+	vertices[0].y  = -mHeight / 2.0f;
+	vertices[1].x  = -mWidth / 2.0f - dx;
+	vertices[1].y  = -mHeight / 2.0f - dy;
+	vertices[2].x  = mWidth / 2.0f + dx;
+	vertices[2].y  = -mHeight / 2.0f - dy;
+	vertices[3].x  = -mWidth / 2.0f;
+	vertices[3].y  = -mHeight / 2.0f;
+	vertices[4].x  = mWidth / 2.0f;
+	vertices[4].y  = -mHeight / 2.0f;
+	vertices[5].x  = mWidth / 2.0f + dx;
+	vertices[5].y  = -mHeight / 2.0f - dy;
+	vertices[6].x  = mWidth / 2.0f + dx;
+	vertices[6].y  = mHeight / 2.0f + dy;
+	vertices[7].x  = mWidth / 2.0f;
+	vertices[7].y  = -mHeight / 2.0f;
+	vertices[8].x  = mWidth / 2.0f;
+	vertices[8].y  = mHeight / 2.0f;
+	vertices[9].x  = mWidth / 2.0f + dx;
+	vertices[9].y  = mHeight / 2.0f + dy;
+	vertices[10].x = -mWidth / 2.0f - dx;
+	vertices[10].y = mHeight / 2.0f + dy;
+	vertices[11].x = mWidth / 2.0f;
+	vertices[11].y = mHeight / 2.0f;
+	vertices[12].x = -mWidth / 2.0f;
+	vertices[12].y = mHeight / 2.0f;
+	vertices[13].x = -mWidth / 2.0f - dx;
+	vertices[13].y = mHeight / 2.0f + dy;
+	vertices[14].x = -mWidth / 2.0f - dx;
+	vertices[14].y = -mHeight / 2.0f - dy;
+	vertices[15].x = -mWidth / 2.0f;
+	vertices[15].y = mHeight / 2.0f;
+	vertices[16].x = -mWidth / 2.0f;
+	vertices[16].y = -mHeight / 2.0f;
+	vertices[17].x = -mWidth / 2.0f - dx;
+	vertices[17].y = -mHeight / 2.0f - dy;
 	u32 colors[18] = { 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0 };
 	Mtx translation, rotation, transform;
 	PSMTXTrans(translation, mX, mY, 0.0f);
@@ -621,7 +632,6 @@ void CScrnWipe::Update(u32 frames)
  * @note Size: 0x2B4
  */
 // starts a wipe, the color and the hole size both go from the first values to the second
-// NONMATCHING: regalloc
 extern "C" void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0,
                                                f32 height0, f32 width1, f32 height1, f32 time, u8 a1, BOOL hideWhenDone)
 {
@@ -658,11 +668,8 @@ extern "C" void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8
 		wipe->mSpeed.b = 0.0f;
 		wipe->mSpeed.a = 0.0f;
 	} else {
-		time           = FRAME_RATE * time;
-		wipe->mSpeed.r = ((f32)r1 - (f32)r0) / time;
-		wipe->mSpeed.g = ((f32)g1 - (f32)g0) / time;
-		wipe->mSpeed.b = ((f32)b1 - (f32)b0) / time;
-		wipe->mSpeed.a = ((f32)a1 - (f32)a0) / time;
+		wipe->mSpeed.Set(((f32)r1 - (f32)r0) / (FRAME_RATE * time), ((f32)g1 - (f32)g0) / (FRAME_RATE * time),
+		                 ((f32)b1 - (f32)b0) / (FRAME_RATE * time), ((f32)a1 - (f32)a0) / (FRAME_RATE * time));
 	}
 	if (wipe->mHideWhenDone && SizeStopped(wipe))
 		wipe->mActive = FALSE;
@@ -773,8 +780,6 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
  * @note Address: 0x80023D74
  * @note Size: 0x16C
  */
-// NONMATCHING: regalloc, the blue and alpha quotients swap f0/f2. The speeds are computed alpha first, as the Wii
-// build does.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -791,15 +796,8 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time            = FRAME_RATE * time;
-		f32 speedA      = ((f32)a - color->mColor.a) / time;
-		f32 speedB      = ((f32)b - color->mColor.b) / time;
-		f32 speedG      = ((f32)g - color->mColor.g) / time;
-		f32 speedR      = ((f32)r - color->mColor.r) / time;
-		color->mSpeed.r = speedR;
-		color->mSpeed.g = speedG;
-		color->mSpeed.b = speedB;
-		color->mSpeed.a = speedA;
+		color->mSpeed.Set(((f32)r - color->mColor.r) / (FRAME_RATE * time), ((f32)g - color->mColor.g) / (FRAME_RATE * time),
+		                  ((f32)b - color->mColor.b) / (FRAME_RATE * time), ((f32)a - color->mColor.a) / (FRAME_RATE * time));
 	}
 }
 
@@ -807,7 +805,6 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
  * @note Address: 0x80023EE0
  * @note Size: 0x20C
  */
-// NONMATCHING: regalloc
 extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time)
 {
 	color->mColor.r  = r0;
@@ -828,11 +825,8 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time            = FRAME_RATE * time;
-		color->mSpeed.r = ((f32)r1 - (f32)r0) / time;
-		color->mSpeed.g = ((f32)g1 - (f32)g0) / time;
-		color->mSpeed.b = ((f32)b1 - (f32)b0) / time;
-		color->mSpeed.a = ((f32)a1 - (f32)a0) / time;
+		color->mSpeed.Set(((f32)r1 - (f32)r0) / (FRAME_RATE * time), ((f32)g1 - (f32)g0) / (FRAME_RATE * time),
+		                  ((f32)b1 - (f32)b0) / (FRAME_RATE * time), ((f32)a1 - (f32)a0) / (FRAME_RATE * time));
 	}
 }
 
@@ -928,6 +922,7 @@ void CPtclOne::Init()
  * @note Address: 0x80024600
  * @note Size: 0x1D8
  */
+// NONMATCHING: regalloc (rot copy uses r4/r6/r0 instead of r5/r4/r0, scheduling mTex load earlier)
 void CPtclDust3::Draw(CGs* gs)
 {
 	if (!mActive) {
@@ -987,6 +982,7 @@ void CPtclDust3::Update(u32 frames)
  * @note Address: 0x80024934
  * @note Size: 0x1E8
  */
+// NONMATCHING: regalloc (rot copy uses r4/r6/r0 instead of r5/r4/r0, scheduling mTex load earlier)
 void CPtclDust2::Draw(CGs* gs)
 {
 	if (!mActive) {
@@ -1995,6 +1991,24 @@ void XObjDemo::UpdateObject(u32 frames)
 }
 
 /**
+ * @note Address: 0x800282CC
+ * @note Size: 0x38
+ */
+void CLight::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, LOBJ_TYPE, (HSD_TypeMask)(LOBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
+ * @note Address: 0x80028304
+ * @note Size: 0x38
+ */
+void CCamera::SetAnimRate(f32 rate)
+{
+	HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
+}
+
+/**
  * @note Address: 0x80028368
  * @note Size: 0xA4
  */
@@ -2656,12 +2670,11 @@ extern "C" void DrawTitleOptions(Title* title)
 	if (scale > 0.0f) {
 		f32 alpha  = 255.0f * scale;
 		f32 h      = 224.0f * scale;
-		s32 a      = alpha;
+		u32 lit    = (u8)(s32)alpha | 0xFFFFFF00;
 		u32 window = (u32)alpha | 0xFFFFFF00;
 		f32 top;
 		DrawTexturedWindowFrame((u32)(160.0f * scale), window, 320.0f, top = 224.0f - h / 2.0f, 320.0f * scale, h, 1.0f, 1.0f, 1.0f);
 
-		u32 lit    = (u8)a | 0xFFFFFF00;
 		u32 normal = (u8)alpha | 0xFFFFFF00;
 		const char* text;
 #if !defined(VERSION_PAL)

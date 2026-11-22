@@ -651,7 +651,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	UnloadStageDataAndModule();
 	for (s32 i = 0; i < 0x80; i++) { // kill every emitter still running
-		void* emitter = game->mEvtPtcl.mEmitters[i];
+		void* emitter = &game->mEvtPtcl.mEffects[i];
 		s32 state     = fn_80246BD8(emitter) ? *(s32*)((u8*)fn_80246C04(emitter) + 0xC) : 0;
 		if (!(state == 0 || state == 3)) {
 			fn_802BEA5C(emitter, TRUE);

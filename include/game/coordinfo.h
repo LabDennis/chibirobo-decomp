@@ -40,10 +40,9 @@ struct XObjSource {
 	const char* mName;      // _00
 	ResourceFile* mArchive; // _04
 	u32 _08;
-	struct Cache {
-		u32 address;
-		u32 size;
-	} mCache;
+	u32 _0C;
+	const char** mAnimNames; // _10, the kind's animation names, SetAnim looks its anims up by them
+	s32 mAnimCount;          // _14, how many mAnimNames there are
 };
 #else
 struct XObjSource;

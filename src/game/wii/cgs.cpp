@@ -81,7 +81,6 @@ void CCamera::InitView(const GXRenderModeObj* rmode)
 
 void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode)
 {
-	f32 height        = rmode->efbHeight;
 	mFov              = fov;
 	mType             = 0;
 	mNear             = near;
@@ -89,7 +88,9 @@ void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj*
 	mProjectionDirty  = TRUE;
 	mIsOrtho          = 0.0f;
 	mProjectionSource = NULL;
-	mAspect           = (rmode->fbWidth * scale) / height;
+	f32 width         = rmode->fbWidth;
+	f32 height        = rmode->efbHeight;
+	mAspect           = width * scale / height;
 	mScale            = scale;
 	InitView(rmode);
 }

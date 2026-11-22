@@ -100,12 +100,16 @@ static inline bool CanPlaySe()
  * @note Address: 0x800F4AAC
  * @note Size: 0x164
  */
-// NONMATCHING: anim and jobj swap r29 and r30
+static inline void UpdateSmallSpiderAnimationSound(XObjSpiderSmall* spider, s32 id)
+{
+	f32 frame = GetAnimFrame(spider->mJObj);
+	spider->mAnimSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &spider->mMoveTranslate, 0));
+}
+
 void XObjSpiderSmall::UpdateAnimationSounds()
 {
 	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
-		s32 anim = mAnimId;
-		mAnimSfx.Update(anim, GetAnimFrame(mJObj), GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
+		UpdateSmallSpiderAnimationSound(this, mAnimId);
 	}
 }
 

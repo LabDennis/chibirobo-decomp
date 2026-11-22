@@ -1851,6 +1851,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
  * @note Address: 0x8001F46C
  * @note Size: 0x46C
  */
+// NONMATCHING: regalloc (stage request loop spills slwi into r29 and pointer into r28; retail uses r0/r29)
 extern "C" void UpdateGameSound(XSound* sound, s32 step)
 {
 	if (!sound->mSampleReady) {

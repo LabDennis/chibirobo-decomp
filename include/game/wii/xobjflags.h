@@ -3,6 +3,7 @@
 
 #include "game/wii/animsfx.h"
 #include "game/wii/xobj.h"
+#include "game/stagedata.h"
 
 // the Wii XObjFlags family: flag-backed pickups and the sound objects. Pulled out of
 // xobj.h because AnimSfx needs the nw4r sound headers, which only the units that use
@@ -30,8 +31,21 @@ STATIC_ASSERT(sizeof(XObjSound) == 0xA10);
 // XObjFlags has the pointer at _980, the Wii moved it behind the object
 class XObjFlags : public XObj {
 public:
+	XObjFlags() { mFlags = NULL; }
+
 	virtual void ResetForNewGame(); // _150, clears every flag
 	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
+
+	// the GameCube's inline, same body: the flag base of the group plus the placement id
+	s32 GetPlacementFlagIndex(s32 group) const
+	{
+		s32 id = mPlacementParam1;
+		if (id > 0) {
+			u32 base = GetStageCollectionFlagBase(group);
+			return (s32)(base + (u32)id);
+		}
+		return 0;
+	}
 
 	CEvtFlags* mFlags; // _9A8
 
@@ -57,15 +71,18 @@ STATIC_ASSERT(offsetof(XObjFlags, mFlags) == 0x9A8);
 // the money, scrap, battery and experience pickups; two sound actors of their own
 class XObjCoin : public XObjFlags {
 public:
-	virtual void InitializeObject();                                                 // _14C
-	virtual void ResetObjectState();                                                 // _154
-	virtual BOOL LoadFromPlacement(const CoordInfo& info);                           // _158
-	virtual void Release();                                                          // _40
-	virtual void UpdateObject(u32 frames);                                           // _164
-	virtual s32 OnPlayerContact(s32 unused, s32 value);                              // _1CC
-	virtual s32 HandleEventCommand(s32 count, s32* args);                            // _1E8
-	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed); // _208
-	virtual s32 GetFlagIndex();                                                      // _28C
+	XObjCoin();
+	virtual ~XObjCoin();
+
+	virtual void InitializeObject();                                              // _14C
+	virtual void ResetObjectState();                                              // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);                        // _158
+	virtual void Release();                                                       // _40
+	virtual void UpdateObject(u32 frames);                                        // _164
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                           // _1CC
+	virtual s32 HandleEventCommand(s32 count, s32* args);                         // _1E8
+	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed); // _208
+	virtual s32 GetFlagIndex();                                                   // _28C
 
 	// the item index its data record names, -1 without one (the GameCube XObj's inline)
 	s32 GetItem() const { return mAttr.mObjData != NULL ? mAttr.mObjData->GetItem() : -1; }
@@ -91,6 +108,9 @@ STATIC_ASSERT(sizeof(XObjCoin) == 0xA30);
 // the item pickups; the Wii keeps one word of its own
 class XObjItem : public XObjFlags {
 public:
+	XObjItem();
+	virtual ~XObjItem();
+
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void UpdateObject(u32 frames);                 // _164
@@ -101,6 +121,49 @@ public:
 	s32 mAnimId2; // _9AC, the anim id to go back to once the use anim ends, -1 when it keeps its own
 };
 STATIC_ASSERT(sizeof(XObjItem) == 0x9B0);
+
+// the dust piles, swept up by the vacuum or blown off by chibi robo; the GameCube class
+// (xobjflags.h) behind the Wii XObjFlags, its fields line up the same from _9B0 on
+class XObjDust : public XObjFlags {
+public:
+	XObjDust();
+	virtual ~XObjDust();
+
+	virtual void Release(); // _40
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                               // _108, forwards to XObj's
+	virtual void ResetObjectState();                                   // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158
+	virtual void UpdateObject(u32 frames);                             // _164
+	virtual void DrawWithView(Mtx view);                               // _178
+	virtual void DrawObjectEffects();                                  // _188
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _1CC
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);           // _204
+	virtual s32 GetFlagIndex();                                        // _28C
+
+	void* mMatAnim;    // _9AC, the GameCube's HSD mat-anim slot; the Wii only ever clears it
+	s32 mAnimId2;      // _9B0, the anim it was placed with
+	s32 mAnimCount;    // _9B4
+	f32 mBaseY;        // _9B8
+	f32 mPhase;        // _9BC, bobbing
+	f32 mPhaseStep;    // _9C0
+	f32 mBouncePhase;  // _9C4
+	f32 mBounceHeight; // _9C8
+	f32 mHeading;      // _9CC, NAN until something pushes it
+	f32 mSpeed;        // _9D0
+	f32 mFade;         // _9D4
+	Vec mStartScale;   // _9D8
+	Vec mFrom;         // _9E4
+	Vec mTo;           // _9F0
+	s16 mEventId;      // _9FC
+	s16 mEventArg;     // _9FE
+};
+STATIC_ASSERT(sizeof(XObjDust) == 0xA00);
+
+extern CEvtFlags gItemEventFlags; // items
+extern CEvtFlags gCoinEventFlags; // coins
+extern CEvtFlags gDustEventFlags; // dust
 
 extern "C" {
 void UpdateFallingCoin(XObjCoin* coin, u32 frames);

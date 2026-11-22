@@ -163,7 +163,6 @@ void CEffectSystem::Unload(s32 idx)
 	}
 }
 
-// NONMATCHING: GC/3.0a5 prolog/epilog differs from retail psq_st on f30/f31 (99.78%)
 void CEffectSystem::Update(const Vec* camPos, MtxP camMtx, MtxP projMtx, u32 steps, s32 groupID, f32 f1, f32 f2)
 {
 	UpdateLoad(0);
@@ -171,7 +170,10 @@ void CEffectSystem::Update(const Vec* camPos, MtxP camMtx, MtxP projMtx, u32 ste
 	nw4r::ef::EffectSystem* sys = nw4r::ef::EffectSystem::GetInstance();
 	Mtx mtx;
 	PSMTXCopy(camMtx, mtx);
-	nw4r::math::VEC3 pos(camPos->x, camPos->y, camPos->z);
+	nw4r::math::VEC3 pos;
+	pos.x = camPos->x;
+	pos.y = camPos->y;
+	pos.z = camPos->z;
 	sys->SetProcessCamera(pos, *reinterpret_cast<const nw4r::math::MTX34*>(mtx), f1, f2);
 	sSortInfo.mtx  = camMtx;
 	sSortInfo.proj = projMtx;
