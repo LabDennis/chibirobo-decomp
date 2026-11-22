@@ -7557,11 +7557,19 @@ static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
 }
 
+// the row `offset` places before the end of the list. Read through this accessor, retail forms each row's address
+// anew and loads the field from it (US 0x8003D9EC add r4, r3, r0; lwz r0, 0x4(r4)); a direct subscript on the array
+// folds the field into the base once (lwzx from gPCRankingRows + 4)
+static inline const PCRankingRow& GetRankingRowFromEnd(MenuPC* menu, int offset)
+{
+	return gPCRankingRows[menu->mRankingEnd - offset];
+}
+
 static inline void LoadRankingRow(MenuPC* menu, int slot, int offset)
 {
-	menu->mRankingRows[slot].rank      = gPCRankingRows[menu->mRankingEnd - offset].rank;
-	menu->mRankingRows[slot].nameIndex = gPCRankingRows[menu->mRankingEnd - offset].nameIndex;
-	menu->mRankingRows[slot].score     = gPCRankingRows[menu->mRankingEnd - offset].score;
+	menu->mRankingRows[slot].rank      = GetRankingRowFromEnd(menu, offset).rank;
+	menu->mRankingRows[slot].nameIndex = GetRankingRowFromEnd(menu, offset).nameIndex;
+	menu->mRankingRows[slot].score     = GetRankingRowFromEnd(menu, offset).score;
 }
 
 static inline void ClearRankingRow(PCRankingRow& row)
@@ -7595,9 +7603,9 @@ static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f3
 	}
 }
 
-// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
-// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once (a loop, a struct
-// copy, a pointer parameter and a row reference all keep the base+4 form or lose the per-field index reload).
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently), and retail
+// forms the list top (168 + y) before the opacity conversion where the build hoists it after it and keeps y alive
+// across the call for that (fmr f14, f2)
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -7653,14 +7661,15 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 		}
 		CTexObj tex;
 		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
-		f32 top     = 168.0f + y;
 		f32 opacity = 255.0f * alpha;
 		u32 light   = (u32)opacity | 0xC8C8C800;
 		u8 a        = (u8)opacity;
 		for (int i = 0; i < 5; i++) {
 			if (gPCRankingRows[i].nameIndex == -1)
 				continue;
-			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
+			// retail keeps the list top on the stack and 10 * scale in a register (US 0x8003DC78 stfs f0, 0x31c(r1);
+			// 0x8003DD24 fmuls f25), the other way round from a named top, so the top is part of this expression
+			f32 rowY = (menu->mRankingOffsets[i] + ((168.0f + y) + i * 48)) - 48.0f;
 			tex      = InitPCPanelTexture(180);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 w = 1.1f * (1.1f * tex.GetWidth()), h = 1.1f * tex.GetHeight();
