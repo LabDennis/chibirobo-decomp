@@ -46,6 +46,7 @@ u8* GetAttachmentDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
 u8* GetStatusIconDescription(s32 id);
 u8* GetUtilibotName(s32 id);
+u8* GetUtilibotDescription(s32 id);
 s32 ConvertHudTextToFullWidth(char* text);
 u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
@@ -107,6 +108,7 @@ static MenuPC sMenuPC;
 static MenuSave sMenuSave;
 static MenuStatusTable sStatusItemTable;
 MenuPCPage gShopHistoryPage;
+MenuPCPage gShopCatalogPage;
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 
@@ -2212,6 +2214,65 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 		u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
 		DrawOverviewTexture(tex, color, 52.0f * scale + left, 48.0f * scale + top, w, h);
 	}
+}
+
+// NONMATCHING: the complete call list matches; a 44-byte stack/layout and register-allocation difference remains
+extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
+{
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	if (scale <= 0.0f) {
+		return;
+	}
+	f32 extraH = IsJapanese() ? 0.0f : 17.0f;
+	f32 extraW = IsJapanese() ? 0.0f : 8.0f;
+	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
+	f32 left    = (x - width / 2.0f) - 34.0f * scale;
+	f32 top     = ((y - extraH / 2.0f) - height / 2.0f) - 13.0f * scale;
+	s16 id      = gShopCatalogPage.mRows[selected].mItem;
+	f32 opacity = 255.0f * alpha;
+	DrawTexturedWindowFrame((u32)(255.0f * alpha), (u32)(255.0f * alpha) | 0xFFFFFF00, x, top + 13.0f * scale, width, height, alpha, 1.0f,
+	                        1.0f);
+	top += scale;
+	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	char text[256];
+	if (choice == 2) {
+		DrawPCPurchaseResult(text, 0x52, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	} else {
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
+		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
+		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
+		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
+	}
+	if (id < 0) {
+		return;
+	}
+	sprintf(text, "%s", GetUtilibotDescription(id));
+	if (choice != 2) {
+		DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFFFFF00, x, (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale,
+		                       size);
+	}
+	sprintf(text, "%s", GetUtilibotName(id));
+	DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
+	if (choice != 2) {
+		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, gShopCatalogPage, selected, opacity, left, top, scale, extraW, extraH);
+		DrawPCPriceUnit<PriceList>(tex, scale, left, digitY, 255.0f * alpha);
+		DrawPCPurchaseLabels(0x51, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, (u32)(255.0f * alpha) | 0xFFFFFF00);
+	}
+	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	s32 icon;
+	if (id == 0 || !(gEventFlags.mFlags[335 / 32] & (1u << (335 % 32)))) {
+		icon = 239;
+	} else {
+		icon = 240;
+	}
+	InitPCPanelTexture(tex, icon);
+	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+	u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	DrawOverviewTexture(tex, color, iconX, iconY, scale * w, scale * h);
 }
 
 // NONMATCHING: the call list matches; a 36-byte stack/layout and register-allocation difference remains
