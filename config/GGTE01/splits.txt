@@ -353,14 +353,15 @@ game/stg.cpp:
 	.sbss2      start:0x8065FF90 end:0x8065FFA0
 
 game/infoscrn.cpp:
-	.text       start:0x8006389C end:0x8006DB80
+	.text       start:0x8006389C end:0x8006DBC8
 	.ctors      start:0x801FD670 end:0x801FD674
+	.rodata     start:0x802015B0 end:0x80201AF0
+	.data       start:0x80212CF0 end:0x80212D88
 	.bss        start:0x80366E58 end:0x80367180
+	.sdata      start:0x8065A368 end:0x8065A38C
 	.sbss       start:0x8065B220 end:0x8065B23D
+	.sdata2     start:0x8065C8B0 end:0x8065CA58
 	.sbss2      start:0x8065FFA0 end:0x8065FFB0
-
-game/infopointdtor.cpp:
-	.text       start:0x8006DB80 end:0x8006DBC8
 
 game/globalresources.cpp:
 	.text       start:0x8006DBC8 end:0x8006EDB4

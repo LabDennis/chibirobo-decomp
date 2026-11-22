@@ -11,6 +11,10 @@
 
 // the info screen, the hud drawn over the game: the clock, the battery, the happy points and
 // the three counters that pop up in the corner. CGame keeps it in mInfoScrn
+//
+// NONMATCHING: retail's .rodata starts with the header's six Vecs (0x48 bytes at US 0x802015B0),
+// shifting subsequent .rodata objects by 0x48; .sdata/.data/.sdata2/.bss/.sbss/.sbss2 are claimed
+// here, and the upstream gHudPointCounterStorage .bss prefix (0x140 / JP 0x134) is kept.
 
 // the timer counts frames, europe at the video mode's rate
 #if defined(VERSION_PAL)
@@ -333,12 +337,12 @@ extern "C" void DrawHudWithTransitions(InfoScrn* scrn)
 }
 
 // the loading bar, the robot walks along it
-static const u8 sWalkAnim[]  = { 3, 2, 1, 0, 3, 1, 2, 0xFF };
-static const u8 sStandAnim[] = { 0, 1, 2, 3, 0xFF };
+static u8 sWalkAnim[]  = { 3, 2, 1, 0, 3, 1, 2, 0xFF };
+static u8 sStandAnim[] = { 0, 1, 2, 3, 0xFF };
 static struct {
-	f32 mX;          // _00
-	s32 mFrame;      // _04
-	const u8* mAnim; // _08
+	f32 mX;     // _00
+	s32 mFrame; // _04
+	u8* mAnim;  // _08
 } sLoading = { 0.0f, 0, sWalkAnim };
 
 /**

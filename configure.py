@@ -554,7 +554,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/infopointdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
