@@ -1665,6 +1665,13 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
+struct PCRankingRow {
+	s32 rank;
+	s32 nameIndex;
+	s32 score;
+};
+STATIC_ASSERT(sizeof(PCRankingRow) == 12);
+
 // a number the pc shows easing toward its value, the GameCube struct of the same name
 struct PCAmount {
 	f32 shown;
@@ -1689,16 +1696,18 @@ public:
 
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
-	s32 mMode;      // _15C
-	s32 mPrevMode;  // _160
-	u32 _164;       // _164
-	s32 mPhase;     // _168
-	f32 mSpeed;     // _16C
-	s32 mTextPhase; // _170
-	s32 mChoice;    // _174
-	u8 _178[0x184 - 0x178];
+	s32 mMode;              // _15C
+	s32 mPrevMode;          // _160
+	u32 _164;               // _164
+	s32 mPhase;             // _168
+	f32 mSpeed;             // _16C
+	s32 mTextPhase;         // _170
+	s32 mChoice;            // _174
+	s32 mPurchaseSelection; // _178
+	u8 _17C[0x184 - 0x17C];
 	s32 mYesNo;             // _184
 	s32 mMoneyDigit;        // _188
 	s32 mShopSelection;     // _18C
@@ -1732,22 +1741,28 @@ public:
 	s32 mDepositBalance;     // _388
 	s32 mHistoryStart;       // _38C
 	s32 mHistoryCount;       // _390
-	u8 _394[0x3A4 - 0x394];
-	u8 mShopOnly; // _3A4, opens straight into the item list and B closes
+	f32 mPanelAlpha;         // _394
+	f32 mPanelTarget;        // _398
+	f32 mListAlpha;          // _39C
+	f32 mTargetListAlpha;    // _3A0
+	u8 mShopOnly;            // _3A4, opens straight into the item list and B closes
 	u8 _3A5[0x3A8 - 0x3A5];
-	u32 mDialogueNumber; // _3A8
-	u8 _3AC[0x400 - 0x3AC];
-	f32 mScroll;       // _400
-	f32 mScrollTarget; // _404
-	u8 _408[0x410 - 0x408];
-	PCAmount mMoneyDisplay; // _410
-	PCAmount mScrapDisplay; // _418
-	u8 _420[0x428 - 0x420];
-	f32 _428;       // _428, eased toward _42C
-	f32 _42C;       // _42C
-	f32 mScrapRate; // _430
-	s32 mExitState; // _434, the game state it hands back
-	u8 mCanSelect;  // _438
+	u32 mDialogueNumber;          // _3A8
+	f32 mRankingOffsets[5];       // _3AC
+	PCRankingRow mRankingRows[5]; // _3C0
+	s32 mRankingEnd;              // _3FC
+	f32 mScroll;                  // _400
+	f32 mScrollTarget;            // _404
+	s32 mCatalogBase;             // _408
+	s32 mCatalogCount;            // _40C
+	PCAmount mMoneyDisplay;       // _410
+	PCAmount mScrapDisplay;       // _418
+	PCAmount mDepositDisplay;     // _420
+	f32 _428;                     // _428, eased toward _42C
+	f32 _42C;                     // _42C
+	f32 mScrapRate;               // _430
+	s32 mExitState;               // _434, the game state it hands back
+	u8 mCanSelect;                // _438
 	u8 _439[0x43C - 0x439];
 	s32 mChoices[4];  // _43C
 	s32 mChoiceCount; // _44C
@@ -1757,6 +1772,7 @@ STATIC_ASSERT(offsetof(MenuPC, mYesNo) == 0x184);
 STATIC_ASSERT(offsetof(MenuPC, mCharCopies) == 0x2F0);
 STATIC_ASSERT(offsetof(MenuPC, mNumberOffset) == 0x37C);
 STATIC_ASSERT(offsetof(MenuPC, mShopOnly) == 0x3A4);
+STATIC_ASSERT(offsetof(MenuPC, mDepositDisplay) == 0x420);
 STATIC_ASSERT(offsetof(MenuPC, mExitState) == 0x434);
 STATIC_ASSERT(offsetof(MenuPC, mTexScroll) == 0x450);
 

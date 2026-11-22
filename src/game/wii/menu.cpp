@@ -59,6 +59,7 @@ void DrawStatusHelpText(MenuStatus* menu);
 void DrawStatusMenuTitle(MenuStatus* menu);
 void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
 void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value);
+void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -116,6 +117,15 @@ static f32 sInventoryPhase;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+
+extern "C" s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+
+struct PCChoiceArt {
+	s32 icon, label;
+};
+
+static const PCChoiceArt pcChoiceArt[] = { { 0, 0 }, { 0, 0 },    { 0, 0 }, { 147, 2 }, { 146, 4 },  { 146, 0 },
+	                                       { 0, 0 }, { 142, 24 }, { 0, 0 }, { 146, 6 }, { 146, 28 }, { 0, 0 } };
 
 // the two hands either side of the picked row and the frame round it
 static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scale)
@@ -2779,6 +2789,837 @@ extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha,
 	DrawSolidQuad(&gGame.mGs, quads[3], (u32)(255.0f * alpha));
 	DrawGsLineStrip(&gGame.mGs, quads[2], (u32)(255.0f * alpha) | 0xFFFFFF00, 5);
 	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+}
+
+static inline const char* GetPCMenuLabelText(s32 id)
+{
+	return GetLocalizedInterfaceText(id + 46);
+}
+
+static inline const char* GetPCDialogueText(s32 id)
+{
+	return GetLocalizedPCDialogue(id);
+}
+
+static inline s32 CountDecimalDigits(s32 value)
+{
+	s32 digits = 1;
+	while (true) {
+		f32 divisor = 1.0f;
+		for (s32 i = 0; i < digits; i++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)(value / divisor) == 0) {
+			break;
+		}
+		digits++;
+	}
+	return digits;
+}
+
+#define PC_EASE_CALL(value, target)                  \
+	do {                                             \
+		f32 speed = (target) - (value);              \
+		f32 rate  = 0.25f;                           \
+		rate      = speed * rate;                    \
+		if (rate < 0.0f)                             \
+			rate = -rate;                            \
+		if (rate <= 1.0f)                            \
+			rate = 1.0f;                             \
+		ApproachHudValue(&(value), &(target), rate); \
+	} while (0)
+
+#define PC_DIGIT_DIVISOR(divisor, i)                  \
+	do {                                              \
+		divisor = 1.0f;                               \
+		if ((i) > 0) {                                \
+			for (s32 place = 0; place < (i); ++place) \
+				divisor *= 10.0f;                     \
+		}                                             \
+	} while (0)
+
+#define PC_READ_DIALOGUE_GLYPH(text) ((((const u8*)(text))[0] << 8) | ((const u8*)(text))[1])
+#define PC_SET_DIALOGUE_GLYPH(menu, code)                        \
+	do {                                                         \
+		*(u16*)(menu)->mCharCopies[(menu)->mNextGlyph] = (code); \
+		(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0;      \
+	} while (0)
+
+// NONMATCHING: the complete 296-call list matches; the current spelling is 256 bytes smaller and saves GPRs from r16 instead of r17
+BOOL MenuPC::Draw()
+{
+	if (CMenu::Draw()) {
+		CTexObj tex;
+		char labelText[256];
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		{
+			f32 left = 130.0f, top = 40.0f, right = 510.0f, bottom = 360.0f;
+			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+				               (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, (u32)(255.0f * mAlpha), 5);
+		}
+		switch (mMode) {
+		case 1: {
+			f32 left = 260.0f, top = 160.0f, right = 380.0f, bottom = 240.0f;
+			Vec panel[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+				            (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, (u32)(255.0f * mAlpha) | 0xFFB62800, 5);
+			DrawGsLineStrip(&gGame.mGs, panel, (u32)(255.0f * mAlpha) | 0xC8C8C800, 5);
+			{
+				InitPCPanelTexture(tex, 143);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				const f32 scale = 1.4f;
+				f32 width       = scale * (1.1f * GXGetTexObjWidth(&tex));
+				f32 height      = scale * GXGetTexObjHeight(&tex);
+				u32 color       = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 193.0f, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			if (IsJapanese()) {
+				InitPCPanelTexture(tex, 144);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 width  = 1.1f * GXGetTexObjWidth(&tex);
+				f32 height = GXGetTexObjHeight(&tex);
+				u32 color  = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 227.0f, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			SetGsChannelEnabled(&gGame.mGs, 0, 0);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+			f32 fill    = 281.0f + 80.0f * mProgress;
+			Vec bar[12] = {};
+			bar[0].x    = 281.0f;
+			bar[0].y    = 249.0f;
+			bar[1].x    = 361.0f;
+			bar[1].y    = 249.0f;
+			bar[2].x    = 361.0f;
+			bar[2].y    = 253.0f;
+			bar[3].x    = 281.0f;
+			bar[3].y    = 253.0f;
+			bar[4].x    = 281.0f;
+			bar[4].y    = 249.0f;
+			bar[5].x    = fill;
+			bar[5].y    = 249.0f;
+			bar[6].x    = fill;
+			bar[6].y    = 253.0f;
+			bar[7].x    = 281.0f;
+			bar[7].y    = 253.0f;
+			bar[8].x    = fill;
+			bar[8].y    = 249.0f;
+			bar[9].x    = 361.0f;
+			bar[9].y    = 249.0f;
+			bar[10].x   = 361.0f;
+			bar[10].y   = 253.0f;
+			bar[11].x   = fill;
+			bar[11].y   = 253.0f;
+			DrawGsLineStrip(&gGame.mGs, bar, (u32)(255.0f * mAlpha) | 0xC8C8C800, 5);
+			gGame.mGs.mCurRenderState->SetLineWidth(6, GX_TO_ONE);
+			DrawSolidQuad(&gGame.mGs, bar + 4, (u32)(255.0f * mAlpha) | 0xFFB62800);
+			DrawSolidQuad(&gGame.mGs, bar + 8, (u32)(255.0f * mAlpha) | 0xC8000000);
+			gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		} break;
+		case 2: {
+			f32 origin, step;
+			switch (mChoiceCount) {
+			case 1:
+			case 2:
+			case 4:
+				origin = 170.0f;
+				step   = 36.0f;
+				break;
+			case 3:
+				origin = 180.0f;
+				step   = 40.0f;
+				break;
+			default:
+				origin = 0.0f;
+				step   = 0.0f;
+				break;
+			}
+			const f32 top = origin - 20.0f;
+			f32 center, width;
+			if (IsJapanese()) {
+				sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[mChoices[mChoice]].label));
+				u32 chars = strlen(labelText) / 2;
+				center    = 224.0f + 0.5f * ((chars - 1) * 20.0f);
+				width     = 0.9f * ((chars + 2) * 20.0f);
+			} else {
+				const char* text = GetPCMenuLabelText(pcChoiceArt[mChoices[mChoice]].label);
+				f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, 20.0f);
+				InitPCPanelTexture(tex, pcChoiceArt[mChoices[mChoice]].icon);
+				width  = 6.0f + (1.1f * GXGetTexObjWidth(&tex) + textWidth);
+				center = 204.0f + width / 2.0f;
+			}
+			f32 y     = 2.0f + (step * mChoice + (8.0f + top));
+			u32 color = (u32)(200.0f * mAlpha) | 0x181CC600;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			InitPCPanelTexture(tex, 118);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, center, y, 0.0f, width, 24.0f, 0.0f, 0.0f, 0.0f);
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (center - width / 2.0f) - 4.0f, y, 0.0f, 8.0f, 24.0f, 0.0f,
+			                   0.0f, 0.0f);
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f + (center + width / 2.0f), y, 0.0f, 8.0f, 24.0f, 0.0f,
+			                   0.0f, 0.0f);
+			InitPCPanelTexture(tex, 119);
+			PSMTXTrans(tex.mTexMtx.mMtx[0], mTexScroll, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.5f * (width / GXGetTexObjWidth(&tex)), 0.5f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			color              = 0xFFFFFF00 | (u32)(40.0f * mAlpha);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + center, y, 0.0f, width, 20.0f, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			for (s32 i = 0; i < mChoiceCount; ++i) {
+				s32 choice = mChoices[i];
+				if (choice == -1) {
+					continue;
+				}
+				const PCChoiceArt& row = pcChoiceArt[choice];
+				f32 alpha              = mAlpha;
+				if (choice == 7 && !mCanSelect) {
+					alpha *= 0.4f;
+				}
+				f32 rowY = step * i + top;
+				InitPCPanelTexture(tex, row.icon);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 w = 1.1f * GXGetTexObjWidth(&tex);
+				f32 h = GXGetTexObjHeight(&tex);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+				                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, 204.0f + 0.5f * w,
+				                   1.0f + (rowY + 0.5f * h), 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				if (IsJapanese()) {
+					DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00,
+					                             GetPCMenuLabelText(pcChoiceArt[mChoices[i]].label), 224.0f, rowY, 0.0f, 20.0f, 20.0f);
+				} else {
+					DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00,
+					                             GetPCMenuLabelText(pcChoiceArt[mChoices[i]].label), 6.0f + (204.0f + w), rowY, 0.0f, 20.0f,
+					                             20.0f);
+				}
+			}
+		} break;
+		case 3: {
+			s32 selected = mPurchaseSelection;
+			f32 alpha    = mListAlpha;
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, alpha, 1.0f);
+			DrawPCGoldNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mMoneyDisplay.shown);
+			f32 barY      = 76.0f;
+			s32 positions = CountPCShopItems(sShopHistoryEntries) - 8;
+			f32 first, last;
+			if (positions <= 1) {
+				first = 0.0f;
+				last  = 1.0f;
+			} else {
+				s32 start = gShopHistoryPage.mStart;
+				f32 step  = 1.0f / (f32)positions;
+				f32 row   = (f32)start;
+				first     = step * row;
+				last      = step * (1.0f + row);
+			}
+			DrawPCShopScrollBar(460.0f, barY, first, last, mAlpha, 1.0f);
+		} break;
+		case 4:
+			DrawPCRankings(this, -30.0f, -20.0f, mAlpha, 1.0f);
+			break;
+		case 7: {
+			s32 selected = mShopSelection;
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, 1.0f, 1.0f);
+			DrawPCBlueNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mScrapDisplay.shown);
+			f32 barY      = 76.0f;
+			s32 positions = CountPCShopItems(sShopCatalogEntries) - 8;
+			f32 first, last;
+			if (positions <= 1) {
+				first = 0.0f;
+				last  = 1.0f;
+			} else {
+				s32 start = gShopCatalogPage.mStart;
+				f32 step  = 1.0f / (f32)positions;
+				f32 row   = (f32)start;
+				first     = step * row;
+				last      = step * (1.0f + row);
+			}
+			DrawPCShopScrollBar(460.0f, barY, first, last, mAlpha, 1.0f);
+		} break;
+		case 5: {
+			CTexObj* subwindow = &gGame.mSubwin.mTexture.mTex;
+			f32 w              = 0.6f * (1.1f * GXGetTexObjWidth(subwindow));
+			f32 h              = 0.6f * GXGetTexObjHeight(subwindow);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u32 color = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+			DrawGsTexturedQuad(&gGame.mGs, subwindow, color, color, color, color, 320.0f, 200.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		} break;
+		case 9: {
+			sprintf(labelText, "%s", GetPCMenuLabelText(7));
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(mAlpha * 255.0f) | 0xC8C8C800, labelText, 224.0f, 148.0f, 0.0f, 18.0f, 18.0f);
+			{
+				const f32 scale = 1.2f;
+				s32 balance     = mDepositBalance;
+				InitPCPanelTexture(tex, 126);
+				f32 w                  = scale * GXGetTexObjWidth(&tex);
+				f32 h                  = scale * (GXGetTexObjHeight(&tex) / 10);
+				mDepositDisplay.target = balance;
+				PC_EASE_CALL(mDepositDisplay.shown, mDepositDisplay.target);
+				PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				f32 step = w - 2.4f, start = 276.0f, offset = 9.6f, y = 184.0f;
+				u32 rgb = 0xFFB62800;
+				for (int i = 0; i < 5; i++) {
+					f32 divisor;
+					PC_DIGIT_DIVISOR(divisor, i);
+					s32 digit = (s32)(mDepositDisplay.shown / divisor) % 10;
+					PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+					f32 x     = (7.0f * w + (start - i * step)) - offset;
+					u32 color = (u32)(255.0f * mAlpha) | rgb;
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				}
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			switch (mPhase) {
+			case 0: {
+				sprintf(labelText, "%s", GetPCMenuLabelText(8));
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(mAlpha * 255.0f) | 0xC8C8C800, labelText, 224.0f, 212.0f, 0.0f, 18.0f,
+				                             18.0f);
+				{
+					const f32 scale = 1.4f;
+					s32 amount      = mAmount;
+					InitPCPanelTexture(tex, 126);
+					f32 w          = scale * GXGetTexObjWidth(&tex);
+					f32 h          = scale * (GXGetTexObjHeight(&tex) / 10);
+					PCAmount entry = {};
+					entry.shown = entry.target = amount;
+					PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					f32 step = w + 1.4f, start = 256.0f, offset = 30.8f, y = 256.0f;
+					u32 rgb = 0xC8C8C800;
+					for (int i = 0; i < 5; i++) {
+						f32 divisor;
+						PC_DIGIT_DIVISOR(divisor, i);
+						s32 digit = (s32)(entry.shown / divisor) % 10;
+						PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+						tex.mTexMtx.mDirty = TRUE;
+						gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+						f32 x     = (7.0f * w + (start - i * step)) - offset;
+						u32 color = (u32)(255.0f * mAlpha) | rgb;
+						DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+						gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+					}
+					gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				}
+				InitPCPanelTexture(tex, 126);
+				f32 w      = 1.4f * GXGetTexObjWidth(&tex);
+				f32 h      = 1.4f * (GXGetTexObjHeight(&tex) / 10);
+				f32 left   = (388.0f - mMoneyDigit * (1.0f + w)) - 8.0f;
+				f32 coord0 = left, coord1 = 242.0f, coord2 = left + w, coord3 = 242.0f + h;
+				Vec vertices[] = { (Vec) { coord0, coord1, -10.0f }, (Vec) { coord2, coord1, -10.0f }, (Vec) { coord2, coord3, -10.0f },
+					               (Vec) { coord0, coord3, -10.0f }, (Vec) { coord0, coord1, -10.0f } };
+				gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+				DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices,
+				                        0x1F24F800 | (u32)(80.0f * mAlpha), 5);
+				break;
+			}
+			case 1: {
+				sprintf(labelText, "%s", GetPCMenuLabelText(9));
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(mAlpha * 255.0f) | 0xC8C8C800, labelText, 224.0f, 212.0f, 0.0f, 18.0f,
+				                             18.0f);
+				sprintf(labelText, "%s", GetPCMenuLabelText(10));
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(mAlpha * 255.0f) | 0xC8C8C800, labelText, 260.0f, 260.0f, 0.0f, 18.0f,
+				                             18.0f);
+				f32 x      = mYesNo == 0 ? 242.0f : 302.0f;
+				f32 coord0 = x, coord1 = 251.0f, coord2 = x + 68.0f, coord3 = 283.0f;
+				Vec vertices[] = { (Vec) { coord0, coord1, -10.0f }, (Vec) { coord2, coord1, -10.0f }, (Vec) { coord2, coord3, -10.0f },
+					               (Vec) { coord0, coord3, -10.0f }, (Vec) { coord0, coord1, -10.0f } };
+				DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices,
+				                        0x1F24F800 | (u32)(80.0f * mAlpha), 5);
+				break;
+			}
+			case 2: {
+				const f32 scale = 1.2f;
+				s32 amount      = mAmount;
+				InitPCPanelTexture(tex, 126);
+				f32 w          = scale * GXGetTexObjWidth(&tex);
+				f32 h          = scale * (GXGetTexObjHeight(&tex) / 10);
+				PCAmount entry = {};
+				entry.shown = entry.target = amount;
+				PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+				tex.mTexMtx.mDirty = TRUE;
+				f32 step = w - 2.4f, start = 372.0f, offset = 136.8f, y = 240.0f;
+				u32 rgb = 0xFFFFFF00;
+				for (int i = 0; i < 5; i++) {
+					f32 divisor;
+					PC_DIGIT_DIVISOR(divisor, i);
+					s32 digit = (s32)(entry.shown / divisor) % 10;
+					PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+					f32 x     = (7.0f * w + (start - i * step)) - offset;
+					u32 color = (u32)(255.0f * mAlpha) | rgb;
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				}
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				sprintf(labelText, "%s", GetPCMenuLabelText(11));
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(mAlpha * 255.0f) | 0xC8C8C800, labelText, 244.0f, 260.0f, 0.0f, 18.0f,
+				                             18.0f);
+				break;
+			}
+			}
+			DrawPCGoldNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mMoneyDisplay.shown);
+		} break;
+		case 10: {
+			s32 rate = (s32)mScrapRate;
+			switch (mPhase) {
+			case 0: {
+				{
+					const char* localized = GetLocalizedInterfaceText(29 + 46);
+					u32 color             = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
+					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(29 + 46), TRUE, 20.0f);
+					DrawGsProportionalTextFormat(&gGame.mGs, color, localized, x, 148.0f, 0.0f, 20.0f, 20.0f);
+				}
+				{
+					const char* localized = GetLocalizedInterfaceText(30 + 46);
+					u32 color             = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
+					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(30 + 46), TRUE, 20.0f);
+					DrawGsProportionalTextFormat(&gGame.mGs, color, localized, x, 220.0f, 0.0f, 20.0f, 20.0f);
+				}
+				{
+					s32 amount = mAmount;
+					InitPCPanelTexture(tex, 126);
+					f32 width      = 1.4f * GXGetTexObjWidth(&tex);
+					f32 height     = 1.4f * (GXGetTexObjHeight(&tex) / 10);
+					f32 step       = width + 1.4f;
+					PCAmount entry = {};
+					entry.shown = entry.target = amount;
+					PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					for (s32 i = 0; i < 5; ++i) {
+						f32 divisor;
+						PC_DIGIT_DIVISOR(divisor, i);
+						int digit = (s32)(entry.shown / divisor) % 10;
+						PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, digit * 0.1f, 0.0f);
+						tex.mTexMtx.mDirty = TRUE;
+						gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+						f32 x     = ((7.0f * width + (256.0f - i * step)) - 26.6f) - (2.0f * step) * 0.5f;
+						u32 color = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+						DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 256.0f, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+						gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+					}
+					gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+					InitPCPanelTexture(tex, 126);
+					f32 markerW = 1.4f * GXGetTexObjWidth(&tex);
+					f32 markerH = 1.4f * (GXGetTexObjHeight(&tex) / 10);
+					f32 left    = ((388.0f - mScrapDigit * step) - 4.0f) - (2.0f * step) / 2.0f;
+					f32 right = left + markerW, bottom = 241.0f + markerH;
+					f32 coord0 = left, coord1 = 241.0f, coord2 = right, coord3 = bottom;
+					Vec marker[] = { (Vec) { coord0, coord1, -10.0f }, (Vec) { coord2, coord1, -10.0f }, (Vec) { coord2, coord3, -10.0f },
+						             (Vec) { coord0, coord3, -10.0f }, (Vec) { coord0, coord1, -10.0f } };
+					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+					DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, marker,
+					                        0x1F24F800 | (u32)(80.0f * mAlpha), 5);
+				}
+				DrawPCBlueNumber(false, 164.0f, 178.0f, mAlpha, 1.0f, 1.0f);
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mAlpha) | 0xC8C8C800, GetPCMenuLabelText(34), 313.0f, 169.0f, 0.0f,
+				                             18.0f, 18.0f);
+				s32 digits = CountDecimalDigits(rate);
+				InitPCPanelTexture(tex, 126);
+				DrawPCGoldNumber(false, 212.0f + digits * (1.4f * GXGetTexObjWidth(&tex)), 178.0f, mAlpha, 1.0f, rate);
+				break;
+			}
+			case 1:
+			case 2:
+				DrawPCRecyclePanel(this, mYesNo, 320.0f, 215.0f + mScroll, mAmount, mAmount * rate, mTexScroll, mAlpha, 1.0f);
+				break;
+			}
+			DrawPCBlueNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mScrapDisplay.shown);
+		} break;
+		case 11:
+			break;
+		}
+		static f32 textureScrollU, textureScrollV;
+		textureScrollU -= 0.008f;
+		textureScrollV -= 0.008f;
+		f32 height = mFrameHeight;
+		{
+			f32 left = 130.0f, top = 40.0f, right = 510.0f, bottom = 40.0f + height;
+			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+				               (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, (u32)(255.0f * mAlpha) | 0xFFB62800,
+			                        5);
+		}
+		InitPCPanelTexture(tex, 139);
+		PSMTXTrans(tex.mTexMtx.mMtx[0], textureScrollU, textureScrollV, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		f32 v              = 320.0f / GXGetTexObjHeight(&tex);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 380.0f / GXGetTexObjWidth(&tex), v, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+		gGame.mGs.mCurTevStage->SetMode(GX_BLEND);
+		u32 frameColor = (u32)(16.0f * mAlpha) | 0xFFFFFF00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, frameColor, frameColor, frameColor, frameColor, 510.0f, 360.0f, -11.0f, 380.0f, height, 0.0f,
+		                   0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+		f32 half = height / 2.0f;
+		u32 bandColor;
+		{
+			f32 left = 130.0f, top = 360.0f - half, right = 510.0f, bottom = 360.0f;
+			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
+				               (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			bandColor = (u32)(255.0f * mAlpha) | 0xFFB62800;
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, bandColor, 5);
+		}
+		u32 gray = (bandColor & 0xFF) | 0x30303000;
+		{
+			f32 start = (40.0f + half) - half;
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+			static f32 topScanPhase = 0.0f;
+			topScanPhase += 1.0f;
+			if (topScanPhase >= 4.0f) {
+				topScanPhase = 0.0f;
+			}
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+			for (s32 row = (s32)start; row < (s32)(start + height); row += 4.0f) {
+				f32 y = row + topScanPhase;
+				DrawGsLineSegment(&gGame.mGs, NULL, 130.0f, y, 0.0f, gray, 510.0f, y, 0.0f, gray);
+			}
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		}
+		{
+			f32 start = (360.0f - half * 0.5f) - half * 0.5f;
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+			static f32 bottomScanPhase = 0.0f;
+			bottomScanPhase += 1.0f;
+			if (bottomScanPhase >= 4.0f) {
+				bottomScanPhase = 0.0f;
+			}
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+			for (s32 row = (s32)start; row < (s32)(start + half); row += 4.0f) {
+				f32 y = row + bottomScanPhase;
+				DrawGsLineSegment(&gGame.mGs, NULL, 130.0f, y, 0.0f, gray, 510.0f, y, 0.0f, gray);
+			}
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		}
+		if (mMode != 0 && mMode != 1 && mMode != 11) {
+			switch (mMode) {
+			case 2:
+				sprintf(labelText, "%s", GetPCMenuLabelText(1));
+				break;
+			case 3:
+				if (mShopOnly)
+					sprintf(labelText, "%s", GetPCMenuLabelText(3));
+				else
+					sprintf(labelText, "%s", GetPCMenuLabelText(2));
+				break;
+			case 4:
+				sprintf(labelText, "%s", GetPCMenuLabelText(4));
+				break;
+			case 5:
+				sprintf(labelText, "%s", GetPCMenuLabelText(5));
+				break;
+			case 7:
+				sprintf(labelText, "%s", GetPCMenuLabelText(24));
+				break;
+			case 9:
+				sprintf(labelText, "%s", GetPCMenuLabelText(6));
+				break;
+			case 10:
+				sprintf(labelText, "%s", GetPCMenuLabelText(28));
+				break;
+			default:
+				sprintf(labelText, "%s", "");
+				break;
+			}
+			char joined[256];
+			sprintf(joined, "%s", GetPCMenuLabelText(0));
+			strcat(joined, labelText);
+			strcpy(labelText, joined);
+			const f32 x = 210.0f, y = 120.0f;
+			DrawGsProportionalTextFormat(&gGame.mGs, 0xFFB62800 | (u32)(255.0f * mAlpha), labelText, x, y, 0.0f, 18.0f, 18.0f);
+			if (!mShopOnly) {
+				f32 rotation = 0.0f;
+				f32 top      = 129.0f;
+				f32 inset;
+				switch (mMode) {
+				case 3:
+				case 7:
+				case 10:
+					inset = 70.0f;
+					break;
+				case 4:
+					inset = 50.0f;
+					break;
+				default:
+					inset = 30.0f;
+					break;
+				}
+				u32 color = 0xC8C8C800 | (u32)(255.0f * mAlpha);
+				switch (mTextPhase) {
+				case 1: {
+					Vec points[] = { (Vec) { 210.0f, top, -10.0f }, (Vec) { mTextX, top, -10.0f } };
+					rotation     = 0.0f;
+					DrawGsLineStrip(&gGame.mGs, points, color, 2);
+					break;
+				}
+				case 2: {
+					f32 coord2   = 210.0f - inset;
+					Vec points[] = { (Vec) { 210.0f, top, -10.0f }, (Vec) { coord2, top, -10.0f }, (Vec) { coord2, mTextY, -10.0f } };
+					rotation     = 1.57079637f;
+					DrawGsLineStrip(&gGame.mGs, points, color, 3);
+					break;
+				}
+				case 3: {
+					rotation         = -3.14159274f;
+					f32 startX       = 210.0f;
+					const f32 left   = startX - inset;
+					const f32 bottom = top + 172.0f;
+					Vec points[]     = { (Vec) { startX, top, -10.0f }, (Vec) { left, top, -10.0f }, (Vec) { left, bottom, -10.0f },
+						                 (Vec) { mTextX, bottom, -10.0f } };
+					DrawGsLineStrip(&gGame.mGs, points, color, 4);
+					break;
+				}
+				case 4: {
+					rotation         = -3.14159274f;
+					f32 startX       = 210.0f;
+					const f32 left   = startX - inset;
+					const f32 bottom = top + 172.0f;
+					Vec points[]     = { (Vec) { startX, top, -10.0f }, (Vec) { left, top, -10.0f }, (Vec) { left, bottom, -10.0f },
+						                 (Vec) { mTextX, bottom, -10.0f } };
+					DrawGsLineStrip(&gGame.mGs, points, color, 4);
+					break;
+				}
+				case 0:
+				default:
+					break;
+				}
+				InitPCPanelTexture(tex, 148);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 width  = 1.1f * GXGetTexObjWidth(&tex);
+				f32 height = GXGetTexObjHeight(&tex);
+				color      = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, mTextX, mTextY, 0.0f, width, height, 0.0f, 0.0f, rotation);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				InitPCPanelTexture(tex, 143);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				const f32 scale = 0.8f;
+				width           = scale * (1.1f * GXGetTexObjWidth(&tex));
+				height          = scale * GXGetTexObjHeight(&tex);
+				f32 x           = width / 2.0f + 184.0f;
+				f32 y           = height / 2.0f + 60.0f;
+				color           = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				if (IsJapanese()) {
+					InitPCPanelTexture(tex, 144);
+					gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+					width  = 1.1f * GXGetTexObjWidth(&tex);
+					height = GXGetTexObjHeight(&tex);
+					x      = width / 2.0f + 220.0f;
+					y      = height / 2.0f + 66.0f;
+					color  = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				}
+			}
+			{
+				u32 color;
+				InitPCPanelTexture(tex, 141);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 width  = 1.1f * GXGetTexObjWidth(&tex);
+				f32 height = GXGetTexObjHeight(&tex);
+				f32 x      = width / 2.0f + 204.0f;
+				f32 y      = height * 0.5f + 335.0f;
+				color      = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				if (mMode == 2)
+					sprintf(labelText, "%s", GetPCMenuLabelText(12));
+				else
+					sprintf(labelText, "%s", GetPCMenuLabelText(13));
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mAlpha), labelText, 224.0f, 334.0f, 0.0f, 20.0f, 20.0f);
+				InitPCPanelTexture(tex, 140);
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				width  = 1.1f * GXGetTexObjWidth(&tex);
+				height = GXGetTexObjHeight(&tex);
+				x      = width * 0.5f + 344.0f;
+				y      = height * 0.5f + 335.0f;
+				color  = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+				switch (mMode) {
+				case 4:
+					sprintf(labelText, "%s", GetPCMenuLabelText(14));
+					break;
+				case 3:
+					switch (mPhase) {
+					case 0:
+					case 10:
+					case 20:
+						sprintf(labelText, "%s", GetPCMenuLabelText(16));
+						break;
+					case 1:
+						sprintf(labelText, "%s", GetPCMenuLabelText(15));
+						break;
+					default:
+						sprintf(labelText, "%s", GetPCMenuLabelText(13));
+						break;
+					}
+					break;
+				case 7:
+					switch (mPhase) {
+					case 0:
+					case 10:
+					case 20:
+						sprintf(labelText, "%s", GetPCMenuLabelText(16));
+						break;
+					case 1:
+						sprintf(labelText, "%s", GetPCMenuLabelText(25));
+						break;
+					default:
+						sprintf(labelText, "%s", GetPCMenuLabelText(13));
+						break;
+					}
+					break;
+				case 10:
+					switch (mPhase) {
+					case 0:
+						sprintf(labelText, "%s", GetPCMenuLabelText(16));
+						break;
+					case 1:
+						sprintf(labelText, "%s", GetPCMenuLabelText(37));
+						break;
+					default:
+						sprintf(labelText, "%s", GetPCMenuLabelText(13));
+						break;
+					}
+					break;
+				default:
+					sprintf(labelText, "%s", GetPCMenuLabelText(16));
+					break;
+				}
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mAlpha), labelText, 364.0f, 334.0f, 0.0f, 20.0f, 20.0f);
+			}
+		}
+		if (mMode >= 2) {
+			const char* text;
+			switch (mMode) {
+			case 2:
+				switch (mGreetingVariant) {
+				case 0:
+					text = GetPCDialogueText(20) + mCharIndex;
+					break;
+				case 1:
+					text = GetPCDialogueText(0) + mCharIndex;
+					break;
+				case 2:
+					text = GetPCDialogueText(1) + mCharIndex;
+					break;
+				default:
+					text = GetPCDialogueText(20) + mCharIndex;
+					break;
+				}
+				break;
+			case 4: {
+				s32 level = gGame.GetPlayer()->mParams.mLevel;
+				text      = GetPCDialogueText(gPCLevelDialogueIds[level]) + mCharIndex;
+				if (*text == '\t') {
+					mInsertsNumber = 1;
+					++mCharIndex;
+				}
+				break;
+			}
+			case 5:
+				if (GetPCDialogueText(2)[mCharIndex] == '\a') {
+					++mKeeperAnimStep;
+					++mCharIndex;
+					mPlayKeeperAnim = 1;
+				}
+				text = GetPCDialogueText(2) + mCharIndex;
+				break;
+			case 3:
+				DrawPCItemPurchasePanel(mPurchaseSelection, mYesNo, 320.0f, 215.0f + mScroll, mTexScroll, mAlpha, mPanelAlpha);
+				text = GetPCDialogueText(15) + mCharIndex;
+				break;
+			case 9:
+				text = GetPCDialogueText(16) + mCharIndex;
+				break;
+			case 7:
+				DrawPCScrapPurchasePanel(mShopSelection, mYesNo, 320.0f, 215.0f + mScroll, mTexScroll, mAlpha, mPanelAlpha);
+				text = GetPCDialogueText(17) + mCharIndex;
+				break;
+			case 10:
+				text = GetPCDialogueText(18) + mCharIndex;
+				break;
+			default:
+				text = GetPCDialogueText(19) + mCharIndex;
+				break;
+			}
+			if ((s32)++mGlyphFrames >= 8) {
+				mGlyphFrames           = 0;
+				mCharFlags[mNextGlyph] = 1;
+				if (mInsertsNumber) {
+					char number[32];
+					sprintf(number, "%d", (s32)mDialogueNumber);
+					ConvertHudTextToFullWidth(number);
+					PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(number + mNumberOffset));
+					mNumberOffset += 2;
+					if (!number[mNumberOffset]) {
+						mNumberOffset  = 0;
+						mInsertsNumber = 0;
+					}
+				} else if (!*text) {
+					PC_SET_DIALOGUE_GLYPH(this, 0x8140);
+					mCharIndex      = 0;
+					mNumberOffset   = 0;
+					mKeeperAnimStep = 0;
+				} else {
+					PC_SET_DIALOGUE_GLYPH(this, PC_READ_DIALOGUE_GLYPH(text));
+					mCharIndex += 2;
+				}
+				if ((s32)++mNextGlyph >= 40) {
+					mNextGlyph = 0;
+				}
+			}
+			for (int i = 0; i < 40; ++i) {
+				if (!mCharFlags[i]) {
+					continue;
+				}
+				mCharX[i] -= 3.0f;
+				if (mCharX[i] <= -22.0f) {
+					mCharX[i]     = 640.0f;
+					mCharFlags[i] = 0;
+				}
+				DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mAlpha) | 0xC8C8C800, mCharCopies[i], mCharX[i], 370.0f, 0.0f,
+				                             22.0f, 22.0f);
+			}
+		}
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
