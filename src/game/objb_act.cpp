@@ -1036,8 +1036,8 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 // NONMATCHING: the position is read once too few: retail reloads pos for mRing[0] after the history
 // stores, this build reuses the three loads the mPos copy's CVec temporary made. With a const Vec& (or
 // const Vec*) MWCC treats pos as invariant over the stores; a non-const Vec& reloads it as retail does but
-// then also keeps the first loads below the mHitTarget store (90.4). Struct copies for mPos, mHistory[i]
-// and mRing[0].mPos and the mPos/mHitTarget statement order are flat
+// then also keeps the first loads below the mHitTarget store (90.4), and with mPos stored before mHitTarget
+// as well 90.9. Struct copies for mPos, mHistory[i] and mRing[0].mPos and the mPos/mHitTarget statement order are flat
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
                      f32 strength)
 {
