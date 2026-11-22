@@ -30,11 +30,12 @@ static inline s32 DrawCenteredLines(const char** lines, s32 color)
 {
 	s32 count = 0;
 	for (const char** line = lines; *line; line++, count++) { }
-	f32 height = 24.0f * count;
-	f32 top    = 224.0f - height / 2.0f;
-	for (s32 i = 0; i < count; ++i) {
-		f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width / 2.0f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
+	f32 height        = 24.0f * count;
+	f32 top           = 224.0f - height / 2.0f;
+	const char** line = lines;
+	for (s32 i = 0; i < count; ++line, ++i) {
+		f32 width = MeasureGameTextWidth(&gGame.mGs, *line, TRUE, 24.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, *line, 320.0f - width / 2.0f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
 	}
 	return count;
 }
@@ -43,6 +44,7 @@ static inline s32 DrawCenteredLines(const char** lines, s32 color)
  * @note Address: 0x8001BCFC
  * @note Size: 0x5C8
  */
+// NONMATCHING: .rodata pool offsets, register coloring in DrawCenteredLines, and 0.0f/*line load order
 extern "C" void DrawScanModePrompt()
 {
 	if (!gVideoModePrompt.step)
