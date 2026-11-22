@@ -2071,6 +2071,52 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 	DrawPCNumberSuffix(tex, 145, x, y, scale, opacity);
 }
 
+// NONMATCHING: the call list matches; retail needs 36 more bytes and two more saved GPRs, with different register allocation
+extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value)
+{
+	CTexObj tex;
+	f32 opacity;
+	if (icon) {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[154], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 w = 0.65f * (scale * GXGetTexObjWidth(&tex));
+		f32 h = 0.65f * (scale * GXGetTexObjHeight(&tex));
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x - 16.0f, y, 0.0f, w, h, 0.0f, 0.0f,
+		                   0.0f);
+	}
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+	tex   = gGame.mTpl.mTex;
+	f32 w = scale * GXGetTexObjWidth(&tex);
+	f32 h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	opacity            = 255.0f * alpha;
+	u8 a               = opacity;
+	for (int i = 0; i < 7; i++) {
+		u32 top    = a | 0xCECEFF00;
+		u32 bottom = a | 0x5959FF00;
+		f32 div    = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 n = value / div;
+		if (i == 0 || n != 0) {
+			n %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * n, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			f32 digitX = 7.0f * w + (x - i * w) - 8.0f * scale;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	DrawPCNumberSuffix(tex, 149, x, y, scale, opacity);
+}
+
 // the bar beside the shop's list, the GameCube's
 // NONMATCHING: retail keeps 172 and 4 in saved registers and needs two saved GPRs where ours takes five
 extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha, f32 /*scale*/)
