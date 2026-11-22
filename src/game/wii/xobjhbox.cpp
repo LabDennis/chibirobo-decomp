@@ -13,10 +13,6 @@
 #include "JSystem/JMath/Inline.h"
 #define PSVECScale JMathInlineVEC::PSVECScale
 
-// the Wii's hit-box overlay and the dust pile's state half. The GameCube keeps the dust in
-// xobjdust.cpp and the box pieces in xobjhbox.cpp; this unit carries the box's screen ring,
-// its hit handling and the dust's flag/reset/placement code in retail order.
-
 // the Wii player state; xobj_chr.cpp's definition
 extern "C" BOOL IsPlayerBlockingEvents(const WiiPlayerState* player);
 
@@ -26,6 +22,7 @@ static inline void TriggerEvent(XObj* object, s32 first, s32 second)
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 }
+
 /**
  * @note Address: 0x8011701C
  * @note Size: 0x264
