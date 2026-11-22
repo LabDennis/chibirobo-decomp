@@ -3269,8 +3269,9 @@ f32 GetJointAnimationCurrentFrame(CJObj*);
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
-// NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused), and
-// it calls the header inline GetObjectJointByPath, which this build expands: its estimate is over 1000 units short
+// NONMATCHING: retail copies the owner's position a second time for the sand-floor leave branch (US 0x800CCE24 reloads
+// act->mOwner->mMoveTranslate for owner where this build reuses the loads made for pos; copy-initialising owner changes
+// nothing), and it calls the header inline GetObjectJointByPath, which this build expands: its estimate is over 1000 units short
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -3466,8 +3467,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 					CVec floor(GetTargetFloorPosition(act));
 					floor.y    = 0;
 					yaw        = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
-					f32 span   = PSVECDistance(&owner, &floor);
 					XObjChr* p = act->mOwner;
+					f32 span   = PSVECDistance(&owner, &floor);
 					distance   = 1.f + (span - p->mMoveScale.x * GetScaledTargetFloorExtent(act)->x);
 				} else {
 					pos.x    = contact.x;
