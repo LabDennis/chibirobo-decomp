@@ -8151,7 +8151,9 @@ BOOL MenuSave::Update(u32 frames)
 				mShowMessage = FALSE;
 			}
 		}
-		if (gGame.mMemcard.mCard.mBusy != 0) {
+		// through a reference: retail adds the card's offset and mBusy's separately (US 0x8003D2D4 addis 0xf, addis 0x1)
+		Memcard& card = gGame.mMemcard.mCard;
+		if (card.mBusy != 0) {
 			return IsOpen();
 		}
 		(this->*gSaveStepHandlers[mMode])(frames);
