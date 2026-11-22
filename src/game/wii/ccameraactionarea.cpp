@@ -292,6 +292,7 @@ void CCameraActionArea::Update(u32 step)
 		gWiiPointer.mFlags |= 0x100000000ULL;
 		_2E8 = 1;
 	}
+	// retail tests both limits in turn (cmplwi 30, cmplwi 60 at 0x80154DF0), the repeat delay and its step
 	if (_2E8 && _2F0 >= 30 && _2F0 >= 60) {
 		gWiiPointer.mFlags |= 0x100000000ULL;
 		_2F0 = 30;
