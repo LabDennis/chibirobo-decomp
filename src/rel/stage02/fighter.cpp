@@ -5145,6 +5145,26 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
  * @note Address: stage02 .text 0x3BB0
  * @note Size: 0x664
  */
+// Retail loads work->mSpeedRates and work->mFrame before the NULL check, while keeping the
+// float-to-int conversion inside the non-NULL branch; an inline taking (rates, frame) produces this.
+static inline f32 SampleSpeedRate(const u8* rates, f32 frame)
+{
+	f32 rate;
+	if (rates == NULL) {
+		rate = 0.0f;
+	} else {
+		// the script's percent rate for this frame: non-positive becomes 1, capped at 2.5
+		rate = rates[(s32)frame] / 100.0f;
+		if (rate <= 0.0f) {
+			rate = 1.0f;
+		}
+		if (2.5f < rate) {
+			rate = 2.5f;
+		}
+	}
+	return rate;
+}
+
 extern "C" void Fighter_Update(Fighter* work, u32 dt)
 {
 	Mtx rot;
@@ -5152,7 +5172,6 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	Mtx offset;
 	Vec zero;
 	HSD_JObj* jobj;
-	f32 rate;
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
@@ -5177,19 +5196,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 		work->mSpeed = work->mMaxSpeed;
 	}
 	work->mPrevFrame = work->mFrame;
-	if (work->mSpeedRates == NULL) {
-		rate = 0.0f;
-	} else {
-		// the script's percent rate for this frame: non-positive becomes 1, capped at 2.5
-		rate = work->mSpeedRates[(s32)work->mFrame] / 100.0f;
-		if (rate <= 0.0f) {
-			rate = 1.0f;
-		}
-		if (2.5f < rate) {
-			rate = 2.5f;
-		}
-	}
-	work->mFrame = work->mSpeed * rate + work->mFrame;
+	work->mFrame += work->mSpeed * SampleSpeedRate(work->mSpeedRates, work->mFrame);
 	work->mPath->SetAnim(0, TRUE, NULL, NULL, NULL, work->mFrame, 1.0f, 0.0f, 10.0f);
 	ShotList_Update(&work->mShots, dt);
 }
