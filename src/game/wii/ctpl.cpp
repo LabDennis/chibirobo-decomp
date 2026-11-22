@@ -6,6 +6,8 @@
 #include "game/ctpl.h"
 #include "game/cfont.h"
 #include "game/wii/csound.h"
+#include "nw4r/snd/snd_SoundSystem.h"
+#include "nw4r/snd/snd_SoundPlayer.h"
 #include "Dolphin/ai.h"
 #include "Dolphin/os.h"
 #include "Dolphin/GX/GXFifo.h"
@@ -17,31 +19,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-
-extern "C" {
-// the nw4r archive, player, group, heap, track and 3D calls; the library they
-// belong to is still the unnamed unit block around 0x8028A000/0x80296000
-u32 fn_80297EF4(void* player);
-u32 fn_80298040(void* player, CSound* sound);
-s32 fn_80297DF0(void* player, CSound* sound, void* data, u32 dataSize, void* data2, u32 data2Size);
-void fn_802985B4(void* player);
-void* fn_80298978(void* player, u32 index);
-u32 fn_80295D88(CSound* sound);
-BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
-s32 fn_8029AC28(void* group, u32 priority);
-BOOL fn_8029A3E0(void* heap, void* data, u32 size);
-void fn_8029A458(void* heap);
-void fn_8029AFAC(u32 voices, u32 groups);
-void fn_8029B1AC();
-u32 fn_802958C0(void* actor, void* arg);
-void fn_80295914(void* actor, void* arg, void* data, u32 size);
-void fn_80295848(void* sound, f32 volume);
-void fn_80295850(void* sound, f32 pan);
-void fn_80295858(void* sound, f32 pitch);
-void fn_80295690(void* sound, Mtx mtx);
-// the nw4r list insert
-void fn_802343E0(void* list, void* item, void* iter);
-}
 
 namespace nw4r {
 namespace db {
@@ -313,17 +290,17 @@ BOOL CSound::OpenArchiveFile(const char* path)
 static BOOL InitSoundArchivePlayer(CSoundArchivePlayer* player, CSound* sound)
 {
 	player->mReady      = 1;
-	u32 size            = fn_80297EF4(player);
+	u32 size            = player->GetRequiredMemSize(&sound->mDvdSoundArchive);
 	player->mSetupData  = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 4);
-	u32 size2           = fn_80298040(player, sound);
+	u32 size2           = player->GetRequiredStrmBufferSize(&sound->mDvdSoundArchive);
 	player->mSetupData2 = MEMAllocFromExpHeapEx(gWiiGameHeap, size2, 0x20);
-	return fn_80297DF0(player, sound, player->mSetupData, size, player->mSetupData2, size2);
+	return player->Setup(&sound->mDvdSoundArchive, player->mSetupData, size, player->mSetupData2, size2);
 }
 
 static BOOL InitSoundHeap(void* heap, u32 size)
 {
 	void* data = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
-	return fn_8029A3E0(heap, data, size);
+	return ((nw4r::snd::SoundHeap*)heap)->Create(data, size);
 }
 
 void* SoundHeapAlloc(void** slot, u32 size)
@@ -342,7 +319,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 {
 	AIInit(NULL);
 	AXInit();
-	fn_8029AFAC(4, 3);
+	nw4r::snd::SoundSystem::InitSoundSystem(4, 3);
 	sound->mSound3DManager.Init(sound, &sound->mArchivePlayer);
 	sLoaderStack          = (u8*)MEMAllocFromExpHeapEx(gWiiGameHeap, 0x1000, 0x20);
 	sound->mSoundHeapSize = heapSize;
@@ -351,7 +328,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 
 extern "C" void ShutdownAudio(CSound* sound)
 {
-	fn_8029B1AC();
+	nw4r::snd::SoundSystem::ShutdownSoundSystem();
 	AXQuit();
 	AIStopDMA();
 }
@@ -397,11 +374,11 @@ struct CSoundGroup {
 
 BOOL CSound::LoadGroup(s32 groupId)
 {
-	if (fn_80299D64(&mArchivePlayer, groupId, &mSoundHeap, 0)) {
-		for (u32 i = 0; i < fn_80295D88(this); i++) {
-			CSoundGroup* group = (CSoundGroup*)fn_80298978(&mArchivePlayer, i);
+	if (mArchivePlayer.LoadGroup((u32)groupId, &mSoundHeap, 0)) {
+		for (u32 i = 0; i < mDvdSoundArchive.GetPlayerCount(); i++) {
+			CSoundGroup* group = (CSoundGroup*)&mArchivePlayer.GetSoundPlayer(i);
 			if (group->mPriority < 0x40) {
-				fn_8029AC28(fn_80298978(&mArchivePlayer, i), 0x40);
+				mArchivePlayer.GetSoundPlayer(i).SetPlayableSoundCount(0x40);
 			}
 		}
 		return TRUE;
