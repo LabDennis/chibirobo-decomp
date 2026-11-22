@@ -1340,14 +1340,14 @@ if wii:
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # chibi robo's actions, the GameCube's objb_act.cpp: retail 0x800F48E0-0x801067C0 holds its
                 # functions in the reverse order, GetTargetFloorPosition first and UpdatePushedObject last
-                # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
+                # (ResetTumbleAction, the GameCube's former xacttumble.cpp part, follows); -i include/rvl_msl for the
                 # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
                 Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the tumble action's front half, 0x801067C0-0x80106D60: ResetTumbleAction (the
-                # GameCube's xacttumble.cpp), FinishTumbleAction and HandleTumbleActionInput;
+                # GameCube's former xacttumble.cpp part of objb_act.cpp), FinishTumbleAction and HandleTumbleActionInput;
                 # UpdatePlayerTumbleAnimation follows, still to port
                 Object(NonMatching, "game/wii/xacttumble.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the tumble fade and the floor ring (the GameCube's xactradar.cpp tail, retail
+                # the tumble fade and the floor ring (the GameCube's objb_act.cpp, former xactradar.cpp tail, retail
                 # 0x801078C8-0x80107C50); HandleCopterActionInput and the rest of Nr. 68 follow
                 Object(NonMatching, "game/wii/xactradar.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the attachment objects (copter, popper, radar, OX mark), retail
