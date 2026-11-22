@@ -1746,18 +1746,32 @@ void XObjChr::UpdateObject(u32 frames)
 	if (speed > 1.0f)
 		speed *= speed;
 
+	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
+	// WrapAngle inline leaves a copy (fmr) behind each one
 	f32 direction;
 	if (speed > 0) {
 
 		if (gGame.mStatus.mFlags & 0x100) {
 			if (gGame.mStatus.mFlags & 0x200) {
-				if ((mStick[2] >= 0 && mStick[2] <= HALF_PI) || (mStick[2] <= 0 && mStick[2] >= -HALF_PI))
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI));
-				else if (mStick[2] >= HALF_PI && mStick[2] <= 130 * DEG2RAD)
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD)));
-				else if (mStick[2] <= -HALF_PI && mStick[2] >= -130 * DEG2RAD)
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI));
-				else
+				if ((mStick[2] >= 0 && mStick[2] <= HALF_PI) || (mStick[2] <= 0 && mStick[2] >= -HALF_PI)) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (mStick[2] >= HALF_PI && mStick[2] <= 130 * DEG2RAD) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD));
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (mStick[2] <= -HALF_PI && mStick[2] >= -130 * DEG2RAD) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else
 					direction = -WrapAngle(mStick[2] + mMoveRotate.mTarget.y);
 			} else {
 				direction = NAN;
@@ -1781,18 +1795,30 @@ void XObjChr::UpdateObject(u32 frames)
 			}
 		} else if (mCopter.mState == 3) {
 			mCopter.mMoveDirection = 1;
-			direction              = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction              = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		} else if (mCopter.mState == 4 || mCopter.mState == 7 || mCopter.mState == 8) {
 			if ((gGame.mStatus.mFlags & 0x40000000) && IsStopped(this)) {
 				direction = NAN;
 				speed     = 0;
 			} else {
 				mCopter.mMoveDirection = 1;
-				direction              = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+				direction              = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
 				speed *= 0.75f;
 			}
 		} else if (mPopper.mState == 3 || mPopper.mState == 4 || mPopper.mState == 8) {
-			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		} else if (mRope.mState == 5) {
 			if (pad->mStickY > 0.1f) {
 				mRope.mMoveDirection = 1;
@@ -1830,13 +1856,21 @@ void XObjChr::UpdateObject(u32 frames)
 				mPush.mMoveDirection = -1;
 				yaw                  = PI + yaw;
 			}
-			direction = TWO_PI + WrapAngle(yaw);
+			while (yaw < 0.0f)
+				yaw += TWO_PI;
+			while (yaw >= TWO_PI)
+				yaw -= TWO_PI;
+			direction = TWO_PI + yaw;
 			if (!mPush.mTarget || mPush.mPushPositionClamped)
 				speed = 0;
 			else
 				speed = 1.5f;
 		} else {
-			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		}
 		if (__fpclassifyf(mHeldMoveAngle) != FP_NAN)
 			direction = mHeldMoveAngle + (mStick[2] - mHeldStickAngle);
@@ -1896,7 +1930,8 @@ void XObjChr::UpdateObject(u32 frames)
 			mLift.mTarget->mColors[1 - i] = ((u32)rgb.x << 24) | ((u32)rgb.y << 16) | ((u32)rgb.z << 8);
 		}
 	}
-	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
+	for (s32 i = 0; gPlayerItemAnimationTable[i].mItem >= 0; i++) {
+		XObjChrItemAnim* entry = &gPlayerItemAnimationTable[i];
 		if (entry->mItem == mSuits.mCurrent) {
 			HSD_AObj* anim = GetAObj(GetJointByPath(mJObj, entry->mPath, entry->mDepth));
 			if (anim)
@@ -6691,20 +6726,21 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 	}
 
 	UpdatePlayerIdleJointAnimations(player, frames);
-	if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0
-	    && player->mAttachmentJoint->aobj == NULL) {
-		HSD_JObjAddAnimAll(player->mAttachmentJoint, player->mAttachmentJointAnim, NULL, NULL);
-		HSD_JObjReqAnimAll(player->mAttachmentJoint, 0.0f);
+	HSD_JObj* const& attachment          = player->mAttachmentJoint;
+	HSD_AnimJoint* const& attachmentAnim = player->mAttachmentJointAnim;
+	if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0 && attachment->aobj == NULL) {
+		HSD_JObjAddAnimAll(attachment, attachmentAnim, NULL, NULL);
+		HSD_JObjReqAnimAll(attachment, 0.0f);
 	}
-	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
+	for (s32 i = 0; gPlayerItemAnimationTable[i].mItem >= 0; i++) {
+		XObjChrItemAnim* entry = &gPlayerItemAnimationTable[i];
 		if (entry->mItem == player->mSuits.mCurrent) {
 			HSD_JObj* joint = GetJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
-				XObj& suit                = player->mSuits.mObjects[player->mSuits.mCurrent];
-				HSD_AnimJoint* anim       = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_MatAnimJoint* mat     = suit.mArchive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_ShapeAnimJoint* shape = suit.mArchive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_JObjAddAnim(joint, anim, mat, shape);
+				XObj& suit            = player->mSuits.mObjects[player->mSuits.mCurrent];
+				HSD_AnimJoint* anim   = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_MatAnimJoint* mat = suit.mArchive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_JObjAddAnim(joint, anim, mat, suit.mArchive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath));
 				HSD_JObjReqAnim(joint, entry->mFrame);
 			}
 		}
