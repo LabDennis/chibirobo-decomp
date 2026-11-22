@@ -2947,6 +2947,44 @@ void MenuStatus::State6(u32)
 {
 }
 
+// NONMATCHING: retail keeps the SJIS byte in r4 and the lead flag in r3; this form swaps them and inverts the final branch
+extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
+{
+	menu->mTitle.mActive = TRUE;
+	menu->mTitle.mCount  = 0;
+	if (text == NULL) {
+		return;
+	}
+	menu->mTitle.mColor = color;
+	for (s32 i = 0; i < 20 && *text; i++, text++) {
+		menu->mTitle.mChars[i].mText   = text;
+		menu->mTitle.mChars[i].mFade   = -0.2f * i;
+		menu->mTitle.mChars[i].mHold   = gRefreshRate;
+		menu->mTitle.mChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		menu->mTitle.mChars[i].mAngle1 = DEG2RAD * (rand() % 360);
+		menu->mTitle.mCount++;
+		if (gGame.mLanguage == 0) {
+			u8 c      = *text;
+			u8 single = FALSE;
+			u8 a      = (c >= 0x81 && c <= 0x9F);
+			if (!a) {
+				u8 b = (c >= 0xE0 && c <= 0xFC);
+				if (!b) {
+					single = TRUE;
+				}
+			}
+			if (!single) {
+				text++;
+			}
+		}
+	}
+	for (s32 i = menu->mTitle.mCount; i < 20; i++) {
+		menu->mTitle.mChars[i].mText = NULL;
+		menu->mTitle.mChars[i].mFade = 0.0f;
+		menu->mTitle.mChars[i].mHold = 0.0f;
+	}
+}
+
 void MenuStatus::vf0C(CbPane* pane)
 {
 	s32 kind = pane->mKind;
