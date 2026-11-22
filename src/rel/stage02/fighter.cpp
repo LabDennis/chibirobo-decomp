@@ -2691,6 +2691,8 @@ extern "C" void DrawFighterHud(void)
  * @note Address: stage02 .text 0x1B38
  * @note Size: 0x2FC
  */
+// NONMATCHING: the four up vectors sit in the frame in reverse order (retail has the trail's lowest), and one
+// register swap in the trail loop.
 extern "C" void DrawShots(void)
 {
 	u32 i;
@@ -2946,12 +2948,13 @@ extern "C" void DrawFighterStage(void)
  * @note Address: stage02 .text 0x1E44
  * @note Size: 0x514
  */
+// NONMATCHING: register colouring only (loop pointers and best swap with retail), and mLastTarget reloads &fighterWork
+// where retail reuses the lock block's base.
 extern "C" void UpdateFighter(u32 dt)
 {
 	Mato* best;
 	f32 bestDist;
 	s32 i;
-	void* sfx;
 
 	if (fighterWork.mBody == NULL) {
 		return;
@@ -2973,9 +2976,9 @@ extern "C" void UpdateFighter(u32 dt)
 	fighterWork.mPlayerRotY = -80.0f * DEG2RAD * pad.mPad->mStickX;
 	Fighter_Update(&fighterWork, dt);
 	PilotNwing_Update(&pilotNwing, dt, fighterWork.mFrame);
-	matoList.mFrameCount++;
 	matoList.mProgress = fighterWork.mFrame / fighterWork.mEndFrame;
 	matoList.mTimeLeft = fighterWork.mTimeLeft / 60;
+	matoList.mFrameCount++;
 	for (i = 0; i < matoList.mCount; i++) {
 		Mato* item = &matoList.mMatos[i];
 		if (!item->mOnScreen) {
@@ -2989,9 +2992,8 @@ extern "C" void UpdateFighter(u32 dt)
 			item->mMarkerPhase += 1.0f;
 		}
 	}
-	sfx = gGame + GAME_OFS(0xE7E24, 0xE713C);
 	// re-lock the aim only once the flight is past its first percent and the lock-on sound 0x20006 isn't playing
-	if (IsGameSoundPlaying(sfx, 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+	if (IsGameSoundPlaying(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
 		Vec pos;
 		best                     = NULL;
 		fighterWork.mAim.mTarget = NULL;
@@ -3021,7 +3023,8 @@ extern "C" void UpdateFighter(u32 dt)
 		}
 		if (best != NULL && !best->mPending) {
 			if (best != NULL && fighterWork.mLastTarget != best) {
-				PlayGameSound(sfx, 0x20006, 0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
+				PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006,
+				              0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
 			}
 			fighterWork.mAim.mTarget = best;
 		}
@@ -3032,7 +3035,7 @@ extern "C" void UpdateFighter(u32 dt)
 		s32 frame = GET_LE32(&soundCueTable[0][i * 8]);
 		s32 id    = GET_LE32(&soundCueTable[0][i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
-			PlayGameSound(sfx, id, 0xFF);
+			PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), id, 0xFF);
 		}
 	}
 }
@@ -4522,6 +4525,8 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
  * @note Address: stage02 .text 0x333C
  * @note Size: 0x874
  */
+// NONMATCHING: retail keeps the player + 0x10000 base across the inlined SetBattery clamps where the build forms it
+// again, and two literal loads after atan2 swap order.
 extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 {
 	Mato* item = work->mAim.mTarget;
@@ -5662,6 +5667,8 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
  * @note Address: stage02 .text 0x4214
  * @note Size: 0x2DC
  */
+// NONMATCHING: retail gives the three aim parameter int-to-float conversions one stack slot (frame 0x20); the build
+// gives each its own (frame 0x30). A member inline for the read and if/else arms did not share it.
 extern "C" void Fighter_Init(Fighter* work, UnkDolObj* body, UnkDolObj* path, void* extra)
 {
 	HSD_AObj* pathAnim;
@@ -6902,6 +6909,8 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
  * @note Address: stage02 .text 0x53E4
  * @note Size: 0x664
  */
+// NONMATCHING: retail holds the spoke inner radius in two registers (fmr f29, f28: one for the sin, one for the cos term)
+// and so saves f18 too (frame 0x10 bigger); two equal locals fold into one here. The rest is FPR colouring.
 extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx fighterMtx)
 {
 	Vec pos;
