@@ -50,13 +50,8 @@ void JObjClearPObjFlags(HSD_JObj* jobj, f32** flags, s32 type);
 
 inline bool HSD_JObjMtxIsDirty(HSD_JObj* jobj)
 {
-	bool result;
 	JOBJ_H_ASSERT_JOINT(605, jobj);
-	result = false;
-	if (!(jobj->flags & USER_DEF_MTX) && (jobj->flags & MTX_DIRTY)) {
-		result = true;
-	}
-	return result;
+	return !(jobj->flags & USER_DEF_MTX) && (jobj->flags & MTX_DIRTY);
 }
 
 inline void HSD_JObjSetupMatrix(HSD_JObj* jobj)

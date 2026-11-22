@@ -18,6 +18,7 @@
 #include "game/cgame.h"
 #include "game/cgameutil.h"
 #include "game/cjobjset.h"
+#include "game/cjobjinlineattach.h"
 
 extern "C" {
 #include <dolphin/os.h>
@@ -6338,15 +6339,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
  * @note Address: 0x80084C78
  * @note Size: 0x148
  */
-// a CJObj that starts out holding a jobj's current transform
-#if defined(VERSION_JP)
-#endif
-CJObj::CJObj(HSD_JObj* jobj)
-{
-	Attach(jobj);
-}
-#if defined(VERSION_JP)
-#endif
+// CJObj::CJObj(HSD_JObj*): the weak copy of the cjobjinlineattach.h constructor, which CMsgFont_Draw could not expand
 
 #if defined(VERSION_PAL)
 #define MSG_FADE_RATE (1.0f / (0.3f * gVideoFramesPerSecond))
