@@ -1180,9 +1180,11 @@ void CGame::Update(u32 frames)
 	if (!mResetRequested) {
 		BOOL pressed = OSGetResetButtonState();
 		if (gPowerButtonPressed) {
-			RequestReset(2);
+			mResetRequested = true;
+			mResetType      = 2;
 		} else if (pressed) {
-			RequestReset(3);
+			mResetRequested = true;
+			mResetType      = 3;
 		}
 	}
 
