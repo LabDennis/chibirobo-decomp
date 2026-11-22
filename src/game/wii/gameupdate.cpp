@@ -93,6 +93,7 @@ void fn_800C5814(XObjPool* pools);        // reads the stage's objects in again
 
 extern s32 gRefreshRate;
 extern u8 gPowerButtonPressed;
+extern u32 gSpiderSmallSoundId;
 
 class Logo;
 class Title;
@@ -101,8 +102,6 @@ extern "C" {
 BOOL OSGetResetButtonState();
 void OSPanic(const char* file, int line, const char* msg, ...);
 char* FormatToStaticBuffer(const char* fmt, ...);
-void PauseGameSounds(CGame* game, f32 fadeSeconds);
-void ResumeGameSounds(CGame* game, f32 fadeSeconds);
 void fn_80024CC0(CGame* game);                      // the frame's work at the start of gamedraw.cpp's range
 void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws
 void fn_80084B90(void* menu, s32 index);            // opens one of the menus
@@ -140,6 +139,108 @@ static inline void StepSceneDraws(u32 frames)
 	while (scene->mPending != 0) {
 		if (scene->mPending != 0) {
 			scene->vf038(scene->mPending - 1);
+		}
+	}
+}
+
+static inline CSoundHandle* FindTrack(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			return &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+		}
+	}
+	return NULL;
+}
+
+static inline bool IsTrackPaused(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			return gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsPause();
+		}
+	}
+	return false;
+}
+
+static inline void PauseGameSounds(CGame* game, f32 fade)
+{
+	if (game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+			if (handle.IsAttachedSound() && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->PauseSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(0, 1000.0f * fade);
+		}
+	}
+	game->_D9B5C++;
+	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+	}
+	game->_D9B60++;
+}
+
+static inline void ResumeGameSounds(CGame* game, f32 fade)
+{
+	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+			if (handle.IsAttachedSound() && handle.IsPause()) {
+				handle.Pause(false, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->ResumeSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(127.0f * game->mMovieVolume, 1000.0f * fade);
+		}
+	}
+	if (game->_D9B60 > 0) {
+		if (--game->_D9B60 == 0) {
+			if (gSpiderSmallSoundId != 0) {
+				u32 music = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+				if (music != 0) {
+					s32 frames = gRefreshRate * 0.2f;
+					u32 id     = music & 0xFFFF;
+					for (int i = 0; i < 0x40; i++) {
+						nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
+							handle.Pause(true, frames);
+						}
+					}
+				}
+			}
+		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
+			s32 frames = gRefreshRate * fade;
+			for (int i = 0; i < 0x40; i++) {
+				nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
+					handle.Pause(false, frames);
+				}
+			}
 		}
 	}
 }
@@ -1056,18 +1157,16 @@ static inline bool IsScopeRareItem(s32 item)
  * @note Address: 0x8001E830
  * @note Size: 0x57C4
  */
-// NONMATCHING: the source calls PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown where retail
-// expands them (they are defined in the next file's range), and gamesound.cpp's FindSound, which retail
-// expands in the scope's night check; it calls vf16C without the frame count retail passes; the three
-// nw4r camera reads of the stage camera object (the GameCube had none) stand as their CCamera fallback
-// only; isnan is fdlibm's function where retail calls the Wii MSL's __fpclassifyf. The rest is
-// register and stack placement that follows from those
+// NONMATCHING: retail expands UpdateResetRequest and fn_80114564; vf16C is called without the frame count
+// retail passes; the three nw4r camera reads of the stage camera object (the GameCube had none) stand as
+// their CCamera fallback only; isnan is fdlibm's function where retail calls the Wii MSL's __fpclassifyf.
+// The rest is register and stack placement that follows from those
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
 	s32 i;
 	gWiiPointer.Update(frames);
-	if (!mMovieOnThread && !(GetStatusFlags(1) && IsSystemMessage3Shown())) {
+	if (!mMovieOnThread && !(GetStatusFlags(1) && mSystemMessage == GetLocalizedInterfaceText(3) && mSystemMessageAlpha > 0.0f)) {
 		if (mMovie.mState != 0 && !mHomeMenu.IsOpen() && !mResetRequested && !GetStatusFlags(0x200000000000002ULL)) {
 			s32 result = mMovie.Update();
 			if (result < 0) {
@@ -1192,7 +1291,7 @@ void CGame::Update(u32 frames)
 		ResumeGameSounds(this, 0.0f);
 	}
 	if (GetStatusFlags(1) || (mTitle.mState >= 11 && mTitle.mState < 23)) {
-		if (IsSystemMessage3Shown()) { // the message that the remote is gone stops the game
+		if (mSystemMessage == GetLocalizedInterfaceText(3) && mSystemMessageAlpha > 0.0f) { // the remote message stops the game
 			if (!GetStatusFlags(0x800000000000000ULL)) {
 				SetStatusFlags(0x800000000000000ULL);
 				PauseGameSounds(this, 0.0f);
@@ -1670,7 +1769,7 @@ void CGame::Update(u32 frames)
 			} else if (mPointer.mScopeItem >= 0) {
 				if (mTimeState.mMode == 1 && mTimeState.mTime > 0.5f
 				    && (gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0) == 0
-				    && FindSound(&gGame.mSound, 0x10) == NULL) {
+				    && gGame.mSound.FindTrack(0x10) == NULL) {
 					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
 						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.1f);
 					}
