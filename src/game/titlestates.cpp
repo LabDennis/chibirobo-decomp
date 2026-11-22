@@ -2459,8 +2459,10 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
  * @note Address: 0x80028BAC
  * @note Size: 0x5BC
  */
-// NONMATCHING: the loop's float registers are assigned in another order (the rot and pop products after the alpha
-// conversion take f0/f4 in retail, f1/f5/f0 here; i and the colour mask swap r25/r26)
+// NONMATCHING: the volatile float registers and one product's place differ: after the alpha conversion retail takes f0/f4
+// for the rot and pop products (0x80028F10), this build f1/f5/f0, and retail multiplies 1.7 * pop behind the width
+// conversion's lfd (0x80028FB4), this build ahead of it. The locals declared at the top, alpha first, give retail's saved
+// registers; inside the loop i and the colour mask swapped r25/r26 and the floats came out in another order
 // draws the title's name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawTitleNameBubbles(Title* title)
 {
@@ -2470,10 +2472,19 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj bubble = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[108 - StatusTextureOffset], 0);
-		f32 zero       = 0.0f;
-		u32 color      = title->mName.mColor & 0xFFFFFF00;
+		u32 alpha;
+		f32 rot;
+		f32 pop;
+		f32 y;
+		f32 x;
+		f32 scale;
+		f32 bob;
+		f32 tilt;
+		f32 swell;
+		f32 zero  = 0.0f;
+		u32 color = title->mName.mColor & 0xFFFFFF00;
 		for (s32 i = 0; i < title->mName.mCount; i++) {
-			f32 scale = title->mName.mChars[i].mScale;
+			scale = title->mName.mChars[i].mScale;
 			if (scale <= zero) {
 				continue;
 			}
@@ -2485,25 +2496,18 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, title->mName.mChars[i].mText, &width);
-			f32 bob;
-			f32 tilt;
-			f32 swell;
-			f32 pop;
-			f32 x;
-			f32 rot;
-			f32 y;
-			bob   = 4.0f * std::sinf(title->mName.mChars[i].mBob);
-			tilt  = std::sinf(0.7f * title->mName.mChars[i].mTilt);
-			swell = std::sinf(PI * scale);
-			pop   = 0.2f * swell + std::sinf(HALF_PI * scale);
+			bob            = 4.0f * std::sinf(title->mName.mChars[i].mBob);
+			tilt           = std::sinf(0.7f * title->mName.mChars[i].mTilt);
+			swell          = std::sinf(PI * scale);
+			pop            = 0.2f * swell + std::sinf(HALF_PI * scale);
 #if defined(VERSION_PAL)
 			x = 20.0f + (40.0f * i + (320.0f - 40.0f * title->mName.mCount / 2.0f));
 #else
 			x = 24.0f + (48.0f * i + (320.0f - 48.0f * title->mName.mCount / 2.0f));
 #endif
-			u32 alpha = 255.0f * scale;
-			rot       = -(DEG2RAD * (10.0f * tilt));
-			y         = 64.0f + bob;
+			alpha = 255.0f * scale;
+			rot   = -(DEG2RAD * (10.0f * tilt));
+			y     = 64.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, 20.0f * (2.0f * pop), 20.0f * (2.0f * pop), zero, -zero, rot);
 			f32 size   = 20.0f * (1.7f * pop);
