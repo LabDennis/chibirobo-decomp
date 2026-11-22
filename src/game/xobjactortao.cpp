@@ -2,6 +2,10 @@
 #include "game/xchr.h"
 #include "game/gmath.h"
 
+// NONMATCHING: UpdateAfterAnim still differs from retail; in data (GGTE01), .rodata
+// (0x8020C178) lacks the header-originated six-Vec prefix (0x48 bytes), and
+// .data/.sdata/.sdata2 differ in weak RTTI records and literal pool entries.
+
 extern "C" {
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
