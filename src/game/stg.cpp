@@ -3233,9 +3233,9 @@ static inline void LoadOverviewTexture(CTexObj& tex, s32 icon)
 }
 static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 {
-	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
 	f32 scale = menu->mDetailScale;
 	f32 alpha = menu->mAlpha;
+	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
 	// The original constructs a texture and advances its panel counter even when closed.
 	static u32 frame = 0;
 	CTexObj panelTexture;
@@ -3252,15 +3252,15 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
-	                             size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
+	                             0.0f, size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
-	                             helpSize, helpSize);
+	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
+	                             0.0f, helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
@@ -4148,7 +4148,9 @@ static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32
 }
 
 // NONMATCHING: same instructions, other registers: retail has selected in r31, i in r30 and menu in r29,
-// the build menu in r31 and the two locals in r21 and r20; the float registers follow
+// the build menu in r31 and the two locals in r21 and r20; the float registers follow. Declaring selected first
+// or as an if/else does not move them. The cell products are variable-first in retail (US 0x8004FB18 fmadds
+// f0,f0,f28,f23 and f2,f2,f27,f24), so the 80 and 60 are locals.
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	// drawn on its own page (mode 8) and during the mode 4 slide between pages
@@ -4163,9 +4165,10 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			f32 cellWidth = 80.0f, cellHeight = 60.0f;
 			for (int i = 0; i < 24; i++) {
-				f32 x     = 2.0f + ((i % 6) * 80.0f + left);
-				f32 y     = 2.0f + ((i / 6) * 60.0f + top);
+				f32 x     = 2.0f + ((i % 6) * cellWidth + left);
+				f32 y     = 2.0f + ((i / 6) * cellHeight + top);
 				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				if (gStatusIconUnlocked[i] != 0) {
 					int id = i * 2 + 1;
