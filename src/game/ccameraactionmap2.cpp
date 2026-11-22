@@ -2488,6 +2488,9 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
  * @note Address: 0x8013BB00
  * @note Size: 0x1E4
  */
+// NONMATCHING: identical instruction stream — the residual is saved-reg colouring (r3↔r5, r4↔r6)
+// plus two CamAreaInfo vptr temps written to swapped stack slots (0x8↔0xc), the same temp-slot
+// reuse wall as SetMapCameraSideEndpoints.
 extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 {
 	CVec target = map->mTarget->mMoveTranslate;
@@ -3746,7 +3749,9 @@ extern "C" void C_VECCrossProduct(Vec* a, Vec* b, Vec* axb);
  * @note Size: 0x250
  */
 // NONMATCHING: retail converts the second corner in the two stack slots of the first one (x1 in z0's, z1 in x0's), the build
-// takes two more and its frame is 0x10 bigger. the same in CollectMapCameraAreaIntersections and CalcIntersectVec
+// takes two more and its frame is 0x10 bigger. the same in CollectMapCameraAreaIntersections and CalcIntersectVec.
+// Tried: dropping `CVec cross` for a direct `dir.y` read (85.2) and an `f32 cross` scalar (76.6) — both repack the
+// whole local block one slot lower, so the copy stays.
 extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 {
 	CamMapEntry* entry = map->mNearestEyeEntry;
@@ -8148,6 +8153,9 @@ extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index)
  * @note Size: 0x1F8
  */
 // vtable slot _0C, PreviousUpdate
+// NONMATCHING: identical instruction stream — the residual is branch offsets, anonymous .sdata2
+// pool names and one scheduling swap (retail keeps gCameraAreaState in r6, the build reloads it
+// into r4). No source-level divergence left.
 void CCameraActionMap::PreviousUpdate()
 {
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
