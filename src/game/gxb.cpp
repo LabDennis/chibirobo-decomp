@@ -795,7 +795,6 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
  * @note Address: 0x80023EE0
  * @note Size: 0x20C
  */
-// NONMATCHING: regalloc
 extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time)
 {
 	color->mColor.r  = r0;
@@ -816,11 +815,8 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time            = FRAME_RATE * time;
-		color->mSpeed.r = ((f32)r1 - (f32)r0) / time;
-		color->mSpeed.g = ((f32)g1 - (f32)g0) / time;
-		color->mSpeed.b = ((f32)b1 - (f32)b0) / time;
-		color->mSpeed.a = ((f32)a1 - (f32)a0) / time;
+		color->mSpeed.Set(((f32)r1 - (f32)r0) / (FRAME_RATE * time), ((f32)g1 - (f32)g0) / (FRAME_RATE * time),
+		                  ((f32)b1 - (f32)b0) / (FRAME_RATE * time), ((f32)a1 - (f32)a0) / (FRAME_RATE * time));
 	}
 }
 
