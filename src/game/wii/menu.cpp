@@ -2425,6 +2425,31 @@ void MenuStatus::ClearSelections()
 	}
 }
 
+void MenuStatus::vf1C(nw4r::math::VEC2*)
+{
+	RestoreSelections();
+}
+
+void MenuStatus::RestoreSelections()
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (mMode == 1 && mPhase == 0 && mSelection == -1 && mStickSelection != -1) {
+		mSelection = mStickSelection;
+	}
+	if (mMode == 2 && mPhase == 0 && mItemSelection == -1 && mStickItemSelection != -1) {
+		mItemSelection = mStickItemSelection;
+	}
+	if (mMode == 9 && mPhase == 0 && mOverviewSelection == -1 && mStickOverviewSelection != -1) {
+		mOverviewSelection = mStickOverviewSelection;
+	}
+	if (mMode == 8 && mPhase == 0 && mIconSelection == -1 && mStickIconSelection != -1) {
+		mIconSelection = mStickIconSelection;
+	}
+}
+
 // the PC's dialogue line back to full-width spaces; on the Wii the characters start off the right edge of a wide screen.
 // NONMATCHING: retail picks the first width as 854 with the 640 copied in from a second register (0x8006D2FC), the one
 // difference left; an if or either ternary gives the plain two-load form
