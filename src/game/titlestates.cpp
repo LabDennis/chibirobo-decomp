@@ -2518,6 +2518,8 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 	}
 }
 
+// NONMATCHING: the loop's floats are numbered the other way round: retail keeps bob in f31 and x in f14
+// (0x8002892C fmuls f31, 0x800289D8 fadds f14), ours x in f31 and bob in f14
 extern "C" void DrawTitleHelpText(Title* menu)
 {
 	f32 alpha   = menu->mMenuAlpha * menu->mHelpAlpha;
@@ -2555,7 +2557,12 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
 		f32 padding = HelpGlyphPadding(width, scale);
-		DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gTitleHelpOutlineX, gTitleHelpOutlineY);
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gTitleHelpOutlineX[j] + padding / 2.0f,
+			                   bob + (384.0f + gTitleHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)opacity | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
