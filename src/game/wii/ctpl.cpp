@@ -20,21 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-extern "C" {
-// the nw4r archive, player, group, heap, track and 3D calls; the library they
-// belong to is still the unnamed unit block around 0x8028A000/0x80296000
-void fn_802985B4(void* player);
-void fn_8029A458(void* heap);
-u32 fn_802958C0(void* actor, void* arg);
-void fn_80295914(void* actor, void* arg, void* data, u32 size);
-void fn_80295848(void* sound, f32 volume);
-void fn_80295850(void* sound, f32 pan);
-void fn_80295858(void* sound, f32 pitch);
-void fn_80295690(void* sound, Mtx mtx);
-// the nw4r list insert
-void fn_802343E0(void* list, void* item, void* iter);
-}
-
 namespace nw4r {
 namespace db {
 void Panic(const char* file, int line, const char* fmt, ...);
