@@ -366,8 +366,10 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 // 0x800AD498, the load half of LoadFromPlacement: the kind's archive, model id and a tex-stage
 // count out of the object data, "<name>.brres" through CObj::Load. the GameCube keeps this
 // inline in xobjinit.cpp (there with "%s.dat" and ARAM flags instead of the stage count)
-// NONMATCHING: ~87% fuzzy - retail CSEs GetPool()'s mObjData load across the two &&-range tests
-// and schedules the selects differently; the generated logic is otherwise identical
+// NONMATCHING: ~94% fuzzy - the pool-range clause binds the pool once for both compares, like
+// retail (two GetPool evals per block, && materialized as a bool); the rest is register/scheduling
+// debris: retail drops the dead inner select-else in the first eval, keeps an unexplained li r3,0
+// per status block, and schedules the "ufo/wall2" address before the ModelName checks
 extern "C" BOOL fn_800AD498(XObj* obj)
 {
 	AttrInfo& attr     = obj->mAttr;
@@ -390,13 +392,16 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 	if (objFlags & 4) {
 		texNum = 4;
 	}
+	BOOL inRange;
 	if (gGame.GetStatusFlags(0x2000000000ULL) != 0) {
-		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+		s32 pool = 0;
+		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || (inRange = (pool = obj->GetPool()) >= 4 && pool <= 16)) {
 			texNum += 1;
 		}
 	}
 	if (gGame.GetStatusFlags(0x100000000000ULL) != 0) {
-		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || (obj->GetPool() >= 4 && obj->GetPool() <= 16)) {
+		s32 pool = 0;
+		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || (inRange = (pool = obj->GetPool()) >= 4 && pool <= 16)) {
 			texNum += 5;
 		}
 	}
