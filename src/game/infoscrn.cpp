@@ -1682,6 +1682,8 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 		return active;
 	return inactive;
 }
+// NONMATCHING: registers. retail keeps opacity on the stack (0x1C4) instead of a saved float register, and the
+// gauge pointer and the three gGame bases sit in r29/r26..r28 where ours take r20/r17..r19
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
@@ -1733,12 +1735,13 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	u32 green        = 0x89ff2900 | digitAlpha;
 	u32 gray         = 0x50505000 | digitAlpha;
 	for (int i = 0; i < 4; ++i) {
-		f32 digitScale = scale, offset = largeX;
+		f32 digitScale = scale, offset = largeX, verticalOffset = 0.f;
 		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
 			break;
 		if (i == 0) {
-			digitScale = smallScale;
-			offset     = smallX;
+			digitScale     = smallScale;
+			offset         = smallX;
+			verticalOffset = 0.f;
 		}
 		if (!h->mDigitRolling[i])
 			h->mDigitDelta[i] = change;
@@ -1772,28 +1775,34 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 
 		if (h->mDigitDelta[i] > 0) {
 			color = BatteryDigitColor(whole, red, green, gray);
-			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
-			                     (1.f - amount), true);
-			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10), (1.f - amount),
-			                     amount);
+			DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * amount,
+			                     .1f * digit + (1.f - amount) / 10.f, amount, (1.f - amount), true);
+			DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10),
+			                     (1.f - amount), amount);
 		} else if (h->mDigitDelta[i] < 0) {
 			color = BatteryDigitColor(whole, red, green, gray);
-			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
-			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole - 1) % 10) + amount / 10.f,
-			                     (1.f - amount), amount, true);
+			DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * amount, .1f * digit, amount,
+			                     (1.f - amount));
+			DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * (1.f - amount),
+			                     .1f * ((whole - 1) % 10) + amount / 10.f, (1.f - amount), amount, true);
 		} else {
 			color = BatteryDigitColor(whole, red, green, gray);
 			if (h->mDigitLastDelta[i] > 0) {
-				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
-				                     (1.f - amount), true);
-				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10),
-				                     (1.f - amount), amount);
+				DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * amount,
+				                     .1f * digit + (1.f - amount) / 10.f, amount, (1.f - amount), true);
+				DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * (1.f - amount),
+				                     .1f * ((whole + 1) % 10), (1.f - amount), amount);
 			} else if (h->mDigitLastDelta[i] < 0) {
-				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
-				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount),
+				DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * amount, .1f * digit, amount,
+				                     (1.f - amount));
+				DrawBatteryDigitPart(tex, color, i, offset, y + verticalOffset, digitScale, gap, .1f * (1.f - amount),
 				                     .1f * ((whole - 1) % 10) + amount / 10.f, (1.f - amount), amount, true);
 			} else {
-				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f, .1f * digit, 1, 0);
+				CopyMenuTextureObject(&tex, &HudTexture(125));
+				SetBatterySlice(tex, .1f, .1f * digit);
+				f32 w  = digitScale * GXGetTexObjWidth(&tex);
+				f32 ht = digitScale * GXGetTexObjHeight(&tex) / 10.f;
+				DrawBatteryQuad(tex, color, BatteryDigitX(i, offset, w + gap), y + verticalOffset, w, ht);
 			}
 		}
 	}
@@ -1806,10 +1815,11 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			h->mBatteryEmptyTimer = 0;
 		}
 		for (int i = 0; i < 4; ++i) {
-			f32 digitScale = scale, offset = largeX;
+			f32 digitScale = scale, offset = largeX, verticalOffset = 0.f;
 			if (i == 0) {
-				digitScale = smallScale;
-				offset     = smallX;
+				digitScale     = smallScale;
+				offset         = smallX;
+				verticalOffset = 0.f;
 			}
 
 			int frame = h->mBatteryEmptyStep % 10 + 1;
@@ -1819,18 +1829,20 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			f32 digitW = digitScale * GXGetTexObjWidth(&tex);
 			f32 digitH = digitScale * GXGetTexObjHeight(&tex) / 10.f;
 			f32 rest   = .1f * (10 - frame);
-			DrawBatteryQuad(tex, gray, BatteryDigitX(i, offset, digitW + gap), y + fill * digitH * .5f, digitW, digitH * rest);
+			DrawBatteryQuad(tex, gray, BatteryDigitX(i, offset, digitW + gap), (y + verticalOffset) + fill * digitH * .5f, digitW,
+			                digitH * rest);
 
 			if (i == 0) {
-				digitScale = .8f * scale;
-				offset     = 11.2f * scale;
+				digitScale     = .8f * scale;
+				offset         = 11.2f * scale;
+				verticalOffset = 0.f;
 			} else
 				offset = 1.7f * scale;
 			CopyMenuTextureObject(&tex, &HudTexture(126));
 			f32 w = digitScale * GXGetTexObjWidth(&tex), ht = digitScale * GXGetTexObjHeight(&tex);
 			SetBatterySlice(tex, fill, rest);
 			u32 emptyColor = 0x5176ff00 | digitAlpha;
-			DrawBatteryOverlay(tex, emptyColor, i, offset, y, w, ht, gap, fill, rest);
+			DrawBatteryOverlay(tex, emptyColor, i, offset, y + verticalOffset, w, ht, gap, fill, rest);
 		}
 	}
 	if (h->mBatteryDim == 1) {
@@ -1867,14 +1879,15 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	for (int i = 0; i < 4; ++i) {
-		f32 size = scale, offset = largeX;
+		f32 size = scale, offset = largeX, verticalOffset = 0.f;
 		if (i == 0) {
-			size   = smallScale;
-			offset = 9.9f * scale;
+			size           = smallScale;
+			offset         = 9.9f * scale;
+			verticalOffset = 0.f;
 		}
 		CopyMenuTextureObject(&tex, &HudTexture(125));
 		f32 w = 1.4f * (size * GXGetTexObjWidth(&tex)), ht = size * GXGetTexObjHeight(&tex) / 10.f;
-		f32 x = BatteryDigitX(i, offset, w + .4f * scale) - w * .5f, top = y - ht * .5f;
+		f32 x = BatteryDigitX(i, offset, w + .4f * scale) - w * .5f, top = (y + verticalOffset) - ht * .5f;
 		Vec points[]
 		    = { (Vec) { x, top, 0 }, (Vec) { x + w, top, 0 }, (Vec) { x + w, top + ht, 0 }, (Vec) { x, top + ht, 0 }, (Vec) { x, top, 0 } };
 		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, points,
