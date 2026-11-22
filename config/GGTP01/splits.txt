@@ -316,14 +316,14 @@ game/cfiletextdtor.cpp:
 	.text       start:0x8001D228 end:0x8001D284
 
 game/sound.cpp:
-	.text       start:0x8001E050 end:0x8001FCD0
-	.rodata     start:0x80200DCC end:0x802017C0
-	.data       start:0x80216EA8 end:0x80217A54
-	.sdata      start:0x80661048 end:0x80661050
-	.sdata2     start:0x80662F34 end:0x80662F6C
+	.text       start:0x8001DDE0 end:0x800200C0
+	.rodata     start:0x80200CC0 end:0x802017C0
+	.data       start:0x80216EA8 end:0x80217A58
+	.sdata      start:0x80661040 end:0x80661058
+	.sdata2     start:0x80662F28 end:0x80662F78
 
 game/gxa.cpp:
-	.text       start:0x8001D284 end:0x8001E050
+	.text       start:0x8001D284 end:0x8001DDE0
 	.ctors      start:0x80200068 end:0x8020006C
 	.bss        start:0x80368A10 end:0x80368A30
 	.sbss       start:0x80662018 end:0x8066201C
@@ -332,7 +332,7 @@ game/gameosreport.cpp:
 	.text       start:0x80015ACC end:0x80015B1C
 
 game/gxb.cpp:
-	.text       start:0x8001FCD0 end:0x80031940
+	.text       start:0x800200C0 end:0x80031940
 	.bss        start:0x80368A8C end:0x80368B64 align:4
 	.sbss2      start:0x806670D0 end:0x806670D4
 

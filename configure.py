@@ -465,7 +465,14 @@ gamecube_libs = [
             Object(NonMatching, "game/progressive.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US .text 0x8001D9B0..0x8001FCF4, AnimSfx through PlayGameSfxAtFullVolume, with
+            # __FILE__ "sound.cpp" in LoadGameSoundBank and __vt__7AnimSfx in its .data). -inline auto,deferred,
+            # as retail shows: GC .text runs AnimSfx::Update .. PlayGameSfxAtFullVolume, the exact reverse of
+            # the Wii file (game/wii/sound.cpp: InitGameSound first, AnimSfx last); .data has stageSfxTable
+            # (LoadGameSoundBank) and musicTable (PlayGameSound) ahead of the message-group tables
+            # (PlayMessageGlyphSound), and .sdata has sSoundReadOperation (LoadGameSoundBank) ahead of
+            # sMessageGroup14SoundIds (PlayMessageGlyphSound)
+            Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             # -inline noauto, as retail shows: UpdateTitleScreen (JP 0x8002E548) calls StartScreenFade
             # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
             # three; no other function of the unit changes with the flag
