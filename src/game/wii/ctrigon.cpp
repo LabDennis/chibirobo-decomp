@@ -2,11 +2,12 @@
 // __sinit_\ctrigon_cpp). Unlike the GameCube file, whose functions sit in reverse, the Wii
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
-// NONMATCHING: the triangle parser on the NW4R shapes, the grid builder, Create and
-// _trigonChecker are not written yet (Create and the parser inline the g3d accessors with
+// NONMATCHING: the triangle parser on the NW4R shapes, the grid builder and
+// _trigonChecker are not written yet (the parser inlines the g3d accessors with
 // their asserts). TrigonGetVtxS8 differs from retail in register choice.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
+#include "nw4r/g3d/g3d_scnmdl.h"
 #include "game/mm.h"
 #include "game/ut.h"
 #include "Dolphin/gx.h"
@@ -46,6 +47,41 @@ void* TrigonGetIdxS8U8(void* base, u8* dl);
 void* TrigonGetIdxS8U16(void* base, u8* dl);
 void* TrigonGetIdxU8U8(void* base, u8* dl);
 void* TrigonGetIdxU8U16(void* base, u8* dl);
+void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::math::MTX34* worldMtx);
+}
+
+/**
+ * @note Address: 0x802BA4F4
+ * @note Size: 0x184
+ */
+// CTrigon::Create: reserve enough triangles for every polygon, then let the parser fill the pool and grid.
+// NONMATCHING: retail's NW4R assertion strings and CTrigon allocation strings are separate literal objects;
+// this unit's literals share @stringBase0, changing pool references and saving r27 instead of r26.
+extern "C" TRIGON_INFO* fn_802BA4F4(CTrigon* trigon, nw4r::g3d::ScnMdl* model)
+{
+	nw4r::g3d::ResMdl mdl = model->GetResMdl();
+	trigon->mNumMax       = 0;
+	for (int i = 0; i < mdl.GetResShpNumEntries(); i++) {
+		nw4r::g3d::ResShp shp = mdl.GetResShp(i);
+		if (shp.ptr() == NULL) {
+			nw4r::db::Panic("g3d_resshp_ac.h", 0x3A, "%s::%s: Object not valid.", "ResShp", "ref");
+		}
+		trigon->mNumMax += shp.ref().numPolygon;
+	}
+	if (trigon->mNumMax == 0) {
+		return NULL;
+	}
+	trigon->mTri = (TRIGON_INFO*)mm::Alloc((trigon->mNumMax * sizeof(TRIGON_INFO) + 31) & ~31, "");
+	trigon->mNum = 0;
+	for (int i = 0; i < 11; i++) {
+		sCounter.mCount[i] = 0;
+	}
+	trigon->_0C = trigon->_10 = 0;
+	trigon->mMin.x = trigon->mMin.y = trigon->mMin.z = NAN;
+	trigon->mMax.x = trigon->mMax.y = trigon->mMax.z = NAN;
+	fn_802BA678(trigon, model, model->GetWldMtxArray());
+	mm::SetName(trigon->mTri, FormatToStaticBuffer("(Tri %d(%d+%d)/%d)", trigon->mNum, trigon->_0C, trigon->_10, trigon->mNumMax));
+	return trigon->mTri;
 }
 
 /**
