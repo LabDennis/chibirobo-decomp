@@ -2445,7 +2445,7 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 	DrawLoadText(GetLocalizedInterfaceText(label), center, y, color);
 }
 #endif
-
+// NONMATCHING: retail adds the bar's 2.0f to its y at each quad (fadds y, 2), this build once before the call; rest is float regs
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
 	switch (title->mMode) {
