@@ -7,6 +7,7 @@
 #include "game/cfont.h"
 #include "game/wii/csound.h"
 #include "nw4r/snd/snd_SoundSystem.h"
+#include "nw4r/snd/snd_SoundPlayer.h"
 #include "Dolphin/ai.h"
 #include "Dolphin/os.h"
 #include "Dolphin/GX/GXFifo.h"
@@ -23,10 +24,6 @@ extern "C" {
 // the nw4r archive, player, group, heap, track and 3D calls; the library they
 // belong to is still the unnamed unit block around 0x8028A000/0x80296000
 void fn_802985B4(void* player);
-void* fn_80298978(void* player, u32 index);
-u32 fn_80295D88(CSound* sound);
-BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
-s32 fn_8029AC28(void* group, u32 priority);
 void fn_8029A458(void* heap);
 u32 fn_802958C0(void* actor, void* arg);
 void fn_80295914(void* actor, void* arg, void* data, u32 size);
@@ -392,11 +389,11 @@ struct CSoundGroup {
 
 BOOL CSound::LoadGroup(s32 groupId)
 {
-	if (fn_80299D64(&mArchivePlayer, groupId, &mSoundHeap, 0)) {
-		for (u32 i = 0; i < fn_80295D88(this); i++) {
-			CSoundGroup* group = (CSoundGroup*)fn_80298978(&mArchivePlayer, i);
+	if (mArchivePlayer.LoadGroup((u32)groupId, &mSoundHeap, 0)) {
+		for (u32 i = 0; i < mDvdSoundArchive.GetPlayerCount(); i++) {
+			CSoundGroup* group = (CSoundGroup*)&mArchivePlayer.GetSoundPlayer(i);
 			if (group->mPriority < 0x40) {
-				fn_8029AC28(fn_80298978(&mArchivePlayer, i), 0x40);
+				mArchivePlayer.GetSoundPlayer(i).SetPlayableSoundCount(0x40);
 			}
 		}
 		return TRUE;
