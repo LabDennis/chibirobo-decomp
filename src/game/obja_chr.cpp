@@ -3304,7 +3304,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		f32 iconAlpha = alpha;
 		if (menu->IsItemEquipped(i))
-			iconAlpha = alpha * .25f;
+			iconAlpha *= .25f;
 		u32 color = 0xffffff00 | (u32)(255.f * alpha);
 		f32 size  = 1.2f * pulse;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
