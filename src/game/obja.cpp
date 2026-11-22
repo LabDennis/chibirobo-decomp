@@ -3,13 +3,16 @@
 // NONMATCHING: the data (US offsets; JP and PAL alike except where said). .rodata lacks the 0x48 block of six
 // Vecs at 0x00 that CGame's particle inlines make in every file, so the four HSD_PEDesc
 // presets at 0x5C stay behind the gObjectPixelEnginePresets stand-in: as the local initialisers retail copies
-// they come out at 0x14 and ApplyJointMaterialPEPresets drops to 99.95 %. .data lacks the 26-word header block
-// at 0x00 (0x68 bytes); the floor tables, CJAnim's and XObj's vtables and base lists behind it come out in
-// retail's order. .bss is the 0x140-byte (JP 0x134) header-made prefix of zeroed Vecs: the build has
-// LoadFromPlacement's placement defaults (initial, 0x24) and cjobjset.h's three static zero Vecs instead, and
-// the floor slots at 0xBC/0xC8 stay the gObjectFloorOffsetTemplate/lbl_80378148 externs. .sdata2 has 160.0f
-// before 128.0f (0x8065D1F0) where DrawGroundShadowAt's literals come out the other way round. The extra
-// header constants (unreferenced) and weak RTTI records (kept once) the build emits on top go at link time
+// they come out at 0x14 and ApplyJointMaterialPEPresets drops to 99.95 %. Its strings after CJArchive are
+// retail's jobj.h assert, translate, CXObjIntp; the build emits CXObjIntp, translate, assert. .data lacks the
+// 4-byte pad at 0x00 ("0000", PAL zero) and the 26-word header block at 0x04 (0x6C bytes together); the floor
+// tables, CJAnim's and XObj's vtables and base lists behind it come out in retail's order. .bss is the
+// 0x140-byte (JP 0x134) header-made prefix of zeroed Vecs: the build has LoadFromPlacement's placement
+// defaults (initial, 0x24) and cjobjset.h's three static zero Vecs instead, and the floor slots at 0xBC/0xC8
+// stay the gObjectFloorOffsetTemplate/lbl_80378148 externs. In .sdata2 retail has 2.0f before 0.5f (0x8065D1E0)
+// and 160.0f before 128.0f (0x8065D1F0, DrawGroundShadowAt's); the build has both pairs the other way round.
+// The build also emits header constants, jobj.h's "rotate" and "scale" assert strings and weak RTTI records
+// that retail's block lacks; the unreferenced and duplicate ones go at link time
 
 #include "game/xobj.h"
 #include "game/gmath.h"
