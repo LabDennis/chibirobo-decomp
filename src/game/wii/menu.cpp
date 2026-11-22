@@ -4462,6 +4462,7 @@ void DrawPanelBackground(f32 alpha)
 }
 
 template void DrawPanelBackground<ItemStatusPanel>(f32);
+template void DrawPanelBackground<SavePanel>(f32);
 
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
