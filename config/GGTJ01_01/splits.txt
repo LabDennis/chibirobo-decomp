@@ -302,43 +302,63 @@ game/cgamector.cpp:
 	.text       start:0x80019728 end:0x8001AE18
 
 game/fbmirrorex.cpp:
-	.text       start:0x8001BBB0 end:0x8001C79C
-
-game/cpaddtor.cpp:
-	.text       start:0x8001C79C end:0x8001C7E4
-
-game/progressive.cpp:
-	.text       start:0x8001C7E4 end:0x8001CDE8
-	.data       start:0x80211200 end:0x80211448
-	.rodata     start:0x801FF8C4 end:0x801FFAFC
-
-game/cfiletextdtor.cpp:
-	.text       start:0x8001CDE8 end:0x8001CE44
+	.text       start:0x8001BBB0 end:0x8001D8E8
+	.rodata     start:0x801FF7C8 end:0x801FFB70
+	.data       start:0x80211200 end:0x802114A0
+	.bss        start:0x8033FA10 end:0x8033FA30
+	.sdata      start:0x806345B8 end:0x806345D8
+	.sbss       start:0x80635598 end:0x806355A0
+	.sdata2     start:0x806363C0 end:0x80636498
 
 game/sound.cpp:
-	.text       start:0x8001DC04 end:0x8001F8BC
-	.rodata     start:0x801FFC7C end:0x802006D0
-	.data       start:0x802114A0 end:0x8021204C
-	.sdata      start:0x806345E0 end:0x806345E8
-	.sdata2     start:0x806364A4 end:0x806364DC
-
-game/gxa.cpp:
-	.text       start:0x8001CE44 end:0x8001DC04
-	.bss        start:0x8033FA10 end:0x8033FA30
-	.sbss       start:0x80635598 end:0x8063559C
+	.text       start:0x8001D8E8 end:0x8001FCD8
+	.rodata     start:0x801FFB70 end:0x802006D0
+	.data       start:0x802114A0 end:0x80212050
+	.sdata      start:0x806345D8 end:0x806345F0
+	.sdata2     start:0x80636498 end:0x806364F0
 
 game/gameosreport.cpp:
 	.text       start:0x80015790 end:0x800157E0
 
-game/gxb.cpp:
-	.text       start:0x8001F8BC end:0x80030E28
-	.bss        start:0x8033FA8C end:0x8033FB64 align:4
-	.sbss2      start:0x8063A248 end:0x8063A24C
+game/cscrn.cpp:
+	.text       start:0x8001FCD8 end:0x8002453C
+	.rodata     start:0x802006D0 end:0x80200AF8
+	.data       start:0x80212050 end:0x80212128
+	.bss        start:0x8033FA30 end:0x8033FA58
+	.sdata      start:0x806345F0 end:0x80634650
+	.sbss       start:0x806355A0 end:0x806355C0
+	.sdata2     start:0x806364F0 end:0x806365C0
+
+game/cptcl.cpp:
+	.text       start:0x8002453C end:0x80025134
+	.rodata     start:0x80200AF8 end:0x80200BC8
+	.data       start:0x80212128 end:0x80212188
+	.sdata      start:0x80634650 end:0x80634668
+	.sdata2     start:0x806365C0 end:0x80636608
+
+game/cursor.cpp:
+	.text       start:0x80025134 end:0x80026C94
+	.rodata     start:0x80200BC8 end:0x80200C08
+	.data       start:0x80212188 end:0x80212330
+	.bss        start:0x8033FA58 end:0x8033FA80
+	.sdata      start:0x80634668 end:0x80634690
+	.sdata2     start:0x80636608 end:0x80636660
+
+game/logo.cpp:
+	.text       start:0x80026C94 end:0x80027A6C
+	.rodata     start:0x80200C08 end:0x80200C18
+	.data       start:0x80212330 end:0x80212370
+	.sdata2     start:0x80636660 end:0x806366A8
 
 game/titlestates.cpp:
-	.text       start:0x80030E28 end:0x80031180
+	.text       start:0x80027A6C end:0x80031180
 	.ctors      start:0x801FEF28 end:0x801FEF2C
-	.data       start:0x80212370 end:0x80212648
+	.rodata     start:0x80200C18 end:0x80200D70
+	.data       start:0x80212370 end:0x80212A88
+	.bss        start:0x8033FA80 end:0x8033FB68 align:4
+	.sdata      start:0x80634690 end:0x806346E0
+	.sdata2     start:0x806366A8 end:0x80636848
+	.sbss2      start:0x8063A248 end:0x8063A250
 
 game/stg.cpp:
 	.text       start:0x80031180 end:0x80065CD0
