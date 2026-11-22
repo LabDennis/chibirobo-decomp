@@ -9,7 +9,7 @@
 // The Wii start-up file, init.cpp by the file name its OSPanic call carries: the system, heap,
 // render state and video setup, the cameras and light sets the scenes start from, and the boot
 // configuration. On the GameCube the same functions are InitGameRuntime through InitTwoLightSet
-// (game/gxa.cpp) and LoadBootConfig (game/progressive.cpp), linked in the reverse order.
+// (game/fbmirrorex.cpp, once gxa.cpp) and LoadBootConfig (game/fbmirrorex.cpp, once progressive.cpp), linked in the reverse order.
 //
 // Retail's .rodata also keeps the 32 key names of a boot configuration table ("ENABLE_ATC_COPTER"
 // through "EVENT_LOG", 0x802C53D4-0x802C55EC) between InitTwoLightSet's vector and the type names.

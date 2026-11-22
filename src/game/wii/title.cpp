@@ -9,7 +9,7 @@
 //   file's first function (0x8004F8F8) reads the next literal pool
 // - extab 0x80009364-0x800095CC and extabindex 0x800124D0-0x80012650 are its 32 entries, in one run
 // - .rodata 0x802C6468-0x802C65F8: three constant tables, the RTTI name "XObjDemo", then the string pool
-// The functions come in the reverse of the GameCube's order (gxb.cpp from XObjDemo::DrawObject to
+// The functions come in the reverse of the GameCube's order (titlestates.cpp, once part of gxb.cpp, from XObjDemo::DrawObject to
 // InitTitleScreen).
 //
 // NONMATCHING: twenty-one functions have source so far: UpdateTitleOptions (0x8004C548), UpdateTitleDust
