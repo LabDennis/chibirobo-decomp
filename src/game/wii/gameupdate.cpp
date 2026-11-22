@@ -1750,6 +1750,31 @@ void CGame::Update(u32 frames)
 	}
 }
 
+// the greatest current frame among the model's animation objects; the default
+// texture-pattern animation does not participate
+// NONMATCHING: the loop and calls match; retail assigns the prologue's object and
+// index registers in the opposite order
+f32 CObj::GetAnimFrame()
+{
+	f32 frame = 0.0f;
+	if (mObject.m_pScnMdl != NULL) {
+		for (s32 i = 0; i < 6; ++i) {
+			const nw4r::g3d::AnmObj* anm
+			    = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj((nw4r::g3d::ScnMdlSimple::AnmObjType)i);
+			if (anm != NULL && anm->GetFrame() > frame) {
+				if (i == 3) {
+					if (mObject.mTexPatName != mObject.mDefaultTexPat) {
+						frame = anm->GetFrame();
+					}
+				} else {
+					frame = anm->GetFrame();
+				}
+			}
+		}
+	}
+	return frame;
+}
+
 /**
  * @note Address: 0x80024A10
  * @note Size: 0x6C

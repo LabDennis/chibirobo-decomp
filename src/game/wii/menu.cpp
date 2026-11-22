@@ -84,6 +84,14 @@ static MenuMainItem sMainLines[] = {
 	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
 };
 
+// what MenuSFTestSub offers for a save slot
+static MenuMainItem sSFTestSubLines[] = {
+	{ "LOAD", 4 },
+	{ "SAVE", 2 },
+	{ "\x01", -1 },
+	{ "DELETE", 6 },
+};
+
 // the file's menus, in their .bss order (0x8044577C on)
 static MenuMain sMenuMain;
 static MenuStageSelect sMenuStageSelect;
@@ -123,6 +131,10 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 	                   0.0f, size * scale, size * scale, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
+
+// draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), which this code
+// does not model yet
+extern "C" void fn_80050314(Menu* menu, s32 index, BOOL, BOOL);
 
 // NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
 // draws no texture, and it skips a window without size
@@ -814,6 +826,13 @@ extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale
 	}
 }
 
+void MenuPaneFadePair::Update(u32 frames)
+{
+	for (s32 i = 0; i < 2; i++) {
+		mFades[i].Update(frames);
+	}
+}
+
 static inline f32 MenuRectStart(f32 center, f32 size)
 {
 	return center - size / 2;
@@ -1163,6 +1182,195 @@ BOOL MenuMain::Draw()
 			alpha = mAlpha;
 		}
 		DrawMenuSelectionCursor(mCursor, x, y, maxW, lineH, mAlpha, alpha);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void MenuSFTestSub::InitRows()
+{
+	if (mRows == NULL) {
+		mRows = (MenuTextRow*)MEMAllocFromExpHeapEx(gWiiGameHeap, sizeof(MenuTextRow) * 4, 4);
+	}
+	mFontSize = 16.0f;
+	mCount    = 0;
+	mMaxWidth = 0.0f;
+}
+
+// NONMATCHING: the loop counter and the table pointer swap registers
+void MenuSFTestSub::Open()
+{
+	mState = TRUE;
+	Resume();
+	mWindow.mOpen = TRUE;
+	InitRows();
+	for (s32 i = 0; i < 4; ++i) {
+		mRows[mCount].mText  = sSFTestSubLines[i].mText;
+		mRows[mCount].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mCount].mText, 1, mFontSize);
+		if (mRows[mCount].mWidth > mMaxWidth) {
+			mMaxWidth = mRows[mCount].mWidth;
+		}
+		mCount++;
+	}
+	mWindow.mHeight = mCount * (2.0f + mFontSize) + 24.0f;
+	mWindow.mWidth  = 60.0f + mMaxWidth;
+	mSelection      = 0;
+}
+
+// NONMATCHING: retail reads mCount once per step and has count - 1 ready before the loop
+BOOL MenuSFTestSub::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		if (gWiiPointer.Check(PadActStickUp)) {
+			if (mCount <= 0)
+				goto done;
+			do {
+				if (--mSelection < 0)
+					mSelection = mCount - 1;
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			goto done;
+		}
+		if (gWiiPointer.Check(PadActStickDown)) {
+			if (mCount <= 0)
+				goto done;
+			do {
+				if (++mSelection > mCount - 1)
+					mSelection = 0;
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			goto done;
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+			sMenuSFTest.Resume();
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			goto done;
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			s32 operation = sSFTestSubLines[mSelection].mAction;
+			switch (operation) {
+			case 4: {
+				u32 status = gGame.mSaveManager.mScanEntries[sMenuSFTest.mSelection].mStatus;
+				if (!(status & 1) || !(status & 2)) {
+					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					goto done;
+				}
+				break;
+			}
+			case 2: {
+				u32 status = gGame.mSaveManager.mScanEntries[sMenuSFTest.mSelection].mStatus;
+				if (status & 0x1A) {
+					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					goto done;
+				}
+				break;
+			}
+			case 6: {
+				u32 status = gGame.mSaveManager.mScanEntries[sMenuSFTest.mSelection].mStatus;
+				if (!(status & 1)) {
+					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+					goto done;
+				}
+				break;
+			}
+			}
+			Close(5);
+			sMenuSFTest.Resume();
+			sMenuSFTest.StartOperation(operation);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+
+done:
+	return IsOpen();
+}
+
+// NONMATCHING: retail converts mCount to a float it never uses before the rows, as Err's Draw does, and keeps
+// the cursor math in saved float registers
+BOOL MenuSFTestSub::Draw()
+{
+	BOOL draw;
+	if (!IsOpen()) {
+		draw = FALSE;
+	} else {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+		DrawMenuWindow(&mWindow);
+		draw = TRUE;
+	}
+	if (draw) {
+		for (s32 i = 0; i < mCount; ++i) {
+			fn_80050314(this, i, TRUE, TRUE);
+		}
+		f32 rowHeight = 2.0f + mFontSize;
+		f32 x         = mWindow.mX - mMaxWidth / 2.0f;
+		f32 y         = mWindow.mY - rowHeight * mCount / 2.0f + rowHeight * mSelection;
+		DrawMenuSelectionCursor(mCursor, x, y, mMaxWidth, mFontSize, mAlpha, 1.0f);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void MenuSFTestErr::InitRows()
+{
+	if (mRows == NULL) {
+		mRows = (MenuTextRow*)MEMAllocFromExpHeapEx(gWiiGameHeap, sizeof(MenuTextRow), 4);
+	}
+	mFontSize = 16.0f;
+	mCount    = 0;
+	mMaxWidth = 0.0f;
+}
+
+void MenuSFTestErr::Open()
+{
+	mState = TRUE;
+	Resume();
+	mWindow.mOpen = TRUE;
+	InitRows();
+	mRows[mCount].mText  = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, gGame.mSaveManager.mFile.mResult);
+	mRows[mCount].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mCount].mText, 1, mFontSize);
+	if (mRows[mCount].mWidth > mMaxWidth) {
+		mMaxWidth = mRows[mCount].mWidth;
+	}
+	mCount++;
+	mWindow.mHeight = mCount * (2.0f + mFontSize) + 24.0f;
+	mWindow.mWidth  = 60.0f + mMaxWidth;
+	mSelection      = 0;
+}
+
+BOOL MenuSFTestErr::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		if (gWiiPointer.Check(PadActCancel) || gWiiPointer.Check(PadActConfirm)) {
+			gGame.mSaveManager.mFile.mResult = 0;
+			Close(5);
+			sMenuSFTest.Resume();
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		}
+	}
+	return IsOpen();
+}
+
+// NONMATCHING: retail converts mCount to a float it never uses before the rows, likely a dead row-height
+// computation of an inline the row base shares
+BOOL MenuSFTestErr::Draw()
+{
+	BOOL draw;
+	if (!IsOpen()) {
+		draw = FALSE;
+	} else {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+		DrawMenuWindow(&mWindow);
+		draw = TRUE;
+	}
+	if (draw) {
+		for (s32 i = 0; i < mCount; ++i) {
+			fn_80050314(this, i, TRUE, TRUE);
+		}
 		return TRUE;
 	}
 	return FALSE;
@@ -2856,14 +3064,15 @@ extern "C" void PopulateOwnedItemPage(MenuStatusTable* table)
 	}
 }
 
-// how many of the item chibi robo holds, the GameCube's. NONMATCHING: retail fetches the player again for the count
-// and walks the slots by a byte offset; ours keeps the first pointer (MarkAvailableStatusEntries inlines it nine times)
+// how many of the item chibi robo holds, the GameCube's. NONMATCHING: the slot walk and the player reload are
+// retail's; register allocation still differs (MarkAvailableStatusEntries inlines it nine times)
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
 	const WiiPlayerState* player = gGame.GetPlayer();
+	const InventoryItem* item    = &player->mParams.mInventory.mItems[255];
 	s16 count                    = 0;
-	for (int i = 255; i >= 0; i--) {
-		if (id == player->mParams.mInventory.mItems[i].mId) {
+	for (int i = 255; i >= 0; i--, item--) {
+		if (id == item->mId) {
 			count = gGame.GetPlayer()->mParams.mInventory.mItems[i].mCount;
 			break;
 		}
