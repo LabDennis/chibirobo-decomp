@@ -632,8 +632,9 @@ static inline void DrawOXModel(XObj& model, f32** args)
 	BeginGsCamera(&gGame);
 }
 
-// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
-// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
+// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, and the label's
+// text rotation is a Vec() zero object in the shared .bss prefix (lbl_803782DC, US 0x80095F78), whose hoisted address
+// moves the loop's registers; retail also hoists the text colour (oris 0xf0f0 right after the alpha conversion)
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -654,7 +655,6 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * std::sinf(2.268928f * fade) - 42.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
 	f32 openAngle = 2.0943952f * fade;
-	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
 		f32 bob          = 4.0f * std::sinf(mark.mSpin);
@@ -693,7 +693,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		}
 		menu->mMark[kind].mObj.UpdateObject(1);
 		InvalidateAll();
-		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
+		f32 radius  = 74.0f;
+		f32 scaleXZ = radius * size, scaleY = -radius * size;
 		for (s32 j = 0; j < 8; ++j) {
 			f32 direction = (TWO_PI / 8.0f) * j;
 			f32 cosine    = std::cosf(direction);
@@ -733,8 +734,9 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		gGame.mGs.mTextRot = textRot;
 		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
 		f32 fontSize       = 2.0f * (30.0f * size * size);
-		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
-		f32 top            = pos.y - 0.5f * fontSize;
+		u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
+		f32 left = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
+		f32 top  = pos.y - 0.5f * fontSize;
 		for (s32 j = 0; j < 4; ++j)
 			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
 			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
