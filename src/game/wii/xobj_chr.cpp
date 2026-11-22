@@ -169,9 +169,9 @@ static inline f32 GetYAngle(const Vec& dir)
 // the ground type of a map triangle, 0 for none
 static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
 {
-	if (tri < 0)
-		return 0;
-	return map->mTrigon.mTri[tri].mFloorType;
+	if (tri >= 0)
+		return map->mTrigon.mTri[tri].mFloorType;
+	return 0;
 }
 
 // events wait while he lies there out of battery
@@ -606,7 +606,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	case 9: {
 		u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
 			            mStatus.mFlags & 0x400000 };
-		vf1A0(flags);
+		ApplyMaterialPresets(flags);
 		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded()) {
 			vf1A8(GetStageInfo()->_09 / 100.0f);
 		}
@@ -2197,7 +2197,7 @@ s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred)
 
 // the ground type under chibi robo, from what he hangs or climbs on, the object he stands
 // on, or else the map triangle under him. 13 and up count as none
-// NONMATCHING (95 %): retail keeps the u8 conversion as a clrlwi. where this build tests the lbz result directly
+// NONMATCHING: only register allocation and literal-pool labels still differ
 s32 GetPlayerGroundType(WiiPlayerState* chr)
 {
 	s32 type = 0;
@@ -2224,7 +2224,7 @@ s32 GetPlayerGroundType(WiiPlayerState* chr)
 			}
 		}
 	}
-	type = (u8)type;
+	type &= 0xFF;
 	if (type == 0 && chr->mFloorHit.mTriangle >= 0 && chr->mFloorHit.mTrigon >= 0) {
 		type = GetMapTriangleFloorType((XObjMap*)gGame.mXObjs.mPools[3].mObjects, chr->mFloorHit.mTriangle);
 	}
@@ -2444,31 +2444,31 @@ void XObjChr::ResetCullMode()
 
 // _1A0, the dst-alpha flags go to every model he carries: the plug and attachments when
 // they have one, all nine suits and their extra parts
-void XObjChr::vf1A0(const u32* flags)
+void XObjChr::ApplyMaterialPresets(const u32* flags)
 {
-	XObj::vf1A0(flags);
+	XObj::ApplyMaterialPresets(flags);
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	if (chr->mPlug.HasModel()) {
-		chr->mPlug.vf1A0(flags);
+		chr->mPlug.ApplyMaterialPresets(flags);
 	}
 	if (((XObj*)chr->mCopterObj)->HasModel()) {
-		((XObj*)chr->mCopterObj)->vf1A0(flags);
+		((XObj*)chr->mCopterObj)->ApplyMaterialPresets(flags);
 	}
 	if (((XObj*)chr->mPopperObj)->HasModel()) {
-		((XObj*)chr->mPopperObj)->vf1A0(flags);
+		((XObj*)chr->mPopperObj)->ApplyMaterialPresets(flags);
 	}
 	if (((XObj*)chr->mRadarObj)->HasModel()) {
-		((XObj*)chr->mRadarObj)->vf1A0(flags);
+		((XObj*)chr->mRadarObj)->ApplyMaterialPresets(flags);
 	}
 	if (((XObj*)chr->mOXObj)->HasModel()) {
-		((XObj*)chr->mOXObj)->vf1A0(flags);
+		((XObj*)chr->mOXObj)->ApplyMaterialPresets(flags);
 	}
 	for (s32 i = 0; i < 9; i++) {
 		if (chr->mSuits.mObjects[i].HasModel()) {
-			chr->mSuits.mObjects[i].vf1A0(flags);
+			chr->mSuits.mObjects[i].ApplyMaterialPresets(flags);
 		}
 		if (chr->mSuitParts[i].HasModel()) {
-			chr->mSuitParts[i].vf1A0(flags);
+			chr->mSuitParts[i].ApplyMaterialPresets(flags);
 		}
 	}
 }
@@ -2533,8 +2533,8 @@ void XObjChr::DrawWithView(Mtx view)
 		XObj::DrawWithView(view);
 	} else {
 		suit->DrawWithView(view);
-		if (chr->m_9C8 == 0 && (chr->mSuits.mChangeStep == 3 || chr->mSuits.mChangeStep == 6)) {
-			chr->mSuitParts[chr->mSuits.mChangeStep].DrawWithView(view);
+		if (chr->m_9C8 == 0 && (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6)) {
+			chr->mSuitParts[chr->mSuits.mCurrent].DrawWithView(view);
 		}
 	}
 	if (!(gGame.GetStatusFlags(0x100) && chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift))) {
@@ -2945,8 +2945,8 @@ void OctaMenu::Select(s32 result)
 		aim->m_20                     = NULL;
 		aim->m_24                     = NAN;
 		aim->m_28                     = NAN;
-		aim->m_2C                     = 0.0f;
 		aim->m_30                     = 0.0f;
+		aim->m_2C                     = 0.0f;
 		aim->m_4C.x                   = 0.0f;
 		aim->m_4C.y                   = 0.0f;
 		aim->m_4C.z                   = 0.0f;

@@ -215,7 +215,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			flags[2] = mStatus.mFlags & 0x40ULL;
 			flags[3] = mStatus.mFlags & 0x20000ULL;
 			flags[4] = mStatus.mFlags & 0x400000ULL;
-			vf1A0(flags);
+			ApplyMaterialPresets(flags);
 			if ((mStatus.mFlags & 0x1000000ULL) && IsStageDataLoaded() != 0) {
 				vf1A8((f32)GetStageInfo()->_09 / 100.0f);
 			}
@@ -439,7 +439,7 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 }
 
 // 0x800AD870, flags[0] asks for dst alpha 8, flags[1] or nothing for 4, on every material's pix copy
-void XObj::vf1A0(const u32* flags)
+void XObj::ApplyMaterialPresets(const u32* flags)
 {
 	u32 dstAlpha8 = flags[0];
 	u32 dstAlpha4 = flags[1];

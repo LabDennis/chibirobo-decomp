@@ -1596,7 +1596,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 				flags[2] = obj->mStatus.mFlags & 0x40;
 				flags[3] = obj->mStatus.mFlags & 0x20000;
 				flags[4] = obj->mStatus.mFlags & 0x400000;
-				obj->vf1A0(flags);
+				obj->ApplyMaterialPresets(flags);
 			}
 			if (mask & ((u64)0x4000 << 32)) {
 				WiiPlayerState* player = gGame.GetPlayer();

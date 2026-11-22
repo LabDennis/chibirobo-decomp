@@ -209,7 +209,11 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
  * @note Address: 0x80192A8C
  * @note Size: 0x44
  */
-// NONMATCHING: register colouring; retail loads fbWidth into r5 after the template copy and saves lr after the efbHeight load
+// NONMATCHING: register colouring; retail loads fbWidth into r5 after the template copy and saves lr after the efbHeight load.
+// fbWidth in r5 means its load sat between the template's two word stores when registers were assigned;
+// every init form tried (compound literal, zero init plus member stores, partial init, width or height
+// locals in either order, an x4-style inline) loads it after both stores or before the copy. Retail has no
+// other 8-byte template copy with a load between its stores, so there is no matched sibling to copy from.
 void CCamera::SetScissor(GXRenderModeObj* rmode)
 {
 	u16 height      = rmode->efbHeight;

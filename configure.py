@@ -390,7 +390,6 @@ gamecube_libs = [
             # (0x800493F8) stands apart, last
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
-            Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
             # cjanim.cpp, xobjfloor.cpp, xobjwalk.cpp, xobjinit.cpp and xobjinitialize.cpp were cut out of this file:
             # one .sdata2 pool, one jobj.h string and one .bss block serve them all. -inline deferred, as retail shows:
@@ -2277,7 +2276,40 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
+def add_text_step(config: ProjectConfig) -> None:
+    # The game's displayed text is not in the repository: tools/gentext.py reads it
+    # from the disc's main.dol into the .inc files src/game/stage_data.cpp includes.
+    # restat: an unchanged .inc keeps its time, so nothing recompiles.
+    from tools.gentext import table_outputs
+
+    outputs = table_outputs(config.version, Path("."))
+    if not outputs:
+        return
+    config.custom_build_rules = (config.custom_build_rules or []) + [
+        {
+            "name": "gentext",
+            "command": f"$python tools/gentext.py {config.version}",
+            "description": "GENTEXT $out",
+            "restat": True,
+        }
+    ]
+    steps = config.custom_build_steps or {}
+    steps.setdefault("pre-compile", []).append(
+        {
+            "rule": "gentext",
+            "outputs": outputs,
+            "inputs": [
+                Path("orig") / config.version / "sys" / "main.dol",
+                Path("config") / config.version / "symbols.txt",
+                Path("tools/gentext.py"),
+            ],
+        }
+    )
+    config.custom_build_steps = steps
+
+
 if args.mode == "configure":
+    add_text_step(config)
     # Write build.ninja and objdiff.json
     generate_build(config)
     append_treemap_step(config)
