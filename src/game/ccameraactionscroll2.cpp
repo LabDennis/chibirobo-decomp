@@ -146,13 +146,41 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 	tex      = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 zoom  = 1.0f; // never anything else, but it stops the divide being folded away
-	f32 w     = MARK_SCALE * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	f32 h     = MARK_SCALE * GXGetTexObjHeight(&tex) / zoom;
+	u16 texW  = GXGetTexObjWidth(&tex);
+	f32 w     = MARK_SCALE * (1.1f * texW) / zoom;
+	u16 texH  = GXGetTexObjHeight(&tex);
+	f32 h     = MARK_SCALE * texH / zoom;
 	f32 cx    = w * half;
 	f32 cy    = -h * half;
 	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+
+inline void DrawScrollMapLabel(f32 x, f32 y, f32 alpha)
+{
+#if defined(VERSION_PAL)
+	u32 fadedAlpha = (u32)(255.0f * alpha);
+	u32 labelColor = fadedAlpha | 0xFFD52C00;
+	for (s32 j = 0; j < 4; j++) {
+		DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), x + gScrollRoomData.markerX[j],
+		                             (-20.8f + (y + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
+	}
+	DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), x, (y + -20.8f) - 11.0f, 0.0f, 22.0f, 22.0f);
+#else
+	CTexObj tex;
+	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	u16 w          = GXGetTexObjWidth(&tex);
+	u16 h          = GXGetTexObjHeight(&tex);
+	f32 zoom       = 1.0f;
+	f32 ox         = 36.0f * MARK_SCALE;
+	f32 oy         = -32.0f * MARK_SCALE;
+	u32 labelColor = (u32)(255.0f * alpha) | 0xC8C8C800;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, x + ox, y + oy, 0.0f,
+	                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+#endif
 }
 
 // the functions sit in reverse address order: -inline deferred emits a file's functions last to first
@@ -457,6 +485,7 @@ static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
  * @note Address: 0x80143A00
  * @note Size: 0x1C44
  */
+// NONMATCHING: caminfo.h's two Vec initializers shift Draw's .rodata Vec pool by 0x18, plus register allocation
 void CCameraActionScroll2::Draw()
 {
 	static s32 sOverlayFrameCount = 0;
@@ -639,30 +668,7 @@ void CCameraActionScroll2::Draw()
 		obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
 		if (obj->mPtcl) {
 			DrawScrollMapMarker(163, x, y, fastBlink);
-
-			f32 markX = x;
-			f32 markY = y;
-#if defined(VERSION_PAL)
-			u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
-			u32 labelColor = fadedAlpha | 0xFFD52C00;
-			for (s32 j = 0; j < 4; j++) {
-				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
-				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
-			}
-			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY + -20.8f) - 11.0f, 0.0f,
-			                             22.0f, 22.0f);
-#else
-			CTexObj tex;
-			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			u16 w          = GXGetTexObjWidth(&tex);
-			u16 h          = GXGetTexObjHeight(&tex);
-			f32 zoom       = 1.0f;
-			u32 labelColor = (u32)(255.0f * (1.0f - fastBlink)) | 0xC8C8C800;
-			DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, markX + 23.4f, markY + -20.8f, 0.0f,
-			                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-#endif
+			DrawScrollMapLabel(x, y, 1.0f - fastBlink);
 		} else {
 			DrawScrollMapMarker(163, x, y, blink);
 		}
@@ -701,12 +707,13 @@ void CCameraActionScroll2::Draw()
 	std::cosf(angle);
 	f32 pulse = std::sinf(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[166 - StatusTextureOffset], 0);
-	f32 zoom   = 1.0f;
-	f32 arrowW = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	u16 arrowH = GXGetTexObjHeight(&tex);
-	f32 radius = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
-	f32 arrowX = radius * std::sinf(angle) + x;
+	tex          = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[166 - StatusTextureOffset], 0);
+	f32 zoom     = 1.0f;
+	u16 arrowTex = GXGetTexObjWidth(&tex);
+	f32 arrowW   = zoom * (1.1f * arrowTex) / zoom;
+	u16 arrowH   = GXGetTexObjHeight(&tex);
+	f32 radius   = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
+	f32 arrowX   = radius * std::sinf(angle) + x;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * std::cosf(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
 	                   0.0f, PI + angle);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
