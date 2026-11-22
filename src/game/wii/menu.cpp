@@ -2400,6 +2400,31 @@ void MenuStatus::State6(u32)
 {
 }
 
+void MenuStatus::vf18(nw4r::math::VEC2*)
+{
+	ClearSelections();
+}
+
+void MenuStatus::ClearSelections()
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (mMode == 1 && mPhase == 0) {
+		mSelection = -1;
+	}
+	if (mMode == 2 && mPhase == 0) {
+		mItemSelection = -1;
+	}
+	if (mMode == 9 && mPhase == 0) {
+		mOverviewSelection = -1;
+	}
+	if (mMode == 8 && mPhase == 0) {
+		mIconSelection = -1;
+	}
+}
+
 // the PC's dialogue line back to full-width spaces; on the Wii the characters start off the right edge of a wide screen.
 // NONMATCHING: retail picks the first width as 854 with the 640 copied in from a second register (0x8006D2FC), the one
 // difference left; an if or either ternary gives the plain two-load form

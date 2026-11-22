@@ -2331,6 +2331,7 @@ vf10__10MenuStatusFP6CbPane = .text:0x80069188; // type:function size:0x2BC
 vf14__10MenuStatusFP6CbPane = .text:0x80068E98; // type:function size:0x1D8
 vf18__10MenuStatusFPQ34nw4r4math4VEC2 = .text:0x80069444; // type:function size:0x4
 vf1C__10MenuStatusFPQ34nw4r4math4VEC2 = .text:0x80069448; // type:function size:0x4
+ClearSelections__10MenuStatusFv = .text:0x8006944C; // type:function size:0xA8
 vf08__8MenuSaveFP6CbPane = .text:0x80083048; // type:function size:0x4
 vf0C__8MenuSaveFP6CbPane = .text:0x8008304C; // type:function size:0x88
 vf10__8MenuSaveFP6CbPane = .text:0x800830D4; // type:function size:0x194
