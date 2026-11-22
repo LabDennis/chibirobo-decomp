@@ -392,7 +392,8 @@ extern "C" void ResetTitleScreenState(Title* title)
  * @note Address: 0x8002E8D0
  */
 // NONMATCHING: the second name loop walks the chars from title (US 0x8002EAD0 mr r5, r31) with i a copy of visible;
-// this build scales visible into the pointer. Retail loads mChannel before the mReady/mWrongDevice stores
+// this build scales visible into the pointer. visible = i = 0 (and the other spellings of the two zeros) starts the walk
+// at title but gives i its own li and scores lower. Retail loads mChannel before the mReady/mWrongDevice stores
 // (0x8002ED4C), this build after them. In state 14 retail loads mMenuAlpha and gGame.mFade.mSpeed.r (0x80030B70)
 // before the first compare. The rest is register allocation. The card's busy and found flags are read through
 // a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site.
@@ -417,7 +418,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 						title->mName.mChars[i].mScale = 0;
 				}
 			}
-			s32 i, visible;
+			s32 visible, i;
 			for (i = visible = 0; i < title->mName.mCount; ++i) {
 				if (0 != title->mName.mChars[i].mScale) {
 					++visible;
@@ -751,9 +752,13 @@ void Title::State0(u32)
  * @note Address: 0x8002E574
  * @note Size: 0x358
  */
+// NONMATCHING: the loop's saved registers: retail keeps the save pointer in r31 (0x8002E5F0 addis r31, r28, 0x1) above the slot,
+// timestamp and card walkers, this build in r28 below them. A function-top card pointer and the header fields read in place
+// score lower
 void Title::State1(u32 frames)
 {
 	s32 state = gGame.mMemcard.mCard.mState;
+	SavePreviewRecord* save;
 	mDelay -= frames;
 	if (mDelay < 0)
 		mDelay = 0;
@@ -762,7 +767,7 @@ void Title::State1(u32 frames)
 		Memcard* card = &gGame.mMemcard.mCard;
 		OSTime timestamps[3];
 		for (s32 i = 0; i < 3; ++i) {
-			SavePreviewRecord* save = &card->mSaves[0][i];
+			save = &card->mSaves[0][i];
 			if (save->mState) {
 				OSCalendarTime calendar;
 				OSTicksToCalendarTime(OSSecondsToTicks((OSTime)save->mStat.time), &calendar);
@@ -1490,7 +1495,9 @@ void Title::State14(u32)
  * @note Address: 0x8002C3F0
  * @note Size: 0x348
  */
-// NONMATCHING: regalloc
+// NONMATCHING: the volatile registers: retail keeps the file in r11 and the active flag in r5 (0x8002C498 lwz r5, 0xa8(r11)),
+// this build r12 and r7; the loads come in the same order. Other orders for file, result, card and step, the header
+// fields declared at the top, and an active or frames local as State1 has all leave it or score lower
 // waits for the card to read the file picked, then shows what is in it
 void Title::State15(u32 frames)
 {
@@ -1822,7 +1829,9 @@ static inline f32 TitleOptionWidth(s32 first)
 // -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level. Retail also loads the entry text's
 // 0.0f, 24.0f and size into f3-f5 before the selection test (0x8002B50C) where this build loads them at the call, and the
 // inner of the two widest-width picks goes to a fresh register in both arms (fmr f0 at 0x8002B79C, 0x8002B928 and 0x8002B9D4); a
-// WiderOf(a, b) inline compiles to the same bytes as the ternaries
+// WiderOf(a, b) inline compiles to the same bytes as the ternaries. The dust alpha hoisted before the loop or read in place
+// in the colour scores lower; declaring it uninitialised ahead of the loop and a pointer local for the logo texture
+// compile to the same bytes
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
@@ -2455,8 +2464,10 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
  * @note Address: 0x80028BAC
  * @note Size: 0x5BC
  */
-// NONMATCHING: the loop's float registers are assigned in another order (the rot and pop products after the alpha
-// conversion take f0/f4 in retail, f1/f5/f0 here; i and the colour mask swap r25/r26)
+// NONMATCHING: the volatile float registers and one product's place differ: after the alpha conversion retail takes f0/f4
+// for the rot and pop products (0x80028F10), this build f1/f5/f0, and retail multiplies 1.7 * pop behind the width
+// conversion's lfd (0x80028FB4), this build ahead of it. The locals declared at the top, alpha first, give retail's saved
+// registers; inside the loop i and the colour mask swapped r25/r26 and the floats came out in another order
 // draws the title's name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawTitleNameBubbles(Title* title)
 {
@@ -2466,10 +2477,19 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj bubble = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[108 - StatusTextureOffset], 0);
-		f32 zero       = 0.0f;
-		u32 color      = title->mName.mColor & 0xFFFFFF00;
+		u32 alpha;
+		f32 rot;
+		f32 pop;
+		f32 y;
+		f32 x;
+		f32 scale;
+		f32 bob;
+		f32 tilt;
+		f32 swell;
+		f32 zero  = 0.0f;
+		u32 color = title->mName.mColor & 0xFFFFFF00;
 		for (s32 i = 0; i < title->mName.mCount; i++) {
-			f32 scale = title->mName.mChars[i].mScale;
+			scale = title->mName.mChars[i].mScale;
 			if (scale <= zero) {
 				continue;
 			}
@@ -2481,25 +2501,18 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, title->mName.mChars[i].mText, &width);
-			f32 bob;
-			f32 tilt;
-			f32 swell;
-			f32 pop;
-			f32 x;
-			f32 rot;
-			f32 y;
-			bob   = 4.0f * std::sinf(title->mName.mChars[i].mBob);
-			tilt  = std::sinf(0.7f * title->mName.mChars[i].mTilt);
-			swell = std::sinf(PI * scale);
-			pop   = 0.2f * swell + std::sinf(HALF_PI * scale);
+			bob            = 4.0f * std::sinf(title->mName.mChars[i].mBob);
+			tilt           = std::sinf(0.7f * title->mName.mChars[i].mTilt);
+			swell          = std::sinf(PI * scale);
+			pop            = 0.2f * swell + std::sinf(HALF_PI * scale);
 #if defined(VERSION_PAL)
 			x = 20.0f + (40.0f * i + (320.0f - 40.0f * title->mName.mCount / 2.0f));
 #else
 			x = 24.0f + (48.0f * i + (320.0f - 48.0f * title->mName.mCount / 2.0f));
 #endif
-			u32 alpha = 255.0f * scale;
-			rot       = -(DEG2RAD * (10.0f * tilt));
-			y         = 64.0f + bob;
+			alpha = 255.0f * scale;
+			rot   = -(DEG2RAD * (10.0f * tilt));
+			y     = 64.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, 20.0f * (2.0f * pop), 20.0f * (2.0f * pop), zero, -zero, rot);
 			f32 size   = 20.0f * (1.7f * pop);
@@ -2518,6 +2531,8 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 	}
 }
 
+// NONMATCHING: the loop's floats are numbered the other way round: retail keeps bob in f31 and x in f14
+// (0x8002892C fmuls f31, 0x800289D8 fadds f14), ours x in f31 and bob in f14
 extern "C" void DrawTitleHelpText(Title* menu)
 {
 	f32 alpha   = menu->mMenuAlpha * menu->mHelpAlpha;
@@ -2555,7 +2570,12 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
 		f32 padding = HelpGlyphPadding(width, scale);
-		DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gTitleHelpOutlineX, gTitleHelpOutlineY);
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gTitleHelpOutlineX[j] + padding / 2.0f,
+			                   bob + (384.0f + gTitleHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)opacity | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }

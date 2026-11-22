@@ -2671,7 +2671,9 @@ f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
  * @note Address: 0x8000AD34
  * @note Size: 0x600
  */
-// NONMATCHING: the loop's float registers are assigned in another order
+// NONMATCHING: the scale sits in f22 in retail (0x8000AF1C lfs f22), f24 here, the volatile float scratch after the alpha
+// conversion differs, and retail multiplies 1.5 * pop behind the width conversion's lfd (0x8000B180), this build ahead of
+// it. The locals declared at the top, alpha first, give retail's saved GPRs and the other saved floats
 // draws the stage name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawStageNameBubbles(CGame* game)
 {
@@ -2688,10 +2690,19 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj bubble = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[138 - StatusTextureOffset], 0);
-		f32 zero       = 0.0f;
-		u32 color      = game->mStageName.mColor & 0xFFFFFF00; // rgb only; alpha comes from the scale
+		u32 alpha;
+		f32 rot;
+		f32 pop;
+		f32 y;
+		f32 x;
+		f32 scale;
+		f32 bob;
+		f32 tilt;
+		f32 swell;
+		f32 zero  = 0.0f;
+		u32 color = game->mStageName.mColor & 0xFFFFFF00; // rgb only; alpha comes from the scale
 		for (s32 i = 0; i < game->mStageName.mCount; i++) {
-			f32 scale = game->mStageName.mChars[i].mScale;
+			scale = game->mStageName.mChars[i].mScale;
 			if (scale <= zero) {
 				continue;
 			}
@@ -2703,21 +2714,14 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, &width);
-			f32 tilt;
-			f32 swell;
-			f32 pop;
-			f32 bob;
-			f32 x;
-			f32 rot;
-			f32 y;
-			bob       = 4.0f * std::sinf(game->mStageName.mChars[i].mBob);
-			tilt      = std::sinf(0.7f * game->mStageName.mChars[i].mTilt);
-			swell     = std::sinf(3.1415927f * scale);
-			pop       = 0.2f * swell + std::sinf(1.5707964f * scale);
-			x         = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
-			u32 alpha = 255.0f * scale;
-			rot       = -(0.017453292f * (10.0f * tilt));
-			y         = 150.0f + bob;
+			bob            = 4.0f * std::sinf(game->mStageName.mChars[i].mBob);
+			tilt           = std::sinf(0.7f * game->mStageName.mChars[i].mTilt);
+			swell          = std::sinf(3.1415927f * scale);
+			pop            = 0.2f * swell + std::sinf(1.5707964f * scale);
+			x              = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
+			alpha          = 255.0f * scale;
+			rot            = -(0.017453292f * (10.0f * tilt));
+			y              = 150.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), zero, -zero, rot);
 			f32 size   = glyphSize * (1.5f * pop);
