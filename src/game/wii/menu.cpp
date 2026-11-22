@@ -833,6 +833,23 @@ void MenuPaneFadePair::Update(u32 frames)
 	}
 }
 
+// the pointer left a pane
+void MenuItem::vf0C(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = 0;
+	if (mMode != 2) {
+		return;
+	}
+	if (kind >= 8 && kind <= 9) {
+		mPaneFades.mFades[(u32)(kind - 8)].mHovered = 0;
+		return;
+	}
+	if (mSelection == kind && mSelection != -1) {
+		mSelection = -1;
+	}
+}
+
 // the pointer came on screen while both controls work: nothing is picked until it points
 void MenuItem::vf18(nw4r::math::VEC2*)
 {
