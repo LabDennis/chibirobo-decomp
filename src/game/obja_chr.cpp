@@ -2450,6 +2450,10 @@ f32 gEquipmentOutlineX[4]     = { -1, 1, 1, -1 };
 f32 gEquipmentOutlineY[4]     = { -1, -1, 1, 1 };
 f32 gEquipmentHintOutlineX[4] = { -1, 1, 1, -1 };
 f32 gEquipmentHintOutlineY[4] = { -1, -1, 1, 1 };
+#if !defined(VERSION_JP)
+f32 gOXMenuLabelOutlineX[4] = { -1, 1, 1, -1 };
+f32 gOXMenuLabelOutlineY[4] = { -1, -1, 1, 1 };
+#endif
 }
 
 // one of his tools is out
