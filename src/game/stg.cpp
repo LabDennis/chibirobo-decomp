@@ -6983,11 +6983,14 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 select
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u32 upper  = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
-		u32 lower  = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		u32 upper = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
+		u32 lower = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		// one expression: a reassigned digitX lets the compiler add the two invariant terms first (retail adds 287 * scale,
+		// then 18 * scale, then the inset, US 0x80043424 - 0x80043430)
+#if defined(VERSION_JP)
 		f32 digitX = 287.0f * scale + (left - i * w);
-#if !defined(VERSION_JP)
-		digitX = (extraW / 2.0f) * scale + (18.0f * scale + digitX);
+#else
+		f32 digitX = (extraW / 2.0f) * scale + (18.0f * scale + (287.0f * scale + (left - i * w)));
 #endif
 		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, digitX, digitY, 0, w, h, 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
