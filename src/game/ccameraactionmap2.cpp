@@ -108,7 +108,7 @@ static inline BOOL CameraEdgeIntersect(const Vec& from, const Vec& to, Vec& a, V
  * @note Size: 0x17CC
  */
 // NONMATCHING: retail reads each area's record back out of the CamAreaInfo temporary after its destructor ran
-// (0x8013E3D8 lwz r4, 0x58(r1)) where this build keeps the pointer in a register, and fills old one float at a time.
+// (0x8013E3B8 lwz r4, 0x58(r1)) where this build keeps the pointer in a register, and fills old one float at a time.
 // Tried: CVec(const CVec&) for target/old/candidate (word copies, retail copies floats), .mRecord instead of GetRecord(),
 // a named CamAreaInfo, an assigning constructor: none reloads the record
 extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest,
@@ -374,7 +374,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
  * @note Size: 0x1574
  */
 // NONMATCHING: the frame is 0x10 bigger: retail builds the swing's target in place with the out-of-line CVec(const Vec&)
-// (0x8014019C bl __ct__4CVecFRC3Vec into 0x228), the extern "C" stand-in returns it by value through one more slot.
+// (0x8014018C bl __ct__4CVecFRC3Vec into 0x228), the extern "C" stand-in returns it by value through one more slot.
 // The real constructor is expanded here (all three sites): this build's estimate keeps the limit at 32 or more, retail's
 // had dropped to 16 (it expands the copy constructor of current but calls CVec(const Vec&))
 void CCameraActionMap::Update(u32 step)

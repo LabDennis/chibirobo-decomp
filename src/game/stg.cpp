@@ -3242,8 +3242,8 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	++frame;
 	if (scale <= 0)
 		return;
-	f32 width   = 254.0f * scale;
 	f32 height  = 153.0f * scale;
+	f32 width   = 254.0f * scale;
 	f32 y       = 224.0f - height / 2.0f;
 	u32 opacity = (u32)(255.0f * alpha);
 	u32 color   = opacity | 0xFFFFFF00;
@@ -3252,20 +3252,20 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
-	                             0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
+	                             size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
-	                             0.0f, helpSize, helpSize);
+	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
+	                             helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
 // no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
-// function scores lower (91.5 -> 91.2), so it stays u8. The -12.0f column shift and the 14.0f of the first rows
+// function scores lower, so it stays u8. The -12.0f column shift and the 14.0f of the first rows
 // and the two icons reach their adds as variables (US 0x80055D38 fadds f10, f5, f4 with -12; 0x80055D74,
 // 0x80055DC4, 0x800560A0 with 14), so they are the locals shift and lift; the first quad's x is 0.0f + that sum
 // in retail (0x80055D6C fadds f1, f3, f10 with a literal 0.0f), no spelling for that found. The first stat row's
@@ -3925,7 +3925,7 @@ extern "C" bool IsUtilibotStatusIconUnlocked()
 }
 
 // NONMATCHING: registers and the schedule of the loop set-up before the digits (retail converts the opacity byte
-// before it loads 3.6f, US 0x80053FF8); the places conversion takes the stack slot above the byte's (0x430 over
+// before it loads 3.6f, US 0x80051824); the places conversion takes the stack slot above the byte's (0x430 over
 // 0x428), so offset is computed before white
 extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha)
 {
