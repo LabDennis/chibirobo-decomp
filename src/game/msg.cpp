@@ -1143,11 +1143,11 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
     blr
 */
 
-static inline void MsgSetDigits(CMsg* msg, const s8* digits, s32 count, s32 first, s32 selected)
+static inline void MsgSetDigits(CMsg* msg, s32 count, s32 first, s32 selected)
 {
 	for (s32 i = 0; i < 9; i += 3) {
 		for (s32 j = 0; j < 3; j++) {
-			msg->mFont.mDigits[i + j] = digits[i + j];
+			msg->mFont.mDigits[i + j] = msg->mDigits[i + j];
 		}
 	}
 	msg->mFont.mDigitCount     = count;
@@ -1202,7 +1202,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 				}
 			} else if (msg->mDigitCount > 0) {
 				if (msg->mFont.mOtherSelection < 0) {
-					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+					MsgSetDigits(msg, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 				} else {
 					CPad pad(0);
 					// mDigits[0] is the ones digit (A reads them from [9] down), so left moves to the next higher digit
@@ -1214,26 +1214,26 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						if (++msg->mDigits[msg->mSelectedDigit] > 9) {
 							msg->mDigits[msg->mSelectedDigit] = 0;
 						}
-						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						MsgSetDigits(msg, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mRepeat & down) {
 						if (--msg->mDigits[msg->mSelectedDigit] < 0) {
 							msg->mDigits[msg->mSelectedDigit] = 9;
 						}
-						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						MsgSetDigits(msg, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mRepeat & next) {
 						if (++msg->mSelectedDigit > msg->mDigitCount - 1) {
 							msg->mSelectedDigit = msg->mDigitCount - 1;
 						} else {
-							MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+							MsgSetDigits(msg, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 							PlayGameSound(&gGame.mSound, 0x87, 255);
 						}
 					} else if (pad.mPad->mRepeat & previous) {
 						if (--msg->mSelectedDigit < msg->mFirstEditDigit) {
 							msg->mSelectedDigit = msg->mFirstEditDigit;
 						} else {
-							MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+							MsgSetDigits(msg, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 							PlayGameSound(&gGame.mSound, 0x87, 255);
 						}
 					} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
