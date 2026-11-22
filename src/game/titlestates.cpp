@@ -751,9 +751,13 @@ void Title::State0(u32)
  * @note Address: 0x8002E574
  * @note Size: 0x358
  */
+// NONMATCHING: the loop's saved registers: retail keeps the save pointer in r31 (0x8002E5F0 addis r31, r28, 0x1) above the slot,
+// timestamp and card walkers, this build in r28 below them. A function-top card pointer and the header fields read in place
+// score lower
 void Title::State1(u32 frames)
 {
 	s32 state = gGame.mMemcard.mCard.mState;
+	SavePreviewRecord* save;
 	mDelay -= frames;
 	if (mDelay < 0)
 		mDelay = 0;
@@ -762,7 +766,7 @@ void Title::State1(u32 frames)
 		Memcard* card = &gGame.mMemcard.mCard;
 		OSTime timestamps[3];
 		for (s32 i = 0; i < 3; ++i) {
-			SavePreviewRecord* save = &card->mSaves[0][i];
+			save = &card->mSaves[0][i];
 			if (save->mState) {
 				OSCalendarTime calendar;
 				OSTicksToCalendarTime(OSSecondsToTicks((OSTime)save->mStat.time), &calendar);
