@@ -269,7 +269,7 @@ static inline void UpdateTitleDust(Title* title, u32 frames)
 			if (dust.mSpeedX >= 2) {
 				dust.mX      = rand() % 640;
 				dust.mY      = rand() % 480;
-				dust.mSpeedY = dust.mSpeedX = 0;
+				dust.mSpeedX = dust.mSpeedY = 0;
 				dust.mState                 = 0;
 			}
 			break;
@@ -413,8 +413,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 						title->mName.mChars[i].mScale = 0;
 				}
 			}
-			s32 visible = 0;
-			for (s32 i = 0; i < title->mName.mCount; ++i) {
+			s32 i, visible;
+			for (i = visible = 0; i < title->mName.mCount; ++i) {
 				if (0 != title->mName.mChars[i].mScale) {
 					++visible;
 					title->mName.mChars[i].mBob += (5.f * DEG2RAD) * frames;
@@ -488,7 +488,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		}
 		if (!title->IsActive())
 			return;
-		if (gGame.mMemcard.mCard.mBusy)
+		// through a reference: retail adds the card's offset and mBusy's separately (US 0x8002EEA0 addis 0xf, addis 0x1)
+		Memcard& card = gGame.mMemcard.mCard;
+		if (card.mBusy)
 			return;
 	}
 	// 1-2 scan the card, 3-5 read in the cursor, the demo model and the textures, 10 fades the menu in,
