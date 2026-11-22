@@ -56,9 +56,9 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
  * @note Address: 0x8000DFA8
  * @note Size: 0x194C (US, JP), 0x196C (PAL)
  */
-// NONMATCHING: retail passes the shake offset to operator+ without a second copy, tests IsAction(4)
-// as an int (cmpwi) where the header returns bool, and loads gMicMeterPeak again after each store
-// and before each use, as for a volatile (the audio DMA callback raises it; volatile gives 99.3 %)
+// NONMATCHING: retail passes the shake offset to operator+ without a second copy, and loads
+// gMicMeterPeak again after each store and before each use, as for a volatile (the audio DMA
+// callback raises it; volatile gives 99.3 %)
 void CGame::Draw()
 {
 	s32 i;
