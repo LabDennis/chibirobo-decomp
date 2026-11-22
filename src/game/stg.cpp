@@ -4217,9 +4217,11 @@ static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f
 	DrawOverviewTexture(tex, color, x, y, width, height);
 }
 
-// NONMATCHING: retail saves one float register more (f17, frame 0x10 bigger) and builds the outline's five
-// compound literals at falling stack addresses (0x38, 0x2c, 0x20, 0x14, 0x8); ours rise. Writing the outline in
-// place or with a literal depth does not change that
+// NONMATCHING: registers. Retail builds the outline's five compound literals at falling stack addresses (US
+// 0x8004EFD8: 0x38, 0x2c, 0x20, 0x14, 0x8) under the array at 0x44; the inline's rise. An unnamed array written at
+// the call, `DrawGsLineStrip(&gGame.mGs, (Vec[5]) { ... }, ...)`, gives retail's frame exactly but numbers wave, x
+// and y above the loop's hoisted constants (f29, f27, f26 for retail's f25, f24, f23) and scores lower, so the
+// helper stays. Retail keeps wave, x and y below those constants, where temporaries go
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
 	f32 alpha = 1.0f;
@@ -10724,6 +10726,10 @@ static inline u8 StageRowBlue(int row, u8 normal, u8 current)
 // NONMATCHING: register allocation and loop scheduling. Retail numbers the locals step, maxWidth, fontSize, x, y,
 // 60, 1, 15, 12, 0.5, cx, cy from f31 down (US 0x800331FC..0x80033248), the build puts cx and cy first;
 // declaring step first or cx and cy last or const moves other registers without reaching that order.
+// NONMATCHING: registers. Retail holds the window centre in f21/f20 (US 0x800331FC lfs f21, 0x10(r26)), below
+// the loop's constants, and step in f31; ours numbers cx, cy first. Reading mWindow.mX/mY in place instead loses
+// the hoisting (-6 %), and the operand order of the row compare and the colour `|` does not move (cmpw r4,r0 and
+// or r4,r0,r3 at 0x800332DC/0x80033310 keep the same registers either way)
 BOOL MenuStageSelect::Draw()
 {
 	if (CMenu::Draw()) {
