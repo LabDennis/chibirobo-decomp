@@ -5056,8 +5056,7 @@ Vec GetTargetFloorPosition(XAction* act)
 		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorOffset(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
 		CVec extent
 		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorExtent(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
-		f32 yaw = act->mTarget->mMoveRotate.y;
-		yaw += GetFloorYawRadians(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
+		f32 yaw = act->mTarget->mMoveRotate.y + GetFloorYawRadians(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
 		Mtx translate, local, rotate, scale, result;
 		PSMTXTrans(translate, position.x, position.y, position.z);
 		PSMTXTrans(local, offset.x, offset.y, offset.z);
