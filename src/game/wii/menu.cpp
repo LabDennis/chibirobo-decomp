@@ -2013,6 +2013,80 @@ static inline void DrawSolidQuad(CGs* gs, const Vec* quad, u32 color)
 	                 color, quad[3].x, quad[3].y, quad[3].z, color);
 }
 
+// NONMATCHING: the call list matches; a 36-byte stack/layout and register-allocation difference remains
+extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 fontSize = 17.0f * scale;
+	if (id < 0) {
+		return;
+	}
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[147], 0);
+	tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 w = 0.7f * (scale * (1.1f * GXGetTexObjWidth(&tex)));
+	f32 h = 0.7f * (scale * GXGetTexObjHeight(&tex));
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x - w / 2.0f, 2.0f * scale + (h / 2.0f + y),
+	                   0.0f, w, h, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	char text[256];
+	if (attachment) {
+		sprintf(text, "%s", GetAttachmentName(id));
+	} else {
+		sprintf(text, "%s", GetItemName(id));
+	}
+	alpha       = 255.0f * alpha;
+	u32 opacity = (u32)alpha;
+	u32 color;
+	if (count <= 0) {
+		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+	} else {
+		color = opacity | 0xFFFFFF00;
+	}
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+	tex = gGame.mTpl.mTex;
+	w   = scale * GXGetTexObjWidth(&tex);
+	h   = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	for (int i = 0; i < 4; i++) {
+		f32 div = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 n = value / div;
+		if (i == 0 || n != 0) {
+			n %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * n, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u32 top, bottom;
+			if (count <= 0) {
+				top    = (u8)(0.4f * alpha) | 0xEFEBC500;
+				bottom = (u8)(0.4f * alpha) | 0xEDA83600;
+			} else {
+				top    = (u8)alpha | 0xEFEBC500;
+				bottom = (u8)alpha | 0xEDA83600;
+			}
+			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[145], 0);
+	tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u16 iconW = GXGetTexObjWidth(&tex);
+	u16 iconH = GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 80.0f * scale + (12.0f * scale + (203.0f * scale + x)),
+	                   9.0f * scale + y, 0.0f, scale * (1.1f * iconW), scale * iconH, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32 scale, f32 opacity)
 {
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[index], 0);
