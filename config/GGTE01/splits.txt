@@ -432,25 +432,15 @@ game/memcardinit.cpp:
 	.ctors      start:0x801FD67C end:0x801FD680
 	.bss        start:0x8036AC00 end:0x80378080
 
-game/cjanim.cpp:
-	.text       start:0x8008A360 end:0x8008C7CC
-
-game/xobjfloor.cpp:
-	.text       start:0x8008C7CC end:0x8008C8A4
-
 game/obja.cpp:
-	.text       start:0x8008C8A4 end:0x80091C44
-	.sbss       start:0x8065B250 end:0x8065B254
+	.text       start:0x8008A360 end:0x80092AA4
+	.rodata     start:0x802091E8 end:0x80209320
+	.data       start:0x8022565C end:0x80225B90
+	.bss        start:0x80378080 end:0x803781C0
+	.sdata      start:0x8065A430 end:0x8065A470
+	.sbss       start:0x8065B250 end:0x8065B258
+	.sdata2     start:0x8065D160 end:0x8065D248
 	.sbss2      start:0x8065FFB8 end:0x8065FFD4
-
-game/xobjwalk.cpp:
-	.text       start:0x80091C44 end:0x80091C80
-
-game/xobjinit.cpp:
-	.text       start:0x80091C80 end:0x800929C4
-
-game/xobjinitialize.cpp:
-	.text       start:0x800929C4 end:0x80092AA4
 
 game/xobjcamera.cpp:
 	.text       start:0x80092AA4 end:0x80092DBC
