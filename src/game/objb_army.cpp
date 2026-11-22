@@ -150,6 +150,10 @@ static inline void SetMode(XObjArmy* army, s32 mode)
  */
 // NONMATCHING: retail keeps the volume in its own saved register (li/mr r29)
 // and loads the joint before the anim id; this build re-extends the volume.
+// Tried: u8->s32 local (96.0), if/else like the matching XObjActor sister —
+// removes both clrlwi but permutes r29/r30/r31 (95.9, worse), mAnimId inline
+// (88.3), anim declared first (93.2). Remaining diff is register colouring
+// plus retail writing the home register inside each branch.
 
 void XObjArmy::UpdateAnimationSounds()
 {
