@@ -1746,18 +1746,32 @@ void XObjChr::UpdateObject(u32 frames)
 	if (speed > 1.0f)
 		speed *= speed;
 
+	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
+	// WrapAngle inline leaves a copy (fmr) behind each one
 	f32 direction;
 	if (speed > 0) {
 
 		if (gGame.mStatus.mFlags & 0x100) {
 			if (gGame.mStatus.mFlags & 0x200) {
-				if ((mStick[2] >= 0 && mStick[2] <= HALF_PI) || (mStick[2] <= 0 && mStick[2] >= -HALF_PI))
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI));
-				else if (mStick[2] >= HALF_PI && mStick[2] <= 130 * DEG2RAD)
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD)));
-				else if (mStick[2] <= -HALF_PI && mStick[2] >= -130 * DEG2RAD)
-					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI));
-				else
+				if ((mStick[2] >= 0 && mStick[2] <= HALF_PI) || (mStick[2] <= 0 && mStick[2] >= -HALF_PI)) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (mStick[2] >= HALF_PI && mStick[2] <= 130 * DEG2RAD) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD));
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (mStick[2] <= -HALF_PI && mStick[2] >= -130 * DEG2RAD) {
+					direction = mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else
 					direction = -WrapAngle(mStick[2] + mMoveRotate.mTarget.y);
 			} else {
 				direction = NAN;
@@ -1781,18 +1795,30 @@ void XObjChr::UpdateObject(u32 frames)
 			}
 		} else if (mCopter.mState == 3) {
 			mCopter.mMoveDirection = 1;
-			direction              = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction              = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		} else if (mCopter.mState == 4 || mCopter.mState == 7 || mCopter.mState == 8) {
 			if ((gGame.mStatus.mFlags & 0x40000000) && IsStopped(this)) {
 				direction = NAN;
 				speed     = 0;
 			} else {
 				mCopter.mMoveDirection = 1;
-				direction              = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+				direction              = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
 				speed *= 0.75f;
 			}
 		} else if (mPopper.mState == 3 || mPopper.mState == 4 || mPopper.mState == 8) {
-			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		} else if (mRope.mState == 5) {
 			if (pad->mStickY > 0.1f) {
 				mRope.mMoveDirection = 1;
@@ -1830,13 +1856,21 @@ void XObjChr::UpdateObject(u32 frames)
 				mPush.mMoveDirection = -1;
 				yaw                  = PI + yaw;
 			}
-			direction = TWO_PI + WrapAngle(yaw);
+			while (yaw < 0.0f)
+				yaw += TWO_PI;
+			while (yaw >= TWO_PI)
+				yaw -= TWO_PI;
+			direction = TWO_PI + yaw;
 			if (!mPush.mTarget || mPush.mPushPositionClamped)
 				speed = 0;
 			else
 				speed = 1.5f;
 		} else {
-			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			direction = mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
 		}
 		if (__fpclassifyf(mHeldMoveAngle) != FP_NAN)
 			direction = mHeldMoveAngle + (mStick[2] - mHeldStickAngle);
