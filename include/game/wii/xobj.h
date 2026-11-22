@@ -2000,6 +2000,7 @@ public:
 	u8 _1378[0x80];              // ResetObjectState drops every other word of the two 0x40 records
 };
 STATIC_ASSERT(sizeof(XObjMap) == 0x13F8);
+
 // the Chibi-Robo character object: its dtor (0x800C14A0) unwinds a CPtclSet at
 // _1B7BC, a CTexObj[2] at _1C774 and one AnimSfxActor at _1CC90 among many
 // members whose types are not recovered yet
@@ -2099,19 +2100,7 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
 
-// the leticker object: its ctor/dtor (0x800C4B90/0x800C4DE8) cover an AnimSfx at _A64
-class XObjLeticker : public XObj {
-public:
-	XObjLeticker();
-	virtual ~XObjLeticker();
-	virtual void DrawLate(); // _28C
-
-private:
-	u8 _9A8[0xA64 - 0x9A8];
-	AnimSfx mSfx; // _A64
-	u8 _AC0[0xAC8 - 0xAC0];
-};
-STATIC_ASSERT(sizeof(XObjLeticker) == 0xAC8);
+// XObjLeticker's recovered fields live in game/wii/xobjleticker.h
 
 // toys made of two more objects, read after the toy itself; the retail ctor
 // (0x800C2404) calls the member ctors out of line: CStatus32 at _D78, the two
@@ -2583,7 +2572,8 @@ public:
 	u8 _CDC[4];               // _CDC
 };
 STATIC_ASSERT(sizeof(XObjSpiderBoss) == 0xCE0);
-WII_XOBJ_DECL(XObjFree, 0x9B8);
+
+// XObjDust lives in game/wii/xobjflags.h, behind XObjFlags; XObjFree in game/wii/xobjfree.h
 
 // the object's blob shadow: a dark fan (center plus a 33-point rim) over a fading
 // ring of (outer, inner) vertex pairs, built once in the constructor (retail

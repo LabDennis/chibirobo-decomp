@@ -82,6 +82,8 @@ public:
 	virtual s32 OnPlayerContact(s32 unused, s32 value);                           // _1CC
 	virtual s32 HandleEventCommand(s32 count, s32* args);                         // _1E8
 	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed); // _208
+	virtual void PauseSounds(f32 fade);                                           // _20C
+	virtual void ResumeSounds(f32 fade);                                          // _210
 	virtual s32 GetFlagIndex();                                                   // _28C
 
 	// the item index its data record names, -1 without one (the GameCube XObj's inline)
@@ -144,7 +146,7 @@ public:
 
 	void* mMatAnim;    // _9AC, the GameCube's HSD mat-anim slot; the Wii only ever clears it
 	s32 mAnimId2;      // _9B0, the anim it was placed with
-	s32 mAnimCount;    // _9B4
+	s32 mAnimCount;    // _9B4, ResAnmChr entries in the model archive
 	f32 mBaseY;        // _9B8
 	f32 mPhase;        // _9BC, bobbing
 	f32 mPhaseStep;    // _9C0

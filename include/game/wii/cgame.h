@@ -13,6 +13,7 @@
 #include "game/wii/infoscrn.h"
 #include "game/logo.h"
 #include "game/evt.h"
+#include "game/cptcl.h"
 #include "game/wii/msg.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
@@ -1096,8 +1097,9 @@ struct WiiPlayerState : public XObj {
 	u8 _1B7B4[0x1B7B8 - 0x1B7B4];
 	// nonzero while he stands on the floor: GetHeight reads 0 and the movement's floor snap skips; only bit 0's
 	// writers are decoded so far, the word reads as a whole
-	u32 mOnGround; // _1B7B8
-	u8 _1B7BC[0x1C980 - 0x1B7BC];
+	u32 mOnGround;          // _1B7B8
+	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, XObjChr's mDustPool
+	u8 _1C770[0x1C980 - 0x1C770];
 	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
 	u8 _1C982[2];          // _1C982
 	s32 mSavedTargetAnim;  // _1C984, its playing anim

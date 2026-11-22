@@ -1,5 +1,7 @@
 #include "game/wii/xobj.h"
 #include "game/wii/xobjflags.h"
+#include "game/wii/xobjfree.h"
+#include "game/wii/xobjleticker.h"
 
 // the Wii pool subclasses' constructors and destructors, emitted together in
 // retail .text 0x800C13B0-0x800C5424; this unit is the Wii counterpart of the
@@ -196,12 +198,3 @@ XObjFree::XObjFree()
 XObjFree::~XObjFree()
 {
 }
-
-// the three CEvtFlags the pickups point mFlags at; the GameCube keeps them in
-// xobjflagsinit.cpp, the Wii's flag-init unit is not reconstructed yet, so they
-// are defined here -- the linker places them at the retail addresses
-// (item 0x8045D70C, coin 0x8045D91C, dust 0x8045DB40, gaps between them are
-// the flag unit's other statics)
-CEvtFlags gItemEventFlags;
-CEvtFlags gCoinEventFlags;
-CEvtFlags gDustEventFlags;

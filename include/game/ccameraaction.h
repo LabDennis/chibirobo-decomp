@@ -1002,6 +1002,56 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
 
+// the leticker's camera: a ladr the player turns in 90-degree steps while riding.
+// The GameCube fields keep their offsets (mTarget _44 through mMaxZ _64 verified
+// in the retail Reset at 0x801192EC); the Wii class adds a block behind them that
+// Reset also clears: three flags at _74-_76, words at _8C/_90/_A0/_A4/_A8 and a
+// vector at _94-_9C. Their roles are not identified yet
+class CCameraActionLeticker : public CCameraActionLadr {
+public:
+	Vec* mTarget;    // _44, the leticker's mStackTopPosition
+	f32 mTurnTo;     // _48, the heading the camera is turning to
+	f32 mTurnSpeed;  // _4C, radians per frame
+	s32 mTurnFrames; // _50, frames left in the current turn
+	bool mBounded;   // _54, the leticker boxed the camera in
+	f32 mMinX;       // _58
+	f32 mMaxX;       // _5C
+	f32 mMinZ;       // _60
+	f32 mMaxZ;       // _64
+	u8 _68[0x74 - 0x68];
+	u8 _74;
+	u8 _75;
+	u8 _76;
+	u8 _77[0x8C - 0x77];
+	u32 _8C;
+	u32 _90;
+	Vec _94;
+	u32 _A0;
+	u32 _A4;
+	u32 _A8;
+
+	virtual void Update(u32 step);  // _10
+	virtual void Reset();           // _14
+	virtual u32 GetCameraFlags();   // _58
+	virtual f32 GetFollowDivisor(); // _5C
+	virtual u32 GetMode();          // _60
+	virtual Vec GetCameraTarget();  // _68
+	virtual ~CCameraActionLeticker() { }
+
+	void SetTarget(Vec* target) { mTarget = target; }
+
+	// keeps the eye inside the box
+	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ)
+	{
+		mBounded = true;
+		mMinX    = minX;
+		mMaxX    = maxX;
+		mMinZ    = minZ;
+		mMaxZ    = maxZ;
+	}
+};
+STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0xAC);
+
 // just looks at the player, the camera keeps everything else
 class CCameraActionDefault : public CInterfaceCameraAction {
 public:
