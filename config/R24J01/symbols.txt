@@ -2417,6 +2417,7 @@ SetAnim__8XObjDustFliffff = .text:0x801181D4; // type:function size:0x4
 DrawWithView__8XObjDustFPA4_f = .text:0x80117FC0; // type:function size:0x60
 DrawObjectEffects__8XObjDustFv = .text:0x80118020; // type:function size:0x38
 UpdateDriftingDust = .text:0x80117A2C; // type:function size:0x3D4
+UpdateDustEvent = .text:0x80117E00; // type:function size:0x1C0
 UpdateObject__8XObjDustFUl = .text:0x801178E4; // type:function size:0x148
 GetFlagIndex__8XObjDustFv = .text:0x801174D4; // type:function size:0x44
 Release__8XObjHBoxFv = .text:0x801166C4; // type:function size:0x4C

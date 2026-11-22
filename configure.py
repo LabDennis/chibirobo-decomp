@@ -1477,8 +1477,8 @@ if wii:
                 # AnimSfx member pulls the nw4r sound headers
                 Object(NonMatching, "game/wii/xobjhbox.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # unit 80: the dust pile's update, event and billboard half; the event wait
-                # (fn_80117E00) and the shared billboard body (fn_80118058) are free-standing,
-                # SetAnim a passthrough to another unit's body. -i include/rvl_msl: xobjflags.h
+                # (UpdateDustEvent) and the shared billboard body (fn_80118058) are free-standing,
+                # SetAnim a passthrough to XObj::SetAnim. -i include/rvl_msl: xobjflags.h
                 Object(NonMatching, "game/wii/xobjdust.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # unit 81: the dust pile's item/hit reactions and the free object's state
                 # half. -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the
@@ -1489,8 +1489,8 @@ if wii:
                 # __sinit registers. -i include/rvl_msl: xobjflags.h as above
                 Object(NonMatching, "game/wii/xobjfreeupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # unit 83: the rising lifts and their camera action. GameCube layout
-                # shifted 0x28 behind the bigger XObj; the camera's Update and most of
-                # the leticker's bodies are not ported yet. -i include/rvl_msl: AnimSfx
+                # shifted 0x28 behind the bigger XObj; the camera's Update, HandleEventCommand
+                # and a few small helpers are not ported yet. -i include/rvl_msl: AnimSfx
                 Object(NonMatching, "game/wii/objb_leticker.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
                 # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:

@@ -20,16 +20,14 @@ extern "C" {
 
 // the Wii's dust pile update and billboard half. The GameCube keeps the whole dust object in
 // xobjdust.cpp; on the Wii the flag/reset/placement half sits in the xobjhbox.cpp unit ahead of
-// this one and the event/billboard functions are free-standing. fn_80117E00 is the GameCube's
-// UpdateDustEvent, fn_80118058 the billboard body DrawObjectEffects shares, and SetAnim a
-// passthrough to the implementation body at fn_800AF2C8 (its own unit keeps the real name).
+// this one and the event/billboard functions are free-standing. fn_80118058 is the billboard
+// body DrawObjectEffects shares, and SetAnim a passthrough to XObj::SetAnim.
 
 extern "C" BOOL IsPlayerBlockingEvents(const WiiPlayerState* player);
 extern "C" s32 ClassifyFloatBits(f32 value); // the Wii MSL's out-of-line __fpclassifyf
 extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames);
-extern "C" BOOL fn_80117E00(XObjDust* dust, u32 frames);
+extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames);
 extern "C" void fn_80118058(XObjDust* dust, s32);
-extern "C" void fn_800AF2C8(XObj* object, s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);
 
 static inline void TriggerEvent(XObj* object, s16 first, s16 second)
 {
@@ -53,7 +51,7 @@ void XObjDust::UpdateObject(u32 frames)
 		}
 	}
 	if (GetObjFlags() & 2) {
-		if (fn_80117E00(this, frames)) {
+		if (UpdateDustEvent(this, frames)) {
 			Release();
 			SetFlag();
 		}
@@ -86,6 +84,8 @@ static inline BOOL CheckDustScatterHeading(XObjDust* dust)
 	return TRUE;
 }
 
+// NONMATCHING: retail loads mPhase into f0 and copies it to f1 for fmod; ours loads f1
+// directly, one instruction short
 /**
  * @note Address: 0x80117A2C
  * @note Size: 0x3D4
@@ -133,11 +133,12 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 }
 
 // event 16 waits for its own anim, event 56 shrinks it towards mTo while chibi robo plays anim 0x8C0
+// NONMATCHING: regalloc, the event script, id and arg land in r30/r29/r28 in retail, r28/r30/r29 here
 /**
  * @note Address: 0x80117E00
  * @note Size: 0x1C0
  */
-extern "C" BOOL fn_80117E00(XObjDust* dust, u32)
+extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32)
 {
 	if (dust->mStatus.mFlags & 0x4000000000000000ULL) {
 		if (dust->mEventId == 16) {
@@ -190,7 +191,7 @@ void XObjDust::DrawObjectEffects()
 }
 
 // NONMATCHING: DrawObjectEffects' body split into a shared free function; the second argument
-// goes unread in the retail body — what selected it is undecoded
+// goes unread in the retail body: what selected it is undecoded
 /**
  * @note Address: 0x80118058
  * @note Size: 0x17C
@@ -217,15 +218,13 @@ extern "C" void fn_80118058(XObjDust* dust, s32)
 	gGame.mGs.mBillboardEnabled = FALSE;
 }
 
-// NONMATCHING: the dust's SetAnim forwards to the shared body at fn_800AF2C8 (SetAnim-shaped,
-// another unit's); written as the retail tail-branch, its real name is that unit's
 /**
  * @note Address: 0x801181D4
  * @note Size: 0x4
  */
 void XObjDust::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	fn_800AF2C8(this, id, force, frame, rate, blend, blendRate);
+	XObj::SetAnim(id, force, frame, rate, blend, blendRate);
 }
 
 // A stick flick sends loose dust hopping.

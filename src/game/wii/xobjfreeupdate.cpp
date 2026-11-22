@@ -17,7 +17,6 @@
 // collection flags its __sinit registers
 
 extern s32 gRefreshRate;
-extern "C" void fn_800AF2C8(XObj* object, s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);
 
 // the per-kind collection flags, one CEvtFlags each; the item, coin and dust ctors
 // point their mFlags at these, and the unit's __sinit registers them in this order.
@@ -27,6 +26,7 @@ CEvtFlags gCoinEventFlags;
 u32 gCoinHandleTable[5];
 CEvtFlags gDustEventFlags;
 
+// NONMATCHING: float regalloc in the burst loop, f25-f28 rotate against retail
 /**
  * @note Address: 0x80118860
  * @note Size: 0x408
@@ -70,7 +70,7 @@ void XObjFree::UpdateObject(u32 frames)
  */
 void XObjFree::DrawScreenOverlay()
 {
-	// NONMATCHING: retail zeroes a second 12-byte local beside pos (stw 0x10/0x14/0x18) —
+	// NONMATCHING: retail zeroes a second 12-byte local beside pos (stw 0x10/0x14/0x18):
 	// an unnamed Vec the source had; a Vec[2] spelling gets the stores back but moves the
 	// vcall's vptr loads, so the plain Vec scores higher.
 	XObj::DrawScreenOverlay();
@@ -103,9 +103,7 @@ void XObjFree::DrawScreenOverlay()
  */
 void XObjFree::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	// NONMATCHING: the free object's SetAnim forwards to the shared body at fn_800AF2C8
-	// (SetAnim-shaped, its own unit keeps the real name), like XObjDust's
-	fn_800AF2C8(this, id, force, frame, rate, blend, blendRate);
+	XObj::SetAnim(id, force, frame, rate, blend, blendRate);
 }
 
 /**
@@ -123,6 +121,7 @@ void XObjFree::OnHitFromPosition(const Vec& position, f32 strength)
 	}
 }
 
+// NONMATCHING: regalloc, retail keeps the actor in r27 and the handle in r3; ours swaps them
 /**
  * @note Address: 0x80118F5C
  * @note Size: 0x10C
@@ -137,6 +136,7 @@ void XObjCoin::ResumeSounds(f32 fade)
 	}
 }
 
+// NONMATCHING: as ResumeSounds
 /**
  * @note Address: 0x80119068
  * @note Size: 0x10C

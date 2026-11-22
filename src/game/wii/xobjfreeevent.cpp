@@ -39,6 +39,7 @@ void XObjDust::OnHitFromPosition(const Vec& position, f32 strength)
 	}
 }
 
+// NONMATCHING: regalloc, the event script, id and arg land in r31/r27/r28 in retail, r27/r28/r31 here
 /**
  * @note Address: 0x8011851C
  * @note Size: 0x264
@@ -76,6 +77,7 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 	return TRUE;
 }
 
+// NONMATCHING: retail loads _168 once into r3 for the test; ours loads it into r0 and again into r3
 /**
  * @note Address: 0x80118780
  * @note Size: 0xD4
