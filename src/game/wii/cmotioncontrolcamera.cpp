@@ -748,7 +748,8 @@ extern "C" void fn_8016AA74()
  * @note Address: 0x8016AA78
  * @note Size: 0x158
  */
-// NONMATCHING: clamp scheduling; retail copies the whole Vec, z uninitialised. x comes from in[1] and y from in[0], as retail loads them.
+// NONMATCHING: clamp scheduling. Retail returns the Vec by value (r3 is the return slot, three stw out, z
+// uninitialised); the three callers in the camera actions still pass an out pointer. x comes from in[1], y from in[0].
 extern "C" void fn_8016AA78(f32* out, f32* in, f32* limits)
 {
 	Vec result;
