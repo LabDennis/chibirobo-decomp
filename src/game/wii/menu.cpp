@@ -4122,6 +4122,130 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
+static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32 bottom)
+{
+	vertices[0].x = left;
+	vertices[0].y = top;
+	vertices[1].x = right;
+	vertices[1].y = top;
+	vertices[2].x = right;
+	vertices[2].y = bottom;
+	vertices[3].x = left;
+	vertices[3].y = bottom;
+}
+
+// NONMATCHING: the complete 46-call list matches; a 108-byte code-layout and register-allocation difference remains
+extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
+{
+	if (!(alpha > 0.0f)) {
+		return;
+	}
+	CTexObj tex;
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetLineWidth(6, GX_TO_ONE);
+	f32 left         = 16.0f + x;
+	f32 right        = 168.0f + left;
+	f32 fill         = 168.0f * value + left;
+	f32 bottom       = 16.0f + y;
+	Vec vertices[20] = {};
+	SetGaugeQuad(vertices, left, right, y, bottom);
+	SetGaugeQuad(vertices + 4, left, fill, y, bottom);
+	SetGaugeQuad(vertices + 8, fill, right, y, bottom);
+	f32 shadowX = 4.0f + left;
+	f32 shadowY = 4.0f + y;
+	SetGaugeQuad(vertices + 12, shadowX, 168.0f + shadowX, shadowY, 16.0f + shadowY);
+	SetGaugeQuad(vertices + 16, left, fill, shadowY, (bottom - 4.0f) - 1.0f);
+	DrawGsVertexQuad(&gGame.mGs, vertices[12].x, vertices[12].y, vertices[12].z, (u32)(100.0f * alpha) | 0x0A0A0A00, vertices[13].x,
+	                 vertices[13].y, vertices[13].z, (u32)(100.0f * alpha) | 0x0A0A0A00, vertices[14].x, vertices[14].y, vertices[14].z,
+	                 (u32)(100.0f * alpha) | 0x0A0A0A00, vertices[15].x, vertices[15].y, vertices[15].z,
+	                 (u32)(100.0f * alpha) | 0x0A0A0A00);
+	f32 opacity = 255.0f * alpha;
+	u32 a       = (u32)opacity;
+	DrawGsLineStrip(&gGame.mGs, vertices, a | 0xC8C8C800, 5);
+	DrawGsVertexQuad(&gGame.mGs, vertices[0].x, vertices[0].y, vertices[0].z, (u32)(40.0f * alpha) | 0xA0FFFF00, vertices[1].x,
+	                 vertices[1].y, vertices[1].z, (u32)(40.0f * alpha) | 0xA0FFFF00, vertices[2].x, vertices[2].y, vertices[2].z,
+	                 (u32)(40.0f * alpha) | 0xA0FFFF00, vertices[3].x, vertices[3].y, vertices[3].z, (u32)(40.0f * alpha) | 0xA0FFFF00);
+	DrawGsVertexQuad(&gGame.mGs, vertices[16].x, vertices[16].y, vertices[16].z, (u32)(100.0f * alpha) | 0x40FF8000, vertices[17].x,
+	                 vertices[17].y, vertices[17].z, (u32)(100.0f * alpha) | 0x40FF8000, vertices[18].x, vertices[18].y, vertices[18].z,
+	                 (u32)(100.0f * alpha) | 0x40FF8000, vertices[19].x, vertices[19].y, vertices[19].z,
+	                 (u32)(100.0f * alpha) | 0x40FF8000);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+	u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	f32 scale = 1.0f;
+	InitPCPanelTexture(tex, 243);
+	f32 width  = 0.85f * (scale * GXGetTexObjWidth(&tex));
+	f32 height = 0.85f * (scale * GXGetTexObjHeight(&tex));
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 capY = (8.0f + y) - 0.5f;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + (left - width / 2.0f), capY, 0.0f, width, height, 0.0f, 0.0f,
+	                   3.1415927f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	InitPCPanelTexture(tex, 242);
+	width  = 0.95f * (scale * GXGetTexObjWidth(&tex));
+	height = 0.95f * (scale * GXGetTexObjHeight(&tex));
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (width / 2.0f + right) - 4.0f, capY, 0.0f, width, height, 0.0f, 0.0f,
+	                   3.1415927f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	s32 current = (s32)(10000.0f * value);
+	x += 101.0f * 1.2f;
+	y -= 4.8f;
+	InitPCPanelTexture(tex, 126);
+	width  = 1.2f * GXGetTexObjWidth(&tex);
+	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	color              = 0xFFFFFF00 | (u8)opacity;
+	f32 offset         = (3.0f * (width - 3.0f * 1.2f) - 98.0f * 1.2f) - 16.0f;
+	u32 upper, lower;
+	for (s32 i = 0; i < 5; i++) {
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(10000 / divisor);
+		if (i != 0 && digit == 0) {
+			continue;
+		}
+		digit %= 10;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))),
+		                   y - 2.4f, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	f32 shift = 6.0f * (width - 3.0f * 1.2f);
+	for (s32 i = 0; i < 5; i++) {
+		f32 divisor;
+		PC_DIGIT_DIVISOR(divisor, i);
+		s32 digit = (s32)(current / divisor);
+		if (i != 0 && digit == 0) {
+			continue;
+		}
+		digit %= 10;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower,
+		                   (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, 0.0f, width, height, 0.0f, 0.0f,
+		                   0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	InitPCPanelTexture(tex, 169);
+	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f,
+	                   0.0f, 0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
