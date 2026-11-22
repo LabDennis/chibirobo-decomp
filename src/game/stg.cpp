@@ -3924,8 +3924,9 @@ extern "C" bool IsUtilibotStatusIconUnlocked()
 	return found;
 }
 
-// NONMATCHING: registers and the order of the loop set-up before the digits (retail converts the opacity
-// byte before it loads 3.6f); the statements are retail's
+// NONMATCHING: registers and the schedule of the loop set-up before the digits (retail converts the opacity byte
+// before it loads 3.6f, US 0x80053FF8); the places conversion takes the stack slot above the byte's (0x430 over
+// 0x428), so offset is computed before white
 extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
@@ -3980,8 +3981,8 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	height = 1.2f * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
-	u32 white     = 0xFFFFFF00 | (u8)opacity;
 	f32 offset    = (places - 1) * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
+	u32 white     = 0xFFFFFF00 | (u8)opacity;
 	u32 upper, lower;
 	for (s32 i = 0; i < 4; i++) {
 		f32 divisor;
