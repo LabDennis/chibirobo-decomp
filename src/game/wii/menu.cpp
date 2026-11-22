@@ -2488,6 +2488,139 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
+template <PCShopListKind kind>
+static inline void DrawPCListRow(MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	if (kind == ItemPriceList) {
+		DrawPCItemPriceRow(row.mItem, row.mCount, row.mPrice, row.mIsAttachment, x, y, alpha, scale);
+	} else {
+		DrawPCPriceRow(row.mItem, row.mCount, row.mPrice, x, y, alpha, scale);
+	}
+}
+
+static inline void DrawPCListMask(f32 top, f32 height, u32 color)
+{
+	f32 left = 130.0f, right = 510.0f;
+	Vec mask[5] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, top + height, -10.0f },
+		            (Vec) { left, top + height, -10.0f }, (Vec) { left, top, -10.0f } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, mask, color, 5);
+}
+
+static inline s32 PCShopMaxPage(MenuPCItem*& table)
+{
+	s16 item, quantity;
+	int i;
+	s32 pages = 0;
+	for (i = 0; i < 20; table++, i++) {
+		item     = table->mItem;
+		quantity = table->mCount;
+		if (item >= 0 && quantity >= 0) {
+			pages++;
+		}
+	}
+	pages -= 8;
+	if (pages < 1) {
+		pages = 1;
+	}
+	return pages;
+}
+
+static inline s32 CountPCShopItems(MenuPCItem* table)
+{
+	s16 item;
+	s16 quantity;
+	int i;
+	s32 count = 0;
+	for (i = 0; i < 20; i++) {
+		item     = table[i].mItem;
+		quantity = table[i].mCount;
+		if (item >= 0 && quantity >= 0) {
+			count++;
+		}
+	}
+	return count;
+}
+
+static inline void InitMenuSelectionBar(CTexObj& tex)
+{
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	InitPCPanelTexture(tex, 118);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+}
+
+static inline void DrawMenuSelectionBar(CTexObj& tex, f32 barX, f32 barY, f32 barW, f32 barH, f32 alpha, f32 textureOffset, u32 barColor)
+{
+	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, barX, barY, 0.0f, barW, barH, 0.0f, 0.0f, 0.0f);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, (barX - barW / 2.0f) - 4.0f, barY, 0.0f, 8.0f, barH, 0.0f,
+	                   0.0f, 0.0f);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, barColor, barColor, barColor, barColor, 4.0f + (barX + barW / 2.0f), barY, 0.0f, 8.0f, barH, 0.0f,
+	                   0.0f, 0.0f);
+	InitPCPanelTexture(tex, 119);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], textureOffset, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.5f * (barW / GXGetTexObjWidth(&tex)), 0.5f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(40.0f * alpha) | 0xFFFFFF00, (u32)(40.0f * alpha) | 0xFFFFFF00,
+	                   (u32)(40.0f * alpha) | 0xFFFFFF00, (u32)(40.0f * alpha) | 0xFFFFFF00, 2.0f + barX, barY, 0.0f, barW, barH - 4.0f,
+	                   0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: the complete call list matches; the current inline expansion needs 384 more bytes and a different register layout
+template <PCShopListKind kind>
+void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 left;
+	f32 width = 296.0f * scale, height = 156.0f * scale;
+	left        = x - width / 2.0f;
+	Vec bg[5]   = { (Vec) { left, y - height / 2.0f, -10.0f }, (Vec) { width + left, y - height / 2.0f, -10.0f },
+		            (Vec) { width + left, height + (y - height / 2.0f), -10.0f }, (Vec) { left, height + (y - height / 2.0f), -10.0f },
+		            (Vec) { left, y - height / 2.0f, -10.0f } };
+	u32 opacity = (u32)(255.0f * alpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, bg, opacity, 5);
+	y += scale;
+	f32 step = 17.0f * scale;
+	f32 rowY = y - height / 2.0f;
+	f32 barX, barW;
+	if (IsJapanese()) {
+		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
+		barW = 0.9f * (14.0f * step);
+	} else {
+		InitPCPanelTexture(tex, 147);
+		barX = x - 4.0f;
+		barW = (0.7f * (scale * (1.1f * (2 * GXGetTexObjWidth(&tex)))) + width) - 5.0f * scale;
+	}
+	f32 barH     = step + scale;
+	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
+	InitMenuSelectionBar(tex);
+	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
+	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
+	for (int i = 0; i < 9; i++) {
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
+	}
+	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart < PCShopMaxPage(items) - 1) {
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
+	}
+	CountPCShopItems(kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries);
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart > 0) {
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mPrev[0], left, rowY - step, alpha, scale);
+	}
+	DrawPCListMask(97.0f, 40.0f, (u32)(255.0f * alpha) | 0x0A0A0A00);
+	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
+}
+
+template void DrawPCShopList<ItemPriceList>(s32, f32, f32, f32, f32, f32);
+
 static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32 scale, f32 opacity)
 {
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[index], 0);
