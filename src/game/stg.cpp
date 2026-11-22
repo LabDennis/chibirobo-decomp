@@ -6557,28 +6557,24 @@ BOOL MenuPC::Draw()
 					case 3:
 						rotation = -3.14159274;
 						{
-							f32 startX       = 210.0f;
-							const f32 left   = startX - inset;
-							const f32 bottom = top + 172.0f;
-							Vec start        = { startX, top, -10 };
-							Vec upperLeft    = { left, top, -10 };
-							Vec lowerLeft    = { left, bottom, -10 };
-							Vec tip          = { this->mTextX, bottom, -10 };
-							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							f32 coord0   = 210;
+							f32 coord1   = top;
+							f32 coord2   = 210.0f - inset;
+							f32 coord3   = top + 172.0f;
+							Vec points[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+								             (Vec) { this->mTextX, coord3, -10 } };
 							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 						}
 						break;
 					case 4:
 						rotation = -3.14159274;
 						{
-							f32 startX       = 210.0f;
-							const f32 left   = startX - inset;
-							const f32 bottom = top + 172.0f;
-							Vec start        = { startX, top, -10 };
-							Vec upperLeft    = { left, top, -10 };
-							Vec lowerLeft    = { left, bottom, -10 };
-							Vec tip          = { this->mTextX, bottom, -10 };
-							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							f32 coord0   = 210;
+							f32 coord1   = top;
+							f32 coord2   = 210.0f - inset;
+							f32 coord3   = top + 172.0f;
+							Vec points[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+								             (Vec) { this->mTextX, coord3, -10 } };
 							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 						}
 						break;
