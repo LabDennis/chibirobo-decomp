@@ -74,12 +74,6 @@ void UpdateTitleDust(Title* title, const char* text, u32 color);
 bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 // fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
-// the pane-event slots in Title's vtable
-void fn_8004DF38();
-void fn_8004DF3C(Title* title, CbPane* pane);
-void fn_8004E040(Title* title, CbPane* pane);
-void fn_8004E37C(Title* title);
-void fn_8004E430(Title* title);
 }
 
 // the pending fatal the save system left for the title screen: the message, two colors and the flag
@@ -302,7 +296,7 @@ extern "C" void ResetTitleScreenState(Title* title)
 // NONMATCHING: the frame skeleton, the save scan and states 1-9, 13, 14 and 22 are as retail read
 // them. Inside state 9 the newest slot's saved pointer/stick bits are restored (the block after
 // IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input
-// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuUtil methods the
+// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the
 // binary shares with UpdateTitleOptions.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
@@ -2260,8 +2254,8 @@ void XObjDemo::DrawObject()
  * @note Address: 0x8004DF38
  * @note Size: 0x4
  */
-// one of the pane-event slots in Title's vtable; retail's body is empty
-void fn_8004DF38()
+// retail's body is empty
+void Title::vf08(CbPane* pane)
 {
 }
 
@@ -2269,42 +2263,41 @@ void fn_8004DF38()
  * @note Address: 0x8004DF3C
  * @note Size: 0x104
  */
-// a pane event clears whichever tracked index pointed at it; the slot sits in Title's vtable
-void fn_8004DF3C(Title* title, CbPane* pane)
+// a pane event clears whichever tracked index pointed at it
+void Title::vf0C(CbPane* pane)
 {
 	s32 kind = pane->mKind;
 	switch (kind) {
 	case 0:
 	case 1:
 	case 2:
-		if (title->mFile == kind && title->mFile != -1) {
-			title->mFile = -1;
+		if (mFile == kind && mFile != -1) {
+			mFile = -1;
 		}
 		break;
 	case 3:
 	case 4:
-		if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
-		    || title->mMode == 11) {
-			if (title->mChoice == kind - 3 && title->mChoice != -1) {
-				title->mChoice = -1;
+		if (mMode == 3 || mMode == 4 || mMode == 5 || mMode == 26 || mMode == 27 || mMode == 6 || mMode == 11) {
+			if (mChoice == kind - 3 && mChoice != -1) {
+				mChoice = -1;
 			}
 		}
 		break;
 	case 5:
 	case 6:
 	case 7:
-		if (title->mSelection == kind - 5 && title->mSelection != -1) {
-			title->mSelection = -1;
+		if (mSelection == kind - 5 && mSelection != -1) {
+			mSelection = -1;
 		}
 		break;
 	}
-	if (title->mState == 21) {
+	if (mState == 21) {
 		switch (pane->mKind) {
 		case 8:
 		case 9:
 		case 10:
-			if (title->mOptionLine != -1) {
-				title->mOptionLine = -1;
+			if (mOptionLine != -1) {
+				mOptionLine = -1;
 			}
 			break;
 		}
@@ -2315,26 +2308,25 @@ void fn_8004DF3C(Title* title, CbPane* pane)
  * @note Address: 0x8004E040
  * @note Size: 0x334
  */
-// the pointer moved onto a pane: whichever index it stands for is picked, with the cursor sound; the
-// slot sits in Title's vtable
-void fn_8004E040(Title* title, CbPane* pane)
+// the pointer moved onto a pane: whichever index it stands for is picked, with the cursor sound
+void Title::vf10(CbPane* pane)
 {
 	switch (pane->mKind) {
 	case 0:
-		if (title->mFile != 0) {
-			title->mFile = 0;
+		if (mFile != 0) {
+			mFile = 0;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
 	case 1:
-		if (title->mFile != 1) {
-			title->mFile = 1;
+		if (mFile != 1) {
+			mFile = 1;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
 	case 2:
-		if (title->mFile != 2) {
-			title->mFile = 2;
+		if (mFile != 2) {
+			mFile = 2;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
@@ -2342,62 +2334,61 @@ void fn_8004E040(Title* title, CbPane* pane)
 	case 4:
 		break;
 	case 5:
-		if (title->mSelection != 0) {
-			title->mSelection  = 0;
-			title->mPulseAngle = 45.0f;
+		if (mSelection != 0) {
+			mSelection  = 0;
+			mPulseAngle = 45.0f;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
 	case 6:
-		if (title->mSelection != 1) {
-			title->mSelection = 1;
+		if (mSelection != 1) {
+			mSelection = 1;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
 	case 7:
-		if (title->mSelection != 2) {
-			title->mSelection = 2;
+		if (mSelection != 2) {
+			mSelection = 2;
 			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 		}
 		break;
 	}
-	if (title->mState == 21) {
+	if (mState == 21) {
 		switch (pane->mKind) {
 		case 8:
-			if (title->mOptionLine != 0) {
-				title->mOptionLine = 0;
+			if (mOptionLine != 0) {
+				mOptionLine = 0;
 				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
-				title->mPulseAngle = 45.0f;
+				mPulseAngle = 45.0f;
 			}
 			break;
 		case 9:
-			if (title->mOptionLine != 1) {
-				title->mOptionLine = 1;
+			if (mOptionLine != 1) {
+				mOptionLine = 1;
 				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
-				title->mPulseAngle = 45.0f;
+				mPulseAngle = 45.0f;
 			}
 			break;
 		case 10:
-			if (title->mOptionLine != 2) {
-				title->mOptionLine = 2;
+			if (mOptionLine != 2) {
+				mOptionLine = 2;
 				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
-				title->mPulseAngle = 45.0f;
+				mPulseAngle = 45.0f;
 			}
 			break;
 		}
 	}
-	if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
-	    || title->mMode == 11) {
+	if (mMode == 3 || mMode == 4 || mMode == 5 || mMode == 26 || mMode == 27 || mMode == 6 || mMode == 11) {
 		switch (pane->mKind) {
 		case 3:
-			if (title->mChoice != 0) {
-				title->mChoice = 0;
+			if (mChoice != 0) {
+				mChoice = 0;
 				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 			}
 			break;
 		case 4:
-			if (title->mChoice != 1) {
-				title->mChoice = 1;
+			if (mChoice != 1) {
+				mChoice = 1;
 				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
 			}
 			break;
@@ -2406,29 +2397,45 @@ void fn_8004E040(Title* title, CbPane* pane)
 }
 
 /**
+ * @note Address: 0x8004E374
+ * @note Size: 0x4
+ */
+void Title::vf18(nw4r::math::VEC2* pos)
+{
+	ClearSelections();
+}
+
+/**
+ * @note Address: 0x8004E378
+ * @note Size: 0x4
+ */
+void Title::vf1C(nw4r::math::VEC2* pos)
+{
+	RestoreSelections();
+}
+
+/**
  * @note Address: 0x8004E37C
  * @note Size: 0xB4
  */
-// with the pointer and the stick both on, the pointer took over: nothing stays picked. Title's vtable
-// reaches it through the branch at 0x8004E374
-void fn_8004E37C(Title* title)
+// with the pointer and the stick both on, the pointer took over: nothing stays picked
+void Title::ClearSelections()
 {
 	u32 controls = gGame.mMenuControls;
 	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
 		return;
 	}
-	if (title->mState == 11) {
-		title->mSelection = -1;
+	if (mState == 11) {
+		mSelection = -1;
 	}
-	if (title->mState == 21) {
-		title->mOptionLine = -1;
+	if (mState == 21) {
+		mOptionLine = -1;
 	}
-	if (title->mState == 20 && title->mMode == 2) {
-		title->mFile = -1;
+	if (mState == 20 && mMode == 2) {
+		mFile = -1;
 	}
-	if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
-	    || title->mMode == 11) {
-		title->mChoice = -1;
+	if (mMode == 3 || mMode == 4 || mMode == 5 || mMode == 26 || mMode == 27 || mMode == 6 || mMode == 11) {
+		mChoice = -1;
 	}
 }
 
@@ -2436,27 +2443,25 @@ void fn_8004E37C(Title* title)
  * @note Address: 0x8004E430
  * @note Size: 0x104
  */
-// and the stick took over again: whatever was picked last comes back. Title's vtable reaches it through
-// the branch at 0x8004E378
-void fn_8004E430(Title* title)
+// and the stick took over again: whatever was picked last comes back
+void Title::RestoreSelections()
 {
 	u32 controls = gGame.mMenuControls;
 	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
 		return;
 	}
-	if (title->mState == 11 && title->mSelection == -1 && title->mLastSelection != -1) {
-		title->mSelection = title->mLastSelection;
+	if (mState == 11 && mSelection == -1 && mLastSelection != -1) {
+		mSelection = mLastSelection;
 	}
-	if (title->mState == 21 && title->mOptionLine == -1 && title->mLastOptionLine != -1) {
-		title->mOptionLine = title->mLastOptionLine;
+	if (mState == 21 && mOptionLine == -1 && mLastOptionLine != -1) {
+		mOptionLine = mLastOptionLine;
 	}
-	if (title->mState == 20 && title->mMode == 2 && title->mFile == -1 && title->mLastFile != -1) {
-		title->mFile = title->mLastFile;
+	if (mState == 20 && mMode == 2 && mFile == -1 && mLastFile != -1) {
+		mFile = mLastFile;
 	}
-	if ((title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
-	     || title->mMode == 11)
-	    && title->mChoice == -1 && title->mLastChoice != -1) {
-		title->mChoice = title->mLastChoice;
+	if ((mMode == 3 || mMode == 4 || mMode == 5 || mMode == 26 || mMode == 27 || mMode == 6 || mMode == 11) && mChoice == -1
+	    && mLastChoice != -1) {
+		mChoice = mLastChoice;
 	}
 }
 

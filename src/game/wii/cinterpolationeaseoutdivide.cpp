@@ -44,8 +44,8 @@ CThread gMovieUpdateThread;
 //              xobj.h calls CJArchive: NW_Obj and the CFile at _5C.
 //   0x800332D4, 0x800332D0 the second and third virtual of nw4r::g3d::IScnObjCallback, both empty.
 //              Its vtable (0x802E6A10) has six slots, not the 75 of xobj.h.
-//   0x80033040 an empty virtual, the fourth of the base Title and MenuSave share (RTTI:
-//              CContainCallback, MenuPad); title.h derives Title from MenuUtil alone.
+//   0x80033040 CContainCallback::vf14, the empty fourth slot Title and MenuSave do not override. It is
+//              written in menuutil.h; which file emits it depends on where those vtables land.
 
 // 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. Written there, it
 // is emitted by unit_8003366C.cpp instead, so it stays out of line here.
