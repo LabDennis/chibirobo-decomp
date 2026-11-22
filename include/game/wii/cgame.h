@@ -2007,7 +2007,6 @@ public:
 	f32 mOutlineWidth;        // _5974
 	Logo mLogo;               // _5978
 	Title mTitle;             // _5C70
-	u8 _5C70[0xAE00 - 0x5C70 - sizeof(Title)];
 	MenuEx mMenu;           // _AE00
 	InfoScrn mInfoScrn;     // _AF58
 	WiiHomeMenu mHomeMenu;  // _B148
@@ -2125,6 +2124,7 @@ STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);
 STATIC_ASSERT(offsetof(CGame, mMenu) == 0xAE00);
 STATIC_ASSERT(offsetof(CGame, mTitle) == 0x5C70);
+STATIC_ASSERT(sizeof(Title) == 0xAE00 - 0x5C70);
 STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
 STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);
 
