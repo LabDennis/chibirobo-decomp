@@ -1,5 +1,5 @@
-// A file of its own, not part of stage_data.cpp: GameCube links this code right before stage_data,
-// the Wii build links it after stage_data with other code in between.
+// Wii only: on GameCube this code and data belong to stage_data.cpp; the Wii build links it
+// separately after stage_data with other code in between.
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
