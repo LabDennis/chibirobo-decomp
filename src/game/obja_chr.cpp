@@ -6961,17 +6961,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 scale = 1.0f - 0.15f * sBlockedObstacleCount;
 				if (scale < 0.7f)
 					scale = 0.7f;
-				f32 factor = GetPlayerMoveSpeedScale(player);
-				targetX    = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * factor));
-				factor     = GetPlayerMoveSpeedScale(player);
-				targetZ    = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * factor));
+				targetX = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
 			} else {
-				f32 factor = GetPlayerMoveSpeedScale(player);
-				f32 xSpeed = (speed * PlayerActionSine(angle)) * factor;
-				targetX    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * xSpeed);
-				factor     = GetPlayerMoveSpeedScale(player);
-				f32 zSpeed = (speed * PlayerActionCosine(angle)) * factor;
-				targetZ    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * zSpeed);
+				targetX
+				    = movementFrames
+				    * (GetPlayerAnimationRateMultiplier(player) * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ
+				    = movementFrames
+				    * (GetPlayerAnimationRateMultiplier(player) * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
 			}
 		} else {
 			targetX = targetZ = 0.0f;
@@ -7085,8 +7083,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					if (difference > 0.008726646f) {
 						if (difference >= TWO_PI)
 							difference -= TWO_PI;
-						if (difference > PI)
-							desired = desired < current ? desired + TWO_PI : desired - TWO_PI;
+						if (difference > PI) {
+							if (desired < current)
+								desired += TWO_PI;
+							else
+								desired -= TWO_PI;
+						}
 						f32 turn = desired - current;
 						if (turn < 0)
 							turn = -turn;
@@ -7280,8 +7282,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	Mtx rotation;
 	{
 		radius      = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
-		f32 extentY = GetFloorExtent(&player->mFloors, 0).y;
-		height      = player->mMoveScale.y * (GetFloorCenterOffset(&player->mFloors, 0).y + extentY);
+		height      = player->mMoveScale.y * (GetFloorCenterOffset(&player->mFloors, 0).y + GetFloorExtent(&player->mFloors, 0).y);
 		liftState22 = 0;
 		if (IsCarryingMug(&player->mLift)) {
 			s32 boundsPath[2] = { 0, 0 };
@@ -7484,8 +7485,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			index            = GetActionTargetFloor(&player->mPush);
 			Vec extent       = *GetObjectMoveScale(target) * GetFloorExtent(GetObjectFloorTableAddress(target), index);
 			index            = GetActionTargetFloor(&player->mPush);
-			f32 floorYaw     = GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
-			f32 yaw          = GetObjectMoveRotation(target)->y + floorYaw;
+			f32 yaw          = GetObjectMoveRotation(target)->y + GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
 			scaledOffset.y   = 0;
 			if (IsActionTargetFloorId(&player->mPush, 2)) {
 				extent.y *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
