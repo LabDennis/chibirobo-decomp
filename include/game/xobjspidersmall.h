@@ -175,8 +175,14 @@ STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xAC8);
 STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xAD8);
 #endif
 
+// a spider's flags in a stage row: retail destroys them through a destructor of their own (0x801001B4, the two null tests
+// of a struct whose member CStatus's destructor is expanded) and builds them with CStatus's constructor body (0x8010024C)
+struct SmallSpiderStatus {
+	CStatus mStatus;
+};
+
 struct SmallSpiderStageStatus {
-	CStatus mSpiders[16];
+	SmallSpiderStatus mSpiders[16];
 };
 STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
@@ -186,13 +192,6 @@ u8 HasSmallSpiderEmerged(XObjSpiderSmall* spider);
 u8 IsSmallSpiderGrabbingPlayer(XObjSpiderSmall* spider);
 void ApplySmallSpiderPlacement(XObjSpiderSmall* spider);
 void ResetSmallSpiderState(XObjSpiderSmall* spider);
-
-// gSmallSpiderStatusByStage's construct and destroy helpers
-void DestroySmallSpiderStatusTable();
-CStatus* __dt__22SmallSpiderStageStatusFv(CStatus* row, s32 flags);
-CStatus* DestroySmallSpiderStatusEntry(CStatus* status, s32 flags);
-CStatus* __ct__22SmallSpiderStageStatusFv(CStatus* row);
-CStatus* __ct__7CStatusFv(CStatus* status);
 
 extern void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32);
 

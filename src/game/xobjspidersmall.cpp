@@ -1,3 +1,14 @@
+// NONMATCHING: one retail file (US .text 0x800F49F0-0x80100264, from ~XObjSpiderSmall to the status table's
+// destructors and constructors behind __sinit), but its data does not match:
+// - .rodata: retail opens with the six-Vec header block (0x48, 0x8020ADC0) no header here makes, and holds the local
+//   initializers last-address-first (ResetSmallSpiderState's, then DrawGroundShadowAt's, OnHitFromPosition's), as
+//   -inline deferred gives. With the file written in reverse and deferred, State3 and State8 expand
+//   DetachSmallSpiderFromPlayer, which retail calls there (and expands in State1 and State9): retail's Detach weighs
+//   25 to 40 inline units more than ours (filler test), the source form is not found, so the file stays in upstream's order without
+//   deferred and its .rodata, .sdata2 pool and jump tables come out in another order
+// - .data: sSmallSpiderStateData is upstream's stand-in for the header-made 26-word block; retail ends with 0xC4 zero
+//   bytes behind the CVec/CObjVec base lists (0x8022B828) that nothing reads
+// - .bss: gSmallSpiderPlacementWork ... gSmallSpiderWorkEnd stand for the header-made 0x140 (JP 0x134) prefix
 #include "game/xobjspidersmall.h"
 #include "game/hsd_jobj.h"
 #include "game/spiderplacement.h"
@@ -704,7 +715,7 @@ void XObjSpiderSmall::State8(u32 frames)
 				} else {
 					SetState(5);
 					mSpiderStatus.mFlags &= ~0x40;
-					gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags &= ~0x40;
+					gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mStatus.mFlags &= ~0x40;
 				}
 			} else {
 				f32 size         = GetPlayerCollisionRadius(gGame.GetPlayer());
@@ -1376,7 +1387,7 @@ void XObjSpiderSmall::State5(u32 frames)
 			mSpiderStatus.mFlags &= ~0x8000;
 			SetState(3);
 			mSpiderStatus.mFlags |= 0x40;
-			gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags |= 0x40;
+			gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mStatus.mFlags |= 0x40;
 			mAreaGraceTimer = (3 * FRAMES_PER_SECOND) / frames;
 			// one in four may follow the robot out of its area (0x20), except on stages 3, 7 and 9
 			switch (gGame.mStage) {
@@ -1452,7 +1463,7 @@ void XObjSpiderSmall::State7(u32 frames)
 			SetState(5);
 			mSpiderStatus.mFlags &= ~0x40;
 			mSpiderStatus.mFlags &= ~0x20;
-			gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags &= ~0x40;
+			gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mStatus.mFlags &= ~0x40;
 		}
 		break;
 	case 3:
@@ -1561,7 +1572,7 @@ void XObjSpiderSmall::State1(u32 frames)
 		if (!(gGame.mStatus.mFlags & 0x100)) {
 			StartScreenShake(&gGame.mQuake, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f);
 		}
-		gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags |= 0x80000;
+		gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mStatus.mFlags |= 0x80000;
 		{
 			f32 x = mMoveTranslate.x;
 			f32 y = mMoveTranslate.y;
@@ -2175,7 +2186,7 @@ BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 			if (mTimeMode != gGame.mTimeState.mMode) {
 				for (s32 i = 0; i < 0x27; i++) {
 					for (int j = 0; j < 16; j++) {
-						gSmallSpiderStatusByStage[i].mSpiders[j].mFlags = 0;
+						gSmallSpiderStatusByStage[i].mSpiders[j].mStatus.mFlags = 0;
 					}
 				}
 			}
@@ -2185,7 +2196,7 @@ BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 		ResetSmallSpiderState(this);
 		ApplySmallSpiderPlacement(this);
 		mLoadPoolIndex = mPoolIndex;
-		if (gSmallSpiderStatusByStage[mStage].mSpiders[mPoolIndex].mFlags & 0x80000) {
+		if (gSmallSpiderStatusByStage[mStage].mSpiders[mPoolIndex].mStatus.mFlags & 0x80000) {
 			SetState(2);
 		}
 		if (mPoolIndex == 0) {
@@ -2211,7 +2222,7 @@ void XObjSpiderSmall::ResetForNewGame()
 	if (mPoolIndex == 0) {
 		for (s32 i = 0; i < 0x27; i++) {
 			for (int j = 0; j < 16; j++) {
-				gSmallSpiderStatusByStage[i].mSpiders[j].mFlags = 0;
+				gSmallSpiderStatusByStage[i].mSpiders[j].mStatus.mFlags = 0;
 			}
 		}
 	}
@@ -2234,7 +2245,7 @@ void XObjSpiderSmall::InitializeObject(u32 id)
 	if (mPoolIndex == 0) {
 		for (s32 i = 0; i < 0x27; i++) {
 			for (int j = 0; j < 16; j++) {
-				gSmallSpiderStatusByStage[i].mSpiders[j].mFlags = 0;
+				gSmallSpiderStatusByStage[i].mSpiders[j].mStatus.mFlags = 0;
 			}
 		}
 	}
