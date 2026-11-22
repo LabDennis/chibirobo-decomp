@@ -391,7 +391,11 @@ extern "C" void ResetTitleScreenState(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
-// NONMATCHING: retail reaches the card's busy and found flags in two steps (addis 0xF, addis 1)
+// NONMATCHING: the second name loop walks the chars from title (US 0x8002EAD0 mr r5, r31) with i a copy of visible;
+// this build scales visible into the pointer. Retail loads mChannel before the mReady/mWrongDevice stores
+// (0x8002ED4C), this build after them. In state 14 retail loads mMenuAlpha and gGame.mFade.mSpeed.r (0x80030B70)
+// before the first compare. The rest is register allocation. The card's busy and found flags are read through
+// a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
@@ -502,8 +506,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		StartMemoryCardScan(&gGame.mMemcard.mCard, title->mChannel, FALSE);
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0);
 		break;
-	case 2:
-		if (gGame.mMemcard.mCard.mFound) {
+	case 2: {
+		Memcard& card = gGame.mMemcard.mCard;
+		if (card.mFound) {
 			title->mSelection = 1;
 			title->mSaveFound = 1;
 			ApplyTitleControllerSetting(title);
@@ -519,6 +524,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		} else {
 			title->mSpawnIndex = gCmdLineArgs.mTitleCursor % 11;
 		}
+	}
 		// fall through: loading starts on the same frame as cursor selection
 	case 3:
 		if (title->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex))))
@@ -2010,7 +2016,11 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 // NONMATCHING: float and saved registers (lines and the text color swap r26/r27); the bar's last quad adds 2.0f to barX
 // variable-first in retail (US 0x8002A95C fadds f1, f29, f0), constant-first here. The bar's y is barY + inset: retail adds
 // the 2.0f at each quad, variable-first (US 0x8002A7B4, 0x8002A81C fadds f2, f25, f0), which a literal 2.0f folds into one
-// add. JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
+// add; the same 2.0f register feeds the x add, so that 2 was a variable here and in MenuSave::Draw (0x8003A9E4), while
+// DrawPCShopList adds a literal (0x800422F0 fadds f1, f1, f27, and one y add at 0x80042158). An inset parameter of
+// DrawMenuSelectionBar, a local inside it, or barX + 2.0f give the variable-first x here but also in DrawPCShopList
+// (a literal bound to an inline parameter keeps the body's operand order), so one inline cannot produce both shapes.
+// JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
 // forwards them past it (a color local and a JP DrawLoadText inline taking x by value are identical)
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
@@ -2225,10 +2235,14 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  * @note Address: 0x80029760
  * @note Size: 0x69C
  */
-// NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
-// then converts alpha again for normal; this build folds both into one conversion after the call.
-// An s32 local converted before the call is forwarded past it and merged with normal's conversion
-// (93.85). The rest is float register order
+// NONMATCHING: retail converts alpha to an integer before the window frame (US 0x800297BC fctiwz, 0x800297C8
+// lwz r27) and forms lit from it right after the call (0x80029824 rlwimi r29, r27), next to normal's own
+// conversion (0x80029814); this build forms lit whole before the call. A single-use s32, int or u8 local
+// (explicit or implicit conversion, from alpha or from 255.0f * title->mOptionAlpha, declared in the block
+// or at function scope, initialised or assigned, lit as a second CSE'd use) is sunk past the call and merged
+// with normal's conversion (93.07-93.85). Only (u8)a | 0xFFFFFF00 written at every use keeps the conversion
+// before the call, and then the OR lands at the first ternary, not after the call (94.13). The rest is float
+// register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
