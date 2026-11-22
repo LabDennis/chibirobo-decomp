@@ -479,12 +479,11 @@ gamecube_libs = [
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/cjanim.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjfloor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/obja.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjwalk.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/xobjinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjinitialize.cpp", cflags=with_hsd_headers(cflags_game)),
+            # cjanim.cpp, xobjfloor.cpp, xobjwalk.cpp, xobjinit.cpp and xobjinitialize.cpp were cut out of this file:
+            # one .sdata2 pool, one jobj.h string and one .bss block serve them all. -inline deferred, as retail shows:
+            # the floor tables in .data and the constants in .rodata lie in the reverse of the code order, and the
+            # Wii build (no deferred) starts the same code with InitializeObject and ends it with CJAnim::Release
+            Object(NonMatching, "game/obja.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/xobjmapdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/ctrigondtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game)),
