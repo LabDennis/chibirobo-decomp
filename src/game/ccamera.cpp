@@ -209,6 +209,7 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
  * @note Address: 0x80192A8C
  * @note Size: 0x44
  */
+// NONMATCHING: register colouring; retail loads fbWidth into r5 after the template copy and saves lr after the efbHeight load
 void CCamera::SetScissor(GXRenderModeObj* rmode)
 {
 	u16 height      = rmode->efbHeight;
