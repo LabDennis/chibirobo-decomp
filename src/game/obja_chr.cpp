@@ -4640,6 +4640,12 @@ f32 GetJointAnimationEndFrame(CJObj*);
 f32 GetJointAnimationCurrentFrame(CJObj*);
 }
 
+// where the jump arc starts, by value
+static inline Vec GetJumpArcPosition(const XActJump* jump)
+{
+	return jump->mArcPosition;
+}
+
 /**
  * @note Address: 0x800A0BD8
  * @note Size: 0x1FF8 (US)
@@ -4782,10 +4788,10 @@ Vec XObjChr::GetCameraTarget()
 		} else if (IsJumpActionState(&mJump, 9) || IsJumpActionState(&mJump, 12) || IsJumpActionState(&mJump, 15)
 		           || IsJumpActionState(&mJump, 17)) {
 			target   = mMoveTranslate + (Vec) { 0, 10, 0 };
-			target.y = 10.f + mJump.mArcPosition.y;
+			target.y = 10.f + GetJumpArcPosition(&mJump).y;
 		} else if (IsJumpActionState(&mJump, 10) || IsJumpActionState(&mJump, 13) || IsJumpActionState(&mJump, 16)) {
 			CVec start = mMoveTranslate;
-			CVec arc   = mJump.mArcPosition;
+			CVec arc   = GetJumpArcPosition(&mJump);
 			f32 end    = GetJointAnimationEndFrame(this);
 			f32 t      = GetJointAnimationCurrentFrame(this) / end;
 			target     = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
