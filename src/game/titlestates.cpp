@@ -1495,7 +1495,9 @@ void Title::State14(u32)
  * @note Address: 0x8002C3F0
  * @note Size: 0x348
  */
-// NONMATCHING: regalloc
+// NONMATCHING: the volatile registers: retail keeps the file in r11 and the active flag in r5 (0x8002C498 lwz r5, 0xa8(r11)),
+// this build r12 and r7; the loads come in the same order. Other orders for file, result, card and step, the header
+// fields declared at the top, and an active or frames local as State1 has all leave it or score lower
 // waits for the card to read the file picked, then shows what is in it
 void Title::State15(u32 frames)
 {
