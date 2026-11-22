@@ -3275,13 +3275,12 @@ extern "C" void PopulateOwnedItemPage(MenuStatusTable* table)
 
 // how many of the item chibi robo holds, the GameCube's. NONMATCHING: the slot walk and the player reload are
 // retail's; register allocation still differs (MarkAvailableStatusEntries inlines it nine times)
+// NONMATCHING: 91 %, retail hoists addis r5, r4, 1 before the loop instead of folding addi r5, r4, 0x3fc
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
-	const WiiPlayerState* player = gGame.GetPlayer();
-	const InventoryItem* item    = &player->mParams.mInventory.mItems[255];
-	s16 count                    = 0;
-	for (int i = 255; i >= 0; i--, item--) {
-		if (id == item->mId) {
+	s16 count = 0;
+	for (int i = 255; i >= 0; i--) {
+		if (id == gGame.GetPlayer()->mParams.mInventory.mItems[i].mId) {
 			count = gGame.GetPlayer()->mParams.mInventory.mItems[i].mCount;
 			break;
 		}
