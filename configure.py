@@ -460,11 +460,11 @@ gamecube_libs = [
             Object(Matching, "game/cgsctor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/ctiledtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cgschannelctor.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US .text 0x8001BCFC..0x8001D9B0, DrawScanModePrompt through
+            # CCameraActionMap::GetTarget, its own .sdata2 pool and .rodata header block). No __FILE__ string in
+            # retail; named after its first unit. Init__10FbMirrorExFv ahead of it (US 0x8001BC34..0x8001BCFC)
+            # belongs to game.cpp and stays at the head of this unit until game.cpp is put back together
             Object(NonMatching, "game/fbmirrorex.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cpaddtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/progressive.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (US .text 0x8001D9B0..0x8001FCF4, AnimSfx through PlayGameSfxAtFullVolume, with
             # __FILE__ "sound.cpp" in LoadGameSoundBank and __vt__7AnimSfx in its .data). -inline auto,deferred,
             # as retail shows: GC .text runs AnimSfx::Update .. PlayGameSfxAtFullVolume, the exact reverse of

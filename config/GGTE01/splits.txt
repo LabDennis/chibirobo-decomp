@@ -302,18 +302,13 @@ game/cgamector.cpp:
 	.text       start:0x800197A4 end:0x8001AE9C
 
 game/fbmirrorex.cpp:
-	.text       start:0x8001BC34 end:0x8001C854
-
-game/cpaddtor.cpp:
-	.text       start:0x8001C854 end:0x8001C89C
-
-game/progressive.cpp:
-	.text       start:0x8001C89C end:0x8001CEA0
-	.data       start:0x80210500 end:0x80210748
-	.rodata     start:0x801FE004 end:0x801FE23C
-
-game/cfiletextdtor.cpp:
-	.text       start:0x8001CEA0 end:0x8001CEFC
+	.text       start:0x8001BC34 end:0x8001D9B0
+	.rodata     start:0x801FDF08 end:0x801FE2B0
+	.data       start:0x80210500 end:0x802107A0
+	.bss        start:0x80361E10 end:0x80361E30
+	.sdata      start:0x8065A198 end:0x8065A1B8
+	.sbss       start:0x8065B178 end:0x8065B180
+	.sdata2     start:0x8065BFA8 end:0x8065C080
 
 game/sound.cpp:
 	.text       start:0x8001D9B0 end:0x8001FCF4
@@ -321,11 +316,6 @@ game/sound.cpp:
 	.data       start:0x802107A0 end:0x80211350
 	.sdata      start:0x8065A1B8 end:0x8065A1D0
 	.sdata2     start:0x8065C080 end:0x8065C0D8
-
-game/gxa.cpp:
-	.text       start:0x8001CEFC end:0x8001D9B0
-	.bss        start:0x80361E10 end:0x80361E30
-	.sbss       start:0x8065B178 end:0x8065B17C
 
 game/gameosreport.cpp:
 	.text       start:0x8001580C end:0x8001585C
