@@ -1,3 +1,6 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
+#include "nw4r/g3d/g3d_camera.h"
+
 // The Wii's CGame frame code, 0x8001C2D8-0x80024AE8 (wii_units.md #11): the new game reset, BeforeUpdate
 // with the floor reflection it renders, Update, and the small virtuals of CBase the vtables at
 // 0x802E5F60 and 0x802E6028 point here. Retail keeps all of it in one file with main and ~CGame.
@@ -8,6 +11,7 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/infoscrn.h"
 #include "game/wii/animsfx.h"
+#include "game/wii/xobjflags.h"
 #include "game/wii/xobj.h"
 #include "game/wii/msg.h"
 #include "game/wii/homemenu.h"
@@ -102,7 +106,7 @@ extern "C" {
 BOOL OSGetResetButtonState();
 void OSPanic(const char* file, int line, const char* msg, ...);
 char* FormatToStaticBuffer(const char* fmt, ...);
-void fn_80024CC0(CGame* game);                      // the frame's work at the start of gamedraw.cpp's range
+void UpdateResetRequest(CGame* game);               // the frame's work at the start of gamedraw.cpp's range
 void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws
 void fn_80084B90(void* menu, s32 index);            // opens one of the menus
 void CMsg_Update(CMsg* msg, u32 step);
@@ -124,7 +128,6 @@ extern u8 lbl_8044EE4C[];
 extern Vec lbl_80444E98;
 Vec fn_8010BEE0(XAction* popper);                             // the popper's muzzle, the GameCube's joint path 0 1 0 0
 void fn_800E8140(WiiPlayerState* player, f32 yaw, f32 pitch); // where the eye camera's popper aims
-void fn_80114564(XObj* obj);                                  // the scope's new item target
 }
 
 BOOL fn_80169658(CMotionControlCamera* camera);
@@ -1157,10 +1160,7 @@ static inline bool IsScopeRareItem(s32 item)
  * @note Address: 0x8001E830
  * @note Size: 0x57C4
  */
-// NONMATCHING: retail expands UpdateResetRequest and fn_80114564; vf16C is called without the frame count
-// retail passes; the three nw4r camera reads of the stage camera object (the GameCube had none) stand as
-// their CCamera fallback only; isnan is fdlibm's function where retail calls the Wii MSL's __fpclassifyf.
-// The rest is register and stack placement that follows from those
+// NONMATCHING: vf16C is called without the frame count retail passes; the rest is register and stack placement
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
@@ -1247,10 +1247,10 @@ void CGame::Update(u32 frames)
 			if (_41B0 & 8) {
 				_41B0 &= ~8;
 			}
-			if (isnan(mPointer._10C) || mPointer._10C < gRefreshRate * 5) {
+			if (__fpclassifyf(mPointer._10C) == FP_NAN || mPointer._10C < gRefreshRate * 5) {
 				mPointer._10C = gRefreshRate * 5;
 			}
-		} else if (isnan(mPointer._10C)) {
+		} else if (__fpclassifyf(mPointer._10C) == FP_NAN) {
 			mPointer._10C = 0.0f;
 		}
 		if (!(_41B0 & 8)) {
@@ -1267,13 +1267,13 @@ void CGame::Update(u32 frames)
 		if (_41B0 & 8) {
 			_41B0 &= ~8;
 		}
-		if (!isnan(mPointer._10C)) {
+		if (__fpclassifyf(mPointer._10C) != FP_NAN) {
 			mPointer._10C = NAN;
 		}
 	}
 
 	UpdateWiiSaveJob(&mSaveManager);
-	fn_80024CC0(this);
+	UpdateResetRequest(this);
 	if (IsDiscError()) { // flag 8: the sounds pause while the disc can't be read
 		if (!GetStatusFlags(8)) {
 			SetStatusFlags(8);
@@ -1482,7 +1482,7 @@ void CGame::Update(u32 frames)
 	// the 3D sound listens from a little in front of the camera, or of the point mListener.mPoint names
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		CCamera* camera = GetCamera();
-		if (!isnan(mListener.mPoint.x)) {
+		if (__fpclassifyf(mListener.mPoint.x) != FP_NAN) {
 			CVec dir = camera->mView.mEye - mListener.mPoint;
 			PSVECNormalize(&dir, &dir);
 			mListener.mPos = mListener.mPoint + dir * 50.0f;
@@ -1550,11 +1550,49 @@ void CGame::Update(u32 frames)
 
 	// the effects follow the camera: the stage camera object's when its scene brings one, else the game's
 	if (IsRunning() || (GetStatusFlags(0x20) && !GetStatusFlags(0x200000000000002ULL))) {
-		CCamera camera = *GetCamera();
-		Vec eye        = camera.mView.mEye;
+		Vec eye;
+		MtxP viewMtx;
+		MtxP projection;
+		f32 near;
+		f32 far;
+		XObj* camera = mXObjs.mPools[0].Get(0);
+		if (camera != NULL && (camera->mStatus.mFlags & 1) && ((XObjScnCam*)camera)->mScene != NULL
+		    && ((XObjScnCam*)camera)->mScene->_2888 != NULL) {
+			nw4r::g3d::ScnRoot* scene      = (nw4r::g3d::ScnRoot*)((XObjScnCam*)camera)->mScene;
+			MtxP handle                    = scene->GetCurrentCamera();
+			nw4r::g3d::Camera& sceneCamera = *(nw4r::g3d::Camera*)&handle;
+			sceneCamera.GetPosition((nw4r::math::VEC3*)&eye);
+			handle = scene->GetCurrentCamera();
+			if (sceneCamera.ptr() == NULL) {
+				nw4r::db::Panic("g3d_rescommon_ac.h", 0x8C, "NW4R:Pointer must not be NULL (mpData)");
+			}
+			viewMtx = sceneCamera.ref().cameraMtx;
+			handle  = scene->GetCurrentCamera();
+			if (sceneCamera.ptr() == NULL) {
+				nw4r::db::Panic("g3d_rescommon_ac.h", 0x8C, "NW4R:Pointer must not be NULL (mpData)");
+			}
+			projection = sceneCamera.ref().projMtx;
+			handle     = scene->GetCurrentCamera();
+			if (sceneCamera.ptr() == NULL) {
+				nw4r::db::Panic("g3d_rescommon_ac.h", 0x8C, "NW4R:Pointer must not be NULL (mpData)");
+			}
+			near   = sceneCamera.ref().projNear;
+			handle = scene->GetCurrentCamera();
+			if (sceneCamera.ptr() == NULL) {
+				nw4r::db::Panic("g3d_rescommon_ac.h", 0x8C, "NW4R:Pointer must not be NULL (mpData)");
+			}
+			far = sceneCamera.ref().projFar;
+		} else {
+			CCamera camera = *GetCamera();
+			eye            = camera.mView.mEye;
+			viewMtx        = camera.mViewMtx;
+			projection     = camera.mProjection;
+			near           = camera.mNear;
+			far            = camera.mFar;
+		}
 		for (u32 j = 0; j < 6; j++) {
 			if (j != 4) {
-				mEffects.Update(&eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
+				mEffects.Update(&eye, viewMtx, projection, frames, j, near, far);
 			}
 		}
 		CCamera screen = *GetCamera();
@@ -1621,9 +1659,9 @@ void CGame::Update(u32 frames)
 					bool on = false;
 					f32 y   = motion.mPos->y;
 					f32 x   = motion.mPos->x;
-					if (obj->mScreenBoundsValid && !isnan(obj->mScreenLeft) && !isnan(obj->mScreenTop) && !isnan(obj->mScreenRight)
-					    && !isnan(obj->mScreenBottom) && x >= obj->mScreenLeft && x <= obj->mScreenRight && y >= obj->mScreenTop
-					    && y <= obj->mScreenBottom) {
+					if (obj->mScreenBoundsValid && __fpclassifyf(obj->mScreenLeft) != FP_NAN && __fpclassifyf(obj->mScreenTop) != FP_NAN
+					    && __fpclassifyf(obj->mScreenRight) != FP_NAN && __fpclassifyf(obj->mScreenBottom) != FP_NAN
+					    && x >= obj->mScreenLeft && x <= obj->mScreenRight && y >= obj->mScreenTop && y <= obj->mScreenBottom) {
 						on = true;
 					}
 					if (on) {
@@ -1655,7 +1693,8 @@ void CGame::Update(u32 frames)
 							f32 right  = obj->mScreenRight;
 							f32 top    = obj->mScreenTop;
 							f32 bottom = obj->mScreenBottom;
-							if (!isnan(left) && !isnan(top) && !isnan(right) && !isnan(bottom)) {
+							if (__fpclassifyf(left) != FP_NAN && __fpclassifyf(top) != FP_NAN && __fpclassifyf(right) != FP_NAN
+							    && __fpclassifyf(bottom) != FP_NAN) {
 								f32 width  = right - left;
 								f32 height = bottom - top;
 								center.x   = width * 0.5f + left;
@@ -1736,7 +1775,7 @@ void CGame::Update(u32 frames)
 				mPointer.mScopeItem     = item;
 				mPointer.mScopeMarker   = -1;
 				mPointer.mScopeRareItem = IsScopeRareItem(item);
-				fn_80114564(mPointer.mScopeTarget);
+				((XObjItem*)mPointer.mScopeTarget)->SetUseAnim();
 			}
 			if (scope.mSpeed < 0.007f) {
 				scope.mLevel = 1;
