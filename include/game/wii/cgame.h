@@ -588,8 +588,8 @@ public:
 	u8 _2E0[0x2E8 - 0x2E0];
 	s32 _2E8;
 	s32 _2EC;
-	s32 _2F0;
-	s32 _2F4;
+	u32 _2F0;
+	u32 _2F4;
 	s32 _2F8;
 
 	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0
@@ -1359,10 +1359,10 @@ struct MenuTitle {
 };
 STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
-// the save menu, the GameCube class of the same name. Its RTTI has the pointer base this code calls MenuUtil
-// (the binary's MenuPad) at _15C; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
+// the save menu, the GameCube class of the same name. Its RTTI has the bases MenuPad and CContainCallback at
+// _15C, as the item and status menus have them; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
 // records, and between mFile and mLastFile come the stick's copies of the file and yes/no choice, as Title has them
-class MenuSave : public Menu, public MenuUtil {
+class MenuSave : public Menu, public MenuPad, public CContainCallback {
 public:
 	f32 mPanelX;               // _160
 	f32 mPanelY;               // _164
@@ -1418,6 +1418,12 @@ public:
 	virtual BOOL Update(u32 frames);
 	virtual void Open();
 
+	virtual void vf08(CbPane* pane);
+	virtual void vf0C(CbPane* pane);
+	virtual void vf10(CbPane* pane);
+	virtual void vf18(nw4r::math::VEC2* pos);
+	virtual void vf1C(nw4r::math::VEC2* pos);
+
 	void State0(u32 frames);
 	void State1(u32 frames);
 	void State2(u32 frames);
@@ -1472,7 +1478,7 @@ public:
 STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
 
 // todo: retail's RTTI puts a common base under the three, MenuUtil : Menu, whose Init (0x80053410), empty InitRows
-// (0x800534D4) and row draw (0x80050314) Sub and Err inherit; this code's MenuUtil is the pointer mixin instead
+// (0x800534D4), destructor (0x80084EEC) and row draw (0x80050314) Sub and Err inherit
 class MenuSFTestSub : public Menu {
 public:
 	virtual BOOL Update(u32 frames);
@@ -1530,11 +1536,21 @@ struct MenuPaneFadePair {
 };
 
 // the item menu, the GameCube class of the same name
-class MenuItem : public CMenu {
+class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
 	virtual void Open();
 
-	u8 _150[0x1C0 - 0x150];
+	virtual void vf08(CbPane* pane);
+	virtual void vf0C(CbPane* pane);
+	virtual void vf10(CbPane* pane);
+	virtual void vf14(CbPane* pane);
+	virtual void vf18(nw4r::math::VEC2* pos);
+	virtual void vf1C(nw4r::math::VEC2* pos);
+
+	s32 mMode; // _160
+	u8 _164[0x1A8 - 0x164];
+	s32 mStickSelection; // _1A8, the row the stick is on, mSelection again when the pointer goes
+	u8 _1AC[0x1C0 - 0x1AC];
 	MenuTitle mTitle; // _1C0
 	u8 _35C[0x774 - 0x35C];
 	MenuPaneFadePair mPaneFades; // _774
@@ -1579,7 +1595,7 @@ struct MenuPCPage {
 STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
-class MenuStatus : public CMenu {
+class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
 	void State3(u32 frames);
 	void State6(u32 frames);
@@ -1588,7 +1604,14 @@ public:
 	virtual BOOL Draw();
 	virtual void Open();
 
-	u8 _150[0x6B8 - 0x150];
+	virtual void vf08(CbPane* pane);
+	virtual void vf0C(CbPane* pane);
+	virtual void vf10(CbPane* pane);
+	virtual void vf14(CbPane* pane);
+	virtual void vf18(nw4r::math::VEC2* pos);
+	virtual void vf1C(nw4r::math::VEC2* pos);
+
+	u8 _160[0x6B8 - 0x160];
 	MenuTitle mTitle; // _6B8
 	u8 _854[0x193C - 0x854];
 	MenuPaneFadePair mPaneFades; // _193C
@@ -1984,13 +2007,12 @@ public:
 	f32 mOutlineWidth;        // _5974
 	Logo mLogo;               // _5978
 	Title mTitle;             // _5C70
-	u8 _5C70[0xAE00 - 0x5C70 - sizeof(Title)];
-	MenuEx mMenu;           // _AE00
-	InfoScrn mInfoScrn;     // _AF58
-	WiiHomeMenu mHomeMenu;  // _B148
-	CEffectSystem mEffects; // _B7A8
-	CEvtPtcl mEvtPtcl;      // _BCA8
-	CScrnQuake mQuake;      // _F6AC
+	MenuEx mMenu;             // _AE00
+	InfoScrn mInfoScrn;       // _AF58
+	WiiHomeMenu mHomeMenu;    // _B148
+	CEffectSystem mEffects;   // _B7A8
+	CEvtPtcl mEvtPtcl;        // _BCA8
+	CScrnQuake mQuake;        // _F6AC
 	// the objects, as on the GameCube: pool 0 is the scene camera, 2 chibi robo, 3 the stage map, 7 the coins, 8 the items,
 	// 10 the spawn pool CMsgFont_Draw scans for the portrait object, 20 the dust; mObjects is the table
 	// ResolveEventObjectId indexes. The coin, item and dust pools each lead with a WiiFlagSource
@@ -2102,6 +2124,7 @@ STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);
 STATIC_ASSERT(offsetof(CGame, mMenu) == 0xAE00);
 STATIC_ASSERT(offsetof(CGame, mTitle) == 0x5C70);
+STATIC_ASSERT(sizeof(Title) == 0xAE00 - 0x5C70);
 STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
 STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);
 

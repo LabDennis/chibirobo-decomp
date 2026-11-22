@@ -2948,14 +2948,9 @@ extern "C" void DrawFighterStage(void)
  * @note Address: stage02 .text 0x1E44
  * @note Size: 0x514
  */
-// NONMATCHING: register colouring (loop pointers and best swap with retail), and mLastTarget reloads &fighterWork
-// where retail reuses the lock block's base.
+// NONMATCHING: register colouring (loop pointers and best swap with retail).
 extern "C" void UpdateFighter(u32 dt)
 {
-	Mato* best;
-	f32 bestDist;
-	s32 i;
-
 	if (fighterWork.mBody == NULL) {
 		return;
 	}
@@ -2979,7 +2974,7 @@ extern "C" void UpdateFighter(u32 dt)
 	matoList.mProgress = fighterWork.mFrame / fighterWork.mEndFrame;
 	matoList.mTimeLeft = fighterWork.mTimeLeft / 60;
 	matoList.mFrameCount++;
-	for (i = 0; i < matoList.mCount; i++) {
+	for (s32 i = 0; i < matoList.mCount; i++) {
 		Mato* item = &matoList.mMatos[i];
 		if (!item->mOnScreen) {
 			item->mOnScreenTime = 0;
@@ -2994,12 +2989,14 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 	// re-lock the aim only once the flight is past its first percent and the lock-on sound 0x20006 isn't playing
 	if (IsGameSoundPlaying(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+		Fighter* work = &fighterWork;
 		Vec pos;
-		best                     = NULL;
-		fighterWork.mAim.mTarget = NULL;
-		pos                      = fighterWork.mAim.mPos;
-		PSMTXMultVec(fighterWork.mBodyMtx, &pos, &pos);
-		for (i = 0; i < matoList.mCount; i++) { // the nearest live target within lock range
+		Mato* best = NULL;
+		f32 bestDist;
+		work->mAim.mTarget = NULL;
+		pos                = work->mAim.mPos;
+		PSMTXMultVec(work->mBodyMtx, &pos, &pos);
+		for (s32 i = 0; i < matoList.mCount; i++) { // the nearest live target within lock range
 			Mato* item = &matoList.mMatos[i];
 			f32 dist;
 			f32 range;
@@ -3022,16 +3019,16 @@ extern "C" void UpdateFighter(u32 dt)
 			}
 		}
 		if (best != NULL && !best->mPending) {
-			if (best != NULL && fighterWork.mLastTarget != best) {
+			if (best != NULL && work->mLastTarget != best) {
 				PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006,
 				              0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
 			}
-			fighterWork.mAim.mTarget = best;
+			work->mAim.mTarget = best;
 		}
 	}
 	FighterPanels_Update(&panels, dt);
 	// cue records {frame, sound id}; a cue fires when the flight frame crosses its frame
-	for (i = 0; i < GET_LE32(&soundCueTable[0][i * 8]); i++) {
+	for (s32 i = 0; i < GET_LE32(&soundCueTable[0][i * 8]); i++) {
 		s32 frame = GET_LE32(&soundCueTable[0][i * 8]);
 		s32 id    = GET_LE32(&soundCueTable[0][i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {

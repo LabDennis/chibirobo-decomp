@@ -1506,6 +1506,8 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
  */
 // whether pos lies inside abc seen from above, corners wound so CalcTriangleNormal points up. pos is
 // out as soon as one edge's rel x edge points down: its dot with up, which is (0, -1, 0), goes positive
+// NONMATCHING: retail schedules the first edge's loads into the prologue and the up copy after them; up
+// declared first, no edge temps, up after the other Vecs or a split rz all score lower (43-80 %)
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
 	f32 ex = a->x - b->x;

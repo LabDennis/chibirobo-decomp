@@ -367,6 +367,10 @@ gamecube_libs = [
         "cflags": cflags_game,
         "progress_category": "game",
         "objects": [
+            # no extra flags: retail's inlining fits the unit's -inline auto. CGame::Start holds the body of CBase::Start
+            # (US 0x80015534, written above it), which -inline noauto would keep a call. FinalizeStageObjectSetup and
+            # CGame::Update call BuildObjectDrawList and SelectSceneLights (written below them), which -inline deferred
+            # would expand. The code order is unresolved: retail's lies in reverse source order, which only deferred gives.
             Object(NonMatching, "game/game.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecgschan.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecpadone.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -460,23 +464,48 @@ gamecube_libs = [
             Object(Matching, "game/cgsctor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/ctiledtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cgschannelctor.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US .text 0x8001BCFC..0x8001D9B0, DrawScanModePrompt through
+            # CCameraActionMap::GetTarget, its own .sdata2 pool and .rodata header block). No __FILE__ string in
+            # retail; named after its first unit. Init__10FbMirrorExFv ahead of it (US 0x8001BC34..0x8001BCFC)
+            # belongs to game.cpp and stays at the head of this unit until game.cpp is put back together
             Object(NonMatching, "game/fbmirrorex.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cpaddtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/progressive.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline noauto, as retail shows: UpdateTitleScreen (JP 0x8002E548) calls StartScreenFade
-            # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
-            # three; no other function of the unit changes with the flag
-            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            # one retail file (US .text 0x8001D9B0..0x8001FCF4, AnimSfx through PlayGameSfxAtFullVolume, with
+            # __FILE__ "sound.cpp" in LoadGameSoundBank and __vt__7AnimSfx in its .data). -inline auto,deferred,
+            # as retail shows: GC .text runs AnimSfx::Update .. PlayGameSfxAtFullVolume, the exact reverse of
+            # the Wii file (game/wii/sound.cpp: InitGameSound first, AnimSfx last); .data has stageSfxTable
+            # (LoadGameSoundBank) and musicTable (PlayGameSound) ahead of the message-group tables
+            # (PlayMessageGlyphSound), and .sdata has sSoundReadOperation (LoadGameSoundBank) ahead of
+            # sMessageGroup14SoundIds (PlayMessageGlyphSound)
+            Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x8001FCF4..0x80024558, CScrnRoboeyes/CScrnWipe*/CScrnColor/CScrnQuake;
+            # named after the retail RTTI class prefix CScrn* / include/game/cscrn.h, no __FILE__ string in
+            # retail). -inline auto,deferred, as retail shows: GC .text runs DrawRoboeyesItemLabels ..
+            # ResetScreenShake, the exact reverse of game/wii/gxb.cpp (ResetScreenShake .. DrawRoboeyesItemLabels),
+            # and .rodata places DrawScreenColorOverlay/wipe corners (gScreenWipeGeometry) ahead of
+            # DrawRoboeyesItemLabels's zero-Vecs (0x801FF1C0, 0x801FF1CC)
+            Object(NonMatching, "game/cscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80024558..0x80025150, CPtclOne/CPtclDust2/CPtclDust3 and particle pool;
+            # named after the retail RTTI class prefix CPtcl* / include/game/cptcl.h, no __FILE__ string in
+            # retail). -inline auto,deferred, as retail shows: .text opens with weak __dt__10CPtclDust3Fv and
+            # .rodata places CPtclDust2::Draw's Vec initializers ahead of CPtclDust3::Draw's (reverse of .text)
+            Object(NonMatching, "game/cptcl.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80025150..0x80026CB0, Cursor/CXObj/XObj setters and methods; named after
+            # the retail RTTI class name "Cursor", no __FILE__ string in retail). -inline auto,deferred, as retail
+            # shows: .sdata2 opens with RTTI names ahead of "jobj.h" and float literals, and Cursor::InitializeObject
+            # through Cursor::DrawObject run in reverse natural order
+            Object(NonMatching, "game/cursor.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80026CB0..0x80027A98, DrawCurrentLogo/UpdateBootLogos/ResetLogoFadeState;
+            # descriptive name matching include/game/logo.h and "tpl/logo%s.tpl", no __FILE__ string in retail).
+            # -inline auto,deferred, as retail shows: PAL .sdata2 places UpdateBootLogos's language suffixes
+            # ("_en".."_it") ahead of DrawCurrentLogo's float literals, and PAL .data places suffix[] ahead of
+            # UpdateBootLogos's jump table
+            Object(NonMatching, "game/logo.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             # -inline auto,deferred, as retail shows (US addresses): the getters Draw__6MenuPCFv (0x80044C74) could not
             # expand follow it from GetPlayerLevel (0x80048EB0) to GetGameGraphics (0x800493F4) in the reverse of the
             # order Draw first calls them (GetGameGraphics first, GetPlayerLevel last); only GetPCDialogueText
             # (0x800493F8) stands apart, last
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
-            Object(MatchingFor(JP), "game/globalresources.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
             # cjanim.cpp, xobjfloor.cpp, xobjwalk.cpp, xobjinit.cpp and xobjinitialize.cpp were cut out of this file:
             # one .sdata2 pool, one jobj.h string and one .bss block serve them all. -inline deferred, as retail shows:
@@ -488,8 +517,14 @@ gamecube_libs = [
             # only deferred codegen of the file written last-address-first puts the destructors in front
             Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/obja_chr.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x800BD320-0x800D552C (xactradar + xacttumble + objb_act) shares
+            # one six-Vec .rodata block (0x8020A588), one .sdata2 pool (0x8065D6A8-0x8065D858), and one jobj.h string
+            # (0x8065D740). No extra flags: InitRadarAction and InitializePlayerLiftAction inline ResetPlayerRadarAction
+            # and ResetPlayerLiftAction (-inline noauto keeps them as calls), while -inline auto,deferred regresses
+            # UpdatePlayerCopterFlight (100% -> 77.6%), UpdateRadarTargeting, UpdatePlayerHangAction, UpdateLadderActionAnimation,
+            # UpdatePlayerRopeAction and UpdateLiftActionAnimation. Retail's .rodata initializers (0x8020A5AC..0x8020A71C)
+            # and Wii R24J01's function order lie in reverse GC .text order, which only deferred gives; code order stays
+            # unresolved here as in game.cpp.
             Object(NonMatching, "game/objb_act.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows (JP addresses): the .rodata path initializers are in reverse function order
             # (sRadarPlacementPath 0x8020B4B8 of LoadFromPlacement 0x800D8858, then ActivatePlayerRadar's,
@@ -527,7 +562,6 @@ gamecube_libs = [
             Object(EquivalentFor(JP), "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(JP), "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/cgameinit.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
             # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
             # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
@@ -566,13 +600,18 @@ gamecube_libs = [
             Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
             Object(EquivalentFor(JP), "game/memcardload.cpp", cflags=cflags_game),
             Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US .text 0x80027A98..0x8003135C: CXObj::SetScale*, XObjDemo, title draw/options/states,
+            # ResetTitleScreenState, InitTitleScreen and __sinit_titlestates_cpp). -inline auto,deferred, as retail
+            # shows: GC .text runs XObjDemo..InitTitleScreen, the exact reverse of the Wii file (game/wii/title.cpp:
+            # InitTitleScreen first, XObjDemo last); .rodata has UpdateTitleScreen's gTitleDemoStartPosition ahead of
+            # XObjDemo's RTTI name, and .data has gTitleTextureSuffixes/gTitleModeUpdates (UpdateTitleScreen) ahead of
+            # gTitleNameOutline*/gTitleHelpOutline* and __vt__8XObjDemo
+            Object(NonMatching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -1301,14 +1340,14 @@ if wii:
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # chibi robo's actions, the GameCube's objb_act.cpp: retail 0x800F48E0-0x801067C0 holds its
                 # functions in the reverse order, GetTargetFloorPosition first and UpdatePushedObject last
-                # (ResetTumbleAction, the GameCube's xacttumble.cpp, follows); -i include/rvl_msl for the
+                # (ResetTumbleAction, the GameCube's former xacttumble.cpp part, follows); -i include/rvl_msl for the
                 # nw4r sound headers game/wii/xobjflags.h and csound.h pull in
                 Object(NonMatching, "game/wii/objb_act.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the tumble action's front half, 0x801067C0-0x80106D60: ResetTumbleAction (the
-                # GameCube's xacttumble.cpp), FinishTumbleAction and HandleTumbleActionInput;
+                # GameCube's former xacttumble.cpp part of objb_act.cpp), FinishTumbleAction and HandleTumbleActionInput;
                 # UpdatePlayerTumbleAnimation follows, still to port
                 Object(NonMatching, "game/wii/xacttumble.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the tumble fade and the floor ring (the GameCube's xactradar.cpp tail, retail
+                # the tumble fade and the floor ring (the GameCube's objb_act.cpp, former xactradar.cpp tail, retail
                 # 0x801078C8-0x80107C50); HandleCopterActionInput and the rest of Nr. 68 follow
                 Object(NonMatching, "game/wii/xactradar.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the attachment objects (copter, popper, radar, OX mark), retail
@@ -2365,7 +2404,40 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
+def add_text_step(config: ProjectConfig) -> None:
+    # The game's displayed text is not in the repository: tools/gentext.py reads it
+    # from the disc's main.dol into the .inc files src/game/stage_data.cpp includes.
+    # restat: an unchanged .inc keeps its time, so nothing recompiles.
+    from tools.gentext import table_outputs
+
+    outputs = table_outputs(config.version, Path("."))
+    if not outputs:
+        return
+    config.custom_build_rules = (config.custom_build_rules or []) + [
+        {
+            "name": "gentext",
+            "command": f"$python tools/gentext.py {config.version}",
+            "description": "GENTEXT $out",
+            "restat": True,
+        }
+    ]
+    steps = config.custom_build_steps or {}
+    steps.setdefault("pre-compile", []).append(
+        {
+            "rule": "gentext",
+            "outputs": outputs,
+            "inputs": [
+                Path("orig") / config.version / "sys" / "main.dol",
+                Path("config") / config.version / "symbols.txt",
+                Path("tools/gentext.py"),
+            ],
+        }
+    )
+    config.custom_build_steps = steps
+
+
 if args.mode == "configure":
+    add_text_step(config)
     # Write build.ninja and objdiff.json
     generate_build(config)
     append_treemap_step(config)

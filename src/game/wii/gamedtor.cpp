@@ -17,12 +17,8 @@ inline void operator delete(void* ptr) throw()
  * @note Address: 0x8002CFB8
  * @note Size: 0x264
  */
-// NONMATCHING: retail destroys 36 members and CBase here, each with a call, and frees through
-// __dl__FPv: the function was over the compiler's inline budget. The members typed so far give
-// 15 of those calls; the rest are still padding in CGame (see cgame.h), so the offsets and the
-// call list fall short. ~CCameraActions (0x8002DD80) matches. ~CBase (0x80030088) still differs:
-// retail expands the empty ~CPadEx, which the original file defines out of line (0x80030A54) and
-// which lives in cpadexdtor.cpp here, so this piece of the file can only call it.
+// retail calls the destructors of all 36 members and CBase and frees through __dl__FPv: the member
+// destructors together put the function over the compiler's inline budget
 CGame::~CGame()
 {
 }

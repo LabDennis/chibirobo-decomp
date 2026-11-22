@@ -612,7 +612,7 @@ void CCameraActionScroll2::Draw()
 			if (cells < 4) {
 				cells = 4;
 			}
-			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f / 2.0f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
+			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f * 0.5f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
 			                        1.0f, 1.0f);
 			DrawGsProportionalTextFormat(&gGame.mGs, -1, name, nameX, nameY - 18.0f, 0.0f, 18.0f, 18.0f);
 			break;
@@ -669,17 +669,18 @@ void CCameraActionScroll2::Draw()
 		break;
 	}
 
-	CTexObj tex;
 	f32 pulse = std::sinf(DEG2RAD * ((sOverlayFrameCount * 24) % 360));
-	tex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[166 - StatusTextureOffset], 0);
-	f32 zoom   = 1.0f;
-	f32 arrowW = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	u16 arrowH = GXGetTexObjHeight(&tex);
-	f32 radius = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
-	f32 arrowX = radius * std::sinf(angle) + x;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mTpl.mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[166 - StatusTextureOffset], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	f32 zoom    = 1.0f;
+	f32 arrowW  = zoom * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
+	u16 arrowH  = GXGetTexObjHeight(&tex);
+	f32 radius  = arrowW / 3.0f + 3.0f * pulse * zoom / zoom;
+	f32 arrowX  = radius * std::sinf(angle) + x;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, arrowX, radius * std::cosf(angle) + y, 0.0f, arrowW, zoom * arrowH / zoom, 0.0f,
 	                   0.0f, PI + angle);
-	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 	// the wipe sits over the room view, the edge quads round the drag frame
 	DrawQuads();
@@ -691,7 +692,7 @@ void CCameraActionScroll2::Draw()
 		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
 		s32 value = base + count * 100;
 		if (base > 0) {
-			DrawSeparatedStatusValue(0xAC, value, false, gScreenSafeLeft + 40.0f, gScreenSafeBottom - 40.0f, 1.0f);
+			DrawSeparatedStatusValue(0xAC, value, false, gScreenSafeLeft + 40, gScreenSafeBottom - 40, 1.0f);
 		}
 	}
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);

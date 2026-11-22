@@ -60,12 +60,6 @@ static inline void CountCrossedEdge(Vec& from, Vec& to, Vec* a, Vec* b, s32& out
 	}
 }
 
-// Polygon rotation rounds to single precision before adding the object yaw.
-static inline f32 FloorRotationRadians(const s32& degrees)
-{
-	return 0.017453292f * degrees;
-}
-
 extern "C" {
 #include <dolphin/mtx/vec.h>
 }
@@ -124,6 +118,31 @@ static inline void ExpandRadius(f32 x, f32 z, f32& maxX, f32& maxZ)
 		maxX = ABS(x);
 	if (ABS(z) > maxZ)
 		maxZ = ABS(z);
+}
+
+// the floor readers the Wii build's cjanim.cpp keeps; retail GameCube has GetFloorYawRadians out of line
+// in obja_chr.cpp (0x800B247C) with the same signature
+static inline Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index)
+{
+	Vec offset = gObjectFloorOffsetTemplate;
+	offset.x   = (*floors)[index].mCenterOffset[0] / 100.0f;
+	offset.y   = (*floors)[index].mCenterOffset[1] / 100.0f;
+	offset.z   = (*floors)[index].mCenterOffset[2] / 100.0f;
+	return offset;
+}
+
+static inline Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
+{
+	Vec extent = lbl_80378148;
+	extent.x   = (*floors)[index].mExtent[0] / 100.0f;
+	extent.y   = (*floors)[index].mExtent[1] / 100.0f;
+	extent.z   = (*floors)[index].mExtent[2] / 100.0f;
+	return extent;
+}
+
+static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
 }
 
 static inline s32 IntersectFloorRay(const Vec& start, const Vec& end, const Vec& a, const Vec& b, CVec& hit, s32 segment)
@@ -1054,8 +1073,14 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	return result;
 }
 
-// NONMATCHING: retail reads the quad corners through floors (lwzx off the held pointer) but the quad's yaw through
-// object->mFloors, keeps index * 32 apart from the pointer, and allocates registers differently
+// NONMATCHING: retail loads floors once after the extent (0x8008E184, r20, never stored to the frame), reads
+// the yaw and id before the switch through it, the quad's corners from it with lwzx at floors + (k * 32 + 4)
+// (0x8008E784) and the quad's yaw through object->mFloors again (0x8008E900); it keeps index * 32 apart from
+// the pointer and allocates registers differently. Tried: yaw and id through object->mFloors,
+// GetFloorYawRadians(&object->mFloors, index), the corners through floors with the yaw through
+// object->mFloors (89-90 %); GetFloorCenterOffset(&floors, k) gives the lwzx reads but stores floors to the
+// frame (90.0 %); ReadObjectFloorOffset(floors[k]) and ReadFloorCoordinates(floors[k].mCenterOffset, ...)
+// form floors + k * 32 first (89.3 %)
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
@@ -1380,22 +1405,23 @@ extern "C" void SelectHighestActiveFloor(XObj* object)
  * @note Address: 0x8008C274
  * @note Size: 0x558
  */
-// NONMATCHING: retail keeps index in the frame and reads it again for each of the floor's values, as if
-// its address were taken (a `const s32&` bound to it gives that code, 76.6 %); the helper that takes
-// the index by reference is not found.
+// NONMATCHING: instructions match; retail's zero offset is a named .rodata Vec (0x8020928C) where the
+// compound literal here is an anonymous one.
 extern "C" CVec GetFloorContactPosition(const XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate; // that flag off: no floor contact to compute
 
-	Vec displacement       = offset ? *offset : (Vec) { 0.0f, 0.0f, 0.0f };
-	Vec position           = object->mMoveTranslate + displacement;
-	Vec center             = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index]));
-	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
-	const XObjFloor& floor = object->mFloors[index];
-	f32 yaw                = object->mMoveRotate.y + FloorRotationRadians(floor.mYawDegrees);
+	Vec displacement = offset ? *offset : (Vec) { 0.0f, 0.0f, 0.0f };
+	Vec position     = object->mMoveTranslate + displacement;
+	// retail stores index to the frame on entry (0x8008C2B4) and reloads it before each floor read
+	// (0x8008C360, 0x8008C470, 0x8008C55C): a reference is bound to it
+	const s32& i = index;
+	Vec center   = object->mMoveScale * (object->mToppleOffset + GetFloorCenterOffset(&object->mFloors, i));
+	Vec extent   = object->mMoveScale * GetFloorExtent(&object->mFloors, i);
+	f32 yaw      = object->mMoveRotate.y + GetFloorYawRadians(&object->mFloors, i);
 	f32 height;
-	switch (floor.mId) {
+	switch (object->mFloors[i].mId) {
 	case 0:
 	case 1: // a disc touches at its bottom, one unit down
 		height = -1.0f;
@@ -1438,8 +1464,12 @@ CVec CVec::operator*(Vec other) const
 	return result;
 }
 
-// NONMATCHING: retail reads each floor field as floors + (i * 0x20 + offset) with lwzx, here floors + i * 0x20 is formed
-// once per pass; registers follow from that
+// NONMATCHING: the floor readers take the table by address, as the Wii build's do, which gives retail's
+// floors + (i * 0x20 + offset) lwzx reads for the center and extent; passing the local's address also spills
+// floors to the frame (stw 0x8(r1)), which retail does not, so the frame is 4 bytes off and registers shift by
+// one. The quad case loads mFloors once before its corner loop (0x8008BE50, r15, kept across the loop's
+// operator+ call) and reads the corners from it with lwzx; a plain local pointer there forms the element
+// address instead (94.8 %)
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 {
 	XObjFloor* floors = mFloors;
@@ -1457,9 +1487,9 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
-		Vec center   = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
-		Vec extent   = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
-		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
+		Vec center   = mMoveScale * (mToppleOffset + GetFloorCenterOffset(&floors, i));
+		Vec extent   = mMoveScale * GetFloorExtent(&floors, i);
+		f32 localYaw = DEG2RAD * floors[i].mYawDegrees;
 		f32 yaw      = rotation + localYaw;
 		switch (floors[i].mId) {
 		case 0:
@@ -1526,13 +1556,12 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			break;
 		}
 		case 5: { // a four-point polygon built from this and the next three floors
-			XObjFloor* polygon = mFloors;
 			Mtx translate, rotate, scale, transform;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = mToppleOffset + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
-			Vec size  = mMoveScale * ReadFloorCoordinates(polygon[i].mExtent, lbl_80378148);
-			f32 angle = mMoveRotate.y + FloorRotationRadians(polygon[i].mYawDegrees);
+				corners[j] = mToppleOffset + GetFloorCenterOffset(&mFloors, i + j);
+			Vec size  = mMoveScale * GetFloorExtent(&mFloors, i);
+			f32 angle = mMoveRotate.y + GetFloorYawRadians(&mFloors, i);
 			PSMTXTrans(translate, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXScale(scale, size.x, size.y, size.z);
 			PSMTXRotRad(rotate, 'y', angle);

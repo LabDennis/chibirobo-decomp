@@ -11,7 +11,12 @@ void SpawnPlayerPointParticles(XObj* player, s32 type, s32 value);
  * @note Size: 0x140
  */
 // NONMATCHING: retail steps the item pointer in every unrolled copy (lhau), MWCC folds our steps into the offsets;
-// index, pointer and per-iteration pointer forms all give the folded code
+// index, pointer and per-iteration pointer forms all give the folded code. The unroller keeps a per-copy
+// step only while the pointer is live at an exit (a break that reads it afterwards, or `return item - entries`,
+// both give the lhau run, but with other exits than retail's `mr r3, r5`); nothing at retail's exits reads
+// the pointer. Also folded: `InventoryItem&`/pointer locals in the body, the GetId/GetCount accessors (4x
+// unroll), s16/u32 counters, while/do forms, and every -O level and opt pragma tried (diagnosis only).
+// inventory.cpp's identical loops fold in retail too, so the difference is in this file's source.
 extern "C" s32 FindOwnedInventoryItemIndex(InventoryItem* entries, s16 id)
 {
 	for (u32 i = 0; i < 256; ++i) {

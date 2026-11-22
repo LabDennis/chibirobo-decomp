@@ -1,6 +1,6 @@
 // chibi robo's actions, the GameCube's objb_act.cpp: .text 0x800F48E0-0x801067C0 (wii_units.md Nr. 67). The
 // functions come in the reverse of the GameCube's order, GetTargetFloorPosition first and UpdatePushedObject
-// last; ResetTumbleAction (the GameCube's xacttumble.cpp) follows the file.
+// last; ResetTumbleAction (the GameCube's objb_act.cpp, once xacttumble.cpp) follows the file.
 // NONMATCHING: six per-action updates are still to port: UpdateLiftActionAnimation, UpdateHeldObject,
 // UpdatePlayerHangAction, UpdatePlayerJumpAction, UpdateLadderActionAnimation and UpdatePlayerRopeAction. The
 // Wii rewrote them for the nw4r models and the Wii remote, so the GameCube's src/game/objb_act.cpp is a

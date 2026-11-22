@@ -315,7 +315,9 @@ struct TitleName {
 };
 STATIC_ASSERT(sizeof(TitleName) == 0x19C);
 
-class Title : public MenuUtil {
+// RTTI: the bases CContainCallback and MenuPad, both at _0000; the vtable (0x802E83F0) has the destructor
+// and the five overriders after CContainCallback's slots
+class Title : public MenuPad, public CContainCallback {
 public:
 	// _0000 vtable
 	s32 mState;          // _0004
@@ -392,6 +394,17 @@ public:
 	u8 _5176[2];
 	s32 mSaveErrorCode; // _5178
 	f32 mFileSlides[3]; // _517C, the file rows sliding in
+
+	virtual ~Title() { } // 0x8002F838
+	// the pane events; vf14 stays CContainCallback's
+	virtual void vf08(CbPane* pane);          // 0x8004DF38
+	virtual void vf0C(CbPane* pane);          // 0x8004DF3C
+	virtual void vf10(CbPane* pane);          // 0x8004E040
+	virtual void vf18(nw4r::math::VEC2* pos); // 0x8004E374
+	virtual void vf1C(nw4r::math::VEC2* pos); // 0x8004E378
+
+	void ClearSelections();   // 0x8004E37C
+	void RestoreSelections(); // 0x8004E430
 
 	void State0(u32 frames);
 	void State1(u32 frames);

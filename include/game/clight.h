@@ -25,7 +25,7 @@ public:
 
 	virtual ~CLight() { }                                 // _08
 	virtual void SetAnim(HSD_LightAnim* anim, f32 frame); // _0C
-	virtual void SetAnimRate(f32 rate);                   // _10, defined in gxb.cpp
+	virtual void SetAnimRate(f32 rate);                   // _10, defined in titlestates.cpp
 	virtual void Anim();                                  // _14
 	virtual void SetPosition(f32 x, f32 y, f32 z)         // _18
 	{
