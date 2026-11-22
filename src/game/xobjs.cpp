@@ -50,6 +50,8 @@ XObjReadAnm::~XObjReadAnm()
  * @note Size: 0xC0
  */
 // any read still waiting
+// NONMATCHING: retail unrolls the slot walk as a this-pointer stride (+8 per slot, member offset
+// 0x350 kept in the load); this build unrolls in pairs with growing offsets, same loop, other unroll style
 BOOL XObjRead::HasPendingReads()
 {
 	for (s32 i = 0; i < 8; ++i) {
