@@ -21,9 +21,6 @@
 extern "C" {
 // the nw4r archive, player, group, heap, track and 3D calls; the library they
 // belong to is still the unnamed unit block around 0x8028A000/0x80296000
-u32 fn_80297EF4(void* player);
-u32 fn_80298040(void* player, CSound* sound);
-s32 fn_80297DF0(void* player, CSound* sound, void* data, u32 dataSize, void* data2, u32 data2Size);
 void fn_802985B4(void* player);
 void* fn_80298978(void* player, u32 index);
 u32 fn_80295D88(CSound* sound);
@@ -313,11 +310,11 @@ BOOL CSound::OpenArchiveFile(const char* path)
 static BOOL InitSoundArchivePlayer(CSoundArchivePlayer* player, CSound* sound)
 {
 	player->mReady      = 1;
-	u32 size            = fn_80297EF4(player);
+	u32 size            = player->GetRequiredMemSize(&sound->mDvdSoundArchive);
 	player->mSetupData  = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 4);
-	u32 size2           = fn_80298040(player, sound);
+	u32 size2           = player->GetRequiredStrmBufferSize(&sound->mDvdSoundArchive);
 	player->mSetupData2 = MEMAllocFromExpHeapEx(gWiiGameHeap, size2, 0x20);
-	return fn_80297DF0(player, sound, player->mSetupData, size, player->mSetupData2, size2);
+	return player->Setup(&sound->mDvdSoundArchive, player->mSetupData, size, player->mSetupData2, size2);
 }
 
 static BOOL InitSoundHeap(void* heap, u32 size)
