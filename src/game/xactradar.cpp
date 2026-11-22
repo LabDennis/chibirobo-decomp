@@ -58,7 +58,12 @@ static inline f32 TargetPitch(const Vec& from, const Vec& to)
 }
 
 // NONMATCHING: retail takes the yaw's z difference before the x one and numbers the float registers otherwise;
-// ShadeRadarBeam's loop counters get their own zero in retail
+// ShadeRadarBeam's loop counters get their own zero in retail. The dol has 129 atan2(a.x - b.x, a.z - b.z)
+// calls and evaluates the x argument first at all but four: this one, UpdateRadarTargeting's dish case,
+// UpdatePopperShotFlight and one spider boss site where the z operand was already in a register. Only an
+// extra operation on the z argument (fneg, a double subtraction) moves it first in this build; casts,
+// unary plus, 1.0f *, dz/dx locals, an atan2f-style inline, a yaw local and a const CVec& for the target
+// all keep x first
 extern "C" void DrawRadarTargetBeam(XActRadar* act)
 {
 	if (!(act->mFade > 0))
@@ -876,7 +881,10 @@ static inline void FadePopperRing(XActPopperRing& ring, u32 frames)
  * @note Address: 0x800C186C
  * @note Size: 0x934
  */
-// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2.
+// NONMATCHING: retail schedules aim.z - shot->mPos.z before aim.x - shot->mPos.x for the yaw atan2 (see
+// DrawRadarTargetBeam: the dol does this at four of 129 such calls). A yaw local, (f64) casts, a Vec& for
+// mPos, a CVec or const CVec& aim, dz declared before or after the call and 23000 permuter iterations all
+// leave x first; -(mPos.z - aim.z) is the only form that flips it (99.18 with its fneg)
 void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 {
 	if (shot->mActive) {
@@ -1004,7 +1012,11 @@ void CheckPopperShotImpact(XActPopperShot* shot)
  * @note Address: 0x800C2A14
  * @note Size: 0x304
  */
-// NONMATCHING: the position is read once too few
+// NONMATCHING: the position is read once too few: retail reloads pos for mRing[0] after the history
+// stores, this build reuses the three loads the mPos copy's CVec temporary made. With a const Vec& (or
+// const Vec*) MWCC treats pos as invariant over the stores; a non-const Vec& reloads it as retail does but
+// then also keeps the first loads below the mHitTarget store (90.4). Struct copies for mPos, mHistory[i]
+// and mRing[0].mPos and the mPos/mHitTarget statement order are flat
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
                      f32 strength)
 {

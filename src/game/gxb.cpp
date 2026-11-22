@@ -2186,7 +2186,8 @@ static inline void MoveYesNo(Title* title, CPad& pad)
  * @note Address: 0x80028BAC
  * @note Size: 0x5BC
  */
-// NONMATCHING: the loop's float registers are assigned in another order
+// NONMATCHING: the loop's float registers are assigned in another order (the rot and pop products after the alpha
+// conversion take f0/f4 in retail, f1/f5/f0 here; i and the colour mask swap r25/r26)
 // draws the title's name: a bubble per letter, then the letter with a shadow on four sides
 extern "C" void DrawTitleNameBubbles(Title* title)
 {
@@ -2445,7 +2446,11 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 	DrawLoadText(GetLocalizedInterfaceText(label), center, y, color);
 }
 #endif
-// NONMATCHING: retail adds the bar's 2.0f to its y at each quad (fadds y, 2), this build once before the call; rest is float regs
+// NONMATCHING: retail adds the bar's 2.0f to its y at each quad (fadds y, 2), this build once before the call; rest is float regs.
+// MenuSave::Draw (stg) passes 2.0f + (8.0f + labelY) to the same inline and differs the same way, DrawPCShopList passes a named
+// barY and matches there: retail re-evaluates the inline's y argument per use, which the shared menuselectionbar.h would have to
+// settle. JP, mode 2: retail computes the first line's x and y (f25/f26) before LoadTextColor's __cvt_fp2unsigned, this build
+// forwards them past it (a color local and a JP DrawLoadText inline taking x by value are identical)
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
 	switch (title->mMode) {
@@ -2661,7 +2666,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  */
 // NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
 // then converts alpha again for normal; this build folds both into one conversion after the call.
-// The rest is float register order
+// An s32 local converted before the call is forwarded past it and merged with normal's conversion
+// (93.85). The rest is float register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
@@ -2817,7 +2823,9 @@ static inline f32 TitleOptionWidth(s32 first)
 	return 2.0f * ((label > largest ? label : largest) + 8.0f);
 }
 #endif
-// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule
+// NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule.
+// Both save f26-f31; the alpha, the later progress and the three entry widths are coloured onto other slots. -O4 without p,
+// -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)

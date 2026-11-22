@@ -362,18 +362,14 @@ game/infoscrn.cpp:
 	.sdata2     start:0x80636CD8 end:0x80636E90
 	.sbss2      start:0x8063A260 end:0x8063A270
 
-game/globalresources.cpp:
-	.text       start:0x8006FFDC end:0x8007116C
-	.data       start:0x80213C38 end:0x8021617C
-
 game/stage_data.cpp:
-	.text       start:0x8007116C end:0x80072048
+	.text       start:0x8006FFDC end:0x80072048
 	.ctors      start:0x801FEF34 end:0x801FEF38
-	.rodata     start:0x80204BE4 end:0x80208CA8 align:4
-	.data       start:0x80216424 end:0x80223DB0 align:4
+	.rodata     start:0x80203560 end:0x80208CA8 align:4
+	.data       start:0x80213C38 end:0x80223DB0 align:4
 	.bss        start:0x8034586C end:0x80345C78 align:4
 	.sdata      start:0x806347C8 end:0x806347F8 align:4
-	.sdata2     start:0x80636F24 end:0x806370D8 align:4
+	.sdata2     start:0x80636E90 end:0x806370D8 align:4
 
 game/evt.cpp:
 	.text       start:0x80072048 end:0x80082310
