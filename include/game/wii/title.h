@@ -23,7 +23,7 @@ struct WiiFatalInfo {
 	GXColor mBg; // _0C
 	u8 _10[4];
 	u8 mActive;      // _14
-	char mText[256]; // _15
+	char mText[160]; // _15
 };
 extern WiiFatalInfo gSaveFatal;
 

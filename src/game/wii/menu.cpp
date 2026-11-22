@@ -3270,17 +3270,16 @@ static inline void DrawJapaneseCardLine(f32 x, s32 id, f32 y, f32 size, u32 colo
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width * 0.5f, y, 0.0f, size, size);
 }
 
-static inline void SetJapaneseSaveFatalText(const s32* ids)
+static inline void SetJapaneseSaveFatalText(const s32* ids, int count)
 {
 	strcpy(gSaveFatal.mText, GetLocalizedInterfaceText(ids[0]));
-	for (int i = 1; ids[i] != 0; i++) {
+	for (int i = 1; i < count; i++) {
 		strcat(gSaveFatal.mText, "\n");
 		strcat(gSaveFatal.mText, GetLocalizedInterfaceText(ids[i]));
 	}
 	gSaveFatal.mMessage = gSaveFatal.mText;
 }
 
-// the save menu reserves extra space below some prompts for the choice labels
 // NONMATCHING: the error cases and call list match; 96 bytes of register allocation and fatal-text
 // scheduling remain
 extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 size, f32 alpha)
@@ -3304,8 +3303,8 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 
 			DrawJapaneseCardLine(centerX, 0x127, y, size, color);
 			DrawJapaneseCardLine(centerX, 0x128, y + size, size, color);
 			DrawJapaneseCardLine(centerX, 0x129, 2.0f * size + y, size, color);
-			s32 ids[] = { 0x127, 0x128, 0x129, 0 };
-			SetJapaneseSaveFatalText(ids);
+			s32 ids[4] = { 0x127, 0x128, 0x129 };
+			SetJapaneseSaveFatalText(ids, 3);
 			lines = 3;
 		} else {
 			DrawJapaneseCardLine(centerX, 0xCC, y, size, color);
@@ -3320,16 +3319,16 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 
 		DrawJapaneseCardLine(centerX, 0x124, y + size, size, color);
 		DrawJapaneseCardLine(centerX, 0x125, 2.0f * size + y, size, color);
 		DrawJapaneseCardLine(centerX, 0x126, 3.0f * size + y, size, color);
-		s32 ids[] = { 0x123, 0x124, 0x125, 0x126, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x123, 0x124, 0x125, 0x126 };
+		SetJapaneseSaveFatalText(ids, 4);
 		lines = 4;
 		break;
 	}
 	case CARD_RESULT_NOFILE: {
 		DrawJapaneseCardLine(centerX, 0x10D, y, size, color);
 		DrawJapaneseCardLine(centerX, 0x10E, y + size, size, color);
-		s32 ids[] = { 0x10D, 0x10E, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x10D, 0x10E };
+		SetJapaneseSaveFatalText(ids, 2);
 		lines = 2;
 		break;
 	}
@@ -3351,6 +3350,7 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 
 	return lines;
 }
 
+// the save menu reserves extra space below some prompts for the choice labels
 // NONMATCHING: the switch layout and call list match; 160 bytes of register allocation and fatal-text
 // loop scheduling remain, including a _savegpr_27/_restgpr_27 pair absent from retail
 extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 size, f32 alpha)
@@ -3464,26 +3464,26 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 si
 	case 13: {
 		DrawJapaneseCardLine(centerX, 0x10D, y, size, color);
 		DrawJapaneseCardLine(centerX, 0x10E, y + size, size, color);
-		s32 ids[] = { 0x10D, 0x10E, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x10D, 0x10E };
+		SetJapaneseSaveFatalText(ids, 2);
 		lines = 2;
 		break;
 	}
 	case 14: {
-		OSPanic("menu_save.cpp", 0xF2B, "_CARDWARN_UNUSABLE_MAXBLOCKS_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
+		OSPanic("menu_save.cpp", 3883, "_CARDWARN_UNUSABLE_MAXBLOCKS_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
 		DrawJapaneseCardLine(centerX, 0x11D, y, size, color);
 		DrawJapaneseCardLine(centerX, 0x11E, y + size, size, color);
-		s32 ids[] = { 0x11D, 0x11E, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x11D, 0x11E };
+		SetJapaneseSaveFatalText(ids, 2);
 		lines = 2;
 		break;
 	}
 	case 15: {
-		OSPanic("menu_save.cpp", 0xF32, "_CARDWARN_UNUSABLE_MAXFILES_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
+		OSPanic("menu_save.cpp", 3890, "_CARDWARN_UNUSABLE_MAXFILES_-->_CARDWARN_UNUSABLE_UNKOWN_へ以降したはず");
 		DrawJapaneseCardLine(centerX, 0x120, y, size, color);
 		DrawJapaneseCardLine(centerX, 0x121, y + size, size, color);
-		s32 ids[] = { 0x120, 0x121, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x120, 0x121 };
+		SetJapaneseSaveFatalText(ids, 2);
 		lines = 2;
 		break;
 	}
@@ -3492,8 +3492,8 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 si
 		DrawJapaneseCardLine(centerX, 0x124, y + size, size, color);
 		DrawJapaneseCardLine(centerX, 0x125, 2.0f * size + y, size, color);
 		DrawJapaneseCardLine(centerX, 0x126, 3.0f * size + y, size, color);
-		s32 ids[] = { 0x123, 0x124, 0x125, 0x126, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[] = { 0x123, 0x124, 0x125, 0x126 };
+		SetJapaneseSaveFatalText(ids, 4);
 		lines = 4;
 		break;
 	}
@@ -3501,8 +3501,8 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 si
 		DrawJapaneseCardLine(centerX, 0x127, y, size, color);
 		DrawJapaneseCardLine(centerX, 0x128, y + size, size, color);
 		DrawJapaneseCardLine(centerX, 0x129, 2.0f * size + y, size, color);
-		s32 ids[] = { 0x127, 0x128, 0x129, 0 };
-		SetJapaneseSaveFatalText(ids);
+		s32 ids[4] = { 0x127, 0x128, 0x129 };
+		SetJapaneseSaveFatalText(ids, 3);
 		lines = 3;
 		break;
 	}
