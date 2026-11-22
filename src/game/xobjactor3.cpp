@@ -2666,7 +2666,11 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
  * @note Size: 0x59C
  */
 // Draw the stage02 spider count as two digits over the panel.
-// NONMATCHING: the colours, the texture matrix pointer and the loop count take other registers
+// NONMATCHING: the colours, the texture matrix pointer and the loop count take other
+// saved regs. The instruction stream is identical to retail otherwise — the residual is
+// allocation colouring plus the anonymous .sdata2 pool. Tried: `s32 i` inside the `for`
+// (98.0 on PAL) and the height fetch inlined into TexSize (96.2): both keep the same
+// stream but reseed the allocation and score lower.
 extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 {
 	f32 alpha = actor->mCounterPanelAlpha;
