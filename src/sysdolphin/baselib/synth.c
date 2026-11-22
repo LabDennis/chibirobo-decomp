@@ -2567,6 +2567,7 @@ s32 HSD_SynthSFXCheck(s32 id)
  * @note Address: 0x801EE0DC
  * @note Size: 0x220
  */
+// NONMATCHING: register allocation only; retail has frames, changed in r29, r30 and the user_vol offset, pointer in r28, r27
 void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
 {
 	HSD_SynthSFXNode* node;
