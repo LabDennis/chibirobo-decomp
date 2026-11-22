@@ -8,6 +8,7 @@
 // take the state as a parameter, which their names in symbols.txt (no parameter) do not show yet; cgame.h declares
 // Close(s32 state), MenuPC::State11 and MenuSave::State17 pass 5.
 #include "game/wii/menuutil.h"
+#include "Dolphin/card.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/nandfile.h"
@@ -3280,6 +3281,76 @@ static inline void SetJapaneseSaveFatalText(const s32* ids)
 }
 
 // the save menu reserves extra space below some prompts for the choice labels
+// NONMATCHING: the error cases and call list match; 96 bytes of register allocation and fatal-text
+// scheduling remain
+extern "C" s32 DrawJapaneseCardErrorMessage(s32, s32 error, u8, f32, f32 y, f32 size, f32 alpha)
+{
+	s32 lines   = 0;
+	u32 color   = (u32)(255.0f * alpha);
+	f32 centerX = (f32)(gPointerScreenWidth / 2);
+	switch (error) {
+	case CARD_RESULT_FATAL_ERROR:
+	case -64:
+	case -15:
+	case CARD_RESULT_CANCELED:
+	case CARD_RESULT_ENCODING:
+	case CARD_RESULT_NAMETOOLONG:
+	case CARD_RESULT_NOPERM:
+	case CARD_RESULT_NOENT:
+	case CARD_RESULT_BROKEN:
+	case CARD_RESULT_IOERROR:
+	case CARD_RESULT_BUSY:
+		if (gGame.mLanguage == 0) {
+			DrawJapaneseCardLine(centerX, 0x127, y, size, color);
+			DrawJapaneseCardLine(centerX, 0x128, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0x129, 2.0f * size + y, size, color);
+			s32 ids[] = { 0x127, 0x128, 0x129, 0 };
+			SetJapaneseSaveFatalText(ids);
+			lines = 3;
+		} else {
+			DrawJapaneseCardLine(centerX, 0xCC, y, size, color);
+			DrawJapaneseCardLine(centerX, 0xCD, y + size, size, color);
+			DrawJapaneseCardLine(centerX, 0xCE, 2.0f * size + y, size, color);
+			lines = 3;
+		}
+		break;
+	case CARD_RESULT_WRONGDEVICE:
+	case CARD_RESULT_NOCARD: {
+		DrawJapaneseCardLine(centerX, 0x123, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x124, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x125, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x126, 3.0f * size + y, size, color);
+		s32 ids[] = { 0x123, 0x124, 0x125, 0x126, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 4;
+		break;
+	}
+	case CARD_RESULT_NOFILE: {
+		DrawJapaneseCardLine(centerX, 0x10D, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x10E, y + size, size, color);
+		s32 ids[] = { 0x10D, 0x10E, 0 };
+		SetJapaneseSaveFatalText(ids);
+		lines = 2;
+		break;
+	}
+	case CARD_RESULT_LIMIT:
+		DrawJapaneseCardLine(centerX, 0x113, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x114, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x115, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x116, 3.0f * size + y, size, color);
+		lines = 4;
+		break;
+	case CARD_RESULT_INSSPACE:
+		DrawJapaneseCardLine(centerX, 0x10F, y, size, color);
+		DrawJapaneseCardLine(centerX, 0x110, y + size, size, color);
+		DrawJapaneseCardLine(centerX, 0x111, 2.0f * size + y, size, color);
+		DrawJapaneseCardLine(centerX, 0x112, 3.0f * size + y, size, color);
+		lines = 4;
+		break;
+	}
+	return lines;
+}
+
 // NONMATCHING: the switch layout and call list match; 160 bytes of register allocation and fatal-text
 // loop scheduling remain, including a _savegpr_27/_restgpr_27 pair absent from retail
 extern "C" s32 DrawJapaneseSaveStatusMessage(s32, s32 status, f32, f32 y, f32 size, f32 alpha)
