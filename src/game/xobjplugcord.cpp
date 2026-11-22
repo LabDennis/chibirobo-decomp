@@ -202,6 +202,7 @@ extern "C" void InitPlugCord(XObjPlugCord* cord, s32 count, f32 x, f32 y, f32 z,
  * @note Address: 0x800DB810
  * @note Size: 0x26C
  */
+// NONMATCHING: retail's copy of center that the += reads sits below all CVec temporaries (unnamed), plain `+= center` has no copy (94 %)
 extern "C" void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z)
 {
 	Vec center = CVec(x, y, z);
@@ -444,6 +445,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
  * @note Address: 0x800DA68C
  * @note Size: 0x354
  */
+// NONMATCHING: registers only, retail gives i r31 and the point offset a copy of its zero (mr r29, r31), 0.0f f31 and 0.5f f28
 extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
 	CGs* graphics = CaptureGraphics();
@@ -494,6 +496,7 @@ static inline void MakePlugNodeMtx(Mtx mtx, Vec* trans)
  * @note Address: 0x800DA4D0
  * @note Size: 0x1BC
  */
+// NONMATCHING: registers only, i and the node pointer swap r28/r31; node->mState for the test is worse (96.8 %)
 extern "C" void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
 	Mtx combined;
