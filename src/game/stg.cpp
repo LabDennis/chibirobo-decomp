@@ -3242,8 +3242,8 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	++frame;
 	if (scale <= 0)
 		return;
-	f32 height  = 153.0f * scale;
 	f32 width   = 254.0f * scale;
+	f32 height  = 153.0f * scale;
 	f32 y       = 224.0f - height / 2.0f;
 	u32 opacity = (u32)(255.0f * alpha);
 	u32 color   = opacity | 0xFFFFFF00;
@@ -3252,29 +3252,27 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
-	                             size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
+	                             0.0f, size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
-	                             helpSize, helpSize);
+	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
+	                             0.0f, helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
 // no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
-// function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
-// (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
-// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f.
-// The other constants retail adds with the variable first are the first stat row's 8 (0x80055AA8), the stat rows'
-// 44/88/132 (0x80055AF4, while their 8 and 40 are literal-first), the 14 of y + 14, (y - 82) + 14 and
-// (y - 18) + 14 (0x80055D74, 0x80055DC4, 0x800560A0, while the entry rows' 14 + ((y - 82) + 52) has the 14 first),
-// and the entry rows' 52/104/156 (0x80055E14): each row's offset reached its call as a variable, the first row of
-// each column through another spelling than the rest. The rows under the first now add a row number times the
-// spacing; the first rows still add their 8 and 14 as literals (constant first, retail variable first), and the
-// rows' availability byte is loaded earlier than retail's (US 0x80055E24 lbz r4, 0x6(r4) right before the call).
+// function scores lower (91.5 -> 91.2), so it stays u8. The -12.0f column shift and the 14.0f of the first rows
+// and the two icons reach their adds as variables (US 0x80055D38 fadds f10, f5, f4 with -12; 0x80055D74,
+// 0x80055DC4, 0x800560A0 with 14), so they are the locals shift and lift; the first quad's x is 0.0f + that sum
+// in retail (0x80055D6C fadds f1, f3, f10 with a literal 0.0f), no spelling for that found. The first stat row's
+// 8 is variable-first too (0x80055AA8); a local 8 moves the registers and scores lower (-0.6), it stays a literal.
+// The stat rows' 44/88/132 (0x80055AF4, while their 8 and 40 are literal-first) and the entry rows' 52/104/156
+// (0x80055E14, their 14 literal-first) are a row number times the spacing. Still off: the rows' availability
+// byte is loaded earlier than retail's (US 0x80055E24 lbz r4, 0x6(r4) right before the call), register numbers.
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -3282,14 +3280,16 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 x        = (menu->mOverviewX - 42.0f) + menu->mOffsetX;
 		f32 y        = (180.0f + menu->mOverviewY) + menu->mOffsetY;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
+		f32 shift    = -12.0f;
+		f32 lift     = 14.0f;
 		DrawOverviewStats(menu, selected, x, y);
 		LoadOverviewTexture(tex, 173);
 		u16 width = tex.GetWidth(), height = tex.GetHeight();
 		BeginOverviewTexture(tex);
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-		DrawOverviewTexture(tex, color, ((x - 24.0f) - 48.0f) - 12.0f, y + 14.0f, 0.6f * (1.1f * width), 0.6f * height);
-		f32 left = ((48.0f + x) - 48.0f) - 12.0f;
-		f32 row0 = (y - 82.0f) + 14.0f;
+		DrawOverviewTexture(tex, color, ((x - 24.0f) - 48.0f) + shift, y + lift, 0.6f * (1.1f * width), 0.6f * height);
+		f32 left = ((48.0f + x) - 48.0f) + shift;
+		f32 row0 = (y - 82.0f) + lift;
 		DrawStatusOverviewEntry(menu, 0xAA, 5, selected, left, row0);
 		DrawStatusOverviewEntryRow(menu, 0xB3, 6, selected, left, y - 82.0f, 1);
 		DrawStatusOverviewEntryRow(menu, 0xA9, 7, selected, left, y - 82.0f, 2);
@@ -3301,8 +3301,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 		else
 			color = (u32)(255.0f * menu->mAlpha);
-		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) - 12.0f;
-		f32 middle = (y - 18.0f) + 14.0f;
+		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) + shift;
+		f32 middle = (y - 18.0f) + lift;
 		DrawOverviewTexture(tex, color, center, middle, w, h);
 		if (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))) {
 			LoadOverviewTexture(tex, 245);
@@ -3313,8 +3313,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			DrawOverviewTexture(tex, color, 18.0f + center, 56.5f + middle, 1.4f * (1.1f * width), 1.4f * height);
 		}
 		if (menu->mShowGauge)
-			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
-		f32 right = (192.0f + (72.0f + x)) - 12.0f;
+			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) + shift, (114.0f + y) - 22.0f, menu->mAlpha);
+		f32 right = (192.0f + (72.0f + x)) + shift;
 		DrawStatusOverviewEntry(menu, 0xAE, 9, selected, right, row0);
 		DrawStatusOverviewEntryRow(menu, 0xAF, 10, selected, right, y - 82.0f, 1);
 		DrawStatusOverviewEntryRow(menu, 0xB0, 11, selected, right, y - 82.0f, 2);
