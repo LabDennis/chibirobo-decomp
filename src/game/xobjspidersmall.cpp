@@ -4,8 +4,8 @@
 //   initializers last-address-first (ResetSmallSpiderState's, then DrawGroundShadowAt's, OnHitFromPosition's), as
 //   -inline deferred gives. With the file written in reverse and deferred, State3 and State8 expand
 //   DetachSmallSpiderFromPlayer, which retail calls there (and expands in State1 and State9): retail's Detach weighs
-//   25 to 40 inline units more than ours (filler test), the source form is not found, so the file stays in upstream's order without deferred and its
-//   .rodata, .sdata2 pool and jump tables come out in another order
+//   25 to 40 inline units more than ours (filler test), the source form is not found, so the file stays in upstream's order without
+//   deferred and its .rodata, .sdata2 pool and jump tables come out in another order
 // - .data: sSmallSpiderStateData is upstream's stand-in for the header-made 26-word block; retail ends with 0xC4 zero
 //   bytes behind the CVec/CObjVec base lists (0x8022B828) that nothing reads
 // - .bss: gSmallSpiderPlacementWork ... gSmallSpiderWorkEnd stand for the header-made 0x140 (JP 0x134) prefix

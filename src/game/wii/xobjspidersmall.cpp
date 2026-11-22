@@ -4,9 +4,8 @@
 #include "nw4r/snd/snd_BasicSound.h"
 #include "nw4r/snd/snd_SoundHandle.h"
 
-// the Wii file of the GameCube's xobjspidersmall.cpp and xobjspidersmallstatus.cpp (retail
-// 0x80128C84-0x80132330), its functions in the Wii's order; the web effect helpers it calls
-// are defined in xobjspider.cpp
+// the Wii file of the GameCube's xobjspidersmall.cpp (retail 0x80128C84-0x80132330), its
+// functions in the Wii's order; the web effect helpers it calls are defined in xobjspider.cpp
 
 struct SmallSpiderStageStatus {
 	CStatus mSpiders[16];
