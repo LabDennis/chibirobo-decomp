@@ -131,13 +131,12 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) { // the placement opts out of loading
 		return TRUE;
 	}
-	AttrInfo* attr = &mAttr;
-	if (mStatus.mFlags & 1) {
+	if ((mStatus.mFlags & 1) == 1) {
 		ready = TRUE;
 	} else {
-		if (attr->mObjData == NULL) {
+		if (mAttr.mObjData == NULL) {
 			mCoord.mPlacement = info.mPlacement;
-			attr->Init((CoordInfo*)&info);
+			mAttr.Init((CoordInfo*)&info);
 		}
 		if (mFloors == NULL) {
 			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
@@ -147,15 +146,15 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				mFloors = NULL;
 			}
 		}
-		if (!ModelName(*attr)) {
+		if (!ModelName(mAttr)) {
 			ready = TRUE;
-		} else if (Source(*attr)) {
+		} else if (Source(mAttr)) {
 			ready = fn_800AD498(this);
 		}
 	}
 	if (ready) {
 		mStatus.mFlags = (mStatus.mFlags & 0x0040000000000000ULL) | ((u64)info.mPlacement->mFlags << 16)
-		               | (attr->mObjData != NULL ? attr->mObjData->mFlags : 0) | 1;
+		               | (mAttr.mObjData != NULL ? mAttr.mObjData->mFlags : 0) | 1;
 		Vec pos = PlacementPosition(info);
 		SetPos(pos);
 		if (mStatus.mFlags & 0x800ULL) {
