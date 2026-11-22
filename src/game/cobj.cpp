@@ -1564,8 +1564,10 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 fla
  * @note Address: 0x801A2D68
  * @note Size: 0x1D0
  */
-// NONMATCHING: retail calls Attach out of line, -inline auto expands ours. Attach is bigger to the
-// compiler in retail: padding ours with 40 statements (not 25) makes it a call and this function 100 %.
+// NONMATCHING: retail calls Attach out of line, -inline auto expands ours. Measured: Attach becomes a call with
+// 31 statements (CJObj::Attach + 30 SyncMoveFromJoint calls; 29 still expand), and then this is 100 %. Retail's
+// Attach is defined above this one (0x801A2F38 follows it under deferred) and its code is CJObj::Attach plus
+// one call, so why it was not expanded is still open; moving our Attach above ReadCheck changes nothing.
 BOOL CXObj::ReadCheck()
 {
 	if (mLoadState == 1 && mArchive.ReadCheck()) {
@@ -1723,6 +1725,8 @@ BOOL CXObj::ReadCheck()
 // every store instead of keeping the pointer (frame 0x10 vs 0x20). Named Vec* locals do materialize
 // dst, but as addi up front plus cmplwi (90.4, 4 saved regs), never the fused addic. form — so the
 // assert-and-keep shape is a rematerialization decision of the compiler, not a source form.
+// ((CJObj*)this)->Attach(jobj) gives exactly that shape (100 % on its own), but as long as ReadCheck
+// expands Attach its inlined copy drops 46.47 -> 44.66, so it waits for ReadCheck.
 void CXObj::Attach(HSD_JObj* jobj)
 {
 	CJObj::Attach(jobj);
