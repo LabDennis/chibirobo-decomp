@@ -785,9 +785,8 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		time = FRAME_RATE * time;
-		color->mSpeed.Set(((f32)r - color->mColor.r) / time, ((f32)g - color->mColor.g) / time, ((f32)b - color->mColor.b) / time,
-		                  ((f32)a - color->mColor.a) / time);
+		color->mSpeed.Set(((f32)r - color->mColor.r) / (FRAME_RATE * time), ((f32)g - color->mColor.g) / (FRAME_RATE * time),
+		                  ((f32)b - color->mColor.b) / (FRAME_RATE * time), ((f32)a - color->mColor.a) / (FRAME_RATE * time));
 	}
 }
 
