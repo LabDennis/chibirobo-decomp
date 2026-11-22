@@ -473,10 +473,29 @@ gamecube_libs = [
             # (PlayMessageGlyphSound), and .sdata has sSoundReadOperation (LoadGameSoundBank) ahead of
             # sMessageGroup14SoundIds (PlayMessageGlyphSound)
             Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            # -inline noauto, as retail shows: UpdateTitleScreen (JP 0x8002E548) calls StartScreenFade
-            # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
-            # three; no other function of the unit changes with the flag
-            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            # one retail file (US .text 0x8001FCF4..0x80024558, CScrnRoboeyes/CScrnWipe*/CScrnColor/CScrnQuake;
+            # named after the retail RTTI class prefix CScrn* / include/game/cscrn.h, no __FILE__ string in
+            # retail). -inline auto,deferred, as retail shows: GC .text runs DrawRoboeyesItemLabels ..
+            # ResetScreenShake, the exact reverse of game/wii/gxb.cpp (ResetScreenShake .. DrawRoboeyesItemLabels),
+            # and .rodata places DrawScreenColorOverlay/wipe corners (gScreenWipeGeometry) ahead of
+            # DrawRoboeyesItemLabels's zero-Vecs (0x801FF1C0, 0x801FF1CC)
+            Object(NonMatching, "game/cscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80024558..0x80025150, CPtclOne/CPtclDust2/CPtclDust3 and particle pool;
+            # named after the retail RTTI class prefix CPtcl* / include/game/cptcl.h, no __FILE__ string in
+            # retail). -inline auto,deferred, as retail shows: .text opens with weak __dt__10CPtclDust3Fv and
+            # .rodata places CPtclDust2::Draw's Vec initializers ahead of CPtclDust3::Draw's (reverse of .text)
+            Object(NonMatching, "game/cptcl.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80025150..0x80026CB0, Cursor/CXObj/XObj setters and methods; named after
+            # the retail RTTI class name "Cursor", no __FILE__ string in retail). -inline auto,deferred, as retail
+            # shows: .sdata2 opens with RTTI names ahead of "jobj.h" and float literals, and Cursor::InitializeObject
+            # through Cursor::DrawObject run in reverse natural order
+            Object(NonMatching, "game/cursor.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail file (US .text 0x80026CB0..0x80027A98, DrawCurrentLogo/UpdateBootLogos/ResetLogoFadeState;
+            # descriptive name matching include/game/logo.h and "tpl/logo%s.tpl", no __FILE__ string in retail).
+            # -inline auto,deferred, as retail shows: PAL .sdata2 places UpdateBootLogos's language suffixes
+            # ("_en".."_it") ahead of DrawCurrentLogo's float literals, and PAL .data places suffix[] ahead of
+            # UpdateBootLogos's jump table
+            Object(NonMatching, "game/logo.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             # -inline auto,deferred, as retail shows (US addresses): the getters Draw__6MenuPCFv (0x80044C74) could not
             # expand follow it from GetPlayerLevel (0x80048EB0) to GetGameGraphics (0x800493F4) in the reverse of the
             # order Draw first calls them (GetGameGraphics first, GetPlayerLevel last); only GetPCDialogueText

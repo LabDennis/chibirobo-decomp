@@ -330,8 +330,35 @@ game/gxa.cpp:
 game/gameosreport.cpp:
 	.text       start:0x80015790 end:0x800157E0
 
-game/gxb.cpp:
-	.text       start:0x8001FCD8 end:0x80027A6C
+game/cscrn.cpp:
+	.text       start:0x8001FCD8 end:0x8002453C
+	.rodata     start:0x802006D0 end:0x80200AF8
+	.data       start:0x80212050 end:0x80212128
+	.bss        start:0x8033FA30 end:0x8033FA58
+	.sdata      start:0x806345F0 end:0x80634650
+	.sbss       start:0x806355A0 end:0x806355C0
+	.sdata2     start:0x806364F0 end:0x806365C0
+
+game/cptcl.cpp:
+	.text       start:0x8002453C end:0x80025134
+	.rodata     start:0x80200AF8 end:0x80200BC8
+	.data       start:0x80212128 end:0x80212188
+	.sdata      start:0x80634650 end:0x80634668
+	.sdata2     start:0x806365C0 end:0x80636608
+
+game/cursor.cpp:
+	.text       start:0x80025134 end:0x80026C94
+	.rodata     start:0x80200BC8 end:0x80200C08
+	.data       start:0x80212188 end:0x80212330
+	.bss        start:0x8033FA58 end:0x8033FA80
+	.sdata      start:0x80634668 end:0x80634690
+	.sdata2     start:0x80636608 end:0x80636660
+
+game/logo.cpp:
+	.text       start:0x80026C94 end:0x80027A6C
+	.rodata     start:0x80200C08 end:0x80200C18
+	.data       start:0x80212330 end:0x80212370
+	.sdata2     start:0x80636660 end:0x806366A8
 
 game/titlestates.cpp:
 	.text       start:0x80027A6C end:0x80031180
