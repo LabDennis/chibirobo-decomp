@@ -43,10 +43,11 @@ void CCameraActionLeticker::Reset()
 	mTurnTo     = 0.0f;
 	mBounded    = FALSE;
 	gGame.SetStatusFlags(0x80);
-	_74 = _75 = _76 = 0;
-	_A0 = _A4 = 0;
-	_94.x = _94.y = _94.z = 0.0f;
-	_8C = _90 = _A8 = 0;
+	_76 = _75 = _74 = 0;
+	_A4 = _A0 = 0;
+	Vec v     = { 0.0f, 0.0f, 0.0f };
+	_94       = v;
+	_A8 = _90 = _8C = 0;
 }
 
 /**
@@ -62,11 +63,11 @@ void XObjLeticker::ResetObjectState()
 	mFuncTime      = 0;
 	mLevelProgress = 0.0f;
 	mHeight        = 0.0f;
-	mHeading       = 0.0f;
 	mPtcl          = TRUE;
 	mPowered       = FALSE;
 	mPowerTimer    = 0;
 	mState         = 0;
+	mHeading       = 0.0f;
 	mBox[0].mId    = -1;
 	mBox[1].mId    = -1;
 	mSfx.Init((WiiPlayerState*)this, (AnimSfxEvent*)lbl_80309360);

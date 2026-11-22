@@ -57,7 +57,7 @@ public:
 	u8 mWaiting;             // _A56, waiting for a linked leticker to finish
 	u32 mPowerTimer;         // _A58, frames the power has been held
 	f32 mSpeedScale;         // _A5C, the placement's speed multiplier
-	u32 mState;              // _A60, the leticker's state (0 idle, 2 unplugged, 3 riding)
+	s32 mState;              // _A60, the leticker's state (0 idle, 2 unplugged, 3 riding); retail compares it signed
 	AnimSfx mSfx;            // _A64, the lid's animation sound effects
 	u8 _AC0[8];              // _AC0, the pool stride runs to 0xAC8
 };
