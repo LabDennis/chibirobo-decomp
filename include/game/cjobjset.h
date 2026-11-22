@@ -4,19 +4,21 @@
 #include "game/cjobj.h"
 
 // the three CJObj setters that compare against a Vec built on the stack. retail copies it
-// from a zeroed Vec in .bss and then fills in x, y and z. only the files that emit or
-// inline these include this
+// from a zeroed Vec in .bss (the Vec() temporary) and then fills in x, y and z. only the
+// files that emit or inline these include this. the helper takes the Vec by value: that
+// form gives retail's stack at every inlined site, and it keeps the three-float setters
+// over 256 inline units, where CMsgFont_Draw calls them (US 0x80082970, limit 256: the
+// CJObj constructor and SetRotationY are calls there too, SetScale(const Vec&) is expanded)
 
 #pragma push
 #pragma pool_data on
 
 // a Vec from its parts, starting from zero
-static inline Vec MakeJObjVec(const Vec& zero, f32 x, f32 y, f32 z)
+static inline Vec MakeJObjVec(Vec v, f32 x, f32 y, f32 z)
 {
-	Vec v = zero;
-	v.x   = x;
-	v.y   = y;
-	v.z   = z;
+	v.x = x;
+	v.y = y;
+	v.z = z;
 	return v;
 }
 
@@ -26,8 +28,7 @@ static inline Vec MakeJObjVec(const Vec& zero, f32 x, f32 y, f32 z)
 inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
-		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
+		if (!(mTranslate != MakeJObjVec(Vec(), x, y, z))) {
 			return;
 		}
 	}
@@ -40,8 +41,7 @@ inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
-		if (!(mScale != MakeJObjVec(zero, x, y, z))) {
+		if (!(mScale != MakeJObjVec(Vec(), x, y, z))) {
 			return;
 		}
 	}
@@ -54,9 +54,8 @@ inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
 		// retail tests the cached translation here
-		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
+		if (!(mTranslate != MakeJObjVec(Vec(), x, y, z))) {
 			return;
 		}
 	}
