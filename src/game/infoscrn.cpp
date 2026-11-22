@@ -1684,7 +1684,10 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 }
 // NONMATCHING: registers. retail keeps opacity on the stack (0x1C4) instead of a saved float register, and the
 // gauge pointer and the three gGame bases sit in r29/r26..r28 where ours take r20/r17..r19. Retail scales
-// smallScale, smallX, largeX, gap in that order (0x800690DC); no declaration order of the four gives it
+// smallScale, smallX, largeX, gap in that order (0x800690DC); no declaration order of the four gives it. Retail keeps
+// target in f16, the lowest saved register (0x80068E44), y in f31 and scale in f30. Tried: every value declared at the
+// top in several orders (best 95.35, target last), target written out at each use (93.19, re-read after the calls),
+// the four scale products written at each use (94.65, hoisted into f28..f31)
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
