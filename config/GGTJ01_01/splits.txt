@@ -449,20 +449,20 @@ game/xobjcamera.cpp:
 	.sdata      start:0x806348A8 end:0x806348D0
 	.sdata2     start:0x80637510 end:0x80637548
 
-game/xobjlightdtor.cpp:
-	.text       start:0x80094BB4 end:0x80094C30
-
 game/xobjlight.cpp:
-	.text       start:0x80094C30 end:0x80094F2C
-
-game/xobjmapdtor.cpp:
-	.text       start:0x80094F2C end:0x80094FC0
-
-game/ctrigondtor.cpp:
-	.text       start:0x80094FC0 end:0x80095008
+	.text       start:0x80094BB4 end:0x80094F2C
+	.rodata     start:0x8020A058 end:0x8020A070
+	.data       start:0x802253A0 end:0x80225548
+	.sdata      start:0x806348D0 end:0x806348F8
+	.sdata2     start:0x80637548 end:0x80637570
 
 game/obja_map.cpp:
-	.text       start:0x80095008 end:0x80095974
+	.text       start:0x80094F2C end:0x80095974
+	.rodata     start:0x8020A070 end:0x8020A080
+	.data       start:0x80225548 end:0x80225730
+	.sdata      start:0x806348F8 end:0x80634928
+	.sdata2     start:0x80637570 end:0x806375A8
+	.sbss       start:0x80635670 end:0x80635678 align:4
 	.sbss2      start:0x8063A298 end:0x8063A29C
 
 game/obja_chr.cpp:
@@ -568,13 +568,13 @@ game/xobjflagsinit.cpp:
 	.ctors      start:0x801FEF40 end:0x801FEF44
 	.bss        start:0x8035C250 end:0x8035C9B8
 
-game/xobjletickerdtor.cpp:
-	.text       start:0x800E42F0 end:0x800E4350
-
 game/objb_leticker.cpp:
-	.text       start:0x800E4350 end:0x800E8694
+	.text       start:0x800E42F0 end:0x800E8694
 	.ctors      start:0x801FEF44 end:0x801FEF48
+	.rodata     start:0x8020B6F0 end:0x8020B868
 	.bss        start:0x8035C9B8 end:0x8035CA2C
+	.sdata      start:0x80634B00 end:0x80634B58
+	.sdata2     start:0x80637DC0 end:0x80637F00
 	.sbss2      start:0x8063A520 end:0x8063A528
 
 game/objb_army.cpp:

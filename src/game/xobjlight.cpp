@@ -1,36 +1,30 @@
+// NONMATCHING: the code matches in all three editions; .sdata2 does not. Retail keeps
+// LoadFromPlacement's 0.0f at +0x18 and UpdateObject's u32-to-float double at +0x20 (US 0x8065D298,
+// 0x8065D2A0); this file creates the double first. The rest (the RTTI names, .rodata, .data,
+// .sdata) is in retail's order.
+// written last-address-first, the unit builds with -inline auto,deferred (see configure.py)
 #include "game/xobjmap.h"
 
-// XObjLight::UpdateObject
+// XObjLight::InitializeObject
 /**
- * @note Address: 0x80092E38
- * @note Size: 0xC8
+ * @note Address: 0x80093114
+ * @note Size: 0x20
  */
-void XObjLight::UpdateObject(u32 frames)
+void XObjLight::InitializeObject(u32 id)
 {
-	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 i = 0; i < mLightNum; ++i) {
-			if (GetLightDesc(i) && GetLightAnimNum(i) > 0) {
-				mLights[i].SetAnimRate((f32)frames);
-				mLights[i].Anim();
-			}
-		}
-	}
+	InitializeObject__4XObjFUl(this, id);
 }
 
-// XObjLight::Release
+// XObjLight::ResetObjectState
 /**
- * @note Address: 0x80092F00
- * @note Size: 0x98
+ * @note Address: 0x800930E4
+ * @note Size: 0x30
  */
-void XObjLight::Release()
+void XObjLight::ResetObjectState()
 {
-	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 i = 0; i < mLightNum; ++i) {
-			if (GetLightDesc(i))
-				mLights[i].Release();
-		}
-	}
-	XObj::Release();
+	mLightNum = 0;
+	for (u32 i = 0; i < 8; ++i)
+		mLightAnims[i] = -1;
 }
 
 // XObjLight::LoadFromPlacement
@@ -66,24 +60,35 @@ BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 	return FALSE;
 }
 
-// XObjLight::ResetObjectState
+// XObjLight::Release
 /**
- * @note Address: 0x800930E4
- * @note Size: 0x30
+ * @note Address: 0x80092F00
+ * @note Size: 0x98
  */
-void XObjLight::ResetObjectState()
+void XObjLight::Release()
 {
-	mLightNum = 0;
-	for (u32 i = 0; i < 8; ++i)
-		mLightAnims[i] = -1;
+	if ((s32)GetEnvData()[4] == 2) {
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i))
+				mLights[i].Release();
+		}
+	}
+	XObj::Release();
 }
 
-// XObjLight::InitializeObject
+// XObjLight::UpdateObject
 /**
- * @note Address: 0x80093114
- * @note Size: 0x20
+ * @note Address: 0x80092E38
+ * @note Size: 0xC8
  */
-void XObjLight::InitializeObject(u32 id)
+void XObjLight::UpdateObject(u32 frames)
 {
-	InitializeObject__4XObjFUl(this, id);
+	if ((s32)GetEnvData()[4] == 2) {
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i) && GetLightAnimNum(i) > 0) {
+				mLights[i].SetAnimRate((f32)frames);
+				mLights[i].Anim();
+			}
+		}
+	}
 }

@@ -486,6 +486,16 @@ gamecube_libs = [
             Object(Matching, "game/xobjmapdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/ctrigondtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(NonMatching, "game/cjanim.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjfloor.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(NonMatching, "game/obja.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjwalk.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(EquivalentFor(JP), "game/xobjinit.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjinitialize.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x80093134-0x80093B7C opens with the weak ~XObjMap and
+            # ~CTrigon, then GetMapTriangleFloorType to InitializeObject; -inline deferred, as retail shows:
+            # only deferred codegen of the file written last-address-first puts the destructors in front
+            Object(NonMatching, "game/obja_map.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/obja_chr.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -505,8 +515,11 @@ gamecube_libs = [
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjletickerdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x800E25AC-0x800E6950 opens with the weak ~XObjLeticker,
+            # then TurnLetickerLinkedPartAndTrackJoint to GetCameraTarget, the camera's weak ~ and getters and
+            # __sinit_objb_leticker_cpp; -inline deferred, as retail shows: only deferred codegen of the file
+            # written last-address-first puts ~XObjLeticker in front and the camera's weak functions behind
+            Object(NonMatching, "game/objb_leticker.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/objb_army.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspider.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspidersmall.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -555,6 +568,7 @@ gamecube_libs = [
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
             # StartPlugCordNode (0x800DE180), the reverse of the Wii file's StartPlugCordNode-first order
@@ -618,7 +632,10 @@ gamecube_libs = [
             # the file, after every function's constants; deferred builds them first. There's no Wii build
             # of this file
             Object(NonMatching, "game/xobjcamera.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game)),
+            # one retail file (US addresses): .text 0x80092DBC-0x80093134 opens with the class's weak
+            # ~XObjLight, then UpdateObject to InitializeObject; -inline deferred, as retail shows: only
+            # deferred codegen of the file written last-address-first puts the vtable's destructor in front
+            Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "game/memcardjob.cpp"),
             # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is

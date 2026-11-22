@@ -1,3 +1,8 @@
+// NONMATCHING: the code matches in all three editions; .sdata2 does not. Retail keeps
+// LoadFromPlacement's 0.0f at +0x20 and UpdateObject's u32-to-float double at +0x28 (US 0x8065D2C8,
+// 0x8065D2D0); this file creates the double first. The rest (the RTTI names, .rodata, .data,
+// .sdata, .sbss) is in retail's order.
+// written last-address-first, the unit builds with -inline auto,deferred (see configure.py)
 #include "game/xobjmap.h"
 #include "game/clight.h"
 #include "game/ctrigon.h"
@@ -28,61 +33,30 @@ static inline u32 MakeRGB(s32 r, s32 g, s32 b)
 	return (cr << 16) | (cg << 8) | cb;
 }
 
-// the floor kind of a triangle, from its vertex color
 /**
- * @note Address: 0x80093210
- * @note Size: 0x48C
+ * @note Address: 0x80093B5C
+ * @note Size: 0x20
  */
-extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
+void XObjMap::InitializeObject(u32 id)
 {
-	static u32 sColors[13] = {
-		MakeRGB(0, 0, 0),       MakeRGB(256, 256, 128), MakeRGB(256, 0, 0), MakeRGB(0, 0, 0), MakeRGB(256, 256, 0),
-		MakeRGB(256, 256, 256), MakeRGB(0, 0, 0),       MakeRGB(0, 0, 0),   MakeRGB(0, 0, 0), MakeRGB(0, 256, 256),
-		MakeRGB(256, 0, 256),   MakeRGB(256, 0, 128),   MakeRGB(0, 0, 0),
-	};
-	u32 color = map->mTrigon[trigon].mTri[tri].mColor;
-	for (s32 i = 1; i < 13; i++) {
-		if (color == sColors[i]) { // vertex color i means floor type i
-			return i;
-		}
-	}
-	return 0; // colors in no slot are type 0 (black matches slot 3)
+	InitializeObject__4XObjFUl(this, id);
 }
 
 /**
- * @note Address: 0x8009369C
- * @note Size: 0xCC
+ * @note Address: 0x80093AC0
+ * @note Size: 0x9C
  */
-void XObjMap::UpdateObject(u32 frames)
+void XObjMap::ResetObjectState()
 {
-	UpdateObject__4XObjFUl(this, frames);
-	if (GetLightMode() == 1) {
-		for (s32 i = 0; i < mLightNum; ++i) {
-			if (GetLightDesc(i) != NULL && GetLightAnimNum(i) > 0) {
-				mLights[i].SetAnimRate(frames);
-				mLights[i].Anim();
-			}
-		}
+	ResetObjectState__4XObjFv(this);
+	mTrigonCount = 0;
+	for (int i = 0; i < 16; i++) {
+		mTrigonOrder[i] = 0;
 	}
-}
-
-/**
- * @note Address: 0x80093768
- * @note Size: 0xC0
- */
-void XObjMap::Release()
-{
-	for (int i = 0; i < mTrigonCount; i++) {
-		mTrigon[i].Release();
+	mLightNum = 0;
+	for (int i = 0; i < 8; i++) {
+		mLightAnims[i] = -1; // -1: no anim
 	}
-	if (GetLightMode() == 1) {
-		for (int i = 0; i < mLightNum; i++) {
-			if (GetLightDesc(i) != NULL) {
-				mLights[i].Release();
-			}
-		}
-	}
-	XObj::Release();
 }
 
 // a floor for every child of the root joint that has triangles, sorted from the highest down
@@ -148,27 +122,58 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 }
 
 /**
- * @note Address: 0x80093AC0
- * @note Size: 0x9C
+ * @note Address: 0x80093768
+ * @note Size: 0xC0
  */
-void XObjMap::ResetObjectState()
+void XObjMap::Release()
 {
-	ResetObjectState__4XObjFv(this);
-	mTrigonCount = 0;
-	for (int i = 0; i < 16; i++) {
-		mTrigonOrder[i] = 0;
+	for (int i = 0; i < mTrigonCount; i++) {
+		mTrigon[i].Release();
 	}
-	mLightNum = 0;
-	for (int i = 0; i < 8; i++) {
-		mLightAnims[i] = -1; // -1: no anim
+	if (GetLightMode() == 1) {
+		for (int i = 0; i < mLightNum; i++) {
+			if (GetLightDesc(i) != NULL) {
+				mLights[i].Release();
+			}
+		}
 	}
+	XObj::Release();
 }
 
 /**
- * @note Address: 0x80093B5C
- * @note Size: 0x20
+ * @note Address: 0x8009369C
+ * @note Size: 0xCC
  */
-void XObjMap::InitializeObject(u32 id)
+void XObjMap::UpdateObject(u32 frames)
 {
-	InitializeObject__4XObjFUl(this, id);
+	UpdateObject__4XObjFUl(this, frames);
+	if (GetLightMode() == 1) {
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i) != NULL && GetLightAnimNum(i) > 0) {
+				mLights[i].SetAnimRate(frames);
+				mLights[i].Anim();
+			}
+		}
+	}
+}
+
+// the floor kind of a triangle, from its vertex color
+/**
+ * @note Address: 0x80093210
+ * @note Size: 0x48C
+ */
+extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
+{
+	static u32 sColors[13] = {
+		MakeRGB(0, 0, 0),       MakeRGB(256, 256, 128), MakeRGB(256, 0, 0), MakeRGB(0, 0, 0), MakeRGB(256, 256, 0),
+		MakeRGB(256, 256, 256), MakeRGB(0, 0, 0),       MakeRGB(0, 0, 0),   MakeRGB(0, 0, 0), MakeRGB(0, 256, 256),
+		MakeRGB(256, 0, 256),   MakeRGB(256, 0, 128),   MakeRGB(0, 0, 0),
+	};
+	u32 color = map->mTrigon[trigon].mTri[tri].mColor;
+	for (s32 i = 1; i < 13; i++) {
+		if (color == sColors[i]) { // vertex color i means floor type i
+			return i;
+		}
+	}
+	return 0; // colors in no slot are type 0 (black matches slot 3)
 }
