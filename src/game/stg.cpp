@@ -3339,7 +3339,10 @@ static inline f32 StatusLabelColumn(f32 center, bool right)
  * @note Address: 0x800554A8
  * @note Size: 0x51C
  */
-// NONMATCHING: coordinate lifetimes and register allocation
+// NONMATCHING: coordinate lifetimes and register allocation: retail keeps x in f27 and y in f28 from the first
+// loads to their last assignments (US 0x8005552C fadds f27; 0x80055918 fsubs f27) and numbers labelX, labelY and
+// targetY f29-f31 above them, saving one register more; the build reuses x's register for targetY. Declaring the
+// five at the block top in either order or `x += 42.0f` does not change it.
 extern "C" void DrawStatusDiagram(MenuStatus* menu)
 {
 	CTexObj tex;
@@ -4028,8 +4031,10 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 	vertices[3].y = bottom;
 }
 
-// NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
-// uses one; the saved registers are numbered differently, and one ori and one lwz are scheduled a slot apart
+// NONMATCHING: retail holds the white of the left cap in a second register (US 0x800505EC mr r23, r28 after the or,
+// the register that held the 100 * alpha shade before), the build uses one; naming the shade and that copy one
+// variable does not bring the copy back. The saved registers are numbered differently, and one ori and one lwz
+// are scheduled a slot apart
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
@@ -4497,6 +4502,10 @@ static inline void ResetPCCharacters(MenuPC* menu)
 #endif
 }
 
+// NONMATCHING: the two ClearPCShopPage expansions: retail addresses the rows from the page itself (US 0x8004EAC8
+// sth r3,0x4(r5) with r5 = page) and unrolls the catalog's loop ten times (0x8004EB74 li r0,2), the build forms
+// page->mRows and unrolls five times; indexing the rows (plain, reference, pointer per iteration, direct global,
+// u32 or s32 counter) gives retail's addressing but five-fold unrolling in both loops and 88 bytes less
 void MenuPC::Open()
 {
 	CMenu::Open();
@@ -9529,7 +9538,9 @@ template void DrawPanelBackground<SavePanel>(f32);
  * @note Address: 0x800373D4
  * @note Size: 0x5A4
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc: retail numbers scale f28, y f27, t f26, bob f25 and reuses t's register for x (US
+// 0x80037718 fadds f26), the build t f28, bob f27, scale f26, x f25, y f24; no order of the eleven declarations
+// reaches it (best t, y, x, bob, scale +0.15). The same holds for DrawItemMenuTitle and DrawStatusMenuTitle.
 extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 {
 	if (menu->mTitle.mActive) {
@@ -10630,8 +10641,9 @@ static inline void FinishStageLabel(char* text)
  * @note Address: 0x80033A68
  * @note Size: 0x6A0
  */
-// NONMATCHING: retail keeps a second counter in the file-name copy loop and indexes the label by offset in
-// FinishStageLabel where the build walks a pointer; the rest is register allocation.
+// NONMATCHING: retail starts the file-name copy's count and index with two li (US 0x80033BC4, 0x80033BC8), the
+// build copies one zero into the other (mr); u32 count, a split count++, a while loop, an if/else store and a
+// function-scope i keep the mr. The rest is register numbering.
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 {
 	menu->mCount = 0;
