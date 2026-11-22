@@ -21,7 +21,7 @@ game/game.cpp:
 	.bss        start:0x8025C200 end:0x80361E10 align:4
 	.sdata      start:0x80659EC0 end:0x8065A198
 	.sbss       start:0x8065B140 end:0x8065B178
-	.sdata2     start:0x8065BD40 end:0x8065BFA4
+	.sdata2     start:0x8065BD40 end:0x8065BFA8
 	.sbss2      start:0x8065FF60 end:0x8065FF70
 
 game/fbmirrorex.cpp:
