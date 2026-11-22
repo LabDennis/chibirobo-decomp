@@ -1689,7 +1689,13 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 // smallScale, smallX, largeX, gap in that order (0x800690DC); no declaration order of the four gives it. Retail keeps
 // target in f16, the lowest saved register (0x80068E44), y in f31 and scale in f30. Tried: every value declared at the
 // top in several orders (best 95.35, target last), target written out at each use (93.19, re-read after the calls),
-// the four scale products written at each use (94.65, hoisted into f28..f31)
+// the four scale products written at each use (94.65, hoisted into f28..f31). Retail's whole saved-register
+// numbering is a permutation of the build's (2026-11-23): y f31, scale f30, the first loop's verticalOffset,
+// offset, digitScale and amount f25..f22 above change f21, largeX f20, gap f19, smallScale f18, smallX f17 and
+// target f16, where the build numbers the top-level locals in declaration order (target f31 .. largeX f24) and
+// the loop's below them; the GPRs likewise (h r29/r20, the gGame bases r26..r28/r17..r19). The instruction
+// sequence differs only in the preheaders' schedule. 37k decomp-permuter iterations found only states that change
+// the semantics.
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
