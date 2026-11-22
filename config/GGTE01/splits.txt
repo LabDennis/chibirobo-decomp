@@ -455,11 +455,12 @@ game/xobjcamera.cpp:
 	.sdata      start:0x8065A470 end:0x8065A498
 	.sdata2     start:0x8065D248 end:0x8065D280
 
-game/xobjlightdtor.cpp:
-	.text       start:0x80092DBC end:0x80092E38
-
 game/xobjlight.cpp:
-	.text       start:0x80092E38 end:0x80093134
+	.text       start:0x80092DBC end:0x80093134
+	.rodata     start:0x80209338 end:0x80209350
+	.data       start:0x80225D38 end:0x80225EE0
+	.sdata      start:0x8065A498 end:0x8065A4C0
+	.sdata2     start:0x8065D280 end:0x8065D2A8
 
 game/xobjmapdtor.cpp:
 	.text       start:0x80093134 end:0x800931C8
