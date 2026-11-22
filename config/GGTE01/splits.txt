@@ -347,7 +347,7 @@ game/stg.cpp:
 	.rodata     start:0x801FF4B8 end:0x802015B0
 	.data       start:0x80211DA0 end:0x80212CE4
 	.bss        start:0x80361F68 end:0x80366E54
-	.sdata      start:0x8065A2C8 end:0x8065A364
+	.sdata      start:0x8065A2C8 end:0x8065A368
 	.sbss       start:0x8065B1A0 end:0x8065B220
 	.sdata2     start:0x8065C440 end:0x8065C8B0
 	.sbss2      start:0x8065FF90 end:0x8065FFA0
