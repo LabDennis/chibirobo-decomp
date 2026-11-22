@@ -1622,7 +1622,11 @@ void UpdateToy1FBJointScales(XObjActorToy* object, u32)
  * @note Size: 0x1338
  */
 // toy 0x1FC, pushes two of its joints out and back
-// NONMATCHING: the paths sit at other .rodata offsets, the CJObj ctor is inlined
+// NONMATCHING: the paths sit at other .rodata offsets, and retail expands CJObj() while it calls Attach 16 times
+// (0x8011A390..): its inline limit was 256 with Attach over it, or 128 with CJObj() under it. Ours weigh 245 and 134
+// units, so both drop together at the 256 -> 128 step. Twelve more units on Attach give retail's call list here, but
+// then ProcessPendingEvents expands HandleToyScreenShakeCommand; no honest spelling moves the weight (init list,
+// this->, explicit casts, field-wise HSD getters and if-form asserts all weigh the same)
 extern "C" void UpdateToyJointExtension(XObjActorToy* object, u32 frames)
 {
 	CJObj joint;
