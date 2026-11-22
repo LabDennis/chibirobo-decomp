@@ -689,9 +689,17 @@ void XObjHBox::DrawWithView(Mtx view)
 		mPart.mObj.DrawWithView(view);
 }
 
-// NONMATCHING: retail frame 0x300 vs 0x2f0: before SetPos it copies pos (12 B) and the 16-byte
-// HSD_MtxGetRotation result to second temps that SetRotationY reads at +4; Quaternion/CVec
-// spellings of rot do not reproduce it
+// the joint's world rotation out of its matrix, read as a quaternion like jobj->rotate. retail
+// copies its 16-byte result out of an unnamed slot into the caller's local (US 0x800E08B0),
+// the way GetJointPosition's Vec is copied
+inline Quaternion GetJointRotation(HSD_JObj* jobj)
+{
+	Quaternion rotation;
+	HSD_MtxGetRotation(HSD_JObjGetMtxPtr(jobj), (Vec*)&rotation);
+	return rotation;
+}
+
+// NONMATCHING: register allocation, retail keeps the joint pointers in r26 where ours uses r29
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
@@ -751,9 +759,8 @@ void XObjHBox::UpdateObject(u32 frames)
 	if (id > 1) {
 		s32 path[2] = { 0, 0 };
 		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
-		Vec pos = joint.GetPos();
-		Vec rot;
-		HSD_MtxGetRotation(joint.GetMtx(), &rot);
+		Vec pos        = joint.GetPos();
+		Quaternion rot = GetJointRotation(joint.mJObj);
 		SetPos(pos, 0);
 		SetRotationY(rot.y, 0);
 	}
