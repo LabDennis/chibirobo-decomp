@@ -335,7 +335,8 @@ static inline TrigonGetVtxFunc GetVtxFunc(int compType)
  */
 static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 {
-	// NONMATCHING: regalloc, retail picks the accessor in r3 and moves it to r25 after, and loads display a few lines later
+	// NONMATCHING: regalloc, retail picks the accessor in r3 and moves it to r25 after, and loads display a few lines later.
+	// GetIdxFunc with a return per case (97.16), the checker before dl (95.70) or end before dl (96.14) score lower
 	int posSize             = 0;
 	int stride              = GetVtxSize(pobj->verts, &posSize, NULL, NULL, NULL);
 	int compType            = pobj->verts->comp_type;

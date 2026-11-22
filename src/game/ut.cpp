@@ -1507,7 +1507,8 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
 // whether pos lies inside abc seen from above, corners wound so CalcTriangleNormal points up. pos is
 // out as soon as one edge's rel x edge points down: its dot with up, which is (0, -1, 0), goes positive
 // NONMATCHING: retail schedules the first edge's loads into the prologue and the up copy after them; up
-// declared first, no edge temps, up after the other Vecs or a split rz all score lower (43-80 %)
+// declared first, no edge temps, up after the other Vecs or a split rz all score lower (43-80 %). the schedule is
+// the same with GC 1.3.2 to 2.7 and with -O4,s, -O3 or without deferred inlining, so it comes from the source
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
 	f32 ex = a->x - b->x;
@@ -1684,6 +1685,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
  * @note Size: 0x21C
  */
 // the IsPointInsideTriangleXZ test with four corners, so the quad has to be convex and wound the same way
+// NONMATCHING: the same prologue schedule as IsPointInsideTriangleXZ, retail loads a->x and b->x before stmw
 BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
 {
 	f32 ex = a->x - b->x;
@@ -1898,7 +1900,8 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
  * @note Address: 0x8018E8A4
  * @note Size: 0x1AC
  */
-// NONMATCHING: retail schedules the pos->z load after the top/bottom aggregate initializer copies
+// NONMATCHING: retail schedules the pos->z load after the top/bottom aggregate initializer copies. pos->x and
+// pos->z in the initializers (92.4) or stored after a { 0, 1, 0 } copy (90.0) score lower
 // out gets the point of abc's plane straight above or below pos. returns 1 when it lies at y 1 or -1,
 // 2 between them and 3 beyond
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out)
