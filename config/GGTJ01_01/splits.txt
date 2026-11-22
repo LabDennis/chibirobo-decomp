@@ -658,6 +658,10 @@ game/xobjactortao.cpp:
 
 game/xobjactordeca.cpp:
 	.text       start:0x80131008 end:0x801337C8
+	.rodata     start:0x8020CFC0 end:0x8020D100
+	.data       start:0x8022D2B0 end:0x8022D520
+	.sdata      start:0x80634DA8 end:0x80634DD8
+	.sdata2     start:0x80638A50 end:0x80638AE8
 
 game/xobjs.cpp:
 	.text       start:0x801337C8 end:0x80136C98

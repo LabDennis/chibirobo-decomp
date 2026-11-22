@@ -2,6 +2,10 @@
 #include "game/xchr.h"
 #include "game/gmath.h"
 
+// NONMATCHING: HandleEventCommand, StatePickUp, and UpdateAfterAnim still differ from retail;
+// in data (GGTE01), .rodata (0x8020C2B8) lacks the header-originated six-Vec prefix (0x48 bytes),
+// and .data/.sdata/.sdata2/.sbss2 differ in weak RTTI records and literal pool entries.
+
 extern "C" {
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 void ApproachHudValue(f32* value, f32* target, f32 step);
