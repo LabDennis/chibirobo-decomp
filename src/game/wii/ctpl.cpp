@@ -33,7 +33,6 @@ BOOL fn_80299D64(void* player, s32 groupId, void* heap, u32 flag);
 s32 fn_8029AC28(void* group, u32 priority);
 BOOL fn_8029A3E0(void* heap, void* data, u32 size);
 void fn_8029A458(void* heap);
-void fn_8029A4AC(void* heap, s32 level);
 void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
 u32 fn_802958C0(void* actor, void* arg);
@@ -426,7 +425,7 @@ BOOL CSound::LoadGroupAsync(s32 groupId)
 
 void CSound::RestoreHeapLevel(s32 level)
 {
-	fn_8029A4AC(&mSoundHeap, level);
+	mSoundHeap.LoadState(level);
 }
 
 // NONMATCHING: retail keeps the slot counter in r31 and the slot walker in r30,
