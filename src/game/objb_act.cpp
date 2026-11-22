@@ -1267,7 +1267,7 @@ void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle)
 		Vec rot    = { -HALF_PI, 0.0f, 0.0f };
 		DrawGsCircle(&gGame.mGs, 0x18, color, color, center.x, center.y, center.z, size, size, rot.x, rot.y, rot.z);
 		PrimVertex verts[50];
-		f32 outer = size * 0.5f + 1.0f;
+		f32 outer = size / 2.0f + 1.0f;
 		for (int i = 0; i < 25; i++) {
 			f32 ringAngle          = (TWO_PI / 24) * i;
 			verts[i * 2].pos.x     = center.x - size * std::sinf(ringAngle) / 2.0f;
