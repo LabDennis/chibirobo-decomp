@@ -79,6 +79,7 @@ extern f32 gFrameRateScale;
 void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha);
 extern s32 gScreenSafeLeft;
 extern s32 gScreenSafeBottom;
+extern s32 gScreenSafeHeight;
 }
 
 // mSavedInfo while SaveCamInfo holds a camera info, NULL otherwise
@@ -839,38 +840,37 @@ static void CheckQuads(CCameraActionScroll2* camera, u32 step, BOOL dragging, Ve
  * @note Address: 0x80164778
  * @note Size: 0x238
  */
-// NONMATCHING: tex pointer and per-edge position math guessed from retail
+// NONMATCHING: the field initialization and unrolled loop match; table setup scheduling and saved registers differ
 static void InitQuads(CCameraActionScroll2* camera)
 {
-	static const f32 sQuadRot[4]    = { 0.0f, PI, -HALF_PI, HALF_PI };
-	static const f32 sQuadDir[4][2] = {
+	s32 center          = gGame.mAspectRatio ? 0x26C : 0x232;
+	s32 x               = center / 2 - 20;
+	s32 y               = gScreenSafeHeight / 2 - 15;
+	f32 positions[4][2] = {
+		{ x, 0.0f },
+		{ -x, 0.0f },
+		{ 0.0f, y },
+		{ 0.0f, -y },
+	};
+	const f32 sQuadRot[4]    = { 0.0f, PI, -HALF_PI, HALF_PI };
+	const f32 sQuadDir[4][2] = {
 		{ 0.0f, 1.0f },
 		{ 0.0f, -1.0f },
 		{ 1.0f, 0.0f },
 		{ -1.0f, 0.0f },
 	};
-	s32 center = gGame.mAspectRatio ? 0x26C : 0x232;
-	for (s32 i = 0; i < 2; i++) {
+	for (s32 i = 0; i < 4; i++) {
 		ScrollEdgeQuad* quad = &camera->mQuads[i];
+		quad->mTex           = camera->_E0;
 		quad->mActive        = FALSE;
 		quad->mUnk24         = FALSE;
-		quad->mX             = sQuadDir[i][0] * (center / 2);
-		quad->mY             = sQuadDir[i][1] * (center / 2);
-		quad->mUnk0C         = 0.0f;
-		quad->mUnk10         = 0.0f;
+		quad->mX             = positions[i][0];
+		quad->mY             = positions[i][1];
+		quad->mUnk0C         = sQuadDir[i][0];
+		quad->mUnk10         = sQuadDir[i][1];
 		quad->mScale         = 1.0f;
 		quad->mRot           = sQuadRot[i];
-		quad->mUnk1C         = 0.0f;
-		quad                 = &camera->mQuads[i + 2];
-		quad->mActive        = FALSE;
-		quad->mUnk24         = FALSE;
-		quad->mX             = sQuadDir[i + 2][0] * (center / 2);
-		quad->mY             = sQuadDir[i + 2][1] * (center / 2);
-		quad->mUnk0C         = 0.0f;
-		quad->mUnk10         = 0.0f;
-		quad->mScale         = 1.0f;
-		quad->mRot           = sQuadRot[i + 2];
-		quad->mUnk1C         = 0.0f;
+		quad->mUnk1C         = i;
 	}
 }
 
