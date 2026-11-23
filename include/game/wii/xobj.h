@@ -2,6 +2,7 @@
 #define GAME_WII_XOBJ_H
 
 #include "types.h"
+#include <stdlib.h>
 
 // first: AnimSfx brings nw4r's math types, which the fallback below must not redefine
 #include "game/wii/animsfx.h"
@@ -1163,7 +1164,10 @@ public:
 	void UpdateFrame();              // 0x8027AF78
 	void CalcWorld();                // 0x8027B388
 	void CalcView();                 // 0x8027B40C
-	MtxP GetCurrentCamera();         // 0x8027ADC8
+	void GatherDrawScnObj();
+	void DrawOpa();
+	void DrawXlu();
+	MtxP GetCurrentCamera(); // 0x8027ADC8
 };
 
 } // namespace g3d
@@ -2200,6 +2204,7 @@ class XObjActorTao : public XObjActor {
 public:
 	XObjActorTao();
 	virtual ~XObjActorTao();
+	BOOL IsFree();
 
 private:
 	u8 _tail[0xDF8 - sizeof(XObjActor)];
@@ -2441,6 +2446,39 @@ public:
 
 	void FindWebs(); // collects the stage's webs, the first spider's job
 	void TakeWeb();  // claims the first free web
+
+	bool InArea(const Vec& pos)
+	{
+		f32 x     = pos.x;
+		f32 z     = pos.z;
+		f32 left  = mAreaPos.x + mRadius;
+		f32 right = mAreaPos.x + mAreaWidth - mRadius;
+		f32 near  = mAreaPos.z + mRadius;
+		f32 far   = mAreaPos.z + mAreaDepth - mRadius;
+		if (left > x || right < x || near > z || far < z) {
+			return false;
+		}
+		return true;
+	}
+
+	void Wander(s32 step)
+	{
+		mWalkTarget.x = 12.0f + mHome.x - rand() % 2400 / 100.0f;
+		mWalkTarget.y = mHome.y;
+		mWalkTarget.z = 12.0f + mHome.z - rand() % 2400 / 100.0f;
+		mStep         = step;
+		mWalkSpeed    = 0.3f;
+		SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	}
+
+	void ClampSpeed()
+	{
+		if (mWalkSpeed < 0.08f) {
+			mWalkSpeed = 0.08f;
+		} else if (mWalkSpeed > 1.1f) {
+			mWalkSpeed = 1.1f;
+		}
+	}
 
 	void SetState(s32 state)
 	{

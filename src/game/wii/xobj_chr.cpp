@@ -2088,7 +2088,7 @@ void XObjChr::SetMoveDir(const Vec* direction, f32 speed)
 // how high the carried object sits: half again his scale, and with a mug the carry joint's height on top
 // except while the anims 10 and 11 lift and lower it
 // NONMATCHING: the joint name's place, as for fn_800E5A2C
-f32 fn_800E5BFC(WiiPlayerState* chr)
+f32 GetPlayerCollisionRadius(WiiPlayerState* chr)
 {
 	f32 height = 1.5f * chr->mMoveScale.x;
 	if (IsCarryingMug(&chr->mLift) && !(chr->GetAnimId() == 11 && chr->GetAnimFrame() < 45.0f)
