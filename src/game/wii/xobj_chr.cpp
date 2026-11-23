@@ -164,7 +164,7 @@ static inline void StopMoving(WiiPlayerState* chr)
 	if (chr->mPush.mState != 0) {
 		ReleasePushAction(&chr->mPush);
 		chr->mPush.mState = 0;
-		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		chr->mIdleLoops = 3;
 	}
 }
@@ -2154,14 +2154,13 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 	        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
 	        && IsRadarActionState(&player->mRadar, 0))) {
 		if (!gGame.mMenu.mActive) {
-			if ((gWiiPointer.mTrigger & 0x100) && !(pad->mButton & 0x0000000000800000ULL) && (gGame.GetStatusFlags(0x800000000000ULL))
-			    && player->mAttachmentRequest < 0) {
+			if (gWiiPointer.Check(0x100) && (gGame.GetStatusFlags(0x800000000000ULL)) && player->mAttachmentRequest < 0) {
 				if (!(gGame.GetStatusFlags(0x100)))
 					OpenPlayerEquipmentRings(player);
 				else
 					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
-			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x0000002000020000ULL)
-			           && !(pad->mButton & 0x0000000000800000ULL) && (!(gGame.GetStatusFlags(0x100)) && player->mAttachmentRequest < 0)) {
+			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x0002000000000020ULL)
+			           && !(pad->mButton & 0x0080000000000000ULL) && (!(gGame.GetStatusFlags(0x100)) && player->mAttachmentRequest < 0)) {
 				if (player->mAttachment != 0) {
 					player->mAttachmentRequest = 0;
 					player->mAttachmentStep    = 0;
@@ -2174,7 +2173,7 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
 		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
 		        || IsPlayerAttachmentEquipped(player, 8))) {
-			BOOL press = (pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x500)) && player->mAttachmentRequest < 0;
+			BOOL press = (pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x500)) && player->mAttachmentRequest < 0;
 			s32 mode;
 			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
 				switch (player->mAttachmentActionType) {
@@ -2221,7 +2220,7 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
 						if (IsObjectLiftable(object)) {
 							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
-							    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+							    && object->mMaxFloorHeight > 1.f + player->GetPos()->y) {
 								if (IsLiftTargetPlug(&player->mLift))
 									ReleasePlayerLiftTarget(player);
 								player->mLift.mState = 1;
@@ -2247,45 +2246,19 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 					    && player->mHitObjectIndex >= 0) {
 						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
 						if (use.emptyHands && IsObjectLiftable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]
-						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+						    && object->mMaxFloorHeight > 1.f + player->GetPos()->y) {
 							if (IsLiftTargetPlug(&player->mLift))
 								ReleasePlayerLiftTarget(player);
 							player->mLift.mState = 1;
 							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
 							player->mLift.mTargetState = 0;
 						} else if (use.emptyHands && IsObjectClimbableLedge(object)) {
-							// Only the Japanese release starts a hang or a jump from this height check.
-							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
-							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value.
-							// It also drops it for an empty if/else, an empty inline in either arm and an else-if on the height;
-							// only a body with code keeps retail's beq/b pair (US 0x800B3E68)
+							// NONMATCHING: retail keeps an empty test of the ledge height here (fneg, fcmpu with 0, then
+							// >= 12 with both outcomes branching to the same place); this compiler drops the empty body
+							// and with it the height. The Wii starts no hang or jump from it.
 							f32 height = fn_800D1740(object->mSelectedFloorHeight - player->mMoveTranslate.y);
 							if (height != 0) {
-								if (height >= 12 && height <= 12.5f) {
-									if (gGame.GetStatusFlags(0x80000000000ULL)) {
-										if (IsLiftTargetPlug(&player->mLift))
-											ReleasePlayerLiftTarget(player);
-										SetHangActionState(&player->mHang, 1);
-										SetPlayerActionTarget(&player->mHang, object);
-									}
-								} else if (gGame.GetStatusFlags(0x80000000000ULL)) {
-									if (height <= 4) {
-										if (IsLiftTargetPlug(&player->mLift))
-											ReleasePlayerLiftTarget(player);
-										SetPlayerActionState(&player->mJump, 8);
-										SetPlayerActionTarget(&player->mJump, object);
-									} else if (height <= 8) {
-										if (IsLiftTargetPlug(&player->mLift))
-											ReleasePlayerLiftTarget(player);
-										SetPlayerActionState(&player->mJump, 11);
-										SetPlayerActionTarget(&player->mJump, object);
-									} else if (height <= 12.5f) {
-										if (IsLiftTargetPlug(&player->mLift))
-											ReleasePlayerLiftTarget(player);
-										SetPlayerActionState(&player->mJump, 14);
-										SetPlayerActionTarget(&player->mJump, object);
-									}
-								}
+								if (height >= 12) { }
 							}
 						} else if (IsObjectLadder(object)) {
 							s32 dir = 0;
@@ -2347,22 +2320,21 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 								StopPlayerMotion(player);
 							}
 						}
-						if (!(gGame.GetStatusFlags(0x80000000000ULL)))
-							if ((IsLiftActionState(&player->mLift, 0)
-							     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
-							    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
-							        && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
-							        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
-							        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
-							        && IsRadarActionState(&player->mRadar, 0))
-							    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
-								if (IsLiftTargetPlug(&player->mLift))
-									ReleasePlayerLiftTarget(player);
-								StopPlayerMotion(player);
-								SetPushActionState(&player->mPush, 1);
-								SetPlayerActionTarget(&player->mPush, object);
-								SetPushTargetState(&player->mPush, 0);
-							}
+						if ((IsLiftActionState(&player->mLift, 0)
+						     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+						    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+						        && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+						        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+						        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+						        && IsRadarActionState(&player->mRadar, 0))
+						    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
+							if (IsLiftTargetPlug(&player->mLift))
+								ReleasePlayerLiftTarget(player);
+							StopPlayerMotion(player);
+							SetPushActionState(&player->mPush, 1);
+							SetPlayerActionTarget(&player->mPush, object);
+							SetPushTargetState(&player->mPush, 0);
+						}
 					}
 				}
 			}
@@ -2375,7 +2347,7 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 		        && IsRadarActionState(&player->mRadar, 0))) {
 			if (IsPlayerAttachmentEquipped(player, 0)) {
 				if (!(gGame.GetStatusFlags(0x100))) {
-					if (player->mPlug.mConnection && ((pad->mTrigger & 0x0000001000010000ULL) || (pad->mTrigger & 0x0000002000020000ULL))) {
+					if (player->mPlug.mConnection && ((pad->mTrigger & 0x0001000000000010ULL) || (pad->mTrigger & 0x0002000000000020ULL))) {
 						if (player->mLiftPlugTarget) {
 							TryStartObjectEvent(&gGame, player->mLiftPlugTarget->GetEventScript(), player->mLiftPlugTarget, -1, -1);
 							StopPlayerMotion(player);
@@ -2386,39 +2358,39 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 						player->mLiftPlugFlags |= 0x80;
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 1)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100))) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))) {
 					SetCopterActionState(&player->mCopter, 3);
-					player->SetAnim(39, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					player->SetAnim(39, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					PlayCopterFlightAnimation((XObjCopter*)player->mCopterObj);
 					StopPlayerMotion(player);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 2)) {
 				s32 state = 0;
-				if (pad->mTrigger & 0x0000001000010000ULL)
+				if (pad->mTrigger & 0x0001000000000010ULL)
 					state = 7;
 				if (state != 0) {
 					player->mPopper.mState = state;
 					SetObjectVectorTarget((CObjVec*)&player->mMoveRotate, player->mMoveRotate);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 3)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100))) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))) {
 					player->mRadar.mState = 3;
 					StartPlayerRadarScan((XObjRadar*)player->mRadarObj);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingToothbrush(&player->mLift)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
 					player->mLift.mState = 28;
 			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)) && player->mAnimId != 0x8ae
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)) && player->GetAnimId() != 0x8ae
 				    && player->GetAnimId() != 0x155 && player->GetAnimId() != 0x156 && player->GetAnimId() != 0x157)
 					player->mLift.mState = 32;
 			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
 					player->mLift.mState = 34;
 			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingSquirter(&player->mLift)) {
-				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
 					player->mLift.mState = 38;
 			} else
 				IsPlayerAttachmentEquipped(player, 8);
@@ -2430,7 +2402,7 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 			player->mPressTimer += frames;
 		else {
 			player->mPressTimer = 0;
-			player->mAPressed   = (pad->mTrigger & 0x0000001000010000ULL) != 0;
+			player->mAPressed   = (pad->mTrigger & 0x0001000000000010ULL) != 0;
 		}
 		if ((player->mLiftPlugFlags & 2) && player->mPressTimer >= gRefreshRate * ((s32)GetInteractionParameter(3) / 100.f)) {
 			if (player->mAPressed)
@@ -2452,9 +2424,9 @@ f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
 		player->mAPressed = player->mPressTimer = 0;
 	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
 	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
-	    && IsPopperFireAnimationSelected((XObjPopper*)player->mPopperObj) && (pad->mTrigger & 0x0000001000010000ULL))
+	    && IsPopperFireAnimationSelected((XObjPopper*)player->mPopperObj) && (pad->mTrigger & 0x0001000000000010ULL))
 		player->mPopper.mState = 5;
-	if ((gWiiPointer.mTrigger & 0x40) && !IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
+	if (gWiiPointer.Check(0x40) && !IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
 	    && !(gGame.GetStatusFlags(0x20)) && !(gGame.GetStatusFlags(0x100))
 	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 	    && (IsHangActionState(&player->mHang, 0) || IsHangActionState(&player->mHang, 5)) && IsJumpActionState(&player->mJump, 0)
