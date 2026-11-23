@@ -61,3 +61,7 @@
 // what follows them) give nothing here, and CBase, CMotionControlCamera and CCameraActions differ where their own
 // members are still untyped.
 CGame gGame;
+
+inline CJArchive::CJArchive()
+{
+}
