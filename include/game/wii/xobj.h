@@ -2231,14 +2231,20 @@ public:
 	public:
 		CPtclSet() { }
 		~CPtclSet();
-		virtual void vf08(); // _08
+		virtual void vf08(CGs* gs); // _08
 	};
 
 	XObjActor3();
 	virtual ~XObjActor3();
+	virtual void Release();
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);
 	virtual void InitializeObject();
 	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void DrawObjectEffects();
+	virtual void DrawDebugStatus();
+	virtual void UpdateAnimationSounds();
 
 	void Kind0(u32 frames);
 	void Kind9(u32 frames);
