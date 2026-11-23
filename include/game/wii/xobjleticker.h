@@ -14,19 +14,20 @@ public:
 	typedef void (XObjLeticker::*Func)();
 
 	XObjLeticker();
-	virtual ~XObjLeticker();                                           // _08, defined in xobjctor.cpp
-	virtual void ResetObjectState();                                   // _154
-	virtual void UpdateObject(u32 frames);                             // _164
-	virtual void DrawObject();                                         // _174
-	virtual void DrawObjectEffects();                                  // _188
-	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
-	virtual void OnPushDisplacement(const Vec& displacement);          // _1F4
-	virtual BOOL ReceivePlugPower(f32 amount);                         // _1F8
-	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
-	virtual void PauseSounds(f32 fade);                                // _20C
-	virtual void ResumeSounds(f32 fade);                               // _210
-	virtual void DrawLate();                                           // _28C, CGame::DrawScene's last pass
-	virtual void OnUnplugged();                                        // _290, retail vtable lbl_803093BC's last slot
+	virtual ~XObjLeticker(); // _08, defined in xobjctor.cpp
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _10
+	virtual void ResetObjectState();                                                                                            // _154
+	virtual void UpdateObject(u32 frames);                                                                                      // _164
+	virtual void DrawObject();                                                                                                  // _174
+	virtual void DrawObjectEffects();                                                                                           // _188
+	virtual s32 HandleEventCommand(s32 count, s32* args);                                                                       // _1E8
+	virtual void OnPushDisplacement(const Vec& displacement);                                                                   // _1F4
+	virtual BOOL ReceivePlugPower(f32 amount);                                                                                  // _1F8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);                                                          // _1FC
+	virtual void PauseSounds(f32 fade);                                                                                         // _20C
+	virtual void ResumeSounds(f32 fade);                                                                                        // _210
+	virtual void DrawLate();    // _28C, CGame::DrawScene's last pass
+	virtual void OnUnplugged(); // _290, retail vtable lbl_803093BC's last slot
 
 	void StateRide();
 	void StateCount();

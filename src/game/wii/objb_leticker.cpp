@@ -33,7 +33,8 @@ extern f32 lbl_805A1288[2];
 extern f32 lbl_805A1290[2];
 extern CCameraActionLeticker gLetickerCameraAction;
 
-// the debug overlay's pulse parameters, shared with the other camera actions
+// this unit's own pointer limits, which Update clamps to and the debug overlay draws;
+// the area camera keeps the same numbers in its own copy
 static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 
 // which of the leticker's four sides angle is closest to, counting quarter turns
@@ -159,8 +160,8 @@ static inline void SetFloors(XObj* obj, XObjFloor* floors)
 // the turn-cross edges for this frame: Update pulls them out of
 // gWiiPointer.mFlags at its top and hands them back at its end, so the cross
 // still reaches the actions that run behind it in the same frame
-static BOOL sTurnLeftEdge;  // .sbss 0x805A1C80, bit 0 turns mTurnTo a quarter down
-static BOOL sTurnRightEdge; // .sbss 0x805A1C84, bit 1 turns it a quarter up
+static BOOL sTurnLeftEdge;  // .sbss 0x805A1C80, bit 32 turns mTurnTo a quarter down
+static BOOL sTurnRightEdge; // .sbss 0x805A1C84, bit 33 turns it a quarter up
 
 // whether the camera's eye still sits inside the lift's bounds when it faces angle;
 // ReceivePlugPower turns it a quarter turn at a time until it fits
@@ -251,10 +252,10 @@ void CCameraActionLeticker::Reset()
  */
 void CCameraActionLeticker::Update(u32 step)
 {
-	sTurnLeftEdge  = (gWiiPointer.mFlags & 1) != 0;
-	sTurnRightEdge = (gWiiPointer.mFlags & 2) != 0;
-	gWiiPointer.mFlags &= ~1ULL;
-	gWiiPointer.mFlags &= ~2ULL;
+	sTurnLeftEdge  = (gWiiPointer.mFlags & 0x100000000ULL) != 0;
+	sTurnRightEdge = (gWiiPointer.mFlags & 0x200000000ULL) != 0;
+	gWiiPointer.mFlags &= ~0x100000000ULL;
+	gWiiPointer.mFlags &= ~0x200000000ULL;
 	_68 = 0.0f;
 	_6C = 0.0f;
 
@@ -331,13 +332,13 @@ void CCameraActionLeticker::Update(u32 step)
 		_A0 = 0;
 	}
 	if (changed) {
-		gWiiPointer.mFlags |= 1;
+		gWiiPointer.mFlags |= 0x100000000ULL;
 		if (_A0 == 0) {
 			_A0 = 1;
 		}
 	}
 	if (_A0 != 0 && _8C >= 30 && _8C >= 60) {
-		gWiiPointer.mFlags |= 1;
+		gWiiPointer.mFlags |= 0x100000000ULL;
 		_8C = 30;
 	}
 
@@ -351,13 +352,13 @@ void CCameraActionLeticker::Update(u32 step)
 		_A4 = 0;
 	}
 	if (changed) {
-		gWiiPointer.mFlags |= 2;
+		gWiiPointer.mFlags |= 0x200000000ULL;
 		if (_A4 == 0) {
 			_A4 = 1;
 		}
 	}
 	if (_A4 != 0 && _90 >= 30 && _90 >= 60) {
-		gWiiPointer.mFlags |= 2;
+		gWiiPointer.mFlags |= 0x200000000ULL;
 		_90 = 30;
 	}
 
@@ -387,7 +388,7 @@ void CCameraActionLeticker::Update(u32 step)
 		if (!CanTurn(this, mTurnTo - HALF_PI)) {
 			mArrows[0]._0D = 0;
 		}
-		if (!CanTurn(this, mTurnTo + HALF_PI)) {
+		if (!CanTurn(this, HALF_PI + mTurnTo)) {
 			mArrows[1]._0D = 0;
 		}
 	}
@@ -419,13 +420,13 @@ void CCameraActionLeticker::Update(u32 step)
 	}
 
 	if (mTurnFrames == 0) {
-		if ((gWiiPointer.mFlags & 1) != 0) {
+		if ((gWiiPointer.mFlags & 0x100000000ULL) != 0) {
 			if (CanTurn(this, mTurnTo - HALF_PI)) {
 				mTurnTo -= HALF_PI;
 				mTurnSpeed  = -0.08726646f; // five degrees a frame, a quarter in 18
 				mTurnFrames = 18;
 			}
-		} else if ((gWiiPointer.mFlags & 2) != 0) {
+		} else if ((gWiiPointer.mFlags & 0x200000000ULL) != 0) {
 			if (CanTurn(this, HALF_PI + mTurnTo)) {
 				mTurnTo += HALF_PI;
 				mTurnSpeed  = 0.08726646f;
@@ -444,14 +445,14 @@ void CCameraActionLeticker::Update(u32 step)
 	CCameraActionLadr::Update(step);
 
 	if (sTurnRightEdge) {
-		gWiiPointer.mFlags |= 2;
+		gWiiPointer.mFlags |= 0x200000000ULL;
 	} else {
-		gWiiPointer.mFlags &= ~2ULL;
+		gWiiPointer.mFlags &= ~0x200000000ULL;
 	}
 	if (sTurnLeftEdge) {
-		gWiiPointer.mFlags |= 1;
+		gWiiPointer.mFlags |= 0x100000000ULL;
 	} else {
-		gWiiPointer.mFlags &= ~1ULL;
+		gWiiPointer.mFlags &= ~0x100000000ULL;
 	}
 }
 
@@ -1282,8 +1283,6 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
 	}
 }
 
-extern "C" {
-
 // the leticker's world callback: after the base handling it rotates joint 2's
 // world matrix to face the player. the GameCube did this in UpdateObject with
 // HSD_JObjSetRotationY; on the Wii it rides the calc-world chain
@@ -1291,11 +1290,11 @@ extern "C" {
  * @note Address: 0x8011D1E8
  * @note Size: 0x164
  */
-void fn_8011D1E8(XObjLeticker* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+void XObjLeticker::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	self->XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	if (pFuncObj->GetCallbackNodeID() == 0) {
-		nw4r::g3d::ResNode node = self->GetResNode(2);
+		nw4r::g3d::ResNode node = GetResNode(2);
 		if (node.IsValid()) {
 			pFuncObj->SetCallbackNodeID(node.GetID());
 		}
@@ -1304,7 +1303,7 @@ void fn_8011D1E8(XObjLeticker* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d
 	Mtx m;
 	PSMTXCopy(pResult->mpMtx, m);
 	const CVec* playerPos = gGame.GetPlayer()->GetPos();
-	const CVec* pos       = self->GetPos();
+	const CVec* pos       = GetPos();
 	f32 angle             = (f32)atan2(playerPos->x - pos->x, playerPos->z - pos->z);
 	Mtx rot;
 	PSMTXRotRad(rot, 'y', angle);
@@ -1313,6 +1312,8 @@ void fn_8011D1E8(XObjLeticker* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d
 	PSMTXConcat(m, rot, m);
 	PSMTXCopy(m, pResult->mpMtx);
 }
+
+extern "C" {
 
 // NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf where our math.h inlines it,
 // and copies the CVec with float loads where ours copies words
