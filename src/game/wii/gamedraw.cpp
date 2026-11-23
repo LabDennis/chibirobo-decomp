@@ -358,7 +358,7 @@ extern "C" void fn_80028998(CGame* game)
 		if (game->mPointer.mScopeTimer >= 5.0f) {
 			pulse = 0.0f;
 		} else {
-			pulse = sin(HALF_PI * (1.0f - fmod(game->mPointer.mScopeTimer, 1.0)));
+			pulse = sin(HALF_PI * (1.0f - (f32)fmod(game->mPointer.mScopeTimer, 1.0)));
 		}
 	}
 	f32 alpha = pulse * game->mPointer.mAlpha;
