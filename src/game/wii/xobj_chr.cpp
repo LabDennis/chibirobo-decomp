@@ -5657,8 +5657,8 @@ static inline f32 PlayerAnimRateScale(WiiPlayerState* chr, s32 anim)
 	return rate * (60.0f / gRefreshRate);
 }
 
-// NONMATCHING: variant selection, archive/division checks, suit parts, plug rate and
-// the call set match; temporary lifetime and register allocation still differ
+// NONMATCHING: variant selection, suit parts, plug rate and the call set match;
+// temporary lifetime and register allocation still differ
 static inline void FindPlayerAnimVariant(s32& id, s32 variant)
 {
 	for (s32 i = 0; gPlayerAnimVariants[i].normal >= 0; ++i) {
@@ -5675,6 +5675,25 @@ static inline void FindPlayerAnimVariant(s32& id, s32 variant)
 	}
 }
 
+// anims from 3000 up are the suit's, from 2000 up the attachment's, as on the GameCube
+static inline s32 SuitAnimGroup(WiiPlayerState* chr, s32 id)
+{
+	bool ret = false;
+	if (id >= 3000 && chr->mSuitAnm.mAnm.m_pScnMdl != NULL) {
+		ret = true;
+	}
+	return ret ? id / 3000 : 0;
+}
+
+static inline s32 AtcAnimGroup(WiiPlayerState* chr, s32 id)
+{
+	bool ret = false;
+	if (id >= 2000 && chr->mAttachmentAnm.mAnm.m_pScnMdl != NULL) {
+		ret = true;
+	}
+	return ret ? id / 2000 : 0;
+}
+
 void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
@@ -5688,10 +5707,10 @@ void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 ra
 		FindPlayerAnimVariant(id, 1);
 	else if (chr->mLift.mState == 0 && (chr->GetAttachment() == 1 || chr->GetAttachment() == 3))
 		FindPlayerAnimVariant(id, 2);
-	if (id >= 3000 && chr->mSuitAnm.mAnm.mFile.CFile::IsLoaded() && id / 1500 == 1) {
+	if (SuitAnimGroup(chr, id) == 1) {
 		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
 		              blend, blendRate);
-	} else if (id >= 2000 && chr->mAttachmentAnm.mAnm.mFile.CFile::IsLoaded() && id / 1000 == 1) {
+	} else if (AtcAnimGroup(chr, id) == 1) {
 		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
 		              blend, blendRate);
 	} else {
