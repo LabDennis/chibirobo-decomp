@@ -218,7 +218,8 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 
 // draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), which this code
 // does not model yet
-// NONMATCHING: row-count conversions and float register lifetimes differ; both call lists match
+// NONMATCHING: row-count conversions and float register lifetimes differ; retail converts the alpha again before the
+// second line segment, this build reuses the first conversion
 extern "C" void fn_80050314(Menu* menu, s32 index, BOOL useRowWidth, BOOL proportional)
 {
 	MenuSFTest* rows = (MenuSFTest*)menu;
@@ -926,7 +927,7 @@ BOOL MenuSFTest::Update(u32 frames)
 					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 					gGame.ClearStatusFlags(2);
 				}
-				_168 = 10010;
+				_168 = 10002;
 			}
 			return IsOpen();
 		case 7:
@@ -2563,7 +2564,7 @@ extern "C" void fn_800559D8(CbPaneList* list, CbPane* pane, s32 event, s32)
 extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames)
 {
 	if (list->mEnabled) {
-		pointerOn = pointerOn && (gGame.mPointer.mTex.mTlut.mTlutName & 1);
+		pointerOn = pointerOn && (gGame.mMenuControls & MenuControlPointer);
 	}
 	bool released = false;
 	if (list->mActive) {
