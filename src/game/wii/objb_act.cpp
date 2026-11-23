@@ -3142,10 +3142,6 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 4:
-		if (obj->mStatus.mFlags & 0x800000) {
-			obj->mStatus.mFlags &= ~0x800000ULL;
-			obj->SetDestinationAlpha(FALSE, 0);
-		}
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
 			obj->SetBaseMtx(act->mOwner->GetWorldMtx(act->mOwner->FindResNode("carry_obj_nll")));
 			s32 id;
