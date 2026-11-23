@@ -5103,6 +5103,7 @@ static inline u32 CheckHangClearance(XObj* obj, const CVec& from, const CVec& to
 	return obj->TestFloorCollision(&from, &to, radius, height, &push, &contact, 0, 0);
 }
 
+// NONMATCHING: floating-point register allocation; calls, arithmetic, stack slots and branches otherwise agree.
 void TryLeaveHang(XActHang* act)
 {
 	f32 radius = act->mOwner->mMoveScale.x * GetFloorExtent(&act->mOwner->mFloors, 0).x;
