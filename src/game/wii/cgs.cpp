@@ -25,6 +25,7 @@
 #undef GXReadDrawSync
 extern "C" u16 GXReadDrawSync(void);
 
+#include "nw4r/g3d/g3d_camera.h"
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
 #include "game/cprimitive.h"
@@ -1745,4 +1746,49 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 		}
 		curX += unit;
 	}
+}
+
+extern "C" nw4r::g3d::Camera GetCamera__Q34nw4r3g3d7ScnRootFi(nw4r::g3d::ScnRoot* root, s32 index);
+extern "C" void SetCurrentCamera__Q34nw4r3g3d7ScnRootFi(nw4r::g3d::ScnRoot* root, s32 index);
+
+extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
+{
+	nw4r::g3d::Camera nwCamera = GetCamera__Q34nw4r3g3d7ScnRootFi((nw4r::g3d::ScnRoot*)*head, flag);
+	SetCurrentCamera__Q34nw4r3g3d7ScnRootFi((nw4r::g3d::ScnRoot*)*head, flag);
+	if (camera->GetProjectionSource() != NULL) {
+		nw4r::math::MTX44 projection;
+		nw4r::math::MTX44Copy(&projection, (const nw4r::math::MTX44*)camera->GetProjectionSource());
+		nwCamera.SetProjectionMtxDirectly(&projection);
+	} else {
+		switch (camera->mType) {
+		case 0:
+			nwCamera.SetPerspective(camera->mFov, camera->mAspect, camera->mNear, camera->mFar);
+			break;
+		case 1:
+			nwCamera.SetFrustum(camera->mTop, camera->mBottom, camera->mLeft, camera->mRight, camera->mNear, camera->mFar);
+			break;
+		case 2:
+			nwCamera.SetOrtho(camera->mTop, camera->mBottom, camera->mLeft, camera->mRight, camera->mNear, camera->mFar);
+			break;
+		}
+	}
+	if (camera->GetViewSource() != NULL) {
+		nw4r::math::MTX34 view;
+		PSMTXCopy(camera->GetViewSource(), view);
+		nwCamera.SetCameraMtxDirectly(view);
+	} else {
+		nw4r::g3d::Camera::PostureInfo posture = { nw4r::g3d::Camera::POSTURE_LOOKAT };
+		nwCamera.SetPosition(camera->mView.mEye);
+		posture.cameraUp     = camera->mView.mUp;
+		posture.cameraTarget = camera->mView.mInterest;
+		posture.cameraRotate = camera->mView.mAngle;
+		posture.cameraTwist  = 0.0f;
+		nwCamera.SetPosture(posture);
+	}
+	nwCamera.SetViewport(camera->mViewport[0], camera->mViewport[1], camera->mViewport[2], camera->mViewport[3]);
+	nwCamera.SetViewportZRange(camera->mViewport[4], camera->mViewport[5]);
+	nwCamera.GXSetViewport();
+	nwCamera.GXSetProjection();
+	nwCamera.GXSetScissor();
+	nwCamera.GXSetScissorBoxOffset();
 }
