@@ -887,6 +887,7 @@ StateCarry__12XObjActorToyFUl = .text:0x80147524; // type:function size:0x7C8
 StateHitRecovery__12XObjActorToyFUl = .text:0x80147CEC; // type:function size:0x734
 StatePickUp__12XObjActorToyFUl = .text:0x80148420; // type:function size:0x768
 ExecCallbackB__12XObjActorToyFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x801491E0; // type:function size:0xF30
+DrawScoreHud = .text:0x80174934; // type:function size:0x1558
 HandleEventCommand__12XObjActorToyFlPl = .text:0x80148B88; // type:function size:0xBC
 IsFree__12XObjActorTaoFv = .text:0x80150B4C; // type:function size:0x28
 Start__23CInterpolationEaseInOutFfff = .text:0x80151D1C; // type:function size:0x4C
