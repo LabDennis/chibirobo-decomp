@@ -3,14 +3,16 @@
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
 // NONMATCHING: the NW4R shape parser and grid builder are reconstructed; stack lifetimes
-// and assertion ordering still differ. TrigonGetVtxS8 differs from retail in register choice.
+// and assertion ordering still differ. Retail reaches the g3d accessors (ResShp, ResVtxPos,
+// ResTagDL, ResDic, ResUserData) through their _ac.h inlines with assertions, which the
+// nw4r headers here leave out. TrigonGetVtxS8 differs from retail in register choice.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
 #include "nw4r/g3d/g3d_scnmdl.h"
 #include "game/mm.h"
 #include "game/ut.h"
 #include "Dolphin/gx.h"
-#include <float.h>
+#include <msl/float.h>
 #include <math.h>
 
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
@@ -26,98 +28,6 @@ public:
 };
 
 static _trigonCounter sCounter;
-
-struct ResDicNodeData {
-	u16 ref;
-	u16 flag;
-	u16 idxLeft;
-	u16 idxRight;
-	s32 ofsString;
-	s32 ofsData;
-};
-
-struct ResDicData {
-	u32 size;
-	u32 numData;
-	ResDicNodeData data[1];
-};
-
-class ResDic {
-public:
-	void* mpData;
-
-	ResDic(void* p = NULL)
-	    : mpData(p)
-	{
-		if ((u32)p & 0x3) {
-			nw4r::db::Panic("g3d_resdict_ac.h", 84, "NW4R:Failed assertion !((u32)p & 0x3)");
-		}
-	}
-	void* operator[](const char* pName) const;
-};
-
-struct ResUserDataItemData {
-	enum DataType { S32 };
-
-	u32 nameID;
-	s32 ofsData;
-	u32 numData;
-	u32 valueType;
-};
-
-class ResUserDataItem {
-public:
-	ResUserDataItemData* mpData;
-
-	ResUserDataItem(void* p = NULL)
-	    : mpData((ResUserDataItemData*)p)
-	{
-		if ((u32)p & 0x3) {
-			nw4r::db::Panic("g3d_resuser_ac.h", 38, "NW4R:Failed assertion !((u32)p & 0x3)");
-		}
-	}
-	bool IsValid() const { return mpData != NULL; }
-	const ResUserDataItemData& ref() const
-	{
-		if (!IsValid()) {
-			nw4r::db::Panic("g3d_resuser_ac.h", 38, "%s::%s: Object not valid.", "ResUserDataItem", "ref");
-		}
-		return *mpData;
-	}
-	u32 GetValueType() const { return ref().valueType; }
-	s32 GetS32(u32 idx) const
-	{
-		if (GetValueType() != ResUserDataItemData::S32) {
-			nw4r::db::Panic("g3d_resuser_ac.h", 54, "NW4R:Failed assertion GetValueType() == ResUserDataItemData::S32");
-		}
-		const s32* data = ref().ofsData != 0 ? (const s32*)((const u8*)mpData + ref().ofsData) : NULL;
-		return data[idx];
-	}
-};
-
-struct ResUserDataData {
-	u32 size;
-	ResDicData dic;
-};
-
-class ResUserData {
-public:
-	ResUserDataData* mpData;
-
-	ResUserData(void* p = NULL)
-	    : mpData((ResUserDataData*)p)
-	{
-	}
-	bool IsValid() const { return mpData != NULL; }
-	ResUserDataData& ref()
-	{
-		if (!IsValid()) {
-			nw4r::db::Panic("g3d_resuser_ac.h", 87, "%s::%s: Object not valid.", "ResUserData", "ref");
-		}
-		return *mpData;
-	}
-	ResDic GetResDic() { return ResDic(&ref().dic); }
-};
 
 // returns the position array entry the index at dl points at; the 16 and 32 bit readers
 // step by the whole vertex (6 or 12 bytes), the byte readers by three
@@ -238,7 +148,7 @@ inline bool _trigonChecker::Check()
 	mGetVtx(this, v);
 	PSVECSubtract(&v[2], &v[1], &e1);
 	PSVECSubtract(&v[0], &v[1], &e2);
-	C_VECCrossProduct(&e1, &e2, &cross);
+	PSVECCrossProduct(&e1, &e2, &cross);
 	if (PSVECMag(&cross) > FLT_EPSILON) {
 		CVec normal;
 		CalcTriangleNormal(&v[0], &v[1], &v[2], &normal);
@@ -426,7 +336,7 @@ extern "C" void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::mat
 	}
 
 	trigon->mNumCells = 0;
-	for (u32 nodeIndex = 0; nodeIndex < numNodes; nodeIndex++) {
+	for (int nodeIndex = 0; nodeIndex < numNodes; nodeIndex++) {
 		TrigonNodeInfo* info                   = &nodes[nodeIndex];
 		trigon->mCells[trigon->mNumCells].mTri = &trigon->mTri[trigon->mNum];
 		trigon->mCells[trigon->mNumCells].mNum = 0;
@@ -437,9 +347,8 @@ extern "C" void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::mat
 		}
 		nw4r::g3d::ResUserData nodeUserData = node.GetResUserData();
 		if (nodeUserData.IsValid()) {
-			::ResDic dic = ::ResUserData(nodeUserData.ptr()).GetResDic();
-			::ResUserDataItem item(dic["atr"]);
-			if (item.IsValid() && item.ref().numData != 0 && item.GetS32(0) == -1) {
+			nw4r::g3d::ResUserDataItem item(nodeUserData.GetResDic()["atr"]);
+			if (item.IsValid() && item.GetNumData() != 0 && item.GetS32(0) == -1) {
 				continue;
 			}
 		}
@@ -452,13 +361,12 @@ extern "C" void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::mat
 			if (userData.IsValid()) {
 				const char* names[] = { "atr", "mat" };
 				for (s32 kind = 0; kind < 2; kind++) {
-					::ResDic dic = ::ResUserData(userData.ptr()).GetResDic();
-					::ResUserDataItem item(dic[names[kind]]);
+					nw4r::g3d::ResUserDataItem item(userData.GetResDic()[names[kind]]);
 					if (item.IsValid()) {
-						if (item.ref().numData != 0) {
+						if (item.GetNumData() != 0) {
 							flags[kind] = item.GetS32(0);
 						}
-						for (u32 i = 1; i < item.ref().numData; i++) {
+						for (u32 i = 1; i < item.GetNumData(); i++) {
 							flags[2] = item.GetS32(i);
 						}
 					}
