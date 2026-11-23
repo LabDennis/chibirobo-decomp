@@ -286,7 +286,7 @@ inline bool _trigonChecker::Check()
 		num++;                \
 	}
 
-static inline TrigonGetIdxFunc GetIdxFunc(int compType, int idxSize)
+static inline void* GetIdxFunc(int compType, int idxSize)
 {
 	TrigonGetIdxFunc func;
 	switch (compType) {
@@ -309,7 +309,7 @@ static inline TrigonGetIdxFunc GetIdxFunc(int compType, int idxSize)
 		func = NULL;
 		break;
 	}
-	return func;
+	return (void*)func;
 }
 
 static inline TrigonGetVtxFunc GetVtxFunc(int compType)
@@ -335,16 +335,16 @@ static inline TrigonGetVtxFunc GetVtxFunc(int compType)
  */
 static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 {
-	// NONMATCHING: regalloc, retail picks the accessor in r3 and moves it to r25 after, and loads display a few lines later.
-	// GetIdxFunc with a return per case (97.16), the checker before dl (95.70) or end before dl (96.14) score lower.
-	// the move is 0x801A51CC mr r25, r3. a default that returns NULL (same), func = NULL with no default (96.68)
-	// or if/else for the ternaries (97.0) keep the accessor out of r3
+	// NONMATCHING: regalloc. retail's 0x801A51CC mr r25, r3 is the cast of GetIdxFunc's generic pointer (a typed
+	// return coalesces straight into r25); dl then still takes pobj's r26 here where retail keeps r26 for the loop
+	// bounds and gives dl r18 (0x801A5244). GetIdxFunc with a return per case (97.16), the checker before dl
+	// (95.70), end before dl (96.14), func = NULL with no default (96.68) or if/else for the ternaries (97.0) score lower
 	int posSize             = 0;
 	int stride              = GetVtxSize(pobj->verts, &posSize, NULL, NULL, NULL);
 	int compType            = pobj->verts->comp_type;
 	void* vtx               = pobj->verts->vertex;
 	u8 frac                 = pobj->verts->frac;
-	TrigonGetIdxFunc getIdx = GetIdxFunc(compType, posSize);
+	TrigonGetIdxFunc getIdx = (TrigonGetIdxFunc)GetIdxFunc(compType, posSize);
 	TrigonGetVtxFunc getVtx = GetVtxFunc(compType);
 
 	u8* dl  = pobj->display;
