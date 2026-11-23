@@ -1651,12 +1651,21 @@ public:
 	u8 _53C[0x544 - 0x53C];
 	s32 mStickSelection; // _544
 	s32 mPrevSelection;  // _548
-	u8 _54C[0x66C - 0x54C];
+	f32 mOffsetX;        // _54C
+	f32 mOffsetY;        // _550
+	u8 _554[0x60C - 0x554];
+	f32 mGridX; // _60C
+	f32 mGridY; // _610
+	u8 _614[0x66C - 0x614];
 	s32 mPhase; // _66C
-	u8 _670[0x698 - 0x670];
+	u8 _670[0x67C - 0x670];
+	f32 mDetailScale; // _67C
+	u8 _680[0x698 - 0x680];
 	f32 mHelpAlpha;        // _698
 	const char* mHelpText; // _69C
-	u8 _6A0[0x6AC - 0x6A0];
+	u8 _6A0[0x6A4 - 0x6A0];
+	f32 mPulsePhase; // _6A4
+	u8 _6A8[0x6AC - 0x6A8];
 	s32 mItemSelection;          // _6AC
 	s32 mPrevItemSelection;      // _6B0
 	s32 mStickItemSelection;     // _6B4

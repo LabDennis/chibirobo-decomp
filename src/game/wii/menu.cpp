@@ -64,6 +64,7 @@ u8* GetPCRankingName(s32 index);
 void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
                          f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void DrawSaveHelpText(MenuSave* menu);
+void DrawStatusIconDetails(s32 icon, f32 x, f32 y, f32 alpha, f32 scale);
 void DrawSaveMenuTitle(MenuSave* menu);
 s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 id, f32 x, f32 y, f32 size, f32 alpha);
 s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha);
@@ -122,6 +123,7 @@ static MenuSave sMenuSave;
 static MenuStatusTable sStatusItemTable;
 MenuPCPage gShopHistoryPage;
 MenuPCPage gShopCatalogPage;
+u8 gStatusIconUnlocked[24];
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 
@@ -140,6 +142,11 @@ extern "C" f32 gStatusHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gStatusHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gSaveHelpOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gSaveHelpOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+extern "C" s32 gStatusGridTextures[48] = {
+	195, 196, 225, 226, 191, 192, 211, 212, 203, 204, 201, 202, 189, 190, 217, 218, 205, 206, 187, 188, 185, 186, 209, 210,
+	221, 222, 183, 184, 229, 230, 227, 228, 199, 200, 207, 208, 197, 198, 215, 216, 193, 194, 213, 214, 219, 220, 223, 224,
+};
 
 struct PCChoiceArt {
 	s32 icon, label;
@@ -4896,6 +4903,69 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		}
+	}
+}
+
+static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32 bob, f32& width, f32& height, bool selected)
+{
+	width  = scale * GXGetTexObjWidth(&tex);
+	width  = 0.8f * width;
+	height = scale * GXGetTexObjHeight(&tex);
+	height = 0.8f * height;
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 2.0f, selected ? bob + (y - 2.0f) : y - 2.0f, 1.0f, width, height,
+	                   0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+}
+
+// NONMATCHING: the complete 32-call list matches; a 48-byte code-layout and register-allocation difference remains
+extern "C" void DrawStatusIconGrid(MenuStatus* menu)
+{
+	if (menu->mMode == 8 || menu->mMode == 4) {
+		f32 left     = ((menu->mGridX - 42.0f) + menu->mOffsetX) - 201.0f;
+		f32 top      = ((180.0f + menu->mGridY) + menu->mOffsetY) - 81.0f;
+		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection;
+		{
+			CTexObj tex;
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+			for (int i = 0; i < 24; i++) {
+				f32 x     = 2.0f + ((i % 6) * 80.0f + left);
+				f32 y     = 2.0f + ((i / 6) * 60.0f + top);
+				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
+				if (gStatusIconUnlocked[i] != 0) {
+					InitPCPanelTexture(tex, gStatusGridTextures[i * 2 + 1]);
+				} else {
+					InitPCPanelTexture(tex, gStatusGridTextures[i * 2]);
+				}
+				f32 bob = (f32)sin(0.017453292f * (f32)fmod(sInventoryPhase, 360.0)) * 4.0f;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				f32 width, height;
+				if (selected == i) {
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, true);
+				} else {
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, false);
+				}
+				if (selected == i) {
+					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+					f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
+					f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
+					if (pulse < 0.0f) {
+						pulse = 0.0f;
+					}
+					DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+					           (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, x, y + bob, 1.0f, width, height,
+					           0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+				}
+			}
+		}
+		DrawStatusIconDetails(menu->mIconSelection, gPointerScreenWidth / 2, gPointerScreenHeight / 2, menu->mAlpha, menu->mDetailScale);
 	}
 }
 
