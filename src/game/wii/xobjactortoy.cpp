@@ -13,6 +13,9 @@ CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
+s32 CountSmallSpidersGrabbingPlayer();
+s32 CountEmergedSmallSpiders();
+u16 GetItemFlagsMasked(s16 item, u16 mask);
 void HandleToyKind0FCommand(XObjActorToy* toy, u32 frames);
 void HandleToyKind110Command(XObjActorToy* toy, u32 frames);
 void HandleToyKind156Command(XObjActorToy* toy, u32 frames);
@@ -90,6 +93,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->_9D4 = 2.0f;
 			break;
 		case 0x158:
+			break;
+		case 0x1D3:
+			PlayWiiSoundEffect(&gGame.mSound, 0xD8 + rand() % 12, 1.0f, 0.0f);
 			break;
 		case 0x159:
 			toy->_9D4 = 3.0f;
@@ -577,14 +583,12 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			HandleToyKind159Command(toy, frames);
 			break;
 		case 0x1FC:
-			HandleToyKind1FCCommand(toy, frames);
+			StartScreenShake(&gGame.mQuake, toy->mCmd[1], toy->mCmd[2], toy->mCmd[3], 0.0f, 0.0f, 0.0f, toy->mCmd[4] / 100.0f);
+			toy->mCmd[0] = 0;
 			break;
 		case 0x26C:
 		case 0x485:
-			HandleToyScreenShakeCommand(toy, frames);
-			break;
 		case 0x25E:
-			HandleToyKind25ECommand(toy, frames);
 			break;
 		}
 	}
@@ -1338,6 +1342,122 @@ extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 				obj->mStatus.mFlags &= ~0x10000ULL;
 			}
 		}
+		break;
+	}
+}
+
+extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
+{
+	s32 count;
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		switch (object->mCmd[1]) {
+		case 0:
+			object->mKindFlags.mFlags &= ~1;
+			break;
+		case 1:
+			object->mKindFlags.mFlags |= 1;
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		HideToyDroppedItem(object);
+		switch (object->mCmd[1]) {
+		case 0x3B:
+		case 0x3D:
+		case 0x3E:
+		case 0x3F:
+		case 0x21D:
+		case 0x21E:
+			for (s32 i = 0; i < 32; i++) {
+				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+				if (object->mCmd[1] == obj->GetKind()) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					object->mHeldObjects[0] = obj;
+					switch (object->mCmd[1]) {
+					case 0x3B:
+						object->mHideKinds.mFlags |= 8;
+						break;
+					case 0x3D:
+						object->mHideKinds.mFlags |= 1;
+						break;
+					case 0x3E:
+						object->mHideKinds.mFlags |= 2;
+						break;
+					case 0x3F:
+						object->mHideKinds.mFlags |= 4;
+						break;
+					case 0x21D:
+						object->mHideKinds.mFlags |= 0x80;
+						break;
+					case 0x21E:
+						object->mHideKinds.mFlags |= 0x10;
+						break;
+					}
+				}
+			}
+			break;
+		default:
+			if (object->mHeldObjects[0] != NULL) {
+				object->mHeldObjects[0]->ClearBaseMtx();
+				object->mHeldObjects[0] = NULL;
+			}
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		gEventVars.mVars[object->mCmd[1]] = CountSmallSpidersGrabbingPlayer();
+		object->mCmd[0]                   = 0;
+		break;
+	case 4:
+		count = 0;
+		for (s32 i = 0; i < 0x100; i++) {
+			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
+			s16 num              = items[i].GetCount();
+			s16 id               = items[i].GetId();
+			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+				count++;
+			}
+		}
+		gGame.mEvt.mSelectResult = count;
+		object->mCmd[0]          = 0;
+		break;
+	case 5:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = (XObjActor::StateFunc)&XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 6:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 7:
+		if (object->mCmd[1]) {
+			object->mPieces[0].mId    = object->mCmd[2];
+			object->mPieces[0].mState = 1;
+		} else {
+			for (u32 j = 0; j < 4; j++) {
+				if (object->mPieces[j].mObj != NULL) {
+					object->mPieces[j].mObj->Release();
+				}
+				object->mPieces[j].mId    = -1;
+				object->mPieces[j].mState = 0;
+				object->mPieces[j].mObj   = NULL;
+			}
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 8:
+		gEventVars.mVars[object->mCmd[1]] = CountEmergedSmallSpiders();
+		object->mCmd[0]                   = 0;
 		break;
 	}
 }
