@@ -2900,6 +2900,7 @@ UpdateObject__15XObjSpiderSmallFUl = .text:0x80129D5C; // type:function size:0xC
 HandleSmallSpiderEventCommand = .text:0x8012B1FC; // type:function size:0x58C
 State1__15XObjSpiderSmallFUl = .text:0x8012B78C; // type:function size:0x410
 State3__15XObjSpiderSmallFUl = .text:0x8012BBD4; // type:function size:0x2734
+State2__15XObjSpiderSmallFUl = .text:0x8012BB9C; // type:function size:0x38
 IsPlayerInSmallSpiderArea = .text:0x80131AFC; // type:function size:0x15C
 sSmallSpiderFloors = .sdata:0x805A11C0; // type:object size:0x8
 State6__15XObjSpiderSmallFUl = .text:0x8012EB58; // type:function size:0x3BC
