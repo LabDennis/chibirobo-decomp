@@ -19,12 +19,19 @@ struct SmallSpiderStageStatus {
 };
 STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
+extern CustomShadow gCustomShadow;
+
 extern "C" {
 void ResetSmallSpiderState(XObjSpiderSmall* spider);
 void ApplySmallSpiderPlacement(XObjSpiderSmall* spider);
 BOOL fn_801298D0(XObjSpiderSmall* spider, const CoordInfo& info);
+BOOL fn_80131C58(void);
+s16 GetPlayerItemCount(s32 id);
+void UpdatePlayerCaughtInSpiderWeb(XObjSpiderSmall* spider, u32 frames);
+void UpdateSmallSpiderWebEffect(XObjSpiderSmallFx* shot, u8 i, u32 frames, BOOL unused);
 void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
 void ResetSpiderCoinBounces(void* unused);
+void UpdateSpiderCoinBounces(void* unused, u32 frames);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 BOOL IsUsingMug(XAction* lift);
 f32 GetPlayerCollisionRadius(WiiPlayerState* player);
@@ -34,10 +41,12 @@ bool IsSmallSpiderEffectAnimationFinished(XObjSpiderSmallFx* fx, u8 slot, u32 fr
 void DrawSmallSpiderWebEffect(XObjSpiderSmallFx* fx, u8 index);
 
 extern s32 gRefreshRate;
+extern s32 gSoundFadeFrames;
 extern u32 gSpiderSmallSoundId;
 extern AnimSfxEvent gSmallSpiderAnimSfxEvents[];
 extern XObj* gSmallSpiderEffectObjects[12];
 extern s32 gSmallSpiderEffectSlotOwners[12];
+extern void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32 frames);
 extern SmallSpiderStageStatus gSmallSpiderStatusByStage[39];
 extern XObj* gSmallSpiderWebFound;
 extern u32 gSpiderCoinBounceManager; // the coins' manager token, the callbacks never touch it
@@ -322,6 +331,187 @@ void XObjSpiderSmall::Release()
 	XObj::Release();
 }
 
+static inline void StopSmallSpiderBattleMusic()
+{
+	if (gSpiderSmallSoundId == 0xFF000C) {
+		s32 frames = 0.2f * gRefreshRate;
+		for (int i = 0; i < 0x40; i++) {
+			if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+			    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == 0xC) {
+				gGame.mSound.mArchivePlayer.mTracks.mHandles[i].Stop(frames);
+			}
+		}
+		gSpiderSmallSoundId = 0;
+	}
+}
+
+static inline void StartSmallSpiderBattleSound()
+{
+	CSoundHandle* slot = NULL;
+	for (int i = 0; i < 0x40; i++) {
+		if (!gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			slot = &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+			break;
+		}
+	}
+	if (slot != NULL && static_cast<nw4r::snd::SoundStartable&>(gGame.mSound.mArchivePlayer).StartSound(slot, 0xC)) {
+		slot->SetOutputLineFlag(gGame.mSound.mArchivePlayer.mReady);
+		slot->SetVolume(1.0f, gSoundFadeFrames);
+		slot->SetPitch(1.0f, gSoundFadeFrames);
+		if (gGame.mSound.mArchivePlayer.mReady & 2) {
+			slot->SetRemoteOutVolume(0, 0.5f);
+		}
+	}
+}
+
+static inline void PauseSmallSpiderPreviousMusic(s32 id)
+{
+	s32 frames = 0.2f * gRefreshRate;
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == (id & 0xFFFF)) {
+			gGame.mSound.mArchivePlayer.mTracks.mHandles[i].Pause(frames);
+		}
+	}
+}
+
+static inline void ResumeSmallSpiderPreviousMusic(s32 id)
+{
+	s32 frames = 0.2f * gRefreshRate;
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == (id & 0xFFFF)) {
+			gGame.mSound.mArchivePlayer.mTracks.mHandles[i].Resume(frames);
+		}
+	}
+}
+
+static inline void FinishSmallSpiderBattleMusic(XObjSpiderSmall* spider)
+{
+	if (spider->mPrevBgm != 0) {
+		StopSmallSpiderBattleMusic();
+		ResumeSmallSpiderPreviousMusic(spider->mPrevBgm);
+		spider->mBattleBgmState = 0;
+	} else if (gSpiderSmallSoundId == 0xFF000C) {
+		StopSmallSpiderBattleMusic();
+		spider->mBattleBgmState = 0;
+	}
+}
+
+static inline void SetSmallSpiderNow(XObjSpiderSmall* spider, const Vec& value)
+{
+	spider->mMoveTranslate.Set(value);
+	spider->mMoveTarget0.Set(value);
+}
+
+/**
+ * @note Address: 0x80129D5C
+ * @note Size: 0xCF4
+ */
+// NONMATCHING: size, CFG and call set match; remaining differences are register allocation, the unnamed CPad vtable and string-base
+// referents
+void XObjSpiderSmall::UpdateObject(u32 frames)
+{
+	CPad pad(0);
+	if (_AF0 > 0) {
+		_AF0 -= frames;
+		if (_AF0 < 0) {
+			_AF0 = 0;
+		}
+	}
+	bool battleBgm = true;
+	if (IsStage("stage00") || IsStage("stage19")) {
+		battleBgm = false;
+	}
+	if (mPoolIndex == 0 && battleBgm && !IsStage("stage07")) {
+		switch (mBattleBgmState) {
+		case 0:
+			if (fn_80131C58() && gGame.mEvt.mData.mScript == NULL && gSpiderSmallSoundId != 0xFF000C) {
+				mPrevBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+				mPrevBgmVolume = gGame.mSound.mMusicVolume;
+				PauseSmallSpiderPreviousMusic(mPrevBgm);
+				StartSmallSpiderBattleSound();
+				gSpiderSmallSoundId = 0xFF000C;
+				mBattleBgmState++;
+			}
+			break;
+		case 1:
+			if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+				if (GetPlayerItemCount(0x9E) > 0) {
+					StopSmallSpiderBattleMusic();
+					mBattleBgmState = 2;
+				} else {
+					StopSmallSpiderBattleMusic();
+					mBattleBgmState = 0;
+				}
+			} else if (!fn_80131C58() || gGame.mEvt.mData.mScript != NULL) {
+				FinishSmallSpiderBattleMusic(this);
+			}
+			break;
+		case 2:
+			if (!fn_80131C58() || gGame.mEvt.mData.mScript != NULL) {
+				FinishSmallSpiderBattleMusic(this);
+			}
+			break;
+		}
+	}
+	if (gGame.GetStatusFlags(0x400)) {
+		if ((mState == 3 || mState == 4 || mState == 8) && mStep == 4) {
+			WiiPlayerState* player = gGame.GetPlayer();
+			Vec ppos               = *player->GetPos();
+			Vec prot               = player->mMoveRotate;
+			_AD0                   = 0;
+			f32 size               = GetPlayerCollisionRadius(player);
+			mMoveTranslate.x       = ppos.x + size * (f32)sin(prot.y + mClingAngle);
+			mMoveTranslate.y       = 10.0f + ppos.y + mClingOffset.y;
+			mMoveTranslate.z       = ppos.z + size * (f32)cos(prot.y + mClingAngle);
+			mWalkHeading           = atan2(ppos.x - mMoveTranslate.x, ppos.z - mMoveTranslate.z);
+			SetPos(mMoveTranslate);
+			SetRotateY(mWalkHeading, mTurnSpeed);
+			UpdateAnim(0.0f);
+			XObjDrawList& list             = gGame.mDrawLists[1];
+			list.mRefs[list.mCount].mObj   = this;
+			list.mRefs[list.mCount].mIndex = 0;
+			list.mCount++;
+		}
+		return;
+	}
+	if (mPoolIndex == 0) {
+		UpdateSpiderCoinBounces(&gSpiderCoinBounceManager, frames);
+	}
+	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
+		return;
+	}
+	if (_AF0 == 0) {
+		UpdateAnimationSounds();
+	}
+	UpdatePlayerCaughtInSpiderWeb(this, frames);
+	if (!(mSpiderStatus.mFlags & 0x2000000)) {
+		(this->*gSmallSpiderStateHandlers[mState])(frames);
+		CVec dir;
+		if (mSpiderStatus.mFlags & 0x100) {
+			dir.x = 0.0f;
+			dir.z = 0.0f;
+			dir.y = mWalkSpeed;
+			SetRotateY(mWalkHeading, mTurnSpeed);
+		} else {
+			if (mSpiderStatus.mFlags & 8) {
+				mMoveTranslate.y += mFallSpeed;
+			} else {
+				mMoveTranslate.y = mHome.y;
+			}
+			dir.x = mWalkSpeed * (f32)sin(mWalkHeading);
+			dir.z = mWalkSpeed * (f32)cos(mWalkHeading);
+			dir.y = 0.0f;
+			SetRotateY(mWalkHeading, mTurnSpeed);
+		}
+		SetSmallSpiderNow(this, mMoveTranslate + dir * (f32)frames);
+		SetPos(mMoveTranslate);
+	}
+	XObj::UpdateObject(frames);
+	UpdateSmallSpiderWebEffect(&mFx, mFxIndex, frames, FALSE);
+}
+
 /**
  * @note Address: 0x8012AA50
  * @note Size: 0x14
@@ -346,6 +536,21 @@ void XObjSpiderSmall::DrawLate()
  */
 void XObjSpiderSmall::DrawGroundShadow(f32 opacity)
 {
+}
+
+/**
+ * @note Address: 0x8012AA74
+ * @note Size: 0x178
+ */
+extern "C" void fn_8012AA74(XObjSpiderSmall* spider, const Vec* origin, f32 opacity)
+{
+	if ((spider->mStatus.mFlags & 8ULL) && (spider->mSpiderStatus.mFlags & 0x40) && (spider->mStatus.mFlags & 0x10000ULL)) {
+		Vec pos = *origin;
+		Vec size
+		    = spider->mMoveScale * (f32)(spider->mAttr.mObjData != NULL ? spider->mAttr.mObjData->mShadowSize : 0) * 0.6f * spider->mRadius;
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gCustomShadow.Draw(pos, size, (u32)(170.0f * opacity));
+	}
 }
 
 /**

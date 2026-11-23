@@ -2533,8 +2533,7 @@ public:
 	u8 _AD0;                // _AD0
 	u8 _AD1[0xAD4 - 0xAD1]; // _AD1
 	s32 mPrevBgm;           // _AD4, the bgm it took over from
-	u8 mPrevBgmVolume;      // _AD8
-	u8 _AD9[0xADC - 0xAD9]; // _AD9
+	f32 mPrevBgmVolume;     // _AD8
 	s32 mLoadPoolIndex;     // _ADC
 	s32 mTimeMode;          // _AE0
 	s32 mAreaGraceTimer;    // _AE4
