@@ -1396,9 +1396,9 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	tw = GXGetTexObjWidth(&tex);
 	th = GXGetTexObjHeight(&tex);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255 * badgeAlpha) | 0xFFFFFF00, (u32)(255 * badgeAlpha) | 0xFFFFFF00,
-	                   (u32)(255 * badgeAlpha) | 0xFFFFFF00, (u32)(255 * badgeAlpha) | 0xFFFFFF00, x - 22 * scale, y - 22 * scale, 0.0f,
-	                   1.1f * (scale * tw), 1.1f * (scale * th), 0.0f, 0.0f, 0.0f);
+	color = 0xFFFFFF00 | (u32)(255 * badgeAlpha);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 22 * scale, y - 22 * scale, 0.0f, 1.1f * (scale * tw),
+	                   1.1f * (scale * th), 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
@@ -1517,9 +1517,8 @@ extern "C" void InfoScrn_DrawTimer(InfoScrn* scrn)
 	f32 alpha = scrn->mTimerAlpha * gHudOpacityScale;
 	CTexObj tex;
 	if (alpha > 0.0f) {
-		u32 opacity   = 255.0f * alpha;
-		u32 top       = opacity | 0xEFEBC500;
-		u32 bottom    = opacity | 0xEDA83600;
+		u32 top       = (u32)(255.0f * alpha) | 0xEFEBC500;
+		u32 bottom    = (u32)(255.0f * alpha) | 0xEDA83600;
 		f32 clock     = TimerFramesToHundredths(scrn->mTimer);
 		f32 rightEdge = 372.0f + ((f32)gPointerScreenWidth - 640.0f);
 		f32 step;
@@ -2513,10 +2512,11 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		f32 iconW = 0.8f * GXGetTexObjWidth(&tex);
 		f32 iconY = y0 - 18.0f * 0.5f;
 		f32 iconH = 0.8f * GXGetTexObjHeight(&tex);
-		u32 ic    = (u32)(255.0f * alpha * point->mIconAlphaScale) | 0xC8C8C800;
 		if (point->mIndex == INFOPOINT_ID + 2) {
+			u32 ic = (u32)(255.0f * alpha * point->mIconAlphaScale) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, 4.0f + iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
 		} else {
+			u32 ic = (u32)(255.0f * alpha * point->mIconAlphaScale) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
 		}
 
