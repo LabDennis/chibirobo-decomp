@@ -598,6 +598,7 @@ void CJArchive::Release()
  * @note Address: 0x801A3A84
  * @note Size: 0x390
  */
+// NONMATCHING: regalloc; moving the light loop's index declaration to function scope is code-identical
 void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 {
 	CJArchiveScene* scene;

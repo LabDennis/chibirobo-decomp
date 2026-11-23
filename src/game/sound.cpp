@@ -553,6 +553,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
  * @note Address: 0x8001E904
  * @note Size: 0xB68
  */
+// NONMATCHING: regalloc only; the call set, CFG and 732-instruction schedule otherwise agree.
 extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 {
 	if (isAllSfx(sfx)) {

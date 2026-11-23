@@ -8378,7 +8378,7 @@ extern "C" f32 GetObjectMaxFloorHeight(XObj* object)
  * @note Address: 0x800B1EC0
  * @note Size: 0x144
  */
-// NONMATCHING: retail issues the point loads in a different order.
+// NONMATCHING: retail issues the point loads in a different order; the Wii's shared height local is code-identical.
 extern "C" f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index)
 {
 	Vec first  = FirstEdgePoint(object, index, point->y);
@@ -10747,6 +10747,8 @@ static inline void ClearRingHighlights(OctaMenu& ring)
  * @note Address: 0x800BB77C
  * @note Size: 0x600
  */
+// NONMATCHING: regalloc and unit data order: retail places the three joint-path arrays and the suit effect earlier
+// in this unit's .rodata/.bss; the instructions and member accesses otherwise agree.
 void XObjChr::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);

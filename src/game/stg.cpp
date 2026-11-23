@@ -12,6 +12,8 @@
 //   stand in for it, removing them would move every .bss offset the functions use.
 // - .sdata/.sdata2: the build emits RTTI records and names of weak header classes (CFont, CPad, CEvt, ...) and two
 //   header constants (0x80, 4) retail does not have here, and the literal pool order differs in places.
+// - __sinit_stg_cpp follows those data placements: its constructor calls agree, while object/vtable offsets and some
+//   saved registers differ; no hand-written initializer is warranted.
 // - .text: the two DrawPCShopList instances and the inline MenuMain::Open/Resume and MenuMCTest::Open come out at
 //   the end of the build's code, retail has them in place; JP's retail file had its menu classes in another order.
 //   JP DrawPanelBackground<0> is 98.3567 % (98.3586 % before the retail order): its table lands at .rodata 0x818,
@@ -1434,6 +1436,7 @@ static inline void PCEase(f32& value, f32& target)
 	PCSlide(value, target, rate);
 }
 
+// NONMATCHING: regalloc and anonymous pool labels; the call set, stores and CFG agree.
 BOOL MenuItem::Update(u32 frames)
 {
 	static s32 selectedItem = -1;
@@ -9711,6 +9714,7 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
  * @note Address: 0x80036D6C
  * @note Size: 0x668
  */
+// NONMATCHING: the loop's FP registers and two conversion slots differ, as in DrawTitleHelpText; the call set and CFG agree.
 extern "C" void DrawSaveHelpText(MenuSave* menu)
 {
 	f32 alpha   = menu->mAlpha * menu->mHelpAlpha;
