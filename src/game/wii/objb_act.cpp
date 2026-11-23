@@ -6,7 +6,7 @@
 // models and the Wii remote, so the GameCube's src/game/objb_act.cpp is a template for them, not a copy. Of the
 // ported functions, the IsCarrying* checks and IsUsingMug differ only in which of r4-r7 holds each nested inline's
 // result; GetStagePlacementScale, GetTargetFloorPosition, GetLiftTargetContactOffset and UpdatePushedObject in
-// scheduling and stack slots. UpdatePlayerRopeAction has the full retail call sequence but different vector temporaries.
+// scheduling and stack slots. UpdatePlayerRopeAction has the retail calls, but its sin/cos and vector temporaries differ.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
 #include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
@@ -14,6 +14,7 @@
 #include "game/wii/csound.h"
 #include "game/wii/xact.h"
 #include "game/wii/cpadact.h"
+#include "game/cvec.h"
 #include "game/inventory.h"
 #include "game/gmath.h"
 #include <math.h>
@@ -199,27 +200,6 @@ static inline f32 FacingPushEdge(XAction* act)
 	return WrapAngle(atan2(normal.x, normal.z));
 }
 
-static inline XObj* GetPlayerActionTarget(const XAction* action)
-{
-	return action->mTarget;
-}
-
-static inline void SetJointTranslationFromVectorByPath(WiiPlayerState* owner, s32 depth, s32* path, const Vec& pos)
-{
-	owner->vf284(depth, path).SetTranslate(pos.x, pos.y, pos.z);
-}
-
-static inline void SetObjectJointTranslationByPath(WiiPlayerState* owner, s32 depth, s32* path, f32 x, f32 y, f32 z)
-{
-	owner->vf284(depth, path).SetTranslate(x, y, z);
-}
-
-static inline void SetJointYawByPath(WiiPlayerState* owner, s32 depth, s32* path, f32 angle)
-{
-	nw4r::g3d::ResNode node = owner->vf284(depth, path);
-	node.ptr()->mRotate.y   = angle;
-}
-
 static inline void RopeAnim(XActRope* act, s32 id, f32 loop, BOOL force = FALSE, f32 start = 0.0f)
 {
 	act->mOwner->SetAnim(id, force, start, 1.0f, loop, 15.0f);
@@ -248,8 +228,8 @@ static inline void PositionPlayerAroundRopeTarget(XActRope* act, f32 angle)
 	if (act->mTarget != NULL) {
 		CVec dir((Vec) { act->mTargetOffset.x, 0.0f, act->mTargetOffset.z });
 		f32 dist = PSVECMag(&dir);
-		act->mOwner->SetTranslateX(act->mTarget->mMoveTranslate.x - dist * (f32)sin(angle));
-		act->mOwner->SetTranslateZ(act->mTarget->mMoveTranslate.z - dist * (f32)cos(angle));
+		act->mOwner->SetTranslateX(act->mTarget->GetPos()->x - dist * (f32)sin(angle));
+		act->mOwner->SetTranslateZ(act->mTarget->GetPos()->z - dist * (f32)cos(angle));
 	}
 }
 
@@ -520,7 +500,8 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x80103B1C
  * @note Size: 0x1C34
  */
-// NONMATCHING: all non-runtime calls match; CVec return homes and joint temporaries produce a 0x30 larger frame and different schedules
+// NONMATCHING: the calls match, except that in PositionPlayerAroundRopeTarget ours calls GetPos before sin/cos and retail
+// after them; CVec return homes and vector temporaries leave a 0x20 smaller frame and different schedules
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -528,18 +509,19 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 		if (anim != 0x21) {
 			RopeAnim(act, 0x21, 0);
 			if (act->mTarget) {
-				act->mOwner->SetRotationY(WrapAngle(atan2(act->mTarget->mMoveTranslate.x - act->mOwner->mMoveTranslate.x,
-				                                          act->mTarget->mMoveTranslate.z - act->mOwner->mMoveTranslate.z)));
-				CVec player(act->mOwner->mMoveTranslate);
+				CVec* target = act->mTarget->GetPos();
+				CVec* owner  = act->mOwner->GetPos();
+				act->mOwner->SetRotationY(WrapAngle(atan2(target->x - owner->x, target->z - owner->z)));
+				CVec player(*act->mOwner->GetPos());
 				player.y = 0;
-				CVec rope(act->mTarget->mMoveTranslate);
+				CVec rope(*act->mTarget->GetPos());
 				rope.y = 0;
 				CVec offset(act->mTargetOffset);
 				offset.y = 0;
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				rope        = rope - offset;
+				rope -= offset;
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
@@ -549,7 +531,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
+				Vec delta = *act->mTarget->GetPos() - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 20) {
@@ -570,25 +552,22 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 			RopeAnim(act, 0x98, 0);
 			if (act->mTarget) {
 				act->mOwner->SetRotationY(WrapAngle(act->mTarget->mMoveRotate.y));
-				CVec player(act->mOwner->mMoveTranslate);
+				CVec player(*act->mOwner->GetPos());
 				player.y = 0;
-				CVec rope(act->mTarget->mMoveTranslate);
+				CVec rope(*act->mTarget->GetPos());
 				rope.y = 0;
 				CVec offset;
 				offset.Set(0.0f, 0.0f, -.5f);
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				rope.x += offset.x;
-				rope.y += offset.y;
-				rope.z += offset.z;
+				rope += offset;
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
 			}
 		} else if (model->IsAnimDone()) {
-			s32 path[] = { 0 };
-			CVec pos   = act->mOwner->GetJointPos(act->mOwner->vf284(1, path));
+			CVec pos   = act->mOwner->GetJointWorldPos("second_null");
 			Vec offset = act->mTargetOffset;
 			Mtx matrix;
 			PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
@@ -596,15 +575,12 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 			act->mOwner->SetPos(pos.x + offset.x, pos.y - offset.y, pos.z + offset.z);
 			SyncRopePosition(act->mOwner);
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
-			s32 p2[] = { 0 };
-			SetJointYawByPath(act->mOwner, 1, p2, 0);
-			s32 p3[] = { 0 };
-			SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, act->mTargetOffset);
-			RopeAnim(act, 0x8C, 0);
+			act->mOwner->GetResNode("second_null").SetTranslate(act->mTargetOffset.x, act->mTargetOffset.y, act->mTargetOffset.z);
+			RopeAnim(act, 0x8C, 1);
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				CVec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
+				CVec delta = *act->mTarget->GetPos() - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 80) {
@@ -623,52 +599,43 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 				act->mOwner->SetRotationY(act->mTarget->mMoveRotate.y);
 				RopeAnim(act, 0x8A, 1, TRUE);
 				act->mOwner->UpdateAnim(0);
-				s32 p1[]   = { 0 };
-				CVec local = act->mOwner->GetNodeTranslate(act->mOwner->vf284(1, p1));
-				s32 p2[]   = { 0 };
-				CVec delta = act->mOwner->GetJointPos(act->mOwner->vf284(1, p2)) - act->mOwner->mMoveTranslate;
+				CVec local = act->mOwner->GetNodeTranslate("second_null");
+				CVec delta = act->mOwner->GetWorldPos("second_null") - *act->mOwner->GetPos();
 				delta.y    = -delta.y;
-				act->mOwner->SetTranslateY(act->mOwner->mMoveTranslate.y + delta.y);
+				act->mOwner->SetTranslateY(delta.y + act->mOwner->GetPos()->y);
 				RopeAnim(act, 0x85, 1);
-				CVec player(act->mOwner->mMoveTranslate);
+				CVec player(*act->mOwner->GetPos());
 				player.y = 0;
-				CVec rope(act->mTarget->mMoveTranslate);
+				CVec rope(*act->mTarget->GetPos());
 				rope.y = 0;
 				CVec offset;
 				offset.Set(0.0f, 0.0f, -.5f);
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				rope.x += offset.x;
-				rope.y += offset.y;
-				rope.z += offset.z;
+				rope += offset;
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
 			}
 			ReleaseRopePlug(act, 0, 0);
 		} else if (model->IsAnimDone()) {
-			s32 p1[]                 = { 0 };
-			nw4r::g3d::ResNode child = act->mOwner->vf284(1, p1);
-			f32 turn                 = act->mOwner->GetNodeRotateY(child);
-			act->mOwner->SetRotationY(act->mOwner->GetNodeRotateY() + turn);
-			child.ptr()->mRotate.y = 0.0f;
-			s32 p2[]               = { 0 };
-			CVec delta             = act->mOwner->GetJointPos(act->mOwner->vf284(1, p2)) - act->mOwner->mMoveTranslate;
-			delta.y                = 0;
+			act->mOwner->FindResNode("second_null");
+			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
+			CVec delta = act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos();
+			delta.y    = 0;
 			CVec offset(act->mTargetOffset);
 			Mtx matrix;
-			PSMTXRotRad(matrix, 'y', act->mOwner->GetNodeRotateY());
+			PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 			PSMTXMultVec(matrix, &offset, &offset);
 			offset.y = 0;
-			act->mOwner->SetPos(act->mOwner->mMoveTranslate - (delta + offset));
+			act->mOwner->SetPos(*act->mOwner->GetPos() - (delta + offset));
 			SyncRopePosition(act->mOwner);
-			s32 p3[] = { 0 };
-			SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, act->mTargetOffset);
-			RopeAnim(act, 0x8C, 0);
+			act->mOwner->GetResNode("second_null").SetTranslate(act->mTargetOffset.x, act->mTargetOffset.y, act->mTargetOffset.z);
+			RopeAnim(act, 0x8C, 1);
 			act->mState = 5;
 		} else if (act->mTarget) {
-			Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
+			Vec delta = *act->mTarget->GetPos() - act->mTarget->mLastPos;
 			act->mPos.x += delta.x;
 			act->mPos.z += delta.z;
 			if (act->mDist > 0) {
@@ -719,8 +686,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 		} else if (anim == 0x23)
 			RopeAnim(act, 0x8C, 0);
 		if (act->mMoveDirection == 1 || act->mMoveDirection == 2) {
-			s32 path[] = { 0, 0 };
-			if (act->mTarget && act->mOwner->GetJointPos(act->mOwner->vf284(2, path)).y >= act->mTarget->mFloorHeights[0]) {
+			if (act->mTarget && act->mOwner->GetJointWorldPos("carry_obj").y >= act->mTarget->mFloorHeights[0]) {
 				act->mOwner->SetTranslateY(act->mTarget->mFloorHeights[0] - act->mTargetOffset.y);
 				RopeAnim(act, 0x24, 0);
 				act->mState = 6;
@@ -750,13 +716,11 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f3
 		if (anim != 0x24)
 			RopeAnim(act, 0x24, 0);
 		else if (model->IsAnimDone()) {
-			s32 p[] = { 0 };
-			act->mOwner->SetPos(act->mOwner->GetJointPos(act->mOwner->vf284(1, p)));
+			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
 			SyncRopePosition(act->mOwner);
-			s32 p2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, p2, 0, 0, 0);
+			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
 			WiiPlayerState* owner = act->mOwner;
-			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			owner->mIdleLoops = 3;
 			act->mState       = 0;
 			act->mTarget      = NULL;
