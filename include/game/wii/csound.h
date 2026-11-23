@@ -31,7 +31,7 @@ public:
 	f32 mPitchStep;    // _18
 	u8 _1C[4];
 
-	// frames of 0 set the value at once, otherwise UpdateGameSound steps to it
+	// frames of 0 set the value at once, otherwise UpdateCSound steps to it
 	void SetVolume(f32 volume, s32 frames)
 	{
 		mVolumeTarget = volume;
@@ -247,7 +247,7 @@ STATIC_ASSERT(offsetof(XSound, mPausedMusicId) == 0x1138);
 extern "C" {
 void InitAudio(CSound* sound, u32 heapSize);
 void ShutdownAudio(CSound* sound);
-void UpdateGameSound(CSound* sound, u32 step);
+void UpdateCSound(CSound* sound, u32 step);
 s32 PlayWiiSoundEffect(XSound* sound, s32 id, f32 volume, f32 pan);
 s32 IsWiiSfxPlaying(XSound* sound, s32 id);                        // 0x80037B04
 void StopWiiSfx(XSound* sound, s32 id, f32 fade);                  // 0x8003993C
@@ -256,7 +256,7 @@ void ResumeWiiSfx(XSound* sound, s32 id, f32 fade);                // 0x80039BD4
 void SetWiiSfxVolume(XSound* sound, s32 id, f32 volume, f32 fade); // 0x80039DB4
 BOOL LoadWiiSoundBankByName(XSound* sound, const char* name);
 // gamesound.cpp; the slot results are CSound::mTracks entries
-void UpdateXSound(XSound* sound, s32 step);                        // 0x800366EC
+void UpdateGameSound(XSound* sound, s32 step);                     // 0x800366EC
 CSoundHandle* GetGameSoundSlot(XSound* sound, s32 sfx);            // 0x800394B0
 CSoundHandle* GetGameMusicSlot(XSound* sound);                     // 0x80039924
 void SetGameSfxPitch(XSound* sound, s32 sfx, f32 cents, f32 fade); // 0x80039FDC

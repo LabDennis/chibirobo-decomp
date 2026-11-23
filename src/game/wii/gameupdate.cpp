@@ -1175,14 +1175,14 @@ void CGame::Update(u32 frames)
 		if (!GetStatusFlags(8)) {
 			SetStatusFlags(8);
 			PauseGameSounds(this, 0.0f);
-			UpdateXSound(&gGame.mSound, frames);
+			UpdateGameSound(&gGame.mSound, frames);
 		}
 		if (gGame.mGs.mScene._04) {
 			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
-		UpdateXSound(&gGame.mSound, frames);
+		UpdateGameSound(&gGame.mSound, frames);
 		return;
 	}
 	if (GetStatusFlags(8)) {
@@ -1194,7 +1194,7 @@ void CGame::Update(u32 frames)
 			if (!GetStatusFlags(0x800000000000000ULL)) {
 				SetStatusFlags(0x800000000000000ULL);
 				PauseGameSounds(this, 0.0f);
-				UpdateXSound(&gGame.mSound, frames);
+				UpdateGameSound(&gGame.mSound, frames);
 			}
 			if (gGame.mGs.mScene._04) {
 				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
@@ -1202,7 +1202,7 @@ void CGame::Update(u32 frames)
 				StepSceneDraws(frames);
 			}
 			UpdateWiiHomeMenu(&mHomeMenu, frames);
-			UpdateXSound(&gGame.mSound, frames);
+			UpdateGameSound(&gGame.mSound, frames);
 			return;
 		}
 		if (GetStatusFlags(0x800000000000000ULL)) {
@@ -1390,7 +1390,7 @@ void CGame::Update(u32 frames)
 		}
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &mListener.mPos);
 	}
-	UpdateXSound(&gGame.mSound, frames);
+	UpdateGameSound(&gGame.mSound, frames);
 	for (i = 0; i < mDrawLists[1].mCount; i++) {
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
