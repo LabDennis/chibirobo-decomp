@@ -824,7 +824,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
  * @note Address: 0x80134150
  * @note Size: 0x5C0
  */
-// NONMATCHING: call set matches; ours keeps one more saved FPR and a 0x10 larger matrix/vector frame
+// NONMATCHING: call set and size match; saved-FPR allocation around the heading and matrix temporaries differs
 extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 {
 	WiiPlayerState* player = gGame.GetPlayer();
@@ -833,7 +833,9 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 		CVec position = spider->GetJointPos(spider->FindResNode("cyl3"));
 		f32 radius    = GetPlayerCollisionRadius(gGame.GetPlayer());
 		position.y -= 6.0f;
-		f32 heading = PI + (f32)atan2(spider->GetPos()->x - player->GetPos()->x, spider->GetPos()->z - player->GetPos()->z);
+		const Vec* spiderPos = spider->GetPos();
+		const Vec* playerPos = player->GetPos();
+		f32 heading          = PI + (f32)atan2(spiderPos->x - playerPos->x, spiderPos->z - playerPos->z);
 		position.x += (radius + 0.5f) * (f32)sin(heading);
 		position.z += (radius + 0.5f) * (f32)cos(heading);
 		player->SetPos(position);
