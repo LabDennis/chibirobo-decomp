@@ -2936,6 +2936,7 @@ ResetForNewGame__8XObjHBoxFv = .text:0x80116518; // type:function size:0x10
 HandleEventCommand__12XObjLetickerFlPl = .text:0x8011BA00; // type:function size:0xB00
 GetHeadWorldPosition__9XObjActorFv = .text:0x80137E3C; // type:function size:0x60
 ResetForNewGame__12XObjActorToyFv = .text:0x80142C38; // type:function size:0x60
+ResetObjectState__12XObjActorToyFv = .text:0x80142C98; // type:function size:0x1EC
 LoadFromPlacement__12XObjActorToyFRC9CoordInfo = .text:0x80142E84; // type:function size:0x1E8
 UpdateSpiderHitReaction = .text:0x801221B8; // type:function size:0x5E4
 State3__10XObjSpiderFUl = .text:0x8012377C; // type:function size:0x354
