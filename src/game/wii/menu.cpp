@@ -2801,6 +2801,25 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 	}
 }
 
+// NONMATCHING: retail adds the 190 with the literal first; the other instructions and all call arguments match
+extern "C" void fn_80061DBC(MenuStatus* menu)
+{
+	CTexObj tex;
+	if (menu->mMode == 5 || menu->mMode == 4) {
+		f32 x = menu->mDiagramX + menu->mOffsetX;
+		f32 y = menu->mDiagramY + menu->mOffsetY;
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[menu->_1954], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 width  = GXGetTexObjWidth(&tex);
+		f32 height = GXGetTexObjHeight(&tex);
+		y += 190.0f;
+		u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
 static inline void DrawPCShopCenteredText(const char* text, u32 color, f32 x, f32 y, f32 size)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
