@@ -7389,10 +7389,10 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon;
 	if (id == 0 || !(gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
-		icon = 238;
+		icon = 238 - StatusTextureOffset;
 	else
-		icon = 239;
-	tex   = InitPCPanelTexture(icon);
+		icon = 239 - StatusTextureOffset;
+	tex   = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, white, iconX, iconY, scale * w, scale * h);
 }
@@ -10088,6 +10088,8 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
 }
 
 #if defined(VERSION_JP)
+// retail keeps the gap count in r3 and forms &gGame in r4 (JP 0x800329A0..0x800329B8); writing the count inside the
+// x expression does not give that and flips the fmuls operands
 static inline void DrawJapaneseCardLine(char* text, f32 x, f32 y, f32 size, u32 color)
 {
 	u32 gaps = strlen(text) / 2 - 1;
@@ -11112,7 +11114,7 @@ extern "C" void DispatchMemoryCardTestOperation(MenuMCTest* menu, s32 id)
 // NONMATCHING: register numbering (retail keeps card in r22, this copy in r24, i in r28; the build r26/r29/r24) and
 // the popup's schedule: retail stores the sub menu's mState (US 0x80032C08 stwu) before its mY and mX, the build
 // after mY. Open() before the coordinates moves its Resume() call ahead of them (lower); mX first, a step local
-// and the reversed operand order do not move the stwu.
+// and the reversed operand order do not move the stwu, nor does calling MenuMCTestSub::Open() defined above (same code).
 BOOL MenuMCTest::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
