@@ -1339,10 +1339,10 @@ game/wii/xobjactorjenny.cpp:
 	.text start:0x8014A74C end:0x8014C090
 
 game/wii/xobjactormama.cpp:
-	.text start:0x8014C090 end:0x8014D640
+	.text start:0x8014C090 end:0x8014D8D8
 
 game/wii/xobjactorpapa.cpp:
-	.text start:0x8014D968 end:0x8014EC04
+	.text start:0x8014D968 end:0x8014F25C
 
 game/wii/xobjactortao.cpp:
 	.text start:0x8014F2EC end:0x80150C2C
