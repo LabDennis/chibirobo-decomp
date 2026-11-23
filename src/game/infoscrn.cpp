@@ -349,7 +349,7 @@ static struct {
  * @note Address: 0x8006CB68
  * @note Size: 0x930
  */
-// NONMATCHING: the robot's x reads the struct through a register, scratch registers
+// NONMATCHING: the first quad forms sLoading's address before the colours (0x8006CEE8 addi r4), scratch registers
 extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 {
 	if (gGame.mStatus.mFlags & 0x40) {
@@ -388,8 +388,8 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 			SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 2);
 			half = max / 2;
-			y    = 406.0f - th / 2;
 			left = 320.0f - half;
+			y    = 406.0f - th / 2;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0x808080C8, 0x808080C8, 0x808080C8, 0x808080C8, sLoading.mX + left, y, 0.0f, 0.9f * tw,
 			                   0.9f * th, 0.0f, 3.1415927f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);

@@ -274,16 +274,7 @@ static inline void CopyCordPos(Vec& dst, const Vec& src)
 	dst.y = src.y;
 	dst.z = src.z;
 }
-static inline void PinTail(XObjPlugCord* cord, XObjPlugCordPoint* points, s32 end, s32 back)
-{
-	if (cord->mEndSource[end]) {
-		Vec& dst = points[cord->mCount - back].mPos;
-		CopyCordPos(dst, *cord->mEndSource[end]);
-		CopyCordPos(points[cord->mCount - back].mPos, dst);
-	} else if (cord->mEndHeight[end]) {
-		points[cord->mCount - back].mPos.y = *cord->mEndHeight[end];
-	}
-}
+// the two tails are the head's code copied, mPos where the head sets mTarget
 static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
 {
 	if (cord->mEndSource[0]) {
@@ -294,8 +285,24 @@ static inline void PinCordEnds(XObjPlugCord* cord, XObjPlugCordPoint* points)
 		points[0].mPos.y    = y;
 		points[0].mTarget.y = y;
 	}
-	PinTail(cord, points, 1, 2);
-	PinTail(cord, points, 2, 1);
+	if (cord->mEndSource[1]) {
+		Vec& dst = points[cord->mCount - 2].mPos;
+		CopyCordPos(dst, *cord->mEndSource[1]);
+		CopyCordPos(points[cord->mCount - 2].mPos, dst);
+	} else if (cord->mEndHeight[1]) {
+		f32 y                           = *cord->mEndHeight[1];
+		points[cord->mCount - 2].mPos.y = y;
+		points[cord->mCount - 2].mPos.y = y;
+	}
+	if (cord->mEndSource[2]) {
+		Vec& dst = points[cord->mCount - 1].mPos;
+		CopyCordPos(dst, *cord->mEndSource[2]);
+		CopyCordPos(points[cord->mCount - 1].mPos, dst);
+	} else if (cord->mEndHeight[2]) {
+		f32 y                           = *cord->mEndHeight[2];
+		points[cord->mCount - 1].mPos.y = y;
+		points[cord->mCount - 1].mPos.y = y;
+	}
 }
 
 static inline void AddStep(CVec& position, Vec step)
@@ -325,9 +332,9 @@ static inline void ResetSparks(XObjPlugCordNodes& nodes, u32 color, s32 mode, s3
 	nodes.mEnabled        = enabled;
 }
 
-// NONMATCHING: retail stores points[mCount - back].mPos.y twice in PinTail's mEndHeight branch (0x800DACC0,
-// mPos where end 0 sets mTarget); written so, the function's inline estimate passes the budget and
-// PinCordEnds becomes a call (77 %), so our helpers still weigh more than retail's code there
+// NONMATCHING: regalloc (cord and the gGame base swap r30/r31), and the push loop's byte offset starts as a
+// copy of j's zero (0x800DB414 mr r19, r20); j declared before the distance test, a while loop and
+// indexing points instead of cord->mPoints all score lower
 extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	static f32 floorHeight;
@@ -399,9 +406,9 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 	}
 	s32 old   = cord->mMode;
 	s32 state = gGame.GetPlayer()->mPlug.mConnection;
-	if (state < 0)
+	if (state < 0) {
 		cord->mMode = 3;
-	if (state >= 0) { // tested again, not an else (0x800DB4C0)
+	} else if (state >= 0) { // tested again (0x800DB4C0 blt), its else is the mode 0 store at 0x800DB514
 		s32 kind = (state >> 8) & 255;
 		if (kind == 0)
 			cord->mMode = 0;
@@ -411,8 +418,8 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			cord->mMode = 2;
 		else if (kind == 3)
 			cord->mMode = 4;
-		else
-			cord->mMode = 0;
+	} else {
+		cord->mMode = 0;
 	}
 	if (cord->mMode != old) {
 		switch (cord->mMode) {
@@ -447,7 +454,8 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
  * @note Address: 0x800DA68C
  * @note Size: 0x354
  */
-// NONMATCHING: registers only, retail gives i r31 and the point offset a copy of its zero (mr r29, r31), 0.0f f31 and 0.5f f28
+// NONMATCHING: registers only, retail gives i r31 and the point offset a copy of its zero (0x800DA7A8 mr r29, r31), 0.0f f31 and
+// 0.5f f28. i declared in the for, at the function top or as a while loop, a point pointer and a hoisted end all score lower
 extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
 	CGs* graphics = CaptureGraphics();
