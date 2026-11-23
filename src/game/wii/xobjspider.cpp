@@ -5,6 +5,7 @@
 #include "game/attachmentvalues.h"
 #include "game/gmath.h"
 #include "game/wii/spiderplacement.h"
+#include "game/stagedata.h"
 #include "arithmetic.h"
 #include <stdlib.h>
 
@@ -37,6 +38,7 @@ void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 u32 GetPlayerActionParameter(s32 index);
+CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 
 extern s32 gRefreshRate;
@@ -786,6 +788,76 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		spider->SetState(5);
 		spider->mCommand = 0;
 		break;
+	}
+}
+
+/**
+ * @note Address: 0x80122B38
+ * @note Size: 0x3A0
+ */
+extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
+{
+	switch (spider->mEffectOn) {
+	case 0:
+		break;
+	case 1:
+		if (!((XObjActorTao*)gGame.mXObjs.mPools[14].mObjects)->IsFree()) {
+			break;
+		}
+		if (spider->mEffect != NULL) {
+			spider->mEffect->Release();
+		}
+		if (spider->mEffectId >= 0) {
+			spider->mEffect
+			    = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(spider->mEffectId)), 0, TRUE);
+		} else {
+			spider->mEffect = NULL;
+		}
+		spider->mEffectOn++;
+	case 2:
+		if (spider->mEffect != NULL) {
+			if (spider->mEffect->mStatus.mFlags & 0x0040000000000000ULL) {
+				break;
+			}
+			spider->mEffect->mStatus.mFlags |= 0x10000;
+			gGame.SetStatusFlags(0x1000);
+		}
+		spider->mEffectOn++;
+	case 3:
+		if (spider->mEffectId < 0 || spider->mEffect == NULL) {
+			break;
+		}
+		spider->mEffect->SetScale(1.0f, 1.0f, 1.0f);
+		PSMTXCopy(spider->GetWorldMtx(spider->FindResNode("obj25")), spider->mEffectMtx);
+		Vec scale;
+		HSD_MtxGetScale(spider->mEffectMtx, &scale);
+		scale.x = GetStagePlacementScale(spider->mEffect).x / scale.x;
+		scale.y = GetStagePlacementScale(spider->mEffect).y / scale.y;
+		scale.z = GetStagePlacementScale(spider->mEffect).z / scale.z;
+		Mtx scaleMtx;
+		PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+		Mtx up;
+		Mtx mtx;
+		PSMTXConcat(spider->mEffectMtx, scaleMtx, mtx);
+		PSMTXTrans(up, 0.0f, 5.0f, 0.0f);
+		PSMTXConcat(mtx, up, mtx);
+		spider->mEffect->SetBaseMtx(mtx);
+		spider->mEffect->mStatus.mFlags &= ~0x0200000000000000ULL;
+		break;
+	}
+	if (spider->mFlags.mFlags & 0x20000000) {
+		for (u32 i = 0; i < 8; i++) {
+			if (spider->mTies[i].mObj != NULL) {
+				Mtx mtx;
+				f32 y, z;
+				z     = spider->mTies[i].mObj->GetPos()->z;
+				y     = spider->mTies[i].mObj->GetPos()->y;
+				f32 x = spider->mTies[i].mObj->GetPos()->x;
+				PSMTXTrans(mtx, x, y, z);
+				PSMTXConcat(spider->GetWorldMtx(spider->mTies[i].mJoint), mtx, spider->mTies[i].mMtx);
+				spider->mTies[i].mObj->SetBaseMtx(spider->mTies[i].mMtx);
+			}
+		}
 	}
 }
 

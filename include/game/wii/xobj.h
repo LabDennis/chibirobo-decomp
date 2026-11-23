@@ -2200,6 +2200,7 @@ class XObjActorTao : public XObjActor {
 public:
 	XObjActorTao();
 	virtual ~XObjActorTao();
+	BOOL IsFree();
 
 private:
 	u8 _tail[0xDF8 - sizeof(XObjActor)];
