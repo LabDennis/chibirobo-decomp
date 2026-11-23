@@ -27,6 +27,7 @@ void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // stops the even
 CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset);
 void TryLeaveHang(XActHang* act);
 BOOL IsPlayerBlockingEvents(const WiiPlayerState* player);
+void StopPlayerMotion(WiiPlayerState* player);
 BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z);
 BOOL QueryMapFloorHeight(XObj* object, f32 minHeight);
 f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height);
@@ -807,6 +808,381 @@ void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
 CVec GetPlayerFloorSlope(WiiPlayerState* chr)
 {
 	return chr->mFloorSlope;
+}
+
+static inline void JumpAnim(XActJump* act, s32 id, f32 loop = 1.0f)
+{
+	act->mOwner->SetAnim(id, FALSE, 0.0f, 1.0f, loop, 15.0f);
+}
+
+static inline void EndJump(XActJump* act)
+{
+	WiiPlayerState* owner = act->mOwner;
+	owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	owner->mIdleLoops = 3;
+	act->mState       = 0;
+}
+
+static inline BOOL AdvanceJumpArc(XActJump* act, u32 frames)
+{
+	if (act->mArcAngle < HALF_PI) {
+		if ((act->mArcAngle += act->mArcStep * frames) > HALF_PI) {
+			act->mArcAngle = HALF_PI;
+		}
+		f32 sine = (f32)sin(act->mArcAngle);
+		f32 lift = act->mRise * sine;
+		act->mOwner->SetTranslateY(act->mArcPosition.y + lift);
+		f32 angle = act->mOwner->mMoveRotate.y;
+		f32 dx    = act->mForward * (act->mArcStep * (f32)sin(angle));
+		f32 dz    = act->mForward * (act->mArcStep * (f32)cos(angle));
+		act->mOwner->SetTranslateX(act->mArcPosition.x += dx);
+		act->mOwner->SetTranslateZ(act->mArcPosition.z += dz);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static inline void StartJumpDust(XActJump* act, u32 id, s32 group)
+{
+	MtxP mtx               = act->mOwner->GetWorldMtx();
+	EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, id, group);
+	if (effect != NULL) {
+		effect->mtx = mtx;
+		UpdateEffectMtx(effect);
+	}
+}
+
+/**
+ * @note Address: 0x800FFBB8
+ * @note Size: 0x199C
+ */
+// NONMATCHING: action/vector lifetimes use extra saved FPRs and a smaller frame; the proximity check has one fewer inlined FSqrt
+void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f32 frame, f32 end)
+{
+	BOOL interrupt = FALSE;
+	if (!gGame.mEvt.mData.mScript) {
+		CPad pad(0);
+		if (StickLength(pad.mPad) > 0.0f) {
+			switch (act->mState) {
+			case 19:
+				if (frame > 1.0f) {
+					interrupt = TRUE;
+				}
+				break;
+			case 4:
+			case 18:
+				if (frame > 3.0f) {
+					interrupt = TRUE;
+				}
+				break;
+			case 10:
+			case 13:
+			case 16:
+				act->mOwner->SetAnimRate(1.0f + 2.0f * ((frame / end) * StickLength(pad.mPad)));
+				break;
+			}
+		}
+	}
+	s32 next     = -1;
+	BOOL playing = FALSE;
+	switch (act->mState) {
+	case 1:
+		if (anim != 0x1C) {
+			JumpAnim(act, 0x1C, 0.0f);
+			return;
+		}
+		if (!(end - frames <= frame)) {
+			return;
+		}
+		act->mState = 2;
+	case 2:
+	case 3:
+	case 17:
+		if (act->mOwner->GetHeight() <= 0.0f || (act->mOwner->GetHeight() <= 1.0f && GetPlayerFloorSlope(act->mOwner).Length() > 0.5f)) {
+			if (act->mOwner->mLift.mState == 20) {
+				act->mState = 0;
+				return;
+			}
+			if (act->mOwner->mFallDistance > 30.0f) {
+				JumpAnim(act, 0x8E);
+				act->mState = 5;
+				ApplyPlayerJumpStrength(act, act->mOwner->mFallDistance);
+				act->mOwner->SetColor(1, 255, 0, 0, 0.0f);
+				act->mOwner->SetColor(1, 0, 0, 0, 0.3f);
+				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, 0.3f);
+			} else if (act->mOwner->mFallDistance > 11.5f) {
+				JumpAnim(act, 0x1E);
+				act->mState = 4;
+				if (act->mOwner->mFallDistance > 12.5f) {
+					StartJumpDust(act, 6, 0);
+				}
+			} else if (act->mOwner->mFallDistance > 7.5f) {
+				JumpAnim(act, 0x1F);
+				act->mState = 18;
+			} else {
+				JumpAnim(act, 0x20);
+				act->mState = 19;
+			}
+		} else if (act->mOwner->mLift.mState != 20) {
+			if (act->mState == 3) {
+				next    = 0x7C;
+				playing = anim == 0x7C;
+			} else {
+				next    = 0x1D;
+				playing = anim == 0x1D || anim == 0x93;
+			}
+			if (!playing) {
+				JumpAnim(act, next, 0.0f);
+			}
+		}
+		break;
+	case 4:
+		if (act->mOwner->mLift.mState == 20) {
+			act->mState = 0;
+			return;
+		}
+		if (end - frames <= frame || interrupt) {
+			EndJump(act);
+		}
+		break;
+	case 5:
+		if (act->mOwner->mLift.mState == 20) {
+			act->mState = 0;
+			return;
+		}
+		if (end - frames <= frame) {
+			JumpAnim(act, 0x8F);
+			act->mState = 6;
+			StartJumpDust(act, 0x15, 1);
+			PlayWiiSoundEffect(&gGame.mSound, 0x87, 1.0f, 0.0f);
+			PlayWiiSoundEffect(&gGame.mSound, 0xA3, 1.0f, 0.0f);
+		}
+		break;
+	case 6:
+		if (act->mOwner->mLift.mState == 20) {
+			act->mState = 0;
+			return;
+		}
+		if ((act->mStrength -= frames) <= 0.0f) {
+			s32 id;
+			if (act->mTargetStrength >= 50.0f) {
+				id = 0x9A;
+			} else {
+				id = 0x90;
+				if (act->mTargetStrength >= 45.0f && !gGame.mEvt.mData.mScript) {
+					WiiPlayerState* chr = act->mOwner;
+					if (chr->mLift.mState && IsCarrying(&chr->mLift, 22)) {
+						PutAwayLiftedObject((XActLift*)&chr->mLift);
+					}
+				}
+			}
+			JumpAnim(act, id);
+			act->mState = 7;
+			fn_800A12F8(&gGame.mEvtPtcl, 0x15, FALSE);
+			StopWiiSfx(&gGame.mSound, 0xA3, 0.0f);
+		} else if (!IsWiiSfxPlaying(&gGame.mSound, 0xA3)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xA3, 1.0f, 0.0f);
+		}
+		break;
+	case 7:
+		if (act->mOwner->mLift.mState == 20) {
+			act->mState = 0;
+			return;
+		}
+		if (end - frames <= frame) {
+			EndJump(act);
+		}
+		break;
+	case 8:
+		if (next < 0) {
+			next    = 0x5A;
+			playing = anim == next || anim == 0x10F || anim == 0x115;
+		}
+	case 11:
+		if (next < 0) {
+			next    = 0x60;
+			playing = anim == next || anim == 0x112 || anim == 0x118;
+		}
+	case 14:
+		if (next < 0) {
+			next    = 0x63;
+			playing = anim == next || anim == 0x11B || anim == 0x11E;
+		}
+		if (!playing) {
+			act->mTargetHeight = act->mTarget->mSelectedFloorHeight;
+			const Vec* pos     = &act->mOwner->mMoveTranslate;
+			if (pos->y >= act->mTargetHeight) {
+				act->mState = 0;
+				return;
+			}
+			if (act->mTarget) {
+				f32 yaw = GetFloorFacingAngle(act->mTarget, pos, act->mTargetFloor, 0, NULL, NULL);
+				if (__fpclassifyf(yaw) != FP_NAN) {
+					StopPlayerMotion(act->mOwner);
+					JumpAnim(act, next);
+					act->mOwner->SetRotationY(yaw);
+				} else {
+					act->mState  = 0;
+					act->mTarget = NULL;
+				}
+			}
+		} else if (end - frames <= frame) {
+			s32 id = -1;
+			switch (act->mState) {
+			case 8:
+				if (id < 0) {
+					id = 0x5B;
+				}
+				break;
+			case 11:
+				if (id < 0) {
+					id = 0x61;
+				}
+				break;
+			case 14:
+				if (id < 0) {
+					id = 0x64;
+				}
+				break;
+			}
+			JumpAnim(act, id);
+			++act->mState;
+			if (CheckStageFlag(gGame.mStage, 1)) {
+				WiiPlayerPlug* plug = &act->mOwner->mPlug;
+				if (plug->mConnection) {
+					plug->mConnection = 0;
+					PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+				}
+			}
+			if (act->mTarget) {
+				act->mArcPosition = act->mOwner->mMoveTranslate;
+				act->mRise        = act->mTargetHeight - act->mOwner->mMoveTranslate.y;
+				act->mArcAngle    = 0.0f;
+				if (act->mRise > 6.0f) {
+					act->mArcStep = 0.8f * (HALF_PI / act->mRise);
+				} else {
+					act->mArcStep = DEG2RAD * 12.0f;
+				}
+				act->mForward = 5.0f;
+				f32 radius    = act->mOwner->mMoveScale.x * GetFloorExtent(act->mOwner, 0).x;
+				f32 height    = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(act->mOwner, 0).y + GetFloorExtent(act->mOwner, 0).y));
+				Mtx rot;
+				PSMTXRotRad(rot, 'y', act->mOwner->mMoveRotate.y);
+				Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner, 0);
+				PSMTXMultVec(rot, &offset, &offset);
+				f32 yaw = act->mOwner->mMoveRotate.y;
+				f32 x   = 3.0f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
+				f32 z   = 3.0f * (f32)cos(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
+				f32 y   = 0.5f + act->mTargetHeight;
+				for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+					XObj* obj = gGame.mXObjs.mObjects[i];
+					if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || (obj->mStatus.mFlags & 0x100000)) {
+						continue;
+					}
+					if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || act->mOwner == obj || obj->GetKind() >= 10000) {
+						continue;
+					}
+					f32 dx = obj->mMoveTranslate.x - x;
+					f32 dz = obj->mMoveTranslate.z - z;
+					if (FSqrt(dx * dx + dz * dz) > 100.0f + (radius + obj->mFloorXZExtent[0])) {
+						continue;
+					}
+					CVec push, contact;
+					u32 touch = ProbeObjectFloor(obj, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, NULL) & 3;
+					if (touch == 3) {
+						act->mForward = 0.0f;
+						act->mRise    = 0.8f * act->mRise;
+						break;
+					}
+				}
+				AdvanceJumpArc(act, frames);
+			}
+			if (!act->mTarget || act->mRise <= 0.0f) {
+				EndJump(act);
+				act->mTarget = NULL;
+			}
+		}
+		break;
+	case 9:
+		if (next < 0) {
+			next    = 0x5B;
+			playing = anim == next || anim == 0x110 || anim == 0x116;
+		}
+	case 12:
+		if (next < 0) {
+			next    = 0x61;
+			playing = anim == next || anim == 0x113 || anim == 0x119;
+		}
+	case 15:
+		if (next < 0) {
+			next    = 0x64;
+			playing = anim == next || anim == 0x11C || anim == 0x11F;
+		}
+		if (!playing) {
+			JumpAnim(act, next);
+		}
+		if (AdvanceJumpArc(act, frames)) {
+			if (act->mForward == 0.0f) {
+				JumpAnim(act, 0x1D, 0.0f);
+				act->mState = 17;
+				return;
+			}
+			s32 id = -1;
+			switch (act->mState) {
+			case 9:
+				if (id < 0) {
+					id = 0x5C;
+				}
+			case 12:
+				if (id < 0) {
+					id = 0x62;
+				}
+			case 15:
+				if (id < 0) {
+					id = 0x65;
+				}
+			}
+			JumpAnim(act, id);
+			++act->mState;
+		}
+		break;
+	case 10:
+		if (next < 0) {
+			next    = 0x5C;
+			playing = anim == next || anim == 0x111 || anim == 0x117;
+		}
+	case 13:
+		if (next < 0) {
+			next    = 0x62;
+			playing = anim == next || anim == 0x114 || anim == 0x11A;
+		}
+	case 16:
+		if (next < 0) {
+			next    = 0x65;
+			playing = anim == next || anim == 0x11D || anim == 0x120;
+		}
+		if (!playing) {
+			JumpAnim(act, next);
+			return;
+		}
+		if (end - frames <= frame) {
+			EndJump(act);
+			act->mTarget = NULL;
+		} else if (interrupt) {
+			act->mOwner->SetAnimRate(4.0f);
+		}
+		break;
+	case 18:
+		if (end - frames <= frame || interrupt) {
+			EndJump(act);
+		}
+		break;
+	case 19:
+		if (end - frames <= frame || interrupt) {
+			EndJump(act);
+		}
+		break;
+	}
 }
 
 /**
