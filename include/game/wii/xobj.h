@@ -2247,7 +2247,14 @@ public:
 	u32 _BB4;
 	s32 mFrameCount;
 	CStatus32 mActorFlags;
-	u8 _BC4[0xC3C - 0xBC4];
+	s32 mEventCommand;
+	s32 mEventArg1;
+	s32 mEventArg2;
+	s32 mEventArg3;
+	u32 mExtraEventArgs[7];
+	f32 mWindowLeft;
+	f32 mWindowRight;
+	u8 _BF8[0xC3C - 0xBF8];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
 	u8 _1DFC[0x1E28 - 0x1DFC];
