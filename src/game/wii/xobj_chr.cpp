@@ -5730,7 +5730,7 @@ Vec XObjChr::GetCameraTarget()
 		Vec target;
 		if (anim == 0xaf || anim == 0xea) {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			f32 end    = GetAnimEndFrame();
 			f32 t      = GetAnimFrame() / end;
 			if (t > 1.0f)
@@ -5738,7 +5738,7 @@ Vec XObjChr::GetCameraTarget()
 			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
 		} else if (anim == 0x17 || anim == 0x7d || anim == 0x1f || anim == 0x20) {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetAnimEndFrame();
@@ -5748,7 +5748,7 @@ Vec XObjChr::GetCameraTarget()
 			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
 		} else if (anim == 0x76) {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			start.x    = joint.x;
 			start.z    = joint.z;
 			f32 end    = GetAnimEndFrame();
@@ -5759,9 +5759,9 @@ Vec XObjChr::GetCameraTarget()
 		} else if (!IsRopeActionState(&chr->mRope, 0)) {
 			if (IsRopeActionState(&chr->mRope, 2) && anim == 0x98) {
 				CVec joint = GetJointWorldPos("second_null");
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				if (GetAnimFrame() > 80.f) {
-					joint = chr->mMoveTranslate;
+					joint = *chr->GetPos();
 					start.y -= chr->mRope.mTargetOffset.y;
 					f32 end = GetAnimEndFrame() - 80.f;
 					f32 t   = (GetAnimFrame() - 80.f) / end;
@@ -5774,7 +5774,7 @@ Vec XObjChr::GetCameraTarget()
 					target  = start + (Vec) { 0, 10, 0 };
 				}
 			} else if (IsRopeActionState(&chr->mRope, 6) && anim == 0x24) {
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				CVec joint = GetJointWorldPos("second_null");
 				start.x    = joint.x;
 				start.z    = joint.z;
@@ -5785,7 +5785,7 @@ Vec XObjChr::GetCameraTarget()
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
 			} else if (anim == 0x85) {
 				CVec joint = GetJointWorldPos("second_null");
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetAnimEndFrame();
@@ -5795,7 +5795,7 @@ Vec XObjChr::GetCameraTarget()
 				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
 			} else {
 				CVec joint = GetJointWorldPos("second_null");
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				start.x    = joint.x;
 				start.z    = joint.z;
 				target     = start + (Vec) { 0, 10, 0 };
@@ -5803,7 +5803,7 @@ Vec XObjChr::GetCameraTarget()
 		} else if (!IsLadderActionState(&chr->mLadder, 0)) {
 			if (anim == 0x87) {
 				CVec joint = GetJointWorldPos("second_null");
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetAnimEndFrame();
@@ -5815,7 +5815,7 @@ Vec XObjChr::GetCameraTarget()
 				target = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
 			} else {
 				CVec joint = GetJointWorldPos("second_null");
-				CVec start = chr->mMoveTranslate;
+				CVec start = *chr->GetPos();
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetAnimEndFrame();
@@ -5826,7 +5826,7 @@ Vec XObjChr::GetCameraTarget()
 			}
 		} else if (anim == 0x13 || anim == 0x14 || anim == 0x15 || anim == 0x16 || anim == 0x19 || anim == 0x1a || anim == 0x1b) {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			start.x    = joint.x;
 			start.z    = joint.z;
 			target     = start + (Vec) { 0, 10, 0 };
@@ -5839,13 +5839,15 @@ Vec XObjChr::GetCameraTarget()
 			PSMTXRotRad(rot, 'y', chr->mMoveRotate.y);
 			PSMTXMultVec(rot, &offset, &offset);
 			CVec end   = GetJointWorldPos("second_null") + offset;
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 
 			start.x      = end.x;
 			start.z      = end.z;
 			f32 frame    = GetAnimFrame();
 			f32 duration = GetAnimEndFrame();
 			f32 t        = frame / duration;
+			if (t > 1.0f)
+				t = 1.0f;
 			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
 			f32 threshold = .91f * duration;
 			f32 elapsed   = GetAnimFrame() - threshold;
@@ -5855,10 +5857,10 @@ Vec XObjChr::GetCameraTarget()
 
 		} else if (IsJumpActionState(&chr->mJump, 9) || IsJumpActionState(&chr->mJump, 12) || IsJumpActionState(&chr->mJump, 15)
 		           || IsJumpActionState(&chr->mJump, 17)) {
-			target   = chr->mMoveTranslate + (Vec) { 0, 10, 0 };
+			target   = *chr->GetPos() + (Vec) { 0, 10, 0 };
 			target.y = 10.f + ((XActJump*)&chr->mJump)->mArcPosition.y;
 		} else if (IsJumpActionState(&chr->mJump, 10) || IsJumpActionState(&chr->mJump, 13) || IsJumpActionState(&chr->mJump, 16)) {
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			CVec arc   = ((XActJump*)&chr->mJump)->mArcPosition;
 			f32 end    = GetAnimEndFrame();
 			f32 t      = GetAnimFrame() / end;
@@ -5868,7 +5870,7 @@ Vec XObjChr::GetCameraTarget()
 		} else if (IsCopterActionState(&chr->mCopter, 7) || IsCopterActionState(&chr->mCopter, 8)
 		           || IsCopterActionState(&chr->mCopter, 9)) {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			start.x    = joint.x;
 			start.z    = joint.z;
 			target     = start + (Vec) { 0, 10, 0 };
@@ -5901,7 +5903,7 @@ Vec XObjChr::GetCameraTarget()
 			target = middle + (root - middle) * t;
 		} else {
 			CVec joint = GetJointWorldPos("second_null");
-			CVec start = chr->mMoveTranslate;
+			CVec start = *chr->GetPos();
 			start.x    = joint.x;
 			start.y    = joint.y;
 			start.z    = joint.z;
@@ -6144,7 +6146,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				XObj::UpdateObject(2);
 				UpdateHeldObject(&chr->mLift, 2);
 				chr->mPlug.UpdateObject(2);
-				f32 sceneFrame = 1.0f + GetAnimFrame();
+				f32 sceneFrame = 2.0f + GetAnimFrame();
 				SetModelFrame(this, sceneFrame);
 				WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
 				if (IsObjectActive(suit)) {
@@ -6365,15 +6367,16 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				    || chr->GetAttachment() == 8) {
 					chr->mAttachmentRequest = 0;
 					chr->mAttachmentStep    = 0;
-				} else if (chr->mLift.mTarget->GetCategory() == 8)
+				} else if (chr->mLift.mTarget->GetCategory() == 8 && chr->mLift.mTargetState != 15)
 					chr->mLift.mState = 20;
 			}
 			result = -1;
 			break;
 		case 514:
-			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+			return ((u32)(chr->mAttachmentRequest - 4) > 3
+			        && ((chr->mLift.mState == 0 && chr->mLift.mTarget == NULL) || chr->mLift.mState == 4));
 		case 502:
-			if (chr->mLift.mTarget && chr->mLift.mTarget->GetCategory() == 8 && chr->mLift.mTargetState != 15)
+			if (chr->mLift.mTarget && chr->mLift.mTarget->GetCategory() == 8)
 				chr->mLift.mState = 24;
 			result = -1;
 			break;
