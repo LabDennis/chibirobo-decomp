@@ -6396,6 +6396,106 @@ void MenuStatus::State8(u32)
 	}
 }
 
+// NONMATCHING: the neighbor table and all state transitions match; this build is eight bytes shorter because the
+// addPanes initialization and the pane-loop branches are scheduled differently
+void MenuStatus::State9(u32)
+{
+	CPad pad(0);
+	s32 neighbors[13][4] = {
+		{ 4, 2, 9, 5 },  { 0, 2, 10, 6 }, { 0, 3, 10, 6 },  { 2, 4, 11, 7 }, { 3, 0, 12, 8 },  { 8, 6, 0, 9 },  { 5, 7, 2, 10 },
+		{ 6, 8, 3, 11 }, { 7, 5, 4, 12 }, { 12, 10, 5, 0 }, { 9, 11, 6, 2 }, { 10, 12, 7, 3 }, { 11, 9, 8, 4 },
+	};
+	bool addPanes = true;
+	if (mOverviewSelection != -1) {
+		mStickOverviewSelection = mOverviewSelection;
+	}
+	switch (mPhase) {
+	case 0: {
+		bool stick = false;
+		if (IsStickUsedOverPointer()) {
+			stick = true;
+		}
+		if (!stick) {
+			if (IsStickLeft()) {
+				mOverviewSelection = neighbors[mOverviewSelection][2];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickRight()) {
+				mOverviewSelection = neighbors[mOverviewSelection][3];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			if (IsStickUp()) {
+				mOverviewSelection = neighbors[mOverviewSelection][0];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickDown()) {
+				mOverviewSelection = neighbors[mOverviewSelection][1];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (mOverviewSelection != mPrevOverviewSelection) {
+			s32 id = mOverviewSelection;
+			const char* text;
+			if (id == -1) {
+				text = NULL;
+			} else if (gStatusEntryAvailable[id]) {
+				text = GetStatusOverviewLabel(id);
+			} else {
+				text = GetLocalizedInterfaceText(0xF);
+			}
+			if (text != NULL) {
+				mHelp     = text;
+				mShowHelp = 1;
+			} else {
+				mShowHelp = 3;
+			}
+		}
+		mPrevOverviewSelection = mOverviewSelection;
+		if (IsCancelPressed()) {
+			mTargetOverviewX = 1086.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			for (int i = 0; i < 4; i++) {
+				mTabs[i].mX = 0.0f;
+				if (mHasFourthTab) {
+					mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				} else {
+					mTabs[i].mTargetX = 252.0f + i * 108;
+				}
+			}
+			mPrevMode        = mMode;
+			mMode            = 4;
+			mNextMode        = 1;
+			mPhase           = 0;
+			const char* text = GetLocalizedInterfaceText(0x18);
+			fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+			mSelection   = -1;
+			mShowHelp    = 3;
+			sStatusPhase = 0.0f;
+			for (int i = 0; i < 13; i++) {
+				if (i != 1) {
+					mPanes[i].mPointed = FALSE;
+					mPanes[i].mPicked  = FALSE;
+				}
+			}
+			addPanes = false;
+		}
+		break;
+	}
+	case 100:
+		if (IsConfirmPressed() || IsCancelPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mPhase             = 0;
+			mTargetDetailScale = 0.0f;
+		}
+		break;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 13; i++) {
+			if (i != 1) {
+				AddPointerPane(&gPointerPanes, &mPanes[i]);
+			}
+		}
+	}
+}
+
 void MenuStatus::State3(u32)
 {
 	OSPanic("menu_status.cpp", 1313, "UpdateItem");

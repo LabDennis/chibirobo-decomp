@@ -1653,6 +1653,7 @@ public:
 	void State4(u32 frames);
 	void State5(u32 frames);
 	void State8(u32 frames);
+	void State9(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 
@@ -1689,9 +1690,10 @@ public:
 	u8 _56C[0x5AC - 0x56C];
 	MenuStatusTab mTabs[4]; // _5AC
 	u8 _5EC[0x5FC - 0x5EC];
-	f32 mOverviewX; // _5FC
-	f32 mOverviewY; // _600
-	u8 _604[0x60C - 0x604];
+	f32 mOverviewX;       // _5FC
+	f32 mOverviewY;       // _600
+	f32 mTargetOverviewX; // _604
+	u8 _608[0x60C - 0x608];
 	f32 mGridX;       // _60C
 	f32 mGridY;       // _610
 	f32 mTargetGridX; // _614
