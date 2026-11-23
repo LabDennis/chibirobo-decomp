@@ -438,7 +438,10 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
-// NONMATCHING: the confirmed key char gets r25 instead of r24, and the key loop loads 0.9f before 255.0f (754/754 insns)
+// NONMATCHING: regalloc — the key-sprite loop's decaPanelKeys[draws[i].mKey]
+// indexing uses swapped base/mKey registers (r4/r5) and the 0.9f/255.0f loads
+// in different f-registers; the keys-address add is scheduled one instruction
+// later (754/754 insns)
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	CTexObj* tex;
@@ -614,12 +617,11 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			PSMTXScale(tex->mMtx[1], draws[i].mScale, 1.0f, 1.0f);
 			tex->mMtxDirty = 1;
 			PSMTXTrans(tex->mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
-			tex->mMtxDirty    = 1;
-			DecaPanelKey* pos = &decaPanelKeys[draws[i].mKey];
-			f32 x             = pos->x;
-			x                 = 0.9f * x;
-			u32 color         = FadeColor(work->mFade);
-			f32 y             = 0.9f * pos->y;
+			tex->mMtxDirty = 1;
+			f32 x          = decaPanelKeys[draws[i].mKey].x;
+			x              = 0.9f * x;
+			u32 color      = FadeColor(work->mFade);
+			f32 y          = 0.9f * decaPanelKeys[draws[i].mKey].y;
 			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f, 0.0f,
 			                   0.0f);
 		}
