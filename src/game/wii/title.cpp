@@ -2025,7 +2025,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 11: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 5, x, y, 21.0f, title->mLoadAlpha);
 		} else {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 6, x, y, 21.0f, title->mLoadAlpha);
@@ -2037,7 +2037,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 13: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 7, x, y, 21.0f, title->mLoadAlpha);
 		} else {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 9, x, y, 21.0f, title->mLoadAlpha);
@@ -2072,7 +2072,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 24: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 4, x, y, 21.0f, title->mLoadAlpha);
 		}
 		break;
