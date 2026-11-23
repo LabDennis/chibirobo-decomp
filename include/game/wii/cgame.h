@@ -1349,6 +1349,8 @@ struct MenuTextRow {
 class MenuSFTest : public Menu {
 public:
 	virtual void Init();
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 	virtual ~MenuSFTest() { }
 	virtual void InitRows(); // _3C, 0x80052F98

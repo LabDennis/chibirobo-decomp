@@ -29,6 +29,7 @@ extern "C" void LayoutMainMenuRows(MenuMain* menu);
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
+extern s32 gSoundFadeFrames;
 extern MEMiHeapHead* gWiiGameHeap;
 extern u8 lbl_8044B700[];
 
@@ -37,10 +38,12 @@ extern s32 gScreenLeft, gScreenTop;
 extern "C" {
 char* GetStageFileName(s32 stage);
 char* GetStageName(s32 stage);
+const char* GetStageNameOrFileName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 void ResumeGameSounds(CGame* game, f32 fadeSeconds);
+void PauseGameSounds(CGame* game, f32 fadeSeconds);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 u8* GetAttachmentDescription(s32 id);
@@ -92,6 +95,7 @@ void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
 void fn_8005A68C(MenuItem* menu, const char* text, u32 color);
 void fn_800556B0(CbPane* pane, const CbPaneLayout* layout);
+GXColor fn_8016A96C(u8* from, u8* to, f32 t);
 void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32 selected, f32 x, f32 y, f32 alpha, f32 sx, f32 sy);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
@@ -214,7 +218,31 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 
 // draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), which this code
 // does not model yet
-extern "C" void fn_80050314(Menu* menu, s32 index, BOOL, BOOL);
+// NONMATCHING: row-count conversions and float register lifetimes differ; both call lists match
+extern "C" void fn_80050314(Menu* menu, s32 index, BOOL useRowWidth, BOOL proportional)
+{
+	MenuSFTest* rows = (MenuSFTest*)menu;
+	MenuTextRow* row = &rows->mRows[index];
+	if (row->IsSeparator()) {
+		f32 rowHeight = 2.0f + menu->mFontSize;
+		f32 x         = menu->mWindow.mX - (30.0f + menu->mMaxWidth) / 2.0f;
+		f32 y         = menu->mWindow.mY - rowHeight * rows->mRowTotal / 2.0f + rowHeight * (index + 0.5f);
+		u32 alpha     = (u32)(255.0f * menu->mAlpha);
+		DrawGsLineSegment(&gGame.mGs, NULL, x, y, 0.0f, alpha | 0x96969600, 30.0f + menu->mMaxWidth + x, y, 0.0f, alpha | 0x96969600);
+		DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + x, 1.0f + y, 0.0f, alpha | 0xFAFAFA00, 1.0f + (30.0f + menu->mMaxWidth + x), 1.0f + y,
+		                  0.0f, alpha | 0xFAFAFA00);
+		return;
+	}
+	f32 width = useRowWidth ? row->mWidth : menu->mMaxWidth;
+	f32 x     = menu->mWindow.mX - width / 2.0f;
+	f32 y     = menu->mWindow.mY - (2.0f + menu->mFontSize) * rows->mRowTotal / 2.0f + (2.0f + menu->mFontSize) * index;
+	u32 color = index == menu->mSelection ? (u32)(255.0f * menu->mAlpha) | 0x20202000 : (u32)(255.0f * menu->mAlpha) | 0x40404000;
+	if (proportional) {
+		DrawGsProportionalTextFormat(&gGame.mGs, color, row->mText, x, y, 0.0f, menu->mFontSize, menu->mFontSize);
+	} else {
+		DrawGsFixedWidthTextFormat(&gGame.mGs, color, row->mText, x, y, 0.0f, menu->mFontSize, menu->mFontSize);
+	}
+}
 
 // NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
 // draws no texture, and it skips a window without size
@@ -789,6 +817,217 @@ void MenuSFTest::StartOperation(s32 which)
 		char* text = mRows[mSelection].mText;
 		sprintf(text + strlen(text) + 1, "");
 	}
+}
+
+BOOL MenuSFTest::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		if (gGame.mMemcardLoaded) {
+			return IsOpen();
+		}
+		s32 result = gGame.mSaveManager.mFile.mResult;
+		if (result < 0) {
+			sMenuSFTestErr.mWindow.mX = mWindow.mX;
+			sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
+			sMenuSFTestErr.mState     = 1;
+			sMenuSFTestErr.Resume();
+			sMenuSFTestErr.InitRows();
+			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
+			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
+			    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText, 1, sMenuSFTestErr.mFontSize);
+			if (sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth > sMenuSFTestErr.mMaxWidth) {
+				sMenuSFTestErr.mMaxWidth = sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth;
+			}
+			sMenuSFTestErr.mCount++;
+			sMenuSFTestErr.mWindow.mHeight = sMenuSFTestErr.mCount * (2.0f + sMenuSFTestErr.mFontSize) + 24.0f;
+			sMenuSFTestErr.mWindow.mWidth  = 60.0f + sMenuSFTestErr.mMaxWidth;
+			sMenuSFTestErr.mSelection      = 0;
+			Suspend(FALSE);
+			return IsOpen();
+		}
+		switch (mOperation) {
+		case 1: {
+			for (s32 i = 0; i < 10; i++) {
+				WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
+				char* text              = mRows[i].mText;
+				if (entry->mStatus & 1) {
+					if (entry->mStatus & 2) {
+						sprintf(text, "(%d) ", i);
+						sprintf(text + strlen(text) + 1, "broken");
+					} else {
+						WiiSaveSlotHeader* header = (WiiSaveSlotHeader*)entry->mData;
+						OSCalendarTime time;
+						OSTicksToCalendarTime(header->mTimestamp, &time);
+						s32 seconds           = header->mPlayTime / 3600.0f;
+						s32 hours             = header->mPlayTime / 216000.0f;
+						s32 stage             = header->mStages[0];
+						const char* stageName = GetStageNameOrFileName(stage);
+						sprintf(text, "(%d) %02d/%02d %2d:%02d [%2d:%02d] (%3d)", i, time.mon + 1, time.mday, time.hour, time.min, hours,
+						        seconds % 60, stage);
+						sprintf(text + strlen(text) + 1, stageName);
+					}
+				} else {
+					sprintf(text, "(%d) ", i);
+					if (entry->mStatus & 8) {
+						sprintf(text + strlen(text) + 1, "insufficient space");
+					} else if (entry->mStatus & 0x10) {
+						sprintf(text + strlen(text) + 1, "insufficient inode");
+					} else {
+						sprintf(text + strlen(text) + 1, "none");
+					}
+				}
+			}
+			u32 blocks, inodes;
+			GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+			sprintf(mRows[mRowTotal - 1].mText, "FREE FSBLOCK:%4d   FREE INODE: %2d", blocks, inodes);
+			StartOperation(0);
+			break;
+		}
+		case 3:
+			if (result < 0) {
+				sMenuSFTestErr.mWindow.mX = mWindow.mX;
+				sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
+				sMenuSFTestErr.mState     = 1;
+				sMenuSFTestErr.Resume();
+				sMenuSFTestErr.InitRows();
+				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
+				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
+				    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText, 1, sMenuSFTestErr.mFontSize);
+				if (sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth > sMenuSFTestErr.mMaxWidth) {
+					sMenuSFTestErr.mMaxWidth = sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth;
+				}
+				sMenuSFTestErr.mCount++;
+				sMenuSFTestErr.mWindow.mHeight = sMenuSFTestErr.mCount * (2.0f + sMenuSFTestErr.mFontSize) + 24.0f;
+				sMenuSFTestErr.mWindow.mWidth  = 60.0f + sMenuSFTestErr.mMaxWidth;
+				sMenuSFTestErr.mSelection      = 0;
+				Suspend(FALSE);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			} else {
+				StartOperation(1);
+			}
+			return IsOpen();
+		case 5:
+			StartOperation(0);
+			if (result == 0) {
+				Close(5);
+				if (sMenuStageSelect.IsOpen()) {
+					sMenuStageSelect.Close(5);
+					sMenuStageSelect.mState = 0;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					gGame.ClearStatusFlags(2);
+				}
+				_168 = 10010;
+			}
+			return IsOpen();
+		case 7:
+			StartOperation(1);
+			return IsOpen();
+		}
+		if (gWiiPointer.Check(PadActStickUp)) {
+			if (mRowTotal <= 0) {
+				goto done;
+			}
+			do {
+				if (--mSelection < 0) {
+					mSelection = 9;
+				}
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			if (mRowTotal <= 0) {
+				goto done;
+			}
+			do {
+				if (++mSelection > 9) {
+					mSelection = 0;
+				}
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+			if (sMenuStageSelect.mSuspended) {
+				gGame.SetStatusFlags(2);
+			}
+			sMenuStageSelect.mSuspended   = FALSE;
+			sMenuStageSelect.mSuspendFade = FALSE;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			sMenuSFTestSub.mWindow.mX = 88.0f + (mWindow.mX - mWindow.mWidth / 2.0f);
+			sMenuSFTestSub.mWindow.mY = 80.0f + (mWindow.mY - mWindow.mHeight / 2.0f) + (2.0f + mFontSize) * mSelection;
+			sMenuSFTestSub.mState     = 1;
+			sMenuSFTestSub.Resume();
+			sMenuSFTestSub.InitRows();
+			for (s32 i = 0; i < 4; i++) {
+				sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mText = sSFTestSubLines[i].mText;
+				sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth
+				    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mText, 1, sMenuSFTestSub.mFontSize);
+				if (sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth > sMenuSFTestSub.mMaxWidth) {
+					sMenuSFTestSub.mMaxWidth = sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth;
+				}
+				sMenuSFTestSub.mCount++;
+			}
+			sMenuSFTestSub.mWindow.mHeight = sMenuSFTestSub.mCount * (2.0f + sMenuSFTestSub.mFontSize) + 24.0f;
+			sMenuSFTestSub.mWindow.mWidth  = 60.0f + sMenuSFTestSub.mMaxWidth;
+			sMenuSFTestSub.mSelection      = 0;
+			Suspend(FALSE);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+
+done:
+	if (IsOpen()) {
+		return TRUE;
+	}
+	if (_168 >= 0) {
+		ChangeGameStage(&gGame, _168, TRUE);
+	}
+	return FALSE;
+}
+
+BOOL MenuSFTest::Draw()
+{
+	BOOL draw;
+	if (!IsOpen()) {
+		draw = FALSE;
+	} else {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+		DrawMenuWindow(&mWindow);
+		draw = TRUE;
+	}
+	if (draw) {
+		for (s32 i = 0; i < mRowTotal; i++) {
+			char* text = mRows[i].mText;
+			if (mRows[i].IsSeparator()) {
+				fn_80050314(this, i, TRUE, TRUE);
+				continue;
+			}
+			if (*text == 0) {
+				continue;
+			}
+			fn_80050314(this, i, FALSE, FALSE);
+			f32 rowHeight = 2.0f + mFontSize;
+			f32 x         = mWindow.mX - mMaxWidth / 2.0f + MeasureGameTextWidth(&gGame.mGs, text, 0, mFontSize);
+			f32 y         = mWindow.mY - rowHeight * mRowTotal / 2.0f + rowHeight * i;
+			u32 color     = i == mSelection ? (u32)(255.0f * mAlpha) | 0x20202000 : (u32)(255.0f * mAlpha) | 0x40404000;
+			DrawGsProportionalTextFormat(&gGame.mGs, color, text + strlen(text) + 1, x, y, 0.0f, mFontSize, mFontSize);
+		}
+		f32 rowHeight = 2.0f + mFontSize;
+		f32 x         = mWindow.mX - mMaxWidth / 2.0f;
+		f32 y         = mWindow.mY - rowHeight * mRowTotal / 2.0f + rowHeight * mSelection;
+		f32 alpha;
+		if (sMenuSFTestSub.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTestSub.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSFTestErr.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTestErr.mWindow.mDrawAlpha : 0.0f;
+		} else {
+			alpha = mAlpha;
+		}
+		DrawMenuSelectionCursor(mCursor, x, y, mMaxWidth, mFontSize, mAlpha, alpha);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void MenuMain::Reset()
@@ -2278,6 +2517,92 @@ extern "C" MenuRect fn_800556E4(const CbPane* pane)
 	rect.right  = origin.x + pane->mWidth;
 	rect.bottom = origin.y - pane->mHeight;
 	return rect;
+}
+
+extern "C" bool fn_80055A7C(CbPaneList* list, CbPane* pane, f32 x, f32 y);
+
+extern "C" void fn_800559D8(CbPaneList* list, CbPane* pane, s32 event, s32)
+{
+	switch (event) {
+	case 1:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf10(pane);
+		}
+		break;
+	case 2:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf0C(pane);
+		}
+		break;
+	case 0:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf08(pane);
+		}
+		break;
+	case 3:
+		break;
+	case 6:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf14(pane);
+		}
+		break;
+	}
+}
+
+// NONMATCHING: MWCC inlines fn_80055A7C and fn_800559D8 throughout the pane loop; retail calls both out of line
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames)
+{
+	if (list->mEnabled) {
+		pointerOn = pointerOn && (gGame.mPointer.mTex.mTlut.mTlutName & 1);
+	}
+	bool released = false;
+	if (list->mActive) {
+		if (pointerOn && !list->_408[1]) {
+			if (list->mMenu != NULL) {
+				list->mMenu->vf18(pos);
+			}
+		} else if (!pointerOn && list->_408[1]) {
+			released = true;
+		}
+		list->_408[1] = pointerOn;
+	}
+	CbPane* focused = NULL;
+	for (s32 i = 0; i < list->mCount; i++) {
+		CbPane* pane = list->mPanes[i];
+		bool current = false;
+		if (pointerOn && fn_80055A7C(list, pane, pos->x, pos->y)) {
+			if (pane->mPointed) {
+				fn_800559D8(list, pane, 3, 0);
+			} else {
+				pane->mPointed = TRUE;
+				fn_800559D8(list, pane, 1, 0);
+			}
+			current = true;
+		} else if (pane->mPointed) {
+			pane->mPointed = FALSE;
+			fn_800559D8(list, pane, 2, 0);
+		}
+		if (current) {
+			focused = pane;
+		}
+	}
+	if (gWiiPointer.mButton & 0x10) {
+		list->_408[0] += frames;
+	} else {
+		list->_408[0] = 0;
+	}
+	if (focused != NULL) {
+		if (gWiiPointer.Check(PadActConfirm)) {
+			fn_800559D8(list, focused, 0, 0);
+		}
+		if (list->_408[0] >= 24 && list->_408[0] % 6 == 0) {
+			fn_800559D8(list, focused, 6, 0);
+			list->_408[0] = 24;
+		}
+	}
+	if (released && list->mMenu != NULL) {
+		list->mMenu->vf1C(pos);
+	}
 }
 
 // the pointer at x, y is on the pane, tested like an nw4r::lyt pane: through the inverse of its matrix.
@@ -5052,6 +5377,40 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
+// NONMATCHING: the packed CColor construction and register lifetimes differ; colors, blending and the frame call match
+extern "C" void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32, f32)
+{
+	if (index < 0) {
+		return;
+	}
+	CTexObj frameTexture;
+	u32 whiteColor = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+	CColor white;
+	white.Set((s32)(whiteColor >> 24), (s32)((whiteColor >> 16) & 0xFF), (s32)((whiteColor >> 8) & 0xFF), (s32)(whiteColor & 0xFF));
+	CColor fill;
+	if (newest == 1) {
+		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x2B4C5000;
+		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
+	} else {
+		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x28282800;
+		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
+	}
+	u32 border;
+	if (selected == 1) {
+		if (newest == 1) {
+			border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+		} else {
+			border = (u32)(255.0f * fileAlpha) | 0xFFB62800;
+		}
+	} else if (newest == 1) {
+		border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+	} else {
+		border = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+	}
+	CColor color(fn_8016A96C(&fill.r, &white.r, alpha));
+	DrawTexturedWindowFrame(*(u32*)&color.r, border, x, y - height / 2.0f, width - 56.0f, height, alpha, 1.0f, 1.0f);
+}
+
 // NONMATCHING: the Wii call list, slot fields, text ids and coordinates are reconstructed; with -ipa file this build
 // still inlines all ten DrawSaveDetailText calls and grows to 4404 bytes, while retail calls it out of line in 1936
 extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
@@ -7147,6 +7506,43 @@ BOOL MenuStatus::Update(u32 frames)
 		}
 	}
 	return IsOpen();
+}
+
+extern "C" void fn_8005CA18(MenuStatus* menu)
+{
+	menu->mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+	menu->mSavedBgmVolume = gGame.mSound.mMusicVolume;
+	CSoundHandle* slot    = NULL;
+	for (s32 i = 0; i < 0x40; i++) {
+		if (!gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			slot = &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
+			break;
+		}
+	}
+	if (slot != NULL && static_cast<nw4r::snd::SoundStartable&>(gGame.mSound.mArchivePlayer).StartSound(slot, 4)) {
+		slot->SetOutputLineFlag(gGame.mSound.mArchivePlayer.mReady);
+		slot->mVolumeTarget = 1.0f;
+		if (gSoundFadeFrames == 0 || slot->mVolumeTarget == slot->mVolume) {
+			slot->mVolume = slot->mVolumeTarget;
+		} else {
+			slot->mVolumeStep = (slot->mVolumeTarget - slot->mVolume) / gSoundFadeFrames;
+		}
+		slot->nw4r::snd::SoundHandle::SetVolume(slot->mVolume, 0);
+		slot->mPitchTarget = 1.0f;
+		if (gSoundFadeFrames == 0 || slot->mPitchTarget == slot->mPitch) {
+			slot->mPitch = slot->mPitchTarget;
+		} else {
+			slot->mPitchStep = (slot->mPitchTarget - slot->mPitch) / gSoundFadeFrames;
+		}
+		slot->nw4r::snd::SoundHandle::SetPitch(slot->mPitch);
+		if (gGame.mSound.mArchivePlayer.mReady & 2) {
+			slot->SetRemoteOutVolume(0, 0.5f);
+		}
+	}
+	menu->mPrevMode = menu->mMode;
+	menu->mMode     = 4;
+	menu->mNextMode = 1;
+	menu->mPhase    = 0;
 }
 
 // NONMATCHING: retail expands StartSound here; this build calls its out-of-line copy.
@@ -9869,8 +10265,6 @@ extern "C" void ResetMenuGroup(MenuEx* ex)
 	}
 }
 
-extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames);
-
 // UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
 // tests the pointer against the menus' panes.
 // NONMATCHING: 80 %, the frame is retail's; the screen size's int to float conversions are scheduled apart
@@ -9913,6 +10307,31 @@ extern "C" void UpdateOpenMenus(MenuEx* ex, u32 frames)
 	pos.x          = pointer.x - halfWidth;
 	pos.y          = -(pointer.y + halfHeight);
 	fn_8005575C(&gPointerPanes, gWiiPointer.mPointerValid != 0, &pos, frames);
+}
+
+extern "C" void fn_80084C84(MenuEx* ex)
+{
+	if (!ex->mActive) {
+		return;
+	}
+	WiiFbTexture* texture = (WiiFbTexture*)&ex->_34;
+	if (texture->mImage == NULL) {
+		CreateFbTexture(texture, gGame.mGs.mScreen.fbWidth, gGame.mGs.mScreen.efbHeight, GX_TF_RGB565, FALSE, NULL, "(menu)");
+		CopyFbTexture(texture, texture->mFormat, FALSE, TRUE);
+		PauseGameSounds(&gGame, 0.2f);
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	gGame.mGs.mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+	gGame.mGs.mCurTevStage->SetColorIn(GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
+	gGame.mGs.mCurTevStage->SetColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	gGame.mGs.mCurTevStage->SetAlphaIn(GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
+	gGame.mGs.mCurTevStage->SetAlphaOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
+	DrawFbTexture(texture, 0xFFFFFFFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 0.0f, gPointerScreenWidth, gPointerScreenHeight,
+	              0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 }
 
 extern "C" void DrawOpenMenus(MenuEx* ex)
