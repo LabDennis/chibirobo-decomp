@@ -1696,7 +1696,7 @@ public:
 	BOOL PassedAnimFrame(f32 f) { return mLastAnimFrame < f && GetAnimFrame() >= f; }
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168(u32 frames);        // _168, steps the two queued material colors to their targets
-	virtual void vf16C();                  // _16C, empty
+	virtual void vf16C(u32 frames);        // _16C, empty
 	// queues the model on the scene draw list; the view argument is unused in the
 	// body but callers pass it: DrawWithView hands its view through (retail emits
 	// no argument setup), the DrawGroundShadow call sites pass NULL (li r4, 0)
@@ -2208,6 +2208,16 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);
 
+struct XObjActor3Part {
+	nw4r::g3d::ResNode mJoint; // _00
+	XObj* mObj;                // _04
+	Mtx mMtx;                  // _08
+	u8 _38[0x68 - 0x38];
+
+	void Clear() { mObj = NULL; }
+};
+STATIC_ASSERT(sizeof(XObjActor3Part) == 0x68);
+
 // the three-object actor: like XObjChr it carries a dust pool (its own nested
 // CPtclSet at _C3C), a CTexObj[2] at _1BF4 and an AnimSfx at _1E28
 class XObjActor3 : public XObj {
@@ -2227,11 +2237,27 @@ public:
 	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void vf16C(u32 frames);
+	virtual void DrawObject();
 	virtual void DrawObjectEffects();
+	virtual void DrawScreenOverlay();
 	virtual void DrawDebugStatus();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);
+	virtual void PauseSounds(f32 fade) { mSfx.Pause(fade); }
+	virtual void ResumeSounds(f32 fade) { mSfx.Resume(fade); }
 	virtual void UpdateAnimationSounds();
 
 	void Kind0(u32 frames);
+	void UpdateObjectGauge(u32 frames);
+	void Kind2(u32 frames);
+	void Kind3(u32 frames);
+	void Kind4(u32 frames);
+	void Kind5(u32 frames);
+	void Kind6(u32 frames);
+	void Kind7(u32 frames);
+	void Kind8(u32 frames);
 	void Kind9(u32 frames);
 	void Kind10(u32 frames);
 	void Kind11(u32 frames);
@@ -2265,7 +2291,7 @@ public:
 	f32 mOrbitHeight;
 	f32 mOrbitZ;
 	f32 mOrbitDistance;
-	u8 _C0C[0xC1C - 0xC0C];
+	CVec _C0C;
 	s32 mTimerFadeMode;
 	f32 mTimerPanelAlpha;
 	f32 mCountdownFrames;
@@ -2284,11 +2310,13 @@ public:
 	XObj* mHeld;
 	s32 _1E20;
 	s32 mSe;
-	AnimSfx mSfx; // _1E28
-	u8 _1E84[0x21C8 - 0x1E84];
+	AnimSfx mSfx;             // _1E28
+	XObjActor3Part mParts[8]; // _1E84
+	u8 _21C4[0x21C8 - 0x21C4];
 };
 STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
 
+typedef void (XObjActor3::*XObjActor3Func)(u32 frames);
 // XObjLeticker's recovered fields live in game/wii/xobjleticker.h
 
 // toys made of two more objects, read after the toy itself; the retail ctor

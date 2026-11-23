@@ -3,6 +3,7 @@
 #include "game/wii/cpad.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
+#include "game/globals.h"
 #include "game/wii/spiderplacement.h"
 #include "arithmetic.h"
 #include <math.h>
@@ -13,17 +14,31 @@ BOOL IsPlayerFlashingFromHit(WiiPlayerState* player);
 BOOL IsUsingMug(XAction* action);
 f32 GetPlayerCollisionRadius(WiiPlayerState* player);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
+void SetGsTevMode(CGsTevStage* stage, s32 mode);
+void ShowScrapCounter(InfoScrn* scrn);
+void HideScrapCounter(InfoScrn* scrn);
+void ShowHappyPointCounter(InfoScrn* scrn);
+void HideHappyPointCounter(InfoScrn* scrn);
+void ShowMoolahCounter(InfoScrn* scrn);
+void HideMoolahCounter(InfoScrn* scrn);
 CVec GetStagePlacementScale(const XObj* obj);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
-void fn_801426C0(XObjActor3* actor, Vec* pos);
+void HandleItem8ActorCommand(XObjActor3* actor);
+void DrawStage02TimerPanel(XObjActor3* actor);
+void DrawStage02ActorCounterPanel(XObjActor3* actor);
 bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
 void LaunchSpiderBossPart(XObjActor3* actor);
 BOOL HasSpiderFinishedDeathAnimation(XObjSpider* spider);
 extern s32 gRefreshRate;
+extern s32 gPointerScreenWidth;
+extern s32 gScreenSafeTop;
 s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
 }
+
+static void EmitKind9Dust(XObjActor3* actor, Vec* pos);
 
 extern "C" AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
 	{ 3, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
@@ -33,6 +48,34 @@ extern "C" AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
 	{ 4, 1.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
 	{ 4, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
 	{ -1 },
+};
+
+extern "C" {
+f32 gStage02TimerOutlineX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
+f32 gStage02TimerOutlineY[4] = { -2.0f, -2.0f, 2.0f, 2.0f };
+}
+
+XObjActor3Func gActor3UpdateHandlers[20] = {
+	&XObjActor3::Kind0,
+	&XObjActor3::UpdateObjectGauge,
+	&XObjActor3::Kind2,
+	&XObjActor3::Kind3,
+	&XObjActor3::Kind4,
+	&XObjActor3::Kind5,
+	&XObjActor3::Kind6,
+	&XObjActor3::Kind7,
+	&XObjActor3::Kind8,
+	&XObjActor3::Kind9,
+	&XObjActor3::Kind10,
+	&XObjActor3::Kind11,
+	&XObjActor3::Kind12,
+	&XObjActor3::Kind13,
+	&XObjActor3::UpdateSpiderCounterPanel,
+	&XObjActor3::Kind15,
+	&XObjActor3::Kind16,
+	&XObjActor3::Kind17,
+	&XObjActor3::Kind18,
+	&XObjActor3::Kind19,
 };
 
 static inline bool IsPlayerAway(WiiPlayerState* player)
@@ -137,6 +180,179 @@ static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 
 // NONMATCHING: the distance expression keeps a second Vec temporary in retail;
 // calls, constants and state transitions are otherwise reconstructed.
+void XObjActor3::UpdateObjectGauge(u32 frames)
+{
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, (WiiTitleObject*)gGame.mXObjs.mPools[5].Get(mPoolIndex), 1, 1, 0);
+		mEventCommand = 0;
+		break;
+	case 2:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
+		mEventCommand = 0;
+		break;
+	}
+}
+
+void XObjActor3::Kind2(u32 frames)
+{
+	f32 time = gGame.mTimeState.mTime;
+	switch (GetKind()) {
+	case 0x411:
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(clock->GetWorldMtx(clock->FindResNode("cycl66")), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -(12.0f * time)));
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				SetBaseMtx(result);
+				return;
+			}
+		}
+		break;
+	case 0x413:
+		mMoveRotate.z = PI * (2.0f * -(12.0f * time));
+		break;
+	case 0x435:
+		mMoveRotate.x = PI * (2.0f * (12.0f * time));
+		break;
+	default:
+		mMoveRotate.z = PI * (2.0f * (12.0f * time));
+	}
+}
+
+void XObjActor3::Kind3(u32 frames)
+{
+	f32 time = gGame.mTimeState.mTime;
+	switch (GetKind()) {
+	case 0x412:
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(clock->GetWorldMtx(clock->FindResNode("cycl66")), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -time) + 2.617994f);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				SetBaseMtx(result);
+				return;
+			}
+		}
+		break;
+	case 0x414:
+		mMoveRotate.z = PI * (2.0f * -time) + 2.617994f;
+		break;
+	case 0x436:
+		mMoveRotate.x = PI * (2.0f * time) + 3.6651917f;
+		break;
+	default:
+		mMoveRotate.z = PI * (2.0f * time) + 3.6651917f;
+	}
+}
+
+void XObjActor3::Kind4(u32 frames)
+{
+	mFrameCount++;
+	f32 wave  = std::sinf(DEG2RAD * ((mFrameCount * 6) % 360));
+	f32 swing = 0.25f;
+	if (GetKind() == 0x437) {
+		mMoveRotate.x = wave * swing;
+	} else {
+		mMoveRotate.z = wave * swing;
+	}
+}
+
+void XObjActor3::Kind5(u32 frames)
+{
+}
+
+void XObjActor3::Kind6(u32 frames)
+{
+	s16 id;
+	s16 num;
+	s32 i;
+	s32 count = 0;
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		for (i = 0; i < 0x100; i++) {
+			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
+			id                   = items[i].GetId();
+			num                  = items[i].GetCount();
+			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+				count++;
+			}
+		}
+		gGame.mEvt.mSelectResult = count;
+		mEventCommand            = 0;
+		break;
+	}
+}
+
+void XObjActor3::Kind7(u32 frames)
+{
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		if (mEventArg1 != 0) {
+			ShowScrapCounter(&gGame.mInfoScrn);
+		} else {
+			HideScrapCounter(&gGame.mInfoScrn);
+		}
+		mEventCommand = 0;
+		break;
+	case 2:
+		if (mEventArg1 != 0) {
+			ShowHappyPointCounter(&gGame.mInfoScrn);
+			ShowMoolahCounter(&gGame.mInfoScrn);
+			ShowScrapCounter(&gGame.mInfoScrn);
+		} else {
+			HideHappyPointCounter(&gGame.mInfoScrn);
+			HideMoolahCounter(&gGame.mInfoScrn);
+			HideScrapCounter(&gGame.mInfoScrn);
+		}
+		mEventCommand = 0;
+		break;
+	}
+}
+
+void XObjActor3::Kind8(u32 frames)
+{
+	if (mActorFlags.mFlags & 0x100) {
+		nw4r::g3d::ResNode joint = GetResNodeOrFirst(1);
+		CVec pos                 = GetJointPos(joint);
+		s32 kind                 = -1;
+		if (mActorFlags.mFlags & 0x100) {
+			kind = 0x40B;
+		}
+		if (kind >= 0) {
+			for (s32 i = 0; i < 0x120; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (kind == obj->GetKind()) {
+					Mtx m, t, a;
+					PSMTXCopy(GetWorldMtx(joint), m);
+					PSMTXTrans(t, 0.0f, -14.0f, 0.0f);
+					PSMTXConcat(m, t, a);
+					obj->SetBaseMtx(a);
+					if (mStatus.mFlags & 0x10000) {
+						obj->mStatus.mFlags |= 0x10000ULL;
+					} else {
+						obj->mStatus.mFlags &= ~0x10000ULL;
+					}
+				}
+			}
+		}
+	}
+}
+
 void XObjActor3::Kind10(u32 frames)
 {
 	WiiPlayerState* player = gGame.GetPlayer();
@@ -478,7 +694,7 @@ void XObjActor3::Kind9(u32 frames)
 			} else if (--mFrameCount < 0) {
 				mFrameCount = 2;
 				Vec dustPos = mMoveTranslate;
-				fn_801426C0(this, &dustPos);
+				EmitKind9Dust(this, &dustPos);
 			}
 		}
 		break;
@@ -548,7 +764,7 @@ void XObjActor3::Kind9(u32 frames)
 		if (--mFrameCount < 0) {
 			mFrameCount = 2;
 			Vec dustPos = mMoveTranslate;
-			fn_801426C0(this, &dustPos);
+			EmitKind9Dust(this, &dustPos);
 		}
 		if (Kind9AnimFinished(this, frames)) {
 			mStatus.mFlags |= 0x100000;
@@ -1752,15 +1968,57 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 
 extern "C" void ResetActor3Fields(XObjActor3* actor);
 
+extern "C" void HandleItem8ActorCommand(XObjActor3* actor)
+{
+	if (actor->mEventCommand != 1) {
+		return;
+	}
+	s32 kind = -1;
+	if (actor->mActorFlags.Check(0x100)) {
+		kind = 0x40B;
+		actor->mActorFlags.mFlags &= ~0x100;
+	}
+	if (kind >= 0) {
+		switch (kind) {
+		case 0x40B:
+			for (s32 i = 0; i < 0x120; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (kind == obj->GetKind()) {
+					obj->mStatus.mFlags &= ~0x10000ULL;
+				}
+			}
+			break;
+		}
+	}
+	switch (actor->mEventArg1) {
+	case 0x40B:
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (actor->mEventArg1 == obj->GetKind()) {
+				actor->mHeld = obj;
+				obj->mStatus.mFlags |= 0x10000ULL;
+				switch (actor->mEventArg1) {
+				case 0x40B:
+					actor->mActorFlags.mFlags |= 0x100;
+					obj->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					break;
+				}
+			}
+		}
+		break;
+	default:
+		if (actor->mHeld != NULL) {
+			actor->mHeld->ClearBaseMtx();
+			actor->mHeld = NULL;
+		}
+		break;
+	}
+	actor->mEventCommand = 0;
+}
+
 void XObjActor3::ResetForNewGame()
 {
 	ResetActor3Fields(this);
-}
-
-void XObjActor3::ResetObjectState()
-{
-	XObj::ResetObjectState();
-	ResetForNewGame();
 }
 
 void XObjActor3::InitializeObject()
@@ -1769,13 +2027,17 @@ void XObjActor3::InitializeObject()
 	ResetForNewGame();
 }
 
+void XObjActor3::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ResetForNewGame();
+}
+
 void XObjActor3::Kind0(u32 frames)
 {
 	ResetForNewGame();
 }
 
-// NONMATCHING: mParts and _C0C still need layout-preserving declarations before their resets
-// and HandleEventCommand can be added without changing XObjActor3's constructor again.
 inline void ResetActor3Fields(XObjActor3* actor)
 {
 	actor->_BA0               = 0.0f;
@@ -1804,11 +2066,17 @@ inline void ResetActor3Fields(XObjActor3* actor)
 	actor->mOrbitX            = zero.x;
 	actor->mOrbitHeight       = zero.y;
 	actor->mOrbitZ            = zero.z;
+	for (int i = 0; i < 8; i++) {
+		actor->mParts[i].Clear();
+	}
 	if (actor->mPoolIndex == 0) {
 		gSpiderBossVolleySlot          = 0;
 		gActor3Kind15ActivationCounter = 0;
 	}
 	actor->SetColor(1, 0, 0, 0, 0.0f);
+	actor->_C0C.x             = 0.0f;
+	actor->_C0C.y             = 0.0f;
+	actor->_C0C.z             = 0.0f;
 	actor->mTimerFadeMode     = 0;
 	actor->mTimerPanelAlpha   = 0.0f;
 	actor->mCountdownFrames   = 0.0f;
@@ -1834,8 +2102,6 @@ inline void ResetActor3Fields(XObjActor3* actor)
 	actor->mSe          = -1;
 }
 
-// NONMATCHING: the eight attached-object pointers at _1E88 still need a declaration that does not
-// add ResNode construction to XObjActor3's constructor.
 BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 {
 	if (XObj::LoadFromPlacement(info)) {
@@ -1873,6 +2139,9 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		mMoveRotate.y    = PlacementRotation(mCoord).y;
 		mMoveRotate.z    = PlacementRotation(mCoord).z;
 		mHeading         = PlacementRotation(mCoord).y;
+		for (int i = 0; i < 8; ++i) {
+			mParts[i].Clear();
+		}
 		if (mPoolIndex == 0) {
 			gSpiderBossVolleySlot          = 0;
 			gActor3Kind15ActivationCounter = 0;
@@ -1908,6 +2177,283 @@ void XObjActor3::Release()
 	XObj::Release();
 }
 
+void XObjActor3::UpdateObject(u32 frames)
+{
+	switch (GetItem()) {
+	case 8:
+		mActorFlags.mFlags |= 4;
+		break;
+	case 9:
+		UpdateAnimationSounds();
+		if (gGame.GetStatusFlags(0x400)) {
+			return;
+		}
+		break;
+	case 10:
+		if (gGame.GetStatusFlags(0x400)) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 11:
+	case 12:
+		if (gGame.GetStatusFlags(0x400)) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			if (mEventArg1 != 0) {
+				mActorFlags.mFlags &= ~4;
+			} else {
+				mActorFlags.mFlags |= 4;
+				mKindStep = 0;
+			}
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		case 2:
+			mKindStep     = 2;
+			mKindTimer    = mEventArg2 / 100.0f;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 13:
+		switch (mRumble) {
+		case 0:
+			break;
+		case 1:
+			if (gGame.GetStatusFlags(0x800000000ULL)) {
+				WiiRumble& rumble = gWiiPads[0].mRumble[0];
+				rumble.flags |= RumbleRunning;
+				rumble.remaining = 24;
+				mRumbleTimer     = 24 / frames;
+				mRumble++;
+			} else {
+				mRumble = 0;
+			}
+			break;
+		case 2:
+			if (--mRumbleTimer < 0) {
+				mRumble = 0;
+			}
+			break;
+		}
+		if (gGame.GetStatusFlags(0x400)) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 14:
+		if (gGame.GetStatusFlags(0x400)) {
+			return;
+		}
+		HandleSpiderCounterCommand(this);
+		break;
+	}
+	if (mActorFlags.mFlags & 0x10) {
+		return;
+	}
+	(this->*gActor3UpdateHandlers[GetItem()])(frames);
+	if (!(mActorFlags.mFlags & 4)) {
+		SetRotateY(mHeading, 0.0f);
+		SetPos(mMoveTranslate);
+	}
+	XObj::UpdateObject(frames);
+}
+
+void XObjActor3::vf16C(u32 frames)
+{
+	if (mActorFlags.mFlags & 0x10) {
+		return;
+	}
+	if (GetKind() == 0x31B) {
+		UpdateParticlePool(&mDustPool.mPtcl, frames);
+	}
+	if (GetKind() == 0x2C3) {
+		CarryRiderAtActorJoint(this, frames);
+	}
+	if (mActorFlags.mFlags & 2) {
+		for (u32 i = 0; i < 8; i++) {
+			if (mParts[i].mObj != NULL) {
+				Mtx mtx;
+				f32 z = mParts[i].mObj->GetPos()->z;
+				f32 y = mParts[i].mObj->GetPos()->y;
+				f32 x = mParts[i].mObj->GetPos()->x;
+				PSMTXTrans(mtx, x, y, z);
+				PSMTXConcat(GetWorldMtx(mParts[i].mJoint), mtx, mParts[i].mMtx);
+				mParts[i].mObj->SetBaseMtx(mParts[i].mMtx);
+			}
+		}
+	}
+}
+
+void XObjActor3::DrawObject()
+{
+	if (!(mActorFlags.mFlags & 0x10)) {
+		DrawWithView(NULL);
+	}
+}
+
+void XObjActor3::DrawScreenOverlay()
+{
+	if (GetItem() == 14) {
+		DrawStage02TimerPanel(this);
+		DrawStage02ActorCounterPanel(this);
+	}
+}
+
+static inline void DrawStage02PanelLabel(s32 textId, f32 scale, f32 x, f32 y)
+{
+	CTexObj labelTex;
+	const f32 size = 20.0f;
+	f32 width      = scale * (MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(textId), TRUE, size) - 4.0f);
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, x, y, 0.0f, width, 12.0f, 0.0f, 0.0f, 0.0f);
+	f32 left = x - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(textId), TRUE, size) / 2.0f;
+	f32 top  = y - size / 2.0f - 3.0f;
+	for (int i = 0; i < 4; ++i) {
+		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(textId), left + gStage02TimerOutlineX[i],
+		                             top + gStage02TimerOutlineY[i], 0.0f, size, size);
+	}
+	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(textId), left, top, 0.0f, size, size);
+}
+
+extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
+{
+	f32 alpha = actor->mTimerPanelAlpha;
+	if (alpha <= 0.0f || !IsStage("stage02") || !actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	actor->mPanelTpl.mTex.Init(&actor->mPanelTpl.mPalette->descriptorArray[4], 0);
+	tex         = actor->mPanelTpl.mTex;
+	f32 scale   = 1.0f;
+	f32 w       = scale * GXGetTexObjWidth(&tex);
+	u16 h       = GXGetTexObjHeight(&tex);
+	f32 centerX = gPointerScreenWidth / 2;
+	f32 top     = gScreenSafeTop;
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, centerX, top + 10.0f, 0.0f, w, scale * h, 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	DrawStage02PanelLabel(0x5C, scale, centerX, top + 10.0f);
+
+	actor->mPanelTpl.mTex.Init(&actor->mPanelTpl.mPalette->descriptorArray[1], 0);
+	tex       = actor->mPanelTpl.mTex;
+	s32 tw    = GXGetTexObjWidth(&tex) / 11;
+	f32 dw    = 1.4f * (scale * tw);
+	u16 th    = GXGetTexObjHeight(&tex);
+	f32 dh    = 1.4f * (scale * th);
+	f32 x     = centerX - 144.0f - 45.0f - 16.0f - 5.0f + 11.0f;
+	f32 y     = top + 36.0f;
+	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	u32 a              = 255.0f * alpha;
+	u32 c0             = a | 0xFFFFFF00;
+	u32 c1             = a | 0x1F33FF00;
+	for (s32 i = 0; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+
+	tw = GXGetTexObjWidth(&tex) / 11;
+	dw = 1.4f * (scale * tw);
+	th = GXGetTexObjHeight(&tex);
+	dh = 1.4f * (scale * th);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	s32 digits = 2;
+	if (count < 10.0f) {
+		digits = 1;
+	}
+	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+
+extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
+{
+	if (gGame.mMotionControlCamera.IsAction(4)) {
+		return;
+	}
+	f32 alpha = actor->mCounterPanelAlpha;
+	if (alpha <= 0.0f || !IsStage("stage02") || !actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	actor->mPanelTpl.mTex.Init(&actor->mPanelTpl.mPalette->descriptorArray[9], 0);
+	tex         = actor->mPanelTpl.mTex;
+	f32 scale   = 1.0f;
+	f32 w       = scale * GXGetTexObjWidth(&tex);
+	u16 h       = GXGetTexObjHeight(&tex);
+	f32 centerX = gPointerScreenWidth / 2;
+	f32 top     = gScreenSafeTop;
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, centerX, top + 10.0f, 0.0f, w, scale * h, 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	DrawStage02PanelLabel(0x5E, scale, centerX, top + 10.0f);
+
+	actor->mPanelTpl.mTex.Init(&actor->mPanelTpl.mPalette->descriptorArray[1], 0);
+	tex       = actor->mPanelTpl.mTex;
+	s32 tw    = GXGetTexObjWidth(&tex) / 11;
+	f32 dw    = 1.4f * (scale * tw);
+	u16 th    = GXGetTexObjHeight(&tex);
+	f32 dh    = 1.4f * (scale * th);
+	f32 x     = centerX - 144.0f - 45.0f - 16.0f - 5.0f - (1 - actor->mSpiderCount / 10) * 12;
+	f32 y     = top + 36.0f;
+	f32 count = actor->mSpiderCount;
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	u32 a              = 255.0f * alpha;
+	u32 c0             = a | 0xFFFFFF00;
+	u32 c1             = a | 0x1F33FF00;
+	for (s32 i = 0; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+}
+
 void XObjActor3::DrawObjectEffects()
 {
 	if (GetKind() == 0x31B) {
@@ -1918,6 +2464,106 @@ void XObjActor3::DrawObjectEffects()
 
 void XObjActor3::DrawDebugStatus()
 {
+}
+
+s32 XObjActor3::HandleEventCommand(s32 count, s32* args)
+{
+	switch (args[0]) {
+	case 100:
+		if (args[1] == 0) {
+			mActorFlags.mFlags &= ~2;
+			for (u32 i = 0; i < 8; i++) {
+				if (mParts[i].mObj != NULL) {
+					mParts[i].mObj->ClearBaseMtx();
+					mParts[i].mObj = NULL;
+				}
+			}
+		} else {
+			u32 i;
+			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { }
+			if (i < 8) {
+				mActorFlags.mFlags |= 2;
+				if (args[1] >= 10000) {
+					mParts[i].mObj = gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL;
+				} else {
+					mParts[i].mObj = gGame.mXObjs.mObjects[(s16)args[1]];
+				}
+				s32 path[8];
+				s32 depth = args[2];
+				for (s32 j = 0; j < depth; j++) {
+					path[j] = args[3 + j];
+				}
+				mParts[i].mJoint = vf284(depth, path);
+				Mtx mtx;
+				f32 z = mParts[i].mObj->GetPos()->z;
+				f32 y = mParts[i].mObj->GetPos()->y;
+				f32 x = mParts[i].mObj->GetPos()->x;
+				PSMTXTrans(mtx, x, y, z);
+				PSMTXConcat(GetWorldMtx(mParts[i].mJoint), mtx, mParts[i].mMtx);
+				mParts[i].mObj->SetBaseMtx(mParts[i].mMtx);
+			}
+		}
+		break;
+	default:
+		mEventCommand      = args[0];
+		mEventArg1         = args[1];
+		mEventArg2         = args[2];
+		mEventArg3         = args[3];
+		mExtraEventArgs[0] = args[4];
+		mExtraEventArgs[1] = args[5];
+		mExtraEventArgs[2] = args[6];
+		mExtraEventArgs[3] = args[7];
+		mExtraEventArgs[4] = args[8];
+		mExtraEventArgs[5] = args[9];
+		mExtraEventArgs[6] = 0;
+		switch (GetItem()) {
+		case 9:
+			HandleKind9ActorCommand(this);
+			break;
+		case 0x13:
+			HandleActorRiderCommand(this);
+			break;
+		case 8:
+			HandleItem8ActorCommand(this);
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
+void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
+{
+	if (GetItem() == 1) {
+		XObj::OnHitFromPosition(position, strength);
+	} else if (!mActorFlags.Check(1)) {
+		mActorFlags.mFlags |= 1;
+	}
+}
+
+static void EmitKind9Dust(XObjActor3* actor, Vec* pos)
+{
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = std::sinf(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = std::cosf(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
+	Vec dustPos;
+	dustPos.x = pos->x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	dustPos.y = pos->y;
+	dustPos.z = pos->z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	Vec scale;
+	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
+	scale.z           = 1.0f;
+	Vec vel           = { vx, vy, vz };
+	CPtclOne* dust    = SpawnPoolParticle(&actor->mDustPool.mPtcl, &dustPos, &scale, &vel, 0xffffffa0);
+	if (dust) {
+		dust->mAngle      = DEG2RAD * (rand() % 360);
+		dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
+		dust->mColor      = 0xffffffa0;
+		dust->mTex        = &actor->mTex[0];
+	}
 }
 
 void XObjActor3::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
