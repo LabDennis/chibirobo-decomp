@@ -4858,6 +4858,47 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
+// NONMATCHING: the complete 24-call list matches; a 20-byte code-layout and register-allocation difference remains
+extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
+{
+	if (alpha > 0.0f) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		f32 width;
+		CTexObj tex;
+		u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		if (!available) {
+			id = 241;
+		}
+		f32 bob = 0.0f;
+		if (selected) {
+			bob = 4.0f * (f32)sin(0.017453292f * (f32)fmod(sInventoryPhase, 360.0));
+		}
+		InitPCPanelTexture(tex, id);
+		width      = scale * GXGetTexObjWidth(&tex);
+		f32 height = scale * GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		y += bob;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+		if (selected) {
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+			f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+			if (pulse < 0.0f) {
+				pulse = 0.0f;
+			}
+			DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+			           (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		}
+	}
+}
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
