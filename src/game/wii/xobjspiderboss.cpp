@@ -695,7 +695,7 @@ static inline BOOL AttackAnimEnding(XObjSpiderBoss* boss, u32 frames)
 static inline void ShakeSpiderArena()
 {
 	if (!gGame.GetStatusFlags(0x100))
-		StartScreenShake(&gGame.mQuake, 0, 3, 0, 0, 0, 0, .4f);
+		StartScreenShake(&gGame.mQuake, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f);
 }
 
 static inline void PulseSpiderArena(XObjSpiderBoss* boss)
@@ -718,8 +718,11 @@ static inline bool IsGrabBlocked(s32 anim)
 	case 11:
 	case 0x27:
 	case 0x28:
+	case 0x43:
 	case 0xA1:
 	case 0xED:
+	case 0x158:
+	case 0x159:
 	case 0x814:
 	case 0x816:
 	case 0x817:
@@ -737,7 +740,8 @@ static inline bool IsGrabBlocked(s32 anim)
  * @note Address: 0x80134A2C
  * @note Size: 0x1880
  */
-// NONMATCHING: call set, frame and Wii constants match; AttackAnimEnding materializes bool and some inline FPR schedules differ
+// NONMATCHING: call set and frame match; AttackAnimEnding materializes bool, some inline FPR schedules differ, and
+// StartScreenShake gets lfd 0.0/3.0 where retail has lfs (the f64 prototype in game/cscrn.h, see xobjspider.cpp)
 void XObjSpiderBoss::State3(u32 frames)
 {
 	CPad pad(0);
@@ -929,7 +933,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		break;
 	}
 	case 13:
-		if (gGame.IsRunning() && gGame.GetPlayer()->mMoveSpeedScale <= 1.0f) {
+		if (gGame.IsRunning() && gGame.GetPlayer()->_1C9B8[2] >= 1.0f) {
 			mEscapeRemaining -= mEscapeInputStrength;
 			f32 strength = 0.0f;
 			f32 remote   = nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].y);
