@@ -2064,12 +2064,14 @@ public:
 	virtual void ApplyMaterialPresets(const u32* flags);               // _1A0, forwards the flags to everything he wears
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);          // _1A4, the fade on himself and his attachments
 	virtual void vf1A8(f32);                                           // _1A8, empty on the player
+	virtual Vec GetCameraTarget();                                     // _1B0, the animated look target and its position history
 	virtual void SetBaseMtx(Mtx mtx);                                  // _1B4, his own plus the nine suits'
 	virtual void ClearBaseMtx();                                       // _1B8, same
 	virtual void vf1BC(s32 mode);                                      // _1BC, culls him and the visible attachments
 	virtual void SetCullMode(s32 mode);                                // _1C0
 	virtual void ResetCullMode();                                      // _1C4
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);      // _1F0
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
 	virtual void PauseSounds(f32 fade);                                // _20C
 	virtual void ResumeSounds(f32 fade);                               // _210

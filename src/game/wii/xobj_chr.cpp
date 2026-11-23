@@ -286,6 +286,11 @@ void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight);
 void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight);
 void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames);
 void UpdateOXMenuTransition(WiiOXMenu* menu, u32 frames);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply);
+void fn_801105C4(XObjPlug* plug, s32 mode);
+void fn_801107AC(XObjPlug* plug);
+void ResetPopperShot(XActPopperShot* shot);
 void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
 void DrawRadarTargetBeam(XActRadar* act);
 void DrawPopperShotParticles(XActPopper* act);
@@ -293,6 +298,7 @@ void DrawPopperShotRings(XActPopper* act);
 void DrawPlayerRadarEffects(XActRadar* act);
 void DrawPlayerLookMarker(XObjChrLook* look);
 void DrawPointParticleDisplay(PointPtcl* points, f32 row);
+f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
 void SetGsChannelEnabled(CGs* gs, s32 channel, u8 enable);
 void ClearActiveObjectFloors(XObj* object);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
@@ -4300,6 +4306,227 @@ void fn_800E3C50(WiiPlayerState* chr, s32 on)
 	}
 }
 
+// NONMATCHING: all animation target cases and the target history are present;
+// aggregate return homes and float/register scheduling remain different
+Vec XObjChr::GetCameraTarget()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if ((chr->mStatus.mFlags & 1)) {
+		s32 anim = chr->GetAnimId();
+		Vec target;
+		if (anim == 0xaf || anim == 0xea) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x17 || anim == 0x7d || anim == 0x1f || anim == 0x20) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			start.x    = joint.x;
+			start.z    = joint.z;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x76) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			start.x    = joint.x;
+			start.z    = joint.z;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = 1.7f * (GetAnimFrame() / end);
+			if (t > 1.f)
+				t = 1.f;
+			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+		} else if (!IsRopeActionState(&chr->mRope, 0)) {
+			if (IsRopeActionState(&chr->mRope, 2) && anim == 0x98) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = chr->mMoveTranslate;
+				if (GetAnimFrame() > 80.f) {
+					joint = chr->mMoveTranslate;
+					start.y -= chr->mRope.mTargetOffset.y;
+					f32 end = GetAnimEndFrame() - 80.f;
+					f32 t   = (GetAnimFrame() - 80.f) / end;
+					if (t > 1.0f)
+						t = 1.0f;
+					target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+				} else {
+					start.x = joint.x;
+					start.z = joint.z;
+					target  = start + (Vec) { 0, 10, 0 };
+				}
+			} else if (IsRopeActionState(&chr->mRope, 6) && anim == 0x24) {
+				CVec start = chr->mMoveTranslate;
+				CVec joint = GetJointWorldPos("second_null");
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = GetAnimFrame() / end;
+				if (t > 1.0f)
+					t = 1.0f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			} else if (anim == 0x85) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = chr->mMoveTranslate;
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = 1.7f * (GetAnimFrame() / end);
+				if (t > 1.f)
+					t = 1.f;
+				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+			} else {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = chr->mMoveTranslate;
+				start.x    = joint.x;
+				start.z    = joint.z;
+				target     = start + (Vec) { 0, 10, 0 };
+			}
+		} else if (!IsLadderActionState(&chr->mLadder, 0)) {
+			if (anim == 0x87) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = chr->mMoveTranslate;
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = 1.7f * (GetAnimFrame() / end);
+				if (t > 1.f)
+					t = 1.f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			} else if (anim == 0x72 || anim == 0x73 || anim == 0x74) {
+				target = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			} else {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = chr->mMoveTranslate;
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = GetAnimFrame() / end;
+				if (t > 1.0f)
+					t = 1.0f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			}
+		} else if (anim == 0x13 || anim == 0x14 || anim == 0x15 || anim == 0x16 || anim == 0x19 || anim == 0x1a || anim == 0x1b) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			start.x    = joint.x;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x18) {
+			Vec offset;
+			offset.x = chr->mHang.mTargetOffset.x;
+			offset.y = -chr->mHang.mTargetOffset.y;
+			offset.z = chr->mHang.mTargetOffset.z;
+			Mtx rot;
+			PSMTXRotRad(rot, 'y', chr->mMoveRotate.y);
+			PSMTXMultVec(rot, &offset, &offset);
+			CVec end   = GetJointWorldPos("second_null") + offset;
+			CVec start = chr->mMoveTranslate;
+
+			start.x      = end.x;
+			start.z      = end.z;
+			f32 frame    = GetAnimFrame();
+			f32 duration = GetAnimEndFrame();
+			f32 t        = frame / duration;
+			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
+			f32 threshold = .91f * duration;
+			f32 elapsed   = GetAnimFrame() - threshold;
+			f32 remaining = GetAnimEndFrame() - threshold;
+			f32 dy        = elapsed > 0 ? (end.y - start.y) * (elapsed / remaining) : 0.f;
+			target        = (Vec) { x, 10.f + (start.y + dy), z };
+
+		} else if (IsJumpActionState(&chr->mJump, 9) || IsJumpActionState(&chr->mJump, 12) || IsJumpActionState(&chr->mJump, 15)
+		           || IsJumpActionState(&chr->mJump, 17)) {
+			target   = chr->mMoveTranslate + (Vec) { 0, 10, 0 };
+			target.y = 10.f + ((XActJump*)&chr->mJump)->mArcPosition.y;
+		} else if (IsJumpActionState(&chr->mJump, 10) || IsJumpActionState(&chr->mJump, 13) || IsJumpActionState(&chr->mJump, 16)) {
+			CVec start = chr->mMoveTranslate;
+			CVec arc   = ((XActJump*)&chr->mJump)->mArcPosition;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
+		} else if (IsCopterActionState(&chr->mCopter, 7) || IsCopterActionState(&chr->mCopter, 8)
+		           || IsCopterActionState(&chr->mCopter, 9)) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			start.x    = joint.x;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		} else if (anim == 0xcea) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = root + (middle - root) * t;
+		} else if (anim == 0x43 || anim == 0x10e) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = root + (middle - root) * t;
+		} else if (anim == 0xed) {
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			target      = middle;
+		} else if (anim == 0xee) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = middle + (root - middle) * t;
+		} else {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = chr->mMoveTranslate;
+			start.x    = joint.x;
+			start.y    = joint.y;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		}
+		CMotionControlCamera& camera = gGame.mMotionControlCamera;
+		if (camera.IsAction(CAMACTION_AREA) || camera.IsAction(CAMACTION_MAP)) {
+			f32 rate = GetAreaCameraFovRatio(&camera);
+			if (rate > 1.f)
+				rate = 1.f;
+			if (rate < .8f)
+				rate = .8f;
+			f32 leadX = chr->mHeadOffset * (f32)sin(chr->mMoveRotate.y);
+			f32 leadZ = chr->mHeadOffset * (f32)cos(chr->mMoveRotate.y);
+			f32 moveX = (7.f * rate) * (chr->mMoveTranslate.x - chr->mLastPos.x);
+			f32 moveZ = (7.f * rate) * (chr->mMoveTranslate.z - chr->mLastPos.z);
+			target.x += leadX + moveX;
+			target.z += leadZ + moveZ;
+		}
+		f32* coord = &target.x;
+		f32* last  = chr->mCameraTarget;
+		for (s32 i = 0; i < 3; ++i) {
+			f32& old = last[i];
+			if (__fpclassifyf(old) == FP_NAN) {
+				old = coord[i];
+				continue;
+			}
+			f32 margin = chr->mCameraTargetMargin;
+			if (old > coord[i] + margin)
+				old += (coord[i] + margin) - old;
+			else if (old < coord[i] - margin)
+				old += (coord[i] - margin) - old;
+			coord[i] = old;
+		}
+		return target;
+	}
+	return (Vec) { 0, 0, 0 };
+}
+
 // the carry joint's matrix: the worn suit's while he carries at it
 // NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
 MtxP fn_800E59DC(WiiPlayerState* chr)
@@ -4427,6 +4654,348 @@ void ResetPlayerPlug(WiiPlayerState* chr)
 s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
 {
 	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
+}
+
+// NONMATCHING: the Wii command switch, scene/suit stepping and ordered call set match;
+// switch-arm layout and register allocation remain
+s32 XObjChr::HandleEventCommand(s32 count, s32* args)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	s32 result          = 0;
+	if (count > 0) {
+		switch (args[0]) {
+		case 100:
+			return chr->mPlug.mConnection;
+		case 101: {
+			XObj* obj = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, chr->GetPos()) : 1;
+		}
+		case 102: {
+			s32 connection       = args[2];
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 7;
+			chr->mLiftPlugTarget = target;
+			SetLiftPlugConnection((XActLift*)&chr->mLift, connection, FALSE);
+			result = -1;
+			break;
+		}
+		case 103: {
+			XObj* target = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			SetPos(*target->GetPos());
+			SetRotationY(PI + target->mMoveRotate.y);
+			s32 connection       = args[2];
+			chr->mLift.mState    = 7;
+			chr->mLiftPlugTarget = target;
+			SetLiftPlugConnection((XActLift*)&chr->mLift, connection, FALSE);
+			chr->_0AF8 = 1;
+			do {
+				f32 end   = GetAnimEndFrame();
+				f32 frame = GetAnimFrame();
+				UpdateLiftActionAnimation((XActLift*)&chr->mLift, GetAnimId(), this, 2, frame, end);
+				XObj::UpdateObject(2);
+				UpdateHeldObject(&chr->mLift, 2);
+				chr->mPlug.UpdateObject(2);
+				f32 sceneFrame = 1.0f + GetAnimFrame();
+				SetModelFrame(this, sceneFrame);
+				WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+				if (IsObjectActive(suit)) {
+					SetModelFrame(suit, sceneFrame);
+				}
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mObject.m_pScnMdl);
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+				fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+				while (scene->mPending != 0) {
+					scene->PopPending();
+				}
+			} while (chr->mLift.mState == 7);
+			chr->_0AF8 = 0;
+			result = -1;
+			break;
+		}
+		case 104: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 12;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 105:
+			if (chr->mPlug.mConnection) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+				chr->mPlug.mConnection = 0;
+			}
+			break;
+		case 106: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 8;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 107:
+			(gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mPlug.mConnection = 0;
+			result                 = -1;
+			break;
+		case 108: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 9;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 109:
+			(gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mPlug.mConnection = 0;
+			result                 = -1;
+			break;
+		case 110:
+			chr->mPlug.mConnection   = 0;
+			chr->mPlug.mEndRotationZ = 0.0f;
+			result                   = -1;
+			break;
+		case 111:
+			SetLiftPlugConnection((XActLift*)&chr->mLift, args[1], TRUE);
+			break;
+		case 120:
+			// shows or hides his plug
+			if (args[1])
+				gGame.SetStatusFlags(0x0040000000000000ULL);
+			else
+				gGame.ClearStatusFlags(0x0040000000000000ULL);
+			break;
+		case 200:
+			switch (args[1]) {
+			case 205:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = 0.0f;
+				chr->mHeadAimRecord.m_28                                    = DEG2RAD * args[2];
+				break;
+			case 207:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = args[2] / 100.0f;
+				chr->mHeadAimRecord.mTarget.y                               = args[3] / 100.0f;
+				chr->mHeadAimRecord.mTarget.z                               = args[4] / 100.0f;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			case 208: {
+				XObj* target                 = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[2]) : NULL);
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = target;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			case 220: {
+				XObj* target                 = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[2]) : NULL);
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = target;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			case 225:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = &gGame.mMotionControlCamera;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			return 0;
+		case 201:
+			chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 2;
+			chr->mHeadAimRecord.m_0C                                    = NULL;
+			chr->mHeadAimRecord.mTarget.x                               = NAN;
+			chr->mHeadAimRecord.m_20                                    = NULL;
+			chr->mHeadAimRecord.m_24                                    = NAN;
+			chr->mHeadAimRecord.m_28                                    = NAN;
+			chr->mHeadAimRecord.m_2C                                    = 0.0f;
+			chr->mHeadAimRecord.m_30                                    = 0.0f;
+			chr->mHeadAimRecord.m_4C.Set(0.0f, 0.0f, 0.0f);
+			return 0;
+		case 202:
+			return chr->mHeadAimRecord.mSnap[0] <= 0 && chr->mHeadAimRecord.mSnap[1] <= 0;
+		case 300:
+			chr->mRope.mState = 4;
+			SetPlayerActionTarget(&chr->mRope,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 301:
+			chr->mLadder.mState = 4;
+			SetPlayerActionTarget(&chr->mLadder,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 302:
+			chr->mJump.mState = 14;
+			SetPlayerActionTarget(&chr->mJump,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 303:
+			if (args[1])
+				chr->mRadar.mState = 1;
+			else
+				chr->mRadar.mState = 2;
+			result = -1;
+			break;
+		case 400:
+			return chr->mAttachmentRequest < 0;
+		case 450:
+			if (args[1] >= 0 && args[1] < 3)
+				chr->mSuits.mSpecial = args[1];
+			break;
+		case 451:
+			return chr->mSuits.mSpecial;
+		case 503: {
+			s32 item = args[1];
+			if (item == 16) {
+				chr->mAttachmentRequest = 4;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else if (item == 21) {
+				chr->mAttachmentRequest = 5;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else if (item == 22) {
+				chr->mAttachmentRequest = 6;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = item;
+			}
+			result = -1;
+			break;
+		}
+		case 513:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+		case 500:
+			// takes out an item he owns: the toothbrush (16), spoon (21), mug (22) and squirter (56) go on as attachments
+			// 4 to 7, anything else he lifts
+			if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, args[1]) >= 0) {
+				s32 item = args[1];
+				if (item == 16) {
+					chr->mAttachmentRequest = 4;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 21) {
+					chr->mAttachmentRequest = 5;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 22) {
+					chr->mAttachmentRequest = 6;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 56) {
+					chr->mAttachmentRequest = 7;
+					chr->mAttachmentStep    = 0;
+				} else {
+					chr->mLift.mState                        = 21;
+					((XActLift*)&chr->mLift)->mPendingItemId = item;
+				}
+			}
+			result = -1;
+			break;
+		case 510:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+		case 501:
+			if (chr->mLift.mTarget) {
+				if (chr->GetAttachment() == 4 || chr->GetAttachment() == 5 || chr->GetAttachment() == 6 || chr->GetAttachment() == 7
+				    || chr->GetAttachment() == 8) {
+					chr->mAttachmentRequest = 0;
+					chr->mAttachmentStep    = 0;
+				} else if (chr->mLift.mTarget->GetCategory() == 8)
+					chr->mLift.mState = 20;
+			}
+			result = -1;
+			break;
+		case 514:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+		case 502:
+			if (chr->mLift.mTarget && chr->mLift.mTarget->GetCategory() == 8 && chr->mLift.mTargetState != 15)
+				chr->mLift.mState = 24;
+			result = -1;
+			break;
+		case 550: {
+			Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+			inventory->mCompact  = TRUE;
+			CompactInventory(inventory);
+			break;
+		}
+		case 551:
+			gGame.GetPlayer()->mParams.mInventory.mCompact = FALSE;
+			break;
+		case 600:
+			fn_801105C4((XObjPlug*)&chr->mPlug, args[1]);
+			result = -1;
+			break;
+		case 601:
+			fn_801107AC((XObjPlug*)&chr->mPlug);
+			result = -1;
+			break;
+		case 700:
+			chr->mOnGround &= ~1;
+			break;
+		case 701:
+			chr->mOnGround |= 1;
+			break;
+		case 702:
+			return (chr->mOnGround & 1) ^ 1;
+		case 800:
+			chr->mBatteryDrains = 1;
+			break;
+		case 801:
+			chr->mBatteryDrains = 0;
+			break;
+		case 802:
+			return chr->mBatteryDrains;
+		case 850:
+			chr->mParams._1C[0] = 1;
+			break;
+		case 851:
+			chr->mParams._1C[0] = 0;
+			break;
+		case 852:
+			return (s32)chr->mParams._1C[0] > 0;
+		case 900:
+			chr->mSquirterContent = args[1];
+			chr->mItemTintWord    = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
+			break;
+		case 901:
+			chr->mCameraTargetMarginSetting = args[1] / 100.f;
+			break;
+		case 902:
+			XActPopper* popper = (XActPopper*)&chr->mPopper;
+			for (s32 i = 0; i < 10; ++i)
+				ResetPopperShot(&popper->mShots.mShot[i]);
+			break;
+		case -1:
+			ResetPlayerAttachment(chr, 17);
+			break;
+		case -2: {
+			CVec position = GetJointWorldPos("second_null");
+			SetPos(position);
+			if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+				chr->mSuits.mObjects[chr->mSuits.mCurrent].SetPos(GetJointWorldPos("second_null"));
+			}
+			chr->_969C = 1;
+			break;
+		}
+		}
+	}
+	return result;
 }
 
 // the highest floor of the object under a floor group that's still below chibi robo,
