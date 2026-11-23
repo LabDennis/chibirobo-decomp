@@ -2057,6 +2057,10 @@ public:
 	virtual void DrawReflection(Mtx view);                             // _17C
 	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184, the mug's blob or the joint's
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawCollisionShapes();                                // _18C
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
 	virtual void ApplyMaterialPresets(const u32* flags);               // _1A0, forwards the flags to everything he wears
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);          // _1A4, the fade on himself and his attachments
 	virtual void vf1A8(f32);                                           // _1A8, empty on the player

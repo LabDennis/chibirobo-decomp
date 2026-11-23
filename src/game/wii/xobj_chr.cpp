@@ -252,6 +252,7 @@ extern s32 gRefreshRate;
 void SpawnPlayerDust(WiiPlayerState* chr, CVec* position);
 BOOL IsPlayerCarryingPlug(WiiPlayerState* chr);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
+void PSMTXMultVecArray(const Mtx matrix, const Vec* src, Vec* dst, u32 count);
 void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
 void TryLeaveHang(XActHang* action);
 UnkStageObj* GetStagePlacementByIndex(s32 index);
@@ -285,6 +286,15 @@ void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight);
 void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight);
 void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames);
 void UpdateOXMenuTransition(WiiOXMenu* menu, u32 frames);
+void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
+void DrawRadarTargetBeam(XActRadar* act);
+void DrawPopperShotParticles(XActPopper* act);
+void DrawPopperShotRings(XActPopper* act);
+void DrawPlayerRadarEffects(XActRadar* act);
+void DrawPlayerLookMarker(XObjChrLook* look);
+void DrawPointParticleDisplay(PointPtcl* points, f32 row);
+void SetGsChannelEnabled(CGs* gs, s32 channel, u8 enable);
+void ClearActiveObjectFloors(XObj* object);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
 BOOL IsObjectLiftable(const XObj* object);
 BOOL IsObjectClimbableLedge(const XObj* object);
@@ -447,6 +457,7 @@ struct SuitChangeTrail {
 };
 extern SuitChangeTrail lbl_8045BBD0;
 extern "C" void fn_800F2CF4(SuitChangeTrail* trail); // starts the suit-change spiral
+void DrawSpiralTrail(SuitChangeTrail* trail, CVec* position);
 
 // the delay the suit change keeps the old suit's resources around, the GameCube's
 // gPlayerSuitChangeTimer; the Wii resets it to 0.0f and waits on the file itself
@@ -4685,6 +4696,266 @@ void XObjChr::ResetCullMode()
 		suit->ResetCullMode();
 		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
 			chr->mSuitParts[chr->mSuits.mCurrent].ResetCullMode();
+		}
+	}
+}
+
+// NONMATCHING: effect calls, spiral geometry and color ramps are present; float
+// register allocation and the compiler's unrolled loop schedule still differ
+void XObjChr::DrawObjectEffects()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.GetStatusFlags(0x0040000000000000ULL))
+		chr->mPlug.DrawObjectEffects();
+	((XObj*)chr->mCopterObj)->DrawObjectEffects();
+	((XObj*)chr->mPopperObj)->DrawObjectEffects();
+	((XObj*)chr->mRadarObj)->DrawObjectEffects();
+	((XObj*)chr->mOXObj)->DrawObjectEffects();
+	if (chr->mBatteryWarningFade > 0) {
+		f32 radius = 1.5f * chr->mMoveScale.x;
+		if (IsCarryingMug(&chr->mLift) && !(chr->GetAnimId() == 11 && chr->GetAnimFrame() < 45.0f)
+		    && !(chr->GetAnimId() == 10 && chr->GetAnimFrame() > 22.0f)) {
+			CVec jointScale;
+			chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &jointScale);
+			radius += 2.5f * jointScale.x;
+		}
+		radius *= 1.2f;
+		CVec from = chr->GetJointPos(chr->FindResNode("koshi_model"));
+		CVec to   = chr->GetJointPos(chr->FindResNode("head"));
+		if (chr->mLift.mState && IsCarryingMug(&chr->mLift)) {
+			from.x = chr->mLift.mTarget->mMoveTranslate.x;
+			from.z = chr->mLift.mTarget->mMoveTranslate.z;
+			Vec up = { 0, 1, 0 };
+			to     = from + up;
+		}
+		f32 yaw = atan2(to.x - from.x, to.z - from.z);
+		f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
+		f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+		pitch     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
+		Mtx trans, scale, rotY, rotX, model;
+		PSMTXTrans(trans, from.x, from.y, from.z);
+		PSMTXScale(scale, 1, 1, 1);
+		PSMTXRotRad(rotY, 'y', yaw);
+		PSMTXRotRad(rotX, 'x', pitch);
+		PSMTXConcat(trans, rotY, model);
+		PSMTXConcat(model, rotX, model);
+		PSMTXConcat(model, scale, model);
+		Vec vertices[256];
+		u32 colors[256];
+		f32 z = -3, phase = chr->mBatteryWarningAngle;
+		u16 n = 0;
+		for (int turn = 0; turn < 8; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 angle     = (TWO_PI / 16) * step;
+				vertices[n].x = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::sinf(angle);
+				vertices[n].y = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::cosf(angle);
+				vertices[n].z = z;
+				f32 wave      = phase;
+				while (wave < 0.0f)
+					wave += TWO_PI;
+				while (wave >= TWO_PI)
+					wave -= TWO_PI;
+				if (wave > PI)
+					wave = 0;
+				vertices[n + 1].x = vertices[n].x;
+				vertices[n + 1].y = vertices[n].y;
+				vertices[n + 1].z = vertices[n].z - 1.5f * std::sinf(wave);
+				z += .08f;
+				phase += DEG2RAD * 30;
+				n += 2;
+			}
+		PSMTXMultVecArray(model, vertices, vertices, n);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
+		gGame.mGs.mCurRenderState->SetCullMode((GXCullMode)0);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)2, (GXBlendFactor)4, (GXLogicOp)15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurRenderState->SetCullMode((GXCullMode)2);
+	}
+	DrawTumbleRing(&chr->mTumble.mFade, (Vec) { chr->mMoveTranslate.x, chr->mFloorHit.mHeight, chr->mMoveTranslate.z }, chr->mMoveRotate.y);
+	DrawRadarTargetBeam((XActRadar*)&chr->mRadar);
+	DrawPopperShotParticles((XActPopper*)&chr->mPopper);
+	DrawParticlePool(&chr->mDust.mPtcl, &gGame.mGs);
+	DrawSpiralTrail(&lbl_8045BBD0, GetPos());
+}
+
+// NONMATCHING: the floor, lift and player collision draws are present; matrix
+// temporary order and the remaining render-state schedule differ
+void XObjChr::DrawCollisionShapes()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	SetGsChannelEnabled(&gGame.mGs, 0, FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)7, FALSE);
+	PrimVertex triangle[3];
+	triangle[0].pos   = chr->mFloorTriangle[0];
+	triangle[0].color = 0xFF000080;
+	triangle[1].pos   = chr->mFloorTriangle[1];
+	triangle[1].color = 0x00FF0080;
+	triangle[2].pos   = chr->mFloorTriangle[2];
+	triangle[2].color = 0x0000FF80;
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, triangle, 3);
+	SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)3, TRUE);
+	if (chr->mLift.mState != 0) {
+		if (IsCarryingToothbrush(&chr->mLift)) {
+			CVec pos = chr->mLift.mTarget->GetJointPos("null");
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 3.0f, 3.0f, 1.0f);
+		}
+		if (IsCarryingSpoon(&chr->mLift)) {
+			f32 yaw = chr->mMoveRotate.y;
+			Vec pos = *GetPos();
+			pos.x += 3.0f * sin(yaw);
+			pos.z += 3.0f * cos(yaw);
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+		}
+		if (IsCarryingSquirter(&chr->mLift)) {
+			f32 yaw = chr->mMoveRotate.y;
+			Vec pos = *GetPos();
+			pos.x += 2.0f * sin(yaw);
+			pos.z += 2.0f * cos(yaw);
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 1.0f);
+			pos.x += 2.0f * sin(yaw);
+			pos.z += 2.0f * cos(yaw);
+			pos.y += 7.0f;
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 3.0f);
+			if (IsCarryingSquirter(&chr->mLift)) {
+				s32 anim = chr->GetAnimId();
+				if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
+					XObj* object = chr->mLift.mTarget;
+					CVec origin  = object->GetJointPos(object->FindResNode("atari"));
+					CVec tip     = object->GetJointPos("saki");
+					CVec delta   = tip - origin;
+					if (PSVECMag(&delta) > 0.1f) {
+						CVec scale = object->GetJointScale(object->FindResNode("atari"));
+						DrawGsCylinder(&gGame.mGs, chr->mItemTintWord, 16, origin.x, origin.y, origin.z, HALF_PI, 0.0f, 0.0f, scale.x,
+						               scale.z, 0.5f * scale.y);
+					}
+				}
+			}
+		}
+	}
+	if (chr->mStatus.mFlags & 0x0200000000000000ULL) {
+		SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)3, TRUE);
+		CVec pos(chr->mMoveTranslate);
+		Vec offset   = chr->mMoveScale * GetFloorCenterOffset(&chr->mFloors, 0);
+		Vec extent   = chr->mMoveScale * GetFloorExtent(&chr->mFloors, 0);
+		f32 floorYaw = DEG2RAD * chr->mFloors->mYawDegrees;
+		f32 yaw      = chr->mMoveRotate.y + floorYaw;
+		pos.x        = chr->mMoveTranslate.x + 0.5f * extent.x * sin(chr->mMoveRotate.y);
+		pos.z        = chr->mMoveTranslate.z + 0.5f * extent.z * cos(chr->mMoveRotate.y);
+		Mtx translate, shift, turn, tilt, scale, model, view;
+		PSMTXTrans(translate, pos.x, pos.y, pos.z);
+		PSMTXTrans(shift, offset.x, offset.y, offset.z);
+		PSMTXScale(scale, 0.9f * extent.x, extent.y, 0.9f * extent.z);
+		PSMTXRotRad(turn, 'y', yaw);
+		PSMTXRotRad(tilt, 'x', HALF_PI);
+		PSMTXConcat(translate, turn, model);
+		PSMTXConcat(model, shift, model);
+		PSMTXConcat(model, scale, model);
+		PSMTXConcat(model, tilt, model);
+		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, model, view);
+		DrawGsCylinderWithMatrix(&gGame.mGs, view, 0x9696FF60, 16);
+		XObj::DrawCollisionShapes();
+		if (gGame.GetStatusFlags(0x0040000000000000ULL))
+			chr->mPlug.DrawCollisionShapes();
+		ClearActiveObjectFloors(&chr->mPlug);
+	}
+}
+
+// NONMATCHING: the gauge, look/radar/popper and point-particle draws are present;
+// render-state scheduling and gauge float register lifetimes still differ
+static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction, u32 color)
+{
+	CGs* gs = &gGame.mGs;
+	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)7, TRUE);
+	gs->mCurRenderState->SetLineWidth(30, (GXTexOffset)5);
+	DrawGsCircle(gs, 16, color, color, x - 8.0f, y, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+	f32 filled = width * fraction;
+	DrawGsLineSegment(gs, NULL, x - 2.0f, y, 0.0f, color, x + filled, y, 0.0f, color);
+	DrawGsLineSegment(gs, NULL, (x - 2.0f) + filled, y, 0.0f, 0x64, x + width, y, 0.0f, 0x64);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)1, FALSE);
+	gs->mCurRenderState->SetLineWidth(42, (GXTexOffset)5);
+	DrawGsCircle(gs, 16, 0x96, 0x96, x - 8.0f, y, 0.0f, 18.4f, 18.4f, 0.0f, 0.0f, 0.0f);
+	DrawGsLineSegment(gs, NULL, x - 2.0f, y, 0.0f, 0x96, 2.0f + (x + width), y, 0.0f, 0x96);
+	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)3, FALSE);
+	gs->mCurRenderState->SetLineWidth(12, (GXTexOffset)5);
+}
+
+void XObjChr::DrawScreenOverlay()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	XObj::DrawScreenOverlay();
+	DrawPopperShotRings((XActPopper*)&chr->mPopper);
+	DrawPlayerRadarEffects((XActRadar*)&chr->mRadar);
+	if (!(gGame.GetStatusFlags(0x100)))
+		DrawPlayerLookMarker(&chr->mLook);
+
+	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
+	if (!camera->IsAction(CAMACTION_SCROLL2) && chr->mGaugeTime > 0.0f) {
+		Vec offset = { 0.0f, 0.0f, 0.0f };
+		f32 x, y;
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		f32 left     = x - 31.0f;
+		f32 duration = (f32)(s32)GetInteractionParameter(0) / 100.0f;
+		DrawPlayerGauge(left, y, 62.0f, chr->mGaugeTime / (gRefreshRate * duration), 0x00FF0064);
+	}
+	if (!camera->IsAction(CAMACTION_SCROLL2) && (GetAnimId() == 0x7A || GetAnimId() == 0xCA)) {
+		Vec offset = { 0.0f, 0.0f, 0.0f };
+		f32 x, y;
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		f32 left     = x - 36.0f;
+		f32 frame    = GetAnimFrame();
+		f32 fraction = frame / GetAnimEndFrame();
+		u32 color;
+		if (fraction <= 0.6f)
+			color = 0xFFC80064;
+		else
+			color = 0xFF000064;
+		DrawPlayerGauge(left, y, 72.0f, fraction, color);
+	}
+	s32 row = 0;
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticleSlots[i] != NULL) {
+			DrawPointParticleDisplay(gPointParticleSlots[i], (f32)row);
+			if (gPointParticleSlots[i]->mType != 1)
+				++row;
 		}
 	}
 }
