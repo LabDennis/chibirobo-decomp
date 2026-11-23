@@ -36,6 +36,7 @@
 #include "game/menudata.h"
 #include "game/xactdata.h"
 #include "game/cameraactionids.h"
+#include "game/ccameramemento.h"
 #
 
 class CCamera;
@@ -354,43 +355,6 @@ struct StageName {
 STATIC_ASSERT(sizeof(StageName) == 0x23C);
 
 class CInterfaceCameraAction;
-
-// what CreateMemento saves of the camera, the same class the GameCube version keeps
-class CCameraMemento {
-public:
-	CCameraMemento() { }
-	virtual ~CCameraMemento() { } // _08
-
-	CVec mEye;                       // _04
-	CVec mInterest;                  // _14
-	CVec mAngle;                     // _24
-	f32 mFov;                        // _34
-	f32 mDistance;                   // _38
-	CInterfaceCameraAction* mAction; // _3C
-
-	void SetEye(f32 x, f32 y, f32 z)
-	{
-		mEye.x = x;
-		mEye.y = y;
-		mEye.z = z;
-	}
-	void SetInterest(f32 x, f32 y, f32 z)
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-	}
-	void SetAngle(f32 x, f32 y, f32 z)
-	{
-		mAngle.x = x;
-		mAngle.y = y;
-		mAngle.z = z;
-	}
-	void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }
-	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
-	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
-};
-STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xD7620.
 // The member layout is the GameCube class's shifted by 0x64: there the camera was a member at
