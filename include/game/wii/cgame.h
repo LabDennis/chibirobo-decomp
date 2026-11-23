@@ -851,7 +851,7 @@ typedef XObjChrBase WiiPlayerSuits;
 // the connection word the cord simulation reads is verified
 struct WiiPlayerPlug : public XObj {
 	u8 _09A8[0xD64 - 0x9A8];
-	s32 mConnection; // _D64, XActLift's _54 with 0x10000 set
+	s32 mConnection; // _D64, XActLift's mPlugConnection with 0x10000 set
 	u8 _D68[0xD98 - 0xD68];
 	f32 mEndRotationZ; // _D98, the plug end's pitch while it is pulled out
 	u8 _D9C[0xDA0 - 0xD9C];

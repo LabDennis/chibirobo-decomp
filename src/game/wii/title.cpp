@@ -1953,6 +1953,7 @@ static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
 
 extern "C" void DrawTitleLoadScreen(Title* title)
 {
+	f32 scale = 1.0f;
 	switch (title->mMode) {
 	case 2:
 	case 3:
@@ -1961,6 +1962,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 24:
 	case 27: {
 		f32 height = 230.0f;
+		f32 y      = height * 0.5f + 108.0f;
 		for (s32 i = 0; i < 3; ++i) {
 			f32 width   = 154.0f + sSaveSlotExtraWidth;
 			f32 x       = 49.0f + ((width * 0.5f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) * 0.5f;
@@ -1971,16 +1973,16 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			if (title->mNewestFile == i) {
 				newest = 1;
 			}
-			DrawSaveSlotDetails(&gTitleSaveSlots[i], 0, i, selected, newest, x, height * 0.5f + 108.0f, width, height, title->mLoadAlpha,
-			                    title->mFileSlides[i], 1.0f, 1.0f);
+			DrawSaveSlotDetails(&gTitleSaveSlots[i], 0, i, selected, newest, x, y, width, height, title->mLoadAlpha, title->mFileSlides[i],
+			                    scale, scale);
 		}
 		break;
 	}
 	}
 	f32 panelX = title->mPanelX, panelY = title->mPanelY - 8.0f;
-	DrawMenuBannerPanels(NULL, panelX, panelY, 1.0f, title->mLoadOffset);
-	s32 lines        = 2;
+	DrawMenuBannerPanels(NULL, panelX, panelY, scale, title->mLoadOffset);
 	bool showMessage = false;
+	s32 lines        = 2;
 	char text[256];
 
 	switch (title->mMode) {
@@ -2007,8 +2009,15 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		sprintf(text, "%s", GetLocalizedInterfaceText(0x12a));
 		showMessage = true;
 		break;
+	case 27:
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x12b));
+		showMessage = true;
+		break;
 	case 5:
 		lines = LoadStatusLines(title, 10, panelX, panelY);
+		break;
+	case 26:
+		lines = LoadStatusLines(title, 11, panelX, panelY);
 		break;
 	case 6:
 		OSPanic("title.cpp", 0x1222, "ここにはこない");
@@ -2017,11 +2026,6 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 8:
 		sprintf(text, "%s", GetLocalizedInterfaceText(0xc7));
 		showMessage = true;
-		break;
-	case 9:
-	case 14:
-		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, panelX + gPointerScreenWidth / 2,
-		                                     LoadPromptY(title, panelY), 21.0f, title->mLoadAlpha);
 		break;
 	case 11: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
@@ -2044,6 +2048,11 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		}
 		break;
 	}
+	case 9:
+	case 14:
+		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, panelX + gPointerScreenWidth / 2,
+		                                     LoadPromptY(title, panelY), 21.0f, title->mLoadAlpha);
+		break;
 	case 15:
 		lines = LoadStatusLines(title, 4, panelX, panelY);
 		break;
@@ -2077,13 +2086,6 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		}
 		break;
 	}
-	case 26:
-		lines = LoadStatusLines(title, 11, panelX, panelY);
-		break;
-	case 27:
-		sprintf(text, "%s", GetLocalizedInterfaceText(0x12b));
-		showMessage = true;
-		break;
 	}
 	if (lines <= 2) {
 		lines = 2;

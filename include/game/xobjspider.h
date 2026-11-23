@@ -2,6 +2,7 @@
 #define _GAME_XOBJSPIDER_H
 
 #include "game/xobj.h"
+#include "game/xobjjointdata.h"
 #include "game/csound.h"
 
 // one of the coins a spider knocks loose, it hops up and drops to mTarget
@@ -13,14 +14,6 @@ struct CoinBounce {
 	Vec mTarget; // _18
 };
 STATIC_ASSERT(sizeof(CoinBounce) == 0x24);
-
-// an object an event tied to one of the spider's joints
-struct SpiderTie {
-	HSD_JObj* mJoint; // _00
-	XObj* mObj;       // _04
-	Mtx mMtx;         // _08
-};
-STATIC_ASSERT(sizeof(SpiderTie) == 0x38);
 
 // the spiders, offsets are usa, pal has 4 more bytes after _9B8 and 4 at the end
 class XObjSpider : public XObj {

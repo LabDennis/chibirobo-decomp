@@ -340,7 +340,7 @@ extern "C" void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::mat
 		TrigonNodeInfo* info                   = &nodes[nodeIndex];
 		trigon->mCells[trigon->mNumCells].mTri = &trigon->mTri[trigon->mNum];
 		trigon->mCells[trigon->mNumCells].mNum = 0;
-		nw4r::g3d::ResNode node                = mdl.GetResNode(nodeIndex);
+		nw4r::g3d::ResNode node                = mdl.GetResNode((int)nodeIndex);
 		nw4r::g3d::ScnMdl::CopiedVisAccess visibility(model, nodeIndex);
 		if (!visibility.IsVisible()) {
 			continue;

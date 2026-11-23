@@ -26,7 +26,7 @@ public:
 	u8 _4A[2];
 	XObj* mPendingItem;            // _4C
 	XObj* mPlugTarget;             // _50
-	s32 _54;                       // _54, copied to XObjPlug's _D3C
+	s32 mPlugConnection;           // _54, copied to XObjPlug's mConnection with 0x10000 set
 	f32 mBatteryCost;              // _58
 	s32 mContactEffectId;          // _5C
 	HSD_Generator* mContactEffect; // _60
