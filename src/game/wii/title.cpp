@@ -2007,8 +2007,15 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		sprintf(text, "%s", GetLocalizedInterfaceText(0x12a));
 		showMessage = true;
 		break;
+	case 27:
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x12b));
+		showMessage = true;
+		break;
 	case 5:
 		lines = LoadStatusLines(title, 10, panelX, panelY);
+		break;
+	case 26:
+		lines = LoadStatusLines(title, 11, panelX, panelY);
 		break;
 	case 6:
 		OSPanic("title.cpp", 0x1222, "ここにはこない");
@@ -2017,11 +2024,6 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 8:
 		sprintf(text, "%s", GetLocalizedInterfaceText(0xc7));
 		showMessage = true;
-		break;
-	case 9:
-	case 14:
-		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, panelX + gPointerScreenWidth / 2,
-		                                     LoadPromptY(title, panelY), 21.0f, title->mLoadAlpha);
 		break;
 	case 11: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
@@ -2044,6 +2046,11 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		}
 		break;
 	}
+	case 9:
+	case 14:
+		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, panelX + gPointerScreenWidth / 2,
+		                                     LoadPromptY(title, panelY), 21.0f, title->mLoadAlpha);
+		break;
 	case 15:
 		lines = LoadStatusLines(title, 4, panelX, panelY);
 		break;
@@ -2077,13 +2084,6 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		}
 		break;
 	}
-	case 26:
-		lines = LoadStatusLines(title, 11, panelX, panelY);
-		break;
-	case 27:
-		sprintf(text, "%s", GetLocalizedInterfaceText(0x12b));
-		showMessage = true;
-		break;
 	}
 	if (lines <= 2) {
 		lines = 2;
