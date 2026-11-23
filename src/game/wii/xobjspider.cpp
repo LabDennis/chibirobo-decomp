@@ -1417,7 +1417,7 @@ void XObjSpider::State4(u32 frames)
 		    && nw4r::math::FAbs(chr.y - mMoveTranslate.y) < 8.0f) {
 			gGame.GetPlayer()->OnHitFromPosition(pos, 10);
 			if (!gGame.GetStatusFlags(0x100))
-				StartScreenShake(&gGame.mQuake, 0, 2, 0, 0, 0, 0, 0.4f);
+				StartScreenShake(&gGame.mQuake, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f);
 			CombatAnim(this, 12);
 			mSpeed = 0;
 			mFlags.mFlags &= ~0x1000;
@@ -1463,7 +1463,7 @@ void XObjSpider::State4(u32 frames)
 		EndSpiderCombatTurn(this, frames);
 		break;
 	case 20:
-		if (SPIDER_AT_FRAME(this, 30) || SPIDER_AT_FRAME(this, 31) || SPIDER_AT_FRAME(this, 32)) {
+		if (SPIDER_AT_FRAME(this, 30)) {
 			fn_80122ED8(this);
 			++mPhase;
 		}
@@ -1486,7 +1486,7 @@ void XObjSpider::State4(u32 frames)
 	case 31:
 		if (CombatAnimDone(this, frames)) {
 			CombatAnim(this, 8);
-			Vec other = gGame.mXObjs.mPools[17].Get(mDroppedSpiderIndex)->mMoveTranslate;
+			Vec other = *gGame.mXObjs.mPools[17].Get(mDroppedSpiderIndex)->GetPos();
 			mDir      = CombatHeading(this, other);
 			RetreatTarget(this);
 			mCounter = 24 / frames;
