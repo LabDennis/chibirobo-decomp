@@ -5,6 +5,11 @@
 #include "game/xactdata.h"
 
 class CPadOne;
+#if defined(VERSION_R24J01)
+struct EffectInstance;
+#else
+struct HSD_Generator;
+#endif
 
 class XActHang : public XAction {
 public:
@@ -89,6 +94,25 @@ public:
 	BOOL mPushPositionClamped; // _54
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
+
+class XActTumble : public XAction {
+public:
+#if defined(VERSION_R24J01)
+	XActTumble();
+	~XActTumble();
+#else
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
+#endif
+
+	XActTumbleFade mFade; // _2C
+	f32 mSavedYaw;        // _40
+#if defined(VERSION_R24J01)
+	EffectInstance* mIdleParticle; // _44
+#else
+	HSD_Generator* mIdleParticle; // _44
+#endif
+};
+STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
 class XActCopter : public XAction {
 public:

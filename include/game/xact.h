@@ -13,36 +13,7 @@
 class XObjChr;
 struct HSD_Generator;
 
-class XAction {
-public:
-	XObjChr* mOwner; // _00
-	s32 mState;      // _04, 0 while idle
-	// _08 vtable
-
-	virtual void Init(XObjChr* owner); // _08, 0x800BBD7C
-	virtual void Reset();              // _0C, 0x800BB708
-
-	s32 mMoveDirection; // _0C
-	CVec mTargetOffset; // _10, push keeps the offset to its target here
-	XObj* mTarget;      // _20
-	s32 mTargetState;   // _24
-	s32 mTargetFloor;   // _28, the selected floor when the target was picked
-
-	// todo: cleanup
-	void SetTarget(XObj* target)
-	{
-		mTarget      = target;
-		mTargetFloor = mTarget->mSelectedFloorIndex;
-	}
-	void SetState(s32 state, XObj* target)
-	{
-		mState = state;
-		if (target != NULL) {
-			SetTarget(target);
-		}
-	}
-};
-STATIC_ASSERT(sizeof(XAction) == 0x2C);
+#include "game/xactionbase.h"
 
 // picking things up and carrying them
 class XActLift : public XAction {
@@ -76,16 +47,6 @@ extern "C" void UpdateHeldObject(XActLift* act, s32 frames);
 #include "game/xactclasses.h"
 
 extern "C" void CancelPlayerPushAction(XActPush* act);
-
-class XActTumble : public XAction {
-public:
-	XActTumbleFade mFade;         // _2C
-	f32 mSavedYaw;                // _40
-	HSD_Generator* mIdleParticle; // _44
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
 struct PopperShotDust {
 	CPtcl mPtcl;           // _00

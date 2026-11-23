@@ -37,7 +37,7 @@ static inline f32 StickLength(const CPadOne* pad)
 extern "C" void ResetTumbleAction(XActTumble* act)
 {
 	act->Reset();
-	act->mIdleEffect = NULL;
+	act->mIdleParticle = NULL;
 }
 
 /**
@@ -267,8 +267,8 @@ extern "C" void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, WiiPlayer
 		act->mState = 14;
 		break;
 	case 14:
-		act->mIdleEffect = NULL;
-		act->mState      = 0;
+		act->mIdleParticle = NULL;
+		act->mState        = 0;
 		break;
 	case 15:
 		StartTumble(act, anim, owner, 16);

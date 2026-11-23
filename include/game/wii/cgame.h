@@ -890,43 +890,11 @@ struct WiiOXMenu {
 // mState to tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
 struct WiiPlayerState;
 struct EffectInstance; // game/wii/ceffect.h
-class XAction {
-public:
-	WiiPlayerState* mOwner; // _00
-	s32 mState;             // _04
-	// _08 vtable
-
-	virtual void Init(WiiPlayerState* owner); // _08
-	virtual void Reset();                     // _0C
-
-	s32 mMoveDirection; // _0C
-	CVec mTargetOffset; // _10
-	XObj* mTarget;      // _20
-	s32 mTargetState;   // _24
-	s32 mTargetFloor;   // _28, the selected floor when the target was picked
-
-	void SetTarget(XObj* target)
-	{
-		mTarget      = target;
-		mTargetFloor = mTarget->mSelectedFloorIndex;
-	}
-};
-STATIC_ASSERT(sizeof(XAction) == 0x2C);
+#include "game/xactionbase.h"
 
 #include "game/xactclasses.h"
 
 // the ring on the floor around him while he tumbles
-class XActTumble : public XAction {
-public:
-	XActTumble();
-	~XActTumble();
-
-	XActTumbleFade mFade;        // _2C
-	f32 mSavedYaw;               // _40
-	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
-};
-STATIC_ASSERT(sizeof(XActTumble) == 0x48);
-
 class CSound3DActor;
 class XObj;
 
