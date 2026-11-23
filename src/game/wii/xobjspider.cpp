@@ -29,6 +29,7 @@ void ResetSpiderCoinBounces(void* unused);
 void UpdateSpiderCoinBounces(void* unused, u32 frames);
 void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void ExecuteSpiderCommand(XObjSpider* spider, u32 frames);
+void fn_80122ED8(XObjSpider* spider);
 void UpdateSpiderShot(XObjSpider* spider, u32 frames);
 void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
 void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
@@ -858,6 +859,123 @@ extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
 				spider->mTies[i].mObj->SetBaseMtx(spider->mTies[i].mMtx);
 			}
 		}
+	}
+}
+
+/**
+ * @note Address: 0x80122ED8
+ * @note Size: 0x230
+ */
+// the GameCube's LaunchSpiderShot
+// NONMATCHING: variant 12/13 and the carried position schedule their float loads around sin/cos and atan2 differently
+extern "C" void fn_80122ED8(XObjSpider* spider)
+{
+	CVec pos = spider->GetJointPos(spider->FindResNode("cyl1"));
+	switch (spider->mPlacementParam0) {
+	case 0:
+		spider->mShotTo.x = pos.x + 72.0f * (f32)sin(spider->mDir);
+		spider->mShotTo.y = pos.y;
+		spider->mShotTo.z = pos.z + 72.0f * (f32)cos(spider->mDir);
+		break;
+	case 12:
+	case 13:
+		spider->mShotTo.x = pos.x + 72.0f * (f32)sin(HALF_PI + spider->mDir);
+		spider->mShotTo.y = pos.y + 72.0f * (f32)cos(HALF_PI + spider->mDir);
+		spider->mShotTo.z = pos.z;
+		break;
+	default:
+		Vec chr         = *gGame.GetPlayer()->GetPos();
+		spider->mShotTo = chr;
+		break;
+	}
+	spider->mShotState = 1;
+	spider->_A74       = 10;
+	XObj* self         = gGame.mXObjs.mPools[17].Get(spider->mPoolIndex);
+	CVec to(spider->mShotTo);
+	spider->mCarry.mFlags.mFlags |= 1;
+	spider->mCarry.mPos.x = pos.x;
+	spider->mCarry.mPos.y = pos.y;
+	spider->mCarry.mPos.z = pos.z;
+	spider->mCarry.mAngle = atan2(to.y - spider->mCarry.mPos.y, to.x - spider->mCarry.mPos.x);
+	spider->mCarry.mObj   = self;
+	spider->mCarry.mState = 1;
+	PlayWiiSoundEffect(&gGame.mSound, 0x197, 1.0f, 0.0f);
+}
+
+static inline void StepSpiderShotDistance(XObjSpider* spider, const CVec& origin)
+{
+	spider->mShotRange  = 72.0f;
+	spider->mShotOrigin = origin;
+	spider->mShotProgress += 0.06f;
+	if (spider->mShotProgress >= 1.0f)
+		spider->mShotProgress = 1.0f;
+}
+
+static inline void FinishSpiderShotStep(XObjSpider* spider)
+{
+	spider->mFlags.mFlags |= 0x800;
+	if (spider->mShotProgress >= 1.0f) {
+		spider->mShotState    = 0;
+		spider->mShotProgress = 0.0f;
+		spider->mFlags.mFlags &= ~0x800;
+	}
+}
+
+/**
+ * @note Address: 0x80123108
+ * @note Size: 0x494
+ */
+// NONMATCHING: the wall branch assigns different saved float registers to dx/dy/dz and the two FSqrt results
+extern "C" void UpdateSpiderShot(XObjSpider* spider, u32 frames)
+{
+	switch (spider->mShotState) {
+	case 0:
+		break;
+	case 1:
+		if (spider->mWall == 3) {
+			{
+				CVec origin = spider->GetJointPos(spider->FindResNode("cyl1"));
+				StepSpiderShotDistance(spider, origin);
+				f32 dx = spider->mShotTo.x - origin.x;
+				f32 dz = spider->mShotTo.z - origin.z;
+
+				f32 dy                  = spider->mShotTo.y - origin.y;
+				f32 pitch               = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+				f32 angle               = dx > 0.0f ? pitch - HALF_PI : -(HALF_PI + pitch);
+				Vec shot                = origin;
+				shot.x                  = origin.x + spider->mShotProgress * (spider->mShotRange * (f32)cos(angle));
+				shot.y                  = origin.y + spider->mShotProgress * (spider->mShotRange * (f32)sin(angle));
+				spider->mShotPosition.x = shot.x;
+				spider->mShotPosition.y = shot.y;
+				spider->mShotPosition.z = shot.z;
+				CVec from(spider->mShotOrigin), to(spider->mShotPosition);
+				spider->mCarry.mPos   = from;
+				spider->mCarry.mAngle = atan2(to.y - spider->mCarry.mPos.y, to.x - spider->mCarry.mPos.x);
+			}
+			FinishSpiderShotStep(spider);
+		} else {
+			{
+				CVec origin = spider->GetJointPos(spider->FindResNode("cyl1"));
+				StepSpiderShotDistance(spider, origin);
+				f32 dx = spider->mShotTo.x - origin.x;
+				f32 dz = spider->mShotTo.z - origin.z;
+
+				f32 angle               = atan2(dx, dz);
+				Vec shot                = origin;
+				shot.x                  = origin.x + spider->mShotProgress * (spider->mShotRange * (f32)sin(angle));
+				shot.z                  = origin.z + spider->mShotProgress * (spider->mShotRange * (f32)cos(angle));
+				spider->mShotPosition.x = shot.x;
+				spider->mShotPosition.y = 8.0f;
+				spider->mShotPosition.z = shot.z;
+				CVec from(spider->mShotOrigin), to(spider->mShotPosition);
+				spider->mCarry.mPos   = from;
+				spider->mCarry.mAngle = atan2(to.x - spider->mCarry.mPos.x, to.z - spider->mCarry.mPos.z);
+			}
+			FinishSpiderShotStep(spider);
+		}
+		break;
+	case 2:
+		break;
 	}
 }
 
