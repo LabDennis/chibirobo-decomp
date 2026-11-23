@@ -2969,6 +2969,15 @@ PlaySpiderBossAttachmentAnimation = .text:0x8013F2B0; // type:function size:0x16
 ResetSpiderBossAttachment = .text:0x8013F41C; // type:function size:0x13C
 Kind17__10XObjActor3FUl = .text:0x8013F558; // type:function size:0xCC
 Kind19__10XObjActor3FUl = .text:0x8013F8E4; // type:function size:0x4
+CarryRiderAtActorJoint = .text:0x8013F8E8; // type:function size:0x16C
+HandleKind9ActorCommand = .text:0x8013FA54; // type:function size:0x2FC
+HandleSpiderCounterCommand = .text:0x8013FD50; // type:function size:0x1A8
+HandleActorRiderCommand = .text:0x8013FEF8; // type:function size:0x118
+
+ResetForNewGame__10XObjActor3Fv = .text:0x80140234; // type:function size:0x1BC
+InitializeObject__10XObjActor3Fv = .text:0x801403F0; // type:function size:0x34
+ResetObjectState__10XObjActor3Fv = .text:0x80140424; // type:function size:0x34
+Kind0__10XObjActor3FUl = .text:0x80140458; // type:function size:0x4
 __AIClockInit = .text:0x801817D4; // type:function size:0x220 scope:global
 DSPInitCode = .data:0x8030F998; // type:object size:0x80 scope:local
 __OSFpscrEnableBits = .sdata:0x805A13E8; // type:object size:0x4 scope:global data:4byte

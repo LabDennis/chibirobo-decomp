@@ -25,6 +25,16 @@ s32 gActor3Kind15ActivationCounter;
 Vec gActor3PlacementPosition;
 }
 
+extern "C" AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
+	{ 3, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 3, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 8, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 8, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 4, 1.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 4, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
 static inline bool IsPlayerAway(WiiPlayerState* player)
 {
 	Vec pos = *player->GetPos();
@@ -1598,4 +1608,228 @@ void XObjActor3::Kind18(u32 frames)
 
 void XObjActor3::Kind19(u32 frames)
 {
+}
+
+extern "C" void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	if ((actor->mActorFlags.mFlags & 0x40) && (player->mPlayerFlags & 0x40000000)) {
+		Mtx scaleMtx, rotMtx, transMtx, mtx, m;
+		nw4r::g3d::ResNode joint = actor->GetResNodeOrFirst(2);
+		PSMTXCopy(actor->GetWorldMtx(joint), m);
+		Vec scale;
+		HSD_MtxGetScale(m, &scale);
+		scale.x = GetStagePlacementScale(player).x / scale.x;
+		scale.y = GetStagePlacementScale(player).y / scale.y;
+		scale.z = GetStagePlacementScale(player).z / scale.z;
+		PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+		PSMTXConcat(m, scaleMtx, mtx);
+		PSMTXRotRad(rotMtx, 'y', 0.0f);
+		PSMTXConcat(mtx, rotMtx, mtx);
+		PSMTXTrans(transMtx, 0.0f, 3.7f, 30.0f);
+		PSMTXConcat(mtx, transMtx, mtx);
+		player->SetBaseMtx(mtx);
+	}
+}
+
+extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
+{
+	switch (actor->mEventCommand) {
+	case 1:
+		if (actor->mEventArg1 != 0) {
+			actor->mActorFlags.mFlags &= ~4;
+			actor->mWindowLeft  = actor->mEventArg2 / 100.0f;
+			actor->mWindowRight = actor->mEventArg3 / 100.0f;
+		} else {
+			actor->mActorFlags.mFlags |= 4;
+			actor->mWindowLeft  = 0.0f;
+			actor->mWindowRight = 0.0f;
+			actor->mKindStep    = 0;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 2:
+		if ((actor->mActorFlags.mFlags & 0x80) && !(actor->mActorFlags.mFlags & 4)) {
+			gEventVars.mVars[actor->mEventArg1] = 1;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 3:
+		actor->mActorFlags.mFlags &= ~0x80;
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 4:
+		if (!IsBusyAnim(gGame.GetPlayer()->GetAnimId()) && gGame.GetPlayer()->mAttachmentRequest < 0) {
+			gEventVars.mVars[actor->mEventArg1] = 1;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	}
+}
+
+extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
+{
+	switch (actor->mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		if (actor->mEventArg1 != 0) {
+			actor->mTimerFadeMode = 3;
+		} else {
+			actor->mTimerFadeMode = 4;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 2:
+		if (actor->mEventArg1 != 0) {
+			actor->mCountdownRunning = 1;
+		} else {
+			actor->mCountdownRunning = 0;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 3:
+		actor->mCountdownFrames = (actor->mEventArg1 / 100.0f) * gRefreshRate;
+		actor->mEventCommand    = 0;
+		actor->mEventArg1       = 0;
+		break;
+	case 4:
+		gEventVars.mVars[actor->mEventArg1] = TimerFramesToHundredths(actor->mCountdownFrames);
+		actor->mEventCommand                = 0;
+		actor->mEventArg1                   = 0;
+		break;
+	case 5:
+		if (actor->mEventArg1 != 0) {
+			actor->mCounterFadeMode = 3;
+		} else {
+			actor->mCounterFadeMode = 4;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 6:
+		actor->mSpiderCount  = actor->mEventArg1;
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	case 7:
+		gEventVars.mVars[actor->mEventArg1] = actor->mSpiderCount;
+		actor->mEventCommand                = 0;
+		actor->mEventArg1                   = 0;
+		break;
+	}
+}
+
+extern "C" void HandleActorRiderCommand(XObjActor3* actor)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	switch (actor->mEventCommand) {
+	case 1:
+		switch (actor->mEventArg1) {
+		case 1:
+			actor->mActorFlags.mFlags |= 0x40;
+			player->LockControl();
+			break;
+		default:
+			actor->mActorFlags.mFlags &= ~0x40;
+			CVec pos = actor->GetJointPos(actor->GetResNodeOrFirst(2));
+			player->SetPos(pos);
+			player->RestoreControl();
+			player->ClearBaseMtx();
+			break;
+		}
+		actor->mEventCommand = 0;
+		actor->mEventArg1    = 0;
+		break;
+	}
+}
+
+extern "C" void ResetActor3Fields(XObjActor3* actor);
+
+void XObjActor3::ResetForNewGame()
+{
+	ResetActor3Fields(this);
+}
+
+void XObjActor3::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ResetForNewGame();
+}
+
+void XObjActor3::InitializeObject()
+{
+	XObj::InitializeObject();
+	ResetForNewGame();
+}
+
+void XObjActor3::Kind0(u32 frames)
+{
+	ResetForNewGame();
+}
+
+// NONMATCHING: mParts and _C0C still need layout-preserving declarations before their resets
+// and HandleEventCommand can be added without changing XObjActor3's constructor again.
+inline void ResetActor3Fields(XObjActor3* actor)
+{
+	actor->_BA0               = 0.0f;
+	actor->mMoveSpeed         = 0.0f;
+	actor->mKindTimer         = 0.0f;
+	actor->mHeading           = 0.0f;
+	actor->mKindStep          = 0;
+	actor->mFrameCount        = 0;
+	actor->mActorFlags.mFlags = 0;
+	actor->mActorFlags.mFlags |= 4;
+	actor->mEventCommand      = 0;
+	actor->mEventArg1         = 0;
+	actor->mEventArg2         = 0;
+	actor->mEventArg3         = 0;
+	actor->mExtraEventArgs[0] = 0;
+	actor->mExtraEventArgs[1] = 0;
+	actor->mExtraEventArgs[2] = 0;
+	actor->mExtraEventArgs[3] = 0;
+	actor->mExtraEventArgs[4] = 0;
+	actor->mExtraEventArgs[5] = 0;
+	actor->mExtraEventArgs[6] = 0;
+	actor->mWindowLeft        = 0.0f;
+	actor->mWindowRight       = 0.0f;
+	actor->mOrbitAngle        = 0.0f;
+	Vec zero                  = { 0.0f, 0.0f, 0.0f };
+	actor->mOrbitX            = zero.x;
+	actor->mOrbitHeight       = zero.y;
+	actor->mOrbitZ            = zero.z;
+	if (actor->mPoolIndex == 0) {
+		gSpiderBossVolleySlot          = 0;
+		gActor3Kind15ActivationCounter = 0;
+	}
+	actor->SetColor(1, 0, 0, 0, 0.0f);
+	actor->mTimerFadeMode     = 0;
+	actor->mTimerPanelAlpha   = 0.0f;
+	actor->mCountdownFrames   = 0.0f;
+	actor->mCountdownRunning  = 0;
+	actor->mCounterFadeMode   = 0;
+	actor->mCounterPanelAlpha = 0.0f;
+	actor->mSpiderCount       = 0;
+	actor->_C38               = 0;
+	if (actor->GetKind() == 0x31B) {
+		InitParticlePool(&actor->mDustPool.mPtcl, actor->mDustPool.mPtcls, 0x50, 0x32);
+		actor->mSfx.mEvents = gHaisuiNezumiAnimSfxEvents;
+	}
+	actor->mGens[0]     = NULL;
+	actor->mGens[1]     = NULL;
+	actor->mGens[2]     = NULL;
+	actor->mGens[3]     = NULL;
+	actor->mGens[4]     = NULL;
+	actor->mGens[5]     = NULL;
+	actor->mRumble      = 0;
+	actor->mRumbleTimer = 0;
+	actor->mHeld        = NULL;
+	actor->_1E20        = 0;
+	actor->mSe          = -1;
 }
