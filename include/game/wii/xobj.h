@@ -27,6 +27,8 @@
 #include "game/wii/xchrmenu.h"
 #include "revolution/mem.h"
 
+struct EffectInstance;
+
 extern "C" {
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"
@@ -2236,7 +2238,9 @@ public:
 	XObjActor3();
 	virtual ~XObjActor3();
 
+	void Kind9(u32 frames);
 	void Kind10(u32 frames);
+	void Kind13(u32 frames);
 
 	CTpl mPanelTpl; // _9A8, the stage02 timer and spider counter panels
 	f32 _BA0;
@@ -2254,10 +2258,29 @@ public:
 	u32 mExtraEventArgs[7];
 	f32 mWindowLeft;
 	f32 mWindowRight;
-	u8 _BF8[0xC3C - 0xBF8];
+	f32 mOrbitAngle;
+	f32 mOrbitX;
+	f32 mOrbitHeight;
+	f32 mOrbitZ;
+	f32 mOrbitDistance;
+	u8 _C0C[0xC1C - 0xC0C];
+	s32 mTimerFadeMode;
+	f32 mTimerPanelAlpha;
+	f32 mCountdownFrames;
+	u8 mCountdownRunning;
+	u8 _C29[0xC2C - 0xC29];
+	s32 mCounterFadeMode;
+	f32 mCounterPanelAlpha;
+	s32 mSpiderCount;
+	u8 _C38[0xC3C - 0xC38];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
-	u8 _1DFC[0x1E28 - 0x1DFC];
+	EffectInstance* mGens[6];
+	s32 mRumble;
+	s32 mRumbleTimer;
+	XObj* mHeld;
+	s32 _1E20;
+	s32 mSe;
 	AnimSfx mSfx; // _1E28
 	u8 _1E84[0x21C8 - 0x1E84];
 };
