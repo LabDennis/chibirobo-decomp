@@ -571,8 +571,7 @@ void XObjSpider::DrawObjectEffects()
  */
 // the event commands, 100 ties another object to one of its nodes or lets go of all
 // of them, anything else is kept for ExecuteSpiderCommand
-// NONMATCHING: retail loads each GetPos() component into a float right after its call (f30, f31), ours keeps
-// the pointers and loads them at the PSMTXTrans call
+// NONMATCHING: call list and size match; register assignment in the event-id and position-component paths differs
 s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 {
 	switch (argv[0]) {
@@ -603,7 +602,10 @@ s32 XObjSpider::HandleEventCommand(s32 argc, s32* argv)
 				}
 				mTies[i].mJoint = vf284(depth, path);
 				Mtx mtx;
-				PSMTXTrans(mtx, mTies[i].mObj->GetPos()->x, mTies[i].mObj->GetPos()->y, mTies[i].mObj->GetPos()->z);
+				f32 z = mTies[i].mObj->GetPos()->z;
+				f32 y = mTies[i].mObj->GetPos()->y;
+				f32 x = mTies[i].mObj->GetPos()->x;
+				PSMTXTrans(mtx, x, y, z);
 				PSMTXConcat(GetWorldMtx(mTies[i].mJoint), mtx, mTies[i].mMtx);
 				mTies[i].mObj->SetBaseMtx(mTies[i].mMtx);
 			}
