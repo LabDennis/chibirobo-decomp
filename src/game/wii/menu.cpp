@@ -90,6 +90,7 @@ void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
+void fn_8005A68C(MenuItem* menu, const char* text, u32 color);
 void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32 selected, f32 x, f32 y, f32 alpha, f32 sx, f32 sy);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
@@ -874,6 +875,71 @@ extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 	if (list->mCount < 0x100) {
 		list->mPanes[list->mCount++] = pane;
 	}
+}
+
+void MenuItem::Open()
+{
+	CMenu::Open();
+	gGame.SetStatusFlags(2);
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	ClearStatusTable(&sStatusItemTable);
+	PopulateOwnedItemPage(&sStatusItemTable);
+	s32 count = CountMenuItems();
+	mGridX    = 758.0f;
+	mGridY    = 36.0f;
+	if (count == 0) {
+		mTargetGridX = 360.0f;
+	} else {
+		mTargetGridX = 360.0f - (count - 1) * 51;
+	}
+	mTargetGridX    = 207.0f;
+	mTargetGridY    = 36.0f;
+	mPanelX         = -10.0f;
+	mPanelY         = -200.0f;
+	mTargetPanelX   = -10.0f;
+	mTargetPanelY   = 0.0f;
+	mMode           = 0;
+	mDelay          = 0;
+	sInventoryPhase = 0.0f;
+	mSelection      = 0;
+	mPrevSelection  = mSelection;
+	mStickSelection = 0;
+	_198            = 0.0f;
+	_19C            = 0.0f;
+	fn_8005A68C(this, GetLocalizedInterfaceText(0x19), (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+	mShowHelp  = 0;
+	mNameAlpha = 0.0f;
+	mSelection = -1;
+	mName      = NULL;
+	mShowHelp  = 1;
+	mHelp      = NULL;
+	mHelpCount = 0;
+	for (int i = 0; i < 20; i++) {
+		mBg[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mBg[i].mAngle1 = DEG2RAD * (rand() % 360);
+	}
+	gPointerPanes.mMenu   = this;
+	gPointerPanes.mActive = TRUE;
+	for (int i = 0; i < 8; i++) {
+		mCells[i].mPointed = FALSE;
+		mCells[i].mPicked  = FALSE;
+	}
+	for (int i = 0; i < 2; i++) {
+		mPanes[i].mPointed = FALSE;
+		mPanes[i].mPicked  = FALSE;
+		mPanes[i].mEnabled = FALSE;
+		mPanes[i]._48      = 0.0f;
+	}
+	mHovered                      = 0;
+	mPaneFades.mFades[0].mPane    = &mPanes[0];
+	mPaneFades.mFades[0].mAlpha   = 0.0f;
+	mPaneFades.mFades[0].mShown   = FALSE;
+	mPaneFades.mFades[0].mHovered = FALSE;
+	mPaneFades.mFades[1].mPane    = &mPanes[1];
+	mPaneFades.mFades[1].mAlpha   = 0.0f;
+	mPaneFades.mFades[1].mShown   = FALSE;
+	mPaneFades.mFades[1].mHovered = FALSE;
 }
 
 // NONMATCHING: retail calls MenuPaneFadePair::Update where this build expands it; the function comes out 88 bytes larger
@@ -1713,6 +1779,88 @@ extern "C" void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 s
 	                             2.0f * scale + fontSize);
 }
 
+static inline void DrawDiscardOutline(MenuStatus* menu, f32 x, f32 y)
+{
+	f32 left = x - 120.0f, top = y - 72.0f;
+	f32 right = 240.0f + left, bottom = 144.0f + top;
+	f32 depth      = -10.0f;
+	Vec outline[5] = { (Vec) { left, top, depth }, (Vec) { right, top, depth }, (Vec) { right, bottom, depth },
+		               (Vec) { left, bottom, depth }, (Vec) { left, top, depth } };
+	DrawGsLineStrip(&gGame.mGs, outline, (u32)(255.0f * menu->mAlpha) | 0xC8282800, 5);
+}
+
+static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f32 x, f32 y, f32 width, f32 height, f32 alpha)
+{
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xC8C8C800;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: retail calls DrawMenuRectWithShadow where this build expands it, adding 696 bytes.
+// The other draw calls, texture indices, constants and state-specific text paths match.
+extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
+{
+	f32 alpha = 1.0f;
+	f32 phase = fmod(sStatusPhase, 360.0);
+	f32 wave  = 2.0f * (f32)sin(DEG2RAD * (24.0f * phase));
+	f32 x     = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
+	f32 y     = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
+	DrawMenuRectWithShadow(menu, (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
+	if (menu->mCount == 0) {
+		DrawDiscardOutline(menu, x, y);
+	}
+	char label[256];
+	u32 halfWidth = (24 * (strlen(label) / 2 - 1)) / 2;
+	f32 labelX    = 12.0f + ((12.0f + (4.0f + ((40.0f + ((72.0f + x) - halfWidth)) - 120.0f))) - 20.0f);
+	f32 labelY    = (12.0f + ((2.0f + (((22.0f + y) - 12.0f) - 2.0f)) - 22.0f)) - 36.0f;
+	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
+
+	CTexObj tex;
+	f32 radius = 30.0f + wave;
+	for (s32 i = 0; i < 2; i++) {
+		f32 angle = PI * i + HALF_PI;
+		f32 sine = (f32)sin(angle), cosine = (f32)cos(angle);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[128], 0);
+		tex       = gGame.mTpl.mTex;
+		u16 width = GXGetTexObjWidth(&tex), height = GXGetTexObjHeight(&tex);
+		u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFEA0000;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0.0f,
+		                   1.4f * (1.1f * width), 1.4f * height, 0.0f, 0.0f, PI + angle);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+
+	switch (menu->mPhase) {
+	case 1: {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[125], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		s32 count  = menu->mCount;
+		f32 mix    = 1.0f;
+		f32 width  = (1.0f - mix) * GXGetTexObjWidth(&tex) + (1.4f * mix) * GXGetTexObjWidth(&tex);
+		f32 height = (1.0f - mix) * (GXGetTexObjHeight(&tex) / 10) + (1.4f * mix) * (GXGetTexObjHeight(&tex) / 10);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		if (count >= 10) {
+			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, alpha);
+			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, alpha);
+		} else {
+			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, alpha);
+		}
+		break;
+	}
+	case 2: {
+		char message[256];
+		(void)strlen(message);
+		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
+		break;
+	}
+	}
+}
+
 BOOL MenuMain::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
@@ -2134,6 +2282,75 @@ static inline void BeginOverviewTexture(CTexObj& tex)
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+}
+
+extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
+{
+	CTexObj tex;
+	f32 offset = 0.0f;
+	if (menu->mSelection == -1) {
+		sStatusPhase = 0.0f;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	for (int i = 0; i < 4; i++) {
+		if (!menu->mHasFourthTab && i == 3) {
+			continue;
+		}
+		f32 bob;
+		if (menu->mSelection == i && menu->mMode == 1) {
+			f32 phase = fmod(sStatusPhase, 360.0);
+			bob       = 4.0f * (f32)sin(DEG2RAD * (20.0f * phase));
+		} else {
+			bob = 0.0f;
+		}
+		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mX - 52.0f) + menu->mOffsetX));
+		f32 y = bob + ((180.0f + menu->mTabs[i].mY) + menu->mOffsetY);
+		switch (i) {
+		case 0:
+			offset = -12.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[0], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 1:
+			offset = 0.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[238], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 2:
+			offset = 12.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[236], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 3:
+			offset = 24.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[237], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		}
+		f32 width  = 1.2f * GXGetTexObjWidth(&tex);
+		f32 height = 1.2f * GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		GXSetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+		x += offset;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		GXSetZCompLoc(GX_TRUE);
+		if (menu->mSelection == i && menu->mMode == 1) {
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_FALSE);
+			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(PI * menu->mPulsePhase) + 0.2f);
+			if (pulse < 0.0f) {
+				pulse = 0.0f;
+			}
+			DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+			           (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		}
+	}
 }
 
 // NONMATCHING: register allocation and floating-point scheduling
@@ -4841,6 +5058,71 @@ extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 sel
 	}
 }
 
+extern "C" void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32, f32 x, f32 y, f32 alpha, f32 sx, f32)
+{
+	if (!(alpha > 0.0f)) {
+		return;
+	}
+	CTexObj tex;
+	f32 scale = 1.2f;
+	s32 value = hours * 100 + minutes;
+	if (value >= 9959) {
+		value = 9959;
+	}
+	for (int places = 1;; places++) {
+		f32 divisor = 1.0f;
+		for (int j = 0; j < places; j++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)(value / divisor) == 0) {
+			break;
+		}
+	}
+	InitPCPanelTexture(tex, icon);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 w = 0.6f * GXGetTexObjWidth(&tex);
+	f32 h = 0.6f * GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+	InitPCPanelTexture(tex, 126);
+	w = scale * GXGetTexObjWidth(&tex);
+	h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	f32 offset         = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
+	u8 alphaByte       = 255.0f * alpha;
+	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
+	for (int i = 0; i < 4; i++) {
+		f32 div = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 digit = value / div;
+		if (i != 3 || digit != 0) {
+			digit %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			f32 gap = 0.0f;
+			if (i < 2) {
+				gap = w - 3.0f * scale;
+			}
+			f32 digitX = gSaveSlotSpacing * sx + (gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))));
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	InitPCPanelTexture(tex, 130);
+	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 sepX = gSaveSlotSpacing * sx + (12.0f + (x + 81.0f * scale));
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	                   0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 // NONMATCHING: the call list and size match retail; register allocation differs
 extern "C" void DrawSavePlayTime(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
@@ -4979,6 +5261,44 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 	}
 }
 
+extern "C" void fn_8005A68C(MenuItem* menu, const char* text, u32 color)
+{
+	const char* p        = text;
+	menu->mTitle.mActive = TRUE;
+	menu->mTitle.mCount  = 0;
+	if (text) {
+		menu->mTitle.mColor = color;
+		int i;
+		for (i = 0; i < 20 && *p; i++, p++) {
+			menu->mTitle.mChars[i].mText   = p;
+			menu->mTitle.mChars[i].mFade   = -0.2f * i;
+			menu->mTitle.mChars[i].mHold   = gRefreshRate;
+			menu->mTitle.mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mCount++;
+			if (gGame.mLanguage == 0) {
+				u8 c    = *p;
+				u8 lead = TRUE;
+				u8 a    = (c >= 0x81 && c <= 0x9F);
+				if (!a) {
+					u8 b = (c >= 0xE0 && c <= 0xFC);
+					if (!b) {
+						lead = FALSE;
+					}
+				}
+				if (lead) {
+					p++;
+				}
+			}
+		}
+		for (i = menu->mTitle.mCount; i < 20; i++) {
+			menu->mTitle.mChars[i].mText = NULL;
+			menu->mTitle.mChars[i].mFade = 0.0f;
+			menu->mTitle.mChars[i].mHold = 0.0f;
+		}
+	}
+}
+
 // NONMATCHING: the call list matches retail; this build is 12 bytes smaller and register allocation differs
 extern "C" void DrawItemMenuTitle(MenuItem* menu)
 {
@@ -5036,6 +5356,36 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	}
+}
+
+extern "C" void fn_8005A9D0(MenuItem* menu, u32 frames)
+{
+	if (menu->mTitle.mActive && menu->mTitle.mActive > 0) {
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mHold > 0.0f) {
+				if (menu->mTitle.mChars[i].mFade < 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+						menu->mTitle.mChars[i].mFade = 1.0f;
+					}
+				}
+			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+					menu->mTitle.mChars[i].mFade = 0.0f;
+				}
+			}
+		}
+		s32 shown = 0;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mFade != 0.0f) {
+				shown++;
+				menu->mTitle.mChars[i].mAngle0 += 0.08726646f * frames;
+				menu->mTitle.mChars[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		if (shown == 0) {
+			menu->mTitle.mActive = FALSE;
+		}
 	}
 }
 
