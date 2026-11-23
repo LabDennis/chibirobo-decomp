@@ -3,6 +3,7 @@
 #include "game/wii/cpad.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
+#include "game/placement.h"
 #include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
@@ -17,8 +18,11 @@ EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_801426C0(XObjActor3* actor, Vec* pos);
 bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
 void LaunchSpiderBossPart(XObjActor3* actor);
+BOOL HasSpiderFinishedDeathAnimation(XObjSpider* spider);
 extern s32 gRefreshRate;
 s32 gSpiderBossVolleySlot;
+s32 gActor3Kind15ActivationCounter;
+Vec gActor3PlacementPosition;
 }
 
 static inline bool IsPlayerAway(WiiPlayerState* player)
@@ -1294,4 +1298,297 @@ extern "C" void LaunchSpiderBossCenterPart(XObjActor3* obj)
 		obj->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
 		PlayWiiSoundEffect(&gGame.mSound, 0x478, 1.0f, 0.0f);
 	}
+}
+
+extern "C" void CommandSpiderBossProjectiles(s32 mode)
+{
+	if (mode == 0) {
+		XObjPool& pool = gGame.mXObjs.mPools[5];
+		for (s32 i = 0; i < 48; ++i) {
+			XObjActor3* obj = (XObjActor3*)pool.Get(i);
+			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1)) {
+				obj->mActorFlags.mFlags &= ~4;
+				obj->mKindStep        = 0;
+				gSpiderBossVolleySlot = 0;
+			}
+		}
+	}
+	if (mode == 2) {
+		XObjPool& pool = gGame.mXObjs.mPools[5];
+		for (s32 i = 0; i < 48; ++i) {
+			XObjActor3* obj = (XObjActor3*)pool.Get(i);
+			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
+				obj->mActorFlags.mFlags &= ~4;
+				obj->mKindStep        = 20;
+				gSpiderBossVolleySlot = 0;
+			}
+		}
+	} else {
+		XObjPool& pool = gGame.mXObjs.mPools[5];
+		for (s32 i = 0; i < 48; ++i) {
+			XObjActor3* obj = (XObjActor3*)pool.Get(i);
+			if (obj->GetKind() == 0x3E0) {
+				if (obj->mStatus.mFlags & 1) {
+					if (obj->mActorFlags.Check(4)) {
+						obj->mActorFlags.mFlags &= ~4;
+						obj->mKindStep = 10;
+						return;
+					}
+				} else {
+					return;
+				}
+			}
+		}
+	}
+}
+
+void XObjActor3::UpdateSpiderCounterPanel(u32 frames)
+{
+	switch (mTimerFadeMode) {
+	case 0:
+		mTimerFadeMode   = 4;
+		mTimerPanelAlpha = 0.0f;
+		break;
+	case 1:
+		mTimerPanelAlpha = 1.0f;
+		break;
+	case 2:
+		mTimerPanelAlpha = 0.0f;
+		break;
+	case 3:
+		mTimerPanelAlpha += 0.08f * frames;
+		if (mTimerPanelAlpha >= 1.0f) {
+			mTimerPanelAlpha = 1.0f;
+		}
+		break;
+	case 4:
+		mTimerPanelAlpha -= 0.08f * frames;
+		if (mTimerPanelAlpha < 0.0f) {
+			mTimerPanelAlpha = 0.0f;
+		}
+		break;
+	}
+	if (mCountdownRunning) {
+		mCountdownFrames -= frames;
+	}
+	switch (mCounterFadeMode) {
+	case 0:
+		mCounterFadeMode   = 4;
+		mCounterPanelAlpha = 0.0f;
+		break;
+	case 1:
+		mCounterPanelAlpha = 1.0f;
+		break;
+	case 2:
+		mCounterPanelAlpha = 0.0f;
+		break;
+	case 3:
+		mCounterPanelAlpha += 0.08f * frames;
+		if (mCounterPanelAlpha >= 1.0f) {
+			mCounterPanelAlpha = 1.0f;
+		}
+		break;
+	case 4:
+		mCounterPanelAlpha -= 0.08f * frames;
+		if (mCounterPanelAlpha < 0.0f) {
+			mCounterPanelAlpha = 0.0f;
+		}
+		break;
+	}
+	s32 count = 0;
+	for (s32 i = 0; i < 16; ++i) {
+		XObj* obj = gGame.mXObjs.mPools[17].Get(i);
+		if ((obj->mStatus.mFlags & 0x10000) && !HasSpiderFinishedDeathAnimation(static_cast<XObjSpider*>(obj))) {
+			++count;
+		}
+	}
+	mSpiderCount = count;
+}
+
+void XObjActor3::Kind15(u32 frames)
+{
+	switch (mKindStep) {
+	case 0:
+		if (mActorFlags.mFlags & 4) {
+			break;
+		}
+		++mKindStep;
+		SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+		if (++gActor3Kind15ActivationCounter >= 10) {
+			gActor3Kind15ActivationCounter = 0;
+		}
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0x194)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x194, 1.0f, 0.0f);
+		}
+		break;
+	case 1: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			++mKindStep;
+			SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+		}
+		break;
+	}
+	case 2:
+		mActorFlags.mFlags |= 4;
+		mKindStep = 0;
+		break;
+	}
+}
+
+extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
+{
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	for (s32 i = 0; i < 48; ++i) {
+		XObjActor3* obj = (XObjActor3*)pool.Get(i);
+		if (obj->GetKind() == 0x43A) {
+			if ((obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
+				obj->mActorFlags.mFlags &= ~4;
+				obj->mMoveTranslate.x = x;
+				obj->mMoveTranslate.y = y;
+				obj->mMoveTranslate.z = z;
+			}
+		}
+	}
+}
+
+static inline void ResetBossAttachment(XObjActor3* obj)
+{
+	obj->mKindStep = 0;
+	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+	obj->mActorFlags.mFlags |= 4;
+	obj->mActorFlags.mFlags |= 0x10;
+	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+}
+
+void XObjActor3::Kind16(u32 frames)
+{
+	Vec playerPos = *gGame.GetPlayer()->GetPos();
+	XObj* boss    = (XObj*)gGame.mXObjs.mPools[19].mObjects;
+	if (mActorFlags.Check(0x10)) {
+		return;
+	}
+	switch (mKindStep) {
+	case 0:
+		mActorFlags.mFlags |= 4;
+		mActorFlags.mFlags |= 0x10;
+		SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+		break;
+	case 1: {
+		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		mMoveTranslate.Set(pos);
+		mHeading = boss->GetRotY();
+		break;
+	}
+	case 2: {
+		Vec pos          = boss->GetJointPos(boss->FindResNode("cyl3"));
+		mHeading         = boss->GetRotY();
+		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
+		mMoveTranslate.y = pos.y;
+		mMoveTranslate.z = 2.0f * (f32)cos(mHeading) + pos.z;
+		break;
+	}
+	case 4: {
+		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		mMoveTranslate.Set(pos);
+		mHeading = boss->GetRotY();
+		f32 end  = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			ResetBossAttachment(this);
+			Release();
+		}
+		break;
+	}
+	}
+}
+
+extern "C" void PlaySpiderBossAttachmentAnimation(s32 n)
+{
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	for (s32 i = 0; i < 48; ++i) {
+		XObjActor3* obj = (XObjActor3*)pool.Get(i);
+		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
+			obj->SetAnim(n, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+			obj->mActorFlags.mFlags &= ~4;
+			obj->mActorFlags.mFlags &= ~0x10;
+			switch (n) {
+			case 0:
+				obj->SetScale(0.1f);
+				obj->mKindStep = 0;
+				break;
+			case 1:
+				obj->SetScale(1.4f);
+				obj->mKindStep = 1;
+				break;
+			case 2:
+				obj->SetScale(1.0f);
+				obj->mKindStep = 2;
+				break;
+			case 3:
+				obj->SetScale(1.0f);
+				obj->mKindStep = 1;
+				break;
+			case 4:
+				obj->SetScale(1.0f);
+				obj->mKindStep = 4;
+				break;
+			}
+			return;
+		}
+	}
+}
+
+extern "C" void ResetSpiderBossAttachment(void)
+{
+	PlaySpiderBossAttachmentAnimation(0);
+}
+
+void XObjActor3::Kind17(u32 frames)
+{
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	for (s32 i = 0; i < 48; ++i) {
+		XObjActor3* obj = (XObjActor3*)pool.Get(i);
+		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
+			obj->mKindStep = 0;
+			obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+			obj->mActorFlags.mFlags |= 0x14;
+			PlaySpiderBossAttachmentAnimation(0);
+			return;
+		}
+	}
+}
+
+void XObjActor3::Kind18(u32 frames)
+{
+	f32 time = gGame.mTimeState.mTime;
+	switch (mKindStep) {
+	case 0:
+		if (time >= 0.42f && time < 0.5f) {
+			++mKindStep;
+		}
+		break;
+	case 1:
+		mMoveTranslate.x -= 0.2f * frames;
+		if (mMoveTranslate.x <= PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f) {
+			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f;
+			++mKindStep;
+		}
+		break;
+	case 2:
+		if (time >= 0.5f) {
+			++mKindStep;
+		}
+		break;
+	case 3:
+		mMoveTranslate.x += 0.2f * frames;
+		if (mMoveTranslate.x >= gActor3PlacementPosition.x) {
+			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
+			mKindStep        = 0;
+		}
+		break;
+	}
+}
+
+void XObjActor3::Kind19(u32 frames)
+{
 }

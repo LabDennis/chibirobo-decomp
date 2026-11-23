@@ -1,7 +1,11 @@
 #ifndef _GAME_PLACEMENT_H
 #define _GAME_PLACEMENT_H
 
+#if defined(VERSION_R24J01)
+#include "Dolphin/mtx.h"
+#else
 #include <dolphin/mtx/mtxtypes.h>
+#endif
 #include "game/coordinfo.h"
 #include "game/gmath.h"
 
