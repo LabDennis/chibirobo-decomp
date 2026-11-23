@@ -2955,6 +2955,7 @@ Kind3__10XObjActor3FUl = .text:0x801390D0; // type:function size:0x1E4
 Kind9__10XObjActor3FUl = .text:0x801396DC; // type:function size:0x1908
 Kind10__10XObjActor3FUl = .text:0x8013AFE4; // type:function size:0x424
 Kind13__10XObjActor3FUl = .text:0x8013D374; // type:function size:0x1414
+Kind11__10XObjActor3FUl = .text:0x8013B794; // type:function size:0xF10
 __AIClockInit = .text:0x801817D4; // type:function size:0x220 scope:global
 DSPInitCode = .data:0x8030F998; // type:object size:0x80 scope:local
 __OSFpscrEnableBits = .sdata:0x805A13E8; // type:object size:0x4 scope:global data:4byte

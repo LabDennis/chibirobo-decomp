@@ -11,6 +11,8 @@ extern "C" {
 BOOL IsPlayerFlashingFromHit(WiiPlayerState* player);
 BOOL IsUsingMug(XAction* action);
 f32 GetPlayerCollisionRadius(WiiPlayerState* player);
+CVec GetStagePlacementScale(const XObj* obj);
+void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_801426C0(XObjActor3* actor, Vec* pos);
 bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
@@ -854,5 +856,273 @@ void XObjActor3::Kind13(u32 frames)
 			HideBossProjectile(this, false);
 		}
 		break;
+	}
+}
+
+static inline void BounceBossPart(XObjActor3* part, f32 speed)
+{
+	part->mKindTimer = speed;
+	++part->mFrameCount;
+}
+
+// NONMATCHING: boss attachment/effect aggregate lifetimes and register scheduling differ;
+// joint transforms, bounce states, sounds and visibility transitions follow retail.
+void XObjActor3::Kind11(u32 frames)
+{
+	Vec playerPos = *gGame.GetPlayer()->GetPos();
+	CPad pad(0);
+	switch (mKindStep) {
+	case 0: {
+		if (mActorFlags.mFlags & 4) {
+			break;
+		}
+		Vec origin           = { 0.0f, 0.0f, 0.0f };
+		Vec rotation         = { 0.0f, 0.0f, 0.0f };
+		XObjSpiderBoss* boss = GetSpiderBoss();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x   = boss->GetPosX();
+			origin.y   = boss->GetPosY();
+			origin.z   = boss->GetPosZ();
+			rotation.x = boss->GetRotX();
+			rotation.y = boss->GetRotY();
+			rotation.z = boss->GetRotZ();
+		}
+		switch (GetKind()) {
+		case 0x3CD:
+			mOrbitDistance = 16.0f;
+			mOrbitAngle    = -PI / 4;
+			mOrbitHeight   = 10.0f;
+			break;
+		case 0x3CE:
+			mOrbitDistance = 16.0f;
+			mOrbitAngle    = PI / 4;
+			mOrbitHeight   = 10.0f;
+			break;
+		case 0x3CF:
+			mOrbitDistance = 10.0f;
+			mOrbitAngle    = PI;
+			mOrbitHeight   = 16.0f;
+			break;
+		case 0x3D0:
+			mOrbitDistance = 0.0f;
+			mOrbitAngle    = HALF_PI;
+			mOrbitHeight   = 30.0f;
+			break;
+		case 0x3D1:
+			mOrbitDistance = 30.0f;
+			mOrbitAngle    = PI;
+			mOrbitHeight   = 10.0f;
+			break;
+		case 0x3D2:
+			mOrbitDistance = 40.0f;
+			mOrbitAngle    = 3 * HALF_PI;
+			mOrbitHeight   = 24.0f;
+			break;
+		case 0x3D3:
+			mOrbitDistance = 30.0f;
+			mOrbitAngle    = 3 * PI / 4;
+			mOrbitHeight   = 14.0f;
+			break;
+		case 0x3D4:
+			mOrbitDistance = 20.0f;
+			mOrbitAngle    = 0.0f;
+			mOrbitHeight   = 10.0f;
+			break;
+		case 0x3D5:
+			mOrbitDistance = 16.0f;
+			mOrbitAngle    = 3 * HALF_PI;
+			mOrbitHeight   = 10.0f;
+			break;
+		default:
+			mOrbitDistance = 32.0f;
+			mOrbitAngle    = DEG2RAD * (rand() % 360);
+			mOrbitHeight   = (48.0f - (rand() % 1800) / 100) / 2;
+			break;
+		}
+		mOrbitX  = mOrbitDistance * (f32)sin(mOrbitAngle);
+		mOrbitZ  = mOrbitDistance * (f32)cos(mOrbitAngle);
+		mHeading = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
+		mStatus.mFlags |= 0x100000;
+		mStatus.mFlags |= 4;
+		mFrameCount = 0;
+		++mKindStep;
+		break;
+	}
+	case 1: {
+		XObjSpiderBoss* boss = GetSpiderBoss();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			f32 x = mOrbitX, y = mOrbitHeight, z = mOrbitZ;
+			SetScale(1.0f);
+			nw4r::g3d::ResNode joint = boss->GetResNodeOrFirst(0);
+			Mtx scaleMtx, translation, result, mount;
+			PSMTXCopy(boss->GetWorldMtx(joint), mount);
+			Vec scale;
+			HSD_MtxGetScale(mount, &scale);
+			scale.x = GetStagePlacementScale(this).x / scale.x;
+			scale.y = GetStagePlacementScale(this).y / scale.y;
+			scale.z = GetStagePlacementScale(this).z / scale.z;
+			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+			PSMTXConcat(mount, scaleMtx, result);
+			PSMTXTrans(translation, x, y, z);
+			PSMTXConcat(result, translation, result);
+			SetBaseMtx(result);
+			if (boss->mBlinkTimer) {
+				if (boss->mBlinkTimer % 30 < 15) {
+					SetColor(1, 128, 0, 0, 0.0f);
+				} else {
+					SetColor(1, 0, 0, 0, 0.0f);
+				}
+			}
+		}
+		break;
+	}
+	case 2: {
+		SetColor(1, 0, 0, 0, 0.0f);
+		CVec velocity;
+		mKindTimer -= 0.09f * frames;
+		mMoveTranslate.y += mKindTimer;
+		f32 floor = 0.0f;
+		switch (GetKind()) {
+		case 0x3D2:
+			floor = 8.0f;
+			break;
+		case 0x3D3:
+			floor = 16.0f;
+			break;
+		}
+		if (mMoveTranslate.y <= floor) {
+			mMoveTranslate.y = floor;
+			switch (mFrameCount) {
+			case 0: {
+				++mFrameCount;
+				mKindTimer = 8.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0x477, 1.0f, 0.0f);
+				Vec p;
+				p.x                    = mMoveTranslate.x;
+				p.y                    = mMoveTranslate.y - floor;
+				p.z                    = mMoveTranslate.z;
+				EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0xB5, 0);
+				if (effect != NULL) {
+					effect->pos   = p;
+					effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+					effect->scale = (Vec) { 1.0f, 1.0f, 1.0f };
+					UpdateEffectMtx(effect);
+				}
+				mGens[0] = effect;
+				break;
+			}
+			case 1:
+				mKindTimer = 7.0f;
+				++mFrameCount;
+				PlayWiiSoundEffect(&gGame.mSound, 0x477, 1.0f, 0.0f);
+				if (mGens[0] != NULL) {
+					RetireEffect(&mGens[0]->handle, FALSE);
+				}
+				break;
+			case 2:
+				BounceBossPart(this, 6.0f);
+				break;
+			case 3:
+				BounceBossPart(this, 6.0f);
+				break;
+			case 4:
+				BounceBossPart(this, 5.0f);
+				break;
+			case 5:
+				BounceBossPart(this, 5.0f);
+				break;
+			case 6:
+				BounceBossPart(this, 4.0f);
+				break;
+			case 7:
+				BounceBossPart(this, 4.0f);
+				break;
+			case 8:
+				BounceBossPart(this, 4.0f);
+				break;
+			case 9:
+				mKindTimer  = 0.0f;
+				mKindStep   = 3;
+				mFrameCount = 30;
+				break;
+			}
+		}
+		if (mKindTimer >= -3.4499998f) {
+			mKindTimer -= 0.36f * frames;
+		} else {
+			mKindTimer = -3.4499998f;
+		}
+		velocity.x = 0.6f * (f32)sin(mHeading);
+		velocity.z = 0.6f * (f32)cos(mHeading);
+		velocity.y = 0.0f;
+		mMoveTranslate.Set(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate);
+		break;
+	}
+	case 3:
+		if ((mFrameCount & 3) < 2) {
+			mStatus.mFlags |= 0x10000;
+		} else {
+			mStatus.mFlags &= ~0x10000ULL;
+		}
+		if (--mFrameCount < 0) {
+			mStatus.mFlags &= ~0x10000ULL;
+			mActorFlags.mFlags |= 4;
+			mStatus.mFlags &= ~4ULL;
+			mKindStep = 0;
+		}
+		break;
+	case 5: {
+		CVec velocity;
+		Vec origin           = { 0.0f, 0.0f, 0.0f };
+		Vec rotation         = { 0.0f, 0.0f, 0.0f };
+		XObjSpiderBoss* boss = GetSpiderBoss();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x            = boss->GetPosX();
+			origin.y            = boss->GetPosY();
+			origin.z            = boss->GetPosZ();
+			rotation.x          = boss->GetRotX();
+			rotation.y          = boss->GetRotY();
+			rotation.z          = boss->GetRotZ();
+			const CVec* bossPos = boss->GetPos();
+			mHeading            = atan2(bossPos->x - mMoveTranslate.x, bossPos->z - mMoveTranslate.z);
+		}
+		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
+		if (FSqrt(dx * dx + dy * dy + dz * dz) < 16.0f) {
+			mKindStep = 6;
+		}
+		velocity.x = 0.6f * (f32)sin(mHeading);
+		velocity.z = 0.6f * (f32)cos(mHeading);
+		velocity.y = 0.0f;
+		mMoveTranslate.Set(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate);
+		break;
+	}
+	case 6: {
+		Vec origin           = { 0.0f, 0.0f, 0.0f };
+		Vec rotation         = { 0.0f, 0.0f, 0.0f };
+		XObjSpiderBoss* boss = GetSpiderBoss();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x   = boss->GetPosX();
+			origin.y   = boss->GetPosY();
+			origin.z   = boss->GetPosZ();
+			rotation.x = boss->GetRotX();
+			rotation.y = boss->GetRotY();
+			rotation.z = boss->GetRotZ();
+		}
+		mOrbitAngle  = DEG2RAD * (rand() % 360);
+		mOrbitX      = 32.0f * (f32)sin(mOrbitAngle);
+		mOrbitHeight = (48.0f - (rand() % 1800) / 100) / 2;
+		mOrbitZ      = 32.0f * (f32)cos(mOrbitAngle);
+		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
+		mStatus.mFlags |= 0x100000;
+		mKindStep = 1;
+		if (pad.mPad->mTrigger & 0x10) {
+			mKindStep = 5;
+			mStatus.mFlags |= 0x10000;
+			mActorFlags.mFlags &= ~4;
+		}
+		break;
+	}
 	}
 }
