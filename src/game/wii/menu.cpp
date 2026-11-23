@@ -714,6 +714,16 @@ BOOL MenuStageSelect::Draw()
 	return FALSE;
 }
 
+extern "C" void fn_80053410(Menu* menu)
+{
+	menu->CMenu::Init();
+	menu->InitRows();
+}
+
+extern "C" void fn_800534D4(Menu*)
+{
+}
+
 void MenuSFTest::InitRows()
 {
 	if (mRows == NULL) {
@@ -10371,5 +10381,9 @@ void CMenu::vf28()
 }
 
 void CMenu::vf2C()
+{
+}
+
+void CMenu::vf38()
 {
 }
