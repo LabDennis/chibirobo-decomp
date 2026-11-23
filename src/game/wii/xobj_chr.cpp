@@ -1428,6 +1428,7 @@ s32 GetSelectedFloorIndex(const XObj* object)
 	return object->mSelectedFloorIndex;
 }
 
+// the same struct as game/xobjchrstate.h's, which pulls in the GameCube xchr.h and cgame.h (sysdolphin) and cannot be included here
 struct PlayerTurnState {
 	f32 heading;
 	f32 previousHeading;
