@@ -1058,7 +1058,7 @@ void MenuSave::Init()
 	CMenu::Init();
 	mLastFile = -1;
 	for (s32 i = 0; i < 5; i++) {
-		lbl_802E94C0[i].mTrans.x -= 0.5f * (f32)gPointerScreenWidth;
+		lbl_802E94C0[i].mTrans.x -= 0.5f * 640;
 		lbl_802E94C0[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E94C0[i].mTrans.y;
 		fn_800556B0(&mPanes[i], &lbl_802E94C0[i]);
 	}
@@ -7277,12 +7277,12 @@ void MenuStatus::Init()
 	mStickSelection           = 0;
 	mPrevSelection            = 0;
 	mHovered                  = 0;
-	lbl_802E87E8[49].mTrans.z = 577.0f;
-	lbl_802E87E8[49]._0C      = 0.5f * (f32)gPointerScreenHeight - 577.0f;
+	lbl_802E87E8[49].mTrans.x = 577.0f;
+	lbl_802E87E8[49].mTrans.y = (gPointerScreenHeight / 2 + 4) - 126.0f;
 	lbl_802E87E8[50].mTrans.x = 577.0f;
-	lbl_802E87E8[50].mTrans.y = 0.5f * (f32)gPointerScreenHeight + 577.0f;
+	lbl_802E87E8[50].mTrans.y = 126.0f + (gPointerScreenHeight / 2 + 4);
 	for (s32 i = 0; i < 51; i++) {
-		lbl_802E87E8[i].mTrans.x -= 0.5f * (f32)gPointerScreenWidth;
+		lbl_802E87E8[i].mTrans.x -= 0.5f * 640;
 		lbl_802E87E8[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E87E8[i].mTrans.y;
 		fn_800556B0(&mPanes[i], &lbl_802E87E8[i]);
 	}
