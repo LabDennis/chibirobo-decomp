@@ -94,7 +94,7 @@ public:
 	virtual void vf034();
 	virtual void vf038();
 	virtual void vf03C();
-	virtual void vf040(); // _040, Release
+	virtual void Release(); // _040
 	virtual void vf044();
 	virtual void vf048();
 	virtual void vf04C();
@@ -111,13 +111,13 @@ public:
 	virtual void vf078();
 	virtual void vf07C();
 	virtual void vf080();
-	virtual void vf084(f32 x, f32 y, f32 z); // _084, a position
+	virtual void SetPos(f32 x, f32 y, f32 z); // _084
 	virtual void vf088();
-	virtual void vf08C(f32 x, f32 y, f32 z);
-	virtual void vf090(void*); // _090, given the other cursor's vf244 result
+	virtual void SetScale(f32 x, f32 y, f32 z); // _08C
+	virtual void vf090(void*);                  // _090, given the other cursor's vf244 result
 	virtual void vf094();
-	virtual void vf098(void*);     // _098, given the other cursor's vf258 result
-	virtual void vf09C(f32 scale); // _09C, a uniform scale
+	virtual void vf098(void*);        // _098, given the other cursor's vf258 result
+	virtual void SetScale(f32 scale); // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
@@ -145,27 +145,27 @@ public:
 	virtual void vf100();
 	virtual void vf104();
 	// _108, the Wii's SetAnim: the GameCube passed the resolved resources, the Wii resolves them itself
-	virtual void vf108(s32 anim, s32 flags, f32, f32, f32, f32);
+	virtual void SetAnim(s32 anim, s32 flags, f32, f32, f32, f32); // _108
 	virtual void vf10C();
-	virtual void vf110();
-	virtual void vf114(f32 frame);  // _114, the playing animation's frame
-	virtual void vf118(f32 frames); // _118, steps the playing animation, the GameCube's UpdateAnim
-	virtual s32 vf11C();            // _11C, the playing animation's id
+	virtual void ClearAnim();            // _110
+	virtual void SetAnimRate(f32 rate);  // _114
+	virtual void UpdateAnim(f32 frames); // _118, steps the playing animation
+	virtual s32 GetAnimId();             // _11C, the playing animation's id
 	virtual void vf120();
 	virtual void vf124();
-	virtual f32 vf128(); // _128, the playing animation's frame
-	virtual f32 vf12C(); // _12C, the playing animation's length
+	virtual f32 GetAnimFrame();    // _128, the playing animation's frame
+	virtual f32 GetAnimEndFrame(); // _12C, the playing animation's length
 	// _130, nonzero once the current animation has played out at the given frame count
 	virtual s32 vf130(f32 frames);
 	virtual s32 vf134(); // _134, the animation flags check
 	virtual void vf138();
-	virtual void vf13C();
+	virtual void ReleaseModelWork(); // _13C
 	virtual void vf140();
 	virtual void vf144();
 	virtual void vf148();
-	virtual void vf14C();
-	virtual void vf150();
-	virtual void vf154();
+	virtual void InitializeObject(); // _14C
+	virtual void ResetForNewGame();  // _150
+	virtual void ResetObjectState(); // _154
 	virtual s32 vf158(CoordInfo info);
 	virtual void vf15C();
 	virtual void vf160();

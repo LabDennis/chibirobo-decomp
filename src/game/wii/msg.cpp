@@ -436,7 +436,7 @@ extern "C" s32 LoadFontCursors(CMsgFont* font)
 		}
 	}
 	if (loaded) {
-		font->mCursor[0].vf08C(3.0f, 3.0f, 3.0f);
+		font->mCursor[0].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[0].mStatus |= 0x800;
 		return 0;
 	}
@@ -447,7 +447,7 @@ extern "C" s32 LoadFontCursors(CMsgFont* font)
 		}
 	}
 	if (loaded) {
-		font->mCursor[1].vf08C(3.0f, 3.0f, 3.0f);
+		font->mCursor[1].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[1].mStatus |= 0x800;
 		return 1;
 	}
@@ -482,7 +482,7 @@ extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, WiiTitleOb
 	font->mFrame.mTex.mTexMtx.mDirty = TRUE;
 	font->mMode                      = mode;
 	for (s32 i = 0; i < 2; i++) {
-		font->mCursor[i].vf09C(0.0f);
+		font->mCursor[i].SetScale(0.0f);
 		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mObj   = &font->mCursor[i];
 		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mIndex = 0;
 		gGame.mDrawLists[1].mCount++;
@@ -906,20 +906,20 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				Vec head       = portrait->vf234("head");
 				Vec base       = portrait->vf0B8(0);
 				f32 headHeight = head.y - base.y - 1.2f;
-				f32 frame      = portrait->vf128();
-				s32 anim       = portrait->vf11C();
-				font->mCursor[0].vf108(anim, 1, frame, 0.0f, 0.0f, 15.0f);
-				font->mCursor[0].vf084(portraitX, 4.0f * headHeight + portraitY, 80.0f * portraitScale);
-				font->mCursor[0].vf09C((9.0f * portraitScale) * font->mAlpha);
+				f32 frame      = portrait->GetAnimFrame();
+				s32 anim       = portrait->GetAnimId();
+				font->mCursor[0].SetAnim(anim, 1, frame, 0.0f, 0.0f, 15.0f);
+				font->mCursor[0].SetPos(portraitX, 4.0f * headHeight + portraitY, 80.0f * portraitScale);
+				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
 				font->mCursor[0].vf190();
 				if (anim == 0x13 || anim == 0x3FB) {
 					font->mCursor[1].vf090(font->mCursor[0].vf244());
 					font->mCursor[1].vf070(font->mCursor[0].vf26C());
 					font->mCursor[1].vf098(font->mCursor[0].vf258());
-					if (font->mCursor[1].vf11C() == 0) {
-						font->mCursor[1].vf108(1, 1, 0.0f, 0.0f, 0.0f, 15.0f);
+					if (font->mCursor[1].GetAnimId() == 0) {
+						font->mCursor[1].SetAnim(1, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 					}
-					frame = font->mCursor[0].vf128();
+					frame = font->mCursor[0].GetAnimFrame();
 					for (s32 i = 0; i < 6; i++) {
 						WiiCursorPart* part = font->mCursor[1].mParts->vf040(i);
 						if (part != NULL) {
@@ -927,13 +927,13 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 						}
 					}
 					font->mCursor[1].vf190();
-				} else if (font->mCursor[1].vf11C() == 1) {
-					font->mCursor[1].vf108(0, 1, 0.0f, 0.0f, 0.0f, 15.0f);
+				} else if (font->mCursor[1].GetAnimId() == 1) {
+					font->mCursor[1].SetAnim(0, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 				}
 			} else {
-				font->mCursor[0].vf108(1, 0, 0.0f, 1.0f, 0.0f, 15.0f);
-				font->mCursor[0].vf084(portraitX, portraitY, 80.0f * portraitScale);
-				font->mCursor[0].vf09C((9.0f * portraitScale) * font->mAlpha);
+				font->mCursor[0].SetAnim(1, 0, 0.0f, 1.0f, 0.0f, 15.0f);
+				font->mCursor[0].SetPos(portraitX, portraitY, 80.0f * portraitScale);
+				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
 				font->mCursor[0].vf190();
 			}
 			if (font->mColor.a != 0) {
@@ -1143,7 +1143,7 @@ extern "C" void InitMessageWindow(CMsg* msg, s32 mode)
 	CMsg_ResetPos(msg);
 	msg->mFont.mColor = gMessageWindowDefaultColor;
 	for (int i = 0; i < 2; i++) {
-		msg->mFont.mCursor[i].vf14C();
+		msg->mFont.mCursor[i].InitializeObject();
 	}
 	msg->mFont.mMode = mode;
 }
@@ -1725,7 +1725,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
  * @note Size: 0x2E4
  */
 // the GameCube's shape with a Wii queue: MSG_ANIM_QUEUE drops the anim into a four slot ring
-// behind the playing one, otherwise vf108 (the Wii's SetAnim) starts it right away
+// behind the playing one, otherwise SetAnim (the Wii's SetAnim) starts it right away
 extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 {
 	u8 flags = ReadMsgU8(msg);
@@ -1746,8 +1746,8 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 			}
 		} else if (!(flags & MSG_ANIM_QUEUE)) {
 			obj->ClearAnmQueue();
-			obj->vf108(anim, 0, 0.0f, 1.0f, 0.0f, 15.0f);
-			obj->vf118(1.0f);
+			obj->SetAnim(anim, 0, 0.0f, 1.0f, 0.0f, 15.0f);
+			obj->UpdateAnim(1.0f);
 		} else {
 			obj->PushAnim(anim, 0, 100);
 		}
