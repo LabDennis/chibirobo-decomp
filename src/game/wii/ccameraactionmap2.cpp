@@ -2376,10 +2376,10 @@ static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
 
 static inline void ResetCenter(CCameraActionMap* map)
 {
-	Vec* center = &map->mSpringTarget;
-	SetCenter(map, *center);
+	Vec center = map->mSpringTarget;
+	SetCenter(map, center);
 	CVec eye              = map->mEye;
-	map->mRestDistance    = PSVECDistance(&eye, center);
+	map->mRestDistance    = PSVECDistance(&eye, &map->mSpringTarget);
 	sMapCameraCenterReset = 1;
 	map->mStatus.mFlags &= ~0x700;
 	if (map->mEyeInterp != NULL) { // retail tests before clearing (0x801604C4)
@@ -2391,8 +2391,8 @@ static inline void ResetCenter(CCameraActionMap* map)
  * @note Address: 0x80160220
  * @note Size: 0x2D4
  */
-// NONMATCHING: retail tests mask & flags, reads FlatDistance's z before x and copies the spring
-// center through a stack temporary before storing it back (91 %)
+// NONMATCHING: the center reset's local Vec copy matches. The remaining delta is a second
+// stack copy of the following CVec eye, plus register/scheduling differences in the mode blocks.
 extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
 {
 	// eye modes (0x3E): 2 eases the yaw to mTargetYaw, 4 runs mTurnInterpolation, 8 turns by the pad
