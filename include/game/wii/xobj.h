@@ -1277,6 +1277,8 @@ public:
 } // namespace g3d
 } // namespace nw4r
 
+#include "game/xobjjointdata.h"
+
 class CCamera;
 
 // same shape and role as the GameCube CObjVec: a current vec with the target it
@@ -1921,13 +1923,6 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
 // one of an actor's eight joint parts, the GameCube's XObjJointPart; the ctor's NULL
 // store at _00 is the ResNode default constructor
-struct XObjJointPart {
-	nw4r::g3d::ResNode mJoint; // _00
-	XObj* mObj;                // _04, cleared by ResetForNewGame
-	Mtx mMtx;                  // _08
-};
-STATIC_ASSERT(sizeof(XObjJointPart) == 0x38);
-
 // the base of the people and toys, the GameCube class behind the Wii XObj; member offsets
 // come from the ctor's vptr stores and ResetForNewGame's clear list, sizes +0x28 over the
 // GameCube's through the look block, then the Wii AnimSfx/AnimSfxActor pair and mParts
@@ -2359,14 +2354,6 @@ private:
 	AnimSfx mSfx;           // _AD4
 };
 STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);
-
-// an object an event tied to one of the spider's nodes
-struct SpiderTie {
-	nw4r::g3d::ResNode mJoint; // _00
-	XObj* mObj;                // _04
-	Mtx mMtx;                  // _08
-};
-STATIC_ASSERT(sizeof(SpiderTie) == 0x38);
 
 // the spiders: the GameCube class (PAL layout) behind the Wii XObj, with the Wii AnimSfx and one word
 // more after mRumbleTimer
