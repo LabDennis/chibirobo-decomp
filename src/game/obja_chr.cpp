@@ -6856,7 +6856,7 @@ static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  */
 // NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
 // gives the radii the upper registers. Declaring x, y and z first loads them at the top (retail loads them after
-// PSMTXMultVec)
+// PSMTXMultVec); 1.0f + y as the call's argument gives retail's constant order but costs more elsewhere
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -6886,7 +6886,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 			continue;
 		f32 dx = object->mMoveTranslate.x - x;
 		f32 dz = object->mMoveTranslate.z - z;
-		if (sqrtf(dx * dx + dz * dz) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
+		if (sqrtf(dz * dz + dx * dx) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
 			continue;
 		u32 hit = object->TestFloorCollision(&CVec(x, y, z), &CVec(x, y, z), radius + extraRadius, height, &push, &contact, 0, 0);
 		if ((hit & 3) != 3)
