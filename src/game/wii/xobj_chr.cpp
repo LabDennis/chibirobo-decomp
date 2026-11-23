@@ -323,7 +323,7 @@ void FinishTumbleAction(XActTumble* act);
 void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
 void DrawRadarTargetBeam(XActRadar* act);
 void DrawPopperShotParticles(XActPopper* act);
-void fn_8010BE94(XActPopper* act);
+void DrawPopperShotRings(XActPopper* act);
 void fn_8010E548(XActRadar* act);
 void DrawPlayerLookMarker(XObjChrLook* look);
 void DrawPointParticleDisplay(PointPtcl* points, f32 row);
@@ -7008,7 +7008,7 @@ void XObjChr::DrawScreenOverlay()
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	XObj::DrawScreenOverlay();
-	fn_8010BE94((XActPopper*)&chr->mPopper);
+	DrawPopperShotRings((XActPopper*)&chr->mPopper);
 	fn_8010E548((XActRadar*)&chr->mRadar);
 	if (!(gGame.GetStatusFlags(0x100)))
 		DrawPlayerLookMarker(&chr->mLook);
