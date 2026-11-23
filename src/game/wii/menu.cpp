@@ -56,6 +56,7 @@ void fn_80061014(MenuStatus* menu);
 void fn_80061FF4(MenuStatus* menu, const char* text, u32 color);
 void DrawPlayerStatusOverview(MenuStatus* menu);
 void fn_80061DBC(MenuStatus* menu);
+void fn_800695EC(MenuStatus* menu);
 void DrawStatusIconGrid(MenuStatus* menu);
 void DrawStatusHelpText(MenuStatus* menu);
 void DrawStatusMenuTitle(MenuStatus* menu);
@@ -6181,6 +6182,89 @@ void MenuSave::State17(u32)
 }
 
 // a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
+static s32 sStatusTabTextIds[5] = { 1, 3, 2, 4, -1 };
+
+// NONMATCHING: the mode-specific text selection and transition match Wii retail, but all four fn_800695EC calls inline;
+// the emitted function grows to 3624 bytes instead of calling it four times in 712 bytes
+void MenuStatus::State4(u32 frames)
+{
+	switch (mPhase) {
+	case 0:
+		mTargetPanelY = -200.0f;
+		mDelay        = 4.0f * gFrameRateScale;
+		mPhase++;
+		// fall through
+	case 1:
+		mDelay -= frames;
+		if (mDelay < 0.0f) {
+			if (mNextMode != 5) {
+				mTargetPanelY = 0.0f;
+			}
+			mPrevMode = mMode;
+			mMode     = mNextMode;
+			mPhase    = 0;
+			if (mMode == 1) {
+				fn_800695EC(this);
+				s32 id;
+				if (mSelection >= 4) {
+					id = 0;
+				} else {
+					id = sStatusTabTextIds[mSelection == -1 ? 4 : mSelection];
+				}
+				const char* text = "";
+				if (id != -1) {
+					text = GetLocalizedInterfaceText(id + 0x18);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+			if (mMode == 2) {
+				fn_800695EC(this);
+				s32 id = -1;
+				if (mItemSelection != -1) {
+					id = sStatusItemTable.mItems[mItemSelection].mItem;
+				}
+				if (id >= 0 && CountMenuItems() > 0) {
+					mHelp     = (const char*)GetItemName(id);
+					mShowHelp = 1;
+				} else {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				}
+			}
+			if (mMode == 9) {
+				fn_800695EC(this);
+				s32 id = mOverviewSelection;
+				const char* text;
+				if (id == -1) {
+					text = NULL;
+				} else if (gStatusEntryAvailable[id]) {
+					text = GetStatusOverviewLabel(id);
+				} else {
+					text = GetLocalizedInterfaceText(0xF);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+			if (mMode == 8) {
+				fn_800695EC(this);
+				s32 id = mIconSelection;
+				const char* text;
+				if (id == -1) {
+					text = NULL;
+				} else if (gStatusIconUnlocked[id]) {
+					text = (const char*)GetStatusIconName(id);
+				} else {
+					text = GetLocalizedInterfaceText(0xF);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+		}
+		break;
+	}
+}
+
 void MenuStatus::State5(u32)
 {
 	CPad pad(0);

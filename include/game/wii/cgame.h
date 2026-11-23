@@ -1650,6 +1650,7 @@ STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
 	void State3(u32 frames);
+	void State4(u32 frames);
 	void State5(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
@@ -1682,7 +1683,9 @@ public:
 	s32 mPrevSelection;  // _548
 	f32 mOffsetX;        // _54C
 	f32 mOffsetY;        // _550
-	u8 _554[0x5AC - 0x554];
+	u8 _554[0x568 - 0x554];
+	f32 mTargetPanelY; // _568
+	u8 _56C[0x5AC - 0x56C];
 	MenuStatusTab mTabs[4]; // _5AC
 	u8 _5EC[0x5FC - 0x5EC];
 	f32 mOverviewX; // _5FC
@@ -1694,7 +1697,8 @@ public:
 	f32 mTargetDiagramX; // _624
 	u8 _628[0x66C - 0x628];
 	s32 mPhase; // _66C
-	u8 _670[0x67C - 0x670];
+	f32 mDelay; // _670
+	u8 _674[0x67C - 0x674];
 	f32 mDetailScale; // _67C
 	u8 _680[0x684 - 0x680];
 	u8 mHasFourthTab; // _684
@@ -1707,8 +1711,8 @@ public:
 	s32 mShowHelp;         // _694
 	f32 mHelpAlpha;        // _698
 	const char* mHelpText; // _69C
-	u8 _6A0[0x6A4 - 0x6A0];
-	f32 mPulsePhase; // _6A4
+	const char* mHelp;     // _6A0
+	f32 mPulsePhase;       // _6A4
 	u8 _6A8[0x6AC - 0x6A8];
 	s32 mItemSelection;          // _6AC
 	s32 mPrevItemSelection;      // _6B0
