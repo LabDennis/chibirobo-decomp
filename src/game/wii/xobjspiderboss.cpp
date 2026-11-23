@@ -151,13 +151,9 @@ extern "C" void ResetSpiderBossState(XObjSpiderBoss* spider)
 	Vec vecA80                   = { 0.0f, 0.0f, 0.0f };
 	spider->_A80                 = vecA80;
 	spider->mGrabIntervalFrames  = 3 * gRefreshRate; // 3 seconds
-	spider->mAreaPos.x           = -200.0f;
-	spider->mAreaPos.y           = 0.0f;
-	spider->mAreaPos.z           = -200.0f;
-	spider->mAreaWidth           = 400.0f;
-	spider->mAreaDepth           = 400.0f;
-	spider->mDamageStep          = 0;
-	spider->mBlinkTimer          = 0;
+	spider->ResetPatrolArea();
+	spider->mDamageStep = 0;
+	spider->mBlinkTimer = 0;
 	for (u32 i = 0; i < 8; ++i) {
 		spider->mParts[i].mObj = NULL;
 	}
@@ -574,11 +570,7 @@ void XObjSpiderBoss::State0(u32 frames)
 		mTimer     = 0;
 		mPrevState = mState;
 		mState     = 4;
-		mAreaPos.x = -200.0f;
-		mAreaPos.y = 0.0f;
-		mAreaPos.z = -200.0f;
-		mAreaWidth = 400.0f;
-		mAreaDepth = 400.0f;
+		ResetPatrolArea();
 	} else {
 		mStep      = 0;
 		mTimer     = 0;

@@ -10071,10 +10071,7 @@ extern "C" BOOL RestorePlayerHeldItem(XObjChr* chr)
 // puts him back to a clean state, keeps what he was holding to pick it up again after
 void XObjChr::Release()
 {
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags |= 0x20000000;
-	mPlayerStatus.mFlags |= 7;
-	mPad.mReset    = TRUE;
+	RestoreControl();
 	HSD_JObj* jobj = mJObj;
 	if (jobj != NULL) {
 		HSD_JObjClearMtxFlags(jobj);
@@ -10933,11 +10930,8 @@ void XObjChr::ResetForNewGame()
 		p.burst.mState   = 0;
 	}
 	gPlayerSuitChangeEffect.Reset();
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags |= 0x20000000;
-	mPlayerStatus.mFlags |= 7; // the give-control-back flags
-	mPad.mReset = TRUE;
+	mPlayerStatus.mFlags = 0; // new-game reset clears these before handing control back
+	RestoreControl();
 }
 
 static inline void SetupPlayerRing(OctaMenu& ring, XObjChr* owner, f32 direction)

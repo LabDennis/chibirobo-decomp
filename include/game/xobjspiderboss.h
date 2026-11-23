@@ -64,6 +64,15 @@ public:
 
 	XObjSpiderBoss();
 
+	void ResetPatrolArea()
+	{
+		mAreaPos.x = -200.0f;
+		mAreaPos.y = 0.0f;
+		mAreaPos.z = -200.0f;
+		mAreaWidth = 400.0f;
+		mAreaDepth = 400.0f;
+	}
+
 	void State0(u32 frames);
 	void State1(u32 frames);
 	void State2(u32 frames);

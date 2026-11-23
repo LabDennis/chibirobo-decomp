@@ -383,7 +383,6 @@ gamecube_libs = [
             Object(Matching, "game/gamecgenerator.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecobjarchive.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecmsg.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/gamemsgcursor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gameccameraactions.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gameinterval.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/stagemicrophone.cpp", cflags=with_hsd_headers(cflags_game)),
