@@ -833,7 +833,7 @@ void MenuSFTest::StartOperation(s32 which)
 BOOL MenuSFTest::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
-		if (gGame.mMemcardLoaded) {
+		if (gGame.mSaveManager.mJobStarted) {
 			return IsOpen();
 		}
 		s32 result = gGame.mSaveManager.mFile.mResult;
@@ -842,6 +842,7 @@ BOOL MenuSFTest::Update(u32 frames)
 			sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
 			sMenuSFTestErr.mState     = 1;
 			sMenuSFTestErr.Resume();
+			sMenuSFTestErr.mWindow.mOpen = TRUE;
 			sMenuSFTestErr.InitRows();
 			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
 			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
@@ -900,6 +901,7 @@ BOOL MenuSFTest::Update(u32 frames)
 				sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
 				sMenuSFTestErr.mState     = 1;
 				sMenuSFTestErr.Resume();
+				sMenuSFTestErr.mWindow.mOpen = TRUE;
 				sMenuSFTestErr.InitRows();
 				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
 				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
@@ -923,7 +925,6 @@ BOOL MenuSFTest::Update(u32 frames)
 				Close(5);
 				if (sMenuStageSelect.IsOpen()) {
 					sMenuStageSelect.Close(5);
-					sMenuStageSelect.mState = 0;
 					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 					gGame.ClearStatusFlags(2);
 				}
@@ -967,6 +968,7 @@ BOOL MenuSFTest::Update(u32 frames)
 			sMenuSFTestSub.mWindow.mY = 80.0f + (mWindow.mY - mWindow.mHeight / 2.0f) + (2.0f + mFontSize) * mSelection;
 			sMenuSFTestSub.mState     = 1;
 			sMenuSFTestSub.Resume();
+			sMenuSFTestSub.mWindow.mOpen = TRUE;
 			sMenuSFTestSub.InitRows();
 			for (s32 i = 0; i < 4; i++) {
 				sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mText = sSFTestSubLines[i].mText;
