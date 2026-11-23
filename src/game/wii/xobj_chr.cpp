@@ -272,6 +272,8 @@ void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
+extern s32 gScreenSafeLeft;
+extern s32 gScreenSafeTop;
 void SpawnPlayerDust(WiiPlayerState* chr, CVec* position);
 BOOL IsPlayerCarryingPlug(WiiPlayerState* chr);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
@@ -5545,6 +5547,60 @@ s32 FrameSoundStartIfSilent(XObj* object, FrameEventTime* time, const FrameEvent
 s32 FrameSoundStopIfPlaying(XObj* object, FrameEventTime* time, const FrameEvent* event)
 {
 	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? -1 : 0;
+}
+
+static inline s32 ActionTargetPlacement(const XAction& action)
+{
+	if (action.mTarget != NULL) {
+		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
+		return GetStagePlacementIndex(placement);
+	}
+	return -1;
+}
+
+// NONMATCHING: retail keeps the player in r16 and the contact indices in r19-r22; the build shifts those
+// register roles, while the format calls, arguments and placement calculations match
+void XObjChr::DrawDebugStatus()
+{
+	WiiPlayerState* player = (WiiPlayerState*)this;
+	CVec* position         = player->GetPos();
+	s32 nearIndex          = player->mPreviousContactObject;
+	s32 hitIndex           = player->mHitObjectIndex;
+	s32 rideIndex          = player->mFloorContactObjects[0];
+	s32 eventIndex         = player->mFloorContactObjects[2];
+	s32 lift               = ActionTargetPlacement(player->mLift);
+	s32 hang               = ActionTargetPlacement(player->mHang);
+	s32 jump               = ActionTargetPlacement(player->mJump);
+	s32 ladder             = ActionTargetPlacement(player->mLadder);
+	s32 rope               = ActionTargetPlacement(player->mRope);
+	s32 push               = ActionTargetPlacement(player->mPush);
+	f32 floorHeight        = NAN;
+	u32 flags              = 0;
+	s32 floor              = -1;
+	if (eventIndex >= 0) {
+		flags = (gGame.mXObjs.mObjects[eventIndex]->mStatus.mFlags & 0xFF00000000ULL) >> 32;
+	} else if (hitIndex >= 0) {
+		XObj* object = gGame.mXObjs.mObjects[hitIndex];
+		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
+		floor        = object->mSelectedFloorIndex;
+		flags        = (object->mStatus.mFlags & 0xFF00000000ULL) >> 32;
+	}
+	f32 endFrame = player->GetAnimEndFrame();
+	s32 anim     = player->GetAnimId();
+	DrawGsStrokeTextFormat(&gGame.mGs, -1,
+	                       "\\B000000B0POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
+	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n",
+	                       (f32)gScreenSafeLeft, (f32)gScreenSafeTop, 0.0f, 11.0f, 12.0f, position->x, position->y, position->z,
+	                       (s32)(RAD2DEG * player->mMoveRotate.y), player->mMoveSpeed, player->mMoveSpeed0.y, anim,
+	                       player->mFrameTime.mFrame, endFrame, player->mIdleLoops, nearIndex, player->mNearDistance, hitIndex, flags,
+	                       floor, floorHeight, rideIndex, eventIndex);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1,
+	                       "\\B000000B0ACT :%2d\nLIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\n"
+	                       "ROPE:%2d(%d)\nPUSH:%2d(%d)\nTMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n",
+	                       (f32)gScreenSafeLeft, (f32)(gScreenSafeTop + 108), 0.0f, 11.0f, 12.0f, player->mAttachment, player->mLift.mState,
+	                       lift, player->mHang.mState, hang, player->mJump.mState, jump, player->mLadder.mState, ladder,
+	                       player->mRope.mState, rope, player->mPush.mState, push, player->mTumble.mState, player->mCopter.mState,
+	                       player->mPopper.mState, player->mRadar.mState);
 }
 
 // the anim rate at the game's frame rate, 1.135 times faster in lift state 4 except for anim 0x13B
