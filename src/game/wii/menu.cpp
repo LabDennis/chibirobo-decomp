@@ -5911,6 +5911,53 @@ void MenuSave::State4(u32 frames)
 	}
 }
 
+// NONMATCHING: the state transitions match; the result load is scheduled before the delay subtraction here, and the
+// outer zero-result branch uses one bne instead of retail's beq plus branch
+void MenuSave::State5(u32 frames)
+{
+	s32 result = gGame.mSaveManager.mFile.mResult;
+	mSaved     = FALSE;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[mFile];
+		if (entry->mStatus & 1) {
+			fn_8007A2E8(&mSlots[mFile], entry, TRUE);
+		}
+		u32 blocks, inodes;
+		GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+		mFreeBlocks  = blocks;
+		mFreeEntries = inodes;
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+		SetMode(1);
+		mLastFile   = mFile;
+		mNewestFile = -1;
+		mSaved      = TRUE;
+		mOffset     = 0.0f;
+	} else {
+		mResult = result;
+		switch (result) {
+		case -9:
+		case -11:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		case -4:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		default:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		}
+		lbl_8044B700[0x14] = TRUE;
+		mTargetAlpha       = 1.0f;
+	}
+}
+
 // the states the Wii's save flow no longer reaches. NONMATCHING (State6 to State15's panics): the messages' offsets
 // in the string pool, which holds the rest of the file's strings ahead of them in retail
 void MenuSave::State6(u32)

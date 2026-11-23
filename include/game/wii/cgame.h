@@ -1389,7 +1389,8 @@ public:
 	f32 _178;                  // _178
 	f32 mOffset;               // _17C
 	WiiMenuSaveSlot mSlots[3]; // _180, the three save files
-	u8 _27C[0x284 - 0x27C];
+	u32 mFreeBlocks;           // _27C
+	u32 mFreeEntries;          // _280
 	s32 mResult;               // _284, the save operation's result
 	s32 mMessage;              // _288
 	u8 mReady;                 // _28C
