@@ -1,8 +1,7 @@
 // chibi robo's actions, the GameCube's objb_act.cpp: .text 0x800F48E0-0x801067C0 (wii_units.md Nr. 67). The
 // functions come in the reverse of the GameCube's order, GetTargetFloorPosition first and UpdatePushedObject
 // last; ResetTumbleAction (the GameCube's objb_act.cpp, once xacttumble.cpp) follows the file.
-// NONMATCHING: two per-action updates are still to port: UpdatePlayerHangAction and UpdateLadderActionAnimation.
-// The Wii rewrote them for the nw4r
+// NONMATCHING: UpdateLadderActionAnimation is still to port. The Wii rewrote it for the nw4r
 // models and the Wii remote, so the GameCube's src/game/objb_act.cpp is a template for them, not a copy. Of the
 // ported functions, the IsCarrying* checks and IsUsingMug differ only in which of r4-r7 holds each nested inline's
 // result; GetStagePlacementScale, GetTargetFloorPosition, GetLiftTargetContactOffset and UpdatePushedObject in
@@ -54,10 +53,13 @@ void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* target, s16 useValue, 
 void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
 void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
 void fn_800E3AE4(WiiPlayerState* chr, f32 frame);
+f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index);
+s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred);
 BOOL IsLiftTargetPlug(XActLift* act);
 void ApplyPlayerItemTintToTarget(XAction* act);
 extern s32 gRefreshRate;
 Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target);
+Vec GetTargetFloorPosition(XAction* act);
 BOOL IsCarryingToothbrush(XActLift* act);
 BOOL IsCarryingSpoon(XActLift* act);
 BOOL IsCarryingMug(XActLift* act);
@@ -1460,6 +1462,343 @@ Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
 CVec GetStagePlacementScale(const XObj* obj)
 {
 	return CVec(GetPlacementScale(obj->mCoord.mPlacement));
+}
+
+static inline void StandAfterLift(WiiPlayerState* owner);
+
+static inline f32 GetHangEdgeOutwardYaw(const XObj* object, const Vec* point, s32 index)
+{
+	Vec first  = PushEdgePoint(object, index, true, point->y);
+	Vec second = PushEdgePoint(object, index, false, point->y);
+	CVec outward;
+	GetOutwardPerpendicularToEdge((Vec*)point, &first, &second, &outward);
+	return WrapAngle(atan2(outward.x, outward.z));
+}
+
+static inline Vec GetScaledTargetFloorExtent(const XAction* act)
+{
+	return *act->mTarget->GetScale() * GetFloorExtent(act->mTarget, act->mTargetFloor);
+}
+
+/**
+ * @note Address: 0x800FDA78
+ * @note Size: 0x20E0
+ */
+// NONMATCHING: one CVec addition and its aggregate temporaries still differ; the state logic and all other calls are
+// reconstructed, including the three static contact objects and their registration calls.
+void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
+{
+	switch (act->mState) {
+	case 1: {
+		static CVec contact, normal, start;
+		if (anim != 0x13) {
+			if (act->mTarget != NULL) {
+				f32 angle = GetFloorFacingAngle(act->mTarget, act->mOwner->GetPos(), act->mTargetFloor, 1, &contact, &normal);
+				if (__fpclassifyf(angle) != FP_NAN) {
+					StopPlayerMotion(act->mOwner);
+					act->mOwner->SetAnim(0x13, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					act->mOwner->SetRotationY(angle);
+					start     = *act->mOwner->GetPos();
+					contact.y = start.y;
+				} else {
+					act->mState  = 0;
+					act->mTarget = NULL;
+					return;
+				}
+			}
+			if (CheckStageFlag(gGame.mStage, 1) && act->mOwner->mPlug.mConnection) {
+				act->mOwner->mPlug.mConnection = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mState         = 5;
+			act->mMoveDirection = 0;
+			if (act->mTarget != NULL) {
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+					CVec owner(*act->mOwner->GetPos());
+					owner.y = 0.0f;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y           = 0.0f;
+					act->mFloorCenter = floor;
+					act->mDistance    = PSVECDistance(&owner, &floor);
+				} else {
+					act->mOwner->SetPos(contact - normal * 4.0f);
+				}
+			}
+		} else if (act->mTarget != NULL) {
+			if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+				f32 radius = act->mOwner->GetScale()->x * GetScaledTargetFloorExtent(act).x;
+				CVec owner(*act->mOwner->GetPos());
+				owner.y = 0.0f;
+				CVec floor(GetTargetFloorPosition(act));
+				floor.y = 0.0f;
+				if (PSVECDistance(&owner, &floor) < 4.0f + radius) {
+					f32 yaw = act->mOwner->mMoveRotate.y;
+					act->mOwner->SetTranslateX(act->mOwner->GetPos()->x - 0.2f * (f32)sin(yaw));
+					act->mOwner->SetTranslateZ(act->mOwner->GetPos()->z - 0.2f * (f32)cos(yaw));
+				}
+			} else {
+				CVec delta = (contact - normal * 4.0f) - start;
+				act->mOwner->SetPos((contact - normal * 4.0f) - delta * (1.0f - frame / end));
+			}
+		}
+		break;
+	}
+	case 4:
+		if (anim != 0x7A && anim != 0xCA) {
+			if (act->mTarget != NULL) {
+				s32 index = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
+				if (index >= 0) {
+					act->mTargetFloor = index;
+				}
+				f32 yaw;
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+					CVec owner(*act->mOwner->GetPos());
+					owner.y = 0.0f;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y = 0.0f;
+					yaw     = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
+				} else {
+					yaw = PI + GetHangEdgeOutwardYaw(act->mTarget, act->mOwner->GetPos(), act->mTargetFloor);
+				}
+				yaw                   = WrapAngle(yaw);
+				act->mHangStartOffset = *act->mOwner->GetPos() - *act->mTarget->GetPos();
+				Vec pos               = *act->mOwner->GetPos();
+				pos.x += 1.5f * (f32)sin(PI + yaw);
+				pos.z += 1.5f * (f32)cos(PI + yaw);
+				act->mOwner->SetPos(pos);
+				SyncRopePosition(act->mOwner);
+			}
+			act->mOwner->SetAnim(0x7A, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			return;
+		}
+		if (model->IsAnimDone()) {
+			act->mOwner->SetPos(*act->mTarget->GetPos() + act->mHangStartOffset);
+			SyncRopePosition(act->mOwner);
+			act->mState               = 0;
+			act->mTarget              = NULL;
+			act->mOwner->mJump.mState = 3;
+			if (CheckStageFlag(gGame.mStage, 1) && act->mOwner->mPlug.mConnection) {
+				act->mOwner->mPlug.mConnection = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+			}
+			return;
+		}
+		if (!act->mStickAway) {
+			return;
+		}
+		if (act->mOwner->GetAnimFrame() / act->mOwner->GetAnimEndFrame() <= 0.6f) {
+			StandAfterLift(act->mOwner);
+			act->mState  = 0;
+			act->mTarget = NULL;
+			return;
+		}
+		act->mOwner->SetPos(*act->mTarget->GetPos() + act->mHangStartOffset);
+		SyncRopePosition(act->mOwner);
+		if (act->mOwner->GetAttachment() == 2 || act->mOwner->mLift.mState) {
+			act->mOwner->mJump.mState = 2;
+			act->mState               = 0;
+			act->mTarget              = NULL;
+			if (CheckStageFlag(gGame.mStage, 1) && act->mOwner->mPlug.mConnection) {
+				act->mOwner->mPlug.mConnection = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+			}
+		} else if (act->mTarget != NULL && (act->mTarget->mStatus.mFlags & 0x800000000ULL)) {
+			act->mOwner->mLadder.mState       = 3;
+			act->mOwner->mLadder.mTarget      = act->mTarget;
+			act->mOwner->mLadder.mTargetFloor = act->mTarget->mSelectedFloorIndex;
+			act->mState                       = 0;
+			act->mTarget                      = NULL;
+		} else if (act->mTarget != NULL && (act->mTarget->mStatus.mFlags & 0x1000000000ULL)) {
+			act->mOwner->mRope.mState       = 3;
+			act->mOwner->mRope.mTarget      = act->mTarget;
+			act->mOwner->mRope.mTargetFloor = act->mTarget->mSelectedFloorIndex;
+			act->mState                     = 0;
+			act->mTarget                    = NULL;
+			return;
+		} else {
+			act->mState = 3;
+			return;
+		}
+	case 3:
+		if (anim != 0x76) {
+			if (act->mTarget != NULL) {
+				s32 index = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
+				if (index >= 0) {
+					act->mTargetFloor = index;
+				}
+				CVec contact(0.0f, 0.0f, 0.0f);
+				f32 yaw;
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+					CVec owner(*act->mOwner->GetPos());
+					owner.y = 0.0f;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y = 0.0f;
+					yaw     = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
+				} else {
+					yaw = PI + GetFloorFacingAngle(act->mTarget, act->mOwner->GetPos(), act->mTargetFloor, 0, &contact, NULL);
+					if (__fpclassifyf(yaw) == FP_NAN) {
+						act->mOwner->mJump.mState = 2;
+						act->mState               = 0;
+						act->mTarget              = NULL;
+						return;
+					}
+				}
+				yaw = WrapAngle(yaw);
+				act->mOwner->SetRotationY(yaw);
+				act->mOwner->SetAnim(0x13, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+				act->mOwner->SetAnim(0x13, TRUE, act->mOwner->GetAnimEndFrame(), 1.0f, 1.0f, 15.0f);
+				act->mOwner->UpdateAnim(0.0f);
+				CVec local = act->mOwner->GetNodeTranslate("second_null");
+				CVec delta = act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos();
+				delta.y    = -delta.y;
+				act->mOwner->SetPos(*act->mOwner->GetPos() + delta);
+				SyncRopePosition(act->mOwner);
+				act->mOwner->SetAnim(0x76, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+				local.x = -local.x;
+				local.z = -local.z;
+				act->mOwner->GetResNode("second_null").SetTranslate(local.x, local.y, local.z);
+				Vec pos = *act->mOwner->GetPos();
+				f32 distance;
+				if (act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+					CVec owner(*act->mOwner->GetPos());
+					owner.y = 0.0f;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y  = 0.0f;
+					yaw      = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
+					distance = 1.0f + (PSVECDistance(&owner, &floor) - act->mOwner->GetScale()->x * GetScaledTargetFloorExtent(act).x);
+				} else {
+					pos.x    = contact.x;
+					pos.z    = contact.z;
+					distance = 1.0f;
+				}
+				yaw = WrapAngle(yaw);
+				pos.x += distance * (f32)sin(PI + yaw);
+				pos.z += distance * (f32)cos(PI + yaw);
+				Vec offset = act->mTargetOffset;
+				Mtx rotate;
+				PSMTXRotRad(rotate, 'y', yaw);
+				PSMTXMultVec(rotate, &offset, &offset);
+				pos.x += offset.x;
+				pos.z += offset.z;
+				act->mOwner->SetPos(pos);
+				SyncRopePosition(act->mOwner);
+			}
+			if (CheckStageFlag(gGame.mStage, 1) && act->mOwner->mPlug.mConnection) {
+				act->mOwner->mPlug.mConnection = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+			}
+		} else if (model->IsAnimDone()) {
+			f32 turn = act->mOwner->GetNodeRotateY("second_null");
+			act->mOwner->SetRotationY(act->mOwner->GetNodeRotateY() + turn);
+			act->mOwner->SetAnim(0x13, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mOwner->SetAnim(0x13, TRUE, act->mOwner->GetAnimEndFrame(), 1.0f, 1.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			CVec local = act->mOwner->GetNodeTranslate("second_null");
+			act->mOwner->SetPos(*act->mOwner->GetPos() + (act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos()));
+			SyncRopePosition(act->mOwner);
+			act->mOwner->GetResNode("second_null").SetTranslate(local.x, local.y, local.z);
+			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mState         = 5;
+			act->mMoveDirection = 0;
+			if (act->mTarget != NULL && act->mTarget->mFloors[act->mTargetFloor].mId == 0) {
+				CVec owner(*act->mOwner->GetPos());
+				owner.y = 0.0f;
+				CVec floor(GetTargetFloorPosition(act));
+				floor.y           = 0.0f;
+				act->mFloorCenter = floor;
+				act->mDistance    = PSVECDistance(&owner, &floor);
+			}
+		}
+		break;
+	case 2:
+		if (anim != 0x18) {
+			act->mOwner->SetAnim(0x18, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			if (act->mTarget != NULL) {
+				act->mOwner->SetRotationY(GetHangEdgeOutwardYaw(act->mTarget, act->mOwner->GetPos(), act->mTargetFloor));
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
+			SyncRopePosition(act->mOwner);
+			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
+			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
+			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			act->mOwner->SetPos(*act->mOwner->GetPos() + (*act->mOwner->GetPos() - act->mOwner->GetJointWorldPos("second_null")));
+			SyncRopePosition(act->mOwner);
+			act->mState         = 5;
+			act->mMoveDirection = 0;
+		}
+		break;
+	case 5:
+		if (act->mMoveDirection == -1) {
+			if (anim != 0x16) {
+				act->mOwner->SetAnim(0x16, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			}
+		} else if (act->mMoveDirection == 1) {
+			if (anim != 0x15) {
+				act->mOwner->SetAnim(0x15, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			}
+		} else if (anim != 0x14) {
+			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+		}
+		break;
+	case 6:
+	case 7: {
+		s32 next = act->mState == 7 ? 0x7D : 0x17;
+		if (anim != next) {
+			act->mOwner->SetAnim(next, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
+			SyncRopePosition(act->mOwner);
+			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
+			StandAfterLift(act->mOwner);
+			act->mState  = 0;
+			act->mTarget = NULL;
+		}
+		break;
+	}
+	case 8:
+		act->mOwner->SetAnim(0x19, TRUE, 15.0f, 1.0f, 1.0f, 15.0f);
+		act->mState = 9;
+	case 9:
+		if (anim != 0x19) {
+			act->mOwner->SetAnim(0x19, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			return;
+		}
+		if (!model->IsAnimDone()) {
+			return;
+		}
+		act->mOwner->SetAnim(0x1A, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+		act->mState  = 10;
+		act->mTarget = NULL;
+	case 10:
+		if (act->mOwner->GetHeight() <= 0.0f) {
+			if (act->mOwner->mFallDistance > 30.0f) {
+				act->mState = 0;
+				act->mOwner->SetAnim(0x8E, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+				act->mOwner->mJump.mState = 5;
+				ApplyPlayerJumpStrength((XActJump*)&act->mOwner->mJump, act->mOwner->mFallDistance);
+				act->mOwner->SetColor(1, 255, 0, 0, 0.0f);
+				act->mOwner->SetColor(1, 0, 0, 0, 0.3f);
+				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, 0.3f);
+			} else {
+				act->mOwner->SetAnim(0x1B, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+				act->mState = 11;
+			}
+		} else if (act->mOwner->GetAttachment() == 1) {
+			act->mState                 = 0;
+			act->mOwner->mCopter.mState = 8;
+		}
+		break;
+	case 11:
+		if (model->IsAnimDone()) {
+			StandAfterLift(act->mOwner);
+			act->mState = 0;
+		}
+		break;
+	}
 }
 
 static inline void StandAfterLift(WiiPlayerState* owner)
