@@ -73,9 +73,14 @@ STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
  * @note Address: 0x80093C14
  * @note Size: 0x490
  */
-// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29). Its frame has the four
-// rotation vectors as unnamed objects in the order they are used, each with its own zero template: literals handed to
-// a circle call that takes the position and the rotation as Vecs gives that frame (97.7 %), the call itself is not found.
+// a circle at pos, its rotation given as a vector
+static inline void DrawTrailCircle(u32 segments, u32 centerColor, u32 edgeColor, const Vec& pos, f32 w, f32 h, const Vec& rotation)
+{
+	DrawGsCircle(&gGame.mGs, segments, centerColor, edgeColor, pos.x, pos.y, pos.z, w, h, rotation.x, rotation.y, rotation.z);
+}
+
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29, US 0x80093DF4), so the
+// max is f27 there; a second local, a second 15.0f * peak argument, a single-size helper and a const f32& do not give the copy
 extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 {
 	if (!trail->active) {
@@ -103,13 +108,9 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 	f32 size = 15.0f * peak; // the halo at the trail's top
 
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, outerRotation.x,
-	             outerRotation.y, outerRotation.z);
+	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-	Vec innerRotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, innerRotation.x,
-	             innerRotation.y, innerRotation.z);
+	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
 
 	for (s32 i = 0; i < 2; ++i) {
 		for (s32 j = 0; j < 10; ++j) {
@@ -122,14 +123,9 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 			u32 center     = edge;
 			center |= (u8)(s32)(255.0f * point.scale);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
-			glowRotation.z   = 4.0f * angle;
-			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
-			             glowRotation.y, glowRotation.z);
+			DrawTrailCircle(6, 0xFFFFFF20, 0xFFFFFF00, pos, 2.5f * radius, 2.5f * radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
-			coreRotation.z   = 4.0f * angle;
-			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
+			DrawTrailCircle(3, center, edge, pos, radius, radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
 		}
 	}
 	gGame.mGs.mBillboardEnabled = 0;
@@ -2625,11 +2621,12 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
+	f32 edge       = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
+	f32 lineHeight = 24.0f;
 	for (s32 row = 0; row < 2; ++row) {
 		s32 which = order[menu->mSel][row];
 		f32 x     = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
-		f32 y     = 46.0f + row * 24.0f;
+		f32 y     = 46.0f + row * lineHeight;
 		for (s32 j = 0; j < 4; ++j) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
 			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j],
@@ -3282,7 +3279,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			}
 		} else {
 			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) / 2.f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
 		if (menu->mFocus && menu->mMenuType != 3) {
@@ -3356,7 +3353,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	f32 zero = 0.0f;
 	for (s32 i = 0; i < count; ++i) {
 		OctaMenuItem& item = menu->mItems[i];
-		if (item.mHighlight == zero)
+		if (zero == item.mHighlight)
 			continue;
 		f32 width = gEquipmentIconWidth[i];
 		std::sinf(2.0943952f * fade);
@@ -3366,7 +3363,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			x = originX + 68.f * (scale * slotX[i]);
 		} else {
 			f32 radius = 60.f + 20.f * item.mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) / 2.f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
 		f32 highlight      = item.mHighlight;
@@ -5596,13 +5593,15 @@ void XObjChr::DrawObjectEffects()
 		n = 0;
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xff000000 | (u32)(200.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xff000000;
 				n += 2;
 			}
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xff000000 | (u32)(200.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xff000000;
 				n += 2;
 			}
@@ -5612,13 +5611,15 @@ void XObjChr::DrawObjectEffects()
 		n = 0;
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xffffff00 | (u32)(255.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xffffff00;
 				n += 2;
 			}
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xffffff00 | (u32)(255.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xffffff00;
 				n += 2;
 			}
