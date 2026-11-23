@@ -1,19 +1,24 @@
 // chibi robo's actions, the GameCube's objb_act.cpp: .text 0x800F48E0-0x801067C0 (wii_units.md Nr. 67). The
 // functions come in the reverse of the GameCube's order, GetTargetFloorPosition first and UpdatePushedObject
 // last; ResetTumbleAction (the GameCube's objb_act.cpp, once xacttumble.cpp) follows the file.
-// NONMATCHING: three per-action updates are still to port: UpdateLiftActionAnimation,
-// UpdatePlayerHangAction and UpdateLadderActionAnimation. The Wii rewrote them for the nw4r
+// NONMATCHING: two per-action updates are still to port: UpdatePlayerHangAction and UpdateLadderActionAnimation.
+// The Wii rewrote them for the nw4r
 // models and the Wii remote, so the GameCube's src/game/objb_act.cpp is a template for them, not a copy. Of the
 // ported functions, the IsCarrying* checks and IsUsingMug differ only in which of r4-r7 holds each nested inline's
 // result; GetStagePlacementScale, GetTargetFloorPosition, GetLiftTargetContactOffset and UpdatePushedObject in
 // scheduling and stack slots. UpdatePlayerRopeAction has the retail calls, but its sin/cos and vector temporaries differ.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h" // the Wii MSL's out-of-line __fpclassifyf
-#include "game/wii/xobjflags.h"                                     // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
+#include "nw4r/ef/ef_resource.h"
+#include "nw4r/ef/ef_res_emitter.h"
+#include "game/wii/xobjflags.h" // first: its AnimSfx needs the real nw4r::math, ahead of xobj.h's shim
 #include "game/wii/xobj.h"
+#include "game/xobjattachment.h"
+#include "game/wii/xobjleticker.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/xact.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/menuutil.h"
 #include "game/cvec.h"
 #include "game/inventory.h"
 #include "game/gmath.h"
@@ -34,6 +39,24 @@ f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height);
 f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 u32 CheckStageFlag(s32 stage, u32 mask);
 void PutAwayLiftedObject(XActLift* act);
+UnkStageObj* GetStagePlacementByIndex(s32 index);
+UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+u32 GetItemFlagsMasked(s16 item, u16 mask);
+s16 GetItemPickupHoldTime(s16 item);
+s8 GetItemSoundIndex(s16 item, s32 kind);
+u32 GetItemReleaseSoundId(s8 index);
+void SetPlugCordSpeed(WiiPlayerPlug* plug, f32 speed);
+u32 GetPlayerActionParameter(s32 index);
+s32 GetStageCollectionFlagBase(s32 group);
+XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
+s32 RemoveInventoryItemCount(Inventory* inventory, s16 id, s32 amount);
+void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* target, s16 useValue, s16 hitValue);
+void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
+void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
+void fn_800E3AE4(WiiPlayerState* chr, f32 frame);
+BOOL IsLiftTargetPlug(XActLift* act);
+void ApplyPlayerItemTintToTarget(XAction* act);
+extern s32 gRefreshRate;
 Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target);
 BOOL IsCarryingToothbrush(XActLift* act);
 BOOL IsCarryingSpoon(XActLift* act);
@@ -1437,6 +1460,894 @@ Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
 CVec GetStagePlacementScale(const XObj* obj)
 {
 	return CVec(GetPlacementScale(obj->mCoord.mPlacement));
+}
+
+static inline void StandAfterLift(WiiPlayerState* owner)
+{
+	owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	owner->mIdleLoops = 3;
+}
+
+static inline EffectInstance* StartLiftEffect(u32 id, MtxP mtx)
+{
+	EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, id, 1);
+	if (effect != NULL) {
+		effect->mtx = mtx;
+		UpdateEffectMtx(effect);
+	}
+	return effect;
+}
+
+/**
+ * @note Address: 0x800F5BE8
+ * @note Size: 0x42D8
+ */
+// NONMATCHING: all 109 retail calls are present with their proper targets. State 32's abort block is laid out before
+// the trig/contact block rather than after it, and vector temporaries, stack homes and register scheduling still differ.
+void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
+{
+	s32 placement = act->mTarget != NULL ? (act->mTarget->mCoord.mPlacement - GetStagePlacementByIndex(0)) / (s32)sizeof(UnkStageObj) : -1;
+	act->mBatteryCost = 0.0f;
+	switch (act->mState) {
+	case 1: {
+		BOOL special = placement >= 0 && act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8
+		            && GetItemFlagsMasked(act->mTarget->mAttr.mObjData->GetItem(), 0x8000) != 0;
+		s32 liftAnim = special ? 0x158 : 5;
+		if (anim != liftAnim) {
+			act->mOwner->SetAnim(liftAnim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			if (act->mTarget != NULL) {
+				Vec point = GetFloorContactPosition(act->mTarget, act->mTargetFloor, NULL);
+				act->mOwner->SetRotateY(atan2(point.x - act->mOwner->GetPos()->x, point.z - act->mOwner->GetPos()->z), 12.0f * DEG2RAD);
+			}
+			if (placement < 0 && PSVECDistance(act->mOwner->GetPos(), act->mTarget->GetPos()) >= 3.0f) {
+				SetPlugCordSpeed(&act->mOwner->mPlug, 0.2f);
+			}
+			act->_AC
+			    = act->mTarget != NULL && act->mTarget->GetEventScript() != NULL && (act->mTarget->mStatus.mFlags & 0x10000000000ULL) != 0;
+			break;
+		}
+		if (!model->IsAnimDone()) {
+			break;
+		}
+		special = placement >= 0 && act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8
+		       && GetItemFlagsMasked(act->mTarget->mAttr.mObjData->GetItem(), 0x8000) != 0;
+		if (special) {
+			act->mOwner->SetAnim(0x159, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+		} else {
+			act->mOwner->SetAnim(6, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		}
+		act->mState = 2;
+		if (placement < 0) {
+			SetPlugCordSpeed(&act->mOwner->mPlug, 0.5f);
+			act->mTimer = 0.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xA7, 1.0f, 0.0f);
+		} else if (act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8) {
+			act->mTimer = gRefreshRate * (GetItemPickupHoldTime(act->mTarget->mAttr.mObjData->GetItem()) / 100.0f);
+		} else {
+			act->mTimer = 0.5f * gRefreshRate;
+		}
+	}
+	case 2:
+		if (placement >= 0 && act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8
+		    && GetItemFlagsMasked(act->mTarget->mAttr.mObjData->GetItem(), 0x8000) != 0) {
+			if ((gWiiPointer.mTrigger & (PadActConfirm | (1 << 10) | (1 << 11)))
+			    || (nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].x) > 0.6f
+			        && gWiiPointer.mRemoteAcceleration[0].y < 0.0f && gWiiPointer.mRemoteAcceleration[1].x < 0.0f
+			        && gWiiPointer.mRemoteAcceleration[2].x < 0.0f && gWiiPointer.mRemoteAcceleration[3].x < 0.0f
+			        && gWiiPointer.mRemoteAcceleration[4].x < 0.0f)) {
+				if (gGame.mEvt.mData.mScript == NULL) {
+					act->mState = 3;
+					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+				}
+			} else if ((gWiiPointer.mTrigger & ((1 << 17) | PadActStickRight)) || gGame.mEvt.mData.mScript != NULL
+			           || IsPlayerBlockingEvents(act->mOwner)) {
+				act->mState = 0;
+				StandAfterLift(act->mOwner);
+				act->mTarget = NULL;
+				act->_AC     = 0;
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+			}
+			break;
+		}
+		if ((act->mTimer -= frames) > 0.0f) {
+			break;
+		}
+		act->mState = 3;
+	case 3:
+		if (anim != 7) {
+			BOOL room = TRUE;
+			if (act->mTarget != NULL && act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8) {
+				s32 slot = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, act->mTarget->mAttr.mObjData->GetItem());
+				if (slot >= 0 && act->mOwner->mParams.mInventory.mItems[slot].mCount >= 10) {
+					room = FALSE;
+				}
+			}
+			if (room) {
+				act->mTargetState = 1;
+				act->mOwner->SetAnim(7, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			} else {
+				act->mState = 5;
+			}
+			if (act->mTarget != NULL && act->mTarget->GetEventScript() != NULL && (act->mTarget->mStatus.mFlags & 0x10000000000ULL)) {
+				XObj* target       = act->mTarget;
+				const void* script = gGame.mXObjs.mObjects[placement]->GetEventScript();
+				if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
+					StartOrQueueEventScript(&gGame.mEvt, (u8*)script, target, -1, -1);
+				}
+			}
+			if (act->mTarget != NULL && (act->mTarget->mStatus.mFlags & 0x800000)) {
+				act->mTarget->mStatus.mFlags &= ~0x800000ULL;
+				u32 materialFlags[5];
+				materialFlags[0] = act->mTarget->mStatus.mFlags & 0x800000;
+				materialFlags[1] = act->mTarget->mStatus.mFlags & 0x200000;
+				materialFlags[2] = act->mTarget->mStatus.mFlags & 0x40;
+				materialFlags[3] = act->mTarget->mStatus.mFlags & 0x20000;
+				materialFlags[4] = act->mTarget->mStatus.mFlags & 0x400000;
+				act->mTarget->ApplyMaterialPresets(materialFlags);
+				act->mTarget->mScreenBoundsValid = 0;
+			}
+			act->_AC = 0;
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			s32 last = act->mOwner->GetAnimEndFrame();
+			if (last >= frames) {
+				fn_800E3AE4(act->mOwner, last - frames);
+			}
+			if (act->mTarget != NULL) {
+				if (act->mTarget->GetEventScript() != NULL) {
+					act->mState = 5;
+				} else if (act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8
+				           && !(act->mTarget->mStatus.mFlags & 0x400000000000ULL)) {
+					act->mState = 20;
+				} else {
+					act->mState = 4;
+				}
+				act->mTargetState = 4;
+			}
+		}
+		break;
+	case 4:
+		if (anim == 0x895) {
+			if (model->IsAnimDone()) {
+				act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				if (act->mContactEffect) {
+					fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
+					act->mContactEffect = FALSE;
+				}
+			} else {
+				if (act->mCheckContact && frame > 6.0f) {
+					Vec position = act->mTarget->GetJointPos("second_null");
+					if (CheckCarriedObjectContacts(act, &position, 3.0f, 1.0f, TRUE, FALSE, FALSE, NULL)) {
+						act->mCheckContact = FALSE;
+					}
+				}
+				if (!act->mContactEffect) {
+					act->mContactEffectId = 0x1D;
+					act->mContactEffect   = StartLiftEffect(act->mContactEffectId, act->mTarget->GetWorldMtx("second_null"));
+				}
+			}
+		} else if ((anim == 0x8AE || anim == 0x8AF) && model->IsAnimDone()) {
+			act->mOwner->SetAnim(0x894, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mTarget->SetAnim(1, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		}
+		if (IsCarryingToothbrush(act)) {
+			if (anim != 0x895 && act->mContactEffect) {
+				fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
+				act->mContactEffect = FALSE;
+			}
+		} else if (IsCarryingSquirter(act) && anim != 0x8C2 && anim != 0x8C3 && anim != 0x8C4 && act->mToolEffect) {
+			fn_800A12F8(&gGame.mEvtPtcl, act->mToolEffectId, FALSE);
+			act->mToolEffect = FALSE;
+		}
+		break;
+	case 5:
+		if (gGame.mEvt.mData.mScript == NULL) {
+			if (act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8
+			    && !(act->mTarget->mStatus.mFlags & 0x400000000000ULL)) {
+				BOOL room = TRUE;
+				s32 slot  = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, act->mTarget->mAttr.mObjData->GetItem());
+				if (slot >= 0 && act->mOwner->mParams.mInventory.mItems[slot].mCount >= 10) {
+					room = FALSE;
+				}
+				if (room) {
+					act->mState = 20;
+				} else {
+					act->mState = 0;
+					StandAfterLift(act->mOwner);
+					if (act->mTarget->mCoord.mPlacement->mFlags & 0x80) {
+						act->mTarget->mStatus.mFlags |= 0x800000ULL;
+						u32 materialFlags[5];
+						materialFlags[0] = act->mTarget->mStatus.mFlags & 0x800000;
+						materialFlags[1] = act->mTarget->mStatus.mFlags & 0x200000;
+						materialFlags[2] = act->mTarget->mStatus.mFlags & 0x40;
+						materialFlags[3] = act->mTarget->mStatus.mFlags & 0x20000;
+						materialFlags[4] = act->mTarget->mStatus.mFlags & 0x400000;
+						act->mTarget->ApplyMaterialPresets(materialFlags);
+					}
+					act->mTarget->mScreenBoundsValid = 1;
+					act->mTarget                     = NULL;
+				}
+			} else {
+				act->mState = 4;
+			}
+		}
+		break;
+	case 6:
+		if (anim != 9) {
+			act->mOwner->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTargetState = 5;
+		} else if (model->IsAnimDone()) {
+			StandAfterLift(act->mOwner);
+			act->mState = 0;
+		}
+		break;
+	case 7:
+	case 8:
+	case 9:
+		if (anim != 0x9F && anim != 0xA0 && anim != 0x14D && anim != 0x15C && anim != 0x15F && anim != 0x15A && anim != 0x15D
+		    && anim != 0x15B && anim != 0x15E) {
+			act->SetTarget(&act->mOwner->mPlug);
+			WiiPlayerPlug* plug = (WiiPlayerPlug*)act->mTarget;
+			plug->mStatus.mFlags |= 0x0400000000000000ULL;
+			plug->mConnection = 0;
+			act->mYawOffset   = 0.0f;
+			plug->SetRotationY(act->mOwner->mMoveRotate.y);
+			plug->SetRotationX(0.0f);
+		}
+	case 11:
+		if (anim != 0x9F && anim != 0xA0 && anim != 0x14D && anim != 0x15C && anim != 0x15F) {
+			act->mOwner->ClearAnimQueue();
+			if (act->mState == 7) {
+				act->mOwner->SetAnim(0x9F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTargetState = 6;
+			} else if (act->mState == 8) {
+				act->mOwner->SetAnim(0xA0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTargetState = 8;
+			} else {
+				act->mOwner->SetAnim(0x14D, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTargetState = 11;
+			}
+		} else if (model->IsAnimDone()) {
+			if (act->mState == 7) {
+				StandAfterLift(act->mOwner);
+				s32 last = act->mOwner->GetAnimEndFrame();
+				if (last >= frames) {
+					fn_800E3AE4(act->mOwner, last - frames);
+				}
+				act->mState = 0;
+				if (act->mPlugTarget != NULL) {
+					act->mPlugTarget->ReceivePlugPower(0.0f);
+				}
+			} else if (act->mState == 8) {
+				act->mState = 13;
+				act->mTimer = 0.2f * gRefreshRate;
+			} else {
+				act->mOwner->SetAnim(0x14F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				if (act->mPlugTarget != NULL) {
+					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, (WiiTitleObject*)act->mPlugTarget, 1, 1, 0);
+				}
+				act->_80 = act->_84 = act->_88 = 0.0f;
+				act->mState                    = 16;
+			}
+		}
+		break;
+	case 10:
+		break;
+	case 12:
+		if (anim != 0xAD) {
+			act->mOwner->SetAnim(0xAD, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			act->SetTarget(&act->mOwner->mPlug);
+			act->mTargetState = 7;
+			act->mYawOffset   = 0.0f;
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
+			SyncRopePosition(act->mOwner);
+			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			s32 last = act->mOwner->GetAnimEndFrame();
+			if (last >= frames) {
+				fn_800E3AE4(act->mOwner, last - frames);
+			}
+			act->mState      = 4;
+			act->mPlugTarget = NULL;
+		}
+		break;
+	case 13:
+		if ((act->mTimer -= frames) <= 0.0f) {
+			act->mTimer = 0.0f;
+			if (act->mPlugTarget != NULL && !act->mPlugTarget->ReceivePlugPower(0.0f)) {
+				act->mState = 15;
+				break;
+			}
+			act->mOwner->SetAnim(0xAB, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 14;
+			if (act->mPlugTarget != NULL && act->mPlugTarget->GetItem() == 0) {
+				gGame.mSubwin.mRectX = gGame.mSubwin.mRectY = gGame.mSubwin.mRectWidth = gGame.mSubwin.mRectHeight = NAN;
+				nw4r::g3d::ResNode node = act->mOwner->mPlug.FindResNode("plug_model");
+				Vec at                  = *act->mOwner->GetPos() + (*act->mPlugTarget->GetPos() - *act->mOwner->GetPos()) * 0.3f;
+				at.y = act->mOwner->GetPos()->y + 0.8f * (act->mOwner->mPlug.GetWorldPos(node).y - act->mOwner->GetPos()->y);
+				ConfigureSubwindowCamera(&gGame.mSubwin, at, act->mOwner->mMoveRotate.y - 45.0f * DEG2RAD, 24.0f * DEG2RAD, 100.0f, 8.0f);
+				gGame.mSubwin.mEnabled      = TRUE;
+				gGame.mSubwin.mFlags.mFlags = 0;
+			}
+		}
+		break;
+	case 14: {
+		Params& params = act->mOwner->mParams;
+		if (params.mBattery > 0.0f && params.mBattery / params.mMaxBattery > 0.2f) {
+			if (anim != 0xAB) {
+				act->mOwner->SetAnim(0xAB, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		} else if (anim != 0xAE) {
+			act->mOwner->SetAnim(0xAE, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		if (act->mPlugTarget != NULL) {
+			act->mBatteryCost = frames * (((s32)GetPlayerActionParameter(9) / 100.0f) / gRefreshRate);
+			if (!act->mPlugTarget->ReceivePlugPower(act->mBatteryCost)) {
+				act->mBatteryCost = 0.0f;
+				act->mState       = 15;
+			}
+		}
+		break;
+	}
+	case 15:
+		if (anim != 0xAC) {
+			act->mOwner->SetAnim(0xAC, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			act->mTargetState      = 10;
+			gGame.mSubwin.mEnabled = FALSE;
+			if (act->mPlugTarget != NULL && GetObjData(&act->mPlugTarget->mCoord)->mCategory == 9) {
+				((XObjLeticker*)act->mPlugTarget)->OnUnplugged();
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState      = 4;
+			act->mPlugTarget = NULL;
+		}
+		break;
+	case 16: {
+		f32 angle = atan2(-gWiiPads[0].mStick.y, -gWiiPads[0].mStick.x);
+		if (angle < act->_88) {
+			act->_88 = angle;
+		} else if (angle > act->_88 && act->_88 < 0.0f) {
+			act->_88 += DEG2RAD * frames;
+			if (act->_88 > 0.0f) {
+				act->_88 = 0.0f;
+			}
+		}
+		if (angle < act->_88) {
+			angle = act->_88;
+		}
+		if (angle > act->_88 + HALF_PI) {
+			angle = act->_88 + HALF_PI;
+		}
+		act->_80  = angle;
+		f32 delta = angle - act->_88;
+		if (act->_84 < delta) {
+			act->_84 += 2.0f * DEG2RAD * frames;
+			if (act->_84 > delta) {
+				act->_84 = delta;
+			}
+		} else if (act->_84 > delta) {
+			act->_84 -= 3.0f * DEG2RAD * frames;
+			if (act->_84 < delta) {
+				act->_84 = delta;
+			}
+		}
+		f32 progress = act->_84 / HALF_PI;
+		if (progress > 0.0f) {
+			if (anim != 0x150) {
+				act->mOwner->SetAnim(0x150, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				if (act->mPlugTarget != NULL) {
+					act->mPlugTarget->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				}
+			}
+			fn_800E3AE4(act->mOwner, progress * act->mOwner->GetAnimEndFrame());
+			if (act->mPlugTarget != NULL) {
+				for (s32 i = 0; i < 6; ++i) {
+					nw4r::g3d::AnmObj* anm = act->mPlugTarget->mObject.m_pScnMdl->GetAnmObj((nw4r::g3d::ScnMdlSimple::AnmObjType)i);
+					if (anm != NULL) {
+						anm->SetFrame(progress * act->mOwner->GetAnimEndFrame());
+					}
+				}
+			}
+		} else if (anim != 0x14F) {
+			act->mOwner->SetAnim(0x14F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			if (act->mPlugTarget != NULL) {
+				act->mPlugTarget->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		}
+		break;
+	}
+	case 17:
+		if (anim != 0x151) {
+			act->mOwner->SetAnim(0x151, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			if (act->mPlugTarget != NULL) {
+				act->mPlugTarget->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = act->mTargetState             = 4;
+			act->mPlugTarget                            = NULL;
+			((WiiPlayerPlug*)act->mTarget)->mConnection = 0;
+		}
+		break;
+	case 18:
+		if (anim != 0x14E) {
+			act->mOwner->SetAnim(0x14E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			act->mTargetState = 13;
+			if (act->mPlugTarget != NULL) {
+				act->mPlugTarget->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState      = 4;
+			act->mPlugTarget = NULL;
+		}
+		break;
+	case 19:
+		if (anim != 0xAC) {
+			act->mOwner->SetAnim(0xAC, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mOwner->UpdateAnim(0.0f);
+			act->mTargetState = 13;
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState      = 4;
+			act->mPlugTarget = NULL;
+		}
+		break;
+	case 20:
+		if (anim != 10) {
+			act->mOwner->SetAnim(10, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTargetState = 14;
+			if (act->mContactEffect) {
+				fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
+				act->mContactEffect = FALSE;
+			}
+			if (act->mToolEffect) {
+				fn_800A12F8(&gGame.mEvtPtcl, act->mToolEffectId, FALSE);
+				act->mContactEffect = FALSE;
+			}
+		} else if (model->IsAnimDone()) {
+			act->mState       = 0;
+			act->mTargetState = 15;
+			StandAfterLift(act->mOwner);
+			if (act->mTarget != NULL && act->mTarget->mAttr.mObjData != NULL && act->mTarget->mAttr.mObjData->GetCategory() == 8) {
+				s8 sound = GetItemSoundIndex(act->mTarget->mAttr.mObjData->GetItem(), 1);
+				if (sound >= 0) {
+					PlayWiiSoundEffect(&gGame.mSound, GetItemReleaseSoundId(sound), 1.0f, 0.0f);
+				}
+			}
+		}
+		break;
+	case 21:
+		if (act->mPendingItemId >= 0) {
+			act->mPendingItem
+			    = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(act->mPendingItemId)), 0, TRUE);
+		} else {
+			act->mPendingItem = NULL;
+		}
+		act->mState = 22;
+	case 22:
+		if (act->mPendingItem != NULL) {
+			if (act->mPendingItem->mStatus.mFlags & 0x0040000000000000ULL) {
+				break;
+			}
+			act->mPendingItem->mStatus.mFlags |= 0x0001000000000000ULL;
+			gGame.SetStatusFlags(0x1000);
+		}
+		act->mState = 23;
+	case 23:
+		if (anim != 11) {
+			act->mOwner->SetAnim(11, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mTargetState = 3;
+			if (IsLiftTargetPlug(act)) {
+				act->mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+				act->mTarget = NULL;
+			}
+			if (act->mPendingItemId >= 0 && act->mPendingItem != NULL) {
+				act->mPendingItem->mStatus.mFlags |= 0x0400000000000000ULL;
+				act->mPendingItem->SetScale(0.0f);
+				act->SetTarget(act->mPendingItem);
+				s32 count      = RemoveInventoryItemCount(&act->mOwner->mParams.mInventory, act->mTarget->GetItem(), 1);
+				s16 difference = count - GetStageCollectionFlagBase(0);
+				if (difference > 0) {
+					act->mPendingItem->mPlacementParam1 = difference;
+				}
+				act->mPendingItemId = -1;
+				if (IsCarryingSquirter(act)) {
+					ApplyPlayerItemTintToTarget(act);
+				}
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = act->mTargetState = 4;
+		}
+		break;
+	case 24:
+		if (act->mPendingItemId >= 0) {
+			act->mPendingItem
+			    = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(act->mPendingItemId)), 0, TRUE);
+		} else {
+			act->mPendingItem = NULL;
+		}
+		act->mState = 25;
+	case 25:
+		if (act->mPendingItem != NULL) {
+			if (act->mPendingItem->mStatus.mFlags & 0x0040000000000000ULL) {
+				break;
+			}
+			act->mPendingItem->mStatus.mFlags |= 0x0001000000000000ULL;
+			gGame.SetStatusFlags(0x1000);
+		}
+		act->mState = 26;
+	case 26:
+		if (anim != 0xEC) {
+			act->mOwner->SetAnim(0xEC, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			act->mTargetState = 18;
+			if (IsLiftTargetPlug(act)) {
+				act->mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+				act->mTarget = NULL;
+			}
+			if (act->mPendingItemId >= 0 && act->mPendingItem != NULL) {
+				act->mPendingItem->mStatus.mFlags |= 0x0400000000000000ULL;
+				act->mPendingItem->SetScale(0.0f);
+				act->SetTarget(act->mPendingItem);
+				act->mPendingItemId = -1;
+			}
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState       = 4;
+			act->mTargetState = 19;
+		}
+		break;
+	case 27:
+		if (act->mOwner->mTumble.mState == 9) {
+			act->mState = 4;
+		} else if (anim != 0x152) {
+			act->mOwner->SetAnim(0x152, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else if (act->mOwner->GetAnimFrame() <= 10.0f && !gWiiPointer.Check((1 << 16) | PadActStickLeft)) {
+			act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 4;
+		} else if (act->mOwner->IsAnimDone()) {
+			act->mOwner->SetAnim(0x153, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 29;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
+		}
+		break;
+	case 28:
+		if (act->mOwner->mTumble.mState == 9) {
+			act->mState = 4;
+		} else if (nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].z - gWiiPointer.mRemoteAcceleration[1].y) >= 0.2f
+		           && gWiiPointer.mRemoteAcceleration[0].z * gWiiPointer.mRemoteAcceleration[1].y < 0.0f) {
+			act->mOwner->SetAnim(0x895, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTarget->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState        = 31;
+			act->mCheckContact = TRUE;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
+		} else {
+			if (anim == 0x152 && act->mOwner->IsAnimDone()) {
+				act->mOwner->SetAnim(0x153, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x895 && act->mOwner->IsAnimDone()) {
+				act->mOwner->SetAnim(0x153, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				if (act->mContactEffect) {
+					fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
+					act->mContactEffect = FALSE;
+				}
+			}
+			if (act->mCheckContact && frame > 6.0f) {
+				Vec position = act->mTarget->GetJointPos("second_null");
+				if (CheckCarriedObjectContacts(act, &position, 3.0f, 1.0f, TRUE, FALSE, FALSE, NULL)) {
+					act->mCheckContact = FALSE;
+				}
+			}
+			if (!act->mContactEffect) {
+				act->mContactEffectId = 0x1D;
+				act->mContactEffect   = StartLiftEffect(act->mContactEffectId, act->mTarget->GetWorldMtx("second_null"));
+			} else {
+				fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
+				act->mContactEffect = FALSE;
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
+			}
+			if (gWiiPointer.Check((1 << 16) | PadActStickLeft) || gGame.mEvt.mData.mScript != NULL || IsPlayerBlockingEvents(act->mOwner)) {
+				act->mState = 30;
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
+			} else if (act->mOwner->mHang.mState != 0 || act->mOwner->mJump.mState != 0 || act->mOwner->mTumble.mState != 0) {
+				act->mState = 4;
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
+			}
+		}
+		break;
+	case 29:
+		if (act->mOwner->mTumble.mState == 9) {
+			act->mState = 4;
+		} else if (anim != 0x154) {
+			act->mOwner->SetAnim(0x154, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else if (act->mOwner->IsAnimDone()) {
+			act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 4;
+		}
+		break;
+	case 30:
+		if (act->mOwner->mTumble.mState == 9) {
+			act->mState = 4;
+		} else if (frame > 4.0f) {
+			act->mState  = 29;
+			Vec position = act->mTarget->GetJointPos("second_null");
+			if (CheckCarriedObjectContacts(act, &position, 3.0f, 1.0f, TRUE, FALSE, FALSE, NULL)) {
+				act->mCheckContact = FALSE;
+			}
+		}
+		break;
+	case 31:
+		act->mOwner->SetAnim(0x8B7, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		act->mTarget->SetAnim(5, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		act->mState = 33;
+		break;
+	case 32:
+		switch (act->mOwner->GetAnimId()) {
+		case 0x8B7:
+			if (act->mOwner->IsAnimDone()) {
+				Vec position = *act->mOwner->GetPos();
+				position.x += 3.0f * (f32)sin(act->mOwner->mMoveRotate.y);
+				position.z += 3.0f * (f32)cos(act->mOwner->mMoveRotate.y);
+				BOOL hit = FALSE;
+				for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+					XObj* object = gGame.mXObjs.mObjects[i];
+					if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000)) {
+						continue;
+					}
+					f32 dx = object->GetPos()->x - position.x;
+					f32 dz = object->GetPos()->z - position.z;
+					if (FSqrt(dx * dx + dz * dz) > 100.0f + (1.0f + object->mFloorXZExtent[0])) {
+						continue;
+					}
+					if (!(object->mStatus.mFlags & 0x40000000000ULL)) {
+						continue;
+					}
+					CVec push, contact;
+					if ((object->TestFloorCollision(&position, &position, 1.0f, 1.0f, &push, &contact, NULL, 0) & 3) == 3) {
+						hit = TRUE;
+						break;
+					}
+				}
+				if (hit) {
+					act->mOwner->SetAnim(0x156, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+					act->mTarget->SetAnim(9, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+				} else {
+					CheckCarriedObjectContacts(act, &position, 1.0f, 1.0f, TRUE, FALSE, FALSE, NULL);
+					act->mOwner->SetAnim(0x8AF, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+					act->mTarget->SetAnim(3, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+					act->mState = 4;
+					PlayWiiSoundEffect(&gGame.mSound, 0x17D, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x2E, 1);
+					if (effect != NULL) {
+						effect->pos = act->mTarget->GetJointPos("second_null");
+						effect->rot = (Vec) { 0.0f, 0.0f, 0.0f };
+						act->mTarget->GetJointScale(act->mTarget->GetRootResNode(), &effect->scale);
+						UpdateEffectMtx(effect);
+					}
+				}
+			}
+			break;
+		case 0x155:
+			if (gWiiPointer.Check((1 << 16) | PadActStickLeft) && act->mOwner->IsAnimDone()) {
+				act->mOwner->SetAnim(0x156, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(9, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (!gWiiPointer.Check((1 << 16) | PadActStickLeft)) {
+				act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mState = 4;
+			}
+			break;
+		case 0x156:
+			if (gWiiPointer.Check((1 << 16) | PadActStickLeft) || gGame.mEvt.mData.mScript != NULL || IsPlayerBlockingEvents(act->mOwner)) {
+				act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mState = 4;
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+			} else if ((gWiiPointer.mTrigger & 0x0C000000U)
+			           || (nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].x) > 0.6f
+			               && gWiiPointer.mRemoteAcceleration[0].y < 0.0f && gWiiPointer.mRemoteAcceleration[1].x < 0.0f
+			               && gWiiPointer.mRemoteAcceleration[2].x < 0.0f && gWiiPointer.mRemoteAcceleration[3].x < 0.0f
+			               && gWiiPointer.mRemoteAcceleration[4].x < 0.0f)) {
+				act->mOwner->SetAnim(0x157, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(10, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				Vec position = *act->mOwner->GetPos();
+				position.x += 3.0f * (f32)sin(act->mOwner->mMoveRotate.y);
+				position.z += 3.0f * (f32)cos(act->mOwner->mMoveRotate.y);
+				CheckCarriedObjectContacts(act, &position, 1.0f, 1.0f, TRUE, FALSE, FALSE, NULL);
+				InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 2);
+			}
+			break;
+		case 0x157:
+			if (act->mOwner->IsAnimDone()) {
+				act->mOwner->SetAnim(0x894, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mState = 4;
+			}
+			break;
+		default:
+			act->mState = 4;
+			break;
+		}
+		break;
+	case 33:
+		if (anim != 0x8B1) {
+			act->mOwner->SetAnim(0x8B1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTarget->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mUseEffect = FALSE;
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(0x8B2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTarget->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 35;
+		} else if (act->mOwner->GetAnimFrame() > 10.0f && !act->mUseEffect) {
+			act->mUseEffectId = 0x2F;
+			act->mUseEffect   = StartLiftEffect(act->mUseEffectId, act->mOwner->GetWorldMtx());
+		}
+		break;
+	case 34:
+		break;
+	case 35:
+		break;
+	case 36:
+		if (anim != 0x8B3) {
+			act->mOwner->SetAnim(0x8B3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTarget->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else if (model->IsAnimDone()) {
+			act->mOwner->SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mState = 4;
+		}
+		break;
+	case 37:
+		PutAwayLiftedObject(act);
+		break;
+	case 38: {
+		f32 angle = act->mOwner->mMoveRotate.y;
+		Vec point = *act->mOwner->GetPos();
+		point.x += 2.0f * (f32)sin(angle);
+		point.z += 2.0f * (f32)cos(angle);
+		if (CheckCarriedObjectContacts(act, &point, 2.0f, 1.0f, TRUE, FALSE, FALSE, NULL)) {
+			act->mOwner->mSquirterContent = 0;
+			act->mOwner->mItemTintWord    = -1;
+			act->mOwner->SetAnim(0x8D2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			act->mTarget->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else {
+			point.x += 2.0f * (f32)sin(angle);
+			point.z += 2.0f * (f32)cos(angle);
+			point.y += 7.0f;
+			if (CheckCarriedObjectContacts(act, &point, 2.0f, 3.0f, TRUE, FALSE, FALSE, NULL)) {
+				act->mOwner->mSquirterContent = 0;
+				act->mOwner->mItemTintWord    = -1;
+				act->mOwner->SetAnim(0x8C1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(10, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		}
+		if (act->mOwner->GetAnimId() != 0x8D2 && act->mOwner->GetAnimId() != 0x8C1) {
+			s16 count       = (s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38);
+			s32 chargeLevel = sSquirterChargeLevels[count];
+			if (chargeLevel == 3) {
+				act->mOwner->SetAnim(0x8C2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(11, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			} else if (chargeLevel == 2) {
+				act->mOwner->SetAnim(0x8C3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(12, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			} else if (chargeLevel == 1) {
+				act->mOwner->SetAnim(0x8C4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(13, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+			} else if (count <= 1) {
+				act->mOwner->mSquirterContent = 0;
+				act->mOwner->mItemTintWord    = -1;
+				act->mOwner->SetAnim(0x8C5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(14, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+		}
+		act->mTarget->UpdateAnim(frames);
+		act->mState        = 39;
+		act->mCheckToolHit = TRUE;
+		break;
+	}
+	case 39:
+		if (model->IsAnimDone()) {
+			BOOL finished = FALSE;
+			s16 count     = (s16)(GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38) - 1);
+			if (anim == 0x8C2) {
+				act->mTarget->SetAnim(sSquirterChargeLevels[count] == 3 ? 4 : 3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
+				finished = TRUE;
+			} else if (anim == 0x8C3) {
+				act->mTarget->SetAnim(sSquirterChargeLevels[count] == 2 ? 3 : 2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
+				finished = TRUE;
+			} else if (anim == 0x8C4) {
+				act->mTarget->SetAnim(sSquirterChargeLevels[count] == 1 ? 2 : 1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
+				finished = TRUE;
+			} else if (anim == 0x8C5) {
+				act->mTarget->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				finished = TRUE;
+			} else if (anim == 0x8D2) {
+				act->mOwner->SetAnim(0x8C0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x8C0) {
+				act->mOwner->SetAnim(0x8D3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mTarget->SetAnim(18, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x8D3) {
+				act->mTarget->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
+				finished = TRUE;
+			} else if (anim == 0x8C1) {
+				act->mTarget->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
+				finished = TRUE;
+			}
+			act->mTarget->UpdateAnim(frames);
+			if (finished) {
+				act->mOwner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				act->mState = 4;
+				if (act->mToolEffect) {
+					fn_800A12F8(&gGame.mEvtPtcl, act->mToolEffectId, FALSE);
+					act->mToolEffect = FALSE;
+				}
+			}
+		} else if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
+			if (act->mCheckToolHit) {
+				CVec pos     = act->mTarget->GetJointPos("atari");
+				f32 distance = (pos - act->mTarget->GetJointPos("saki")).Length();
+				if (distance > 0.1f) {
+					Vec scale;
+					act->mTarget->GetJointScale(act->mTarget->FindResNode("atari"), &scale);
+					Vec hit;
+					if (CheckCarriedObjectContacts(act, &pos, scale.x, 0.5f * scale.y, FALSE, TRUE, TRUE, &hit)) {
+						act->mCheckToolHit = FALSE;
+						if (act->mToolEffect) {
+							fn_800A12F8(&gGame.mEvtPtcl, act->mToolEffectId, FALSE);
+							act->mToolEffect = FALSE;
+						}
+						hit.x += scale.x * (f32)sin(act->mOwner->mMoveRotate.y);
+						hit.z += scale.x * (f32)cos(act->mOwner->mMoveRotate.y);
+						EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5A, 1);
+						if (effect != NULL) {
+							effect->pos   = hit;
+							effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+							effect->scale = (Vec) { 1.0f, 1.0f, 1.0f };
+							UpdateEffectMtx(effect);
+						}
+					}
+					if (act->mCheckToolHit && !act->mToolEffect) {
+						act->mToolEffectId = -1;
+						nw4r::g3d::ResNode attachment;
+						if (anim == 0x8C5) {
+							if (frame > 10.0f) {
+								attachment         = act->mTarget->FindResNode("saki");
+								act->mToolEffectId = 0x42;
+							}
+						} else {
+							attachment         = act->mTarget->FindResNode("atari");
+							act->mToolEffectId = 0x3C;
+						}
+						if (act->mToolEffectId >= 0) {
+							act->mToolEffect = StartLiftEffect(act->mToolEffectId, act->mTarget->GetWorldMtx(attachment));
+						}
+						if (act->mToolEffect && anim != 0x8C5) {
+							nw4r::ef::ResEmitter emitter = nw4r::ef::Resource::GetInstance()->GetEmitterIndexOf(act->mToolEffectId, NULL);
+							if (emitter.IsValid()) {
+								nw4r::ef::ResParticleParameterDesc desc = emitter.GetParticleParameterDesc();
+								if (desc.IsValid()) {
+									desc.SetColor(0, 0, gGame.GetPlayer()->mItemTint);
+								}
+							}
+						}
+					}
+				}
+			}
+		} else {
+			ApplyPlayerItemTintToTarget(act);
+		}
+		break;
+	}
 }
 
 /**
