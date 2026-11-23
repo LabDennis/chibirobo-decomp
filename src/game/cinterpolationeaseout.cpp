@@ -11,6 +11,8 @@
  * @note Address: 0x80135398
  * @note Size: 0x4C
  */
+// todo: Start stays a stand-in under its mangled name, as upstream has it: defining the key function here
+// makes the vtables (US 0x8022E504, 0x8022E52C) come out in this unit
 extern "C" bool Start__23CInterpolationEaseInOutFfff(CInterpolationEaseInOut* interp, f32 from, f32 to, f32 time)
 {
 	if (time <= 0.0f) {
@@ -29,11 +31,11 @@ extern "C" bool Start__23CInterpolationEaseInOutFfff(CInterpolationEaseInOut* in
  * @note Address: 0x80135314
  * @note Size: 0x84
  */
-extern "C" bool Update__23CInterpolationEaseInOutFUlf(CInterpolationEaseInOut* interp, u32 step, f32 dt)
+bool CInterpolationEaseInOut::Update(u32 step, f32 dt)
 {
 	bool done = false;
 	for (u32 i = 0; i < step; ++i) {
-		done = interp->Step(dt);
+		done = Step(dt);
 		if (done == true) {
 			break;
 		}
@@ -45,29 +47,29 @@ extern "C" bool Update__23CInterpolationEaseInOutFUlf(CInterpolationEaseInOut* i
  * @note Address: 0x80135280
  * @note Size: 0x94
  */
-extern "C" bool Step__23CInterpolationEaseInOutFf(CInterpolationEaseInOut* interp, f32 dt)
+bool CInterpolationEaseInOut::Step(f32 dt)
 {
-	interp->mTime -= dt;
-	if (interp->mTime < interp->mDuration / 2.0f) { // accelerate to the midpoint, then brake
-		interp->mSpeed -= interp->mAccel * dt;
+	mTime -= dt;
+	if (mTime < mDuration / 2.0f) { // accelerate to the midpoint, then brake
+		mSpeed -= mAccel * dt;
 	} else {
-		interp->mSpeed += interp->mAccel * dt;
+		mSpeed += mAccel * dt;
 	}
-	if (interp->mTime <= 0.0f) {
-		interp->mValue = interp->mTarget;
+	if (mTime <= 0.0f) {
+		mValue = mTarget;
 	} else {
-		interp->mValue += interp->mSpeed * dt;
+		mValue += mSpeed * dt;
 	}
-	return interp->mTime <= 0.0f;
+	return mTime <= 0.0f;
 }
 
 /**
  * @note Address: 0x80135278
  * @note Size: 0x8
  */
-extern "C" f32 Get__23CInterpolationEaseInOutFv(CInterpolationEaseInOut* interp)
+f32 CInterpolationEaseInOut::Get()
 {
-	return interp->mValue;
+	return mValue;
 }
 
 /**
@@ -93,11 +95,11 @@ extern "C" bool Start__21CInterpolationEaseOutFfff(CInterpolationEaseOut* interp
  * @note Address: 0x8013519C
  * @note Size: 0x84
  */
-extern "C" bool Update__21CInterpolationEaseOutFUlf(CInterpolationEaseOut* interp, u32 step, f32 dt)
+bool CInterpolationEaseOut::Update(u32 step, f32 dt)
 {
 	bool done = false;
 	for (u32 i = 0; i < step; ++i) {
-		done = interp->Step(dt);
+		done = Step(dt);
 		if (done == true) {
 			break;
 		}
@@ -109,24 +111,24 @@ extern "C" bool Update__21CInterpolationEaseOutFUlf(CInterpolationEaseOut* inter
  * @note Address: 0x80135120
  * @note Size: 0x7C
  */
-extern "C" bool Step__21CInterpolationEaseOutFf(CInterpolationEaseOut* interp, f32 dt)
+bool CInterpolationEaseOut::Step(f32 dt)
 {
-	interp->mTime -= dt;
-	f32 elapsed = interp->mDuration - interp->mTime;
-	interp->mSpeed += interp->mAccel * dt / 2.0f;
-	if (interp->mTime <= 0.0f) {
-		interp->mValue = interp->mTarget;
+	mTime -= dt;
+	f32 elapsed = mDuration - mTime;
+	mSpeed += mAccel * dt / 2.0f;
+	if (mTime <= 0.0f) {
+		mValue = mTarget;
 	} else {
-		interp->mValue = interp->mSpeed * elapsed + interp->mStart;
+		mValue = mSpeed * elapsed + mStart;
 	}
-	return interp->mTime <= 0.0f;
+	return mTime <= 0.0f;
 }
 
 /**
  * @note Address: 0x80135118
  * @note Size: 0x8
  */
-extern "C" f32 Get__21CInterpolationEaseOutFv(CInterpolationEaseOut* interp)
+f32 CInterpolationEaseOut::Get()
 {
-	return interp->mValue;
+	return mValue;
 }
