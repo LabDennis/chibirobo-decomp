@@ -2,6 +2,7 @@
 #include "game/wii/xobj.h"
 #include "game/wii/xobjflags.h"
 #include "game/wii/cpad.h"
+#include "game/wii/ceffect.h"
 #include "game/attachmentvalues.h"
 #include "game/gmath.h"
 #include "game/wii/spiderplacement.h"
@@ -47,10 +48,12 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 BOOL IsPlayerFlashingFromHit(WiiPlayerState* chr);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
+EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 
 extern s32 gRefreshRate;
 extern AnimSfxEvent gSpiderAnimSfxEvents[];
 extern XObj* gSpiderCarryModels[16];
+extern XObj* gSmallSpiderEffectObjects[12];
 extern s32 gSpiderCarrySlotOwners[16];
 extern u32 gSpiderCoinBounceUpdateContext; // the coins' manager token, the callbacks never touch it
 extern s32 gSpiderCarryCount;
@@ -2111,6 +2114,182 @@ extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 			}
 		}
 	}
+}
+
+/**
+ * @note Address: 0x80128340
+ * @note Size: 0x38
+ */
+extern "C" void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx)
+{
+	fx->mPos.x         = 0.0f;
+	fx->mPos.y         = 0.0f;
+	fx->mPos.z         = 0.0f;
+	fx->_10.x          = 0.0f;
+	fx->_10.y          = 0.0f;
+	fx->_10.z          = 0.0f;
+	fx->mRotY          = 0.0f;
+	fx->_24            = 0.0f;
+	fx->mState         = 0;
+	fx->_2C            = 0;
+	fx->mStatus.mFlags = 0;
+}
+
+/**
+ * @note Address: 0x80128378
+ * @note Size: 0x300
+ */
+extern "C" void UpdateSmallSpiderWebEffect(XObjSpiderSmallFx* shot, u8 i, u32 frames, BOOL unused)
+{
+	if (gGame.GetStatusFlags(0x400)) {
+		return;
+	}
+	if (i == 0xFF) {
+		shot->mState = 0;
+		shot->mStatus.mFlags &= ~1;
+		return;
+	}
+	if (gSmallSpiderEffectObjects[i] == NULL) {
+		shot->mState = 0;
+		shot->mStatus.mFlags &= ~1;
+		return;
+	}
+	if (!(shot->mStatus.mFlags & 1)) {
+		return;
+	}
+	switch (shot->mState) {
+	case 0:
+		break;
+	case 1:
+		gSmallSpiderEffectObjects[i]->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		shot->mState++;
+		break;
+	case 2: {
+		f32 frame = gSmallSpiderEffectObjects[i]->GetAnimFrame();
+		f32 end   = gSmallSpiderEffectObjects[i]->GetAnimEndFrame();
+		if (end - frames <= frame) {
+			gSmallSpiderEffectObjects[i]->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			shot->mState = 0;
+			shot->mStatus.mFlags &= ~1;
+		}
+		break;
+	}
+	case 3:
+		gSmallSpiderEffectObjects[i]->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		MtxP mtx               = gSmallSpiderEffectObjects[i]->GetWorldMtx("ptcl_exp01");
+		EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x1F, 0);
+		if (effect != NULL) {
+			effect->mtx = mtx;
+			UpdateEffectMtx(effect);
+		}
+		shot->mState++;
+		break;
+	case 4: {
+		f32 frame = gSmallSpiderEffectObjects[i]->GetAnimFrame();
+		f32 end   = gSmallSpiderEffectObjects[i]->GetAnimEndFrame();
+		if (end - frames <= frame) {
+			gSmallSpiderEffectObjects[i]->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			shot->mState = 0;
+			shot->mStatus.mFlags &= ~1;
+		}
+		break;
+	}
+	case 10:
+		gSmallSpiderEffectObjects[i]->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		shot->mState = 0;
+		shot->mStatus.mFlags &= ~1;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80128678
+ * @note Size: 0x14C
+ */
+extern "C" void DrawSmallSpiderWebEffect(XObjSpiderSmallFx* fx, u8 index)
+{
+	if (index != 255 && (fx->mStatus.mFlags & 1)) {
+		if (gSmallSpiderEffectObjects[index] != NULL) {
+			gSmallSpiderEffectObjects[index]->SetTranslateX(fx->mPos.x);
+			gSmallSpiderEffectObjects[index]->SetTranslateY(fx->mPos.y);
+			gSmallSpiderEffectObjects[index]->SetTranslateZ(fx->mPos.z);
+			gSmallSpiderEffectObjects[index]->SetRotationY(fx->mRotY);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, gSmallSpiderEffectObjects[index]->mObject.m_pScnMdl);
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->UpdateFrame();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcWorld();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcView();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->GatherDrawScnObj();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->DrawOpa();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->DrawXlu();
+			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+			while (scene->mPending != 0) {
+				scene->PopPending();
+			}
+		}
+	}
+}
+
+static inline bool CanPlaySe()
+{
+	bool play = false;
+	if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && gGame.mMenu.mActive == 0 && !gGame.GetStatusFlags(0xC00)
+	    && gGame.mTimeState.mDuration > 0.0f && gGame.mTimeState.mRunning == 0) {
+		play = true;
+	}
+	return play;
+}
+
+/**
+ * @note Address: 0x801287C4
+ * @note Size: 0x1D4
+ */
+extern "C" void StartSmallSpiderWebEffect(XObjSpiderSmallFx* fx, const CVec& pos)
+{
+	fx->mStatus.mFlags |= 1;
+	fx->mPos   = pos;
+	fx->mState = 1;
+	if (CanPlaySe()) {
+		PlayWiiSoundEffect(&gGame.mSound, 0x1F1, 1.0f, 0.0f);
+		GetSoundVolumeAtPosition(&gGame.mSound, &fx->mPos, 0);
+	}
+}
+
+/**
+ * @note Address: 0x80128998
+ * @note Size: 0x30
+ */
+extern "C" void fn_80128998(XObjSpiderSmallFx* fx, const CVec& pos)
+{
+	fx->mStatus.mFlags |= 1;
+	fx->mPos   = pos;
+	fx->mState = 3;
+}
+
+/**
+ * @note Address: 0x801289C8
+ * @note Size: 0x18
+ */
+extern "C" void fn_801289C8(XObjSpiderSmallFx* fx)
+{
+	fx->mState = 10;
+	fx->mStatus.mFlags |= 1;
+}
+
+/**
+ * @note Address: 0x801289E0
+ * @note Size: 0xBC
+ */
+extern "C" bool IsSmallSpiderEffectAnimationFinished(XObjSpiderSmallFx* fx, u8 slot, u32 frames)
+{
+	if (gSmallSpiderEffectObjects[slot] == NULL) {
+		return TRUE;
+	}
+	f32 frame = gSmallSpiderEffectObjects[slot]->GetAnimFrame();
+	f32 end   = gSmallSpiderEffectObjects[slot]->GetAnimEndFrame();
+	if (end - frames <= frame) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
