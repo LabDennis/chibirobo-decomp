@@ -4767,13 +4767,6 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
 	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
 		switch (p->GetAnimId()) {
-		case 0x160:
-		case 0x161:
-		case 0x162:
-		case 0x163:
-			p->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			p->mIdleLoops = rand() % 10 + 5;
-			break;
 		// standing and idle anims: moving starts the walk, standing still he may fidget
 		case 0:
 		case 1:
@@ -4794,12 +4787,21 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 		case 0xCFA:
 		case 0xCFB:
 		case 0xCFC:
-		case 0xCFD: {
+		case 0xCFD:
+		case 0x160:
+		case 0x161:
+		case 0x162:
+		case 0x163: {
 			BOOL script = gGame.mEvt.mData.mScript != NULL;
 			if (script && __fpclassifyf(p->mWalkHeading) == FP_NAN
 			    && (((XObjAttachment*)p->mCopterObj)->mVisible || ((XObjAttachment*)p->mPopperObj)->mVisible
 			        || ((XObjAttachment*)p->mRadarObj)->mVisible || ((XObjAttachment*)p->mOXObj)->mVisible))
 				break;
+			if (motion != 0.0f) {
+				SetPlayerIdleAnim(p, 3);
+				p->mIdleLoops = 0;
+				break;
+			}
 			if (p->_1C9B8[2] > 0.0f) {
 				if (p->mLift.mState == 4) {
 					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
@@ -4813,9 +4815,10 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 				}
 				break;
 			}
-			if (motion != 0.0f) {
-				SetPlayerIdleAnim(p, 3);
-				p->mIdleLoops = 0;
+			// the shake is over: leave its anim for the plain idle
+			if (p->GetAnimId() == 0x160 || p->GetAnimId() == 0x162 || p->GetAnimId() == 0x163 || p->GetAnimId() == 0x161) {
+				SetPlayerIdleAnim(p, 0x11);
+				p->mIdleLoops = rand() % 10 + 5;
 				break;
 			}
 			if (p->mLift.mState != 0 || p->mFloorContactObjects[2] >= 0 || p->mSuits.mChangeStep)
