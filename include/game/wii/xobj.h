@@ -2457,6 +2457,13 @@ public:
 	void UpdateAfterAnim(u32 frames);
 	void Drop();
 	void StateNone(u32 frames);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadYaw();
+	virtual f32 GetMinHeadYaw();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
 
 private:
 	f32 _D78;
@@ -2475,6 +2482,12 @@ public:
 	void Drop();
 	void StateNone(u32 frames);
 	void StatePickUp(u32 frames);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
+	BOOL IsFree();
 
 private:
 	f32 _D78;

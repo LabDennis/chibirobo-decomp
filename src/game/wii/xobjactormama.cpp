@@ -9,6 +9,16 @@
 extern "C" {
 void UpdateAfterAnim__9XObjActorFUl(XObjActor* actor, u32 frames);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+void ResetActorLook(XObjActor* actor, f32 rate);
+void SetActorLookTarget(XObjActor* actor, const Vec* target, f32 rate);
+void SetActorLookAngle(XObjActor* actor, f32 value, f32 rate);
+s32 HandleEventCommand__9XObjActorFlPl(XObjActor* actor, s32 count, s32* command);
+}
+
+static inline XObj* FindObj(s16 id)
+{
+	return gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
 }
 
 static inline void MamaPropVisibility(XObjActorMama* mama, XObj* prop)
@@ -338,4 +348,80 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 
 void XObjActorMama::StateNone(u32 frames)
 {
+}
+
+s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
+{
+	HandleEventCommand__9XObjActorFlPl(this, count, command);
+	switch (command[0]) {
+	case 1:
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, DEG2RAD * 5.0f);
+			break;
+		case 1:
+			SetActorLookTarget(this, gGame.GetPlayer()->GetPos(), DEG2RAD * 5.0f);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, FindObj(command[2])->GetPos(), DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		mCmd[2] = command[2];
+		mCmd[3] = command[3];
+		mCmd[4] = command[4];
+		mCmd[5] = command[5];
+		mCmd[6] = command[6];
+		mCmd[7] = command[7];
+		mCmd[8] = command[8];
+		mCmd[9] = command[9];
+		ProcessPendingEvents(0);
+		break;
+	}
+	return 0;
+}
+
+CVec XObjActorMama::GetHeadWorldPosition()
+{
+	return GetJointWorldPos("neck_2");
+}
+
+nw4r::g3d::ResNode XObjActorMama::GetHeadJoint()
+{
+	return FindResNode("neck_2");
+}
+
+f32 XObjActorMama::GetMaxHeadYaw()
+{
+	return DEG2RAD * 40.0f;
+}
+
+f32 XObjActorMama::GetMinHeadYaw()
+{
+	return -(DEG2RAD * 40.0f);
+}
+
+f32 XObjActorMama::GetMaxHeadPitch()
+{
+	return DEG2RAD * 10.0f;
+}
+
+f32 XObjActorMama::GetMinHeadPitch()
+{
+	return -(DEG2RAD * 10.0f);
 }
