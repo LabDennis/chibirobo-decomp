@@ -886,12 +886,10 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
  * @note Address: 0x80089658
  * @note Size: 0x2990
  */
-// NONMATCHING: ported from the GameCube's DrawHudBatteryGauge — the textures move one slot up
-// (125/126/127/168), the x anchor is gScreenSafeRight - 105 instead of 512, the background quad
-// sits at z 1 and _1E4.y over 0.3 makes it draw behind the digits with the z test and comp loc
-// flipped, and _1E4.y over 0 draws an orange glow quad and a black one under DrawGsQuad. Retail
-// also keeps a dead mBatteryValue == max compare inside the digit-change block that this source
-// does not reproduce; the rest is register and schedule noise in the big loop
+// NONMATCHING: the Wii texture, anchor, depth and glow differences are ported, and digit colors
+// are converted in their branches as in retail. Retail still has one more float-to-uint conversion
+// in the empty-digit path and a dead mBatteryValue == max compare in the digit-change block; the
+// remaining diff is register and stack scheduling in the unrolled digit loops.
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
@@ -952,8 +950,6 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	Approach(&h->mBatteryValue, &h->mBatteryTarget, step);
 	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
-	u32 red          = 0xff646400 | digitAlpha;
-	u32 green        = 0x89ff2900 | digitAlpha;
 	u32 gray         = 0x50505000 | digitAlpha;
 	f32 gap          = 7.6f * scale;
 	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
@@ -993,18 +989,21 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		u32 color;
 
 		if (h->mDigitDelta[i] > 0) {
-			color = BatteryDigitColor(whole, red, green, gray);
+			color = BatteryDigitColor(whole, 0xff646400 | (u32)(opacity * fade), 0x89ff2900 | (u32)(opacity * fade),
+			                          0x50505000 | (u32)(opacity * fade));
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
 			                     (1.f - amount), true);
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10), (1.f - amount),
 			                     amount);
 		} else if (h->mDigitDelta[i] < 0) {
-			color = BatteryDigitColor(whole, red, green, gray);
+			color = BatteryDigitColor(whole, 0xff646400 | (u32)(opacity * fade), 0x89ff2900 | (u32)(opacity * fade),
+			                          0x50505000 | (u32)(opacity * fade));
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole - 1) % 10) + amount / 10.f,
 			                     (1.f - amount), amount, true);
 		} else {
-			color = BatteryDigitColor(whole, red, green, gray);
+			color = BatteryDigitColor(whole, 0xff646400 | (u32)(opacity * fade), 0x89ff2900 | (u32)(opacity * fade),
+			                          0x50505000 | (u32)(opacity * fade));
 			if (h->mDigitLastDelta[i] > 0) {
 				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
 				                     (1.f - amount), true);
