@@ -319,8 +319,8 @@ void ResetPopperShot(XActPopperShot* shot);
 void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
 void DrawRadarTargetBeam(XActRadar* act);
 void DrawPopperShotParticles(XActPopper* act);
-void DrawPopperShotRings(XActPopper* act);
-void DrawPlayerRadarEffects(XActRadar* act);
+void fn_8010BE94(XActPopper* act);
+void fn_8010E548(XActRadar* act);
 void DrawPlayerLookMarker(XObjChrLook* look);
 void DrawPointParticleDisplay(PointPtcl* points, f32 row);
 f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
@@ -6735,14 +6735,14 @@ void XObjChr::DrawObjectEffects()
 		    && !(chr->GetAnimId() == 10 && chr->GetAnimFrame() > 22.0f)) {
 			CVec jointScale;
 			chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &jointScale);
-			radius += 2.5f * jointScale.x;
+			radius += 4.0f * jointScale.x;
 		}
 		radius *= 1.2f;
 		CVec from = chr->GetJointPos(chr->FindResNode("koshi_model"));
 		CVec to   = chr->GetJointPos(chr->FindResNode("head"));
 		if (chr->mLift.mState && IsCarryingMug(&chr->mLift)) {
-			from.x = chr->mLift.mTarget->mMoveTranslate.x;
-			from.z = chr->mLift.mTarget->mMoveTranslate.z;
+			from.x = chr->mLift.mTarget->GetPos()->x;
+			from.z = chr->mLift.mTarget->GetPos()->z;
 			Vec up = { 0, 1, 0 };
 			to     = from + up;
 		}
@@ -6940,8 +6940,8 @@ void XObjChr::DrawScreenOverlay()
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	XObj::DrawScreenOverlay();
-	DrawPopperShotRings((XActPopper*)&chr->mPopper);
-	DrawPlayerRadarEffects((XActRadar*)&chr->mRadar);
+	fn_8010BE94((XActPopper*)&chr->mPopper);
+	fn_8010E548((XActRadar*)&chr->mRadar);
 	if (!(gGame.GetStatusFlags(0x100)))
 		DrawPlayerLookMarker(&chr->mLook);
 
