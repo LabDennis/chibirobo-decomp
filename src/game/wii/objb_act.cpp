@@ -857,7 +857,7 @@ static inline void StartJumpDust(XActJump* act, u32 id, s32 group)
  * @note Size: 0x199C
  */
 // NONMATCHING: action/vector lifetimes use extra saved FPRs and a smaller frame; the proximity check has one fewer inlined FSqrt
-void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f32 frame, f32 end)
+void UpdatePlayerJumpAction(XActJump* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
 {
 	BOOL interrupt = FALSE;
 	if (!gGame.mEvt.mData.mScript) {
@@ -891,7 +891,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 			JumpAnim(act, 0x1C, 0.0f);
 			return;
 		}
-		if (!(end - frames <= frame)) {
+		if (!model->IsAnimDone()) {
 			return;
 		}
 		act->mState = 2;
@@ -914,7 +914,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 				JumpAnim(act, 0x1E);
 				act->mState = 4;
 				if (act->mOwner->mFallDistance > 12.5f) {
-					StartJumpDust(act, 6, 0);
+					StartJumpDust(act, 6, 1);
 				}
 			} else if (act->mOwner->mFallDistance > 7.5f) {
 				JumpAnim(act, 0x1F);
@@ -941,7 +941,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 			act->mState = 0;
 			return;
 		}
-		if (end - frames <= frame || interrupt) {
+		if (model->IsAnimDone() || interrupt) {
 			EndJump(act);
 		}
 		break;
@@ -950,7 +950,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 			act->mState = 0;
 			return;
 		}
-		if (end - frames <= frame) {
+		if (model->IsAnimDone()) {
 			JumpAnim(act, 0x8F);
 			act->mState = 6;
 			StartJumpDust(act, 0x15, 1);
@@ -989,7 +989,11 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 			act->mState = 0;
 			return;
 		}
-		if (end - frames <= frame) {
+		if (model->GetAnimId() == 0x147) {
+			act->mState = 0;
+			return;
+		}
+		if (model->IsAnimDone()) {
 			EndJump(act);
 		}
 		break;
@@ -1010,7 +1014,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 		}
 		if (!playing) {
 			act->mTargetHeight = act->mTarget->mSelectedFloorHeight;
-			const Vec* pos     = &act->mOwner->mMoveTranslate;
+			const Vec* pos     = act->mOwner->GetPos();
 			if (pos->y >= act->mTargetHeight) {
 				act->mState = 0;
 				return;
@@ -1026,7 +1030,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 					act->mTarget = NULL;
 				}
 			}
-		} else if (end - frames <= frame) {
+		} else if (model->IsAnimDone()) {
 			s32 id = -1;
 			switch (act->mState) {
 			case 8:
@@ -1055,8 +1059,8 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 				}
 			}
 			if (act->mTarget) {
-				act->mArcPosition = act->mOwner->mMoveTranslate;
-				act->mRise        = act->mTargetHeight - act->mOwner->mMoveTranslate.y;
+				act->mArcPosition = *act->mOwner->GetPos();
+				act->mRise        = act->mTargetHeight - act->mOwner->GetPos()->y;
 				act->mArcAngle    = 0.0f;
 				if (act->mRise > 6.0f) {
 					act->mArcStep = 0.8f * (HALF_PI / act->mRise);
@@ -1071,8 +1075,8 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 				Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner, 0);
 				PSMTXMultVec(rot, &offset, &offset);
 				f32 yaw = act->mOwner->mMoveRotate.y;
-				f32 x   = 3.0f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
-				f32 z   = 3.0f * (f32)cos(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
+				f32 x   = 3.0f * (f32)sin(yaw) + (offset.x + act->mOwner->GetPos()->x);
+				f32 z   = 3.0f * (f32)cos(yaw) + (offset.z + act->mOwner->GetPos()->z);
 				f32 y   = 0.5f + act->mTargetHeight;
 				for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 					XObj* obj = gGame.mXObjs.mObjects[i];
@@ -1082,8 +1086,8 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 					if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || act->mOwner == obj || obj->GetKind() >= 10000) {
 						continue;
 					}
-					f32 dx = obj->mMoveTranslate.x - x;
-					f32 dz = obj->mMoveTranslate.z - z;
+					f32 dx = obj->GetPos()->x - x;
+					f32 dz = obj->GetPos()->z - z;
 					if (FSqrt(dx * dx + dz * dz) > 100.0f + (radius + obj->mFloorXZExtent[0])) {
 						continue;
 					}
@@ -1165,7 +1169,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 			JumpAnim(act, next);
 			return;
 		}
-		if (end - frames <= frame) {
+		if (model->IsAnimDone()) {
 			EndJump(act);
 			act->mTarget = NULL;
 		} else if (interrupt) {
@@ -1173,12 +1177,12 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, void* unused, u32 frames, f
 		}
 		break;
 	case 18:
-		if (end - frames <= frame || interrupt) {
+		if (model->IsAnimDone() || interrupt) {
 			EndJump(act);
 		}
 		break;
 	case 19:
-		if (end - frames <= frame || interrupt) {
+		if (model->IsAnimDone() || interrupt) {
 			EndJump(act);
 		}
 		break;
