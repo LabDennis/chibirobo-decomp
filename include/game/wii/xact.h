@@ -26,7 +26,7 @@ public:
 	u8 _4A[2];                      // _4A
 	XObj* mPendingItem;             // _4C
 	XObj* mPlugTarget;              // _50, WiiPlayerState's mLiftPlugTarget
-	s32 mPlugConnection;            // _54, the GameCube's _54, copied to the plug's connection word with 0x10000 set
+	s32 mPlugConnection;            // _54, the GameCube field of the same name, copied to the plug's connection word with 0x10000 set
 	s32 _58;                        // _58, cleared on reset
 	f32 mBatteryCost;               // _5C
 	u32 mContactEffectId;           // _60
