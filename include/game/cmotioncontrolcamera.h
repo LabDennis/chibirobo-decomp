@@ -2,32 +2,13 @@
 #define _GAME_CMOTIONCONTROLCAMERA_H
 
 #include "game/ccameraaction.h"
+#include "game/cameraactionids.h"
 #if !defined(VERSION_R24J01)
 #include "game/ccameraactioneye.h"
 #endif
 
 // the game's camera and the actions that drive it. class names are RTTI, layouts are from
 // CGame's ctor at 0x80019480 and the action ctor at 0x80019E5C
-
-// where the actions sit in CCameraActions's table; the Wii build gets the same
-// numbering from wii/cgame.h
-#if !defined(VERSION_R24J01)
-enum {
-	CAMACTION_DEFAULT, // 0
-	CAMACTION_AREA,    // 1
-	CAMACTION_CHASE,   // 2
-	CAMACTION_EVT,     // 3
-	CAMACTION_SCROLL2, // 4
-	CAMACTION_EYE,     // 5
-	CAMACTION_ANIM,    // 6
-	CAMACTION_MAP,     // 7
-	CAMACTION_LADR,    // 8
-	CAMACTION_RESET,   // 9
-	CAMACTION_10,      // 10, always null
-	CAMACTION_SCROLL,  // 11
-	CAMACTION_NUM,
-};
-#endif // !defined(VERSION_R24J01)
 
 // what the camera's flags say an action drives, from its GetCameraFlags
 enum {

@@ -35,6 +35,7 @@
 #include "game/menuhelpchar.h"
 #include "game/menudata.h"
 #include "game/xactdata.h"
+#include "game/cameraactionids.h"
 #
 
 class CCamera;
@@ -353,23 +354,6 @@ struct StageName {
 STATIC_ASSERT(sizeof(StageName) == 0x23C);
 
 class CInterfaceCameraAction;
-
-// the camera action table indices, same enum the GameCube camera uses
-enum {
-	CAMACTION_DEFAULT, // 0
-	CAMACTION_AREA,    // 1
-	CAMACTION_CHASE,   // 2
-	CAMACTION_EVT,     // 3
-	CAMACTION_SCROLL2, // 4
-	CAMACTION_EYE,     // 5
-	CAMACTION_ANIM,    // 6
-	CAMACTION_MAP,     // 7
-	CAMACTION_LADR,    // 8
-	CAMACTION_RESET,   // 9
-	CAMACTION_10,      // 10, always null
-	CAMACTION_SCROLL,  // 11
-	CAMACTION_NUM,
-};
 
 // what CreateMemento saves of the camera, the same class the GameCube version keeps
 class CCameraMemento {
