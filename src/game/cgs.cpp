@@ -758,8 +758,8 @@ extern "C" void ApplyGsRenderMode(CGsRenderMode* mode, BOOL force)
  * @note Address: 0x8019B128
  * @note Size: 0x150
  */
-// NONMATCHING: retail orders the field stores and the 0x3c immediate differently. flags stored before stage,
-// the struct's order and retail's store order, frees r4 early and drops to 91.5
+// NONMATCHING: retail stores flags before stage and materialises the 0x3c after it (0x8019B15C..0x8019B164); every
+// order of the first three stores scores lower (flags first 91.5, the rest 90.9..96.9)
 extern "C" void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTevOrder order, GsTevOp colorOp, GsTevIn colorIn,
                                                GsTevOp alphaOp, GsTevIn alphaIn)
 {
@@ -3135,7 +3135,8 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
  * @note Address: 0x80196708
  * @note Size: 0x1B4
  */
-// NONMATCHING: inlined GetGlyph sign-extends glyph.mStr[0] on store (extsb) where retail moves the raw byte (mr)
+// NONMATCHING: inlined GetGlyph sign-extends glyph.mStr[0] on store (extsb) where retail moves the raw byte (0x80196874
+// mr r3, r5); u8 mStr, a u8 copy of *text, text[0] and one store ahead of the sjis test all score lower
 // how tall the text is, one line height per line
 extern "C" f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size)
 {

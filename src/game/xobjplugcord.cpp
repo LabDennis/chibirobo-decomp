@@ -454,7 +454,8 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
  * @note Address: 0x800DA68C
  * @note Size: 0x354
  */
-// NONMATCHING: registers only, retail gives i r31 and the point offset a copy of its zero (mr r29, r31), 0.0f f31 and 0.5f f28
+// NONMATCHING: registers only, retail gives i r31 and the point offset a copy of its zero (0x800DA7A8 mr r29, r31), 0.0f f31 and
+// 0.5f f28. i declared in the for, at the function top or as a while loop, a point pointer and a hoisted end all score lower
 extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
 	CGs* graphics = CaptureGraphics();

@@ -3149,7 +3149,8 @@ void (*gPreviousAudioDMACallback)(void);
  * @note Size: 0x180
  */
 // NONMATCHING: the work area isn't read back for the mount (retail 0x8000A754 lwz r4,0x1c(r31) after the store)
-// Tried: no slot pointer (78.26), the mount argument or the store through gMicrophoneChannels[1] (97.24, 93.73).
+// Tried: no slot pointer (78.26), the mount argument or the store through gMicrophoneChannels[1] (97.24, 93.73),
+// a cast, &slot->mBuffer[0] and result assigned before the switch (all 97.24).
 // mounts the mic in slot B and keeps it mounted
 extern "C" void UpdateMicrophoneMount(void)
 {
