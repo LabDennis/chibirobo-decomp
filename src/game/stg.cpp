@@ -4463,32 +4463,27 @@ void MenuPC::Init()
 	menu->mDialogueNumber = 0;
 }
 
-// todo: a template over a constant; with the kind as a parameter (upstream's form), or as two helpers like the Wii's
-// out-of-line ClearItemShopPage/ClearScrapShopPage, MenuPC::Open drops from 98.22 to 96.62 %
-enum PCShopListKind { PriceList, ItemPriceList };
-template <PCShopListKind kind>
-static inline void ClearPCShopPage()
+static inline void ClearPCShopPage(MenuPCPage& page, bool hasAttachments)
 {
-	MenuPCPage* page  = kind == ItemPriceList ? &gItemShopPage : &gScrapShopPage;
-	page->mStart      = 0;
-	MenuPCItem* entry = page->mRows;
-	for (int i = 0; i < 20; i++, entry++) {
+	page.mStart       = 0;
+	MenuPCItem* entry = page.mRows;
+	for (int i = 0; i < (int)ARRAY_SIZE(page.mRows); i++, entry++) {
 		entry->mItem  = -1;
 		entry->mCount = -1;
 		entry->mPrice = -1;
-		if (kind == ItemPriceList)
+		if (hasAttachments)
 			entry->mIsAttachment = 0;
-		page->mIndex[i] = -1;
+		page.mIndex[i] = -1;
 	}
-	page->mPrev[0].mItem         = -1;
-	page->mPrev[0].mCount        = -1;
-	page->mPrev[0].mPrice        = -1;
-	page->mPrev[0].mIsAttachment = 0;
-	page->mNext[0].mItem         = -1;
-	page->mNext[0].mCount        = -1;
-	page->mNext[0].mPrice        = -1;
-	if (kind == ItemPriceList)
-		page->mNext[0].mIsAttachment = 0;
+	page.mPrev[0].mItem         = -1;
+	page.mPrev[0].mCount        = -1;
+	page.mPrev[0].mPrice        = -1;
+	page.mPrev[0].mIsAttachment = 0;
+	page.mNext[0].mItem         = -1;
+	page.mNext[0].mCount        = -1;
+	page.mNext[0].mPrice        = -1;
+	if (hasAttachments)
+		page.mNext[0].mIsAttachment = 0;
 }
 static inline s32 GetScrap()
 {
@@ -4527,7 +4522,8 @@ static inline void ResetPCCharacters(MenuPC* menu)
 #endif
 }
 
-// NONMATCHING: the two ClearPCShopPage expansions: retail addresses the rows from the page itself (US 0x8004EAC4
+// NONMATCHING: ClearPCShopPage takes the page and the attachment flag (upstream's form; a template over the kind
+// scored 98.22 but is not allowed). Its two expansions: retail addresses the rows from the page itself (US 0x8004EAC4
 // sth r3,0x4(r5) with r5 = page) and unrolls the catalog's loop ten times (0x8004EB6C li r0,2), the build forms
 // page->mRows and unrolls five times; indexing the rows (plain, reference, pointer per iteration, direct global,
 // u32 or s32 counter) gives retail's addressing but five-fold unrolling in both loops and 88 bytes less
@@ -4633,9 +4629,9 @@ void MenuPC::Open()
 	}
 	mRankingEnd      = 0;
 	mGreetingVariant = rand() % 8;
-	ClearPCShopPage<ItemPriceList>();
+	ClearPCShopPage(gItemShopPage, true);
 	PopulateItemShopPage(&gItemShopPage);
-	ClearPCShopPage<PriceList>();
+	ClearPCShopPage(gScrapShopPage, false);
 	PopulateScrapShopPage(&gScrapShopPage);
 	mScroll                = 0;
 	mScrollTarget          = 0;
