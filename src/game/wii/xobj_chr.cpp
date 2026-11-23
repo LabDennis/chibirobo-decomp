@@ -6850,6 +6850,72 @@ void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
 	}
 }
 
+// NONMATCHING: retail keeps a second table cursor in r22 and uses a 0x140-byte frame; the build uses one cursor,
+// a 0x130-byte frame and different saved registers, with one redundant sign extension in the item-sound path
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* frames, const FrameEvent* table)
+{
+	PlayerFrameParticle particle = { -1 };
+	s32 anim                     = object->GetAnimId();
+	if (anim == 0xCFA || anim == 0xCFD)
+		anim = 0x12;
+	FrameEventTime time;
+	if (frames != NULL) {
+		time.mFrame     = frames->mFrame;
+		time.mLastFrame = frames->mLastFrame;
+	} else {
+		time.mFrame     = object->GetAnimFrame();
+		time.mLastFrame = time.mFrame - 1.0f;
+	}
+	for (const FrameEvent* event = table; event->mAnim >= 0; ++event) {
+		s32 result = 0;
+		if (anim == event->mAnim && event->mWhenAnimMatches != NULL)
+			result = event->mWhenAnimMatches(object, &time, event);
+		else if (anim != event->mAnim && event->mWhenAnimDiffers != NULL)
+			result = event->mWhenAnimDiffers(object, &time, event);
+		if (result > 0) {
+			WiiPlayerState* player = gGame.GetPlayer();
+			if (event->mId == 0x74 && anim == 7 && player->mLift.mTarget != NULL) {
+				XObj* held = player->mLift.mTarget;
+				if ((s16)held->GetPool() == 8) {
+					s8 material = GetItemSoundIndex(held->GetItem(), 0);
+					if (material >= 0)
+						PlayWiiSoundEffect(&gGame.mSound, GetMaterialSoundId(material), event->mVolume / 255.0f, 0.0f);
+				} else {
+					PlayWiiSoundEffect(&gGame.mSound, GetMaterialSoundId(0), event->mVolume / 255.0f, 0.0f);
+				}
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, event->mId, event->mVolume / 255.0f, 0.0f);
+			}
+			if (event->mId == 0x72) {
+				particle.mCode      = 0x18;
+				particle.mTranslate = player->GetJointWorldPos("neck") + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = *player->GetScale();
+				particle.mRotate    = player->mMoveRotate;
+			} else if (event->mId == 0x73) {
+				particle.mCode      = 0x19;
+				particle.mTranslate = player->GetJointWorldPos("neck") + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = *player->GetScale();
+				particle.mRotate    = player->mMoveRotate;
+			} else if (event->mId == 0xA5 && (anim == 0x9F || anim == 0x15C)) {
+				const Vec& tint = player->mAnmQueue.mColorStep[0].mValue;
+				u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+				if (color < 0xFFFFFF00) {
+					particle.mCode      = 0x55;
+					particle.mTranslate = player->GetJointWorldPos("carry_obj_nll");
+					particle.mTranslate.x += 2.4f * (f32)sin(player->mMoveRotate.y);
+					particle.mTranslate.z += 2.4f * (f32)cos(player->mMoveRotate.y);
+					particle.mTranslate.y += 0.5f;
+					particle.mScale  = *player->GetScale();
+					particle.mRotate = player->mMoveRotate;
+				}
+			}
+		} else if (result < 0) {
+			StopWiiSfx(&gGame.mSound, event->mId, 0.0f);
+		}
+	}
+	return particle;
+}
+
 // drops the stale object indexes first, then draws himself or the current suit and the
 // attachments; the popper turns with the camera while the menu flag is up
 // NONMATCHING (92 %): retail's register and schedule residue over the five index cleanups
