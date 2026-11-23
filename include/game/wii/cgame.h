@@ -1998,7 +1998,7 @@ struct GamePointer {
 	f32 mScopeTimer; // _004, the robo eyes' lenses pulse while it runs and hide from 5 on
 	CTexObj mTex;    // _008, a copy of misc.tpl's texture 261
 	f32 _10C;        // _10C, a new game starts it at NAN
-	u32 _110;
+	CTexObj* _110;
 	f32 _114;
 	f32 _118;
 	u32 _11C;
