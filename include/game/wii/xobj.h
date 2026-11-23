@@ -1758,6 +1758,8 @@ public:
 		}
 		return -1;
 	}
+	s16 GetLookPriority() const { return mAttr.mObjData != NULL ? mAttr.mObjData->mLookPriority : 0; }
+	s16 GetLookRange() const { return mAttr.mObjData != NULL ? mAttr.mObjData->mLookRange : 0; }
 	// (_9C SetScale(f32) scales all three axes alike, _11C GetAnimId returns mAnimId, _134 IsAnimDone is TRUE once
 	// the next step passes the end frame; see the slot comments)
 	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)

@@ -230,7 +230,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, CObj* model, u32 frames
 void UpdatePlayerPopperAction(XActPopper* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
 void UpdateRadarTargeting(XActRadar* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
 void UpdatePlayerLocomotionAnimation(WiiPlayerState* player, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
-void fn_800DE0CC(WiiPlayerState* player, u32 frames);
+void UpdatePlayerLookAtObjects(WiiPlayerState* player, u32 frames);
 void fn_800C6CF0(XObjScnCamInitRec* record, u32 frames);
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsGlobalDataLoaded(void);
@@ -4799,6 +4799,109 @@ void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
 	}
 }
 
+static inline bool IsActionIdleOr(const XAction& action, s32 rest)
+{
+	s32 state = action.mState;
+	return state == 0 || state == rest;
+}
+
+static inline bool IsActiveActionTarget(const XAction& action, const XObj* object)
+{
+	return action.mState != 0 && action.mTarget == object;
+}
+
+// NONMATCHING: retail allocates the current object to r30 and its priority to r29, the build uses r25/r30;
+// the idle-action tests also use the complementary branch shape
+void UpdatePlayerLookAtObjects(WiiPlayerState* player, u32 frames)
+{
+	BOOL enabled;
+	if (gGame.mEvt.mData.mScript != NULL || gGame.GetStatusFlags(0x100) || player->mPreviousContactObject >= 0)
+		enabled = FALSE;
+	else if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
+		enabled = FALSE;
+	else if (IsActionIdleOr(player->mLift, 4) && IsActionIdleOr(player->mHang, 5) && player->mJump.mState == 0
+	         && IsActionIdleOr(player->mLadder, 5) && IsActionIdleOr(player->mRope, 5) && player->mPush.mState == 0
+	         && player->mTumble.mState == 0 && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0)
+		enabled = TRUE;
+	else
+		enabled = FALSE;
+
+	CVec pos(*player->GetPos());
+	CVec head  = player->GetJointWorldPos("head_chn");
+	XObj* best = NULL;
+	if (enabled) {
+		f32 nearest      = NAN;
+		s16 bestPriority = 0;
+		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+			XObj* object = gGame.mXObjs.mObjects[i];
+			if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x4000000000000000ULL)
+			    || object == player || object->GetKind() >= 10000)
+				continue;
+			if (IsActiveActionTarget(player->mLift, object) || IsActiveActionTarget(player->mHang, object)
+			    || IsActiveActionTarget(player->mJump, object) || IsActiveActionTarget(player->mLadder, object)
+			    || IsActiveActionTarget(player->mRope, object) || IsActiveActionTarget(player->mPush, object)
+			    || IsActiveActionTarget(player->mTumble, object) || IsActiveActionTarget(player->mCopter, object)
+			    || IsActiveActionTarget(player->mPopper, object) || IsActiveActionTarget(player->mRadar, object))
+				continue;
+			s16 priority = object->GetLookPriority();
+			if (priority == 0)
+				continue;
+			CVec target(*object->GetPos());
+			if (target.y > pos.y - 4.0f && target.y < 4.0f + head.y) {
+				f32 dx       = pos.x - target.x;
+				f32 dz       = pos.z - target.z;
+				f32 distance = FSqrt(dx * dx + dz * dz);
+				if (distance < object->GetLookRange()) {
+					f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
+					if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
+						BOOL select = FALSE;
+						if (best == NULL)
+							select = TRUE;
+						else if (priority > bestPriority)
+							select = TRUE;
+						else if (priority >= bestPriority && distance < nearest)
+							select = TRUE;
+						if (select) {
+							nearest      = distance;
+							best         = object;
+							bestPriority = priority;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (best != NULL) {
+		player->mEyeAimRecord.mSnap[0] = player->mEyeAimRecord.mSnap[1] = 1;
+		player->mEyeAimRecord.m_0C                                      = best;
+		player->mEyeAimRecord.mTarget.x                                 = NAN;
+		player->mEyeAimRecord.m_20                                      = NULL;
+		player->mEyeAimRecord.m_24                                      = NAN;
+		player->mEyeAimRecord.m_28                                      = NAN;
+	} else {
+		BOOL update = FALSE;
+		if (player->mEyeAimRecord.mSnap[0] == 0 && player->mEyeAimRecord.mSnap[1] == 0)
+			update = TRUE;
+		if (!update) {
+			player->mEyeAimRecord.mSnap[0] = player->mEyeAimRecord.mSnap[1] = 2;
+			player->mEyeAimRecord.m_0C                                      = NULL;
+			player->mEyeAimRecord.mTarget.x                                 = NAN;
+			player->mEyeAimRecord.m_20                                      = NULL;
+			player->mEyeAimRecord.m_24                                      = NAN;
+			player->mEyeAimRecord.m_28                                      = NAN;
+			player->mEyeAimRecord.m_30                                      = 0.0f;
+			player->mEyeAimRecord.m_2C                                      = 0.0f;
+			player->mEyeAimRecord.m_4C.Set(0.0f, 0.0f, 0.0f);
+		}
+	}
+	BOOL update = FALSE;
+	if (player->mEyeAimRecord.mSnap[0] == 0 && player->mEyeAimRecord.mSnap[1] == 0)
+		update = TRUE;
+	if (!update)
+		fn_800C6CF0(&player->mEyeAimRecord, frames);
+}
+
 void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 {
 	if (!(player->mPlayerFlags & 0x80000000)) {
@@ -4841,7 +4944,7 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 		}
 	}
 	fn_800DDF2C(player, frames);
-	fn_800DE0CC(player, frames);
+	UpdatePlayerLookAtObjects(player, frames);
 	BOOL skipHeadAim = FALSE;
 	if (player->mHeadAimRecord.mSnap[0] == 0 && player->mHeadAimRecord.mSnap[1] == 0) {
 		skipHeadAim = TRUE;

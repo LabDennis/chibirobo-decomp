@@ -2649,6 +2649,7 @@ Reset__13CScrnRoboeyesFv = .text:0x80040A5C; // type:function size:0xB4
 Update__13CScrnRoboeyesFUl = .text:0x80040E4C; // type:function size:0x3DC
 Draw__13CScrnRoboeyesFP3CGsl = .text:0x80041228; // type:function size:0x3DC
 DrawRoboeyesItemLabels = .text:0x80041604; // type:function size:0xA74
+UpdatePlayerLookAtObjects = .text:0x800DE0CC; // type:function size:0x7E0
 UpdatePlayerBattery = .text:0x800DE8AC; // type:function size:0x116C
 SetPlayerEyeCameraJointsHidden = .text:0x800E7FB0; // type:function size:0x190
 Update__21CCameraActionLetickerFUl = .text:0x80119398; // type:function size:0xABC
