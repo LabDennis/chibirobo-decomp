@@ -361,10 +361,9 @@ public:
 
 struct ResAnmShpData {
 	u8 _00[0x1C];
-	s32 name; // _1C
-	u16 _20;
-	u16 _22;
-	u16 mNumFrame; // _24
+	s32 name;          // _1C
+	s32 original_path; // _20
+	u16 mNumFrame;     // _24
 };
 
 class ResAnmShp {
