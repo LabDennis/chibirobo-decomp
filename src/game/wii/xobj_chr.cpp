@@ -4509,8 +4509,6 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 			if (player->mLetickerIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
 				ADD_OBJECT_MARKERS(0x80);
-				if (GetMaskedObjectStatus(object, 0x0000040000000000ULL))
-					markerOverride = TRUE;
 			}
 		}
 	}
