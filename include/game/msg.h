@@ -58,7 +58,9 @@ enum MsgSfxType {
 	MSG_SFX_RESUME   = 6,  // no extra bytes
 };
 
-// the formatted message plus what CMsgData_Measure finds out about its ten lines, name from RTTI
+struct MsgFormatArgs;
+
+// formatted text and the dimensions of its ten lines
 class CMsgData {
 public:
 	u8 mText[0x800];  // _00
@@ -86,6 +88,9 @@ public:
 	}
 
 	virtual ~CMsgData() { } // _08
+
+	void Format(u8* script, MsgFormatArgs* args);
+	void Measure();
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(CMsgData) == 0x898);
