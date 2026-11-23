@@ -17,6 +17,7 @@
 #include "game/cptcl.h"
 #include "game/wii/msg.h"
 #include "game/cscrn.h"
+#include "game/gamescrencolor.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
 #include "game/cmotioncontrolcamera.h"
@@ -1242,9 +1243,6 @@ STATIC_ASSERT(sizeof(ScrnTex) == 0x13C);
 
 // the two screen colors behind it, at _5908 and _593C. Each sits in a struct of its own as on the GameCube, but the
 // Wii has a constructor for each (0x80033EC8, 0x80033F0C), so they are two types; the second one's name is ours
-struct GameScrnColor {
-	CScrnColor mColor; // _00
-};
 struct GameScrnColor1 {
 	CScrnColor mColor; // _00
 };

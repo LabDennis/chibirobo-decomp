@@ -13,6 +13,7 @@
 #include "game/ctpl.h"
 #include "game/ctoon.h"
 #include "game/cscrn.h"
+#include "game/gamescrencolor.h"
 #include "game/fbeffect.h"
 #include "game/fbtexeff.h"
 #include "game/logo.h"
@@ -127,10 +128,6 @@ struct GameMovie {
 
 struct GameMemcard {
 	Memcard mCard; // _00
-};
-
-struct GameScrnColor {
-	CScrnColor mColor; // _00
 };
 
 // the system half of the game object: the graphics state, font, pads, two cameras, six
