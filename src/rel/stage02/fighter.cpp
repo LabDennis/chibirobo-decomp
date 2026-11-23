@@ -1,3 +1,206 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/wii/xobj.h"
+#include "game/wii/cgs.h"
+#include "game/globals.h"
+
+extern "C" {
+extern s32 gScreenSafeRight;
+extern s32 gScreenSafeTop;
+extern s32 gScreenSafeLeft;
+extern s32 gPointerScreenWidth;
+}
+
+f32 captionShadowX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
+f32 captionShadowY[4] = { -2.0f, -2.0f, 2.0f, 2.0f };
+
+static inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
+{
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, x, y, 0.0f,
+	           scale * (MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), TRUE, 20.0f) - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
+	f32 cx = x - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), TRUE, 20.0f) / 2.0f;
+	f32 cy = y - 13.0f;
+	for (s32 i = 0; i < 4; i++) {
+		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(id), cx + captionShadowX[i], cy + captionShadowY[i], 0.0f,
+		                             20.0f, 20.0f);
+	}
+	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(id), cx, cy, 0.0f, 20.0f, 20.0f);
+}
+
+extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
+{
+	CTexObj tex;
+	f32 scale = 1.0f;
+	f32 alpha = 255.0f;
+	s32 i;
+	s32 d;
+	f32 x;
+	f32 left;
+	f32 digW;
+	f32 digH;
+	f32 w;
+	u32 base;
+	s32 hi;
+	s32 lo;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
+
+	if (time >= 100) {
+		time = 99;
+	}
+	stage   = gGame.mStage;
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
+		for (i = 0; i < 48; i++) {
+			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			if (obj->GetKind() != 0x149) {
+				continue;
+			}
+			if (!obj->mPanelTpl.mBound) {
+				break;
+			}
+
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[3], 0);
+			tex = obj->mPanelTpl.mTex;
+			tw  = GXGetTexObjWidth(&tex);
+			w   = scale * tw;
+			th  = GXGetTexObjHeight(&tex);
+			x   = gScreenSafeRight;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, gScreenSafeTop + 10.0f, 0.0f, w, scale * th, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			{
+				CTexObj unused;
+				DrawCaption(0x5B, x, gScreenSafeTop + 10.0f, scale);
+			}
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[1], 0);
+			tex  = obj->mPanelTpl.mTex;
+			left = 20.0f + (x - 12.0f - 88.0f);
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 1.4f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 1.4f * (scale * th);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			d                  = 0;
+			base               = alpha;
+			hi                 = base | 0xFAE0CF00;
+			lo                 = base | 0xE9813A00;
+			for (; d < 4; d++) {
+				f32 div = 1.0f;
+				s32 k;
+				s32 digit;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
+				}
+				digit = score / div;
+				if (d == 0 || digit != 0) {
+					digit %= 10;
+					PSMTXTrans(tex.mTexMtx.mMtx[0], digit * 0.09090909f, 0.0f, 0.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+					DrawGsTexturedQuad(&gGame.mGs, &tex, hi, hi, lo, lo, 7.0f * digW + (left - d * digW) - 32.0f, gScreenSafeTop + 36.0f,
+					                   0.0f, digW, digH, 0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				}
+			}
+
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[4], 0);
+			tex = obj->mPanelTpl.mTex;
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, gPointerScreenWidth / 2, gScreenSafeTop + 10.0f, 0.0f, scale * tw,
+			                   scale * th, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			{
+				CTexObj unused;
+				DrawCaption(0x5C, gPointerScreenWidth / 2, gScreenSafeTop + 10.0f, scale);
+			}
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[1], 0);
+			tex  = obj->mPanelTpl.mTex;
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 1.4f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 1.4f * (scale * th);
+			left = 121.0f;
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
+			hi                 = base | 0x1F33FF00;
+			lo                 = base | 0xFFFFFF00;
+			tex.mTexMtx.mDirty = TRUE;
+			for (d = 0; d < 2; d++) {
+				f32 div = 1.0f;
+				s32 k;
+				s32 digit;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
+				}
+				digit = time / div;
+				if (d == 0 || digit != 0) {
+					digit %= 10;
+					PSMTXTrans(tex.mTexMtx.mMtx[0], digit * 0.09090909f, 0.0f, 0.0f);
+					tex.mTexMtx.mDirty = TRUE;
+					gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+					DrawGsTexturedQuad(&gGame.mGs, &tex, lo, lo, hi, hi, 7.0f * digW + (left - d * (digW - 8.0f)) - 32.0f,
+					                   gScreenSafeTop + 36.0f, 0.0f, digW, digH, 0.0f, 0.0f, 0.0f);
+					gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				}
+			}
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 1.4f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 1.4f * (scale * th);
+			left = 121.0f;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.90909094f, 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			s32 lead = 2;
+			if (time < 10) {
+				lead = 1;
+			}
+			DrawGsTexturedQuad(&gGame.mGs, &tex, lo, lo, hi, hi, 7.0f * digW + (left - lead * (digW - 8.0f)) - 32.0f,
+			                   gScreenSafeTop + 36.0f, 0.0f, digW, digH, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[5], 0);
+			tex = obj->mPanelTpl.mTex;
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			{
+				CTexObj unused;
+				DrawCaption(0x5D, 100.0f, 44.0f, scale);
+			}
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[6], 0);
+			tex  = obj->mPanelTpl.mTex;
+			tw   = GXGetTexObjWidth(&tex);
+			w    = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			digH = scale * th;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 72.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[7], 0);
+			tex = obj->mPanelTpl.mTex;
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f - w / 2.0f + gauge * w / 100.0f, 72.0f, 0.0f, scale * tw,
+			                   scale * th, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			break;
+		}
+	}
+}
+#else
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
 #include "game/coordinfo.h"
@@ -7858,3 +8061,5 @@ void fighter::CCameraActionFighter::Update()
  * @note Size: 0x48
  */
 // generated dtor
+
+#endif
