@@ -1,6 +1,12 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/infoscrn.h"
+#include "game/wii/cpadact.h"
+#include "game/wii/xact.h"
+#include "game/gmath.h"
+#include "arithmetic.h"
+#include <math.h>
+#include <stdlib.h>
 #include "nw4r/snd/snd_BasicSound.h"
 #include "nw4r/snd/snd_SoundHandle.h"
 
@@ -17,6 +23,9 @@ void ResetSmallSpiderState(XObjSpiderSmall* spider);
 void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
 void ResetSpiderCoinBounces(void* unused);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
+BOOL IsUsingMug(XAction* lift);
+f32 GetPlayerCollisionRadius(WiiPlayerState* player);
+bool IsPlayerInSmallSpiderArea(XObjSpiderSmall* spider);
 void DrawSmallSpiderWebEffect(XObjSpiderSmallFx* fx, u8 index);
 
 extern s32 gRefreshRate;
@@ -31,6 +40,7 @@ extern s32 gSpiderDrainFlashTimers[2];
 extern u8 gSpiderDrainFlashClaimed;
 extern s32 gAttachedSmallSpiderCount;
 extern u8 gSmallSpiderWebFlag;
+extern XObjFloor* sSmallSpiderFloors[2];
 }
 
 /**
@@ -296,6 +306,474 @@ s32 XObjSpiderSmall::OnPlayerContact(s32 unused, s32 value)
 {
 	mSpiderStatus.mFlags |= 1;
 	return value;
+}
+
+static inline f32 SmallSpiderDistanceXZ(const Vec* a, const Vec* b)
+{
+	f32 dx = a->x - b->x;
+	f32 dy = 0.0f;
+	f32 dz = a->z - b->z;
+	return FSqrt(dx * dx + dy * dy + dz * dz);
+}
+
+static inline f32 GetSmallSpiderDistanceXZ(Vec* a, Vec* b)
+{
+	return SmallSpiderDistanceXZ(a, b);
+}
+
+static inline f32 GetSmallSpiderContactDistance(Vec* a, Vec* b)
+{
+	f32 dx = a->x - b->x;
+	f32 dy = a->y - b->y;
+	f32 dz = a->z - b->z;
+	return FSqrt(dx * dx + dy * dy + dz * dz);
+}
+
+static inline bool IsSmallSpiderWithinTargetRadius(XObjSpiderSmall* spider)
+{
+	f32 dx = spider->mTargetPos.x - spider->mMoveTranslate.x;
+	f32 dy = spider->mTargetPos.y - spider->mMoveTranslate.y;
+	f32 dz = spider->mTargetPos.z - spider->mMoveTranslate.z;
+	return FSqrt(dx * dx + dy * dy + dz * dz) <= spider->mTargetRadius + spider->mRadius;
+}
+
+static inline s32 GetSmallSpiderGripDuration()
+{
+	switch (gGame.GetPlayer()->mSuits.mCurrent) {
+	case 1:
+	case 6:
+		return rand() % 10 + 10;
+	case 2:
+	case 3:
+		return rand() % 2 + 2;
+	case 4:
+	case 8:
+		return rand() % 20 + 20;
+	default:
+		return rand() % 10 + 10;
+	}
+}
+
+static inline void Catch(XObjSpiderSmall* spider)
+{
+	spider->mStatus.mFlags |= 0x4000000000000ULL;
+	spider->mWalkSpeed       = 0.0f;
+	spider->mFallSpeed       = 0.0f;
+	spider->mMoveTranslate.y = 10.0f + spider->mClingOffset.y;
+	spider->mShakeStrength   = 1.0f;
+	spider->mHoldTime        = 40.0f;
+	spider->mStep            = 4;
+	spider->mSpiderStatus.mFlags |= 0x800000;
+	gAttachedSmallSpiderCount++;
+	gGame.GetPlayer()->mMoveSpeedScale = 0.4f;
+	spider->SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+static inline void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
+{
+	spider->mSpiderStatus.mFlags &= ~0x800000;
+	if (spider->mSpiderStatus.Check(0x1000000)) {
+		spider->mSpiderStatus.mFlags &= ~0x1000000;
+		gSpiderDrainFlashClaimed = 0;
+		gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0.0f);
+		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
+	}
+	if (--gAttachedSmallSpiderCount < 0) {
+		gAttachedSmallSpiderCount = 0;
+	}
+	if (gAttachedSmallSpiderCount == 0) {
+		gGame.GetPlayer()->mMoveSpeedScale = 1.0f;
+	}
+}
+
+/**
+ * @note Address: 0x8012BBD4
+ * @note Size: 0x2734
+ */
+// NONMATCHING: all 79 out-of-line calls and the CFG match; inlined distance/wander code still has different FPR and load schedules
+void XObjSpiderSmall::State3(u32 frames)
+{
+	CPad pad(0);
+	Vec ppos = *gGame.GetPlayer()->GetPos();
+	Vec prot = gGame.GetPlayer()->mMoveRotate;
+	if (!IsPlayerInSmallSpiderArea(this)) {
+		if (--mAreaGraceTimer < 0) {
+			mAreaGraceTimer = 0;
+		}
+	} else {
+		mAreaGraceTimer = (3 * gRefreshRate) / frames;
+	}
+	switch (mStep) {
+	case 2:
+	case 10:
+	case 11:
+	case 22:
+	case 23:
+		mFloors        = sSmallSpiderFloors[1];
+		mFloorMasks[1] = 0;
+		mFloorMasks[0] = 0;
+		break;
+	default:
+		mFloors        = sSmallSpiderFloors[0];
+		mFloorMasks[1] = 0;
+		mFloorMasks[0] = 0;
+		break;
+	}
+	switch (mStep) {
+	case 0:
+		mTurnSpeed = 0.0f;
+		mTimer--;
+		if (mTimer <= 0) {
+			Wander(20);
+			mTimer = rand() % 30 + 10;
+		} else if (GetSmallSpiderContactDistance(&ppos, &mMoveTranslate) < 64.0f && IsSmallSpiderWithinTargetRadius(this)) {
+			mWalkTarget.x = ppos.x;
+			mWalkTarget.y = ppos.y;
+			mWalkTarget.z = ppos.z;
+			SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mStep++;
+		}
+		break;
+	case 20:
+		mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+		if (GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) < 2.0f) {
+			mStep      = 0;
+			mWalkSpeed = 0.0f;
+			mTimer     = rand() % 30 + 30;
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else {
+			if (--mTimer < 0) {
+				mWalkSpeed = 0.0f;
+				SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mStep = 21;
+			}
+			if (!InArea(mMoveTranslate)) {
+				mWalkTarget.x = mHome.x;
+				mWalkTarget.y = mHome.y;
+				mWalkTarget.z = mHome.z;
+			}
+			if (mAreaGraceTimer <= 0) {
+				if ((mSpiderStatus.mFlags & 0x20) && gGame.mTimeState.mDuration != 0.0f) {
+					mWarpsLeft = rand() % 4 + 3;
+					SetState(8);
+				} else {
+					SetState(7);
+				}
+			}
+		}
+		break;
+	case 21: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			SetAnim(12, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mSpiderStatus.mFlags |= 8;
+			mWalkTarget.x = mMoveTranslate.x;
+			mWalkTarget.y = mMoveTranslate.y;
+			mWalkTarget.z = mMoveTranslate.z;
+			mWalkSpeed    = 0.0f;
+			ClampSpeed();
+			mStep++;
+			mFallSpeed   = 4.0f;
+			mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+			mSpiderStatus.mFlags &= ~1;
+		}
+		break;
+	}
+	case 22:
+		if (GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) < 2.0f) {
+			mStep++;
+		} else if (mFallSpeed >= -2.3f) {
+			mFallSpeed -= 0.36f * frames;
+		} else {
+			mFallSpeed = -2.3f;
+		}
+		break;
+	case 23:
+		if (mFallSpeed >= -2.3f) {
+			mFallSpeed -= 0.36f * frames;
+		} else {
+			mFallSpeed = -2.3f;
+		}
+		if (mMoveTranslate.y <= mHome.y + frames) {
+			mFallSpeed       = 0.0f;
+			mMoveTranslate.y = mHome.y;
+			SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mWalkSpeed = 0.0f;
+			mSpiderStatus.mFlags &= ~8;
+			mStatus.mFlags &= ~0x4000000000000ULL;
+			mStep++;
+		}
+		break;
+	case 24: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mTimer = rand() % 30 + 30;
+			mStep  = 0;
+		}
+		break;
+	}
+	case 30:
+		mFallSpeed -= 0.08f;
+		if (mMoveTranslate.y <= mHome.y) {
+			mFallSpeed       = 0.0f;
+			mMoveTranslate.y = mHome.y;
+			SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mStep = 31;
+		}
+		break;
+	case 31: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			Wander(32);
+		}
+		break;
+	}
+	case 32:
+		mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+		if (GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) < 2.0f) {
+			mStep      = 33;
+			mWalkSpeed = 0.0f;
+			mTimer     = rand() % 30 + 30;
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else if (gGame.mEvt.mData.mScript == NULL) {
+			mStep = 0;
+		}
+		break;
+	case 33:
+		if (gGame.mEvt.mData.mScript == NULL) {
+			mStep = 0;
+		}
+		break;
+	case 1:
+		mWalkSpeed    = 0.3f;
+		mWalkTarget.x = ppos.x;
+		mWalkTarget.y = ppos.y;
+		mWalkTarget.z = ppos.z;
+		mWalkHeading  = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+		if (GetSmallSpiderContactDistance(&mWalkTarget, &mMoveTranslate) < 20.0f) {
+			mWalkSpeed = 0.0f;
+			SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mTimer = GetSmallSpiderGripDuration();
+			mStep++;
+		}
+		if (!IsSmallSpiderWithinTargetRadius(this)) {
+			Wander(20);
+		}
+		if (!InArea(mMoveTranslate)) {
+			Wander(20);
+		}
+		break;
+	case 2: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			if (--mTimer < 0) {
+				mWalkTarget.x = ppos.x;
+				mWalkTarget.y = ppos.y;
+				mWalkTarget.z = ppos.z;
+				if (GetSmallSpiderContactDistance(&mWalkTarget, &mMoveTranslate) >= 20.0f) {
+					SetAnim(12, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					mSpiderStatus.mFlags |= 8;
+					mWalkTarget.x = mMoveTranslate.x;
+					mWalkTarget.y = mMoveTranslate.y;
+					mWalkTarget.z = mMoveTranslate.z;
+					mWalkSpeed    = 0.0f;
+					ClampSpeed();
+					mFallSpeed   = 4.0f;
+					mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+					mSpiderStatus.mFlags &= ~1;
+					mStep = 22;
+				} else {
+					f32 size = GetPlayerCollisionRadius(gGame.GetPlayer());
+					SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					mSpiderStatus.mFlags |= 8;
+					mClingAngle    = DEG2RAD * (rand() % 360);
+					mClingOffset.x = size * (f32)sin(mClingAngle);
+					mClingOffset.y = -rand() % 800 / 100;
+					mClingOffset.z = size * (f32)cos(mClingAngle);
+					mWalkTarget.x  = ppos.x + size * (f32)sin(mClingAngle);
+					mWalkTarget.y  = ppos.y + -rand() % 800 / 100;
+					mWalkTarget.z  = ppos.z + size * (f32)cos(mClingAngle);
+					mWalkSpeed     = GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) / 20.0f;
+					ClampSpeed();
+					mFallSpeed   = 4.0f;
+					mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+					mSpiderStatus.mFlags &= ~1;
+					mStatus.mFlags |= 0x4000000000000ULL;
+					mStep = 10;
+				}
+			}
+		}
+		break;
+	}
+	case 4: {
+		_AD0             = 0;
+		f32 size         = GetPlayerCollisionRadius(gGame.GetPlayer());
+		mMoveTranslate.x = ppos.x + size * (f32)sin(prot.y + mClingAngle);
+		mMoveTranslate.y = 10.0f + ppos.y + mClingOffset.y;
+		mMoveTranslate.z = ppos.z + size * (f32)cos(prot.y + mClingAngle);
+		mWalkHeading     = atan2(ppos.x - mMoveTranslate.x, ppos.z - mMoveTranslate.z);
+		if (gGame.IsRunning() && gGame.GetPlayer()->mMoveSpeedScale <= 1.0f) {
+			mHoldTime -= mShakeStrength;
+			f32 strength = 0.0f;
+			f32 remote   = nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].y);
+			if (remote > 1.0f) {
+				strength += 1.5f * remote;
+			}
+			f32 nunchuk = nw4r::math::FAbs(gWiiPointer.mNunchukAcceleration[0].y - gWiiPointer.mNunchukAcceleration[1].y);
+			if (nunchuk > 1.0f) {
+				strength += 1.5f * nunchuk;
+			}
+			if (strength > 0.0f) {
+				mShakeStrength = strength;
+			}
+		}
+		if (mShakeStrength > 1.0f) {
+			mShakeStrength -= 1.0f;
+		}
+		if (gGame.mEvt.mData.mScript != NULL) {
+			mWalkTarget.x = ppos.x + size * (f32)sin(prot.y + mClingAngle);
+			mWalkTarget.y = ppos.y;
+			mWalkTarget.z = ppos.z + size * (f32)cos(prot.y + mClingAngle);
+			DetachSmallSpiderFromPlayer(this);
+			SetAnim(6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mWalkSpeed = 0.0f;
+			mStatus.mFlags |= 0x4000000000000ULL;
+			mStep = 30;
+		} else if (nw4r::math::FAbs(ppos.y - mHome.y) > 10.0f) {
+			DetachSmallSpiderFromPlayer(this);
+			mSpiderStatus.mFlags |= 0x2000;
+			SetState(7);
+		} else if (mHoldTime <= 0.0f || IsUsingMug(&gGame.GetPlayer()->mLift)) {
+			f32 dist      = 20.0f + size + rand() % 3000 / 100.0f;
+			f32 ang       = PI + (f32)atan2(ppos.x - mMoveTranslate.x, ppos.z - mMoveTranslate.z);
+			mWalkTarget.x = ppos.x + dist * (f32)sin(ang);
+			mWalkTarget.y = ppos.y;
+			mWalkTarget.z = ppos.z + dist * (f32)cos(ang);
+			DetachSmallSpiderFromPlayer(this);
+			SetAnim(6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mWalkSpeed = 1.0f;
+			mStatus.mFlags |= 0x4000000000000ULL;
+			if (size >= 2.0f) {
+				_AD0 = 1;
+			}
+			mStep++;
+		}
+		break;
+	}
+	case 5: {
+		s8 wait = 2;
+		mFallSpeed -= 0.08f * frames;
+		if (mMoveTranslate.y <= mHome.y + frames) {
+			mFallSpeed       = 0.0f;
+			wait             = 1;
+			mMoveTranslate.y = mHome.y;
+		}
+		if (!InArea(mMoveTranslate)) {
+			mWalkTarget.x = mMoveTranslate.x;
+			mWalkTarget.z = mMoveTranslate.z;
+			mWalkSpeed    = 0.0f;
+		}
+		mWalkHeading = atan2(mWalkTarget.x - mMoveTranslate.x, mWalkTarget.z - mMoveTranslate.z);
+		if (GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) < 0.5f * frames) {
+			mWalkSpeed = 0.0f;
+			wait--;
+		}
+		if (wait == 0) {
+			SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mStep++;
+		}
+		break;
+	}
+	case 6: {
+		mTimer++;
+		if (mTimer % 30 < 15) {
+			SetColor(1, 0, 0x80, 0, 0.0f);
+			SetColor(1, 0x80, 0, 0, 0.0f);
+		} else {
+			SetColor(1, 0, 0, 0, 0.0f);
+		}
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			SetColor(1, 0, 0, 0, 0.0f);
+			mTimer = 0;
+			if (--mHitsLeft <= 0) {
+				mHitsLeft = 0;
+			}
+			mSpiderStatus.mFlags &= ~0x8000;
+			if (mHitsLeft <= 0) {
+				SetState(1);
+			} else {
+				mStep = 0;
+				mSpiderStatus.mFlags &= ~8;
+				SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mTimer = rand() % 30 + 30;
+			}
+		}
+		break;
+	}
+	case 10: {
+		f32 dist = GetSmallSpiderContactDistance(&ppos, &mMoveTranslate);
+		if (dist < 12.0f + GetPlayerCollisionRadius(gGame.GetPlayer()) - 1.5f) {
+			mStatus.mFlags |= 0x4000000000000ULL;
+		}
+		if (dist < 8.0f + GetPlayerCollisionRadius(gGame.GetPlayer()) - 1.5f) {
+			Catch(this);
+		} else {
+			if (!InArea(mMoveTranslate)) {
+				mWalkTarget.x = mMoveTranslate.x;
+				mWalkTarget.z = mMoveTranslate.z;
+				mWalkSpeed    = 0.0f;
+			}
+			if (GetSmallSpiderDistanceXZ(&mWalkTarget, &mMoveTranslate) < 2.0f) {
+				SetAnim(6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mStep++;
+			} else if (mFallSpeed >= -2.3f) {
+				mFallSpeed -= 0.36f * frames;
+			} else {
+				mFallSpeed = -2.3f;
+			}
+		}
+		break;
+	}
+	case 11: {
+		f32 dist = GetSmallSpiderContactDistance(&ppos, &mMoveTranslate);
+		if (dist < 12.0f + GetPlayerCollisionRadius(gGame.GetPlayer()) - 1.5f) {
+			mStatus.mFlags |= 0x4000000000000ULL;
+		}
+		if (dist < 8.0f + GetPlayerCollisionRadius(gGame.GetPlayer()) - 1.5f) {
+			Catch(this);
+		} else {
+			if (mFallSpeed >= -2.3f) {
+				mFallSpeed -= 0.36f * frames;
+			} else {
+				mFallSpeed = -2.3f;
+			}
+			if (!InArea(mMoveTranslate)) {
+				mWalkSpeed = 0.0f;
+			}
+			if (mMoveTranslate.y <= mHome.y + frames) {
+				mFallSpeed       = 0.0f;
+				mMoveTranslate.y = mHome.y;
+				SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mWalkSpeed = 0.0f;
+				mSpiderStatus.mFlags &= ~8;
+				mStatus.mFlags &= ~0x4000000000000ULL;
+				mStep++;
+			}
+		}
+		break;
+	}
+	case 12: {
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mTimer = rand() % 30 + 30;
+			mStep  = 0;
+		}
+		break;
+	}
+	}
 }
 
 /**
