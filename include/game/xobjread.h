@@ -7,25 +7,10 @@ extern "C" {
 }
 #include "Dolphin/OS/OSMessage.h"
 #include "game/xobjdata.h"
+#include "game/cmsgqueue.h"
 
 // the threads that read objects in the background, class names from RTTI. xobjs.cpp keeps
 // one of each kind, the methods are there too
-
-// an OSMessageQueue with its message buffer
-class CMsgQueue {
-public:
-	OSMessageQueue mQueue; // _00
-	OSMessage* mMsgs;      // _20
-	// _24 vtable
-
-	virtual ~CMsgQueue();               // _08
-	virtual void Initialize(s32 count); // _0C, allocates mMsgs and inits mQueue
-};
-typedef char CMsgQueue_size_check[sizeof(CMsgQueue) == 0x28 ? 1 : -1];
-
-inline CMsgQueue::~CMsgQueue()
-{
-}
 
 class XObjRead : public CThread {
 public:

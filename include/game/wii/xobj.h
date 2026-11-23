@@ -20,6 +20,7 @@
 #include "game/evt.h"
 #include "game/ut.h"
 #include "game/xobjdata.h"
+#include "game/cmsgqueue.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
 #include "game/wii/xobjs.h"
@@ -2767,25 +2768,6 @@ STATIC_ASSERT(sizeof(CustomShadow) == 0xA6C);
 // GameCube used its polymorphic CThread). The stack pointer and size are
 // XObjRead's own members in front of the virtuals, so the vtable lands at
 // _320. The Wii knows only the all-list and single readers, no XObjReadAnm.
-
-// an OSMessageQueue with its message buffer; RTTI shows it derives from
-// OSMessageQueue (the GameCube header wraps it as a member, same layout)
-class CMsgQueue : public OSMessageQueue {
-public:
-	// _00-_1F OSMessageQueue
-	OSMessage* mMsgs; // _20
-	// _24 vtable
-
-	virtual ~CMsgQueue();               // _08
-	virtual void Initialize(s32 count); // _0C, allocates mMsgs and inits the queue
-};
-STATIC_ASSERT(sizeof(CMsgQueue) == 0x28);
-
-// retail emits the out-of-line deleting copy in xobjs.cpp; the inline body
-// keeps every derived dtor folding it to nothing, like retail's
-inline CMsgQueue::~CMsgQueue()
-{
-}
 
 // one read waiting in a reader
 struct EffectInstance; // game/wii/ceffect.h
