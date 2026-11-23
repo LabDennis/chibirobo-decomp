@@ -1474,7 +1474,6 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 // go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
-	// defined in xobj_ut.cpp (retail 0x800BE7E0, right behind CObjVec's ctor)
 	CJArchive();
 
 	NW_Anm mAnm; // _00, its vtable at _58 and its CFile at _5C
