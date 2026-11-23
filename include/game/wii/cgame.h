@@ -1416,6 +1416,7 @@ public:
 
 	virtual void Reset();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
 	virtual void vf08(CbPane* pane);
@@ -1539,6 +1540,7 @@ struct MenuPaneFadePair {
 // the item menu, the GameCube class of the same name
 class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
+	virtual BOOL Update(u32 frames);
 	virtual void Open();
 
 	virtual void vf08(CbPane* pane);
@@ -1548,13 +1550,33 @@ public:
 	virtual void vf18(nw4r::math::VEC2* pos);
 	virtual void vf1C(nw4r::math::VEC2* pos);
 
-	s32 mMode; // _160
-	u8 _164[0x1A8 - 0x164];
-	s32 mStickSelection; // _1A8, the row the stick is on, mSelection again when the pointer goes
-	u8 _1AC[0x1C0 - 0x1AC];
-	MenuTitle mTitle; // _1C0
-	u8 _35C[0x770 - 0x35C];
-	u8 mHovered; // _770
+	s32 mMode;         // _160, the item menu's phase
+	s32 mDelay;        // _164
+	f32 mGridX;        // _168
+	f32 mGridY;        // _16C
+	f32 mTargetGridX;  // _170
+	f32 mTargetGridY;  // _174
+	f32 mPanelX;       // _178
+	f32 mPanelY;       // _17C
+	f32 mTargetPanelX; // _180
+	f32 mTargetPanelY; // _184
+	u8 _188[0x198 - 0x188];
+	f32 _198; // _198
+	f32 _19C; // _19C
+	u8 _1A0[0x1A4 - 0x1A0];
+	s32 mPrevSelection;   // _1A4
+	s32 mStickSelection;  // _1A8, the row the stick is on, mSelection again when the pointer goes
+	s32 mShowHelp;        // _1AC
+	f32 mNameAlpha;       // _1B0
+	u8* mName;            // _1B4
+	u8* mHelp;            // _1B8
+	f32 mItemPhase;       // _1BC
+	MenuTitle mTitle;     // _1C0
+	s32 mHelpCount;       // _35C, set by Open, read by Draw
+	MenuHelpChar mBg[20]; // _360
+	CbPane mCells[8];     // _450
+	CbPane mPanes[2];     // _6D0, previous and next item page
+	u8 mHovered;          // _770
 	u8 _771[0x774 - 0x771];
 	MenuPaneFadePair mPaneFades; // _774
 };
@@ -1620,28 +1642,59 @@ public:
 	u8 _160[0x518 - 0x160];
 	s32 mMode; // _518
 	u8 _51C[0x524 - 0x51C];
-	s32 mOverviewSelection; // _524
-	u8 _528[0x52C - 0x528];
+	s32 mOverviewSelection;      // _524
+	s32 mPrevOverviewSelection;  // _528
 	s32 mStickOverviewSelection; // _52C
 	s32 mIconSelection;          // _530
-	u8 _534[0x538 - 0x534];
-	s32 mStickIconSelection; // _538
+	s32 mPrevIconSelection;      // _534
+	s32 mStickIconSelection;     // _538
 	u8 _53C[0x544 - 0x53C];
 	s32 mStickSelection; // _544
-	u8 _548[0x66C - 0x548];
+	s32 mPrevSelection;  // _548
+	f32 mOffsetX;        // _54C
+	f32 mOffsetY;        // _550
+	u8 _554[0x5FC - 0x554];
+	f32 mOverviewX; // _5FC
+	f32 mOverviewY; // _600
+	u8 _604[0x60C - 0x604];
+	f32 mGridX; // _60C
+	f32 mGridY; // _610
+	u8 _614[0x66C - 0x614];
 	s32 mPhase; // _66C
-	u8 _670[0x6AC - 0x670];
-	s32 mItemSelection; // _6AC
-	u8 _6B0[0x6B4 - 0x6B0];
-	s32 mStickItemSelection; // _6B4
-	MenuTitle mTitle;        // _6B8
-	u8 _854[0x1938 - 0x854];
+	u8 _670[0x67C - 0x670];
+	f32 mDetailScale; // _67C
+	u8 _680[0x689 - 0x680];
+	u8 mShowGauge; // _689
+	u8 _68A[0x68C - 0x68A];
+	u8 mIconLit; // _68C
+	u8 _68D[0x690 - 0x68D];
+	f32 mGaugeValue; // _690
+	u8 _694[0x698 - 0x694];
+	f32 mHelpAlpha;        // _698
+	const char* mHelpText; // _69C
+	u8 _6A0[0x6A4 - 0x6A0];
+	f32 mPulsePhase; // _6A4
+	u8 _6A8[0x6AC - 0x6A8];
+	s32 mItemSelection;          // _6AC
+	s32 mPrevItemSelection;      // _6B0
+	s32 mStickItemSelection;     // _6B4
+	MenuTitle mTitle;            // _6B8
+	s32 mHelpCount;              // _854
+	MenuHelpChar mHelpChars[20]; // _858
+	u8 _948[0x1938 - 0x948];
 	u8 mHovered; // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
 	u8 _1954[0x1958 - 0x1954];
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
+
+struct PCRankingRow {
+	s32 rank;
+	s32 nameIndex;
+	s32 score;
+};
+STATIC_ASSERT(sizeof(PCRankingRow) == 12);
 
 // a number the pc shows easing toward its value, the GameCube struct of the same name
 struct PCAmount {
@@ -1667,16 +1720,18 @@ public:
 
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
-	s32 mMode;      // _15C
-	s32 mPrevMode;  // _160
-	u32 _164;       // _164
-	s32 mPhase;     // _168
-	f32 mSpeed;     // _16C
-	s32 mTextPhase; // _170
-	s32 mChoice;    // _174
-	u8 _178[0x184 - 0x178];
+	s32 mMode;              // _15C
+	s32 mPrevMode;          // _160
+	u32 _164;               // _164
+	s32 mPhase;             // _168
+	f32 mSpeed;             // _16C
+	s32 mTextPhase;         // _170
+	s32 mChoice;            // _174
+	s32 mPurchaseSelection; // _178
+	u8 _17C[0x184 - 0x17C];
 	s32 mYesNo;             // _184
 	s32 mMoneyDigit;        // _188
 	s32 mShopSelection;     // _18C
@@ -1710,22 +1765,28 @@ public:
 	s32 mDepositBalance;     // _388
 	s32 mHistoryStart;       // _38C
 	s32 mHistoryCount;       // _390
-	u8 _394[0x3A4 - 0x394];
-	u8 mShopOnly; // _3A4, opens straight into the item list and B closes
+	f32 mPanelAlpha;         // _394
+	f32 mPanelTarget;        // _398
+	f32 mListAlpha;          // _39C
+	f32 mTargetListAlpha;    // _3A0
+	u8 mShopOnly;            // _3A4, opens straight into the item list and B closes
 	u8 _3A5[0x3A8 - 0x3A5];
-	u32 mDialogueNumber; // _3A8
-	u8 _3AC[0x400 - 0x3AC];
-	f32 mScroll;       // _400
-	f32 mScrollTarget; // _404
-	u8 _408[0x410 - 0x408];
-	PCAmount mMoneyDisplay; // _410
-	PCAmount mScrapDisplay; // _418
-	u8 _420[0x428 - 0x420];
-	f32 _428;       // _428, eased toward _42C
-	f32 _42C;       // _42C
-	f32 mScrapRate; // _430
-	s32 mExitState; // _434, the game state it hands back
-	u8 mCanSelect;  // _438
+	u32 mDialogueNumber;          // _3A8
+	f32 mRankingOffsets[5];       // _3AC
+	PCRankingRow mRankingRows[5]; // _3C0
+	s32 mRankingEnd;              // _3FC
+	f32 mScroll;                  // _400
+	f32 mScrollTarget;            // _404
+	s32 mCatalogBase;             // _408
+	s32 mCatalogCount;            // _40C
+	PCAmount mMoneyDisplay;       // _410
+	PCAmount mScrapDisplay;       // _418
+	PCAmount mDepositDisplay;     // _420
+	f32 _428;                     // _428, eased toward _42C
+	f32 _42C;                     // _42C
+	f32 mScrapRate;               // _430
+	s32 mExitState;               // _434, the game state it hands back
+	u8 mCanSelect;                // _438
 	u8 _439[0x43C - 0x439];
 	s32 mChoices[4];  // _43C
 	s32 mChoiceCount; // _44C
@@ -1735,6 +1796,7 @@ STATIC_ASSERT(offsetof(MenuPC, mYesNo) == 0x184);
 STATIC_ASSERT(offsetof(MenuPC, mCharCopies) == 0x2F0);
 STATIC_ASSERT(offsetof(MenuPC, mNumberOffset) == 0x37C);
 STATIC_ASSERT(offsetof(MenuPC, mShopOnly) == 0x3A4);
+STATIC_ASSERT(offsetof(MenuPC, mDepositDisplay) == 0x420);
 STATIC_ASSERT(offsetof(MenuPC, mExitState) == 0x434);
 STATIC_ASSERT(offsetof(MenuPC, mTexScroll) == 0x450);
 
