@@ -41,12 +41,6 @@ extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
-extern "C" BOOL IsCarryingToothbrush(XAction* action);
-extern "C" BOOL IsCarryingMug(XAction* action);
-extern "C" BOOL IsCarryingSpoon(XAction* action);
-extern "C" BOOL IsCarryingSquirter(XAction* action);
-extern "C" BOOL IsGlobalDataLoaded(void);
-extern "C" u32 GetStartingAttachmentLevel(s32 index);
 extern CustomShadow gCustomShadow;
 extern MEMAllocator gWiiPadAllocator;
 
@@ -152,6 +146,94 @@ static inline void OpenMenus(WiiPlayerState* chr)
 	}
 }
 
+// he stops where he is, and lets go of what he pushes
+static inline void StopMoving(WiiPlayerState* chr)
+{
+	chr->mMotion.mValue.x  = 0.0f;
+	chr->mMotion.mValue.y  = 0.0f;
+	chr->mMotion.mValue.z  = 0.0f;
+	chr->mMotion.mTarget.x = 0.0f;
+	chr->mMotion.mTarget.y = 0.0f;
+	chr->mMotion.mTarget.z = 0.0f;
+	chr->mMotion.mSpeed.x  = 0.0f;
+	chr->mMotion.mSpeed.y  = 0.0f;
+	chr->mMotion.mSpeed.z  = 0.0f;
+	chr->mMoveRotate.Set(chr->mMoveTarget1);
+	if (chr->mPush.mState != 0) {
+		ReleasePushAction(&chr->mPush);
+		chr->mPush.mState = 0;
+		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mIdleLoops = 3;
+	}
+}
+
+// the y angle a direction faces
+static inline f32 GetYAngle(const Vec& dir)
+{
+	return atan2(dir.x, dir.z);
+}
+
+// the ground type of a map triangle, 0 for none
+static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
+{
+	if (tri >= 0)
+		return map->mTrigon.mTri[tri].mFloorType;
+	return 0;
+}
+
+// events wait while he lies there out of battery
+static inline bool IsEventBlocked(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (IsEventHeld(chr) && IsTumbling(chr)) {
+		ret = true;
+	}
+	return ret;
+}
+
+class EnvInfo;
+
+extern "C" {
+u32 CheckStageFlag(s32 stage, u32 mask);
+BOOL IsGlobalDataLoaded(void);
+void ResetPlayerStats(Params* stats);
+void InitializePlayerLiftAction(XAction* action, WiiPlayerState* owner);
+BOOL IsCarryingMug(XAction* action);
+BOOL IsCarryingSquirter(XAction* action);
+BOOL IsCarryingSpoon(XAction* action);
+BOOL IsCarryingToothbrush(XAction* action);
+void ApplyPlayerItemTintToTarget(XAction* action);
+BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
+void UpdateHeldObject(XAction* action, u32 frames);
+void UpdatePushedObject(XAction* action, u32 frames);
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
+s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
+void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
+BOOL IsLiftTargetPlug(XAction* action);
+UnkStageObj* GetSpawnData(s32 index);
+s32 IsStageDataLoaded(void);
+EnvInfo* GetStageEnvironment(void);
+UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
+extern s32 gSpecialSuitSpawnIds[];
+BOOL LoadPlayerSuitItem(WiiPlayerState* player);
+void ApplyPlayerSuit(WiiPlayerState* player);
+void UpdatePlayerSuitChange(WiiPlayerState* player);
+void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
+void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
+void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
+void ResetPlayerLiftAction(XActLift* act);
+void ResetPlayerJumpAction(XActJump* act);
+void ResetTumbleAction(XActTumble* act);
+void ResetPlayerRadarAction(XActRadar* act);
+void ResetPopperCharge(XActPopperCharge* charge);
+void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
+void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object's own file, then releases the archive
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern s32 gRefreshRate;
+
 // one of his tools is out
 static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
 {
@@ -167,23 +249,24 @@ static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
 	}
 }
 
+// he can use the tool, he has it or it is out
 static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
 {
 	s32 has = 1;
-	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item)) {
+	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
 		has = 0;
-	}
 	return has;
 }
 
 static inline void SetAttachmentOn(AttachmentValues* values, s32 id, s32 on)
 {
 	s32 index = values->Find(id);
-	if (index >= 0) {
+	if (index >= 0)
 		values->mEntries[index].mValue = on;
-	}
 }
 
+// which of his tools he can use, he has them or one of them is going; the
+// GameCube's UpdateAttachmentAvailability, only ever inlined here on the Wii
 static inline void UpdateAttachmentAvailability(AttachmentValues* values)
 {
 	WiiPlayerState* chr = gGame.GetPlayer();
@@ -239,8 +322,9 @@ static inline void ResetRingMode(OctaMenu& ring)
 	} else {
 		ring.mMenuType = 0;
 	}
-	ring.mFocus    = 0;
-	ring.mHeadTurn = NAN;
+	ring.mFocus                 = 0;
+	ring.mKeepPointedItemOnOpen = 0;
+	ring.mHeadTurn              = NAN;
 }
 
 static inline void SetupPlayerRing(OctaMenu& ring, WiiPlayerState* owner, f32 direction)
@@ -250,6 +334,7 @@ static inline void SetupPlayerRing(OctaMenu& ring, WiiPlayerState* owner, f32 di
 	ring.mRowOffset               = 0.0f;
 	ring.mFirstVisibleItem        = 0;
 	ring.mPendingFirstVisibleItem = -1;
+	ring.mLastPointedItem         = 3;
 	ring._10                      = direction;
 }
 
@@ -264,95 +349,6 @@ static inline void SetRingItems(OctaMenu& ring, s32 a, s32 b, s32 c, s32 d, s32 
 	ring.mItems[6].mType = g;
 	ring.mItems[7].mType = h;
 }
-
-// he stops where he is, and lets go of what he pushes
-static inline void StopMoving(WiiPlayerState* chr)
-{
-	chr->mMotion.mValue.x  = 0.0f;
-	chr->mMotion.mValue.y  = 0.0f;
-	chr->mMotion.mValue.z  = 0.0f;
-	chr->mMotion.mTarget.x = 0.0f;
-	chr->mMotion.mTarget.y = 0.0f;
-	chr->mMotion.mTarget.z = 0.0f;
-	chr->mMotion.mSpeed.x  = 0.0f;
-	chr->mMotion.mSpeed.y  = 0.0f;
-	chr->mMotion.mSpeed.z  = 0.0f;
-	chr->mMoveRotate.Set(chr->mMoveTarget1);
-	if (chr->mPush.mState != 0) {
-		ReleasePushAction(&chr->mPush);
-		chr->mPush.mState = 0;
-		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
-		chr->mIdleLoops = 3;
-	}
-}
-
-// the y angle a direction faces
-static inline f32 GetYAngle(const Vec& dir)
-{
-	return atan2(dir.x, dir.z);
-}
-
-// the ground type of a map triangle, 0 for none
-static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
-{
-	if (tri >= 0)
-		return map->mTrigon.mTri[tri].mFloorType;
-	return 0;
-}
-
-// events wait while he lies there out of battery
-static inline bool IsEventBlocked(const WiiPlayerState* chr)
-{
-	bool ret = false;
-	if (IsEventHeld(chr) && IsTumbling(chr)) {
-		ret = true;
-	}
-	return ret;
-}
-
-class EnvInfo;
-
-extern "C" {
-u32 CheckStageFlag(s32 stage, u32 mask);
-void fn_800C9E84(WiiPlayerState* player);
-void fn_800CB1DC(WiiPlayerState* player);
-void ResetPlayerStats(Params* stats);
-void InitializePlayerLiftAction(XAction* action, WiiPlayerState* owner);
-BOOL IsCarryingMug(XAction* action);
-BOOL IsCarryingSquirter(XAction* action);
-BOOL IsCarryingSpoon(XAction* action);
-BOOL IsCarryingToothbrush(XAction* action);
-void ApplyPlayerItemTintToTarget(XAction* action);
-BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
-void UpdateHeldObject(XAction* action, u32 frames);
-void UpdatePushedObject(XAction* action, u32 frames);
-void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
-s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
-void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
-BOOL IsLiftTargetPlug(XAction* action);
-UnkStageObj* GetSpawnData(s32 index);
-s32 IsStageDataLoaded(void);
-EnvInfo* GetStageEnvironment(void);
-UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
-void ShowIdlePlayerCopter(XObjCopter* copter);
-void ShowIdlePlayerRadar(XObjRadar* radar);
-extern s32 gSpecialSuitSpawnIds[];
-BOOL LoadPlayerSuitItem(WiiPlayerState* player);
-void ApplyPlayerSuit(WiiPlayerState* player);
-void UpdatePlayerSuitChange(WiiPlayerState* player);
-void fn_800C659C(XObjScnCamInitRec* self, XObj* obj);
-void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner);
-void InitRadarAction(XActRadar* act, WiiPlayerState* owner);
-void ResetPlayerLiftAction(XActLift* act);
-void ResetPlayerJumpAction(XActJump* act);
-void ResetTumbleAction(XActTumble* act);
-void ResetPlayerRadarAction(XActRadar* act);
-void ResetPopperCharge(XActPopperCharge* charge);
-void GetHudPointParticleOrigin(InfoScrn* scrn, f32* y, f32* x);
-void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object's own file, then releases the archive
-extern PointPtcl gPointParticlePool[10];
-extern PointPtcl* gPointParticleSlots[10];
-extern s32 gRefreshRate;
 
 // the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect (the .bss
 // object at lbl_8045BBD0): the Wii's records are 0x18 bytes with the scale at +0
@@ -396,16 +392,15 @@ static inline WiiStageInfo* GetStageInfo()
 	return *(WiiStageInfo**)GetStageEnvironment();
 }
 
-static inline void ResetPlayerForNewGame(WiiPlayerState* player);
-
 /**
  * @note Address: 0x800C9E84
  * @note Size: 0x1358
  */
 // NONMATCHING: same call set; look/menu temporary store order and saved-GPR allocation differ
-extern "C" void fn_800C9E84(WiiPlayerState* player)
+void XObjChr::InitializeObject()
 {
-	player->XObj::InitializeObject();
+	WiiPlayerState* player = (WiiPlayerState*)this;
+	XObj::InitializeObject();
 	player->mLook.mActive = FALSE;
 	player->mLook.mMode   = -1;
 	player->mLook.mObject = NULL;
@@ -423,28 +418,101 @@ extern "C" void fn_800C9E84(WiiPlayerState* player)
 	SetRingItems(player->mMenu.mAtc, 1, 2, 3, 4, 6, 5, 7, 8);
 	player->mMenu.mAtc.mRowOffset        = -1.5f;
 	player->mMenu.mAtc.mFirstVisibleItem = 4;
-	SetupPlayerRing(player->mMenu.mDrs, player, 1.0f);
-	player->mMenu.mDrs.Init((XObjChr*)player);
-	if (player->mMenu.mDrs.mMenuType == 3) {
-		SetRingItems(player->mMenu.mDrs, 1, 4, 6, 3, 2, 7, 8, 5);
-	} else {
-		SetRingItems(player->mMenu.mDrs, 3, 5, 4, 1, 6, 8, 7, 2);
-	}
-	player->mMenu.mDrs.mRowOffset        = 0.9f;
-	player->mMenu.mDrs.mFirstVisibleItem = 4;
-	player->mMenu.mPrevSel               = 0;
-	player->mMenu.mSel                   = 0;
-	player->mOXMenu.mChr                 = player;
-	player->mOXMenu.mSelectedIndex       = 0;
+	player->mMenu.mDrs.Init(this);
+	player->mMenu.mPrevSel         = 0;
+	player->mMenu.mSel             = 0;
+	player->mOXMenu.mChr           = player;
+	player->mOXMenu.mLoadStep      = 0;
+	player->mOXMenu.mSelectedIndex = 0;
+	player->mOXMenu._10            = -1;
 	for (s32 i = 0; i < 9; ++i) {
 		player->mSuits.mObjects[i].InitializeObject();
-		player->mSuitParts[i].mOwner = NULL;
+		player->mSuits.mObjects[i].mOwner = player;
+		player->mSuitParts[i].InitializeObject();
+		player->mSuitParts[i].mOwner = &player->mSuits.mObjects[i];
 	}
-	player->mPad.Init(0, 0);
+	player->mPlayer = player;
+	// he may blink in every anim but these
+	for (s32 i = 0; i < 0x167; ++i) {
+		player->mBlinkAnims[i] = 1;
+	}
+	player->mBlinkAnims[356] = 0;
+	player->mBlinkAnims[353] = 0;
+	player->mBlinkAnims[352] = 0;
+	player->mBlinkAnims[345] = 0;
+	player->mBlinkAnims[337] = 0;
+	player->mBlinkAnims[331] = 0;
+	player->mBlinkAnims[328] = 0;
+	player->mBlinkAnims[324] = 0;
+	player->mBlinkAnims[323] = 0;
+	player->mBlinkAnims[320] = 0;
+	player->mBlinkAnims[319] = 0;
+	player->mBlinkAnims[316] = 0;
+	player->mBlinkAnims[311] = 0;
+	player->mBlinkAnims[308] = 0;
+	player->mBlinkAnims[307] = 0;
+	player->mBlinkAnims[306] = 0;
+	player->mBlinkAnims[305] = 0;
+	player->mBlinkAnims[300] = 0;
+	player->mBlinkAnims[299] = 0;
+	player->mBlinkAnims[293] = 0;
+	player->mBlinkAnims[270] = 0;
+	player->mBlinkAnims[269] = 0;
+	player->mBlinkAnims[266] = 0;
+	player->mBlinkAnims[259] = 0;
+	player->mBlinkAnims[258] = 0;
+	player->mBlinkAnims[246] = 0;
+	player->mBlinkAnims[245] = 0;
+	player->mBlinkAnims[244] = 0;
+	player->mBlinkAnims[243] = 0;
+	player->mBlinkAnims[242] = 0;
+	player->mBlinkAnims[241] = 0;
+	player->mBlinkAnims[238] = 0;
+	player->mBlinkAnims[237] = 0;
+	player->mBlinkAnims[236] = 0;
+	player->mBlinkAnims[234] = 0;
+	player->mBlinkAnims[232] = 0;
+	player->mBlinkAnims[231] = 0;
+	player->mBlinkAnims[230] = 0;
+	player->mBlinkAnims[229] = 0;
+	player->mBlinkAnims[228] = 0;
+	player->mBlinkAnims[223] = 0;
+	player->mBlinkAnims[222] = 0;
+	player->mBlinkAnims[212] = 0;
+	player->mBlinkAnims[211] = 0;
+	player->mBlinkAnims[210] = 0;
+	player->mBlinkAnims[192] = 0;
+	player->mBlinkAnims[187] = 0;
+	player->mBlinkAnims[186] = 0;
+	player->mBlinkAnims[175] = 0;
+	player->mBlinkAnims[174] = 0;
+	player->mBlinkAnims[173] = 0;
+	player->mBlinkAnims[171] = 0;
+	player->mBlinkAnims[170] = 0;
+	player->mBlinkAnims[169] = 0;
+	player->mBlinkAnims[167] = 0;
+	player->mBlinkAnims[161] = 0;
+	player->mBlinkAnims[156] = 0;
+	player->mBlinkAnims[153] = 0;
+	player->mBlinkAnims[151] = 0;
+	player->mBlinkAnims[143] = 0;
+	player->mBlinkAnims[83]  = 0;
+	player->mBlinkAnims[76]  = 0;
+	player->mBlinkAnims[71]  = 0;
+	player->mBlinkAnims[68]  = 0;
+	player->mBlinkAnims[67]  = 0;
+	player->mBlinkAnims[65]  = 0;
+	player->mBlinkAnims[54]  = 0;
+	player->mBlinkAnims[53]  = 0;
+	player->mBlinkAnims[14]  = 0;
+	player->mBlinkAnims[7]   = 0;
+	player->mBlinkAnims[6]   = 0;
+	player->mBlinkAnims[5]   = 0;
+	player->mBlinkAnims[2]   = 0;
+	player->mBlinkAnims[1]   = 0;
 	player->ResetForNewGame();
-	XObjChr* chr    = (XObjChr*)player;
-	chr->mSceneRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, 8, 8, 8, 8);
-	NW4R_ASSERT_VALID_PTR_LINE(0x8B, chr->mSceneRoot);
+	m_pRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, 8, 8, 8, 8);
+	NW4R_ASSERT_VALID_PTR_LINE(0x8B, m_pRoot);
 }
 
 // _154, the GameCube's XObjChr::ResetObjectState: the player state, his actions,
@@ -554,9 +622,10 @@ void XObjChr::ResetObjectState()
  * @note Address: 0x800CB1DC
  * @note Size: 0x10B8
  */
-// NONMATCHING: same call set; retail writes mPadReset before and after the menu resets, this source once; NAN/menu store schedule differs
-static inline void ResetPlayerForNewGame(WiiPlayerState* player)
+// NONMATCHING: same call set; NAN/menu store schedule differs
+void XObjChr::ResetForNewGame()
 {
+	WiiPlayerState* player = (WiiPlayerState*)this;
 	ResetPlayerStats(&player->mParams);
 	player->mAttachment           = 0;
 	player->mLiftPlugFlags        = gCmdLineArgs.mLiftPlugFlags;
@@ -578,12 +647,16 @@ static inline void ResetPlayerForNewGame(WiiPlayerState* player)
 		player->mSuits.mObjects[i].ResetForNewGame();
 	}
 	ApplyPlayerSuit(player);
+	player->mPadReset = TRUE;
 	RefreshAttachmentMenuEntries(&player->mAttachments);
 	ResetRingMode(player->mMenu.mAtc);
 	ResetRingMode(player->mMenu.mDrs);
 	player->mMenu.mPrevSel         = 0;
 	player->mMenu.mSel             = 0;
+	player->mOXMenu.mLoadStep      = 0;
 	player->mOXMenu.mSelectedIndex = 0;
+	player->mOXMenu._10            = -1;
+	player->_1C97C                 = 0;
 	player->mSavedTarget           = -1;
 	player->mPendingTarget         = NULL;
 	player->mBatteryDrains         = TRUE;
@@ -604,11 +677,6 @@ static inline void ResetPlayerForNewGame(WiiPlayerState* player)
 	player->mPlayerFlags |= 0x20000000;
 	player->mPlayerFlags |= 7;
 	player->mPadReset = TRUE;
-}
-
-extern "C" void fn_800CB1DC(WiiPlayerState* player)
-{
-	ResetPlayerForNewGame(player);
 }
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)

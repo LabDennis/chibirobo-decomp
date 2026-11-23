@@ -2048,6 +2048,8 @@ public:
 
 	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
@@ -2095,13 +2097,11 @@ private:
 	u8 _1C97C[0x1C9A8 - 0x1C97C];
 	CVec _1C9A8;
 	u8 _1C9B8[0x1C9CC - 0x1C9B8];
-	CObjVec mEyeAim;          // _1C9CC
-	CJArchive mAttachmentAnm; // _1C9FC
-	CJArchive mSuitAnm;       // _1CB44
-public:
-	nw4r::g3d::ScnRoot* mSceneRoot; // _1CC8C
-private:
-	AnimSfxActor mActor; // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
+	CObjVec mEyeAim;             // _1C9CC
+	CJArchive mAttachmentAnm;    // _1C9FC
+	CJArchive mSuitAnm;          // _1CB44
+	nw4r::g3d::ScnRoot* m_pRoot; // _1CC8C, retail's assert names it
+	AnimSfxActor mActor;         // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
 	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
 };
 STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);

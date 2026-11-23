@@ -867,7 +867,8 @@ public:
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	u8 _9A8[0x9C8 - 0x9A8];
+	XObj* mOwner; // _9A8
+	u8 _9AC[0x9C8 - 0x9AC];
 	u8 m_9C8; // _9C8, retail's XObjDress: vf28C hides the head nodes while it is set
 	u8 m_9C9; // _9C9, vf290 hides the left-arm nodes
 	u8 _9CA[0x9D0 - 0x9CA];
@@ -921,7 +922,7 @@ struct WiiOXMenuMark {
 STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
 STATIC_ASSERT(offsetof(WiiOXMenuMark, mObj) == 0x10);
 struct WiiOXMenu {
-	u8 _00[4];
+	s32 mLoadStep;          // _00, the GameCube's
 	s32 mStarted;           // _04
 	s32 mCrossMask;         // _08
 	s32 mSelectedIndex;     // _0C
@@ -1137,7 +1138,8 @@ struct WiiPlayerState : public XObj {
 	// writers are decoded so far, the word reads as a whole
 	u32 mOnGround;          // _1B7B8
 	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, XObjChr's mDustPool
-	u8 _1C770[0x1C980 - 0x1C770];
+	u8 _1C770[0x1C97C - 0x1C770];
+	s32 _1C97C;            // _1C97C, cleared in ResetForNewGame
 	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
 	u8 _1C982[2];          // _1C982
 	s32 mSavedTargetAnim;  // _1C984, its playing anim
