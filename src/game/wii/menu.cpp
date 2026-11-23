@@ -2020,6 +2020,40 @@ extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
 	pane->mKind    = layout->mKind;
 }
 
+static CbPaneLayout sItemCellLayouts[8] = {
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+};
+
+static CbPaneLayout sItemPageLayouts[2] = {
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
+};
+
+// NONMATCHING: the cell loop matches apart from data-symbol spelling; the two page panes use a computed layout
+// address here, while retail uses two fixed addresses and immediate pane ids
+void MenuItem::Init()
+{
+	MenuItem* menu = this;
+	menu->CMenu::Init();
+	menu->mSelection = 0;
+	int i            = 0;
+	int kind         = 0;
+	for (; i < 8; i++) {
+		fn_800556B0(&mCells[i], &sItemCellLayouts[i]);
+		mCells[i].mKind = kind++;
+	}
+	for (int j = 0; j < 2; j++, i++) {
+		fn_800556B0(&mPanes[i - 8], &sItemPageLayouts[i - 8]);
+		mPanes[i - 8].mKind = kind++;
+	}
+	if (i > 10) {
+		OSPanic("menu_item.cpp", 0x255, "@MenuItem::Init MenuItemが保持できるCbPaneの最大数を超えています！(num = %d)", i);
+	}
+}
+
 // the pane's rectangle round its centre, y up
 extern "C" MenuRect fn_800556E4(const CbPane* pane)
 {

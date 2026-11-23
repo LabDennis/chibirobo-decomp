@@ -1556,6 +1556,7 @@ struct MenuPaneFadePair {
 // the item menu, the GameCube class of the same name
 class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
+	virtual void Init();
 	virtual BOOL Update(u32 frames);
 	virtual void Open();
 
