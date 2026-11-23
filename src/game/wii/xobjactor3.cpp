@@ -41,12 +41,12 @@ s32 gActor3Kind15ActivationCounter;
 static void EmitKind9Dust(XObjActor3* actor, Vec* pos);
 
 extern "C" AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
-	{ 3, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
-	{ 3, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
-	{ 8, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
-	{ 8, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
-	{ 4, 1.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
-	{ 4, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 3, 11.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
+	{ 3, 53.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
+	{ 8, 11.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
+	{ 8, 53.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
+	{ 4, 1.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
+	{ 4, 11.0f, 0.0f, 1, 0, 0x42E, 0xFF, 0, 0, 0 },
 	{ -1 },
 };
 
@@ -176,6 +176,10 @@ static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 	f32 end     = actor->GetAnimEndFrame();
 	f32 current = actor->GetAnimFrame();
 	return end - frames <= current;
+}
+
+void XObjActor3::Kind0(u32 frames)
+{
 }
 
 // NONMATCHING: the distance expression keeps a second Vec temporary in retail;
@@ -1966,8 +1970,6 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 	}
 }
 
-extern "C" void ResetActor3Fields(XObjActor3* actor);
-
 extern "C" void HandleItem8ActorCommand(XObjActor3* actor)
 {
 	if (actor->mEventCommand != 1) {
@@ -2016,29 +2018,7 @@ extern "C" void HandleItem8ActorCommand(XObjActor3* actor)
 	actor->mEventCommand = 0;
 }
 
-void XObjActor3::ResetForNewGame()
-{
-	ResetActor3Fields(this);
-}
-
-void XObjActor3::InitializeObject()
-{
-	XObj::InitializeObject();
-	ResetForNewGame();
-}
-
-void XObjActor3::ResetObjectState()
-{
-	XObj::ResetObjectState();
-	ResetForNewGame();
-}
-
-void XObjActor3::Kind0(u32 frames)
-{
-	ResetForNewGame();
-}
-
-inline void ResetActor3Fields(XObjActor3* actor)
+extern "C" void ResetActor3Fields(XObjActor3* actor)
 {
 	actor->_BA0               = 0.0f;
 	actor->mMoveSpeed         = 0.0f;
@@ -2087,7 +2067,7 @@ inline void ResetActor3Fields(XObjActor3* actor)
 	actor->_C38               = 0;
 	if (actor->GetKind() == 0x31B) {
 		InitParticlePool(&actor->mDustPool.mPtcl, actor->mDustPool.mPtcls, 0x50, 0x32);
-		actor->mSfx.mEvents = gHaisuiNezumiAnimSfxEvents;
+		actor->mSfx.Init((WiiPlayerState*)actor, gHaisuiNezumiAnimSfxEvents);
 	}
 	actor->mGens[0]     = NULL;
 	actor->mGens[1]     = NULL;
@@ -2100,6 +2080,23 @@ inline void ResetActor3Fields(XObjActor3* actor)
 	actor->mHeld        = NULL;
 	actor->_1E20        = 0;
 	actor->mSe          = -1;
+}
+
+void XObjActor3::InitializeObject()
+{
+	XObj::InitializeObject();
+	ResetActor3Fields(this);
+}
+
+void XObjActor3::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ResetActor3Fields(this);
+}
+
+void XObjActor3::ResetForNewGame()
+{
+	ResetActor3Fields(this);
 }
 
 BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)

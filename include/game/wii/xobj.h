@@ -1956,10 +1956,10 @@ public:
 	virtual void PauseSounds(f32 fade);
 	virtual void ResumeSounds(f32 fade);
 	virtual void UpdateAfterAnim(u32 frames);
-	virtual void RunStateHandler(u32 frames);
-	virtual void ClearStateHandler();
+	virtual void RunStateHandler(u32 frames) = 0;
+	virtual void ClearStateHandler()         = 0;
 	virtual void UpdateGroundMovement(u32 frames);
-	virtual void ProcessPendingEvents(u32 frames);
+	virtual void ProcessPendingEvents(u32 frames) = 0;
 	virtual void ResetActorState();
 	virtual BOOL IsHitPending();
 	virtual void UpdateAnimationSounds(f32 frame);
@@ -2393,11 +2393,12 @@ public:
 	virtual void RunStateHandler(u32 frames);
 	virtual void ClearStateHandler();
 	virtual void UpdateAnimationSounds(f32 frame);
-	void ProcessPendingEvents(u32 frames); // _29C; the shared Actor vtable slots remain to be declared
+	void ProcessPendingEvents(u32 frames); // _29C
 
 	void StateCarry(u32 frames);
 	void StateHitRecovery(u32 frames);
 	void StatePickUp(u32 frames);
+	BOOL IsFree();
 
 	CStatus32 mHideKinds; // _D78, kinds queued to hide
 	s32 mLoad;            // _D80
@@ -2429,6 +2430,9 @@ class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
 	virtual ~XObjActorJenny();
+	virtual void UpdateAnim(f32 speed);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
 	void ResetActorState();
 	void ProcessPendingEvents(u32 frames);
 	void UpdateAfterAnim(u32 frames);
@@ -2452,6 +2456,8 @@ class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
 	virtual ~XObjActorMama();
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
 	void ResetActorState();
 	void ProcessPendingEvents(u32 frames);
 	void UpdateAfterAnim(u32 frames);
@@ -2476,6 +2482,8 @@ class XObjActorPapa : public XObjActor {
 public:
 	XObjActorPapa();
 	virtual ~XObjActorPapa();
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
 	void ResetActorState();
 	void ProcessPendingEvents(u32 frames);
 	void UpdateAfterAnim(u32 frames);

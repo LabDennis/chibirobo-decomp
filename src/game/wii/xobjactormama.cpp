@@ -425,3 +425,15 @@ f32 XObjActorMama::GetMinHeadPitch()
 {
 	return -(DEG2RAD * 10.0f);
 }
+
+void XObjActorMama::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+void XObjActorMama::ClearStateHandler()
+{
+	mState = NULL;
+}

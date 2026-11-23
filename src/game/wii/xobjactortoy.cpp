@@ -2231,6 +2231,14 @@ s32 XObjActorToy::vf208(const Vec* pointer, const Vec* motion, u8 over, f32 spee
 	return XObj::vf208(pointer, motion, over, speed);
 }
 
+BOOL XObjActorToy::IsFree()
+{
+	if ((mStatus.mFlags & 1) == 0) {
+		return TRUE;
+	}
+	return !(mActorStatus.mFlags & 0x2000);
+}
+
 void XObjActorToy::RunStateHandler(u32 frames)
 {
 	if (mState != NULL) {

@@ -496,3 +496,15 @@ f32 XObjActorPapa::GetMinHeadPitch()
 {
 	return -(DEG2RAD * 10.0f);
 }
+
+void XObjActorPapa::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+void XObjActorPapa::ClearStateHandler()
+{
+	mState = NULL;
+}

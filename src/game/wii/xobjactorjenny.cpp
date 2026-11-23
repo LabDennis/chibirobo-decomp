@@ -215,6 +215,11 @@ void XObjActorJenny::ProcessPendingEvents(u32 frames)
 	}
 }
 
+void XObjActorJenny::UpdateAnim(f32 speed)
+{
+	XObjActor::UpdateAnim(speed);
+}
+
 void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
@@ -310,4 +315,20 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 		pos = GetJointPos(FindResNode("head"));
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0.0f);
 	}
+}
+
+void XObjActorJenny::StateNone(u32 frames)
+{
+}
+
+void XObjActorJenny::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+void XObjActorJenny::ClearStateHandler()
+{
+	mState = NULL;
 }

@@ -344,6 +344,9 @@ rel/module.c:
 	.text start:0x8016AD78 end:0x8016AF80
 	.rodata start:0x802DDCA0 end:0x802DDD10
 
+rel/stage02/fighter.cpp:
+	.text start:0x80174934 end:0x80175E8C
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98
@@ -1324,25 +1327,22 @@ game/wii/xobjspiderboss.cpp:
 	.sdata2 start:0x805A5838 end:0x805A58B0
 
 game/wii/xobjactor.cpp:
-	.text start:0x801370BC end:0x80138E28
+	.text start:0x801370BC end:0x80138E24
 
 game/wii/xobjactor3.cpp:
-	.text start:0x80138E28 end:0x80142C38
+	.text start:0x80138E24 end:0x80142BD8
 
 game/wii/xobjactortoy.cpp:
-	.text start:0x80142C38 end:0x8014A74C
-
-rel/stage02/fighter.cpp:
-	.text start:0x80174934 end:0x80175E8C
+	.text start:0x80142BD8 end:0x8014A80C
 
 game/wii/xobjactorjenny.cpp:
-	.text start:0x8014A74C end:0x8014C090
+	.text start:0x8014A80C end:0x8014C090
 
 game/wii/xobjactormama.cpp:
-	.text start:0x8014C090 end:0x8014D8D8
+	.text start:0x8014C090 end:0x8014D968
 
 game/wii/xobjactorpapa.cpp:
-	.text start:0x8014D968 end:0x8014F25C
+	.text start:0x8014D968 end:0x8014F2EC
 
 game/wii/xobjactortao.cpp:
 	.text start:0x8014F2EC end:0x80150C2C
