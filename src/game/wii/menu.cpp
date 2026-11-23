@@ -852,16 +852,8 @@ extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 	}
 }
 
-static inline void CheckPlayerInventoryFlags()
-{
-	for (s32 i = 255; i >= 0; --i) {
-		InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
-		GetItemFlagsMasked(items[i].mId, 4);
-	}
-}
-
-// NONMATCHING: all functional calls match, but this build expands MenuPaneFadePair::Update where retail calls it;
-// 24 bytes of register and scheduling differences remain
+// NONMATCHING: retail calls MenuPaneFadePair::Update where this build expands it; the function comes out 88 bytes larger
+// and register allocation differs
 BOOL MenuItem::Update(u32 frames)
 {
 	static s32 selectedItem = -1;
@@ -879,13 +871,6 @@ BOOL MenuItem::Update(u32 frames)
 		PCEase(mPanelX, mTargetPanelX);
 		PCEase(mPanelY, mTargetPanelY);
 		ApproachHudValue(&_198, &_19C, 0.08f * frames);
-		if (mAlpha > 0.0f) {
-			f32 spinX = 0.08726646f * frames, spinY = 0.05235988f * frames;
-			for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
-				mBg[i].mAngle0 += spinX;
-				mBg[i].mAngle1 += spinY;
-			}
-		}
 		s32 count = CountMenuItems();
 		switch (mMode) {
 		case 0:
@@ -914,6 +899,7 @@ BOOL MenuItem::Update(u32 frames)
 					mHelp     = NULL;
 				}
 			}
+			sInventoryPhase = 0.0f;
 			break;
 		case 2:
 			if (mSelection != -1)
@@ -1000,7 +986,7 @@ BOOL MenuItem::Update(u32 frames)
 				mPanes[0].mEnabled = FALSE;
 				mPanes[1].mEnabled = FALSE;
 				if (count > 4) {
-					CheckPlayerInventoryFlags();
+					CountMenuItems();
 					mPanes[0].mEnabled = sStatusItemTable.mPage > 0;
 					mPanes[1].mEnabled = sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1;
 				}
@@ -1013,8 +999,8 @@ BOOL MenuItem::Update(u32 frames)
 			break;
 		case 3:
 			if (--mDelay < 0) {
-				gGame.mEvt.mSelectResult = selectedItem;
 				gGame.ClearStatusFlags(2);
+				gGame.mEvt.mSelectResult = selectedItem;
 				Close(5);
 				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
 				mMode++;
@@ -1093,12 +1079,23 @@ BOOL MenuItem::Update(u32 frames)
 		mName = mHelp;
 		break;
 	case 2:
-		mNameAlpha += 0.04f * frames;
+		mNameAlpha += (1.0f / (0.2f * gRefreshRate)) * frames;
 		if (mNameAlpha >= 1.0f) {
 			mNameAlpha = 1.0f;
 			mShowHelp  = 0;
 		}
 		break;
+	case 3:
+		mNameAlpha -= (1.0f / (0.25f * gRefreshRate)) * frames;
+		if (mNameAlpha <= 0.0f)
+			mNameAlpha = 0.0f;
+		break;
+	}
+	if (mAlpha > 0.0f) {
+		for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
+			mBg[i].mAngle0 += 0.08726646f * frames;
+			mBg[i].mAngle1 += 0.05235988f * frames;
+		}
 	}
 	return IsOpen();
 }

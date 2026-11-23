@@ -1572,11 +1572,11 @@ public:
 	u8* mHelp;            // _1B8
 	f32 mItemPhase;       // _1BC
 	MenuTitle mTitle;     // _1C0
-	MenuHelpChar mBg[20]; // _35C
-	u8 _44C[0x450 - 0x44C];
-	CbPane mCells[8]; // _450
-	CbPane mPanes[2]; // _6D0, previous and next item page
-	u8 mHovered;      // _770
+	s32 mHelpCount;       // _35C, set by Open, read by Draw
+	MenuHelpChar mBg[20]; // _360
+	CbPane mCells[8];     // _450
+	CbPane mPanes[2];     // _6D0, previous and next item page
+	u8 mHovered;          // _770
 	u8 _771[0x774 - 0x771];
 	MenuPaneFadePair mPaneFades; // _774
 };
