@@ -4671,12 +4671,12 @@ static inline void ChangePlayerGait(WiiPlayerState* p, s32 id, f32 rate)
 	p->mFrameTime.mFrame = 4.0f + p->GetAnimFrame();
 	if (p->mFrameTime.mFrame >= p->GetAnimEndFrame())
 		p->mFrameTime.mFrame -= p->GetAnimEndFrame();
-	p->SetAnim(id, FALSE, p->mFrameTime.mFrame, rate, 0.0f, 10.0f);
+	p->SetAnim(id, FALSE, p->mFrameTime.mFrame, rate, 0.0f, 15.0f);
 }
 
 static inline void SetPlayerIdleAnim(WiiPlayerState* p, s32 id)
 {
-	p->SetAnim(id, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+	p->SetAnim(id, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 }
 
 /**
@@ -4693,6 +4693,8 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.GetStatusFlags(0x100)) && !(gGame.GetStatusFlags(0x200)))
 		motion = 0.0f;
+	if (p->_1C9B8[2] > 0.0f)
+		motion = 0.0f;
 	if (__fpclassifyf(p->mWalkHeading) != FP_NAN)
 		motion = PSVECMag(&p->mMoveSpeed0);
 
@@ -4704,13 +4706,14 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 			scale = 0.7f;
 		speed = p->mMoveSpeed / scale;
 	} else {
-		speed = p->mMoveSpeed / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 0.4f : 1.0f) * (60.0f / gRefreshRate));
+		speed
+		    = p->mMoveSpeed / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 1.135f : 1.0f) * (60.0f / gRefreshRate));
 	}
 	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
 	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
 	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
 		f32 distance = PSVECDistance(&p->mMotion.mValue, &p->mMotion.mTarget);
-		if (distance / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 0.4f : 1.0f) * (60.0f / gRefreshRate))
+		if (distance / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 1.135f : 1.0f) * (60.0f / gRefreshRate))
 		    >= 3.0f) {
 			p->SetAnim(0x79, FALSE, 0.0f, 1.0f, 0.0f, 30.0f);
 		} else if (p->GetAnimId() == 0x79 || p->GetAnimId() == 0x89 || p->GetAnimId() == 0xE0) {
@@ -4720,7 +4723,7 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 	}
 	if (p->mPopper.mState == 8 && ((XObjPopper*)p->mPopperObj)->GetAnimId() == 5 && ((XObjPopper*)p->mPopperObj)->GetAnimFrame() <= 10.0f) {
 		if (gGame.mStage != 0xB || (p->GetAnimId() != 0x35 && p->GetAnimId() != 0x36)) {
-			p->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			p->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 		return;
 	}
@@ -4732,7 +4735,7 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 		case 0x161:
 		case 0x162:
 		case 0x163:
-			p->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			p->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			p->mIdleLoops = rand() % 10 + 5;
 			break;
 		// standing and idle anims: moving starts the walk, standing still he may fidget
@@ -4764,13 +4767,13 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 			if (p->_1C9B8[2] > 0.0f) {
 				if (p->mLift.mState == 4) {
 					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
-						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					else
-						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				} else if (p->GetAttachment() == 2) {
-					p->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					p->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				} else {
-					p->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					p->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				}
 				break;
 			}
@@ -5069,13 +5072,8 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 	}
 }
 
-static inline bool InAnimRange(s32 anim, s32 first, s32 last)
-{
-	return anim >= first && anim <= last;
-}
-
-// NONMATCHING: Wii action costs, battery depletion, effect cleanup and warning fades
-// are present; the ordered call set matches; switch layout and register scheduling differ
+// NONMATCHING: Wii action costs, battery depletion, the HUD's drain mark, effect cleanup and warning fades
+// are present; switch layout and register scheduling differ
 void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
@@ -5378,6 +5376,16 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 	} else if ((gGame.GetStatusFlags(0x80000000)) && !(gGame.GetStatusFlags(0x120)) && pad->mSubStick.y != 0.0f) {
 		drain = 0.0f;
 	}
+	// the InfoScrn's _1E4.x takes the drain (3 early in anim 0x151, at most 20) once _1E4.y has reached it
+	Vec& gauge = gGame.mInfoScrn._1E4;
+	if (p->GetAnimId() == 0x151 && p->GetAnimFrame() < 60.0f) {
+		if (gauge.y >= gauge.x)
+			gauge.x = 3.0f;
+	} else if (drain > 20.0f) {
+		if (gauge.y >= gauge.x)
+			gauge.x = 20.0f;
+	} else if (gauge.y >= gauge.x)
+		gauge.x = drain;
 	if (drain > 0.0f)
 		drain /= (f32)gRefreshRate;
 	// mIdleTimer runs down while he stands or idles in place, else resets to a second; at 0 the HUD slides its counters in
