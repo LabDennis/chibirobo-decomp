@@ -12,6 +12,7 @@
 #include "game/wii/csound3dactor.h"
 #include "game/wii/animsfx.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/cursor.h"
 #include "game/wii/infoscrn.h"
 #include "game/wii/msg.h"
 #include "game/wii/fbeffect.h"
@@ -77,6 +78,10 @@ extern GXColor gMessageFontDefaultColor;
 s32 GetStageNum();
 s32 GetDefaultStageIndex();
 }
+
+BOOL fn_80169658(CMotionControlCamera* camera);
+CInterfaceCameraAction* fn_80169674();
+extern s32 lbl_802E5F18[];
 
 extern s32 gRefreshRate;
 // the stage name's four shadow copies, one pixel off to each corner
@@ -319,6 +324,233 @@ extern "C" void* UpdateMovie(void* arg)
 		}
 	} while (movie->mState != 0);
 	return NULL;
+}
+
+// NONMATCHING: the Wii pointer and scope draw has retail's texture copies and five cases.
+// The unreachable case 1 still has one extra virtual camera fetch before its trigonometry;
+// texture-copy scheduling and register/temporary placement account for the remaining diff.
+/**
+ * @note Address: 0x80028998
+ * @note Size: 0x145C
+ */
+extern "C" void fn_80028998(CGame* game)
+{
+	if (!game->mTpl.mBound) {
+		return;
+	}
+	if ((game->mDvdStatus != 0 || game->mPrevDvdStatus != 0) && !game->mDiskOk) {
+		return;
+	}
+	if (game->mHomeMenu.IsActive()) {
+		return;
+	}
+	if (game->GetStatusFlags(4) && game->mLogo.mState != 12) {
+		return;
+	}
+	if (game->mLoadStep < 2) {
+		return;
+	}
+	if (!gWiiPads[0].IsRemoteActive() && game->mPointer._120 < 0.0f) {
+		return;
+	}
+
+	f32 pulse = 1.0f;
+	if (game->mPointer.mScopeTimer > 0.0f) {
+		if (game->mPointer.mScopeTimer >= 5.0f) {
+			pulse = 0.0f;
+		} else {
+			pulse = sin(HALF_PI * (1.0f - fmod(game->mPointer.mScopeTimer, 1.0)));
+		}
+	}
+	f32 alpha = pulse * game->mPointer.mAlpha;
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+
+	f32 x            = gWiiPointer.mPointer.x;
+	f32 y            = gWiiPointer.mPointer.y;
+	f32 pointerAngle = gWiiPointer.mPointer.z;
+	u32 color        = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	if (game->mPointer._120 >= 0.0f) {
+		x += (game->mPointer._114 - x) * (f32)sin(HALF_PI * game->mPointer._120);
+		y += (game->mPointer._118 - y) * (f32)sin(HALF_PI * game->mPointer._120);
+		if (alpha < game->mPointer._120) {
+			alpha = 1.0f;
+			color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		}
+	}
+
+	s32 mode       = -1;
+	Cursor* cursor = (Cursor*)game->mPointer.mCursor;
+	if (game->IsLoadStepRunning() && game->mLoadStep > 20) {
+		if (!(cursor->mStatus.mFlags & 1)) {
+			cursor->DrawObject();
+		}
+	} else if (game->GetStatusFlags(0x0200000000000002ULL) && !game->mMotionControlCamera.IsAction(CAMACTION_EYE)) {
+		mode = 0;
+	} else if (!game->GetStatusFlags(1) || game->mMenu.mActive || game->mEvt.mData.mScript != NULL || game->GetStatusFlags(0x400)
+	           || game->GetStatusFlags(0x800) || (game->mStage == 3 && CallStageModule(0x10, 0, NULL))) {
+		mode = 0;
+	} else if (game->mMotionControlCamera.IsAction(CAMACTION_EYE)) {
+		mode = 3;
+	} else {
+		WiiPlayerState* player = game->GetPlayer();
+		s32 attachment         = player->mAttachmentRequest >= 0 ? player->mAttachmentRequest : player->mAttachment;
+		if (attachment == 2) {
+			mode = 4;
+		} else if (game->mMotionControlCamera.IsAction(CAMACTION_AREA)
+		           || (game->mMotionControlCamera.IsAction(CAMACTION_DEFAULT)
+		               && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_DEFAULT])->_2D0
+		               && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_DEFAULT])->mControlEnabled == 0)
+		           || (game->mMotionControlCamera.IsAction(CAMACTION_MAP)
+		               && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
+		           || (fn_80169658(&game->mMotionControlCamera) && ((u8*)fn_80169674())[0x74])) {
+			mode = 2;
+		} else {
+			mode = 0;
+		}
+	}
+
+	CTexObj tex;
+	f32 width;
+	f32 height;
+	switch (mode) {
+	case 0:
+		if (game->_41E0 != NULL) {
+			tex    = *game->_41E0;
+			width  = GXGetTexObjWidth(&tex);
+			height = GXGetTexObjHeight(&tex);
+		} else {
+			game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[256], 0);
+			tex    = game->mTpl.mTex;
+			width  = GXGetTexObjWidth(&tex);
+			height = GXGetTexObjHeight(&tex);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.5f, 1.0f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			if (game->mPointer.mScopeTarget != NULL) {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+				tex.mTexMtx.mDirty = TRUE;
+			}
+		}
+		Mtx rotation;
+		PSMTXRotRad(rotation, 'z', pointerAngle);
+		Vec offset;
+		offset.x = 0.4f * width;
+		offset.y = 0.4f * height;
+		offset.z = 0.0f;
+		PSMTXMultVec(rotation, &offset, &offset);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + offset.x, y + offset.y, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+		                   -pointerAngle);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+
+		alpha = game->mPointer.mScopeFade;
+		if (alpha <= 0.0f) {
+			break;
+		}
+		if (game->mPointer.mScopeTarget != NULL && game->mPointer.mScopeMarker >= 0) {
+			game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[260], 0);
+			tex    = game->mTpl.mTex;
+			width  = GXGetTexObjWidth(&tex) / 10;
+			height = GXGetTexObjHeight(&tex) / 10;
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.1f, 0.2f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			s32 marker         = game->mPointer.mScopeMarker;
+			if (marker == 0) {
+				marker = lbl_802E5F18[game->GetPlayer()->mSuits.mCurrent];
+			}
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.1f * (marker % 10), 0.2f * (marker / 10), 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x + offset.x, y + offset.y, 0.0f,
+			                   width, height, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		} else if (game->mPointer.mScopeItem >= 0) {
+			game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[260], 0);
+			tex    = game->mTpl.mTex;
+			width  = GXGetTexObjWidth(&tex) / 10;
+			height = GXGetTexObjHeight(&tex) / 10;
+			PSMTXScale(tex.mTexMtx.mMtx[2], 0.1f, 0.2f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			if (game->mPointer.mScopeRareItem) {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.8f, 0.0f);
+			} else {
+				PSMTXTrans(tex.mTexMtx.mMtx[0], 0.1f, 0.8f, 0.0f);
+			}
+			tex.mTexMtx.mDirty = TRUE;
+			if (game->mPointer.mScopeTarget == NULL) {
+				width *= 0.8f;
+				height *= 0.8f;
+				offset.x = 0.4f * width;
+				offset.y = 0.4f * height;
+				PSMTXMultVec(rotation, &offset, &offset);
+			}
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x + offset.x, y + offset.y, 0.0f,
+			                   width, height, 0.0f, game->mPointer.mScopeFade2, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+		}
+		break;
+	case 2:
+		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[258], 0);
+		tex    = game->mTpl.mTex;
+		width  = GXGetTexObjWidth(&tex);
+		height = GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		break;
+	case 3: {
+		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[259], 0);
+		tex       = game->mTpl.mTex;
+		width     = GXGetTexObjWidth(&tex) / 2;
+		height    = GXGetTexObjHeight(&tex);
+		BOOL held = (gWiiPointer.mDirButton & 0x100000010ULL) != 0;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.5f * held, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		PSMTXScale(tex.mTexMtx.mMtx[2], 0.5f, 1.0f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		if (!game->mCameraActions.mScroll2.IsFovNotMax()) {
+			color = (u32)(255.0f * (0.5f * alpha)) | 0xFFFFFF00;
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		break;
+	}
+	case 1: {
+		// This retail case has no mode-1 producer and dereferences its null target.
+		XObj* target    = NULL;
+		Vec pos         = *target->GetPos();
+		CCamera* camera = game->GetCamera();
+		pos.x += 5.0f * (f32)sin(PI + camera->mView.mAngle.x);
+		pos.z += 5.0f * (f32)cos(PI + camera->mView.mAngle.x);
+		f32 depth = HALF_PI - camera->mView.mAngle.x;
+		if (depth > 1.2217305f) {
+			depth = 1.2217305f;
+		}
+		f32 angle = (f32)atan2(pos.x - game->GetPlayer()->GetPos()->x, pos.z - game->GetPlayer()->GetPos()->z)
+		          - game->GetCamera()->mView.mAngle.y;
+		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[257], 0);
+		tex = game->mTpl.mTex;
+		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+		gGame.mGs.mRotOrder = 1;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, 0.0f, 0.0f, depth, 0.0f, angle);
+		gGame.mGs.mRotOrder = 4;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+		break;
+	}
+	case 4:
+		if (!game->GetStatusFlags(0x100)) {
+			game->mRoboeyes.mRotation = game->GetPlayer()->mMoveRotate.y;
+			game->mRoboeyes.DrawLenses(1, -1, 0xFF, x, y, 430.0f, 400.0f);
+		}
+		break;
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 }
 
 /**
