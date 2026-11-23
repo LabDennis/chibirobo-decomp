@@ -1568,7 +1568,7 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 fla
 // 31 statements (CJObj::Attach + 30 SyncMoveFromJoint calls; 29 still expand), and then this is 100 %. Retail's
 // Attach is defined above this one (0x801A2F38 follows it under deferred) and its code is CJObj::Attach plus
 // one call, so why it was not expanded is still open; moving our Attach above ReadCheck changes nothing.
-// Measured (g9-c, witness classing): our Attach is inline class 129..256 and mArchive.ReadCheck() is a virtual
+// Measured: our Attach is inline class 129..256 and mArchive.ReadCheck() is a virtual
 // call, so it weighs nothing; with 6540..6660 filler units in ReadCheck the limit drops and this function matches
 // retail exactly. So retail's Attach either weighed that much in ReadCheck's estimate or sat in the never-expanded
 // class (over 512 units), which the same code in our headers does not reach.

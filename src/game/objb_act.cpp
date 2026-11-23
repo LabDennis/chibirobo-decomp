@@ -1039,7 +1039,7 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 // const Vec*) MWCC treats pos as invariant over the stores; a non-const Vec& reloads it as retail does but
 // then also keeps the first loads below the mHitTarget store (90.4), and with mPos stored before mHitTarget
 // as well 90.9. Struct copies for mPos, mHistory[i] and mRing[0].mPos and the mPos/mHitTarget statement order are flat
-// (g9-c) A by-value `Vec pos` gives retail's reload and schedule (99.82), but every caller then copies the
+// A by-value `Vec pos` gives retail's reload and schedule (99.82), but every caller then copies the
 // argument: retail's UpdatePlayerPopperAction passes &origin itself (addi r4, r1, 0xb8 at 0x800C1090, frame
 // 0x290; ours grows to 0x2B0, 99.18 -> 98.04). A ring helper taking const Vec*, const Vec& or Vec keeps the loads
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,

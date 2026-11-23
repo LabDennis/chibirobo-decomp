@@ -4892,7 +4892,7 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
  * @note Size: 0xBD8
  */
 // NONMATCHING: the measuring loop sign-extends each character as it stores it (retail moves the raw
-// byte, 0x8019476C mr r30, r4; u8 mStr, a u8 copy of *text and text[0] all score lower), float registers
+// byte, 0x80194770 mr r30, r4; u8 mStr, a u8 copy of *text and text[0] all score lower), float registers
 extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
 {
 	if (gs->mCurRenderMode == &gs->mRenderMode) {

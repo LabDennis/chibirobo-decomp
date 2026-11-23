@@ -73,14 +73,10 @@ STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
  * @note Address: 0x80093C14
  * @note Size: 0x490
  */
-// a circle at pos, its rotation given as a vector
-static inline void DrawTrailCircle(u32 segments, u32 centerColor, u32 edgeColor, const Vec& pos, f32 w, f32 h, const Vec& rotation)
-{
-	DrawGsCircle(&gGame.mGs, segments, centerColor, edgeColor, pos.x, pos.y, pos.z, w, h, rotation.x, rotation.y, rotation.z);
-}
-
-// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29, US 0x80093DF4), so the
-// max is f27 there; a second local, a second 15.0f * peak argument, a single-size helper and a const f32& do not give the copy
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29, US 0x80093DF4); a second
+// local, a second 15.0f * peak argument, a single-size helper and a const f32& do not give the copy. Its frame has the four
+// rotation vectors as unnamed objects in the order they are used, each with its own zero template: literals handed to
+// a circle call that takes the position and the rotation as Vecs gives that frame (97.7 %), the call itself is not found.
 extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 {
 	if (!trail->active) {
@@ -108,9 +104,13 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 	f32 size = 15.0f * peak; // the halo at the trail's top
 
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
+	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, outerRotation.x,
+	             outerRotation.y, outerRotation.z);
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
+	Vec innerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, innerRotation.x,
+	             innerRotation.y, innerRotation.z);
 
 	for (s32 i = 0; i < 2; ++i) {
 		for (s32 j = 0; j < 10; ++j) {
@@ -123,9 +123,14 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 			u32 center     = edge;
 			center |= (u8)(s32)(255.0f * point.scale);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-			DrawTrailCircle(6, 0xFFFFFF20, 0xFFFFFF00, pos, 2.5f * radius, 2.5f * radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
+			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+			glowRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
+			             glowRotation.y, glowRotation.z);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			DrawTrailCircle(3, center, edge, pos, radius, radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
+			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
+			coreRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
 		}
 	}
 	gGame.mGs.mBillboardEnabled = 0;
@@ -2763,7 +2768,7 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
  * @note Address: 0x80098204
  * @note Size: 0x1B4
  */
-// NONMATCHING (and the Atc and Octa ones): retail colours the channels before the pulse phase offset (red r30, offset r27 at
+// NONMATCHING (and the Atc one): retail colours the channels before the pulse phase offset (red r30, offset r27 at
 // US 0x80098310), here the offset takes r30; red first in the declaration, pointer parameters or the pulse written out do not move it
 u32 DrsMenu::GetItemColor(s32 index)
 {
@@ -3132,7 +3137,7 @@ static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, 
  * @note Address: 0x80099224
  * @note Size: 0x1DB0 (US/PAL), 0x1DC4 (JP)
  */
-// NONMATCHING: register picks: retail gives the outline loop's j r31 and the menu r30 (US 0x80099258, 0x8009ADDC), here the
+// NONMATCHING: register picks: retail gives the outline loop's j r31 and the menu r30 (US 0x8009ADDC, 0x800992C4), here the
 // menu takes r31; the label block's schedule (US 0x8009AD10 on) differs with rotation declared before or after cx
 extern "C" void DrawEquipmentRing(OctaMenu* menu)
 {

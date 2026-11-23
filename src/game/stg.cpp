@@ -3258,17 +3258,16 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
 	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
-	// width is assigned again with each measured text, so the panel width is kept across the frame call
-	// (US 0x8005007C fmuls f19) instead of being recomputed at it
-	width       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
+	// each text width is used straight from f1 (US 0x80050110, 0x80050144), not kept in the panel width
+	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - width / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding,
-	                             0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
+	                             size, size);
 	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
-	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - width / 2.0f, ((4.0f * size + y) + offset) - padding,
-	                             0.0f, helpSize, helpSize);
+	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
+	                             helpSize, helpSize);
 }
 
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,

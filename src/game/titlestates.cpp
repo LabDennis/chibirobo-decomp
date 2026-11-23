@@ -1832,9 +1832,9 @@ static inline f32 TitleOptionWidth(s32 first)
 // inner of the two widest-width picks goes to a fresh register in both arms (fmr f0 at 0x8002B79C, 0x8002B928 and 0x8002B9D4); a
 // WiderOf(a, b) inline compiles to the same bytes as the ternaries. The dust alpha hoisted before the loop or read in place
 // in the colour scores lower; declaring it uninitialised ahead of the loop and a pointer local for the logo texture
-// compile to the same bytes. The cursor y is uninitialised with the third entry at a literal 380.0f (retail loads f29 in the
-// switch only, 0x8002B780); the widest-width pick nested (w2 = WiderOf(w2, WiderOf(w0, w1)) or the ternaries inline) and the
-// entry text's 0.0f/24.0f as helper parameters compile to the same bytes
+// compile to the same bytes. Retail loads the cursor y's 380.0f into f29 ahead of the third entry (0x8002B66C) and the third
+// entry's own 380.0f as a literal (f0, 0x8002B6CC); the widest-width pick nested (w2 = WiderOf(w2, WiderOf(w0, w1)) or the
+// ternaries inline) and the entry text's 0.0f/24.0f as helper parameters compile to the same bytes
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
@@ -1907,8 +1907,8 @@ extern "C" void DrawTitleScreen(Title* title)
 #endif
 		f32 w0 = DrawTitleEntry(title, 0, first, 324.0f, progress, normal, lit);
 		f32 w1 = DrawTitleEntry(title, 1, second, 352.0f, progress, normal, lit);
+		f32 y  = 380.0f;
 		f32 w2 = DrawTitleEntry(title, 2, third, 380.0f, progress, normal, lit);
-		f32 y;
 		switch (title->mSelection) {
 		case 0:
 			y = 324.0f;
