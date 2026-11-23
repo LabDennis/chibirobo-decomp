@@ -49,23 +49,3 @@ public:
 STATIC_ASSERT(sizeof(CPad) == 0x8);
 
 #endif
-
-#if defined(_controller_h_) && !defined(_GAME_CPADEX_H)
-#define _GAME_CPADEX_H
-// all four ports plus the HSD pad queue and rumble lists. CGame holds the one instance,
-// sysdolphin/controller.h has to come first
-class CPadEx {
-public:
-	HSD_PadData mQueue;               // _00
-	HSD_PadRumbleListData mRumble[4]; // _34
-	CPadOne mPad[4];                  // _B4
-	// _204 vtable
-
-	CPadEx();
-	virtual ~CPadEx() { } // _08
-
-	void Init();
-	void Update(s32 frames);
-};
-STATIC_ASSERT(sizeof(CPadEx) == 0x208);
-#endif

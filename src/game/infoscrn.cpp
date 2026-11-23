@@ -1684,6 +1684,10 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 		return active;
 	return inactive;
 }
+/**
+ * @note Address: 0x80068D10
+ * @note Size: 0x1DF0
+ */
 // NONMATCHING: registers. retail keeps opacity on the stack (0x1C4) instead of a saved float register, and the
 // gauge pointer and the three gGame bases sit in r29/r26..r28 where ours take r20/r17..r19. Retail scales
 // smallScale, smallX, largeX, gap in that order (0x800690DC); no declaration order of the four gives it. Retail keeps
@@ -1926,6 +1930,10 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
+/**
+ * @note Address: 0x80067928
+ * @note Size: 0x1220
+ */
 // NONMATCHING: registers only (saved float registers and the loop counters of the two discs)
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {

@@ -187,9 +187,7 @@ static inline void StartLetickerRide(XObjLeticker* lift, XObj* part, WiiPlayerSt
 	part->mStatus.mFlags |= 0x10000ULL;
 	part->SetAnim(partAnim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 	part->SetPos(*lift->GetPos());
-	player->mPlayerFlags = 0;
-	player->mPlayerFlags |= 0x40000000;
-	player->mPadReset = FALSE;
+	player->LockControl();
 	StopWiiSfx(&gGame.mSound, 0x11D, 0.0f);
 	PlayWiiSoundEffect(&gGame.mSound, sound, 1.0f, 0.0f);
 	lift->mStep = 10;
@@ -1062,10 +1060,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mLevelProgress = 0.0f;
 				SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-				player->mPlayerFlags = 0;
-				player->mPlayerFlags |= 0x20000000;
-				player->mPlayerFlags |= 7;
-				player->mPadReset = TRUE;
+				player->RestoreControl();
 				player->SetRotationY(mMoveRotate.y);
 				mStep = 0;
 				break;

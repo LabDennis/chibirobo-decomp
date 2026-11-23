@@ -4,10 +4,10 @@
 //   game/evt.cpp in wii_gc_pairs.txt, and the CCameraMemento constructor (0x800A18F8) plus the
 //   array destructor (0x800A191C) it registers sit between them and this file's first function
 // - its jump tables sit in .rodata from 0x802FFAF8 on: jumptable_802FFAF8 (25 entries,
-//   MsgCommandLength's MSG_CODE_* values 0..24) and jumptable_802FFB5C (CMsgData_Format)
+//   MsgCommandLength's MSG_CODE_* values 0..24) and jumptable_802FFB5C (CMsgData::Format)
 // - the GameCube pairs (wii_gc_pairs.txt) land in the reverse of the GameCube's source order:
-//   CMsg__cmd_SETFONT (0x800A7ED4) is the GameCube file's first function, CMsgData_Format and
-//   CMsgData_Measure (0x800A1A20, 0x800A1FE8) are among its last
+//   CMsg__cmd_SETFONT (0x800A7ED4) is the GameCube file's first function, CMsgData::Format and
+//   CMsgData::Measure (0x800A1A20, 0x800A1FE8) are among its last
 //
 // NONMATCHING: all 22 of the unit's functions have source now. CMsgFont_Draw is reconstructed
 // against the Wii retail calls: the GameCube's XObj portrait pass became the cursor object's
@@ -185,10 +185,10 @@ extern "C" s32 MsgCommandLength(u8* p)
  * @note Address: 0x800A1A20
  * @note Size: 0x5C8
  */
-extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
+void CMsgData::Format(u8* script, MsgFormatArgs* args)
 {
-	u8* src = input;
-	u8* dst = output;
+	u8* src = script;
+	u8* dst = mText;
 	MessageFormatBuffers buffers;
 	BOOL done = FALSE;
 	while (!done) {
@@ -321,35 +321,35 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
  * @note Address: 0x800A1FE8
  * @note Size: 0x3D0
  */
-extern "C" void CMsgData_Measure(CMsgData* data)
+void CMsgData::Measure()
 {
-	data->mLineCount                 = 0;
-	data->mCounts[data->mLineCount]  = 0;
-	data->mWidths[data->mLineCount]  = 0.0f;
-	data->mHeights[data->mLineCount] = 0.0f;
-	data->mStyle                     = -1;
-	data->mAlignment                 = 1;
-	f32 size                         = 22.0f;
-	u8* p                            = data->mText;
-	s32 proportional                 = TRUE;
-	s32 done                         = 0;
+	mLineCount           = 0;
+	mCounts[mLineCount]  = 0;
+	mWidths[mLineCount]  = 0.0f;
+	mHeights[mLineCount] = 0.0f;
+	mStyle               = -1;
+	mAlignment           = 1;
+	f32 size             = 22.0f;
+	u8* p                = mText;
+	s32 proportional     = TRUE;
+	s32 done             = 0;
 	while (!done) {
 		switch (*p) {
 		case MSG_CODE_NEWLINE:
 		case MSG_CODE_NEWLINE_VT:
-			if (data->mHeights[data->mLineCount] == 0.0f) {
-				data->mHeights[data->mLineCount] = size;
+			if (mHeights[mLineCount] == 0.0f) {
+				mHeights[mLineCount] = size;
 			}
-			data->mLineCount++;
-			data->mCounts[data->mLineCount]  = 0;
-			data->mWidths[data->mLineCount]  = 0.0f;
-			data->mHeights[data->mLineCount] = size;
+			mLineCount++;
+			mCounts[mLineCount]  = 0;
+			mWidths[mLineCount]  = 0.0f;
+			mHeights[mLineCount] = size;
 			break;
 		case MSG_CODE_END:
-			if (data->mHeights[data->mLineCount] == 0.0f) {
-				data->mHeights[data->mLineCount] = 22.0f;
+			if (mHeights[mLineCount] == 0.0f) {
+				mHeights[mLineCount] = 22.0f;
 			}
-			data->mLineCount++;
+			mLineCount++;
 			done = 1;
 			break;
 		case MSG_CODE_SIZE:
@@ -357,19 +357,19 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 			if (size == 255.0f) {
 				size = 22.0f;
 			}
-			if (size > data->mHeights[data->mLineCount]) {
-				data->mHeights[data->mLineCount] = size;
+			if (size > mHeights[mLineCount]) {
+				mHeights[mLineCount] = size;
 			}
 			break;
 		case MSG_CODE_LAYOUT:
 			proportional = p[1];
 			break;
 		case MSG_CODE_CENTER:
-			data->mAlignment = p[1];
+			mAlignment = p[1];
 			break;
 		case MSG_CODE_VOICE:
 			// the voice byte doubles as the window's mode, CMsg_Open passes mStyle to CMsgFont_Init
-			data->mStyle = p[1];
+			mStyle = p[1];
 			break;
 		case MSG_CODE_SPEED:
 		case MSG_CODE_WAIT:
@@ -387,37 +387,37 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 			break;
 		default:
 			if (MsgHasSjisLead(*p)) {
-				data->mCounts[data->mLineCount]++;
+				mCounts[mLineCount]++;
 				char text[3] = "";
 				text[0]      = p[0];
 				text[1]      = p[1];
-				data->mWidths[data->mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
+				mWidths[mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
 			} else if (*p == MSG_CODE_ICON) {
 				gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[120], 0);
-				data->mWidths[data->mLineCount] += 24.0f * (size / 22.0f);
+				mWidths[mLineCount] += 24.0f * (size / 22.0f);
 			} else {
-				data->mCounts[data->mLineCount]++;
+				mCounts[mLineCount]++;
 				char text[2] = "";
 				text[0]      = p[0];
-				data->mWidths[data->mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
+				mWidths[mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
 			}
 			break;
 		}
 		p += MsgCommandLength(p);
 	}
-	data->mWidestLine  = 0;
-	data->mMaxWidth    = 0.0f;
-	data->mMaxHeight   = 0.0f;
-	data->mTotalHeight = 0.0f;
-	for (s32 i = 0; i < data->mLineCount; i++) {
-		if (data->mMaxWidth < data->mWidths[i]) {
-			data->mMaxWidth   = data->mWidths[i];
-			data->mWidestLine = i;
+	mWidestLine  = 0;
+	mMaxWidth    = 0.0f;
+	mMaxHeight   = 0.0f;
+	mTotalHeight = 0.0f;
+	for (s32 i = 0; i < mLineCount; i++) {
+		if (mMaxWidth < mWidths[i]) {
+			mMaxWidth   = mWidths[i];
+			mWidestLine = i;
 		}
-		if (data->mMaxHeight < data->mHeights[i]) {
-			data->mMaxHeight = data->mHeights[i];
+		if (mMaxHeight < mHeights[i]) {
+			mMaxHeight = mHeights[i];
 		}
-		data->mTotalHeight += data->mHeights[i];
+		mTotalHeight += mHeights[i];
 	}
 }
 
@@ -639,7 +639,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 {
 	if (font->mBits.mActive) {
 		if (font->mBits.mFadeIn && font->mAlpha < 1.0f) {
-			// zero-alpha tint and no voice code (mMode stays -1, see CMsgData_Measure): no fade in
+			// zero-alpha tint and no voice code (mMode stays -1, see CMsgData::Measure): no fade in
 			if (font->mColor.a == 0 && font->mMode < 0) {
 				font->mAlpha        = 1.0f;
 				font->mBits.mFadeIn = FALSE;
@@ -1226,8 +1226,8 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	msg->mGlyphSoundGroup = -1;
 	msg->mCommand         = command;
 	s32 savedCount        = args->count;
-	CMsgData_Format(msg->mData.mText, script, args);
-	CMsgData_Measure(&msg->mData);
+	msg->mData.Format(script, args);
+	msg->mData.Measure();
 	args->count        = savedCount;
 	msg->mData.mCursor = msg->mData.mText;
 	if (msg->mData.mIconColumns == 0) {

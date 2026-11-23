@@ -730,11 +730,13 @@ STATIC_ASSERT(sizeof(MenuPCItem) == 8);
 
 // the nine rows on screen and the ones just off either end
 struct MenuPCPage {
-	s32 mStart;           // _00, list index of the first row
-	MenuPCItem mRows[20]; // _04
-	s32 mIndex[20];       // _A4, list index of each row
-	MenuPCItem mPrev[1];  // _F4
-	MenuPCItem mNext[1];  // _FC
+	enum { Capacity = 20, VisibleRows = 9 };
+
+	s32 mStart;                 // _00, list index of the first row
+	MenuPCItem mRows[Capacity]; // _04
+	s32 mIndex[Capacity];       // _A4, list index of each row
+	MenuPCItem mPrev[1];        // _F4
+	MenuPCItem mNext[1];        // _FC
 
 	s16 GetItem(s32 i) { return mRows[i].mItem; }
 };

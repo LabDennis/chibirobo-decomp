@@ -1546,18 +1546,11 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 // XObjChr, chibi robo himself, and the menus he opens. most of the small functions at the end
 // are out of line copies of the inlines the player code uses
 
-// the globals label and icon ids are 2 lower in japan
+// the equipment ring labels start two strings earlier in the japanese interface table
 #if defined(VERSION_JP)
-#define DRS_LABEL(id) ((id) - 2)
+const s32 EquipmentTextOffset = 2;
 #else
-#define DRS_LABEL(id) (id)
-#endif
-
-// the globals label and icon ids are 2 lower in japan
-#if defined(VERSION_JP)
-#define ATC_LABEL(id) ((id) - 2)
-#else
-#define ATC_LABEL(id) (id)
+const s32 EquipmentTextOffset = 0;
 #endif
 
 extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type);
@@ -1590,13 +1583,6 @@ static inline u8 InputEnabled(CGame* game)
 extern "C" {
 s32 GetClearLetickerApproachSide(XObj* target, const Vec* position);
 void ApplyPlayerHitReaction(XObjChr* chr, BOOL start, BOOL cancel, f32 value);
-}
-
-// todo: cleanup
-static inline f32 CurrentFrame(HSD_JObj* joint)
-{
-	HSD_AObj* animation = GetAObj(joint);
-	return animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 }
 
 extern "C" {
@@ -2215,12 +2201,6 @@ static inline void AddPulse(s32& red, s32& green, s32& blue, const OctaMenu* men
 	blue += (s32)(25.0f * (f32)sin(1.2f * menu->mItems[index].mPulsePhase) + 25.0f);
 }
 
-// he has the attachment on, or asked for it
-static inline BOOL IsAttachment(const XObjChr* chr, s32 id)
-{
-	return id == chr->GetAttachment();
-}
-
 // DrsMenu::IsItemEquipped, he wears the item's costume
 static inline BOOL IsWorn(DrsMenu* menu, s32 index)
 {
@@ -2612,9 +2592,9 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		const char* label;
 	};
 	Hint hints[]    = { { 8, NULL }, { 5, NULL }, { 5, NULL } };
-	hints[0].label  = GetLocalizedInterfaceText(ATC_LABEL(9));
-	hints[1].label  = GetLocalizedInterfaceText(ATC_LABEL(10));
-	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
+	hints[0].label  = GetLocalizedInterfaceText(9 - EquipmentTextOffset);
+	hints[1].label  = GetLocalizedInterfaceText(10 - EquipmentTextOffset);
+	hints[2].label  = GetLocalizedInterfaceText(11 - EquipmentTextOffset);
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
 	f32 edge       = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
@@ -2807,10 +2787,10 @@ const char* DrsMenu::GetItemLabel(s32 index)
 {
 	if (mItems[index].mAvailable > 0) {
 		if (IsWorn(this, index))
-			return GetLocalizedInterfaceText(DRS_LABEL(13));
+			return GetLocalizedInterfaceText(13 - EquipmentTextOffset);
 		return (const char*)GetCostumeName(mItems[index].mType);
 	}
-	return GetLocalizedInterfaceText(DRS_LABEL(14));
+	return GetLocalizedInterfaceText(14 - EquipmentTextOffset);
 }
 
 /**
@@ -2819,15 +2799,16 @@ const char* DrsMenu::GetItemLabel(s32 index)
  */
 s32 DrsMenu::GetItemIconTextureIndex(s32 index)
 {
-	s32 icons[9] = { DRS_LABEL(126), DRS_LABEL(98),  DRS_LABEL(100), DRS_LABEL(99), DRS_LABEL(101),
-		             DRS_LABEL(126), DRS_LABEL(102), DRS_LABEL(103), DRS_LABEL(104) };
+	s32 icons[9] = { 126 - StatusTextureOffset, 98 - StatusTextureOffset,  100 - StatusTextureOffset,
+		             99 - StatusTextureOffset,  101 - StatusTextureOffset, 126 - StatusTextureOffset,
+		             102 - StatusTextureOffset, 103 - StatusTextureOffset, 104 - StatusTextureOffset };
 	if (index == -1)
-		return DRS_LABEL(107);
+		return 107 - StatusTextureOffset;
 	if (index == -2)
-		return DRS_LABEL(109);
+		return 109 - StatusTextureOffset;
 	if (mItems[index].mAvailable > 0)
 		return icons[mItems[index].mType];
-	return DRS_LABEL(105);
+	return 105 - StatusTextureOffset;
 }
 
 // DrsMenu::IsItemEquipped
@@ -3004,12 +2985,12 @@ const char* AtcMenu::GetItemLabel(s32 index)
 	if (mItems[index].mAvailable > 0) {
 		if (mChr->mAttachmentRequest < 0 && mChr->mLift.mState != 20 && mChr->mLift.mState != 21 && mChr->mLift.mState != 22) {
 			if (mItems[index].mType == mChr->GetAttachment())
-				sLabel = GetLocalizedInterfaceText(ATC_LABEL(12));
+				sLabel = GetLocalizedInterfaceText(12 - EquipmentTextOffset);
 			else
 				sLabel = (const char*)GetAttachmentName(mItems[index].mType);
 		}
 	} else {
-		sLabel = GetLocalizedInterfaceText(ATC_LABEL(14));
+		sLabel = GetLocalizedInterfaceText(14 - EquipmentTextOffset);
 	}
 	return sLabel;
 }
@@ -3020,25 +3001,25 @@ const char* AtcMenu::GetItemLabel(s32 index)
  */
 s32 AtcMenu::GetItemIconTextureIndex(s32 index)
 {
-	s32 icons[9] = { ATC_LABEL(126), ATC_LABEL(91), ATC_LABEL(92), ATC_LABEL(93), ATC_LABEL(94),
-		             ATC_LABEL(96),  ATC_LABEL(95), ATC_LABEL(97), ATC_LABEL(126) };
+	s32 icons[9] = { 126 - StatusTextureOffset, 91 - StatusTextureOffset, 92 - StatusTextureOffset,
+		             93 - StatusTextureOffset,  94 - StatusTextureOffset, 96 - StatusTextureOffset,
+		             95 - StatusTextureOffset,  97 - StatusTextureOffset, 126 - StatusTextureOffset };
 	if (index == -1)
-		return ATC_LABEL(106);
+		return 106 - StatusTextureOffset;
 	if (index == -2)
-		return ATC_LABEL(108);
+		return 108 - StatusTextureOffset;
 	if (mItems[index].mAvailable > 0)
 		return icons[mItems[index].mType];
-	return ATC_LABEL(105);
+	return 105 - StatusTextureOffset;
 }
 
-// AtcMenu::IsItemEquipped
 /**
  * @note Address: 0x80098D9C
  * @note Size: 0x38
  */
-extern "C" u8 IsItemEquipped__7AtcMenuFl(AtcMenu* menu, s32 index)
+BOOL AtcMenu::IsItemEquipped(s32 index)
 {
-	return menu->mChr->GetAttachment() == menu->mItems[index].mType;
+	return mChr->GetAttachment() == mItems[index].mType;
 }
 
 // AtcMenu::ConfirmSelection, switches to the selected attachment, or puts the current one away
@@ -3433,14 +3414,13 @@ const char* OctaMenu::GetItemLabel(s32 index)
 	return "";
 }
 
-// OctaMenu::IsItemEquipped
 /**
  * @note Address: 0x8009AFDC
  * @note Size: 0x8
  */
-extern "C" u8 IsItemEquipped__8OctaMenuFl(OctaMenu* menu, s32 index)
+BOOL OctaMenu::IsItemEquipped(s32 index)
 {
-	return 0;
+	return FALSE;
 }
 
 /**
@@ -4557,8 +4537,8 @@ static inline f32 PlayerCollisionRadius(XObjChr* chr)
 {
 	f32 size = 1.5f * chr->mMoveScale.x;
 	// the plug anims pull it in and out
-	if (IsCarryingMug(&chr->mLift) && !(chr->mAnimId == 11 && CurrentFrame(chr->mJObj) < 45.0f)
-	    && !(chr->mAnimId == 10 && CurrentFrame(chr->mJObj) > 22.0f)) {
+	if (IsCarryingMug(&chr->mLift) && !(chr->mAnimId == 11 && GetAnimFrame(chr->mJObj) < 45.0f)
+	    && !(chr->mAnimId == 10 && GetAnimFrame(chr->mJObj) > 22.0f)) {
 		CVec scale;
 		s32 path[2] = { 0, 0 };
 		HSD_JObjGetScale(FindJointByPath(chr->mJObj, path, 2), &scale);
@@ -6930,6 +6910,10 @@ enum GroundAction {
 	GroundActionPush      = 9
 };
 
+/**
+ * @note Address: 0x800AC660
+ * @note Size: 0x54AC
+ */
 // NONMATCHING: register numbers in the object loops; retail also jumps from the hang loop's two put-backs straight past the
 // `if (!supported)` test (here they set the flag and test it), branches twice after each leticker index test, and computes
 // marker & 0x80 again for the look mode instead of keeping the count chain's result. The turn rate multiplies the turn
@@ -10071,10 +10055,7 @@ extern "C" BOOL RestorePlayerHeldItem(XObjChr* chr)
 // puts him back to a clean state, keeps what he was holding to pick it up again after
 void XObjChr::Release()
 {
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags |= 0x20000000;
-	mPlayerStatus.mFlags |= 7;
-	mPad.mReset    = TRUE;
+	RestoreControl();
 	HSD_JObj* jobj = mJObj;
 	if (jobj != NULL) {
 		HSD_JObjClearMtxFlags(jobj);
@@ -10933,11 +10914,8 @@ void XObjChr::ResetForNewGame()
 		p.burst.mState   = 0;
 	}
 	gPlayerSuitChangeEffect.Reset();
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags = 0;
-	mPlayerStatus.mFlags |= 0x20000000;
-	mPlayerStatus.mFlags |= 7; // the give-control-back flags
-	mPad.mReset = TRUE;
+	mPlayerStatus.mFlags = 0; // new-game reset clears these before handing control back
+	RestoreControl();
 }
 
 static inline void SetupPlayerRing(OctaMenu& ring, XObjChr* owner, f32 direction)

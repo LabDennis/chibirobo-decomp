@@ -806,10 +806,7 @@ void XObjChr::ResetForNewGame()
 		lbl_8045BBD0.mParticles[i].scale = 0.0f;
 		lbl_8045BBD0.mParticles[i].angle = 0.0f;
 	}
-	player->mPlayerFlags = 0;
-	player->mPlayerFlags |= 0x20000000;
-	player->mPlayerFlags |= 7;
-	player->mPadReset = TRUE;
+	player->RestoreControl();
 }
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)

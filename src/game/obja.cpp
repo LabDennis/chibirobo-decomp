@@ -1068,6 +1068,10 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	return result;
 }
 
+/**
+ * @note Address: 0x8008DF34
+ * @note Size: 0xE1C
+ */
 // NONMATCHING: retail loads floors once after the extent (0x8008E184, r20, never stored to the frame), reads
 // the yaw and id before the switch through it, the quad's corners from it with lwzx at floors + (k * 32 + 4)
 // (0x8008E784) and the quad's yaw through object->mFloors again (0x8008E900); it keeps index * 32 apart from
@@ -1214,6 +1218,10 @@ extern "C" void ClearActiveObjectFloors(XObj* object)
 	}
 }
 
+/**
+ * @note Address: 0x8008D220
+ * @note Size: 0xCA0
+ */
 extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 {
 	object->mFloorXZExtent = NAN;
@@ -1307,6 +1315,10 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	object->mFloorXZExtent = maxX > maxZ ? maxX : maxZ;
 }
 
+/**
+ * @note Address: 0x8008C8A4
+ * @note Size: 0x97C
+ */
 extern "C" void UpdateObjectFloorHeights(XObj* object)
 {
 	for (u32 i = 0; i < ARRAY_SIZE(object->mFloorHeights); ++i)

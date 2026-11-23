@@ -1949,6 +1949,7 @@ STATIC_ASSERT(sizeof(XObjJointPart) == 0x38);
 class XObjActor : public XObj {
 public:
 	XObjActor();
+	void ResetMovementStep();
 	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
 
@@ -2666,6 +2667,15 @@ STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xB50);
 class XObjSpiderBoss : public XObj {
 public:
 	XObjSpiderBoss();
+
+	void ResetPatrolArea()
+	{
+		mAreaPos.x = -200.0f;
+		mAreaPos.y = 0.0f;
+		mAreaPos.z = -200.0f;
+		mAreaWidth = 400.0f;
+		mAreaDepth = 400.0f;
+	}
 	// inline: retail emits the vtable and its thunks in xobjspiderboss.cpp
 	virtual ~XObjSpiderBoss() { }
 	virtual void InitializeObject();                                   // _14C

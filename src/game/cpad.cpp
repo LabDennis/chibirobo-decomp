@@ -1,7 +1,5 @@
-extern "C" {
-#include <sysdolphin/controller.h>
-}
-#include "game/cpad.h"
+#include "game/cpadex.h"
+#include "game/gmath.h"
 extern "C" {
 #include <sysdolphin/video.h>
 }
@@ -98,12 +96,6 @@ void CPadOne::Update(s32 frames)
 }
 
 /**
- * @note Address: 0x8019E5CC
- * @note Size: 0x10
- */
-// CPadOne's implicit ctor, generated for the array in CPadEx
-
-/**
  * @note Address: 0x8019E570
  * @note Size: 0x5C
  */
@@ -121,7 +113,7 @@ void CPadEx::Init()
 	HSD_PadInit(1, &mQueue, 4, mRumble);
 	HSD_PadLibData.adc_type            = 0;
 	HSD_PadLibData.adc_th              = 50;
-	HSD_PadLibData.adc_angle           = 0.5235988f; // 30 degrees
+	HSD_PadLibData.adc_angle           = 30.0f * DEG2RAD;
 	HSD_PadLibData.clamp_stickType     = 0;
 	HSD_PadLibData.clamp_stickShift    = 1;
 	HSD_PadLibData.clamp_stickMax      = 80;

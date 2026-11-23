@@ -1190,6 +1190,21 @@ struct WiiPlayerState : public XObj {
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
+
+	void LockControl()
+	{
+		mPlayerFlags = 0;
+		mPlayerFlags |= 0x40000000;
+		mPadReset = FALSE;
+	}
+
+	void RestoreControl()
+	{
+		mPlayerFlags = 0;
+		mPlayerFlags |= 0x20000000;
+		mPlayerFlags |= 7;
+		mPadReset = TRUE;
+	}
 	// the GameCube's GetHeight with the flag inverted: _1B7B8 is up while he stands on the floor, so the
 	// height above it only counts while it's clear
 	f32 GetHeight() const { return mOnGround ? 0.0f : mMoveTranslate.y - mFloorHit.mHeight; }

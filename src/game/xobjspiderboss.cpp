@@ -164,11 +164,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 #else
 	spider->mGrabIntervalFrames = 180;
 #endif
-	spider->mAreaPos.x  = -200.0f;
-	spider->mAreaPos.y  = 0.0f;
-	spider->mAreaPos.z  = -200.0f;
-	spider->mAreaWidth  = 400.0f;
-	spider->mAreaDepth  = 400.0f;
+	spider->ResetPatrolArea();
 	spider->mDamageStep = 0;
 	spider->mBlinkTimer = 0;
 	for (u32 i = 0; i < 8; ++i) {
@@ -580,6 +576,10 @@ static inline void DrainPlayerBattery(f32 amount)
 	gGame.GetPlayer()->mParams.SetBattery(battery);
 }
 
+/**
+ * @note Address: 0x8010473C
+ * @note Size: 0xA64
+ */
 extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 {
 	CPad pad(0);
@@ -725,6 +725,10 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 	}
 }
 
+/**
+ * @note Address: 0x80103F54
+ * @note Size: 0x7E8
+ */
 extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 {
 	CJObj joint;
@@ -791,11 +795,7 @@ void XObjSpiderBoss::State0(u32 frames)
 		mTimer     = 0;
 		mPrevState = mState;
 		mState     = 4;
-		mAreaPos.x = -200.0f;
-		mAreaPos.y = 0.0f;
-		mAreaPos.z = -200.0f;
-		mAreaWidth = 400.0f;
-		mAreaDepth = 400.0f;
+		ResetPatrolArea();
 	} else {
 		mStep      = 0;
 		mTimer     = 0;
@@ -1144,11 +1144,8 @@ void XObjSpiderBoss::State3(u32 frames)
 			}
 			mStatus.mFlags &= ~0x100000ULL;
 			mSpiderStatus.mFlags &= ~0x20000;
-			XObjChr* chr              = gGame.GetPlayer();
-			chr->mPlayerStatus.mFlags = 0;
-			chr->mPlayerStatus.mFlags |= 0x20000000; // released, as in ReleasePlayerAt
-			chr->mPlayerStatus.mFlags |= 7;
-			chr->mPad.mReset    = TRUE;
+			XObjChr* chr = gGame.GetPlayer();
+			chr->RestoreControl();
 			mGrabIntervalFrames = 0;
 			SetAttackAnim(this, 7);
 			mStep = 0;

@@ -17,10 +17,7 @@ CPadEx::~CPadEx()
 {
 }
 #else
-extern "C" {
-#include <sysdolphin/controller.h>
-}
-#include "game/cpad.h"
+#include "game/cpadex.h"
 #include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
 
 void operator delete(void* object);
