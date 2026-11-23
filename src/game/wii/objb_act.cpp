@@ -836,7 +836,8 @@ static inline void StandAfterLift(WiiPlayerState* owner, f32 blend);
  * @note Address: 0x801016DC
  * @note Size: 0x229C
  */
-// NONMATCHING: all 44 calls match in order; aggregate return homes and register/schedule allocation still differ.
+// NONMATCHING: the calls, virtual ones included, follow retail's except that state 5 reads the end frame before the
+// frame; aggregate return homes and register/schedule allocation still differ.
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -968,8 +969,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
 			}
 		} else if (model->IsAnimDone()) {
+			nw4r::g3d::ResNode node = act->mOwner->FindResNode("second_null"); // looked up but unused, as in retail
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
-			CVec delta = act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos();
+			CVec delta = act->mOwner->GetWorldPos("second_null") - *act->mOwner->GetPos();
 			delta.x    = -delta.x;
 			delta.z    = -delta.z;
 			act->mOwner->SetPos(*act->mOwner->GetPos() + delta);
@@ -1001,7 +1003,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 		break;
 	case 5:
 		if (anim == 0x69 || anim == 0x6A || anim == 0x6B || anim == 0x6C) {
-			if (model->IsAnimDone()) {
+			if (model->GetAnimFrame() >= model->GetAnimEndFrame()) {
 				CVec hand = act->mOwner->GetNodeTranslate("second_null");
 				if (hand.y < 0.0f) {
 					hand.y = (s32)(hand.y - 0.5f);
@@ -1013,6 +1015,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 				if (act->mMoveDirection == 1) {
 					if (act->mTarget != NULL && 14.0f + act->mOwner->GetJointWorldPos("second_null").y >= act->mTarget->mFloorHeights[0]) {
 						act->mState = 6;
+						if (anim == 0x69 || anim == 0x6B) {
+							act->mOwner->SetAnim(0x6F, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+						} else if (anim == 0x6A || anim == 0x6C) {
+							act->mOwner->SetAnim(0x6E, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+						}
 					} else if (anim == 0x69 || anim == 0x6B) {
 						act->mOwner->SetAnim(0x6A, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 					} else if (anim == 0x6A || anim == 0x6C) {
@@ -1021,6 +1028,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 				} else if (act->mMoveDirection == -1) {
 					if (act->mOwner->GetHeight() <= 2.0f) {
 						act->mState = 7;
+						if (anim == 0x69 || anim == 0x6B) {
+							act->mOwner->SetAnim(0x71, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+						} else if (anim == 0x6A || anim == 0x6C) {
+							act->mOwner->SetAnim(0x70, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+						}
 					} else if (anim == 0x69 || anim == 0x6B) {
 						act->mOwner->SetAnim(0x6C, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 					} else if (anim == 0x6A || anim == 0x6C) {
@@ -1039,6 +1051,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 			if (act->mMoveDirection == 1) {
 				if (act->mTarget != NULL && 14.0f + act->mOwner->GetJointWorldPos("second_null").y >= act->mTarget->mFloorHeights[0]) {
 					act->mState = 6;
+					if (anim == 0x67) {
+						act->mOwner->SetAnim(0x6E, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					} else if (anim == 0x68) {
+						act->mOwner->SetAnim(0x6F, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					}
 				} else if (anim == 0x67) {
 					act->mOwner->SetAnim(0x69, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 				} else if (anim == 0x68) {
@@ -1047,6 +1064,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 			} else if (act->mMoveDirection == -1) {
 				if (act->mOwner->GetHeight() <= 2.0f) {
 					act->mState = 7;
+					if (anim == 0x67) {
+						act->mOwner->SetAnim(0x70, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					} else if (anim == 0x68) {
+						act->mOwner->SetAnim(0x71, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+					}
 				} else if (anim == 0x67) {
 					act->mOwner->SetAnim(0x6B, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 				} else if (anim == 0x68) {
@@ -1062,7 +1084,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 		if (anim != 0x6E && anim != 0x6F) {
 			if (anim == 0x69 || anim == 0x6B) {
 				act->mOwner->SetAnim(0x6F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			} else if (anim == 0x6A || anim == 0x6C || anim == 0x67) {
+			} else if (anim == 0x6A || anim == 0x6C) {
+				act->mOwner->SetAnim(0x6E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x67) {
 				act->mOwner->SetAnim(0x6E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (anim == 0x68) {
 				act->mOwner->SetAnim(0x6F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
@@ -1071,7 +1095,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
 			SyncRopePosition(act->mOwner);
 			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
-			StandAfterLift(act->mOwner);
+			StandAfterLift(act->mOwner, 1.0f);
 			act->mState  = 0;
 			act->mTarget = NULL;
 		}
@@ -1080,7 +1104,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 		if (anim != 0x70 && anim != 0x71) {
 			if (anim == 0x69 || anim == 0x6B) {
 				act->mOwner->SetAnim(0x71, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			} else if (anim == 0x6A || anim == 0x6C || anim == 0x67) {
+			} else if (anim == 0x6A || anim == 0x6C) {
+				act->mOwner->SetAnim(0x70, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x67) {
 				act->mOwner->SetAnim(0x70, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (anim == 0x68) {
 				act->mOwner->SetAnim(0x71, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
@@ -1089,7 +1115,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
 			SyncRopePosition(act->mOwner);
 			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
-			StandAfterLift(act->mOwner);
+			StandAfterLift(act->mOwner, 1.0f);
 			act->mState  = 0;
 			act->mTarget = NULL;
 		}
@@ -1097,7 +1123,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 	case 8:
 		if (anim == 0x69 || anim == 0x6B) {
 			act->mOwner->SetAnim(0x73, TRUE, 10.0f, 1.0f, 1.0f, 15.0f);
-		} else if (anim == 0x6A || anim == 0x6C || anim == 0x67) {
+		} else if (anim == 0x6A || anim == 0x6C) {
+			act->mOwner->SetAnim(0x72, TRUE, 10.0f, 1.0f, 1.0f, 15.0f);
+		} else if (anim == 0x67) {
 			act->mOwner->SetAnim(0x72, TRUE, 10.0f, 1.0f, 1.0f, 15.0f);
 		} else if (anim == 0x68) {
 			act->mOwner->SetAnim(0x73, TRUE, 10.0f, 1.0f, 1.0f, 15.0f);
@@ -1107,7 +1135,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 fra
 		if (anim != 0x72 && anim != 0x73) {
 			if (anim == 0x69 || anim == 0x6B) {
 				act->mOwner->SetAnim(0x73, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			} else if (anim == 0x6A || anim == 0x6C || anim == 0x67) {
+			} else if (anim == 0x6A || anim == 0x6C) {
+				act->mOwner->SetAnim(0x72, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (anim == 0x67) {
 				act->mOwner->SetAnim(0x72, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (anim == 0x68) {
 				act->mOwner->SetAnim(0x73, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
