@@ -138,6 +138,8 @@ extern "C" f32 gItemTitleOutlineX[4]   = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gItemTitleOutlineY[4]   = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gStatusHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gStatusHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };
+extern "C" f32 gSaveHelpOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
+extern "C" f32 gSaveHelpOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
 
 struct PCChoiceArt {
 	s32 icon, label;
@@ -4786,6 +4788,69 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 		for (int j = 0; j < 4; j++) {
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + gStatusHelpOutlineX[j] + padding / 2.0f,
 			                   bob + (bottom + gStatusHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)(255.0f * alpha) | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: the complete 15-call list matches; a 16-byte code-layout and register-allocation difference remains
+extern "C" void DrawSaveHelpText(MenuSave* menu)
+{
+	f32 alpha   = menu->mAlpha * menu->mHelpAlpha;
+	f32 spacing = 30.0f;
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	CTexObj blob;
+	InitPCPanelTexture(blob, 109);
+	menu->mHelpCount = 0;
+	const char* text = menu->mHelpText;
+	if (text) {
+		for (int i = 0; i < 20 && *text; i++, text++) {
+			menu->mBg[i].mText = text;
+			menu->mHelpCount++;
+			if (gGame.mLanguage == 0) {
+				u8 c    = *text;
+				u8 lead = TRUE;
+				u8 a    = (c >= 0x81 && c <= 0x9F);
+				if (!a) {
+					u8 b = (c >= 0xE0 && c <= 0xFC);
+					if (!b) {
+						lead = FALSE;
+					}
+				}
+				if (lead) {
+					text++;
+				}
+			}
+		}
+	}
+	f32 zero    = 0.0f;
+	f32 opacity = 255.0f * alpha;
+	f32 center  = gPointerScreenWidth / 2;
+	f32 bottom  = gPointerScreenHeight - 96;
+	for (int i = 0; i < menu->mHelpCount; i++) {
+		MenuHelpChar* glyph = &menu->mBg[i];
+		CFont font;
+		s32 width;
+		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
+		f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
+		f32 rotation = sin(0.7f * glyph->mAngle1);
+		f32 s1       = sin(3.1415927f * alpha);
+		f32 s2       = sin(1.5707964f * alpha);
+		f32 scale    = 0.2f * s1 + s2;
+		f32 x        = 0.5f * spacing + (i * spacing + (center - menu->mHelpCount * spacing / 2.0f));
+		f32 y        = bottom + bob;
+		rotation     = -(0.017453292f * (10.0f * rotation));
+		u32 color    = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
+		scale       = 30.0f * (0.8f * scale);
+		f32 padding = HelpGlyphPadding(width, scale);
+		color       = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + gSaveHelpOutlineX[j] + padding / 2.0f,
+			                   bob + (bottom + gSaveHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
 		}
 		color = (u32)(255.0f * alpha) | 0xFFFFFB00;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
