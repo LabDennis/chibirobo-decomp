@@ -6,6 +6,7 @@ extern "C" {
 #include <dolphin/os.h>
 }
 #include "Dolphin/OS/OSMessage.h"
+#include "game/xobjdata.h"
 
 // the threads that read objects in the background, class names from RTTI. xobjs.cpp keeps
 // one of each kind, the methods are there too
@@ -25,12 +26,6 @@ typedef char CMsgQueue_size_check[sizeof(CMsgQueue) == 0x28 ? 1 : -1];
 inline CMsgQueue::~CMsgQueue()
 {
 }
-
-// one read waiting in a reader
-struct XObjReadReq {
-	void* mObj;  // _00, null when the slot is free
-	void* mInfo; // _04
-};
 
 class XObjRead : public CThread {
 public:

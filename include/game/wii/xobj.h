@@ -19,6 +19,7 @@
 #include "game/mapfloorhit.h"
 #include "game/evt.h"
 #include "game/ut.h"
+#include "game/xobjdata.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
 #include "game/wii/xobjs.h"
@@ -1447,13 +1448,6 @@ STATIC_ASSERT(sizeof(NW_Anm) == 0x148);
 // inside XObj); the queue members behind it are not yet recovered
 // a material color stepping towards a target; the Wii keeps the pair inside the object's
 // animation queue where the GameCube XObj kept them as its own members
-struct XObjColorStep {
-	Vec mValue;  // _00
-	Vec mTarget; // _0C
-	Vec mSpeed;  // _18
-};
-STATIC_ASSERT(sizeof(XObjColorStep) == 0x24);
-
 class CAnmQueue {
 public:
 	virtual ~CAnmQueue() { }
@@ -1681,13 +1675,6 @@ struct XObjAnimSlot {
 STATIC_ASSERT(sizeof(XObjAnimSlot) == 0x8);
 
 // one floor's edge, the GameCube's XObjEdge
-struct XObjEdge {
-	Vec mContactOffset; // _00
-	Vec mFrom;          // _0C
-	Vec mTo;            // _18
-};
-STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
-
 class XObj : public CObj {
 public:
 	// retail's derived ctors expand this inline; a weak __ct__4XObjFv copy is
@@ -2375,19 +2362,6 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);
 
-// a carried model, drawn with the object 0x13C model the spider claimed a slot for (the GameCube's CarryInfo)
-struct CarryInfo {
-	CVec mPos;      // _00
-	CVec _10;       // _10, zeroed with the rest, never read
-	f32 mAngle;     // _20
-	f32 _24;        // _24
-	s32 mState;     // _28, its anim, 1 opens, 2 follows mObj's joint, 3 closes
-	u32 _2C;        // _2C
-	CStatus mFlags; // _30, 1 drawn, 2 the robot was hit with it
-	XObj* mObj;     // _38, the object whose joint it follows
-};
-STATIC_ASSERT(sizeof(CarryInfo) == 0x3C);
-
 // an object an event tied to one of the spider's nodes
 struct SpiderTie {
 	nw4r::g3d::ResNode mJoint; // _00
@@ -2814,11 +2788,6 @@ inline CMsgQueue::~CMsgQueue()
 }
 
 // one read waiting in a reader
-struct XObjReadReq {
-	void* mObj;  // _00, null when the slot is free
-	void* mInfo; // _04
-};
-
 struct EffectInstance; // game/wii/ceffect.h
 
 // the wire effect along the plug's cord, the GameCube's XObjWireEff: own anim,
