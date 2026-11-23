@@ -352,7 +352,6 @@ void SyncMoveFromJoint(CXObj* object);
 void UpdateSpiderCoinBounces(void* context, u32 frames);
 void ResetSpiderCoinBounces(void* context);
 void ResetSpiderBossState(XObj* object);
-void ResetActorMovementStep(void* object);
 s32 HandleEventCommand__9XObjActorFlPl(CXObj* object, s32 index, s32* out);
 void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rate);
 void SetActorLookAngle(CXObj* object, f32 value, f32 rate);

@@ -589,7 +589,7 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 	case 6: // pick up the object whose id follows
 		mAttachedId = mCmd[1];
 		mState      = &XObjActorPapa::StatePickUp;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		mCmd[0] = 0;
 		break;
 	case 7: // release (unload) the attached object
@@ -632,5 +632,5 @@ void XObjActorPapa::ResetActorState()
 	_C88                = 0;
 	mJointShown         = 1;
 	mState              = &XObjActorPapa::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 }

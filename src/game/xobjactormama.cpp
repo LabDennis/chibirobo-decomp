@@ -37,7 +37,7 @@ void XObjActorMama::ResetActorState()
 	_C84                = mFacing;
 	_C88                = 0;
 	mState              = &XObjActorMama::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 }
 
 // NONMATCHING: case 6 builds the effect's rotation straight in CreateSRT's by-value slot (US 0x8012918C stores the

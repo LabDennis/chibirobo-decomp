@@ -565,7 +565,7 @@ void XObjActorJenny::ResetActorState()
 	_C8C                = 0;
 	mJointHidden        = 0;
 	mState              = &XObjActorJenny::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 	for (u32 i = 0; i < 20; i++) {
 		mCmd[i] = 0;
 	}

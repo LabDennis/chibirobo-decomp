@@ -160,7 +160,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 		case 4: // pick an object up
 			mAttachedId = mCmd[1];
 			mState      = &XObjActorDeca::StatePickUp;
-			ResetActorMovementStep(this);
+			ResetMovementStep();
 			mCmd[0] = 0;
 			break;
 		case 5: // let it go
@@ -304,7 +304,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 		}
 		mActorStatus.mFlags &= ~0x2000;
 		mState = &XObjActorDeca::StateHold;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		break;
 	}
 }
@@ -433,7 +433,7 @@ void XObjActorDeca::ResetActorState()
 	mJointYaw           = PI; // the joint starts yawed around
 	mJointYawTarget     = PI;
 	mState              = &XObjActorDeca::StateHold;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 	for (u32 i = 0; i < 20; i++) {
 		mCmd[i] = 0;
 	}

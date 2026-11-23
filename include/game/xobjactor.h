@@ -61,6 +61,7 @@ public:
 	u8 _C74[0xC78 - 0xC74];
 
 	XObjActor();
+	void ResetMovementStep();
 
 	virtual ~XObjActor() { }
 	virtual void InitializeObject(u32 id);
