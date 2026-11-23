@@ -95,7 +95,6 @@ void UpdateOpenMenus(void* menu, s32 frames); // steps the open menus
 
 extern s32 gRefreshRate;
 extern u8 gPowerButtonPressed;
-extern u32 gSpiderSmallSoundId;
 
 class Logo;
 class Title;
@@ -1052,102 +1051,13 @@ static inline bool IsScopeRareItem(s32 item)
 	return IsScopeRareItemA(item) || IsScopeRareItemB(item);
 }
 
-inline bool CGame::IsSystemMessage3Shown()
-{
-	bool shown = false;
-	if (mSystemMessage == GetLocalizedInterfaceText(3) && mSystemMessageAlpha > 0.0f) {
-		shown = true;
-	}
-	return shown;
-}
-
-inline void ResumeGameSounds(CGame* game, f32 fade)
-{
-	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
-		s32 frames = gRefreshRate * fade;
-		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			if (handle.IsAttachedSound() && handle.IsPause()) {
-				handle.Pause(false, frames);
-			}
-		}
-		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
-			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
-			if (object->mStatus.mFlags & 1) {
-				object->ResumeSounds(fade);
-			}
-		}
-		if (game->mMovie.mState != 0) {
-			THPSimpleSetVolume(127.0f * game->mMovieVolume, 1000.0f * fade);
-		}
-	}
-	if (game->_D9B60 > 0) {
-		if (--game->_D9B60 == 0) {
-			if (gSpiderSmallSoundId != 0) {
-				u32 music = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
-				if (music != 0) {
-					s32 frames = gRefreshRate * 0.2f;
-					u32 id     = music & 0xFFFF;
-					for (int i = 0; i < 0x40; i++) {
-						nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
-							handle.Pause(true, frames);
-						}
-					}
-				}
-			}
-		} else if (gGame.mSound.FindTrack(4) != NULL && gGame.mSound.FindTrack(4)->IsPause()) {
-			s32 frames = gRefreshRate * fade;
-			for (int i = 0; i < 0x40; i++) {
-				nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
-					handle.Pause(false, frames);
-				}
-			}
-		}
-	}
-}
-
-inline void PauseGameSounds(CGame* game, f32 fade)
-{
-	if (game->_D9B5C == 0) {
-		s32 frames = gRefreshRate * fade;
-		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			if (handle.IsAttachedSound() && !handle.IsPause()) {
-				handle.Pause(true, frames);
-			}
-		}
-		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
-			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
-			if (object->mStatus.mFlags & 1) {
-				object->PauseSounds(fade);
-			}
-		}
-		if (game->mMovie.mState != 0) {
-			THPSimpleSetVolume(0, 1000.0f * fade);
-		}
-	}
-	game->_D9B5C++;
-	if (game->_D9B60 > 0 && gGame.mSound.FindTrack(4) != NULL && !gGame.mSound.FindTrack(4)->IsPause()) {
-		s32 frames = gRefreshRate * fade;
-		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
-				handle.Pause(true, frames);
-			}
-		}
-	}
-	game->_D9B60++;
-}
-
 /**
  * @note Address: 0x8001E830
  * @note Size: 0x57C4
  */
 // NONMATCHING: retail auto-inlines PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown (one
-// original game.cpp; here they sit in gamedraw.cpp's unit) and fn_80114564; vf16C is called without the
-// frame count retail passes. The rest is register and stack placement that follows from those
+// original game.cpp; here they sit in gamedraw.cpp's unit) and fn_80114564. The rest is register and stack
+// placement that follows from those
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
