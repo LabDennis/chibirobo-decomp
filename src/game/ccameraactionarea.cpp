@@ -1015,10 +1015,12 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
 // NONMATCHING: register allocation (yaw in f29 and best in f28 instead of retail's f28/f29, where retail's best shares
 // the register of WrapAngle's 2*pi, plus r29/r30 slotIndex rotation) and YawDir's inlined ang lands at 0x10 below
 // SelectActiveAreaCameraEntryFacing's look/facing. best declared after yaw, or just before the loop, shares the 2*pi
-// load but copies it with fmr and swaps the registers again (96.58)
+// load but copies it with fmr and swaps the registers again (96.58). index at the function top gives retail's r29 for
+// slotIndex (0x80138F3C); zoomLevel stays in r4 instead of r8 whatever the declaration order of the four s32s
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
+	s32 index;
 	s32 slotIndex    = gCameraAreaState.mActiveArea;
 	s32 currentArea  = gCameraAreaState.mCurrentArea;
 	s32 previousArea = gCameraAreaState.mPrevArea;
@@ -1045,9 +1047,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		}
 	} else if (area->mKeepViewDirection == 1 && (buttons & next)) {
 		// after SetCamera, go by the view instead of mEntryIndex: the entry whose eye bearing is nearest at or below the camera's
-		f32 best = TWO_PI;
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
-		s32 index;
+		f32 best            = TWO_PI;
+		f32 yaw             = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
 		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
@@ -1062,9 +1063,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		area->mForceApply = TRUE;
 	} else if (area->mKeepViewDirection == 1 && (buttons & previous)) {
 		// the same pick as above, then one entry back
-		f32 best = TWO_PI;
-		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
-		s32 index;
+		f32 best            = TWO_PI;
+		f32 yaw             = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 		CamAreaEntry* entry = slot->mEntries;
 		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {

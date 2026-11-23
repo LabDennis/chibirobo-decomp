@@ -1995,13 +1995,14 @@ void XObjSpider::UpdateAnimationSounds()
  * @note Size: 0x22C
  */
 // NONMATCHING: same instruction stream; the rest is scratch-register colouring
-// in the pool loop (r8/r6/r5 vs r3/r7/r6), the fadds operand naming for
-// `position->y + 0.2f` (y in f1/const in f0 vs swapped) and the anonymous
+// in the pool loop (coin in r8 at 0x800EA59C, ours r3) and the anonymous
 // .sdata2 pool names (@NNNN vs lbl_8065DD74/lbl_8065DD40/lbl_8065DD78/
-// lbl_8065DD7C) — allocation + referent naming, no source lever.
+// lbl_8065DD7C). the variable-first fadds (0x800EA644) is the lift local
+// UpdateSpiderCoinBounces also has.
 // puts one of the free coins at position and plays its anim
 extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 {
+	f32 lift = 0.2f; // how far the coins float above their spot
 	if (gSpiderCoinBounceCount >= 11)
 		return;
 	for (s32 i = 0; i < 96; ++i) {
@@ -2013,14 +2014,14 @@ extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mPhase = 0;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCount += 2;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.x    = position->x;
-					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.y    = position->y + 0.2f;
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.y    = position->y + lift;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mPos.z    = position->z;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.x = target->x;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.y = target->y;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mTarget.z = target->z;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin     = coin;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateX(position->x, 0);
-					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateY(position->y + 0.2f, 0);
+					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateY(position->y + lift, 0);
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetTranslateZ(position->z, 0);
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->mStatus.mFlags |= 0x100000ULL;
 					gSpiderCoinBounces[gSpiderCoinBounceCount].mCoin->SetAnim(anim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);

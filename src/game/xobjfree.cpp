@@ -1103,6 +1103,8 @@ s32 XObjCoin::GetFlagIndex()
  * @note Address: 0x800E213C
  * @note Size: 0xC0
  */
+// NONMATCHING: retail keeps this in r31 and result in r30 (0x800E214C mr r31, r3; 0x800E2158 mr. r30, r3), ours the
+// other way round; a nested if, result declared before the call or explicit != 0 tests do not swap them
 BOOL XObjItem::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL result = XObj::LoadFromPlacement(info);

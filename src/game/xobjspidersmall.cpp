@@ -2136,8 +2136,9 @@ void XObjSpiderSmall::Release()
 // finds the stage's webs, the objects of kind 0x1BC
 static inline void FindWebs()
 {
+	XObj** slot = gSmallSpiderEffectObjects;
 	for (int i = 0; i < 12; i++) {
-		gSmallSpiderEffectObjects[i]    = NULL;
+		slot[i]                         = NULL;
 		gSmallSpiderEffectSlotOwners[i] = -1;
 	}
 	lbl_8065B2E0 = 0;
@@ -2146,8 +2147,8 @@ static inline void FindWebs()
 	for (s32 i = 0; lbl_8065B2DC == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 		XObj* obj = gGame.mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x1BC) {
-			gSmallSpiderEffectObjects[found] = obj;
-			gSmallSpiderEffectObjects[found]->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			slot[found] = obj;
+			slot[found]->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			found++;
 			if (found >= 12) {
 				break;
@@ -2174,8 +2175,8 @@ void XObjSpiderSmall::ResetObjectState()
  * @note Address: 0x800FEDD0
  * @note Size: 0x398
  */
-// NONMATCHING: register allocation in the inlined FindWebs: retail keeps &gSmallSpiderEffectObjects[0] from the
-// clearing loop in r27 (US 0x800FF014) and walks it for the found webs, this build forms it a second time
+// NONMATCHING: register allocation in the inlined FindWebs: retail keeps the slot pointer in r27 (US 0x800FF014) and
+// gGame + 0x10000 in r28, this build the other way round (a walked *slot instead of slot[found] costs ResetObjectState)
 BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
