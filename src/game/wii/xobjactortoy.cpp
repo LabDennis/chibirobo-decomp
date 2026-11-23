@@ -1707,3 +1707,32 @@ s32 XObjActorToy::HandleEventCommand(s32 count, s32* command)
 	mCmd[9] = command[9];
 	return 0;
 }
+
+void XObjActorToy::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+void XObjActorToy::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+void XObjActorToy::UpdateAnimationSounds(f32 frame)
+{
+	switch (GetKind()) {
+	case 0x1FC:
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 0x10) {
+			mSfx.mActors[5].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+		}
+		break;
+	case 0x159:
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 7) {
+			mSfx.mActors[5].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+		}
+		break;
+	}
+	XObjActor::UpdateAnimationSounds(frame);
+}
