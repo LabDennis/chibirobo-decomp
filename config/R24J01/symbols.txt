@@ -9672,3 +9672,6 @@ ActivateWaitingKind43AActorsAtPosition = .text:0x8013EE70; // type:function size
 gPlayerSuitIdleAnimations = .data:0x803040EC; // type:object size:0x24
 gPlayerTurnState = .bss:0x8045BDB4; // type:object size:0x14
 vf24__22CInterfaceCameraActionFv = .text:0x80031EF0; // type:function size:0x4
+
+__dt__7XActionFv = .text:0x800BF108; // type:function size:0x40
+__dt__8CPtclOneFv = .text:0x800BF614; // type:function size:0x40
