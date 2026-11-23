@@ -2,7 +2,6 @@
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
 
-extern "C" void UpdateAfterAnim__9XObjActorFUl(XObjActor* actor, u32 frames);
 extern "C" CVec GetStagePlacementScale(const XObj* obj);
 extern "C" void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 extern "C" void ResetActorLook(XObjActor* actor, f32 rate);
@@ -12,7 +11,6 @@ extern "C" void SetActorLookAngle(XObjActor* actor, f32 value, f32 rate);
 extern "C" StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
-extern "C" s32 HandleEventCommand__9XObjActorFlPl(XObjActor* actor, s32 count, s32* command);
 
 static inline XObj* ReadObj(s16 id)
 {
@@ -41,7 +39,7 @@ void XObjActorTao::ResetActorState()
 	mMoveSpeed          = 0.0f;
 	mFacing             = 0.0f;
 	_D78                = mFacing;
-	_D7C                = 0.0f;
+	_D7C                = 0;
 	mState              = static_cast<StateFunc>(&XObjActorTao::StateNone);
 	ResetMovementStep();
 	for (s32 i = 2; i < 10; ++i) {
@@ -85,7 +83,7 @@ void XObjActorTao::Drop()
 	}
 	switch (kind) {
 	case 0x102:
-		for (s32 i = 0; i < 32; ++i) {
+		for (s32 i = 0; i < 64; ++i) {
 			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 			if (kind == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -93,7 +91,7 @@ void XObjActorTao::Drop()
 		}
 		break;
 	case 0x159:
-		for (s32 i = 0; i < 5; ++i) {
+		for (s32 i = 0; i < 15; ++i) {
 			XObj* obj = gGame.mXObjs.mPools[10].Get(i);
 			(void)(kind == obj->GetKind());
 		}
@@ -106,7 +104,7 @@ void XObjActorTao::Drop()
 		break;
 	case 0x2A3:
 	case 0x46F:
-		for (s32 i = 0; i < 200; ++i) {
+		for (s32 i = 0; i < 400; ++i) {
 			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 			if (kind == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -118,7 +116,7 @@ void XObjActorTao::Drop()
 
 void XObjActorTao::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	if (mHideKinds.mFlags & 0x2F) {
 		nw4r::g3d::ResNode joint = FindResNode("hana");
 		CVec position            = GetJointPos(joint);
@@ -257,6 +255,7 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		break;
 	case 2:
 		if (mMountObj != NULL && !(mMountObj->mStatus.mFlags & 0x0040000000000000ULL)) {
+			mMountObj->mStatus.mFlags |= 0x10000ULL;
 			gGame.SetStatusFlags(0x1000);
 			++mMountState;
 		}
@@ -305,6 +304,7 @@ void XObjActorTao::StatePickUp(u32 frames)
 			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
 				return;
 			}
+			mAttached->mStatus.mFlags |= 0x10000ULL;
 			gGame.SetStatusFlags(0x1000);
 		}
 		++mKindStep;
@@ -334,7 +334,7 @@ void XObjActorTao::StatePickUp(u32 frames)
 
 s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 {
-	HandleEventCommand__9XObjActorFlPl(this, count, command);
+	XObjActor::HandleEventCommand(count, command);
 	if (count == 0) {
 		return -1;
 	}
@@ -361,7 +361,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		Drop();
 		switch (command[1]) {
 		case 0x102:
-			for (s32 i = 0; i < 32; ++i) {
+			for (s32 i = 0; i < 64; ++i) {
 				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 				if (command[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
@@ -375,7 +375,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 			}
 			break;
 		case 0x159:
-			for (s32 i = 0; i < 5; ++i) {
+			for (s32 i = 0; i < 15; ++i) {
 				XObj* obj = gGame.mXObjs.mPools[10].Get(i);
 				if (command[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
@@ -410,7 +410,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 					for (s32 j = 0; j < 6; ++j) {
 						nw4r::g3d::AnmObj* anm = mObject.m_pScnMdl->GetAnmObj((nw4r::g3d::ScnMdlSimple::AnmObjType)j);
 						if (anm != NULL) {
-							anm->SetUpdateRate(0.0f);
+							anm->SetFrame(0.0f);
 						}
 					}
 					obj->SetAnim(0, TRUE, 1.0f, 1.0f, 0.0f, 15.0f);
@@ -418,7 +418,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 			}
 			break;
 		case 0x46F:
-			for (s32 i = 0; i < 200; ++i) {
+			for (s32 i = 0; i < 400; ++i) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (command[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;

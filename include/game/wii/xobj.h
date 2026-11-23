@@ -2473,7 +2473,7 @@ public:
 
 private:
 	f32 _D78;
-	f32 _D7C;
+	s32 _D7C;
 	CStatus32 mHideKinds;
 };
 STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
@@ -2499,7 +2499,7 @@ public:
 
 private:
 	f32 _D78;
-	f32 _D7C;
+	s32 _D7C;
 	CStatus32 mHideKinds;
 	u8 mJointShown;
 	u8 _D89[0xD90 - 0xD89];
@@ -2525,7 +2525,7 @@ public:
 
 private:
 	f32 _D78;
-	f32 _D7C;
+	s32 _D7C;
 	CStatus32 mHideKinds;
 	Mtx mCarryMtx;
 	Mtx mMountMtx;

@@ -2,12 +2,6 @@
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
 
-extern "C" void UpdateAfterAnim__9XObjActorFUl(XObjActor* actor, u32 frames);
-extern "C" BOOL LoadFromPlacement__9XObjActorFRC9CoordInfo(XObjActor* actor, const CoordInfo& info);
-extern "C" void UpdateObject__9XObjActorFUl(XObjActor* actor, u32 frames);
-extern "C" s32 HandleEventCommand__9XObjActorFlPl(XObjActor* actor, s32 count, s32* command);
-extern "C" void ExecCallbackB__9XObjActorFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld(
-    XObjActor* actor, nw4r::g3d::ChrAnmResult* result, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* funcObj);
 extern "C" void ApproachHudValue(f32* value, f32* target, f32 step);
 extern "C" StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
@@ -16,8 +10,6 @@ extern "C" void ResetActorLook(XObjActor* actor, f32 rate);
 extern "C" void SetActorLookTarget(XObjActor* actor, const Vec* target, f32 rate);
 extern "C" void SetActorLookAngle(XObjActor* actor, f32 value, f32 rate);
 extern "C" void InfoScrn_ApplyScanlineHudCommand(InfoScrn* scrn, u8 show, s32 mode);
-extern "C" BOOL IsFree__12XObjActorToyFv(XObjActorToy* toy);
-extern "C" BOOL IsFree__13XObjActorPapaFv(XObjActorPapa* papa);
 extern "C" void fn_800E7EA8(WiiPlayerState* player);
 
 static inline XObj* ReadObj(s16 id)
@@ -61,7 +53,7 @@ void XObjActorDeca::ResetActorState()
 
 BOOL XObjActorDeca::LoadFromPlacement(const CoordInfo& info)
 {
-	if (LoadFromPlacement__9XObjActorFRC9CoordInfo(this, info)) {
+	if (XObjActor::LoadFromPlacement(info)) {
 		if (mObject.m_pScnMdl != NULL) {
 			mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
 		}
@@ -79,7 +71,7 @@ void XObjActorDeca::ProcessPendingEvents(u32 frames)
 
 void XObjActorDeca::UpdateObject(u32 frames)
 {
-	UpdateObject__9XObjActorFUl(this, frames);
+	XObjActor::UpdateObject(frames);
 }
 
 void XObjActorDeca::UpdateAnim(f32 frames)
@@ -89,7 +81,7 @@ void XObjActorDeca::UpdateAnim(f32 frames)
 
 void XObjActorDeca::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f);
 	nw4r::g3d::ResNode joint = FindResNode("cube41");
 	CVec rotation            = mObject.GetNodeRotate(joint);
@@ -126,7 +118,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 				if (!(toy->mStatus.mFlags & 1)) {
 					break;
 				}
-				if (!IsFree__12XObjActorToyFv(toy)) {
+				if (!toy->IsFree()) {
 					busy = true;
 					break;
 				}
@@ -136,7 +128,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 			return;
 		}
 		XObjActorPapa* papa = (XObjActorPapa*)gGame.mXObjs.mPools[13].mObjects;
-		if ((papa->mStatus.mFlags & 1) && !IsFree__13XObjActorPapaFv(papa)) {
+		if ((papa->mStatus.mFlags & 1) && !papa->IsFree()) {
 			return;
 		}
 		if (mAttached != NULL) {
@@ -155,6 +147,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
 				return;
 			}
+			mAttached->mStatus.mFlags |= 0x10000ULL;
 			gGame.SetStatusFlags(0x1000);
 		}
 		++mKindStep;
@@ -183,7 +176,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 {
 	WiiPlayerState* player = gGame.GetPlayer();
 	CVec unused;
-	HandleEventCommand__9XObjActorFlPl(this, count, command);
+	XObjActor::HandleEventCommand(count, command);
 	switch (command[0]) {
 	case 1:
 		switch (command[1]) {
@@ -327,11 +320,13 @@ Vec XObjActorDeca::GetCameraTarget()
 
 void XObjActorDeca::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	ExecCallbackB__9XObjActorFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld(this, pResult, mdl, pFuncObj);
 	u16 nodeId = pFuncObj->GetCallbackNodeID();
+	XObjActor::ExecCallbackB(pResult, mdl, pFuncObj);
 	if (nodeId == 0) {
 		nw4r::g3d::ResNode node = GetResNode("cube41");
-		pFuncObj->SetCallbackNodeID(node.GetID());
+		if (node.IsValid()) {
+			pFuncObj->SetCallbackNodeID(node.GetID());
+		}
 	} else if (nodeId == 8) {
 		Mtx mount, rotation;
 		PSMTXCopy(pResult->mpMtx, mount);

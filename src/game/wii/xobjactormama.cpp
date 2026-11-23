@@ -7,13 +7,11 @@
 #include <stdlib.h>
 
 extern "C" {
-void UpdateAfterAnim__9XObjActorFUl(XObjActor* actor, u32 frames);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 void ResetActorLook(XObjActor* actor, f32 rate);
 void SetActorLookTarget(XObjActor* actor, const Vec* target, f32 rate);
 void SetActorLookAngle(XObjActor* actor, f32 value, f32 rate);
-s32 HandleEventCommand__9XObjActorFlPl(XObjActor* actor, s32 count, s32* command);
 }
 
 static inline XObj* FindObj(s16 id)
@@ -74,7 +72,7 @@ void XObjActorMama::Drop()
 	}
 	switch (kind) {
 	case 0x40:
-		for (s32 i = 0; i < 32; i++) {
+		for (s32 i = 0; i < 64; i++) {
 			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 			if (kind == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -93,7 +91,7 @@ void XObjActorMama::Drop()
 		}
 		break;
 	case 0x1A1:
-		for (s32 i = 0; i < 200; i++) {
+		for (s32 i = 0; i < 400; i++) {
 			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 			if (obj->GetKind() == 0x1A0 || kind == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -119,7 +117,7 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 		Drop();
 		switch (mCmd[1]) {
 		case 0x40:
-			for (s32 i = 0; i < 32; i++) {
+			for (s32 i = 0; i < 64; i++) {
 				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 				if (mCmd[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
@@ -155,7 +153,7 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 			}
 			break;
 		case 0x1A1:
-			for (s32 i = 0; i < 200; i++) {
+			for (s32 i = 0; i < 400; i++) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (obj->GetKind() == 0x1A0) {
 					obj->mStatus.mFlags |= 0x10000ULL;
@@ -188,7 +186,7 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 		default: {
 			mActorStatus.mFlags &= ~0x100;
 			CVec pos = GetJointPos(FindResNode("hand_r_4"));
-			pos.y    = mMoveTranslate.y;
+			pos.y    = GetPos()->y;
 			player->SetPos(pos);
 			player->RestoreControl();
 			break;
@@ -223,11 +221,14 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 
 void XObjActorMama::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	WiiPlayerState* player = gGame.GetPlayer();
 	if (mHideKinds.mFlags & 0x3F) {
-		CVec position = GetJointPos(FindResNode("hand_r_4"));
-		s32 kind      = -1;
+		CVec position;
+		nw4r::g3d::ResNode hand  = FindResNode("hand_r_4");
+		nw4r::g3d::ResNode other = FindResNode("hand_l_4");
+		position                 = GetJointPos(hand);
+		s32 kind                 = -1;
 		if (mHideKinds.Check(1)) {
 			kind = 0x40;
 		} else if (mHideKinds.Check(2)) {
@@ -245,15 +246,22 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		if (kind >= 0) {
 			switch (kind) {
 			case 0x40:
-				for (s32 i = 0; i < 32; ++i) {
+				for (s32 i = 0; i < 64; ++i) {
 					XObj* prop = gGame.mXObjs.mPools[8].Get(i);
 					if (kind == prop->GetKind()) {
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
-						PSMTXRotRad(rotation, 'z', -PI / 4);
-						PSMTXConcat(mount, rotation, result);
-						PSMTXTrans(translation, 0.0f, -3.0f, 0.0f);
-						PSMTXConcat(result, translation, result);
-						prop->SetBaseMtx(result);
+						switch (kind) {
+						case 0x40:
+							PSMTXCopy(GetWorldMtx(hand), mount);
+							PSMTXRotRad(rotation, 'z', -PI / 4);
+							PSMTXConcat(mount, rotation, result);
+							PSMTXTrans(translation, 0.0f, -3.0f, 0.0f);
+							PSMTXConcat(result, translation, result);
+							prop->SetBaseMtx(result);
+							break;
+						default:
+							prop->SetBaseMtx(GetWorldMtx(hand));
+							break;
+						}
 						MamaPropVisibility(this, prop);
 					}
 				}
@@ -269,7 +277,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 					}
 					switch (kind) {
 					case 0x5B:
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+						PSMTXCopy(GetWorldMtx(hand), mount);
 						PSMTXRotRad(rotation, 'z', -PI / 4);
 						PSMTXConcat(mount, rotation, result);
 						PSMTXTrans(translation, 0.0f, -3.0f, 0.0f);
@@ -277,7 +285,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						prop->SetBaseMtx(result);
 						break;
 					case 0x7D:
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+						PSMTXCopy(GetWorldMtx(hand), mount);
 						PSMTXRotRad(rotation, 'y', 1.17809725f);
 						PSMTXConcat(mount, rotation, result);
 						prop->SetBaseMtx(result);
@@ -285,7 +293,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 					case 0x196:
 						sin(DEG2RAD * ((s32)(mKindCounter * 16) % 360));
 						++mKindCounter;
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+						PSMTXCopy(GetWorldMtx(hand), mount);
 						PSMTXRotRad(rotation, 'x', -HALF_PI);
 						PSMTXConcat(mount, rotation, result);
 						PSMTXTrans(translation, 2.5f, -3.0f, -8.5f);
@@ -295,7 +303,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						prop->SetBaseMtx(result);
 						break;
 					case 0x45B:
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+						PSMTXCopy(GetWorldMtx(hand), mount);
 						PSMTXRotRad(rotation, 'y', -1.37444687f);
 						PSMTXConcat(mount, rotation, result);
 						PSMTXRotRad(rotation, 'z', HALF_PI);
@@ -306,15 +314,18 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						PSMTXConcat(result, translation, result);
 						prop->SetBaseMtx(result);
 						break;
+					default:
+						prop->SetBaseMtx(GetWorldMtx(hand));
+						break;
 					}
 					MamaPropVisibility(this, prop);
 				}
 				break;
 			case 0x1A1:
-				for (s32 i = 0; i < 200; ++i) {
+				for (s32 i = 0; i < 400; ++i) {
 					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
 					if (prop->GetKind() == 0x1A0) {
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_l_4")), mount);
+						PSMTXCopy(GetWorldMtx(other), mount);
 						PSMTXRotRad(rotation, 'z', -0.19634955f);
 						PSMTXConcat(mount, rotation, result);
 						PSMTXTrans(translation, 0.0f, -4.5f, 0.0f);
@@ -322,7 +333,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						prop->SetBaseMtx(result);
 						MamaPropVisibility(this, prop);
 					} else if (prop->GetKind() == 0x1A1) {
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+						PSMTXCopy(GetWorldMtx(hand), mount);
 						PSMTXRotRad(rotation, 'x', -1.17809725f);
 						PSMTXConcat(mount, rotation, result);
 						PSMTXTrans(translation, 0.0f, -3.5f, -3.0f);
@@ -342,7 +353,8 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		pos.y += 2.0f;
 		player->SetPos(pos);
 		pos = GetJointPos(FindResNode("face"));
-		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0.0f);
+		const CVec* at = player->GetPos();
+		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}
 }
 
@@ -352,7 +364,7 @@ void XObjActorMama::StateNone(u32 frames)
 
 s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
 {
-	HandleEventCommand__9XObjActorFlPl(this, count, command);
+	XObjActor::HandleEventCommand(count, command);
 	switch (command[0]) {
 	case 1:
 		switch (command[1]) {

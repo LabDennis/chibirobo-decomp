@@ -4,7 +4,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-extern "C" void UpdateAfterAnim__9XObjActorFUl(XObjActor* actor, u32 frames);
 
 static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 {
@@ -86,7 +85,7 @@ void XObjActorJenny::Drop()
 		}
 		break;
 	case 0x401:
-		for (s32 i = 0; i < 200; i++) {
+		for (s32 i = 0; i < 400; i++) {
 			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 			if (kind == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -145,7 +144,7 @@ void XObjActorJenny::ProcessPendingEvents(u32 frames)
 			}
 			break;
 		case 0x401:
-			for (s32 i = 0; i < 200; ++i) {
+			for (s32 i = 0; i < 400; ++i) {
 				XObj* object = gGame.mXObjs.mPools[22].Get(i);
 				if (mCmd[1] == object->GetKind()) {
 					mHeldObjects[0] = object;
@@ -175,7 +174,7 @@ void XObjActorJenny::ProcessPendingEvents(u32 frames)
 			CVec secondPos = GetJointPos(FindResNode("hand_l_4"));
 			firstPos.x -= (firstPos.x - secondPos.x) / 2.0f;
 			firstPos.z -= (firstPos.z - secondPos.z) / 2.0f;
-			firstPos.y = mMoveTranslate.y;
+			firstPos.y = GetPos()->y;
 			ReleasePlayerAt(player, secondPos);
 			break;
 		}
@@ -222,40 +221,53 @@ void XObjActorJenny::UpdateAnim(f32 speed)
 
 void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
-	UpdateAfterAnim__9XObjActorFUl(this, frames);
+	XObjActor::UpdateAfterAnim(frames);
 	WiiPlayerState* player = gGame.GetPlayer();
 	if (mHideKinds.Check(0x1F)) {
+		nw4r::g3d::ResNode joint;
 		CVec position;
 		s32 kind = -1;
 		if (mHideKinds.Check(1)) {
 			kind     = 0x3D;
-			position = GetJointPos(FindResNode("hand_r_4"));
+			joint    = FindResNode("hand_r_4");
+			position = GetJointPos(joint);
 		} else if (mHideKinds.Check(2)) {
 			kind     = 0x3E;
-			position = GetJointPos(FindResNode("hand_r_4"));
+			joint    = FindResNode("hand_r_4");
+			position = GetJointPos(joint);
 		} else if (mHideKinds.Check(4)) {
 			kind     = 0x3F;
-			position = GetJointPos(FindResNode("hand_r_4"));
+			joint    = FindResNode("hand_r_4");
+			position = GetJointPos(joint);
 		} else if (mHideKinds.Check(8)) {
 			kind     = 0x3B;
-			position = GetJointPos(FindResNode("hand_r_4"));
+			joint    = FindResNode("hand_r_4");
+			position = GetJointPos(joint);
 		} else if (mHideKinds.Check(16)) {
 			kind     = 0x401;
-			position = GetJointPos(FindResNode("hand_l_4"));
+			joint    = FindResNode("hand_l_4");
+			position = GetJointPos(joint);
 		}
 		Mtx mount, translation, rotation, result;
 		if (kind >= 0) {
 			switch (kind) {
 			case 0x401:
-				for (s32 i = 0; i < 200; ++i) {
+				for (s32 i = 0; i < 400; ++i) {
 					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
 					if (kind == prop->GetKind()) {
-						PSMTXCopy(GetWorldMtx(FindResNode("hand_l_4")), mount);
-						PSMTXRotRad(rotation, 'z', HALF_PI);
-						PSMTXConcat(mount, rotation, result);
-						PSMTXTrans(translation, -4.0f, 4.0f, 0.0f);
-						PSMTXConcat(result, translation, result);
-						prop->SetBaseMtx(result);
+						switch (kind) {
+						case 0x401:
+							PSMTXCopy(GetWorldMtx(joint), mount);
+							PSMTXRotRad(rotation, 'z', HALF_PI);
+							PSMTXConcat(mount, rotation, result);
+							PSMTXTrans(translation, -4.0f, 4.0f, 0.0f);
+							PSMTXConcat(result, translation, result);
+							prop->SetBaseMtx(result);
+							break;
+						default:
+							prop->SetBaseMtx(GetWorldMtx(joint));
+							break;
+						}
 						JennyPropVisibility(this, prop);
 					}
 				}
@@ -271,7 +283,7 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 						case 0x3D:
 						case 0x3E:
 						case 0x3F:
-							PSMTXCopy(GetWorldMtx(FindResNode("hand_r_4")), mount);
+							PSMTXCopy(GetWorldMtx(joint), mount);
 							PSMTXRotRad(rotation, 'x', PI);
 							PSMTXConcat(mount, rotation, result);
 							PSMTXTrans(translation, 0.0f, 0.0f, 10.0f);
@@ -279,13 +291,16 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 							prop->SetBaseMtx(result);
 							break;
 						case 0x3B: {
-							MtxP source = GetWorldMtx(FindResNode("hand_r_4"));
+							MtxP source = GetWorldMtx(joint);
 							PSMTXCopy(source, mount);
 							PSMTXTrans(translation, -2.0f, -2.0f, -10.0f);
 							PSMTXConcat(source, translation, result);
 							prop->SetBaseMtx(result);
 							break;
 						}
+						default:
+							prop->SetBaseMtx(GetWorldMtx(joint));
+							break;
 						}
 						JennyPropVisibility(this, prop);
 					}
@@ -295,8 +310,9 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 		}
 	}
 	if ((mActorStatus.mFlags & 0x200) && (player->mPlayerFlags & 0x40000000)) {
-		CVec pos  = GetJointPos(FindResNode("hand_r_4"));
-		f32 angle = atan2(pos.x - mMoveTranslate.x, pos.z - mMoveTranslate.z);
+		CVec pos  = GetJointPos(FindResNode("hand_l_4"));
+		const CVec* self = GetPos();
+		f32 angle        = atan2(pos.x - self->x, pos.z - self->z);
 		f32 sx    = (f32)sin(angle - HALF_PI);
 		f32 cz    = (f32)cos(angle - HALF_PI);
 		f32 dx    = 3.0f * sx;
@@ -306,14 +322,16 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 		pos.z += dz;
 		player->SetPos(pos);
 		pos = GetJointPos(FindResNode("head"));
-		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0.0f);
+		const CVec* at = player->GetPos();
+		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}
 	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerFlags & 0x40000000)) {
 		CVec pos = GetJointPos(FindResNode("hand_l_4"));
 		pos.y += 2.0f;
 		player->SetPos(pos);
 		pos = GetJointPos(FindResNode("head"));
-		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0.0f);
+		const CVec* at = player->GetPos();
+		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}
 }
 
