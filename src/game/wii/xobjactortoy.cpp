@@ -2,6 +2,7 @@
 #include "game/wii/ceffect.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
+#include "game/wii/spiderplacement.h"
 #include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@ EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 StagePlacement* GetStageObjectPlacementByIndex(s32 index);
+StagePlacement* GetSpawnData(s32 index);
 XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
 s32 CountSmallSpidersGrabbingPlayer();
 s32 CountEmergedSmallSpiders();
@@ -39,6 +41,84 @@ static f32 sToyMoveSpeeds[60] = {
 static const Vec sToyBurstScales[10] = {
 	{ 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f },
 	{ 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f },
+};
+
+static AnimSfxEvent sToy110Sounds[19] = {
+	{ 4, 15.0f, -1.0f, 1, 0x000D000D, 0xFF, 0, 0, 0 },
+	{ 4, 60.0f, -1.0f, 1, 0x00000145, 0xFF, 0, 0, 0 },
+	{ 6, 22.0f, -1.0f, 1, 0x000D000F, 0xFF, 0, 0, 0 },
+	{ 13, 0.0f, -1.0f, 1, 0x000D000B, 0xFF, 0, 0, 0 },
+	{ 14, 0.0f, -1.0f, 1, 0x000D000C, 0xFF, 0, 0, 0 },
+	{ 14, 52.0f, -1.0f, 1, 0x000D000E, 0xFF, 0, 0, 0 },
+	{ 15, 0.0f, -1.0f, 1, 0x000D0011, 0xFF, 0, 0, 0 },
+	{ 2, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1030, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 36, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 30.0f, 60.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 90.0f, 120.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 150.0f, 160.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 180.0f, 190.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 200.0f, 210.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 240.0f, 250.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 260.0f, 270.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ 1037, 280.0f, 300.0f, 1, 0x000D0010, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static AnimSfxEvent sToy6FSounds[5] = {
+	{ 2, 33.0f, 66.0f, 1, 0x000C0008, 0xFF, 0, 0, 0 },
+	{ 4, 40.0f, 80.0f, 1, 0x000C0006, 0xFF, 0, 0, 0 },
+	{ 1005, 40.0f, -1.0f, 1, 0x000C0007, 0xFF, 0, 0, 0 },
+	{ 1005, 126.0f, -1.0f, 1, 0x000C0005, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static AnimSfxEvent sToy1FCSounds[8] = {
+	{ 1006, 73.0f, -1.0f, 1, 0x00100012, 0xFF, 0, 0, 0 }, { 2, 39.0f, 78.0f, 1, 0x00100013, 0xFF, 0, 0, 0 },
+	{ 2, 117.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0 },   { 1012, 37.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0 },
+	{ 1013, 37.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0 }, { 1014, 1.0f, 20.0f, 1, 0x00100014, 0xFF, 0, 0, 0 },
+	{ 16, 1.0f, -1.0f, 1, 0x0010001F, 0xFF, 0, 0, 0 },    { -1 },
+};
+
+static AnimSfxEvent sToy26CAnd485Sounds[2] = {
+	{ 2, 37.0f, 76.0f, 1, 0x0000015C, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static AnimSfxEvent sToy159Sounds[2] = {
+	{ 7, 2.0f, -1.0f, 1, 0x000E0008, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static AnimSfxEvent sToy117Sounds[12] = {
+	{ 1026, 5.0f, -1.0f, 1, 0x000F001D, 0xFF, 0, 0, 0 },  { 2, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0 },
+	{ 2, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0 },    { 10, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0 },
+	{ 10, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0 },   { 17, 26.0f, 85.0f, 1, 0x000F001F, 0xFF, 0, 0, 0 },
+	{ 17, 55.0f, 115.0f, 1, 0x000F001E, 0xFF, 0, 0, 0 },  { 1039, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0 },
+	{ 1039, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0 }, { 13, 49.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0 },
+	{ 13, 95.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0 },   { -1 },
+};
+
+static AnimSfxEvent sToy1FBSounds[4] = {
+	{ 2, 30.0f, 70.0f, 1, 0x0007001F, 0xFF, 0, 0, 0 },
+	{ 2, 110.0f, -1.0f, 1, 0x0007001F, 0xFF, 0, 0, 0 },
+	{ 43, 65.0f, -1.0f, 1, 0x0007001F, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+static AnimSfxEvent sToy317Sounds[8] = {
+	{ 2, 17.0f, 35.0f, 1, 0x0006000B, 0xFF, 0, 0, 0 },   { 4, 115.0f, -1.0f, 1, 0x0006000C, 0xFF, 0, 0, 0 },
+	{ 4, 220.0f, -1.0f, 1, 0x0006000D, 0xFF, 0, 0, 0 },  { 11, 50.0f, -1.0f, 1, 0x0006000E, 0xFF, 0, 0, 0 },
+	{ 5, 55.0f, -1.0f, 1, 0x0006000F, 0xFF, 0, 0, 0 },   { 8, 29.0f, -1.0f, 1, 0x0006000B, 0xFF, 0, 0, 0 },
+	{ 13, 99.0f, 160.0f, 1, 0x00000019, 0xFF, 0, 0, 0 }, { -1 },
+};
+
+static AnimSfxEvent sToy25ESounds[5] = {
+	{ 10, 1.0f, 50.0f, 1, 0x0012001C, 0xFF, 9, 0, 0 },
+	{ 7, 15.0f, -1.0f, 1, 0x00120028, 0xFF, 0, 0, 0 },
+	{ 4, 40.0f, -1.0f, 1, 0x00120029, 0xFF, 0, 0, 0 },
+	{ 5, 30.0f, -1.0f, 1, 0x00120027, 0xFF, 0, 0, 0 },
+	{ -1 },
 };
 
 static inline XObjActorToy* GetToy(s32 index)
@@ -1465,4 +1545,165 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 static inline void HideToyDroppedItem(XObjActorToy* toy)
 {
 	HandleToyKind1FCCommand(toy, 0);
+}
+
+void XObjActorToy::ResetActorState()
+{
+	mActorStatus.mFlags = 0;
+	mKindFlags.mFlags   = 0;
+	mHideKinds.mFlags   = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	mState              = (StateFunc)&XObjActorToy::StateCarry;
+	ResetMovementStep();
+
+	mMoveTranslate.x = PlacementPosition(mCoord).x;
+	mMoveTranslate.y = PlacementPosition(mCoord).y;
+	mMoveTranslate.z = PlacementPosition(mCoord).z;
+	SetPos(mMoveTranslate);
+	for (u32 i = 0; i < 4; ++i) {
+		mPieces[i].mId    = -1;
+		mPieces[i].mState = 0;
+		mPieces[i].mObj   = NULL;
+	}
+	switch (GetKind()) {
+	case 0x6F:
+	case 0x110:
+	case 0x159:
+	case 0x1D3:
+	case 0x1FB:
+	case 0x1FC:
+	case 0x25E:
+	case 0x26C:
+	case 0x26D:
+	case 0x485:
+		break;
+	case 0xF:
+		mKindFlags.mFlags |= 1;
+		break;
+	case 0x117:
+		mKindFlags.mFlags &= ~8;
+		break;
+	case 0x156:
+	case 0x157:
+	case 0x16C:
+		mHeading = PlacementRotation(mCoord).y;
+		break;
+	}
+	mPendingMove.Set(0.0f, 0.0f, 0.0f);
+}
+
+void XObjActorToy::ResetForNewGame()
+{
+	XObjActor::ResetForNewGame();
+	mLoad      = 0;
+	mShownPart = 0;
+	mFirst.ResetForNewGame();
+	mSecond.ResetForNewGame();
+}
+
+void XObjActorToy::ResetObjectState()
+{
+	XObjActor::ResetObjectState();
+	mLoad      = 0;
+	mShownPart = 0;
+	mFirst.ResetObjectState();
+	mSecond.ResetObjectState();
+	_21F8 = -1;
+	_21EC = 0.0f;
+	_21F0 = 0.0f;
+	_21F4 = 0.0f;
+	_21FC = 0;
+	_2200 = NULL;
+	switch (GetKind()) {
+	case 0x6F:
+		mSfx.Init((WiiPlayerState*)this, sToy6FSounds);
+		break;
+	case 0x110:
+		mSfx.Init((WiiPlayerState*)this, sToy110Sounds);
+		break;
+	case 0x117:
+		mSfx.Init((WiiPlayerState*)this, sToy117Sounds);
+		break;
+	case 0x159:
+		mSfx.Init((WiiPlayerState*)this, sToy159Sounds);
+		break;
+	case 0x1FB:
+		mSfx.Init((WiiPlayerState*)this, sToy1FBSounds);
+		break;
+	case 0x1FC:
+		mSfx.Init((WiiPlayerState*)this, sToy1FCSounds);
+		break;
+	case 0x25E:
+		mSfx.Init((WiiPlayerState*)this, sToy25ESounds);
+		break;
+	case 0x317:
+		mSfx.Init((WiiPlayerState*)this, sToy317Sounds);
+		break;
+	case 0x26C:
+	case 0x485:
+		mSfx.Init((WiiPlayerState*)this, sToy26CAnd485Sounds);
+		break;
+	default:
+		mSfx.Init((WiiPlayerState*)this, NULL);
+		break;
+	}
+	_21E0 = 0;
+}
+
+BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
+{
+	if (GetKind() == 0xF) {
+		switch (mLoad) {
+		case 0:
+			if (!XObjActor::LoadFromPlacement(info)) {
+				break;
+			}
+			mLoad++;
+		case 1:
+			if (!mFirst.LoadFromPlacement(CoordInfo(GetSpawnData(0x2C)))) {
+				break;
+			}
+			mFirst.mStatus.mFlags &= ~0x10000ULL;
+			mFirst.SetPos(mMoveTranslate);
+			mLoad++;
+		case 2:
+			if (!mSecond.LoadFromPlacement(CoordInfo(GetSpawnData(0x2D)))) {
+				break;
+			}
+			mSecond.mStatus.mFlags &= ~0x10000ULL;
+			mSecond.SetPos(mMoveTranslate);
+			mLoad++;
+		}
+		if (mLoad > 2) {
+			mLoad = 0;
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return XObjActor::LoadFromPlacement(info) != FALSE;
+}
+
+s32 XObjActorToy::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	if (count < 1) {
+		return 0;
+	}
+	mCmd[0] = command[0];
+	if (count < 2) {
+		mCmd[1] = 0;
+	} else {
+		mCmd[1] = command[1];
+	}
+	mCmd[2] = command[2];
+	mCmd[3] = command[3];
+	mCmd[4] = command[4];
+	mCmd[5] = command[5];
+	mCmd[6] = command[6];
+	mCmd[7] = command[7];
+	mCmd[8] = command[8];
+	mCmd[9] = command[9];
+	return 0;
 }

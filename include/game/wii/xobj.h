@@ -2353,6 +2353,7 @@ public:
 	virtual ~XObjActorToy();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
 	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void ResetActorState();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
@@ -2370,12 +2371,15 @@ public:
 	s32 mShownPart;               // _20D8
 	CVec mPendingMove;            // _20DC
 	XObjActorToyPiece mPieces[4]; // _20EC
-	u8 _21DC[0x21E4 - 0x21DC];
+	u8 _21DC[4];
+	s32 _21E0;
 	CStatus32 mKindFlags; // _21E4
-	u8 _21EC[0x21F0 - 0x21EC];
+	f32 _21EC;
 	f32 _21F0;
 	f32 _21F4;
-	u8 _21F8[0x2204 - 0x21F8];
+	s32 _21F8;
+	s32 _21FC;
+	EffectInstance* _2200;
 	f32 _2204;
 };
 STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
