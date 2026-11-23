@@ -27,6 +27,8 @@ void ApplySpiderPlacement(XObjSpider* spider);
 void ResetSpiderCoinBounces(void* unused);
 void UpdateSpiderCoinBounces(void* unused, u32 frames);
 void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
+void ExecuteSpiderCommand(XObjSpider* spider, u32 frames);
+void UpdateSpiderShot(XObjSpider* spider, u32 frames);
 void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
 void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
 void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim);
@@ -34,6 +36,7 @@ void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
 void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
+u32 GetPlayerActionParameter(s32 index);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 
 extern s32 gRefreshRate;
@@ -65,6 +68,20 @@ static inline void TakeSlot(XObjSpider* spider)
 			spider->mSlot             = i;
 			gSpiderCarrySlotOwners[i] = spider->mPoolIndex;
 			return;
+		}
+	}
+}
+
+static inline void HitCarried(XObjSpider* spider)
+{
+	if (!(spider->mCarry.mFlags.mFlags & 2)) {
+		XObj* model = gSpiderCarryModels[spider->mSlot];
+		if (model != NULL && spider->mCarry.mState == 2) {
+			f32 frame = model->GetAnimFrame();
+			f32 end   = model->GetAnimEndFrame();
+			model->SetAnim(2, TRUE, end - frame, 1.0f, 0.0f, 15.0f);
+			spider->mCarry.mState++;
+			spider->mCarry.mFlags.mFlags |= 2;
 		}
 	}
 }
@@ -590,6 +607,76 @@ s32 XObjSpider::OnPlayerContact(s32 unused, s32 value)
 {
 	mFlags.mFlags |= 1;
 	return value;
+}
+
+/**
+ * @note Address: 0x801221B8
+ * @note Size: 0x5E4
+ */
+// NONMATCHING: retail keeps adjusted player and shot vectors in extra stack temporaries; ours uses f28 and a 0x70 frame
+extern "C" void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames)
+{
+	switch (spider->mHitState) {
+	case 0:
+		if ((spider->mFlags.mFlags & 2) && !(spider->mFlags.mFlags & 0x10)) {
+			StopWiiSfx(&gGame.mSound, 0x197, 0.0f);
+			spider->mFlags.mFlags &= ~2;
+			if (spider->mHitStrength >= (s32)GetPlayerActionParameter(0x1F) / 100.0f) {
+				spider->mHits -= 5;
+				if (spider->mHits <= 0) {
+					spider->mHits = 0;
+				}
+			} else if (--spider->mHits <= 0) {
+				spider->mHits = 0;
+			}
+			if (spider->mHits <= 0) {
+				spider->mSpeed = 0.0f;
+				spider->SetState(3);
+				spider->mFlags.mFlags |= 0x10;
+			} else {
+				spider->mHitState = 1;
+				spider->mHitTimer = 0;
+				spider->mFlags.mFlags |= 0x10;
+			}
+		}
+		break;
+	case 1:
+		if (spider->mCounter % 30 < 15) {
+			spider->SetColor(1, 0x80, 0, 0, 0.0f);
+		} else {
+			spider->SetColor(1, 0, 0, 0, 0.0f);
+		}
+		spider->mHitTimer++;
+		if (spider->mHitTimer > 20) {
+			spider->mFlags.mFlags &= ~0x10;
+			spider->SetColor(1, 0, 0, 0, 0.0f);
+			spider->mHitTimer = 0;
+			spider->mHitState = 0;
+		}
+		break;
+	}
+	Vec chr = *gGame.GetPlayer()->GetPos();
+	if (spider->mWall == 3) {
+		f32 x = chr.x - spider->mShotPosition.x;
+		f32 y = 8.0f + chr.y - spider->mShotPosition.y;
+		f32 z = chr.z - chr.z;
+		if (FSqrt(x * x + y * y + z * z) < 8.0f && (spider->mFlags.mFlags & 0x800)) {
+			gGame.GetPlayer()->OnHitFromPosition(chr, 7.0f);
+			HitCarried(spider);
+		}
+	} else {
+		f32 x    = chr.x - spider->mShotPosition.x;
+		f32 y    = 0.0f;
+		f32 z    = chr.z - spider->mShotPosition.z;
+		f32 chrY = chr.y;
+		if (FSqrt(x * x + y * y + z * z) < 2.0f && (spider->mFlags.mFlags & 0x800)
+		    && nw4r::math::FAbs(chrY - spider->mMoveTranslate.y) < 4.0f) {
+			gGame.GetPlayer()->OnHitFromPosition(chr, 7.0f);
+			HitCarried(spider);
+		}
+	}
+	ExecuteSpiderCommand(spider, frames);
+	UpdateSpiderShot(spider, frames);
 }
 
 /**
