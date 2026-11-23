@@ -131,6 +131,8 @@ u8 gStatusIconUnlocked[24];
 u8 gStatusEntryAvailable[16];
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
+// the status menu's pulse phase at 0x805A1BD4: MenuStatus::Open, Update and the State functions write it, all still in asm
+static f32 sStatusPhase;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
@@ -2073,18 +2075,6 @@ static inline void DrawOverviewTexture(CTexObj& tex, u32 color, f32 x, f32 y, f3
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 y)
-{
-	DrawPlayerStatusValue(0xB5, gGame.GetPlayer()->mParams.mRank, selected == 0, 20.0f + (x - 280.0f), (y - 80.0f) + 8.0f, menu->mAlpha,
-	                      menu->mPulsePhase);
-	DrawPlayerStatusValue(0x9B, gGame.GetPlayer()->mParams.mExperience, selected == 2, 20.0f + (x - 280.0f),
-	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x99, gGame.GetPlayer()->mParams.mMoney, selected == 3, 20.0f + (x - 280.0f),
-	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
-	DrawPlayerStatusValue(0x9A, gGame.GetPlayer()->mParams.mScrap, selected == 4, 20.0f + (x - 280.0f),
-	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
-}
-
 static inline void DrawStatusOverviewEntry(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 y)
 {
 	DrawPlayerStatusIcon(icon, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f, menu->mPulsePhase);
@@ -2107,7 +2097,14 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 x        = (menu->mOverviewX - 42.0f) + menu->mOffsetX;
 		f32 y        = (180.0f + menu->mOverviewY) + menu->mOffsetY;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
-		DrawOverviewStats(menu, selected, x, y);
+		DrawPlayerStatusValue(0xB5, gGame.GetPlayer()->mParams.mRank, selected == 0, 20.0f + (x - 280.0f), (y - 80.0f) + 8.0f, menu->mAlpha,
+		                      menu->mPulsePhase);
+		DrawPlayerStatusValue(0x9B, gGame.GetPlayer()->mParams.mExperience, selected == 2, 20.0f + (x - 280.0f),
+		                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
+		DrawPlayerStatusValue(0x99, gGame.GetPlayer()->mParams.mMoney, selected == 3, 20.0f + (x - 280.0f),
+		                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
+		DrawPlayerStatusValue(0x9A, gGame.GetPlayer()->mParams.mScrap, selected == 4, 20.0f + (x - 280.0f),
+		                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
 		InitPCPanelTexture(tex, 174);
 		f32 width = 0.6f * (1.1f * GXGetTexObjWidth(&tex)), height = 0.6f * GXGetTexObjHeight(&tex);
 		BeginOverviewTexture(tex);
@@ -4118,7 +4115,7 @@ static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
 	gs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
 }
 
-// NONMATCHING: the complete 55-call list matches; the current spelling is 128 bytes smaller and saves GPRs from r15 instead of r20
+// NONMATCHING: the call list matches retail; this build is 156 bytes smaller and register allocation differs
 extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase)
 {
 	if (!(alpha > 0.0f)) {
@@ -4129,9 +4126,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 	CTexObj tex;
 	f32 bob = 0.0f;
 	if (selected) {
-		static u32 frame = 0;
-		++frame;
-		bob = 4.0f * (f32)sin(0.017453292f * (f32)fmod(frame * 20, 360.0));
+		bob = 4.0f * (f32)sin(0.017453292f * (20.0f * (f32)fmod(sStatusPhase, 360.0)));
 	}
 	s32 places = 1;
 	for (;; places++) {
@@ -4169,7 +4164,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 	                   1.2f * markerWidth, 1.2f * markerHeight, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	f32 scale = 0.8f;
-	if (icon == 180) {
+	if (icon == 181) {
 		scale = 0.7f;
 	}
 	InitPCPanelTexture(tex, icon);
@@ -4180,7 +4175,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 	f32 height = scale * GXGetTexObjHeight(&tex);
 	f32 base   = bob + (y - 9.0f);
 	f32 iconY  = base;
-	if (icon == 154) {
+	if (icon == 155) {
 		iconY = 4.0f + base;
 	}
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
@@ -4189,7 +4184,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
 	if (selected) {
-		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 		f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 		if (pulse < 0.0f) {
@@ -4222,19 +4217,19 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		u32 top, bottom;
 		switch (icon) {
-		case 154:
+		case 155:
 			top    = 0xCECEFF00 | a;
 			bottom = 0xE037EE00 | a;
 			break;
-		case 152:
+		case 153:
 			top    = 0xEFEBC500 | a;
 			bottom = 0xEDA83600 | a;
 			break;
-		case 153:
+		case 154:
 			top    = 0xCECEFF00 | a;
 			bottom = 0x5959FF00 | a;
 			break;
-		case 180:
+		case 181:
 			top    = 0xBFDDFB00 | a;
 			bottom = 0x0E72D600 | a;
 			break;
@@ -4424,7 +4419,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	width      = 0.8f * GXGetTexObjWidth(&tex);
 	f32 height = 0.8f * GXGetTexObjHeight(&tex);
 	f32 iconY  = bob + (y - 9.0f);
-	if (icon == 154) {
+	if (icon == 155) {
 		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, 4.0f + iconY, 0.0f, width, height,
 		                   0.0f, 0.0f, 0.0f);
@@ -4492,7 +4487,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f3
 	PSMTXScale(tex.mTexMtx.mMtx[2], width / w, height / h, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	gs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_TRUE);
-	gs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+	gs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
 	gs.mCurTevStage->SetMode(GX_BLEND);
 	u32 overlay = (u32)(16.0f * alpha) | 0xFFFFFF00;
 	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + width / 2.0f, height / 2.0f + y, -11.0f, width, height, 0.0f,
@@ -4502,7 +4497,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f3
 	gs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
 }
 
-// NONMATCHING: the complete 33-call list matches; the current spelling needs 136 more bytes and a different stack/vertex layout
+// NONMATCHING: the call list matches retail; this build is 120 bytes larger and the stack and vertex layout differ
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
@@ -4979,7 +4974,7 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// NONMATCHING: the complete 24-call list matches; a 20-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 16 bytes smaller and register allocation differs
 extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
 {
 	if (alpha > 0.0f) {
@@ -4993,7 +4988,7 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 		}
 		f32 bob = 0.0f;
 		if (selected) {
-			bob = 4.0f * (f32)sin(0.017453292f * (f32)fmod(sInventoryPhase, 360.0));
+			bob = 4.0f * (f32)sin(0.017453292f * (20.0f * (f32)fmod(sStatusPhase, 360.0)));
 		}
 		InitPCPanelTexture(tex, id);
 		width      = scale * GXGetTexObjWidth(&tex);
@@ -5006,7 +5001,7 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
 		if (selected) {
-			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
 			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 			f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 			if (pulse < 0.0f) {
@@ -5020,7 +5015,7 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 	}
 }
 
-static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32 bob, f32& width, f32& height, bool selected)
+static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32& width, f32& height)
 {
 	width  = scale * GXGetTexObjWidth(&tex);
 	width  = 0.8f * width;
@@ -5029,13 +5024,12 @@ static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 2.0f, selected ? bob + (y - 2.0f) : y - 2.0f, 1.0f, width, height,
-	                   0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 2.0f, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
 }
 
-// NONMATCHING: the complete 32-call list matches; a 48-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 32 bytes smaller and register allocation differs
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	if (menu->mMode == 8 || menu->mMode == 4) {
@@ -5055,16 +5049,16 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 				} else {
 					InitPCPanelTexture(tex, gStatusGridTextures[i * 2]);
 				}
-				f32 bob = (f32)sin(0.017453292f * (f32)fmod(sInventoryPhase, 360.0)) * 4.0f;
+				f32 bob = (f32)sin(0.017453292f * (20.0f * (f32)fmod(sStatusPhase, 360.0))) * 4.0f;
 				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 				f32 width, height;
 				if (selected == i) {
-					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, true);
+					DrawStatusGridIcon(tex, color, x, bob + (y - 2.0f), 1.0f, width, height);
 				} else {
-					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, false);
+					DrawStatusGridIcon(tex, color, x, y - 2.0f, 1.0f, width, height);
 				}
 				if (selected == i) {
-					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+					gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
 					gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 					f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
 					f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
