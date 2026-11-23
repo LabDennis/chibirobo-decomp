@@ -1740,6 +1740,88 @@ extern "C" s32 FindNearbyDroppedSpider(XObjSpider* spider)
 }
 
 /**
+ * @note Address: 0x801278E4
+ * @note Size: 0x2F0
+ */
+extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode)
+{
+	if (slot == 255) {
+		carry->mState = 0;
+		carry->mFlags.mFlags &= ~1;
+		return;
+	}
+	if (gSpiderCarryModels[slot] == NULL) {
+		carry->mState = 0;
+		carry->mFlags.mFlags &= ~1;
+		return;
+	}
+	switch (carry->mState) {
+	case 0:
+		break;
+	case 1:
+		gSpiderCarryModels[slot]->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		carry->mState++;
+		break;
+	case 2:
+		if (carry->mObj != NULL) {
+			CVec pos    = carry->mObj->GetJointPos(carry->mObj->FindResNode("cyl1"));
+			carry->mPos = pos;
+		}
+		f32 end = gSpiderCarryModels[slot]->GetAnimEndFrame();
+		if (end - frames <= gSpiderCarryModels[slot]->GetAnimFrame()) {
+			gSpiderCarryModels[slot]->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			carry->mState++;
+		}
+		break;
+	case 3:
+		if (carry->mObj != NULL) {
+			CVec pos    = carry->mObj->GetJointPos(carry->mObj->FindResNode("cyl1"));
+			carry->mPos = pos;
+		}
+		f32 closeEnd = gSpiderCarryModels[slot]->GetAnimEndFrame();
+		if (closeEnd - frames <= gSpiderCarryModels[slot]->GetAnimFrame()) {
+			gSpiderCarryModels[slot]->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			carry->mState = 0;
+			carry->mFlags.mFlags &= ~1;
+			carry->mFlags.mFlags &= ~2;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80127BD4
+ * @note Size: 0x19C
+ */
+extern "C" void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways)
+{
+	if (slot != 255 && (carry->mFlags.mFlags & 1)) {
+		if (gSpiderCarryModels[slot] != NULL) {
+			gSpiderCarryModels[slot]->SetTranslateX(carry->mPos.x);
+			gSpiderCarryModels[slot]->SetTranslateY(carry->mPos.y);
+			gSpiderCarryModels[slot]->SetTranslateZ(carry->mPos.z);
+			if (sideways) {
+				gSpiderCarryModels[slot]->SetRotationX(HALF_PI);
+				gSpiderCarryModels[slot]->SetRotationZ(HALF_PI + carry->mAngle);
+			} else {
+				gSpiderCarryModels[slot]->SetRotationY(carry->mAngle);
+			}
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, gSpiderCarryModels[slot]->mObject.m_pScnMdl);
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->UpdateFrame();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcWorld();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcView();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->GatherDrawScnObj();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->DrawOpa();
+			((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->DrawXlu();
+			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+			while (scene->mPending != 0) {
+				scene->PopPending();
+			}
+		}
+	}
+}
+
+/**
  * @note Address: 0x80127D70
  * @note Size: 0x19C
  */

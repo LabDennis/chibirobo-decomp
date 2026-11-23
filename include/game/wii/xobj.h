@@ -1163,7 +1163,10 @@ public:
 	void UpdateFrame();              // 0x8027AF78
 	void CalcWorld();                // 0x8027B388
 	void CalcView();                 // 0x8027B40C
-	MtxP GetCurrentCamera();         // 0x8027ADC8
+	void GatherDrawScnObj();
+	void DrawOpa();
+	void DrawXlu();
+	MtxP GetCurrentCamera(); // 0x8027ADC8
 };
 
 } // namespace g3d
