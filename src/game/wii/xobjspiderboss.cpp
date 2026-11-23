@@ -49,10 +49,15 @@ BOOL IsCarryingSquirter(XAction* act);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 void fn_8013C7EC(s32 index);
+void fn_8013C6A4(s32 index);
+void fn_8013CF58(void);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 void fn_8013D0C8(void);
 void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
 
 extern s32 gRefreshRate;
+extern CEvtVars gEventVars;
+extern const Vec lbl_802DAF70[];
 extern AnimSfxEvent gSpiderBossAnimSfxEvents[];
 extern u32 gSpiderBossCoinBounceContext;
 extern u8 gSpiderDrainFlashClaimed;
@@ -306,6 +311,198 @@ void XObjSpiderBoss::DrawDebugStatus()
  */
 void XObjSpiderBoss::DrawObjectEffects()
 {
+}
+
+/**
+ * @note Address: 0x80132DD0
+ * @note Size: 0x7CC
+ */
+// NONMATCHING: register allocation/frame layout and the three GetPos evaluation schedules differ
+extern "C" s32 fn_80132DD0(XObjSpiderBoss* spider, s32 count, s32* args)
+{
+	switch (args[0]) {
+	case 100: {
+		s32 id = args[1];
+		if (id == 0) {
+			spider->mSpiderStatus.mFlags &= ~0x20000000;
+			for (u32 i = 0; i < 8; i++) {
+				if (spider->mParts[i].mObj != NULL) {
+					spider->mParts[i].mObj->ClearBaseMtx();
+					spider->mParts[i].mObj = NULL;
+				}
+			}
+		} else {
+			u32 i;
+			for (i = 0; spider->mParts[i].mObj != NULL && i < 8; i++) { }
+			if (i >= 8) {
+				break;
+			}
+			spider->mSpiderStatus.mFlags |= 0x20000000;
+			if (args[1] >= 10000) {
+				spider->mParts[i].mObj = gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL;
+			} else {
+				spider->mParts[i].mObj = gGame.mXObjs.mObjects[(s16)args[1]];
+			}
+			s32 path[8];
+			s32 depth = args[2];
+			for (s32 j = 0; j < depth; j++) {
+				path[j] = args[3 + j];
+			}
+			spider->mParts[i].mJoint = spider->vf284(depth, path);
+			Mtx mtx;
+			PSMTXTrans(mtx, spider->mParts[i].mObj->GetPos()->x, spider->mParts[i].mObj->GetPos()->y, spider->mParts[i].mObj->GetPos()->z);
+			PSMTXConcat(spider->GetWorldMtx(spider->mParts[i].mJoint), mtx, spider->mParts[i].mMtx);
+			spider->mParts[i].mObj->SetBaseMtx(spider->mParts[i].mMtx);
+		}
+		return 0;
+	}
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		spider->mCommand = args[0];
+		if (count < 2) {
+			spider->mArgs[0] = 0;
+		} else {
+			spider->mArgs[0] = args[1];
+		}
+		if (count < 3) {
+			spider->mArgs[1] = 0;
+		} else {
+			spider->mArgs[1] = args[2];
+		}
+		if (count < 4) {
+			spider->mArgs[2] = 0;
+		} else {
+			spider->mArgs[2] = args[3];
+		}
+		if (count < 5) {
+			spider->mArgs[3] = 0;
+		} else {
+			spider->mArgs[3] = args[4];
+		}
+		if (count < 6) {
+			spider->mArgs[4] = 0;
+		} else {
+			spider->mArgs[4] = args[5];
+		}
+		break;
+	}
+	switch (spider->mCommand) {
+	case 1:
+		spider->SetState(2);
+		spider->mSpiderStatus.mFlags &= ~0x02000000;
+		spider->mCommand = 0;
+		break;
+	case 2:
+		if (spider->mSpiderStatus.mFlags & 0x10000) {
+			gGame.mEvt.mSelectResult = 1;
+		} else {
+			gGame.mEvt.mSelectResult = 0;
+		}
+		spider->mCommand = 0;
+		break;
+	case 3:
+		if (spider->mSpiderStatus.mFlags & 0x80000) {
+			gEventVars.mVars[spider->mArgs[0]] = 1;
+		} else {
+			gEventVars.mVars[spider->mArgs[0]] = 0;
+		}
+		spider->mCommand = 0;
+		break;
+	case 4:
+		spider->mSpiderStatus.mFlags |= 0x200000;
+		spider->mCommand = 0;
+		break;
+	case 5:
+		spider->mSpiderStatus.mFlags |= 0x400000;
+		spider->mCommand = 0;
+		break;
+	case 6:
+		spider->mStatus.mFlags |= 0x100000;
+		spider->mCommand = 0;
+		break;
+	case 7:
+		if (spider->mArgs[0] == 1) {
+			spider->mSpiderStatus.mFlags &= ~0x02000000;
+		} else {
+			spider->mSpiderStatus.mFlags |= 0x02000000;
+		}
+		spider->mCommand = 0;
+		spider->mArgs[0] = 0;
+		break;
+	case 8:
+		spider->mCommand = 0;
+		break;
+	case 9:
+		spider->mBasePos.x       = spider->mArgs[0] / 100.0f;
+		spider->mBasePos.y       = spider->mArgs[1] / 100.0f;
+		spider->mBasePos.z       = spider->mArgs[2] / 100.0f;
+		spider->mStartPos        = spider->mBasePos;
+		spider->mMoveTranslate.x = spider->mBasePos.x;
+		spider->mMoveTranslate.y = spider->mBasePos.y;
+		spider->mMoveTranslate.z = spider->mBasePos.z;
+		spider->mMoveTarget0.Set(spider->mMoveTranslate);
+		spider->mCommand = 0;
+		break;
+	case 10:
+		spider->mAreaPos.x = spider->mArgs[0] / 100.0f;
+		spider->mAreaPos.y = spider->mArgs[1] / 100.0f;
+		spider->mAreaPos.z = spider->mArgs[2] / 100.0f;
+		spider->mAreaWidth = spider->mArgs[3] / 100.0f;
+		spider->mAreaDepth = spider->mArgs[4] / 100.0f;
+		spider->mCommand   = 0;
+		break;
+	case 11:
+		spider->mSpeed   = 0.0f;
+		spider->mCommand = 0;
+		break;
+	case 12:
+		spider->mCommand = 0;
+		break;
+	case 16:
+		for (int i = 0; i < 11; ++i) {
+			fn_8013C6A4(i);
+		}
+		fn_8013CF58();
+		spider->mCommand = 0;
+		break;
+	case 17:
+		if (spider->mArgs[0] == 1) {
+			spider->mSpiderStatus.mFlags |= 0x20000;
+			WiiPlayerState* player = gGame.GetPlayer();
+			player->mPlayerFlags   = 0;
+			player->mPlayerFlags |= 0x40000000;
+			player->mPadReset = FALSE;
+			player->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		} else {
+			spider->mSpiderStatus.mFlags &= ~0x20000;
+			WiiPlayerState* player = gGame.GetPlayer();
+			player->mPlayerFlags   = 0;
+			player->mPlayerFlags |= 0x20000000;
+			player->mPlayerFlags |= 7;
+			player->mPadReset = TRUE;
+		}
+		spider->mCommand = 0;
+		break;
+	case 18:
+		if (spider->mArgs[0] == 1) {
+			InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, TRUE, 1);
+		} else {
+			InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, FALSE, 1);
+		}
+		spider->mCommand = 0;
+		break;
+	case 20:
+		fn_8013F41C(4);
+		spider->mCommand = 0;
+		break;
+	case 22:
+		fn_8013E788(2);
+		spider->mCommand = 0;
+		break;
+	}
+	return 0;
 }
 
 /**
@@ -984,6 +1181,161 @@ void XObjSpiderBoss::State3(u32 frames)
 	case 30:
 		if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && gGame.IsRunning() && !gGame.mEvt.mData.mScript)
 			mStep = 0;
+		break;
+	}
+}
+
+static inline void PlayPatrolAnim(XObjSpiderBoss* boss, s32 id)
+{
+	boss->SetAnim(id, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+	boss->mObject.mDefaultTexPat = "sp3_wait3";
+	boss->mObject.mTexPatName    = NULL;
+	boss->mAltAnimId             = id;
+}
+
+static inline void FacePatrolPoint(XObjSpiderBoss* boss, const Vec& target, s32 turningStep, s32 readyStep)
+{
+	boss->mHeading = atan2(target.x - boss->mMoveTranslate.x, target.z - boss->mMoveTranslate.z);
+	f32 delta      = boss->mHeading - boss->mTargetRotY;
+	if (delta < 0) {
+		delta += TWO_PI;
+	}
+	if (delta < PI) {
+		PlayPatrolAnim(boss, 0x1A);
+		boss->mStep = turningStep;
+	} else if (delta > PI) {
+		PlayPatrolAnim(boss, 0x19);
+		boss->mStep = turningStep;
+	} else {
+		PlayPatrolAnim(boss, 0x17);
+		boss->mStep = readyStep;
+	}
+}
+
+static inline void TurnTowardPoint(XObjSpiderBoss* boss, s32 readyStep)
+{
+	f32 diff = boss->mTargetRotY - boss->mHeading;
+	if (diff > PI) {
+		boss->mHeading = TWO_PI + boss->mHeading;
+	} else if (diff < -PI) {
+		boss->mHeading -= TWO_PI;
+	}
+	ApproachHudValue(&boss->mTargetRotY, &boss->mHeading, 0.12f);
+	if (boss->mTargetRotY == boss->mHeading) {
+		PlayPatrolAnim(boss, 0x17);
+		boss->mStep = readyStep;
+	}
+}
+
+static inline void StartPatrolEffect(XObjSpiderBoss* boss)
+{
+	Vec rot                = { 0.0f, boss->mTargetRotY, 0.0f };
+	Vec scale              = lbl_802DAF70[26];
+	EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0xB6, 0);
+	if (effect != NULL) {
+		effect->pos   = boss->mMoveTranslate;
+		effect->rot   = rot;
+		effect->scale = scale;
+		UpdateEffectMtx(effect);
+	}
+	boss->mPatrolEffectActive = 1;
+}
+
+static inline void StopPatrolEffect(XObjSpiderBoss* boss)
+{
+	boss->mPatrolEffectActive = 0;
+	fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0xB6, FALSE);
+}
+
+/**
+ * @note Address: 0x801362AC
+ * @note Size: 0xD18
+ */
+// NONMATCHING: patrol-table/effect temporaries use another register and stack schedule; the CPad vtable referent differs
+void XObjSpiderBoss::State4(u32 frames)
+{
+	CPad pad(0);
+	CVec player = *gGame.GetPlayer()->GetPos();
+	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && mStep != 30) {
+		PlayPatrolAnim(this, 0x17);
+		mSpeed = 0.0f;
+		mStep  = 30;
+	}
+	switch (mStep) {
+	case 0: {
+		mTimer = (rand() % 30 + 30) / frames;
+		mSpeed = 0.0f;
+		PlayPatrolAnim(this, 0x17);
+		mSpiderStatus.mFlags |= 0x1000;
+		Vec candidates[25];
+		Vec* next = candidates;
+		for (s32 i = 0; i < 25; ++i) {
+			if (mPatrolSelection != i) {
+				*next++ = lbl_802DAF70[i + 1];
+			}
+		}
+		s32 pick         = rand() % 24;
+		mPatrolTarget    = candidates[pick];
+		mPatrolSelection = pick;
+		FacePatrolPoint(this, mPatrolTarget, 1, 2);
+		break;
+	}
+	case 1:
+		TurnTowardPoint(this, 2);
+		break;
+	case 2:
+		if (--mTimer < 0) {
+			mSpeed = 1.0f;
+			PlayPatrolAnim(this, 0x18);
+			StartPatrolEffect(this);
+			mTimer = rand() % 30 + 30;
+			++mStep;
+		}
+		break;
+	case 3:
+		if (mAltAnimId == 0x18) {
+			if (!mPatrolEffectActive) {
+				StartPatrolEffect(this);
+			}
+			if (GetAnimEndFrame() - frames <= GetAnimFrame()) {
+				StopPatrolEffect(this);
+			}
+		}
+		mHeading    = atan2(mPatrolTarget.x - mMoveTranslate.x, mPatrolTarget.z - mMoveTranslate.z);
+		mTargetRotY = mHeading;
+		if (SpiderContactDistance(&mPatrolTarget, &mMoveTranslate) < 2.0f) {
+			StopPatrolEffect(this);
+			PlayPatrolAnim(this, 0x17);
+			mSpeed       = 0.0f;
+			mActionTimer = 5;
+			mStep        = 4;
+		}
+		break;
+	case 4:
+		FacePatrolPoint(this, player, 5, 6);
+		break;
+	case 5:
+		TurnTowardPoint(this, 6);
+		break;
+	case 6:
+		if ((s32)--mActionTimer < 0) {
+			mStep = 0;
+		} else {
+			PlayPatrolAnim(this, 0x1B);
+			fn_8013E788(1);
+			PlayWiiSoundEffect(&gGame.mSound, 0x472, 1.0f, 0.0f);
+			++mStep;
+		}
+		break;
+	case 7:
+		if (GetAnimEndFrame() - frames <= GetAnimFrame()) {
+			mStep = 4;
+		}
+		break;
+	case 30:
+		if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && gGame.IsRunning() && !gGame.mEvt.mData.mScript) {
+			mStep = 0;
+		}
 		break;
 	}
 }
