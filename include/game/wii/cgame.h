@@ -913,19 +913,7 @@ public:
 };
 STATIC_ASSERT(sizeof(XAction) == 0x2C);
 
-// hanging from a ledge
-class XActHang : public XAction {
-public:
-	XActHang();
-	~XActHang();
-
-	BOOL mStickAway;      // _2C, set when the stick points away
-	Vec mHangStartOffset; // _30, player position relative to the target
-	Vec mFloorCenter;     // _3C
-	f32 mDistance;        // _48
-	u8 _4C[0x50 - 0x4C];  // _4C
-};
-STATIC_ASSERT(sizeof(XActHang) == 0x50);
+#include "game/xactclasses.h"
 
 // the ring on the floor around him while he tumbles
 class XActTumble : public XAction {
@@ -938,17 +926,6 @@ public:
 	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
-
-class XActCopter : public XAction {
-public:
-	XActCopter();
-	~XActCopter();
-
-	f32 mTime;  // _2C, flight time left, a copter parameter count of hundredths of a second in frames
-	f32 mPhase; // _30, where the propeller bob is in its sine
-	f32 mBob;   // _34, the height the copter joint rides at
-};
-STATIC_ASSERT(sizeof(XActCopter) == 0x38);
 
 class CSound3DActor;
 class XObj;

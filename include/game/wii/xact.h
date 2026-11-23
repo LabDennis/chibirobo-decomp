@@ -46,57 +46,6 @@ public:
 };
 STATIC_ASSERT(sizeof(XActLift) == 0xB0);
 
-class XActJump : public XAction {
-public:
-	XActJump();
-	~XActJump();
-
-	Vec mArcPosition;    // _2C, horizontal position and starting height
-	f32 mRise;           // _38
-	f32 mArcAngle;       // _3C
-	f32 mArcStep;        // _40
-	f32 mForward;        // _44
-	f32 mStrength;       // _48
-	f32 mTargetStrength; // _4C
-	f32 mTargetHeight;   // _50
-};
-STATIC_ASSERT(sizeof(XActJump) == 0x54);
-
-class XActLadder : public XAction {
-public:
-	XActLadder();
-	~XActLadder();
-
-	BOOL mBPressed; // _2C
-	Vec mPos;       // _30, where he hangs, in front of the ladder
-	f32 mDist;      // _3C
-	f32 mAngle;     // _40
-};
-STATIC_ASSERT(sizeof(XActLadder) == 0x44);
-
-class XActRope : public XAction {
-public:
-	XActRope();
-	~XActRope();
-
-	Vec mPos;   // _2C, horizontal approach point
-	f32 mDist;  // _38
-	f32 mAngle; // _3C
-};
-STATIC_ASSERT(sizeof(XActRope) == 0x40);
-
-class XActPush : public XAction {
-public:
-	XActPush();
-	~XActPush();
-
-	u8 _2C[0x34 - 0x2C];       // _2C
-	CVec _34;                  // _34
-	CVec _44;                  // _44
-	BOOL mPushPositionClamped; // _54
-};
-STATIC_ASSERT(sizeof(XActPush) == 0x58);
-
 // the shot's dust pool: like XObjChr::CPtclSet it wraps the pool and its array in a
 // class of its own whose vtable gains a first virtual at _08 (retail RTTI names the
 // kind XBullet::CPtclSet); its vptr sits at _C94, the word behind the last particle
@@ -167,22 +116,5 @@ public:
 	XActPopperCharge mCharge; // _8848
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8884);
-
-// the radar action, the GameCube's XActRadar: the fields the Wii reaches are the
-// GameCube layout's own. WiiPlayerState reserves _95D4 to _96A0 for it
-class XActRadar : public XAction {
-public:
-	XActRadar();
-	~XActRadar();
-
-	XObj* mTarget;         // _2C
-	RadarAimAxis mYaw;     // _30
-	RadarAimAxis mPitch;   // _3C
-	RadarBeamColors mBeam; // _48
-	f32 mFade;             // _B0
-	f32 mAngle[2];         // _B4
-	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
-};
-STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 
 #endif
