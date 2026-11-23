@@ -4,6 +4,7 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/xact.h"
 #include "game/gmath.h"
+#include "game/wii/spiderplacement.h"
 #include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
@@ -20,6 +21,8 @@ STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
 extern "C" {
 void ResetSmallSpiderState(XObjSpiderSmall* spider);
+void ApplySmallSpiderPlacement(XObjSpiderSmall* spider);
+BOOL fn_801298D0(XObjSpiderSmall* spider, const CoordInfo& info);
 void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
 void ResetSpiderCoinBounces(void* unused);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
@@ -159,6 +162,129 @@ extern "C" void ResetSmallSpiderState(XObjSpiderSmall* spider)
 	spider->mWarpsLeft      = 0;
 	spider->mBattleBgmState = 0;
 	spider->_AD0            = 0;
+}
+
+static inline void SetSmallSpiderArea(XObjSpiderSmall* spider, f32 x, f32 y, f32 z, f32 width, f32 depth)
+{
+	spider->mAreaPos.x = x;
+	spider->mAreaPos.y = y;
+	spider->mAreaPos.z = z;
+	spider->mAreaWidth = width;
+	spider->mAreaDepth = depth;
+}
+
+static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
+{
+	spider->mRadius       = 4.0f / 3.0f;
+	spider->mMaxHits      = 3;
+	spider->mHitsLeft     = spider->mMaxHits;
+	spider->mTargetRadius = 96.0f;
+	spider->mTargetPos    = spider->mHome;
+}
+
+/**
+ * @note Address: 0x801291BC
+ * @note Size: 0x714
+ */
+// NONMATCHING: code and registers match; the compiler addresses the stage strings through @stringBase0 instead of lbl_802DAF48
+extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
+{
+	spider->SetColor(1, 0, 0, 0, 0.0f);
+	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord).x;
+	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord).y;
+	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord).z;
+	spider->mHome.x          = PlacementPosition(spider->mCoord).x;
+	spider->mHome.y          = PlacementPosition(spider->mCoord).y;
+	spider->mHome.z          = PlacementPosition(spider->mCoord).z;
+	spider->mWalkHeading     = PlacementRotation(spider->mCoord).y;
+	spider->mRadius          = 16.0f * PlacementScale(spider->mCoord).x;
+	switch (spider->mPlacementParam0) {
+	case 0:
+		spider->SetState(3);
+		SetSmallSpiderTarget(spider);
+		s32 stage = gGame.mStage;
+		if (stage == FindStageIndexByName("stage07")) {
+			SetSmallSpiderArea(spider, -102.85f, 0.0f, -335.27f, 150.0f, 134.0f);
+		} else {
+			stage = gGame.mStage;
+			if (stage == FindStageIndexByName("stage01")) {
+				if (spider->mHome.y > 70.0f) {
+					SetSmallSpiderArea(spider, -306.38f, 75.84f, -33.31f, 80.0f, 100.0f);
+				} else {
+					SetSmallSpiderArea(spider, -150.97f, 0.0f, -100.32f, 150.0f, 134.0f);
+				}
+			} else {
+				stage = gGame.mStage;
+				if (stage == FindStageIndexByName("stage02")) {
+					if (spider->mHome.x > 0.0f) {
+						SetSmallSpiderArea(spider, 25.65f, 0.31f, 2.28f, 166.0f, 197.0f);
+					} else {
+						SetSmallSpiderArea(spider, -184.75f, 0.31f, -219.72f, 138.0f, 171.0f);
+					}
+				} else {
+					SetSmallSpiderArea(spider, 2.97f, 0.0f, 47.15f, 180.0f, 180.0f);
+				}
+			}
+		}
+		spider->TakeWeb();
+		break;
+	case 1:
+		spider->SetState(5);
+		SetSmallSpiderTarget(spider);
+		spider->TakeWeb();
+		break;
+	case 2:
+		spider->SetState(6);
+		SetSmallSpiderTarget(spider);
+		spider->TakeWeb();
+		break;
+	case 3:
+		spider->SetState(8);
+		SetSmallSpiderTarget(spider);
+		spider->TakeWeb();
+		break;
+	default:
+		spider->SetState(0);
+		spider->mSpiderStatus.mFlags |= 0x8000;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x801298D0
+ * @note Size: 0x330
+ */
+extern "C" BOOL fn_801298D0(XObjSpiderSmall* spider, const CoordInfo& info)
+{
+	if (spider->XObj::LoadFromPlacement(info)) {
+		if (spider->mPoolIndex == 0) {
+			for (int i = 0; i < 16; i++) {
+				XObj* obj = gGame.mXObjs.mPools[18].Get(i);
+				((XObjSpiderSmall*)obj)->mSpiderStatus.mFlags |= 0x80000;
+			}
+			if (spider->mTimeMode != gGame.mTimeState.mMode) {
+				for (s32 i = 0; i < 0x27; i++) {
+					for (int j = 0; j < 16; j++) {
+						gSmallSpiderStatusByStage[i].mSpiders[j].mFlags = 0;
+					}
+				}
+			}
+			spider->mTimeMode = gGame.mTimeState.mMode;
+		}
+		spider->mStage = gGame.mStage;
+		ResetSmallSpiderState(spider);
+		ApplySmallSpiderPlacement(spider);
+		spider->mLoadPoolIndex = spider->mPoolIndex;
+		if (gSmallSpiderStatusByStage[spider->mStage].mSpiders[spider->mPoolIndex].mFlags & 0x80000) {
+			spider->SetState(2);
+		}
+		if (spider->mPoolIndex == 0) {
+			spider->FindWebs();
+		}
+		spider->_AF0 = 0.5f * gRefreshRate;
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
@@ -1216,6 +1342,7 @@ void XObjSpiderSmall::FindWebs()
 // NONMATCHING: retail sets a second register to 0 before the loop and to 1 where it takes a web, never
 // reading it; a found flag the compiler did not drop. Here it is dropped
 // takes the first of the webs nobody has
+#pragma dont_inline on
 void XObjSpiderSmall::TakeWeb()
 {
 	for (int i = 0; i < 12; i++) {
@@ -1227,6 +1354,7 @@ void XObjSpiderSmall::TakeWeb()
 		}
 	}
 }
+#pragma dont_inline reset
 
 /**
  * @note Address: 0x801320A4

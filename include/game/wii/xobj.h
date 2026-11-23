@@ -2540,7 +2540,7 @@ public:
 	s32 mAreaGraceTimer;    // _AE4
 	s32 mWarpsLeft;         // _AE8
 	s32 mBattleBgmState;    // _AEC
-	u32 _AF0;               // _AF0
+	s32 _AF0;               // _AF0
 	AnimSfx mAnimSfx;       // _AF4
 };
 STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xB50);
