@@ -196,6 +196,19 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 class EnvInfo;
 
 extern "C" {
+void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerJumpAction(XActJump* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePushActionAnimation(XActPush* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerPopperAction(XActPopper* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdateRadarTargeting(XActRadar* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerLocomotionAnimation(WiiPlayerState* player, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void fn_800DE0CC(WiiPlayerState* player, u32 frames);
+void fn_800C6CF0(XObjScnCamInitRec* record, u32 frames);
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsGlobalDataLoaded(void);
 void ResetPlayerStats(Params* stats);
@@ -254,6 +267,53 @@ u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask);
 Vec GetFloorExtent(XObjFloor* const* floors, s32 index);
 Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index);
 void fn_800DB958(XObjMap* map, XObjMapHit* hit, Vec* out);
+void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second);
+void PlayCopterFlightAnimation(XObjCopter* copter);
+void StartPlayerRadarScan(XObjRadar* radar);
+BOOL IsPopperFireAnimationSelected(XObjPopper* popper);
+u8* GetStageZButtonScript();
+void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight);
+void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight);
+void SuppressMovementDuringJump(XActJump* act, const CPadOne* pad, f32* weight);
+void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight);
+void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight);
+void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight);
+void HandleTumbleActionInput(XActTumble* act, const CPadOne* pad, f32* weight);
+void HandleCopterActionInput(XAction* act, const CPadOne* pad, f32* weight);
+void ApplyPopperMovementWeight(XActPopper* act, const CPadOne* pad, f32* weight);
+void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight);
+void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight);
+void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames);
+void UpdateOXMenuTransition(WiiOXMenu* menu, u32 frames);
+XObj* GetGameObjectByIndex(const CGame* game, s32 index);
+BOOL IsObjectLiftable(const XObj* object);
+BOOL IsObjectClimbableLedge(const XObj* object);
+BOOL IsObjectLadder(const XObj* object);
+BOOL IsObjectRope(const XObj* object);
+BOOL IsObjectPushable(const XObj* object);
+void ReleasePlayerLiftTarget(WiiPlayerState* chr);
+void SetHangActionState(XAction* act, s32 state);
+void SetPlayerActionTarget(XAction* action, XObj* target);
+void SetPlayerActionState(XAction* action, s32 state);
+void SetPushActionState(XAction* act, s32 state);
+void SetPushTargetState(XAction* act, s32 value);
+void SetCopterActionState(XAction* action, s32 state);
+BOOL IsPositionBehindObject(void*, const Vec* pos, XObj* object);
+f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
+f32 WrapPlayerActionAngle(f32 angle);
+void SetObjectVectorTarget(CObjVec* value, const Vec& target);
+BOOL IsLiftActionState(const XAction* act, s32 wanted);
+BOOL IsHangActionState(const XAction* act, s32 wanted);
+BOOL IsJumpActionState(const XAction* action, s32 state);
+BOOL IsLadderActionState(const XAction* action, s32 state);
+BOOL IsRopeActionState(const XAction* action, s32 state);
+BOOL IsPushActionState(const XAction* act, s32 wanted);
+BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+BOOL IsCopterActionState(const XAction* action, s32 state);
+BOOL IsPopperActionState(const XAction* act, s32 wanted);
+BOOL IsRadarActionState(const XAction* act, s32 wanted);
+BOOL fn_800CDDAC(const XObj* object);
+s16 GetObjectCategory(const XObj* object);
 
 // one of his tools is out
 static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
@@ -1577,6 +1637,384 @@ void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result)
 	}
 	chr->mMenu.mAtc.Select(result);
 	chr->mMenu.mDrs.Select(result);
+}
+
+// NONMATCHING: the action state flow and Wii pad masks are present; the pointer-
+// driven ring-selection branches, automatic approach timing and aggregate/register
+// allocation still differ from retail
+f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
+{
+	if (GetMaskedPlayerStatus(player, 0x80000000))
+		return 0;
+	f32 speed          = -1;
+	const CPadOne* pad = &player->mPad;
+	if (gGame.IsRunning() && !IsEventScriptActive(&gGame) && (player->mPlayerFlags & 0x20000000)
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+	    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+	        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+	        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+	        && IsRadarActionState(&player->mRadar, 0))) {
+		if (!gGame.mMenu.mActive) {
+			if ((gWiiPointer.mTrigger & 0x100) && !(pad->mButton & 0x0000000000800000ULL) && (gGame.GetStatusFlags(0x800000000000ULL))
+			    && player->mAttachmentRequest < 0) {
+				if (!(gGame.GetStatusFlags(0x100)))
+					OpenPlayerEquipmentRings(player);
+				else
+					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x0000002000020000ULL)
+			           && !(pad->mButton & 0x0000000000800000ULL) && (!(gGame.GetStatusFlags(0x100)) && player->mAttachmentRequest < 0)) {
+				if (player->mAttachment != 0) {
+					player->mAttachmentRequest = 0;
+					player->mAttachmentStep    = 0;
+				}
+				return 0;
+			}
+		}
+		if (!(gGame.GetStatusFlags(0x400))
+		    && (IsPlayerAttachmentEquipped(player, 0) || IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2)
+		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
+		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
+		        || IsPlayerAttachmentEquipped(player, 8))) {
+			BOOL press = (pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x500)) && player->mAttachmentRequest < 0;
+			s32 mode;
+			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
+				switch (player->mAttachmentActionType) {
+				case 1:
+					mode = 1;
+					break;
+				case 2:
+					mode = 2;
+					break;
+				default:
+					mode = 0;
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 6))
+				mode = 0;
+			else if (IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5) || IsPlayerAttachmentEquipped(player, 7)
+			         || IsPlayerAttachmentEquipped(player, 8))
+				switch (player->mToolActionType) {
+				case 1:
+					mode = 1;
+					break;
+				default:
+					mode = 0;
+				}
+			else
+				mode = 2;
+			{
+				// what A may do this frame: the equipment's mode (0 nothing, 1 put it away first, 2 act) and whether the hands are free
+				struct {
+					s32 mode;
+					BOOL emptyHands;
+				} use          = { 0, 0 };
+				use.mode       = mode;
+				use.emptyHands = IsPlayerAttachmentEquipped(player, 0);
+				if (press && player->mLetickerIndex >= 0) {
+					XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
+					if (object->mStatus.mFlags & 0x10000000000ULL)
+						TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+				} else if (press || (player->mPreviousContactObject >= 0 && player->mPreviousContactObject == player->mHitObjectIndex)
+				           || player->mClimbType) {
+					BOOL handled       = FALSE;
+					player->mClimbType = 0;
+					if (use.emptyHands && player->mFloorContactObjects[2] >= 0
+					    && player->mFloorContactObjects[2] != player->mFloorContactObjects[0]) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+						if (IsObjectLiftable(object)) {
+							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+							    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+								if (IsLiftTargetPlug(&player->mLift))
+									ReleasePlayerLiftTarget(player);
+								player->mLift.mState = 1;
+								SetPlayerActionTarget(&player->mLift, object);
+								player->mLift.mTargetState = 0;
+								handled                    = true;
+							}
+						} else if (object->mStatus.mFlags & 0x10000000000ULL) {
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+							handled = true;
+						}
+					} else if (use.emptyHands && player->mFloorContactObjects[2] >= 0
+					           && player->mFloorContactObjects[2] == player->mFloorContactObjects[0]
+					           && player->mHitObjectIndex == player->mFloorContactObjects[2]) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+						if ((object->mStatus.mFlags & 0x10000000000ULL) && !(object->mStatus.mFlags & 0x100000000000ULL)
+						    && (s16)GetObjectCategory(object) != 8) {
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+							handled = true;
+						}
+					}
+					if (!handled && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+					    && player->mHitObjectIndex >= 0) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+						if (use.emptyHands && IsObjectLiftable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]
+						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+							if (IsLiftTargetPlug(&player->mLift))
+								ReleasePlayerLiftTarget(player);
+							player->mLift.mState = 1;
+							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
+							player->mLift.mTargetState = 0;
+						} else if (use.emptyHands && IsObjectClimbableLedge(object)) {
+							// Only the Japanese release starts a hang or a jump from this height check.
+							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
+							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value.
+							// It also drops it for an empty if/else, an empty inline in either arm and an else-if on the height;
+							// only a body with code keeps retail's beq/b pair (US 0x800B3E68)
+							f32 height = fn_800D1740(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							if (height != 0) {
+								if (height >= 12 && height <= 12.5f) {
+									if (gGame.GetStatusFlags(0x80000000000ULL)) {
+										if (IsLiftTargetPlug(&player->mLift))
+											ReleasePlayerLiftTarget(player);
+										SetHangActionState(&player->mHang, 1);
+										SetPlayerActionTarget(&player->mHang, object);
+									}
+								} else if (gGame.GetStatusFlags(0x80000000000ULL)) {
+									if (height <= 4) {
+										if (IsLiftTargetPlug(&player->mLift))
+											ReleasePlayerLiftTarget(player);
+										SetPlayerActionState(&player->mJump, 8);
+										SetPlayerActionTarget(&player->mJump, object);
+									} else if (height <= 8) {
+										if (IsLiftTargetPlug(&player->mLift))
+											ReleasePlayerLiftTarget(player);
+										SetPlayerActionState(&player->mJump, 11);
+										SetPlayerActionTarget(&player->mJump, object);
+									} else if (height <= 12.5f) {
+										if (IsLiftTargetPlug(&player->mLift))
+											ReleasePlayerLiftTarget(player);
+										SetPlayerActionState(&player->mJump, 14);
+										SetPlayerActionTarget(&player->mJump, object);
+									}
+								}
+							}
+						} else if (IsObjectLadder(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContactObjects[0]) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight
+								           && IsPositionBehindObject(&player->mLadder, player->GetPos(), object))
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 1;
+									if (player->mAttachment != 0) {
+										player->mAttachmentRequest = 0;
+										player->mAttachmentStep    = 0;
+									}
+								} else if (use.mode == 2) {
+									if (IsLiftTargetPlug(&player->mLift))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										player->mLadder.mState = 1;
+									else if (dir < 0)
+										player->mLadder.mState = 2;
+									SetPlayerActionTarget(&player->mLadder, object);
+								}
+								StopPlayerMotion(player);
+							}
+						} else if (IsObjectRope(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContactObjects[0]) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight)
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 2;
+									if (player->mAttachment != 0) {
+										player->mAttachmentRequest = 0;
+										player->mAttachmentStep    = 0;
+									}
+								} else if (use.mode == 2) {
+									if (IsLiftTargetPlug(&player->mLift))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										player->mRope.mState = 1;
+									else if (dir < 0)
+										player->mRope.mState = 2;
+									SetPlayerActionTarget(&player->mRope, object);
+								}
+								StopPlayerMotion(player);
+							}
+						}
+						if (!(gGame.GetStatusFlags(0x80000000000ULL)))
+							if ((IsLiftActionState(&player->mLift, 0)
+							     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+							    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+							        && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+							        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+							        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+							        && IsRadarActionState(&player->mRadar, 0))
+							    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
+								if (IsLiftTargetPlug(&player->mLift))
+									ReleasePlayerLiftTarget(player);
+								StopPlayerMotion(player);
+								SetPushActionState(&player->mPush, 1);
+								SetPlayerActionTarget(&player->mPush, object);
+								SetPushTargetState(&player->mPush, 0);
+							}
+					}
+				}
+			}
+		}
+		if (!IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
+		    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		        && IsRadarActionState(&player->mRadar, 0))) {
+			if (IsPlayerAttachmentEquipped(player, 0)) {
+				if (!(gGame.GetStatusFlags(0x100))) {
+					if (player->mPlug.mConnection && ((pad->mTrigger & 0x0000001000010000ULL) || (pad->mTrigger & 0x0000002000020000ULL))) {
+						if (player->mLiftPlugTarget) {
+							TryStartObjectEvent(&gGame, player->mLiftPlugTarget->GetEventScript(), player->mLiftPlugTarget, -1, -1);
+							StopPlayerMotion(player);
+							speed = 0;
+						}
+					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug.mConnection
+					           && player->mPreviousContactObject < 0 && (pad->mButton & 0x0001000000000010ULL))
+						player->mLiftPlugFlags |= 0x80;
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 1)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100))) {
+					SetCopterActionState(&player->mCopter, 3);
+					player->SetAnim(39, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					PlayCopterFlightAnimation((XObjCopter*)player->mCopterObj);
+					StopPlayerMotion(player);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 2)) {
+				s32 state = 0;
+				if (pad->mTrigger & 0x0000001000010000ULL)
+					state = 7;
+				if (state != 0) {
+					player->mPopper.mState = state;
+					SetObjectVectorTarget((CObjVec*)&player->mMoveRotate, player->mMoveRotate);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 3)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100))) {
+					player->mRadar.mState = 3;
+					StartPlayerRadarScan((XObjRadar*)player->mRadarObj);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingToothbrush(&player->mLift)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 28;
+			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)) && player->mAnimId != 0x8ae
+				    && player->GetAnimId() != 0x155 && player->GetAnimId() != 0x156 && player->GetAnimId() != 0x157)
+					player->mLift.mState = 32;
+			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 34;
+			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingSquirter(&player->mLift)) {
+				if ((pad->mTrigger & 0x0000001000010000ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 38;
+			} else
+				IsPlayerAttachmentEquipped(player, 8);
+		}
+	}
+	if (player->mLiftPlugFlags & 0x80) {
+		BOOL lift = FALSE;
+		if (player->mAPressed)
+			player->mPressTimer += frames;
+		else {
+			player->mPressTimer = 0;
+			player->mAPressed   = (pad->mTrigger & 0x0000001000010000ULL) != 0;
+		}
+		if ((player->mLiftPlugFlags & 2) && player->mPressTimer >= gRefreshRate * ((s32)GetInteractionParameter(3) / 100.f)) {
+			if (player->mAPressed)
+				lift = TRUE;
+		} else if (player->mLiftPlugFlags & 1) {
+			CVec joint = player->mPlug.GetWorldPos("plug_model");
+			f32 angle  = WrapPlayerActionAngle(player->mMoveRotate.y - GetHeadingBetweenPositions(&player->mMoveTranslate, &joint));
+			if ((angle < PI * .5f || angle > PI * 1.5f) && player->mAPressed)
+				lift = TRUE;
+		} else if (!(player->mLiftPlugFlags & 1) && !(player->mLiftPlugFlags & 2))
+			lift = TRUE;
+		if (lift) {
+			player->mLift.mState = 1;
+			SetPlayerActionTarget(&player->mLift, &player->mPlug);
+			player->mLift.mTargetState = 0;
+			player->mPressTimer        = 0;
+		}
+	} else
+		player->mAPressed = player->mPressTimer = 0;
+	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
+	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
+	    && IsPopperFireAnimationSelected((XObjPopper*)player->mPopperObj) && (pad->mTrigger & 0x0000001000010000ULL))
+		player->mPopper.mState = 5;
+	if ((gWiiPointer.mTrigger & 0x40) && !IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
+	    && !(gGame.GetStatusFlags(0x20)) && !(gGame.GetStatusFlags(0x100))
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+	    && (IsHangActionState(&player->mHang, 0) || IsHangActionState(&player->mHang, 5)) && IsJumpActionState(&player->mJump, 0)
+	    && (IsLadderActionState(&player->mLadder, 0) || IsLadderActionState(&player->mLadder, 5))
+	    && (IsRopeActionState(&player->mRope, 0) || IsRopeActionState(&player->mRope, 5))
+	    && (IsPushActionState(&player->mPush, 0) || IsPushActionState(&player->mPush, 2)) && IsTumbleActionState(&player->mTumble, 0)
+	    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0) && IsRadarActionState(&player->mRadar, 0))
+		TryStartObjectEvent(&gGame, GetStageZButtonScript(), NULL, -1, -1);
+	if (player->mPreviousContactObject >= 0) {
+		BOOL clear = FALSE;
+		if (IsEventScriptActive(&gGame) || (gGame.GetStatusFlags(0x400))
+		    || !(IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    || !(IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		         && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		         && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		         && IsRadarActionState(&player->mRadar, 0)))
+			clear = TRUE;
+		else if (player->mHitObjectIndex >= 0 && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
+			// he touches something he does not stand on: both arms clear it
+			if (player->mPreviousContactObject != player->mHitObjectIndex
+			    || player->mLastContactFloorIndex != GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+				clear = TRUE;
+			else if (player->mPreviousContactObject == player->mHitObjectIndex
+			         && player->mLastContactFloorIndex == GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+				clear = TRUE;
+		} else if (player->mHitObjectIndex >= 0 && player->mHitObjectIndex == player->mFloorContactObjects[0]
+		           && player->mPreviousContactObject == player->mHitObjectIndex
+		           && player->mLastContactFloorIndex == GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+			clear = TRUE;
+		if (!clear && PSVECDistance(&player->mMoveTranslate, &player->mAutoActionStart) <= 0.09f && ++player->mAutoActionFrames > 1) {
+			clear = TRUE;
+		}
+		player->mAutoActionStart = player->mMoveTranslate;
+		XObj* object             = GetGameObjectByIndex(&gGame, player->mPreviousContactObject);
+		CVec* position           = object->GetPos();
+		if (!fn_800CDDAC(object) || !(object->mStatus.mFlags & 0x10000) || player->mContactPos.x != position->x
+		    || player->mContactPos.y != position->y || player->mContactPos.z != position->z)
+			clear = TRUE;
+		if (clear) {
+			player->mPreviousContactObject = -1;
+			player->mNearDistance          = 2;
+		}
+	}
+	HandleLiftActionInput((XActLift*)&player->mLift, pad, &speed);
+	HandleHangActionInput(&player->mHang, pad, &speed);
+	SuppressMovementDuringJump((XActJump*)&player->mJump, pad, &speed);
+	HandleLadderActionInput((XActLadder*)&player->mLadder, pad, &speed);
+	HandleRopeActionInput((XActRope*)&player->mRope, pad, &speed);
+	HandlePushActionInput((XActPush*)&player->mPush, pad, &speed);
+	HandleTumbleActionInput((XActTumble*)&player->mTumble, pad, &speed);
+	HandleCopterActionInput((XAction*)&player->mCopter, pad, &speed);
+	ApplyPopperMovementWeight((XActPopper*)&player->mPopper, pad, &speed);
+	ApplyRadarMovementWeight((XActRadar*)&player->mRadar, pad, &speed);
+	UpdatePlayerAttachmentRequest(player, &speed);
+	UpdatePlayerEquipmentRings(&player->mMenu, frames);
+	UpdateOXMenuTransition(&player->mOXMenu, frames);
+	if (-1.f == speed)
+		speed = 1.f;
+	return speed;
 }
 
 // opens the yes/no marks
@@ -3649,6 +4087,72 @@ void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
 		s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
 		chr->mBlinkFrame = -1;
 		chr->mBlinkWait  = wait;
+	}
+}
+
+void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
+{
+	if (!(player->mPlayerFlags & 0x80000000)) {
+		s32 anim  = player->GetAnimId();
+		f32 frame = player->GetAnimFrame();
+		f32 end   = player->GetAnimEndFrame();
+		UpdateLiftActionAnimation((XActLift*)&player->mLift, anim, player, frames, frame, end);
+		UpdatePlayerHangAction(&player->mHang, anim, player, frames, frame, end);
+		UpdatePlayerJumpAction((XActJump*)&player->mJump, anim, player, frames, frame, end);
+		UpdateLadderActionAnimation((XActLadder*)&player->mLadder, anim, player, frames, frame, end);
+		UpdatePlayerRopeAction((XActRope*)&player->mRope, anim, player, frames, frame, end);
+		UpdatePushActionAnimation((XActPush*)&player->mPush, anim, player, frames, frame, end);
+		UpdatePlayerTumbleAnimation(&player->mTumble, anim, player, frames, frame, end);
+		UpdatePlayerCopterFlight(&player->mCopter, anim, player, frames, frame, end);
+		UpdatePlayerPopperAction((XActPopper*)&player->mPopper, anim, player, frames, frame, end);
+		UpdateRadarTargeting((XActRadar*)&player->mRadar, anim, player, frames, frame, end);
+		if (player->mAttachmentRequest < 0 && !gGame.GetStatusFlags(0x400)) {
+			UpdatePlayerLocomotionAnimation(player, anim, NULL, frames, frame, end);
+		}
+		switch (anim) {
+		case 0x5D:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x5E, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			}
+			break;
+		case 0x5F:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->mIdleLoops = 3;
+			}
+			break;
+		case 0x78:
+		case 0x13B:
+		case 0xEF:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->mIdleLoops = 3;
+			}
+			break;
+		}
+	}
+	fn_800DDF2C(player, frames);
+	fn_800DE0CC(player, frames);
+	BOOL skipHeadAim = FALSE;
+	if (player->mHeadAimRecord.mSnap[0] == 0 && player->mHeadAimRecord.mSnap[1] == 0) {
+		skipHeadAim = TRUE;
+	}
+	if (!skipHeadAim) {
+		fn_800C6CF0(&player->mHeadAimRecord, frames);
+	}
+	if (player->mFlashTimer > 0) {
+		if ((player->mFlashTimer -= frames) < 0) {
+			player->mFlashTimer = 0;
+		}
+		player->mFlashCount++;
+		if (player->mFlashTimer > 0) {
+			f32 flash = (f32)player->mFlashTimer / gRefreshRate;
+			player->SetColor(1, 128.0f * flash, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 128.0f * flash, 0, 0, 0, 128.0f * flash, 0, 0, 0, 0.0f);
+		} else {
+			player->SetColor(1, 0, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
+		}
 	}
 }
 
