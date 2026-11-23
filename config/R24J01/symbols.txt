@@ -2525,6 +2525,7 @@ ReceivePlugPower__4XObjFf = .text:0x800B6938; // type:function size:0x8
 SetColor__4XObjFlUcUcUcf = .text:0x800B67F8; // type:function size:0x140
 GetItemIconTextureIndex__7DrsMenuFl = .text:0x800EDCD8; // type:function size:0xAC
 IsItemEquipped__7DrsMenuFl = .text:0x800EDCB0; // type:function size:0x28
+GetPlayerCollisionRadius = .text:0x800E5BFC; // type:function size:0x128
 SetColor__7XObjChrFlUcUcUcf = .text:0x800E5D24; // type:function size:0x20C
 DrawScreenOverlay__8XObjFreeFv = .text:0x80118C68; // type:function size:0x278
 DrawScreenOverlay__8XObjHBoxFv = .text:0x8011701C; // type:function size:0x264
