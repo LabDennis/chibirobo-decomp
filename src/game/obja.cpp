@@ -1435,7 +1435,7 @@ extern "C" CVec GetFloorContactPosition(const XObj* object, s32 index, const Vec
 	case 2: { // a box touches at its underside, half an edge down
 		f32 root = sqrtf(3.0f);
 		f32 edge = 2.0f / root;
-		height   = 0.5f * -edge;
+		height   = -edge / 2.0f;
 		break;
 	}
 	default:
