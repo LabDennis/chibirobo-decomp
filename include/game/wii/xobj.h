@@ -2052,6 +2052,7 @@ public:
 	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
+	virtual void UpdateObject(u32 frames);                             // _164
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
 	virtual void DrawReflection(Mtx view);                             // _17C
 	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera

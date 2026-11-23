@@ -1012,17 +1012,18 @@ class XObj;
 
 // where chibi robo looks and the marker over it, the GameCube's XObjChrLook with the same head
 struct XObjChrLook {
-	BOOL mActive;  // _00
-	s32 mMode;     // _04
-	XObj* mObject; // _08
-	Vec mOffset;   // _0C
-	Vec mTarget;   // _18
-	f32 mFade;     // _24, the marker is shown while it is above 0
-	f32 mPhase;    // _28
-	f32 mPulse;    // _2C
-	BOOL _30;      // _30, set with mActive, cleared on its own
+	BOOL mActive;     // _00
+	s32 mMode;        // _04
+	XObj* mObject;    // _08
+	Vec mOffset;      // _0C
+	Vec mTarget;      // _18
+	f32 mFade;        // _24, the marker is shown while it is above 0
+	f32 mPhase;       // _28
+	f32 mPulse;       // _2C
+	BOOL _30;         // _30, set with mActive, cleared on its own
+	s32 mMarkerCount; // _34, the greatest number of action markers found this frame
 };
-STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
+STATIC_ASSERT(sizeof(XObjChrLook) == 0x38);
 
 // one of the player's positioned sounds; ChangeGameStage stops both
 // the Wii player object: a different, larger class than the GameCube XObjChr, on the Wii XObj. These are the
@@ -1039,15 +1040,17 @@ struct WiiPlayerState : public XObj {
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
-	u8 _0A04[4];     // _0A04
+	f32 mMoveSpeed;  // _0A04, the magnitude of his requested movement
 	f32 mStick[4];
-	s32 m_0A18;                  // _0A18, an object index DrawWithView clears once the object is gone
-	s32 m_0A1C;                  // _0A1C, same
-	s32 mFloorContactObjects[5]; // _0A20, the object under each floor group, -1 for none; [4] the one he stands in front of
-	u8 _0A34[0xA44 - 0xA34];
-	s32 mLastContactFloorIndex; // _0A44, the last floor contact's object index, -1 for none
-	u8 _0A48[0xA58 - 0xA48];
-	f32 mNearDistance; // _0A58, 2.0 while nothing is near
+	s32 mHitObjectIndex;         // _0A18, the closest object under his interaction probe
+	s32 mActionObjectIndex;      // _0A1C, the closest one offering an action
+	s32 mFloorContactObjects[3]; // _0A20, current, previous and event floor contacts, -1 for none
+	XObj* mFloorSupport;         // _0A2C, the object or map supporting him
+	s32 mPreviousContactObject;  // _0A30, the object his automatic approach last used
+	CVec mContactPos;            // _0A34, the automatic approach target's position
+	s32 mLastContactFloorIndex;  // _0A44, the automatic approach target's floor
+	CVec mEdgePos;               // _0A48, the automatic approach target's edge position
+	f32 mNearDistance;           // _0A58, 2.0 while nothing is near
 	u8 _0A5C[0xA6C - 0xA5C];
 	s32 mLetickerIndex;        // _0A6C, the clear leticker's object index, -1 for none
 	s32 _0A70;                 // _0A70, cleared on reset
@@ -1095,29 +1098,29 @@ struct WiiPlayerState : public XObj {
 	XObjScnCamInitRec mEyeAimRecord;  // _9810, a camera aim record fn_800C659C fills; the eye aim
 	XObjScnCamInitRec mHeadAimRecord; // _987C, the head aim; the menus snap it and ExecCallbackB applies it to head_chn
 	XObjChrLook mLook;                // _98E8
-	u8 _991C[0x9920 - 0x991C];
-	s32 mAttachment;        // _9920, the AtcMenu pick
-	s32 mAttachmentRequest; // _9924, -1 when there's none
-	s32 mAttachmentStep;    // _9928, how far the attachment change is
-	s32 mScriptAttach;      // _992C, an attachment the running script asks for
-	s32 mNextClimbType;     // _9930, the climb queued for the next grab
-	s32 mClimbType;         // _9934, the climb he is on
-	u8 _9938[0x998C - 0x9938];
-	CVec mFloorSlope;               // _998C, the GameCube's mFloorSlope
-	Params mParams;                 // _999C
-	f32 mFallDistance;              // _9DE0
-	f32 mCameraTarget[3];           // _9DE4, NANed while the camera keeps no target point
-	f32 mCameraTargetMargin;        // _9DF0
-	f32 mCameraTargetMarginSetting; // _9DF4
-	f32 mHeldMoveAngle;             // _9DF8, the heading the player snaps back to after a look
-	f32 mMoveAngle;                 // _9DFC
-	f32 mHeldStickAngle;            // _9E00, NANed while no stick direction is held
-	s32 mBatteryWarningFrames;      // _9E04
-	f32 mBatteryWarningAngle;       // _9E08
-	f32 mBatteryWarningFade;        // _9E0C
-	XObj* mGaugeTarget;             // _9E10, the object the battery gauge sits over
-	f32 mGaugeTime;                 // _9E14
-	s32 mLoadStep;                  // _9E18, the step of LoadFromPlacement's stage load to resume at
+	s32 mAttachment;                  // _9920, the AtcMenu pick
+	s32 mAttachmentRequest;           // _9924, -1 when there's none
+	s32 mAttachmentStep;              // _9928, how far the attachment change is
+	s32 mScriptAttach;                // _992C, an attachment the running script asks for
+	s32 mNextClimbType;               // _9930, the climb queued for the next grab
+	s32 mClimbType;                   // _9934, the climb he is on
+	Vec mFloorTriangle[3];            // _9938, the map triangle under him
+	CObjVec mSlopeMotion;             // _995C, the downhill drift
+	CVec mFloorSlope;                 // _998C, the GameCube's mFloorSlope
+	Params mParams;                   // _999C
+	f32 mFallDistance;                // _9DE0
+	f32 mCameraTarget[3];             // _9DE4, NANed while the camera keeps no target point
+	f32 mCameraTargetMargin;          // _9DF0
+	f32 mCameraTargetMarginSetting;   // _9DF4
+	f32 mHeldMoveAngle;               // _9DF8, the heading the player snaps back to after a look
+	f32 mMoveAngle;                   // _9DFC
+	f32 mHeldStickAngle;              // _9E00, NANed while no stick direction is held
+	s32 mBatteryWarningFrames;        // _9E04
+	f32 mBatteryWarningAngle;         // _9E08
+	f32 mBatteryWarningFade;          // _9E0C
+	XObj* mGaugeTarget;               // _9E10, the object the battery gauge sits over
+	f32 mGaugeTime;                   // _9E14
+	s32 mLoadStep;                    // _9E18, the step of LoadFromPlacement's stage load to resume at
 	u8 _9E1C[0x9E20 - 0x9E1C];
 	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
 	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
