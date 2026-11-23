@@ -2236,7 +2236,8 @@ public:
 	virtual ~XObjActor3();
 
 private:
-	u8 _9A8[0xC3C - 0x9A8];
+	CTpl mPanelTpl; // _9A8, the stage02 timer and spider counter panels
+	u8 _BA0[0xC3C - 0xBA0];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
 	u8 _1DFC[0x1E28 - 0x1DFC];
