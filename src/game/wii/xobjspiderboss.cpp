@@ -638,7 +638,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 		position.x += (radius + 0.5f) * (f32)sin(heading);
 		position.z += (radius + 0.5f) * (f32)cos(heading);
 		player->SetPos(position);
-		if (gGame.IsRunning() && player->mMoveSpeedScale <= 1.0f) {
+		if (gGame.IsRunning() && player->_1C9B8[2] >= 1.0f) {
 			if (player->GetAttachment() == 2) {
 				player->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (player->mLift.mState == 4 && (IsLiftTargetPlug(&player->mLift) || IsCarryingMug(&player->mLift))) {
@@ -649,7 +649,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 			} else {
 				player->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			}
-			heading = gGame.mMotionControlCamera.mView.mAngle.y + 0.5f * (PI * player->_1C9C4[0]);
+			heading = gGame.mMotionControlCamera.mView.mAngle.y + 2.0f * (PI * player->_1C9C4[0]);
 		} else if (radius < 2.0f)
 			player->SetAnim(0xE6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		else
