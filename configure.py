@@ -1531,6 +1531,9 @@ if wii:
                 Object(NonMatching, "game/wii/xobjspidersmall.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjspiderboss.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/xobjactorstop.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # XObjActor3 RTTI and Kind0..Kind19 identify the GameCube counterpart;
+                # recover the unit in function-sized splits, starting with Kind10.
+                Object(NonMatching, "game/wii/xobjactor3.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),

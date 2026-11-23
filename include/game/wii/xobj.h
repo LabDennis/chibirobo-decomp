@@ -2236,9 +2236,18 @@ public:
 	XObjActor3();
 	virtual ~XObjActor3();
 
-private:
+	void Kind10(u32 frames);
+
 	CTpl mPanelTpl; // _9A8, the stage02 timer and spider counter panels
-	u8 _BA0[0xC3C - 0xBA0];
+	f32 _BA0;
+	f32 mMoveSpeed;
+	f32 mKindTimer;
+	f32 mHeading;
+	s32 mKindStep;
+	u32 _BB4;
+	s32 mFrameCount;
+	CStatus32 mActorFlags;
+	u8 _BC4[0xC3C - 0xBC4];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
 	u8 _1DFC[0x1E28 - 0x1DFC];
