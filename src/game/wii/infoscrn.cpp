@@ -1435,8 +1435,8 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 				x += 20.0f;
 				y += 10.0f;
 			}
-			u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
-			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
 			tex        = gGame.mTpl.mTex;
 			u16 th     = GXGetTexObjHeight(&tex);
@@ -1462,8 +1462,9 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 			tex.mTexMtx.mDirty = TRUE;
 			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
 			tex.mTexMtx.mDirty = TRUE;
-			u32 color2         = (u32)(255.0f * alpha) | 0xFFFFFF00;
-			DrawGsTexturedQuad(&gGame.mGs, &tex, color2, color2, color2, color2, x, y - 4.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, y - 4.0f, 0.0f, w, h, 0.0f, 0.0f,
+			                   0.0f);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		}
 	}
@@ -1487,10 +1488,10 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		f32 sx;
 		f32 sy;
 		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &sx, &sy, NULL, NULL);
-		f32 x     = 6.0f + (w * 0.5f + sx);
-		f32 y     = sy - h * 0.5f - 6.0f;
-		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		f32 x = 6.0f + (w * 0.5f + sx);
+		f32 y = sy - h * 0.5f - 6.0f;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
 		tex        = gGame.mTpl.mTex;
 		u16 th     = GXGetTexObjHeight(&tex);
@@ -1502,8 +1503,8 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		tex.mTexMtx.mDirty = TRUE;
 		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
 		tex.mTexMtx.mDirty = TRUE;
-		u32 color2         = (u32)(255.0f * alpha) | 0xFFFFFF00;
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color2, color2, color2, color2, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	}
 }
