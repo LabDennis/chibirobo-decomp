@@ -4870,9 +4870,8 @@ static inline bool InAnimRange(s32 anim, s32 first, s32 last)
 	return anim >= first && anim <= last;
 }
 
-// NONMATCHING: action costs, battery depletion and warning fades are present;
-// the untyped particle-manager call is unresolved; switch layout, global minimum
-// tracking and register scheduling still differ
+// NONMATCHING: Wii action costs, battery depletion, effect cleanup and warning fades
+// are present; the ordered call set matches; switch layout and register scheduling differ
 void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 {
 	const CPadOne* pad = &p->mPad;
