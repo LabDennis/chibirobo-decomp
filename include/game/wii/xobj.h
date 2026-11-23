@@ -2227,7 +2227,7 @@ class XObjActor3 : public XObj {
 public:
 	class CPtclSet : public DustParticlePool {
 	public:
-		CPtclSet();
+		CPtclSet() { }
 		~CPtclSet();
 		virtual void vf08(); // _08
 	};
