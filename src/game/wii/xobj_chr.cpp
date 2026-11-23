@@ -316,6 +316,12 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply);
 void fn_801105C4(XObjPlug* plug, s32 mode);
 void fn_801107AC(XObjPlug* plug);
 void ResetPopperShot(XActPopperShot* shot);
+void fn_800FCD1C(XAction* act);
+void fn_800FCDF0(XAction* act);
+void fn_800FCE60(XAction* act);
+void ResetPlayerPopperAction(XAction* act);
+void fn_8010C0F4(XAction* act);
+void FinishTumbleAction(XActTumble* act);
 void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
 void DrawRadarTargetBeam(XActRadar* act);
 void DrawPopperShotParticles(XActPopper* act);
@@ -1422,18 +1428,18 @@ s32 GetSelectedFloorIndex(const XObj* object)
 	return object->mSelectedFloorIndex;
 }
 
-// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
-// effects are present; the one-time pose initialization data and several suit/scene
-// steps are unresolved, and aggregate/register allocation still differs
 struct PlayerTurnState {
-	f32 previousHeading;
 	f32 heading;
-	f32 previousChange;
+	f32 previousHeading;
 	f32 change;
+	f32 previousChange;
 	f32 total;
 };
 PlayerTurnState gPlayerTurnState;
 
+// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
+// effects are present; the one-time pose initialization data and several suit/scene
+// steps are unresolved, and aggregate/register allocation still differs
 void XObjChr::UpdateObject(u32 frames)
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
@@ -1476,32 +1482,46 @@ void XObjChr::UpdateObject(u32 frames)
 			if (chr->_1C9B8[2] < 0.0f)
 				chr->_1C9B8[2] = 0.0f;
 		} else {
-			chr->_1C9B8[2] += 0.15f * frames;
+			chr->_1C9B8[2] += 0.07f * frames;
 			if (chr->_1C9B8[2] > 1.0f)
 				chr->_1C9B8[2] = 1.0f;
 		}
-		if (chr->_1C9B8[2] <= 0.0f) {
+		if (chr->_1C9B8[2] > 0.0f) {
+			chr->_1C9C4[0] = fmod(0.125f * chr->_1C9B8[2] + chr->_1C9C4[0], 1.0);
+			chr->mStick[0] = 0.95f * chr->_1C9B8[2];
+			chr->mStick[2] = 2.0f * (PI * chr->_1C9C4[0]);
+		} else {
 			f32 angle      = WrapAngle(chr->mMoveRotate.y - gGame.mMotionControlCamera.mView.mAngle.y);
 			chr->_1C9C4[0] = angle / TWO_PI;
-		} else {
-			chr->mStick[0] = 0.5f * chr->_1C9B8[2];
-			chr->mStick[2] = -HALF_PI * fmodf(0.1f * chr->_1C9B8[2] + chr->_1C9C4[0], TWO_PI);
 		}
-		if (chr->_1C9B8[2] < 1.0f) {
-			chr->_1C9C4[0] = 0.0f;
-		} else {
-			chr->_1C9C4[0] += frames;
-			if (chr->_1C9C4[0] > 3.0f * gRefreshRate && (chr->mPlayerFlags & 0x20000000)) {
-				chr->mTumble.mState = 10;
+		if (chr->_1C9B8[2] >= 1.0f) {
+			if ((chr->_1C9C4[1] += frames) > 3 * gRefreshRate) {
+				chr->_1C9C4[1] = 3 * gRefreshRate;
+				if (chr->mPlayerFlags & 0x20000000)
+					chr->mTumble.mState = 10;
 			}
 			if (!IsWiiSfxPlaying(&gGame.mSound, 0x76))
 				PlayWiiSoundEffect(&gGame.mSound, 0x76, 1.0f, 0.0f);
+		} else {
+			chr->_1C9C4[1] = 0.0f;
 		}
 	} else {
 		chr->_1C9B8[0] = 0.0f;
 		chr->_1C9B8[1] = 0.0f;
 		chr->_1C9B8[2] = 0.0f;
 		chr->_1C9C4[0] = 0.0f;
+		chr->_1C9C4[1] = 0.0f;
+		if (gGame.mStage == 0x16 && (chr->mPlayerFlags & 0x80000000)) {
+			fn_800FCD1C(&chr->mLift);
+			fn_800FCDF0(&chr->mLift);
+			fn_800FCE60(&chr->mLift);
+			if (chr->mPopper.mState)
+				ResetPlayerPopperAction(&chr->mPopper);
+			if (chr->mRadar.mState)
+				fn_8010C0F4(&chr->mRadar);
+			if (chr->mTumble.mState)
+				FinishTumbleAction(&chr->mTumble);
+		}
 	}
 	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && chr->GetAttachment() != 1 && chr->GetAttachment() != 2
 	    && chr->GetAttachment() != 3
@@ -1617,12 +1637,24 @@ void XObjChr::UpdateObject(u32 frames)
 					direction -= TWO_PI;
 				speed *= 0.75f;
 			}
-		} else if (chr->mPopper.mState == 3 || chr->mPopper.mState == 4 || chr->mPopper.mState == 8) {
+		} else if (chr->mPopper.mState == 3 || chr->mPopper.mState == 4) {
 			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
 			while (direction < 0.0f)
 				direction += TWO_PI;
 			while (direction >= TWO_PI)
 				direction -= TWO_PI;
+		} else if (chr->mPopper.mState == 8) {
+			// he stands still while the popper's shot (anim 5) leaves
+			if (((XObjPopper*)chr->mPopperObj)->GetAnimId() == 5 && ((XObjPopper*)chr->mPopperObj)->GetAnimFrame() <= 15.0f) {
+				direction = NAN;
+				speed     = 0;
+			} else {
+				direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
+			}
 		} else if (chr->mRope.mState == 5) {
 			if (pad->mStick.y > 0.1f) {
 				chr->mRope.mMoveDirection = 1;
@@ -1743,10 +1775,10 @@ void XObjChr::UpdateObject(u32 frames)
 	}
 	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN) {
 		CVec& target = chr->mMoveTarget0;
-		if (chr->mMoveTranslate == target) {
+		if (*GetPos() == target) {
 			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
 			chr->mWalkHeading = NAN;
-		} else if (PSVECDistance(&chr->mMoveTranslate, &target) <= 0.000001f) {
+		} else if (PSVECDistance(GetPos(), &target) <= 0.000001f) {
 			SetPos(target);
 			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
 			chr->mWalkHeading = NAN;
@@ -1775,27 +1807,25 @@ void XObjChr::UpdateObject(u32 frames)
 		ProcessPlayerFrameEvents((XObj*)chr->mCopterObj, NULL, gCopterAnimationFrameEvents);
 	}
 	CVec neck          = GetJointWorldPos("neck");
-	chr->mLook.mOffset = (Vec) { 0.0f, neck.y - chr->mMoveTranslate.y + 3.0f * chr->mMoveScale.y, 0.0f };
-	if (chr->mLook.mActive == 0) {
-		if (chr->mLook.mFade < chr->mLook.mPulse) {
-			chr->mLook.mFade -= 1.0f / (0.3f * gRefreshRate) * frames;
-			if (chr->mLook.mFade <= chr->mLook.mPulse)
-				chr->mLook.mFade = chr->mLook.mPulse;
+	chr->mLook.mOffset = (Vec) { 0.0f, neck.y - GetPos()->y + 3.0f * chr->mMoveScale.y, 0.0f };
+	if (chr->mLook.mActive != 0) {
+		if (chr->mLook.mFade < 1.0f) {
+			chr->mLook.mFade += 1.0f / (0.3f * gRefreshRate) * frames;
+			if (chr->mLook.mFade >= 1.0f)
+				chr->mLook.mFade = 1.0f;
+			chr->mLook.mPulse = chr->mLook.mFade;
 		}
-	} else if (chr->mLook.mFade < 1.0f) {
-		chr->mLook.mFade += 1.0f / (0.3f * gRefreshRate) * frames;
-		chr->mLook.mPulse = chr->mLook.mFade;
-		if (chr->mLook.mFade >= 1.0f) {
-			chr->mLook.mPulse = 2.0f;
-			chr->mLook.mFade  = 1.0f;
-		}
+	} else if (chr->mLook.mFade > 0.0f) {
+		chr->mLook.mFade -= 1.0f / (0.3f * gRefreshRate) * frames;
+		if (chr->mLook.mFade <= 0.0f)
+			chr->mLook.mFade = 0.0f;
 	}
-	if (chr->mLook.mFade < chr->mLook.mPulse) {
-		chr->mLook.mPhase = fmodf(6.0f * frames + chr->mLook.mPhase, TWO_PI);
-		if (chr->mLook.mPulse >= 1.0f) {
+	if (chr->mLook.mFade > 0.0f) {
+		chr->mLook.mPhase = fmod(chr->mLook.mPhase + frames * 6, 360.0);
+		if (chr->mLook.mFade >= 1.0f) {
 			chr->mLook.mPulse += 1.0f / (0.3f * gRefreshRate) * frames;
 			if (chr->mLook.mPulse >= 2.0f)
-				chr->mLook.mPulse = fmodf(chr->mLook.mPulse, 2.0f);
+				chr->mLook.mPulse = fmod(chr->mLook.mPulse, 2.0);
 		}
 	}
 	UpdateParticlePool(&chr->mDust.mPtcl, frames);
@@ -1809,7 +1839,7 @@ void XObjChr::UpdateObject(u32 frames)
 		}
 	}
 	UpdateSpiralTrail(&lbl_8045BBD0, frames);
-	if (chr->mPadReset) {
+	if (chr->mPadReset && !(chr->_1C9B8[2] > 0.0f)) {
 		gPlayerTurnState.previousHeading = gPlayerTurnState.heading;
 		gPlayerTurnState.heading         = WrapAngle(chr->mMoveRotate.y);
 		gPlayerTurnState.previousChange  = gPlayerTurnState.change;
@@ -1833,6 +1863,7 @@ void XObjChr::UpdateObject(u32 frames)
 			gPlayerTurnState.total = 0.0f;
 		}
 	}
+	((CObjVec*)&chr->mEyeAim)->Step(frames);
 	if (chr->mCameraTargetMargin < chr->mCameraTargetMarginSetting) {
 		if ((chr->mCameraTargetMargin += 0.01f * frames) > chr->mCameraTargetMarginSetting)
 			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
@@ -1840,8 +1871,13 @@ void XObjChr::UpdateObject(u32 frames)
 		if ((chr->mCameraTargetMargin -= 0.01f * frames) < chr->mCameraTargetMarginSetting)
 			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
 	}
-	((CObjVec*)&chr->mEyeAim)->Step(frames);
 	UpdatePlayerHeadOffset(chr, frames);
+	const Vec* pos       = GetPos();
+	CSound3DActor* actor = mActor.mActor;
+	if (actor != NULL && actor->mHandle.IsAttachedSound()) {
+		actor->SetPosition(nw4r::math::VEC3(*pos));
+		actor->UpdateFade(frames);
+	}
 }
 
 TVec* GetObjectMoveRotation(CObj* object)
