@@ -1344,6 +1344,9 @@ game/wii/xobjactormama.cpp:
 game/wii/xobjactorpapa.cpp:
 	.text start:0x8014D968 end:0x8014EC04
 
+game/wii/xobjactortao.cpp:
+	.text start:0x8014F2EC end:0x80150C2C
+
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
 
