@@ -15,6 +15,7 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
+#include "game/playerturnstate.h"
 #include "game/pointptcl.h"
 #include "game/wii/xact.h"
 #include "game/mapfloorhit.h"
@@ -1423,14 +1424,6 @@ s32 GetSelectedFloorIndex(const XObj* object)
 	return object->mSelectedFloorIndex;
 }
 
-// the same struct as game/xobjchrstate.h's, which pulls in the GameCube xchr.h and cgame.h (sysdolphin) and cannot be included here
-struct PlayerTurnState {
-	f32 heading;
-	f32 previousHeading;
-	f32 change;
-	f32 previousChange;
-	f32 total;
-};
 PlayerTurnState gPlayerTurnState;
 
 // NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
