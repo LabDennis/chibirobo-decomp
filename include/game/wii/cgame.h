@@ -1652,6 +1652,7 @@ public:
 	void State3(u32 frames);
 	void State4(u32 frames);
 	void State5(u32 frames);
+	void State8(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 
@@ -1691,17 +1692,18 @@ public:
 	f32 mOverviewX; // _5FC
 	f32 mOverviewY; // _600
 	u8 _604[0x60C - 0x604];
-	f32 mGridX; // _60C
-	f32 mGridY; // _610
-	u8 _614[0x624 - 0x614];
+	f32 mGridX;       // _60C
+	f32 mGridY;       // _610
+	f32 mTargetGridX; // _614
+	u8 _618[0x624 - 0x618];
 	f32 mTargetDiagramX; // _624
 	u8 _628[0x66C - 0x628];
 	s32 mPhase; // _66C
 	f32 mDelay; // _670
 	u8 _674[0x67C - 0x674];
-	f32 mDetailScale; // _67C
-	u8 _680[0x684 - 0x680];
-	u8 mHasFourthTab; // _684
+	f32 mDetailScale;       // _67C
+	f32 mTargetDetailScale; // _680
+	u8 mHasFourthTab;       // _684
 	u8 _685[0x689 - 0x685];
 	u8 mShowGauge; // _689
 	u8 _68A[0x68C - 0x68A];
@@ -1720,7 +1722,8 @@ public:
 	MenuTitle mTitle;            // _6B8
 	s32 mHelpCount;              // _854
 	MenuHelpChar mHelpChars[20]; // _858
-	u8 _948[0x1938 - 0x948];
+	CbPane mPanes[49];           // _948, tabs, grid cells and detail controls
+	u8 _1898[0x1938 - 0x1898];
 	u8 mHovered; // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
