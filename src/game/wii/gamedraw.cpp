@@ -389,7 +389,7 @@ extern "C" void fn_80028998(CGame* game)
 		}
 	} else if (game->GetStatusFlags(0x0200000000000002ULL) && !game->mMotionControlCamera.IsAction(CAMACTION_SCROLL2)) {
 		mode = 0;
-	} else if (!game->GetStatusFlags(1) || game->mMenu.mActive || game->mEvt.mData.mScript != NULL || game->GetStatusFlags(0x400)
+	} else if (!game->GetStatusFlags(1) || game->mEvt.mData.mScript != NULL || game->mMenu.mActive || game->GetStatusFlags(0x400)
 	           || game->GetStatusFlags(0x800) || (game->mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 		mode = 0;
 	} else if (game->mMotionControlCamera.IsAction(CAMACTION_SCROLL2)) {
