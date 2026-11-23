@@ -17,6 +17,7 @@ extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which
 extern "C" void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // retires the event effect with that id
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
 extern "C" void UpdateObjectFloorHeights(XObj* object);
+extern "C" void SelectHighestActiveFloor(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 extern "C" void fn_8016AA74(const f32* params);
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max);
@@ -174,6 +175,23 @@ static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
 		return false;
 	}
 	return true;
+}
+
+// starts one of the ride's two scripted animations: both objects move, the player
+// is pinned to the lift and its rumble loop swaps over. the GameCube stopped
+// sound 0xB0 and played 0xAE/0xAF; the Wii plays 0x11B/0x11C over a stopped 0x11D
+static inline void StartLetickerRide(XObjLeticker* lift, XObj* part, WiiPlayerState* player, s32 anim, s32 partAnim, s32 sound)
+{
+	lift->SetAnim(anim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	part->mStatus.mFlags |= 0x10000ULL;
+	part->SetAnim(partAnim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	part->SetPos(*lift->GetPos());
+	player->mPlayerFlags = 0;
+	player->mPlayerFlags |= 0x40000000;
+	player->mPadReset = FALSE;
+	StopWiiSfx(&gGame.mSound, 0x11D, 0.0f);
+	PlayWiiSoundEffect(&gGame.mSound, sound, 1.0f, 0.0f);
+	lift->mStep = 10;
 }
 
 /**
@@ -871,11 +889,207 @@ bool IsLetickerJointClearOfObjects(XObj* obj, nw4r::g3d::ResNode node)
 
 } // extern "C"
 
+// NONMATCHING: retail hoists the unit's generated-data base into r30 and reads the three
+// StateLift/StateCount/StateRide PTMF records through it; ours references each record with its
+// own lis/lwzu and saves one GPR less (r27-r31 vs r26-r31). Same source matches on GameCube.
+
 /**
  * @note Address: 0x8011BA00
  * @note Size: 0xB00
- * @note NONMATCHING: HandleEventCommand - the Wii port is not written yet
  */
+s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	switch (args[0]) {
+	case 0:
+		mLinkedCount = 0;
+		mMaxLevel    = args[1];
+		for (s32 i = 0; i < 4; ++i)
+			mLevelBySide[i] = mMaxLevel;
+		for (s32 i = 2; i < count && (u32)mLinkedCount < 2; ++i) {
+			mLinked[mLinkedCount] = args[i];
+			++mLinkedCount;
+		}
+		mStackTopPosition = *GetPos();
+		mSpeedScale       = 1.0f;
+		for (s32 i = 0; i < mLinkedCount; ++i) // claims the parts, the GameCube had no word for it
+			gGame.mXObjs.mObjects[mLinked[i]]->_99C = 1;
+		if (mLinkedCount > 0) {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			switch (part->mCoord.mPlacement->mObjectId) {
+			case 0xEE: {
+				mState = 1;
+				mFunc  = &XObjLeticker::StateLift;
+				if (mMaxLevel > 30)
+					mMaxLevel = 30;
+				mBox[0].mId              = 2;
+				mBox[0].mMaterial        = 0;
+				mBox[0].mFlags           = 3;
+				mBox[0].mCenterOffset[0] = 0;
+				mBox[0].mCenterOffset[1] = 1620;
+				mBox[0].mCenterOffset[2] = 0;
+				mBox[0].mYawDegrees      = 0;
+				mBox[0].mExtent[0]       = 400;
+				mBox[0].mExtent[1]       = 1000;
+				mBox[0].mExtent[2]       = 200; // the base's floor box, 16.2 units up
+				part->GetResNodeOrFirst(1);     // unused, as GetPos in DrawObject: the GameCube hid the joint
+				break;
+			}
+			case 0x114:
+				mState = 2;
+				mFunc  = &XObjLeticker::StateCount;
+				if (mMaxLevel > 10)
+					mMaxLevel = 10;
+				break;
+			case 0x266:
+				mState = 3;
+				mFunc  = NULL;
+				for (s32 i = 0; mFloors[i].mId != -1; ++i)
+					if (mFloors[i].mFlags & 1)
+						mFloorMasks[0] |= 1U << i;
+				SelectHighestActiveFloor(this);
+				break;
+			}
+		}
+		mMaxLevelProgress    = 10.0f * mMaxLevel;
+		mHeight              = 0.0f;
+		mReachedTargetHeight = FALSE;
+		mCameraBounded       = FALSE;
+		mCurrentLevel        = 0;
+		break;
+	case 1: {
+		if (count < 2 || args[1] == 0)
+			mLevelProgress = 0.0f;
+		else
+			mLevelProgress = 10.0f * args[1];
+		if (count < 3 || args[2] == 0)
+			mHeading = 0.0f;
+		else
+			mHeading = DEG2RAD * args[2];
+		bool setHeight;
+		if (count < 4 || args[3] == 0)
+			setHeight = false;
+		else
+			setHeight = true;
+		if (mLinkedCount == 0) {
+			break; // the GameCube reported an uninitialized leticker, the Wii just leaves
+		}
+		switch (mState) {
+		case 1: {
+			XObj* base = gGame.mXObjs.mObjects[mLinked[0]];
+			XObj* top  = gGame.mXObjs.mObjects[mLinked[1]];
+			if (setHeight) {
+				mHeight       = 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f;
+				mCurrentLevel = mHeight / 4.0f;
+			}
+			base->SetRotateY(mHeading + GetRotY(), 0.1f);
+			top->SetRotateY(mHeading + GetRotY(), 0.1f);
+			break;
+		}
+		case 2: {
+			XObj* part    = gGame.mXObjs.mObjects[mLinked[0]];
+			mCurrentLevel = 0;
+			part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			part->SetRotateY(mHeading + GetRotY(), 0.1f);
+			break;
+		}
+		case 3:
+			SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mLevelProgress = 0.0f;
+			mStep          = 0;
+			break;
+		}
+		break;
+	}
+	case 2:
+		// the dust particle flag; the GameCube created the effect here, the Wii
+		// retires it from the powered code paths instead
+		if (args[1]) {
+			mPtcl = TRUE;
+		} else {
+			mPtcl = FALSE;
+		}
+		break;
+	case 3:
+		// script queries: level, facing degrees, at max, powered, speed percent
+		switch (args[1]) {
+		case 0:
+			return (s32)((9.0f + mLevelProgress) / 10.0f);
+		case 1: // GetSide's quarters in degrees
+			if ((f32)cos(0.7853982) <= (f32)cos(mHeading)) {
+				return 0;
+			} else if ((f32)cos(mHeading) <= (f32)cos(3.9269907)) {
+				return 180;
+			} else if (0.0f < (f32)sin(mHeading)) {
+				return 90;
+			} else {
+				return 270;
+			}
+		case 2:
+			if (mLevelProgress < mMaxLevelProgress)
+				return FALSE;
+			return TRUE;
+		case 3:
+			return mPowered;
+		case 4:
+			return (s32)(100.0f * mSpeedScale);
+		}
+		// no break: a query the list doesn't have runs on into the settings
+	case 4:
+		switch (args[1]) {
+		case 0:
+			mSpeedScale = args[2] / 100.0f;
+			break;
+		case 1:
+			for (s32 i = 0; i < 4; ++i)
+				mLevelBySide[i] = args[i + 2];
+			break;
+		case 2:
+			mCameraBounded = TRUE;
+			mCameraMinX    = args[2] / 100.0f;
+			mCameraMaxX    = args[3] / 100.0f;
+			mCameraMinZ    = args[4] / 100.0f;
+			mCameraMaxZ    = args[5] / 100.0f;
+			break;
+		}
+		break;
+	case 5: // the ride's script commands, state 3 only
+		if (mState == 3) {
+			XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+			switch (args[1]) {
+			case 0:
+				mLevelProgress = 0.0f;
+				SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				part->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				player->mPlayerFlags = 0;
+				player->mPlayerFlags |= 0x20000000;
+				player->mPlayerFlags |= 7;
+				player->mPadReset = TRUE;
+				player->SetRotationY(mMoveRotate.y);
+				mStep = 0;
+				break;
+			case 1:
+				StartLetickerRide(this, part, player, 4, 2, 0x11B);
+				break;
+			case 2:
+				StartLetickerRide(this, part, player, 5, 3, 0x11C);
+				break;
+			case 3:
+				if (count <= 2 || args[2]) {
+					player->mLift.mState = 1;
+					player->mLift.SetTarget(&player->mPlug);
+					player->mLift.mTargetState = 0;
+				} else if (player->mLift.mTarget) {
+					player->mLift.mState = 6;
+				}
+				break;
+			}
+			mFunc = &XObjLeticker::StateRide;
+		}
+		break;
+	}
+	return 0;
+}
 
 /**
  * @note Address: 0x8011C500
