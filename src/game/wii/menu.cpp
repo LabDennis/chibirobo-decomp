@@ -68,6 +68,7 @@ void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 s
                          f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void DrawSaveHelpText(MenuSave* menu);
 void DrawSaveDetailText(const char* text, f32 x, f32 y, f32 size, f32 alpha);
+extern "C" void DrawSavePlayTime(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 offsetScale, f32 sy);
 void DrawStatusIconDetails(s32 icon, f32 x, f32 y, f32 alpha, f32 scale);
 void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale);
 void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase);
@@ -2029,35 +2030,26 @@ extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
 	pane->mKind    = layout->mKind;
 }
 
-static CbPaneLayout sItemCellLayouts[8] = {
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 }, { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-};
+extern CbPaneLayout lbl_802E87E8[51]; // the file's pane layout table, built by the static initializer
 
-static CbPaneLayout sItemPageLayouts[2] = {
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },
-};
-
-// NONMATCHING: the cell loop matches apart from data-symbol spelling; the two page panes use a computed layout
-// address here, while retail uses two fixed addresses and immediate pane ids
+// NONMATCHING: retail stores the two page panes' kinds as the constants 8 and 9 while it indexes the panes by i;
+// this build keeps kind in a register
 void MenuItem::Init()
 {
-	MenuItem* menu = this;
-	menu->CMenu::Init();
-	menu->mSelection = 0;
-	int i            = 0;
-	int kind         = 0;
+	CMenu::Init();
+	mSelection = 0;
+	int i      = 0;
+	int kind   = 0;
 	for (; i < 8; i++) {
-		fn_800556B0(&mCells[i], &sItemCellLayouts[i]);
+		fn_800556B0(&mCells[i], &lbl_802E87E8[i + 4]);
 		mCells[i].mKind = kind++;
 	}
-	for (int j = 0; j < 2; j++, i++) {
-		fn_800556B0(&mPanes[i - 8], &sItemPageLayouts[i - 8]);
-		mPanes[i - 8].mKind = kind++;
-	}
+	fn_800556B0(&mPanes[i - 8], &lbl_802E87E8[49]);
+	mPanes[i - 8].mKind = kind++;
+	i++;
+	fn_800556B0(&mPanes[i - 8], &lbl_802E87E8[50]);
+	mPanes[i - 8].mKind = kind++;
+	i++;
 	if (i > 10) {
 		OSPanic("menu_item.cpp", 0x255, "@MenuItem::Init MenuItemが保持できるCbPaneの最大数を超えています！(num = %d)", i);
 	}
@@ -4687,8 +4679,65 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
+// NONMATCHING: the Wii call list, slot fields, text ids and coordinates are reconstructed; with -ipa file this build
+// still inlines all ten DrawSaveDetailText calls and grows to 4404 bytes, while retail calls it out of line in 1936
+extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
+                                    f32 alpha, f32 fileAlpha, f32 sx, f32 sy)
+{
+	fn_8007D734(index, selected, newest, x, y, width, height, alpha, fileAlpha, sx, sy);
+	if (slot->mState == 1) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9F), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA0), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->mUsed) {
+		CTexObj tex;
+		InitPCPanelTexture(tex, 114);
+		f32 offsetY = -24.0f * sy;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 w     = 0.6f * (sx * GXGetTexObjWidth(&tex));
+		f32 h     = 0.6f * (sy * GXGetTexObjHeight(&tex));
+		f32 iconX = ((x - 10.0f * (17.0f * sx)) + 100.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx;
+		f32 iconY = offsetY + ((218.0f * sy + ((y - 5.0f * (17.0f * sy)) - 6.0f * sy)));
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, iconX, iconY, 0.0f, w, h, 0.0f, 0.0f,
+		                   0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		s32 stage       = slot->mStage;
+		char* stageName = GetStageName(stage);
+		if (stageName == NULL) {
+			stageName = GetStageFileName(stage);
+		}
+		if (stage == 14) {
+			stageName = GetStageName(7);
+		}
+		f32 size       = 23.0f * sx;
+		f32 stageWidth = MeasureGameTextWidth(&gGame.mGs, stageName, TRUE, 0.8f * size);
+		f32 stageX     = ((x + 88.0f * sx) - stageWidth * 0.5f) + (gSaveSlotSpacing * 0.5f) * sx - 5.0f * sx;
+		f32 stageY     = offsetY + (210.0f * sy + (4.0f * sy + (y - 5.0f * (17.0f * sy))));
+		DrawSaveDetailText(stageName, stageX, stageY, size, alpha);
+		DrawSavePlayTime(0xB5, slot->mRank, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (y - 64.0f * sy), alpha,
+		                 sx, sy);
+		DrawSavePlayTime(0xF4, slot->mActive ? -1 : (s32)slot->mBattery, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx,
+		                 offsetY + (y - 32.0f * sy), alpha, sx, sy);
+		DrawSavePlayTime(0x9B, slot->mExp, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, y + offsetY, alpha, sx, sy);
+		DrawSavePlayTime(0x99, slot->mMoney, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (32.0f * sy + y), alpha,
+		                 sx, sy);
+		DrawSavePlayTime(0x9A, slot->mScrap, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (64.0f * sy + y), alpha,
+		                 sx, sy);
+		fn_8007ECC4(slot->mTimeMode == 0 ? 157 : 158, slot->mHours, slot->mMinutes, selected,
+		            (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (96.0f * sy + y), alpha, sx, sy);
+	} else if (slot->_44) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x64), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 86.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->_48) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9A), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9B), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->_4C) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA4), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA5), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	}
+}
+
 // NONMATCHING: the call list and size match retail; register allocation differs
-extern "C" void DrawSavePlayTime(s32 icon, s32 value, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
+extern "C" void DrawSavePlayTime(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f)) {
 		return;
@@ -6188,10 +6237,11 @@ static s32 sStatusTabTextIds[5] = { 1, 3, 2, 4, -1 };
 // the emitted function grows to 3624 bytes instead of calling it four times in 712 bytes
 void MenuStatus::State4(u32 frames)
 {
+	CPad pad(0); // unused, retail builds one here
 	switch (mPhase) {
 	case 0:
 		mTargetPanelY = -200.0f;
-		mDelay        = 4.0f * gFrameRateScale;
+		mDelay        = 8.0f * gFrameRateScale;
 		mPhase++;
 		// fall through
 	case 1:
@@ -7423,60 +7473,6 @@ extern "C" void DrawSaveDetailText(const char* text, f32 x, f32 y, f32 size, f32
 	}
 	DrawGsProportionalTextFormat(&gGame.mGs, bottom, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size * 0.8f) * 0.5f,
 	                             (y + zero) - size * 0.8f * 0.5f, 0.0f, size * 0.8f, size * 0.8f);
-}
-
-// NONMATCHING: the Wii call list, slot fields, text ids and coordinates are reconstructed; this build inlines all ten
-// DrawSaveDetailText calls and grows to 4384 bytes, while retail calls it out of line in a 1936-byte function
-extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
-                                    f32 alpha, f32 fileAlpha, f32 sx, f32 sy)
-{
-	fn_8007D734(index, selected, newest, x, y, width, height, alpha, fileAlpha, sx, sy);
-	if (slot->mState == 1) {
-		DrawSaveDetailText(GetLocalizedInterfaceText(0x9F), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
-		DrawSaveDetailText(GetLocalizedInterfaceText(0xA0), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
-	} else if (slot->mUsed) {
-		CTexObj tex;
-		InitPCPanelTexture(tex, 228);
-		f32 offsetY = -24.0f * sy;
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-		f32 w     = 0.6f * (sx * GXGetTexObjWidth(&tex));
-		f32 h     = 0.6f * (sy * GXGetTexObjHeight(&tex));
-		f32 iconX = ((x - 10.0f * (17.0f * sx)) + 100.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx;
-		f32 iconY = offsetY + ((218.0f * sy + ((y - 5.0f * (17.0f * sy)) - 6.0f * sy)));
-		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
-		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, iconX, iconY, 0.0f, w, h, 0.0f, 0.0f,
-		                   0.0f);
-		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-		s32 stage       = slot->mStage;
-		char* stageName = GetStageName(stage);
-		if (stageName == NULL) {
-			stageName = GetStageFileName(stage);
-		}
-		if (stage == 14) {
-			stageName = GetStageName(7);
-		}
-		f32 size       = 23.0f * sx;
-		f32 stageWidth = MeasureGameTextWidth(&gGame.mGs, stageName, TRUE, 0.8f * size);
-		f32 stageX     = ((x + 88.0f * sx) - stageWidth * 0.5f) + (gSaveSlotSpacing * 0.5f) * sx - 5.0f * sx;
-		f32 stageY     = offsetY + (210.0f * sy + (4.0f * sy + (y - 5.0f * (17.0f * sy))));
-		DrawSaveDetailText(stageName, stageX, stageY, size, alpha);
-		DrawSavePlayTime(0xB5, slot->mRank, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (y - 64.0f * sy), alpha, sx, sy);
-		DrawSavePlayTime(0xF4, slot->mActive ? -1 : (s32)slot->mBattery, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx,
-		                 offsetY + (y - 32.0f * sy), alpha, sx, sy);
-		DrawSavePlayTime(0x9B, slot->mExp, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, y + offsetY, alpha, sx, sy);
-		DrawSavePlayTime(0x99, slot->mMoney, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (32.0f * sy + y), alpha, sx, sy);
-		DrawSavePlayTime(0x9A, slot->mScrap, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (64.0f * sy + y), alpha, sx, sy);
-		fn_8007ECC4(slot->mTimeMode == 0 ? 157 : 158, slot->mHours, slot->mMinutes, selected,
-		            (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (96.0f * sy + y), alpha, sx, sy);
-	} else if (slot->_44) {
-		DrawSaveDetailText(GetLocalizedInterfaceText(0x64), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 86.0f * sy, 23.0f * sx, alpha);
-	} else if (slot->_48) {
-		DrawSaveDetailText(GetLocalizedInterfaceText(0x9A), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
-		DrawSaveDetailText(GetLocalizedInterfaceText(0x9B), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
-	} else if (slot->_4C) {
-		DrawSaveDetailText(GetLocalizedInterfaceText(0xA4), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
-		DrawSaveDetailText(GetLocalizedInterfaceText(0xA5), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
-	}
 }
 
 extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
