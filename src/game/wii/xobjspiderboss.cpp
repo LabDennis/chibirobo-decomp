@@ -57,7 +57,6 @@ void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1
 
 extern s32 gRefreshRate;
 extern CEvtVars gEventVars;
-extern const Vec lbl_802DAF70[];
 extern AnimSfxEvent gSpiderBossAnimSfxEvents[];
 extern u32 gSpiderBossCoinBounceContext;
 extern u8 gSpiderDrainFlashClaimed;
@@ -318,41 +317,41 @@ void XObjSpiderBoss::DrawObjectEffects()
  * @note Size: 0x7CC
  */
 // NONMATCHING: register allocation/frame layout and the three GetPos evaluation schedules differ
-extern "C" s32 fn_80132DD0(XObjSpiderBoss* spider, s32 count, s32* args)
+s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
 	case 100: {
 		s32 id = args[1];
 		if (id == 0) {
-			spider->mSpiderStatus.mFlags &= ~0x20000000;
+			mSpiderStatus.mFlags &= ~0x20000000;
 			for (u32 i = 0; i < 8; i++) {
-				if (spider->mParts[i].mObj != NULL) {
-					spider->mParts[i].mObj->ClearBaseMtx();
-					spider->mParts[i].mObj = NULL;
+				if (mParts[i].mObj != NULL) {
+					mParts[i].mObj->ClearBaseMtx();
+					mParts[i].mObj = NULL;
 				}
 			}
 		} else {
 			u32 i;
-			for (i = 0; spider->mParts[i].mObj != NULL && i < 8; i++) { }
+			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { }
 			if (i >= 8) {
 				break;
 			}
-			spider->mSpiderStatus.mFlags |= 0x20000000;
+			mSpiderStatus.mFlags |= 0x20000000;
 			if (args[1] >= 10000) {
-				spider->mParts[i].mObj = gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL;
+				mParts[i].mObj = gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL;
 			} else {
-				spider->mParts[i].mObj = gGame.mXObjs.mObjects[(s16)args[1]];
+				mParts[i].mObj = gGame.mXObjs.mObjects[(s16)args[1]];
 			}
 			s32 path[8];
 			s32 depth = args[2];
 			for (s32 j = 0; j < depth; j++) {
 				path[j] = args[3 + j];
 			}
-			spider->mParts[i].mJoint = spider->vf284(depth, path);
+			mParts[i].mJoint = vf284(depth, path);
 			Mtx mtx;
-			PSMTXTrans(mtx, spider->mParts[i].mObj->GetPos()->x, spider->mParts[i].mObj->GetPos()->y, spider->mParts[i].mObj->GetPos()->z);
-			PSMTXConcat(spider->GetWorldMtx(spider->mParts[i].mJoint), mtx, spider->mParts[i].mMtx);
-			spider->mParts[i].mObj->SetBaseMtx(spider->mParts[i].mMtx);
+			PSMTXTrans(mtx, mParts[i].mObj->GetPos()->x, mParts[i].mObj->GetPos()->y, mParts[i].mObj->GetPos()->z);
+			PSMTXConcat(GetWorldMtx(mParts[i].mJoint), mtx, mParts[i].mMtx);
+			mParts[i].mObj->SetBaseMtx(mParts[i].mMtx);
 		}
 		return 0;
 	}
@@ -360,146 +359,146 @@ extern "C" s32 fn_80132DD0(XObjSpiderBoss* spider, s32 count, s32* args)
 		if (count < 1) {
 			return 0;
 		}
-		spider->mCommand = args[0];
+		mCommand = args[0];
 		if (count < 2) {
-			spider->mArgs[0] = 0;
+			mArgs[0] = 0;
 		} else {
-			spider->mArgs[0] = args[1];
+			mArgs[0] = args[1];
 		}
 		if (count < 3) {
-			spider->mArgs[1] = 0;
+			mArgs[1] = 0;
 		} else {
-			spider->mArgs[1] = args[2];
+			mArgs[1] = args[2];
 		}
 		if (count < 4) {
-			spider->mArgs[2] = 0;
+			mArgs[2] = 0;
 		} else {
-			spider->mArgs[2] = args[3];
+			mArgs[2] = args[3];
 		}
 		if (count < 5) {
-			spider->mArgs[3] = 0;
+			mArgs[3] = 0;
 		} else {
-			spider->mArgs[3] = args[4];
+			mArgs[3] = args[4];
 		}
 		if (count < 6) {
-			spider->mArgs[4] = 0;
+			mArgs[4] = 0;
 		} else {
-			spider->mArgs[4] = args[5];
+			mArgs[4] = args[5];
 		}
 		break;
 	}
-	switch (spider->mCommand) {
+	switch (mCommand) {
 	case 1:
-		spider->SetState(2);
-		spider->mSpiderStatus.mFlags &= ~0x02000000;
-		spider->mCommand = 0;
+		SetState(2);
+		mSpiderStatus.mFlags &= ~0x02000000;
+		mCommand = 0;
 		break;
 	case 2:
-		if (spider->mSpiderStatus.mFlags & 0x10000) {
+		if (mSpiderStatus.mFlags & 0x10000) {
 			gGame.mEvt.mSelectResult = 1;
 		} else {
 			gGame.mEvt.mSelectResult = 0;
 		}
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 3:
-		if (spider->mSpiderStatus.mFlags & 0x80000) {
-			gEventVars.mVars[spider->mArgs[0]] = 1;
+		if (mSpiderStatus.mFlags & 0x80000) {
+			gEventVars.mVars[mArgs[0]] = 1;
 		} else {
-			gEventVars.mVars[spider->mArgs[0]] = 0;
+			gEventVars.mVars[mArgs[0]] = 0;
 		}
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 4:
-		spider->mSpiderStatus.mFlags |= 0x200000;
-		spider->mCommand = 0;
+		mSpiderStatus.mFlags |= 0x200000;
+		mCommand = 0;
 		break;
 	case 5:
-		spider->mSpiderStatus.mFlags |= 0x400000;
-		spider->mCommand = 0;
+		mSpiderStatus.mFlags |= 0x400000;
+		mCommand = 0;
 		break;
 	case 6:
-		spider->mStatus.mFlags |= 0x100000;
-		spider->mCommand = 0;
+		mStatus.mFlags |= 0x100000;
+		mCommand = 0;
 		break;
 	case 7:
-		if (spider->mArgs[0] == 1) {
-			spider->mSpiderStatus.mFlags &= ~0x02000000;
+		if (mArgs[0] == 1) {
+			mSpiderStatus.mFlags &= ~0x02000000;
 		} else {
-			spider->mSpiderStatus.mFlags |= 0x02000000;
+			mSpiderStatus.mFlags |= 0x02000000;
 		}
-		spider->mCommand = 0;
-		spider->mArgs[0] = 0;
+		mCommand = 0;
+		mArgs[0] = 0;
 		break;
 	case 8:
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 9:
-		spider->mBasePos.x       = spider->mArgs[0] / 100.0f;
-		spider->mBasePos.y       = spider->mArgs[1] / 100.0f;
-		spider->mBasePos.z       = spider->mArgs[2] / 100.0f;
-		spider->mStartPos        = spider->mBasePos;
-		spider->mMoveTranslate.x = spider->mBasePos.x;
-		spider->mMoveTranslate.y = spider->mBasePos.y;
-		spider->mMoveTranslate.z = spider->mBasePos.z;
-		spider->mMoveTarget0.Set(spider->mMoveTranslate);
-		spider->mCommand = 0;
+		mBasePos.x       = mArgs[0] / 100.0f;
+		mBasePos.y       = mArgs[1] / 100.0f;
+		mBasePos.z       = mArgs[2] / 100.0f;
+		mStartPos        = mBasePos;
+		mMoveTranslate.x = mBasePos.x;
+		mMoveTranslate.y = mBasePos.y;
+		mMoveTranslate.z = mBasePos.z;
+		mMoveTarget0.Set(mMoveTranslate);
+		mCommand = 0;
 		break;
 	case 10:
-		spider->mAreaPos.x = spider->mArgs[0] / 100.0f;
-		spider->mAreaPos.y = spider->mArgs[1] / 100.0f;
-		spider->mAreaPos.z = spider->mArgs[2] / 100.0f;
-		spider->mAreaWidth = spider->mArgs[3] / 100.0f;
-		spider->mAreaDepth = spider->mArgs[4] / 100.0f;
-		spider->mCommand   = 0;
+		mAreaPos.x = mArgs[0] / 100.0f;
+		mAreaPos.y = mArgs[1] / 100.0f;
+		mAreaPos.z = mArgs[2] / 100.0f;
+		mAreaWidth = mArgs[3];
+		mAreaDepth = mArgs[4];
+		mCommand   = 0;
 		break;
 	case 11:
-		spider->mSpeed   = 0.0f;
-		spider->mCommand = 0;
+		mSpeed   = 0.0f;
+		mCommand = 0;
 		break;
 	case 12:
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 16:
 		for (int i = 0; i < 11; ++i) {
 			fn_8013C6A4(i);
 		}
 		fn_8013CF58();
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 17:
-		if (spider->mArgs[0] == 1) {
-			spider->mSpiderStatus.mFlags |= 0x20000;
+		if (mArgs[0] == 1) {
+			mSpiderStatus.mFlags |= 0x20000;
 			WiiPlayerState* player = gGame.GetPlayer();
 			player->mPlayerFlags   = 0;
 			player->mPlayerFlags |= 0x40000000;
 			player->mPadReset = FALSE;
 			player->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		} else {
-			spider->mSpiderStatus.mFlags &= ~0x20000;
+			mSpiderStatus.mFlags &= ~0x20000;
 			WiiPlayerState* player = gGame.GetPlayer();
 			player->mPlayerFlags   = 0;
 			player->mPlayerFlags |= 0x20000000;
 			player->mPlayerFlags |= 7;
 			player->mPadReset = TRUE;
 		}
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 18:
-		if (spider->mArgs[0] == 1) {
+		if (mArgs[0] == 1) {
 			InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, TRUE, 1);
 		} else {
 			InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, FALSE, 1);
 		}
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 20:
 		fn_8013F41C(4);
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	case 22:
 		fn_8013E788(2);
-		spider->mCommand = 0;
+		mCommand = 0;
 		break;
 	}
 	return 0;
@@ -1227,10 +1226,16 @@ static inline void TurnTowardPoint(XObjSpiderBoss* boss, s32 readyStep)
 	}
 }
 
+static const Vec sSpiderBossPatrolPoints[]
+    = { { 0, 0, 0 },      { 80, 0, 0 },     { 160, 0, 0 },    { -80, 0, 0 },    { -160, 0, 0 },  { 0, 0, 80 },     { 80, 0, 80 },
+	    { 160, 0, 80 },   { -80, 0, 80 },   { -160, 0, 80 },  { 0, 0, 160 },    { 80, 0, 160 },  { 120, 0, 120 },  { -80, 0, 160 },
+	    { -120, 0, 120 }, { 0, 0, -80 },    { 80, 0, -80 },   { 160, 0, -80 },  { -80, 0, -80 }, { -160, 0, -80 }, { 0, 0, -160 },
+	    { 80, 0, -160 },  { 120, 0, -120 }, { -80, 0, -160 }, { -120, 0, -120 } };
+
 static inline void StartPatrolEffect(XObjSpiderBoss* boss)
 {
 	Vec rot                = { 0.0f, boss->mTargetRotY, 0.0f };
-	Vec scale              = lbl_802DAF70[26];
+	Vec scale              = { 1.0f, 1.0f, 1.0f };
 	EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0xB6, 0);
 	if (effect != NULL) {
 		effect->pos   = boss->mMoveTranslate;
@@ -1271,7 +1276,7 @@ void XObjSpiderBoss::State4(u32 frames)
 		Vec* next = candidates;
 		for (s32 i = 0; i < 25; ++i) {
 			if (mPatrolSelection != i) {
-				*next++ = lbl_802DAF70[i + 1];
+				*next++ = sSpiderBossPatrolPoints[i];
 			}
 		}
 		s32 pick         = rand() % 24;

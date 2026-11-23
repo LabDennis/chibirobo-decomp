@@ -816,6 +816,7 @@ ApplySmallSpiderPlacement = .text:0x801291BC; // type:function size:0x714
 ResetSpiderBossState = .text:0x801323D8; // type:function size:0x2AC
 ApplySpiderBossPlacement = .text:0x80132684; // type:function size:0x440
 LoadFromPlacement__14XObjSpiderBossFRC9CoordInfo = .text:0x80132AC4; // type:function size:0x50
+HandleEventCommand__14XObjSpiderBossFlPl = .text:0x80132DD0; // type:function size:0x7CC
 UpdateObject__14XObjSpiderBossFUl = .text:0x80132B54; // type:function size:0x254
 State0__14XObjSpiderBossFUl = .text:0x80134710; // type:function size:0x8C
 Kind4__10XObjActor3FUl = .text:0x801392B4; // type:function size:0xC4
