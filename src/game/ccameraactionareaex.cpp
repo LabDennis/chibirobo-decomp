@@ -41,6 +41,7 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 
 #if defined(VERSION_R24J01)
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos);
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index);
+extern "C" void LoadCameraAreaTables(CCameraActionAreaEx* state);
 #endif
 
 // inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
@@ -232,6 +233,21 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
  * @note Size: 0x10C
  */
 #if defined(VERSION_R24J01)
+extern "C" void LoadCameraAreaTables(CCameraActionAreaEx* state)
+{
+	state->mAreaExRecords = NULL;
+	state->mAreaExCount   = 0;
+	state->mAreaExRecords = GetStageCameraAreaExRecords();
+	state->mAreaExCount   = CountAreaRecords(state->mAreaExRecords);
+	state->mAreaRecords   = NULL;
+	state->mAreaCount     = 0;
+	state->mAreaRecords   = GetStageCameraAreaRecords();
+	state->mAreaCount     = CountAreaRecords(state->mAreaRecords);
+	state->mCameraInfo    = NULL;
+	state->mCameraInfo    = GetStageCameraInfoRecords();
+	BuildCameraAreaGroups(state);
+}
+
 // the Wii build splits it in two: this C++ step (0x80153A84) falls back on the map camera outside every area,
 // the C step below reads the area's action and is not inlined
 s32 GetCameraAreaMode(CCameraActionAreaEx* state)
@@ -575,8 +591,12 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
+// NONMATCHING: MWCC inlines LoadCameraAreaTables into the Wii wrapper; retail keeps the call.
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
+#if defined(VERSION_R24J01)
+	LoadCameraAreaTables(state);
+#else
 	state->mAreaExRecords = NULL;
 	state->mAreaExCount   = 0;
 	state->mAreaExRecords = GetStageCameraAreaExRecords();
@@ -588,6 +608,7 @@ extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 	state->mCameraInfo    = NULL;
 	state->mCameraInfo    = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
+#endif
 	state->mCurrentArea = -1;
 	state->mPrevArea    = -1;
 	state->mActiveArea  = -1;

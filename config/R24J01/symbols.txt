@@ -2668,6 +2668,7 @@ UpdatePlayerBattery = .text:0x800DE8AC; // type:function size:0x116C
 SetPlayerEyeCameraJointsHidden = .text:0x800E7FB0; // type:function size:0x190
 Update__21CCameraActionLetickerFUl = .text:0x80119398; // type:function size:0xABC
 LoadStageCameraAreaState = .text:0x801520EC; // type:function size:0x44
+LoadCameraAreaTables = .text:0x801538F0; // type:function size:0xC8
 SetCameraAreaIndexAndBaseFov = .text:0x80152268; // type:function size:0xBC
 Init__17CCameraActionAreaFv = .text:0x80154320; // type:function size:0x154
 SetCamera__17CCameraActionAreaFP7CCamera = .text:0x80154474; // type:function size:0xDC
