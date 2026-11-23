@@ -900,8 +900,8 @@ BOOL MenuItem::Update(u32 frames)
 					mShowHelp = 1;
 					mHelp     = NULL;
 				}
+				sInventoryPhase = 0.0f;
 			}
-			sInventoryPhase = 0.0f;
 			break;
 		case 2:
 			if (mSelection != -1)
