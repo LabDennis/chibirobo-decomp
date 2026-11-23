@@ -2724,6 +2724,7 @@ EndDraw__6CMovieFv = .text:0x802C2698; // type:function size:0x4
 DrawMenuWindow = .text:0x8004F8F8; // type:function size:0x58C
 DrawInventoryGrid = .text:0x80057F60; // type:function size:0x1CDC
 DrawItemMenuTitle = .text:0x8005AB50; // type:function size:0x68C
+State0__10MenuStatusFUl = .text:0x8005CA18; // type:function size:0x218
 State1__10MenuStatusFUl = .text:0x8005CC30; // type:function size:0x9F8
 State5__10MenuStatusFUl = .text:0x8005ECF0; // type:function size:0x1D4
 State8__10MenuStatusFUl = .text:0x8005EECC; // type:function size:0x6D4

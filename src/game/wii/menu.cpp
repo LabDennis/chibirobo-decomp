@@ -7465,7 +7465,6 @@ BOOL MenuStatus::Update(u32 frames)
 		if ((mPulsePhase += (1.0f / (0.3f * gRefreshRate)) * frames) >= 2.0f) {
 			mPulsePhase = fmod(mPulsePhase, 2.0);
 		}
-		CPad pad(0);
 		PCEase(mOffsetX, mTargetOffsetX);
 		PCEase(mOffsetY, mTargetOffsetY);
 		PCEase(mPanelX, mTargetPanelX);
@@ -7518,43 +7517,6 @@ BOOL MenuStatus::Update(u32 frames)
 	return IsOpen();
 }
 
-extern "C" void fn_8005CA18(MenuStatus* menu)
-{
-	menu->mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
-	menu->mSavedBgmVolume = gGame.mSound.mMusicVolume;
-	CSoundHandle* slot    = NULL;
-	for (s32 i = 0; i < 0x40; i++) {
-		if (!gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
-			slot = &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			break;
-		}
-	}
-	if (slot != NULL && static_cast<nw4r::snd::SoundStartable&>(gGame.mSound.mArchivePlayer).StartSound(slot, 4)) {
-		slot->SetOutputLineFlag(gGame.mSound.mArchivePlayer.mReady);
-		slot->mVolumeTarget = 1.0f;
-		if (gSoundFadeFrames == 0 || slot->mVolumeTarget == slot->mVolume) {
-			slot->mVolume = slot->mVolumeTarget;
-		} else {
-			slot->mVolumeStep = (slot->mVolumeTarget - slot->mVolume) / gSoundFadeFrames;
-		}
-		slot->nw4r::snd::SoundHandle::SetVolume(slot->mVolume, 0);
-		slot->mPitchTarget = 1.0f;
-		if (gSoundFadeFrames == 0 || slot->mPitchTarget == slot->mPitch) {
-			slot->mPitch = slot->mPitchTarget;
-		} else {
-			slot->mPitchStep = (slot->mPitchTarget - slot->mPitch) / gSoundFadeFrames;
-		}
-		slot->nw4r::snd::SoundHandle::SetPitch(slot->mPitch);
-		if (gGame.mSound.mArchivePlayer.mReady & 2) {
-			slot->SetRemoteOutVolume(0, 0.5f);
-		}
-	}
-	menu->mPrevMode = menu->mMode;
-	menu->mMode     = 4;
-	menu->mNextMode = 1;
-	menu->mPhase    = 0;
-}
-
 // NONMATCHING: retail expands StartSound here; this build calls its out-of-line copy.
 void MenuStatus::State0(u32)
 {
@@ -7586,7 +7548,6 @@ static inline const char* StatusTabHelp(s32 selection)
 // the status menu's tabs: pick one and open its page, or close the menu
 void MenuStatus::State1(u32 frames)
 {
-	CPad pad(0);
 	bool addPanes = true;
 	if (mSelection != -1) {
 		mStickSelection = mSelection;
@@ -7628,7 +7589,7 @@ void MenuStatus::State1(u32 frames)
 			mTargetPanelY = -200.0f;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 			mPhase++;
-			mDelay = 4.0f * gFrameRateScale;
+			mDelay = 8.0f * gFrameRateScale;
 			for (int i = 0; i < 20; i++) {
 				mTitle.mChars[i].mHold = 0.0f;
 			}
@@ -7870,7 +7831,6 @@ static inline void ConfirmDiscardQuantity(MenuStatus* menu, bool inventoryTab)
 // 1396 bytes larger. The other call, control flow, field offsets and constants match.
 void MenuStatus::State2(u32)
 {
-	CPad pad(0);
 	bool addPanes         = true;
 	gPointerPanes.mActive = TRUE;
 	if (mItemSelection != -1) {
