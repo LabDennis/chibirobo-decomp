@@ -1540,7 +1540,14 @@ extern "C" void PlaySpiderBossAttachmentAnimation(s32 n)
 
 extern "C" void ResetSpiderBossAttachment(void)
 {
-	PlaySpiderBossAttachmentAnimation(0);
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	for (s32 i = 0; i < 48; ++i) {
+		XObjActor3* obj = (XObjActor3*)pool.Get(i);
+		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
+			PlaySpiderBossAttachmentAnimation(0);
+			return;
+		}
+	}
 }
 
 void XObjActor3::Kind17(u32 frames)
