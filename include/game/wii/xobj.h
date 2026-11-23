@@ -130,8 +130,8 @@ public:
 	virtual ~IScnObjCallback() { } // _08
 	// the library's order: CALC_WORLD, CALC_MAT, CALC_VIEW, DRAW_OPA, DRAW_XLU.
 	// the timing is ScnObj's Timing enum, which needs the library's header
-	virtual void _unk_00C();
-	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info); // _10
+	virtual void ExecCallback_CALC_WORLD(int timing, ScnObj* obj, u32 param, void* info); // _0C
+	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info);   // _10
 	virtual void _unk_014();
 	virtual void _unk_018();
 	virtual void _unk_01C();
@@ -1622,7 +1622,7 @@ public:
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
-	virtual void _unk_00C();                             // _144, IScnObjCallback's
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _144, IScnObjCallback's
 	// the IScnObjCallback override: overriding a second base's virtual adds a slot here
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _148
 
@@ -2376,7 +2376,7 @@ public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
-	virtual void _unk_00C(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
 	virtual void Release();
 	virtual void InitializeObject();
 	virtual void ResetForNewGame();
@@ -2407,8 +2407,8 @@ public:
 	XObj mSecond;                 // _1730
 	s32 mShownPart;               // _20D8
 	CVec mPendingMove;            // _20DC
-	XObjActorToyPiece mPieces[4]; // _20EC
-	u8 _21DC[4];
+	s32 _20EC;                    // _20EC, cleared with mPendingMove
+	XObjActorToyPiece mPieces[4]; // _20F0
 	XObj* _21E0;
 	CStatus32 mKindFlags; // _21E4
 	f32 _21EC;
@@ -2548,7 +2548,7 @@ public:
 	virtual void UpdateObject(u32 frames);
 	virtual Vec GetCameraTarget();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
-	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
 	void ResetActorState();
 	void ProcessPendingEvents(u32 frames);
 	void UpdateAfterAnim(u32 frames);

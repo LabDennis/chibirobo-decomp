@@ -352,7 +352,7 @@ void XObjActorDeca::ExecCallbackC()
 	}
 }
 
-void XObjActorDeca::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
+void XObjActorDeca::ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
 {
 	if (timing == 4) {
 		static const char* nodeNames[] = { "obj8", "obj9", NULL };

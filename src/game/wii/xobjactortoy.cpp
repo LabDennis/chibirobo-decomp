@@ -21,16 +21,14 @@ u16 GetItemFlagsMasked(s16 item, u16 mask);
 void HandleToyKind0FCommand(XObjActorToy* toy, u32 frames);
 void HandleToyKind110Command(XObjActorToy* toy, u32 frames);
 void HandleToyKind156Command(XObjActorToy* toy, u32 frames);
-void HandleToyKind16CCommand(XObjActorToy* toy, u32 frames);
-void HandleToyKind159Command(XObjActorToy* toy, u32 frames);
 void HandleToyKind1FCCommand(XObjActorToy* toy, u32 frames);
+void HandleToyKind25ECommand(XObjActorToy* toy, u32 frames);
+void HideToyDroppedItem(XObjActorToy* toy);
 void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames);
 void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames);
 void UpdateToy25EHeldObjects(XObjActorToy* toy, u32 frames);
 extern s32 gRefreshRate;
 }
-
-static inline void HideToyDroppedItem(XObjActorToy* toy);
 
 static f32 sToyMoveSpeeds[60] = {
 	0.0f,  0.1f,  0.1f,  0.1f,  0.2f,  0.2f,  0.3f,  0.3f,  0.35f, 0.35f, 0.4f,  0.4f,  0.4f,  0.43f, 0.43f,
@@ -153,7 +151,7 @@ void XObjActorToy::Release()
 {
 	mFirst.Release();
 	mSecond.Release();
-	XObj::Release();
+	XObjActor::Release();
 	mLoad      = 0;
 	mShownPart = 0;
 }
@@ -186,10 +184,7 @@ void XObjActorToy::DrawScreenOverlay()
 	}
 }
 
-// NONMATCHING: toy 0x0F's StateHitRecovery pointer needs a Toy-only mState declaration;
-// putting it in the shared XObjActor regresses the other actor constructors. The remaining
-// differences are ResNode/temporary layout. Wii sound ids and the first three-object search
-// come from retail.
+// NONMATCHING: ResNode/temporary layout; the Wii sound ids come from retail.
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -200,10 +195,11 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 0xF:
 			toy->_9D4 = 20.0f;
 			if (!toy->mActorStatus.Check(0x40) && !toy->mKindFlags.Check(2)) {
+				toy->mState = (StateFunc)&XObjActorToy::StateHitRecovery;
 				toy->ResetMovementStep();
 				toy->mActorStatus.mFlags |= 0x40;
-				toy->OnMoveRequest();
 			}
+			toy->OnMoveRequest();
 			break;
 		case 0x6F:
 			if (!toy->mKindStep) {
@@ -228,6 +224,26 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->_9D4 = 3.0f;
 			break;
 		case 0x16C:
+			break;
+		case 0x1FB:
+			if (gGame.mStage != 0x12) {
+				toy->_9D4 = 2.5f;
+			}
+			break;
+		case 0x1FC:
+			if (gGame.mStage != 0x12 && !toy->mKindStep) {
+				toy->mKindStep = 1;
+			}
+			break;
+		case 0x26C:
+		case 0x485:
+			toy->_9CC = 30 * frames;
+			toy->_9D4 = 4.0f;
+			break;
+		case 0x26D:
+			if (!toy->mKindStep) {
+				toy->mKindStep = 1;
+			}
 			break;
 		}
 		if (--toy->_9CC < 0) {
@@ -259,7 +275,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 					actor->mHandle.SetVolume(1.0f, 0);
 				}
 			}
-			if ((toy->mSfxActors[0].GetHandle() == NULL || !(toy->mStatus.mFlags & 0x10000)) && gGame.mMovie.mState != 0
+			if (((toy->mSfxActors[0].GetHandle() != NULL && !(toy->mStatus.mFlags & 0x10000)) || gGame.mMovie.mState != 0)
 			    && toy->mSfxActors[0].mActor != NULL) {
 				toy->mSfxActors[0].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
 			}
@@ -276,12 +292,12 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 					toy->mFirst.SetPos(*toy->GetPos());
 					toy->mFirst.SetRotationY(toy->GetRotY());
 					toy->mFirst.mStatus.mFlags |= 0x10000;
-					toy->mFirst.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mFirst.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 					toy->mShownPart = 1;
 				} else if (anim == 0xE || anim == 0x14 || anim == 0x3F6 || anim == 0x3FC) {
 					toy->mSecond.SetPos(*toy->GetPos());
 					toy->mSecond.SetRotationY(toy->GetRotY());
-					toy->mSecond.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mSecond.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 					toy->mSecond.mStatus.mFlags |= 0x10000;
 					toy->mShownPart = 2;
 				}
@@ -315,14 +331,14 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			case 1:
 				++toy->mKindStep;
 				toy->mMovePhase = 0;
-				toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			// fall through
 			case 2:
 				if (toy->mKindStep == 2) {
 					toy->mMovePhase += 2;
 				}
 				toy->mMoveSpeed = sToyMoveSpeeds[toy->mMovePhase % 60];
-				if (PSVECDistance(&toy->mMoveTranslate, &CVec(toy->mVelocity)) < 0.1f) {
+				if (PSVECDistance(toy->GetPos(), &CVec(toy->mVelocity)) < 0.1f) {
 					toy->mMoveSpeed = 0.0f;
 					toy->mKindStep  = 0;
 					toy->mKindFlags.mFlags &= ~1;
@@ -331,7 +347,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				} else {
 					toy->SetMoveDir(&CVec(toy->mVelocity), toy->mMoveSpeed);
 					CVec destination(toy->mVelocity);
-					toy->SetRotationY((f32)atan2(destination.x - toy->GetPos()->x, destination.z - toy->GetPos()->z));
+					const CVec* pos = toy->GetPos();
+					toy->SetRotationY((f32)atan2(destination.x - pos->x, destination.z - pos->z));
 				}
 				break;
 			}
@@ -364,7 +381,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 					toy->mVelocity.z = 14.0f * (f32)cos(toy->mHeading) + toy->mMoveTranslate.z;
 					++toy->mKindStep;
 					PlayWiiSoundEffect(&gGame.mSound, 0x3D5, 1.0f, 0.0f);
-					for (s32 i = 0; i < 3; ++i) {
+					for (s32 i = 0; i < 15; ++i) {
 						XObjActorToy* other = GetToy(i);
 						if (other->GetKind() == 0x156) {
 							other->mKindFlags.mFlags |= 0x10;
@@ -403,13 +420,13 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			case 0:
 				if (toy->mKindFlags.Check(4)) {
 					toy->mKindFlags.mFlags &= ~4;
-					toy->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					++toy->mKindStep;
 				}
 				break;
 			case 1:
 				if (toy->GetAnimEndFrame() - frames <= toy->GetAnimFrame()) {
-					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
 				}
@@ -417,7 +434,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			case 2:
 				if (toy->mKindFlags.Check(8)) {
 					toy->mKindFlags.mFlags &= ~8;
-					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					toy->mKindStep    = 10;
 					toy->mKindCounter = 0;
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
@@ -436,7 +453,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -454,7 +470,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -473,8 +488,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -493,8 +506,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -517,12 +528,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -544,11 +549,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -566,7 +566,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -584,7 +583,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -602,7 +600,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
 					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
 					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
 					if (effect != NULL) {
@@ -625,12 +622,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				if ((s32)toy->mKindCounter > 4) {
 					++toy->mKindStep;
 					toy->mKindCounter = 0;
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
-					toy->GetResNodeOrFirst(0);
 					toy->mStatus.mFlags &= ~0x10000ULL;
 					return;
 				}
@@ -704,18 +695,50 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			}
 			break;
 		case 0x16C:
-			HandleToyKind16CCommand(toy, frames);
+			switch (toy->mCmd[0]) {
+			case 1:
+				toy->mKindFlags.mFlags |= 8;
+				toy->mCmd[0] = 0;
+				break;
+			case 2:
+				if (toy->mStatus.Check(0x10000)) {
+					gEventVars.mVars[toy->mCmd[1]] = 1;
+				}
+				toy->mCmd[0] = 0;
+				break;
+			}
 			break;
 		case 0x159:
-			HandleToyKind159Command(toy, frames);
+			switch (toy->mCmd[0]) {
+			case 1:
+				toy->mAttachedId = toy->mCmd[1];
+				toy->mState      = (StateFunc)&XObjActorToy::StatePickUp;
+				toy->ResetMovementStep();
+				toy->mCmd[0] = 0;
+				break;
+			case 2:
+				toy->mAttachedId = -1;
+				if (toy->mAttached != NULL) {
+					toy->mAttached->Release();
+				}
+				toy->mCmd[0] = 0;
+				break;
+			}
 			break;
 		case 0x1FC:
-			StartScreenShake(&gGame.mQuake, toy->mCmd[1], toy->mCmd[2], toy->mCmd[3], 0.0f, 0.0f, 0.0f, toy->mCmd[4] / 100.0f);
-			toy->mCmd[0] = 0;
+			HandleToyKind1FCCommand(toy, frames);
 			break;
 		case 0x26C:
 		case 0x485:
+			switch (toy->mCmd[0]) {
+			case 1:
+				StartScreenShake(&gGame.mQuake, toy->mCmd[1], toy->mCmd[2], toy->mCmd[3], 0.0f, 0.0f, 0.0f, toy->mCmd[4] / 100.0f);
+				toy->mCmd[0] = 0;
+				break;
+			}
+			break;
 		case 0x25E:
+			HandleToyKind25ECommand(toy, frames);
 			break;
 		}
 	}
@@ -757,7 +780,7 @@ static f32 sToy1FCTime;
 // NONMATCHING: matrix temporary lifetimes and node-id assertion ordering still differ.
 void XObjActorToy::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	XObjActor::ExecCallbackB(pResult, mdl, pFuncObj);
 	const u16 nodeId = pFuncObj->GetCallbackNodeID();
 	switch (GetKind()) {
 	case 0xF:
@@ -997,13 +1020,13 @@ extern "C" void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames)
 		toy->_21E0 = (XObj*)1;
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.mXObjs.mObjects[i];
-			if ((obj->mStatus.mFlags & 0x100000000ULL) && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
+			if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
 				toy->_21E0 = obj;
 				break;
 			}
 		}
 	} else if (toy->_21E0 != (XObj*)1 && toy->_21E0 != NULL
-	           && (toy->_21E0->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL) {
+	           && (toy->_21E0->mStatus.mFlags & 0x10001) == 0x10001) {
 		Mtx translation, result;
 		Vec position;
 		PSMTXTrans(translation, 0.0f, 5.5f, -5.5f);
@@ -1040,7 +1063,7 @@ extern "C" void UpdateToy25EHeldObjects(XObjActorToy* toy, u32 frames)
 	}
 }
 
-void XObjActorToy::_unk_00C(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
+void XObjActorToy::ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
 {
 	if (timing != 4) {
 		return;
@@ -1129,7 +1152,7 @@ void XObjActorToy::StateCarry(u32 frames)
 		if (mAttachedId >= 0 && mAttached) {
 			nw4r::g3d::ResNode joint = FindResNode("r_hand");
 			Mtx mount, translation, rotation, result;
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', HALF_PI);
 			PSMTXConcat(mount, rotation, result);
@@ -1150,7 +1173,7 @@ void XObjActorToy::StateCarry(u32 frames)
 			position                 = GetJointPos(joint);
 			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
 			Mtx mount, translation, rotation, result;
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', 0.0f);
 			PSMTXConcat(mount, rotation, result);
@@ -1199,7 +1222,7 @@ void XObjActorToy::StateCarry(u32 frames)
 			position                 = GetJointPos(joint);
 			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
 			Mtx mount, translation, rotation, result;
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', 0.0f);
 			PSMTXConcat(mount, rotation, result);
@@ -1224,7 +1247,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		switch (GetKind()) {
 		case 0xF: {
 			nw4r::g3d::ResNode joint = FindResNode("r_hand");
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', HALF_PI);
 			PSMTXConcat(mount, rotation, result);
@@ -1237,7 +1260,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 			nw4r::g3d::ResNode joint = FindResNode("sphere2");
 			Vec pos                  = GetJointPos(joint);
 			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z);
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', 0.0f);
 			PSMTXConcat(mount, rotation, result);
@@ -1250,7 +1273,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 			nw4r::g3d::ResNode joint = FindResNode("obj1_1");
 			Vec pos                  = GetJointPos(joint);
 			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z);
-			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			PSMTXCopy(GetWorldMtx(joint), mount);
 			PSMTXRotRad(rotation, 'z', 0.0f);
 			PSMTXConcat(mount, rotation, result);
@@ -1268,8 +1291,8 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	}
 	switch (mKindStep) {
 	case 0: {
-		Vec& player = gGame.GetPlayer()->mMoveTranslate;
-		mHeading    = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		const Vec* player = gGame.GetPlayer()->GetPos();
+		mHeading          = PI + (f32)atan2(player->x - mMoveTranslate.x, player->z - mMoveTranslate.z);
 		Vec pos     = { 0.0f, 0.0f, 0.0f };
 		pos.x       = mMoveTranslate.x;
 		pos.y       = mMoveTranslate.y;
@@ -1289,6 +1312,10 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		}
 		mKindCounter = 0;
 		++mKindStep;
+		if (GetKind() == 0xF) {
+			_2204 = 0.0f;
+			mStatus.mFlags |= 0x40000;
+		}
 		break;
 	}
 	case 1:
@@ -1340,7 +1367,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 			return;
 		}
 		XObjActorPapa* papa = (XObjActorPapa*)gGame.mXObjs.mPools[13].First();
-		if ((papa->mStatus.mFlags & 1) && !((XObjActorTao*)papa)->IsFree()) {
+		if ((papa->mStatus.mFlags & 1) && !papa->IsFree()) {
 			return;
 		}
 		if (mAttached) {
@@ -1359,7 +1386,8 @@ void XObjActorToy::StatePickUp(u32 frames)
 			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
 				return;
 			}
-			gGame.mStatus.mFlags |= 0x1000;
+			mAttached->mStatus.mFlags |= 0x10000ULL;
+			gGame.SetStatusFlags(0x1000);
 		}
 		++mKindStep;
 	case 2:
@@ -1369,7 +1397,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 			switch (GetKind()) {
 			case 0xF: {
 				nw4r::g3d::ResNode joint = FindResNode("r_hand");
-				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				PSMTXCopy(GetWorldMtx(joint), mount);
 				PSMTXRotRad(rotation, 'z', HALF_PI);
 				PSMTXConcat(mount, rotation, result);
@@ -1382,7 +1410,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 				nw4r::g3d::ResNode joint = FindResNode("sphere2");
 				Vec position             = GetJointPos(joint);
 				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
-				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				PSMTXCopy(GetWorldMtx(joint), mount);
 				PSMTXRotRad(rotation, 'z', 0.0f);
 				PSMTXConcat(mount, rotation, result);
@@ -1415,7 +1443,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 				nw4r::g3d::ResNode joint = FindResNode("obj1_1");
 				Vec position             = GetJointPos(joint);
 				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
-				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				PSMTXCopy(GetWorldMtx(joint), mount);
 				PSMTXRotRad(rotation, 'z', 0.0f);
 				PSMTXConcat(mount, rotation, result);
@@ -1501,7 +1529,7 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 	}
 }
 
-extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
+extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1527,7 +1555,7 @@ extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
 	}
 }
 
-extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
+extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1549,7 +1577,7 @@ extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
 		HideToyDroppedItem(object);
 		switch (object->mCmd[1]) {
 		case 0x341:
-			for (s32 i = 0; i < 200; i++) {
+			for (s32 i = 0; i < 400; i++) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (object->mCmd[1] == obj->GetKind()) {
 					object->mHeldObjects[0] = obj;
@@ -1570,7 +1598,7 @@ extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
 	}
 }
 
-extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
+extern "C" void HideToyDroppedItem(XObjActorToy* object)
 {
 	s32 id = -1;
 	if (object->mHideKinds.Check(1)) {
@@ -1605,7 +1633,7 @@ extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 	case 0x3F:
 	case 0x21D:
 	case 0x21E:
-		for (s32 i = 0; i < 32; i++) {
+		for (s32 i = 0; i < 64; i++) {
 			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 			if (id == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -1613,7 +1641,7 @@ extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 		}
 		break;
 	case 0x341:
-		for (s32 i = 0; i < 200; i++) {
+		for (s32 i = 0; i < 400; i++) {
 			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 			if (id == obj->GetKind()) {
 				obj->mStatus.mFlags &= ~0x10000ULL;
@@ -1650,9 +1678,15 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 {
 	if (toy->mKindFlags.Check(1)) {
 		if (toy->_21F0 == 0.0f) {
-			if (toy->_21F8 >= 0 && toy->IsAnimDone()) {
-				toy->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-				toy->_21F8 = -1;
+			if (toy->_21F8 >= 0) {
+				if (toy->IsAnimDone()) {
+					toy->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					toy->_21F8 = -1;
+				}
+			} else {
+				const Vec* player = gGame.GetPlayer()->GetPos();
+				toy->mFacing      = (f32)atan2(player->x - toy->mMoveTranslate.x, player->z - toy->mMoveTranslate.z);
+				toy->SetRotateY(toy->mFacing, DEG2RAD * 6.0f);
 			}
 		} else {
 			if (toy->_21F0 > 0.0f) {
@@ -1693,8 +1727,8 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 				}
 			}
 		}
-		Vec& player  = gGame.GetPlayer()->mMoveTranslate;
-		toy->mFacing = (f32)atan2(player.x - toy->mMoveTranslate.x, player.z - toy->mMoveTranslate.z);
+		const Vec* player = gGame.GetPlayer()->GetPos();
+		toy->mFacing      = (f32)atan2(player->x - toy->mMoveTranslate.x, player->z - toy->mMoveTranslate.z);
 		toy->SetRotateY(toy->mFacing, DEG2RAD * 6.0f);
 	} else if (toy->_21F0 > 0.0f) {
 		toy->_21F0 = 0.0f;
@@ -1806,7 +1840,8 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 				if (piece.mObj->mStatus.mFlags & 0x0040000000000000ULL) {
 					break;
 				}
-				gGame.mStatus.mFlags |= 0x1000;
+				piece.mObj->mStatus.mFlags |= 0x10000ULL;
+				gGame.SetStatusFlags(0x1000);
 			}
 			++piece.mState;
 		case 3:
@@ -1876,7 +1911,7 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 		case 0x3F:
 		case 0x21D:
 		case 0x21E:
-			for (s32 i = 0; i < 32; i++) {
+			for (s32 i = 0; i < 64; i++) {
 				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 				if (object->mCmd[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;
@@ -1966,11 +2001,6 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 	}
 }
 
-static inline void HideToyDroppedItem(XObjActorToy* toy)
-{
-	HandleToyKind1FCCommand(toy, 0);
-}
-
 void XObjActorToy::ResetActorState()
 {
 	mActorStatus.mFlags = 0;
@@ -2015,6 +2045,7 @@ void XObjActorToy::ResetActorState()
 		mHeading = PlacementRotation(mCoord).y;
 		break;
 	}
+	_20EC = 0;
 	mPendingMove.Set(0.0f, 0.0f, 0.0f);
 }
 
@@ -2078,7 +2109,7 @@ void XObjActorToy::ResetObjectState()
 
 BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
 {
-	if (GetKind() == 0xF) {
+	if (info.mPlacement->mObjectId == 0xF) {
 		switch (mLoad) {
 		case 0:
 			if (!XObjActor::LoadFromPlacement(info)) {
@@ -2101,12 +2132,21 @@ BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
 			mLoad++;
 		}
 		if (mLoad > 2) {
+			if (mObject.m_pScnMdl != NULL) {
+				mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+			}
 			mLoad = 0;
 			return TRUE;
 		}
 		return FALSE;
 	}
-	return XObjActor::LoadFromPlacement(info) != FALSE;
+	if (XObjActor::LoadFromPlacement(info)) {
+		if (mObject.m_pScnMdl != NULL) {
+			mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+		}
+		return TRUE;
+	}
+	return FALSE;
 }
 
 s32 XObjActorToy::HandleEventCommand(s32 count, s32* command)
