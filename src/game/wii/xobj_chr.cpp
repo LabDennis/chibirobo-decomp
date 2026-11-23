@@ -5915,6 +5915,41 @@ s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
 	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
 }
 
+// NONMATCHING: retail keeps the angle in f30 and its sine in f29, the build swaps those roles;
+// the origin->y store and the surrounding float schedule also differ
+void SpawnPlayerDust(WiiPlayerState* player, CVec* origin)
+{
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = (f32)sin(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = (f32)cos(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
+	Vec position;
+	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	position.y = origin->y;
+	f32 width  = 1.0f + (rand() % 200) / 200.0f;
+	Vec size;
+	size.x = size.y = width;
+	size.z          = 1.0f;
+	Vec velocity    = { vx, vy, vz };
+	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
+	if (dust != NULL) {
+		if (player->mGroundType == 10) {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
+			dust->mColor      = 0xFFFFFFC8;
+			dust->mTex        = &player->mTex[1];
+		} else {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
+			dust->mColor      = 0xFFFFFFA0;
+			dust->mTex        = &player->mTex[0];
+		}
+	}
+}
+
 // NONMATCHING: the Wii command switch, scene/suit stepping and ordered call set match;
 // switch-arm layout and register allocation remain
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)

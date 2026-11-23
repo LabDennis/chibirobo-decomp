@@ -1144,7 +1144,8 @@ struct WiiPlayerState : public XObj {
 	// writers are decoded so far, the word reads as a whole
 	u32 mOnGround;          // _1B7B8
 	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, XObjChr's mDustPool
-	u8 _1C770[0x1C97C - 0x1C770];
+	u8 _1C770[0x1C774 - 0x1C770];
+	CTexObj mTex[2];       // _1C774, the two dust textures
 	s32 _1C97C;            // _1C97C, cleared in ResetForNewGame
 	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
 	u8 _1C982[2];          // _1C982
