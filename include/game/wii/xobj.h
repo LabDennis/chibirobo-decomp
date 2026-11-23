@@ -1937,26 +1937,56 @@ public:
 	XObjActor();
 	void ResetMovementStep();
 	virtual ~XObjActor();
-	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
-	virtual void UpdateAnimationSounds(f32 frame);            // _2A8
-	f32 mHeading;                                             // _9A8, the way it walks
-	f32 mMoveSpeed;                                           // _9AC, move speed
-	f32 mFacing;                                              // _9B0, the yaw the model is turned to
-	f32 _9B4;                                                 // _9B4, set to PI in ResetForNewGame
-	s32 mKindStep;                                            // _9B8, the kind's own step
-	u32 mKindCounter;                                         // _9BC, cleared with mKindStep
-	CStatus32 mActorStatus;                                   // _9C0, 2 a sound is due, 0x2000 busy
-	u32 _9C8;                                                 // _9C8
-	s32 _9CC;                                                 // _9CC
-	f32 _9D0;                                                 // _9D0, set to 1.0 on reset
-	f32 _9D4;                                                 // _9D4, set to 1.0 on reset
-	Vec mHitPos;                                              // _9D8
-	Vec mHomePos;                                             // _9E4, where a knocked toy stood before it hopped away
-	Vec mVelocity;                                            // _9F0
-	f32 mHitStrength;                                         // _9FC
-	f32 mFallSpeed;                                           // _A00, vertical speed added to y each tick
-	f32 mGroundHeight;                                        // _A04, floor height under the actor plus the kind's offset
-	s32 mCmd[20];                                             // _A08, the event command HandleEventCommand got and its args
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void Release();
+	virtual void InitializeObject();
+	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void vf16C(u32 frames);
+	virtual void DrawObject();
+	virtual void DrawScreenOverlay();
+	virtual void DrawDebugStatus();
+	virtual Vec GetCameraTarget();
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnPushDisplacement(const Vec& displacement);
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);
+	virtual void PauseSounds(f32 fade);
+	virtual void ResumeSounds(f32 fade);
+	virtual void UpdateAfterAnim(u32 frames);
+	virtual void RunStateHandler(u32 frames);
+	virtual void ClearStateHandler();
+	virtual void UpdateGroundMovement(u32 frames);
+	virtual void ProcessPendingEvents(u32 frames);
+	virtual void ResetActorState();
+	virtual BOOL IsHitPending();
+	virtual void UpdateAnimationSounds(f32 frame);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadYaw();
+	virtual f32 GetMinHeadYaw();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
+	f32 mHeading;           // _9A8, the way it walks
+	f32 mMoveSpeed;         // _9AC, move speed
+	f32 mFacing;            // _9B0, the yaw the model is turned to
+	f32 _9B4;               // _9B4, set to PI in ResetForNewGame
+	s32 mKindStep;          // _9B8, the kind's own step
+	u32 mKindCounter;       // _9BC, cleared with mKindStep
+	CStatus32 mActorStatus; // _9C0, 2 a sound is due, 0x2000 busy
+	u32 _9C8;               // _9C8
+	s32 _9CC;               // _9CC
+	f32 _9D0;               // _9D0, set to 1.0 on reset
+	f32 _9D4;               // _9D4, set to 1.0 on reset
+	Vec mHitPos;            // _9D8
+	Vec mHomePos;           // _9E4, where a knocked toy stood before it hopped away
+	Vec mVelocity;          // _9F0
+	f32 mHitStrength;       // _9FC
+	f32 mFallSpeed;         // _A00, vertical speed added to y each tick
+	f32 mGroundHeight;      // _A04, floor height under the actor plus the kind's offset
+	s32 mCmd[20];           // _A08, the event command HandleEventCommand got and its args
 	u8 _A58[4];
 	s32 mMovePhase;  // _A5C, index into the movement speed cycle
 	f32 _A60;        // _A60
@@ -1967,10 +1997,20 @@ public:
 	XObj* mAttached;       // _A78, the attached object
 	Mtx mAttachedMtx;      // _A7C, where the attached object is held
 	XObj* mHeldObjects[2]; // _AAC, Mama can carry a pair
-	u8 _AB4[0xAC4 - 0xAB4];
-	CVec _AC4; // _AC4, its vptr ends it at _AD0
-	u8 _AD4[0xAF0 - 0xAD4];
-	CObjVec _AF0;               // _AF0, a TVec and two CVecs, head-look tween shape
+	u16 _AB4;
+	s16 mHeadAimSnap[2]; // _AB6
+	u16 _ABA;
+	XObj* _ABC;
+	XObj* mHeadAimObject; // _AC0
+	CVec mHeadAimTarget;  // _AC4
+	CCamera* mHeadAimCamera;
+	f32 mHeadAimPitch; // _AD8
+	f32 mHeadAimYaw;   // _ADC
+	f32 _AE0;
+	f32 _AE4;
+	f32 _AE8;
+	f32 _AEC;
+	CObjVec _AF0;               // _AF0
 	AnimSfx mSfx;               // _B20, the sounds UpdateAnimationSounds plays
 	AnimSfxActor mSfxActors[2]; // _B7C, the secondary sound slots
 	s32 mLookMode;              // _B94, 0 ahead, 1 at mLookTarget, 3 at mLookAngle
@@ -1982,8 +2022,6 @@ public:
 	XObjJointPart mParts[8];    // _BAC
 	typedef void (XObjActor::*StateFunc)(u32 frames);
 	StateFunc mState; // _D6C
-
-	Vec GetCameraTarget();
 };
 STATIC_ASSERT(sizeof(XObjActor) == 0xD78);
 
@@ -2338,11 +2376,20 @@ public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void _unk_00C(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual void Release();
+	virtual void InitializeObject();
 	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void ResetActorState();
+	virtual void DrawObject();
+	virtual void DrawScreenOverlay();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnPushDisplacement(const Vec& displacement);
+	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed);
+	virtual void OnMoveRequest();
+	virtual void UpdateAfterAnim(u32 frames);
 	virtual void RunStateHandler(u32 frames);
 	virtual void ClearStateHandler();
 	virtual void UpdateAnimationSounds(f32 frame);
@@ -2361,7 +2408,7 @@ public:
 	CVec mPendingMove;            // _20DC
 	XObjActorToyPiece mPieces[4]; // _20EC
 	u8 _21DC[4];
-	s32 _21E0;
+	XObj* _21E0;
 	CStatus32 mKindFlags; // _21E4
 	f32 _21EC;
 	f32 _21F0;
