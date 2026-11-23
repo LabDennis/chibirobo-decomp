@@ -943,6 +943,7 @@ s32 XObjCoin::HandleEventCommand(s32 count, s32* args)
  * @note Address: 0x800E1440
  * @note Size: 0x540
  */
+// NONMATCHING: regalloc and the composed unit's .rodata prefix; calls, CFG and stores otherwise agree.
 s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 {
 	if ((value & 3U) == 1)
