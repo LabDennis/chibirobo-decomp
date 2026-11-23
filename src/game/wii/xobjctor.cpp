@@ -49,6 +49,10 @@ XObjSound::XObjSound()
 // vtables (0x800C20B0) -- the __construct_array call stops the dead-store
 // elimination that removes it in the item and dust ctors. MWCC removes it
 // here too; the rest of the member-init block is not fully modeled either
+XObjFlags::~XObjFlags()
+{
+}
+
 XObjCoin::XObjCoin()
 {
 	mFlags = &gCoinEventFlags;

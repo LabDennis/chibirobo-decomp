@@ -22,10 +22,11 @@ extern "C" Vec lbl_805A0400[];
 CCameraActionAreaEx gCameraAreaState;
 
 class CGs;
+#endif
 
 static const u32 sAreaCameraDebugColors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 static const u32 sMapCameraDebugColors[7]  = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
-#if !defined(VERSION_PAL)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 static const char sCameraAreaDataAddressFormat[]
     = "CCameraActionAreaEx :: "
       "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
@@ -34,13 +35,13 @@ static const char sCameraAreaZoomResetMessage[] = "reset zoom lv = CAM_AREA_ZOOM
 static const char sAreaCameraDebugIndexFormat[] = "DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n";
 static const char sMapCameraDebugIndexFormat[]  = "DEBUG:CCameraActionMap::DrawDebug3d():%d\n";
 #endif
-#endif
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
 #if defined(VERSION_R24J01)
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos);
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index);
+extern "C" void LoadCameraAreaTables(CCameraActionAreaEx* state);
 #endif
 
 // inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
@@ -232,6 +233,21 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
  * @note Size: 0x10C
  */
 #if defined(VERSION_R24J01)
+extern "C" void LoadCameraAreaTables(CCameraActionAreaEx* state)
+{
+	state->mAreaExRecords = NULL;
+	state->mAreaExCount   = 0;
+	state->mAreaExRecords = GetStageCameraAreaExRecords();
+	state->mAreaExCount   = CountAreaRecords(state->mAreaExRecords);
+	state->mAreaRecords   = NULL;
+	state->mAreaCount     = 0;
+	state->mAreaRecords   = GetStageCameraAreaRecords();
+	state->mAreaCount     = CountAreaRecords(state->mAreaRecords);
+	state->mCameraInfo    = NULL;
+	state->mCameraInfo    = GetStageCameraInfoRecords();
+	BuildCameraAreaGroups(state);
+}
+
 // the Wii build splits it in two: this C++ step (0x80153A84) falls back on the map camera outside every area,
 // the C step below reads the area's action and is not inlined
 s32 GetCameraAreaMode(CCameraActionAreaEx* state)
@@ -306,9 +322,9 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
  * @note Address: 0x801361C4
  * @note Size: 0x890
  */
-#if !defined(VERSION_R24J01)
-// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
-// them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round
+// NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
+// in for them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round.
+// Wii: the geometry and draw calls match; aggregate temporary lifetimes, stack slots and registers remain
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->mAreaRecords == NULL)
@@ -328,13 +344,13 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		if (pad.mPad->mTrigger & 2) { // d-pad right
 			if (++selected >= state->mAreaCount)
 				selected = state->mAreaCount - 1;
-#if !defined(VERSION_PAL)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
 		} else if (pad.mPad->mTrigger & 1) { // d-pad left
 			if (--selected <= 0)
 				selected = 0;
-#if !defined(VERSION_PAL)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
 		}
@@ -379,15 +395,14 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		             state->mGroups[index].mEye.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 	}
 }
-#endif
 
-#if !defined(VERSION_R24J01)
 /**
  * @note Address: 0x80136A54
  * @note Size: 0x77C
  */
-// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
-// them until the whole file is built, and rotates the yaw, top - bottom and the height among f29-f31
+// NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
+// in for them until the whole file is built, and rotates the yaw, top - bottom and the height among f29-f31.
+// Wii: the area selection, geometry and cube draw match; aggregate temporary lifetimes, stack slots and registers remain
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 {
 	// callers only pass 0 or 1
@@ -410,7 +425,7 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	for (s32 i = 0; i < count; ++records, ++i) {
 		static s32 selected = 0;
 		CPad pad(3);
-#if !defined(VERSION_PAL)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 		if (pad.mPad->mTrigger & 2) { // d-pad right
 			if (++selected >= count)
 				selected = count - 1;
@@ -476,8 +491,6 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
 	}
 }
-
-#endif
 
 /**
  * @note Address: 0x801371D0
@@ -575,8 +588,12 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
+// NONMATCHING (Wii only): MWCC inlines LoadCameraAreaTables into this wrapper; Wii retail keeps the call.
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
+#if defined(VERSION_R24J01)
+	LoadCameraAreaTables(state);
+#else
 	state->mAreaExRecords = NULL;
 	state->mAreaExCount   = 0;
 	state->mAreaExRecords = GetStageCameraAreaExRecords();
@@ -588,6 +605,7 @@ extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 	state->mCameraInfo    = NULL;
 	state->mCameraInfo    = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
+#endif
 	state->mCurrentArea = -1;
 	state->mPrevArea    = -1;
 	state->mActiveArea  = -1;

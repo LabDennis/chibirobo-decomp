@@ -33,6 +33,7 @@ STATIC_ASSERT(sizeof(XObjSound) == 0xA10);
 class XObjFlags : public XObj {
 public:
 	XObjFlags() { mFlags = NULL; }
+	virtual ~XObjFlags(); // _08
 
 	virtual void ResetForNewGame(); // _150, clears every flag
 	virtual s32 GetFlagIndex();     // _28C, the bit in mFlags, 0 and below have none
