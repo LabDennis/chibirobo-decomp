@@ -997,13 +997,12 @@ extern "C" void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames)
 		toy->_21E0 = (XObj*)1;
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.mXObjs.mObjects[i];
-			if ((obj->mStatus.mFlags & 0x100000000ULL) && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
+			if ((obj->mStatus.mFlags & 1) == 1 && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
 				toy->_21E0 = obj;
 				break;
 			}
 		}
-	} else if (toy->_21E0 != (XObj*)1 && toy->_21E0 != NULL
-	           && (toy->_21E0->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL) {
+	} else if (toy->_21E0 != (XObj*)1 && toy->_21E0 != NULL && (toy->_21E0->mStatus.mFlags & 0x10001) == 0x10001) {
 		Mtx translation, result;
 		Vec position;
 		PSMTXTrans(translation, 0.0f, 5.5f, -5.5f);
@@ -1047,16 +1046,27 @@ void XObjActorToy::_unk_00C(int timing, nw4r::g3d::ScnObj* obj, u32 param, void*
 	}
 	switch (GetKind()) {
 	case 0xF:
+		break;
 	case 0x156:
+		break;
 	case 0x157:
+		break;
 	case 0x158:
+		break;
 	case 0x159:
+		break;
 	case 0x16C:
+		break;
 	case 0x1D3:
+		break;
 	case 0x1FB:
+		break;
 	case 0x25E:
+		break;
 	case 0x26C:
+		break;
 	case 0x26D:
+		break;
 	case 0x485:
 		break;
 	case 0x6F: {
@@ -1071,7 +1081,7 @@ void XObjActorToy::_unk_00C(int timing, nw4r::g3d::ScnObj* obj, u32 param, void*
 		break;
 	}
 	case 0x110: {
-		bool visible            = !(_9CC & 2);
+		bool visible            = (_9CC & 3) < 2;
 		nw4r::g3d::ResNode node = GetResNode("_02tai");
 		nw4r::g3d::ScnMdl::CopiedVisAccess access(mObject.m_pScnMdl, node.GetID());
 		if (access.IsValid()) {

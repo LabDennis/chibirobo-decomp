@@ -1396,15 +1396,15 @@ extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 {
 	XObj* holder = gGame.mXObjs.mPools[19].Get(0);
 	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->mKindStep == 1) {
-		f32 angle               = actor->mOrbitAngle + holder->GetRotY();
-		f32 x                   = actor->mOrbitDistance * (f32)sin(angle);
-		f32 y                   = actor->mOrbitHeight;
-		f32 z                   = actor->mOrbitDistance * (f32)cos(angle);
-		actor->mKindStep        = 2;
-		actor->mKindTimer       = 6.0f;
-		actor->mMoveTranslate.x = x + holder->GetPosX();
-		actor->mMoveTranslate.y = y + 18.0f;
-		actor->mMoveTranslate.z = z + holder->GetPosZ();
+		f32 s             = (f32)sin(actor->mOrbitAngle + holder->GetRotY());
+		f32 c             = (f32)cos(actor->mOrbitAngle + holder->GetRotY());
+		Vec position      = { actor->mOrbitDistance * s, actor->mOrbitHeight, actor->mOrbitDistance * c };
+		actor->mKindStep  = 2;
+		actor->mKindTimer = 6.0f;
+		actor->ClearBaseMtx();
+		actor->mMoveTranslate.x = position.x + holder->GetPosX();
+		actor->mMoveTranslate.y = position.y + 18.0f;
+		actor->mMoveTranslate.z = position.z + holder->GetPosZ();
 		actor->SetPos(actor->mMoveTranslate);
 		const CVec* holderPos = holder->GetPos();
 		actor->mHeading       = (f32)atan2(holderPos->x - actor->mMoveTranslate.x, holderPos->z - actor->mMoveTranslate.z) + PI;
@@ -1681,10 +1681,10 @@ extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 static inline void ResetBossAttachment(XObjActor3* obj)
 {
 	obj->mKindStep = 0;
-	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 	obj->mActorFlags.mFlags |= 4;
 	obj->mActorFlags.mFlags |= 0x10;
-	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+	obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 }
 
 void XObjActor3::Kind16(u32 frames)
@@ -1728,49 +1728,42 @@ void XObjActor3::Kind16(u32 frames)
 	}
 }
 
-extern "C" void PlaySpiderBossAttachmentAnimation(s32 n)
+extern "C" void PlaySpiderBossAttachmentAnimation(XObjActor3* obj, s32 n)
 {
-	XObjPool& pool = gGame.mXObjs.mPools[5];
-	for (s32 i = 0; i < 48; ++i) {
-		XObjActor3* obj = (XObjActor3*)pool.Get(i);
-		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
-			obj->SetAnim(n, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
-			obj->mActorFlags.mFlags &= ~4;
-			obj->mActorFlags.mFlags &= ~0x10;
-			switch (n) {
-			case 0:
-				obj->SetScale(0.1f);
-				obj->mKindStep = 0;
-				break;
-			case 1:
-				obj->SetScale(1.4f);
-				obj->mKindStep = 1;
-				break;
-			case 2:
-				obj->SetScale(1.0f);
-				obj->mKindStep = 2;
-				break;
-			case 3:
-				obj->SetScale(1.0f);
-				obj->mKindStep = 1;
-				break;
-			case 4:
-				obj->SetScale(1.0f);
-				obj->mKindStep = 4;
-				break;
-			}
-			return;
-		}
+	obj->SetAnim(n, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+	obj->mActorFlags.mFlags &= ~4;
+	obj->mActorFlags.mFlags &= ~0x10;
+	switch (n) {
+	case 0:
+		obj->SetScale(0.1f, 0.1f, 0.1f);
+		obj->mKindStep = 0;
+		break;
+	case 1:
+		obj->SetScale(1.4f, 1.4f, 1.4f);
+		obj->mKindStep = 1;
+		break;
+	case 2:
+		obj->SetScale(1.0f, 1.0f, 1.0f);
+		obj->mKindStep = 2;
+		break;
+	case 3:
+		obj->SetScale(1.0f, 1.0f, 1.0f);
+		obj->mKindStep = 1;
+		break;
+	case 4:
+		obj->SetScale(1.0f, 1.0f, 1.0f);
+		obj->mKindStep = 4;
+		break;
 	}
 }
 
-extern "C" void ResetSpiderBossAttachment(void)
+extern "C" void ResetSpiderBossAttachment(s32 n)
 {
 	XObjPool& pool = gGame.mXObjs.mPools[5];
 	for (s32 i = 0; i < 48; ++i) {
 		XObjActor3* obj = (XObjActor3*)pool.Get(i);
 		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
-			PlaySpiderBossAttachmentAnimation(0);
+			PlaySpiderBossAttachmentAnimation(obj, n);
 			return;
 		}
 	}
@@ -1783,9 +1776,9 @@ void XObjActor3::Kind17(u32 frames)
 		XObjActor3* obj = (XObjActor3*)pool.Get(i);
 		if (obj->GetKind() == 0x10 && (obj->mStatus.mFlags & 1)) {
 			obj->mKindStep = 0;
-			obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+			obj->SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 			obj->mActorFlags.mFlags |= 0x14;
-			PlaySpiderBossAttachmentAnimation(0);
+			PlaySpiderBossAttachmentAnimation(obj, 0);
 			return;
 		}
 	}
