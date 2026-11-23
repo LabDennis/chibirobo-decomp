@@ -27,7 +27,7 @@
 #include <math.h>
 #include "game/xchr.h"
 #include "game/cvec.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/mm.h"
 #include "game/arcache.h"
 #include "game/xobjmap.h"

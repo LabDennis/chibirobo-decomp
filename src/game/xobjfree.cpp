@@ -234,7 +234,7 @@ void XObjFree::ResetObjectState()
 		mLife = (s16)GetObjFlags();
 	mMatAnim = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* animation = mCoord.mPlacement;
+		StagePlacement* animation = mCoord.mPlacement;
 		SetAnim(animation->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
@@ -554,8 +554,8 @@ BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 		HSD_AObj* aobj = GetAObj(mJObj);
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		if (end > 0.0f) {
-			f32 frame              = fmod((f32)rand(), end); // a random start frame
-			UnkStageObj* placement = mCoord.mPlacement;
+			f32 frame                 = fmod((f32)rand(), end); // a random start frame
+			StagePlacement* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 		}
 		mAnimId2   = mAnimId;
@@ -594,7 +594,7 @@ void XObjDust::ResetObjectState()
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* placement = mCoord.mPlacement;
+		StagePlacement* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
@@ -1080,8 +1080,8 @@ void XObjCoin::ResetObjectState()
 	mSpin         = angle * direction;
 	f32 end       = GetAnimEndFrame(mJObj);
 	if (end > 0.0f) {
-		f32 frame              = fmod((f32)rand(), end);
-		UnkStageObj* placement = mCoord.mPlacement;
+		f32 frame                 = fmod((f32)rand(), end);
+		StagePlacement* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 	}
 	mFade     = 0.0f;

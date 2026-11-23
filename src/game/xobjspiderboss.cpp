@@ -9,7 +9,7 @@
 #include "game/infoscrn.h"
 #include "game/hsd_cobj.h"
 #include "game/cparticle.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/animframe.h"
 #include <stdlib.h>
 

@@ -17,7 +17,7 @@
 #include "game/ut.h"
 #include "game/gmath.h"
 #include "game/video.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include <sysdolphin/rumble.h>
 
 // XObjActor3, the actor most of the stage's small moving things are: which one it is comes from the stage table,

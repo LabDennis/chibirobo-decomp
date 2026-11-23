@@ -1040,7 +1040,7 @@ void SetPlayerRopeState(XObjChr* chr, s32 state, XObj* target);
 s32 GetObjectPoolUsedCount(const CGame* game, s32 index);
 void* GetObjectFromPool(const CGame* game, s32 pool, s32 index);
 CoordInfo* GetObjectCoordInfo(XObj* object);
-UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index);
+StagePlacement* GetIndexedCoordPlacement(const CoordInfo* info, s32 index);
 s32 GetStageObjectCount(const CGame* game);
 f32 GetSelectedFloorHeight(const XObj* object);
 void DisablePlayerLook(XObjChrLook* look);
@@ -5276,7 +5276,7 @@ void XObjChr::RegisterShadowObjects(CShadow* shadow)
 static inline s32 ActionTargetPlacement(const XAction& action)
 {
 	if (action.mTarget != NULL) {
-		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
+		StagePlacement* placement = action.mTarget->mCoord.mPlacement;
 		return GetStagePlacementIndex(placement);
 	}
 	return -1;
@@ -8457,7 +8457,7 @@ extern "C" s32 GetObjectPoolUsedCount(const CGame* game, s32 index)
  * @note Address: 0x800B20B4
  * @note Size: 0x10
  */
-extern "C" UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
+extern "C" StagePlacement* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 {
 	return info->mPlacement + index;
 }

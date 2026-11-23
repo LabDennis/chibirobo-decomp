@@ -168,7 +168,7 @@ struct UnkDolObj : public UnkDolObjVirt {
 	u8 _D8[0x150];       // _D8
 	u64 mStatus;         // _228, _228: XObj::mStatus flags (CStatus64): 1 in use, 0x10000 drawn
 	u8 _230[0x14];       // _230
-	s32* mPlacement;     // _244, _244: XObj::mAttr.mPlacement (an UnkStageObj*); its first word is the object id
+	s32* mPlacement;     // _244, _244: XObj::mAttr.mPlacement (an StagePlacement*); its first word is the object id
 #if defined(VERSION_JP)
 	u8 _248[0x7FC]; // _248, japan's is 8 bytes shorter
 #else

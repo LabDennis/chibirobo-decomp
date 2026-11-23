@@ -14,11 +14,11 @@ double sin(double x);
 struct Stage01Actor;
 
 struct Stage01ActorKind {
-	s32 mObjectId; // _00, UnkStageObj::mObjectId, the placement's object id (XObj::mCoord._00); 0x1F9, 0x200, 0x263 pick the ham object's
-	               // behaviour
-	s32 mPosX;     // _04, UnkStageObj::mPos[0], placement x in hundredths
-	s32 mPosY;     // _08, UnkStageObj::mPos[1], placement y in hundredths
-	s32 mPosZ;     // _0C, UnkStageObj::mPos[2], placement z in hundredths
+	s32 mObjectId; // _00, StagePlacement::mObjectId, the placement's object id (XObj::mCoord._00); 0x1F9, 0x200, 0x263 pick the ham
+	               // object's behaviour
+	s32 mPosX;     // _04, StagePlacement::mPos[0], placement x in hundredths
+	s32 mPosY;     // _08, StagePlacement::mPos[1], placement y in hundredths
+	s32 mPosZ;     // _0C, StagePlacement::mPos[2], placement z in hundredths
 };
 
 struct Stage01KindRef {

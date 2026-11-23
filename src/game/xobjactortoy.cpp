@@ -4,7 +4,7 @@
 #include "game/xchr.h"
 #include "game/cscrn.h"
 #include "game/globals.h"
-#include "game/gmath.h"
+#include "game/placement.h"
 #include "game/hsd_dobj.h"
 #include "game/heldpropmatrix.h"
 #include "game/cgameparticle.h"
@@ -332,24 +332,6 @@ Vec gToyPlacementPosition;
 Vec gToyPlacementRotation;
 }
 
-static inline Vec ToyPlacementPosition(const CoordInfo& place)
-{
-	Vec pos = gToyPlacementPosition;
-	pos.x   = place.mPlacement->mPos[0] / 100.0f;
-	pos.y   = place.mPlacement->mPos[1] / 100.0f;
-	pos.z   = place.mPlacement->mPos[2] / 100.0f;
-	return Vec(pos);
-}
-
-static inline Vec ToyPlacementRotation(const CoordInfo& place)
-{
-	Vec rot = gToyPlacementRotation;
-	rot.x   = DEG2RAD * place.mPlacement->mRot[0];
-	rot.y   = DEG2RAD * place.mPlacement->mRot[1];
-	rot.z   = DEG2RAD * place.mPlacement->mRot[2];
-	return Vec(rot);
-}
-
 /**
  * @note Address: 0x80121B08
  * @note Size: 0x5A0
@@ -365,9 +347,9 @@ void XObjActorToy::ResetActorState()
 	mState              = &XObjActorToy::StateCarry;
 	ResetActorMovementStep(this);
 
-	mMoveTranslate.x = ToyPlacementPosition(mCoord).x;
-	mMoveTranslate.y = ToyPlacementPosition(mCoord).y;
-	mMoveTranslate.z = ToyPlacementPosition(mCoord).z;
+	mMoveTranslate.x = PlacementPosition(mCoord, gToyPlacementPosition).x;
+	mMoveTranslate.y = PlacementPosition(mCoord, gToyPlacementPosition).y;
+	mMoveTranslate.z = PlacementPosition(mCoord, gToyPlacementPosition).z;
 	SetPos(mMoveTranslate, 0);
 	for (u32 i = 0; i < 4; ++i) {
 		mPieces[i].mId    = -1;
@@ -393,13 +375,13 @@ void XObjActorToy::ResetActorState()
 		mKindFlags.mFlags &= ~8;
 		break;
 	case 0x156:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	case 0x157:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	case 0x16c:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	}
 	mPendingMove.Set(0.0f, 0.0f, 0.0f);

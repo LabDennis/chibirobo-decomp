@@ -2,7 +2,7 @@
 #include "game/xobjactor.h"
 #include "game/heldpropmatrix.h"
 #include "game/hsd_jobj.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/cpad.h"
@@ -334,7 +334,7 @@ void XObjSpider::ResetObjectState()
 		for (s32 i = 0; i < count; ++i) {
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
-				UnkStageObj* placement = candidate->mCoord.mPlacement;
+				StagePlacement* placement = candidate->mCoord.mPlacement;
 				if (placement->mObjectId == 0x13C) {
 					++found;
 					*output++ = candidate;

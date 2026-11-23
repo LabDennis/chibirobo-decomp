@@ -3288,8 +3288,8 @@ extern "C" void ResetMessageState(CMsg* msg)
  */
 extern "C" BOOL LoadMessageCursorObject(CMsg* msg)
 {
-	void* spawn = GetSpawnData(13);
-	XObj* obj   = &msg->mFont.mCursor[0].mCursor;
+	StagePlacement* spawn = GetSpawnData(13);
+	XObj* obj             = &msg->mFont.mCursor[0].mCursor;
 	if (obj->LoadFromPlacement(CoordInfo(spawn))) {
 		obj->SetScale(3.0f, 3.0f, 3.0f, 0);
 		return TRUE;

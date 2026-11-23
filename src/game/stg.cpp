@@ -23,6 +23,7 @@
 #include "game/hsd_cobj.h"
 #include "game/stg.h"
 #include "game/stagedata.h"
+#include "game/placement.h"
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/fbtexeff.h"
@@ -748,43 +749,21 @@ void MenuCursor::UpdateObject(u32 frames)
 	}
 }
 
-// and its position, in centimeters
-static inline Vec EntryPos(XObj* obj)
-{
-	UnkStageObj* entry = obj->mCoord.mPlacement;
-	Vec pos            = lbl_8036203C;
-	pos.x              = entry->mPos[0] / 100.0f;
-	pos.y              = entry->mPos[1] / 100.0f;
-	pos.z              = entry->mPos[2] / 100.0f;
-	return pos;
-}
-
 /**
  * @note Address: 0x800622B8
  * @note Size: 0xD8
  */
 extern "C" CVec GetStagePlacementPosition(XObj* obj)
 {
-	return EntryPos(obj);
+	return PlacementPosition(obj->mCoord, lbl_8036203C);
 }
-// the placement entry's scale, in percent there
-static inline Vec EntryScale(XObj* obj)
-{
-	UnkStageObj* entry = obj->mCoord.mPlacement;
-	Vec scale          = lbl_80362048[0];
-	scale.x            = entry->mScale[0] / 100.0f;
-	scale.y            = entry->mScale[1] / 100.0f;
-	scale.z            = entry->mScale[2] / 100.0f;
-	return scale;
-}
-
 /**
  * @note Address: 0x800621E0
  * @note Size: 0xD8
  */
 extern "C" CVec GetStagePlacementScale(XObj* obj)
 {
-	return EntryScale(obj);
+	return PlacementScale(obj->mCoord, lbl_80362048[0]);
 }
 
 /**
