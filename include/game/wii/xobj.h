@@ -2098,7 +2098,9 @@ private:
 	CObjVec mEyeAim;          // _1C9CC
 	CJArchive mAttachmentAnm; // _1C9FC
 	CJArchive mSuitAnm;       // _1CB44
-	u8 _1CC8C[0x1CC90 - 0x1CC8C];
+public:
+	nw4r::g3d::ScnRoot* mSceneRoot; // _1CC8C
+private:
 	AnimSfxActor mActor; // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
 	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
 };
