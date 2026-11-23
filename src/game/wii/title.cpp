@@ -1657,7 +1657,7 @@ extern "C" void DrawTitleScreen(Title* title)
 	CCamera* camera     = ((CBase*)&gGame)->GetScreenCamera();
 	camera->vf24(0.0f, (f32)gPointerScreenHeight, -(f32)off, (f32)w - (f32)off);
 	((CBase*)&gGame)->vf5C();
-	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
+	DrawSavePanelBackground(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
 	DrawTitleLoadScreen(title);
 	DrawTitleOptions(title);

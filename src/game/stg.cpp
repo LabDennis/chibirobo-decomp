@@ -12,9 +12,9 @@
 //   stand in for it, removing them would move every .bss offset the functions use.
 // - .sdata/.sdata2: the build emits RTTI records and names of weak header classes (CFont, CPad, CEvt, ...) and two
 //   header constants (0x80, 4) retail does not have here, and the literal pool order differs in places.
-// - .text: the two DrawPCShopList instances and the inline MenuMain::Open/Resume and MenuMCTest::Open come out at
+// - .text: the inline MenuMain::Open/Resume and MenuMCTest::Open come out at
 //   the end of the build's code, retail has them in place; JP's retail file had its menu classes in another order.
-//   JP DrawPanelBackground<0> is 98.3567 % (98.3586 % before the retail order): its table lands at .rodata 0x818,
+//   JP DrawStatusPanelBackground is 98.3567 % (98.3586 % before the retail order): its table lands at .rodata 0x818,
 //   retail's at 0xB30, so a register-only difference no longer sits on a matching offset.
 
 #include "game/menuselectionbar.h"
@@ -277,7 +277,6 @@ f32 gPCDialogueX;
 			rate = 1.0f;                             \
 		ApproachHudValue(&(value), &(target), rate); \
 	} while (0)
-enum PCShopListKind { PriceList, ItemPriceList };
 
 struct PCScreenAnimation {
 	f32 textureU, textureV;
@@ -492,13 +491,17 @@ extern "C" u8* GetAttachmentName(s32 id);
 f32 gSaveSlotSpacing = 10.0f;
 #endif
 
-template <PCShopListKind kind>
-static inline void DrawPCListRow(MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
+extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale);
+extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 alpha, f32 scale);
+
+static inline void DrawPCItemShopRow(MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
 {
-	if (kind == ItemPriceList)
-		DrawPCItemPriceRow(row.mItem, row.mCount, row.mPrice, row.mIsAttachment, x, y, alpha, scale);
-	else
-		DrawPCPriceRow(row.mItem, row.mCount, row.mPrice, x, y, alpha, scale);
+	DrawPCItemPriceRow(row.mItem, row.mCount, row.mPrice, row.mIsAttachment, x, y, alpha, scale);
+}
+
+static inline void DrawPCScrapShopRow(MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	DrawPCPriceRow(row.mItem, row.mCount, row.mPrice, x, y, alpha, scale);
 }
 
 static inline void DrawPCListMask(f32 top, f32 height, u32 color)
@@ -542,11 +545,12 @@ static inline s32 CountPCShopItems(MenuPCItem* table)
 	}
 	return count;
 }
-template <PCShopListKind kind>
 #if defined(VERSION_JP)
-void DrawPCShopList(s32, f32, f32, f32, f32, f32);
+void DrawPCItemShopList(s32, f32, f32, f32, f32, f32);
+void DrawPCScrapShopList(s32, f32, f32, f32, f32, f32);
 #else
-void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
+void DrawPCItemShopList(s32, f32, f32, f32, f32, f32, f32);
+void DrawPCScrapShopList(s32, f32, f32, f32, f32, f32, f32);
 #endif
 
 // NONMATCHING: the five corner temporaries of each DrawPCListMask sit in the frame in the opposite order (as in
@@ -554,11 +558,10 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 // conversion differs; the rodata offsets differ with the file's data. Retail forms the page-count table straight
 // into the loop register (US 0x80042374 addi r6), the build materialises items first and copies it; PCShopMaxPage
 // by value gives that here but costs MenuPC::State7 its in-place walk (100 -> 99.76), so the reference stays.
-template <PCShopListKind kind>
 #if defined(VERSION_JP)
-void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
+void DrawPCScrapShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
 #else
-void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
+void DrawPCScrapShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
 #endif
 {
 	CTexObj tex;
@@ -591,13 +594,65 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
 	for (int i = 0; i < 9; i++)
-		DrawPCListRow<kind>((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mRows[i], left, step * i + rowY, alpha, scale);
-	MenuPCItem* items = kind == ItemPriceList ? sItemShopEntries : sScrapShopEntries;
-	if ((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mStart < PCShopMaxPage(items) - 1)
-		DrawPCListRow<kind>((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
-	CountPCShopItems(kind == ItemPriceList ? sItemShopEntries : sScrapShopEntries);
-	if ((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mStart > 0)
-		DrawPCListRow<kind>((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mPrev[0], left, rowY - step, alpha, scale);
+		DrawPCScrapShopRow(gScrapShopPage.mRows[i], left, step * i + rowY, alpha, scale);
+	MenuPCItem* items = sScrapShopEntries;
+	if (gScrapShopPage.mStart < PCShopMaxPage(items) - 1)
+		DrawPCScrapShopRow(gScrapShopPage.mNext[0], left, 9.0f * step + rowY, alpha, scale);
+	CountPCShopItems(sScrapShopEntries);
+	if (gScrapShopPage.mStart > 0)
+		DrawPCScrapShopRow(gScrapShopPage.mPrev[0], left, rowY - step, alpha, scale);
+#if defined(VERSION_JP)
+	DrawPCListMask(97.0f, 40.0f, opacity | 0x0A0A0A00);
+	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
+#else
+	DrawPCListMask(97.0f - scroll, 40.0f, opacity | 0x0A0A0A00);
+	DrawPCListMask(292.5f - scroll, 40.0f + scroll, opacity | 0x0A0A0A00);
+#endif
+}
+
+#if defined(VERSION_JP)
+void DrawPCItemShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
+#else
+void DrawPCItemShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
+#endif
+{
+	CTexObj tex;
+#if !defined(VERSION_JP)
+	y -= scroll;
+#endif
+	f32 left;
+	f32 width = 296.0f * scale, height = 156.0f * scale;
+	left        = x - width / 2.0f;
+	Vec bg[5]   = { (Vec) { left, y - height / 2.0f, -10.0f }, (Vec) { width + left, y - height / 2.0f, -10.0f },
+		            (Vec) { width + left, height + (y - height / 2.0f), -10.0f }, (Vec) { left, height + (y - height / 2.0f), -10.0f },
+		            (Vec) { left, y - height / 2.0f, -10.0f } };
+	u32 opacity = (u32)(255.0f * alpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, bg, opacity, 5);
+	y += scale;
+	f32 step = 17.0f * scale;
+	f32 rowY = y - height / 2.0f;
+	f32 barX, barW;
+	if (IsJapanese()) {
+		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
+		barW = 0.9f * (14.0f * step);
+	} else {
+		CTexObj& label = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
+		barW           = (0.7f * (scale * (1.1f * (2 * label.GetWidth()))) + width) - 5.0f * scale;
+		barX           = x - 4.0f;
+	}
+	f32 barH     = step + scale;
+	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
+	InitMenuSelectionBar(tex);
+	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
+	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
+	for (int i = 0; i < 9; i++)
+		DrawPCItemShopRow(gItemShopPage.mRows[i], left, step * i + rowY, alpha, scale);
+	MenuPCItem* items = sItemShopEntries;
+	if (gItemShopPage.mStart < PCShopMaxPage(items) - 1)
+		DrawPCItemShopRow(gItemShopPage.mNext[0], left, 9.0f * step + rowY, alpha, scale);
+	CountPCShopItems(sItemShopEntries);
+	if (gItemShopPage.mStart > 0)
+		DrawPCItemShopRow(gItemShopPage.mPrev[0], left, rowY - step, alpha, scale);
 #if defined(VERSION_JP)
 	DrawPCListMask(97.0f, 40.0f, opacity | 0x0A0A0A00);
 	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
@@ -1577,7 +1632,7 @@ static inline void SetScissor(u32 top, u32 height)
 BOOL MenuItem::Draw()
 {
 	if (CMenu::Draw()) {
-		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		DrawStatusPanelBackground(mAlpha);
 		f32 x = mGridX - 42.0f;
 		f32 y = 180.0f + mGridY;
 		SetScissor(104, 248);
@@ -2938,7 +2993,7 @@ static inline void CheckPlayerInventoryFlags()
 BOOL MenuStatus::Draw()
 {
 	if (CMenu::Draw()) {
-		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		DrawStatusPanelBackground(mAlpha);
 		DrawStatusMenuTabs(this);
 		if (mMode == 2 || mMode == 4) {
 			SetScissor(104, 248);
@@ -3446,15 +3501,14 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 }
 
 /**
- * @note Address: 0x80054314 (item/status), 0x80037978 (save)
+ * @note Address: 0x80054314
  * @note Size: 0x83C
  */
 // NONMATCHING: vertex initialization and register allocation
-template <PanelLayout layout>
-void DrawPanelBackground(f32 alpha)
+void DrawStatusPanelBackground(f32 alpha)
 {
 	f32 t      = sin(1.5707964f * alpha);
-	f32 expand = (layout == SavePanel ? 44.4f : 42.0f) * t;
+	f32 expand = 42.0f * t;
 	f32 spread = 20.0f * t + 60.0f;
 	f32 x      = 320.0f;
 	x += -2.2f * spread;
@@ -3463,7 +3517,7 @@ void DrawPanelBackground(f32 alpha)
 	u32 bottomOpacity = (u32)lowerAlpha;
 
 	// The original also prepares the lower strip, but submits only the upper three quads.
-	f32 lowerY = layout == SavePanel ? 248.0f : 252.0f, upperY = layout == SavePanel ? 224.0f : 228.0f;
+	f32 lowerY = 252.0f, upperY = 228.0f;
 	u32 clear = 0;
 	PrimVertex vertices[24]
 	    = { { (Vec) { ((x - expand) - 2.0f * expand), ((upperY - expand) - 2.0f * expand), 0.0f }, clear },
@@ -3507,8 +3561,6 @@ void DrawPanelBackground(f32 alpha)
 	DrawGsLineSegment(&gGame.mGs, NULL, ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f, color,
 	                  (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (upperY + expand)), 0.0f, 0xFFFFFF00);
 }
-
-template void DrawPanelBackground<ItemStatusPanel>(f32);
 
 /**
  * @note Address: 0x80053D58
@@ -4413,6 +4465,9 @@ void MenuPC::Init()
 	menu->mDialogueNumber = 0;
 }
 
+// todo: a template over a constant; with the kind as a parameter (upstream's form), or as two helpers like the Wii's
+// out-of-line ClearItemShopPage/ClearScrapShopPage, MenuPC::Open drops from 98.22 to 96.62 %
+enum PCShopListKind { PriceList, ItemPriceList };
 template <PCShopListKind kind>
 static inline void ClearPCShopPage()
 {
@@ -6070,9 +6125,9 @@ BOOL MenuPC::Draw()
 			s32 selected = this->mItemShopSelection;
 			f32 alpha    = this->mListAlpha;
 #if defined(VERSION_JP)
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f);
+			DrawPCItemShopList(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f);
 #else
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f, scroll);
+			DrawPCItemShopList(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f, scroll);
 #endif
 			DrawPCGoldNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mMoneyDisplay.shown);
 			// the bar's top is a variable moved up by the scroll: US/PAL hold 76 in f20 from here and subtract 8
@@ -6105,9 +6160,9 @@ BOOL MenuPC::Draw()
 #endif
 			s32 selected = this->mScrapShopSelection;
 #if defined(VERSION_JP)
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f);
+			DrawPCScrapShopList(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f);
 #else
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f, scroll);
+			DrawPCScrapShopList(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f, scroll);
 #endif
 			DrawPCBlueNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mScrapDisplay.shown);
 			// the same variable top as the history bar (US 0x80045C34, 0x80045CAC); JP's scroll is 0, so 76 stays
@@ -7011,12 +7066,12 @@ static inline void DrawPCPurchaseLabels(char (&text)[256], s32 question, s32 yes
 	DrawPCRecycleLabel(text, no, textX, offset, 40.0f * scale, rowY + (2.0f * size + top), size, white);
 }
 
-template <PCShopListKind kind>
 #if defined(VERSION_JP)
-static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top, f32 scale)
+static inline f32 DrawPCPurchasePrice(CTexObj& tex, u32 topColor, u32 bottomColor, MenuPCPage& page, s32 selected, f32 opacity, f32 left,
+                                      f32 top, f32 scale)
 #else
-static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top, f32 scale, f32 extraW,
-                                      f32 extraH)
+static inline f32 DrawPCPurchasePrice(CTexObj& tex, u32 topColor, u32 bottomColor, MenuPCPage& page, s32 selected, f32 opacity, f32 left,
+                                      f32 top, f32 scale, f32 extraW, f32 extraH)
 #endif
 {
 	tex   = InitPCPanelTexture(125);
@@ -7040,8 +7095,8 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 select
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u32 upper = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
-		u32 lower = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
+		u32 upper = (u8)opacity | topColor;
+		u32 lower = (u8)opacity | bottomColor;
 		// one expression: a reassigned digitX lets the compiler add the two invariant terms first (retail adds 287 * scale,
 		// then 18 * scale, then the inset, US 0x80043424 - 0x80043430)
 #if defined(VERSION_JP)
@@ -7057,10 +7112,9 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 select
 }
 
 #if defined(VERSION_JP)
-template <PCShopListKind kind>
-static inline void DrawPCPriceUnit(CTexObj& tex, f32 scale, f32 left, f32 digitY, u32 white)
+static inline void DrawPCPriceUnit(CTexObj& tex, s32 textureId, f32 scale, f32 left, f32 digitY, u32 white)
 {
-	tex = InitPCPanelTexture(kind == ItemPriceList ? 144 : 148);
+	tex = InitPCPanelTexture(textureId);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 unitW = tex.GetWidth(), unitH = tex.GetHeight();
 	DrawOverviewTexture(tex, white, 287.0f * scale + (18.0f * scale + left), digitY, 1.1f * unitW, unitH);
@@ -7162,12 +7216,12 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
 #if defined(VERSION_JP)
-		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, gItemShopPage, selected, opacity, left, top, scale);
+		f32 digitY = DrawPCPurchasePrice(tex, 0xEFEBC500, 0xEDA83600, gItemShopPage, selected, opacity, left, top, scale);
 #else
-		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, gItemShopPage, selected, opacity, left, top, scale, extraW, extraH);
+		f32 digitY = DrawPCPurchasePrice(tex, 0xEFEBC500, 0xEDA83600, gItemShopPage, selected, opacity, left, top, scale, extraW, extraH);
 #endif
 #if defined(VERSION_JP)
-		DrawPCPriceUnit<ItemPriceList>(tex, scale, left, digitY, white);
+		DrawPCPriceUnit(tex, 144, scale, left, digitY, white);
 #endif
 	}
 	if (choice != 2)
@@ -7330,12 +7384,12 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
 #if defined(VERSION_JP)
-		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, gScrapShopPage, selected, opacity, left, top, scale);
+		f32 digitY = DrawPCPurchasePrice(tex, 0xCECEFF00, 0x5959FF00, gScrapShopPage, selected, opacity, left, top, scale);
 #else
-		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, gScrapShopPage, selected, opacity, left, top, scale, extraW, extraH);
+		f32 digitY = DrawPCPurchasePrice(tex, 0xCECEFF00, 0x5959FF00, gScrapShopPage, selected, opacity, left, top, scale, extraW, extraH);
 #endif
 #if defined(VERSION_JP)
-		DrawPCPriceUnit<PriceList>(tex, scale, left, digitY, white);
+		DrawPCPriceUnit(tex, 148, scale, left, digitY, white);
 #endif
 	}
 	if (choice != 2)
@@ -9086,7 +9140,7 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
-		DrawPanelBackground<SavePanel>(mDrawAlpha);
+		DrawSavePanelBackground(mDrawAlpha);
 		switch (mMode) {
 		case 2:
 		case 3:
@@ -9599,7 +9653,67 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-template void DrawPanelBackground<SavePanel>(f32);
+/**
+ * @note Address: 0x80037978
+ * @note Size: 0x83C
+ */
+// NONMATCHING: vertex initialization and register allocation, as DrawStatusPanelBackground
+void DrawSavePanelBackground(f32 alpha)
+{
+	f32 t      = sin(1.5707964f * alpha);
+	f32 expand = 44.4f * t;
+	f32 spread = 20.0f * t + 60.0f;
+	f32 x      = 320.0f;
+	x += -2.2f * spread;
+	u32 opacity       = (u32)(160.0f * alpha);
+	f32 lowerAlpha    = 0.0f;
+	u32 bottomOpacity = (u32)lowerAlpha;
+
+	// The original also prepares the lower strip, but submits only the upper three quads.
+	f32 lowerY = 248.0f, upperY = 224.0f;
+	u32 clear = 0;
+	PrimVertex vertices[24]
+	    = { { (Vec) { ((x - expand) - 2.0f * expand), ((upperY - expand) - 2.0f * expand), 0.0f }, clear },
+		    { (Vec) { (x - expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), (2.0f * expand + (upperY + expand)), 0.0f }, clear },
+		    { (Vec) { (x - expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), ((upperY - expand) - 2.0f * expand), 0.0f }, opacity },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), ((upperY - expand) - 2.0f * expand), 0.0f }, clear },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (upperY + expand)), 0.0f }, clear },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f }, opacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), lowerY, 0.0f }, clear },
+		    { (Vec) { (x - expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { ((x - expand) - 2.0f * expand), (2.0f * expand + (lowerY + expand)), 0.0f }, clear },
+		    { (Vec) { (x - expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { (x - expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), lowerY, 0.0f }, bottomOpacity },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), lowerY, 0.0f }, clear },
+		    { (Vec) { (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (lowerY + expand)), 0.0f }, clear },
+		    { (Vec) { ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (lowerY + expand)), 0.0f }, bottomOpacity } };
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, 4);
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &vertices[4], 4);
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &vertices[8], 4);
+	u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	DrawGsLineSegment(&gGame.mGs, NULL, (x - expand), ((upperY - expand) - 2.0f * expand), 0.0f, color, ((2.2f * spread + 320.0f) + expand),
+	                  ((upperY - expand) - 2.0f * expand), 0.0f, color);
+	DrawGsLineSegment(&gGame.mGs, NULL, ((x - expand) - 2.0f * expand), ((upperY - expand) - 2.0f * expand), 0.0f, 0xFFFFFF00, (x - expand),
+	                  ((upperY - expand) - 2.0f * expand), 0.0f, color);
+	DrawGsLineSegment(&gGame.mGs, NULL, ((2.2f * spread + 320.0f) + expand), ((upperY - expand) - 2.0f * expand), 0.0f, color,
+	                  (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), ((upperY - expand) - 2.0f * expand), 0.0f, 0xFFFFFF00);
+	DrawGsLineSegment(&gGame.mGs, NULL, (x - expand), (2.0f * expand + (upperY + expand)), 0.0f, color, ((2.2f * spread + 320.0f) + expand),
+	                  (2.0f * expand + (upperY + expand)), 0.0f, color);
+	DrawGsLineSegment(&gGame.mGs, NULL, ((x - expand) - 2.0f * expand), (2.0f * expand + (upperY + expand)), 0.0f, 0xFFFFFF00, (x - expand),
+	                  (2.0f * expand + (upperY + expand)), 0.0f, color);
+	DrawGsLineSegment(&gGame.mGs, NULL, ((2.2f * spread + 320.0f) + expand), (2.0f * expand + (upperY + expand)), 0.0f, color,
+	                  (2.0f * expand + ((2.2f * spread + 320.0f) + expand)), (2.0f * expand + (upperY + expand)), 0.0f, 0xFFFFFF00);
+}
 
 // the letters of a line flying in, each with a blob behind it and a dark outline
 /**

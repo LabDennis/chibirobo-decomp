@@ -1887,7 +1887,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		                   0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
+	DrawSavePanelBackground(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
 	DrawTitleLoadScreen(title);
 	DrawTitleOptions(title);
