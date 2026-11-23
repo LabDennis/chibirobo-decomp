@@ -2,6 +2,7 @@
 #define GAME_WII_TITLE_H
 
 #include "game/wii/menuutil.h"
+#include "game/titledust.h"
 // before xobj.h: see its note on the two CObjVec
 #include "game/ccameraactioneye.h"
 #include "game/wii/xobjdemo.h"
@@ -297,17 +298,6 @@ public:
 	}
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
-
-// one mote of dust drifting over the menu, the GameCube TitleDust
-struct TitleDust {
-	u32 mState;  // _00
-	s32 mTimer;  // _04
-	f32 mX;      // _08
-	f32 mY;      // _0C
-	f32 mSpeedX; // _10, also the quad's scale
-	f32 mSpeedY; // _14, also the quad's alpha
-};
-STATIC_ASSERT(sizeof(TitleDust) == 0x18);
 
 // one letter of the name that pops in, as the GameCube StageNameChar
 struct TitleNameChar {

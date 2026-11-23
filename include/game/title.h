@@ -7,6 +7,7 @@
 #include "game/xobjdemo.h"
 #include "game/ctpl.h"
 #include "game/titlepalette.h"
+#include "game/titledust.h"
 
 extern "C" {
 extern const TitlePaletteEntry gTitlePalette[];
@@ -38,17 +39,6 @@ STATIC_ASSERT(sizeof(Cursor) == 0x978);
 #else
 STATIC_ASSERT(sizeof(Cursor) == 0x988);
 #endif
-
-// a speck floating over the title screen
-struct TitleDust {
-	u32 mState;  // _00
-	u32 mTimer;  // _04
-	f32 mX;      // _08
-	f32 mY;      // _0C
-	f32 mSpeedX; // _10
-	f32 mSpeedY; // _14
-};
-STATIC_ASSERT(sizeof(TitleDust) == 0x18);
 
 // one letter of a name that pops in
 struct StageNameChar {
