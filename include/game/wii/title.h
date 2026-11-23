@@ -366,8 +366,8 @@ public:
 	u8 _4967;
 	f32 mLoadAlpha;  // _4968
 	f32 mAlpha;      // _496C
-	s32 mLastMode;   // _4970
-	s32 mModeParam;  // _4974, the mode's own step
+	s32 mPrevMode;   // _4970
+	s32 mPhase;      // _4974, the mode's own step
 	s32 mDelay;      // _4978
 	s32 mFile;       // _497C, the save file picked, -1 with the pointer on none
 	s32 mLastFile;   // _4980
@@ -452,9 +452,9 @@ public:
 
 	void SetMode(s32 mode)
 	{
-		mLastMode  = mMode;
-		mMode      = mode;
-		mModeParam = 0;
+		mPrevMode = mMode;
+		mMode     = mode;
+		mPhase    = 0;
 	}
 };
 

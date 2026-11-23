@@ -336,7 +336,7 @@ extern "C" void ResetTitleScreenState(Title* title)
 	title->mMode           = 0;
 	title->mTimeout        = -1;
 	title->mMenuAlpha      = 0.0f;
-	title->_14             = 0.0f;
+	title->mTitleAlpha     = 0.0f;
 	title->mPulseAngle     = 90.0f;
 	title->mHighlightDelay = 0;
 	title->mSpawnIndex     = 0;
@@ -557,7 +557,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mTex[4] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[4], 0);
 		title->mTex[5] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[5], 0);
 #endif
-		title->mMenuAlpha = title->_14 = 0;
+		title->mMenuAlpha = title->mTitleAlpha = 0;
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
 		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, .5f);
 #if defined(VERSION_PAL)
@@ -577,14 +577,14 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->mMenuAlpha += (1.f / (.5f * FRAME_RATE)) * frames) > 1)
 				title->mMenuAlpha = 1;
 		}
-		if (title->_14 < 1) {
-			if ((title->_14 += (1.f / FRAME_RATE) * frames) > 1)
-				title->_14 = 1;
+		if (title->mTitleAlpha < 1) {
+			if ((title->mTitleAlpha += (1.f / FRAME_RATE) * frames) > 1)
+				title->mTitleAlpha = 1;
 		}
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->mMenuAlpha == 1 && title->_14 == 1)
+		if (title->mMenuAlpha == 1 && title->mTitleAlpha == 1)
 			title->mState = 11;
 		break;
 	}
@@ -711,9 +711,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->mMenuAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
 				title->mMenuAlpha = 0;
 		}
-		if (title->_14 > 0) {
-			if ((title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
-				title->_14 = 0;
+		if (title->mTitleAlpha > 0) {
+			if ((title->mTitleAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
+				title->mTitleAlpha = 0;
 		}
 		if (title->mMenuAlpha == 0 && FadeDone()) {
 			title->mState                   = 22;
