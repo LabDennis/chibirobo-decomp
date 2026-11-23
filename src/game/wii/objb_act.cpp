@@ -1789,7 +1789,7 @@ void fn_800FCD1C(XActLift* act)
 		act->mState = 4;
 		if (act->mContactEffect) {
 			fn_800A12F8(&gGame.mEvtPtcl, act->mContactEffectId, FALSE);
-			act->mContactEffect = FALSE;
+			act->mContactEffect = NULL;
 		}
 		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 3);
 	}
@@ -3635,9 +3635,9 @@ void ResetPlayerLiftAction(XActLift* act)
 		act->mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
 	}
 	act->Reset();
-	act->mContactEffect = FALSE;
-	act->mUseEffect     = FALSE;
-	act->mToolEffect    = FALSE;
+	act->mContactEffect = NULL;
+	act->mUseEffect     = NULL;
+	act->mToolEffect    = NULL;
 	act->_58            = 0;
 	act->_80 = act->_84 = act->_88 = 0.0f;
 	act->_AC                       = 0;
