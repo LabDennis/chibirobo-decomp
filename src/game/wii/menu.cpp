@@ -2722,8 +2722,7 @@ static inline void DrawMenuSelectionBar(CTexObj& tex, f32 barX, f32 barY, f32 ba
 }
 
 // NONMATCHING: the call list matches retail; this build is 400 bytes larger and register allocation differs
-template <PCShopListKind kind>
-void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
+void DrawPCItemShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
 {
 	CTexObj tex;
 	y -= scroll;
@@ -2753,22 +2752,64 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
 	for (int i = 0; i < 9; i++) {
-		DrawPCListRow(kind, (kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mRows[i], left, step * i + rowY, alpha, scale);
+		DrawPCListRow(ItemPriceList, gItemShopPage.mRows[i], left, step * i + rowY, alpha, scale);
 	}
-	MenuPCItem* items = kind == ItemPriceList ? sItemShopEntries : sScrapShopEntries;
-	if ((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mStart < PCShopMaxPage(items) - 1) {
-		DrawPCListRow(kind, (kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
+	MenuPCItem* items = sItemShopEntries;
+	if (gItemShopPage.mStart < PCShopMaxPage(items) - 1) {
+		DrawPCListRow(ItemPriceList, gItemShopPage.mNext[0], left, 9.0f * step + rowY, alpha, scale);
 	}
-	CountPCShopItems(kind == ItemPriceList ? sItemShopEntries : sScrapShopEntries);
-	if ((kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mStart > 0) {
-		DrawPCListRow(kind, (kind == ItemPriceList ? gItemShopPage : gScrapShopPage).mPrev[0], left, rowY - step, alpha, scale);
+	CountPCShopItems(sItemShopEntries);
+	if (gItemShopPage.mStart > 0) {
+		DrawPCListRow(ItemPriceList, gItemShopPage.mPrev[0], left, rowY - step, alpha, scale);
 	}
 	DrawPCListMask(97.0f - scroll, 40.0f, (u32)(255.0f * alpha) | 0x0A0A0A00);
 	DrawPCListMask(292.5f - scroll, 40.0f + scroll, opacity | 0x0A0A0A00);
 }
 
-template void DrawPCShopList<ItemPriceList>(s32, f32, f32, f32, f32, f32, f32);
-template void DrawPCShopList<PriceList>(s32, f32, f32, f32, f32, f32, f32);
+// NONMATCHING: the call list matches retail; this build is 400 bytes larger and register allocation differs
+void DrawPCScrapShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
+{
+	CTexObj tex;
+	y -= scroll;
+	f32 left;
+	f32 width = 296.0f * scale, height = 156.0f * scale;
+	left        = x - width / 2.0f;
+	Vec bg[5]   = { (Vec) { left, y - height / 2.0f, -10.0f }, (Vec) { width + left, y - height / 2.0f, -10.0f },
+		            (Vec) { width + left, height + (y - height / 2.0f), -10.0f }, (Vec) { left, height + (y - height / 2.0f), -10.0f },
+		            (Vec) { left, y - height / 2.0f, -10.0f } };
+	u32 opacity = (u32)(255.0f * alpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, bg, opacity, 5);
+	y += scale;
+	f32 step = 17.0f * scale;
+	f32 rowY = y - height / 2.0f;
+	f32 barX, barW;
+	if (IsJapanese()) {
+		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
+		barW = 0.9f * (14.0f * step);
+	} else {
+		InitPCPanelTexture(tex, 147);
+		barX = x - 4.0f;
+		barW = (0.7f * (scale * (1.1f * (2 * GXGetTexObjWidth(&tex)))) + width) - 5.0f * scale;
+	}
+	f32 barH     = step + scale;
+	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
+	InitMenuSelectionBar(tex);
+	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
+	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
+	for (int i = 0; i < 9; i++) {
+		DrawPCListRow(PriceList, gScrapShopPage.mRows[i], left, step * i + rowY, alpha, scale);
+	}
+	MenuPCItem* items = sScrapShopEntries;
+	if (gScrapShopPage.mStart < PCShopMaxPage(items) - 1) {
+		DrawPCListRow(PriceList, gScrapShopPage.mNext[0], left, 9.0f * step + rowY, alpha, scale);
+	}
+	CountPCShopItems(sScrapShopEntries);
+	if (gScrapShopPage.mStart > 0) {
+		DrawPCListRow(PriceList, gScrapShopPage.mPrev[0], left, rowY - step, alpha, scale);
+	}
+	DrawPCListMask(97.0f - scroll, 40.0f, (u32)(255.0f * alpha) | 0x0A0A0A00);
+	DrawPCListMask(292.5f - scroll, 40.0f + scroll, opacity | 0x0A0A0A00);
+}
 
 static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32 scale, f32 opacity)
 {
@@ -3163,7 +3204,7 @@ BOOL MenuPC::Draw()
 		case 3: {
 			s32 selected = mItemShopSelection;
 			f32 alpha    = mListAlpha;
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, alpha, 1.0f, 0.0f);
+			DrawPCItemShopList(selected, 320.0f, 215.0f + mScroll, mTexScroll, alpha, 1.0f, 0.0f);
 			DrawPCGoldNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mMoneyDisplay.shown);
 			f32 barY      = 76.0f;
 			s32 positions = CountPCShopItems(sItemShopEntries) - 8;
@@ -3185,7 +3226,7 @@ BOOL MenuPC::Draw()
 			break;
 		case 7: {
 			s32 selected = mScrapShopSelection;
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, 1.0f, 1.0f, 0.0f);
+			DrawPCScrapShopList(selected, 320.0f, 215.0f + mScroll, mTexScroll, 1.0f, 1.0f, 0.0f);
 			DrawPCBlueNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mScrapDisplay.shown);
 			f32 barY      = 76.0f;
 			s32 positions = CountPCShopItems(sScrapShopEntries) - 8;

@@ -1397,6 +1397,10 @@ extern "C" void HideToyDroppedItem(XObjActorToy* object)
 	}
 }
 
+/**
+ * @note Address: 0x8011CF94
+ * @note Size: 0x1410
+ */
 // NONMATCHING: regalloc, retail saves one register more; the stack matches
 extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 {
@@ -1532,6 +1536,10 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 	}
 }
 
+/**
+ * @note Address: 0x8011C834
+ * @note Size: 0x760
+ */
 void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 {
 	CJObj joint;
@@ -1563,6 +1571,10 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 	}
 }
 
+/**
+ * @note Address: 0x8011C44C
+ * @note Size: 0x3E8
+ */
 void UpdateToy117JointVisibility(XObjActorToy* object, u32)
 {
 	CJObj joint;
@@ -1577,6 +1589,10 @@ void UpdateToy117JointVisibility(XObjActorToy* object, u32)
 	}
 }
 
+/**
+ * @note Address: 0x8011BE44
+ * @note Size: 0x608
+ */
 void UpdateToy159JointScales(XObjActorToy* object, u32)
 {
 	CJObj joint;
@@ -1588,6 +1604,10 @@ void UpdateToy159JointScales(XObjActorToy* object, u32)
 	joint.SetScale(object->_9A8, object->_9A8, object->_9A8, 0);
 }
 
+/**
+ * @note Address: 0x8011B7EC
+ * @note Size: 0x658
+ */
 void UpdateToy1FBJointScales(XObjActorToy* object, u32)
 {
 	CJObj joint;

@@ -23,10 +23,9 @@ Vec XObjActor::GetCameraTarget()
  * @note Address: 0x80138580
  * @note Size: 0x18
  */
-extern "C" void ResetActorMovementStep(void* object)
+void XObjActor::ResetMovementStep()
 {
-	XObjActor* actor    = (XObjActor*)object;
-	actor->mKindStep    = 0;
-	actor->mKindCounter = 0;
-	actor->mMoveSpeed   = 0.0f;
+	mKindStep    = 0;
+	mKindCounter = 0;
+	mMoveSpeed   = 0.0f;
 }

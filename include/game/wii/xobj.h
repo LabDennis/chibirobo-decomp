@@ -1949,6 +1949,7 @@ STATIC_ASSERT(sizeof(XObjJointPart) == 0x38);
 class XObjActor : public XObj {
 public:
 	XObjActor();
+	void ResetMovementStep();
 	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
 

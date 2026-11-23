@@ -1825,6 +1825,10 @@ static inline f32 TitleOptionWidth(s32 first)
 }
 #endif
 
+/**
+ * @note Address: 0x8002AC68
+ * @note Size: 0xF14
+ */
 // NONMATCHING: float registers only (retail keeps the dust alpha in f30, this build in f28) and the logo quad's schedule.
 // Both save f26-f31; the alpha, the later progress and the three entry widths are coloured onto other slots. -O4 without p,
 // -O3,p and -O4,s score lower for the whole unit, so it is not the optimisation level. Retail also loads the entry text's
@@ -2025,6 +2029,10 @@ static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 }
 #endif
 
+/**
+ * @note Address: 0x80029DFC
+ * @note Size: 0xE6C
+ */
 // NONMATCHING: float and saved registers (lines and the text color swap r26/r27); the bar's last quad adds 2.0f to barX
 // variable-first in retail (US 0x8002A95C fadds f1, f29, f0), constant-first here. The bar's y is barY + inset: retail adds
 // the 2.0f at each quad, variable-first (US 0x8002A7B4, 0x8002A81C fadds f2, f25, f0), which a literal 2.0f folds into one
@@ -2534,6 +2542,10 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 	}
 }
 
+/**
+ * @note Address: 0x80028544
+ * @note Size: 0x668
+ */
 // NONMATCHING: the loop's floats are numbered the other way round: retail keeps bob in f31 and x in f14
 // (0x8002892C fmuls f31, 0x800289D8 fadds f14), ours x in f31 and bob in f14
 extern "C" void DrawTitleHelpText(Title* menu)

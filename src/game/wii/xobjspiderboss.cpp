@@ -469,17 +469,12 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		if (mArgs[0] == 1) {
 			mSpiderStatus.mFlags |= 0x20000;
 			WiiPlayerState* player = gGame.GetPlayer();
-			player->mPlayerFlags   = 0;
-			player->mPlayerFlags |= 0x40000000;
-			player->mPadReset = FALSE;
+			player->LockControl();
 			player->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		} else {
 			mSpiderStatus.mFlags &= ~0x20000;
 			WiiPlayerState* player = gGame.GetPlayer();
-			player->mPlayerFlags   = 0;
-			player->mPlayerFlags |= 0x20000000;
-			player->mPlayerFlags |= 7;
-			player->mPadReset = TRUE;
+			player->RestoreControl();
 		}
 		mCommand = 0;
 		break;
@@ -805,10 +800,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 		spider->mSpiderStatus.mFlags &= ~0x20000;
 		WiiPlayerState* chr = gGame.GetPlayer();
-		chr->mPlayerFlags   = 0;
-		chr->mPlayerFlags |= 0x20000000;
-		chr->mPlayerFlags |= 7;
-		chr->mPadReset = TRUE;
+		chr->RestoreControl();
 	}
 }
 
@@ -1152,10 +1144,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			mStatus.mFlags &= ~0x100000ULL;
 			mSpiderStatus.mFlags &= ~0x20000;
 			WiiPlayerState* chr = gGame.GetPlayer();
-			chr->mPlayerFlags   = 0;
-			chr->mPlayerFlags |= 0x20000000;
-			chr->mPlayerFlags |= 7;
-			chr->mPadReset      = TRUE;
+			chr->RestoreControl();
 			mGrabIntervalFrames = 0;
 			SetAttackAnim(this, 7);
 			mStep = 0;

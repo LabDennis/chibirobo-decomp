@@ -576,6 +576,10 @@ static inline void DrainPlayerBattery(f32 amount)
 	gGame.GetPlayer()->mParams.SetBattery(battery);
 }
 
+/**
+ * @note Address: 0x8010473C
+ * @note Size: 0xA64
+ */
 extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 {
 	CPad pad(0);
@@ -721,6 +725,10 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 	}
 }
 
+/**
+ * @note Address: 0x80103F54
+ * @note Size: 0x7E8
+ */
 extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 {
 	CJObj joint;

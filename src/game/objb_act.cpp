@@ -78,6 +78,10 @@ static inline f32 TargetPitch(const Vec& from, const Vec& to)
 	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 }
 
+/**
+ * @note Address: 0x800BD324
+ * @note Size: 0x1324
+ */
 // NONMATCHING: retail takes the yaw's z difference before the x one and numbers the float registers otherwise;
 // ShadeRadarBeam's loop counters get their own zero in retail. The dol has 129 atan2(a.x - b.x, a.z - b.z)
 // calls and evaluates the x argument first at all but four: this one, UpdateRadarTargeting's dish case,
@@ -265,6 +269,10 @@ static inline void StartRadarTone(XActRadar* act, s32 tone, u8 r0, u8 g0, u8 b0,
 	}
 }
 
+/**
+ * @note Address: 0x800BE930
+ * @note Size: 0x12D4
+ */
 void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
 	// 1 takes the radar out, 2 puts it away. a scan starts at 3, 4 spins the dish a full turn and
@@ -957,6 +965,10 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 	FadePopperRing(shot->mRing[1], frames);
 }
 
+/**
+ * @note Address: 0x800C21A0
+ * @note Size: 0x874
+ */
 // NONMATCHING: registers, and retail has the spark's velocity above its size on the stack (both below the
 // CVec temporaries, so neither is a named local of this function)
 void CheckPopperShotImpact(XActPopperShot* shot)
@@ -1535,6 +1547,10 @@ HSD_Generator* CreateScaledParticleAtPosition(CGame*, u32, u32, s32, const Vec&,
 static const s32 sSquirterChargeLevels[11] = { 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3 };
 f32 GetJointAnimationCurrentFrame(CJObj*);
 BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOOL, Vec*);
+/**
+ * @note Address: 0x800D0F4C
+ * @note Size: 0x2B10
+ */
 // NONMATCHING: the bl lists differ in four inlines only: retail calls GetObjectJointByPath (5), ~CJObj, CVec(const Vec&)
 // and ~CVec (10) that this one expands. Retail still expands CVec::Length (bl PSVECMag at US 0x800D3874, no bl Length)
 // and GetStagePlacementIndex (bl GetStagePlacementByIndex at 0x800D0F9C), so its inline limit was 16: our Length leaves
@@ -2313,6 +2329,10 @@ static inline f32 FacingPushEdge(XObj* edgeObject, XObjChr* owner)
 	GetOutwardPerpendicularToEdge(&player, &a, &b, &normal);
 	return WrapAngle(atan2(normal.x, normal.z));
 }
+/**
+ * @note Address: 0x800C494C
+ * @note Size: 0x924
+ */
 void UpdatePushedObject(XActPush* act, u32 frames)
 {
 	if (!act->mTargetState)
@@ -4603,6 +4623,10 @@ void HSD_JObjClearMtxFlags__FP9_HSD_JObj(HSD_JObj* jobj)
 	HSD_JObjClearMtxFlags(jobj);
 }
 
+/**
+ * @note Address: 0x800CDAB4
+ * @note Size: 0xF4
+ */
 // Both retail call sites read the result before the next call.
 extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {

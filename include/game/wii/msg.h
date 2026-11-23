@@ -51,9 +51,11 @@ enum MsgSfxType {
 	MSG_SFX_RESUME   = 6,  // no extra bytes
 };
 
-// the formatted message plus what CMsgData_Measure finds out about its ten lines.
+// the formatted message plus what CMsgData::Measure finds out about its ten lines.
 // compared to the GameCube class it remembers the widest line's index and carries a
 // second icon column member
+struct MsgFormatArgs;
+
 class CMsgData {
 public:
 	u8 mText[0x800];  // _00
@@ -78,6 +80,9 @@ public:
 	}
 
 	virtual ~CMsgData() { } // _08
+
+	void Format(u8* script, MsgFormatArgs* args);
+	void Measure();
 
 	s32 _8A0; // _8A0
 };
