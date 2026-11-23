@@ -854,40 +854,54 @@ STATIC_ASSERT(sizeof(Params) == 0x444);
 typedef Params WiiPlayerParams;
 
 // the objects behind a suit, the GameCube's PlayerSuits.mObjects: XObjs with two virtuals of their own that the
-// player forwards to the one he wears. The class has no name of its own in retail, the name is ours
-class WiiSuitObject : public XObj {
+// player forwards to the one he wears. The class name is RTTI.
+class XObjDress : public XObj {
 public:
+	XObjDress() { }
+	virtual ~XObjDress() { }
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	XObj* mOwner; // _9A8
-	u8 _9AC[0x9C8 - 0x9AC];
-	u8 m_9C8; // _9C8, retail's XObjDress: vf28C hides the head nodes while it is set
-	u8 m_9C9; // _9C9, vf290 hides the left-arm nodes
+	XObj* mOwner;           // _9A8
+	u8 _9AC[0x9C8 - 0x9AC]; // retail's ctor clears these seven words
+	u8 m_9C8;               // _9C8, vf28C hides the head nodes while it is set
+	u8 m_9C9;               // _9C9, vf290 hides the left-arm nodes
 	u8 _9CA[0x9D0 - 0x9CA];
 };
-STATIC_ASSERT(sizeof(WiiSuitObject) == 0x9D0);
+STATIC_ASSERT(sizeof(XObjDress) == 0x9D0);
+typedef XObjDress WiiSuitObject;
 
-// the extra model suits 3 and 6 bring, updated and drawn with the suit; the name is ours
-// (retail's XObjDressOpt: its ExecCallbackB grafts the owner's head matrix onto the callback result)
-class WiiSuitPart : public XObj {
+// the extra model suits 3 and 6 bring, updated and drawn with the suit; the class name is RTTI.
+// Its ExecCallbackB grafts the owner's head matrix onto the callback result.
+class XObjDressOpt : public XObj {
 public:
+	XObjDressOpt() { }
+	virtual ~XObjDressOpt() { }
+
 	XObj* mOwner; // _9A8, the object whose head joint this part follows
 	u8 _9AC[0x9B0 - 0x9AC];
 };
-STATIC_ASSERT(sizeof(WiiSuitPart) == 0x9B0);
+STATIC_ASSERT(sizeof(XObjDressOpt) == 0x9B0);
+typedef XObjDressOpt WiiSuitPart;
 
-// his suits, the GameCube's PlayerSuits: the save manager touches the state at the head
-struct WiiPlayerSuits {
-	s32 mLoadStep;             // _00
-	s32 mChangeStep;           // _04, a queued suit change
-	s32 mCurrent;              // _08, the suit he's wearing
-	s32 mRequested;            // _0C, takes the saved suit
-	s32 mSpecial;              // _10
-	u32 _14;                   // _14
-	WiiSuitObject mObjects[9]; // _18
+// his suits, the GameCube's PlayerSuits: the save manager touches the state at the head. The name follows the
+// ctor/dtor names in symbols.txt (0x800C08B8, 0x800C0E18); retail's XObjChrBase RTTI is polymorphic and this has
+// no vptr, so the name is unconfirmed
+struct XObjChrBase {
+	XObjChrBase() { }
+	~XObjChrBase() { }
+
+	s32 mLoadStep;          // _00
+	s32 mChangeStep;        // _04, a queued suit change
+	s32 mCurrent;           // _08, the suit he's wearing
+	s32 mRequested;         // _0C, takes the saved suit
+	s32 mSpecial;           // _10
+	u32 _14;                // _14
+	XObjDress mObjects[9];  // _18
+	XObjDressOpt mParts[9]; // _5868
 };
-STATIC_ASSERT(sizeof(WiiPlayerSuits) == 0x5868);
+STATIC_ASSERT(sizeof(XObjChrBase) == 0xAF98);
+typedef XObjChrBase WiiPlayerSuits;
 
 // the plug object embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug): ResetPlayerPlug
 // reaches its XObj status and virtuals. The anchor transform takes the whole block; of its own members only
@@ -1116,19 +1130,18 @@ struct WiiPlayerState : public XObj {
 	f32 mGaugeTime;                   // _9E14
 	s32 mLoadStep;                    // _9E18, the step of LoadFromPlacement's stage load to resume at
 	u8 _9E1C[0x9E20 - 0x9E1C];
-	WiiPlayerPlug mPlug;       // _9E20, the GameCube's mPlug (XObjPlug)
-	XObjWireEff mCordWire;     // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
-	u8 mCopterObj[0x9B0];      // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
-	                           // through XObj's vtable
-	u8 mPopperObj[0x9B0];      // _BF30, the popper attachment object, the GameCube's mPopperObj
-	u8 mRadarObj[0x9C0];       // _C8E0, the radar attachment object, the GameCube's mRadarObj
-	u8 mOXObj[0x9B0];          // _D2A0, the OX attachment object, the GameCube's mOXObj
-	WiiPlayerSuits mSuits;     // _DC50
-	WiiSuitPart mSuitParts[9]; // _134B8, by suit
-	CPadOne mPad;              // _18BE8, the pad he reads, the GameCube's mPad
-	BOOL mPadReset;            // _19E90, the GameCube's mPad.mReset, moved behind the Wii pad
-	u8 _19E94[4];              // _19E94
-	f32 mWalkHeading;          // _19E98, NANed until he walks
+	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
+	XObjWireEff mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
+	u8 mCopterObj[0x9B0];  // _B580, the copter attachment object, the GameCube's mCopterObj; its class is unmapped, the code reaches it
+	                       // through XObj's vtable
+	u8 mPopperObj[0x9B0];  // _BF30, the popper attachment object, the GameCube's mPopperObj
+	u8 mRadarObj[0x9C0];   // _C8E0, the radar attachment object, the GameCube's mRadarObj
+	u8 mOXObj[0x9B0];      // _D2A0, the OX attachment object, the GameCube's mOXObj
+	XObjChrBase mSuits;    // _DC50, the suit objects at _18 and their extra parts at _5868
+	CPadOne mPad;          // _18BE8, the pad he reads, the GameCube's mPad
+	BOOL mPadReset;        // _19E90, the GameCube's mPad.mReset, moved behind the Wii pad
+	u8 _19E94[4];          // _19E94
+	f32 mWalkHeading;      // _19E98, NANed until he walks
 	AttachmentValues mAttachments; // _19E9C, goes in the save as is
 	XObjChrMenu mMenu;             // _19EE4, the attachment and costume rings
 	WiiOXMenu mOXMenu;             // _1A420

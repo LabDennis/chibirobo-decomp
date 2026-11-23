@@ -561,8 +561,8 @@ void XObjChr::InitializeObject()
 	for (s32 i = 0; i < 9; ++i) {
 		player->mSuits.mObjects[i].InitializeObject();
 		player->mSuits.mObjects[i].mOwner = player;
-		player->mSuitParts[i].InitializeObject();
-		player->mSuitParts[i].mOwner = &player->mSuits.mObjects[i];
+		player->mSuits.mParts[i].InitializeObject();
+		player->mSuits.mParts[i].mOwner = &player->mSuits.mObjects[i];
 	}
 	player->mPlayer = player;
 	// he may blink in every anim but these
@@ -1035,13 +1035,13 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		// the GameCube's other editions loaded the two O/X menu marks here, in their own steps
 		++chr->mLoadStep;
 	case 7: // the suit parts the stage itself provides
-		if (chr->mSuitParts[3].LoadFromPlacement(CoordInfo(GetSpawnData(36)))) {
+		if (chr->mSuits.mParts[3].LoadFromPlacement(CoordInfo(GetSpawnData(36)))) {
 			++chr->mLoadStep;
 		} else {
 			break;
 		}
 	case 8:
-		if (chr->mSuitParts[6].LoadFromPlacement(CoordInfo(GetSpawnData(37)))) {
+		if (chr->mSuits.mParts[6].LoadFromPlacement(CoordInfo(GetSpawnData(37)))) {
 			++chr->mLoadStep;
 		} else {
 			break;
@@ -2012,7 +2012,7 @@ void XObjChr::UpdateAnim(f32 speed)
 			chr->mSuits.mObjects[chr->mSuits.mCurrent].UpdateAnim(speed);
 			m_pRoot->PushBack(chr->mSuits.mObjects[chr->mSuits.mCurrent].mObject.m_pScnMdl);
 			if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
-				m_pRoot->PushBack(chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+				m_pRoot->PushBack(chr->mSuits.mParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
 			}
 		}
 		if (IsLiftTargetPlug(&chr->mLift)) {
@@ -2062,8 +2062,9 @@ void fn_800D1BF0(WiiPlayerState* player, u32 frames)
 	if (IsObjectActive(&player->mSuits.mObjects[player->mSuits.mCurrent])) {
 		s32 suit = player->mSuits.mCurrent;
 		if (suit == 3 || suit == 6) {
-			player->mSuitParts[suit].UpdateObject(frames);
-			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
+			player->mSuits.mParts[suit].UpdateObject(frames);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending,
+			                              player->mSuits.mParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
 		}
 	}
 }
@@ -5720,7 +5721,7 @@ void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 ra
 		suit->SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
 		              blend, blendRate);
 		if (chr->mSuits.mCurrent == 6) {
-			WiiSuitPart* part = &chr->mSuitParts[6];
+			WiiSuitPart* part = &chr->mSuits.mParts[6];
 			if (id == 0xCE8) {
 				if (part->GetAnimId() != 2)
 					part->SetAnim(2, force, frame,
@@ -6086,7 +6087,7 @@ void XObjChr::SetColor(s32 blend, u8 red, u8 green, u8 blue, f32 time)
 	for (s32 i = 0; i < 9; ++i) {
 		chr->mSuits.mObjects[i].SetColor(blend, red, green, blue, time);
 		if (i == 3 || i == 6) {
-			chr->mSuitParts[i].SetColor(blend, red, green, blue, time);
+			chr->mSuits.mParts[i].SetColor(blend, red, green, blue, time);
 		}
 	}
 	if (IsCarryingMug(&chr->mLift)) {
@@ -6721,7 +6722,7 @@ void XObjChr::vf1BC(s32 mode)
 	if (IsObjectActive(suit)) {
 		suit->vf1BC(mode);
 		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
-			chr->mSuitParts[chr->mSuits.mCurrent].vf1BC(mode);
+			chr->mSuits.mParts[chr->mSuits.mCurrent].vf1BC(mode);
 		}
 	}
 }
@@ -6750,7 +6751,7 @@ void XObjChr::SetCullMode(s32 mode)
 	if (IsObjectActive(suit)) {
 		suit->SetCullMode(mode);
 		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
-			chr->mSuitParts[chr->mSuits.mCurrent].SetCullMode(mode);
+			chr->mSuits.mParts[chr->mSuits.mCurrent].SetCullMode(mode);
 		}
 	}
 }
@@ -6779,7 +6780,7 @@ void XObjChr::ResetCullMode()
 	if (IsObjectActive(suit)) {
 		suit->ResetCullMode();
 		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
-			chr->mSuitParts[chr->mSuits.mCurrent].ResetCullMode();
+			chr->mSuits.mParts[chr->mSuits.mCurrent].ResetCullMode();
 		}
 	}
 }
@@ -7070,8 +7071,8 @@ void XObjChr::ApplyMaterialPresets(const u32* flags)
 		if (chr->mSuits.mObjects[i].HasModel()) {
 			chr->mSuits.mObjects[i].ApplyMaterialPresets(flags);
 		}
-		if (chr->mSuitParts[i].HasModel()) {
-			chr->mSuitParts[i].ApplyMaterialPresets(flags);
+		if (chr->mSuits.mParts[i].HasModel()) {
+			chr->mSuits.mParts[i].ApplyMaterialPresets(flags);
 		}
 	}
 }
@@ -7101,8 +7102,8 @@ void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
 		if (chr->mSuits.mObjects[i].HasModel()) {
 			chr->mSuits.mObjects[i].SetDestinationAlpha(enabled, value);
 		}
-		if (chr->mSuitParts[i].HasModel()) {
-			chr->mSuitParts[i].SetDestinationAlpha(enabled, value);
+		if (chr->mSuits.mParts[i].HasModel()) {
+			chr->mSuits.mParts[i].SetDestinationAlpha(enabled, value);
 		}
 	}
 }
@@ -7203,7 +7204,7 @@ void XObjChr::DrawWithView(Mtx view)
 	} else {
 		suit->DrawWithView(view);
 		if (chr->m_9C8 == 0 && (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6)) {
-			chr->mSuitParts[chr->mSuits.mCurrent].DrawWithView(view);
+			chr->mSuits.mParts[chr->mSuits.mCurrent].DrawWithView(view);
 		}
 	}
 	if (!(gGame.GetStatusFlags(0x100) && chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift))) {
@@ -7313,7 +7314,7 @@ extern "C" void fn_800E7EA8(WiiPlayerState* chr)
 	if (IsObjectActive(suit)) {
 		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
 		if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
-			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mSuits.mParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
 		}
 	}
 	gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)chr->mPopperObj)->mObject.m_pScnMdl);
@@ -7335,7 +7336,7 @@ extern "C" void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidd
 			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
 			if (player->mSuits.mCurrent == 3 || player->mSuits.mCurrent == 6) {
 				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending,
-				                              player->mSuitParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
+				                              player->mSuits.mParts[player->mSuits.mCurrent].mObject.m_pScnMdl);
 			}
 		}
 		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, ((XObj*)player->mPopperObj)->mObject.m_pScnMdl);
