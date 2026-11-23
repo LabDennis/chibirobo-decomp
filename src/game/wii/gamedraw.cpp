@@ -337,7 +337,7 @@ extern "C" void fn_80028998(CGame* game)
 	if (!game->mTpl.mBound) {
 		return;
 	}
-	if ((game->mDvdStatus != 0 || game->mPrevDvdStatus != 0) && !game->mDiskOk) {
+	if (game->IsDiscError()) {
 		return;
 	}
 	if (game->mHomeMenu.IsActive()) {
