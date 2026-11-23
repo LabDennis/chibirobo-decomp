@@ -26,7 +26,6 @@ class CGs;
 
 static const u32 sAreaCameraDebugColors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 static const u32 sMapCameraDebugColors[7]  = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
-#if !defined(VERSION_R24J01)
 #if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 static const char sCameraAreaDataAddressFormat[]
     = "CCameraActionAreaEx :: "
@@ -35,7 +34,6 @@ static const char sCameraAreaDataAddressFormat[]
 static const char sCameraAreaZoomResetMessage[] = "reset zoom lv = CAM_AREA_ZOOM_LV1\n";
 static const char sAreaCameraDebugIndexFormat[] = "DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n";
 static const char sMapCameraDebugIndexFormat[]  = "DEBUG:CCameraActionMap::DrawDebug3d():%d\n";
-#endif
 #endif
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
@@ -324,8 +322,9 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
  * @note Address: 0x801361C4
  * @note Size: 0x890
  */
-// NONMATCHING: the geometry and draw calls are recovered; the remaining differences are aggregate
-// temporary lifetimes, stack slots and register allocation
+// NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
+// in for them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round.
+// Wii: the geometry and draw calls match; aggregate temporary lifetimes, stack slots and registers remain
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->mAreaRecords == NULL)
@@ -401,8 +400,9 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
  * @note Address: 0x80136A54
  * @note Size: 0x77C
  */
-// NONMATCHING: the area selection, geometry and cube draw are recovered; the remaining differences
-// are aggregate temporary lifetimes, stack slots and register allocation
+// NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
+// in for them until the whole file is built, and rotates the yaw, top - bottom and the height among f29-f31.
+// Wii: the area selection, geometry and cube draw match; aggregate temporary lifetimes, stack slots and registers remain
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 {
 	// callers only pass 0 or 1
@@ -588,7 +588,7 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-// NONMATCHING: MWCC inlines LoadCameraAreaTables into the Wii wrapper; retail keeps the call.
+// NONMATCHING (Wii only): MWCC inlines LoadCameraAreaTables into this wrapper; Wii retail keeps the call.
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 #if defined(VERSION_R24J01)
@@ -610,7 +610,7 @@ extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 	state->mPrevArea    = -1;
 	state->mActiveArea  = -1;
 	state->mBaseFov     = 30.5f;
-#if !defined(VERSION_PAL) && !defined(VERSION_R24J01) && !defined(VERSION_R24J01) // the Wii build has neither report
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01) // the Wii build has neither report
 	OSReport(sCameraAreaZoomResetMessage);
 #endif
 }
@@ -623,7 +623,7 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 {
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
 	static CamAreaEntry gCameraAreaEntries[2048];
-#if !defined(VERSION_PAL) && !defined(VERSION_R24J01) && !defined(VERSION_R24J01)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
 #endif
 	for (int i = 0; i < 2048; ++i)
