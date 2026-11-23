@@ -1471,6 +1471,10 @@ STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
+	BOOL Update(u32 frames);
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
 	void State3(u32 frames);
 	void State4(u32 frames);
 	void State5(u32 frames);
@@ -1502,32 +1506,53 @@ public:
 	s32 mIconSelection;          // _530
 	s32 mPrevIconSelection;      // _534
 	s32 mStickIconSelection;     // _538
-	u8 _53C[0x544 - 0x53C];
-	s32 mStickSelection; // _544
-	s32 mPrevSelection;  // _548
-	f32 mOffsetX;        // _54C
-	f32 mOffsetY;        // _550
-	u8 _554[0x568 - 0x554];
-	f32 mTargetPanelY; // _568
-	u8 _56C[0x5AC - 0x56C];
-	MenuStatusTab mTabs[4]; // _5AC
-	u8 _5EC[0x5FC - 0x5EC];
-	f32 mOverviewX;       // _5FC
-	f32 mOverviewY;       // _600
-	f32 mTargetOverviewX; // _604
-	u8 _608[0x60C - 0x608];
-	f32 mGridX;       // _60C
-	f32 mGridY;       // _610
-	f32 mTargetGridX; // _614
-	u8 _618[0x624 - 0x618];
-	f32 mTargetDiagramX; // _624
-	u8 _628[0x66C - 0x628];
-	s32 mPhase; // _66C
-	f32 mDelay; // _670
-	u8 _674[0x67C - 0x674];
-	f32 mDetailScale;       // _67C
-	f32 mTargetDetailScale; // _680
-	u8 mHasFourthTab;       // _684
+	s32 mChoice;                 // _53C, yes or no when discarding items
+	s32 mCount;                  // _540, number to discard
+	s32 mStickSelection;         // _544
+	s32 mPrevSelection;          // _548
+	f32 mOffsetX;                // _54C
+	f32 mOffsetY;                // _550
+	f32 mTargetOffsetX;          // _554
+	f32 mTargetOffsetY;          // _558
+	f32 mPanelX;                 // _55C
+	f32 mPanelY;                 // _560
+	f32 mTargetPanelX;           // _564
+	f32 mTargetPanelY;           // _568
+	u8 _56C[0x57C - 0x56C];
+	f32 mItemPanelX;          // _57C
+	f32 mItemPanelY;          // _580
+	f32 mTargetItemPanelX;    // _584
+	f32 mTargetItemPanelY;    // _588
+	f32 mDiscardPanelX;       // _58C
+	f32 mDiscardPanelY;       // _590
+	f32 mTargetDiscardPanelX; // _594
+	f32 mTargetDiscardPanelY; // _598
+	u8 _59C[0x5AC - 0x59C];
+	MenuStatusTab mTabs[4];  // _5AC
+	f32 mX;                  // _5EC
+	f32 mY;                  // _5F0
+	f32 mTargetX;            // _5F4
+	f32 mTargetY;            // _5F8
+	f32 mOverviewX;          // _5FC
+	f32 mOverviewY;          // _600
+	f32 mTargetOverviewX;    // _604
+	f32 mTargetOverviewY;    // _608
+	f32 mGridX;              // _60C
+	f32 mGridY;              // _610
+	f32 mTargetGridX;        // _614
+	f32 mTargetGridY;        // _618
+	f32 mDiagramX;           // _61C
+	f32 mDiagramY;           // _620
+	f32 mTargetDiagramX;     // _624
+	f32 mTargetDiagramY;     // _628
+	MenuStatusTab mTabs2[4]; // _62C
+	s32 mPhase;              // _66C
+	f32 mDelay;              // _670
+	s32 mSavedBgm;           // _674
+	f32 mSavedBgmVolume;     // _678
+	f32 mDetailScale;        // _67C
+	f32 mTargetDetailScale;  // _680
+	u8 mHasFourthTab;        // _684
 	u8 _685[0x689 - 0x685];
 	u8 mShowGauge; // _689
 	u8 _68A[0x68C - 0x68A];
@@ -1539,19 +1564,19 @@ public:
 	const char* mHelpText; // _69C
 	const char* mHelp;     // _6A0
 	f32 mPulsePhase;       // _6A4
-	u8 _6A8[0x6AC - 0x6A8];
+	s16 _6A8;
+	s16 _6AA;
 	s32 mItemSelection;          // _6AC
 	s32 mPrevItemSelection;      // _6B0
 	s32 mStickItemSelection;     // _6B4
 	MenuTitle mTitle;            // _6B8
 	s32 mHelpCount;              // _854
 	MenuHelpChar mHelpChars[20]; // _858
-	CbPane mPanes[49];           // _948, tabs, grid cells and detail controls
-	u8 _1898[0x1938 - 0x1898];
-	u8 mHovered; // _1938
+	CbPane mPanes[51];           // _948, tabs, grid cells and detail controls
+	u8 mHovered;                 // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
-	u8 _1954[0x1958 - 0x1954];
+	s32 _1954;
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
