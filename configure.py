@@ -1534,11 +1534,11 @@ if wii:
                 # XObjActor3 RTTI and Kind0..Kind19 identify the GameCube counterpart;
                 # recover the unit in function-sized splits, starting with Kind10.
                 Object(NonMatching, "game/wii/xobjactor3.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/xobjactortoy.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline auto,deferred", "-i include/rvl_msl"]),
-                Object(NonMatching, "rel/stage02/fighter.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline auto,deferred", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/xobjactorjenny.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline auto,deferred", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/xobjactormama.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline auto,deferred", "-i include/rvl_msl"]),
-                Object(NonMatching, "game/wii/xobjactorpapa.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline auto,deferred", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/xobjactortoy.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "rel/stage02/fighter.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/xobjactorjenny.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/xobjactormama.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/xobjactorpapa.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "game/wii/xobjactortao.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "game/wii/xobjactordeca.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
