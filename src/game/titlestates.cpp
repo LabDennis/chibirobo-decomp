@@ -396,7 +396,8 @@ extern "C" void ResetTitleScreenState(Title* title)
 // at title but gives i its own li and scores lower. Retail loads mChannel before the mReady/mWrongDevice stores
 // (0x8002ED4C), this build after them. In state 14 retail loads mMenuAlpha and gGame.mFade.mSpeed.r (0x80030B70)
 // before the first compare. The rest is register allocation. The card's busy and found flags are read through
-// a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site.
+// a Memcard reference so that retail's two-step address (addis 0xF, addis 1) comes out at every site. `visible = 0, i = visible`
+// in the for, `s32 visible = 0` and a separate `visible = 0;` statement all score 99.00.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
@@ -754,7 +755,7 @@ void Title::State0(u32)
  */
 // NONMATCHING: the loop's saved registers: retail keeps the save pointer in r31 (0x8002E5F0 addis r31, r28, 0x1) above the slot,
 // timestamp and card walkers, this build in r28 below them. A function-top card pointer and the header fields read in place
-// score lower
+// score lower, as do a SavePreviewRecord& for the slot (97.64) and the fields read in place (86.68)
 void Title::State1(u32 frames)
 {
 	s32 state = gGame.mMemcard.mCard.mState;
@@ -1831,7 +1832,9 @@ static inline f32 TitleOptionWidth(s32 first)
 // inner of the two widest-width picks goes to a fresh register in both arms (fmr f0 at 0x8002B79C, 0x8002B928 and 0x8002B9D4); a
 // WiderOf(a, b) inline compiles to the same bytes as the ternaries. The dust alpha hoisted before the loop or read in place
 // in the colour scores lower; declaring it uninitialised ahead of the loop and a pointer local for the logo texture
-// compile to the same bytes
+// compile to the same bytes. The cursor y is uninitialised with the third entry at a literal 380.0f (retail loads f29 in the
+// switch only, 0x8002B780); the widest-width pick nested (w2 = WiderOf(w2, WiderOf(w0, w1)) or the ternaries inline) and the
+// entry text's 0.0f/24.0f as helper parameters compile to the same bytes
 extern "C" void DrawTitleScreen(Title* title)
 {
 #if defined(VERSION_JP)
@@ -1904,8 +1907,8 @@ extern "C" void DrawTitleScreen(Title* title)
 #endif
 		f32 w0 = DrawTitleEntry(title, 0, first, 324.0f, progress, normal, lit);
 		f32 w1 = DrawTitleEntry(title, 1, second, 352.0f, progress, normal, lit);
-		f32 y  = 380.0f;
-		f32 w2 = DrawTitleEntry(title, 2, third, y, progress, normal, lit);
+		f32 w2 = DrawTitleEntry(title, 2, third, 380.0f, progress, normal, lit);
+		f32 y;
 		switch (title->mSelection) {
 		case 0:
 			y = 324.0f;

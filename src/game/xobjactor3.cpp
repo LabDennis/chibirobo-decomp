@@ -494,7 +494,8 @@ void XObjActor3::Kind5(u32 frames)
  * @note Size: 0xB8
  */
 // NONMATCHING: register allocation, retail holds the item id in r29 and the count in r28 (US 0x8011468C); the ids
-// declared in the loop body read the same, an InventoryItem& for the slot scores lower
+// declared in the loop body read the same, an InventoryItem& for the slot scores lower; swapping the declarations or the
+// two assignments changes nothing
 void XObjActor3::Kind6(u32 frames)
 {
 	s16 id;
@@ -1320,7 +1321,8 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
  */
 // starts the n-th kind 0xB actor
 // NONMATCHING: register allocation (retail loads the stride into r11 before the zero offset in r8, US 0x8010FDC0);
-// a Get(i) loop and reading the pool through gGame at each use both score lower
+// a Get(i) loop and reading the pool through gGame at each use both score lower; `i * pool.mStride` is not strength-reduced
+// (mullw, 91.1), a `s32 stride` local puts the loads in retail's order but the offset's li first (94.7)
 extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 {
 	XObjActor3* obj;
@@ -1507,7 +1509,8 @@ extern "C" void LaunchSpiderBossCenterPart(void)
  * @note Size: 0x1914
  */
 // NONMATCHING: step 11's effect turns with the heading; retail stores it into the one temporary it passes, a rotation by value
-// needs a second one here (12 bytes more frame), see Kind9
+// needs a second one here (12 bytes more frame), see Kind9. A named `Vec rotation = { 0, mHeading, 0 }` and a file inline
+// returning the Vec (rodata image, y stored) both still copy into the argument slot (0x190 frame)
 void XObjActor3::Kind13(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -2683,7 +2686,8 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 // saved regs. The instruction stream is identical to retail otherwise — the residual is
 // allocation colouring plus the anonymous .sdata2 pool. Tried: `s32 i` inside the `for`
 // (98.0 on PAL) and the height fetch inlined into TexSize (96.2): both keep the same
-// stream but reseed the allocation and score lower.
+// stream but reseed the allocation and score lower. Retail numbers the width's conversion temps (f0, f1) before the
+// scale literal (f2, 0x801091A8); a u16 width local, TexSize on it or on the call all sink the product (92.9..96.9).
 extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 {
 	f32 alpha = actor->mCounterPanelAlpha;

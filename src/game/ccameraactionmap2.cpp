@@ -8337,6 +8337,9 @@ extern "C" void SetMapCameraKeepPreviousEye(CCameraActionMap* map)
  * @note Address: 0x80141288
  * @note Size: 0x4CC
  */
+// NONMATCHING: the schedule of the previous-eye copy: retail stores mPreviousEye.x before the CVec temporary's vtable
+// (0x801412D4), this build after it. `mPreviousEye = camera->mEye` drops the temporary (96.7), `= CVec(camera->mEye)`
+// goes through four stack words (96.3)
 void CCameraActionMap::SetCamera(CCamera* camera)
 {
 	// CMotionControlCamera::Interpolate takes the interest's height at once and follows it in on x and z
