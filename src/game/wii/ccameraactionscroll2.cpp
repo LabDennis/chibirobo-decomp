@@ -256,7 +256,12 @@ void CCameraActionScroll2::Reset()
 	mDragVec.x   = 0.0f;
 	mDragVec.y   = 0.0f;
 	mDragVec.z   = 0.0f;
+	mDragStart.Set(0.0f, 0.0f, 0.0f);
+	mDragLast.Set(0.0f, 0.0f, 0.0f);
 	CalcLimits(this, GetLimits(gGame.mStage));
+	_E0 = gGame.mTpl.mTex;
+	PSMTXTrans(_E0.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	_E0.mTexMtx.mDirty = TRUE;
 	InitQuads(this);
 	Update(1);
 }
@@ -863,7 +868,7 @@ static void InitQuads(CCameraActionScroll2* camera)
 	};
 	for (s32 i = 0; i < 4; i++) {
 		ScrollEdgeQuad* quad = &camera->mQuads[i];
-		quad->mTex           = camera->_E0;
+		quad->mTex           = &camera->_E0;
 		quad->mActive        = FALSE;
 		quad->mUnk24         = FALSE;
 		quad->mX             = positions[i][0];
