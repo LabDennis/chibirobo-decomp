@@ -2221,7 +2221,11 @@ public:
 
 	XObjActor3();
 	virtual ~XObjActor3();
+	virtual void InitializeObject();
+	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
 
+	void Kind0(u32 frames);
 	void Kind9(u32 frames);
 	void Kind10(u32 frames);
 	void Kind11(u32 frames);
@@ -2264,7 +2268,8 @@ public:
 	s32 mCounterFadeMode;
 	f32 mCounterPanelAlpha;
 	s32 mSpiderCount;
-	u8 _C38[0xC3C - 0xC38];
+	u8 _C38;
+	u8 _C39[0xC3C - 0xC39];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
 	EffectInstance* mGens[6];
