@@ -15,7 +15,7 @@
 // functions in the Wii's order; the web effect helpers it calls are defined in xobjspider.cpp
 
 struct SmallSpiderStageStatus {
-	CStatus mSpiders[16];
+	CBitStatus32 mSpiders[16];
 };
 STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
@@ -53,7 +53,7 @@ extern AnimSfxEvent gSmallSpiderAnimSfxEvents[];
 extern XObj* gSmallSpiderEffectObjects[12];
 extern s32 gSmallSpiderEffectSlotOwners[12];
 extern void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32 frames);
-extern SmallSpiderStageStatus gSmallSpiderStatusByStage[39];
+SmallSpiderStageStatus gSmallSpiderStatusByStage[39];
 extern XObj* gSmallSpiderWebFound;
 extern u32 gSpiderCoinBounceManager; // the coins' manager token, the callbacks never touch it
 extern s32 gSpiderDrainFlashTimers[2];
@@ -849,14 +849,14 @@ extern "C" void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frame
 		break;
 	case 23:
 		if (spider->mEvtArgs[1] == 1) {
-			for (int i = 0; i < 48; i++) {
+			for (int i = 0; i < 96; i++) {
 				XObj* obj = gGame.mXObjs.mPools[7].Get(i);
 				if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x104) {
 					obj->mStatus.mFlags |= 0x10000;
 				}
 			}
 		} else {
-			for (int i = 0; i < 48; i++) {
+			for (int i = 0; i < 96; i++) {
 				XObj* obj = gGame.mXObjs.mPools[7].Get(i);
 				if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x104) {
 					obj->mStatus.mFlags &= ~0x10000ULL;
@@ -2223,6 +2223,24 @@ extern "C" BOOL fn_80131C58(void)
 }
 
 /**
+ * @note Address: 0x80131DDC
+ * @note Size: 0xC
+ */
+extern "C" u8 fn_80131DDC(XObjSpiderSmall* spider)
+{
+	return (spider->mSpiderStatus.mFlags >> 23) & 1;
+}
+
+/**
+ * @note Address: 0x80131DE8
+ * @note Size: 0xC
+ */
+extern "C" u8 fn_80131DE8(XObjSpiderSmall* spider)
+{
+	return (spider->mSpiderStatus.mFlags >> 6) & 1;
+}
+
+/**
  * @note Address: 0x80131DF4
  * @note Size: 0x13C
  */
@@ -2269,6 +2287,24 @@ void XObjSpiderSmall::TakeWeb()
 	}
 }
 #pragma dont_inline reset
+
+/**
+ * @note Address: 0x80131F94
+ * @note Size: 0x110
+ */
+extern "C" void fn_80131F94(s32 visible)
+{
+	for (int i = 0; i < 96; i++) {
+		XObj* obj = gGame.mXObjs.mPools[7].Get(i);
+		if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x104) {
+			if (visible) {
+				obj->mStatus.mFlags |= 0x10000;
+			} else {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+	}
+}
 
 /**
  * @note Address: 0x801320A4
