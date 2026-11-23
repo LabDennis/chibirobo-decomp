@@ -22,6 +22,8 @@ struct CoinBounce {
 };
 STATIC_ASSERT(sizeof(CoinBounce) == 0x24);
 
+extern CustomShadow gCustomShadow;
+
 extern "C" {
 void ResetSpiderState(XObjSpider* spider);
 void ApplySpiderPlacement(XObjSpider* spider);
@@ -489,6 +491,29 @@ void XObjSpider::DrawGroundShadow(f32 opacity)
 }
 
 /**
+ * @note Address: 0x80121994
+ * @note Size: 0x190
+ */
+void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
+{
+	if (!(mStatus.mFlags & 8ULL))
+		return;
+	switch (mPlacementParam0) {
+	case 3:
+	case 4:
+	case 5:
+	case 7:
+	case 8:
+	case 9:
+		return;
+	}
+	Vec pos  = *origin;
+	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0) * 0.5f * mRadius;
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gCustomShadow.Draw(pos, size, (u32)(170.0f * opacity));
+}
+
+/**
  * @note Address: 0x80121B24
  * @note Size: 0x4
  */
@@ -502,6 +527,39 @@ void XObjSpider::DrawScreenOverlay()
  */
 void XObjSpider::DrawDebugStatus()
 {
+}
+
+/**
+ * @note Address: 0x80121B2C
+ * @note Size: 0x1EC
+ */
+// NONMATCHING: frame and calls match; the render-state setup still uses different scratch GPRs
+void XObjSpider::DrawObjectEffects()
+{
+	if (mFlags.mFlags & 0x80) {
+		u32 color = (u32)(90.0f * mThreadAlpha) | 0xFFFFFF00;
+		CVec pos  = GetJointPos(FindResNode("obj25"));
+		Vec end;
+		end.x = pos.x;
+		end.y = 300.0f;
+		end.z = pos.z;
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetLineWidth(14, GX_TO_ONE);
+		DrawGsLineSegment(&gGame.mGs, NULL, pos.x, pos.y, pos.z, color, end.x, end.y, end.z, color);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	}
 }
 
 /**
