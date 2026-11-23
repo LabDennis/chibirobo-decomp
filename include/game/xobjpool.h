@@ -31,8 +31,9 @@ struct XObjPool {
 	XObj* First() const { return (XObj*)mObjects; }
 	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
 
+	// the first object whose flags match, -1 when there's none
 #if defined(VERSION_R24J01)
-	s32 Find(u64 mask, u64 value) const;
+	s32 Find(u64 mask, u64 value) const; // xobjs.cpp holds the body
 #else
 	s32 Find(u64 mask, u64 value) const
 	{
@@ -47,9 +48,11 @@ struct XObjPool {
 };
 STATIC_ASSERT(sizeof(XObjPool) == 0x14);
 
-// the objects: a pool per kind and the table of the ones in use
+// the objects: a pool per kind and the table of the ones in use, name from RTTI
 class XOBJS {
 public:
+	// the collections with a flag bit per placement: the coin, item and dust pools each
+	// lead with a flags object that carries the CEvtFlags
 	enum CollectionPool {
 		COINS = 7,
 		ITEMS = 8,
@@ -63,15 +66,16 @@ public:
 	s32 mLoadState;        // _11D4, UpdateStageObjectLoading's state, 0 when idle
 	// _11D8 vtable
 
-	virtual ~XOBJS() { }
+	virtual ~XOBJS() { } // _08
 
 #if defined(VERSION_R24J01)
+	// the definition needs XObjFlags, so the units that use it hold it
 	CEvtFlags& GetCollectionFlags(CollectionPool pool) const;
 #else
 	CEvtFlags& GetCollectionFlags(CollectionPool pool) const { return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags; }
 #endif
 
-	void ReadAll();
+	void ReadAll(); // fills the pools and the object table from the stage placements, then loads them
 };
 STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 

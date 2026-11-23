@@ -15,7 +15,7 @@ STATIC_ASSERT(sizeof(MenuMainItem) == 0x08);
 // a letter of a title that flies in, one after the other
 struct MenuTitleChar {
 	const char* mText; // _00
-	f32 mFade;         // _04
+	f32 mFade;         // _04, 0 to 1, starts below 0 so the letters come in one by one
 	f32 mHold;         // _08, the letter fades out once this is 0
 	f32 mAngle0;       // _0C
 	f32 mAngle1;       // _10
@@ -53,9 +53,9 @@ struct MenuStatusTable {
 	~MenuStatusTable() { }
 #endif
 	s32 mPage;                   // _00, in fours
-	MenuStatusEntry mItems[256]; // _04
-	MenuStatusEntry mPrev[4];    // _C04
-	MenuStatusEntry mNext[4];    // _C34
+	MenuStatusEntry mItems[256]; // _04, the eight on screen
+	MenuStatusEntry mPrev[4];    // _C04, the four before them
+	MenuStatusEntry mNext[4];    // _C34, the four after
 
 #if !defined(VERSION_R24J01)
 	s16 GetItem(s32 i) { return mItems[i].mItem; }
@@ -63,13 +63,13 @@ struct MenuStatusTable {
 };
 STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
 
-// a row of one of the chibi-pc lists
+// a row of one of the chibi-pc lists, MenuPC pages through them. names are ours
 struct MenuPCItem {
 	s16 mItem;        // _00, -1 for an empty row
 	s16 mCount;       // _02, -1 for an empty row
 	s16 mPrice;       // _04
 	u8 mIsAttachment; // _06
-	u8 _07;           // _07
+	u8 _07;           // _07, never accessed, pads the row to 8 bytes
 };
 STATIC_ASSERT(sizeof(MenuPCItem) == 0x08);
 
@@ -105,6 +105,7 @@ struct PCRankingRow {
 };
 STATIC_ASSERT(sizeof(PCRankingRow) == 0x0C);
 
+// a number the pc shows easing toward its value
 struct PCAmount {
 	f32 shown;  // _00
 	f32 target; // _04

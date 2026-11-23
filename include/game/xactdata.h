@@ -27,7 +27,8 @@ struct RadarAimAxis {
 };
 STATIC_ASSERT(sizeof(RadarAimAxis) == 0x0C);
 
-// the beam's two colours
+// the beam's two colours. retail's destructor tests this object's address before it destroys them, so they sit
+// in an object of their own. whether it holds more than the colours is not known
 struct RadarBeamColors {
 	CScrnColor mColor[2]; // _00
 };

@@ -10,10 +10,11 @@
 
 class CInterfaceCameraAction;
 
-// what CreateMemento saves of the camera
+// what CreateMemento saves of the camera, the class name is RTTI
 class CCameraMemento {
 public:
 	CCameraMemento() { }
+	// _00 vtable
 	virtual ~CCameraMemento() { } // _08
 
 	CVec mEye;                       // _04

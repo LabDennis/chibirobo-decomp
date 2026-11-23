@@ -11,6 +11,7 @@ struct EffectInstance;
 struct HSD_Generator;
 #endif
 
+// hanging from a ledge
 class XActHang : public XAction {
 public:
 #if defined(VERSION_R24J01)
@@ -57,10 +58,10 @@ public:
 	void HandleInput(const CPadOne& pad, f32& moveWeight);
 #endif
 
-	BOOL mBPressed; // _2C
+	BOOL mBPressed; // _2C, set when b is pressed on it
 	Vec mPos;       // _30, where he hangs, in front of the ladder
-	f32 mDist;      // _3C
-	f32 mAngle;     // _40
+	f32 mDist;      // _3C, how far he still has to go to get there
+	f32 mAngle;     // _40, from mPos to where he started
 };
 STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 
@@ -89,7 +90,7 @@ public:
 #endif
 
 	u8 _2C[0x34 - 0x2C];       // _2C
-	CVec _34;                  // _34
+	CVec _34;                  // _34, no access in any edition
 	CVec _44;                  // _44
 	BOOL mPushPositionClamped; // _54
 };
@@ -107,7 +108,7 @@ public:
 	XActTumbleFade mFade; // _2C
 	f32 mSavedYaw;        // _40
 #if defined(VERSION_R24J01)
-	EffectInstance* mIdleParticle; // _44
+	EffectInstance* mIdleParticle; // _44, the sleep effect while he lies idle
 #else
 	HSD_Generator* mIdleParticle; // _44
 #endif
@@ -123,12 +124,14 @@ public:
 	void HandleInput(const CPadOne& pad, f32& moveWeight);
 #endif
 
-	f32 mTime;  // _2C
-	f32 mPhase; // _30
-	f32 mBob;   // _34
+	f32 mTime;  // _2C, how long he can stay up; on the Wii a copter parameter count of hundredths of a second in frames
+	f32 mPhase; // _30, of the bob, where the propeller bob is in its sine
+	f32 mBob;   // _34, how high the bob lifts him, the height the copter joint rides at
 };
 STATIC_ASSERT(sizeof(XActCopter) == 0x38);
 
+// the radar action. the fields the Wii reaches are the GameCube layout's own,
+// WiiPlayerState reserves _95D4 to _96A0 for it
 class XActRadar : public XAction {
 public:
 #if defined(VERSION_R24J01)
@@ -144,7 +147,7 @@ public:
 	RadarBeamColors mBeam; // _48
 	f32 mFade;             // _B0
 	f32 mAngle[2];         // _B4
-	f32 mTargetDistance;   // _BC
+	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
 };
 STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 

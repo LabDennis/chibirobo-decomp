@@ -23,16 +23,17 @@ public:
 #if defined(VERSION_R24J01)
 	virtual void Init(WiiPlayerState* owner); // _08
 #else
-	virtual void Init(XObjChr* owner); // _08
+	virtual void Init(XObjChr* owner); // _08, 0x800BBD7C
 #endif
-	virtual void Reset(); // _0C
+	virtual void Reset(); // _0C, GameCube 0x800BB708
 
 	s32 mMoveDirection; // _0C
-	CVec mTargetOffset; // _10
+	CVec mTargetOffset; // _10, push keeps the offset to its target here
 	XObj* mTarget;      // _20
 	s32 mTargetState;   // _24
 	s32 mTargetFloor;   // _28, the selected floor when the target was picked
 
+	// todo: cleanup
 	void SetTarget(XObj* target)
 	{
 		mTarget      = target;

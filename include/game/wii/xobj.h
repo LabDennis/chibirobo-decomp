@@ -1447,8 +1447,6 @@ STATIC_ASSERT(sizeof(NW_Anm) == 0x148);
 // anims waiting to play after the current one. unlike the GameCube layout the
 // vtable leads the object on the Wii (retail stores __vt__9CAnmQueue at _7B8
 // inside XObj); the queue members behind it are not yet recovered
-// a material color stepping towards a target; the Wii keeps the pair inside the object's
-// animation queue where the GameCube XObj kept them as its own members
 class CAnmQueue {
 public:
 	virtual ~CAnmQueue() { }
@@ -1675,7 +1673,6 @@ struct XObjAnimSlot {
 };
 STATIC_ASSERT(sizeof(XObjAnimSlot) == 0x8);
 
-// one floor's edge, the GameCube's XObjEdge
 class XObj : public CObj {
 public:
 	// retail's derived ctors expand this inline; a weak __ct__4XObjFv copy is
@@ -2769,7 +2766,6 @@ STATIC_ASSERT(sizeof(CustomShadow) == 0xA6C);
 // XObjRead's own members in front of the virtuals, so the vtable lands at
 // _320. The Wii knows only the all-list and single readers, no XObjReadAnm.
 
-// one read waiting in a reader
 struct EffectInstance; // game/wii/ceffect.h
 
 // the wire effect along the plug's cord, the GameCube's XObjWireEff: own anim,

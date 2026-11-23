@@ -894,7 +894,6 @@ struct EffectInstance; // game/wii/ceffect.h
 
 #include "game/xactclasses.h"
 
-// the ring on the floor around him while he tumbles
 class CSound3DActor;
 class XObj;
 

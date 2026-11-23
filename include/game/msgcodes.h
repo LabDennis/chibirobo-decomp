@@ -4,7 +4,8 @@
 // control codes inside message text, what msg() and select() in the stage scripts carry.
 // values and argument sizes checked against the parser's jump table in CMsg_Update and
 // the measure and copy passes, names follow unplug, see NOTICE. ints are little
-// endian, RGBA is the one big endian arg
+// endian, RGBA is the one big endian arg. on the Wii checked against the jump table of
+// MsgCommandLength at 0x802FFAF8 (25 entries, codes 0..24)
 enum MsgCode {
 	MSG_CODE_END        = 0,  // no args. also where select, number input and stay wait for the player
 	MSG_CODE_SPEED      = 1,  // u8 frames per char, 0xFF resets, to 2 in msg but 0 in select
@@ -38,7 +39,7 @@ enum MsgAnimFlag {
 
 // the sfx code's sub type, the same switch as the sfx() script command, so 5 and 6 are
 // EVT_SFX_PAUSE and EVT_SFX_RESUME. -1 is msg only and rewinds 3 bytes when the code is 6,
-// looks like a bug, nobody has checked if the shipped text ever uses it
+// looks like a bug, nobody has checked if the shipped text ever uses it. one byte at p[5]
 enum MsgSfxType {
 	MSG_SFX_WAIT     = -1, // no extra bytes
 	MSG_SFX_STOP     = 0,  // no extra bytes
