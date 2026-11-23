@@ -91,6 +91,7 @@ void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 a
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
 void fn_8005A68C(MenuItem* menu, const char* text, u32 color);
+void fn_800556B0(CbPane* pane, const CbPaneLayout* layout);
 void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32 selected, f32 x, f32 y, f32 alpha, f32 sx, f32 sy);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
@@ -801,6 +802,22 @@ void MenuMain::Reset()
 	LayoutMainMenuRows(this);
 }
 
+extern CbPaneLayout lbl_802E94C0[5];
+
+void MenuSave::Init()
+{
+	CMenu::Init();
+	mLastFile = -1;
+	for (s32 i = 0; i < 5; i++) {
+		lbl_802E94C0[i].mTrans.x -= 0.5f * (f32)gPointerScreenWidth;
+		lbl_802E94C0[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E94C0[i].mTrans.y;
+		fn_800556B0(&mPanes[i], &lbl_802E94C0[i]);
+	}
+	s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+	gRingScreenWidth    = width;
+	gPointerScreenWidth = width;
+}
+
 void MenuSave::Reset()
 {
 	CMenu::Reset();
@@ -1489,6 +1506,40 @@ static inline s32 CountMenuItems()
 		}
 	}
 	return count;
+}
+
+void MenuItem::vf08(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = TRUE;
+	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 8 && sStatusItemTable.mPage > 0) {
+		mTargetGridY = 128.0f;
+		mMode        = 20;
+	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetGridY = -56.0f;
+		mMode        = 10;
+	}
+}
+
+void MenuItem::vf14(CbPane* pane)
+{
+	if (!mHovered) {
+		return;
+	}
+	s32 kind = pane->mKind;
+	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 8 && sStatusItemTable.mPage > 0) {
+		mTargetGridY = 128.0f;
+		mMode        = 20;
+	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetGridY = -56.0f;
+		mMode        = 10;
+	}
 }
 
 // the pointer left a pane
@@ -5261,6 +5312,48 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 	}
 }
 
+extern "C" void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha)
+{
+	if (alpha <= 0.0f) {
+		return;
+	}
+	for (s32 i = 0; i < 2; i++) {
+		MenuPaneFade* fade = &fades->mFades[i];
+		if (fade->mAlpha <= 0.0f) {
+			continue;
+		}
+		f32 wave   = 0.8f * (f32)sin(HALF_PI * alpha * fade->mAlpha);
+		f32 arrowX = 412.0f + x;
+		f32 arrowY;
+		if (i == 0) {
+			arrowY = (gPointerScreenHeight / 2 + 4) - 126.0f;
+		} else {
+			arrowY = 126.0f + (gPointerScreenHeight / 2 + 4);
+		}
+		f32 pulse = fade->mAlpha * (0.2f * (f32)sin(PI * fade->mAlpha) + 0.2f);
+		if (pulse < 0.0f) {
+			pulse = 0.0f;
+		}
+		CTexObj tex;
+		InitPCPanelTexture(tex, 266);
+		f32 width  = wave * (1.1f * GXGetTexObjWidth(&tex));
+		f32 height = wave * (1.1f * GXGetTexObjHeight(&tex));
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		GXSetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 color = (u32)(255.0f * fade->mAlpha) | 0xC8C8C800;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, arrowX, arrowY, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		GXSetZCompLoc(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_FALSE);
+		DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+		           (u32)(255.0f * pulse) | 0xFFFFFF00, arrowX, arrowY, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	}
+}
+
 extern "C" void fn_8005A68C(MenuItem* menu, const char* text, u32 color)
 {
 	const char* p        = text;
@@ -6807,6 +6900,27 @@ void MenuSave::State17(u32)
 // a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
 static s32 sStatusTabTextIds[5] = { 1, 3, 2, 4, -1 };
 
+void MenuStatus::Init()
+{
+	CMenu::Init();
+	mSelection                = 0;
+	mStickSelection           = 0;
+	mPrevSelection            = 0;
+	mHovered                  = 0;
+	lbl_802E87E8[49].mTrans.z = 577.0f;
+	lbl_802E87E8[49]._0C      = 0.5f * (f32)gPointerScreenHeight - 577.0f;
+	lbl_802E87E8[50].mTrans.x = 577.0f;
+	lbl_802E87E8[50].mTrans.y = 0.5f * (f32)gPointerScreenHeight + 577.0f;
+	for (s32 i = 0; i < 51; i++) {
+		lbl_802E87E8[i].mTrans.x -= 0.5f * (f32)gPointerScreenWidth;
+		lbl_802E87E8[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E87E8[i].mTrans.y;
+		fn_800556B0(&mPanes[i], &lbl_802E87E8[i]);
+	}
+	s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+	gRingScreenWidth    = width;
+	gPointerScreenWidth = width;
+}
+
 void MenuStatus::Open()
 {
 	CMenu::Open();
@@ -7855,6 +7969,57 @@ void MenuStatus::State6(u32)
 {
 }
 
+extern "C" void fn_80061014(MenuStatus* menu)
+{
+	if (menu->mMode != 2 && menu->mMode != 4) {
+		return;
+	}
+	s32 width  = gGame.mAspectRatio == 0 ? 640 : 854;
+	s32 margin = (width - gRingScreenWidth) / 2;
+	GXSetScissor(gScreenLeft + margin, gPointerScreenHeight / 2 - 122, gPointerScreenWidth - margin * 2, 252);
+	f32 x = (menu->mX - 42.0f) + menu->mOffsetX;
+	f32 y = 180.0f + (menu->mY + menu->mOffsetY);
+	DrawInventoryGrid(menu->mPhase == 100 ? -1 : menu->mItemSelection, x, y, menu->mAlpha, 1.0f, menu->mPulsePhase);
+	if (menu->mItemSelection != -1) {
+		DrawStatusItemDetails(sStatusItemTable.mItems[menu->mItemSelection].mItem, gPointerScreenWidth / 2, gPointerScreenHeight / 2,
+		                      menu->mAlpha, menu->mDetailScale);
+	}
+	CountMenuItems();
+	DrawDiscardCountPanel(menu);
+	GXSetScissor(gScreenLeft + margin, gScreenTop, gPointerScreenWidth - margin * 2, gPointerScreenHeight);
+	fn_8005A128(&menu->mPaneFades, x, y, menu->mAlpha);
+}
+
+extern "C" void fn_80062338(MenuStatus* menu, u32 frames)
+{
+	if (menu->mTitle.mActive && menu->mTitle.mActive > 0) {
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mHold > 0.0f) {
+				if (menu->mTitle.mChars[i].mFade < 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+						menu->mTitle.mChars[i].mFade = 1.0f;
+					}
+				}
+			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+					menu->mTitle.mChars[i].mFade = 0.0f;
+				}
+			}
+		}
+		s32 shown = 0;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mFade != 0.0f) {
+				shown++;
+				menu->mTitle.mChars[i].mAngle0 += 0.08726646f * frames;
+				menu->mTitle.mChars[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		if (shown == 0) {
+			menu->mTitle.mActive = FALSE;
+		}
+	}
+}
+
 // NONMATCHING: retail keeps the SJIS byte in r4 and the lead flag in r3; this form swaps them and inverts the final branch
 extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 {
@@ -7890,6 +8055,40 @@ extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 		menu->mTitle.mChars[i].mText = NULL;
 		menu->mTitle.mChars[i].mFade = 0.0f;
 		menu->mTitle.mChars[i].mHold = 0.0f;
+	}
+}
+
+void MenuStatus::vf08(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = TRUE;
+	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 49 && sStatusItemTable.mPage > 0) {
+		mTargetY = 128.0f;
+		mPhase   = 20;
+	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetY = -56.0f;
+		mPhase   = 10;
+	}
+}
+
+void MenuStatus::vf14(CbPane* pane)
+{
+	if (!mHovered) {
+		return;
+	}
+	s32 kind = pane->mKind;
+	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 49 && sStatusItemTable.mPage > 0) {
+		mTargetY = 128.0f;
+		mPhase   = 20;
+	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetY = -56.0f;
+		mPhase   = 10;
 	}
 }
 

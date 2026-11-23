@@ -1298,6 +1298,7 @@ public:
 		mPhase    = 0;
 	}
 
+	virtual void Init();
 	virtual void Reset();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -1471,6 +1472,7 @@ STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
+	void Init();
 	BOOL Update(u32 frames);
 	void State0(u32 frames);
 	void State1(u32 frames);
