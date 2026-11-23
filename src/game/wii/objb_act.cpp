@@ -66,7 +66,6 @@ BOOL IsCarryingMug(XActLift* act);
 BOOL IsCarryingSquirter(XActLift* act);
 s32 GetOwnedInventoryItemCount(Params* stats, s16 id);
 u32 GetMaterialSoundId(s32 material);
-void HSD_MtxGetTranslate(Mtx mat, Vec* vec);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
@@ -85,7 +84,7 @@ static inline bool IsHolding(const XAction* act)
 static inline bool IsHoldingPool(const XAction* act, s32 pool)
 {
 	bool result = false;
-	if (IsHolding(act) && (act->mTarget->mAttr.mObjData != NULL ? GetObjDataPool(act->mTarget->mAttr.mObjData) : -1) == pool) {
+	if (IsHolding(act) && act->mTarget->GetPool() == pool) {
 		result = true;
 	}
 	return result;
@@ -94,7 +93,7 @@ static inline bool IsHoldingPool(const XAction* act, s32 pool)
 static inline bool IsHoldingKind(const XAction* act, s32 pool, s32 kind)
 {
 	bool result = false;
-	if (IsHoldingPool(act, pool) && (act->mTarget->mAttr.mObjData != NULL ? GetObjDataFlags(act->mTarget->mAttr.mObjData) : -1) == kind) {
+	if (IsHoldingPool(act, pool) && act->mTarget->GetObjFlags() == kind) {
 		result = true;
 	}
 	return result;
@@ -113,7 +112,7 @@ static inline bool IsCarrying(const XAction* act, s32 kind)
 static inline bool IsTargetPool(XAction* act, s16 pool)
 {
 	bool result = false;
-	if (act->mTarget != NULL && (act->mTarget->mAttr.mObjData != NULL ? GetObjDataPool(act->mTarget->mAttr.mObjData) : -1) == pool) {
+	if (act->mTarget != NULL && act->mTarget->GetPool() == pool) {
 		result = true;
 	}
 	return result;
@@ -3034,14 +3033,13 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		act->mLiftStartOffset.Set(liftOffset);
 		act->mYawOffset = obj->mMoveRotate.y - act->mOwner->mMoveRotate.y;
 		obj->SetPos(fn_800E5A2C(act->mOwner) - act->mLiftStartOffset * (1.0f - frame / end));
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			act->mYawOffset = 0.0f;
 			obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6.0f);
 			obj->SetRotationX(0.0f);
 			((WiiPlayerPlug*)obj)->mConnection = 0;
 		}
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 8
-		    && (obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->GetItem() : -1) == 22) {
+		if (obj->GetPool() == 8 && obj->GetItem() == 22) {
 			act->mYawOffset = 0.0f;
 			obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6.0f);
 		}
@@ -3058,7 +3056,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 	}
 	case 3:
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			obj->SetBaseMtx(act->mOwner->GetWorldMtx("carry_obj_nll"));
+			obj->SetBaseMtx(act->mOwner->GetWorldMtx(act->mOwner->FindResNode("carry_obj_nll")));
 			if (IsCarryingSpoon(act)) {
 				obj->SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (IsCarryingSquirter(act)) {
@@ -3067,8 +3065,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 			}
 		} else {
 			UpdateCarriedObjectPosition(act, obj);
-			Vec scale;
-			act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"), &scale);
+			CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 			obj->SetScale(GetStagePlacementScale(obj) * scale);
 			act->mYawOffset = 0.0f;
 			obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y);
@@ -3083,7 +3080,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 			obj->SetDestinationAlpha(FALSE, 0);
 		}
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			obj->SetBaseMtx(act->mOwner->GetWorldMtx("carry_obj_nll"));
+			obj->SetBaseMtx(act->mOwner->GetWorldMtx(act->mOwner->FindResNode("carry_obj_nll")));
 			s32 id;
 			switch (act->mOwner->GetAnimId()) {
 			case 0x895:
@@ -3129,7 +3126,6 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 				id = 9;
 				break;
 			case 0x157:
-			case 0x158:
 				id = 10;
 				break;
 			case 0xE0:
@@ -3202,9 +3198,9 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 			obj->SetTranslateX(distance * (f32)sin(act->mOwner->mMoveRotate.y) + obj->GetPos()->x);
 			obj->SetTranslateZ(distance * (f32)cos(act->mOwner->mMoveRotate.y) + obj->GetPos()->z);
 		}
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			PlayWiiSoundEffect(&gGame.mSound, 0xA6, 1.0f, 0.0f);
-		} else if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) != 8) {
+		} else if (obj->GetPool() != 8) {
 			PlayWiiSoundEffect(&gGame.mSound, GetMaterialSoundId(0), 1.0f, 0.0f);
 		}
 		obj->mStatus.mFlags &= ~0x0400000000000000ULL;
@@ -3213,7 +3209,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 	}
 	case 6:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTarget = NULL;
 			} else if (!((WiiPlayerPlug*)obj)->mConnection && act->mOwner->GetAnimFrame() >= 90.0f) {
@@ -3226,7 +3222,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 7:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
 			} else if (act->mOwner->GetAnimFrame() >= 80.0f) {
@@ -3239,7 +3235,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 8:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 9;
 				if (!((WiiPlayerPlug*)obj)->mConnection) {
@@ -3252,7 +3248,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 10:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
 			} else if (((WiiPlayerPlug*)obj)->mConnection && act->mOwner->GetAnimFrame() >= 0.0f) {
@@ -3262,7 +3258,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 11:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 12;
 			} else if (!((WiiPlayerPlug*)obj)->mConnection && act->mOwner->GetAnimFrame() >= 24.0f) {
@@ -3275,7 +3271,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 13:
 		UpdateCarriedObjectPosition(act, obj);
-		if ((obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 24) {
+		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
 			} else if (((WiiPlayerPlug*)obj)->mConnection && act->mOwner->GetAnimFrame() >= 0.0f) {
@@ -3285,7 +3281,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	case 14:
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			obj->SetBaseMtx(act->mOwner->GetWorldMtx("carry_obj_nll"));
+			obj->SetBaseMtx(act->mOwner->GetWorldMtx(act->mOwner->FindResNode("carry_obj_nll")));
 			if (IsCarryingSpoon(act)) {
 				obj->SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 			} else if (IsCarryingSquirter(act)) {
@@ -3294,8 +3290,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 			}
 		} else {
 			UpdateCarriedObjectPosition(act, obj);
-			Vec scale;
-			act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"), &scale);
+			CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 			obj->SetScale(GetStagePlacementScale(obj) * scale);
 			if (IsCarryingMug(act)) {
 				obj->SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
@@ -3303,10 +3298,8 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 15:
-		if ((obj->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL
-		    && (obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 8) {
-			SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory,
-			                           obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->GetItem() : -1, 1, TRUE);
+		if ((obj->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL && obj->GetPool() == 8) {
+			SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, obj->GetItem(), 1, TRUE);
 			((XObjItem*)obj)->SetFlag();
 			obj->mStatus.mFlags &= ~1ULL;
 		} else {
@@ -3328,8 +3321,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	}
 	case 17:
-		if ((obj->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL
-		    && (obj->mAttr.mObjData != NULL ? GetObjDataPool(obj->mAttr.mObjData) : -1) == 8) {
+		if ((obj->mStatus.mFlags & 0x0001000100000000ULL) == 0x0001000100000000ULL && obj->GetPool() == 8) {
 			((XObjItem*)obj)->SetFlag();
 			obj->mStatus.mFlags &= ~1ULL;
 		} else {
@@ -3342,8 +3334,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		act->mYawOffset = 0.0f;
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y);
 		UpdateCarriedObjectPosition(act, obj);
-		Vec scale;
-		act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"), &scale);
+		CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 		obj->SetScale(GetStagePlacementScale(obj) * scale);
 		act->mTargetState = 4;
 		break;
