@@ -1429,7 +1429,7 @@ extern "C" void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f
  * @note Address: 0x800652C0
  * @note Size: 0xB84
  */
-// NONMATCHING: vertex temporaries and floating-point register allocation
+// NONMATCHING: vertex temporaries, floating-point register allocation and this composed unit's .rodata order
 extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY)
 {
 	f32 angle  = 4.712389f * (1.0f - alpha);
