@@ -4,6 +4,7 @@
 
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
+#include "game/xobj.h"
 
 // CGame, accessed by offset
 extern "C" u8 gGame[];
@@ -14,64 +15,6 @@ extern "C" u8 gGame[];
 #else
 #define GAME_OFS(other, japan) (other)
 #endif
-
-// loaded model object, vtable at 0x34
-class XObj {
-public:
-	HSD_JObj* jobj; // _00
-	u8 _04[0x30];   // _04, padding over CJObj's mTranslate/mRotate/mScale (_04-_34); not accessed
-	virtual void vf08();
-	virtual void SetTranslateX();
-	virtual void SetTranslateY();
-	virtual void SetTranslateZ();
-	virtual void SetScaleX();
-	virtual void SetScaleY();
-	virtual void SetScaleZ();
-	virtual void SetRotationX();
-	virtual void SetRotationY();
-	virtual void SetRotationZ();
-	virtual void SetTranslate(const Vec& v, s32 force);
-	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force);
-	virtual void SetScale(const Vec& v, s32 force);
-	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);
-	virtual void SetRotation(const Vec& v, s32 force);
-	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);
-	virtual void SetAnimRate();
-	virtual void ReadAsync();
-	virtual void ReadCheck();
-	virtual void Release();
-	virtual void StepRotate();
-	virtual void StepTranslate();
-	virtual void StepScale();
-	virtual void SetPos(const Vec& pos, s32 force);
-	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);
-	virtual void SetScale(f32 scale, s32 force);
-	virtual void SetRot(const Vec& rot, s32 force);
-	virtual void SetRot(f32 x, f32 y, f32 z, s32 force);
-	virtual void SetMoveDir(const Vec* dir, f32 speed);
-	virtual void SetRotateY();
-	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
-	                     f32 blendRate);
-#if defined(VERSION_JP)
-	u8 _38[0x88]; // _38
-#else
-	u8 _38[0x90]; // _38
-#endif
-	Vec mPos;          // _C8 (JP: _C0)
-	u8 _D4[0x84];      // _D4 (JP: _CC)
-	s32 mAnimId;       // _158 (JP: _150)
-	u8 _15C[0xCC];     // _15C (JP: _154)
-	u64 mStatus;       // _228 (JP: _220)
-	u8 _230[0x8];      // _230 (JP: _228)
-	s32* mCoord;       // _238 (JP: _230)
-	u8 _23C[0x5D4];    // _23C (JP: _234)
-	s32 mAnmQueueNext; // _810 (JP: _808)
-	struct {
-		s32 type;  // _00
-		s16 _04;   // _04, CJObj's mTranslate, mRotate and mScale (three CVecs, _04-_34) as one byte block; not accessed in the REL
-		s16 mRate; // _06, queued anim rate in hundredths (CAnmQueueEntry::mRate)
-	} _814[16];    // _814 (JP: _80C)
-};
 
 class CamInfo {
 public:
@@ -103,12 +46,7 @@ struct Stage02Main {
 
 #define MAIN() ((Stage02Main*)gGame)
 
-struct ObjTable {
-	void* mScript; // _00, CGame::mEvt.mData.mScript (CEvtData::_00 at gGame+0x5D080, JP 0x5D038), the running event script's read pointer;
-	               // objects are resolved by id only while it is set
-};
-
-#define OBJ_TABLE() ((ObjTable*)GAME_AT(GAME_OFS(0x5D080, 0x5D038)))
+#define OBJ_TABLE() ((CEvtData*)GAME_AT(GAME_OFS(0x5D080, 0x5D038)))
 #define SOUND()     GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
 
 static XObj* takiObj;
@@ -129,7 +67,6 @@ void InfoScrn_SetTimerHundredths(void* p, s32 v);
 void InfoScrn_HideTimer(void* p);
 void InfoScrn_ShowTimer(void* p);
 void InfoScrn_ApplyTimerHudCommand(void* p, s32 a, s32 b);
-void* ResolveEventObjectId(void* table, s16 id);
 void SetJunkUnkoFlag(s32 v);
 s32 IsGameSoundPlaying(void* p, s32 id);
 void PlayGameSound(void* p, s32 id, s32 v);
@@ -202,9 +139,9 @@ void StartCarCamera(void);
 s32 RegisterCar(XObj* a, XObj* b, XObj* c);
 }
 
-inline XObj* ObjTable_Find(ObjTable* table, s16 id)
+inline XObj* ObjTable_Find(CEvtData* table, s16 id)
 {
-	return table->mScript != NULL ? (XObj*)ResolveEventObjectId(table, id) : NULL;
+	return table->mScript != NULL ? ResolveEventObjectId(table, id) : NULL;
 }
 
 typedef void (*RelSlotFunc)(void* arg);
@@ -769,8 +706,8 @@ void UpdateStage(void* arg)
 				PlayGameSound(sound, 0x2001A, 0xFF);
 				HSD_AudioSFXSetPanByID(0x2001A, 0xFE);
 			}
-			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, &takiObj->mPos, 1), 0);
-			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, &takiObj->mPos, 1), 0);
+			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, &takiObj->mMoveTranslate, 1), 0);
+			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, &takiObj->mMoveTranslate, 1), 0);
 		} else { // another anim: silence it
 			void* sound = SOUND();
 			StopGameSfx(sound, 0x20019);
@@ -795,7 +732,7 @@ void InitStage(void* arg)
 	count   = MAIN()->mObjectCount;
 	for (i = 0; takiObj == NULL && i < count; i++) { // find the waterfall
 		obj = MAIN()->GetObject(i);
-		if ((obj->mStatus & 1) != 0 && obj->mCoord[0] == 0x254) {
+		if ((obj->mStatus.mFlags & 1) != 0 && obj->mCoord.mPlacement->mObjectId == 0x254) {
 			takiObj = obj;
 		}
 	}

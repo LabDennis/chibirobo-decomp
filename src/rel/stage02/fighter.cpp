@@ -1,5 +1,6 @@
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
+#include "game/coordinfo.h"
 #include "game/gmath.h"
 
 extern "C" {
@@ -159,16 +160,15 @@ struct UnkDolObjVirt : public UnkDolObjBase {
 
 struct UnkDolObj : public UnkDolObjVirt {
 #if defined(VERSION_JP)
-	u8 _38[0x88]; // _38, mode/flag word returned by GetFlags (_54); the real class also leaves it _38
+	u8 _38[0x88]; // _38
 #else
-	u8 _38[0x90]; // _38, the mode word GetFlags (_54) returns. The dol class leaves it unnamed too: its SetEye/SetInterest(v, mode)
-	              // write it, and GetCameraFlags returns it
+	u8 _38[0x90]; // _38
 #endif
-	CVec mMoveTranslate; // _C8, japan has it and what follows 8 bytes earlier
-	u8 _D8[0x150];       // _D8
-	u64 mStatus;         // _228, _228: XObj::mStatus flags (CStatus64): 1 in use, 0x10000 drawn
-	u8 _230[0x14];       // _230
-	s32* mPlacement;     // _244, _244: XObj::mAttr.mPlacement (an StagePlacement*); its first word is the object id
+	CVec mMoveTranslate;        // _C8, japan has it and what follows 8 bytes earlier
+	u8 _D8[0x150];              // _D8
+	u64 mStatus;                // _228, _228: XObj::mStatus flags (CStatus64): 1 in use, 0x10000 drawn
+	u8 _230[0x14];              // _230
+	StagePlacement* mPlacement; // _244, XObj::mAttr.mPlacement
 #if defined(VERSION_JP)
 	u8 _248[0x7FC]; // _248, japan's is 8 bytes shorter
 #else
@@ -804,7 +804,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	if (stage02 == stage) {
 		for (i = 0; i < 48; i++) {
 			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
-			s32 kind       = obj->mPlacement != NULL ? *obj->mPlacement : -1;
+			s32 kind       = obj->mPlacement != NULL ? obj->mPlacement->mObjectId : -1;
 			if (kind != 0x149) {
 				continue;
 			}
@@ -1037,7 +1037,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x18
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     addi     r25, r1, 0x344
     lwz      r6, 0x4(r3)
@@ -1257,7 +1257,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     stw      r0, 0x304(r1)
     addi     r4, r4, 0x8
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -1499,7 +1499,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x20
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -1703,7 +1703,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     stw      r0, 0x204(r1)
     addi     r4, r4, 0x8
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -2045,7 +2045,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x28
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -2247,7 +2247,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     stw      r0, 0x104(r1)
     addi     r4, r4, 0x30
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -2345,7 +2345,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x38
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -3590,7 +3590,7 @@ extern "C" void EndFighter(void)
     addis    r3, r3, 0xe
     lwz      r4, 0x5f0c(r3)
     addi     r3, r3, 0x5d38
-    bl       fn_801494A4
+    bl       ChangeAction__20CMotionControlCameraFP22CInterfaceCameraAction
     lis      r4, gGame@ha
     lis      r3, 0x2
     addi     r4, r4, gGame@l
@@ -3918,7 +3918,7 @@ extern "C" void AddMato(UnkDolObj* obj, s32 id)
 	item->mPending      = false;
 	item->mMarkerPhase  = HSD_Rand();
 	item->mObj->mStatus |= 0x10000;
-	kind = item->mObj->mPlacement != NULL ? *item->mObj->mPlacement : -1;
+	kind = item->mObj->mPlacement != NULL ? item->mObj->mPlacement->mObjectId : -1;
 	switch (kind) {
 	case 0x14D: // the one-shot targets
 		item->mShotsLeft = 1;
@@ -4108,7 +4108,7 @@ extern "C" void StartFighter(UnkDolObj* body, UnkDolObj* path, void* extra)
     oris     r0, r0, 0x4000
     stw      r0, 0x980(r8)
     stw      r7, 0x2df4(r5)
-    bl       fn_801494A4
+    bl       ChangeAction__20CMotionControlCameraFP22CInterfaceCameraAction
     lis      r4, lbl_5_rodata_A0@ha
     lis      r3, lbl_5_rodata_158@ha
     lfs      f0, lbl_5_rodata_158@l(r3)
@@ -5928,7 +5928,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 	if (stage02 == stage) {
 		for (i = 0; i < 48; i++) {
 			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
-			s32 kind       = obj->mPlacement != NULL ? *obj->mPlacement : -1;
+			s32 kind       = obj->mPlacement != NULL ? obj->mPlacement->mObjectId : -1;
 			f32 y;
 			f32 half;
 			f32 top;
@@ -6076,7 +6076,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x50
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6188,7 +6188,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     addi     r0, r4, 0x19
     slwi     r0, r0, 3
     add      r4, r6, r0
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6291,7 +6291,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x58
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6426,7 +6426,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x40
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6537,7 +6537,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     addi     r0, r4, 0xc
     slwi     r0, r0, 3
     add      r4, r6, r0
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6588,7 +6588,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     addi     r0, r4, 0x12
     slwi     r0, r0, 3
     add      r4, r6, r0
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -6693,7 +6693,7 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x48
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)
@@ -7304,7 +7304,7 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx fighter
     li       r5, 0x0
     lwz      r4, 0x8(r4)
     addi     r4, r4, 0x400
-    bl       fn_801A0554
+    bl       Init__7CTexObjFP13TPLDescriptorUl
     lwz      r7, 0x0(r3)
     li       r0, 0x18
     lwz      r6, 0x4(r3)

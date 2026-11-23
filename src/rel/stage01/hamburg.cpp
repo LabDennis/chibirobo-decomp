@@ -4,6 +4,7 @@
 #include "game/cparticle.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
+#include "game/coordinfo.h"
 
 extern "C" {
 double atan2(double y, double x);
@@ -12,20 +13,6 @@ double sin(double x);
 }
 
 struct Stage01Actor;
-
-struct Stage01ActorKind {
-	s32 mObjectId; // _00, StagePlacement::mObjectId, the placement's object id (XObj::mCoord._00); 0x1F9, 0x200, 0x263 pick the ham
-	               // object's behaviour
-	s32 mPosX;     // _04, StagePlacement::mPos[0], placement x in hundredths
-	s32 mPosY;     // _08, StagePlacement::mPos[1], placement y in hundredths
-	s32 mPosZ;     // _0C, StagePlacement::mPos[2], placement z in hundredths
-};
-
-struct Stage01KindRef {
-	Vec GetSize() const;
-
-	Stage01ActorKind* mKind; // _00
-};
 
 // non-virtual base, so the vtable pointer ends up at _34
 struct Stage01ActorBase {
@@ -70,7 +57,7 @@ struct Stage01ActorVirt : public Stage01ActorBase {
 };
 
 struct Stage01Actor : public Stage01ActorVirt {
-	Stage01KindRef& GetKindRef();
+	CoordInfo& GetCoordInfo();
 	Vec* GetPos();
 
 #if defined(VERSION_JP)
@@ -88,8 +75,8 @@ struct Stage01Actor : public Stage01ActorVirt {
 	u8 _15C[0x228 - 0x15C]; // _15C (JP: _154)
 	u64 mStatus;            // _228 (JP: _220)
 	u8 _230[0x238 - 0x230]; // _230 (JP: _228)
-	Stage01KindRef mCoord;  // _238 (JP: _230)
-	u8 _23C[0x258 - 0x23C]; // _23C (JP: _234)
+	CoordInfo mCoord;       // _238 (JP: _230)
+	u8 _240[0x258 - 0x240]; // _240 (JP: _238)
 	s32 mPoolIndex;         // _258 (JP: _250)
 #if defined(VERSION_JP)
 	u8 _254[0xA34 - 0x254]; // _254
@@ -289,7 +276,7 @@ RelCmdFunc _prolog_cmds[]    = {
 };
 }
 
-// zero vec, only used to seed GetSize
+// starting position for the stack before reading its placement
 static Vec sHamPlacementPosition;
 static f32 yakiRates[6];  // cook-speed multiplier per doneness level, [0] unused
 static u32 yakiLoopLevel; // 0 none, 1 something cooks, 2 a side is well done
@@ -381,38 +368,62 @@ static inline bool IsLeavingGasPlate(HamObj* slot)
 	return false;
 }
 
+/**
+ * @note Address: stage01 .text 0x3768
+ * @note Size: 0xC
+ */
 inline Vec* HamObj::GetPos()
 {
 	return mActor->GetPos();
 }
 
-inline Vec Stage01KindRef::GetSize() const
+/**
+ * @note Address: stage01 .text 0x3774
+ * @note Size: 0xBC
+ */
+inline Vec GetStackPlacementPosition(const CoordInfo& coord)
 {
-	Vec size = sHamPlacementPosition;
-	size.x   = mKind->mPosX / 100.0f;
-	size.y   = mKind->mPosY / 100.0f;
-	size.z   = mKind->mPosZ / 100.0f;
-	return size;
+	Vec position = sHamPlacementPosition;
+	position.x   = coord.mPlacement->mPos[0] / 100.0f;
+	position.y   = coord.mPlacement->mPos[1] / 100.0f;
+	position.z   = coord.mPlacement->mPos[2] / 100.0f;
+	return position;
 }
 
-inline Stage01KindRef& Stage01Actor::GetKindRef()
+/**
+ * @note Address: stage01 .text 0x3830
+ * @note Size: 0x8
+ */
+inline CoordInfo& Stage01Actor::GetCoordInfo()
 {
 	return mCoord;
 }
 
+/**
+ * @note Address: stage01 .text 0x3838
+ * @note Size: 0x8
+ */
 inline Stage01Actor* HamObj::GetActor()
 {
 	return mActor;
 }
 
+/**
+ * @note Address: stage01 .text 0x3840
+ * @note Size: 0x8
+ */
 inline Vec* Stage01Actor::GetPos()
 {
 	return &mMoveTranslate;
 }
 
+/**
+ * @note Address: stage01 .text 0x3848
+ * @note Size: 0xF0
+ */
 inline f32 HamObj::GetStackHeight()
 {
-	return GetActor()->GetKindRef().GetSize().y + 2.0f * mStackLevel;
+	return GetStackPlacementPosition(GetActor()->GetCoordInfo()).y + 2.0f * mStackLevel;
 }
 
 inline void HamObj::SetState(StateFunc func)
@@ -701,7 +712,7 @@ extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
 	if (slot != NULL) {
-		return slot->mActor->mCoord.mKind->mObjectId;
+		return slot->mActor->mCoord.mPlacement->mObjectId;
 	}
 	return -1;
 }
@@ -891,7 +902,7 @@ extern "C" s32 CheckYakiResult(void)
 	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
 		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
 			slot = &hamObjs[i];
-			if (IsActive(slot->mActor) && slot->mActor->mCoord.mKind->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
 			    && slot->mYakiTime[1] / 600 + 1 >= 3) {
 				result = 1;
 			}
@@ -905,7 +916,7 @@ extern "C" s32 CheckYakiResult(void)
 	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
 		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
 			slot = &hamObjs[i];
-			if (IsActive(slot->mActor) && slot->mActor->mCoord.mKind->mObjectId == 0x1F9
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9
 			    && (slot->mYakiTime[0] / 600 + 1 >= 5 || slot->mYakiTime[1] / 600 + 1 >= 5)) {
 				result = 2;
 			}
@@ -1925,7 +1936,8 @@ extern "C" HamObj* FindFacingHamburg(void)
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		HamObj* slot        = &hamObjs[i];
 		Stage01Actor* actor = slot->mActor;
-		if (IsActive(actor) && (actor->mStatus & 0x100000000ULL) && slot->mStackLevel <= 0 && actor->mCoord.mKind->mObjectId == 0x1F9) {
+		if (IsActive(actor) && (actor->mStatus & 0x100000000ULL) && slot->mStackLevel <= 0
+		    && actor->mCoord.mPlacement->mObjectId == 0x1F9) {
 			dist      = PSVECDistance(&STAGE01_PLAYER->mMoveTranslate, &actor->mMoveTranslate);
 			Vec* pos  = slot->GetPos();
 			Vec* ppos = &STAGE01_PLAYER->mMoveTranslate;
@@ -2223,7 +2235,7 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 			slot->mSide  = 0;
 			slot->mDish  = NULL;
 			slot->mAbove = NULL;
-			switch (slot->mActor->mCoord.mKind->mObjectId) {
+			switch (slot->mActor->mCoord.mPlacement->mObjectId) {
 			case 0x1F9:
 				slot->mYakiTime[1] = 0;
 				slot->mYakiTime[0] = 0;
@@ -2460,7 +2472,7 @@ extern "C" void InitHamburg(void)
 	gasPlate = NULL;
 	for (s32 i = 0; gasPlate == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 		Stage01Actor* actor = (Stage01Actor*)gGame.mXObjs.mObjects[i];
-		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) { // a live actor of the gas-plate kind
+		if ((actor->mStatus & 1) && actor->mCoord.mPlacement->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
 		}
 	}
@@ -2756,7 +2768,7 @@ void HamObj::StatePutDown()
 			UpdateHamPickupFlags();
 			if (IsOnGasPlate(mActor)) {
 				Vec pos = mActor->mMoveTranslate;
-				pos.y   = mActor->mCoord.GetSize().y;
+				pos.y   = GetStackPlacementPosition(mActor->mCoord).y;
 				mActor->SetMoveDir(&pos, 10.0f);
 				StartSlide(5.0f, 0.2f, mMoveAngle);
 			} else {
@@ -3442,7 +3454,7 @@ void HamObj::StateSlide()
 		pos.y = mActor->mMoveTranslate.y;
 		pos.z = mActor->mMoveTranslate.z;
 		pos.x += mSlideDistance * (f32)sin(mMoveAngle);
-		pos.y = mActor->mCoord.GetSize().y;
+		pos.y = GetStackPlacementPosition(mActor->mCoord).y;
 		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
 		mActor->SetMoveDir(&pos, mMoveSpeed);
 		if (HamObj_CheckSlideHit(this)) {
@@ -3672,36 +3684,6 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 }
 
 /**
- * @note Address: stage01 .text 0x3768
- * @note Size: 0xC
- */
-
-/**
- * @note Address: stage01 .text 0x3774
- * @note Size: 0xBC
- */
-
-/**
- * @note Address: stage01 .text 0x3830
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3838
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3840
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3848
- * @note Size: 0xF0
- */
-
-/**
  * @note Address: stage01 .text 0x3938
  * @note Size: 0x40
  */
@@ -3911,7 +3893,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 			if (PSVECDistance(&STAGE01_PLAYER->mMoveTranslate, &slot->mActor->mMoveTranslate) < 8.0f) {
 				slot->StartSlide(5.0f, 0.2f, angle);
 			}
-		} else if (slot->mActor->mCoord.GetSize().y + 2.0f * slot->mStackLevel < slot->mActor->mMoveTranslate.y) {
+		} else if (GetStackPlacementPosition(slot->mActor->mCoord).y + 2.0f * slot->mStackLevel < slot->mActor->mMoveTranslate.y) {
 			slot->StartSlide(0.0f, 0.5f, angle); // still in the air above its stack height: settle down
 		}
 
