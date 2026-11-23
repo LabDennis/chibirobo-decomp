@@ -911,11 +911,11 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				font->mCursor[0].SetAnim(anim, 1, frame, 0.0f, 0.0f, 15.0f);
 				font->mCursor[0].SetPos(portraitX, 4.0f * headHeight + portraitY, 80.0f * portraitScale);
 				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
-				font->mCursor[0].vf190();
+				font->mCursor[0].DrawScreenOverlay();
 				if (anim == 0x13 || anim == 0x3FB) {
-					font->mCursor[1].vf090(font->mCursor[0].vf244());
-					font->mCursor[1].vf070(font->mCursor[0].vf26C());
-					font->mCursor[1].vf098(font->mCursor[0].vf258());
+					font->mCursor[1].vf090(font->mCursor[0].GetPos());
+					font->mCursor[1].vf070(font->mCursor[0].GetRotY());
+					font->mCursor[1].vf098(font->mCursor[0].GetScale());
 					if (font->mCursor[1].GetAnimId() == 0) {
 						font->mCursor[1].SetAnim(1, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 					}
@@ -926,7 +926,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 							part->vf01C(frame);
 						}
 					}
-					font->mCursor[1].vf190();
+					font->mCursor[1].DrawScreenOverlay();
 				} else if (font->mCursor[1].GetAnimId() == 1) {
 					font->mCursor[1].SetAnim(0, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 				}
@@ -934,7 +934,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				font->mCursor[0].SetAnim(1, 0, 0.0f, 1.0f, 0.0f, 15.0f);
 				font->mCursor[0].SetPos(portraitX, portraitY, 80.0f * portraitScale);
 				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
-				font->mCursor[0].vf190();
+				font->mCursor[0].DrawScreenOverlay();
 			}
 			if (font->mColor.a != 0) {
 				GXSetScissor(gScreenLeft, gScreenTop, gPointerScreenWidth, gPointerScreenHeight);

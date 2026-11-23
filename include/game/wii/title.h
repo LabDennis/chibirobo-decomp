@@ -106,7 +106,7 @@ public:
 	virtual void vf064();
 	virtual void vf068();
 	virtual void vf06C();
-	virtual void vf070(f32); // _070, a pose value; the other cursor's vf26C feeds it
+	virtual void vf070(f32); // _070, a pose value; the other cursor's GetRotY feeds it
 	virtual void vf074();
 	virtual void vf078();
 	virtual void vf07C();
@@ -114,9 +114,9 @@ public:
 	virtual void SetPos(f32 x, f32 y, f32 z); // _084
 	virtual void vf088();
 	virtual void SetScale(f32 x, f32 y, f32 z); // _08C
-	virtual void vf090(void*);                  // _090, given the other cursor's vf244 result
+	virtual void vf090(void*);                  // _090, given the other cursor's GetPos result
 	virtual void vf094();
-	virtual void vf098(void*);        // _098, given the other cursor's vf258 result
+	virtual void vf098(void*);        // _098, given the other cursor's GetScale result
 	virtual void SetScale(f32 scale); // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
@@ -173,15 +173,15 @@ public:
 	virtual void vf168();
 	virtual void vf16C();
 	virtual void vf170();
-	virtual void vf174();
+	virtual void DrawObject(); // _174
 	virtual void vf178();
 	virtual void vf17C();
 	virtual void vf180();
 	virtual void vf184();
-	virtual void vf188();
-	virtual void vf18C();
-	virtual void vf190(); // _190, draws the object, the GameCube's DrawObject
-	virtual void vf194();
+	virtual void DrawObjectEffects();   // _188
+	virtual void DrawCollisionShapes(); // _18C
+	virtual void DrawScreenOverlay();   // _190
+	virtual void DrawDebugStatus();     // _194
 	virtual void vf198();
 	virtual void vf19C();
 	virtual void vf1A0();
@@ -200,10 +200,9 @@ public:
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
 	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
-	virtual f32 vf1D8(); // _1D8, the GameCube's GetFloorXZExtent
-	virtual f32 vf1DC(); // _1DC, the GameCube's GetCollisionHeight
-	// _1E0, the GameCube's ProjectVisibleBounds
-	virtual BOOL vf1E0(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
+	virtual f32 GetFloorXZExtent();                                                                            // _1D8
+	virtual f32 GetCollisionHeight();                                                                          // _1DC
+	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight); // _1E0
 	virtual void vf1E4();
 	virtual void vf1E8();
 	virtual void vf1EC();
@@ -228,17 +227,17 @@ public:
 	virtual void vf238();
 	virtual void vf23C();
 	virtual void vf240();
-	virtual CVec* vf244(); // _244, the object's pose position, the GameCube's mMoveTranslate
+	virtual CVec* GetPos(); // _244, the object's pose position
 	virtual void vf248();
 	virtual void vf24C();
 	virtual void vf250();
 	virtual void vf254();
-	virtual CVec* vf258(); // _258, the object's pose scale, the GameCube's mMoveScale
+	virtual CVec* GetScale(); // _258, the object's pose scale
 	virtual void vf25C();
 	virtual void vf260();
 	virtual void vf264();
 	virtual void vf268();
-	virtual f32 vf26C(); // _26C, another pose component
+	virtual f32 GetRotY(); // _26C
 
 	u8 _004[0x014 - 0x004];
 	StagePlacement* mSpawn; // _014, the placement the object loaded from

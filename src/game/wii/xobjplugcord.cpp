@@ -545,9 +545,9 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f
 	for (int i = 0; object->mFloors[i].mId != -1; ++i) {
 		if (!(object->mFloors[i].mFlags & 1))
 			continue;
-		CVec origin(*object->vf244());
-		Vec centerOffset = *object->vf258() * FloorOffset(object, i);
-		Vec size         = *object->vf258() * FloorExtent(object, i);
+		CVec origin(*object->GetPos());
+		Vec centerOffset = *object->GetScale() * FloorOffset(object, i);
+		Vec size         = *object->GetScale() * FloorExtent(object, i);
 		f32 yaw          = DEG2RAD * object->mFloors[i].mYawDegrees;
 		f32 angle        = object->mMoveRotate.y + yaw;
 		switch (object->mFloors[i].mId) {
@@ -596,7 +596,7 @@ extern "C" void PushPlugCordPointsFromObjects(XObjPlugCord* cord)
 		    || object == (WiiTitleObject*)gGame.GetPlayer())
 			continue;
 		Vec pos         = *gGame.GetPlayer()->GetPos();
-		CVec* objectPos = object->vf244();
+		CVec* objectPos = object->GetPos();
 		f32 dx = objectPos->x - pos.x, dz = objectPos->z - pos.z;
 		if (FSqrt(dx * dx + dz * dz) > 150.0f) // only nearby objects
 			continue;
@@ -624,7 +624,7 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 h
 		WiiTitleObject* object = (WiiTitleObject*)gGame.mXObjs.mObjects[i];
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000) || object->mStatus & 0x100000)
 			continue;
-		CVec* objectPos = object->vf244();
+		CVec* objectPos = object->GetPos();
 		f32 dx = objectPos->x - pos->x, dz = objectPos->z - pos->z;
 		if (FSqrt(dx * dx + dz * dz) > 100.0f + (radius + object->mFloorXZExtent))
 			continue;
