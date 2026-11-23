@@ -6813,9 +6813,8 @@ void XObjChr::DrawObjectEffects()
 		u16 n = 0;
 		for (int turn = 0; turn < 8; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				f32 angle     = (TWO_PI / 16) * step;
-				vertices[n].x = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::sinf(angle);
-				vertices[n].y = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::cosf(angle);
+				vertices[n].x = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::sinf((TWO_PI / 16) * step);
+				vertices[n].y = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::cosf((TWO_PI / 16) * step);
 				vertices[n].z = z;
 				f32 wave      = phase;
 				while (wave < 0.0f)
@@ -6922,12 +6921,13 @@ void XObjChr::DrawCollisionShapes()
 			if (IsCarryingSquirter(&chr->mLift)) {
 				s32 anim = chr->GetAnimId();
 				if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
-					XObj* object = chr->mLift.mTarget;
-					CVec origin  = object->GetJointPos(object->FindResNode("atari"));
-					CVec tip     = object->GetJointPos("saki");
-					CVec delta   = tip - origin;
+					XObj* object             = chr->mLift.mTarget;
+					nw4r::g3d::ResNode atari = object->FindResNode("atari");
+					CVec origin              = object->GetJointPos(atari);
+					CVec tip                 = object->GetJointPos("saki");
+					CVec delta               = tip - origin;
 					if (PSVECMag(&delta) > 0.1f) {
-						CVec scale = object->GetJointScale(object->FindResNode("atari"));
+						CVec scale = object->GetJointScale(atari);
 						DrawGsCylinder(&gGame.mGs, chr->mItemTintWord, 16, origin.x, origin.y, origin.z, HALF_PI, 0.0f, 0.0f, scale.x,
 						               scale.z, 0.5f * scale.y);
 					}
@@ -6967,20 +6967,23 @@ void XObjChr::DrawCollisionShapes()
 
 // NONMATCHING: the gauge, look/radar/popper and point-particle draws are present;
 // render-state scheduling and gauge float register lifetimes still differ
-static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction, u32 color)
+// a bar of the given length centred on x with a round cap of radius 8 on its left end
+static inline void DrawPlayerGauge(f32 x, const f32& y, f32 length, f32 fraction, u32 color)
 {
-	CGs* gs = &gGame.mGs;
+	f32 radius = 8.0f;
+	f32 width  = length - radius;
+	f32 left   = x - width * 0.5f;
+	CGs* gs    = &gGame.mGs;
 	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
 	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)7, TRUE);
 	gs->mCurRenderState->SetLineWidth(30, (GXTexOffset)5);
-	DrawGsCircle(gs, 16, color, color, x - 8.0f, y, 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
-	f32 filled = width * fraction;
-	DrawGsLineSegment(gs, NULL, x - 2.0f, y, 0.0f, color, x + filled, y, 0.0f, color);
-	DrawGsLineSegment(gs, NULL, (x - 2.0f) + filled, y, 0.0f, 0x64, x + width, y, 0.0f, 0x64);
+	DrawGsCircle(gs, 16, color, color, left - radius, y, 0.0f, 2.0f * radius, 2.0f * radius, 0.0f, 0.0f, 0.0f);
+	DrawGsLineSegment(gs, NULL, left - 2.0f, y, 0.0f, color, width * fraction + left, y, 0.0f, color);
+	DrawGsLineSegment(gs, NULL, width * fraction + (left - 2.0f), y, 0.0f, 0x64, left + width, y, 0.0f, 0x64);
 	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)1, FALSE);
 	gs->mCurRenderState->SetLineWidth(42, (GXTexOffset)5);
-	DrawGsCircle(gs, 16, 0x96, 0x96, x - 8.0f, y, 0.0f, 18.4f, 18.4f, 0.0f, 0.0f, 0.0f);
-	DrawGsLineSegment(gs, NULL, x - 2.0f, y, 0.0f, 0x96, 2.0f + (x + width), y, 0.0f, 0x96);
+	DrawGsCircle(gs, 16, 0x96, 0x96, left - radius, y, 0.0f, 2.3f * radius, 2.3f * radius, 0.0f, 0.0f, 0.0f);
+	DrawGsLineSegment(gs, NULL, left - 2.0f, y, 0.0f, 0x96, 2.0f + (left + width), y, 0.0f, 0x96);
 	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
 	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)3, FALSE);
 	gs->mCurRenderState->SetLineWidth(12, (GXTexOffset)5);
@@ -7000,23 +7003,20 @@ void XObjChr::DrawScreenOverlay()
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-		f32 left     = x - 31.0f;
 		f32 duration = (f32)(s32)GetInteractionParameter(0) / 100.0f;
-		DrawPlayerGauge(left, y, 62.0f, chr->mGaugeTime / (gRefreshRate * duration), 0x00FF0064);
+		DrawPlayerGauge(x, y, 70.0f, chr->mGaugeTime / (gRefreshRate * duration), 0x00FF0064);
 	}
 	if (!camera->IsAction(CAMACTION_SCROLL2) && (GetAnimId() == 0x7A || GetAnimId() == 0xCA)) {
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-		f32 left     = x - 36.0f;
-		f32 frame    = GetAnimFrame();
-		f32 fraction = frame / GetAnimEndFrame();
+		f32 fraction = GetAnimFrame() / GetAnimEndFrame();
 		u32 color;
 		if (fraction <= 0.6f)
 			color = 0xFFC80064;
 		else
 			color = 0xFF000064;
-		DrawPlayerGauge(left, y, 72.0f, fraction, color);
+		DrawPlayerGauge(x, y, 80.0f, fraction, color);
 	}
 	s32 row = 0;
 	for (s32 i = 0; i < 10; ++i) {
