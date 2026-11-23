@@ -2339,23 +2339,61 @@ struct XObjArmySlot {
 	XObjArmySlot();
 	~XObjArmySlot();
 
-	u8 _00[0x8];
-	CVec _08;
-	CVec _18;
-	u8 _28[0x8];
+	s32 mActive; // _00
+	u32 mLife;   // _04
+	CVec mPos;   // _08
+	CVec mVel;   // _18
+	f32 mSpeed;  // _28
+	s32 mPhase;  // _2C
+
+	void Move()
+	{
+		mPos.x += mSpeed * mVel.x;
+		mPos.y += mSpeed * mVel.y;
+		mPos.z += mSpeed * mVel.z;
+	}
 };
 STATIC_ASSERT(sizeof(XObjArmySlot) == 0x30);
 
-// the army object: five slot records at _9E4, then its own AnimSfx at _AD4
+// the army object: the GameCube's layout shifted 0x28 behind the bigger XObj
 class XObjArmy : public XObj {
 public:
+	typedef void (XObjArmy::*Func)();
+
 	XObjArmy();
 	virtual ~XObjArmy();
-	virtual void DrawLate(); // _28C
+	virtual void ResetForNewGame();                               // _150
+	virtual void ResetObjectState();                              // _154
+	virtual void UpdateObject(u32 frames);                        // _164
+	virtual void DrawObjectEffects();                             // _188
+	virtual s32 HandleEventCommand(s32 argc, s32* args);          // _1E8
+	virtual void OnHitFromPosition(const Vec& pos, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade);                           // _20C
+	virtual void ResumeSounds(f32 fade);                          // _210
+	virtual void DrawLate();                                      // _28C
+	virtual void UpdateAnimationSounds();                         // _290
 
-private:
-	u8 _9A8[0x9E4 - 0x9A8];
-	XObjArmySlot mSlots[5]; // _9E4
+	void StateMarch();
+	void StateWait();
+	void StateKnock();
+	void StateFall();
+	void StateGuard();
+
+	Func mFunc;  // _9A8, what UpdateObject runs
+	s32 mStep;   // _9B4
+	s32 mTimer;  // _9B8
+	f32 _9BC;    // _9BC
+	u32 _9C0[2]; // _9C0
+	// _9C8, 1 knocked down, 2 floors swapped, 0x80 silences the shots, 0x100 full volume. A
+	// CStatus32 in retail (vptr _9CC); kept as words so the ctor's code stays put while its
+	// CJArchive member can't expand inline yet
+	u32 mFlags;
+	u32 _9CC;
+	// _9D0, a CVec in retail (vptr _9DC), same reason
+	Vec mGuardPos;
+	u32 _9DC;
+	s32 mMode;              // _9E0, 1 marches, 2 guards a spot
+	XObjArmySlot mShots[5]; // _9E4
 	AnimSfx mSfx;           // _AD4
 };
 STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);
