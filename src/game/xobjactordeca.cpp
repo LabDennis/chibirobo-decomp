@@ -182,9 +182,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 			switch (mCmd[1]) {
 			case 1:
 				mActorStatus.mFlags |= 0x100;
-				player->mPlayerStatus.mFlags = 0;
-				player->mPlayerStatus.mFlags |= 0x40000000;
-				player->mPad.mReset = FALSE;
+				player->LockControl();
 				break;
 			default: { // or set him down
 
@@ -196,10 +194,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 				CVec target(position);
 				target.y = 0.0f;
 				player->SetPos(target, 0);
-				player->mPlayerStatus.mFlags = 0;
-				player->mPlayerStatus.mFlags |= 0x20000000;
-				player->mPlayerStatus.mFlags |= 7;
-				player->mPad.mReset = TRUE;
+				player->RestoreControl();
 				HSD_JObjClearMtxFlags(player->mJObj);
 				break;
 			}
@@ -367,7 +362,7 @@ void XObjActorDeca::UpdateAfterAnim(u32 frames)
 	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f); // eases toward the yaw target
 	joint.Attach(FindJointByPath(mJObj, (s32[5]) { 0, 1, 0, 0, 0 }, 5));
 	joint.SetRotationY(mJointYaw, 0);
-	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) { // the player rides the mount joint
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) { // the player rides the mount joint
 
 		joint.Attach(FindJointByPath(mJObj, (s32[2]) { 0, 3 }, 2));
 		Mtx scaling, rotation, translation, result, matrix;

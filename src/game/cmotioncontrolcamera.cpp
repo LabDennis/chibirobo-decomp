@@ -161,7 +161,7 @@ void CMotionControlCamera::Update(u32 step)
 
 	BOOL look = FALSE;
 	if (((pad.mPad->mTrigger & PAD_BUTTON_Y) || (pad.mPad->mTrigger & PAD_BUTTON_B)) && gGame.mEvt.mData.mScript == NULL) {
-		if (gGame.IsRunning() && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
+		if (gGame.IsRunning() && (PLAYER->mPlayerStatus.mFlags & XObjChr::PlayerControlled) && !(gGame.mStatus.mFlags & 0x80)) {
 			if (!(gGame.mStatus.mFlags & 0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
 				// Y toggles the eye camera, B only takes it down

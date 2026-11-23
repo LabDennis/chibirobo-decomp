@@ -1073,7 +1073,6 @@ void* GetMapPoolEntry(const CGame* game, s32 index);
 void SetObjectXAndTarget(CObjVec* value, f32 x);
 void SetObjectZAndTarget(CObjVec* value, f32 z);
 BOOL IsEventScriptActive(const CGame* game);
-BOOL IsPlayerAttachmentEquipped(const XObjChr* chr, s32 wanted);
 CPadOne* GetPadForPort(CGame* game, u8 port);
 u32 GetHeldPadButtons(const CPadOne* pad, u32 mask);
 void SetObjectVectorAndTargetFromVec(CObjVec* value, const Vec& v);
@@ -1120,7 +1119,6 @@ f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
 s32 GetObjectPoolId(const XObj* object);
 BOOL IsEventScriptActive(const CGame* game);
 BOOL IsLiftActionState(const XActLift* act, s32 wanted);
-BOOL IsPlayerAttachmentEquipped(const XObjChr* chr, s32 wanted);
 BOOL IsPopperActionState(const XActPopper* act, s32 wanted);
 BOOL IsRadarActionState(const XActRadar* act, s32 wanted);
 BOOL IsTumbleActionState(const XActTumble* act, s32 wanted);
@@ -1148,7 +1146,6 @@ BOOL IsHangActionState(const XActHang* act, s32 wanted);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
 BOOL IsPushActionState(const XActPush* act, s32 wanted);
 u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
-void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed);
 void OpenPlayerEquipmentRings(XObjChr* chr);
 BOOL IsGameRunning(CGame*);
 void SetHangActionState(XActHang*, s32);
@@ -1166,16 +1163,6 @@ Vec GetJointMatrixTranslation(void*, HSD_JObj*);
 BOOL IsPopperFireAnimationSelected(XObjPopper*);
 void StartPlayerRadarScan(XObjRadar*);
 void PlayCopterFlightAnimation(XObjCopter*);
-void HandleLiftActionInput(XActLift*, const CPadOne*, f32*);
-void HandleHangActionInput(XActHang*, const CPadOne*, f32*);
-void SuppressMovementDuringJump(XActJump*, const CPadOne*, f32*);
-void HandleLadderActionInput(XActLadder*, const CPadOne*, f32*);
-void HandleRopeActionInput(XActRope*, const CPadOne*, f32*);
-void HandlePushActionInput(XActPush*, const CPadOne*, f32*);
-void HandleTumbleActionInput(XActTumble*, const CPadOne*, f32*);
-void HandleCopterActionInput(XActCopter*, const CPadOne*, f32*);
-void ApplyPopperMovementWeight(XActPopper*, const CPadOne*, f32*);
-void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
 }
 
 /**
@@ -1191,7 +1178,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		return 0;
 	f32 speed          = -1;
 	const CPadOne* pad = &player->mPad;
-	if (IsGameRunning(&gGame) && !IsEventScriptActive(&gGame) && (player->mPlayerStatus.mFlags & 0x20000000)
+	if (IsGameRunning(&gGame) && !IsEventScriptActive(&gGame) && (player->mPlayerStatus.mFlags & XObjChr::PlayerControlled)
 	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 	    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
 	        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
@@ -1205,20 +1192,22 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					OpenPlayerEquipmentRings(player);
 				else
 					PlayGameSound(&gGame.mSound, 0x85, 255);
-			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & PAD_BUTTON_B) && !(pad->mButton & PAD_BUTTON_START)
+			} else if (!player->IsAttachmentEquipped(AttachmentNone) && (pad->mTrigger & PAD_BUTTON_B) && !(pad->mButton & PAD_BUTTON_START)
 			           && (!(gGame.mStatus.mFlags & 0x100) && player->mAttachmentRequest < 0)) {
 				RequestPlayerUnequipAttachment(player);
 				return 0;
 			}
 		}
 		if (!(gGame.mStatus.mFlags & 0x400)
-		    && (IsPlayerAttachmentEquipped(player, 0) || IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2)
-		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
-		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
-		        || IsPlayerAttachmentEquipped(player, 8))) {
+		    && (player->IsAttachmentEquipped(AttachmentNone) || player->IsAttachmentEquipped(AttachmentCopter)
+		        || player->IsAttachmentEquipped(AttachmentPopper) || player->IsAttachmentEquipped(AttachmentRadar)
+		        || player->IsAttachmentEquipped(AttachmentToothbrush) || player->IsAttachmentEquipped(AttachmentSpoon)
+		        || player->IsAttachmentEquipped(AttachmentMug) || player->IsAttachmentEquipped(AttachmentSquirter)
+		        || player->IsAttachmentEquipped(AttachmentUnequip))) {
 			BOOL press = (pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x500) && player->mAttachmentRequest < 0;
 			s32 mode;
-			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
+			if (player->IsAttachmentEquipped(AttachmentCopter) || player->IsAttachmentEquipped(AttachmentPopper)
+			    || player->IsAttachmentEquipped(AttachmentRadar)) {
 				switch (player->mAttachmentActionType) {
 				case 1:
 					mode = 1;
@@ -1229,10 +1218,10 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				default:
 					mode = 0;
 				}
-			} else if (IsPlayerAttachmentEquipped(player, 6))
+			} else if (player->IsAttachmentEquipped(AttachmentMug))
 				mode = 0;
-			else if (IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5) || IsPlayerAttachmentEquipped(player, 7)
-			         || IsPlayerAttachmentEquipped(player, 8))
+			else if (player->IsAttachmentEquipped(AttachmentToothbrush) || player->IsAttachmentEquipped(AttachmentSpoon)
+			         || player->IsAttachmentEquipped(AttachmentSquirter) || player->IsAttachmentEquipped(AttachmentUnequip))
 				switch (player->mToolActionType) {
 				case 1:
 					mode = 1;
@@ -1249,7 +1238,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					BOOL emptyHands;
 				} use          = { 0, 0 };
 				use.mode       = mode;
-				use.emptyHands = IsPlayerAttachmentEquipped(player, 0);
+				use.emptyHands = player->IsAttachmentEquipped(AttachmentNone);
 				if (press && player->mLetickerIndex >= 0) {
 					XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
 					if (object->mStatus.mFlags & 0x10000000000ULL)
@@ -1415,7 +1404,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
 		        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
 		        && IsRadarActionState(&player->mRadar, 0))) {
-			if (IsPlayerAttachmentEquipped(player, 0)) {
+			if (player->IsAttachmentEquipped(AttachmentNone)) {
 				if (!(gGame.mStatus.mFlags & 0x100)) {
 					if (player->mPlug.mConnection && ((pad->mTrigger & PAD_BUTTON_A) || (pad->mTrigger & PAD_BUTTON_B))) {
 						if (player->mLift.mPlugTarget) {
@@ -1427,14 +1416,14 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & PAD_BUTTON_A))
 						player->mLiftPlugFlags |= 0x80;
 				}
-			} else if (IsPlayerAttachmentEquipped(player, 1)) {
+			} else if (player->IsAttachmentEquipped(AttachmentCopter)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetCopterActionState(&player->mCopter, 3);
 					player->SetAnim(39, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 					PlayCopterFlightAnimation(&player->mCopterObj);
 					StopPlayerMotion(player);
 				}
-			} else if (IsPlayerAttachmentEquipped(player, 2)) {
+			} else if (player->IsAttachmentEquipped(AttachmentPopper)) {
 				s32 state = 0;
 				if (pad->mTrigger & PAD_BUTTON_A)
 					state = 7;
@@ -1442,27 +1431,29 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					SetPopperActionState(&player->mPopper, state);
 					SetObjectVectorTarget(&player->mMoveRotate, player->mMoveRotate);
 				}
-			} else if (IsPlayerAttachmentEquipped(player, 3)) {
+			} else if (player->IsAttachmentEquipped(AttachmentRadar)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetRadarActionState(&player->mRadar, 3);
 					StartPlayerRadarScan(&player->mRadarObj);
 				}
-			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
+			} else if (player->IsAttachmentEquipped(AttachmentToothbrush) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingToothbrush(&player->mLift)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 27);
-			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
+			} else if (player->IsAttachmentEquipped(AttachmentSpoon) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingSpoon(&player->mLift)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100) && player->mAnimId != 0x8ae)
 					SetLiftActionState(&player->mLift, 29);
-			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
+			} else if (player->IsAttachmentEquipped(AttachmentMug) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingMug(&player->mLift)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 31);
-			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
+			} else if (player->IsAttachmentEquipped(AttachmentSquirter) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingSquirter(&player->mLift)) {
 				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 35);
 			} else
-				IsPlayerAttachmentEquipped(player, 8);
+				player->IsAttachmentEquipped(AttachmentUnequip);
 		}
 	}
 	if (player->mLiftPlugFlags & 0x80) {
@@ -1492,7 +1483,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		}
 	} else
 		player->mAPressed = player->mPressTimer = 0;
-	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
+	if (player->IsAttachmentEquipped(AttachmentPopper) && !IsEventScriptActive(&gGame)
 	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
 	    && IsPopperFireAnimationSelected(&player->mPopperObj) && (pad->mTrigger & PAD_BUTTON_A))
 		SetPopperActionState(&player->mPopper, 5);
@@ -1534,17 +1525,17 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 			player->mNearDistance                 = 2;
 		}
 	}
-	HandleLiftActionInput(&player->mLift, pad, &speed);
-	HandleHangActionInput(&player->mHang, pad, &speed);
-	SuppressMovementDuringJump(&player->mJump, pad, &speed);
-	HandleLadderActionInput(&player->mLadder, pad, &speed);
-	HandleRopeActionInput(&player->mRope, pad, &speed);
-	HandlePushActionInput(&player->mPush, pad, &speed);
-	HandleTumbleActionInput(&player->mTumble, pad, &speed);
-	HandleCopterActionInput(&player->mCopter, pad, &speed);
-	ApplyPopperMovementWeight(&player->mPopper, pad, &speed);
-	ApplyRadarMovementWeight(&player->mRadar, pad, &speed);
-	UpdatePlayerAttachmentRequest(player, &speed);
+	player->mLift.HandleInput(*pad, speed);
+	player->mHang.HandleInput(*pad, speed);
+	player->mJump.HandleInput(*pad, speed);
+	player->mLadder.HandleInput(*pad, speed);
+	player->mRope.HandleInput(*pad, speed);
+	player->mPush.HandleInput(*pad, speed);
+	player->mTumble.HandleInput(*pad, speed);
+	player->mCopter.HandleInput(*pad, speed);
+	player->mPopper.HandleInput(*pad, speed);
+	player->mRadar.HandleInput(*pad, speed);
+	player->UpdateAttachmentRequest(speed);
 	UpdatePlayerEquipmentRings(&player->mMenu, frames);
 	UpdateOXMenuTransition(&player->mOXMenu, frames);
 	if (-1.f == speed)
@@ -1707,7 +1698,8 @@ void XObjChr::UpdateObject(u32 frames)
 	mStick[3] = mStick[2];
 	mStick[0] = InputEnabled(&gGame) && !gGame.mEvt.mData.mScript ? GetControlStickMagnitude(pad) : 0.0f;
 	mStick[2] = mStick[0] > 0 ? -(f32)atan2(pad->mStickX, pad->mStickY) : -1.f;
-	if (InputEnabled(&gGame) && !gGame.mEvt.mData.mScript && GetAttachment() != 1 && GetAttachment() != 2 && GetAttachment() != 3
+	if (InputEnabled(&gGame) && !gGame.mEvt.mData.mScript && GetAttachment() != AttachmentCopter && GetAttachment() != AttachmentPopper
+	    && GetAttachment() != AttachmentRadar
 	    && (mLift.mState == 0
 	        || (mLift.mState == 4 && !IsCarryingToothbrush(&mLift) && !IsCarryingSpoon(&mLift) && !IsCarryingMug(&mLift)
 	            && !IsCarryingSquirter(&mLift)))
@@ -3919,9 +3911,10 @@ void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
 {
 	int idle; // the lift action is at rest; retail narrows the test to a bool before it keeps it
 	if (gGame.mEvt.mData.mScript != NULL || !InputEnabled(&gGame) || (gGame.mStatus.mFlags & 0xC00) || (gGame.mStatus.mFlags & 0x100)
-	    || !(mPlayerStatus.mFlags & 0x20000000) || mCopter.mState != 0 || (mPopper.mState != 0 && mPopper.mState != 4) || mRadar.mState != 0
-	    || (!(idle = (bool)(mLift.mState == 0)) && mLift.mState != 4) || mHang.mState != 0 || mJump.mState != 0 || mLadder.mState != 0
-	    || mRope.mState != 0 || mPush.mState != 0 || mTumble.mState != 0 || mAttachmentRequest != -1 || mSuits.mChangeStep != 0)
+	    || !(mPlayerStatus.mFlags & XObjChr::PlayerControlled) || mCopter.mState != 0 || (mPopper.mState != 0 && mPopper.mState != 4)
+	    || mRadar.mState != 0 || (!(idle = (bool)(mLift.mState == 0)) && mLift.mState != 4) || mHang.mState != 0 || mJump.mState != 0
+	    || mLadder.mState != 0 || mRope.mState != 0 || mPush.mState != 0 || mTumble.mState != 0 || mAttachmentRequest != -1
+	    || mSuits.mChangeStep != 0)
 		return;
 	switch (input) {
 	case -1:
@@ -4289,7 +4282,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			return ScriptLiftReady(this);
 		case 501:
 			if (mLift.mTarget) {
-				if (GetAttachment() == 4 || GetAttachment() == 5 || GetAttachment() == 6 || GetAttachment() == 7 || GetAttachment() == 8)
+				if (GetAttachment() == AttachmentToothbrush || GetAttachment() == AttachmentSpoon || GetAttachment() == AttachmentMug
+				    || GetAttachment() == AttachmentSquirter || GetAttachment() == AttachmentUnequip)
 					RequestScriptAttachment(this, 0);
 				else if (mLift.mTarget->GetCategory() == 8)
 					mLift.mState = 19;
@@ -5222,7 +5216,7 @@ void XObjChr::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* 
 		FindPlayerAnimVariant(id, CarryingAnim);
 	else if (mLift.mState == 4)
 		FindPlayerAnimVariant(id, LiftedAnim);
-	else if (mLift.mState == 0 && (GetAttachment() == 1 || GetAttachment() == 3))
+	else if (mLift.mState == 0 && (GetAttachment() == AttachmentCopter || GetAttachment() == AttachmentRadar))
 		FindPlayerAnimVariant(id, AttachmentAnim);
 	if (SuitAnimGroup(this, id) == 1) {
 		ApplyPlayerAnimation(this, &mSuitAnim, id % 3000, id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
@@ -6370,7 +6364,8 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 	BOOL enabled;
 	if (gGame.mEvt.mData.mScript != NULL || (gGame.mStatus.mFlags & 0x100) || player->mFloorContacts[4].objectIndex >= 0)
 		enabled = FALSE;
-	else if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
+	else if (player->GetAttachment() == AttachmentCopter || player->GetAttachment() == AttachmentPopper
+	         || player->GetAttachment() == AttachmentRadar)
 		enabled = FALSE;
 	else if (IsActionIdleOr(player->mLift, 4) && IsActionIdleOr(player->mHang, 5) && player->mJump.mState == 0
 	         && IsActionIdleOr(player->mLadder, 5) && IsActionIdleOr(player->mRope, 5) && player->mPush.mState == 0
@@ -6605,9 +6600,9 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 			}
 			if (p->mLift.mState != 0 || p->mFloorContacts[2].objectIndex >= 0 || p->mSuits.mChangeStep)
 				break;
-			if (p->GetAttachment() == 1 || p->GetAttachment() == 3) {
+			if (p->GetAttachment() == AttachmentCopter || p->GetAttachment() == AttachmentRadar) {
 				SetPlayerIdleAnim(p, 0x4A);
-			} else if (p->GetAttachment() == 2) {
+			} else if (p->GetAttachment() == AttachmentPopper) {
 				SetPlayerIdleAnim(p, 0x822);
 			} else if ((gGame.mStatus.mFlags & 0x100) || script) {
 				SetPlayerIdleAnim(p, 0x11);
@@ -6649,7 +6644,7 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 		case 0x818:
 		case 0x896:
 			if (motion == 0.0f) {
-				if (p->GetAttachment() == 1 || p->GetAttachment() == 3)
+				if (p->GetAttachment() == AttachmentCopter || p->GetAttachment() == AttachmentRadar)
 					SetPlayerIdleAnim(p, 0x4A);
 				else {
 					SetPlayerIdleAnim(p, 0x11);
@@ -6766,7 +6761,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 	UpdatePlayerIdleJointAnimations(player, frames);
 	HSD_JObj* const& attachment          = player->mAttachmentJoint;
 	HSD_AnimJoint* const& attachmentAnim = player->mAttachmentJointAnim;
-	if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0 && attachment->aobj == NULL) {
+	if ((player->GetAttachment() == AttachmentCopter || player->GetAttachment() == AttachmentRadar) && player->mAttachmentRequest < 0
+	    && attachment->aobj == NULL) {
 		HSD_JObjAddAnimAll(attachment, attachmentAnim, NULL, NULL);
 		HSD_JObjReqAnimAll(attachment, 0.0f);
 	}
@@ -7142,7 +7138,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							rate = turn * 0.15f;
 						else if (GetMaskedGameStatus(&gGame, 0x800))
 							rate = turn * 0.2f;
-						else if (IsPlayerAttachmentEquipped(player, 2))
+						else if (player->IsAttachmentEquipped(AttachmentPopper))
 							rate = turn * 0.1f;
 						else
 							rate = turn * 0.2f;
@@ -7238,8 +7234,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					ResetPlayerPlugState(&player->mPlug, TRUE);
 					if (IsLiftActionState(&player->mLift, 0) && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
 					    && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
-					    && IsPushActionState(&player->mPush, 0) && !IsPlayerAttachmentEquipped(player, 1)
-					    && !IsPlayerAttachmentEquipped(player, 2) && !IsPlayerAttachmentEquipped(player, 3))
+					    && IsPushActionState(&player->mPush, 0) && !player->IsAttachmentEquipped(AttachmentCopter)
+					    && !player->IsAttachmentEquipped(AttachmentPopper) && !player->IsAttachmentEquipped(AttachmentRadar))
 						SetTumbleStateAndFade(player, 7, FALSE);
 				}
 			}
@@ -7719,7 +7715,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							ClosePlayerEquipmentRings(&player->mMenu, -1);
 						if (!IsPushActionState(&player->mPush, 0))
 							ReleasePushAction(&player->mPush);
-						if (IsPlayerAttachmentEquipped(player, 1)) {
+						if (player->IsAttachmentEquipped(AttachmentCopter)) {
 							SetCopterActionState(&player->mCopter, 4);
 							SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
 						} else {
@@ -7739,8 +7735,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 									} else if (GetObjectAnimationId(player) == 4 || GetObjectAnimationId(player) == 13
 									           || GetObjectAnimationId(player) == 0x898 || GetObjectAnimationId(player) == 0x819) {
 										SetPlayerHangState(player, 4, support);
-									} else if (IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)
-									           || !IsLiftActionState(&player->mLift, 0)) {
+									} else if (player->IsAttachmentEquipped(AttachmentPopper)
+									           || player->IsAttachmentEquipped(AttachmentRadar) || !IsLiftActionState(&player->mLift, 0)) {
 										SetPlayerHangState(player, 4, support);
 									} else {
 										if (!IsLiftActionState(&player->mLift, 0))
@@ -8133,20 +8129,21 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				IsLadderActionState(&player->mLadder, 5);
 			else if (!IsPushActionState(&player->mPush, 0))
 				IsPushActionState(&player->mPush, 2);
-			else if (IsPlayerAttachmentEquipped(player, 1))
+			else if (player->IsAttachmentEquipped(AttachmentCopter))
 				IsCopterActionState(&player->mCopter, 0);
-			else if (IsPlayerAttachmentEquipped(player, 2))
+			else if (player->IsAttachmentEquipped(AttachmentPopper))
 				IsPopperActionState(&player->mPopper, 0);
 			else
-				IsPlayerAttachmentEquipped(player, 3);
+				player->IsAttachmentEquipped(AttachmentRadar);
 		}
 	}
 	{
 		if (player->mInAir && !GetMaskedGameStatus(&gGame, 0x20)
-		    && (IsPlayerAttachmentEquipped(player, 0) || IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2)
-		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
-		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
-		        || IsPlayerAttachmentEquipped(player, 8))) {
+		    && (player->IsAttachmentEquipped(AttachmentNone) || player->IsAttachmentEquipped(AttachmentCopter)
+		        || player->IsAttachmentEquipped(AttachmentPopper) || player->IsAttachmentEquipped(AttachmentRadar)
+		        || player->IsAttachmentEquipped(AttachmentToothbrush) || player->IsAttachmentEquipped(AttachmentSpoon)
+		        || player->IsAttachmentEquipped(AttachmentMug) || player->IsAttachmentEquipped(AttachmentSquirter)
+		        || player->IsAttachmentEquipped(AttachmentUnequip))) {
 			f32 magnitude = GetControlStickMagnitude(pad);
 			if (magnitude == 0 && player->mFloorContacts[4].objectIndex >= 0)
 				magnitude = 0.8f;
@@ -9252,9 +9249,9 @@ extern "C" BOOL IsLiftActionState(const XActLift* act, s32 wanted)
  * @note Address: 0x800B2F4C
  * @note Size: 0x28
  */
-extern "C" BOOL IsPlayerAttachmentEquipped(const XObjChr* chr, s32 wanted)
+BOOL XObjChr::IsAttachmentEquipped(PlayerAttachment attachment) const
 {
-	return (u8)(wanted == chr->GetAttachment());
+	return (u8)(attachment == GetAttachment());
 }
 
 /**
@@ -9575,58 +9572,57 @@ extern "C" u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask)
  * @note Address: 0x800B31B8
  * @note Size: 0x414
  */
-extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
+void XObjChr::UpdateAttachmentRequest(f32& moveWeight)
 {
-	if (chr->mAttachmentRequest >= 0) {
-		switch (chr->mAttachmentStep) {
+	if (mAttachmentRequest >= 0) {
+		switch (mAttachmentStep) {
 		case 0: // put away what he has out: 1 copter, 2 popper, 3 radar, 4-7 toothbrush, spoon, mug, squirter
-			if (IsLiftDone(chr)) {
-				if (chr->mLift.mTarget != NULL) {
-					chr->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
-					chr->mLift.mTarget = NULL;
+			if (IsLiftDone(this)) {
+				if (mLift.mTarget != NULL) {
+					mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+					mLift.mTarget = NULL;
 				}
-				chr->mLift.mState = 0;
+				mLift.mState = 0;
 			}
-			switch (chr->mAttachment) {
+			switch (mAttachment) {
 			case 1:
-				chr->mCopter.mState = 2;
+				mCopter.mState = 2;
 				break;
 			case 2:
-				chr->mPopper.mState = 9;
-				ResetPopperCharge(&chr->mPopper.mCharge);
+				mPopper.mState = 9;
+				ResetPopperCharge(&mPopper.mCharge);
 				break;
 			case 3:
-				chr->mRadar.mState = 2;
+				mRadar.mState = 2;
 				break;
 			case 4:
 			case 5:
 			case 6:
 			case 7:
 			case 8:
-				chr->mLift.mState = 19;
+				mLift.mState = 19;
 				break;
 			default:
-				if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingMug(&chr->mLift)
-				    || IsCarryingSquirter(&chr->mLift))
-					chr->mLift.mState = 19;
+				if (IsCarryingToothbrush(&mLift) || IsCarryingSpoon(&mLift) || IsCarryingMug(&mLift) || IsCarryingSquirter(&mLift))
+					mLift.mState = 19;
 				break;
 			}
-			chr->mAttachmentStep = 10;
+			mAttachmentStep = 10;
 			// fall through
 		case 10: // wait until it is away, then swap to the requested one
-			if (chr->mCopter.mState != 0 || chr->mPopper.mState != 0 || chr->mRadar.mState != 0 || chr->mLift.mState != 0)
+			if (mCopter.mState != 0 || mPopper.mState != 0 || mRadar.mState != 0 || mLift.mState != 0)
 				break;
-			if (chr->mAttachmentAnim.mLoading == 0) {
-				chr->mAttachment     = chr->mAttachmentRequest;
-				chr->mAttachmentStep = 15;
-				chr->mAttachmentAnim.Release();
+			if (mAttachmentAnim.mLoading == 0) {
+				mAttachment     = mAttachmentRequest;
+				mAttachmentStep = 15;
+				mAttachmentAnim.Release();
 			}
 			// fall through
 		case 15: { // load the attachment's anim archive
 			BOOL done;
-			if (gAttachmentAnimationPaths[chr->mAttachment] != NULL) {
-				if (LoadJointAnimationAsync(&chr->mAttachmentAnim, gAttachmentAnimationPaths[chr->mAttachment])) {
-					chr->SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			if (gAttachmentAnimationPaths[mAttachment] != NULL) {
+				if (LoadJointAnimationAsync(&mAttachmentAnim, gAttachmentAnimationPaths[mAttachment])) {
+					SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 					done = TRUE;
 				} else {
 					done = FALSE;
@@ -9636,49 +9632,49 @@ extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
 			}
 			if (!done)
 				break;
-			chr->mAttachmentStep = 20;
+			mAttachmentStep = 20;
 		}
 		case 20: // take the new one out; 8 leaves him empty-handed
-			switch (chr->mAttachmentRequest) {
+			switch (mAttachmentRequest) {
 			case 1:
-				chr->mCopter.mState = 1;
+				mCopter.mState = 1;
 				break;
 			case 2:
-				chr->mPopper.mState = 1;
+				mPopper.mState = 1;
 				break;
 			case 3:
-				chr->mRadar.mState = 1;
+				mRadar.mState = 1;
 				break;
 			case 4:
-				TakeOutTool(chr, 0x10); // toothbrush
+				TakeOutTool(this, 0x10); // toothbrush
 				break;
 			case 5:
-				TakeOutTool(chr, 0x15); // spoon
+				TakeOutTool(this, 0x15); // spoon
 				break;
 			case 6:
-				TakeOutTool(chr, 0x16); // mug
+				TakeOutTool(this, 0x16); // mug
 				break;
 			case 7:
-				TakeOutTool(chr, 0x38); // squirter
+				TakeOutTool(this, 0x38); // squirter
 				break;
 			case 8:
-				chr->mAttachment = 0;
+				mAttachment = 0;
 				break;
 			}
-			chr->mAttachmentStep = 30;
-			chr->mScriptAttach   = 0;
+			mAttachmentStep = 30;
+			mScriptAttach   = 0;
 			break;
 		case 30:
-			if (chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0) {
-				chr->mAttachmentRequest = -1;
-				chr->mAttachmentStep    = 0;
-				chr->mScriptAttach      = 0;
-				chr->mClimbType         = chr->mNextClimbType;
-				chr->mNextClimbType     = 0;
+			if (mCopter.mState == 0 && mPopper.mState == 0 && mRadar.mState == 0) {
+				mAttachmentRequest = -1;
+				mAttachmentStep    = 0;
+				mScriptAttach      = 0;
+				mClimbType         = mNextClimbType;
+				mNextClimbType     = 0;
 			}
 			break;
 		}
-		*speed = 0.0f;
+		moveWeight = 0.0f;
 	}
 }
 
@@ -10139,7 +10135,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	if ((player->mStatus.mFlags & 1) && player->mSuits.mJoints[player->mSuits.mCurrent]) {
 		player->ClearAnim();
 		player->ApplyTransform();
-		if (player->GetAttachment() == 2)
+		if (player->GetAttachment() == AttachmentPopper)
 			SetPlayerPopperMountHidden(player, FALSE);
 		HSD_JObj* mount = FindJointByPath(player->mJObj, (s32[3]) { 0, 1, 0 }, 3);
 		mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent]; // graft the suit's joint tree
@@ -10172,7 +10168,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 		BindRotationJoint(player->mHeadTurn.mHead, (s32[5]) { 0, 1, 0, 1, 2 }, 5);
 		if (!(gGame.mStatus.mFlags & 0x100))
 			SetPlayerEyeCameraJointsHidden(player, FALSE);
-		if (player->GetAttachment() == 2) // hide the popper mount again
+		if (player->GetAttachment() == AttachmentPopper) // hide the popper mount again
 			SetPlayerPopperMountHidden(player, TRUE);
 		player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		player->mIdleLoops = 3;
@@ -10531,11 +10527,11 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	case 11:
 		++mLoadStep;
 	case 12:
-		if (GetAttachment() == 1)
+		if (GetAttachment() == AttachmentCopter)
 			ShowIdlePlayerCopter(&mCopterObj);
-		else if (GetAttachment() == 2)
+		else if (GetAttachment() == AttachmentPopper)
 			mPopper.mState = 3;
-		else if (GetAttachment() == 3)
+		else if (GetAttachment() == AttachmentRadar)
 			ShowIdlePlayerRadar(&mRadarObj);
 		++mLoadStep;
 	}

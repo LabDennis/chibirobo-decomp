@@ -195,9 +195,7 @@ static inline void StartLetickerRide(XObjLeticker* lift, XObj* part, XObjChr* pl
 	part->mStatus.mFlags |= 0x10000ULL;
 	part->SetAnim(partAnim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	part->SetPos(lift->mMoveTranslate, 0);
-	player->mPlayerStatus.mFlags = 0;
-	player->mPlayerStatus.mFlags |= 0x40000000;
-	player->mPad.mReset = FALSE;
+	player->LockControl();
 	StopGameSfx(&gGame.mSound, 0xB0);
 	PlayGameSound(&gGame.mSound, sound, 255);
 	lift->mStep = 10;
@@ -773,10 +771,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mLevelProgress = 0.0f;
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				player->mPlayerStatus.mFlags = 0;
-				player->mPlayerStatus.mFlags |= 0x20000000;
-				player->mPlayerStatus.mFlags |= 7;
-				player->mPad.mReset = TRUE;
+				player->RestoreControl();
 				player->SetRotationY(mMoveRotate.y, 0);
 				mStep = 0;
 				break;

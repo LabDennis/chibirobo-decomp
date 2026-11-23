@@ -687,7 +687,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 		lh.target = height;
 		rw.target = width;
 		rh.target = height;
-		if (gGame.GetPlayer()->GetAttachment() == 2)
+		if (gGame.GetPlayer()->GetAttachment() == AttachmentPopper)
 			state = 1;
 		break;
 	case 1:
@@ -702,7 +702,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 		lh.target = height / 6.0f;
 		rw.target = width / 2.0f;
 		rh.target = height / 2.0f;
-		if (gGame.GetPlayer()->GetAttachment() != 2) {
+		if (gGame.GetPlayer()->GetAttachment() != AttachmentPopper) {
 			focus.target = 0;
 			state        = 3;
 		}
