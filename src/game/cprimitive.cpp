@@ -2024,6 +2024,8 @@ void CCircle::Draw(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
  * @note Address: 0x8019C258
  * @note Size: 0x2F4
  */
+// NONMATCHING: the inline fmt null test remains, and this unit places the copied format arrays 0x18 earlier;
+// assigning fmt directly instead of keeping the use local lowers the match and changes the saved-register set.
 void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 {
 	// SetVtxPosNrmClr's default with s8 normals, enough for the fixed (0, 0, 1) every vertex sends
@@ -2414,6 +2416,8 @@ void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
  * @note Address: 0x8019BC60
  * @note Size: 0x2A4
  */
+// NONMATCHING: the inline fmt null test remains, and this unit places the copied format arrays 0x18 earlier;
+// assigning fmt directly instead of keeping the use local lowers the match and grows the stack frame.
 void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 {
 	// SetVtxPosNrmClr's default with s8 normals, enough for the fixed (0, 0, 1) every vertex sends
