@@ -13,6 +13,7 @@
 // the GameCube played its object sounds without one
 class XObjSound : public XObj {
 public:
+	XObjSound();
 	virtual void InitializeObject();       // _14C
 	virtual void ResetObjectState();       // _154
 	virtual void UpdateObject(u32 frames); // _164

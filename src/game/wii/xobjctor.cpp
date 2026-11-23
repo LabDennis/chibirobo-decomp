@@ -30,7 +30,15 @@ XObjActor3::XObjActor3()
 {
 }
 
+XObjActor3::CPtclSet::~CPtclSet()
+{
+}
+
 XObjActor3::~XObjActor3()
+{
+}
+
+XObjSound::XObjSound()
 {
 }
 
