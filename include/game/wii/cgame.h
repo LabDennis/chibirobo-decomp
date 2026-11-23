@@ -1196,14 +1196,11 @@ public:
 	virtual void Resume();           // _2C
 	virtual void vf28();
 	virtual void vf2C();
-	virtual void vf38();
 };
 
 // a menu of text rows, the GameCube class of the same name
 class Menu : public CMenu {
 public:
-	virtual void InitRows() { }
-
 	f32 mFontSize; // _150
 	f32 mMaxWidth; // _154, of the widest row
 	f32 mRowCount; // _158
@@ -1349,7 +1346,15 @@ struct MenuTextRow {
 	BOOL IsSeparator() const { return mText != NULL && mText[0] == 1; } // "\x01" rows can't be picked
 };
 
-class MenuSFTest : public Menu {
+// the save file test menus' common base, named by retail's RTTI: Init lays out the rows through InitRows
+class MenuUtil : public Menu {
+public:
+	virtual void Init();     // _08, 0x80053410
+	virtual ~MenuUtil() { }  // _38
+	virtual void InitRows(); // _3C, 0x800534D4
+};
+
+class MenuSFTest : public MenuUtil {
 public:
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
@@ -1368,9 +1373,8 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
 
-// todo: retail's RTTI puts a common base under the three, MenuUtil : Menu, whose Init (0x80053410), empty InitRows
-// (0x800534D4), destructor (0x80084EEC) and row draw (0x80050314) Sub and Err inherit
-class MenuSFTestSub : public Menu {
+// Sub and Err keep MenuUtil's Init; its row draw (0x80050314) is still a free function here
+class MenuSFTestSub : public MenuUtil {
 public:
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -1383,7 +1387,7 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTestSub) == 0x164);
 
-class MenuSFTestErr : public Menu {
+class MenuSFTestErr : public MenuUtil {
 public:
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();

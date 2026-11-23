@@ -216,8 +216,8 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), which this code
-// does not model yet
+// draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), still a free
+// function here
 // NONMATCHING: row-count conversions and float register lifetimes differ; retail converts the alpha again before the
 // second line segment, this build reuses the first conversion
 extern "C" void fn_80050314(Menu* menu, s32 index, BOOL useRowWidth, BOOL proportional)
@@ -715,13 +715,13 @@ BOOL MenuStageSelect::Draw()
 	return FALSE;
 }
 
-extern "C" void fn_80053410(Menu* menu)
+void MenuUtil::Init()
 {
-	menu->CMenu::Init();
-	menu->InitRows();
+	Menu::Init();
+	InitRows();
 }
 
-extern "C" void fn_800534D4(Menu*)
+void MenuUtil::InitRows()
 {
 }
 
@@ -10343,9 +10343,5 @@ void CMenu::vf28()
 }
 
 void CMenu::vf2C()
-{
-}
-
-void CMenu::vf38()
 {
 }
