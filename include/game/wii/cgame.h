@@ -13,6 +13,7 @@
 #include "game/wii/infoscrn.h"
 #include "game/logo.h"
 #include "game/evt.h"
+#include "game/evttime.h"
 #include "game/cptcl.h"
 #include "game/wii/msg.h"
 #include "game/cscrn.h"
@@ -326,15 +327,6 @@ public:
 		}
 	}
 };
-
-// the time-of-day state, same fields as the GameCube EvtTimeState
-struct WiiTimeState {
-	s32 mMode;
-	f32 mTime;
-	f32 mDuration;
-	s32 mRunning;
-};
-STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
 
 // one letter of a name that pops in, the GameCube StageNameChar with two more words
 struct StageNameChar {
@@ -2173,7 +2165,7 @@ public:
 	CEvt mEvt;                    // _4C8E0
 	u8 _4C94C[0x4C950 - 0x4C94C];
 	CMsg mMsgs[2];                             // _4C950
-	WiiTimeState mTimeState;                   // _D7610
+	EvtTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
 	CLight* mLightList;                        // _D9B58, the lights the scene draws under, CBase's own set when the stage brings none

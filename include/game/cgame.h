@@ -24,6 +24,7 @@
 #include "game/xobjflags.h"
 #include "game/cobj.h"
 #include "game/evt.h"
+#include "game/evttime.h"
 #include "game/msg.h"
 #include "game/cmotioncontrolcamera.h"
 #include "game/xsound.h"
@@ -32,14 +33,6 @@
 #include "game/cpadex.h"
 
 class XObjChr;
-
-// the time of day evt's TIME command drives, mode 1 is night
-struct EvtTimeState {
-	s32 mMode;     // _00
-	f32 mTime;     // _04
-	f32 mDuration; // _08
-	s32 mRunning;  // _0C
-};
 
 // one of XOBJS's object pools, all its objects the same size in one block
 struct XObjPool {
