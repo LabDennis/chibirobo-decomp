@@ -3908,11 +3908,6 @@ static inline s32 DrawSaveLinesAt(MenuSave* menu, s32 id, f32 x, f32 y)
 	return DrawJapaneseSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->mDrawAlpha);
 }
 
-static inline f32 SaveMessageX(f32 panelX)
-{
-	return 320.0f + panelX;
-}
-
 static inline f32 SaveMessageY(MenuSave* menu, f32 panelY)
 {
 	return ((8.0f + (356.0f - panelY)) - 6.0f) + menu->mBannerSlide;
@@ -3920,14 +3915,28 @@ static inline f32 SaveMessageY(MenuSave* menu, f32 panelY)
 
 static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY)
 {
-	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
+	return DrawSaveLinesAt(menu, id, 0.0f, SaveMessageY(menu, panelY));
 }
 
-// NONMATCHING: the complete 73-call list matches; the current spelling is 776 bytes smaller and saves GPRs from r22 instead of r21
+// NONMATCHING: the call list matches retail; this build is 264 bytes smaller and register allocation differs
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
 		DrawPanelBackground<SavePanel>(mDrawAlpha);
 		switch (mMode) {
 		case 1:
@@ -3974,11 +3983,17 @@ BOOL MenuSave::Draw()
 				showMessage = true;
 			}
 			break;
+		case 19:
+			lines = SaveStatusLines(this, 10, panelX, panelY);
+			break;
+		case 18:
+			lines = SaveStatusLines(this, 11, panelX, panelY);
+			break;
 		case 5:
 			lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
 		case 8: {
-			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			f32 x = 0.0f, y = SaveMessageY(this, panelY);
 			if (mPhase == 0) {
 				lines = DrawSaveLinesAt(this, 5, x, y);
 			} else {
@@ -3990,7 +4005,7 @@ BOOL MenuSave::Draw()
 			lines = SaveStatusLines(this, 7, panelX, panelY);
 			break;
 		case 10: {
-			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			f32 x = 0.0f, y = SaveMessageY(this, panelY);
 			if (mPhase == 0) {
 				lines = DrawSaveLinesAt(this, 7, x, y);
 			} else {
@@ -4000,7 +4015,7 @@ BOOL MenuSave::Draw()
 		}
 		case 6:
 		case 11:
-			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 320.0f + panelX, SaveMessageY(this, panelY), 21.0f, mDrawAlpha);
+			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 0.0f, SaveMessageY(this, panelY), 21.0f, mDrawAlpha);
 			break;
 		case 12:
 			lines = SaveStatusLines(this, mMessage, panelX, panelY);
@@ -4020,12 +4035,6 @@ BOOL MenuSave::Draw()
 		case 15:
 			lines = SaveStatusLines(this, mMessage, panelX, panelY);
 			break;
-		case 19:
-			lines = SaveStatusLines(this, 10, panelX, panelY);
-			break;
-		case 18:
-			lines = SaveStatusLines(this, 11, panelX, panelY);
-			break;
 		case 16:
 		case 17:
 			break;
@@ -4037,7 +4046,7 @@ BOOL MenuSave::Draw()
 		if (showMessage) {
 			f32 y     = SaveMessageY(this, panelY);
 			u32 color = (u32)(255.0f * mDrawAlpha);
-			f32 x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f;
+			f32 x     = gPointerScreenWidth / 2 - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f;
 			DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, 21.0f, 21.0f);
 		}
 		switch (mMode) {
@@ -4047,8 +4056,15 @@ BOOL MenuSave::Draw()
 			if (lines > 1) {
 				lineOffset = (lines - 2) * 21;
 			}
-			f32 barX       = mChoice == 0 ? 281.25f : 358.75f;
-			f32 barWidth   = 61.5f;
+			f32 barWidth = 61.5f;
+			f32 barX;
+			if (mChoice == -1) {
+				barX = gPointerScreenWidth + 200;
+			} else if (mChoice == 0) {
+				barX = gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f;
+			} else {
+				barX = gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f;
+			}
 			f32 baseLabelY = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
 			f32 labelY     = lineOffset + (baseLabelY + mBannerSlide);
 			{
@@ -4060,18 +4076,18 @@ BOOL MenuSave::Draw()
 			}
 			labelY = lineOffset + (baseLabelY + mBannerSlide);
 			if (IsJapanese()) {
-				DrawSaveChoiceLabel(this, 0x66, 281.25f, labelY);
-				DrawSaveChoiceLabel(this, 0x67, 358.75f, labelY);
+				DrawSaveChoiceLabel(this, 0x66, gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f, labelY);
+				DrawSaveChoiceLabel(this, 0x67, gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f, labelY);
 			} else {
-				DrawSaveChoiceLabel(this, 0x66, 283.25f, labelY - 1.0f);
-				DrawSaveChoiceLabel(this, 0x67, 360.75f, labelY - 1.0f);
+				DrawSaveChoiceLabel(this, 0x66, 2.0f + (gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f), labelY - 1.0f);
+				DrawSaveChoiceLabel(this, 0x67, 2.0f + (gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f), labelY - 1.0f);
 			}
 			break;
 		}
 		}
 		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
 		((CBase*)&gGame)->vf5C();
-		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
 		gRingScreenWidth    = width;
 		gPointerScreenWidth = width;
 		if ((mMode == 13 || mMode == 11) && gSaveFatal.mActive && gSaveFatal.mMessage != NULL) {
@@ -4633,23 +4649,14 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
-static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
-{
-	return gSaveSlotSpacing * offsetScale + x;
-}
-
-// NONMATCHING: the complete 20-call list matches; the current spelling is 100 bytes smaller and saves GPRs from r23 instead of r22
-extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
+// NONMATCHING: the call list and size match retail; register allocation differs
+extern "C" void DrawSavePlayTime(s32 icon, s32 value, f32 x, f32 y, f32 alpha, f32 offsetScale)
 {
 	if (!(alpha > 0.0f)) {
 		return;
 	}
 	CTexObj tex;
-	f32 scale = 1.2f;
-	s32 value = hours * 100 + minutes;
-	if (value >= 9959) {
-		value = 9959;
-	}
+	bool noValue = false;
 	for (int places = 1;; places++) {
 		f32 divisor = 1.0f;
 		for (int j = 0; j < places; j++) {
@@ -4659,49 +4666,64 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 			break;
 		}
 	}
+	f32 scale   = 0.7f;
+	f32 offsetY = 0.0f;
 	InitPCPanelTexture(tex, icon);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	f32 w       = 0.6f * GXGetTexObjWidth(&tex);
-	f32 h       = 0.6f * GXGetTexObjHeight(&tex);
-	f32 opacity = 255.0f * alpha;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
-	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-	InitPCPanelTexture(tex, 126);
-	w = scale * GXGetTexObjWidth(&tex);
-	h = scale * (GXGetTexObjHeight(&tex) / 10);
-	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
-	tex.mTexMtx.mDirty = TRUE;
-	f32 offset         = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
-	u8 alphaByte       = opacity;
-	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
-	for (int i = 0; i < 4; i++) {
-		f32 div = 1.0f;
-		if (i > 0) {
-			for (int j = 0; j < i; j++) {
-				div *= 10.0f;
-			}
+	switch (icon) {
+	case 0xB5:
+		scale = 0.6f;
+		break;
+	case 0x9B:
+		offsetY = 4.0f;
+		break;
+	case 0xF4:
+		if (value == -1) {
+			noValue = true;
 		}
-		s32 digit = value / div;
-		if (i != 3 || digit != 0) {
+		break;
+	}
+	f32 w = scale * GXGetTexObjWidth(&tex);
+	f32 h = scale * GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y + offsetY, 0.0f, w, h, 0.0f, 0.0f,
+	                   0.0f);
+	f32 size   = 1.2f;
+	u32 top    = (u8)(255.0f * alpha) | 0xEFEBC500;
+	u32 bottom = (u8)(255.0f * alpha) | 0xEDA83600;
+	if (noValue) {
+		InitPCPanelTexture(tex, 168);
+		w        = size * GXGetTexObjWidth(&tex);
+		u16 texH = GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 offset = 10.0f * size + ((7.0f * (w - 3.0f * size) - 98.0f * size) - 10.0f * size);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, gSaveSlotSpacing * offsetScale + (offset + (7.0f * w + x)),
+		                   y - 2.0f * size, 0.0f, w, size * texH, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	} else {
+		InitPCPanelTexture(tex, 126);
+		w = size * GXGetTexObjWidth(&tex);
+		h = size * (GXGetTexObjHeight(&tex) / 10);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		f32 offset         = 10.0f * size + ((7.0f * (w - 3.0f * size) - 98.0f * size) - 10.0f * size);
+		for (int i = 0; i < 7; i++) {
+			f32 divisor;
+			PC_DIGIT_DIVISOR(divisor, i);
+			s32 digit = (s32)(value / divisor);
+			if (i != 0 && digit == 0) {
+				continue;
+			}
 			digit %= 10;
 			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
 			tex.mTexMtx.mDirty = TRUE;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			f32 gap = 0.0f;
-			if (i < 2) {
-				gap = w - 3.0f * scale;
-			}
-			f32 digitX = SaveNumberLabelX(gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))), offsetScale);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
+			                   gSaveSlotSpacing * offsetScale + (offset + (7.0f * w + (x - i * (w - 3.0f * size)))), y - 2.0f * size, 0.0f,
+			                   w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		}
 	}
-	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-	InitPCPanelTexture(tex, 168);
-	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
-	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * scale), offsetScale);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
-	                   0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
