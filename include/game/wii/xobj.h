@@ -2352,6 +2352,10 @@ public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void ResetForNewGame();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void ResetActorState();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
 	void ProcessPendingEvents(u32 frames); // _29C; the shared Actor vtable slots remain to be declared
 
 	void StateCarry(u32 frames);
@@ -2402,13 +2406,8 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
 
-// the same decode holds for Mama/Papa/Tao: their retail ctors end with one
-// CStatus32 init pair at _D80, the rest of the tail matches the GameCube
-// layout at +0xF4 (_D78/_D7C scalars, mHideKinds _D80; Papa adds mJointShown
-// _D88; Tao mCarryMtx _D88, mMountMtx _DB8, mMountObjId _DE8, mMountState
-// _DEC, mMountObj _DF0) -- but declaring the member drops their ctor scores
-// 48.07 -> 45.45 while emitting the same tail stores, so the pads stay until
-// the member-init block matches
+// Mama/Papa/Tao have one CStatus32 at _D80; their other fields follow the
+// GameCube layout shifted by the larger Wii actor base.
 class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
@@ -2450,10 +2449,30 @@ class XObjActorTao : public XObjActor {
 public:
 	XObjActorTao();
 	virtual ~XObjActorTao();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
+	void StatePickUp(u32 frames);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
 	BOOL IsFree();
+	nw4r::g3d::ResNode GetHeadJoint();
+	CVec GetHeadWorldPosition();
 
 private:
-	u8 _tail[0xDF8 - sizeof(XObjActor)];
+	f32 _D78;
+	f32 _D7C;
+	CStatus32 mHideKinds;
+	Mtx mCarryMtx;
+	Mtx mMountMtx;
+	s16 mMountObjId;
+	u8 _DEA[0xDEC - 0xDEA];
+	s32 mMountState;
+	XObj* mMountObj;
+	u8 _DF4[0xDF8 - 0xDF4];
 };
 STATIC_ASSERT(sizeof(XObjActorTao) == 0xDF8);
 
