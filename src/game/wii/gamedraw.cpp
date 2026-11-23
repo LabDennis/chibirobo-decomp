@@ -440,10 +440,10 @@ extern "C" void fn_80028998(CGame* game)
 		offset.y = 0.4f * height;
 		offset.z = 0.0f;
 		PSMTXMultVec(rotation, &offset, &offset);
-		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + offset.x, y + offset.y, offset.z, width * scale,
 		                   height * scale, 0.0f, 0.0f, -pointerAngle);
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 		alpha = game->mPointer.mScopeFade;
 		if (alpha <= 0.0f) {
@@ -462,10 +462,11 @@ extern "C" void fn_80028998(CGame* game)
 			}
 			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.1f * (marker % 10), 0.2f * (marker / 10), 0.0f);
 			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
 			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x + offset.x, y + offset.y, 0.0f,
 			                   width * scale, height * scale, 0.0f, 0.0f, 0.0f);
-			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		} else if (game->mPointer.mScopeItem >= 0) {
 			game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[260], 0);
 			tex    = game->mTpl.mTex;
@@ -487,10 +488,11 @@ extern "C" void fn_80028998(CGame* game)
 				PSMTXMultVec(rotation, &offset, &offset);
 			}
 			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
 			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x + offset.x, y + offset.y, 0.0f,
 			                   width * scale, height * scale, 0.0f, game->mPointer.mScopeAngle, 0.0f);
-			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
 		}
 		break;
@@ -499,10 +501,10 @@ extern "C" void fn_80028998(CGame* game)
 		tex    = game->mTpl.mTex;
 		width  = GXGetTexObjWidth(&tex);
 		height = GXGetTexObjHeight(&tex);
-		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width * scale, height * scale, 0.0f, 0.0f,
 		                   -pointerAngle);
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		break;
 	case 3: {
 		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[259], 0);
@@ -517,10 +519,10 @@ extern "C" void fn_80028998(CGame* game)
 		if (!((CCameraActionScroll2*)game->mCameraActions.mTable[CAMACTION_SCROLL2])->IsFovNotMax()) {
 			color = (u32)(0.5f * (255.0f * alpha)) | 0xFFFFFF00;
 		}
-		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width * scale, height * scale, 0.0f, 0.0f,
 		                   -pointerAngle);
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		break;
 	}
 	case 1: {
@@ -539,10 +541,11 @@ extern "C" void fn_80028998(CGame* game)
 		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[257], 0);
 		tex = game->mTpl.mTex;
 		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		gGame.mGs.mRotOrder = 1;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, 50.0f * scale, 50.0f * scale, depth, 0.0f, angle);
 		gGame.mGs.mRotOrder = 4;
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
 		break;
 	}
