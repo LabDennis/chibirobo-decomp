@@ -829,11 +829,11 @@ s32 GetClearLetickerApproachSide(XObj* obj, const Vec* pos)
 	if (3.0f + obj->GetPos()->y < gGame.GetPlayer()->GetPos()->y) {
 		return 0;
 	}
-	if ((f32)cos(0.7853982) < (f32)cos(angle)) { // 45 degrees
+	if ((f32)cos(0.7853982f) < (f32)cos(angle)) { // 45 degrees
 		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(6))) {
 			return -1;
 		}
-	} else if ((f32)cos(angle) < (f32)cos(3.9269907)) { // 225 degrees
+	} else if ((f32)cos(angle) < (f32)cos(3.9269907f)) { // 225 degrees
 		if (IsLetickerJointClearOfObjects(obj, obj->GetResNodeOrFirst(10))) {
 			return -2;
 		}
@@ -1017,9 +1017,9 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		case 0:
 			return (s32)((9.0f + mLevelProgress) / 10.0f);
 		case 1: // GetSide's quarters in degrees
-			if ((f32)cos(0.7853982) <= (f32)cos(mHeading)) {
+			if ((f32)cos(0.7853982f) <= (f32)cos(mHeading)) {
 				return 0;
-			} else if ((f32)cos(mHeading) <= (f32)cos(3.9269907)) {
+			} else if ((f32)cos(mHeading) <= (f32)cos(3.9269907f)) {
 				return 180;
 			} else if (0.0f < (f32)sin(mHeading)) {
 				return 90;
