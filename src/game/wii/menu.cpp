@@ -65,6 +65,10 @@ void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 s
                          f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void DrawSaveHelpText(MenuSave* menu);
 void DrawStatusIconDetails(s32 icon, f32 x, f32 y, f32 alpha, f32 scale);
+void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale);
+void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase);
+void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase);
+void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha);
 void DrawSaveMenuTitle(MenuSave* menu);
 s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 id, f32 x, f32 y, f32 size, f32 alpha);
 s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha);
@@ -124,6 +128,7 @@ static MenuStatusTable sStatusItemTable;
 MenuPCPage gShopHistoryPage;
 MenuPCPage gShopCatalogPage;
 u8 gStatusIconUnlocked[24];
+u8 gStatusEntryAvailable[16];
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 
@@ -2071,6 +2076,87 @@ static inline void DrawOverviewTexture(CTexObj& tex, u32 color, f32 x, f32 y, f3
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
+static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 y)
+{
+	DrawPlayerStatusValue(0xB5, gGame.GetPlayer()->mParams.mRank, selected == 0, 20.0f + (x - 280.0f), (y - 80.0f) + 8.0f, menu->mAlpha,
+	                      menu->mPulsePhase);
+	DrawPlayerStatusValue(0x9B, gGame.GetPlayer()->mParams.mExperience, selected == 2, 20.0f + (x - 280.0f),
+	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
+	DrawPlayerStatusValue(0x99, gGame.GetPlayer()->mParams.mMoney, selected == 3, 20.0f + (x - 280.0f),
+	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
+	DrawPlayerStatusValue(0x9A, gGame.GetPlayer()->mParams.mScrap, selected == 4, 20.0f + (x - 280.0f),
+	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
+}
+
+static inline void DrawStatusOverviewEntry(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 y)
+{
+	DrawPlayerStatusIcon(icon, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f, menu->mPulsePhase);
+}
+
+static inline void BeginOverviewTexture(CTexObj& tex)
+{
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+}
+
+// NONMATCHING: register allocation and floating-point scheduling
+extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
+{
+	if (menu->mMode == 9 || menu->mMode == 4) {
+		CTexObj tex;
+		f32 x        = (menu->mOverviewX - 42.0f) + menu->mOffsetX;
+		f32 y        = (180.0f + menu->mOverviewY) + menu->mOffsetY;
+		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
+		DrawOverviewStats(menu, selected, x, y);
+		InitPCPanelTexture(tex, 174);
+		f32 width = 0.6f * (1.1f * GXGetTexObjWidth(&tex)), height = 0.6f * GXGetTexObjHeight(&tex);
+		BeginOverviewTexture(tex);
+		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+		DrawOverviewTexture(tex, color, ((x - 24.0f) - 48.0f) - 12.0f, y + 14.0f, width, height);
+		f32 left = ((48.0f + x) - 48.0f) - 12.0f;
+		f32 row0 = (y - 82.0f) + 14.0f;
+		DrawStatusOverviewEntry(menu, 0xAB, 5, selected, left, row0);
+		f32 row1 = 14.0f + ((y - 82.0f) + 52.0f);
+		DrawStatusOverviewEntry(menu, 0xB4, 6, selected, left, row1);
+		f32 row2 = 14.0f + ((y - 82.0f) + 104.0f);
+		DrawStatusOverviewEntry(menu, 0xAA, 7, selected, left, row2);
+		f32 row3 = 14.0f + ((y - 82.0f) + 156.0f);
+		DrawStatusOverviewEntry(menu, 0xAD, 8, selected, left, row3);
+		InitPCPanelTexture(tex, 179);
+		f32 w = 1.4f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.4f * GXGetTexObjHeight(&tex);
+		BeginOverviewTexture(tex);
+		if (menu->mIconLit) {
+			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+		} else {
+			color = (u32)(255.0f * menu->mAlpha);
+		}
+		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) - 12.0f;
+		f32 middle = (y - 18.0f) + 14.0f;
+		DrawOverviewTexture(tex, color, center, middle, w, h);
+		if (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))) {
+			InitPCPanelTexture(tex, 246);
+			f32 width  = 1.4f * (1.1f * GXGetTexObjWidth(&tex));
+			f32 height = 1.4f * GXGetTexObjHeight(&tex);
+			BeginOverviewTexture(tex);
+			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+			DrawOverviewTexture(tex, color, 18.0f + center, 56.5f + middle, width, height);
+		}
+		if (menu->mShowGauge) {
+			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
+		}
+		f32 right = (192.0f + (72.0f + x)) - 12.0f;
+		DrawStatusOverviewEntry(menu, 0xAF, 9, selected, right, row0);
+		DrawStatusOverviewEntry(menu, 0xB0, 10, selected, right, row1);
+		DrawStatusOverviewEntry(menu, 0xB1, 11, selected, right, row2);
+		DrawStatusOverviewEntry(menu, 0xB2, 12, selected, right, row3);
+		DrawStatusOverviewDetails(menu->mOverviewSelection, gPointerScreenWidth / 2, gPointerScreenHeight / 2, menu->mAlpha,
+		                          menu->mDetailScale);
+	}
+}
+
 static inline void DrawPCShopCenteredText(const char* text, u32 color, f32 x, f32 y, f32 size)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
@@ -4011,7 +4097,7 @@ static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
 }
 
 // NONMATCHING: the complete 55-call list matches; the current spelling is 128 bytes smaller and saves GPRs from r15 instead of r20
-extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase)
+extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase)
 {
 	if (!(alpha > 0.0f)) {
 		return;
