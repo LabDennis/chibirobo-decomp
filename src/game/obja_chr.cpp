@@ -73,9 +73,14 @@ STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
  * @note Address: 0x80093C14
  * @note Size: 0x490
  */
-// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29). Its frame has the four
-// rotation vectors as unnamed objects in the order they are used, each with its own zero template: literals handed to
-// a circle call that takes the position and the rotation as Vecs gives that frame (97.7 %), the call itself is not found.
+// a circle at pos, its rotation given as a vector
+static inline void DrawTrailCircle(u32 segments, u32 centerColor, u32 edgeColor, const Vec& pos, f32 w, f32 h, const Vec& rotation)
+{
+	DrawGsCircle(&gGame.mGs, segments, centerColor, edgeColor, pos.x, pos.y, pos.z, w, h, rotation.x, rotation.y, rotation.z);
+}
+
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29, US 0x80093DF4), so the
+// max is f27 there; a second local, a second 15.0f * peak argument, a single-size helper and a const f32& do not give the copy
 extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 {
 	if (!trail->active) {
@@ -103,13 +108,9 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 	f32 size = 15.0f * peak; // the halo at the trail's top
 
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, outerRotation.x,
-	             outerRotation.y, outerRotation.z);
+	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-	Vec innerRotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, innerRotation.x,
-	             innerRotation.y, innerRotation.z);
+	DrawTrailCircle(32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top, size, size, (Vec) { 0.0f, 0.0f, 0.0f });
 
 	for (s32 i = 0; i < 2; ++i) {
 		for (s32 j = 0; j < 10; ++j) {
@@ -122,14 +123,9 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 			u32 center     = edge;
 			center |= (u8)(s32)(255.0f * point.scale);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
-			glowRotation.z   = 4.0f * angle;
-			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
-			             glowRotation.y, glowRotation.z);
+			DrawTrailCircle(6, 0xFFFFFF20, 0xFFFFFF00, pos, 2.5f * radius, 2.5f * radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
-			coreRotation.z   = 4.0f * angle;
-			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
+			DrawTrailCircle(3, center, edge, pos, radius, radius, (Vec) { 0.0f, 0.0f, 4.0f * angle });
 		}
 	}
 	gGame.mGs.mBillboardEnabled = 0;
@@ -1302,7 +1298,9 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 						} else if (use.emptyHands && IsObjectClimbableLedge(object)) {
 							// Only the Japanese release starts a hang or a jump from this height check.
 							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
-							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value
+							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value.
+							// It also drops it for an empty if/else, an empty inline in either arm and an else-if on the height;
+							// only a body with code keeps retail's beq/b pair (US 0x800B3E68)
 							f32 height = ABS(object->mSelectedFloorHeight - player->mMoveTranslate.y);
 							if (height != 0) {
 #if defined(VERSION_JP)
@@ -2566,7 +2564,7 @@ void DrawEquipmentRing(OctaMenu* ring);
  * @note Size: 0x7D8
  */
 // NONMATCHING: saved float registers, retail gives the cursor branch's radius, y and x f29 to f31 and the hint loop's constants
-// the ones below; here it is the other way round
+// the ones below; here it is the other way round. Left: the hint label is loaded after the z and size arguments (US 0x80097910)
 extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 {
 	if (menu->mSel == 0) {
@@ -2625,11 +2623,12 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
+	f32 edge       = 608.0f + 100.0f * (1.0f - std::sinf(HALF_PI * menu->mFade));
+	f32 lineHeight = 24.0f;
 	for (s32 row = 0; row < 2; ++row) {
 		s32 which = order[menu->mSel][row];
 		f32 x     = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
-		f32 y     = 46.0f + row * 24.0f;
+		f32 y     = 46.0f + row * lineHeight;
 		for (s32 j = 0; j < 4; ++j) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
 			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j],
@@ -2764,6 +2763,8 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
  * @note Address: 0x80098204
  * @note Size: 0x1B4
  */
+// NONMATCHING (and the Atc and Octa ones): retail colours the channels before the pulse phase offset (red r30, offset r27 at
+// US 0x80098310), here the offset takes r30; red first in the declaration, pointer parameters or the pulse written out do not move it
 u32 DrsMenu::GetItemColor(s32 index)
 {
 	s32 green, blue, red;
@@ -3131,6 +3132,8 @@ static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, 
  * @note Address: 0x80099224
  * @note Size: 0x1DB0 (US/PAL), 0x1DC4 (JP)
  */
+// NONMATCHING: register picks: retail gives the outline loop's j r31 and the menu r30 (US 0x80099258, 0x8009ADDC), here the
+// menu takes r31; the label block's schedule (US 0x8009AD10 on) differs with rotation declared before or after cx
 extern "C" void DrawEquipmentRing(OctaMenu* menu)
 {
 	if (!(menu->mFade > 0))
@@ -3282,7 +3285,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			}
 		} else {
 			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) / 2.f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
 		if (menu->mFocus && menu->mMenuType != 3) {
@@ -3356,7 +3359,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	f32 zero = 0.0f;
 	for (s32 i = 0; i < count; ++i) {
 		OctaMenuItem& item = menu->mItems[i];
-		if (item.mHighlight == zero)
+		if (zero == item.mHighlight)
 			continue;
 		f32 width = gEquipmentIconWidth[i];
 		std::sinf(2.0943952f * fade);
@@ -3366,7 +3369,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			x = originX + 68.f * (scale * slotX[i]);
 		} else {
 			f32 radius = 60.f + 20.f * item.mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) / 2.f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
 		f32 highlight      = item.mHighlight;
@@ -3962,7 +3965,9 @@ void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
  * @note Address: 0x8009DAA8
  * @note Size: 0x1DC
  */
-// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C)
+// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C).
+// Scratch compiles reload only a direct global array element (gO.idx[k]); through a pointer, a reference, a hit
+// reference, an s32& accessor, != -1, nested ifs or a u32 copy the load is shared
 extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 {
 	s32 type = 0;
@@ -4004,7 +4009,8 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  */
 // NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
 // (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
-// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload
+// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload;
+// nor do the .object union member, an s32& accessor, a contact pointer, an early return or a mask local (see GetPlayerGroundType)
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -5488,7 +5494,7 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  */
 // NONMATCHING: retail keeps the anim gauge's frame, fraction and left edge in three saved float registers (fdivs f30,
 // f31, f0 at US 0x800A59C8) where the build reuses the frame's for the fraction; an unnamed frame or a separate end
-// local changed nothing
+// local changed nothing, x - 36.0f as the gauge argument scores lower
 void XObjChr::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
@@ -5596,13 +5602,15 @@ void XObjChr::DrawObjectEffects()
 		n = 0;
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xff000000 | (u32)(200.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xff000000;
 				n += 2;
 			}
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xff000000 | (u32)(200.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xff000000;
 				n += 2;
 			}
@@ -5612,13 +5620,15 @@ void XObjChr::DrawObjectEffects()
 		n = 0;
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xffffff00 | (u32)(255.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xffffff00;
 				n += 2;
 			}
 		for (int turn = 0; turn < 4; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				colors[n]     = 0xffffff00 | (u32)(255.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * mBatteryWarningFade);
 				colors[n + 1] = 0xffffff00;
 				n += 2;
 			}
@@ -5773,7 +5783,9 @@ void XObjAttachment::DrawWithView(Mtx view)
  * @note Size: 0x1AC
  */
 // NONMATCHING: retail hands CreateSRT the rotation straight out of the particle copy (addi r8, r1, 0x74 at
-// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help
+// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help,
+// nor a Vec& alias, a particle pointer, a const& inline, a member function or four separate locals: the compiler
+// passes only a whole named Vec local without a copy
 extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
 {
 	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
@@ -6844,7 +6856,7 @@ static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  */
 // NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
 // gives the radii the upper registers. Declaring x, y and z first loads them at the top (retail loads them after
-// PSMTXMultVec)
+// PSMTXMultVec); 1.0f + y as the call's argument gives retail's constant order but costs more elsewhere
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -6874,7 +6886,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 			continue;
 		f32 dx = object->mMoveTranslate.x - x;
 		f32 dz = object->mMoveTranslate.z - z;
-		if (sqrtf(dx * dx + dz * dz) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
+		if (sqrtf(dz * dz + dx * dx) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
 			continue;
 		u32 hit = object->TestFloorCollision(&CVec(x, y, z), &CVec(x, y, z), radius + extraRadius, height, &push, &contact, 0, 0);
 		if ((hit & 3) != 3)
