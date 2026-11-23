@@ -32,6 +32,7 @@
 #include "game/playeranimationdata.h"
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
+#include "game/menudata.h"
 #
 
 class CCamera;
@@ -1321,12 +1322,6 @@ public:
 	f32 mRowCount; // _158
 };
 
-// one of MenuMain's rows and what picking it does
-struct MenuMainItem {
-	char* mText; // _00, "\x01" for a separator
-	s32 mAction; // _04, -1 for a separator
-};
-
 class MenuMain : public Menu {
 public:
 	struct ExtraRow {
@@ -1362,25 +1357,6 @@ public:
 };
 STATIC_ASSERT(offsetof(MenuMain, mChannel) == 0x1D0);
 STATIC_ASSERT(offsetof(MenuStageSelect, mLabelWidth) == 0x1A60);
-
-// a letter of a title that flies in, one after the other, the GameCube struct
-struct MenuTitleChar {
-	const char* mText; // _00
-	f32 mFade;         // _04
-	f32 mHold;         // _08, the letter fades out once this is 0
-	f32 mAngle0;       // _0C
-	f32 mAngle1;       // _10
-};
-STATIC_ASSERT(sizeof(MenuTitleChar) == 0x14);
-
-// a title of up to 20 letters, the GameCube struct
-struct MenuTitle {
-	BOOL mActive;             // _00
-	s32 mCount;               // _04
-	u32 mColor;               // _08
-	MenuTitleChar mChars[20]; // _0C
-};
-STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
 // the save menu, the GameCube class of the same name. Its RTTI has the bases MenuPad and CContainCallback at
 // _15C, as the item and status menus have them; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
@@ -1608,51 +1584,6 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 
-// a row of the status menu's item pages, the GameCube struct
-struct MenuStatusEntry {
-	s16 mItem;       // _00
-	s16 mCount;      // _02
-	CStatus mStatus; // _04
-};
-STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
-
-// the items the status screen pages through, the GameCube struct
-struct MenuStatusTable {
-	s32 mPage;                   // _00, in fours
-	MenuStatusEntry mItems[256]; // _04, the eight on screen
-	MenuStatusEntry mPrev[4];    // _C04, the four before them
-	MenuStatusEntry mNext[4];    // _C34, the four after
-};
-STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
-
-// a row of the PC shop's lists, the GameCube struct
-struct MenuPCItem {
-	s16 mItem;        // _00, -1 for an empty row
-	s16 mCount;       // _02, -1 for an empty row
-	s16 mPrice;       // _04
-	u8 mIsAttachment; // _06
-	u8 _07;           // _07
-};
-STATIC_ASSERT(sizeof(MenuPCItem) == 8);
-
-// the nine rows on screen and the ones just off either end, the GameCube struct
-struct MenuPCPage {
-	s32 mStart;           // _00, list index of the first row
-	MenuPCItem mRows[20]; // _04
-	s32 mIndex[20];       // _A4, list index of each row
-	MenuPCItem mPrev[1];  // _F4
-	MenuPCItem mNext[1];  // _FC
-};
-STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
-
-struct MenuStatusTab {
-	f32 mX;       // _00
-	f32 mY;       // _04
-	f32 mTargetX; // _08
-	f32 mTargetY; // _0C
-};
-STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
-
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
@@ -1740,18 +1671,6 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
-struct PCRankingRow {
-	s32 rank;
-	s32 nameIndex;
-	s32 score;
-};
-STATIC_ASSERT(sizeof(PCRankingRow) == 12);
-
-// a number the pc shows easing toward its value, the GameCube struct of the same name
-struct PCAmount {
-	f32 shown;
-	f32 target;
-};
 // the chibi-pc shop, the GameCube class of the same name; its members sit four bytes further on because
 // Menu is a word longer here (State4, State11, ResetPCCharacters)
 class MenuPC : public Menu {
