@@ -152,19 +152,19 @@ typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA58 ? 1 : -1];
 typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA68 ? 1 : -1];
 #endif
 
-static TrashObj* trashTarget;
-static s32 trashStackNum;
-static f32 trashStackScale;
-static TrashObj* trashObj;
-static s32 trashState;
-static Vec trashPos;
-static Vec trashDest;
-static Vec trashStep;
-static f32 trashArc;
+TrashObj* trashTarget;
+s32 trashStackNum;
+f32 trashStackScale;
+TrashObj* trashObj;
+s32 trashState;
+Vec trashPos;
+Vec trashDest;
+Vec trashStep;
+f32 trashArc;
 // 0 while it runs, 2 the arc finished over the box and the piece was released, 3 it hit the box low and fell beside it, 4 cancelled on B
-static s32 trashResult;
-static u8 trashActive;
-static s32 trashboxIndex;
+s32 trashResult;
+u8 trashActive;
+s32 trashboxIndex;
 
 extern "C" void DrawTrashStack(void* arg);
 extern "C" void UpdateTrash(u32 frames);
@@ -1048,8 +1048,9 @@ extern "C" void UpdateTrash(u32 frames)
  */
 extern "C" void DrawTrashStack(void* arg)
 {
-	// NONMATCHING: retail keeps trashStackNum and the clamped count in separate registers
-	// (lwz/cmpwi/mr); one jobj-load/pos-store swap; rest is literal-pool label layout
+	// NONMATCHING: retail schedules the jobj load ahead of the pos stores around the
+	// THIRD_PI fadds (one instruction swap); the unit also emits __dt__4CVecFv/__vt__4CVec
+	// out of line where retail leaves them to another object in the module
 	TrashObj* actor;
 	HSD_JObj* jobj;
 	f32 a;
@@ -1057,6 +1058,7 @@ extern "C" void DrawTrashStack(void* arg)
 	f32 x;
 	f32 y;
 	f32 z;
+	s32 num;
 	s32 count;
 	s32 i;
 
@@ -1071,11 +1073,12 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 
-	count   = trashStackNum;
+	num     = trashStackNum;
 	Vec pos = actor->mMoveTranslate;
-	angle   = THIRD_PI + actor->mMoveRotateY;
 	jobj    = actor->jobj;
-	if (count < 0) {
+	angle   = THIRD_PI + actor->mMoveRotateY;
+	count   = num;
+	if (num < 0) {
 		count = 0;
 	}
 	if (count > 10) {
