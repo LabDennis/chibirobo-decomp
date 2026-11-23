@@ -1106,6 +1106,19 @@ void XObjSpider::State3(u32 frames)
 	}
 }
 
+static inline int CountDroppedSpiders()
+{
+	XObjSpider* other;
+	s32 dropped = 0;
+	for (int i = 0; i < 16; i++) {
+		other = (XObjSpider*)gGame.mXObjs.mPools[17].Get(i);
+		if ((other->mStatus.mFlags & 1) && (other->mFlags.mFlags & 0x100000)) {
+			dropped++;
+		}
+	}
+	return dropped;
+}
+
 static inline f32 DistXZ(const Vec* first, const Vec* second)
 {
 	f32 x = first->x - second->x;
@@ -1493,6 +1506,168 @@ void XObjSpider::State5(u32 frames)
 		}
 		break;
 	case 2:
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80125F48
+ * @note Size: 0x8DC
+ */
+// NONMATCHING: the two proximity checks swap x/z and the zero FPR; the CPad vtable referent differs as in UpdateObject
+void XObjSpider::State6(u32 frames)
+{
+	Vec pos = *gGame.GetPlayer()->GetPos();
+	CVec chr(pos);
+	CPad pad(0);
+	switch (mPhase) {
+	case 0:
+		mCounter = rand() % 30;
+		mPhase   = 10;
+		break;
+	case 10:
+		if (--mCounter < 0) {
+			mCounter = rand() % 30;
+			SetAnim(0x11, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mPhase = 1;
+		}
+		break;
+	case 1:
+		mCounter++;
+		f32 swing        = (f32)sin(DEG2RAD * (f32)((mCounter * 4) % 360));
+		f32 offset       = 8.0f * swing;
+		mMoveTranslate.x = mHome.x + offset - 4.0f;
+		if (mPlacementParam0 == 11) {
+			if (mFlags.mFlags & 0x200000) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x19E, 1.0f, 0.0f);
+				mFlags.mFlags |= 0x100000;
+				mPhase++;
+				SetAnim(0x10, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mSpeed = -1.6f;
+			}
+		} else {
+			f32 dist;
+			if (mWall == 3) {
+				f32 x = chr.x - mMoveTranslate.x;
+				f32 y = chr.y - mMoveTranslate.y;
+				f32 z = 0.0f;
+				dist  = FSqrt(x * x + y * y + z * z);
+			} else {
+				f32 x = chr.x - mMoveTranslate.x;
+				f32 y = 0.0f;
+				f32 z = chr.z - mMoveTranslate.z;
+				dist  = FSqrt(x * x + y * y + z * z);
+			}
+			if (dist <= 68.0f && gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
+				if (CountDroppedSpiders() < 10) {
+					PlayWiiSoundEffect(&gGame.mSound, 0x19E, 1.0f, 0.0f);
+					mFlags.mFlags |= 0x100000;
+					mPhase++;
+					SetAnim(0x10, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					mSpeed = -1.6f;
+				}
+			}
+		}
+		break;
+	case 2:
+		if (mMoveTranslate.y < 20.0f + mHome.y) {
+			StopWiiSfx(&gGame.mSound, 0x19E, 0.0f);
+			mPhase++;
+			SetAnim(0x12, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = 0.0f;
+		}
+		break;
+	case 3:
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			mPhase++;
+			SetAnim(0x13, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = -0.5f;
+		}
+		break;
+	case 4:
+		if (mMoveTranslate.y < 8.0f + mHome.y) {
+			mPhase++;
+			SetAnim(0x14, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			PlayWiiSoundEffect(&gGame.mSound, 0x195, 1.0f, 0.0f);
+		}
+		break;
+	case 5:
+		if (mMoveTranslate.y < mHome.y) {
+			mMoveTranslate.y = mHome.y;
+			mSpeed           = 0.0f;
+		}
+		f32 landEnd = GetAnimEndFrame();
+		if (landEnd - frames <= GetAnimFrame()) {
+			mFlags.mFlags &= ~0x40;
+			mFlags.mFlags &= ~0x80;
+			mFlags.mFlags &= ~0x100;
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mFlags.mFlags &= ~0x8000;
+			TakeSlot(this);
+			SetState(4);
+		}
+		break;
+	case 6:
+		if (pad.mPad->mTrigger & ((1ULL << RemoteB) | (1ULL << GameCubeB))) {
+			mFlags.mFlags = 0;
+			mFlags.mFlags |= 0x40;
+			mFlags.mFlags |= 0x80;
+			mFlags.mFlags |= 0x100;
+			mMoveTranslate.y = 48.0f + mHome.y;
+			mPhase           = 0;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80126824
+ * @note Size: 0x600
+ */
+void XObjSpider::State7(u32 frames)
+{
+	switch (mPhase) {
+	case 0:
+		SetAnim(0xC, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		mSpeed = 0.0f;
+		mPhase++;
+		break;
+	case 1:
+		f32 end = GetAnimEndFrame();
+		if (end - frames <= GetAnimFrame()) {
+			SetAnim(8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mTarget.x = mHome.x;
+			mTarget.y = mMoveTranslate.y;
+			mTarget.z = mHome.z;
+			mDir      = PI + (f32)atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mSpeed    = -0.5f;
+			mPhase++;
+		}
+		break;
+	case 2:
+		CombatFootsteps(this);
+		if (DistXZ(&mTarget, &mMoveTranslate) <= 2.0f) {
+			mSpeed      = 0.0f;
+			f32 walkEnd = GetAnimEndFrame();
+			if (walkEnd - frames <= GetAnimFrame()) {
+				SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				if (gGame.mEvt.mData.mScript != NULL) {
+					mPhase++;
+				} else {
+					SetState(4);
+				}
+			}
+		}
+		break;
+	case 3:
+		if (gGame.mEvt.mData.mScript == NULL) {
+			SetState(4);
+		}
 		break;
 	}
 }
