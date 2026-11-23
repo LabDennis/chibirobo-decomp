@@ -30,6 +30,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
 extern MEMiHeapHead* gWiiGameHeap;
+extern u8 lbl_8044B700[];
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
 extern s32 gScreenLeft, gScreenTop;
@@ -5703,6 +5704,56 @@ void MenuSave::State0(u32)
 	}
 	StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
 	menu->SetMode(1);
+}
+
+// NONMATCHING: four bytes smaller because the result == 0 branch becomes one bne instead of retail's beq plus branch
+void MenuSave::State1(u32 frames)
+{
+	s32 result = gGame.mSaveManager.mFile.mResult;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		for (int i = 0; i < 3; i++) {
+			WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
+			if (entry->mStatus & 1) {
+				fn_8007A2E8(&mSlots[i], entry, TRUE);
+				if (entry->mStatus & 2) {
+					mSlots[i].mState = 1;
+				}
+			} else if (entry->mStatus & 8) {
+				mSlots[i]._48 = 1;
+			} else if (entry->mStatus & 16) {
+				mSlots[i]._4C = 1;
+			} else {
+				mSlots[i]._44 = 1;
+			}
+		}
+		if (mSaved == TRUE) {
+			SetMode(4);
+			mTime  = 0.5f * gRefreshRate;
+			mSaved = FALSE;
+		} else {
+			SetMode(2);
+			fn_80083350(this);
+		}
+	} else {
+		mResult = result;
+		if (result == -9 || result == -11) {
+			SetMode(11);
+			mOffset = -32.0f;
+		} else if (result == -4) {
+			SetMode(13);
+			mShowMessage       = TRUE;
+			lbl_8044B700[0x14] = TRUE;
+		} else {
+			SetMode(11);
+			mOffset            = -32.0f;
+			lbl_8044B700[0x14] = TRUE;
+		}
+		mTargetAlpha = 1.0f;
+	}
 }
 
 // the file records cleared, as title.cpp's OnCardRemoved; State2, State3, State18 and State19 differ from retail only
