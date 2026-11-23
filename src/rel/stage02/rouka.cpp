@@ -623,7 +623,9 @@ s32 CmdAddMato(s32 cmd, s32 count, s32* args)
  * @note Address: stage02 .text 0x6AA0
  * @note Size: 0xFC
  */
-// NONMATCHING: europe's empty loop compares i with count where this tests count alone
+// NONMATCHING: PAL only - europe emits the first (empty) loop's entry test as mr + cmpw r4,r31 +
+// bge, but every spelling tried here makes MWCC fold 0 < count into mr. + ble (verified with
+// for/while, negated conditions, and a separate bound local on GC/1.3.2 and 2.6)
 s32 CmdStartFighter(s32 cmd, s32 count, s32* args)
 {
 	XObj* objs[3];
