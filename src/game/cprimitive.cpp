@@ -2258,6 +2258,7 @@ void CTile::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry,
  * @note Address: 0x8019BF04
  * @note Size: 0x1FC
  */
+// NONMATCHING: the inline fmt null test remains, and this unit places the copied format arrays 0x18 earlier.
 void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 {
 	// the same entries as SetVtxPosClr's default, but retail's tile copies and passes its own table
