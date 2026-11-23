@@ -3,9 +3,6 @@
 #include "game/memcard.h"
 #include <stdio.h>
 
-extern "C" void CaptureGameSaveData(Memcard*);
-extern "C" void BuildSaveBanner(Memcard*, s32);
-
 static inline BOOL WriteSaveCopies(Memcard* card)
 {
 	s32 copy       = 0;

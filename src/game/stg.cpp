@@ -30,7 +30,7 @@
 #include "game/cfont.h"
 #include "game/xchr.h"
 #include "game/video.h"
-#include <math.h>
+#include "game/gmath.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -435,8 +435,8 @@ inline void MenuTitle::Set(const char* text, u32 color)
 			mChars[i].mText   = p;
 			mChars[i].mFade   = -0.2f * i;
 			mChars[i].mHold   = FRAME_RATE;
-			mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
-			mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+			mChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+			mChars[i].mAngle1 = DEG2RAD * (rand() % 360);
 			mCount++;
 			if (IsJapanese() && (IsSjisLead(*p) & 1)) {
 				p++;
@@ -1371,8 +1371,8 @@ void MenuItem::Open()
 	}
 	mNameCharCount = 0;
 	for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
-		mBg[i].mAngle0 = 0.017453292f * (rand() % 360);
-		mBg[i].mAngle1 = 0.017453292f * (rand() % 360);
+		mBg[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mBg[i].mAngle1 = DEG2RAD * (rand() % 360);
 	}
 }
 
@@ -1682,12 +1682,12 @@ BOOL MenuItem::Draw()
 					CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, &width);
 					f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
 					f32 rotation = sin(0.7f * glyph->mAngle1);
-					f32 s1       = sin(3.1415927f * alpha);
-					f32 s2       = sin(1.5707964f * alpha);
+					f32 s1       = sin(PI * alpha);
+					f32 s2       = sin(HALF_PI * alpha);
 					f32 scale    = 0.2f * s1 + s2;
 					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - mNameCharCount * spacing / 2.0f));
 					f32 y        = 384.0f + bob;
-					rotation     = -(0.017453292f * (10.0f * rotation));
+					rotation     = -(DEG2RAD * (10.0f * rotation));
 					u32 color    = (u32)opacity | 0xFFFFFF00;
 					DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 					                   rotation);
@@ -1727,7 +1727,7 @@ static inline void DrawInventoryHighlight(f32 x, f32 y, f32 w, f32 h, f32 alpha,
 {
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-	f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+	f32 pulse = alpha * (0.2f * (f32)sin(PI * phase) + 0.2f);
 	if (pulse < 0)
 		pulse = 0;
 	u32 white = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -1806,7 +1806,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 		if (id >= 0 && count > 0) {
 			f32 bob = 0;
 			if (selected == i)
-				bob = 4.0f * (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360));
+				bob = 4.0f * (f32)sin(DEG2RAD * (((s32)(frame * 20)) % 360));
 			s32 icon = GetItemIconTextureIndex(id);
 			if (icon >= 0) {
 				f32 iw, ih;
@@ -1836,7 +1836,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 				tex.GetWidth();
 				tex.GetHeight();
-				sin(0.017453292f * (((s32)(frame * 20)) % 360));
+				sin(DEG2RAD * (((s32)(frame * 20)) % 360));
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				u16 iw = tex.GetWidth(), ih = tex.GetHeight();
 				DrawOverviewTexture(tex, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, scale * iw, scale * ih);
@@ -1863,7 +1863,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 				tex.GetWidth();
 				tex.GetHeight();
-				sin(0.017453292f * (((s32)(frame * 20)) % 360));
+				sin(DEG2RAD * (((s32)(frame * 20)) % 360));
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				u16 iw = tex.GetWidth(), ih = tex.GetHeight();
 				DrawOverviewTexture(tex, (u32)(255.0f * alpha) | 0xFFFFFF00, xx, yy, scale * iw, scale * ih);
@@ -1957,12 +1957,12 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
 				rot         = std::sinf(0.7f * glyph->mAngle1);
-				s1          = std::sinf(3.1415927f * t);
-				s2          = std::sinf(1.5707964f * t);
+				s1          = std::sinf(PI * t);
+				s2          = std::sinf(HALF_PI * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
-				rot         = -(0.017453292f * (10.0f * rot));
+				rot         = -(DEG2RAD * (10.0f * rot));
 				y           = 64.0f + bob;
 				u32 c       = alpha | 0xFFFFFF00;
 				DrawGsTexturedQuad(&gGame.mGs, &blob, c, c, c, c, x, y, 0.0f, 20.0f * (2.0f * scale), 20.0f * (2.0f * scale), 0.0f, -zero,
@@ -2155,8 +2155,8 @@ void MenuStatus::Open()
 	mHelp      = help;
 	mHelpCount = 0;
 	for (int i = 0; i < (int)ARRAY_SIZE(mHelpChars); i++) {
-		mHelpChars[i].mAngle0 = 0.017453292f * (rand() % 360);
-		mHelpChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+		mHelpChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mHelpChars[i].mAngle1 = DEG2RAD * (rand() % 360);
 	}
 }
 
@@ -3172,7 +3172,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 			continue;
 		f32 bob;
 		if (menu->mSelection == i && menu->mMode == 1)
-			bob = 4.0f * std::sinf(0.017453292f * ((menu->mAnimationFrame * 20) % 360));
+			bob = 4.0f * std::sinf(DEG2RAD * ((menu->mAnimationFrame * 20) % 360));
 		else
 			bob = 0.0f;
 		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mX - 52.0f) + menu->mOffsetX));
@@ -3208,7 +3208,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		if (menu->mSelection == i && menu->mMode == 1) {
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 pulse = menu->mAlpha * (0.2f * std::sinf(3.1415927f * menu->mPulsePhase) + 0.2f);
+			f32 pulse = menu->mAlpha * (0.2f * std::sinf(PI * menu->mPulsePhase) + 0.2f);
 			if (pulse < 0.0f)
 				pulse = 0.0f;
 			color = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -3507,7 +3507,7 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 // NONMATCHING: vertex initialization and register allocation
 void DrawStatusPanelBackground(f32 alpha)
 {
-	f32 t      = sin(1.5707964f * alpha);
+	f32 t      = sin(HALF_PI * alpha);
 	f32 expand = 42.0f * t;
 	f32 spread = 20.0f * t + 60.0f;
 	f32 x      = 320.0f;
@@ -3602,12 +3602,12 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
 				rot         = std::sinf(0.7f * glyph->mAngle1);
-				s1          = std::sinf(3.1415927f * t);
-				s2          = std::sinf(1.5707964f * t);
+				s1          = std::sinf(PI * t);
+				s2          = std::sinf(HALF_PI * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
-				rot         = -(0.017453292f * (10.0f * rot));
+				rot         = -(DEG2RAD * (10.0f * rot));
 				y           = 64.0f + bob;
 				u32 c       = alpha | 0xFFFFFF00;
 				DrawGsTexturedQuad(&gGame.mGs, &blob, c, c, c, c, x, y, 0.0f, 20.0f * (2.0f * scale), 20.0f * (2.0f * scale), 0.0f, -zero,
@@ -3672,12 +3672,12 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, &width);
 			f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
 			f32 rotation = sin(0.7f * glyph->mAngle1);
-			f32 s1       = sin(3.1415927f * alpha);
-			f32 s2       = sin(1.5707964f * alpha);
+			f32 s1       = sin(PI * alpha);
+			f32 s2       = sin(HALF_PI * alpha);
 			f32 scale    = 0.2f * s1 + s2;
 			f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 			f32 y        = 384.0f + bob;
-			rotation     = -(0.017453292f * (10.0f * rotation));
+			rotation     = -(DEG2RAD * (10.0f * rotation));
 			u32 color    = (u32)opacity | 0xFFFFFF00;
 			DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 			                   rotation);
@@ -3757,7 +3757,7 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 static inline void SetStatusRing(Vec* outline, f32 x, f32 y, f32 radius)
 {
 	for (int i = 0; i < 65; i++) {
-		f32 angle    = 0.09817477f * i - 1.5707964f;
+		f32 angle    = 0.09817477f * i - HALF_PI;
 		f32 sine     = (f32)sin(angle);
 		f32 cosine   = (f32)cos(angle);
 		outline[i].x = sine * radius + x;
@@ -3788,7 +3788,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	if (selected) {
 		static u32 frame = 0;
 		++frame;
-		bob = 4.0f * (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360));
+		bob = 4.0f * (f32)sin(DEG2RAD * (((s32)(frame * 20)) % 360));
 	}
 	s32 places = 1;
 	for (;; places++) {
@@ -3839,7 +3839,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	if (selected) {
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-		f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+		f32 pulse = alpha * (0.2f * (f32)sin(PI * phase) + 0.2f);
 		if (pulse < 0.0f)
 			pulse = 0.0f;
 		u32 highlight = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -3913,7 +3913,7 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 		if (selected) {
 			static s32 frame = 0;
 			frame++;
-			bob = 4.0f * (f32)sin(0.017453292f * ((frame * 20) % 360));
+			bob = 4.0f * (f32)sin(DEG2RAD * ((frame * 20) % 360));
 		}
 		tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[id], 0);
 		width      = scale * tex.GetWidth();
@@ -3928,7 +3928,7 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 		if (selected) {
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
+			f32 pulse = alpha * (0.2f * (f32)sin(PI * phase) + 0.2f);
 			if (pulse < 0.0f)
 				pulse = 0.0f;
 			u32 highlight = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -3967,7 +3967,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	if (selected) {
 		static u32 frame = 0;
 		++frame;
-		bob = 4.0f * (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360));
+		bob = 4.0f * (f32)sin(DEG2RAD * (((s32)(frame * 20)) % 360));
 	}
 	s32 places = (value >= 1000 ? 1 : 0) + 4;
 	if ((value % 100) / 10 == 0)
@@ -4099,15 +4099,13 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	f32 height = 0.85f * (scale * tex.GetHeight());
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 capY = (8.0f + y) - 0.5f;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0,
-	                   3.1415927f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0, PI);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 241);
 	width  = 0.95f * (scale * tex.GetWidth());
 	height = 0.95f * (scale * tex.GetHeight());
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width / 2.0f + right) - 4.0f, capY, 0, width, height, 0, 0,
-	                   3.1415927f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width / 2.0f + right) - 4.0f, capY, 0, width, height, 0, 0, PI);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
 	s32 current = (s32)(10000.0f * value);
@@ -4209,7 +4207,7 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 					int id = i * 2;
 					tex    = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[id]], 0);
 				}
-				f32 bob = (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360)) * 4.0f;
+				f32 bob = (f32)sin(DEG2RAD * (((s32)(frame * 20)) % 360)) * 4.0f;
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				f32 width, height;
 				if (selected == i)
@@ -4219,7 +4217,7 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 				if (selected == i) {
 					SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-					f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
+					f32 wave  = (f32)sin(PI * menu->mPulsePhase);
 					f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
 					if (pulse < 0)
 						pulse = 0;
@@ -4262,7 +4260,7 @@ static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
 	f32 alpha = 1.0f;
-	f32 wave  = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
+	f32 wave  = 2.0f * (f32)sin(DEG2RAD * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
 	f32 x     = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
 	f32 y     = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
 	DrawMenuRectWithShadow(menu, (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
@@ -4279,14 +4277,14 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	CTexObj tex;
 	f32 radius = 30.0f + wave;
 	for (s32 i = 0; i < 2; i++) {
-		f32 angle = 3.1415927f * i + 1.5707964f;
+		f32 angle = PI * i + HALF_PI;
 		f32 sine = (f32)sin(angle), cosine = (f32)cos(angle);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		LoadOverviewTexture(tex, 128);
 		u16 width = tex.GetWidth(), height = tex.GetHeight();
 		u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFEA0000;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0,
-		                   1.4f * (1.1f * width), 1.4f * height, 0, 0, 3.1415927f + angle);
+		                   1.4f * (1.1f * width), 1.4f * height, 0, 0, PI + angle);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 
@@ -9660,7 +9658,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 // NONMATCHING: vertex initialization and register allocation, as DrawStatusPanelBackground
 void DrawSavePanelBackground(f32 alpha)
 {
-	f32 t      = sin(1.5707964f * alpha);
+	f32 t      = sin(HALF_PI * alpha);
 	f32 expand = 44.4f * t;
 	f32 spread = 20.0f * t + 60.0f;
 	f32 x      = 320.0f;
@@ -9754,12 +9752,12 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 				s0          = std::sinf(glyph->mAngle0);
 				bob         = 4.0f * s0;
 				rot         = std::sinf(0.7f * glyph->mAngle1);
-				s1          = std::sinf(3.1415927f * t);
-				s2          = std::sinf(1.5707964f * t);
+				s1          = std::sinf(PI * t);
+				s2          = std::sinf(HALF_PI * t);
 				scale       = 0.2f * s1 + s2;
 				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
-				rot         = -(0.017453292f * (10.0f * rot));
+				rot         = -(DEG2RAD * (10.0f * rot));
 				y           = 64.0f + bob;
 				u32 c       = alpha | 0xFFFFFF00;
 				DrawGsTexturedQuad(&gGame.mGs, &blob, c, c, c, c, x, y, 0.0f, 20.0f * (2.0f * scale), 20.0f * (2.0f * scale), 0.0f, -zero,
@@ -9812,12 +9810,12 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, &width);
 		f32 bob      = 2.0f * std::sinf(glyph->mAngle0);
 		f32 rotation = std::sinf(0.7f * glyph->mAngle1);
-		f32 s1       = std::sinf(3.1415927f * alpha);
-		f32 s2       = std::sinf(1.5707964f * alpha);
+		f32 s1       = std::sinf(PI * alpha);
+		f32 s2       = std::sinf(HALF_PI * alpha);
 		f32 scale    = 0.2f * s1 + s2;
 		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 		f32 y        = 384.0f + bob;
-		rotation     = -(0.017453292f * (10.0f * rotation));
+		rotation     = -(DEG2RAD * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale          = 30.0f * (0.8f * scale);

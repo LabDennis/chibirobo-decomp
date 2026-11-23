@@ -626,7 +626,7 @@ extern "C" CCamera* InitMotionControlCameraDefaults(CCamera* camera)
 	camera->Init(1.0f, 80000.0f, 30.0f, &gGame.mGs.mScreen);
 	camera->SetScale(1.0f, 1.0f, 1.0f);
 	camera->SetInterest(-4.2f, 0.0f, -64.0f);
-	camera->SetAngle(0.41887903f, -3.1415927f, 0.0f); // pitched 24 degrees, yawed -180
+	camera->SetAngle(0.41887903f, -PI, 0.0f); // pitched 24 degrees, yawed -180
 	camera->SetDistance(400.0f);
 	camera->SetFov(18.0f);
 	camera->CalcEye();
@@ -642,7 +642,7 @@ extern "C" CCamera* InitGamePerspectiveCamera(CCamera* camera, GXRenderModeObj* 
 	camera->Init(1.0f, 80000.0f, 30.0f, rmode);
 	camera->SetScale(1.0f, 1.0f, 1.0f);
 	camera->SetInterest(-4.2f, 0.0f, -64.0f);
-	camera->SetAngle(0.41887903f, -3.1415927f, 0.0f);
+	camera->SetAngle(0.41887903f, -PI, 0.0f);
 	camera->SetDistance(400.0f);
 	camera->SetFov(18.0f);
 	camera->CalcEye();

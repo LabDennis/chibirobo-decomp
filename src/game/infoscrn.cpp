@@ -7,7 +7,7 @@
 #include "game/stg.h"
 #include "game/video.h"
 #include <string.h>
-#include <math.h>
+#include "game/gmath.h"
 
 // the info screen, the hud drawn over the game: the clock, the battery, the happy points and
 // the three counters that pop up in the corner. CGame keeps it in mInfoScrn
@@ -391,10 +391,10 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 			left = 320.0f - half;
 			y    = 406.0f - th / 2;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0x808080C8, 0x808080C8, 0x808080C8, 0x808080C8, sLoading.mX + left, y, 0.0f, 0.9f * tw,
-			                   0.9f * th, 0.0f, 3.1415927f, 0.0f);
+			                   0.9f * th, 0.0f, PI, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, sLoading.mX + left, y, 0.0f, 0.8f * tw,
-			                   0.8f * th, 0.0f, 3.1415927f, 0.0f);
+			                   0.8f * th, 0.0f, PI, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 			SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 
@@ -405,15 +405,15 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 			PSMTXTrans(tex.mMtx[0], 0.25f, 0.0f, 0.0f);
 			tex.mMtxDirty = TRUE;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 322.0f, 408.0f, 0.0f, max, 14.0f, 0.0f,
-			                   0.0f, 3.1415927f);
+			                   0.0f, PI);
 			PSMTXTrans(tex.mMtx[0], 0.5f, 0.0f, 0.0f);
 			tex.mMtxDirty = TRUE;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 322.0f - half - 4.0f, 408.0f, 0.0f, 8.0f,
-			                   14.0f, 0.0f, 0.0f, 3.1415927f);
+			                   14.0f, 0.0f, 0.0f, PI);
 			PSMTXTrans(tex.mMtx[0], 0.0f, 0.0f, 0.0f);
 			tex.mMtxDirty = TRUE;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 0xC8C8C880, 4.0f + (322.0f + half), 408.0f, 0.0f, 8.0f,
-			                   14.0f, 0.0f, 0.0f, 3.1415927f);
+			                   14.0f, 0.0f, 0.0f, PI);
 
 			tex      = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[118 - StatusTextureOffset], 0);
 			u16 barW = GXGetTexObjWidth(&tex);

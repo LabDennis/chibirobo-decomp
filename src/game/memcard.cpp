@@ -44,7 +44,7 @@ extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
 			return ReadFailed(card);
 		SaveHeader* save = &file->mData.mHeader;
 		if (save->mSignature != SAVE_SIGNATURE)
-			card->mCard.mResult = -128;
+			card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY) {
 			if (copy == 1)
@@ -56,7 +56,7 @@ extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
 		for (u32 i = 0; i < sizeof(SaveData); ++i)
 			checksum += *data++;
 		if (checksum != file->mChecksum)
-			card->mCard.mResult = -128;
+			card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY) {
 			if (copy == 1)
@@ -65,7 +65,7 @@ extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
 		}
 		if (!IsValidSave(save)) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
+				card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 				return ReadFailed(card);
 			}
 			continue;
@@ -100,7 +100,7 @@ extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 			return ReadFailedUnmount(card);
 		if (file->mData.mHeader.mSignature != SAVE_SIGNATURE) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
+				card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 				return ReadFailedUnmount(card);
 			}
 			continue;
@@ -111,14 +111,14 @@ extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 			checksum += *data++;
 		if (checksum != file->mChecksum) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
+				card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 				return ReadFailedUnmount(card);
 			}
 			continue;
 		}
 		if (!IsValidSave(save)) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
+				card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 				return ReadFailedUnmount(card);
 			}
 			continue;
@@ -173,7 +173,7 @@ extern "C" BOOL OpenOrCreateSaveFile(Memcard* card, char* name, BOOL create)
 		return TRUE;
 	}
 	if (!create && card->mStat.length != 0xC000) {
-		card->mCard.mResult = -128;
+		card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 		card->mCard.Close();
 		card->mCard.Unmount();
 		return TRUE;

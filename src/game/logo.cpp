@@ -66,7 +66,7 @@ extern "C" void UpdateBootLogos(Logo* logo, u32 frames)
 	case 4:
 		logo->mTimer += frames;
 		if (logo->mTimer >= 1.5f * FRAME_RATE) {
-			if ((logo->mAngle += (DEG2RAD * (180.0f / FRAME_RATE)) * frames) >= 3.1415927f) {
+			if ((logo->mAngle += (DEG2RAD * (180.0f / FRAME_RATE)) * frames) >= PI) {
 				logo->mAngle = 0.0f;
 			}
 			BOOL done = logo->mTimer >= 60.0f * FRAME_RATE ? TRUE : (&gGame.mPad.mPad[0])->mTrigger != 0;

@@ -1341,11 +1341,6 @@ static inline void RecoverTumble(XActTumble* act, s32 anim, HSD_AObj* aobj, s32 
 		FinishTumble(act, 1.0f);
 }
 
-static inline bool TumbleStationary(const CVec& delta)
-{
-	return PSVECMag((Vec*)&delta) == 0.0f;
-}
-
 /**
  * @note Address: 0x800C3A80
  * @note Size: 0x9E8
@@ -1417,7 +1412,7 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		break;
 	case 14:
 		if (act->mOwner->mIdleModeTimer > 0) {
-			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos)) {
+			if (!act->mIdleParticle && (act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos).Length() == 0.0f) {
 				s32 effect = (rand() & 1) ? 0x26 : 0x28;
 				s32 height = act->mOwner->mLift.mState == 0 ? 2 : 4;
 				s32 path[] = { 0, 1, 0, 1, 2, 0, 1 };

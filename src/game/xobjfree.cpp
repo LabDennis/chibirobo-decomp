@@ -989,22 +989,21 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
  */
 void XObjCoin::UpdateObject(u32 frames)
 {
-	const f32 radians = 0.01745329252f; // degrees to radians
 	if (IsCoinItemInRange(this, 0, 100)) {
 		f32 speed;
 		if (mSpin >= 0.0f) {
-			mSpin += 4.0f * radians;
+			mSpin += 4.0f * DEG2RAD;
 			speed = (1.5f + (f32)sin(mSpin)) / 2.0f;
 		} else {
-			mSpin -= 4.0f * radians;
+			mSpin -= 4.0f * DEG2RAD;
 			speed = -(1.5f + (f32)sin(mSpin)) / 2.0f;
 		}
-		mMoveRotate.y += 8.0f * radians * speed * frames;
+		mMoveRotate.y += 8.0f * DEG2RAD * speed * frames;
 	} else if (IsCoinItemInRange(this, 100, 200)) {
 		if (mSpin >= 0.0f)
-			mMoveRotate.y += 2.0f * radians * frames;
+			mMoveRotate.y += 2.0f * DEG2RAD * frames;
 		else
-			mMoveRotate.y -= 2.0f * radians * frames;
+			mMoveRotate.y -= 2.0f * DEG2RAD * frames;
 	}
 	XObj::UpdateObject(frames);
 	if (mStatus.mFlags & 0x4000000000000000ULL) {
@@ -1037,7 +1036,7 @@ void XObjCoin::UpdateObject(u32 frames)
 		mState      = 1;
 		mFallFrames = 0;
 		mParam0     = 0;
-		mHeading    = radians * (s32)mParam1;
+		mHeading    = DEG2RAD * (s32)mParam1;
 		mFallSpeed  = (s32)mParams[0] / 100.0f;
 		mStatus.mFlags |= 0x100000;
 		break;
