@@ -4891,7 +4891,7 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
  * @note Size: 0xBD8
  */
 // NONMATCHING: the measuring loop sign-extends each character as it stores it (retail moves the raw
-// byte), and retail reloads the character in the default case and both stroke bytes in the loop
+// byte, 0x8019476C mr r30, r4; u8 mStr, a u8 copy of *text and text[0] all score lower), float registers
 extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
 {
 	if (gs->mCurRenderMode == &gs->mRenderMode) {
@@ -4945,17 +4945,17 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	f32 startX;
 	f32 curY;
 	f32 unit;
+	f32 curX;
 	if (gs->mBillboardEnabled) {
 		BuildBillboardMatrixFromUp(mtx, mtx);
-		startX = width / 2.0f;
-		curY   = 0.0f;
-		unit   = -1.0f;
+		curX = startX = width / 2.0f;
+		curY          = 0.0f;
+		unit          = -1.0f;
 	} else {
-		startX = -width / 2.0f;
-		curY   = 0.0f;
-		unit   = 1.0f;
+		curX = startX = -width / 2.0f;
+		curY          = 0.0f;
+		unit          = 1.0f;
 	}
-	f32 curX = startX;
 	GXLoadPosMtxImm(mtx, 0);
 	GXSetCurrentMtx(0);
 
@@ -4996,7 +4996,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			DebugVertex(curX, 1.0f + curY, glyph.mBgColor);
 		}
 		s32 index = -1;
-		switch (*str) {
+		switch (glyph.mStr[0]) {
 		// the 0.35 and 0.85 here are a bit off in retail, probably sums the compiler folded
 		case '.':
 			GXBegin(GX_POINTS, 0, 1);
@@ -5062,10 +5062,9 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			u8* stroke = gGlyphStrokeTable[index];
 			// 41 is way past the 13 bytes a glyph has, the 0xFF always comes first
 			for (s32 i = 0; i < 41 && *stroke != 0xFF;) {
-				u8 from = stroke[0];
-				u8 to   = stroke[1];
+				u8 from = *stroke++;
+				u8 to   = *stroke++;
 				i += 2;
-				stroke += 2;
 				GXBegin(GX_LINES, 0, 2);
 				DebugVertex(curX + unit * StrokePos(from >> 4), curY + StrokePos(from & 0xF), glyph.mColor);
 				DebugVertex(curX + unit * StrokePos(to >> 4), curY + StrokePos(to & 0xF), glyph.mColor);
