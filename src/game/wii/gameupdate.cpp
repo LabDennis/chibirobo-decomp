@@ -1808,6 +1808,89 @@ void XObj::vf15C()
 	}
 }
 
+// NONMATCHING: all six retail animation blocks and resource checks are present;
+// temporary lifetimes and register allocation remain open.
+/**
+ * @note Address: 0x800243CC
+ * @note Size: 0x600
+ */
+f32 CObj::GetAnimEndFrame()
+{
+	f32 end = 0.0f;
+	if (mObject.m_pScnMdl != NULL) {
+		const nw4r::g3d::AnmObj* anm
+		    = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_CHR);
+		if (anm != NULL && mObject.GetAnmObjChrRes() != NULL) {
+			nw4r::g3d::ResAnmChr res = mObject.GetAnmObjChrRes()->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmChr res2 = mObject.GetAnmObjChrRes()->GetResAnm();
+				end                       = res2.GetNumFrame();
+			}
+		}
+		anm = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_VIS);
+		if (anm != NULL) {
+			nw4r::g3d::ResAnmVis res = ((nw4r::g3d::AnmObjVisRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+			                                ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_VIS))
+			                               ->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmVis res2 = ((nw4r::g3d::AnmObjVisRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+				                                 ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_VIS))
+				                                ->GetResAnm();
+				end = res2.GetNumFrame();
+			}
+		}
+		anm = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_MATCLR);
+		if (anm != NULL) {
+			nw4r::g3d::ResAnmClr res = ((nw4r::g3d::AnmObjMatClrRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+			                                ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_MATCLR))
+			                               ->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmClr res2 = ((nw4r::g3d::AnmObjMatClrRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+				                                 ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_MATCLR))
+				                                ->GetResAnm();
+				end = res2.GetNumFrame();
+			}
+		}
+		anm = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXPAT);
+		if (anm != NULL && mObject.mTexPatName != mObject.mDefaultTexPat) {
+			nw4r::g3d::ResAnmTexPat res = ((nw4r::g3d::AnmObjTexPatRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+			                                   ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXPAT))
+			                                  ->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmTexPat res2 = ((nw4r::g3d::AnmObjTexPatRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+				                                    ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXPAT))
+				                                   ->GetResAnm();
+				end = res2.GetNumFrame();
+			}
+		}
+		anm = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXSRT);
+		if (anm != NULL) {
+			nw4r::g3d::ResAnmTexSrt res = ((nw4r::g3d::AnmObjTexSrtRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+			                                   ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXSRT))
+			                                  ->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmTexSrt res2 = ((nw4r::g3d::AnmObjTexSrtRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+				                                    ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_TEXSRT))
+				                                   ->GetResAnm();
+				end = res2.GetNumFrame();
+			}
+		}
+		anm = ((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_SHP);
+		if (anm != NULL) {
+			nw4r::g3d::ResAnmShp res = ((nw4r::g3d::AnmObjShpRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+			                                ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_SHP))
+			                               ->GetResAnm();
+			if (res.GetNumFrame() > end) {
+				nw4r::g3d::ResAnmShp res2 = ((nw4r::g3d::AnmObjShpRes*)((const nw4r::g3d::ScnMdlSimple*)mObject.m_pScnMdl)
+				                                 ->GetAnmObj(nw4r::g3d::ScnMdlSimple::ANMOBJTYPE_SHP))
+				                                ->GetResAnm();
+				end = res2.GetNumFrame();
+			}
+		}
+	}
+	return end;
+}
+
 // the greatest current frame among the model's animation objects; the default
 // texture-pattern animation does not participate
 // NONMATCHING: the loop and calls match; retail assigns the prologue's object and

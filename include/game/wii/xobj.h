@@ -207,6 +207,8 @@ public:
 struct ResAnmChrData {
 	u8 _00[0x18];
 	s32 name; // _18
+	u32 _1C;
+	u16 mNumFrame; // _20
 };
 
 class ResAnmChr {
@@ -230,11 +232,14 @@ public:
 		const ResAnmChrData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 struct ResAnmVisData {
 	u8 _00[0x18];
 	s32 name; // _18
+	u32 _1C;
+	u16 mNumFrame; // _20
 };
 
 class ResAnmVis {
@@ -258,11 +263,14 @@ public:
 		const ResAnmVisData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 struct ResAnmClrData {
 	u8 _00[0x18];
 	s32 name; // _18
+	u32 _1C;
+	u16 mNumFrame; // _20
 };
 
 class ResAnmClr {
@@ -286,11 +294,14 @@ public:
 		const ResAnmClrData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 struct ResAnmTexPatData {
 	u8 _00[0x28];
 	s32 name; // _28
+	u32 _2C;
+	u16 mNumFrame; // _30
 };
 
 class ResAnmTexPat {
@@ -314,11 +325,14 @@ public:
 		const ResAnmTexPatData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 struct ResAnmTexSrtData {
 	u8 _00[0x18];
 	s32 name; // _18
+	u32 _1C;
+	u16 mNumFrame; // _20
 };
 
 class ResAnmTexSrt {
@@ -342,11 +356,15 @@ public:
 		const ResAnmTexSrtData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 struct ResAnmShpData {
 	u8 _00[0x1C];
 	s32 name; // _1C
+	u16 _20;
+	u16 _22;
+	u16 mNumFrame; // _24
 };
 
 class ResAnmShp {
@@ -370,6 +388,7 @@ public:
 		const ResAnmShpData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	int GetNumFrame() const { return ref().mNumFrame; }
 };
 
 // a scene animation resource's data, as far as the game reads it
@@ -1082,40 +1101,97 @@ private:
 	f32* mpWeightArray; // _20
 };
 
-class AnmObjChrRes : public AnmObjChr {
+class AnmObjVis : public AnmObj {
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class AnmObjMatClr : public AnmObj {
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class AnmObjTexPat : public AnmObj {
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class AnmObjTexSrt : public AnmObj {
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class AnmObjShp : public AnmObj {
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class FrameCtrl {
+	f32 mFrame;        // _00
+	f32 mUpdateRate;   // _04
+	f32 mStartFrame;   // _08
+	f32 mEndFrame;     // _0C
+	void* mPlayPolicy; // _10
+};
+
+class AnmObjChrRes : public AnmObjChr, protected FrameCtrl {
 public:
 	static AnmObjChrRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmChr chr, ResMdl mdl, bool cache);
 
 	ResAnmChr GetResAnm() { return mRes; }
 
 private:
-	u8 mFrameCtrl[0x14]; // _18, nw4r's FrameCtrl base
-	ResAnmChr mRes;      // _2C
+	ResAnmChr mRes; // _2C
 };
 
-class AnmObjVisRes : public AnmObj {
+class AnmObjVisRes : public AnmObjVis, protected FrameCtrl {
 public:
 	static AnmObjVisRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmVis vis, ResMdl mdl);
+	ResAnmVis GetResAnm() { return mRes; }
+
+private:
+	ResAnmVis mRes; // _2C
 };
 
-class AnmObjMatClrRes : public AnmObj {
+class AnmObjMatClrRes : public AnmObjMatClr, protected FrameCtrl {
 public:
 	static AnmObjMatClrRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmClr clr, ResMdl mdl, bool cache);
+	ResAnmClr GetResAnm() { return mRes; }
+
+private:
+	ResAnmClr mRes; // _2C
 };
 
-class AnmObjTexPatRes : public AnmObj {
+class AnmObjTexPatRes : public AnmObjTexPat, protected FrameCtrl {
 public:
 	static AnmObjTexPatRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmTexPat pat, ResMdl mdl, bool cache);
+	ResAnmTexPat GetResAnm() { return mRes; }
+
+private:
+	ResAnmTexPat mRes; // _2C
 };
 
-class AnmObjTexSrtRes : public AnmObj {
+class AnmObjTexSrtRes : public AnmObjTexSrt, protected FrameCtrl {
 public:
 	static AnmObjTexSrtRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmTexSrt srt, ResMdl mdl, bool cache);
+	ResAnmTexSrt GetResAnm() { return mRes; }
+
+private:
+	ResAnmTexSrt mRes; // _2C
 };
 
-class AnmObjShpRes : public AnmObj {
+class AnmObjShpRes : public AnmObjShp, protected FrameCtrl {
 public:
 	static AnmObjShpRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmShp shp, ResMdl mdl, bool cache);
+	ResAnmShp GetResAnm() { return mRes; }
+
+private:
+	ResAnmShp mRes; // _2C
 };
 
 // nw4r's light object, as far as LIGHT reads it: the enable flag in front of the GX light
