@@ -511,7 +511,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 		return;
 	}
 	Vec pos  = *origin;
-	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0) * 0.5f * mRadius;
+	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0) * 0.6f * mRadius;
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gCustomShadow.Draw(pos, size, (u32)(170.0f * opacity));
 }
