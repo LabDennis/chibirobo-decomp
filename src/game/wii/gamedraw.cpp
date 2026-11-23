@@ -402,7 +402,7 @@ extern "C" void fn_80028998(CGame* game)
 		} else if (game->mMotionControlCamera.IsAction(CAMACTION_EYE)
 		           || (game->mMotionControlCamera.IsAction(CAMACTION_AREA)
 		               && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
-		               && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled == 0)
+		               && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 		           || (game->mMotionControlCamera.IsAction(CAMACTION_MAP)
 		               && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->mPointerHeld)
 		           || (fn_80169658(&game->mMotionControlCamera) && ((u8*)fn_80169674())[0x74])) {
