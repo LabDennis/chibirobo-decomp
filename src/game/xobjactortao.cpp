@@ -9,7 +9,6 @@
 extern "C" {
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
-CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
 extern "C" void Attach__5CJObjFP9_HSD_JObj(CJObj*, HSD_JObj*);
@@ -178,7 +177,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 	case 3: // pick up the object whose id follows
 		mAttachedId = command[1];
 		mState      = &XObjActorTao::StatePickUp;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		mCmd[0] = 0;
 		break;
 	case 4: // release (unload) the attached object
@@ -588,7 +587,7 @@ void XObjActorTao::ResetActorState()
 	_C84                = mFacing;
 	_C88                = 0;
 	mState              = &XObjActorTao::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 	mCmd[2]     = 0;
 	mCmd[3]     = 0;
 	mCmd[4]     = 0;

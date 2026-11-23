@@ -38,8 +38,8 @@ f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height);
 f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 u32 CheckStageFlag(s32 stage, u32 mask);
 void PutAwayLiftedObject(XActLift* act);
-UnkStageObj* GetStagePlacementByIndex(s32 index);
-UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+StagePlacement* GetStagePlacementByIndex(s32 index);
+StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 u16 GetItemFlagsMasked(s16 item, u16 mask);
 s16 GetItemPickupHoldTime(s16 item);
 s8 GetItemSoundIndex(s16 item, s32 kind);
@@ -185,7 +185,7 @@ static inline f32 GetFloorYawRadians(const XObj* obj, s32 index)
 	return DEG2RAD * obj->mFloors[index].mYawDegrees;
 }
 
-static inline Vec GetPlacementScale(const UnkStageObj* placement)
+static inline Vec GetPlacementScale(const StagePlacement* placement)
 {
 	Vec value;
 	value.x = placement->mScale[0] / 100.0f;
@@ -2173,7 +2173,8 @@ static inline EffectInstance* StartLiftEffect(u32 id, MtxP mtx)
 // before the swing test rather than after it, and vector temporaries, stack homes and register scheduling still differ.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end)
 {
-	s32 placement = act->mTarget != NULL ? (act->mTarget->mCoord.mPlacement - GetStagePlacementByIndex(0)) / (s32)sizeof(UnkStageObj) : -1;
+	s32 placement
+	    = act->mTarget != NULL ? (act->mTarget->mCoord.mPlacement - GetStagePlacementByIndex(0)) / (s32)sizeof(StagePlacement) : -1;
 	act->mBatteryCost = 0.0f;
 	switch (act->mState) {
 	case 1: {

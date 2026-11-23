@@ -11,7 +11,7 @@
 // - .bss: gSmallSpiderPlacementWork ... gSmallSpiderWorkEnd stand for the header-made 0x140 (JP 0x134) prefix
 #include "game/xobjspidersmall.h"
 #include "game/hsd_jobj.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/spidercontact.h"
 #include "game/cgame.h"
 #include "game/cgs.h"

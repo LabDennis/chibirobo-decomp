@@ -1774,18 +1774,18 @@ public:
 	f32 mSpeed;             // _16C
 	s32 mTextPhase;         // _170
 	s32 mChoice;            // _174
-	s32 mPurchaseSelection; // _178
+	s32 mItemShopSelection; // _178
 	u8 _17C[0x184 - 0x17C];
-	s32 mYesNo;             // _184
-	s32 mMoneyDigit;        // _188
-	s32 mShopSelection;     // _18C
-	s32 mScrapDigit;        // _190
-	f32 mProgress;          // _194
-	f32 mTargetProgress;    // _198
-	f32 _19C;               // _19C, eased toward _1A4
-	f32 mFrameHeight;       // _1A0, the frame quad grows to its target on opening and closes back to 2
-	f32 _1A4;               // _1A4
-	f32 mTargetFrameHeight; // _1A8
+	s32 mYesNo;              // _184
+	s32 mMoneyDigit;         // _188
+	s32 mScrapShopSelection; // _18C
+	s32 mScrapDigit;         // _190
+	f32 mProgress;           // _194
+	f32 mTargetProgress;     // _198
+	f32 _19C;                // _19C, eased toward _1A4
+	f32 mFrameHeight;        // _1A0, the frame quad grows to its target on opening and closes back to 2
+	f32 _1A4;                // _1A4
+	f32 mTargetFrameHeight;  // _1A8
 	u8 _1AC[0x1BC - 0x1AC];
 	s32 mCharIndex;          // _1BC
 	u32 mGreetingVariant;    // _1C0
@@ -1807,8 +1807,8 @@ public:
 	u8 mInsertsNumber;       // _380
 	s32 mAmount;             // _384
 	s32 mDepositBalance;     // _388
-	s32 mHistoryStart;       // _38C
-	s32 mHistoryCount;       // _390
+	s32 mItemShopBase;       // _38C
+	s32 mItemShopCount;      // _390
 	f32 mPanelAlpha;         // _394
 	f32 mPanelTarget;        // _398
 	f32 mListAlpha;          // _39C
@@ -1821,8 +1821,8 @@ public:
 	s32 mRankingEnd;              // _3FC
 	f32 mScroll;                  // _400
 	f32 mScrollTarget;            // _404
-	s32 mCatalogBase;             // _408
-	s32 mCatalogCount;            // _40C
+	s32 mScrapShopBase;           // _408
+	s32 mScrapShopCount;          // _40C
 	PCAmount mMoneyDisplay;       // _410
 	PCAmount mScrapDisplay;       // _418
 	PCAmount mDepositDisplay;     // _420

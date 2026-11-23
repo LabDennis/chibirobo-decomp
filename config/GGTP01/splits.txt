@@ -131,6 +131,7 @@ game/msg.cpp:
 
 game/msgdataformat.cpp:
 	.text       start:0x800888A8 end:0x80088E80
+	.data       start:0x8022BFF8 end:0x8022C05C
 
 game/memcard.cpp:
 	.text       start:0x80088E80 end:0x8008A064

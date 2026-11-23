@@ -12,7 +12,7 @@
 class CoordInfo;
 class CCamera;
 class CVec;
-struct UnkStageObj;
+struct StagePlacement;
 struct XObjFloor;
 
 // the pending fatal the save system leaves for the title screen; MenuSave also fills the text at _15
@@ -240,7 +240,7 @@ public:
 	virtual f32 vf26C(); // _26C, another pose component
 
 	u8 _004[0x014 - 0x004];
-	UnkStageObj* mSpawn; // _014, the placement the object loaded from
+	StagePlacement* mSpawn; // _014, the placement the object loaded from
 	u8 _018[0x060 - 0x018];
 	Vec mMoveRotate; // _060, the floor yaw adds to its _064 like the GameCube's mMoveRotate.y
 	u8 _06C[0x0F0 - 0x06C];

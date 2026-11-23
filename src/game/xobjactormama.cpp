@@ -26,11 +26,8 @@ static inline u32 MaskedFlags(const CStatus& status, u32 mask)
 void XObjActorMama::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->mPlayerStatus.mFlags & 0x40000000) {
-		player->mPlayerStatus.mFlags = 0;
-		player->mPlayerStatus.mFlags |= 0x20000000;
-		player->mPlayerStatus.mFlags |= 7;
-		player->mPad.mReset = TRUE;
+	if (player->mPlayerStatus.mFlags & XObjChr::ControlLocked) {
+		player->RestoreControl();
 	}
 	mActorStatus.mFlags = 0;
 	mHideKinds.mFlags   = 0;
@@ -40,7 +37,7 @@ void XObjActorMama::ResetActorState()
 	_C84                = mFacing;
 	_C88                = 0;
 	mState              = &XObjActorMama::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 }
 
 // NONMATCHING: case 6 builds the effect's rotation straight in CreateSRT's by-value slot (US 0x8012918C stores the
@@ -134,9 +131,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 		switch (mCmd[1]) {
 		case 1: {
 			mActorStatus.mFlags |= 0x100;
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x40000000;
-			player->mPad.mReset = FALSE;
+			player->LockControl();
 			player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 
 			break;
@@ -148,10 +143,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 			pos   = CVec(jobj.GetPos());
 			pos.y = mMoveTranslate.y;
 			player->SetPos(pos, 0);
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x20000000;
-			player->mPlayerStatus.mFlags |= 7;
-			player->mPad.mReset = TRUE;
+			player->RestoreControl();
 			break;
 		}
 		}
@@ -384,7 +376,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 				break;
 			}
 	}
-	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) { // she carries the player
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) { // she carries the player
 		s32 hold[6] = { 0, 4, 2, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, hold, 6));
 		CVec pos = hand.GetPos();

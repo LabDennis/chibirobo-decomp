@@ -371,7 +371,7 @@ void HSD_PadRenewMasterStatus(void)
 		for (i = 0; i < 4; i++, mp++, qread++) {
 			mp->last_button = mp->button;
 			mp->err         = qread->err;
-			mp->_41         = (mask & pad_bit[i]) != 0;
+			mp->connected   = (mask & pad_bit[i]) != 0;
 			if (mp->err == 0) {
 				mp->button    = qread->button;
 				mp->stickX    = qread->stickX;
@@ -444,7 +444,7 @@ void HSD_PadRenewCopyStatus(void)
 	for (i = 0; i < 4; i++, mp++, cp++) {
 		cp->last_button = cp->button;
 		cp->err         = mp->err;
-		cp->_41         = mp->_41;
+		cp->connected   = mp->connected;
 		if (cp->err == 0) {
 			cp->button        = mp->button;
 			cp->stickX        = mp->stickX;

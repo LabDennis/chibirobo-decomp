@@ -21,52 +21,41 @@ extern "C" BOOL IsValidSavePreview(SavePreviewRecord* slot)
 {
 	if (!HasSaveFileLayout(slot->mStat))
 		return FALSE;
-	return IsValidSave(&slot->mHeader) != FALSE;
-}
-
-static inline BOOL ReadFailed(Memcard* card)
-{
-	card->mCard.Close();
-	return TRUE;
+	return ValidateSaveHeader(&slot->mHeader) != FALSE;
 }
 
 /**
  * @note Address: 0x80087190
  * @note Size: 0x378
  */
-extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
+BOOL Memcard::ReadSavePreview(SaveFile* file)
 {
-	card->mState = 12;
+	mState = 12;
 	for (s32 copy = 0; copy < 2; ++copy) {
-		card->mCard.Read(file, sizeof(SaveFile), copy * (s32)sizeof(SaveFile));
-		card->LogResult();
-		if (card->mCard.mResult != CARD_RESULT_READY)
-			return ReadFailed(card);
-		SaveHeader* save = &file->mData.mHeader;
-		if (save->mSignature != SAVE_SIGNATURE)
-			card->mCard.mResult = -128;
-		card->LogResult();
-		if (card->mCard.mResult != CARD_RESULT_READY) {
+		if (ReadSaveCopy(file, copy * (s32)sizeof(SaveFile)) != CARD_RESULT_READY)
+			return FailSaveRead(FALSE);
+		SaveData* save = &file->mData;
+		if (!save->HasValidSignature())
+			mCard.mResult = CARD_RESULT_FATAL_ERROR;
+		LogResult();
+		if (mCard.mResult != CARD_RESULT_READY) {
 			if (copy == 1)
-				return ReadFailed(card);
+				return FailSaveRead(FALSE);
 			continue;
 		}
-		u32 checksum   = 0;
-		const u8* data = reinterpret_cast<const u8*>(save);
-		for (u32 i = 0; i < sizeof(SaveData); ++i)
-			checksum += *data++;
+		u32 checksum = save->CalculateChecksum();
 		if (checksum != file->mChecksum)
-			card->mCard.mResult = -128;
-		card->LogResult();
-		if (card->mCard.mResult != CARD_RESULT_READY) {
+			mCard.mResult = CARD_RESULT_FATAL_ERROR;
+		LogResult();
+		if (mCard.mResult != CARD_RESULT_READY) {
 			if (copy == 1)
-				return ReadFailed(card);
+				return FailSaveRead(FALSE);
 			continue;
 		}
-		if (!IsValidSave(save)) {
+		if (!ValidateSaveHeader(&save->mHeader)) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
-				return ReadFailed(card);
+				mCard.mResult = CARD_RESULT_FATAL_ERROR;
+				return FailSaveRead(FALSE);
 			}
 			continue;
 		}
@@ -75,51 +64,41 @@ extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
 	return FALSE;
 }
 
-static inline BOOL ReadFailedUnmount(Memcard* card)
-{
-	card->mCard.Close();
-	card->mCard.Unmount();
-	return TRUE;
-}
-
 /**
  * @note Address: 0x80087508
  * @note Size: 0x34C
  */
-extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
+BOOL Memcard::ReadSaveFile()
 {
-	card->mState   = 12;
-	SaveFile* file = &card->mFile;
+	mState         = 12;
+	SaveFile* file = &mFile;
 	s32 offset;
 	s32 copy;
-	SaveHeader* save = &file->mData.mHeader;
+	SaveData* save = &file->mData;
 	for (copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
-		card->mCard.Read(card->mBuffer, sizeof(SaveFile), offset);
-		card->LogResult();
-		if (card->mCard.mResult != CARD_RESULT_READY)
-			return ReadFailedUnmount(card);
-		if (file->mData.mHeader.mSignature != SAVE_SIGNATURE) {
+		mCard.Read(mBuffer, sizeof(SaveFile), offset);
+		LogResult();
+		if (mCard.mResult != CARD_RESULT_READY)
+			return FailSaveRead(TRUE);
+		if (!file->mData.HasValidSignature()) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
-				return ReadFailedUnmount(card);
+				mCard.mResult = CARD_RESULT_FATAL_ERROR;
+				return FailSaveRead(TRUE);
 			}
 			continue;
 		}
-		u32 checksum   = 0;
-		const u8* data = reinterpret_cast<const u8*>(save);
-		for (u32 i = 0; i < sizeof(SaveData); ++i)
-			checksum += *data++;
+		u32 checksum = save->CalculateChecksum();
 		if (checksum != file->mChecksum) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
-				return ReadFailedUnmount(card);
+				mCard.mResult = CARD_RESULT_FATAL_ERROR;
+				return FailSaveRead(TRUE);
 			}
 			continue;
 		}
-		if (!IsValidSave(save)) {
+		if (!ValidateSaveHeader(&save->mHeader)) {
 			if (copy == 1) {
-				card->mCard.mResult = -128;
-				return ReadFailedUnmount(card);
+				mCard.mResult = CARD_RESULT_FATAL_ERROR;
+				return FailSaveRead(TRUE);
 			}
 			continue;
 		}
@@ -173,7 +152,7 @@ extern "C" BOOL OpenOrCreateSaveFile(Memcard* card, char* name, BOOL create)
 		return TRUE;
 	}
 	if (!create && card->mStat.length != 0xC000) {
-		card->mCard.mResult = -128;
+		card->mCard.mResult = CARD_RESULT_FATAL_ERROR;
 		card->mCard.Close();
 		card->mCard.Unmount();
 		return TRUE;

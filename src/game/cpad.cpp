@@ -91,7 +91,7 @@ void CPadOne::Update(s32 frames)
 	mSubStickY = HSD_PadCopyStatus[mPort].nml_subStickY;
 	mAnalogL   = HSD_PadCopyStatus[mPort].nml_analogL;
 	mAnalogR   = HSD_PadCopyStatus[mPort].nml_analogR;
-	mConnected = HSD_PadCopyStatus[mPort]._41;
+	mConnected = HSD_PadCopyStatus[mPort].connected;
 
 	mLastButton    = mButton;
 	mLastDirButton = mDirButton;

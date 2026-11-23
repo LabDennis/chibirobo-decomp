@@ -2,7 +2,7 @@
 #include "game/xobjactor.h"
 #include "game/heldpropmatrix.h"
 #include "game/hsd_jobj.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/cpad.h"
@@ -52,7 +52,6 @@ void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void ApplySpiderPlacement(XObjSpider* spider);
 void ResetSpiderState(XObjSpider* spider);
 
-CVec GetStagePlacementScale(XObj* obj);
 void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
@@ -334,7 +333,7 @@ void XObjSpider::ResetObjectState()
 		for (s32 i = 0; i < count; ++i) {
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
-				UnkStageObj* placement = candidate->mCoord.mPlacement;
+				StagePlacement* placement = candidate->mCoord.mPlacement;
 				if (placement->mObjectId == 0x13C) {
 					++found;
 					*output++ = candidate;

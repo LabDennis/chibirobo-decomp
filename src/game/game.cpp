@@ -618,7 +618,7 @@ void FbSubwin::Draw()
 	SetupAll(TRUE);
 
 	f32 amount = mAmount;
-	f32 fade   = sin(0.5f * (3.1415927f * amount));
+	f32 fade   = sin(0.5f * (PI * amount));
 	if (fpclassify(mRectWidth) == FP_NAN || fpclassify(mRectHeight) == FP_NAN) {
 		CTexObj frame = WindowFrameTexture();
 		f32 w         = fade * GXGetTexObjWidth(&frame);
@@ -907,7 +907,6 @@ void CCamera::SetViewport(f32 left, f32 right, f32 top, f32 bottom)
 
 extern "C" {
 void InitGameSound(XSound*);
-void InitMemoryCardManager(Memcard*);
 s32 GetDefaultStageIndex();
 s32 GetStageNum();
 void LoadBootConfig();
@@ -1153,13 +1152,10 @@ extern "C" {
 BOOL UpdateProgressiveScanPrompt(u32);
 BOOL LoadGameSoundBank(XSound*, s32);
 BOOL LoadMenuGroupResources(MenuEx*);
-BOOL LoadMemoryCardResources(Memcard*);
 BOOL LoadEventResources(CEvt*);
 BOOL LoadMessageCursorObject(CMsg*);
 BOOL HideHudPointCounters(InfoScrn*);
 BOOL LoadGlobalResourceData();
-void RestoreGameSaveData(Memcard*);
-void RestoreSavedPlayerAndCamera(Memcard*);
 u32 CheckStageFlag(s32, u32);
 BOOL LoadStageByIndex(s32);
 void ApplyStageClearColor();
@@ -1604,7 +1600,7 @@ void CGame::Update(u32 frames)
 				mOutlineWidth = 0.5f;
 			}
 		}
-		mOutline.mZoom = sin(3.1415927f * mOutlineWidth / 2.0f); // a half-sine over the width
+		mOutline.mZoom = sin(PI * mOutlineWidth / 2.0f); // a half-sine over the width
 	}
 	UpdateBootLogos(&mLogo, frames);
 	UpdateTitleScreen(&mTitle, frames);
@@ -2358,7 +2354,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 									alpha = 0.8f;
 								}
 							}
-							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(3.1415927f * alpha / 2.0f)); // a half-sine falloff
+							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(PI * alpha / 2.0f)); // a half-sine falloff
 						}
 					}
 					EndGsCamera(&game->mGs);
@@ -2716,11 +2712,11 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, &width);
 			bob            = 4.0f * std::sinf(game->mStageName.mChars[i].mBob);
 			tilt           = std::sinf(0.7f * game->mStageName.mChars[i].mTilt);
-			swell          = std::sinf(3.1415927f * scale);
-			pop            = 0.2f * swell + std::sinf(1.5707964f * scale);
+			swell          = std::sinf(PI * scale);
+			pop            = 0.2f * swell + std::sinf(HALF_PI * scale);
 			x              = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
 			alpha          = 255.0f * scale;
-			rot            = -(0.017453292f * (10.0f * tilt));
+			rot            = -(DEG2RAD * (10.0f * tilt));
 			y              = 150.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), zero, -zero, rot);

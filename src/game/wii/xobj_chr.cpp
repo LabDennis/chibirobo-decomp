@@ -247,10 +247,10 @@ void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
-UnkStageObj* GetSpawnData(s32 index);
+StagePlacement* GetSpawnData(s32 index);
 s32 IsStageDataLoaded(void);
 EnvInfo* GetStageEnvironment(void);
-UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 void ShowIdlePlayerCopter(XObjCopter* copter);
 void ShowIdlePlayerRadar(XObjRadar* radar);
 extern s32 gSpecialSuitSpawnIds[];
@@ -278,7 +278,7 @@ void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 void PSMTXMultVecArray(const Mtx matrix, const Vec* src, Vec* dst, u32 count);
 void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
 void TryLeaveHang(XActHang* action);
-UnkStageObj* GetStagePlacementByIndex(s32 index);
+StagePlacement* GetStagePlacementByIndex(s32 index);
 f32 fn_800E32B8(WiiPlayerState* chr, s32 anim);
 f32 fn_800D1740(f32 value);
 f32 fn_800D1764(const WiiPlayerState* chr, s32 index);
@@ -3222,7 +3222,7 @@ void* GetObjectFromPool(const CGame* game, s32 pool, s32 index)
 	return game->mXObjs.mPools[pool].Get(index);
 }
 
-UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
+StagePlacement* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 {
 	return info->mPlacement + index;
 }
@@ -5569,7 +5569,7 @@ s32 FrameSoundStopIfPlaying(XObj* object, FrameEventTime* time, const FrameEvent
 static inline s32 ActionTargetPlacement(const XAction& action)
 {
 	if (action.mTarget != NULL) {
-		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
+		StagePlacement* placement = action.mTarget->mCoord.mPlacement;
 		return GetStagePlacementIndex(placement);
 	}
 	return -1;

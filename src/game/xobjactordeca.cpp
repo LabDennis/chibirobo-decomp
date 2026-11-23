@@ -9,7 +9,6 @@
 extern "C" {
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 void ApproachHudValue(f32* value, f32* target, f32 step);
-CVec GetStagePlacementScale(XObj* object);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 }
 
@@ -161,7 +160,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 		case 4: // pick an object up
 			mAttachedId = mCmd[1];
 			mState      = &XObjActorDeca::StatePickUp;
-			ResetActorMovementStep(this);
+			ResetMovementStep();
 			mCmd[0] = 0;
 			break;
 		case 5: // let it go
@@ -183,9 +182,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 			switch (mCmd[1]) {
 			case 1:
 				mActorStatus.mFlags |= 0x100;
-				player->mPlayerStatus.mFlags = 0;
-				player->mPlayerStatus.mFlags |= 0x40000000;
-				player->mPad.mReset = FALSE;
+				player->LockControl();
 				break;
 			default: { // or set him down
 
@@ -197,10 +194,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 				CVec target(position);
 				target.y = 0.0f;
 				player->SetPos(target, 0);
-				player->mPlayerStatus.mFlags = 0;
-				player->mPlayerStatus.mFlags |= 0x20000000;
-				player->mPlayerStatus.mFlags |= 7;
-				player->mPad.mReset = TRUE;
+				player->RestoreControl();
 				HSD_JObjClearMtxFlags(player->mJObj);
 				break;
 			}
@@ -310,7 +304,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 		}
 		mActorStatus.mFlags &= ~0x2000;
 		mState = &XObjActorDeca::StateHold;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		break;
 	}
 }
@@ -368,7 +362,7 @@ void XObjActorDeca::UpdateAfterAnim(u32 frames)
 	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f); // eases toward the yaw target
 	joint.Attach(FindJointByPath(mJObj, (s32[5]) { 0, 1, 0, 0, 0 }, 5));
 	joint.SetRotationY(mJointYaw, 0);
-	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) { // the player rides the mount joint
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) { // the player rides the mount joint
 
 		joint.Attach(FindJointByPath(mJObj, (s32[2]) { 0, 3 }, 2));
 		Mtx scaling, rotation, translation, result, matrix;
@@ -439,7 +433,7 @@ void XObjActorDeca::ResetActorState()
 	mJointYaw           = PI; // the joint starts yawed around
 	mJointYawTarget     = PI;
 	mState              = &XObjActorDeca::StateHold;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 	for (u32 i = 0; i < 20; i++) {
 		mCmd[i] = 0;
 	}

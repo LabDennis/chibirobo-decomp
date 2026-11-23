@@ -97,7 +97,7 @@ struct TrashObj {
 	virtual void IsOutsideCameraDepth();      // _11C
 	virtual void SetCullMode();               // _120
 	virtual void HandleEventCommand();        // _124
-	virtual void GetEventScript();            // _128
+	virtual u8* GetEventScript();             // _128
 	virtual void SetColor();                  // _12C
 	virtual void OnPushDisplacement();        // _130
 	virtual void ReceivePlugPower();          // _134

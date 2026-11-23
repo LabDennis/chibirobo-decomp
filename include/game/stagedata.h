@@ -7,7 +7,7 @@
 // the sdk os headers through CModule
 
 class EnvInfo;
-struct UnkStageObj;
+struct StagePlacement;
 struct CamInfoData;
 struct CamAreaRecord;
 
@@ -18,8 +18,8 @@ struct StageEventObject {
 STATIC_ASSERT(sizeof(StageEventObject) == 8);
 
 extern "C" {
-UnkStageObj* GetSpawnData(s32 index);
-UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+StagePlacement* GetSpawnData(s32 index);
+StagePlacement* GetStageObjectPlacementByIndex(s32 index);
 s32 CallStageModule(s32 function, s32 count, s32* args);
 s32 GetStageCollectionFlagBase(s32 index);
 const StageEventObject* GetStageEventObjectPairs(void);
@@ -31,6 +31,7 @@ u8* GetStageEntryScript(void);
 u8* GetStageBatteryDepletedScript(void);
 u8* GetStageZButtonScript(void);
 u8* GetStageTimerExpiredScript(void);
+u8* GetStageScriptByIndex(s32 index);
 u8* GetStageDataBuffer(void);
 EnvInfo* GetStageEnvironment(void);
 s32 FindStageIndexByName(const char* name);

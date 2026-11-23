@@ -51,7 +51,7 @@ struct HSD_PadStatus {
 	f32 nml_analogA;   // _38
 	f32 nml_analogB;   // _3C
 	u8 cross_dir;      // _40
-	u8 _41;            // _41, set when PADRead reported the port connected
+	u8 connected;      // _41, set when PADRead reported the port connected
 	s8 err;            // _42
 };
 

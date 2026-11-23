@@ -15,14 +15,11 @@ void Attach__5CJObjFP9_HSD_JObj(CJObj* obj, HSD_JObj* joint);
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);
 void PSMTXRotRad(Mtx mtx, char axis, f32 angle);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
-CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
 static inline void LockPlayer(XObjChr* player)
 {
-	player->mPlayerStatus.mFlags = 0;
-	player->mPlayerStatus.mFlags |= 0x40000000;
-	player->mPad.mReset = FALSE;
+	player->LockControl();
 }
 
 /**
@@ -386,7 +383,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 			}
 	}
 	// while carrying the player: park him on the hand joint and turn him toward the joint
-	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
 		s32 held[6] = { 0, 2, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, held, 6));
 		CVec pos = joint.GetPos();
@@ -569,11 +566,8 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 			target.z = pos.z;
 			target.y = mMoveTranslate.y;
 			gGame.GetPlayer()->SetPos(target, 0);
-			XObjChr* player              = gGame.GetPlayer();
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x20000000;
-			player->mPlayerStatus.mFlags |= 7;
-			player->mPad.mReset = TRUE;
+			XObjChr* player = gGame.GetPlayer();
+			player->RestoreControl();
 			break;
 		}
 		}
@@ -595,7 +589,7 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 	case 6: // pick up the object whose id follows
 		mAttachedId = mCmd[1];
 		mState      = &XObjActorPapa::StatePickUp;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		mCmd[0] = 0;
 		break;
 	case 7: // release (unload) the attached object
@@ -626,11 +620,8 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 void XObjActorPapa::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->mPlayerStatus.mFlags & 0x40000000) {
-		player->mPlayerStatus.mFlags = 0;
-		player->mPlayerStatus.mFlags |= 0x20000000;
-		player->mPlayerStatus.mFlags |= 7;
-		player->mPad.mReset = TRUE;
+	if (player->mPlayerStatus.mFlags & XObjChr::ControlLocked) {
+		player->RestoreControl();
 	}
 	mActorStatus.mFlags = 0;
 	mHideKinds.mFlags   = 0;
@@ -641,5 +632,5 @@ void XObjActorPapa::ResetActorState()
 	_C88                = 0;
 	mJointShown         = 1;
 	mState              = &XObjActorPapa::StateNone;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 }

@@ -17,7 +17,7 @@
 #include "game/ut.h"
 #include "game/gmath.h"
 #include "game/video.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include <sysdolphin/rumble.h>
 
 // XObjActor3, the actor most of the stage's small moving things are: which one it is comes from the stage table,
@@ -90,7 +90,6 @@ XObjActor3Func gActor3UpdateHandlers[20] = {
 extern "C" {
 BOOL HSD_AudioSFXCheck(s32 id);
 void HSD_AudioSFXKeyOff(s32 id);
-CVec GetStagePlacementScale(XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 void OSReport(const char* fmt, ...);
 u16 GXGetTexObjWidth(const GXTexObj* obj);
@@ -2038,7 +2037,7 @@ extern "C" void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames)
 {
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
-	if ((actor->mActorFlags.mFlags & 0x40) && (player->mPlayerStatus.mFlags & 0x40000000)) {
+	if ((actor->mActorFlags.mFlags & 0x40) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
 		Mtx scaleMtx;
 		Mtx rotMtx;
 		Mtx transMtx;
@@ -2184,9 +2183,7 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 		switch (actor->mEventArg1) {
 		case 1:
 			actor->mActorFlags.mFlags |= 0x40;
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x40000000;
-			player->mPad.mReset = 0;
+			player->LockControl();
 			break;
 		default:
 			actor->mActorFlags.mFlags &= ~0x40;
@@ -2194,11 +2191,8 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 			joint.Attach(GetJointFromRoot(actor->mJObj, 2, path));
 			CVec pos(GetJointPosition(joint.mJObj));
 			player->SetPos(pos, 0);
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x20000000;
-			player->mPlayerStatus.mFlags |= 7;
-			player->mPad.mReset = 1;
-			HSD_JObj* jobj      = player->mJObj;
+			player->RestoreControl();
+			HSD_JObj* jobj = player->mJObj;
 			HSD_JObjClearMtxFlags(jobj);
 			break;
 		}

@@ -8,6 +8,7 @@ extern "C" {
 #include "game/animframe.h"
 #include "game/ccameraaction.h"
 #include "game/cgame.h"
+#include "game/xobjevent.h"
 #include "game/cgs.h"
 #include "game/cjobjinlineattach.h"
 #include "game/cparticle.h"
@@ -34,7 +35,6 @@ extern "C" {
 extern "C" {
 void PSMTXTrans(Mtx matrix, f32 x, f32 y, f32 z);
 void HSD_MtxGetRotation(Mtx matrix, Vec* rotation);
-u8* GetStageScriptByIndex(s32 index);
 u32 GetPickupRewardValue(s32 index);
 }
 
@@ -49,13 +49,6 @@ u8 lbl_8037DC70[0x140];
 CEvtFlags gItemEventFlags;
 CEvtFlags gCoinEventFlags;
 CEvtFlags gDustEventFlags;
-
-static inline void TriggerEvent(XObj* object, u32 first, u32 second)
-{
-	const void* script = object->GetEventScript();
-	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
-}
 
 static inline BOOL AnimDone(HSD_JObj* joint)
 {
@@ -234,7 +227,7 @@ void XObjFree::ResetObjectState()
 		mLife = (s16)GetObjFlags();
 	mMatAnim = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* animation = mCoord.mPlacement;
+		StagePlacement* animation = mCoord.mPlacement;
 		SetAnim(animation->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
@@ -267,11 +260,11 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 			mStatus.mFlags |= 0x4000000000000000ULL;
 			mEventId = kind;
 			if (mStatus.mFlags & 0x00000C0000000000ULL)
-				TriggerEvent(this, mEventId, mEventArg);
+				TriggerEvent(mEventId, mEventArg);
 		} else
 			return FALSE;
 	} else if (mStatus.mFlags & 0x0000040000000000ULL) {
-		TriggerEvent(this, kind, -1);
+		TriggerEvent(kind, -1);
 	} else
 		return FALSE;
 	return TRUE;
@@ -292,9 +285,9 @@ void XObjDust::OnHitFromPosition(const Vec& position, f32 strength)
 			mEventArg = 2000;
 	} else if (mStatus.mFlags & 0x0000080000000000ULL) {
 		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
-			TriggerEvent(this, -1, 2001);
+			TriggerEvent(-1, 2001);
 		else
-			TriggerEvent(this, -1, 2000);
+			TriggerEvent(-1, 2000);
 	}
 }
 
@@ -414,7 +407,7 @@ extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 			if (aobj != NULL) {
 				if (aobj->flags & 0x44000000) {
 					if (dust->mStatus.mFlags & 0xC0000000000ULL) {
-						TriggerEvent(dust, dust->mEventId, dust->mEventArg);
+						dust->TriggerEvent(dust->mEventId, dust->mEventArg);
 					}
 					return TRUE;
 				}
@@ -500,7 +493,7 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 		PSVECScale((Vec*)&dust->mMoveScale, (Vec*)&dust->mMoveScale, 1.12f * dust->mFade);
 		if (0.0f == PSVECMag((Vec*)&dust->mMoveScale)) { // fully gone
 			if (dust->mStatus.mFlags & 0xC0000000000ULL) {
-				TriggerEvent(dust, dust->mEventId, dust->mEventArg); // flagged dust fires its event on removal
+				dust->TriggerEvent(dust->mEventId, dust->mEventArg); // flagged dust fires its event on removal
 			}
 			return TRUE;
 		}
@@ -554,8 +547,8 @@ BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 		HSD_AObj* aobj = GetAObj(mJObj);
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		if (end > 0.0f) {
-			f32 frame              = fmod((f32)rand(), end); // a random start frame
-			UnkStageObj* placement = mCoord.mPlacement;
+			f32 frame                 = fmod((f32)rand(), end); // a random start frame
+			StagePlacement* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 		}
 		mAnimId2   = mAnimId;
@@ -594,7 +587,7 @@ void XObjDust::ResetObjectState()
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* placement = mCoord.mPlacement;
+		StagePlacement* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
@@ -622,7 +615,7 @@ s32 XObjHBox::OnPlayerContact(s32 unused, s32 flags)
 	mStatus.mFlags |= 0x4000000000000000ULL;
 	mPart.mHit = 1.0f;
 	PlayGameSound(&gGame.mSound, 285, 255);
-	TriggerEvent(this, -1, -1);
+	TriggerEvent(-1, -1);
 	HSD_AudioSFXKeyOff(mPart.mSfx);
 	return 0;
 }
@@ -738,7 +731,7 @@ void XObjHBox::UpdateObject(u32 frames)
 		mFloorMasks[1] = mFloorMasks[0] = 0;
 		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
-			mEventScript = (u32)GetStageScriptByIndex(index);
+			mEventScript = GetStageScriptByIndex(index);
 	} else if (mAnimId == 1) {
 		HSD_AObj* anim = GetAObj(mJObj);
 		if (anim && (anim->flags & 0x44000000)) // animation done
@@ -828,7 +821,7 @@ BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
 	case 0:
 		if (!LoadFromPlacement__4XObjFRC9CoordInfo(this, &info))
 			break;
-		mEventScript = 0;
+		mEventScript = NULL;
 		++mLoadState;
 		// fall through, the part starts reading right away
 	case 1:
@@ -997,22 +990,21 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
  */
 void XObjCoin::UpdateObject(u32 frames)
 {
-	const f32 radians = 0.01745329252f; // degrees to radians
 	if (IsCoinItemInRange(this, 0, 100)) {
 		f32 speed;
 		if (mSpin >= 0.0f) {
-			mSpin += 4.0f * radians;
+			mSpin += 4.0f * DEG2RAD;
 			speed = (1.5f + (f32)sin(mSpin)) / 2.0f;
 		} else {
-			mSpin -= 4.0f * radians;
+			mSpin -= 4.0f * DEG2RAD;
 			speed = -(1.5f + (f32)sin(mSpin)) / 2.0f;
 		}
-		mMoveRotate.y += 8.0f * radians * speed * frames;
+		mMoveRotate.y += 8.0f * DEG2RAD * speed * frames;
 	} else if (IsCoinItemInRange(this, 100, 200)) {
 		if (mSpin >= 0.0f)
-			mMoveRotate.y += 2.0f * radians * frames;
+			mMoveRotate.y += 2.0f * DEG2RAD * frames;
 		else
-			mMoveRotate.y -= 2.0f * radians * frames;
+			mMoveRotate.y -= 2.0f * DEG2RAD * frames;
 	}
 	XObj::UpdateObject(frames);
 	if (mStatus.mFlags & 0x4000000000000000ULL) {
@@ -1045,7 +1037,7 @@ void XObjCoin::UpdateObject(u32 frames)
 		mState      = 1;
 		mFallFrames = 0;
 		mParam0     = 0;
-		mHeading    = radians * (s32)mParam1;
+		mHeading    = DEG2RAD * (s32)mParam1;
 		mFallSpeed  = (s32)mParams[0] / 100.0f;
 		mStatus.mFlags |= 0x100000;
 		break;
@@ -1081,8 +1073,8 @@ void XObjCoin::ResetObjectState()
 	mSpin         = angle * direction;
 	f32 end       = GetAnimEndFrame(mJObj);
 	if (end > 0.0f) {
-		f32 frame              = fmod((f32)rand(), end);
-		UnkStageObj* placement = mCoord.mPlacement;
+		f32 frame                 = fmod((f32)rand(), end);
+		StagePlacement* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 	}
 	mFade     = 0.0f;

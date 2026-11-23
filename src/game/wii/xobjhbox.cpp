@@ -124,7 +124,7 @@ void XObjDust::ResetObjectState()
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (HasModel() && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* placement = mCoord.mPlacement;
+		StagePlacement* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 	}
 }
@@ -143,8 +143,8 @@ BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 		mStatus.mFlags |= 0x18100000ULL;
 		f32 end = GetAnimEndFrame();
 		if (end > 0.0f) {
-			f32 frame              = fmod((f32)rand(), end); // a random start frame
-			UnkStageObj* placement = mCoord.mPlacement;
+			f32 frame                 = fmod((f32)rand(), end); // a random start frame
+			StagePlacement* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, frame, 1.0f, 1.0f, 15.0f);
 		}
 		mAnimId2   = GetAnimId();

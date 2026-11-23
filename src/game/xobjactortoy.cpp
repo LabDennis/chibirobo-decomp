@@ -4,7 +4,7 @@
 #include "game/xchr.h"
 #include "game/cscrn.h"
 #include "game/globals.h"
-#include "game/gmath.h"
+#include "game/placement.h"
 #include "game/hsd_dobj.h"
 #include "game/heldpropmatrix.h"
 #include "game/cgameparticle.h"
@@ -89,7 +89,6 @@ void HandleToyKind25ECommand(XObjActorToy*, u32 frames);
 
 extern "C" f32 GetJointAnimationCurrentFrame(CJObj*);
 extern "C" f32 GetJointAnimationEndFrame(CJObj*);
-extern "C" CVec GetStagePlacementScale(XObj* obj);
 extern "C" void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 
 // the toys' tables, separate arrays in .data: retail's ProcessPendingEvents loads the walk speed by its own
@@ -332,24 +331,6 @@ Vec gToyPlacementPosition;
 Vec gToyPlacementRotation;
 }
 
-static inline Vec ToyPlacementPosition(const CoordInfo& place)
-{
-	Vec pos = gToyPlacementPosition;
-	pos.x   = place.mPlacement->mPos[0] / 100.0f;
-	pos.y   = place.mPlacement->mPos[1] / 100.0f;
-	pos.z   = place.mPlacement->mPos[2] / 100.0f;
-	return Vec(pos);
-}
-
-static inline Vec ToyPlacementRotation(const CoordInfo& place)
-{
-	Vec rot = gToyPlacementRotation;
-	rot.x   = DEG2RAD * place.mPlacement->mRot[0];
-	rot.y   = DEG2RAD * place.mPlacement->mRot[1];
-	rot.z   = DEG2RAD * place.mPlacement->mRot[2];
-	return Vec(rot);
-}
-
 /**
  * @note Address: 0x80121B08
  * @note Size: 0x5A0
@@ -363,11 +344,11 @@ void XObjActorToy::ResetActorState()
 	mMoveSpeed          = 0.0f;
 	mFacing             = 0.0f;
 	mState              = &XObjActorToy::StateCarry;
-	ResetActorMovementStep(this);
+	ResetMovementStep();
 
-	mMoveTranslate.x = ToyPlacementPosition(mCoord).x;
-	mMoveTranslate.y = ToyPlacementPosition(mCoord).y;
-	mMoveTranslate.z = ToyPlacementPosition(mCoord).z;
+	mMoveTranslate.x = PlacementPosition(mCoord, gToyPlacementPosition).x;
+	mMoveTranslate.y = PlacementPosition(mCoord, gToyPlacementPosition).y;
+	mMoveTranslate.z = PlacementPosition(mCoord, gToyPlacementPosition).z;
 	SetPos(mMoveTranslate, 0);
 	for (u32 i = 0; i < 4; ++i) {
 		mPieces[i].mId    = -1;
@@ -393,13 +374,13 @@ void XObjActorToy::ResetActorState()
 		mKindFlags.mFlags &= ~8;
 		break;
 	case 0x156:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	case 0x157:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	case 0x16c:
-		mHeading = ToyPlacementRotation(mCoord).y;
+		mHeading = PlacementRotation(mCoord, gToyPlacementRotation).y;
 		break;
 	}
 	mPendingMove.Set(0.0f, 0.0f, 0.0f);
@@ -438,7 +419,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->_9AC = 20.0f;
 			if (!toy->mActorStatus.Check(0x40) && !toy->mKindFlags.Check(2)) {
 				toy->mState = &XObjActorToy::StateHitRecovery;
-				ResetActorMovementStep(toy);
+				toy->ResetMovementStep();
 				toy->mActorStatus.mFlags |= 0x40;
 			}
 			break;
@@ -1113,7 +1094,7 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 	case 5:
 		object->mAttachedId = object->mCmd[1];
 		object->mState      = &XObjActorToy::StatePickUp;
-		ResetActorMovementStep(object);
+		object->ResetMovementStep();
 		object->mCmd[0] = 0;
 		break;
 	case 6:
@@ -1203,7 +1184,7 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 	case 4:
 		object->mAttachedId = object->mCmd[1];
 		object->mState      = &XObjActorToy::StatePickUp;
-		ResetActorMovementStep(object);
+		object->ResetMovementStep();
 		object->mCmd[0] = 0;
 		break;
 	case 5:
@@ -1251,7 +1232,7 @@ extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
 	case 1:
 		object->mAttachedId = object->mCmd[1];
 		object->mState      = &XObjActorToy::StatePickUp;
-		ResetActorMovementStep(object);
+		object->ResetMovementStep();
 		object->mCmd[0] = 0;
 		break;
 	case 2:
@@ -1319,7 +1300,7 @@ extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
 	case 1:
 		object->mAttachedId = object->mCmd[1];
 		object->mState      = &XObjActorToy::StatePickUp;
-		ResetActorMovementStep(object);
+		object->ResetMovementStep();
 		object->mCmd[0] = 0;
 		break;
 	case 2:
@@ -2011,7 +1992,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		mActorStatus.mFlags &= ~4;
 		mActorStatus.mFlags &= ~0x40;
 		mState = &XObjActorToy::StateCarry;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		break;
 	}
 }
@@ -2107,7 +2088,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 		}
 		mActorStatus.mFlags &= ~0x2000;
 		mState = &XObjActorToy::StateCarry;
-		ResetActorMovementStep(this);
+		ResetMovementStep();
 		break;
 	}
 }

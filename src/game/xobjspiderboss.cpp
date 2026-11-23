@@ -9,7 +9,7 @@
 #include "game/infoscrn.h"
 #include "game/hsd_cobj.h"
 #include "game/cparticle.h"
-#include "game/spiderplacement.h"
+#include "game/placement.h"
 #include "game/animframe.h"
 #include <stdlib.h>
 
@@ -21,7 +21,6 @@ BOOL IsUsingMug(XActLift* lift);
 BOOL IsPlayerFlashingFromHit(XObjChr* player);
 f32 GetPlayerCollisionRadius(XObjChr* player);
 void ApplyPlayerHitReaction(XObjChr* player, BOOL react, BOOL stop, f32 time);
-CVec GetStagePlacementScale(XObj* obj);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 void OSReport(const char*, ...);
 void EnableSpiderBossPartByIndex(s32);
@@ -492,18 +491,13 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 	case 17: // 1 hands the player to the script, else gives control back
 		if (mArgs[0] == 1) {
 			mSpiderStatus.mFlags |= 0x20000;
-			XObjChr* player              = gGame.GetPlayer();
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x40000000;
-			player->mPad.mReset = FALSE;
+			XObjChr* player = gGame.GetPlayer();
+			player->LockControl();
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else {
 			mSpiderStatus.mFlags &= ~0x20000;
-			XObjChr* player              = gGame.GetPlayer();
-			player->mPlayerStatus.mFlags = 0;
-			player->mPlayerStatus.mFlags |= 0x20000000;
-			player->mPlayerStatus.mFlags |= 7;
-			player->mPad.mReset = TRUE;
+			XObjChr* player = gGame.GetPlayer();
+			player->RestoreControl();
 		}
 		mCommand = 0;
 		break;
@@ -726,11 +720,8 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && (spider->mSpiderStatus.mFlags & 0x20000)) { // an empty battery drops the player
 		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 		spider->mSpiderStatus.mFlags &= ~0x20000;
-		XObjChr* player              = gGame.GetPlayer();
-		player->mPlayerStatus.mFlags = 0;
-		player->mPlayerStatus.mFlags |= 0x20000000;
-		player->mPlayerStatus.mFlags |= 7;
-		player->mPad.mReset = TRUE;
+		XObjChr* player = gGame.GetPlayer();
+		player->RestoreControl();
 	}
 }
 

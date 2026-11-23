@@ -64,6 +64,8 @@ public:
 	s32 mToolEffectId;             // _70
 	HSD_Generator* mToolEffect;    // _74
 	BOOL mCheckToolHit;            // _78
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActLift) == 0x7C);
 
@@ -77,6 +79,8 @@ public:
 	Vec mFloorCenter;     // _3C
 	f32 mDistance;        // _48
 	u8 _4C[0x50 - 0x4C];  // _4C
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActHang) == 0x50);
 
@@ -90,6 +94,8 @@ public:
 	f32 mStrength;       // _48
 	f32 mTargetStrength; // _4C
 	f32 mTargetHeight;   // _50
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
@@ -99,6 +105,8 @@ public:
 	Vec mPos;       // _30, where he hangs, in front of the ladder
 	f32 mDist;      // _3C, how far he still has to go to get there
 	f32 mAngle;     // _40, from mPos to where he started
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 
@@ -107,6 +115,8 @@ public:
 	Vec mPos;   // _2C, horizontal approach point
 	f32 mDist;  // _38
 	f32 mAngle; // _3C
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActRope) == 0x40);
 
@@ -116,6 +126,8 @@ public:
 	CVec _34;                  // _34, no access in any edition
 	CVec _44;                  // _44
 	BOOL mPushPositionClamped; // _54
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
 
@@ -134,6 +146,8 @@ public:
 	XActTumbleFade mFade;         // _2C
 	f32 mSavedYaw;                // _40
 	HSD_Generator* mIdleParticle; // _44
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
@@ -142,6 +156,8 @@ public:
 	f32 mTime;  // _2C, how long he can stay up
 	f32 mPhase; // _30, of the bob
 	f32 mBob;   // _34, how high the bob lifts him
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActCopter) == 0x38);
 
@@ -210,6 +226,8 @@ public:
 	                   // from the battery while XObjChr _158A4 is set
 	PopperShots mShots;       // _30
 	XActPopperCharge mCharge; // _8758
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8778);
 
@@ -233,6 +251,8 @@ public:
 	f32 mFade;             // _B0
 	f32 mAngle[2];         // _B4
 	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
+
+	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 

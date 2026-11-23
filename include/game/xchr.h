@@ -101,6 +101,18 @@ struct XObjChrIdleJoint {
 };
 STATIC_ASSERT(sizeof(XObjChrIdleJoint) == 0xC);
 
+enum PlayerAttachment {
+	AttachmentNone       = 0,
+	AttachmentCopter     = 1,
+	AttachmentPopper     = 2,
+	AttachmentRadar      = 3,
+	AttachmentToothbrush = 4,
+	AttachmentSpoon      = 5,
+	AttachmentMug        = 6,
+	AttachmentSquirter   = 7,
+	AttachmentUnequip    = 8
+};
+
 struct PlayerSuits {
 	s32 mLoadStep;
 	s32 mChangeStep;
@@ -158,6 +170,11 @@ STATIC_ASSERT(sizeof(PlayerHeadTurn) == 0x40);
 
 class XObjChr : public XObj {
 public:
+	enum ControlFlag {
+		PlayerControlled = 0x20000000,
+		ControlLocked    = 0x40000000,
+	};
+
 	// _00-_980 = XObj
 	CStatus mPlayerStatus;  // _980
 	CObjVec mMotion;        // _988, cleared whenever he stops
@@ -276,7 +293,23 @@ public:
 	// how far above the floor he is
 	f32 GetHeight() const { return mInAir ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
 
-	// todo: cleanup
+	void LockControl()
+	{
+		mPlayerStatus.mFlags = 0;
+		mPlayerStatus.mFlags |= ControlLocked;
+		mPad.mReset = FALSE;
+	}
+
+	void RestoreControl()
+	{
+		mPlayerStatus.mFlags = 0;
+		mPlayerStatus.mFlags |= PlayerControlled;
+		mPlayerStatus.mFlags |= 7;
+		mPad.mReset = TRUE;
+	}
+
+	void UpdateAttachmentRequest(f32& moveWeight);
+	BOOL IsAttachmentEquipped(PlayerAttachment attachment) const;
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
 
 	XObjChr();

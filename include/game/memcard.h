@@ -52,6 +52,26 @@ public:
 		if (mLog)
 			mCard.GetResultString(mCard.mResult);
 	}
+
+	// TRUE on failure, the preview scan keeps the card mounted for the next slot
+	BOOL ReadSavePreview(SaveFile* file);
+	BOOL ReadSaveFile();
+
+	s32 ReadSaveCopy(SaveFile* file, s32 offset)
+	{
+		mCard.Read(file, sizeof(SaveFile), offset);
+		LogResult();
+		return mCard.mResult;
+	}
+
+	BOOL FailSaveRead(BOOL unmount)
+	{
+		mCard.Close();
+		if (unmount)
+			mCard.Unmount();
+		return TRUE;
+	}
+
 	inline BOOL Probe(s32 channel)
 	{
 		s32 memorySize, sectorSize;
@@ -166,13 +186,18 @@ public:
 STATIC_ASSERT(sizeof(Memcard) == 0x16A24);
 
 extern "C" {
+void InitMemoryCardManager(Memcard* card);
+BOOL LoadMemoryCardResources(Memcard* card);
 void PollMemoryCardWorker(Memcard* card);
 s32 GetSaveFileStage(Memcard* card);
+void CaptureGameSaveData(Memcard* card);
+void RestoreGameSaveData(Memcard* card);
+void RestoreSavedPlayerAndCamera(Memcard* card);
+void BuildSaveBanner(Memcard* card, s32 slot);
+
 s32 ProbeMemoryCardCapacity(Memcard* card, s32 channel, s32* memorySize, s32* sectorSize);
 BOOL StartMemoryCardScan(Memcard* card, s32 channel, BOOL logResults);
 // the card steps, TRUE when one failed. mCard.mResult says why
-BOOL ReadValidatedSaveFileCopy(Memcard* card, struct SaveFile* file);
-BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card);
 BOOL OpenOrCreateSaveFile(Memcard* card, char* name, BOOL create);
 BOOL ScanMemoryCardForSaveFiles(Memcard* card, s32 channel);
 BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel);

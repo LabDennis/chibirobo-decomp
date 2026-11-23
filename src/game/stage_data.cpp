@@ -99,7 +99,7 @@ static inline BOOL IsGlobalScript(const u8* script)
 }
 
 extern "C" {
-UnkStageObj gStageObjectPlacements[] = {
+StagePlacement gStageObjectPlacements[] = {
 	{ 161, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
 	{ 59, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
 	{ 60, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
@@ -2774,7 +2774,7 @@ s32 gObjectCollisionIdRemap[] = {
 #endif
 };
 
-UnkStageObj spawnTable[] = {
+StagePlacement spawnTable[] = {
 	// Title icons and demo.
 	{ 10000, { 0, 0, 0 }, { 0, 0, 0 }, { 150, 150, 150 }, 0, 0, 0, 0x3 },
 	{ 10001, { 0, 0, 0 }, { 0, 0, 0 }, { 150, 150, 150 }, 0, 0, 0, 0x3 },
@@ -3391,7 +3391,7 @@ extern "C" s32 GetItemIconTextureIndex(s32 index)
  * @note Address: 0x8006EDB4
  * @note Size: 0x14
  */
-extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
+extern "C" StagePlacement* GetStageObjectPlacementByIndex(s32 index)
 {
 	return &gStageObjectPlacements[index];
 }
@@ -3400,7 +3400,7 @@ extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
  * @note Address: 0x8006EDC8
  * @note Size: 0x14
  */
-extern "C" UnkStageObj* GetSpawnData(s32 index)
+extern "C" StagePlacement* GetSpawnData(s32 index)
 {
 	return &spawnTable[index];
 }
@@ -3474,8 +3474,8 @@ StageDesc stageTable[] = {
 
 // the Wii keeps the object, spawn and placement tables in its own data; their
 // accessors are the same as the GameCube file's
-extern UnkStageObj gStageObjectPlacements[];
-extern UnkStageObj spawnTable[];
+extern StagePlacement gStageObjectPlacements[];
+extern StagePlacement spawnTable[];
 extern UnkObjData objTable[];
 extern UnkObjData objTableEx[];
 
@@ -3535,7 +3535,7 @@ extern "C" UnkObjData* GetObjData(const CoordInfo* info)
  * @note Address: 0x80092FC0
  * @note Size: 0x14
  */
-extern "C" UnkStageObj* GetSpawnData(s32 index)
+extern "C" StagePlacement* GetSpawnData(s32 index)
 {
 	return &spawnTable[index];
 }
@@ -3544,7 +3544,7 @@ extern "C" UnkStageObj* GetSpawnData(s32 index)
  * @note Address: 0x80092FD4
  * @note Size: 0x14
  */
-extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
+extern "C" StagePlacement* GetStageObjectPlacementByIndex(s32 index)
 {
 	return &gStageObjectPlacements[index];
 }
@@ -3572,11 +3572,11 @@ s32 gObjResourceFileCount;
  */
 void AttrInfo::Init(CoordInfo* info)
 {
-	UnkObjData* objData    = GetObjData(info);
-	UnkStageObj* placement = info->mPlacement;
-	ResourceFile* files    = gObjResourceFiles;
-	mObjData               = objData;
-	mPlacement             = placement;
+	UnkObjData* objData       = GetObjData(info);
+	StagePlacement* placement = info->mPlacement;
+	ResourceFile* files       = gObjResourceFiles;
+	mObjData                  = objData;
+	mPlacement                = placement;
 	if (files == NULL)
 		gObjResourceFiles = new (4) ResourceFile[0x530];
 	if ((mObjData ? mObjData->mSource : NULL) == NULL)
@@ -3625,7 +3625,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		u8* data                      = (u8*)stage->mDataFile.mBuffer;
 		const StageFileHeader* header = (const StageFileHeader*)data;
 		stage->mEnvironment.mData     = data + ReadResourceOffset(header->environment);
-		stage->mPlacements.mPlacement = (UnkStageObj*)(data + ReadResourceOffset(header->placements));
+		stage->mPlacements.mPlacement = (StagePlacement*)(data + ReadResourceOffset(header->placements));
 		stage->mScriptOffsets         = data + ReadResourceOffset(header->scriptOffsets);
 		stage->mSetupScript           = data + ReadResourceOffset(header->setupScript);
 		if (stage->mSetupScript == data) // a zero script offset means no script
@@ -3829,7 +3829,7 @@ extern "C" u8* GetStageDataBuffer()
  * @note Address: 0x8006F4A0
  * @note Size: 0x18
  */
-extern "C" UnkStageObj* GetStagePlacementByIndex(s32 index)
+extern "C" StagePlacement* GetStagePlacementByIndex(s32 index)
 {
 	return gStageResources.mPlacements.mPlacement + index;
 }

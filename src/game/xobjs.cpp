@@ -140,7 +140,7 @@ extern "C" BOOL QueueObjectAnimationRead(XObj* obj, char* path)
 void XObjReadOne::ProcessRequest(XObjReadReq* req)
 {
 	XObj* obj = (XObj*)req->mObj;
-	CoordInfo info(req->mInfo);
+	CoordInfo info(static_cast<StagePlacement*>(req->mInfo));
 	while (!obj->LoadFromPlacement(info)) {
 		OSYieldThread();
 	}
@@ -571,7 +571,7 @@ void XOBJS::ReadAll()
 	mLoadObjectIndex = 0;
 
 	for (s32 i = 0; i < mObjectCount; i++) {
-		UnkStageObj* obj = GetStagePlacementByIndex(i);
+		StagePlacement* obj = GetStagePlacementByIndex(i);
 		CoordInfo info(obj);
 		if ((obj->mFlags & 0x80000000ULL) == 0) { // 0x80000000 (bit 31) skips the placement load
 			while (!mObjects[mLoadObjectIndex]->LoadFromPlacement(info)) { }

@@ -21,7 +21,7 @@ extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 		sprintf(gSaveReadFileName, gSaveFileNameFormat, slot);
 		if (card->OpenStatus(gSaveReadFileName, stat))
 			continue;
-		if (!ReadValidatedSaveFileCopy(card, gSavePreviewFileBuffer)) {
+		if (!card->ReadSavePreview(gSavePreviewFileBuffer)) {
 			const SaveHeader& header                  = gSavePreviewFileBuffer[0].mData.mHeader;
 			card->mAllSaves[slot].mHeader.mSignature  = header.mSignature;
 			card->mAllSaves[slot].mHeader.mVersion    = header.mVersion;

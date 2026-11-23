@@ -50,7 +50,7 @@ extern "C" BOOL ReadMemoryCardSaveFile(Memcard* card, s32 channel, s32 file)
 	sprintf(name, gSaveFileNameFormat, file);
 	if (OpenOrCreateSaveFile(card, name, FALSE))
 		return TRUE;
-	if (ReadValidatedSaveIntoCardBuffer(card))
+	if (card->ReadSaveFile())
 		return TRUE;
 	if (card->Close())
 		return TRUE;

@@ -922,7 +922,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 			index = id;
 		}
 		CEvt_ForgetObjId(id);
-		UnkStageObj* entry = GetStagePlacementByIndex(index);
+		StagePlacement* entry = GetStagePlacementByIndex(index);
 		entry->mFlags |= 0x80000000ULL;
 	}
 	return 0;

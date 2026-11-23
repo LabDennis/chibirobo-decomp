@@ -546,7 +546,7 @@ extern "C" BOOL LoadGlobalResourceData()
 
 #if !defined(VERSION_R24J01)
 extern "C" {
-UnkStageObj gStageObjectPlacements[] = {
+StagePlacement gStageObjectPlacements[] = {
 	{ 161, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
 	{ 59, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
 	{ 60, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },

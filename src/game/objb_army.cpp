@@ -188,7 +188,7 @@ void UpdateArmyShot(XObjArmyShot* shot, u32 frames)
 		} else {
 			XObjChr* player = gGame.GetPlayer();
 			target          = player->mMoveTranslate;
-			height          = player->GetAttachment() != 6 ? 10.0f : 28.0f; // attachment 6 raises the hit height
+			height          = player->GetAttachment() != AttachmentMug ? 10.0f : 28.0f; // attachment 6 raises the hit height
 		}
 		f32 dy = target.y - shot->mPos.y;
 		if (dy < 0.0f) {

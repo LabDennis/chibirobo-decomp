@@ -9,9 +9,9 @@ struct MessageFormatBuffers {
 	char text[128];
 };
 
-static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
+static inline void CopyMessageBytes(u8*& dst, u8*& src, int length)
 {
-	for (int i = 0; i < N; ++i)
+	for (int i = 0; i < length; ++i)
 		*dst++ = *src++;
 }
 
@@ -19,22 +19,19 @@ static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
  * @note Address: 0x800869AC
  * @note Size: 0x578
  */
-// NONMATCHING: Europe's copy stores the digit separator as it is, the build sign-extends it first and keeps the
-// counters in other registers. America's matches
-extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
+void CMsgData::Format(u8* script, MsgFormatArgs* args)
 {
-	u8* src = input;
-	u8* dst = output;
+	u8* src = script;
+	u8* dst = mText;
 	MessageFormatBuffers buffers;
 	BOOL done = FALSE;
 	while (!done) {
 		switch (*src) {
-		case 0:
+		case MSG_CODE_END:
 			*dst = 0;
 			done = TRUE;
 			break;
-		case 12: { // %fmt% inline format; 'z' makes it wide, "'" groups digits
-
+		case MSG_CODE_FORMAT: { // %fmt% inline format; 'z' makes it wide, "'" groups digits
 			char* out = buffers.format;
 			bool wide = false;
 #if !defined(VERSION_JP)
@@ -42,7 +39,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 #endif
 			++src;
 			for (;;) {
-				if (*src == 12)
+				if (*src == MSG_CODE_FORMAT)
 					break;
 				if (*src == 'z') {
 					wide = true;
@@ -104,7 +101,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 					}
 					buffers.format[count + 1] = 0;
 				}
-				// When the formatted value is empty, retail reverses the format string left in the scratch buffer.
+				// an empty value leaves the format string in the scratch buffer
 				count = strlen(buffers.format);
 				for (i = 0; i < count; ++i)
 					buffers.text[i] = buffers.format[(count - 1) - i];
@@ -119,46 +116,46 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			dst += strlen((char*)dst);
 			break;
 		}
-		case 10:
-		case 11:
-		case 24:
+		case MSG_CODE_NEWLINE:
+		case MSG_CODE_NEWLINE_VT:
+		case MSG_CODE_STAY:
 			CopyMessageBytes(dst, src, 1);
 			break;
-		case 1:
-		case 2:
-		case 5:
-		case 13:
-		case 14:
-		case 16:
-		case 17:
-		case 19:
+		case MSG_CODE_SPEED:
+		case MSG_CODE_WAIT:
+		case MSG_CODE_VOICE:
+		case MSG_CODE_SIZE:
+		case MSG_CODE_COLOR:
+		case MSG_CODE_LAYOUT:
+		case MSG_CODE_ICON:
+		case MSG_CODE_CENTER:
 			CopyMessageBytes(dst, src, 2);
 			break;
-		case 20:
-		case 23:
+		case MSG_CODE_ROTATE:
+		case MSG_CODE_QUESTION:
 			CopyMessageBytes(dst, src, 3);
 			break;
-		case 21:
+		case MSG_CODE_SCALE:
 			CopyMessageBytes(dst, src, 5);
 			break;
-		case 18:
-		case 22:
+		case MSG_CODE_SHAKE:
+		case MSG_CODE_NUM_INPUT:
 			CopyMessageBytes(dst, src, 4);
 			break;
-		case 6:
+		case MSG_CODE_DEFAULT:
 			CopyMessageBytes(dst, src, 6);
 			break;
-		case 3:
+		case MSG_CODE_ANIM:
 			CopyMessageBytes(dst, src, 8);
 			break;
-		case 4:
+		case MSG_CODE_SFX:
 			CopyMessageBytes(dst, src, 6);
-			if (dst[-1] == 2 || dst[-1] == 3)
+			if (dst[-1] == MSG_SFX_FADE_OUT || dst[-1] == MSG_SFX_FADE_IN)
 				CopyMessageBytes(dst, src, 2);
-			else if (dst[-1] == 4)
+			else if (dst[-1] == MSG_SFX_FADE)
 				CopyMessageBytes(dst, src, 3);
 			break;
-		case 15:
+		case MSG_CODE_RGBA:
 			CopyMessageBytes(dst, src, 5);
 			break;
 		default:
