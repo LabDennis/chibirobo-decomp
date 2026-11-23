@@ -53,7 +53,6 @@ void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* target, s16 useValue, 
 void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
 void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
 void fn_800E3AE4(WiiPlayerState* chr, f32 frame);
-f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index);
 s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred);
 BOOL IsLiftTargetPlug(XActLift* act);
 void ApplyPlayerItemTintToTarget(XAction* act);
@@ -1977,7 +1976,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f3
 				act->mOwner->SetAnim(0x13, TRUE, act->mOwner->GetAnimEndFrame(), 1.0f, 1.0f, 15.0f);
 				act->mOwner->UpdateAnim(0.0f);
 				CVec local = act->mOwner->GetNodeTranslate("second_null");
-				CVec delta = act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos();
+				CVec delta = act->mOwner->GetWorldPos("second_null") - *act->mOwner->GetPos();
 				delta.y    = -delta.y;
 				act->mOwner->SetPos(*act->mOwner->GetPos() + delta);
 				SyncRopePosition(act->mOwner);
@@ -2016,14 +2015,13 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f3
 				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
 			}
 		} else if (model->IsAnimDone()) {
-			f32 turn = act->mOwner->GetNodeRotateY("second_null");
-			act->mOwner->SetRotationY(act->mOwner->GetNodeRotateY() + turn);
+			nw4r::g3d::ResNode node = act->mOwner->FindResNode("second_null"); // looked up but unused, as in retail
+			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
 			act->mOwner->SetAnim(0x13, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			act->mOwner->SetAnim(0x13, TRUE, act->mOwner->GetAnimEndFrame(), 1.0f, 1.0f, 15.0f);
 			act->mOwner->UpdateAnim(0.0f);
 			CVec local = act->mOwner->GetNodeTranslate("second_null");
-			act->mOwner->SetPos(*act->mOwner->GetPos() + (act->mOwner->GetJointWorldPos("second_null") - *act->mOwner->GetPos()));
-			SyncRopePosition(act->mOwner);
+			CVec delta = act->mOwner->GetWorldPos("second_null") - *act->mOwner->GetPos(); // computed but unused, as in retail
 			act->mOwner->GetResNode("second_null").SetTranslate(local.x, local.y, local.z);
 			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			act->mState         = 5;
@@ -2051,7 +2049,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f3
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y);
 			act->mOwner->SetAnim(0x14, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			act->mOwner->UpdateAnim(0.0f);
-			act->mOwner->SetPos(*act->mOwner->GetPos() + (*act->mOwner->GetPos() - act->mOwner->GetJointWorldPos("second_null")));
+			act->mOwner->SetPos(*act->mOwner->GetPos() + (*act->mOwner->GetPos() - act->mOwner->GetWorldPos("second_null")));
 			SyncRopePosition(act->mOwner);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
@@ -2079,7 +2077,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f3
 			act->mOwner->SetPos(act->mOwner->GetJointWorldPos("second_null"));
 			SyncRopePosition(act->mOwner);
 			act->mOwner->GetResNode("second_null").SetTranslate(0.0f, 0.0f, 0.0f);
-			StandAfterLift(act->mOwner);
+			StandAfterLift(act->mOwner, 1.0f);
 			act->mState  = 0;
 			act->mTarget = NULL;
 		}
@@ -2120,7 +2118,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f3
 		break;
 	case 11:
 		if (model->IsAnimDone()) {
-			StandAfterLift(act->mOwner);
+			StandAfterLift(act->mOwner, 1.0f);
 			act->mState = 0;
 		}
 		break;
