@@ -1,0 +1,818 @@
+#include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
+#include "game/wii/xobj.h"
+#include "game/gmath.h"
+#include "arithmetic.h"
+#include <math.h>
+#include <stdlib.h>
+
+extern "C" {
+void ApproachHudValue(f32* value, f32* target, f32 step);
+EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+void HandleToyKind0FCommand(XObjActorToy* toy, u32 frames);
+void HandleToyKind110Command(XObjActorToy* toy, u32 frames);
+void HandleToyKind156Command(XObjActorToy* toy, u32 frames);
+void HandleToyKind16CCommand(XObjActorToy* toy, u32 frames);
+void HandleToyKind159Command(XObjActorToy* toy, u32 frames);
+void HandleToyKind1FCCommand(XObjActorToy* toy, u32 frames);
+void HandleToyScreenShakeCommand(XObjActorToy* toy, u32 frames);
+void HandleToyKind25ECommand(XObjActorToy* toy, u32 frames);
+extern s32 gRefreshRate;
+}
+
+static f32 sToyMoveSpeeds[60] = {
+	0.0f,  0.1f,  0.1f,  0.1f,  0.2f,  0.2f,  0.3f,  0.3f,  0.35f, 0.35f, 0.4f,  0.4f,  0.4f,  0.43f, 0.43f,
+	0.47f, 0.48f, 0.45f, 0.44f, 0.43f, 0.4f,  0.4f,  0.4f,  0.4f,  0.37f, 0.36f, 0.31f, 0.3f,  0.3f,  0.3f,
+	0.3f,  0.3f,  0.3f,  0.3f,  0.3f,  0.35f, 0.35f, 0.43f, 0.43f, 0.48f, 0.48f, 0.49f, 0.49f, 0.49f, 0.47f,
+	0.47f, 0.46f, 0.43f, 0.41f, 0.38f, 0.36f, 0.36f, 0.36f, 0.36f, 0.36f, 0.3f,  0.24f, 0.2f,  0.12f, 0.0f,
+};
+
+static const Vec sToyBurstScales[10] = {
+	{ 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f },
+	{ 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f },
+};
+
+static inline XObjActorToy* GetToy(s32 index)
+{
+	return (XObjActorToy*)gGame.mXObjs.mPools[10].Get(index);
+}
+
+static inline f32 GetToyHorizontalDistance(Vec* first, Vec* second)
+{
+	f32 dx = first->x - second->x;
+	f32 dy = 0.0f;
+	f32 dz = first->z - second->z;
+	return FSqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// NONMATCHING: toy 0x0F's StateHitRecovery pointer needs a Toy-only mState declaration;
+// putting it in the shared XObjActor regresses the other actor constructors. The remaining
+// differences are ResNode/temporary layout. Wii sound ids and the first three-object search
+// come from retail.
+void XObjActorToy::ProcessPendingEvents(u32 frames)
+{
+	XObjActorToy* toy = this;
+	if (toy->mActorStatus.Check(2)) {
+		toy->mActorStatus.mFlags &= ~2;
+		toy->_9CC = 5 * frames;
+		switch (toy->GetKind()) {
+		case 0xF:
+			toy->_9D4 = 20.0f;
+			if (!toy->mActorStatus.Check(0x40) && !toy->mKindFlags.Check(2)) {
+				toy->ResetMovementStep();
+				toy->mActorStatus.mFlags |= 0x40;
+				toy->OnMoveRequest();
+			}
+			break;
+		case 0x6F:
+			if (!toy->mKindStep) {
+				toy->mKindStep = 1;
+			}
+			break;
+		case 0x110:
+			toy->_9CC = 30 * frames;
+			break;
+		case 0x117:
+			toy->_9D4 = 3.0f;
+			break;
+		case 0x156:
+			toy->_9D4 = 2.0f;
+			break;
+		case 0x158:
+			break;
+		case 0x159:
+			toy->_9D4 = 3.0f;
+			break;
+		case 0x16C:
+			break;
+		}
+		if (--toy->_9CC < 0) {
+			toy->_9D4 = 1.0f;
+			toy->_9CC = 0;
+		}
+		f32 step = Abs((toy->_9D4 - toy->_9D0) / 4.0f);
+		if (step < 0.01f) {
+			step = 0.01f;
+		}
+		ApproachHudValue(&toy->_9D0, &toy->_9D4, step);
+
+		switch (toy->GetKind()) {
+		case 0x6F:
+		case 0x117:
+		case 0x159:
+		case 0x1D3:
+		case 0x1FB:
+		case 0x1FC:
+		case 0x25E:
+		case 0x26C:
+		case 0x26D:
+		case 0x485:
+			break;
+		case 0xF: {
+			if (toy->mSfxActors[0].GetHandle() == NULL && (toy->mStatus.mFlags & 0x10000) && gGame.mMovie.mState == 0) {
+				CSound3DActor* actor = toy->mSfxActors[0].mActor;
+				if (actor != NULL && actor->StartSound(&actor->mHandle, 0x165)) {
+					actor->mHandle.SetVolume(1.0f, 0);
+				}
+			}
+			if ((toy->mSfxActors[0].GetHandle() == NULL || !(toy->mStatus.mFlags & 0x10000)) && gGame.mMovie.mState != 0
+			    && toy->mSfxActors[0].mActor != NULL) {
+				toy->mSfxActors[0].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+			}
+			if (toy->mFirst.mStatus.mFlags & 0x10000) {
+				toy->mFirst.UpdateObject(frames);
+			}
+			if (toy->mSecond.mStatus.mFlags & 0x10000) {
+				toy->mSecond.UpdateObject(frames);
+			}
+			s32 anim = toy->GetAnimId();
+			switch (toy->mShownPart) {
+			case 0:
+				if (anim == 0x13 || anim == 0x3FB) {
+					toy->mFirst.SetPos(*toy->GetPos());
+					toy->mFirst.SetRotationY(toy->GetRotY());
+					toy->mFirst.mStatus.mFlags |= 0x10000;
+					toy->mFirst.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mShownPart = 1;
+				} else if (anim == 0xE || anim == 0x14 || anim == 0x3F6 || anim == 0x3FC) {
+					toy->mSecond.SetPos(*toy->GetPos());
+					toy->mSecond.SetRotationY(toy->GetRotY());
+					toy->mSecond.SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mSecond.mStatus.mFlags |= 0x10000;
+					toy->mShownPart = 2;
+				}
+				break;
+			case 1:
+				toy->mFirst.SetPos(*toy->GetPos());
+				toy->mFirst.SetRotationY(toy->GetRotY());
+				if (anim != 0x13 && anim != 0x3FB) {
+					toy->mFirst.mStatus.mFlags &= ~0x10000ULL;
+					toy->mShownPart = 0;
+				}
+				break;
+			case 2:
+				toy->mSecond.SetPos(*toy->GetPos());
+				toy->mSecond.SetRotationY(toy->GetRotY());
+				if (toy->GetAnimEndFrame() - frames <= toy->GetAnimFrame()) {
+					toy->mSecond.mStatus.mFlags &= ~0x10000ULL;
+					toy->mShownPart = 0;
+				}
+				break;
+			}
+			break;
+		}
+		case 0x110:
+			if (!(toy->mKindFlags.mFlags & 1)) {
+				break;
+			}
+			switch (toy->mKindStep) {
+			case 0:
+				break;
+			case 1:
+				++toy->mKindStep;
+				toy->mMovePhase = 0;
+				toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			// fall through
+			case 2:
+				if (toy->mKindStep == 2) {
+					toy->mMovePhase += 2;
+				}
+				toy->mMoveSpeed = sToyMoveSpeeds[toy->mMovePhase % 60];
+				if (PSVECDistance(&toy->mMoveTranslate, &CVec(toy->mVelocity)) < 0.1f) {
+					toy->mMoveSpeed = 0.0f;
+					toy->mKindStep  = 0;
+					toy->mKindFlags.mFlags &= ~1;
+					toy->SetPos(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z);
+					toy->SetMoveDir(&CVec(toy->mMoveTranslate), 0.0f);
+				} else {
+					toy->SetMoveDir(&CVec(toy->mVelocity), toy->mMoveSpeed);
+					CVec destination(toy->mVelocity);
+					toy->SetRotationY((f32)atan2(destination.x - toy->GetPos()->x, destination.z - toy->GetPos()->z));
+				}
+				break;
+			}
+			break;
+		case 0x156:
+			if (toy->mKindFlags.mFlags & 1) {
+				switch (toy->mKindStep) {
+				case 0:
+					if (toy->mMoveTranslate.y <= 2.0f) {
+						++toy->mKindStep;
+						toy->mStatus.mFlags &= ~0x10000ULL;
+					}
+					break;
+				case 1:
+				case 2:
+					break;
+				}
+			}
+			break;
+		case 0x157:
+			switch (toy->mKindStep) {
+			case 2:
+				break;
+			case 0:
+				if (toy->mStatus.mFlags & 0x1000000000000000ULL) {
+					toy->mActorStatus.mFlags |= 0xC;
+					toy->mMoveSpeed  = 0.5f;
+					toy->mVelocity.x = 14.0f * (f32)sin(toy->mHeading) + toy->mMoveTranslate.x;
+					toy->mVelocity.y = toy->mMoveTranslate.y;
+					toy->mVelocity.z = 14.0f * (f32)cos(toy->mHeading) + toy->mMoveTranslate.z;
+					++toy->mKindStep;
+					PlayWiiSoundEffect(&gGame.mSound, 0x3D5, 1.0f, 0.0f);
+					for (s32 i = 0; i < 3; ++i) {
+						XObjActorToy* other = GetToy(i);
+						if (other->GetKind() == 0x156) {
+							other->mKindFlags.mFlags |= 0x10;
+							break;
+						}
+					}
+				}
+				break;
+			case 1:
+				if (GetToyHorizontalDistance(&toy->mVelocity, &toy->mMoveTranslate) < 1.0f) {
+					toy->mActorStatus.mFlags &= ~0xC;
+					toy->mMoveSpeed = 0.0f;
+				}
+				if (toy->mMoveTranslate.y <= 2.0f) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->mStatus.mFlags &= ~0x10000ULL;
+					for (s32 i = 0; i < 15; ++i) {
+						XObjActorToy* other = GetToy(i);
+						if (other->GetKind() == 0x16C) {
+							other->mStatus.mFlags |= 0x10000;
+							other->SetTranslateX(toy->mMoveTranslate.x);
+							other->SetTranslateY(toy->mMoveTranslate.y);
+							other->SetTranslateZ(toy->mMoveTranslate.z);
+							other->mKindFlags.mFlags |= 4;
+							PlayWiiSoundEffect(&gGame.mSound, 0x3D4, 1.0f, 0.0f);
+							break;
+						}
+					}
+				}
+				break;
+			}
+			break;
+		case 0x16C:
+			switch (toy->mKindStep) {
+			case 0:
+				if (toy->mKindFlags.Check(4)) {
+					toy->mKindFlags.mFlags &= ~4;
+					toy->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					++toy->mKindStep;
+				}
+				break;
+			case 1:
+				if (toy->GetAnimEndFrame() - frames <= toy->GetAnimFrame()) {
+					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+				}
+				break;
+			case 2:
+				if (toy->mKindFlags.Check(8)) {
+					toy->mKindFlags.mFlags &= ~8;
+					toy->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mKindStep    = 10;
+					toy->mKindCounter = 0;
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[0];
+						UpdateEffectMtx(effect);
+					}
+				}
+				break;
+			case 10:
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[1];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 11:
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[2];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 12:
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[3];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 13:
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[4];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 14:
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[5];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 15:
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[6];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 16:
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[7];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 17:
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[8];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 18:
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					PlayWiiSoundEffect(&gGame.mSound, 0x4B2, 1.0f, 0.0f);
+					EffectInstance* effect = fn_800A11A4((EffectInstance*)&gGame.mEvtPtcl, 0x5B, 0);
+					if (effect != NULL) {
+						effect->pos   = toy->mMoveTranslate;
+						effect->rot   = (Vec) { 0.0f, 0.0f, 0.0f };
+						effect->scale = sToyBurstScales[9];
+						UpdateEffectMtx(effect);
+					}
+					return;
+				}
+				break;
+			case 19:
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				toy->GetResNodeOrFirst(0);
+				++toy->mKindCounter;
+				if ((s32)toy->mKindCounter > 4) {
+					++toy->mKindStep;
+					toy->mKindCounter = 0;
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->GetResNodeOrFirst(0);
+					toy->mStatus.mFlags &= ~0x10000ULL;
+					return;
+				}
+				break;
+			case 20:
+				break;
+			}
+			break;
+		}
+
+		switch (toy->GetKind()) {
+		case 0x158:
+		case 0x1D3:
+		case 0x1FB:
+		case 0x26D:
+			break;
+		case 0xF:
+			HandleToyKind0FCommand(toy, frames);
+			break;
+		case 0x6F:
+			switch (toy->mCmd[0]) {
+			case 0:
+				break;
+			case 1:
+				switch (toy->mCmd[1]) {
+				case 0:
+					toy->mKindFlags.mFlags |= 1;
+					toy->mCmd[0] = 0;
+					break;
+				case 1:
+					toy->mKindFlags.mFlags &= ~1;
+					toy->mCmd[0] = 0;
+					break;
+				}
+				break;
+			}
+			break;
+		case 0x110:
+			HandleToyKind110Command(toy, frames);
+			break;
+		case 0x117:
+			switch (toy->mCmd[0]) {
+			case 0:
+				break;
+			case 1:
+				switch (toy->mCmd[1]) {
+				case 8:
+					toy->mKindFlags.mFlags |= 8;
+					break;
+				default:
+					toy->mKindFlags.mFlags &= ~8;
+					break;
+				}
+				toy->mCmd[0] = 0;
+				break;
+			}
+			break;
+		case 0x156:
+			HandleToyKind156Command(toy, frames);
+			break;
+		case 0x157:
+			switch (toy->mCmd[0]) {
+			case 0:
+				break;
+			case 1:
+				if (toy->mKindFlags.mFlags & 2) {
+					gEventVars.mVars[toy->mCmd[1]] = 1;
+				}
+				toy->mCmd[0] = 0;
+				break;
+			}
+			break;
+		case 0x16C:
+			HandleToyKind16CCommand(toy, frames);
+			break;
+		case 0x159:
+			HandleToyKind159Command(toy, frames);
+			break;
+		case 0x1FC:
+			HandleToyKind1FCCommand(toy, frames);
+			break;
+		case 0x26C:
+		case 0x485:
+			HandleToyScreenShakeCommand(toy, frames);
+			break;
+		case 0x25E:
+			HandleToyKind25ECommand(toy, frames);
+			break;
+		}
+	}
+}
+
+static inline void ScaleToyCallbackResult(nw4r::g3d::ChrAnmResult* result, f32 scale)
+{
+	Mtx mtx;
+	Mtx scaling;
+	PSMTXCopy(result->mpMtx, mtx);
+	PSMTXScale(scaling, scale, scale, scale);
+	PSMTXConcat(mtx, scaling, mtx);
+	PSMTXCopy(mtx, result->mpMtx);
+}
+
+static inline void RotateToyCallbackResult(nw4r::g3d::ChrAnmResult* result, char axis, f32 angle)
+{
+	Mtx mtx;
+	Mtx rotation;
+	PSMTXCopy(result->mpMtx, mtx);
+	PSMTXRotRad(rotation, axis, angle);
+	PSMTXConcat(mtx, rotation, mtx);
+	PSMTXCopy(mtx, result->mpMtx);
+}
+
+static inline void TranslateToyCallbackResult(nw4r::g3d::ChrAnmResult* result, f32 y, f32 z)
+{
+	Mtx mtx;
+	Mtx translation;
+	PSMTXCopy(result->mpMtx, mtx);
+	PSMTXTrans(translation, 0.0f, y, z);
+	PSMTXConcat(mtx, translation, mtx);
+	PSMTXCopy(mtx, result->mpMtx);
+}
+
+static f32 sToy6FAngle;
+static f32 sToy1FCTime;
+
+// NONMATCHING: matrix temporary lifetimes and node-id assertion ordering still differ.
+void XObjActorToy::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	const u16 nodeId = pFuncObj->GetCallbackNodeID();
+	switch (GetKind()) {
+	case 0xF:
+		if (nodeId == 0) {
+			if (mActorStatus.mFlags & 0x10) {
+				Mtx mtx;
+				PSMTXCopy(pResult->mpMtx, mtx);
+				_2204 += mFallSpeed;
+				if (mMoveTranslate.y + _2204 <= mGroundHeight) {
+					mActorStatus.mFlags &= ~0x18;
+					mStatus.mFlags &= ~0x30000ULL;
+					mFallSpeed = 0.0f;
+				} else {
+					Mtx translation;
+					PSMTXTrans(translation, 0.0f, 0.0f, 0.0f);
+					PSMTXConcat(mtx, translation, mtx);
+					PSMTXCopy(mtx, pResult->mpMtx);
+				}
+			}
+			if (_21F0 != 0.0f) {
+				RotateToyCallbackResult(pResult, 'y', _21F4);
+			}
+			if (_9D0 != 1.0f) {
+				nw4r::g3d::ResNode node = GetResNode("r_eye_a");
+				if (node.IsValid()) {
+					pFuncObj->SetCallbackNodeID(node.GetID());
+				}
+			}
+		} else {
+			ScaleToyCallbackResult(pResult, _9D0);
+		}
+		break;
+	case 0x6F:
+		if (nodeId == 0) {
+			if (mKindStep == 1) {
+				nw4r::g3d::ResNode node = GetResNode("cube212");
+				if (node.IsValid()) {
+					pFuncObj->SetCallbackNodeID(node.GetID());
+				}
+			}
+		} else {
+			sToy6FAngle += 0.4f;
+			if (sToy6FAngle >= TWO_PI) {
+				mKindStep   = 0;
+				sToy6FAngle = 0.0f;
+			}
+			RotateToyCallbackResult(pResult, 'z', sToy6FAngle);
+		}
+		break;
+	case 0x117:
+		if (nodeId == 0) {
+			if (_9D0 != 1.0f) {
+				nw4r::g3d::ResNode node = GetResNode("_02tai");
+				if (node.IsValid()) {
+					pFuncObj->SetCallbackNodeID(node.GetID());
+				}
+			}
+		} else {
+			ScaleToyCallbackResult(pResult, _9D0);
+		}
+		break;
+	case 0x156: {
+		nw4r::g3d::ResNode first  = GetResNode("cube21");
+		nw4r::g3d::ResNode second = GetResNode("cube3");
+		if (nodeId == 0) {
+			if (_9D0 != 1.0f && first.IsValid()) {
+				pFuncObj->SetCallbackNodeID(first.GetID());
+			}
+		} else if (nodeId == first.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+			if (second.IsValid()) {
+				pFuncObj->SetCallbackNodeID(second.GetID());
+			}
+		} else if (nodeId == second.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+		}
+		break;
+	}
+	case 0x159: {
+		nw4r::g3d::ResNode first  = GetResNode("L_tuno");
+		nw4r::g3d::ResNode second = GetResNode("R_tuno");
+		if (nodeId == 0) {
+			if (_9D0 != 1.0f && second.IsValid()) {
+				pFuncObj->SetCallbackNodeID(second.GetID());
+			}
+		} else if (nodeId == second.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+			if (first.IsValid()) {
+				pFuncObj->SetCallbackNodeID(first.GetID());
+			}
+		} else if (nodeId == first.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+		}
+		break;
+	}
+	case 0x1FB: {
+		nw4r::g3d::ResNode first  = GetResNode("hand3");
+		nw4r::g3d::ResNode second = GetResNode("hand5");
+		if (nodeId == 0) {
+			if (_9D0 != 1.0f && first.IsValid()) {
+				pFuncObj->SetCallbackNodeID(first.GetID());
+			}
+		} else if (nodeId == first.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+			if (second.IsValid()) {
+				pFuncObj->SetCallbackNodeID(second.GetID());
+			}
+		} else if (nodeId == second.GetID()) {
+			ScaleToyCallbackResult(pResult, _9D0);
+		}
+		break;
+	}
+	case 0x1FC: {
+		nw4r::g3d::ResNode first  = GetResNode("obj6");
+		nw4r::g3d::ResNode second = GetResNode("obj7");
+		if (nodeId == 0) {
+			switch (mKindStep) {
+			case 1:
+				++mKindStep;
+				break;
+			case 2:
+				sToy1FCTime += 0.16f;
+				if (sToy1FCTime >= 1.0f) {
+					++mKindStep;
+				}
+				break;
+			case 3:
+				sToy1FCTime -= 0.16f;
+				if (sToy1FCTime <= 0.0f) {
+					mKindStep = 0;
+				}
+				break;
+			}
+			if (first.IsValid()) {
+				pFuncObj->SetCallbackNodeID(first.GetID());
+			}
+		} else if (nodeId == first.GetID()) {
+			if (mKindStep >= 2 && mKindStep < 4) {
+				TranslateToyCallbackResult(pResult, 0.0f, 16.0f * sToy1FCTime);
+			}
+			if (second.IsValid()) {
+				pFuncObj->SetCallbackNodeID(second.GetID());
+			}
+		} else if (nodeId == second.GetID()) {
+			if (mKindStep >= 2 && mKindStep < 4) {
+				TranslateToyCallbackResult(pResult, 0.0f, 16.0f * sToy1FCTime);
+			}
+		}
+		break;
+	}
+	case 0x26C:
+	case 0x485: {
+		nw4r::g3d::ResNode node = GetResNode("obj2");
+		if (nodeId == 0) {
+			if (node.IsValid()) {
+				pFuncObj->SetCallbackNodeID(node.GetID());
+			}
+		} else if (nodeId == node.GetID()) {
+			switch (mKindStep) {
+			case 0:
+				if (_9CC > 0) {
+					++mKindStep;
+				}
+				break;
+			case 1:
+				TranslateToyCallbackResult(pResult, -_9D0, 0.0f);
+				if (_9D0 == 1.0f) {
+					mKindStep = 0;
+				}
+				break;
+			}
+		}
+		break;
+	}
+	case 0x26D: {
+		nw4r::g3d::ResNode node = GetResNode("obj27");
+		if (nodeId == 0) {
+			if (node.IsValid()) {
+				pFuncObj->SetCallbackNodeID(node.GetID());
+			}
+		} else if (nodeId == node.GetID()) {
+			switch (mKindStep) {
+			case 1:
+				++mKindStep;
+				mFacing = 0.0f;
+				break;
+			case 2:
+				mFacing += 0.2f;
+				if (mFacing >= TWO_PI) {
+					mKindStep = 0;
+					mFacing   = 0.0f;
+				}
+				RotateToyCallbackResult(pResult, 'y', mFacing);
+				break;
+			}
+		}
+		break;
+	}
+	}
+}

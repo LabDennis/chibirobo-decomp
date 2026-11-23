@@ -1938,25 +1938,24 @@ public:
 	void ResetMovementStep();
 	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
-
-	f32 mHeading;           // _9A8, the way it walks
-	f32 mMoveSpeed;         // _9AC, move speed
-	f32 mFacing;            // _9B0, the yaw the model is turned to
-	f32 _9B4;               // _9B4, set to PI in ResetForNewGame
-	s32 mKindStep;          // _9B8, the kind's own step
-	u32 mKindCounter;       // _9BC, cleared with mKindStep
-	CStatus32 mActorStatus; // _9C0, 2 a sound is due, 0x2000 busy
-	u32 _9C8;               // _9C8
-	s32 _9CC;               // _9CC
-	f32 _9D0;               // _9D0, set to 1.0 on reset
-	f32 _9D4;               // _9D4, set to 1.0 on reset
-	Vec mHitPos;            // _9D8
-	Vec mHomePos;           // _9E4, where a knocked toy stood before it hopped away
-	Vec mVelocity;          // _9F0
-	f32 mHitStrength;       // _9FC
-	f32 mFallSpeed;         // _A00, vertical speed added to y each tick
-	f32 mGroundHeight;      // _A04, floor height under the actor plus the kind's offset
-	s32 mCmd[20];           // _A08, the event command HandleEventCommand got and its args
+	f32 mHeading;                                             // _9A8, the way it walks
+	f32 mMoveSpeed;                                           // _9AC, move speed
+	f32 mFacing;                                              // _9B0, the yaw the model is turned to
+	f32 _9B4;                                                 // _9B4, set to PI in ResetForNewGame
+	s32 mKindStep;                                            // _9B8, the kind's own step
+	u32 mKindCounter;                                         // _9BC, cleared with mKindStep
+	CStatus32 mActorStatus;                                   // _9C0, 2 a sound is due, 0x2000 busy
+	u32 _9C8;                                                 // _9C8
+	s32 _9CC;                                                 // _9CC
+	f32 _9D0;                                                 // _9D0, set to 1.0 on reset
+	f32 _9D4;                                                 // _9D4, set to 1.0 on reset
+	Vec mHitPos;                                              // _9D8
+	Vec mHomePos;                                             // _9E4, where a knocked toy stood before it hopped away
+	Vec mVelocity;                                            // _9F0
+	f32 mHitStrength;                                         // _9FC
+	f32 mFallSpeed;                                           // _A00, vertical speed added to y each tick
+	f32 mGroundHeight;                                        // _A04, floor height under the actor plus the kind's offset
+	s32 mCmd[20];                                             // _A08, the event command HandleEventCommand got and its args
 	u8 _A58[4];
 	s32 mMovePhase;  // _A5C, index into the movement speed cycle
 	f32 _A60;        // _A60
@@ -2317,7 +2316,16 @@ public:
 STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
 
 typedef void (XObjActor3::*XObjActor3Func)(u32 frames);
+
 // XObjLeticker's recovered fields live in game/wii/xobjleticker.h
+
+struct XObjActorToyPiece {
+	s16 mId;    // _00, -1 for none
+	s32 mState; // _04
+	XObj* mObj; // _08
+	Mtx mMount; // _0C
+};
+STATIC_ASSERT(sizeof(XObjActorToyPiece) == 0x3C);
 
 // toys made of two more objects, read after the toy itself; the retail ctor
 // (0x800C2404) calls the member ctors out of line: CStatus32 at _D78, the two
@@ -2327,17 +2335,28 @@ class XObjActorToy : public XObjActor {
 public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	void ProcessPendingEvents(u32 frames); // _29C; the shared Actor vtable slots remain to be declared
 
-private:
+	void StateCarry(u32 frames);
+	void StateHitRecovery(u32 frames);
+	void StatePickUp(u32 frames);
+
 	CStatus32 mHideKinds; // _D78, kinds queued to hide
-	u8 _D80[8];
-	XObj mFirst;               // _D88
-	XObj mSecond;              // _1730
-	s32 mShownPart;            // _20D8
-	CVec mPendingMove;         // _20DC
-	u8 _20EC[0x21E4 - 0x20EC]; // the piece records and pending state, ctor writes none of it
-	CStatus32 mKindFlags;      // _21E4
-	u8 _21EC[0x2208 - 0x21EC];
+	s32 mLoad;            // _D80
+	u8 _D84[4];
+	XObj mFirst;                  // _D88
+	XObj mSecond;                 // _1730
+	s32 mShownPart;               // _20D8
+	CVec mPendingMove;            // _20DC
+	XObjActorToyPiece mPieces[4]; // _20EC
+	u8 _21DC[0x21E4 - 0x21DC];
+	CStatus32 mKindFlags; // _21E4
+	u8 _21EC[0x21F0 - 0x21EC];
+	f32 _21F0;
+	f32 _21F4;
+	u8 _21F8[0x2204 - 0x21F8];
+	f32 _2204;
 };
 STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
 
