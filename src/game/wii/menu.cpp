@@ -2717,16 +2717,16 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		f32 width  = 1.2f * GXGetTexObjWidth(&tex);
 		f32 height = 1.2f * GXGetTexObjHeight(&tex);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
-		GXSetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 		x += offset;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-		GXSetZCompLoc(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
 		if (menu->mSelection == i && menu->mMode == 1) {
-			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
-			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(PI * menu->mPulsePhase) + 0.2f);
 			if (pulse < 0.0f) {
 				pulse = 0.0f;
@@ -5509,7 +5509,7 @@ extern "C" void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32, f32 x, f32 y,
 	h = scale * (GXGetTexObjHeight(&tex) / 10);
 	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	f32 offset         = 12.0f + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 12.0f);
+	f32 offset         = 10.0f * scale + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 10.0f * scale);
 	u8 alphaByte       = 255.0f * alpha;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	for (int i = 0; i < 4; i++) {
@@ -5530,15 +5530,15 @@ extern "C" void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32, f32 x, f32 y,
 				gap = w - 3.0f * scale;
 			}
 			f32 digitX = gSaveSlotSpacing * sx + (gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))));
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.4f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.0f * scale, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		}
 	}
 	InitPCPanelTexture(tex, 130);
 	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	f32 sepX = gSaveSlotSpacing * sx + (12.0f + (x + 81.0f * scale));
-	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	f32 sepX = gSaveSlotSpacing * sx + (10.0f * scale + (x + 81.0f * scale));
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - scale, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
 	                   0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
@@ -5699,25 +5699,26 @@ extern "C" void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha)
 		} else {
 			arrowY = 126.0f + (gPointerScreenHeight / 2 + 4);
 		}
-		f32 pulse = fade->mAlpha * (0.2f * (f32)sin(PI * fade->mAlpha) + 0.2f);
+		f32 pulse = fade->mAlpha * (0.2f * (f32)sin(PI * (fade->mHovered ? 0.5f : 1.5f)) + 0.2f);
 		if (pulse < 0.0f) {
 			pulse = 0.0f;
 		}
+		f32 rot[2] = { 0.0f, PI };
 		CTexObj tex;
 		InitPCPanelTexture(tex, 266);
 		f32 width  = wave * (1.1f * GXGetTexObjWidth(&tex));
 		f32 height = wave * (1.1f * GXGetTexObjHeight(&tex));
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
-		GXSetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		u32 color = (u32)(255.0f * fade->mAlpha) | 0xC8C8C800;
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, arrowX, arrowY, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, arrowX, arrowY, 1.0f, width, height, 0.0f, 0.0f, rot[i]);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-		GXSetZCompLoc(GX_TRUE);
-		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
-		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 		DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
-		           (u32)(255.0f * pulse) | 0xFFFFFF00, arrowX, arrowY, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+		           (u32)(255.0f * pulse) | 0xFFFFFF00, arrowX, arrowY, 1.0f, width, height, 0.0f, 0.0f, rot[i]);
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 	}
@@ -5827,12 +5828,12 @@ extern "C" void fn_8005A9D0(MenuItem* menu, u32 frames)
 		for (int i = 0; i < menu->mTitle.mCount; i++) {
 			if (menu->mTitle.mChars[i].mHold > 0.0f) {
 				if (menu->mTitle.mChars[i].mFade < 1.0f) {
-					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
 						menu->mTitle.mChars[i].mFade = 1.0f;
 					}
 				}
 			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
-				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
 					menu->mTitle.mChars[i].mFade = 0.0f;
 				}
 			}
@@ -8362,12 +8363,12 @@ extern "C" void fn_80062338(MenuStatus* menu, u32 frames)
 		for (int i = 0; i < menu->mTitle.mCount; i++) {
 			if (menu->mTitle.mChars[i].mHold > 0.0f) {
 				if (menu->mTitle.mChars[i].mFade < 1.0f) {
-					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
 						menu->mTitle.mChars[i].mFade = 1.0f;
 					}
 				}
 			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
-				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
 					menu->mTitle.mChars[i].mFade = 0.0f;
 				}
 			}
