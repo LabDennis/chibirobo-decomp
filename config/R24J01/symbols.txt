@@ -4576,6 +4576,7 @@ __dt__10XObjActor3Fv = .text:0x800C1B0C; // type:function size:0xBC
 __ct__9XObjSoundFv = .text:0x800C1BC8; // type:function size:0x258
 __dt__9XObjSoundFv = .text:0x800C1E20; // type:function size:0x70
 __ct__8XObjCoinFv = .text:0x800C1E90; // type:function size:0x25C
+__dt__9XObjFlagsFv = .text:0x800C20EC; // type:function size:0x40
 __dt__8XObjCoinFv = .text:0x800C212C; // type:function size:0x68
 __ct__8XObjItemFv = .text:0x800C2194; // type:function size:0x230
 __dt__8XObjItemFv = .text:0x800C23C4; // type:function size:0x40
