@@ -1327,7 +1327,7 @@ game/wii/xobjactorstop.cpp:
 	.text start:0x80138560 end:0x80138598
 
 game/wii/xobjactor3.cpp:
-	.text start:0x801396DC end:0x80142BA8
+	.text start:0x80138E28 end:0x80142BD0
 
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4

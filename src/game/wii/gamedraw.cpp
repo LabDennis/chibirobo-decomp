@@ -2197,7 +2197,7 @@ BOOL CBase::BeginSceneCamera()
  * @note Address: 0x80024BD4
  * @note Size: 0x4
  */
-void XObj::vf16C()
+void XObj::vf16C(u32 frames)
 {
 }
 

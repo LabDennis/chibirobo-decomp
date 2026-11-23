@@ -1504,7 +1504,7 @@ void CGame::Update(u32 frames)
 			XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->_188 && obj->mBaseMtxPtr == NULL) {
-					obj->vf16C();
+					obj->vf16C(frames);
 				} else {
 					obj->vf15C();
 					obj->UpdateObject(frames);

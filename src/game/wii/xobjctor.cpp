@@ -11,6 +11,10 @@
 // recovered; the ctors below emit the XObj prologue plus the member ctors the
 // declarations provide, the rest of retail's field setup is not modeled yet
 
+inline CJArchive::CJArchive()
+{
+}
+
 XObjChr::CPtclSet::CPtclSet()
 {
 }
