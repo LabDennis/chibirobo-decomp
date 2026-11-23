@@ -1653,12 +1653,17 @@ public:
 	s32 mPrevSelection;  // _548
 	u8 _54C[0x66C - 0x54C];
 	s32 mPhase; // _66C
-	u8 _670[0x6AC - 0x670];
-	s32 mItemSelection;      // _6AC
-	s32 mPrevItemSelection;  // _6B0
-	s32 mStickItemSelection; // _6B4
-	MenuTitle mTitle;        // _6B8
-	u8 _854[0x1938 - 0x854];
+	u8 _670[0x698 - 0x670];
+	f32 mHelpAlpha;        // _698
+	const char* mHelpText; // _69C
+	u8 _6A0[0x6AC - 0x6A0];
+	s32 mItemSelection;          // _6AC
+	s32 mPrevItemSelection;      // _6B0
+	s32 mStickItemSelection;     // _6B4
+	MenuTitle mTitle;            // _6B8
+	s32 mHelpCount;              // _854
+	MenuHelpChar mHelpChars[20]; // _858
+	u8 _948[0x1938 - 0x948];
 	u8 mHovered; // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
