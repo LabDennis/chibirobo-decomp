@@ -867,7 +867,8 @@ public:
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	u8 _9A8[0x9C8 - 0x9A8];
+	XObj* mOwner; // _9A8
+	u8 _9AC[0x9C8 - 0x9AC];
 	u8 m_9C8; // _9C8, retail's XObjDress: vf28C hides the head nodes while it is set
 	u8 m_9C9; // _9C9, vf290 hides the left-arm nodes
 	u8 _9CA[0x9D0 - 0x9CA];
@@ -921,7 +922,7 @@ struct WiiOXMenuMark {
 STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
 STATIC_ASSERT(offsetof(WiiOXMenuMark, mObj) == 0x10);
 struct WiiOXMenu {
-	u8 _00[4];
+	s32 mLoadStep;          // _00, the GameCube's
 	s32 mStarted;           // _04
 	s32 mCrossMask;         // _08
 	s32 mSelectedIndex;     // _0C
@@ -1046,19 +1047,20 @@ struct WiiPlayerState : public XObj {
 	u8 _0A48[0xA58 - 0xA48];
 	f32 mNearDistance; // _0A58, 2.0 while nothing is near
 	u8 _0A5C[0xA6C - 0xA5C];
-	s32 mLetickerIndex; // _0A6C, the clear leticker's object index, -1 for none
-	s32 _0A70;          // _0A70, cleared on reset
-	u32 mLiftPlugFlags; // _0A74, the GameCube's word; bit 0x80 is the lifted plug's
-	s32 mAPressed;      // _0A78
-	s32 mPressTimer;    // _0A7C, frames A has been held
-	u8 _0A80[0xA88 - 0xA80];
-	s32 mIdleLoops;      // _0A88, idle anim loops before the next idle move
-	f32 mIdleTimer;      // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
-	s32 mFlashTimer;     // _0A90
-	s32 mFlashCount;     // _0A94, frames the flash has run
-	f32 mHitStrength;    // _0A98, the last hit's strength
-	f32 mMoveSpeedScale; // _0A9C
-	XAction mLift;       // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
+	s32 mLetickerIndex;        // _0A6C, the clear leticker's object index, -1 for none
+	s32 _0A70;                 // _0A70, cleared on reset
+	u32 mLiftPlugFlags;        // _0A74, the GameCube's word; bit 0x80 is the lifted plug's
+	s32 mAPressed;             // _0A78
+	s32 mPressTimer;           // _0A7C, frames A has been held
+	s32 mAttachmentActionType; // _0A80
+	s32 mToolActionType;       // _0A84
+	s32 mIdleLoops;            // _0A88, idle anim loops before the next idle move
+	f32 mIdleTimer;            // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
+	s32 mFlashTimer;           // _0A90
+	s32 mFlashCount;           // _0A94, frames the flash has run
+	f32 mHitStrength;          // _0A98, the last hit's strength
+	f32 mMoveSpeedScale;       // _0A9C
+	XAction mLift;             // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
 	u8 _0ACC[0xAF0 - 0xACC];
 	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
 	u8 _0AF4[0xAF8 - 0xAF4];
@@ -1136,7 +1138,8 @@ struct WiiPlayerState : public XObj {
 	// writers are decoded so far, the word reads as a whole
 	u32 mOnGround;          // _1B7B8
 	DustParticlePool mDust; // _1B7BC, the puff pool objects burst into, XObjChr's mDustPool
-	u8 _1C770[0x1C980 - 0x1C770];
+	u8 _1C770[0x1C97C - 0x1C770];
+	s32 _1C97C;            // _1C97C, cleared in ResetForNewGame
 	s16 mSavedTarget;      // _1C980, the carried object's item index while a release drops it
 	u8 _1C982[2];          // _1C982
 	s32 mSavedTargetAnim;  // _1C984, its playing anim

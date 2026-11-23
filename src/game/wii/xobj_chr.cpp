@@ -20,6 +20,7 @@
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
+#include "game/cmdline.h"
 #include "arithmetic.h"
 #include "JSystem/JMath/Inline.h"
 #include <math.h>
@@ -27,6 +28,11 @@
 
 // the Wii build inlines PSVECScale as paired-single code like the other units
 #define PSVECScale JMathInlineVEC::PSVECScale
+#define NW4R_ASSERT_VALID_PTR_LINE(line, exp)                                                                                              \
+	((void)((((u32)(exp) & 0xFF000000) == 0x80000000 || ((u32)(exp) & 0xFF800000) == 0x81000000 || ((u32)(exp) & 0xF8000000) == 0x90000000 \
+	         || ((u32)(exp) & 0xFF000000) == 0xC0000000 || ((u32)(exp) & 0xFF800000) == 0xC1000000                                         \
+	         || ((u32)(exp) & 0xF8000000) == 0xD0000000 || ((u32)(exp) & 0xFFFFC000) == 0xE0000000)                                        \
+	        || (nw4r::db::Panic(__FILE__, line, "NW4R:Pointer Error\n" #exp "(=%p) is not valid pointer.", (exp)), 0)))
 // NONMATCHING: ScaleVectorInPlace's retail body interleaves the paired-single loads,
 // multiplies and stores (its SDK inline's statement order); ours loads both pairs
 // first, so the wrapper stays below a match
@@ -36,6 +42,7 @@ extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
 extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
 extern CustomShadow gCustomShadow;
+extern MEMAllocator gWiiPadAllocator;
 
 // the GameCube kept a weak copy of it
 static inline BOOL IsObjectActive(XObj* object)
@@ -188,6 +195,9 @@ class EnvInfo;
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+BOOL IsGlobalDataLoaded(void);
+void ResetPlayerStats(Params* stats);
+void InitializePlayerLiftAction(XAction* action, WiiPlayerState* owner);
 BOOL IsCarryingMug(XAction* action);
 BOOL IsCarryingSquirter(XAction* action);
 BOOL IsCarryingSpoon(XAction* action);
@@ -223,6 +233,122 @@ void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
+
+// one of his tools is out
+static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
+{
+	switch (item) {
+	case 0x10:
+		return IsCarryingToothbrush(&chr->mLift);
+	case 0x16:
+		return IsCarryingMug(&chr->mLift);
+	case 0x15:
+		return IsCarryingSpoon(&chr->mLift);
+	default:
+		return IsCarryingSquirter(&chr->mLift);
+	}
+}
+
+// he can use the tool, he has it or it is out
+static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
+{
+	s32 has = 1;
+	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
+		has = 0;
+	return has;
+}
+
+static inline void SetAttachmentOn(AttachmentValues* values, s32 id, s32 on)
+{
+	s32 index = values->Find(id);
+	if (index >= 0)
+		values->mEntries[index].mValue = on;
+}
+
+// which of his tools he can use, he has them or one of them is going; the
+// GameCube's UpdateAttachmentAvailability, only ever inlined here on the Wii
+static inline void UpdateAttachmentAvailability(AttachmentValues* values)
+{
+	WiiPlayerState* chr = gGame.GetPlayer();
+	SetAttachmentOn(values, 4, CanUseTool(chr, 0x10));
+	SetAttachmentOn(values, 6, CanUseTool(chr, 0x16));
+	SetAttachmentOn(values, 5, CanUseTool(chr, 0x15));
+	SetAttachmentOn(values, 7, CanUseTool(chr, 0x38));
+	SetAttachmentOn(values, 8, FALSE);
+}
+
+static inline void UpdateAttachmentCounts(AttachmentValues* values)
+{
+	if (IsGlobalDataLoaded()) {
+		SetAttachmentCountById(
+		    values, 1, gCmdLineArgs.mCopterLevelOverride != 0 ? gCmdLineArgs.mCopterLevelOverride - 1 : GetStartingAttachmentLevel(0));
+		SetAttachmentCountById(
+		    values, 2, gCmdLineArgs.mPopperLevelOverride != 0 ? gCmdLineArgs.mPopperLevelOverride - 1 : GetStartingAttachmentLevel(1));
+		SetAttachmentCountById(
+		    values, 3, gCmdLineArgs.mRadarLevelOverride != 0 ? gCmdLineArgs.mRadarLevelOverride - 1 : GetStartingAttachmentLevel(2));
+	} else {
+		SetAttachmentCountById(values, 1, gCmdLineArgs.mCopterLevelOverride != 0 ? gCmdLineArgs.mCopterLevelOverride - 1 : 0);
+		SetAttachmentCountById(values, 2, gCmdLineArgs.mPopperLevelOverride != 0 ? gCmdLineArgs.mPopperLevelOverride - 1 : 0);
+		SetAttachmentCountById(values, 3, gCmdLineArgs.mRadarLevelOverride != 0 ? gCmdLineArgs.mRadarLevelOverride - 1 : 0);
+	}
+}
+
+static inline void RefreshAttachmentMenuEntries(AttachmentValues* values)
+{
+	UpdateAttachmentCounts(values);
+	UpdateAttachmentAvailability(values);
+}
+
+static inline void InitializeAttachmentMenuEntries(AttachmentValues* values)
+{
+	values->mEntries[0].mId = 1;
+	values->mEntries[1].mId = 2;
+	values->mEntries[2].mId = 3;
+	values->mEntries[3].mId = 4;
+	values->mEntries[4].mId = 5;
+	values->mEntries[5].mId = 6;
+	values->mEntries[6].mId = 7;
+	values->mEntries[7].mId = 8;
+	RefreshAttachmentMenuEntries(values);
+}
+
+static inline void ResetRingMode(OctaMenu& ring)
+{
+	ring.mOpen        = 0;
+	ring.mCursorIndex = 0;
+	u32 mode          = gCmdLineArgs.mAttachmentMenuType;
+	if (mode <= 3) {
+		ring.mMenuType = mode;
+	} else {
+		ring.mMenuType = 0;
+	}
+	ring.mFocus                 = 0;
+	ring.mKeepPointedItemOnOpen = 0;
+	ring.mHeadTurn              = NAN;
+}
+
+static inline void SetupPlayerRing(OctaMenu& ring, WiiPlayerState* owner, f32 direction)
+{
+	ring.mChr = (XObjChr*)owner;
+	ResetRingMode(ring);
+	ring.mRowOffset               = 0.0f;
+	ring.mFirstVisibleItem        = 0;
+	ring.mPendingFirstVisibleItem = -1;
+	ring.mLastPointedItem         = 3;
+	ring._10                      = direction;
+}
+
+static inline void SetRingItems(OctaMenu& ring, s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g, s32 h)
+{
+	ring.mItems[0].mType = a;
+	ring.mItems[1].mType = b;
+	ring.mItems[2].mType = c;
+	ring.mItems[3].mType = d;
+	ring.mItems[4].mType = e;
+	ring.mItems[5].mType = f;
+	ring.mItems[6].mType = g;
+	ring.mItems[7].mType = h;
+}
 
 // the suit-change spiral's pool, the GameCube's gPlayerSuitChangeEffect (the .bss
 // object at lbl_8045BBD0): the Wii's records are 0x18 bytes with the scale at +0
@@ -264,6 +390,129 @@ struct WiiStageInfo {
 static inline WiiStageInfo* GetStageInfo()
 {
 	return *(WiiStageInfo**)GetStageEnvironment();
+}
+
+/**
+ * @note Address: 0x800C9E84
+ * @note Size: 0x1358
+ */
+// NONMATCHING: same call set; look/menu temporary store order and saved-GPR allocation differ
+void XObjChr::InitializeObject()
+{
+	WiiPlayerState* player = (WiiPlayerState*)this;
+	XObj::InitializeObject();
+	player->mLook.mActive = FALSE;
+	player->mLook.mMode   = -1;
+	player->mLook.mObject = NULL;
+	Vec zero              = { 0.0f, 0.0f, 0.0f };
+	player->mLook.mOffset = zero;
+	player->mLook.mPulse = player->mLook.mPhase = player->mLook.mFade = 0.0f;
+	player->mLoadStep                                                 = 0;
+	player->mPlug.InitializeObject();
+	((XObj*)player->mCopterObj)->InitializeObject();
+	((XObj*)player->mPopperObj)->InitializeObject();
+	((XObj*)player->mRadarObj)->InitializeObject();
+	((XObj*)player->mOXObj)->InitializeObject();
+	InitializeAttachmentMenuEntries(&player->mAttachments);
+	SetupPlayerRing(player->mMenu.mAtc, player, -1.0f);
+	SetRingItems(player->mMenu.mAtc, 1, 2, 3, 4, 6, 5, 7, 8);
+	player->mMenu.mAtc.mRowOffset        = -1.5f;
+	player->mMenu.mAtc.mFirstVisibleItem = 4;
+	player->mMenu.mDrs.Init(this);
+	player->mMenu.mPrevSel         = 0;
+	player->mMenu.mSel             = 0;
+	player->mOXMenu.mChr           = player;
+	player->mOXMenu.mLoadStep      = 0;
+	player->mOXMenu.mSelectedIndex = 0;
+	player->mOXMenu._10            = -1;
+	for (s32 i = 0; i < 9; ++i) {
+		player->mSuits.mObjects[i].InitializeObject();
+		player->mSuits.mObjects[i].mOwner = player;
+		player->mSuitParts[i].InitializeObject();
+		player->mSuitParts[i].mOwner = &player->mSuits.mObjects[i];
+	}
+	player->mPlayer = player;
+	// he may blink in every anim but these
+	for (s32 i = 0; i < 0x167; ++i) {
+		player->mBlinkAnims[i] = 1;
+	}
+	player->mBlinkAnims[356] = 0;
+	player->mBlinkAnims[353] = 0;
+	player->mBlinkAnims[352] = 0;
+	player->mBlinkAnims[345] = 0;
+	player->mBlinkAnims[337] = 0;
+	player->mBlinkAnims[331] = 0;
+	player->mBlinkAnims[328] = 0;
+	player->mBlinkAnims[324] = 0;
+	player->mBlinkAnims[323] = 0;
+	player->mBlinkAnims[320] = 0;
+	player->mBlinkAnims[319] = 0;
+	player->mBlinkAnims[316] = 0;
+	player->mBlinkAnims[311] = 0;
+	player->mBlinkAnims[308] = 0;
+	player->mBlinkAnims[307] = 0;
+	player->mBlinkAnims[306] = 0;
+	player->mBlinkAnims[305] = 0;
+	player->mBlinkAnims[300] = 0;
+	player->mBlinkAnims[299] = 0;
+	player->mBlinkAnims[293] = 0;
+	player->mBlinkAnims[270] = 0;
+	player->mBlinkAnims[269] = 0;
+	player->mBlinkAnims[266] = 0;
+	player->mBlinkAnims[259] = 0;
+	player->mBlinkAnims[258] = 0;
+	player->mBlinkAnims[246] = 0;
+	player->mBlinkAnims[245] = 0;
+	player->mBlinkAnims[244] = 0;
+	player->mBlinkAnims[243] = 0;
+	player->mBlinkAnims[242] = 0;
+	player->mBlinkAnims[241] = 0;
+	player->mBlinkAnims[238] = 0;
+	player->mBlinkAnims[237] = 0;
+	player->mBlinkAnims[236] = 0;
+	player->mBlinkAnims[234] = 0;
+	player->mBlinkAnims[232] = 0;
+	player->mBlinkAnims[231] = 0;
+	player->mBlinkAnims[230] = 0;
+	player->mBlinkAnims[229] = 0;
+	player->mBlinkAnims[228] = 0;
+	player->mBlinkAnims[223] = 0;
+	player->mBlinkAnims[222] = 0;
+	player->mBlinkAnims[212] = 0;
+	player->mBlinkAnims[211] = 0;
+	player->mBlinkAnims[210] = 0;
+	player->mBlinkAnims[192] = 0;
+	player->mBlinkAnims[187] = 0;
+	player->mBlinkAnims[186] = 0;
+	player->mBlinkAnims[175] = 0;
+	player->mBlinkAnims[174] = 0;
+	player->mBlinkAnims[173] = 0;
+	player->mBlinkAnims[171] = 0;
+	player->mBlinkAnims[170] = 0;
+	player->mBlinkAnims[169] = 0;
+	player->mBlinkAnims[167] = 0;
+	player->mBlinkAnims[161] = 0;
+	player->mBlinkAnims[156] = 0;
+	player->mBlinkAnims[153] = 0;
+	player->mBlinkAnims[151] = 0;
+	player->mBlinkAnims[143] = 0;
+	player->mBlinkAnims[83]  = 0;
+	player->mBlinkAnims[76]  = 0;
+	player->mBlinkAnims[71]  = 0;
+	player->mBlinkAnims[68]  = 0;
+	player->mBlinkAnims[67]  = 0;
+	player->mBlinkAnims[65]  = 0;
+	player->mBlinkAnims[54]  = 0;
+	player->mBlinkAnims[53]  = 0;
+	player->mBlinkAnims[14]  = 0;
+	player->mBlinkAnims[7]   = 0;
+	player->mBlinkAnims[6]   = 0;
+	player->mBlinkAnims[5]   = 0;
+	player->mBlinkAnims[2]   = 0;
+	player->mBlinkAnims[1]   = 0;
+	player->ResetForNewGame();
+	m_pRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, 8, 8, 8, 8);
+	NW4R_ASSERT_VALID_PTR_LINE(0x8B, m_pRoot);
 }
 
 // _154, the GameCube's XObjChr::ResetObjectState: the player state, his actions,
@@ -367,6 +616,67 @@ void XObjChr::ResetObjectState()
 	chr->mHeadOffset      = 5.0f;
 	chr->mHeadOffsetReady = FALSE;
 	mActor.Reset();
+}
+
+/**
+ * @note Address: 0x800CB1DC
+ * @note Size: 0x10B8
+ */
+// NONMATCHING: same call set; NAN/menu store schedule differs
+void XObjChr::ResetForNewGame()
+{
+	WiiPlayerState* player = (WiiPlayerState*)this;
+	ResetPlayerStats(&player->mParams);
+	player->mAttachment           = 0;
+	player->mLiftPlugFlags        = gCmdLineArgs.mLiftPlugFlags;
+	player->mAttachmentActionType = gCmdLineArgs.mAttachmentActionType;
+	player->mToolActionType       = gCmdLineArgs.mToolActionType;
+	player->vf290(FALSE);
+	InitializePlayerLiftAction(&player->mLift, player);
+	player->mPlug.ResetForNewGame();
+	((XObj*)player->mCopterObj)->ResetForNewGame();
+	((XObj*)player->mPopperObj)->ResetForNewGame();
+	((XObj*)player->mRadarObj)->ResetForNewGame();
+	((XObj*)player->mOXObj)->ResetForNewGame();
+	player->mSuits.mLoadStep   = 0;
+	player->mSuits.mChangeStep = 0;
+	player->mSuits.mRequested  = 0;
+	player->mSuits.mCurrent    = 0;
+	player->mSuits.mSpecial    = 0;
+	for (s32 i = 0; i < 9; ++i) {
+		player->mSuits.mObjects[i].ResetForNewGame();
+	}
+	ApplyPlayerSuit(player);
+	player->mPadReset = TRUE;
+	RefreshAttachmentMenuEntries(&player->mAttachments);
+	ResetRingMode(player->mMenu.mAtc);
+	ResetRingMode(player->mMenu.mDrs);
+	player->mMenu.mPrevSel         = 0;
+	player->mMenu.mSel             = 0;
+	player->mOXMenu.mLoadStep      = 0;
+	player->mOXMenu.mSelectedIndex = 0;
+	player->mOXMenu._10            = -1;
+	player->_1C97C                 = 0;
+	player->mSavedTarget           = -1;
+	player->mPendingTarget         = NULL;
+	player->mBatteryDrains         = TRUE;
+	player->mSquirterContent       = 0;
+	player->mItemTintWord          = -1;
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.display.mState = 0;
+		p.burst.mState   = 0;
+	}
+	lbl_8045BBD0.mActive = 0;
+	for (s32 i = 0; i < 20; ++i) {
+		lbl_8045BBD0.mParticles[i].scale = 0.0f;
+		lbl_8045BBD0.mParticles[i].angle = 0.0f;
+	}
+	player->mPlayerFlags = 0;
+	player->mPlayerFlags |= 0x20000000;
+	player->mPlayerFlags |= 7;
+	player->mPadReset = TRUE;
 }
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
@@ -2740,49 +3050,6 @@ void XObjChr::ClearBaseMtx()
 	for (int i = 0; i < 9; i++) {
 		chr->mSuits.mObjects[i].ClearBaseMtx();
 	}
-}
-
-// one of his tools is out
-static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
-{
-	switch (item) {
-	case 0x10:
-		return IsCarryingToothbrush(&chr->mLift);
-	case 0x16:
-		return IsCarryingMug(&chr->mLift);
-	case 0x15:
-		return IsCarryingSpoon(&chr->mLift);
-	default:
-		return IsCarryingSquirter(&chr->mLift);
-	}
-}
-
-// he can use the tool, he has it or it is out
-static inline s32 CanUseTool(WiiPlayerState* chr, s16 item)
-{
-	s32 has = 1;
-	if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, item) < 0 && !IsToolOut(chr, item))
-		has = 0;
-	return has;
-}
-
-static inline void SetAttachmentOn(AttachmentValues* values, s32 id, s32 on)
-{
-	s32 index = values->Find(id);
-	if (index >= 0)
-		values->mEntries[index].mValue = on;
-}
-
-// which of his tools he can use, he has them or one of them is going; the
-// GameCube's UpdateAttachmentAvailability, only ever inlined here on the Wii
-static inline void UpdateAttachmentAvailability(AttachmentValues* values)
-{
-	WiiPlayerState* chr = gGame.GetPlayer();
-	SetAttachmentOn(values, 4, CanUseTool(chr, 0x10));
-	SetAttachmentOn(values, 6, CanUseTool(chr, 0x16));
-	SetAttachmentOn(values, 5, CanUseTool(chr, 0x15));
-	SetAttachmentOn(values, 7, CanUseTool(chr, 0x38));
-	SetAttachmentOn(values, 8, FALSE);
 }
 
 // the count for an attachment id, -1 when it isn't in the list

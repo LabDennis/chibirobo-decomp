@@ -2048,6 +2048,8 @@ public:
 
 	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
+	virtual void InitializeObject();                                   // _14C
+	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
@@ -2095,11 +2097,11 @@ private:
 	u8 _1C97C[0x1C9A8 - 0x1C97C];
 	CVec _1C9A8;
 	u8 _1C9B8[0x1C9CC - 0x1C9B8];
-	CObjVec mEyeAim;          // _1C9CC
-	CJArchive mAttachmentAnm; // _1C9FC
-	CJArchive mSuitAnm;       // _1CB44
-	u8 _1CC8C[0x1CC90 - 0x1CC8C];
-	AnimSfxActor mActor; // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
+	CObjVec mEyeAim;             // _1C9CC
+	CJArchive mAttachmentAnm;    // _1C9FC
+	CJArchive mSuitAnm;          // _1CB44
+	nw4r::g3d::ScnRoot* m_pRoot; // _1CC8C, retail's assert names it
+	AnimSfxActor mActor;         // _1CC90, retail wraps it in __construct_array(count 1); callers use it scalar
 	u8 _1CC9C[0x1CCA0 - 0x1CC9C];
 };
 STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);
@@ -2533,14 +2535,13 @@ public:
 	u8 _AD0;                // _AD0
 	u8 _AD1[0xAD4 - 0xAD1]; // _AD1
 	s32 mPrevBgm;           // _AD4, the bgm it took over from
-	u8 mPrevBgmVolume;      // _AD8
-	u8 _AD9[0xADC - 0xAD9]; // _AD9
+	f32 mPrevBgmVolume;     // _AD8
 	s32 mLoadPoolIndex;     // _ADC
 	s32 mTimeMode;          // _AE0
 	s32 mAreaGraceTimer;    // _AE4
 	s32 mWarpsLeft;         // _AE8
 	s32 mBattleBgmState;    // _AEC
-	u32 _AF0;               // _AF0
+	s32 _AF0;               // _AF0
 	AnimSfx mAnimSfx;       // _AF4
 };
 STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xB50);
