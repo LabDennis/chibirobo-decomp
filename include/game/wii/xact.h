@@ -6,6 +6,7 @@
 #include "game/cptcl.h"
 #include "Dolphin/mtx.h"
 #include "game/wii/ceffect.h"
+#include "game/xactdata.h"
 
 // chibi robo's actions on the Wii player, the GameCube's XAct* kinds (game/xact.h). XAction, XActHang and
 // XActTumble live in game/wii/cgame.h with the player; WiiPlayerState still declares the others as XAction
@@ -96,15 +97,6 @@ public:
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
 
-// one of the popper's rings, drawn as two glow sprites and a soft disc
-struct XActPopperRing {
-	Vec mPos;    // _00
-	f32 mAmount; // _0C, 0 when it's gone
-	f32 mRadius; // _10
-	u32 mColor;  // _14
-};
-STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
-
 // the shot's dust pool: like XObjChr::CPtclSet it wraps the pool and its array in a
 // class of its own whose vtable gains a first virtual at _08 (retail RTTI names the
 // kind XBullet::CPtclSet); its vptr sits at _C94, the word behind the last particle
@@ -175,16 +167,6 @@ public:
 	XActPopperCharge mCharge; // _8848
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8884);
-
-struct RadarAimAxis {
-	f32 angle, targetAngle, reached;
-};
-
-// the beam's two colours, the GameCube's RadarBeamColors
-struct RadarBeamColors {
-	CScrnColor mColor[2]; // _00
-};
-STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
 
 // the radar action, the GameCube's XActRadar: the fields the Wii reaches are the
 // GameCube layout's own. WiiPlayerState reserves _95D4 to _96A0 for it

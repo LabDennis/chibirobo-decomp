@@ -5,6 +5,7 @@
 #include "game/cptcl.h"
 #include "game/cscrn.h"
 #include "game/xaction.h"
+#include "game/xactdata.h"
 
 // chibi robo's actions, XAction and its XAct* kinds from RTTI. every one of them sits in
 // XObjChr and shares XAction's two virtuals. offsets are the same in every region
@@ -133,14 +134,6 @@ STATIC_ASSERT(sizeof(XActPush) == 0x58);
 
 extern "C" void CancelPlayerPushAction(XActPush* act);
 
-// the ring on the floor around him while he tumbles
-struct XActTumbleFade {
-	BOOL mActive; // _00
-	Vec mOffset;  // _04, from his feet, turned with him
-	f32 mAmount;  // _10
-};
-STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
-
 class XActTumble : public XAction {
 public:
 	XActTumbleFade mFade;         // _2C
@@ -160,15 +153,6 @@ public:
 	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActCopter) == 0x38);
-
-// one of the popper's rings, drawn as two glow sprites and a soft disc
-struct XActPopperRing {
-	Vec mPos;    // _00
-	f32 mAmount; // _0C, 0 when it's gone
-	f32 mRadius; // _10
-	u32 mColor;  // _14
-};
-STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
 
 struct PopperShotDust {
 	CPtcl mPtcl;           // _00
@@ -230,17 +214,6 @@ public:
 	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8778);
-
-struct RadarAimAxis {
-	f32 angle, targetAngle, reached;
-};
-
-// the beam's two colours. retail's destructor tests this object's address before it destroys them, so they sit
-// in an object of their own. whether it holds more than the colours is not known
-struct RadarBeamColors {
-	CScrnColor mColor[2]; // _00
-};
-STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
 
 class XActRadar : public XAction {
 public:

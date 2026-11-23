@@ -34,6 +34,7 @@
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
 #include "game/menudata.h"
+#include "game/xactdata.h"
 #
 
 class CCamera;
@@ -979,13 +980,6 @@ public:
 STATIC_ASSERT(sizeof(XActHang) == 0x50);
 
 // the ring on the floor around him while he tumbles
-struct XActTumbleFade {
-	BOOL mActive; // _00
-	Vec mOffset;  // _04, from his feet, turned with him
-	f32 mAmount;  // _10
-};
-STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
-
 class XActTumble : public XAction {
 public:
 	XActTumble();
