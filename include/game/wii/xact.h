@@ -17,30 +17,30 @@ public:
 	XActLift();
 	~XActLift();
 
-	f32 mTimer;            // _2C, frames left in a timed lift state
-	CVec mLiftStartOffset; // _30
-	f32 mYawOffset;        // _40, held object yaw relative to the player
-	u8 _44[4];             // _44
-	s16 mPendingItemId;    // _48, -1 when there's none
-	u8 _4A[2];             // _4A
-	XObj* mPendingItem;    // _4C
-	XObj* mPlugTarget;     // _50, WiiPlayerState's mLiftPlugTarget
-	s32 mPlugConnection;   // _54, the GameCube's _54, copied to the plug's connection word with 0x10000 set
-	s32 _58;               // _58, cleared on reset
-	f32 mBatteryCost;      // _5C
-	u32 mContactEffectId;  // _60
-	BOOL mContactEffect;   // _64, the contact effect plays; the Wii stops it by id
-	BOOL mCheckContact;    // _68
-	u32 mUseEffectId;      // _6C
-	BOOL mUseEffect;       // _70
-	u32 mToolEffectId;     // _74
-	BOOL mToolEffect;      // _78
-	BOOL mCheckToolHit;    // _7C
-	f32 _80;               // _80, cleared on reset
-	f32 _84;               // _84, cleared on reset; the plug pull is done at a quarter turn (pi/2)
-	f32 _88;               // _88, cleared on reset
-	u8 _8C[0xAC - 0x8C];   // _8C
-	u8 _AC;                // _AC, cleared on reset
+	f32 mTimer;                     // _2C, frames left in a timed lift state
+	CVec mLiftStartOffset;          // _30
+	f32 mYawOffset;                 // _40, held object yaw relative to the player
+	u8 _44[4];                      // _44
+	s16 mPendingItemId;             // _48, -1 when there's none
+	u8 _4A[2];                      // _4A
+	XObj* mPendingItem;             // _4C
+	XObj* mPlugTarget;              // _50, WiiPlayerState's mLiftPlugTarget
+	s32 mPlugConnection;            // _54, the GameCube's _54, copied to the plug's connection word with 0x10000 set
+	s32 _58;                        // _58, cleared on reset
+	f32 mBatteryCost;               // _5C
+	u32 mContactEffectId;           // _60
+	EffectInstance* mContactEffect; // _64, the contact effect plays; the Wii stops it by id
+	BOOL mCheckContact;             // _68
+	u32 mUseEffectId;               // _6C
+	EffectInstance* mUseEffect;     // _70
+	u32 mToolEffectId;              // _74
+	EffectInstance* mToolEffect;    // _78
+	BOOL mCheckToolHit;             // _7C
+	f32 _80;                        // _80, cleared on reset
+	f32 _84;                        // _84, cleared on reset; the plug pull is done at a quarter turn (pi/2)
+	f32 _88;                        // _88, cleared on reset
+	u8 _8C[0xAC - 0x8C];            // _8C
+	u8 _AC;                         // _AC, cleared on reset
 	u8 _AD[0xB0 - 0xAD];
 };
 STATIC_ASSERT(sizeof(XActLift) == 0xB0);

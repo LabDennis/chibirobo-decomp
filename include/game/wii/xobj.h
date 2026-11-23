@@ -885,6 +885,32 @@ private:
 	u16 mCallbackExecOpMask;        // _DA
 };
 
+class ScnGroup : public ScnObj {
+public:
+	virtual bool Insert(u32 idx, ScnObj* pObj); // _34
+	virtual ScnObj* Remove(u32 idx);            // _38
+	virtual bool Remove(ScnObj* pObj);          // _3C
+	bool Empty() const { return mNumScnObj == 0; }
+	bool PushBack(ScnObj* pObj) { return Insert(mNumScnObj, pObj); }
+	ScnObj* PopBack()
+	{
+		if (!Empty()) {
+			return Remove(mNumScnObj - 1);
+		}
+		return NULL;
+	}
+	void Clear()
+	{
+		while (!Empty()) {
+			PopBack();
+		}
+	}
+
+	ScnObj** mpScnObjArray; // _DC
+	u32 mSizeScnObj;        // _E0
+	u32 mNumScnObj;         // _E4
+};
+
 class ScnLeaf : public ScnObj {
 private:
 	u8 mScale[0xC]; // _DC, nw4r's VEC3
@@ -1153,7 +1179,7 @@ public:
 };
 
 // the scene root, as far as the game calls it: the current camera's handle is reduced to its data
-class ScnRoot : public G3dObj {
+class ScnRoot : public ScnGroup {
 public:
 	// the allocator, the size out and the four counts, all 1 for the stage's scene
 	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
@@ -1163,6 +1189,7 @@ public:
 	AnmScn* RemoveAnmScn();          // 0x8027AF0C
 	void UpdateFrame();              // 0x8027AF78
 	void CalcWorld();                // 0x8027B388
+	void CalcVtx();                  // 0x8027B3F0
 	void CalcView();                 // 0x8027B40C
 	void GatherDrawScnObj();
 	void DrawOpa();
@@ -1758,6 +1785,8 @@ public:
 		}
 		return -1;
 	}
+	s16 GetLookPriority() const { return mAttr.mObjData != NULL ? mAttr.mObjData->mLookPriority : 0; }
+	s16 GetLookRange() const { return mAttr.mObjData != NULL ? mAttr.mObjData->mLookRange : 0; }
 	// (_9C SetScale(f32) scales all three axes alike, _11C GetAnimId returns mAnimId, _134 IsAnimDone is TRUE once
 	// the next step passes the end frame; see the slot comments)
 	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
@@ -2040,31 +2069,42 @@ public:
 	public:
 		CPtclSet();
 		~CPtclSet();
-		virtual void vf08(); // _08
+		virtual void vf08(CGs* gs); // _08, fn_800C6418: mPtcl's render state, set before each draw
 	};
 
 	XObjChr();
 	virtual ~XObjChr();
 
-	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
-	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
+	virtual void Release();                             // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
+	virtual void SetMoveDir(const Vec* dir, f32 speed); // _100
+	using XObj::SetAnim;
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                               // _108
+	virtual void UpdateAnim(f32 speed);                                // _118
 	virtual void InitializeObject();                                   // _14C
 	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _158, the stage load, one step a frame
+	virtual void UpdateObject(u32 frames);                             // _164
 	virtual void DrawWithView(Mtx view);                               // _178, himself or the current suit, then the attachments
 	virtual void DrawReflection(Mtx view);                             // _17C
 	virtual void DrawGroundShadow(f32 opacity);                        // _180, nothing up close to the camera
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _184, the mug's blob or the joint's
+	virtual void DrawObjectEffects();                                  // _188
+	virtual void DrawCollisionShapes();                                // _18C
+	virtual void DrawScreenOverlay();                                  // _190
+	virtual void DrawDebugStatus();                                    // _194
 	virtual void ApplyMaterialPresets(const u32* flags);               // _1A0, forwards the flags to everything he wears
 	virtual void SetDestinationAlpha(BOOL enabled, u8 value);          // _1A4, the fade on himself and his attachments
 	virtual void vf1A8(f32);                                           // _1A8, empty on the player
+	virtual Vec GetCameraTarget();                                     // _1B0, the animated look target and its position history
 	virtual void SetBaseMtx(Mtx mtx);                                  // _1B4, his own plus the nine suits'
 	virtual void ClearBaseMtx();                                       // _1B8, same
 	virtual void vf1BC(s32 mode);                                      // _1BC, culls him and the visible attachments
 	virtual void SetCullMode(s32 mode);                                // _1C0
 	virtual void ResetCullMode();                                      // _1C4
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);      // _1F0
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _1E8
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _1FC
 	virtual void PauseSounds(f32 fade);                                // _20C
 	virtual void ResumeSounds(f32 fade);                               // _210

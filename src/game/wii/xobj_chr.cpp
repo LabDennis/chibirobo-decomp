@@ -44,6 +44,8 @@ extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queu
 extern CustomShadow gCustomShadow;
 extern MEMAllocator gWiiPadAllocator;
 
+static s32 sBlockedObstacleCount;
+
 // the GameCube kept a weak copy of it
 static inline BOOL IsObjectActive(XObj* object)
 {
@@ -162,7 +164,7 @@ static inline void StopMoving(WiiPlayerState* chr)
 	if (chr->mPush.mState != 0) {
 		ReleasePushAction(&chr->mPush);
 		chr->mPush.mState = 0;
-		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		chr->mIdleLoops = 3;
 	}
 }
@@ -192,8 +194,44 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 }
 
 class EnvInfo;
+struct SuitChangeTrail;
+
+struct PlayerFrameParticle {
+	s32 mCode;
+	Vec mTranslate;
+	Vec mScale;
+	Vec mRotate;
+};
+STATIC_ASSERT(sizeof(PlayerFrameParticle) == 0x28);
 
 extern "C" {
+f32 GetControlStickMagnitude(const CPadOne* pad);
+s32 FindNearbyPlayerInteraction(WiiPlayerState* player, f32 extraRadius);
+f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames);
+void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames);
+void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 speed, f32 direction);
+void UpdatePlayerBattery(WiiPlayerState* player, u32 frames);
+void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames);
+s32 GetPlayerGroundType(WiiPlayerState* chr);
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* time, const FrameEvent* table);
+void UpdateTumbleFade(XActTumbleFade* fade, BOOL increase, u32 frames);
+void UpdateRadarBeamAnimation(XActRadar* act, u32 frames);
+void UpdatePointParticleDisplay(PointPtcl* points, u32 frames);
+void UpdateSpiralTrail(SuitChangeTrail* trail, u32 frames);
+EffectInstance* fn_800A11A4(CEvtPtcl* particles, u32 code, s32 group);
+void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerJumpAction(XActJump* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdateLadderActionAnimation(XActLadder* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerRopeAction(XActRope* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePushActionAnimation(XActPush* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerPopperAction(XActPopper* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdateRadarTargeting(XActRadar* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerLocomotionAnimation(WiiPlayerState* player, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
+void UpdatePlayerLookAtObjects(WiiPlayerState* player, u32 frames);
+void fn_800C6CF0(XObjScnCamInitRec* record, u32 frames);
 u32 CheckStageFlag(s32 stage, u32 mask);
 BOOL IsGlobalDataLoaded(void);
 void ResetPlayerStats(Params* stats);
@@ -202,6 +240,7 @@ BOOL IsCarryingMug(XAction* action);
 BOOL IsCarryingSquirter(XAction* action);
 BOOL IsCarryingSpoon(XAction* action);
 BOOL IsCarryingToothbrush(XAction* action);
+void SelectHighestActiveFloor(XObj* object);
 void ApplyPlayerItemTintToTarget(XAction* action);
 BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 void UpdateHeldObject(XAction* action, u32 frames);
@@ -233,6 +272,101 @@ void fn_800AF12C(XObj* obj); // obja.cpp: rebinds the playing anim to the object
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 extern s32 gRefreshRate;
+extern s32 gScreenSafeLeft;
+extern s32 gScreenSafeTop;
+void SpawnPlayerDust(WiiPlayerState* chr, CVec* position);
+BOOL IsPlayerCarryingPlug(WiiPlayerState* chr);
+void HSD_MtxGetScale(Mtx matrix, Vec* scale);
+void PSMTXMultVecArray(const Mtx matrix, const Vec* src, Vec* dst, u32 count);
+void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
+void TryLeaveHang(XActHang* action);
+UnkStageObj* GetStagePlacementByIndex(s32 index);
+f32 fn_800E32B8(WiiPlayerState* chr, s32 anim);
+f32 fn_800D1740(f32 value);
+f32 fn_800D1764(const WiiPlayerState* chr, s32 index);
+s32 GetPlayerPlugConnection(const XObjPlug* plug);
+CVec* GetPlayerPlugCordPull(XObjPlug* plug);
+void ScaleVectorInPlace(Vec* value, f32 scale);
+s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object);
+u32 GetObjectMarkerOverride(XObj* object);
+u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask);
+Vec GetFloorExtent(XObjFloor* const* floors, s32 index);
+Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index);
+void fn_800DB958(XObjMap* map, XObjMapHit* hit, Vec* out);
+void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second);
+void PlayCopterFlightAnimation(XObjCopter* copter);
+void StartPlayerRadarScan(XObjRadar* radar);
+BOOL IsPopperFireAnimationSelected(XObjPopper* popper);
+u8* GetStageZButtonScript();
+void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight);
+void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight);
+void SuppressMovementDuringJump(XActJump* act, const CPadOne* pad, f32* weight);
+void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight);
+void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight);
+void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight);
+void HandleTumbleActionInput(XActTumble* act, const CPadOne* pad, f32* weight);
+void HandleCopterActionInput(XAction* act, const CPadOne* pad, f32* weight);
+void ApplyPopperMovementWeight(XActPopper* act, const CPadOne* pad, f32* weight);
+void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight);
+void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight);
+void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames);
+void UpdateOXMenuTransition(WiiOXMenu* menu, u32 frames);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply);
+void fn_801105C4(XObjPlug* plug, s32 mode);
+void fn_801107AC(XObjPlug* plug);
+void ResetPopperShot(XActPopperShot* shot);
+void fn_800FCD1C(XAction* act);
+void fn_800FCDF0(XAction* act);
+void fn_800FCE60(XAction* act);
+void ResetPlayerPopperAction(XAction* act);
+void fn_8010C0F4(XAction* act);
+void FinishTumbleAction(XActTumble* act);
+void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
+void DrawRadarTargetBeam(XActRadar* act);
+void DrawPopperShotParticles(XActPopper* act);
+void fn_8010BE94(XActPopper* act);
+void fn_8010E548(XActRadar* act);
+void DrawPlayerLookMarker(XObjChrLook* look);
+void DrawPointParticleDisplay(PointPtcl* points, f32 row);
+f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
+u32 GetPlayerActionParameter(s32 index);
+u8* GetStageBatteryDepletedScript();
+void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
+void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, XObj* target, f32 time);
+void SelectActiveAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time);
+void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+void SetGsChannelEnabled(CGs* gs, s32 channel, u8 enable);
+void ClearActiveObjectFloors(XObj* object);
+XObj* GetGameObjectByIndex(const CGame* game, s32 index);
+BOOL IsObjectLiftable(const XObj* object);
+BOOL IsObjectClimbableLedge(const XObj* object);
+BOOL IsObjectLadder(const XObj* object);
+BOOL IsObjectRope(const XObj* object);
+BOOL IsObjectPushable(const XObj* object);
+void ReleasePlayerLiftTarget(WiiPlayerState* chr);
+void SetHangActionState(XAction* act, s32 state);
+void SetPlayerActionTarget(XAction* action, XObj* target);
+void SetPlayerActionState(XAction* action, s32 state);
+void SetPushActionState(XAction* act, s32 state);
+void SetPushTargetState(XAction* act, s32 value);
+void SetCopterActionState(XAction* action, s32 state);
+BOOL IsPositionBehindObject(void*, const Vec* pos, XObj* object);
+f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
+f32 WrapPlayerActionAngle(f32 angle);
+void SetObjectVectorTarget(CObjVec* value, const Vec& target);
+BOOL IsLiftActionState(const XAction* act, s32 wanted);
+BOOL IsHangActionState(const XAction* act, s32 wanted);
+BOOL IsJumpActionState(const XAction* action, s32 state);
+BOOL IsLadderActionState(const XAction* action, s32 state);
+BOOL IsRopeActionState(const XAction* action, s32 state);
+BOOL IsPushActionState(const XAction* act, s32 wanted);
+BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+BOOL IsCopterActionState(const XAction* action, s32 state);
+BOOL IsPopperActionState(const XAction* act, s32 wanted);
+BOOL IsRadarActionState(const XAction* act, s32 wanted);
+BOOL fn_800CDDAC(const XObj* object);
+s16 GetObjectCategory(const XObj* object);
 
 // one of his tools is out
 static inline BOOL IsToolOut(WiiPlayerState* chr, s16 item)
@@ -366,6 +500,7 @@ struct SuitChangeTrail {
 };
 extern SuitChangeTrail lbl_8045BBD0;
 extern "C" void fn_800F2CF4(SuitChangeTrail* trail); // starts the suit-change spiral
+void DrawSpiralTrail(SuitChangeTrail* trail, CVec* position);
 
 // the delay the suit change keeps the old suit's resources around, the GameCube's
 // gPlayerSuitChangeTimer; the Wii resets it to 0.0f and waits on the file itself
@@ -528,12 +663,12 @@ void XObjChr::ResetObjectState()
 	chr->vf28C(0);
 	chr->mMotion.Reset(0.0f, 0.0f, 0.0f);
 	chr->mStick[2] = chr->mStick[3] = chr->mStick[0] = chr->mStick[1] = 0.0f;
-	chr->m_0A1C = chr->m_0A18    = -1;
-	chr->mFloorContactObjects[4] = chr->mFloorContactObjects[2] = chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
-	chr->mLastContactFloorIndex                                                                                               = -1;
-	chr->mNearDistance                                                                                                        = 2.0f;
-	chr->mLetickerIndex                                                                                                       = -1;
-	chr->_0A70                                                                                                                = 0;
+	chr->mActionObjectIndex = chr->mHitObjectIndex = -1;
+	chr->mPreviousContactObject = chr->mFloorContactObjects[2] = chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
+	chr->mLastContactFloorIndex                                                                                              = -1;
+	chr->mNearDistance                                                                                                       = 2.0f;
+	chr->mLetickerIndex                                                                                                      = -1;
+	chr->_0A70                                                                                                               = 0;
 	chr->mLiftPlugFlags &= ~0x80;
 	chr->mPressTimer = chr->mAPressed = 0;
 	chr->mIdleLoops                   = 0;
@@ -574,7 +709,7 @@ void XObjChr::ResetObjectState()
 	chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting = 1.0f;
 	chr->mHeldMoveAngle = chr->mMoveAngle = chr->mHeldStickAngle = NAN;
 	chr->mBatteryWarningFrames                                   = 0;
-	chr->mBatteryWarningFade = chr->mBatteryWarningAngle = 0.0f;
+	chr->mBatteryWarningAngle = chr->mBatteryWarningFade = 0.0f;
 	chr->mGaugeTarget                                    = NULL;
 	chr->mGaugeTime                                      = 0.0f;
 	chr->mPlug.ResetObjectState();
@@ -763,8 +898,8 @@ void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 	chr->mScriptAttach           = 0;
 	chr->mClimbType              = 0;
 	chr->mNextClimbType          = 0;
-	chr->m_0A18                  = -1;
-	chr->m_0A1C                  = -1;
+	chr->mHitObjectIndex         = -1;
+	chr->mActionObjectIndex      = -1;
 	chr->mFloorContactObjects[2] = -1;
 	if (nextAnimation >= 0) {
 		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1293,6 +1428,459 @@ s32 GetSelectedFloorIndex(const XObj* object)
 	return object->mSelectedFloorIndex;
 }
 
+// the same struct as game/xobjchrstate.h's, which pulls in the GameCube xchr.h and cgame.h (sysdolphin) and cannot be included here
+struct PlayerTurnState {
+	f32 heading;
+	f32 previousHeading;
+	f32 change;
+	f32 previousChange;
+	f32 total;
+};
+PlayerTurnState gPlayerTurnState;
+
+// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
+// effects are present; the one-time pose initialization data and several suit/scene
+// steps are unresolved, and aggregate/register allocation still differs
+void XObjChr::UpdateObject(u32 frames)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	CPadOne* pad        = &chr->mPad;
+	if (chr->mPadReset && !chr->mMenu.IsOpen() && !chr->mOXMenu.mStarted && !gGame.mMenu.mActive && !chr->mSuits.mChangeStep)
+		pad->Update(gWiiGameCubePads, 0);
+	else
+		pad->Clear();
+	if (chr->mMenu.IsOpening() && chr->mTumble.mState)
+		ClosePlayerEquipmentRings(&chr->mMenu, 0);
+	chr->mStick[1] = chr->mStick[0];
+	chr->mStick[3] = chr->mStick[2];
+	chr->mStick[0] = gGame.IsRunning() && !gGame.mEvt.mData.mScript ? GetControlStickMagnitude(pad) : 0.0f;
+	chr->mStick[2] = chr->mStick[0] > 0 ? -(f32)atan2(pad->mStick.x, pad->mStick.y) : -1.f;
+	if (gGame.IsRunning() && !gGame.GetStatusFlags(0x400) && !gGame.GetStatusFlags(0x800)
+	    && (!gGame.mEvt.mData.mScript || (gGame.mStage == 0x16 && (chr->mPlayerFlags & 0x80000000)))
+	    && (chr->mLift.mState == 0 || chr->mLift.mState == 4) && chr->mHang.mState == 0 && chr->mJump.mState == 0
+	    && chr->mLadder.mState == 0 && chr->mRope.mState == 0 && chr->mPush.mState == 0 && chr->mTumble.mState == 0
+	    && chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0 && chr->GetAnimId() != 0x79
+	    && chr->GetAnimId() != 0x89 && chr->GetAnimId() != 0xE0) {
+		f32 remote  = gWiiPointer.mRemoteAcceleration[1].z - gWiiPointer.mRemoteAcceleration[2].z;
+		f32 nunchuk = gWiiPointer.mNunchukAcceleration[1].z - gWiiPointer.mNunchukAcceleration[2].z;
+		if (fn_800D1740(remote) > 2.0f || fn_800D1740(nunchuk) > 2.0f) {
+			chr->_1C9B8[0] = 0.5f * gRefreshRate;
+		} else {
+			chr->_1C9B8[0] -= frames;
+			if (chr->_1C9B8[0] <= 0.0f) {
+				chr->_1C9B8[0] = 0.0f;
+				chr->_1C9B8[1] = 0.0f;
+			}
+		}
+		if (chr->_1C9B8[0] > 0.0f) {
+			if (fn_800D1740(remote) > 2.0f)
+				chr->_1C9B8[1] += frames;
+			if (fn_800D1740(nunchuk) > 2.0f)
+				chr->_1C9B8[1] += frames;
+		}
+		if (chr->_1C9B8[1] < 0.2f * gRefreshRate) {
+			chr->_1C9B8[2] -= 0.1f * frames;
+			if (chr->_1C9B8[2] < 0.0f)
+				chr->_1C9B8[2] = 0.0f;
+		} else {
+			chr->_1C9B8[2] += 0.07f * frames;
+			if (chr->_1C9B8[2] > 1.0f)
+				chr->_1C9B8[2] = 1.0f;
+		}
+		if (chr->_1C9B8[2] > 0.0f) {
+			chr->_1C9C4[0] = fmod(0.125f * chr->_1C9B8[2] + chr->_1C9C4[0], 1.0);
+			chr->mStick[0] = 0.95f * chr->_1C9B8[2];
+			chr->mStick[2] = 2.0f * (PI * chr->_1C9C4[0]);
+		} else {
+			f32 angle      = WrapAngle(chr->mMoveRotate.y - gGame.mMotionControlCamera.mView.mAngle.y);
+			chr->_1C9C4[0] = angle / TWO_PI;
+		}
+		if (chr->_1C9B8[2] >= 1.0f) {
+			if ((chr->_1C9C4[1] += frames) > 3 * gRefreshRate) {
+				chr->_1C9C4[1] = 3 * gRefreshRate;
+				if (chr->mPlayerFlags & 0x20000000)
+					chr->mTumble.mState = 10;
+			}
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x76))
+				PlayWiiSoundEffect(&gGame.mSound, 0x76, 1.0f, 0.0f);
+		} else {
+			chr->_1C9C4[1] = 0.0f;
+		}
+	} else {
+		chr->_1C9B8[0] = 0.0f;
+		chr->_1C9B8[1] = 0.0f;
+		chr->_1C9B8[2] = 0.0f;
+		chr->_1C9C4[0] = 0.0f;
+		chr->_1C9C4[1] = 0.0f;
+		if (gGame.mStage == 0x16 && (chr->mPlayerFlags & 0x80000000)) {
+			fn_800FCD1C(&chr->mLift);
+			fn_800FCDF0(&chr->mLift);
+			fn_800FCE60(&chr->mLift);
+			if (chr->mPopper.mState)
+				ResetPlayerPopperAction(&chr->mPopper);
+			if (chr->mRadar.mState)
+				fn_8010C0F4(&chr->mRadar);
+			if (chr->mTumble.mState)
+				FinishTumbleAction(&chr->mTumble);
+		}
+	}
+	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && chr->GetAttachment() != 1 && chr->GetAttachment() != 2
+	    && chr->GetAttachment() != 3
+	    && (chr->mLift.mState == 0
+	        || (chr->mLift.mState == 4 && !IsCarryingToothbrush(&chr->mLift) && !IsCarryingSpoon(&chr->mLift) && !IsCarryingMug(&chr->mLift)
+	            && !IsCarryingSquirter(&chr->mLift)))
+	    && !chr->mHang.mState && !chr->mJump.mState && !chr->mLadder.mState && !chr->mRope.mState && !chr->mPush.mState
+	    && !chr->mTumble.mState && !chr->mCopter.mState && !chr->mPopper.mState && !chr->mRadar.mState) {
+		if (chr->mPreviousContactObject < 0 && !chr->_0A70 && (pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))
+		    && (chr->mHitObjectIndex < 0 || chr->mHitObjectIndex == chr->mFloorContactObjects[0]
+		        || (!IsLiftTargetPlug(&chr->mLift) && chr->mHitObjectIndex >= 0
+		            && (GetGameObjectByIndex(&gGame, chr->mHitObjectIndex)->mStatus.mFlags & 0x20)))) {
+			chr->mNearDistance = 2;
+			do {
+				if ((chr->mPreviousContactObject = FindNearbyPlayerInteraction(chr, chr->mNearDistance)) >= 0) {
+					XObj* object                = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
+					chr->mContactPos.x          = object->mMoveTranslate.x;
+					chr->mContactPos.y          = object->mMoveTranslate.y;
+					chr->mContactPos.z          = object->mMoveTranslate.z;
+					chr->mLastContactFloorIndex = object->mSelectedFloorIndex;
+					chr->mEdgePos               = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+					break;
+				}
+			} while ((chr->mNearDistance += 1.0f) <= 10);
+		}
+		if (chr->mPreviousContactObject >= 0) {
+			chr->mStick[2] = WrapAngle((f32)atan2(chr->mEdgePos.x - chr->mMoveTranslate.x, chr->mEdgePos.z - chr->mMoveTranslate.z))
+			               - gGame.mMotionControlCamera.mView.mAngle.y;
+			chr->mStick[0] = 0.8f;
+		}
+	} else {
+		chr->mPreviousContactObject = -1;
+		chr->mNearDistance          = 2;
+	}
+	chr->mLiftPlugFlags &= ~0x80;
+
+	f32 direction;
+	f32 speed = 1.2f * chr->mStick[0];
+
+	s32 hangState = chr->mHang.mState;
+	if (!hangState && !chr->mJump.mState && !chr->mLadder.mState && !chr->mRope.mState && !chr->mPush.mState && !chr->mTumble.mState
+	    && !chr->mCopter.mState && (chr->mPopper.mState == 0 || chr->mPopper.mState == 8 || chr->mPopper.mState == 4)
+	    && !chr->mRadar.mState)
+		speed *= 1.2f;
+	if (speed > 0 && speed < 0.5f)
+		speed = 0.5f;
+	if (speed > 1.0f)
+		speed *= speed;
+
+	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
+	// WrapAngle inline leaves a copy (fmr) behind each one
+	if (speed > 0) {
+
+		if (gGame.GetStatusFlags(0x100)) {
+			if (gGame.GetStatusFlags(0x200)) {
+				if ((chr->mStick[2] >= 0 && chr->mStick[2] <= HALF_PI) || (chr->mStick[2] <= 0 && chr->mStick[2] >= -HALF_PI)) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * (chr->mStick[2] / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (chr->mStick[2] >= HALF_PI && chr->mStick[2] <= 130 * DEG2RAD) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - chr->mStick[2]) / (40 * DEG2RAD));
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (chr->mStick[2] <= -HALF_PI && chr->mStick[2] >= -130 * DEG2RAD) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - chr->mStick[2]) / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else
+					direction = -WrapAngle(chr->mStick[2] + chr->mMoveTarget1.y);
+			} else {
+				direction = NAN;
+				speed     = 0;
+			}
+		} else if (hangState == 5) {
+			f32 yaw   = chr->mMoveRotate.y;
+			f32 angle = WrapAngle((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw);
+			if (angle >= 30 * DEG2RAD && angle < 150 * DEG2RAD) {
+				direction                 = TWO_PI + WrapAngle(HALF_PI + yaw);
+				chr->mHang.mMoveDirection = -1;
+				speed                     = 0.5f;
+			} else if (angle >= 210 * DEG2RAD && angle < 330 * DEG2RAD) {
+				direction                 = TWO_PI + WrapAngle(yaw - HALF_PI);
+				chr->mHang.mMoveDirection = 1;
+				speed                     = 0.5f;
+			} else {
+				direction                 = NAN;
+				speed                     = 0;
+				chr->mHang.mMoveDirection = 0;
+			}
+		} else if (chr->mCopter.mState == 3) {
+			chr->mCopter.mMoveDirection = 1;
+			direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		} else if (chr->mCopter.mState == 4 || chr->mCopter.mState == 7 || chr->mCopter.mState == 8) {
+			if ((gGame.GetStatusFlags(0x40000000)) && IsStopped(chr)) {
+				direction = NAN;
+				speed     = 0;
+			} else {
+				chr->mCopter.mMoveDirection = 1;
+				direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
+				speed *= 0.75f;
+			}
+		} else if (chr->mPopper.mState == 3 || chr->mPopper.mState == 4) {
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		} else if (chr->mPopper.mState == 8) {
+			// he stands still while the popper's shot (anim 5) leaves
+			if (((XObjPopper*)chr->mPopperObj)->GetAnimId() == 5 && ((XObjPopper*)chr->mPopperObj)->GetAnimFrame() <= 15.0f) {
+				direction = NAN;
+				speed     = 0;
+			} else {
+				direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
+			}
+		} else if (chr->mRope.mState == 5) {
+			if (pad->mStick.y > 0.1f) {
+				chr->mRope.mMoveDirection = 1;
+				f32 anim                  = GetAnimId();
+				if (anim == 139.0f || anim == 138.0f)
+					speed = 0.32f;
+				else if (anim == 141.0f || anim == 140.0f)
+					speed = 0.12f;
+				else
+					speed = 0;
+			} else if (pad->mStick.y < -0.1f) {
+				chr->mRope.mMoveDirection = -1;
+				speed                     = 0.4f;
+			} else {
+				chr->mRope.mMoveDirection = 0;
+			}
+			direction = NAN;
+		} else if (chr->mLadder.mState == 5) {
+			if (pad->mStick.y > 0.1f) {
+				chr->mLadder.mMoveDirection = 1;
+				speed                       = 0;
+			} else if (pad->mStick.y < -0.1f) {
+				chr->mLadder.mMoveDirection = -1;
+				speed                       = 0;
+			} else {
+				chr->mLadder.mMoveDirection = 0;
+			}
+			direction = NAN;
+		} else if (chr->mPush.mState == 2) {
+			f32 yaw      = chr->mMoveRotate.y;
+			f32 relative = WrapAngle(HALF_PI + ((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw));
+			if (relative >= 0 && relative < PI) {
+				chr->mPush.mMoveDirection = 1;
+			} else {
+				chr->mPush.mMoveDirection = -1;
+				yaw                       = PI + yaw;
+			}
+			while (yaw < 0.0f)
+				yaw += TWO_PI;
+			while (yaw >= TWO_PI)
+				yaw -= TWO_PI;
+			direction = TWO_PI + yaw;
+			if (!chr->mPush.mTarget || ((XActPush*)&chr->mPush)->mPushPositionClamped)
+				speed = 0;
+			else
+				speed = 1.5f;
+		} else {
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		}
+		if (__fpclassifyf(chr->mHeldMoveAngle) != FP_NAN)
+			direction = chr->mHeldMoveAngle + (chr->mStick[2] - chr->mHeldStickAngle);
+		chr->mMoveAngle = direction;
+	} else {
+		direction = NAN;
+		if (hangState == 5 && chr->mHang.mMoveDirection)
+			chr->mHang.mMoveDirection = 0;
+		else if (chr->mCopter.mState == 3 && chr->mCopter.mMoveDirection)
+			chr->mCopter.mMoveDirection = 0;
+		else if (chr->mRope.mState == 5) {
+			if (GetAnimId() == 139) {
+				speed                     = 0.32f;
+				chr->mRope.mMoveDirection = 2;
+			} else if (GetAnimId() == 141) {
+				speed                     = 0.12f;
+				chr->mRope.mMoveDirection = 2;
+			} else if (chr->mRope.mMoveDirection != 0) {
+				chr->mRope.mMoveDirection = 0;
+			}
+		} else if (chr->mLadder.mState == 5 && chr->mLadder.mMoveDirection)
+			chr->mLadder.mMoveDirection = 0;
+		else if (chr->mPush.mState == 2 && chr->mPush.mMoveDirection)
+			chr->mPush.mMoveDirection = 0;
+		chr->mHeldMoveAngle = chr->mMoveAngle = NAN;
+	}
+	if (__fpclassifyf(chr->mHeldMoveAngle) == FP_NAN)
+		chr->mHeldStickAngle = chr->mStick[2];
+	else if (Abs(chr->mStick[2] - chr->mHeldStickAngle) >= 3 * DEG2RAD) {
+		chr->mHeldMoveAngle = chr->mMoveAngle = NAN;
+		chr->mHeldStickAngle                  = chr->mStick[2];
+	}
+	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN)
+		direction = chr->mWalkHeading;
+	f32 scale = UpdatePlayerActions(chr, frames);
+	if (scale == 0.0f) {
+		speed     = 0.0f;
+		direction = NAN;
+	} else {
+		speed *= scale;
+	}
+	UpdatePlayerSuitChange(chr);
+	UpdatePlayerMovementAndContacts(chr, frames, speed, direction);
+	UpdatePlayerActionAnimations(chr, frames);
+	XObj::UpdateObject(frames);
+	((XObj*)chr->mCopterObj)->UpdateObject(frames);
+	((XObj*)chr->mPopperObj)->UpdateObject(frames);
+	((XObj*)chr->mRadarObj)->UpdateObject(frames);
+	((XObj*)chr->mOXObj)->UpdateObject(frames);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent]) && chr->mSuits.mChangeStep != 3) {
+		WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+		suit->SetPos(*GetPos());
+		suit->SetRot(chr->mMoveRotate);
+		suit->SetScale(*GetScale());
+		suit->UpdateObject(frames);
+	}
+	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift)) {
+		for (s32 i = 0; i < 2; ++i) {
+			const Vec& rgb = chr->mAnmQueue.mColorStep[i].mValue;
+			CColor* color  = i == 0 ? &chr->mLift.mTarget->mColor1 : &chr->mLift.mTarget->mColor0;
+			color->r       = (u32)rgb.x;
+			color->g       = (u32)rgb.y;
+			color->b       = (u32)rgb.z;
+			color->a       = 0;
+		}
+	}
+	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN) {
+		CVec& target = chr->mMoveTarget0;
+		if (*GetPos() == target) {
+			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+			chr->mWalkHeading = NAN;
+		} else if (PSVECDistance(GetPos(), &target) <= 0.000001f) {
+			SetPos(target);
+			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+			chr->mWalkHeading = NAN;
+		}
+	}
+	if (chr->mJump.mState == 2 || chr->mJump.mState == 3 || chr->mHang.mState == 10 || chr->mRope.mState == 9 || chr->mLadder.mState == 10
+	    || chr->mCopter.mState == 5)
+		chr->mFallDistance += chr->mLastPos.y - chr->mMoveTranslate.y;
+	else
+		chr->mFallDistance = 0.0f;
+	UpdatePlayerBattery(chr, frames);
+	chr->mGroundType             = GetPlayerGroundType(chr);
+	chr->mFrameTime.mLastFrame   = chr->mFrameTime.mFrame;
+	chr->mFrameTime.mFrame       = GetAnimFrame();
+	PlayerFrameParticle particle = ProcessPlayerFrameEvents(chr, &chr->mFrameTime, gPlayerAnimationFrameEvents);
+	if (particle.mCode >= 0 && !gGame.GetStatusFlags(0x100)) {
+		EffectInstance* effect = fn_800A11A4(&gGame.mEvtPtcl, particle.mCode | 0x10000, 1);
+		if (effect != NULL) {
+			effect->pos   = particle.mTranslate;
+			effect->rot   = particle.mRotate;
+			effect->scale = particle.mScale;
+			UpdateEffectMtx(effect);
+		}
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		ProcessPlayerFrameEvents((XObj*)chr->mCopterObj, NULL, gCopterAnimationFrameEvents);
+	}
+	CVec neck          = GetJointWorldPos("neck");
+	chr->mLook.mOffset = (Vec) { 0.0f, neck.y - GetPos()->y + 3.0f * chr->mMoveScale.y, 0.0f };
+	if (chr->mLook.mActive != 0) {
+		if (chr->mLook.mFade < 1.0f) {
+			chr->mLook.mFade += 1.0f / (0.3f * gRefreshRate) * frames;
+			if (chr->mLook.mFade >= 1.0f)
+				chr->mLook.mFade = 1.0f;
+			chr->mLook.mPulse = chr->mLook.mFade;
+		}
+	} else if (chr->mLook.mFade > 0.0f) {
+		chr->mLook.mFade -= 1.0f / (0.3f * gRefreshRate) * frames;
+		if (chr->mLook.mFade <= 0.0f)
+			chr->mLook.mFade = 0.0f;
+	}
+	if (chr->mLook.mFade > 0.0f) {
+		chr->mLook.mPhase = fmod(chr->mLook.mPhase + frames * 6, 360.0);
+		if (chr->mLook.mFade >= 1.0f) {
+			chr->mLook.mPulse += 1.0f / (0.3f * gRefreshRate) * frames;
+			if (chr->mLook.mPulse >= 2.0f)
+				chr->mLook.mPulse = fmod(chr->mLook.mPulse, 2.0);
+		}
+	}
+	UpdateParticlePool(&chr->mDust.mPtcl, frames);
+	UpdateTumbleFade(&chr->mTumble.mFade, chr->mTumble.mState == 2 || chr->mTumble.mState == 16, frames);
+	UpdateRadarBeamAnimation((XActRadar*)&chr->mRadar, frames);
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticleSlots[i]) {
+			UpdatePointParticleDisplay(gPointParticleSlots[i], frames);
+			if (gPointParticleSlots[i]->IsFree())
+				gPointParticleSlots[i] = NULL;
+		}
+	}
+	UpdateSpiralTrail(&lbl_8045BBD0, frames);
+	if (chr->mPadReset && !(chr->_1C9B8[2] > 0.0f)) {
+		gPlayerTurnState.previousHeading = gPlayerTurnState.heading;
+		gPlayerTurnState.heading         = WrapAngle(chr->mMoveRotate.y);
+		gPlayerTurnState.previousChange  = gPlayerTurnState.change;
+		gPlayerTurnState.change          = gPlayerTurnState.heading - gPlayerTurnState.previousHeading;
+		if (gPlayerTurnState.change > PI)
+			gPlayerTurnState.change -= TWO_PI;
+		else if (gPlayerTurnState.change < -PI)
+			gPlayerTurnState.change += TWO_PI;
+		if (chr->mLift.mState || chr->mCopter.mState || chr->mPopper.mState == 4) {
+			gPlayerTurnState.total = 0.0f;
+		} else {
+			gPlayerTurnState.total += gPlayerTurnState.change;
+			if (gPlayerTurnState.change * gPlayerTurnState.previousChange <= 0.0f)
+				gPlayerTurnState.total = 0.0f;
+			else if (fn_800D1740(gPlayerTurnState.change) < 10.0f * DEG2RAD)
+				gPlayerTurnState.total = 0.0f;
+		}
+		s32 turns = (s32)(gPlayerTurnState.total / TWO_PI);
+		if ((turns < 0 ? -turns : turns) >= 5) {
+			chr->mTumble.mState    = 10;
+			gPlayerTurnState.total = 0.0f;
+		}
+	}
+	((CObjVec*)&chr->mEyeAim)->Step(frames);
+	if (chr->mCameraTargetMargin < chr->mCameraTargetMarginSetting) {
+		if ((chr->mCameraTargetMargin += 0.01f * frames) > chr->mCameraTargetMarginSetting)
+			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
+	} else if (chr->mCameraTargetMargin > chr->mCameraTargetMarginSetting) {
+		if ((chr->mCameraTargetMargin -= 0.01f * frames) < chr->mCameraTargetMarginSetting)
+			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
+	}
+	UpdatePlayerHeadOffset(chr, frames);
+	const Vec* pos       = GetPos();
+	CSound3DActor* actor = mActor.mActor;
+	if (actor != NULL && actor->mHandle.IsAttachedSound()) {
+		actor->SetPosition(nw4r::math::VEC3(*pos));
+		actor->UpdateFade(frames);
+	}
+}
+
 TVec* GetObjectMoveRotation(CObj* object)
 {
 	return &object->mMoveRotate;
@@ -1409,6 +1997,35 @@ f32 WrapPlayerActionAngle(f32 angle)
 f32 GetVectorDistance(const Vec* a, const Vec* b)
 {
 	return PSVECDistance((Vec*)a, (Vec*)b);
+}
+
+// NONMATCHING: the scene-group clear keeps mNumScnObj in r4 across Remove, while the build reloads it into r0;
+// a direct removal loop instead of Clear scores lower
+void XObjChr::UpdateAnim(f32 speed)
+{
+	CObj::UpdateAnim(speed);
+	if (speed == 0.0f) {
+		WiiPlayerState* chr = (WiiPlayerState*)this;
+		m_pRoot->PushBack(mObject.m_pScnMdl);
+		if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetPos(*GetPos());
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetRot(chr->mMoveRotate);
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetScale(*GetScale());
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].UpdateAnim(speed);
+			m_pRoot->PushBack(chr->mSuits.mObjects[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+			if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+				m_pRoot->PushBack(chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+			}
+		}
+		if (IsLiftTargetPlug(&chr->mLift)) {
+			UpdateHeldObject(&chr->mLift, 1);
+			m_pRoot->PushBack(chr->mPlug.mObject.m_pScnMdl);
+		}
+		m_pRoot->UpdateFrame();
+		m_pRoot->CalcVtx();
+		m_pRoot->CalcWorld();
+		m_pRoot->Clear();
+	}
 }
 
 // moves what he carries along and queues its model for the scene
@@ -1556,6 +2173,356 @@ void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result)
 	}
 	chr->mMenu.mAtc.Select(result);
 	chr->mMenu.mDrs.Select(result);
+}
+
+// NONMATCHING: the action state flow and Wii pad masks are present; the pointer-
+// driven ring-selection branches, automatic approach timing and aggregate/register
+// allocation still differ from retail
+f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames)
+{
+	if (GetMaskedPlayerStatus(player, 0x80000000))
+		return 0;
+	f32 speed          = -1;
+	const CPadOne* pad = &player->mPad;
+	if (gGame.IsRunning() && !IsEventScriptActive(&gGame) && (player->mPlayerFlags & 0x20000000)
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+	    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+	        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+	        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+	        && IsRadarActionState(&player->mRadar, 0))) {
+		if (!gGame.mMenu.mActive) {
+			if (gWiiPointer.Check(0x100) && (gGame.GetStatusFlags(0x800000000000ULL)) && player->mAttachmentRequest < 0) {
+				if (!(gGame.GetStatusFlags(0x100)))
+					OpenPlayerEquipmentRings(player);
+				else
+					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x0002000000000020ULL)
+			           && !(pad->mButton & 0x0080000000000000ULL) && (!(gGame.GetStatusFlags(0x100)) && player->mAttachmentRequest < 0)) {
+				if (player->mAttachment != 0) {
+					player->mAttachmentRequest = 0;
+					player->mAttachmentStep    = 0;
+				}
+				return 0;
+			}
+		}
+		if (!(gGame.GetStatusFlags(0x400))
+		    && (IsPlayerAttachmentEquipped(player, 0) || IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2)
+		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
+		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
+		        || IsPlayerAttachmentEquipped(player, 8))) {
+			BOOL press = (pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x500)) && player->mAttachmentRequest < 0;
+			s32 mode;
+			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
+				switch (player->mAttachmentActionType) {
+				case 1:
+					mode = 1;
+					break;
+				case 2:
+					mode = 2;
+					break;
+				default:
+					mode = 0;
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 6))
+				mode = 0;
+			else if (IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5) || IsPlayerAttachmentEquipped(player, 7)
+			         || IsPlayerAttachmentEquipped(player, 8))
+				switch (player->mToolActionType) {
+				case 1:
+					mode = 1;
+					break;
+				default:
+					mode = 0;
+				}
+			else
+				mode = 2;
+			{
+				// what A may do this frame: the equipment's mode (0 nothing, 1 put it away first, 2 act) and whether the hands are free
+				struct {
+					s32 mode;
+					BOOL emptyHands;
+				} use          = { 0, 0 };
+				use.mode       = mode;
+				use.emptyHands = IsPlayerAttachmentEquipped(player, 0);
+				if (press && player->mLetickerIndex >= 0) {
+					XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
+					if (object->mStatus.mFlags & 0x10000000000ULL)
+						TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+				} else if (press || (player->mPreviousContactObject >= 0 && player->mPreviousContactObject == player->mHitObjectIndex)
+				           || player->mClimbType) {
+					BOOL handled       = FALSE;
+					player->mClimbType = 0;
+					if (use.emptyHands && player->mFloorContactObjects[2] >= 0
+					    && player->mFloorContactObjects[2] != player->mFloorContactObjects[0]) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+						if (IsObjectLiftable(object)) {
+							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+							    && object->mMaxFloorHeight > 1.f + player->GetPos()->y) {
+								if (IsLiftTargetPlug(&player->mLift))
+									ReleasePlayerLiftTarget(player);
+								player->mLift.mState = 1;
+								SetPlayerActionTarget(&player->mLift, object);
+								player->mLift.mTargetState = 0;
+								handled                    = true;
+							}
+						} else if (object->mStatus.mFlags & 0x10000000000ULL) {
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+							handled = true;
+						}
+					} else if (use.emptyHands && player->mFloorContactObjects[2] >= 0
+					           && player->mFloorContactObjects[2] == player->mFloorContactObjects[0]
+					           && player->mHitObjectIndex == player->mFloorContactObjects[2]) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+						if ((object->mStatus.mFlags & 0x10000000000ULL) && !(object->mStatus.mFlags & 0x100000000000ULL)
+						    && (s16)GetObjectCategory(object) != 8) {
+							TryStartObjectEvent(&gGame, object->GetEventScript(), object, -1, -1);
+							handled = true;
+						}
+					}
+					if (!handled && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+					    && player->mHitObjectIndex >= 0) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+						if (use.emptyHands && IsObjectLiftable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]
+						    && object->mMaxFloorHeight > 1.f + player->GetPos()->y) {
+							if (IsLiftTargetPlug(&player->mLift))
+								ReleasePlayerLiftTarget(player);
+							player->mLift.mState = 1;
+							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
+							player->mLift.mTargetState = 0;
+						} else if (use.emptyHands && IsObjectClimbableLedge(object)) {
+							// NONMATCHING: retail keeps an empty test of the ledge height here (fneg, fcmpu with 0, then
+							// >= 12 with both outcomes branching to the same place); this compiler drops the empty body
+							// and with it the height. The Wii starts no hang or jump from it.
+							f32 height = fn_800D1740(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							if (height != 0) {
+								if (height >= 12) { }
+							}
+						} else if (IsObjectLadder(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContactObjects[0]) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight
+								           && IsPositionBehindObject(&player->mLadder, player->GetPos(), object))
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 1;
+									if (player->mAttachment != 0) {
+										player->mAttachmentRequest = 0;
+										player->mAttachmentStep    = 0;
+									}
+								} else if (use.mode == 2) {
+									if (IsLiftTargetPlug(&player->mLift))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										player->mLadder.mState = 1;
+									else if (dir < 0)
+										player->mLadder.mState = 2;
+									SetPlayerActionTarget(&player->mLadder, object);
+								}
+								StopPlayerMotion(player);
+							}
+						} else if (IsObjectRope(object)) {
+							s32 dir = 0;
+							if (object->mSelectedFloorIndex == 0) {
+								if (player->mHitObjectIndex == player->mFloorContactObjects[0]) {
+									f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+									if (angle <= PI * .5f || angle >= PI * 1.5f)
+										dir = -1;
+								} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight)
+									dir = 1;
+							}
+							if (dir != 0) {
+								if (use.mode == 1) {
+									player->mClimbType     = 0;
+									player->mNextClimbType = 2;
+									if (player->mAttachment != 0) {
+										player->mAttachmentRequest = 0;
+										player->mAttachmentStep    = 0;
+									}
+								} else if (use.mode == 2) {
+									if (IsLiftTargetPlug(&player->mLift))
+										ReleasePlayerLiftTarget(player);
+									if (dir > 0)
+										player->mRope.mState = 1;
+									else if (dir < 0)
+										player->mRope.mState = 2;
+									SetPlayerActionTarget(&player->mRope, object);
+								}
+								StopPlayerMotion(player);
+							}
+						}
+						if ((IsLiftActionState(&player->mLift, 0)
+						     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+						    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+						        && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+						        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+						        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+						        && IsRadarActionState(&player->mRadar, 0))
+						    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
+							if (IsLiftTargetPlug(&player->mLift))
+								ReleasePlayerLiftTarget(player);
+							StopPlayerMotion(player);
+							SetPushActionState(&player->mPush, 1);
+							SetPlayerActionTarget(&player->mPush, object);
+							SetPushTargetState(&player->mPush, 0);
+						}
+					}
+				}
+			}
+		}
+		if (!IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
+		    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		        && IsRadarActionState(&player->mRadar, 0))) {
+			if (IsPlayerAttachmentEquipped(player, 0)) {
+				if (!(gGame.GetStatusFlags(0x100))) {
+					if (player->mPlug.mConnection && ((pad->mTrigger & 0x0001000000000010ULL) || (pad->mTrigger & 0x0002000000000020ULL))) {
+						if (player->mLiftPlugTarget) {
+							TryStartObjectEvent(&gGame, player->mLiftPlugTarget->GetEventScript(), player->mLiftPlugTarget, -1, -1);
+							StopPlayerMotion(player);
+							speed = 0;
+						}
+					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug.mConnection
+					           && player->mPreviousContactObject < 0 && (pad->mButton & 0x0001000000000010ULL))
+						player->mLiftPlugFlags |= 0x80;
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 1)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))) {
+					SetCopterActionState(&player->mCopter, 3);
+					player->SetAnim(39, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					PlayCopterFlightAnimation((XObjCopter*)player->mCopterObj);
+					StopPlayerMotion(player);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 2)) {
+				s32 state = 0;
+				if (pad->mTrigger & 0x0001000000000010ULL)
+					state = 7;
+				if (state != 0) {
+					player->mPopper.mState = state;
+					SetObjectVectorTarget((CObjVec*)&player->mMoveRotate, player->mMoveRotate);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 3)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))) {
+					player->mRadar.mState = 3;
+					StartPlayerRadarScan((XObjRadar*)player->mRadarObj);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingToothbrush(&player->mLift)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 28;
+			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)) && player->GetAnimId() != 0x8ae
+				    && player->GetAnimId() != 0x155 && player->GetAnimId() != 0x156 && player->GetAnimId() != 0x157)
+					player->mLift.mState = 32;
+			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 34;
+			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingSquirter(&player->mLift)) {
+				if ((pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100)))
+					player->mLift.mState = 38;
+			} else
+				IsPlayerAttachmentEquipped(player, 8);
+		}
+	}
+	if (player->mLiftPlugFlags & 0x80) {
+		BOOL lift = FALSE;
+		if (player->mAPressed)
+			player->mPressTimer += frames;
+		else {
+			player->mPressTimer = 0;
+			player->mAPressed   = (pad->mTrigger & 0x0001000000000010ULL) != 0;
+		}
+		if ((player->mLiftPlugFlags & 2) && player->mPressTimer >= gRefreshRate * ((s32)GetInteractionParameter(3) / 100.f)) {
+			if (player->mAPressed)
+				lift = TRUE;
+		} else if (player->mLiftPlugFlags & 1) {
+			CVec joint = player->mPlug.GetWorldPos("plug_model");
+			f32 angle  = WrapPlayerActionAngle(player->mMoveRotate.y - GetHeadingBetweenPositions(&player->mMoveTranslate, &joint));
+			if ((angle < PI * .5f || angle > PI * 1.5f) && player->mAPressed)
+				lift = TRUE;
+		} else if (!(player->mLiftPlugFlags & 1) && !(player->mLiftPlugFlags & 2))
+			lift = TRUE;
+		if (lift) {
+			player->mLift.mState = 1;
+			SetPlayerActionTarget(&player->mLift, &player->mPlug);
+			player->mLift.mTargetState = 0;
+			player->mPressTimer        = 0;
+		}
+	} else
+		player->mAPressed = player->mPressTimer = 0;
+	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
+	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
+	    && IsPopperFireAnimationSelected((XObjPopper*)player->mPopperObj) && (pad->mTrigger & 0x0001000000000010ULL))
+		player->mPopper.mState = 5;
+	if (gWiiPointer.Check(0x40) && !IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x400)) && player->mAttachmentRequest < 0
+	    && !(gGame.GetStatusFlags(0x20)) && !(gGame.GetStatusFlags(0x100))
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+	    && (IsHangActionState(&player->mHang, 0) || IsHangActionState(&player->mHang, 5)) && IsJumpActionState(&player->mJump, 0)
+	    && (IsLadderActionState(&player->mLadder, 0) || IsLadderActionState(&player->mLadder, 5))
+	    && (IsRopeActionState(&player->mRope, 0) || IsRopeActionState(&player->mRope, 5))
+	    && (IsPushActionState(&player->mPush, 0) || IsPushActionState(&player->mPush, 2)) && IsTumbleActionState(&player->mTumble, 0)
+	    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0) && IsRadarActionState(&player->mRadar, 0))
+		TryStartObjectEvent(&gGame, GetStageZButtonScript(), NULL, -1, -1);
+	if (player->mPreviousContactObject >= 0) {
+		BOOL clear = FALSE;
+		if (IsEventScriptActive(&gGame) || (gGame.GetStatusFlags(0x400))
+		    || !(IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    || !(IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		         && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		         && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		         && IsRadarActionState(&player->mRadar, 0)))
+			clear = TRUE;
+		else if (player->mHitObjectIndex >= 0 && player->mHitObjectIndex != player->mFloorContactObjects[0]) {
+			// he touches something he does not stand on: both arms clear it
+			if (player->mPreviousContactObject != player->mHitObjectIndex
+			    || player->mLastContactFloorIndex != GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+				clear = TRUE;
+			else if (player->mPreviousContactObject == player->mHitObjectIndex
+			         && player->mLastContactFloorIndex == GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+				clear = TRUE;
+		} else if (player->mHitObjectIndex >= 0 && player->mHitObjectIndex == player->mFloorContactObjects[0]
+		           && player->mPreviousContactObject == player->mHitObjectIndex
+		           && player->mLastContactFloorIndex == GetGameObjectByIndex(&gGame, player->mHitObjectIndex)->mSelectedFloorIndex)
+			clear = TRUE;
+		if (!clear && PSVECDistance(&player->mMoveTranslate, &player->mAutoActionStart) <= 0.09f && ++player->mAutoActionFrames > 1) {
+			clear = TRUE;
+		}
+		player->mAutoActionStart = player->mMoveTranslate;
+		XObj* object             = GetGameObjectByIndex(&gGame, player->mPreviousContactObject);
+		CVec* position           = object->GetPos();
+		if (!fn_800CDDAC(object) || !(object->mStatus.mFlags & 0x10000) || player->mContactPos.x != position->x
+		    || player->mContactPos.y != position->y || player->mContactPos.z != position->z)
+			clear = TRUE;
+		if (clear) {
+			player->mPreviousContactObject = -1;
+			player->mNearDistance          = 2;
+		}
+	}
+	HandleLiftActionInput((XActLift*)&player->mLift, pad, &speed);
+	HandleHangActionInput(&player->mHang, pad, &speed);
+	SuppressMovementDuringJump((XActJump*)&player->mJump, pad, &speed);
+	HandleLadderActionInput((XActLadder*)&player->mLadder, pad, &speed);
+	HandleRopeActionInput((XActRope*)&player->mRope, pad, &speed);
+	HandlePushActionInput((XActPush*)&player->mPush, pad, &speed);
+	HandleTumbleActionInput((XActTumble*)&player->mTumble, pad, &speed);
+	HandleCopterActionInput((XAction*)&player->mCopter, pad, &speed);
+	ApplyPopperMovementWeight((XActPopper*)&player->mPopper, pad, &speed);
+	ApplyRadarMovementWeight((XActRadar*)&player->mRadar, pad, &speed);
+	UpdatePlayerAttachmentRequest(player, &speed);
+	UpdatePlayerEquipmentRings(&player->mMenu, frames);
+	UpdateOXMenuTransition(&player->mOXMenu, frames);
+	if (-1.f == speed)
+		speed = 1.f;
+	return speed;
 }
 
 // opens the yes/no marks
@@ -2158,6 +3125,79 @@ XObj* GetGameObjectByIndex(const CGame* game, s32 index)
 	return game->mXObjs.mObjects[index];
 }
 
+// NONMATCHING: the complete search and eligibility checks are present; aggregate return
+// homes and float register/stack scheduling differ through the floor transform and probe loop
+s32 FindNearbyPlayerInteraction(WiiPlayerState* player, f32 extraRadius)
+{
+	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
+	f32 height = player->mMoveScale.x * (GetFloorCenterOffset(&player->mFloors, 0).y + GetFloorExtent(&player->mFloors, 0).y);
+	Mtx rotation;
+	PSMTXRotRad(rotation, 'y', player->mMoveRotate.y);
+	Vec offset = player->mMoveScale * GetFloorCenterOffset(&player->mFloors, 0);
+	PSMTXMultVec(rotation, &offset, &offset);
+	const f32 x    = player->mMoveTranslate.x;
+	const f32 y    = player->mMoveTranslate.y;
+	const f32 z    = player->mMoveTranslate.z;
+	f32 minHeight  = 1.0f + y;
+	f32 bestHeight = NAN;
+	s32 best       = -1;
+	CVec push, contact;
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* object = gGame.mXObjs.mObjects[i];
+		u64 flags    = object->mStatus.mFlags;
+		if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x10000000) || object == player || object->GetKind() >= 10000
+		    || object->GetPool() == 7) {
+			continue;
+		}
+		if (player->mFloorContactObjects[0] >= 0 && gGame.mXObjs.mObjects[player->mFloorContactObjects[0]] == object) {
+			continue;
+		}
+		if ((flags & 0x0000020000000000ULL) || (flags & 0x100000) || (flags & 0x0002000000000000ULL)) {
+			continue;
+		}
+		const Vec* objectPos = object->GetPos();
+		f32 dx               = objectPos->x - x;
+		f32 dz               = objectPos->z - z;
+		if (FSqrt(dz * dz + dx * dx) > 100.0f + (0.9f * radius + object->mFloorXZExtent[0])) {
+			continue;
+		}
+		u32 hit = object->TestFloorCollision(&CVec(x, y, z), &CVec(x, y, z), radius + extraRadius, height, &push, &contact, 0, 0);
+		if ((hit & 3) != 3) {
+			continue;
+		}
+		SelectHighestActiveFloor(object);
+		if (best < 0 || __fpclassifyf(bestHeight) == FP_NAN || object->mMaxFloorHeight > bestHeight) {
+			BOOL eligible = FALSE;
+			CVec target   = object->mMoveTranslate + GetFloorCenterOffset(&object->mFloors, object->mSelectedFloorIndex);
+			f32 angle     = atan2(target.x - player->GetPos()->x, target.z - player->GetPos()->z);
+			angle         = WrapAngle(angle - player->mMoveRotate.y);
+			if (angle <= HALF_PI || angle >= 3.0f * HALF_PI) {
+				if (object->GetEventScript() != NULL) {
+					eligible = TRUE;
+				} else {
+					if ((flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight) {
+						eligible = TRUE;
+					}
+					if (flags & 0x0000000800000000ULL) {
+						if (object->mSelectedFloorIndex == 0 && object->mSelectedFloorHeight > player->mMaxFloorHeight
+						    && IsPositionBehindObject(&player->mLadder, player->GetPos(), object)) {
+							eligible = TRUE;
+						}
+					} else if ((flags & 0x0000001000000000ULL) && object->mSelectedFloorIndex == 0
+					           && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
+						eligible = TRUE;
+					}
+				}
+			}
+			if (eligible) {
+				bestHeight = object->mSelectedFloorHeight;
+				best       = i;
+			}
+		}
+	}
+	return best;
+}
+
 CVec* GetCameraAngles(CCamera* camera)
 {
 	return &camera->mView.mAngle;
@@ -2193,6 +3233,1688 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 	return &object->mCoord;
 }
 
+// one action marker over the object: shown when the player can do that action there, or when the object's placement
+// sets its own markers and includes it; allowed limits the markers to the ones this kind of contact can show
+#define ADD_OBJECT_MARKER(allowed, bit)                                                                              \
+	do {                                                                                                             \
+		if (((allowed) & (bit))                                                                                      \
+		    && ((GetObjectMarkerOverride(object) == 0x80000000 && (available & (bit)))                               \
+		        || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, (bit))))) \
+			marker |= (bit);                                                                                         \
+	} while (0)
+#define ADD_OBJECT_MARKERS(allowed)   \
+	ADD_OBJECT_MARKER(allowed, 1);    \
+	ADD_OBJECT_MARKER(allowed, 2);    \
+	ADD_OBJECT_MARKER(allowed, 4);    \
+	ADD_OBJECT_MARKER(allowed, 8);    \
+	ADD_OBJECT_MARKER(allowed, 0x10); \
+	ADD_OBJECT_MARKER(allowed, 0x20); \
+	ADD_OBJECT_MARKER(allowed, 0x40); \
+	ADD_OBJECT_MARKER(allowed, 0x80)
+
+static inline bool IsLiftDone(WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift)) {
+		ret = true;
+	}
+	return ret;
+}
+
+// NONMATCHING: state 10's attachment request and the constant 20 use r0/r3 in the opposite roles;
+// every instruction, switch arm and call otherwise matches
+void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight)
+{
+	if (chr->mAttachmentRequest < 0)
+		return;
+	switch (chr->mAttachmentStep) {
+	case 0:
+		if (IsLiftDone(chr)) {
+			if (chr->mLift.mTarget != NULL) {
+				chr->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+				chr->mLift.mTarget = NULL;
+			}
+			chr->mLift.mState = 0;
+		}
+		switch (chr->mAttachment) {
+		case 1:
+			chr->mCopter.mState = 2;
+			break;
+		case 2:
+			chr->mPopper.mState = 9;
+			ResetPopperCharge(&((XActPopper*)&chr->mPopper)->mCharge);
+			break;
+		case 3:
+			chr->mRadar.mState = 2;
+			break;
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+		case 8:
+			chr->mLift.mState = 20;
+			break;
+		default:
+			if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingMug(&chr->mLift)
+			    || IsCarryingSquirter(&chr->mLift))
+				chr->mLift.mState = 20;
+			break;
+		}
+		chr->mAttachmentStep = 10;
+		// fall through
+	case 10:
+		if (chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0 && chr->mLift.mState == 0) {
+			chr->mAttachmentStep = 20;
+			chr->mAttachment     = chr->mAttachmentRequest;
+		}
+		break;
+	case 15:
+		chr->mAttachmentStep = 20;
+		// fall through
+	case 20:
+		switch (chr->mAttachmentRequest) {
+		case 1:
+			chr->mCopter.mState = 1;
+			break;
+		case 2:
+			chr->mPopper.mState = 1;
+			break;
+		case 3:
+			chr->mRadar.mState = 1;
+			break;
+		case 4:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x10;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x10;
+			}
+			break;
+		case 5:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x15;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x15;
+			}
+			break;
+		case 6:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x16;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x16;
+			}
+			break;
+		case 7:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x38;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x38;
+			}
+			break;
+		case 8:
+			chr->mAttachment = 0;
+			break;
+		}
+		chr->mAttachmentStep = 30;
+		chr->mScriptAttach   = 0;
+		break;
+	case 30:
+		if (chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0
+		    && (chr->mLift.mState == 0 || chr->mLift.mState == 4)) {
+			chr->mAttachmentRequest = -1;
+			chr->mAttachmentStep    = 0;
+			chr->mScriptAttach      = 0;
+			chr->mNextClimbType     = chr->mClimbType;
+			chr->mClimbType         = 0;
+		}
+		break;
+	}
+	*weight = 0.0f;
+}
+
+// NONMATCHING: the complete movement, collision and interaction flow is present,
+// including the Wii-only stage repairs and lift states; aggregate temporary homes,
+// duplicated branch tails and register/schedule allocation still differ
+void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 speed, f32 direction)
+{
+	if (GetMaskedPlayerStatus(player, 0x80000000))
+		return;
+	CVec floor(0, 0, 0);
+	{
+		if (!IsCopterActionState(&player->mCopter, 3) && !IsCopterActionState(&player->mCopter, 4)
+		    && !IsCopterActionState(&player->mCopter, 7) && !IsCopterActionState(&player->mCopter, 8)
+		    && !IsCopterActionState(&player->mCopter, 5) && !(IsPushActionState(&player->mPush, 2) && HasPlayerActionTarget(&player->mPush))
+		    && player->mFloorContactObjects[0] >= 0 && player->mFloorContactObjects[0] == player->mFloorContactObjects[1]) {
+			{
+				XObj* support     = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[0]);
+				const CVec& delta = *support->GetPos() - *GetObjectPreviousMoveTranslation(support);
+				CopyVecToCVec(&floor, &delta);
+			}
+		}
+		player->mFloorContactObjects[1] = player->mFloorContactObjects[0];
+		player->mFloorContactObjects[0] = -1;
+	}
+	CVec hang(0, 0, 0);
+	{
+		if (!IsHangActionState(&player->mHang, 0) && HasPlayerActionTarget(&player->mHang)) {
+			XObj* support     = GetPlayerActionTarget(&player->mHang);
+			const CVec& delta = *support->GetPos() - *GetObjectPreviousMoveTranslation(support);
+			CopyVecToCVec(&hang, &delta);
+		}
+	}
+	CVec ladder(0, 0, 0);
+	{
+		if (!IsLadderActionState(&player->mLadder, 0) && !IsLadderActionState(&player->mLadder, 2)
+		    && !IsLadderActionState(&player->mLadder, 3) && HasPlayerActionTarget(&player->mLadder)) {
+			XObj* target = GetPlayerActionTarget(&player->mLadder);
+			if (IsLadderActionState(&player->mLadder, 1)) {
+				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
+				ladder.y     = target->GetPos()->y - previous;
+			} else {
+				const CVec& delta = *target->GetPos() - *GetObjectPreviousMoveTranslation(target);
+				CopyVecToCVec(&ladder, &delta);
+			}
+		}
+	}
+	CVec rope(0, 0, 0);
+	{
+		if (!IsRopeActionState(&player->mRope, 0) && !IsRopeActionState(&player->mRope, 2) && HasPlayerActionTarget(&player->mRope)) {
+			XObj* target = GetPlayerActionTarget(&player->mRope);
+			if (IsRopeActionState(&player->mRope, 1) || IsRopeActionState(&player->mRope, 3)) {
+				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
+				rope.y       = target->GetPos()->y - previous;
+			} else {
+				const CVec& delta = *target->GetPos() - *GetObjectPreviousMoveTranslation(target);
+				CopyVecToCVec(&rope, &delta);
+			}
+		}
+	}
+	u32 movementFrames = frames;
+	if (movementFrames > 2)
+		movementFrames = 2;
+	f32 targetX, targetZ;
+	{
+		if (__fpclassifyf(direction) != FP_NAN) {
+			f32 angle = direction >= 0.0f ? direction : -direction;
+			if (angle > TWO_PI)
+				angle -= TWO_PI;
+			if (sBlockedObstacleCount >= 1) {
+				f32 scale = 1.0f - 0.15f * sBlockedObstacleCount;
+				if (scale < 0.7f)
+					scale = 0.7f;
+				targetX = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
+			} else {
+				targetX
+				    = movementFrames * (fn_800E32B8(player, -1) * ((speed * PlayerActionSine(angle)) * GetPlayerMoveSpeedScale(player)));
+				targetZ
+				    = movementFrames * (fn_800E32B8(player, -1) * ((speed * PlayerActionCosine(angle)) * GetPlayerMoveSpeedScale(player)));
+			}
+		} else {
+			targetX = targetZ = 0.0f;
+		}
+		if (fn_800D1748(player))
+			targetX = targetZ = 0.0f;
+		SetObjectVectorTargetX(&player->mMotion, targetX);
+		SetObjectVectorTargetZ(&player->mMotion, targetZ);
+		player->mMoveSpeed = GetVectorMagnitude(GetObjectVectorTarget(&player->mMotion)) / movementFrames;
+		if (__fpclassifyf(player->mWalkHeading) != FP_NAN)
+			player->mMoveSpeed = 2.8f * GetVectorMagnitude(GetObjectVectorSpeed((CObjVec*)&player->mMoveTranslate));
+	}
+	Vec savedRotation = player->mMoveRotate;
+	{
+		if (!IsHangActionState(&player->mHang, 0)) {
+			if (IsHangActionState(&player->mHang, 5)) {
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				if (HasPlayerActionTarget(&player->mHang) && IsActionTargetFloorId(&player->mHang, 0)) {
+					// on a round ledge he shuffles along the circle around its centre
+					Vec center = *GetHangFloorCenter(&player->mHang);
+					f32 radius = GetHangDistance(&player->mHang);
+					f32 period = (TWO_PI * radius) / (0.3f * speed);
+					f32 angle
+					    = movementFrames * ((TWO_PI / period) * (s32)GetPlayerActionMoveDirection(&player->mHang)) + player->mMoveRotate.y;
+					player->SetRotationY(WrapPlayerActionAngle(angle));
+					f32 facing = PI + angle;
+					SetVectorX(&player->mMotion.mValue, (radius * PlayerActionSine(facing) + center.x) - player->mMoveTranslate.x);
+					SetVectorZ(&player->mMotion.mValue, (radius * PlayerActionCosine(facing) + center.z) - player->mMoveTranslate.z);
+					PlayerActionSine(facing);
+					PlayerActionCosine(facing);
+				} else {
+					SetVectorX(&player->mMotion.mValue, targetX);
+					SetVectorZ(&player->mMotion.mValue, targetZ);
+				}
+			} else {
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
+			}
+		} else if (IsPushActionState(&player->mPush, 2)) {
+			SetObjectVectorSpeedX(&player->mMotion, 0);
+			SetObjectVectorSpeedZ(&player->mMotion, 0);
+			s32 animation = player->GetAnimId();
+			if (animation == 64 || animation == 65) {
+				SetVectorX(&player->mMotion.mValue, targetX);
+				SetVectorZ(&player->mMotion.mValue, targetZ);
+			} else {
+				SetVectorX(&player->mMotion.mValue, 0);
+				SetVectorZ(&player->mMotion.mValue, 0);
+			}
+		} else if (!IsRopeActionState(&player->mRope, 0)) {
+			if (IsRopeActionState(&player->mRope, 5)) {
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				SetVectorX(&player->mMotion.mValue, 0);
+				SetVectorZ(&player->mMotion.mValue, 0);
+				f32 sign = (s32)GetPlayerActionMoveDirection(&player->mRope);
+				if (sign > 0)
+					sign = 1;
+				if (sign < 0)
+					sign = -1;
+				SetObjectYAndTarget((CObjVec*)&player->mMoveTranslate, player->mMoveTranslate.y + sign * (speed * movementFrames));
+			} else {
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
+			}
+		} else if (!IsLadderActionState(&player->mLadder, 0)) {
+			if (IsLadderActionState(&player->mLadder, 5)) {
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				SetVectorX(&player->mMotion.mValue, 0);
+				SetVectorZ(&player->mMotion.mValue, 0);
+				f32 climbDir = (s32)GetPlayerActionMoveDirection(&player->mLadder);
+				SetObjectYAndTarget((CObjVec*)&player->mMoveTranslate, player->mMoveTranslate.y + speed * climbDir);
+			} else {
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
+			}
+		} else {
+			f32 step = (1.3f * 1.2f) * (0.05f * movementFrames);
+			if (!(gGame.GetStatusFlags(0x100))) {
+				Vec* current = GetObjectVectorCurrent(&player->mMotion);
+				Vec* target  = GetObjectVectorTarget(&player->mMotion);
+				f32 rate     = fn_800E32B8(player, -1);
+				f32 distance = GetVectorDistance(current, target) / rate;
+				if (distance >= 3.0f) {
+					f32 difference = fn_800D1740(distance - 8.0f);
+					step *= difference / 2.5f;
+				}
+			}
+			SetObjectVectorSpeedX(&player->mMotion, step);
+			SetObjectVectorSpeedZ(&player->mMotion, step);
+		}
+	}
+	player->mMotion.Step(frames);
+	{
+		if (IsHangActionState(&player->mHang, 0) && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+		    && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)) {
+			if (IsEventScriptActive(&gGame)) {
+				if (__fpclassifyf(direction) != FP_NAN && direction >= 0.0f)
+					player->SetRotateY(direction, 0.20943952f);
+			} else {
+				f32 rate;
+				{
+					f32 current = WrapPlayerActionAngle(player->mMoveRotate.y);
+					f32 desired;
+					if (__fpclassifyf(direction) != FP_NAN && direction >= 0.0f)
+						desired = WrapPlayerActionAngle(direction);
+					else
+						desired = WrapPlayerActionAngle(GetObjectVectorTarget((CObjVec*)&player->mMoveRotate)->y);
+					f32 difference = fn_800D1740(desired - current);
+					if (difference > 0.008726646f) {
+						if (difference >= TWO_PI)
+							difference -= TWO_PI;
+						if (difference > PI) {
+							if (desired < current)
+								desired += TWO_PI;
+							else
+								desired -= TWO_PI;
+						}
+						f32 turn = fn_800D1740(desired - current);
+						if (gGame.GetStatusFlags(0x400))
+							rate = turn * 0.15f;
+						else if (gGame.GetStatusFlags(0x800))
+							rate = turn * 0.2f;
+						else if (IsPlayerAttachmentEquipped(player, 2) || fn_800D1748(player))
+							rate = turn * 0.1f;
+						else
+							rate = turn * 0.2f;
+					} else {
+						rate = DEG2RAD;
+					}
+				}
+				if ((player->GetAnimId() == 0x895 || player->GetAnimId() == 0x152 || player->GetAnimId() == 0x154)
+				    && (IsLiftActionState(&player->mLift, 28) || IsLiftActionState(&player->mLift, 29)
+				        || IsLiftActionState(&player->mLift, 30) || IsLiftActionState(&player->mLift, 31)
+				        || IsLiftActionState(&player->mLift, 4))) {
+					SetObjectXAndTarget(&player->mMotion, 0);
+					SetObjectZAndTarget(&player->mMotion, 0);
+					if (player->GetAnimId() == 0x895 && __fpclassifyf(direction) != FP_NAN && direction >= 0.0f)
+						player->SetRotateY(direction, 0.25f * rate);
+				} else if (GetHeldPadButtons(GetPadForPort(&gGame, 0), 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x400))
+				           && IsJumpActionState(&player->mJump, 0)
+				           && (IsLiftActionState(&player->mLift, 4) || IsLiftActionState(&player->mLift, 29))
+				           && (IsCarryingToothbrush(&player->mLift) || IsCarryingSpoon(&player->mLift)
+				               || IsCarryingSquirter(&player->mLift))
+				           && player->GetAnimId() != 0x8ae && player->GetAnimId() != 0x8af && player->GetAnimId() != 0x155
+				           && player->GetAnimId() != 0x156 && player->GetAnimId() != 0x157) {
+					SetObjectXAndTarget(&player->mMotion, 0.7f * player->mMotion.mValue.x);
+					SetObjectZAndTarget(&player->mMotion, 0.7f * player->mMotion.mValue.z);
+					player->mMoveSpeed = fn_800E32B8(player, -1);
+					if (__fpclassifyf(direction) != FP_NAN && direction >= 0.0f) {
+						f32 diff = WrapPlayerActionAngle(player->mMoveRotate.y - WrapPlayerActionAngle(direction));
+						// he turns only toward a stick ahead of him; with the stick behind him he backs up (anim 0x12a) facing the same way
+						if (diff < HALF_PI || diff >= 1.5f * PI)
+							player->SetRotateY(direction, 0.25f * rate);
+						if (player->mMoveSpeed > 0) {
+							if (diff > HALF_PI && diff < 1.5f * PI)
+								player->SetAnim(0x12a, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+							else
+								player->SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+						} else if (IsLiftActionState(&player->mLift, 29)) {
+							player->SetAnim(0x153, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+						} else {
+							player->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+						}
+					} else {
+						SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, player->mMoveRotate);
+						if (IsLiftActionState(&player->mLift, 29))
+							player->SetAnim(0x153, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+						else
+							player->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					}
+				} else {
+					if (__fpclassifyf(direction) != FP_NAN && direction >= 0.0f)
+						player->SetRotateY(direction, rate);
+					else
+						SetObjectVerticalSpeed((CObjVec*)&player->mMoveRotate, rate);
+					if (player->GetAnimId() == 0x12a)
+						player->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				}
+			}
+		}
+	}
+
+	player->mMoveTranslate.y += rope.y + (ladder.y + (floor.y + hang.y));
+	player->mSlopeMotion.Step(frames);
+	void* map    = GetMapPoolEntry(&gGame, 0);
+	Vec position = player->mMoveTranslate;
+	{
+		f32 dx = floor.x + 0.3f * player->mMotion.mValue.x;
+		position.x += player->mSlopeMotion.mValue.x + (rope.x + (ladder.x + (hang.x + dx)));
+		f32 dz = floor.z + 0.3f * player->mMotion.mValue.z;
+		position.z += player->mSlopeMotion.mValue.z + (rope.z + (ladder.z + (hang.z + dz)));
+	}
+	{
+		if (GetPlayerPlugConnection((XObjPlug*)&player->mPlug)) {
+			if (!IsEventScriptActive(&gGame) && !IsGameMenuActive(&gGame) && !IsPlayerRingMenuOpen(&player->mMenu)
+			    && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
+			    && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
+			    && IsPushActionState(&player->mPush, 0) && CanFallDuringTumbleAction(&player->mTumble)
+			    && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
+			    && CanFallDuringRadarAction(&player->mRadar)) {
+				CVec pull((const Vec&)*GetPlayerPlugCordPull((XObjPlug*)&player->mPlug));
+				CVec combined = player->mMotion.mValue + pull;
+				combined.y    = 0;
+				f32 strength  = GetVectorMagnitude(&pull);
+				if (strength > 0.2f) {
+					position.x += 0.2f * (pull.x * frames);
+					position.z += 0.2f * (pull.z * frames);
+					if (strength > 1 && GetVectorMagnitude(&combined) > 1
+					    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+					    && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+					    && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+					    && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+					    && IsCopterActionState(&player->mCopter, 0)
+					    && (IsPopperActionState(&player->mPopper, 0) || IsPopperActionState(&player->mPopper, 8)
+					        || IsPopperActionState(&player->mPopper, 4))
+					    && IsRadarActionState(&player->mRadar, 0))
+						SpawnPlayerDust(player, player->GetPos());
+				}
+			}
+			if (CheckCurrentStageFlags(&gGame, 1)) {
+				CVec joint   = player->mPlug.GetWorldPos("cord_connect");
+				f32 distance = GetVectorDistance(player->GetPos(), &joint);
+				if (distance >= 34 && !IsEventScriptActive(&gGame)) {
+					PlayWiiSoundEffect(GetGameSound(&gGame), 0xA4, 1.0f, 0.0f);
+					ResetPlayerPlugState((XObjPlug*)&player->mPlug, TRUE);
+					if (IsLiftActionState(&player->mLift, 0) && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+					    && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+					    && IsPushActionState(&player->mPush, 0) && !IsPlayerAttachmentEquipped(player, 1)
+					    && !IsPlayerAttachmentEquipped(player, 2) && !IsPlayerAttachmentEquipped(player, 3))
+						SetTumbleStateAndFade(player, 7, FALSE);
+				}
+			}
+		}
+	}
+	{
+		if (GetVectorMagnitude(&player->_1C9A8) > 0 && !IsEventScriptActive(&gGame) && !IsGameMenuActive(&gGame)
+		    && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
+		    && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
+		    && IsPushActionState(&player->mPush, 0) && CanFallDuringTumbleAction(&player->mTumble)
+		    && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
+		    && CanFallDuringRadarAction(&player->mRadar)) {
+			CVec extPush  = player->_1C9A8;
+			extPush.y     = 0;
+			CVec combined = player->mMotion.mValue + extPush;
+			combined.y    = 0;
+			position.x += 0.1f * (extPush.x * frames);
+			position.z += 0.1f * (extPush.z * frames);
+			if (GetVectorMagnitude(&extPush) > 1 && GetVectorMagnitude(&combined) > 1 && IsLiftActionState(&player->mLift, 0)
+			    && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+			    && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+			    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+			    && IsRadarActionState(&player->mRadar, 0))
+				SpawnPlayerDust(player, player->GetPos());
+		}
+	}
+	{
+		BOOL hit = FindMapFloorBelow(static_cast<XObjMap*>(map), &position, &player->mFloorHit, &player->mFloorHit);
+		if (hit) {
+			fn_800DB958((XObjMap*)map, &player->mFloorHit, player->mFloorTriangle);
+			SetVectorX(&player->mMoveTranslate, position.x);
+			SetVectorZ(&player->mMoveTranslate, position.z);
+			CVec normal;
+			CalcTriangleNormal(&player->mFloorTriangle[0], &player->mFloorTriangle[1], &player->mFloorTriangle[2], &normal);
+			NormalizeVectorInPlace(&normal);
+			Vec down   = { 0, -1, 0 };
+			Vec origin = { 0, 0, 0 };
+			GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->mFloorSlope);
+			{
+				if (CanLiftActionSlideOnSlope(&player->mLift) && IsHangActionIdle(&player->mHang)
+				    && CanJumpActionSlideOnSlope(&player->mJump) && CanLadderActionSlideOnSlope(&player->mLadder)
+				    && CanRopeActionSlideOnSlope(&player->mRope) && CanPushActionSlideOnSlope(&player->mPush)
+				    && CanTumbleActionSlideOnSlope(&player->mTumble) && CanCopterActionSlideOnSlope(&player->mCopter)
+				    && CanPopperActionSlideOnSlope(&player->mPopper) && CanRadarActionSlideOnSlope(&player->mRadar)) {
+					CVec slopeDir = player->mFloorSlope;
+					if (GetVectorMagnitude(&slopeDir) > 0.3f) {
+						f32 vertical = fn_800D1740(slopeDir.y);
+						slopeDir.y   = 0;
+						NormalizeVectorInPlace(&slopeDir);
+						ScaleVectorInPlace(&slopeDir, -vertical);
+						f32 slopeSpeed = 0.02f * GetVectorMagnitude(&slopeDir);
+						if (slopeSpeed < 0.01f)
+							slopeSpeed = 0.01f;
+						SetObjectVelocity(&player->mSlopeMotion, slopeSpeed, slopeSpeed, slopeSpeed);
+					} else {
+						SetVectorComponents(&slopeDir, 0, 0, 0);
+					}
+					SetObjectVectorTarget(&player->mSlopeMotion, slopeDir);
+				} else {
+					SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
+				}
+			}
+			if (player->mFloorHit.mHeight > 1.0f + player->mMoveTranslate.y) {
+				player->mFloorHit.mTriangle = -1;
+				player->mFloorHit.mTrigon   = -1;
+				player->mFloorHit.mHeight   = -1;
+				SetVectorX(&player->mMoveTranslate, position.x);
+				SetVectorZ(&player->mMoveTranslate, position.z);
+				SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
+				SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
+			}
+		} else {
+			{
+				player->mFloorHit.mTriangle = -1;
+				player->mFloorHit.mTrigon   = -1;
+				player->mFloorHit.mHeight   = -1;
+				SetVectorX(&player->mMoveTranslate, position.x);
+				SetVectorZ(&player->mMoveTranslate, position.z);
+				SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
+				SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
+			}
+		}
+	}
+
+	f32 radius, height;
+	s32 liftState22;
+	Mtx rotation;
+	{
+		radius      = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
+		height      = player->mMoveScale.y * (GetFloorCenterOffset(&player->mFloors, 0).y + GetFloorExtent(&player->mFloors, 0).y);
+		liftState22 = 0;
+		if (IsCarryingMug(&player->mLift)) {
+			Vec scale;
+			HSD_MtxGetScale(player->GetWorldMtx(player->FindResNode("carry_obj_nll")), &scale);
+			radius += 2.5f * scale.x;
+			if (IsLiftActionState(&player->mLift, 23)) // lift state 23: he is taking the mug out
+				liftState22 = 1;
+		}
+		PSMTXRotRad(rotation, 'y', player->mMoveRotate.y);
+	}
+	Vec offset = player->mMoveScale * GetFloorCenterOffset(&player->mFloors, 0);
+	PSMTXMultVec(rotation, &offset, &offset);
+	position         = player->mMoveTranslate;
+	u32 contactFlags = 0;
+	u32 queryFlags   = IsEventScriptActive(&gGame) ? 0 : 2;
+	f32 floorHeight  = player->mFloorHit.mHeight;
+	s32 floorIndex   = -1;
+	BOOL canRise     = FALSE;
+	CVec push, contact;
+	sBlockedObstacleCount = 0;
+	if (!player->mOnGround) {
+		if (CanFallDuringHangAction(&player->mHang) || IsHangActionState(&player->mHang, 9)) {
+			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
+				XObj* object = GetDrawListObject(&gGame, 0, i);
+				if (!fn_800CDDAC(object) || !(GetMaskedObjectStatus(object, 0x10000))
+				    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)) || player == object)
+					continue;
+				// what he pushes only counts while he stands on it
+				if ((GetMaskedObjectStatus(object, 0x08000000)) && IsPushActionState(&player->mPush, 2)
+				    && IsPlayerActionMoveDirection(&player->mPush, 1)) {
+					s32 floorIdx = player->mFloorContactObjects[1];
+					if (floorIdx < 0 || GetGameObjectByIndex(&gGame, floorIdx) != object)
+						continue;
+				}
+				f32 range = 100.0f + (radius + GetObjectFloorXZExtent(object, 0));
+				if (GetHorizontalDistance(object->GetPos(), &position) > range)
+					continue;
+				BOOL touched = false;
+				// one floor per call: the cursor resumes after the floor that was hit and is -1 once all are tested
+				for (s32 cursor = 0; cursor != -1;) {
+					position.x = player->mMoveTranslate.x + offset.x;
+					position.z = player->mMoveTranslate.z + offset.z;
+					u32 hit;
+					{
+						CVec from(position), to(position);
+						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, &cursor, queryFlags | 1);
+					}
+					if (hit & 1) {
+						touched = true;
+						f32 top = GetObjectHitFloorHeight(object);
+						BOOL blocked;
+						if (__fpclassifyf(top) == FP_NAN) {
+							if (GetMaskedObjectStatus(object, 0x0002000000000000ULL)) {
+								blocked = false;
+							} else {
+								blocked = true;
+								if (liftState22 && GetMaskedObjectStatus(object, 0x4000) && !GetMaskedObjectStatus(object, 0x10))
+									SetObjectStatusFlags(object, 0x10);
+							}
+						} else if (player->mMoveTranslate.y + 1.0f >= top) {
+							blocked = false;
+							if (top >= floorHeight) {
+								floorHeight = top;
+								floorIndex  = GetDrawListIndex(&gGame, 0, i);
+							}
+						} else {
+							if (GetMaskedObjectStatus(object, 0x0002000000000000ULL)) {
+								blocked = false;
+							} else {
+								blocked = true;
+								if (liftState22 && GetMaskedObjectStatus(object, 0x4000) && !GetMaskedObjectStatus(object, 0x10))
+									SetObjectStatusFlags(object, 0x10);
+							}
+						}
+						if (blocked && GetMaskedPlayerStatusFlags(player, 1) && CanFallDuringLadderAction(&player->mLadder)
+						    && CanFallDuringRopeAction(&player->mRope)) {
+							if (IsPushActionState(&player->mPush, 2) && HasPlayerActionTarget(&player->mPush)) {
+								SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos);
+							} else {
+								SetVectorX(&player->mMoveTranslate, contact.x - offset.x);
+								SetVectorZ(&player->mMoveTranslate, contact.z - offset.z);
+							}
+						}
+						if (blocked)
+							++sBlockedObstacleCount;
+					}
+					contactFlags |= hit;
+				}
+				if (!touched && GetMaskedObjectStatus(object, 0x0002000000000000ULL))
+					ClearObjectStatusFlags(object, 0x0002000000000000ULL);
+			}
+			// taking the mug out widens him: an object marked 0x10 above that he ends up more than 1.5 inside stops blocking
+			// him (0x0002000000000000) until he is out of it
+			if (liftState22) {
+				for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
+					XObj* object = GetDrawListObject(&gGame, 0, i);
+					if (!(GetMaskedObjectStatus(object, 0x10)))
+						continue;
+					ClearObjectStatusFlags(object, 0x10ULL);
+					for (s32 cursor = 0; cursor != -1;) {
+						u32 hit = object->TestFloorCollision(&player->mMoveTranslate, &player->mMoveTranslate, radius, height, &push,
+						                                     &contact, &cursor, 0);
+						if ((hit & 3) != 3)
+							continue;
+						f32 top = GetObjectHitFloorHeight(object);
+						if (__fpclassifyf(top) != FP_NAN && player->mMoveTranslate.y + 1.0f >= top)
+							continue;
+						u32 separated;
+						{
+							const CVec& difference = player->mMoveTranslate - contact;
+							separated              = GetVectorMagnitude(&difference) > 1.5f;
+						}
+						if (separated)
+							SetObjectStatusFlags(object, 0x0002000000000000ULL);
+					}
+				}
+			}
+		} else {
+			if (IsHangActionState(&player->mHang, 5) && HasPlayerActionTarget(&player->mHang)) {
+				f32 side  = player->mMoveRotate.y + HALF_PI * (s32)(0u - GetPlayerActionMoveDirection(&player->mHang));
+				Vec joint = player->GetWorldPos("second_null");
+				Vec body;
+				body.x = joint.x + 3.0f * PlayerActionSine(side) - 2.5f * PlayerActionSine(player->mMoveRotate.y);
+				body.z = joint.z + 3.0f * PlayerActionCosine(side) - 2.5f * PlayerActionCosine(player->mMoveRotate.y);
+				body.y = player->mMoveTranslate.y + 1.0f;
+				Vec lower, upper;
+				lower.x       = joint.x + 3.0f * PlayerActionSine(side);
+				lower.z       = joint.z + 3.0f * PlayerActionCosine(side);
+				lower.y       = joint.y - 1.0f;
+				upper.x       = joint.x + 3.0f * PlayerActionSine(side);
+				upper.z       = joint.z + 3.0f * PlayerActionCosine(side);
+				upper.y       = joint.y + 0.5f;
+				u32 supported = false;
+				for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
+					XObj* object = GetDrawListObject(&gGame, 0, i);
+
+					if (!fn_800CDDAC(object) || !(GetMaskedObjectStatus(object, 0x10000))
+					    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)))
+						continue;
+					if ((s16)GetObjectCategory(object) == 7 || (s16)GetObjectCategory(object) == 20 || player == object)
+						continue;
+					f32 range = 100.0f + (radius + GetObjectFloorXZExtent(object, 0));
+					if (GetHorizontalDistance(object->GetPos(), &body) <= range) {
+						u32 bodyHit;
+						{
+							CVec from(body), to(body);
+							bodyHit = object->TestFloorCollision(&from, &to, 0.5f, height, &push, &contact, 0, 0);
+						}
+						if ((bodyHit & 3) == 3) {
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos + hang);
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+							supported = true; // already put back
+							break;
+						}
+						u32 upperHit;
+						{
+							CVec from(upper), to(upper);
+							upperHit = object->TestFloorCollision(&from, &to, 0.1f, 0.1f, &push, &contact, 0, 0);
+						}
+						if ((upperHit & 3) == 3) {
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos + hang);
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+							supported = true; // already put back
+							break;
+						}
+					}
+					range = 100.0f + (radius + GetObjectFloorXZExtent(object, 0));
+					if (GetHorizontalDistance(object->GetPos(), &lower) <= range) {
+						u32 lowerHit;
+						{
+							CVec from(lower), to(lower);
+							lowerHit = object->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
+						}
+						if ((lowerHit & 3) == 3)
+							supported |= lowerHit;
+					}
+				}
+				if (!supported) {
+					SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos + hang);
+					SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+				}
+			}
+		}
+		if (IsPushActionState(&player->mPush, 2) && !IsPlayerActionMoveDirection(&player->mPush, 0)
+		    && HasPlayerActionTarget(&player->mPush)) {
+			XObj* target  = GetPlayerActionTarget(&player->mPush);
+			Vec targetPos = *target->GetPos();
+			f32 angle     = 0;
+			if (IsPlayerActionMoveDirection(&player->mPush, 1))
+				angle = GetObjectMoveRotation(player)->y;
+			else if (IsPlayerActionMoveDirection(&player->mPush, -1))
+				angle = PI + GetObjectMoveRotation(player)->y;
+			targetPos.x += 2.5f * (0.4f * PlayerActionSine(angle));
+			targetPos.z += 2.5f * (0.4f * PlayerActionCosine(angle));
+			s32 index        = GetActionTargetFloor(&player->mPush);
+			Vec scaledOffset = *target->GetScale() * GetFloorCenterOffset(GetObjectFloorTableAddress(target), index);
+			index            = GetActionTargetFloor(&player->mPush);
+			Vec extent       = *target->GetScale() * GetFloorExtent(GetObjectFloorTableAddress(target), index);
+			index            = GetActionTargetFloor(&player->mPush);
+			f32 yaw          = GetObjectMoveRotation(target)->y + GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
+			scaledOffset.y   = 0;
+			if (IsActionTargetFloorId(&player->mPush, 2)) {
+				extent.y *= (2.0f / nw4r::math::FSqrt(3.0f)) / 2.0f;
+				extent.x *= (2.0f / nw4r::math::FSqrt(3.0f)) / 2.0f;
+				extent.z *= (2.0f / nw4r::math::FSqrt(3.0f)) / 2.0f;
+			}
+			f32 boxHeight = 2.0f * extent.y;
+			f32 boxRadius = extent.x;
+			f32 boxDepth  = extent.z;
+			Mtx translation, center, scale, rotation, transform;
+			PSMTXTrans(translation, targetPos.x, targetPos.y, targetPos.z);
+			PSMTXTrans(center, scaledOffset.x, scaledOffset.y, scaledOffset.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotation, 'y', yaw);
+			PSMTXConcat(translation, rotation, transform);
+			PSMTXConcat(transform, center, transform);
+			PSMTXConcat(transform, scale, transform);
+			Vec boxCenter = { 0, 0, 0 };
+			PSMTXMultVec(transform, &boxCenter, &boxCenter);
+			f32 ratio   = extent.x / extent.z;
+			Vec boxRear = { 0, 0, -1.0f + ratio };
+			PSMTXMultVec(transform, &boxRear, &boxRear);
+			Vec boxFront = { 0, 0, 1.0f - ratio };
+			PSMTXMultVec(transform, &boxFront, &boxFront);
+			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
+				XObj* object = GetDrawListObject(&gGame, 0, i);
+
+				if (!fn_800CDDAC(object) || !(GetMaskedObjectStatus(object, 0x10000)) || (GetMaskedObjectStatus(object, 0x08000000)))
+					continue;
+				if ((GetMaskedObjectStatus(object, 0x0004000000100000ULL)) && !(GetMaskedObjectStatus(object, 0x40000000)))
+					continue;
+				if ((s16)GetObjectCategory(object) == 7 || (s16)GetObjectCategory(object) == 20 || object == player)
+					continue;
+				if (GetPlayerActionTarget(&player->mPush) == object)
+					continue;
+				f32 range = 100.0f + (boxRadius + GetObjectFloorXZExtent(object, 0));
+				if (GetHorizontalDistance(object->GetPos(), &boxCenter) > range)
+					continue;
+				{
+					u32 hit;
+					{
+						CVec from(boxCenter), to(boxCenter);
+						hit = object->TestFloorCollision(&from, &to, boxRadius, boxHeight, &push, &contact, 0, 0);
+					}
+					if ((hit & 3) == 3) {
+						f32 top   = GetObjectHitFloorHeight(object);
+						f32 delta = fn_800D1740(boxCenter.y - top);
+						if (delta <= 1 && !GetMaskedObjectStatus(object, 0x40000000)) {
+							GetPlayerActionTarget(&player->mPush)->SetTranslateY(top);
+						} else if (fn_800DBD44(fn_800DBD60(object)) == 0x87 && boxCenter.y > top) {
+							GetPlayerActionTarget(&player->mPush)->SetTranslateY(top);
+						} else {
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos);
+							SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+							break;
+						}
+					}
+				}
+				if (boxDepth / boxRadius > 8.0f) {
+					{
+						u32 hit;
+						{
+							CVec from(boxRear), to(boxRear);
+							hit = object->TestFloorCollision(&from, &to, boxRadius, boxHeight, &push, &contact, 0, 0);
+						}
+						if ((hit & 3) == 3) {
+							f32 top   = GetObjectHitFloorHeight(object);
+							f32 delta = fn_800D1740(boxCenter.y - top);
+							if (delta <= 1 && !GetMaskedObjectStatus(object, 0x40000000)) {
+								GetPlayerActionTarget(&player->mPush)->SetTranslateY(top);
+							} else {
+								SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos);
+								SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+								break;
+							}
+						}
+					}
+					{
+						u32 hit;
+						{
+							CVec from(boxFront), to(boxFront);
+							hit = object->TestFloorCollision(&from, &to, boxRadius, boxHeight, &push, &contact, 0, 0);
+						}
+						if ((hit & 3) == 3) {
+							f32 top   = GetObjectHitFloorHeight(object);
+							f32 delta = fn_800D1740(boxCenter.y - top);
+							if (delta <= 1 && !GetMaskedObjectStatus(object, 0x40000000)) {
+								GetPlayerActionTarget(&player->mPush)->SetTranslateY(top);
+							} else {
+								SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos);
+								SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+								break;
+							}
+						}
+					}
+				}
+			}
+		} else {
+			if (IsRopeActionState(&player->mRope, 5) && IsPlayerActionMoveDirection(&player->mRope, -1)
+			    && HasPlayerActionTarget(&player->mRope)) {
+				CVec joint = player->GetJointWorldPos("second_null");
+				Vec point;
+				point.x = joint.x;
+				point.z = joint.z;
+				point.y = 9.0f + player->GetPos()->y;
+				u32 hit;
+				{
+					CVec from(point), to(point);
+					hit = GetPlayerActionTarget(&player->mRope)->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
+				}
+				if ((hit & 3) != 3) {
+					SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos + hang);
+					SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveRotate, savedRotation);
+				}
+			}
+		}
+	} else {
+		SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
+		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
+	}
+	if (1.0f + player->mMoveTranslate.y >= floorHeight)
+		canRise = TRUE;
+	if (!contactFlags)
+		canRise = TRUE;
+	if (floorIndex >= 0)
+		player->mFloorSupport = GetGameObjectByIndex(&gGame, floorIndex);
+	else
+		player->mFloorSupport = static_cast<XObj*>(map);
+	f32 distance = fn_800D1740(player->mMoveTranslate.y - floorHeight);
+	if (distance <= 1 && floorIndex >= 0)
+		player->mFloorContactObjects[0] = floorIndex;
+	if (player->mFloorContactObjects[0] == player->mFloorContactObjects[1]) {
+		if (IsCopterActionState(&player->mCopter, 4) || IsCopterActionState(&player->mCopter, 7)
+		    || IsCopterActionState(&player->mCopter, 8)) {
+			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		}
+	} else {
+		fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		if (fn_800D168C(&gGame, 0) == 9 && player->mFloorContactObjects[0] >= 0) {
+			XObj* support = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[0]);
+			if (support != NULL && fn_800DBD68(support) && fn_800DBD44(fn_800DBD60(support)) == 0x376) {
+				TryStartObjectEvent(&gGame, support->GetEventScript(), support, -1, -1);
+			}
+		}
+	}
+	if (fn_800D168C(&gGame, 0) == 1) {
+		if (player->mFloorContactObjects[0] == 0xAC || player->mFloorContactObjects[0] == 9) {
+			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		}
+	} else if (fn_800D168C(&gGame, 0) == 4) {
+		if (player->mFloorSupport != NULL && fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x4A) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 75.73f) {
+				player->SetTranslateY(player->mFloorHit.mHeight);
+			}
+		} else if (player->mFloorContactObjects[0] == 0x16B) {
+			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		}
+	} else if (fn_800D168C(&gGame, 0) == 6) {
+		if (player->mFloorSupport != NULL
+		    && (fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x62 || fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x253)) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 40.39f) {
+				player->SetTranslateY(player->mFloorHit.mHeight);
+			}
+		} else if (player->mFloorContactObjects[0] == 0x2A || player->mFloorContactObjects[0] == 0xB0
+		           || player->mFloorContactObjects[0] == 0xB1) {
+			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		}
+	} else if (fn_800D168C(&gGame, 0) == 18) {
+		if (player->mFloorSupport != NULL
+		    && (fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x62 || fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x253)) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 40.39f) {
+				player->SetTranslateY(player->mFloorHit.mHeight);
+			}
+		} else if (player->mFloorContactObjects[0] > 0x3C && player->mFloorContactObjects[0] < 0x3F) {
+			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
+		}
+	}
+
+	if (floorHeight > player->mFloorHit.mHeight) {
+		player->mFloorHit.mHeight = floorHeight;
+		SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
+		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
+	}
+	CPadOne* pad = &player->mPad;
+	if (!player->mOnGround) {
+		if (player->mMoveTranslate.y == player->mFloorHit.mHeight) {
+			SetObjectYAndTarget((CObjVec*)&player->mMoveTranslate, player->mFloorHit.mHeight);
+			SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+		} else if (player->mMoveTranslate.y > player->mFloorHit.mHeight && CanFallDuringHangAction(&player->mHang)
+		           && CanFallDuringJumpAction(&player->mJump) && CanFallDuringLadderAction(&player->mLadder)
+		           && CanFallDuringRopeAction(&player->mRope) && CanFallDuringPushAction(&player->mPush)
+		           && CanFallDuringTumbleAction(&player->mTumble) && CanFallDuringCopterAction(&player->mCopter)
+		           && CanFallDuringPopperAction(&player->mPopper) && CanFallDuringRadarAction(&player->mRadar)
+		           && GetMaskedPlayerStatusFlags(player, 2)) {
+			SetObjectTargetY((CObjVec*)&player->mMoveTranslate, player->mFloorHit.mHeight);
+			f32 speed;
+			if (IsCopterActionState(&player->mCopter, 4) || IsCopterActionState(&player->mCopter, 7)
+			    || IsCopterActionState(&player->mCopter, 8)) {
+				f32 acceleration = GetCopterDescentAcceleration();
+				f32 limit        = GetCopterDescentSpeedLimit();
+				speed            = acceleration + GetObjectVectorSpeed((CObjVec*)&player->mMoveTranslate)->y;
+				if (speed > limit)
+					speed = limit;
+			} else {
+				speed = 0.15f + GetObjectVectorSpeed((CObjVec*)&player->mMoveTranslate)->y;
+				if (speed > 10.0f)
+					speed = 10.0f;
+			}
+			SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, speed);
+			f32 drop = player->mMoveTranslate.y - player->mFloorHit.mHeight;
+			if (speed > 0.1f && drop > 1) {
+				if (!(player->mFloorContactObjects[0] >= 0
+				      || (!IsLiftActionState(&player->mLift, 0) && !IsLiftActionState(&player->mLift, 4)
+				          && !IsLiftActionState(&player->mLift, 29))
+				      || !IsHangActionState(&player->mHang, 0) || !IsJumpActionState(&player->mJump, 0)
+				      || !IsLadderActionState(&player->mLadder, 0) || !IsRopeActionState(&player->mRope, 0)
+				      || !IsTumbleActionState(&player->mTumble, 0)
+				      || (!IsCopterActionState(&player->mCopter, 0) && !IsCopterActionState(&player->mCopter, 3))
+				      || (!IsPopperActionState(&player->mPopper, 0) && !IsPopperActionState(&player->mPopper, 8)
+				          && !IsPopperActionState(&player->mPopper, 4))
+				      || !IsRadarActionState(&player->mRadar, 0) || player->mAttachmentRequest >= 0)) {
+					if (IsCopterActionState(&player->mCopter, 3)) {
+						SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+					} else {
+						if (IsPlayerRingMenuOpen(&player->mMenu))
+							ClosePlayerEquipmentRings(&player->mMenu, -1);
+						if (!IsPushActionState(&player->mPush, 0))
+							ReleasePushAction(&player->mPush);
+						if (IsPlayerAttachmentEquipped(player, 1)) {
+							SetCopterActionState(&player->mCopter, 4);
+							SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+						} else {
+							XObj* support = NULL;
+							if (player->mFloorContactObjects[1] >= 0) {
+								support         = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[1]);
+								s32 ledgeHeight = HasObjectCustomLedgeHeight(support) ? GetObjectPlacementParam(support, 0) : 12;
+								if (!(drop > 0.5f + ledgeHeight))
+									support = NULL;
+							}
+							if (support != NULL && IsObjectClimbableLedge(support)) {
+								if (__fpclassifyf(player->mWalkHeading) == FP_NAN) {
+									if (IsEventScriptActive(&gGame) || player->mSuits.mChangeStep) {
+										SetObjectVectorAndTargetFromVec((CObjVec*)&player->mMoveTranslate, player->mLastPos);
+										SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+										player->mFloorContactObjects[0] = player->mFloorContactObjects[1];
+									} else if (player->GetAnimId() == 4 || player->GetAnimId() == 13 || player->GetAnimId() == 0x898
+									           || player->GetAnimId() == 0x819) {
+										SetPlayerHangState(player, 4, support);
+									} else if (IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)
+									           || !IsLiftActionState(&player->mLift, 0)) {
+										SetPlayerHangState(player, 4, support);
+									} else {
+										if (!IsLiftActionState(&player->mLift, 0))
+											ReleasePlayerLiftTarget(player);
+										if (IsObjectLadder(support))
+											SetPlayerLadderState(player, 3, support);
+										else if (IsObjectRope(support))
+											SetPlayerRopeState(player, 3, support);
+										else
+											SetPlayerHangState(player, 3, support);
+									}
+								}
+							} else {
+								SetPlayerActionState(&player->mJump, 2);
+								SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+							}
+						}
+					}
+				}
+			}
+		} else if (player->mMoveTranslate.y < player->mFloorHit.mHeight && canRise) {
+			if (IsRopeActionState(&player->mRope, 5)) {
+				SetObjectYAndTarget((CObjVec*)&player->mMoveTranslate, player->mFloorHit.mHeight);
+				SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+			} else if (IsLadderActionState(&player->mLadder, 5)) {
+				SetObjectYAndTarget((CObjVec*)&player->mMoveTranslate, player->mFloorHit.mHeight);
+				SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+			} else {
+				SetObjectTargetY((CObjVec*)&player->mMoveTranslate, player->mFloorHit.mHeight);
+				f32 speed = 0.2f + GetObjectVectorSpeed((CObjVec*)&player->mMoveTranslate)->y;
+				if (speed > 5)
+					speed = 5;
+				SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, speed);
+			}
+		} else {
+			SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
+		}
+	}
+	{
+		if (!IsGameMenuActive(&gGame) && !(gGame.GetStatusFlags(0x100))
+		    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4)) && IsHangActionState(&player->mHang, 0)
+		    && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+		    && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0) && IsCopterActionState(&player->mCopter, 0)
+		    && (IsPopperActionState(&player->mPopper, 0) || IsPopperActionState(&player->mPopper, 8)
+		        || IsPopperActionState(&player->mPopper, 4))
+		    && IsRadarActionState(&player->mRadar, 0)) {
+			const Vec* current    = GetObjectVectorCurrent(&player->mMotion);
+			const Vec* dustTarget = GetObjectVectorTarget(&player->mMotion);
+			f32 rate              = fn_800E32B8(player, -1);
+			f32 dustDistance      = GetVectorDistance(current, dustTarget) / rate;
+			if (dustDistance >= 3.0f) {
+				SpawnPlayerDust(player, player->GetPos());
+				if (dustDistance >= 5.0f && !IsWiiSfxPlaying(GetGameSound(&gGame), 0x88))
+					PlayWiiSoundEffect(GetGameSound(&gGame), 0x88, 255.0f, 0.0f);
+			}
+		}
+	}
+	if (fn_800D1764(player, 2) >= 1.0f) {
+		SpawnPlayerDust(player, player->GetPos());
+	}
+	{
+		Vec probePoint;
+		probePoint.x    = (player->mMoveTranslate.x + offset.x) + (0.5f * radius) * PlayerActionSine(player->mMoveRotate.y);
+		probePoint.z    = (player->mMoveTranslate.z + offset.z) + (0.5f * radius) * PlayerActionCosine(player->mMoveRotate.y);
+		probePoint.y    = player->mMoveTranslate.y;
+		f32 probeRadius = 0.9f * radius;
+		player->mFloorContactObjects[2] = player->mActionObjectIndex = player->mHitObjectIndex = -1;
+		f32 best = NAN, bestTagged = NAN;
+		for (s32 i = 0; i < GetStageObjectCount(&gGame); ++i) {
+			XObj* object = GetGameObjectByIndex(&gGame, i);
+
+			if (!fn_800CDDAC(object) || !(GetMaskedObjectStatus(object, 0x10000)) || GetMaskedObjectStatus(object, 0x0004000000000000ULL)
+			    || GetMaskedObjectStatus(object, 0x0002000000000000ULL) || player == object)
+				continue;
+			if (GetHorizontalDistance(object->GetPos(), &probePoint) > 100.0f + (probeRadius + GetObjectFloorXZExtent(object, 0)))
+				continue;
+			u32 hit;
+			{
+				CVec from(probePoint), to(probePoint);
+				hit = object->TestFloorCollision(&from, &to, probeRadius, height, &push, &contact, 0, queryFlags);
+			}
+			if ((hit & 3) == 3) {
+				SelectHighestActiveFloor(object);
+				if (player->mHitObjectIndex < 0 || __fpclassifyf(best) == FP_NAN || GetSelectedFloorHeight(object) > best) {
+					player->mHitObjectIndex = i;
+					best                    = GetSelectedFloorHeight(object);
+					if (object->GetEventScript()
+					    && (!GetMaskedObjectStatus(object, 0x20)
+					        || (GetMaskedObjectStatus(object, 0x20) && IsLiftTargetPlug(&player->mLift)
+					            && player->mHitObjectIndex != player->mFloorContactObjects[0])))
+						player->mFloorContactObjects[2] = i;
+				} else if (player->mFloorContactObjects[2] < 0 && object->GetEventScript()
+				           && (!GetMaskedObjectStatus(object, 0x20)
+				               || (GetMaskedObjectStatus(object, 0x20) && IsLiftTargetPlug(&player->mLift)
+				                   && player->mFloorContactObjects[2] != player->mFloorContactObjects[0]))) {
+					player->mFloorContactObjects[2] = i;
+				}
+				if ((player->mActionObjectIndex < 0 || __fpclassifyf(bestTagged) == FP_NAN || GetSelectedFloorHeight(object) > bestTagged)
+				    && GetMaskedObjectStatus(object, 0x000000ff00000000ULL)) {
+					player->mActionObjectIndex = i;
+					bestTagged                 = GetSelectedFloorHeight(object);
+				}
+			} else {
+				ClearObjectStatusFlags(object, 0x8000000000000000ULL);
+			}
+		}
+		if (player->mFloorContactObjects[0] >= 0 && player->mHitObjectIndex < 0) {
+			player->mHitObjectIndex = player->mFloorContactObjects[0];
+			if (GetMaskedObjectStatus(GetGameObjectByIndex(&gGame, player->mHitObjectIndex), 0x000000ff00000000ULL))
+				player->mActionObjectIndex = player->mHitObjectIndex;
+		}
+	}
+	{
+		player->mLetickerIndex = -1;
+		if (!((player->mHitObjectIndex >= 0 && player->mHitObjectIndex != player->mFloorContactObjects[0])
+		      || (player->mFloorContactObjects[2] >= 0 && player->mFloorContactObjects[2] != player->mFloorContactObjects[0])
+		      || !IsLiftActionState(&player->mLift, 4) || !IsLiftTargetPlug(&player->mLift))) {
+			for (s32 i = 0; i < GetObjectPoolUsedCount(&gGame, 9); ++i) {
+				XObj* object = (XObj*)GetObjectFromPool(&gGame, 9, i);
+				if (!fn_800CDDAC(object) || !GetMaskedObjectStatus(object, 0x10000) || !GetMaskedObjectStatus(object, 0x20)
+				    || !object->GetEventScript())
+					continue;
+				if (GetVectorDistance(object->GetPos(), player->GetPos()) >= 18.0f)
+					continue;
+				f32 yaw   = GetObjectMoveRotation(object)->y;
+				f32 angle = WrapPlayerActionAngle(GetHeadingBetweenPositions(object->GetPos(), player->GetPos()) - yaw);
+				// he stands within 30 degrees of square to one of its four sides
+				if (angle < 0.52359879f || angle > 5.7595863f || (angle > 1.04719758f && angle < 2.09439516f)
+				    || (angle > 2.61799383f && angle < 3.66519141f) || (angle > 4.18879032f && angle < 5.23598766f)) {
+					player->mLetickerIndex = GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0) - GetStagePlacementByIndex(0);
+					break;
+				}
+			}
+		}
+	}
+	// available: actions the objects around him offer, 1 event, 2 push, 4 lift, 8 climb (japan), 0x10 ladder, 0x20 rope,
+	// 0x40 never (fn_800D5680), 0x80 plug in; marker: the ones whose marker shows. actionMode: what a full gauge on target
+	// starts, 1-3 jump up 4, 8 or 12.5, 4 grab a ledge, 5 climb up from a hang, 6 let go of it, 9 push (japan)
+	s32 count                  = 0;
+	player->mLook.mMarkerCount = 0;
+	if (IsPlayerLookMarkerVisible(&player->mLook))
+		++player->mLook.mMarkerCount;
+	DisablePlayerLook(&player->mLook);
+	u32 available       = 0;
+	XObj* target        = NULL;
+	s32 actionMode      = -1;
+	u32 marker          = 0;
+	BOOL markerOverride = FALSE;
+	if (!IsEventScriptActive(&gGame) && !(gGame.GetStatusFlags(0x500)) && player->mAttachmentRequest < 0
+	    && (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && !IsCarryingMug(&player->mLift)))
+	    && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+	    && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+	    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0) && IsRadarActionState(&player->mRadar, 0)) {
+		{
+			s32 index = player->mFloorContactObjects[2];
+			if (index >= 0 && index != player->mFloorContactObjects[0]) {
+				XObj* object = GetGameObjectByIndex(&gGame, index);
+				if (!player->_0A70 || !GetMaskedObjectStatus(object, 0x100000)) {
+					if (IsObjectLiftable(object))
+						available |= 4;
+					else if (GetMaskedObjectStatus(object, 0x0000010000000000ULL))
+						available |= 1;
+				}
+				if (GetMaskedObjectStatus(object, 0x20) && IsLiftTargetPlug(&player->mLift)
+				    && GetCharacterObjectApproachResult(player, object))
+					available |= 0x80;
+			} else if (index >= 0 && player->mFloorContactObjects[2] == player->mFloorContactObjects[0]
+			           && player->mHitObjectIndex == player->mFloorContactObjects[2] && !player->_0A70) {
+				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+				if (GetMaskedObjectStatus(object, 0x0000010000000000ULL) && !GetMaskedObjectStatus(object, 0x0000100000000000ULL))
+					available |= 1;
+			}
+		}
+		{
+			s32 index = player->mActionObjectIndex;
+			if (index >= 0) {
+				XObj* object = GetGameObjectByIndex(&gGame, index);
+				if (IsObjectLiftable(object) && index != player->mFloorContactObjects[0])
+					available |= 4;
+				if (IsObjectPushable(object) && index != player->mFloorContactObjects[0]) {
+					if (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+						available |= 2;
+				} else if (IsObjectPushableFromBack(object) && index != player->mFloorContactObjects[0]) {
+					f32 yaw   = GetObjectMoveRotation(object)->y;
+					s32 edge  = GetSelectedFloorIndex(object);
+					f32 angle = GetObjectEdgeOutwardYaw(object, player->GetPos(), edge) - yaw;
+					// the edge he is at faces straight back, within 0.1 degrees
+					if (angle > 3.13984752f && angle < 3.14333797f)
+						available |= 2;
+				}
+				if (IsObjectClimbableLedge(object)) {
+					f32 climbHeight = fn_800D1740(GetSelectedFloorHeight(object) - player->mMoveTranslate.y);
+					if (climbHeight != 0) {
+						if (climbHeight >= 12 && climbHeight <= 12.5f) {
+							if (IsLiftActionState(&player->mLift, 0)
+							    || (IsLiftActionState(&player->mLift, 4) && !IsCarryingToothbrush(&player->mLift)
+							        && !IsCarryingSpoon(&player->mLift) && !IsCarryingMug(&player->mLift)
+							        && !IsCarryingSquirter(&player->mLift))) {
+								target     = object;
+								actionMode = 4;
+							}
+						} else {
+							if (climbHeight <= 1) {
+								// too low to need climbing
+							} else if (climbHeight <= 4) {
+								target     = object;
+								actionMode = 1;
+							} else if (climbHeight <= 8) {
+								target     = object;
+								actionMode = 2;
+							} else if (climbHeight <= 12.5f) {
+								target     = object;
+								actionMode = 3;
+							}
+						}
+					}
+				} else if (IsObjectLadder(object)) {
+					if (GetSelectedFloorIndex(object) == 0) {
+						if (index == player->mFloorContactObjects[0]) {
+							f32 facing = GetObjectMoveRotation(object)->y;
+							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
+							if (angle <= HALF_PI || angle >= 1.5f * PI)
+								available |= 0x10;
+						} else {
+							f32 playerHeight = GetObjectMaxFloorHeight(player);
+							if (GetSelectedFloorHeight(object) > playerHeight
+							    && IsPositionBehindObject(&player->mLadder, player->GetPos(), object))
+								available |= 0x10;
+						}
+					}
+				} else if (IsObjectRope(object)) {
+					if (GetSelectedFloorIndex(object) == 0) {
+						if (index == player->mFloorContactObjects[0]) {
+							f32 facing = GetObjectMoveRotation(object)->y;
+							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
+							if (angle <= HALF_PI || angle >= 1.5f * PI)
+								available |= 0x20;
+						} else {
+							f32 playerHeight = GetObjectMaxFloorHeight(player);
+							// a rope can be grabbed from any side
+							if (GetSelectedFloorHeight(object) > playerHeight)
+								available |= 0x20;
+						}
+					}
+				} else if (fn_800D5680(object)) {
+					available |= 0x40;
+				}
+				if ((GetMaskedObjectStatus(object, 0x20)) && IsLiftTargetPlug(&player->mLift) && index != player->mFloorContactObjects[0]
+				    && GetCharacterObjectApproachResult(player, object))
+					available |= 0x80;
+				if (player->mGaugeTarget)
+					player->mHitObjectIndex = player->mActionObjectIndex;
+			}
+		}
+		{
+			if (player->mLetickerIndex >= 0)
+				available |= 0x80;
+			if (!available && player->mHitObjectIndex >= 0
+			    && !(player->mPreviousContactObject == player->mHitObjectIndex
+			         && player->mLastContactFloorIndex == GetSelectedFloorIndex(GetGameObjectByIndex(&gGame, player->mHitObjectIndex)))
+			    && player->mFloorContactObjects[2] >= 0
+			    && !(player->mPreviousContactObject == player->mFloorContactObjects[2]
+			         && player->mLastContactFloorIndex
+			                == GetSelectedFloorIndex(GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2])))) {
+				player->mPreviousContactObject = -1;
+				player->mNearDistance          = 2;
+			}
+			if (player->mFloorContactObjects[2] >= 0) {
+				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContactObjects[2]);
+				ADD_OBJECT_MARKERS(0xff);
+				if (GetMaskedObjectStatus(object, 0x0000040000000000ULL))
+					markerOverride = TRUE;
+			}
+			if (player->mHitObjectIndex >= 0) {
+				XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+				ADD_OBJECT_MARKERS(0xfe);
+				if (GetMaskedObjectStatus(object, 0x0000040000000000ULL))
+					markerOverride = TRUE;
+			}
+			if (player->mLetickerIndex >= 0) {
+				XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
+				ADD_OBJECT_MARKERS(0x80);
+			}
+		}
+	}
+	{
+		if (marker & 0x1)
+			++count;
+		if (marker & 0x2)
+			++count;
+		if (marker & 0x4)
+			++count;
+		if (marker & 0x10)
+			++count;
+		if (marker & 0x20)
+			++count;
+		if (marker & 0x40)
+			++count;
+		if (marker & 0x80)
+			++count;
+		if (marker & 0x8)
+			++count;
+		if (count) {
+			EnablePlayerLook(&player->mLook);
+			if (marker & 0x80) {
+				SetPlayerLookMode(&player->mLook, 0x72);
+				SetLookTargetPosition(&player->mLook, 0, 0, 0);
+			} else {
+				SetPlayerLookMode(&player->mLook, 0x71);
+				SetLookTargetPosition(&player->mLook, 0, 0, -0.52359879f);
+			}
+			s32 kind = -1;
+			if (player->mHitObjectIndex >= 0) {
+				XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+				kind         = fn_800DBD44(fn_800DBD60(object));
+			}
+			if (IsPlayerAttachmentEquipped(player, 0)) {
+				if (!markerOverride && !(available & 0x72)) {
+					if (kind == 0x2D1 || kind == 0x249)
+						DisablePlayerLook(&player->mLook);
+					else
+						fn_800DBF70(&player->mLook);
+				}
+			} else if (kind == 0x2D1 || kind == 0x249) {
+				if (markerOverride)
+					fn_800DBF70(&player->mLook);
+				else
+					DisablePlayerLook(&player->mLook);
+			}
+		} else {
+			DisablePlayerLook(&player->mLook);
+		}
+	}
+	if (count) {
+		if (count > player->mLook.mMarkerCount)
+			player->mLook.mMarkerCount = count;
+	} else { // no marker: the stick and the buttons start an action
+		if (!IsHangActionState(&player->mHang, 0)) {
+			if (IsHangActionState(&player->mHang, 5) && (player->mStick[0] > 0) && HasPlayerActionTarget(&player->mHang)) {
+				f32 angle = WrapPlayerActionAngle((player->mStick[2] + GetCameraAngles(gGame.GetCamera())->y) - player->mMoveRotate.y);
+				// stick within 30 degrees of ahead climbs up, within 30 degrees of behind lets go
+				if ((angle < 0.52359879f || angle > 5.7595863f) && IsObjectClimbableFromHang(GetPlayerActionTarget(&player->mHang))) {
+					target     = GetPlayerActionTarget(&player->mHang);
+					actionMode = 5;
+				}
+				if (angle > 2.61799383f && angle < 3.66519141f) {
+					target     = GetPlayerActionTarget(&player->mHang);
+					actionMode = 6;
+				}
+			}
+		} else {
+			// retail makes these checks and drops every result
+			if (!IsCopterActionState(&player->mCopter, 0))
+				IsCopterActionState(&player->mCopter, 3);
+			else if (!IsRopeActionState(&player->mRope, 0))
+				IsRopeActionState(&player->mRope, 5);
+			else if (!IsLadderActionState(&player->mLadder, 0))
+				IsLadderActionState(&player->mLadder, 5);
+			else if (!IsPushActionState(&player->mPush, 0))
+				IsPushActionState(&player->mPush, 2);
+			else if (IsPlayerAttachmentEquipped(player, 1))
+				IsCopterActionState(&player->mCopter, 0);
+			else if (IsPlayerAttachmentEquipped(player, 2))
+				IsPopperActionState(&player->mPopper, 0);
+			else
+				IsPlayerAttachmentEquipped(player, 3);
+		}
+	}
+	{
+		if (!player->mOnGround && !gGame.GetStatusFlags(0x20)
+		    && (IsPlayerAttachmentEquipped(player, 0) || IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2)
+		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
+		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
+		        || IsPlayerAttachmentEquipped(player, 8))) {
+			f32 magnitude = GetControlStickMagnitude(pad);
+			if (magnitude == 0 && player->mPreviousContactObject >= 0)
+				magnitude = 0.8f;
+			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(pad, 0x0002000000000020ULL)
+			    && magnitude > 0) {
+				f32 threshold = gRefreshRate * GetAutoActionHoldTime();
+				if (target == player->mGaugeTarget) {
+					if (GetAutoActionChargeRate() > 0)
+						player->mGaugeTime += frames * GetAutoActionChargeRate();
+					else
+						player->mGaugeTime += magnitude * frames;
+					f32 cap = GetAutoActionSoftTiltCap();
+					if (cap > 0 && magnitude <= 0.7f && player->mGaugeTime > threshold * cap)
+						player->mGaugeTime = threshold * cap;
+				} else {
+					player->mGaugeTarget = target;
+					player->mGaugeTime   = 0;
+				}
+				if (player->mGaugeTime >= threshold) {
+					XObj* hit = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+					if (actionMode == 1) {
+						SetPlayerActionState(&player->mJump, 8);
+						SetPlayerActionTarget(&player->mJump, hit);
+					} else if (actionMode == 2) {
+						SetPlayerActionState(&player->mJump, 11);
+						SetPlayerActionTarget(&player->mJump, hit);
+					} else if (actionMode == 3) {
+						SetPlayerActionState(&player->mJump, 14);
+						SetPlayerActionTarget(&player->mJump, hit);
+					} else if (actionMode == 4) {
+						if (IsPlayerCarryingPlug(player))
+							ReleasePlayerLiftTarget(player);
+						SetHangActionState(&player->mHang, 1);
+						SetPlayerActionTarget(&player->mHang, hit);
+					} else if (actionMode == 5) {
+						if (IsPlayerCarryingPlug(player))
+							ReleasePlayerLiftTarget(player);
+						TryLeaveHang(&player->mHang);
+						StopPlayerMotion(player);
+					} else if (actionMode == 6) {
+						if (IsPlayerCarryingPlug(player))
+							ReleasePlayerLiftTarget(player);
+						SetHangActionState(&player->mHang, 9);
+						StopPlayerMotion(player);
+					} else if (actionMode == 9) {
+						if (IsPlayerCarryingPlug(player))
+							ReleasePlayerLiftTarget(player);
+						StopPlayerMotion(player);
+						SetPushActionState(&player->mPush, 1);
+						SetPlayerActionTarget(&player->mPush, hit);
+						SetPushTargetState(&player->mPush, 0);
+					}
+					player->mGaugeTarget = NULL;
+					player->mGaugeTime   = 0;
+				}
+			} else {
+				player->mGaugeTarget = NULL;
+				player->mGaugeTime   = 0;
+			}
+		} else {
+			player->mGaugeTarget = NULL;
+			player->mGaugeTime   = 0;
+		}
+	}
+}
+
+s32 gPlayerSuitIdleAnimations[9] = { 1, 0xCF7, 0xCF9, 0xCF8, 0xCFD, 1, 0xCFA, 0xCFB, 0xCFC };
+
+static inline f32 GetStickMotion(CPadOne* pad)
+{
+	u8 blocked = (gGame.GetStatusFlags(0x20)) != 0;
+	if (!blocked) {
+		blocked = gGame.mEvt.mData.mScript != NULL;
+	}
+	if (blocked) {
+		return 0.0f;
+	}
+	f32 x = pad->mStick.x;
+	f32 y = pad->mStick.y;
+	return FSqrt(x * x + y * y);
+}
+
+static inline f32 PlayerGaitRate(f32 speed, bool slow)
+{
+	if (slow) {
+		f32 rate = speed > 1.0f ? 1.0f : speed;
+		if (rate < 0.5f)
+			rate = 0.5f;
+		return rate;
+	} else {
+		f32 rate = 0.5f * speed;
+		if (rate > 1.0f)
+			rate = 1.0f;
+		if (rate < 0.7f)
+			rate = 0.7f;
+		return rate;
+	}
+}
+
+static inline void ChangePlayerGait(WiiPlayerState* p, s32 id, f32 rate)
+{
+	p->mFrameTime.mFrame = 4.0f + p->GetAnimFrame();
+	if (p->mFrameTime.mFrame >= p->GetAnimEndFrame())
+		p->mFrameTime.mFrame -= p->GetAnimEndFrame();
+	p->SetAnim(id, FALSE, p->mFrameTime.mFrame, rate, 0.0f, 15.0f);
+}
+
+static inline void SetPlayerIdleAnim(WiiPlayerState* p, s32 id)
+{
+	p->SetAnim(id, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+}
+
+/**
+ * @note Address: 0x800DCD40
+ * @note Size: 0x11EC
+ */
+// NONMATCHING: gait, idle, fidget and action-specific animation selection are present;
+// the ordered call set matches; switch layout, rate scheduling and register allocation still differ
+void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f32, f32)
+{
+	CPadOne* pad = &p->mPad;
+	f32 motion   = GetStickMotion(pad);
+	if (motion == 0.0f && p->mPreviousContactObject >= 0)
+		motion = 0.8f;
+	if (motion > 0.0f && (gGame.GetStatusFlags(0x100)) && !(gGame.GetStatusFlags(0x200)))
+		motion = 0.0f;
+	if (p->_1C9B8[2] > 0.0f)
+		motion = 0.0f;
+	if (__fpclassifyf(p->mWalkHeading) != FP_NAN)
+		motion = PSVECMag(&p->mMoveSpeed0);
+
+	// the gait goes by the speed he tries to go: divide out what the walk code scaled him by (obstacles or the rate multiplier)
+	f32 speed;
+	if (sBlockedObstacleCount >= 1) {
+		f32 scale = 1.0f - 0.15f * (f32)sBlockedObstacleCount;
+		if (scale < 0.7f)
+			scale = 0.7f;
+		speed = p->mMoveSpeed / scale;
+	} else {
+		speed
+		    = p->mMoveSpeed / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 1.135f : 1.0f) * (60.0f / gRefreshRate));
+	}
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
+		f32 distance = PSVECDistance(&p->mMotion.mValue, &p->mMotion.mTarget);
+		if (distance / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 1.135f : 1.0f) * (60.0f / gRefreshRate))
+		    >= 3.0f) {
+			p->SetAnim(0x79, FALSE, 0.0f, 1.0f, 0.0f, 30.0f);
+		} else if (p->GetAnimId() == 0x79 || p->GetAnimId() == 0x89 || p->GetAnimId() == 0xE0) {
+			SetPlayerIdleAnim(p, 0x11);
+			p->mIdleLoops = 3;
+		}
+	}
+	if (p->mPopper.mState == 8 && ((XObjPopper*)p->mPopperObj)->GetAnimId() == 5 && ((XObjPopper*)p->mPopperObj)->GetAnimFrame() <= 10.0f) {
+		if (gGame.mStage != 0xB || (p->GetAnimId() != 0x35 && p->GetAnimId() != 0x36)) {
+			p->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return;
+	}
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
+		switch (p->GetAnimId()) {
+		// standing and idle anims: moving starts the walk, standing still he may fidget
+		case 0:
+		case 1:
+		case 2:
+		case 8:
+		case 0x11:
+		case 0x12:
+		case 0x4A:
+		case 0xA1:
+		case 0xA3:
+		case 0x822:
+		case 0x874:
+		case 0x894:
+		case 0x8B2:
+		case 0xCF7:
+		case 0xCF8:
+		case 0xCF9:
+		case 0xCFA:
+		case 0xCFB:
+		case 0xCFC:
+		case 0xCFD:
+		case 0x160:
+		case 0x161:
+		case 0x162:
+		case 0x163: {
+			BOOL script = gGame.mEvt.mData.mScript != NULL;
+			if (script && __fpclassifyf(p->mWalkHeading) == FP_NAN
+			    && (((XObjAttachment*)p->mCopterObj)->mVisible || ((XObjAttachment*)p->mPopperObj)->mVisible
+			        || ((XObjAttachment*)p->mRadarObj)->mVisible || ((XObjAttachment*)p->mOXObj)->mVisible))
+				break;
+			if (motion != 0.0f) {
+				SetPlayerIdleAnim(p, 3);
+				p->mIdleLoops = 0;
+				break;
+			}
+			if (p->_1C9B8[2] > 0.0f) {
+				if (p->mLift.mState == 4) {
+					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
+						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					else
+						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				} else if (p->GetAttachment() == 2) {
+					p->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				} else {
+					p->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				}
+				break;
+			}
+			// the shake is over: leave its anim for the plain idle
+			if (p->GetAnimId() == 0x160 || p->GetAnimId() == 0x162 || p->GetAnimId() == 0x163 || p->GetAnimId() == 0x161) {
+				SetPlayerIdleAnim(p, 0x11);
+				p->mIdleLoops = rand() % 10 + 5;
+				break;
+			}
+			if (p->mLift.mState != 0 || p->mFloorContactObjects[2] >= 0 || p->mSuits.mChangeStep)
+				break;
+			if (p->GetAttachment() == 1 || p->GetAttachment() == 3) {
+				SetPlayerIdleAnim(p, 0x4A);
+			} else if (p->GetAttachment() == 2) {
+				SetPlayerIdleAnim(p, 0x822);
+			} else if ((gGame.GetStatusFlags(0x100)) || script) {
+				SetPlayerIdleAnim(p, 0x11);
+				p->mIdleLoops = 3;
+			} else if (model->IsAnimDone()) {
+				if (p->mIdleLoops > 0)
+					--p->mIdleLoops;
+				if (p->mIdleLoops == 0 && (p->mPlayerFlags & 4)) {
+					s32 id = 0x11;
+					if (!gGame.mEvt.mData.mScript && (p->mHitObjectIndex < 0 || p->mHitObjectIndex == p->mFloorContactObjects[0])) {
+						// one time in four he fidgets, bits 4-5 of the same roll pick which
+						s32 pick = rand();
+						if (!(pick & 3)) {
+							switch (pick & 0x30) {
+							case 0x10:
+								id = 1;
+								break;
+							case 0x20:
+								id = 2;
+								break;
+							case 0x30:
+								id = 0x12;
+								break;
+							default:
+								id = gPlayerSuitIdleAnimations[p->mSuits.mCurrent];
+								break;
+							}
+							p->mIdleLoops = rand() % 10 + 5;
+						}
+					}
+					SetPlayerIdleAnim(p, id);
+				}
+			}
+			break;
+		}
+		// walking, anim 3 and its variants (gPlayerAnimVariants)
+		case 3:
+		case 0xC:
+		case 0x818:
+		case 0x896:
+			if (motion == 0.0f) {
+				if (p->GetAttachment() == 1 || p->GetAttachment() == 3)
+					SetPlayerIdleAnim(p, 0x4A);
+				else {
+					SetPlayerIdleAnim(p, 0x11);
+					p->mIdleLoops = 3;
+				}
+			} else if (speed >= 1.25f) {
+				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, false));
+			} else {
+				p->SetAnimRate(PlayerGaitRate(speed, true));
+			}
+			break;
+		// jogging, anim 0x77 and its variants
+		case 0x77:
+		case 0x88:
+		case 0x882:
+		case 0x897:
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed >= 1.9f)
+				ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
+			else
+				p->SetAnimRate(PlayerGaitRate(speed, false));
+			break;
+		// running, anim 4 and its variants
+		case 4:
+		case 0xD:
+		case 0x819:
+		case 0x898:
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed < 1.9f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 0x77, rate);
+			} else
+				p->SetAnimRate(PlayerGaitRate(speed, false));
+			break;
+		}
+	}
+}
+
 // the eyelids: in the anims that allow it he blinks after a random wait, stepping the lids two frames at a time
 void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
 {
@@ -2216,6 +4938,577 @@ void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
 		s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
 		chr->mBlinkFrame = -1;
 		chr->mBlinkWait  = wait;
+	}
+}
+
+static inline bool IsActionIdleOr(const XAction& action, s32 rest)
+{
+	s32 state = action.mState;
+	return state == 0 || state == rest;
+}
+
+static inline bool IsActiveActionTarget(const XAction& action, const XObj* object)
+{
+	return action.mState != 0 && action.mTarget == object;
+}
+
+// NONMATCHING: retail allocates the current object to r30 and its priority to r29, the build uses r25/r30;
+// the idle-action tests also use the complementary branch shape
+void UpdatePlayerLookAtObjects(WiiPlayerState* player, u32 frames)
+{
+	BOOL enabled;
+	if (gGame.mEvt.mData.mScript != NULL || gGame.GetStatusFlags(0x100) || player->mPreviousContactObject >= 0)
+		enabled = FALSE;
+	else if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
+		enabled = FALSE;
+	else if (IsActionIdleOr(player->mLift, 4) && IsActionIdleOr(player->mHang, 5) && player->mJump.mState == 0
+	         && IsActionIdleOr(player->mLadder, 5) && IsActionIdleOr(player->mRope, 5) && player->mPush.mState == 0
+	         && player->mTumble.mState == 0 && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0)
+		enabled = TRUE;
+	else
+		enabled = FALSE;
+
+	CVec pos(*player->GetPos());
+	CVec head  = player->GetJointWorldPos("head_chn");
+	XObj* best = NULL;
+	if (enabled) {
+		f32 nearest      = NAN;
+		s16 bestPriority = 0;
+		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+			XObj* object = gGame.mXObjs.mObjects[i];
+			if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x4000000000000000ULL)
+			    || object == player || object->GetKind() >= 10000)
+				continue;
+			if (IsActiveActionTarget(player->mLift, object) || IsActiveActionTarget(player->mHang, object)
+			    || IsActiveActionTarget(player->mJump, object) || IsActiveActionTarget(player->mLadder, object)
+			    || IsActiveActionTarget(player->mRope, object) || IsActiveActionTarget(player->mPush, object)
+			    || IsActiveActionTarget(player->mTumble, object) || IsActiveActionTarget(player->mCopter, object)
+			    || IsActiveActionTarget(player->mPopper, object) || IsActiveActionTarget(player->mRadar, object))
+				continue;
+			s16 priority = object->GetLookPriority();
+			if (priority == 0)
+				continue;
+			CVec target(*object->GetPos());
+			if (target.y > pos.y - 4.0f && target.y < 4.0f + head.y) {
+				f32 dx       = pos.x - target.x;
+				f32 dz       = pos.z - target.z;
+				f32 distance = FSqrt(dx * dx + dz * dz);
+				if (distance < object->GetLookRange()) {
+					f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
+					if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
+						BOOL select = FALSE;
+						if (best == NULL)
+							select = TRUE;
+						else if (priority > bestPriority)
+							select = TRUE;
+						else if (priority >= bestPriority && distance < nearest)
+							select = TRUE;
+						if (select) {
+							nearest      = distance;
+							best         = object;
+							bestPriority = priority;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (best != NULL) {
+		player->mEyeAimRecord.mSnap[0] = player->mEyeAimRecord.mSnap[1] = 1;
+		player->mEyeAimRecord.m_0C                                      = best;
+		player->mEyeAimRecord.mTarget.x                                 = NAN;
+		player->mEyeAimRecord.m_20                                      = NULL;
+		player->mEyeAimRecord.m_24                                      = NAN;
+		player->mEyeAimRecord.m_28                                      = NAN;
+	} else {
+		BOOL update = FALSE;
+		if (player->mEyeAimRecord.mSnap[0] == 0 && player->mEyeAimRecord.mSnap[1] == 0)
+			update = TRUE;
+		if (!update) {
+			player->mEyeAimRecord.mSnap[0] = player->mEyeAimRecord.mSnap[1] = 2;
+			player->mEyeAimRecord.m_0C                                      = NULL;
+			player->mEyeAimRecord.mTarget.x                                 = NAN;
+			player->mEyeAimRecord.m_20                                      = NULL;
+			player->mEyeAimRecord.m_24                                      = NAN;
+			player->mEyeAimRecord.m_28                                      = NAN;
+			player->mEyeAimRecord.m_30                                      = 0.0f;
+			player->mEyeAimRecord.m_2C                                      = 0.0f;
+			player->mEyeAimRecord.m_4C.Set(0.0f, 0.0f, 0.0f);
+		}
+	}
+	BOOL update = FALSE;
+	if (player->mEyeAimRecord.mSnap[0] == 0 && player->mEyeAimRecord.mSnap[1] == 0)
+		update = TRUE;
+	if (!update)
+		fn_800C6CF0(&player->mEyeAimRecord, frames);
+}
+
+void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
+{
+	if (!(player->mPlayerFlags & 0x80000000)) {
+		s32 anim  = player->GetAnimId();
+		f32 frame = player->GetAnimFrame();
+		f32 end   = player->GetAnimEndFrame();
+		UpdateLiftActionAnimation((XActLift*)&player->mLift, anim, player, frames, frame, end);
+		UpdatePlayerHangAction(&player->mHang, anim, player, frames, frame, end);
+		UpdatePlayerJumpAction((XActJump*)&player->mJump, anim, player, frames, frame, end);
+		UpdateLadderActionAnimation((XActLadder*)&player->mLadder, anim, player, frames, frame, end);
+		UpdatePlayerRopeAction((XActRope*)&player->mRope, anim, player, frames, frame, end);
+		UpdatePushActionAnimation((XActPush*)&player->mPush, anim, player, frames, frame, end);
+		UpdatePlayerTumbleAnimation(&player->mTumble, anim, player, frames, frame, end);
+		UpdatePlayerCopterFlight(&player->mCopter, anim, player, frames, frame, end);
+		UpdatePlayerPopperAction((XActPopper*)&player->mPopper, anim, player, frames, frame, end);
+		UpdateRadarTargeting((XActRadar*)&player->mRadar, anim, player, frames, frame, end);
+		if (player->mAttachmentRequest < 0 && !gGame.GetStatusFlags(0x400)) {
+			UpdatePlayerLocomotionAnimation(player, anim, NULL, frames, frame, end);
+		}
+		switch (anim) {
+		case 0x5D:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x5E, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			}
+			break;
+		case 0x5F:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->mIdleLoops = 3;
+			}
+			break;
+		case 0x78:
+		case 0x13B:
+		case 0xEF:
+			if (player->IsAnimDone()) {
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->mIdleLoops = 3;
+			}
+			break;
+		}
+	}
+	fn_800DDF2C(player, frames);
+	UpdatePlayerLookAtObjects(player, frames);
+	BOOL skipHeadAim = FALSE;
+	if (player->mHeadAimRecord.mSnap[0] == 0 && player->mHeadAimRecord.mSnap[1] == 0) {
+		skipHeadAim = TRUE;
+	}
+	if (!skipHeadAim) {
+		fn_800C6CF0(&player->mHeadAimRecord, frames);
+	}
+	if (player->mFlashTimer > 0) {
+		if ((player->mFlashTimer -= frames) < 0) {
+			player->mFlashTimer = 0;
+		}
+		player->mFlashCount++;
+		if (player->mFlashTimer > 0) {
+			f32 flash = (f32)player->mFlashTimer / gRefreshRate;
+			player->SetColor(1, 128.0f * flash, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 128.0f * flash, 0, 0, 0, 128.0f * flash, 0, 0, 0, 0.0f);
+		} else {
+			player->SetColor(1, 0, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
+		}
+	}
+}
+
+// NONMATCHING: Wii action costs, battery depletion, the HUD's drain mark, effect cleanup and warning fades
+// are present; switch layout and register scheduling differ
+void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
+{
+	const CPadOne* pad = &p->mPad;
+	// the row of the action battery costs (GetPlayerActionParameter) for what he does: 0-1 standing, 2 walk, 3 jog, 4 run; -1 none
+	s32 index = -1;
+	if (p->mLift.mState && IsJumpActionState(&p->mJump, 0)) {
+		switch (p->mLift.mState) {
+		case 1:
+		case 2:
+		case 21:
+			index = 7;
+			break;
+		case 6:
+		case 20:
+			index = 8;
+			break;
+		case 3:
+		case 4:
+		case 29:
+		case 30:
+			if (IsJumpActionState(&p->mJump, 0)) {
+				switch (p->GetAnimId()) {
+				case 0x89:
+				case 0xE0:
+					index = 5;
+					break;
+				case 0x896:
+				case 0xC:
+					index = 2;
+					break;
+				case 0x897:
+				case 0x88:
+					index = 3;
+					break;
+				case 0x898:
+				case 0xD:
+					index = 4;
+					break;
+				case 0x895:
+					index = 34;
+					break;
+				case 0x8B7:
+				case 0x8AF:
+				case 0x157:
+					index = 35;
+					break;
+				case 0x8B1:
+					index = 36;
+					break;
+				default:
+					index = 0;
+					break;
+				}
+			}
+			break;
+		case 28: // using the toothbrush
+		case 31:
+			if (p->GetAnimId() == 0x895)
+				index = 34;
+			else if (p->GetAnimId() == 0x152)
+				index = 4;
+			break;
+		case 32: // the spoon
+		case 33:
+			switch (p->GetAnimId()) {
+			case 0x8AF:
+			case 0x157:
+				index = 35;
+				break;
+			case 0x8B7:
+				index = 4;
+				break;
+			case 0x156:
+				index = 0;
+				break;
+			}
+			break;
+		case 34: // the mug
+		case 35:
+			if (p->GetAnimId() == 0x8B1)
+				index = 36;
+			break;
+		case 38: // the squirter
+		case 39:
+			switch (p->GetAnimId()) {
+			case 0x8C0:
+			case 0x8C1:
+				index = 37;
+				break;
+			case 0x8C2:
+			case 0x8C3:
+			case 0x8C4:
+			case 0x8C5:
+				index = 38;
+				break;
+			}
+			break;
+		case 14:
+			index = 9;
+			break;
+		}
+	} else if (p->mHang.mState) {
+		switch (p->mHang.mState) {
+		case 1:
+		case 2:
+			index = 10;
+			break;
+		case 4:
+			index = 14;
+			break;
+		case 5:
+			if (p->mHang.mMoveDirection == -1 || p->mHang.mMoveDirection == 1)
+				index = 11;
+			else
+				index = 0;
+			break;
+		case 6:
+		case 7:
+			index = 12;
+			break;
+		case 9:
+			index = 13;
+			break;
+		}
+	} else if (p->mJump.mState) {
+		switch (p->mJump.mState) {
+		case 8:
+		case 9:
+		case 11:
+		case 12:
+		case 14:
+		case 15:
+			index = 15;
+			break;
+		case 6:
+			index = 16;
+			break;
+		}
+	} else if (p->mLadder.mState) {
+		switch (p->mLadder.mState) {
+		case 1:
+		case 2:
+			index = 17;
+			break;
+		case 5:
+			if (p->mLadder.mMoveDirection == 1)
+				index = 18;
+			else if (p->mLadder.mMoveDirection == -1)
+				index = 19;
+			else
+				index = 0;
+			break;
+		case 6:
+			index = 20;
+			break;
+		case 7:
+		case 9:
+			index = 21;
+			break;
+		}
+	} else if (p->mRope.mState) {
+		switch (p->mRope.mState) {
+		case 1:
+		case 2:
+			index = 22;
+			break;
+		case 5:
+			if (p->mRope.mMoveDirection == 1 || p->mRope.mMoveDirection == 2)
+				index = 23;
+			else if (p->mRope.mMoveDirection == -1)
+				index = 24;
+			else
+				index = 0;
+			break;
+		case 6:
+			index = 25;
+			break;
+		case 8:
+			index = 26;
+			break;
+		}
+	} else if (p->mPush.mState) {
+		switch (p->mPush.mState) {
+		case 2:
+			if (p->mPush.mMoveDirection == 1 || p->mPush.mMoveDirection == -1)
+				index = 27;
+			else
+				index = 0;
+			break;
+		}
+	} else if (p->mCopter.mState) {
+		switch (p->mCopter.mState) {
+		case 1:
+		case 2:
+			index = 6;
+			break;
+		case 3:
+			index = 28;
+			break;
+		case 4:
+			index = 29;
+			break;
+		}
+	} else {
+		if (p->mPopper.mState != 0 && p->mPopper.mState != 4) {
+			switch (p->mPopper.mState) {
+			case 1:
+			case 2:
+			case 9:
+			case 10:
+				index = 6;
+				break;
+			case 3:
+				index = 0;
+				break;
+			case 6:
+			case 7:
+			case 8:
+				if (((XActPopper*)&p->mPopper)->mShotStrength)
+					index = 30;
+				break;
+			default:
+				break;
+			}
+		} else if (p->mRadar.mState != 0) {
+			switch (p->mRadar.mState) {
+			case 1:
+			case 2:
+				index = 6;
+				break;
+			case 3:
+			case 4:
+			case 5:
+				index = 32;
+				break;
+			default:
+				if (p->mRadar.mTarget)
+					index = 33;
+				break;
+			}
+		} else if (p->mRadar.mTarget) {
+			index = 33;
+		} else {
+			switch (p->GetAnimId()) {
+			case 0x79:
+				index = 5;
+				break;
+			case 3:
+			case 0xA3:
+			case 0x818:
+			case 0x874:
+				index = 2;
+				break;
+			case 0x77:
+			case 0x882:
+				index = 3;
+				break;
+			case 4:
+			case 0x819:
+				index = 4;
+				break;
+			case 1:
+			case 0x11:
+			case 0x4A:
+			case 0xA1:
+			case 0x822:
+				index = 0;
+				break;
+			case 2:
+			case 0x12:
+			case 0xCF7:
+			case 0xCF8:
+			case 0xCF9:
+			case 0xCFA:
+			case 0xCFB:
+			case 0xCFC:
+			case 0xCFD:
+				index = 1;
+				break;
+			}
+		}
+	}
+	// battery per second, the table holds hundredths; row 9 instead drains about the lift's mBatteryCost each update
+	f32 drain = 0.0f;
+	if (index >= 0) {
+		if (index == 9) {
+			f32 rate = (u32)gRefreshRate / frames;
+			drain    = rate * ((XActLift*)&p->mLift)->mBatteryCost;
+		} else
+			drain = GetPlayerActionParameter(index) / 100.0f;
+	}
+	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
+		drain = 0.0f;
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
+	} else if (p->mPlug.mConnection > 0 && (u8)p->mPlug.mConnection) {
+		drain = 0.0f;
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
+	} else if (gGame.mEvt.mData.mScript || (gGame.GetStatusFlags(0xC00))) {
+		drain = 0.0f;
+	} else if ((gGame.GetStatusFlags(0x80000000)) && !(gGame.GetStatusFlags(0x120)) && pad->mSubStick.y != 0.0f) {
+		drain = 0.0f;
+	}
+	// the InfoScrn's _1E4.x takes the drain (3 early in anim 0x151, at most 20) once _1E4.y has reached it
+	Vec& gauge = gGame.mInfoScrn._1E4;
+	if (p->GetAnimId() == 0x151 && p->GetAnimFrame() < 60.0f) {
+		if (gauge.y >= gauge.x)
+			gauge.x = 3.0f;
+	} else if (drain > 20.0f) {
+		if (gauge.y >= gauge.x)
+			gauge.x = 20.0f;
+	} else if (gauge.y >= gauge.x)
+		gauge.x = drain;
+	if (drain > 0.0f)
+		drain /= (f32)gRefreshRate;
+	// mIdleTimer runs down while he stands or idles in place, else resets to a second; at 0 the HUD slides its counters in
+	s32 anim = p->GetAnimId();
+	if (!gGame.mEvt.mData.mScript
+	    && (p->mAttachmentRequest >= 0 || (anim >= 1 && anim <= 2) || (anim >= 0x11 && anim <= 0x12) || (anim >= 0xCF7 && anim <= 0xCFD)
+	        || (anim >= 5 && anim <= 11) || (anim >= 0x158 && anim <= 0x159) || (anim >= 0x894 && anim <= 0x895)
+	        || (anim >= 0x8AE && anim <= 0x8AF) || (anim >= 0x8B1 && anim <= 0x8B3) || anim == 0x14 || (anim >= 0x67 && anim <= 0x68)
+	        || anim == 0x8A || anim == 0x8C || anim == 0x3F || anim == 0x4A || anim == 0xA1 || anim == 0x822
+	        || (anim >= 0x5D && anim <= 0x5E) || anim == 0x5F)) {
+		if (p->mIdleTimer > 0.0f) {
+			if ((p->mIdleTimer -= (f32)frames) < 0.0f)
+				p->mIdleTimer = 0.0f;
+		}
+	} else {
+		p->mIdleTimer = (f32)gRefreshRate;
+	}
+	if (p->mBatteryDrains) {
+		f32 battery;
+		if ((p->mTumble.mState == 8 || p->mTumble.mState == 9) && p->mHitStrength > 0.0f) {
+			battery         = p->mParams.mBattery - p->mHitStrength;
+			p->mHitStrength = 0.0f;
+		} else {
+			battery = p->mParams.mBattery - drain * (f32)frames;
+		}
+		if (battery < 0.0f)
+			battery = 0.0f;
+		if (battery != p->mParams.mBattery)
+			p->mParams.SetBattery(battery);
+		// the battery ran out: he collapses (tumble 4), the camera turns to him and the sounds of what he was doing stop
+		if (IsStopped(p) && !gGame.mEvt.mData.mScript && gGame.GetStatusFlags(0x40000000) && GetStageBatteryDepletedScript()
+		    && p->mAttachmentRequest < 0
+		    && (p->mLift.mState == 0 || p->mLift.mState == 4 || p->mLift.mState == 29 || p->mLift.mState == 33 || p->mLift.mState == 35
+		        || (p->mLift.mState == 2 && p->GetAnimId() == 0x159))
+		    && p->mCopter.mState == 0 && p->mTumble.mState != 4) {
+			ResetPlayerAttachment(p, -1);
+			p->mTumble.mState = 4;
+			p->SetColor(1, 255, 0, 0, 0.0f);
+			p->SetColor(1, 0, 0, 0, 0.4f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, 0.4f);
+			p->mPlug.mConnection = 0;
+			gGame.mMotionControlCamera.EndEye();
+			SetAreaCameraInterestTarget((CCameraActionArea*)gGame.mCameraActions.mTable[1], 4, p, 0.5f);
+			SelectActiveAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 1.0f);
+			gGame.mSubwin.mEnabled = 0;
+			fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0x1D, FALSE);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x75))
+				StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 499))
+				StopWiiSfx(&gGame.mSound, 499, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1F8))
+				StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1F9))
+				StopWiiSfx(&gGame.mSound, 0x1F9, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1FA))
+				StopWiiSfx(&gGame.mSound, 0x1FA, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1FB))
+				StopWiiSfx(&gGame.mSound, 0x1FB, 0.0f);
+		}
+	}
+	if (p->mParams.mBattery > 0.0f && p->mParams.mBattery <= 30.0f) {
+		p->mBatteryWarningFrames += frames;
+		if (p->mAnmQueue.mColorStep[1].mSpeed.x == 0.0f && p->mAnmQueue.mColorStep[1].mSpeed.y == 0.0f
+		    && p->mAnmQueue.mColorStep[1].mSpeed.z == 0.0f && p->mBatteryWarningFrames >= gRefreshRate && !gGame.mEvt.mData.mScript) {
+			p->SetColor(1, 255, 100, 0, 0.0f);
+			p->SetColor(1, 0, 0, 0, 1.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 255, 100, 0, 0, 100, 100, 200, 0, 1.0f);
+			p->mBatteryWarningFrames = 0;
+			p->mBatteryWarningFade   = 1.0f;
+			StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
+			PlayWiiSoundEffect(&gGame.mSound, 0x11E, 1.0f, 0.0f);
+		}
+	} else if (p->mBatteryWarningFrames > 0) {
+		p->mBatteryWarningFrames = 0;
+		p->mBatteryWarningFade   = 0.0f;
+	}
+	if (p->mBatteryWarningFade > 0.0f) {
+		if ((p->mBatteryWarningFade -= 0.02f * (f32)frames) < 0.0f)
+			p->mBatteryWarningFade = 0.0f;
+		p->mBatteryWarningAngle -= DEG2RAD * 5.0f * (f32)frames;
+	}
+	if ((p->mParams.mBattery <= 0.0f || p->mParams.mBattery > 30.0f
+	     || (gGame.mEvt.mData.mScript != NULL && gGame.mEvt.mData.mScript != GetStageZButtonScript()))
+	    && IsWiiSfxPlaying(&gGame.mSound, 0x11E)) {
+		StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
 	}
 }
 
@@ -2274,6 +5567,60 @@ s32 FrameSoundStopIfPlaying(XObj* object, FrameEventTime* time, const FrameEvent
 	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? -1 : 0;
 }
 
+static inline s32 ActionTargetPlacement(const XAction& action)
+{
+	if (action.mTarget != NULL) {
+		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
+		return GetStagePlacementIndex(placement);
+	}
+	return -1;
+}
+
+// NONMATCHING: retail keeps the player in r16 and the contact indices in r19-r22; the build shifts those
+// register roles, while the format calls, arguments and placement calculations match
+void XObjChr::DrawDebugStatus()
+{
+	WiiPlayerState* player = (WiiPlayerState*)this;
+	CVec* position         = player->GetPos();
+	s32 nearIndex          = player->mPreviousContactObject;
+	s32 hitIndex           = player->mHitObjectIndex;
+	s32 rideIndex          = player->mFloorContactObjects[0];
+	s32 eventIndex         = player->mFloorContactObjects[2];
+	s32 lift               = ActionTargetPlacement(player->mLift);
+	s32 hang               = ActionTargetPlacement(player->mHang);
+	s32 jump               = ActionTargetPlacement(player->mJump);
+	s32 ladder             = ActionTargetPlacement(player->mLadder);
+	s32 rope               = ActionTargetPlacement(player->mRope);
+	s32 push               = ActionTargetPlacement(player->mPush);
+	f32 floorHeight        = NAN;
+	u32 flags              = 0;
+	s32 floor              = -1;
+	if (eventIndex >= 0) {
+		flags = (gGame.mXObjs.mObjects[eventIndex]->mStatus.mFlags & 0xFF00000000ULL) >> 32;
+	} else if (hitIndex >= 0) {
+		XObj* object = gGame.mXObjs.mObjects[hitIndex];
+		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
+		floor        = object->mSelectedFloorIndex;
+		flags        = (object->mStatus.mFlags & 0xFF00000000ULL) >> 32;
+	}
+	f32 endFrame = player->GetAnimEndFrame();
+	s32 anim     = player->GetAnimId();
+	DrawGsStrokeTextFormat(&gGame.mGs, -1,
+	                       "\\B000000B0POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
+	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n",
+	                       (f32)gScreenSafeLeft, (f32)gScreenSafeTop, 0.0f, 11.0f, 12.0f, position->x, position->y, position->z,
+	                       (s32)(RAD2DEG * player->mMoveRotate.y), player->mMoveSpeed, player->mMoveSpeed0.y, anim,
+	                       player->mFrameTime.mFrame, endFrame, player->mIdleLoops, nearIndex, player->mNearDistance, hitIndex, flags,
+	                       floor, floorHeight, rideIndex, eventIndex);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1,
+	                       "\\B000000B0ACT :%2d\nLIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\n"
+	                       "ROPE:%2d(%d)\nPUSH:%2d(%d)\nTMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n",
+	                       (f32)gScreenSafeLeft, (f32)(gScreenSafeTop + 108), 0.0f, 11.0f, 12.0f, player->mAttachment, player->mLift.mState,
+	                       lift, player->mHang.mState, hang, player->mJump.mState, jump, player->mLadder.mState, ladder,
+	                       player->mRope.mState, rope, player->mPush.mState, push, player->mTumble.mState, player->mCopter.mState,
+	                       player->mPopper.mState, player->mRadar.mState);
+}
+
 // the anim rate at the game's frame rate, 1.135 times faster in lift state 4 except for anim 0x13B
 // NONMATCHING: retail reads mLift.mState ahead of the prologue's stores
 f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
@@ -2308,6 +5655,73 @@ static inline f32 PlayerAnimRateScale(WiiPlayerState* chr, s32 anim)
 		rate = 1.0f;
 	}
 	return rate * (60.0f / gRefreshRate);
+}
+
+// NONMATCHING: variant selection, archives, suit parts and plug rate are present;
+// temporary lifetime and register allocation still differ
+static inline void FindPlayerAnimVariant(s32& id, s32 variant)
+{
+	for (s32 i = 0; gPlayerAnimVariants[i].normal >= 0; ++i) {
+		if (gPlayerAnimVariants[i].normal != id)
+			continue;
+		if (variant == 0 && gPlayerAnimVariants[i].carrying >= 0)
+			id = gPlayerAnimVariants[i].carrying;
+		else if (variant == 2) {
+			if (gPlayerAnimVariants[i].attachment >= 0)
+				id = gPlayerAnimVariants[i].attachment;
+		} else if (gPlayerAnimVariants[i].lifted >= 0)
+			id = gPlayerAnimVariants[i].lifted;
+		break;
+	}
+}
+
+void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->_969C != 0) {
+		blend      = 1.0f;
+		chr->_969C = 0;
+	}
+	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift))
+		FindPlayerAnimVariant(id, 0);
+	else if (chr->mLift.mState == 4)
+		FindPlayerAnimVariant(id, 1);
+	else if (chr->mLift.mState == 0 && (chr->GetAttachment() == 1 || chr->GetAttachment() == 3))
+		FindPlayerAnimVariant(id, 2);
+	if (id >= 3000 && chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
+		              blend, blendRate);
+	} else if (id >= 2000 && chr->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
+		              blend, blendRate);
+	} else {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
+		              blend, blendRate);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
+		              blend, blendRate);
+		if (chr->mSuits.mCurrent == 6) {
+			WiiSuitPart* part = &chr->mSuitParts[6];
+			if (id == 0xCE8) {
+				if (part->GetAnimId() != 2)
+					part->SetAnim(2, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
+					              blendRate);
+			} else if (id == 0xCE7) {
+				if (part->GetAnimId() != 1)
+					part->SetAnim(1, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
+					              blendRate);
+			} else {
+				if (part->GetAnimId() != 0)
+					part->SetAnim(0, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
+					              blendRate);
+			}
+		}
+	}
 }
 
 // scales his own anim rate and the worn suit's by frame
@@ -2350,6 +5764,229 @@ void fn_800E3C50(WiiPlayerState* chr, s32 on)
 	if ((suit->mStatus.mFlags & 1) == TRUE) {
 		suit->vf290(on);
 	}
+}
+
+// NONMATCHING: all animation target cases and the target history are present;
+// aggregate return homes and float/register scheduling remain different
+Vec XObjChr::GetCameraTarget()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if ((chr->mStatus.mFlags & 1)) {
+		s32 anim = chr->GetAnimId();
+		Vec target;
+		if (anim == 0xaf || anim == 0xea) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x17 || anim == 0x7d || anim == 0x1f || anim == 0x20) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			start.x    = joint.x;
+			start.z    = joint.z;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x76) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			start.x    = joint.x;
+			start.z    = joint.z;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = 1.7f * (GetAnimFrame() / end);
+			if (t > 1.f)
+				t = 1.f;
+			target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+		} else if (!IsRopeActionState(&chr->mRope, 0)) {
+			if (IsRopeActionState(&chr->mRope, 2) && anim == 0x98) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = *chr->GetPos();
+				if (GetAnimFrame() > 80.f) {
+					joint = *chr->GetPos();
+					start.y -= chr->mRope.mTargetOffset.y;
+					f32 end = GetAnimEndFrame() - 80.f;
+					f32 t   = (GetAnimFrame() - 80.f) / end;
+					if (t > 1.0f)
+						t = 1.0f;
+					target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+				} else {
+					start.x = joint.x;
+					start.z = joint.z;
+					target  = start + (Vec) { 0, 10, 0 };
+				}
+			} else if (IsRopeActionState(&chr->mRope, 6) && anim == 0x24) {
+				CVec start = *chr->GetPos();
+				CVec joint = GetJointWorldPos("second_null");
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = GetAnimFrame() / end;
+				if (t > 1.0f)
+					t = 1.0f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			} else if (anim == 0x85) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = *chr->GetPos();
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = 1.7f * (GetAnimFrame() / end);
+				if (t > 1.f)
+					t = 1.f;
+				target = joint + (start - joint) * t + (Vec) { 0, 10, 0 };
+			} else {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = *chr->GetPos();
+				start.x    = joint.x;
+				start.z    = joint.z;
+				target     = start + (Vec) { 0, 10, 0 };
+			}
+		} else if (!IsLadderActionState(&chr->mLadder, 0)) {
+			if (anim == 0x87) {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = *chr->GetPos();
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = 1.7f * (GetAnimFrame() / end);
+				if (t > 1.f)
+					t = 1.f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			} else if (anim == 0x72 || anim == 0x73 || anim == 0x74) {
+				target = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			} else {
+				CVec joint = GetJointWorldPos("second_null");
+				CVec start = *chr->GetPos();
+				start.x    = joint.x;
+				start.z    = joint.z;
+				f32 end    = GetAnimEndFrame();
+				f32 t      = GetAnimFrame() / end;
+				if (t > 1.0f)
+					t = 1.0f;
+				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
+			}
+		} else if (anim == 0x13 || anim == 0x14 || anim == 0x15 || anim == 0x16 || anim == 0x19 || anim == 0x1a || anim == 0x1b) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			start.x    = joint.x;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		} else if (anim == 0x18) {
+			Vec offset;
+			offset.x = chr->mHang.mTargetOffset.x;
+			offset.y = -chr->mHang.mTargetOffset.y;
+			offset.z = chr->mHang.mTargetOffset.z;
+			Mtx rot;
+			PSMTXRotRad(rot, 'y', chr->mMoveRotate.y);
+			PSMTXMultVec(rot, &offset, &offset);
+			CVec end   = GetJointWorldPos("second_null") + offset;
+			CVec start = *chr->GetPos();
+
+			start.x      = end.x;
+			start.z      = end.z;
+			f32 frame    = GetAnimFrame();
+			f32 duration = GetAnimEndFrame();
+			f32 t        = frame / duration;
+			if (t > 1.0f)
+				t = 1.0f;
+			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
+			f32 threshold = .91f * duration;
+			f32 elapsed   = GetAnimFrame() - threshold;
+			f32 remaining = GetAnimEndFrame() - threshold;
+			f32 dy        = elapsed > 0 ? (end.y - start.y) * (elapsed / remaining) : 0.f;
+			target        = (Vec) { x, 10.f + (start.y + dy), z };
+
+		} else if (IsJumpActionState(&chr->mJump, 9) || IsJumpActionState(&chr->mJump, 12) || IsJumpActionState(&chr->mJump, 15)
+		           || IsJumpActionState(&chr->mJump, 17)) {
+			target   = *chr->GetPos() + (Vec) { 0, 10, 0 };
+			target.y = 10.f + ((XActJump*)&chr->mJump)->mArcPosition.y;
+		} else if (IsJumpActionState(&chr->mJump, 10) || IsJumpActionState(&chr->mJump, 13) || IsJumpActionState(&chr->mJump, 16)) {
+			CVec start = *chr->GetPos();
+			CVec arc   = ((XActJump*)&chr->mJump)->mArcPosition;
+			f32 end    = GetAnimEndFrame();
+			f32 t      = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
+		} else if (IsCopterActionState(&chr->mCopter, 7) || IsCopterActionState(&chr->mCopter, 8)
+		           || IsCopterActionState(&chr->mCopter, 9)) {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			start.x    = joint.x;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		} else if (anim == 0xcea) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = root + (middle - root) * t;
+		} else if (anim == 0x43 || anim == 0x10e) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = root + (middle - root) * t;
+		} else if (anim == 0xed) {
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			target      = middle;
+		} else if (anim == 0xee) {
+			CVec root   = GetJointWorldPos("second_null") + (Vec) { 0, 10, 0 };
+			CVec middle = GetJointWorldPos("l_mabuta_down") + (GetJointWorldPos("r_mabuta_down") - GetJointWorldPos("l_mabuta_down")) / 2.f;
+			f32 end     = GetAnimEndFrame();
+			f32 t       = GetAnimFrame() / end;
+			if (t > 1.0f)
+				t = 1.0f;
+			target = middle + (root - middle) * t;
+		} else {
+			CVec joint = GetJointWorldPos("second_null");
+			CVec start = *chr->GetPos();
+			start.x    = joint.x;
+			start.y    = joint.y;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
+		}
+		CMotionControlCamera& camera = gGame.mMotionControlCamera;
+		if (camera.IsAction(CAMACTION_AREA) || camera.IsAction(CAMACTION_MAP)) {
+			f32 rate = GetAreaCameraFovRatio(&camera);
+			if (rate > 1.f)
+				rate = 1.f;
+			if (rate < .8f)
+				rate = .8f;
+			f32 leadX = chr->mHeadOffset * (f32)sin(chr->mMoveRotate.y);
+			f32 leadZ = chr->mHeadOffset * (f32)cos(chr->mMoveRotate.y);
+			f32 moveX = (7.f * rate) * (chr->mMoveTranslate.x - chr->mLastPos.x);
+			f32 moveZ = (7.f * rate) * (chr->mMoveTranslate.z - chr->mLastPos.z);
+			target.x += leadX + moveX;
+			target.z += leadZ + moveZ;
+		}
+		f32* coord = &target.x;
+		f32* last  = chr->mCameraTarget;
+		for (s32 i = 0; i < 3; ++i) {
+			f32& old = last[i];
+			if (__fpclassifyf(old) == FP_NAN) {
+				old = coord[i];
+				continue;
+			}
+			f32 margin = chr->mCameraTargetMargin;
+			if (old > coord[i] + margin)
+				old += (coord[i] + margin) - old;
+			else if (old < coord[i] - margin)
+				old += (coord[i] - margin) - old;
+			coord[i] = old;
+		}
+		return target;
+	}
+	return (Vec) { 0, 0, 0 };
 }
 
 // the carry joint's matrix: the worn suit's while he carries at it
@@ -2479,6 +6116,384 @@ void ResetPlayerPlug(WiiPlayerState* chr)
 s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
 {
 	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
+}
+
+// NONMATCHING: retail keeps the angle in f30 and its sine in f29, the build swaps those roles;
+// the origin->y store and the surrounding float schedule also differ
+void SpawnPlayerDust(WiiPlayerState* player, CVec* origin)
+{
+	f32 angle  = DEG2RAD * (rand() % 360);
+	f32 sine   = (f32)sin(angle);
+	f32 vx     = sine * (rand() % 100) / 1000.0f;
+	f32 cosine = (f32)cos(angle);
+	f32 vz     = cosine * (rand() % 100) / 1000.0f;
+	f32 vy     = (rand() % 100) / 800.0f;
+	Vec position;
+	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	position.y = origin->y;
+	f32 width  = 1.0f + (rand() % 200) / 200.0f;
+	Vec size;
+	size.x = size.y = width;
+	size.z          = 1.0f;
+	Vec velocity    = { vx, vy, vz };
+	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
+	if (dust != NULL) {
+		if (player->mGroundType == 10) {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
+			dust->mColor      = 0xFFFFFFC8;
+			dust->mTex        = &player->mTex[1];
+		} else {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
+			dust->mColor      = 0xFFFFFFA0;
+			dust->mTex        = &player->mTex[0];
+		}
+	}
+}
+
+// NONMATCHING: the Wii command switch, scene/suit stepping and ordered call set match;
+// switch-arm layout and register allocation remain
+s32 XObjChr::HandleEventCommand(s32 count, s32* args)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	s32 result          = 0;
+	if (count > 0) {
+		switch (args[0]) {
+		case 100:
+			return chr->mPlug.mConnection;
+		case 101: {
+			XObj* obj = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, chr->GetPos()) : 1;
+		}
+		case 102: {
+			s32 connection       = args[2];
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 7;
+			chr->mLiftPlugTarget = target;
+			SetLiftPlugConnection((XActLift*)&chr->mLift, connection, FALSE);
+			result = -1;
+			break;
+		}
+		case 103: {
+			XObj* target = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			SetPos(*target->GetPos());
+			SetRotationY(PI + target->mMoveRotate.y);
+			s32 connection       = args[2];
+			chr->mLift.mState    = 7;
+			chr->mLiftPlugTarget = target;
+			SetLiftPlugConnection((XActLift*)&chr->mLift, connection, FALSE);
+			chr->_0AF8 = 1;
+			do {
+				f32 end   = GetAnimEndFrame();
+				f32 frame = GetAnimFrame();
+				UpdateLiftActionAnimation((XActLift*)&chr->mLift, GetAnimId(), this, 2, frame, end);
+				XObj::UpdateObject(2);
+				UpdateHeldObject(&chr->mLift, 2);
+				chr->mPlug.UpdateObject(2);
+				f32 sceneFrame = 2.0f + GetAnimFrame();
+				SetModelFrame(this, sceneFrame);
+				WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+				if (IsObjectActive(suit)) {
+					SetModelFrame(suit, sceneFrame);
+				}
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, chr->mObject.m_pScnMdl);
+				gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, suit->mObject.m_pScnMdl);
+				fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+				while (scene->mPending != 0) {
+					scene->PopPending();
+				}
+			} while (chr->mLift.mState == 7);
+			chr->_0AF8 = 0;
+			result     = -1;
+			break;
+		}
+		case 104: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 12;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 105:
+			if (chr->mPlug.mConnection) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xA4, 1.0f, 0.0f);
+				chr->mPlug.mConnection = 0;
+			}
+			break;
+		case 106: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 8;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 107:
+			(gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mPlug.mConnection = 0;
+			result                 = -1;
+			break;
+		case 108: {
+			XObj* target         = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mLift.mState    = 9;
+			chr->mLiftPlugTarget = target;
+			result               = -1;
+			break;
+		}
+		case 109:
+			(gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL);
+			chr->mPlug.mConnection = 0;
+			result                 = -1;
+			break;
+		case 110:
+			chr->mPlug.mConnection   = 0;
+			chr->mPlug.mEndRotationZ = 0.0f;
+			result                   = -1;
+			break;
+		case 111:
+			SetLiftPlugConnection((XActLift*)&chr->mLift, args[1], TRUE);
+			break;
+		case 120:
+			// shows or hides his plug
+			if (args[1])
+				gGame.SetStatusFlags(0x0040000000000000ULL);
+			else
+				gGame.ClearStatusFlags(0x0040000000000000ULL);
+			break;
+		case 200:
+			switch (args[1]) {
+			case 205:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = 0.0f;
+				chr->mHeadAimRecord.m_28                                    = DEG2RAD * args[2];
+				break;
+			case 207:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = args[2] / 100.0f;
+				chr->mHeadAimRecord.mTarget.y                               = args[3] / 100.0f;
+				chr->mHeadAimRecord.mTarget.z                               = args[4] / 100.0f;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			case 208: {
+				XObj* target                 = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[2]) : NULL);
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = target;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			case 220: {
+				XObj* target                 = (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[2]) : NULL);
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = target;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = NULL;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			case 225:
+				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
+				chr->mHeadAimRecord.m_0C                                    = NULL;
+				chr->mHeadAimRecord.mTarget.x                               = NAN;
+				chr->mHeadAimRecord.m_20                                    = &gGame.mMotionControlCamera;
+				chr->mHeadAimRecord.m_24                                    = NAN;
+				chr->mHeadAimRecord.m_28                                    = NAN;
+				break;
+			}
+			return 0;
+		case 201:
+			chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 2;
+			chr->mHeadAimRecord.m_0C                                    = NULL;
+			chr->mHeadAimRecord.mTarget.x                               = NAN;
+			chr->mHeadAimRecord.m_20                                    = NULL;
+			chr->mHeadAimRecord.m_24                                    = NAN;
+			chr->mHeadAimRecord.m_28                                    = NAN;
+			chr->mHeadAimRecord.m_2C                                    = 0.0f;
+			chr->mHeadAimRecord.m_30                                    = 0.0f;
+			chr->mHeadAimRecord.m_4C.Set(0.0f, 0.0f, 0.0f);
+			return 0;
+		case 202:
+			return chr->mHeadAimRecord.mSnap[0] <= 0 && chr->mHeadAimRecord.mSnap[1] <= 0;
+		case 300:
+			chr->mRope.mState = 4;
+			SetPlayerActionTarget(&chr->mRope,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 301:
+			chr->mLadder.mState = 4;
+			SetPlayerActionTarget(&chr->mLadder,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 302:
+			chr->mJump.mState = 14;
+			SetPlayerActionTarget(&chr->mJump,
+			                      (gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, args[1]) : NULL));
+			result = -1;
+			break;
+		case 303:
+			if (args[1])
+				chr->mRadar.mState = 1;
+			else
+				chr->mRadar.mState = 2;
+			result = -1;
+			break;
+		case 400:
+			return chr->mAttachmentRequest < 0;
+		case 450:
+			if (args[1] >= 0 && args[1] < 3)
+				chr->mSuits.mSpecial = args[1];
+			break;
+		case 451:
+			return chr->mSuits.mSpecial;
+		case 503: {
+			s32 item = args[1];
+			if (item == 16) {
+				chr->mAttachmentRequest = 4;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else if (item == 21) {
+				chr->mAttachmentRequest = 5;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else if (item == 22) {
+				chr->mAttachmentRequest = 6;
+				chr->mAttachmentStep    = 0;
+				chr->mScriptAttach      = 1;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = item;
+			}
+			result = -1;
+			break;
+		}
+		case 513:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+		case 500:
+			// takes out an item he owns: the toothbrush (16), spoon (21), mug (22) and squirter (56) go on as attachments
+			// 4 to 7, anything else he lifts
+			if (FindOwnedInventoryItemIndex(chr->mParams.mInventory.mItems, args[1]) >= 0) {
+				s32 item = args[1];
+				if (item == 16) {
+					chr->mAttachmentRequest = 4;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 21) {
+					chr->mAttachmentRequest = 5;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 22) {
+					chr->mAttachmentRequest = 6;
+					chr->mAttachmentStep    = 0;
+				} else if (item == 56) {
+					chr->mAttachmentRequest = 7;
+					chr->mAttachmentStep    = 0;
+				} else {
+					chr->mLift.mState                        = 21;
+					((XActLift*)&chr->mLift)->mPendingItemId = item;
+				}
+			}
+			result = -1;
+			break;
+		case 510:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3 && (chr->mLift.mState == 0 || chr->mLift.mState == 4));
+		case 501:
+			if (chr->mLift.mTarget) {
+				if (chr->GetAttachment() == 4 || chr->GetAttachment() == 5 || chr->GetAttachment() == 6 || chr->GetAttachment() == 7
+				    || chr->GetAttachment() == 8) {
+					chr->mAttachmentRequest = 0;
+					chr->mAttachmentStep    = 0;
+				} else if (chr->mLift.mTarget->GetCategory() == 8 && chr->mLift.mTargetState != 15)
+					chr->mLift.mState = 20;
+			}
+			result = -1;
+			break;
+		case 514:
+			return ((u32)(chr->mAttachmentRequest - 4) > 3
+			        && ((chr->mLift.mState == 0 && chr->mLift.mTarget == NULL) || chr->mLift.mState == 4));
+		case 502:
+			if (chr->mLift.mTarget && chr->mLift.mTarget->GetCategory() == 8)
+				chr->mLift.mState = 24;
+			result = -1;
+			break;
+		case 550: {
+			Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+			inventory->mCompact  = TRUE;
+			CompactInventory(inventory);
+			break;
+		}
+		case 551:
+			gGame.GetPlayer()->mParams.mInventory.mCompact = FALSE;
+			break;
+		case 600:
+			fn_801105C4((XObjPlug*)&chr->mPlug, args[1]);
+			result = -1;
+			break;
+		case 601:
+			fn_801107AC((XObjPlug*)&chr->mPlug);
+			result = -1;
+			break;
+		case 700:
+			chr->mOnGround &= ~1;
+			break;
+		case 701:
+			chr->mOnGround |= 1;
+			break;
+		case 702:
+			return (chr->mOnGround & 1) ^ 1;
+		case 800:
+			chr->mBatteryDrains = 1;
+			break;
+		case 801:
+			chr->mBatteryDrains = 0;
+			break;
+		case 802:
+			return chr->mBatteryDrains;
+		case 850:
+			chr->mParams._1C[0] = 1;
+			break;
+		case 851:
+			chr->mParams._1C[0] = 0;
+			break;
+		case 852:
+			return (s32)chr->mParams._1C[0] > 0;
+		case 900:
+			chr->mSquirterContent = args[1];
+			chr->mItemTintWord    = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
+			break;
+		case 901:
+			chr->mCameraTargetMarginSetting = args[1] / 100.f;
+			break;
+		case 902:
+			XActPopper* popper = (XActPopper*)&chr->mPopper;
+			for (s32 i = 0; i < 10; ++i)
+				ResetPopperShot(&popper->mShots.mShot[i]);
+			break;
+		case -1:
+			ResetPlayerAttachment(chr, 17);
+			break;
+		case -2: {
+			CVec position = GetJointWorldPos("second_null");
+			SetPos(position);
+			if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+				chr->mSuits.mObjects[chr->mSuits.mCurrent].SetPos(GetJointWorldPos("second_null"));
+			}
+			chr->_969C = 1;
+			break;
+		}
+		}
+	}
+	return result;
 }
 
 // the highest floor of the object under a floor group that's still below chibi robo,
@@ -2752,6 +6767,267 @@ void XObjChr::ResetCullMode()
 	}
 }
 
+// NONMATCHING: effect calls, spiral geometry and color ramps are present; float
+// register allocation and the compiler's unrolled loop schedule still differ
+void XObjChr::DrawObjectEffects()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (gGame.GetStatusFlags(0x0040000000000000ULL))
+		chr->mPlug.DrawObjectEffects();
+	((XObj*)chr->mCopterObj)->DrawObjectEffects();
+	((XObj*)chr->mPopperObj)->DrawObjectEffects();
+	((XObj*)chr->mRadarObj)->DrawObjectEffects();
+	((XObj*)chr->mOXObj)->DrawObjectEffects();
+	if (chr->mBatteryWarningFade > 0) {
+		f32 radius = 1.5f * chr->mMoveScale.x;
+		if (IsCarryingMug(&chr->mLift) && !(chr->GetAnimId() == 11 && chr->GetAnimFrame() < 45.0f)
+		    && !(chr->GetAnimId() == 10 && chr->GetAnimFrame() > 22.0f)) {
+			CVec jointScale;
+			chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &jointScale);
+			radius += 4.0f * jointScale.x;
+		}
+		radius *= 1.2f;
+		CVec from = chr->GetJointPos(chr->FindResNode("koshi_model"));
+		CVec to   = chr->GetJointPos(chr->FindResNode("head"));
+		if (chr->mLift.mState && IsCarryingMug(&chr->mLift)) {
+			from.x = chr->mLift.mTarget->GetPos()->x;
+			from.z = chr->mLift.mTarget->GetPos()->z;
+			Vec up = { 0, 1, 0 };
+			to     = from + up;
+		}
+		f32 yaw = atan2(to.x - from.x, to.z - from.z);
+		f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
+		f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+		pitch     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
+		Mtx trans, scale, rotY, rotX, model;
+		PSMTXTrans(trans, from.x, from.y, from.z);
+		PSMTXScale(scale, 1, 1, 1);
+		PSMTXRotRad(rotY, 'y', yaw);
+		PSMTXRotRad(rotX, 'x', pitch);
+		PSMTXConcat(trans, rotY, model);
+		PSMTXConcat(model, rotX, model);
+		PSMTXConcat(model, scale, model);
+		Vec vertices[256];
+		u32 colors[256];
+		f32 z = -3, phase = chr->mBatteryWarningAngle;
+		u16 n = 0;
+		for (int turn = 0; turn < 8; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				vertices[n].x = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::sinf((TWO_PI / 16) * step);
+				vertices[n].y = (2.f * (1.f - chr->mBatteryWarningFade) + radius) * std::cosf((TWO_PI / 16) * step);
+				vertices[n].z = z;
+				f32 wave      = phase;
+				while (wave < 0.0f)
+					wave += TWO_PI;
+				while (wave >= TWO_PI)
+					wave -= TWO_PI;
+				if (wave > PI)
+					wave = 0;
+				vertices[n + 1].x = vertices[n].x;
+				vertices[n + 1].y = vertices[n].y;
+				vertices[n + 1].z = vertices[n].z - 1.5f * std::sinf(wave);
+				z += .08f;
+				phase += DEG2RAD * 30;
+				n += 2;
+			}
+		PSMTXMultVecArray(model, vertices, vertices, n);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xff000000 | (u32)(200.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
+		gGame.mGs.mCurRenderState->SetCullMode((GXCullMode)0);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = (1.f / 128) * n;
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				f32 ratio     = 1.f - (1.f / 128) * (turn * 32 + step);
+				colors[n]     = 0xffffff00 | (u32)(255.f * ratio * chr->mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)2, (GXBlendFactor)4, (GXLogicOp)15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurRenderState->SetCullMode((GXCullMode)2);
+	}
+	DrawTumbleRing(&chr->mTumble.mFade, (Vec) { chr->mMoveTranslate.x, chr->mFloorHit.mHeight, chr->mMoveTranslate.z }, chr->mMoveRotate.y);
+	DrawRadarTargetBeam((XActRadar*)&chr->mRadar);
+	DrawPopperShotParticles((XActPopper*)&chr->mPopper);
+	mDustPool.vf08(&gGame.mGs);
+	DrawParticlePool(&chr->mDust.mPtcl, &gGame.mGs);
+	DrawSpiralTrail(&lbl_8045BBD0, GetPos());
+}
+
+// NONMATCHING: the floor, lift and player collision draws are present; matrix
+// temporary order and the remaining render-state schedule differ
+void XObjChr::DrawCollisionShapes()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	SetGsChannelEnabled(&gGame.mGs, 0, FALSE);
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)7, FALSE);
+	PrimVertex triangle[3];
+	triangle[0].pos   = chr->mFloorTriangle[0];
+	triangle[0].color = 0xFF000080;
+	triangle[1].pos   = chr->mFloorTriangle[1];
+	triangle[1].color = 0x00FF0080;
+	triangle[2].pos   = chr->mFloorTriangle[2];
+	triangle[2].color = 0x0000FF80;
+	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, triangle, 3);
+	SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)3, TRUE);
+	if (chr->mLift.mState != 0) {
+		if (IsCarryingToothbrush(&chr->mLift)) {
+			CVec pos = chr->mLift.mTarget->GetJointPos("null");
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 3.0f, 3.0f, 1.0f);
+		}
+		if (IsCarryingSpoon(&chr->mLift)) {
+			f32 yaw = chr->mMoveRotate.y;
+			Vec pos = *GetPos();
+			pos.x += 3.0f * sin(yaw);
+			pos.z += 3.0f * cos(yaw);
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+		}
+		if (IsCarryingSquirter(&chr->mLift)) {
+			f32 yaw = chr->mMoveRotate.y;
+			Vec pos = *GetPos();
+			pos.x += 2.0f * sin(yaw);
+			pos.z += 2.0f * cos(yaw);
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 1.0f);
+			pos.x += 2.0f * sin(yaw);
+			pos.z += 2.0f * cos(yaw);
+			pos.y += 7.0f;
+			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 3.0f);
+			if (IsCarryingSquirter(&chr->mLift)) {
+				s32 anim = chr->GetAnimId();
+				if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
+					XObj* object             = chr->mLift.mTarget;
+					nw4r::g3d::ResNode atari = object->FindResNode("atari");
+					CVec origin              = object->GetJointPos(atari);
+					CVec tip                 = object->GetJointPos("saki");
+					CVec delta               = tip - origin;
+					if (PSVECMag(&delta) > 0.1f) {
+						CVec scale = object->GetJointScale(atari);
+						DrawGsCylinder(&gGame.mGs, chr->mItemTintWord, 16, origin.x, origin.y, origin.z, HALF_PI, 0.0f, 0.0f, scale.x,
+						               scale.z, 0.5f * scale.y);
+					}
+				}
+			}
+		}
+	}
+	if (chr->mStatus.mFlags & 0x0200000000000000ULL) {
+		SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)3, TRUE);
+		CVec pos(chr->mMoveTranslate);
+		Vec offset   = chr->mMoveScale * GetFloorCenterOffset(&chr->mFloors, 0);
+		Vec extent   = chr->mMoveScale * GetFloorExtent(&chr->mFloors, 0);
+		f32 floorYaw = DEG2RAD * chr->mFloors->mYawDegrees;
+		f32 yaw      = chr->mMoveRotate.y + floorYaw;
+		pos.x        = chr->mMoveTranslate.x + 0.5f * extent.x * sin(chr->mMoveRotate.y);
+		pos.z        = chr->mMoveTranslate.z + 0.5f * extent.z * cos(chr->mMoveRotate.y);
+		Mtx translate, shift, turn, tilt, scale, model, view;
+		PSMTXTrans(translate, pos.x, pos.y, pos.z);
+		PSMTXTrans(shift, offset.x, offset.y, offset.z);
+		PSMTXScale(scale, 0.9f * extent.x, extent.y, 0.9f * extent.z);
+		PSMTXRotRad(turn, 'y', yaw);
+		PSMTXRotRad(tilt, 'x', HALF_PI);
+		PSMTXConcat(translate, turn, model);
+		PSMTXConcat(model, shift, model);
+		PSMTXConcat(model, scale, model);
+		PSMTXConcat(model, tilt, model);
+		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, model, view);
+		DrawGsCylinderWithMatrix(&gGame.mGs, view, 0x9696FF60, 16);
+		XObj::DrawCollisionShapes();
+		if (gGame.GetStatusFlags(0x0040000000000000ULL))
+			chr->mPlug.DrawCollisionShapes();
+		ClearActiveObjectFloors(&chr->mPlug);
+	}
+}
+
+// NONMATCHING: the gauge, look/radar/popper and point-particle draws are present;
+// render-state scheduling and gauge float register lifetimes still differ
+// a bar of the given length centred on x with a round cap of radius 8 on its left end
+static inline void DrawPlayerGauge(f32 x, const f32& y, f32 length, f32 fraction, u32 color)
+{
+	f32 radius = 8.0f;
+	f32 width  = length - radius;
+	f32 left   = x - width * 0.5f;
+	CGs* gs    = &gGame.mGs;
+	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)7, TRUE);
+	gs->mCurRenderState->SetLineWidth(30, (GXTexOffset)5);
+	DrawGsCircle(gs, 16, color, color, left - radius, y, 0.0f, 2.0f * radius, 2.0f * radius, 0.0f, 0.0f, 0.0f);
+	DrawGsLineSegment(gs, NULL, left - 2.0f, y, 0.0f, color, width * fraction + left, y, 0.0f, color);
+	DrawGsLineSegment(gs, NULL, width * fraction + (left - 2.0f), y, 0.0f, 0x64, left + width, y, 0.0f, 0x64);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)1, FALSE);
+	gs->mCurRenderState->SetLineWidth(42, (GXTexOffset)5);
+	DrawGsCircle(gs, 16, 0x96, 0x96, left - radius, y, 0.0f, 2.3f * radius, 2.3f * radius, 0.0f, 0.0f, 0.0f);
+	DrawGsLineSegment(gs, NULL, left - 2.0f, y, 0.0f, 0x96, 2.0f + (left + width), y, 0.0f, 0x96);
+	gs->mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gs->mCurRenderState->SetZMode(TRUE, (GXCompare)3, FALSE);
+	gs->mCurRenderState->SetLineWidth(12, (GXTexOffset)5);
+}
+
+void XObjChr::DrawScreenOverlay()
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	XObj::DrawScreenOverlay();
+	fn_8010BE94((XActPopper*)&chr->mPopper);
+	fn_8010E548((XActRadar*)&chr->mRadar);
+	if (!(gGame.GetStatusFlags(0x100)))
+		DrawPlayerLookMarker(&chr->mLook);
+
+	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
+	if (!camera->IsAction(CAMACTION_SCROLL2) && chr->mGaugeTime > 0.0f) {
+		Vec offset = { 0.0f, 0.0f, 0.0f };
+		f32 x, y;
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		f32 duration = (f32)(s32)GetInteractionParameter(0) / 100.0f;
+		DrawPlayerGauge(x, y, 70.0f, chr->mGaugeTime / (gRefreshRate * duration), 0x00FF0064);
+	}
+	if (!camera->IsAction(CAMACTION_SCROLL2) && (GetAnimId() == 0x7A || GetAnimId() == 0xCA)) {
+		Vec offset = { 0.0f, 0.0f, 0.0f };
+		f32 x, y;
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		f32 fraction = GetAnimFrame() / GetAnimEndFrame();
+		u32 color;
+		if (fraction <= 0.6f)
+			color = 0xFFC80064;
+		else
+			color = 0xFF000064;
+		DrawPlayerGauge(x, y, 80.0f, fraction, color);
+	}
+	s32 row = 0;
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticleSlots[i] != NULL) {
+			DrawPointParticleDisplay(gPointParticleSlots[i], (f32)row);
+			if (gPointParticleSlots[i]->mType != 1)
+				++row;
+		}
+	}
+}
+
 // _1A0, the dst-alpha flags go to every model he carries: the plug and attachments when
 // they have one, all nine suits and their extra parts
 void XObjChr::ApplyMaterialPresets(const u32* flags)
@@ -2814,14 +7090,80 @@ void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
 	}
 }
 
+// NONMATCHING: retail keeps a second table cursor in r22 and uses a 0x140-byte frame; the build uses one cursor,
+// a 0x130-byte frame and different saved registers, with one redundant sign extension in the item-sound path
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* frames, const FrameEvent* table)
+{
+	PlayerFrameParticle particle = { -1 };
+	s32 anim                     = object->GetAnimId();
+	if (anim == 0xCFA || anim == 0xCFD)
+		anim = 0x12;
+	FrameEventTime time;
+	if (frames != NULL) {
+		time.mFrame     = frames->mFrame;
+		time.mLastFrame = frames->mLastFrame;
+	} else {
+		time.mFrame     = object->GetAnimFrame();
+		time.mLastFrame = time.mFrame - 1.0f;
+	}
+	for (const FrameEvent* event = table; event->mAnim >= 0; ++event) {
+		s32 result = 0;
+		if (anim == event->mAnim && event->mWhenAnimMatches != NULL)
+			result = event->mWhenAnimMatches(object, &time, event);
+		else if (anim != event->mAnim && event->mWhenAnimDiffers != NULL)
+			result = event->mWhenAnimDiffers(object, &time, event);
+		if (result > 0) {
+			WiiPlayerState* player = gGame.GetPlayer();
+			if (event->mId == 0x74 && anim == 7 && player->mLift.mTarget != NULL) {
+				XObj* held = player->mLift.mTarget;
+				if ((s16)held->GetPool() == 8) {
+					s8 material = GetItemSoundIndex(held->GetItem(), 0);
+					if (material >= 0)
+						PlayWiiSoundEffect(&gGame.mSound, GetMaterialSoundId(material), event->mVolume / 255.0f, 0.0f);
+				} else {
+					PlayWiiSoundEffect(&gGame.mSound, GetMaterialSoundId(0), event->mVolume / 255.0f, 0.0f);
+				}
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, event->mId, event->mVolume / 255.0f, 0.0f);
+			}
+			if (event->mId == 0x72) {
+				particle.mCode      = 0x18;
+				particle.mTranslate = player->GetJointWorldPos("neck") + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = *player->GetScale();
+				particle.mRotate    = player->mMoveRotate;
+			} else if (event->mId == 0x73) {
+				particle.mCode      = 0x19;
+				particle.mTranslate = player->GetJointWorldPos("neck") + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = *player->GetScale();
+				particle.mRotate    = player->mMoveRotate;
+			} else if (event->mId == 0xA5 && (anim == 0x9F || anim == 0x15C)) {
+				const Vec& tint = player->mAnmQueue.mColorStep[0].mValue;
+				u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+				if (color < 0xFFFFFF00) {
+					particle.mCode      = 0x55;
+					particle.mTranslate = player->GetJointWorldPos("carry_obj_nll");
+					particle.mTranslate.x += 2.4f * (f32)sin(player->mMoveRotate.y);
+					particle.mTranslate.z += 2.4f * (f32)cos(player->mMoveRotate.y);
+					particle.mTranslate.y += 0.5f;
+					particle.mScale  = *player->GetScale();
+					particle.mRotate = player->mMoveRotate;
+				}
+			}
+		} else if (result < 0) {
+			StopWiiSfx(&gGame.mSound, event->mId, 0.0f);
+		}
+	}
+	return particle;
+}
+
 // drops the stale object indexes first, then draws himself or the current suit and the
 // attachments; the popper turns with the camera while the menu flag is up
 // NONMATCHING (92 %): retail's register and schedule residue over the five index cleanups
 void XObjChr::DrawWithView(Mtx view)
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
-	if (chr->m_0A18 >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A18])) {
-		chr->m_0A18 = -1;
+	if (chr->mHitObjectIndex >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mHitObjectIndex])) {
+		chr->mHitObjectIndex = -1;
 	}
 	if (chr->mFloorContactObjects[0] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[0]])) {
 		chr->mFloorContactObjects[0] = chr->mFloorContactObjects[1] = -1;
@@ -2829,11 +7171,11 @@ void XObjChr::DrawWithView(Mtx view)
 	if (chr->mFloorContactObjects[2] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[2]])) {
 		chr->mFloorContactObjects[2] = -1;
 	}
-	if (chr->m_0A1C >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->m_0A1C])) {
-		chr->m_0A1C = -1;
+	if (chr->mActionObjectIndex >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mActionObjectIndex])) {
+		chr->mActionObjectIndex = -1;
 	}
-	if (chr->mFloorContactObjects[4] >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mFloorContactObjects[4]])) {
-		chr->mFloorContactObjects[4] = -1;
+	if (chr->mPreviousContactObject >= 0 && !IsObjectActive(gGame.mXObjs.mObjects[chr->mPreviousContactObject])) {
+		chr->mPreviousContactObject = -1;
 	}
 	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f) {
 		return;

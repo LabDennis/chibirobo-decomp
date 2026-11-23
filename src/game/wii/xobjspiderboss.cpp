@@ -316,7 +316,7 @@ void XObjSpiderBoss::DrawObjectEffects()
  * @note Address: 0x80132DD0
  * @note Size: 0x7CC
  */
-// NONMATCHING: register allocation/frame layout and the three GetPos evaluation schedules differ
+// NONMATCHING: the GetPos evaluation schedules now match; command-switch register allocation and frame layout differ
 s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
@@ -349,7 +349,10 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 			}
 			mParts[i].mJoint = vf284(depth, path);
 			Mtx mtx;
-			PSMTXTrans(mtx, mParts[i].mObj->GetPos()->x, mParts[i].mObj->GetPos()->y, mParts[i].mObj->GetPos()->z);
+			f32 z = mParts[i].mObj->GetPos()->z;
+			f32 y = mParts[i].mObj->GetPos()->y;
+			f32 x = mParts[i].mObj->GetPos()->x;
+			PSMTXTrans(mtx, x, y, z);
 			PSMTXConcat(GetWorldMtx(mParts[i].mJoint), mtx, mParts[i].mMtx);
 			mParts[i].mObj->SetBaseMtx(mParts[i].mMtx);
 		}
@@ -821,7 +824,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
  * @note Address: 0x80134150
  * @note Size: 0x5C0
  */
-// NONMATCHING: call set matches; ours keeps one more saved FPR and a 0x10 larger matrix/vector frame
+// NONMATCHING: call set and size match; saved-FPR allocation around the heading and matrix temporaries differs
 extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 {
 	WiiPlayerState* player = gGame.GetPlayer();
@@ -830,7 +833,9 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 		CVec position = spider->GetJointPos(spider->FindResNode("cyl3"));
 		f32 radius    = GetPlayerCollisionRadius(gGame.GetPlayer());
 		position.y -= 6.0f;
-		f32 heading = PI + (f32)atan2(spider->GetPos()->x - player->GetPos()->x, spider->GetPos()->z - player->GetPos()->z);
+		const Vec* spiderPos = spider->GetPos();
+		const Vec* playerPos = player->GetPos();
+		f32 heading          = PI + (f32)atan2(spiderPos->x - playerPos->x, spiderPos->z - playerPos->z);
 		position.x += (radius + 0.5f) * (f32)sin(heading);
 		position.z += (radius + 0.5f) * (f32)cos(heading);
 		player->SetPos(position);
