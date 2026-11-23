@@ -825,6 +825,7 @@ ResumeSounds__12XObjLetickerFf = .text:0x8011D89C; // type:function size:0x14
 OnHitFromPosition__8XObjArmyFRC3Vecf = .text:0x8011FEA8; // type:function size:0x184
 UpdateObject__10XObjSpiderFUl = .text:0x80121458; // type:function size:0x504
 UpdateSpiderAttachments = .text:0x80122B38; // type:function size:0x3A0
+LaunchSpiderShot = .text:0x80122ED8; // type:function size:0x230
 ApplySmallSpiderPlacement = .text:0x801291BC; // type:function size:0x714
 ResetSpiderBossState = .text:0x801323D8; // type:function size:0x2AC
 ApplySpiderBossPlacement = .text:0x80132684; // type:function size:0x440
