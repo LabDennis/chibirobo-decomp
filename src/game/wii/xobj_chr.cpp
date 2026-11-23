@@ -6669,7 +6669,7 @@ void fn_800DB958(XObjMap* map, XObjMapHit* hit, Vec* out)
 
 void ScaleVectorInPlace(Vec* value, f32 scale)
 {
-	PSVECScale(value, value, scale);
+	nw4r::math::VEC3Scale((nw4r::math::VEC3*)value, (nw4r::math::VEC3*)value, scale);
 }
 
 u32 GetObjectMarkerOverride(XObj* object)
