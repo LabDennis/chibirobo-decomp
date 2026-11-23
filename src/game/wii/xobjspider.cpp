@@ -1683,7 +1683,7 @@ void XObjSpider::State6(u32 frames)
 		}
 		break;
 	case 6:
-		if (pad.mPad->mTrigger & ((1ULL << RemoteB) | (1ULL << GameCubeB))) {
+		if (pad.mPad->mTrigger & (1ULL << RemoteB)) {
 			mFlags.mFlags = 0;
 			mFlags.mFlags |= 0x40;
 			mFlags.mFlags |= 0x80;
