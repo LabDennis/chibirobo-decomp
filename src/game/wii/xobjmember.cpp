@@ -181,6 +181,10 @@ Params::~Params()
 {
 }
 
+inline CJArchive::CJArchive()
+{
+}
+
 XObjPlug::XObjPlug()
 {
 }
