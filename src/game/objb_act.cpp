@@ -1510,7 +1510,6 @@ void SetPlugCordSpeed(XObjPlug*, f32);
 void SetLiftActionState(XActLift*, s32);
 void SetLiftTargetState(XActLift*, s32);
 XObj* GetGameObjectByIndex(const CGame*, s32);
-void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 BOOL IsEventScriptActive(const CGame*);
 Params* GetPlayerParamsByIndex(CGame*, s32);
 s16 GetInventoryCountByIndex(Params*, u32);
@@ -4188,7 +4187,6 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 void UpdateCarriedObjectPosition(XActLift*, XObj*);
 void HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(HSD_JObj*, MtxPtr);
 void HSD_JObjClearMtxFlags__FP9_HSD_JObj(HSD_JObj*);
-CVec GetStagePlacementScale(XObj*);
 void GetJointScale(CJObj*, HSD_JObj*, Vec*);
 f32 GetFirstFloorCollisionRadius(const XObj*);
 

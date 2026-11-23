@@ -1051,7 +1051,7 @@ void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z);
 BOOL IsObjectPushableFromBack(const XObj*);
 s32 GetSelectedFloorIndex(const XObj* object);
 f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index);
-s32 fn_800B1E04(void*);
+BOOL fn_800B1E04(const XObj* object);
 f32 GetObjectMaxFloorHeight(XObj* object);
 BOOL IsObjectClimbableFromHang(XObj* object);
 CVec* GetCameraAngles(CCamera* camera);
@@ -1095,8 +1095,6 @@ BOOL IsObjectLiftable(const XObj* object);
 s32 GetCharacterObjectApproachResult(const XObjChr* chr, const XObj* target);
 BOOL IsObjectPushable(const XObj* object);
 BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object);
-u32 GetObjectMarkerOverride(XObj* object);
-u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask);
 Vec& __as__3VecFRC3Vec(Vec* dst, const Vec* src);
 u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 }
@@ -1156,7 +1154,6 @@ BOOL IsGameRunning(CGame*);
 void SetHangActionState(XActHang*, s32);
 void SetPlayerActionState(XAction*, s32);
 void UpdateOXMenuTransition(OXMenu*, u32);
-void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 void SetLiftActionState(XActLift*, s32);
 void SetLadderActionState(XActLadder*, s32);
 void SetRopeActionState(XActRope*, s32);
@@ -6909,22 +6906,33 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 // Update the player movement, contacts and context-sensitive actions.
 // one action marker over the object: shown when the player can do that action there, or when the object's placement
 // sets its own markers and includes it; allowed limits the markers to the ones this kind of contact can show
-#define ADD_OBJECT_MARKER(allowed, bit)                                                                              \
-	do {                                                                                                             \
-		if (((allowed) & (bit))                                                                                      \
-		    && ((GetObjectMarkerOverride(object) == 0x80000000 && (available & (bit)))                               \
-		        || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, (bit))))) \
-			marker |= (bit);                                                                                         \
+#define ADD_OBJECT_MARKER(allowed, bit)                                                                    \
+	do {                                                                                                   \
+		if (((allowed) & (bit))                                                                            \
+		    && ((object->GetMarkerOverride() == MarkerUseAvailable && (available & (bit)))                 \
+		        || (object->GetMarkerOverride() != MarkerUseAvailable && object->GetMarkerOverride(bit)))) \
+			marker |= (bit);                                                                               \
 	} while (0)
-#define ADD_OBJECT_MARKERS(allowed)   \
-	ADD_OBJECT_MARKER(allowed, 1);    \
-	ADD_OBJECT_MARKER(allowed, 2);    \
-	ADD_OBJECT_MARKER(allowed, 4);    \
-	ADD_OBJECT_MARKER(allowed, 8);    \
-	ADD_OBJECT_MARKER(allowed, 0x10); \
-	ADD_OBJECT_MARKER(allowed, 0x20); \
-	ADD_OBJECT_MARKER(allowed, 0x40); \
-	ADD_OBJECT_MARKER(allowed, 0x80)
+#define ADD_OBJECT_MARKERS(allowed)           \
+	ADD_OBJECT_MARKER(allowed, MarkerEvent);  \
+	ADD_OBJECT_MARKER(allowed, MarkerPush);   \
+	ADD_OBJECT_MARKER(allowed, MarkerLift);   \
+	ADD_OBJECT_MARKER(allowed, MarkerClimb);  \
+	ADD_OBJECT_MARKER(allowed, MarkerLadder); \
+	ADD_OBJECT_MARKER(allowed, MarkerRope);   \
+	ADD_OBJECT_MARKER(allowed, Marker40);     \
+	ADD_OBJECT_MARKER(allowed, MarkerPlugIn)
+
+enum GroundAction {
+	GroundActionNone      = -1,
+	GroundActionLowJump   = 1,
+	GroundActionMidJump   = 2,
+	GroundActionHighJump  = 3,
+	GroundActionGrabLedge = 4,
+	GroundActionClimbUp   = 5,
+	GroundActionLetGo     = 6,
+	GroundActionPush      = 9
+};
 
 // NONMATCHING: register numbers in the object loops; retail also jumps from the hang loop's two put-backs straight past the
 // `if (!supported)` test (here they set the flag and test it), branches twice after each leticker index test, and computes
@@ -7869,18 +7877,17 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 		}
 	}
-	// available: actions the objects around him offer, 1 event, 2 push, 4 lift, 8 climb (japan), 0x10 ladder, 0x20 rope,
-	// 0x40 never (fn_800B1E04), 0x80 plug in; marker: the ones whose marker shows. actionMode: what a full gauge on target
-	// starts, 1-3 jump up 4, 8 or 12.5, 4 grab a ledge, 5 climb up from a hang, 6 let go of it, 9 push (japan)
+	// available: the actions the objects around him offer (climb is japan only, 0x40 only from event call -11);
+	// marker: the ones whose marker shows. actionMode: what a full gauge on target starts
 	s32 count                  = 0;
 	player->mLook.mMarkerCount = 0;
 	if (IsPlayerLookMarkerVisible(&player->mLook))
 		++player->mLook.mMarkerCount;
 	DisablePlayerLook(&player->mLook);
-	u32 available  = 0;
-	XObj* target   = NULL;
-	s32 actionMode = -1;
-	u32 marker     = 0;
+	u32 available           = 0;
+	XObj* target            = NULL;
+	GroundAction actionMode = GroundActionNone;
+	u32 marker              = 0;
 	if (!IsEventScriptActive(&gGame) && !(GetMaskedGameStatus(&gGame, 0x500)) && player->mAttachmentRequest < 0
 	    && (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && !IsCarryingMug(&player->mLift)))
 	    && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
@@ -7892,18 +7899,18 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				XObj* object = GetGameObjectByIndex(&gGame, index);
 				if (!player->_A14 || !GetMaskedObjectStatus(object, 0x100000)) {
 					if (IsObjectLiftable(object))
-						available |= 4;
+						available |= MarkerLift;
 					else if (GetMaskedObjectStatus(object, 0x0000010000000000ULL))
-						available |= 1;
+						available |= MarkerEvent;
 				}
 				if (GetMaskedObjectStatus(object, 0x20) && IsLiftTargetPlug(&player->mLift)
 				    && GetCharacterObjectApproachResult(player, object))
-					available |= 0x80;
+					available |= MarkerPlugIn;
 			} else if (index >= 0 && player->mFloorContacts[2].objectIndex == player->mFloorContacts[0].objectIndex
 			           && player->mHitObjectIndex == player->mFloorContacts[2].objectIndex && !player->_A14) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
 				if (GetMaskedObjectStatus(object, 0x0000010000000000ULL) && !GetMaskedObjectStatus(object, 0x0000100000000000ULL))
-					available |= 1;
+					available |= MarkerEvent;
 			}
 		}
 		{
@@ -7911,15 +7918,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			if (index >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, index);
 				if (IsObjectLiftable(object) && index != player->mFloorContacts[0].objectIndex)
-					available |= 4;
+					available |= MarkerLift;
 				if (IsObjectPushable(object) && index != player->mFloorContacts[0].objectIndex) {
 					if (IsLiftActionState(&player->mLift, 0)
 					    || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift))) {
-						available |= 2;
+						available |= MarkerPush;
 #if defined(VERSION_JP)
 						if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
 							target     = object;
-							actionMode = 9;
+							actionMode = GroundActionPush;
 						}
 #endif
 					}
@@ -7929,11 +7936,11 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					f32 angle = GetObjectEdgeOutwardYaw(object, GetObjectMoveTranslation(player), edge) - yaw;
 					// the edge he is at faces straight back, within 0.1 degrees
 					if (angle > 3.13984752f && angle < 3.14333797f) {
-						available |= 2;
+						available |= MarkerPush;
 #if defined(VERSION_JP)
 						if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
 							target     = object;
-							actionMode = 9;
+							actionMode = GroundActionPush;
 						}
 #endif
 					}
@@ -7950,20 +7957,20 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							        && !IsCarryingSquirter(&player->mLift))) {
 #if defined(VERSION_JP)
 								if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0)
-									available |= 8;
+									available |= MarkerClimb;
 #endif
 #if defined(VERSION_JP)
 								if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
 								{
 									target     = object;
-									actionMode = 4;
+									actionMode = GroundActionGrabLedge;
 								}
 							}
 						} else {
 #if defined(VERSION_JP)
 							if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0)
-								available |= 8;
+								available |= MarkerClimb;
 #endif
 							if (climbHeight <= 1) {
 								// too low to need climbing
@@ -7973,7 +7980,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 #endif
 								{
 									target     = object;
-									actionMode = 1;
+									actionMode = GroundActionLowJump;
 								}
 							} else if (climbHeight <= 8) {
 #if defined(VERSION_JP)
@@ -7981,7 +7988,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 #endif
 								{
 									target     = object;
-									actionMode = 2;
+									actionMode = GroundActionMidJump;
 								}
 							} else if (climbHeight <= 12.5f) {
 #if defined(VERSION_JP)
@@ -7989,7 +7996,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 #endif
 								{
 									target     = object;
-									actionMode = 3;
+									actionMode = GroundActionHighJump;
 								}
 							}
 						}
@@ -8000,12 +8007,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							f32 facing = GetObjectMoveRotation(object)->y;
 							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
 							if (angle <= HALF_PI || angle >= 1.5f * PI)
-								available |= 0x10;
+								available |= MarkerLadder;
 						} else {
 							f32 playerHeight = GetObjectMaxFloorHeight(player);
 							if (GetSelectedFloorHeight(object) > playerHeight
 							    && IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object))
-								available |= 0x10;
+								available |= MarkerLadder;
 						}
 					}
 				} else if (IsObjectRope(object)) {
@@ -8014,27 +8021,27 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							f32 facing = GetObjectMoveRotation(object)->y;
 							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
 							if (angle <= HALF_PI || angle >= 1.5f * PI)
-								available |= 0x20;
+								available |= MarkerRope;
 						} else {
 							f32 playerHeight = GetObjectMaxFloorHeight(player);
 							// a rope can be grabbed from any side
 							if (GetSelectedFloorHeight(object) > playerHeight)
-								available |= 0x20;
+								available |= MarkerRope;
 						}
 					}
 				} else if (fn_800B1E04(object)) {
-					available |= 0x40;
+					available |= Marker40;
 				}
 				if ((GetMaskedObjectStatus(object, 0x20)) && IsLiftTargetPlug(&player->mLift)
 				    && index != player->mFloorContacts[0].objectIndex && GetCharacterObjectApproachResult(player, object))
-					available |= 0x80;
+					available |= MarkerPlugIn;
 				if (player->mGaugeTarget)
 					player->mHitObjectIndex = player->mActionObjectIndex;
 			}
 		}
 		{
 			if (player->mLetickerIndex >= 0)
-				available |= 0x80;
+				available |= MarkerPlugIn;
 			if (!available && player->mHitObjectIndex >= 0
 			    && !(player->mFloorContacts[4].objectIndex == player->mHitObjectIndex
 			         && player->mLastContactFloorIndex == GetSelectedFloorIndex(GetGameObjectByIndex(&gGame, player->mHitObjectIndex)))
@@ -8047,34 +8054,34 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 			if (player->mFloorContacts[2].objectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
-				ADD_OBJECT_MARKERS(0xff);
+				ADD_OBJECT_MARKERS(MarkerAll);
 			}
 			if (player->mHitObjectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
-				ADD_OBJECT_MARKERS(0xfe);
+				ADD_OBJECT_MARKERS(MarkerAll & ~MarkerEvent);
 			}
 			if (player->mLetickerIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
-				ADD_OBJECT_MARKERS(0x80);
+				ADD_OBJECT_MARKERS(MarkerPlugIn);
 			}
 		}
 	}
 	{
-		if (marker & 0x1)
+		if (marker & MarkerEvent)
 			++count;
-		if (marker & 0x2)
+		if (marker & MarkerPush)
 			++count;
-		if (marker & 0x4)
+		if (marker & MarkerLift)
 			++count;
-		if (marker & 0x10)
+		if (marker & MarkerLadder)
 			++count;
-		if (marker & 0x20)
+		if (marker & MarkerRope)
 			++count;
-		if (marker & 0x40)
+		if (marker & Marker40)
 			++count;
-		if (marker & 0x80)
+		if (marker & MarkerPlugIn)
 			++count;
-		if (marker & 0x8)
+		if (marker & MarkerClimb)
 			++count;
 		if (count) {
 			EnablePlayerLook(&player->mLook);
@@ -8083,7 +8090,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 #else
 			const s32 normalMode = 0x70;
 #endif
-			if (marker & 0x80) {
+			if (marker & MarkerPlugIn) {
 				SetPlayerLookMode(&player->mLook, normalMode + 1);
 				SetLookTargetPosition(&player->mLook, 0, 0, 0);
 			} else {
@@ -8104,7 +8111,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				// stick within 30 degrees of ahead climbs up, within 30 degrees of behind lets go
 				if ((angle < 0.52359879f || angle > 5.7595863f) && IsObjectClimbableFromHang(GetPlayerActionTarget(&player->mHang))) {
 					target     = GetPlayerActionTarget(&player->mHang);
-					actionMode = 5;
+					actionMode = GroundActionClimbUp;
 				}
 				if (angle > 2.61799383f && angle < 3.66519141f) {
 #if defined(VERSION_JP)
@@ -8112,7 +8119,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 #endif
 					{
 						target     = GetPlayerActionTarget(&player->mHang);
-						actionMode = 6;
+						actionMode = GroundActionLetGo;
 					}
 				}
 			}
@@ -8159,31 +8166,31 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				}
 				if (player->mGaugeTime >= threshold) {
 					XObj* hit = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
-					if (actionMode == 1) {
+					if (actionMode == GroundActionLowJump) {
 						SetPlayerActionState(&player->mJump, 8);
 						SetPlayerActionTarget(&player->mJump, hit);
-					} else if (actionMode == 2) {
+					} else if (actionMode == GroundActionMidJump) {
 						SetPlayerActionState(&player->mJump, 11);
 						SetPlayerActionTarget(&player->mJump, hit);
-					} else if (actionMode == 3) {
+					} else if (actionMode == GroundActionHighJump) {
 						SetPlayerActionState(&player->mJump, 14);
 						SetPlayerActionTarget(&player->mJump, hit);
-					} else if (actionMode == 4) {
+					} else if (actionMode == GroundActionGrabLedge) {
 						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						SetHangActionState(&player->mHang, 1);
 						SetPlayerActionTarget(&player->mHang, hit);
-					} else if (actionMode == 5) {
+					} else if (actionMode == GroundActionClimbUp) {
 						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						TryLeaveHang(&player->mHang);
 						StopPlayerMotion(player);
-					} else if (actionMode == 6) {
+					} else if (actionMode == GroundActionLetGo) {
 						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						SetHangActionState(&player->mHang, 9);
 						StopPlayerMotion(player);
-					} else if (actionMode == 9) {
+					} else if (actionMode == GroundActionPush) {
 						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						StopPlayerMotion(player);
@@ -8204,6 +8211,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		}
 	}
 }
+
+#undef ADD_OBJECT_MARKERS
+#undef ADD_OBJECT_MARKER
 
 /**
  * @note Address: 0x800B1B0C
@@ -8341,28 +8351,28 @@ extern "C" void EnablePlayerLook(XObjChrLook* look)
  * @note Address: 0x800B1DF0
  * @note Size: 0xC
  */
-extern "C" u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask)
+u32 XObj::GetMarkerOverride(u32 mask) const
 {
-	return object->mMarkerOverride & mask;
+	return mMarkerOverride & mask;
 }
 
 /**
  * @note Address: 0x800B1DFC
  * @note Size: 0x8
  */
-extern "C" u32 GetObjectMarkerOverride(XObj* object)
+u32 XObj::GetMarkerOverride() const
 {
-	return object->mMarkerOverride;
+	return mMarkerOverride;
 }
 
 /**
  * @note Address: 0x800B1E04
  * @note Size: 0x8
  */
-// a fourth contact kind after ladder and rope; retail's check always says no, so marker 0x40 never shows
-extern "C" s32 fn_800B1E04(void*)
+// contact checks never offer marker 0x40, but event call -11 can still set it
+extern "C" BOOL fn_800B1E04(const XObj*)
 {
-	return 0;
+	return FALSE;
 }
 
 /**
@@ -9751,10 +9761,10 @@ extern "C" void SetLiftActionState(XActLift* act, s32 state)
  * @note Size: 0x130
  */
 // NONMATCHING: regalloc
-extern "C" void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second)
+extern "C" void TryStartObjectEvent(CGame* game, u8* script, XObj* owner, s16 first, s16 second)
 {
 	if (!IsEventBlocked(game->GetPlayer())) {
-		StartOrQueueEventScript(&game->mEvt, (u8*)script, owner, first, second);
+		StartOrQueueEventScript(&game->mEvt, script, owner, first, second);
 	}
 }
 

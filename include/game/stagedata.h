@@ -31,6 +31,7 @@ u8* GetStageEntryScript(void);
 u8* GetStageBatteryDepletedScript(void);
 u8* GetStageZButtonScript(void);
 u8* GetStageTimerExpiredScript(void);
+u8* GetStageScriptByIndex(s32 index);
 u8* GetStageDataBuffer(void);
 EnvInfo* GetStageEnvironment(void);
 s32 FindStageIndexByName(const char* name);

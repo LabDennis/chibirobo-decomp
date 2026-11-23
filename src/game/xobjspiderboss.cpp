@@ -21,7 +21,6 @@ BOOL IsUsingMug(XActLift* lift);
 BOOL IsPlayerFlashingFromHit(XObjChr* player);
 f32 GetPlayerCollisionRadius(XObjChr* player);
 void ApplyPlayerHitReaction(XObjChr* player, BOOL react, BOOL stop, f32 time);
-CVec GetStagePlacementScale(XObj* obj);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 void OSReport(const char*, ...);
 void EnableSpiderBossPartByIndex(s32);

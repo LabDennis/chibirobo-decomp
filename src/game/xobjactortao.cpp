@@ -9,7 +9,6 @@
 extern "C" {
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
-CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
 extern "C" void Attach__5CJObjFP9_HSD_JObj(CJObj*, HSD_JObj*);

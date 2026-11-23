@@ -9,7 +9,6 @@
 extern "C" {
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 void ApproachHudValue(f32* value, f32* target, f32 step);
-CVec GetStagePlacementScale(XObj* object);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 }
 

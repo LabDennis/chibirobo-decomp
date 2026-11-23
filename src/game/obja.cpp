@@ -22,6 +22,7 @@
 #include "game/hsd_dobj.h"
 #include "game/globals.h"
 #include "game/xobjchr.h"
+#include "game/xobjevent.h"
 #include "game/cobj.h"
 #include "game/cfile.h"
 #include <math.h>
@@ -37,14 +38,6 @@ extern "C" CObjArchive* FindFreeObjectArchive(CObjArchive* archives);
 
 extern "C" {
 void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const f32* viewport, f32* screenX, f32* screenY, f32* screenZ);
-}
-
-static inline void TriggerObjectEvent(XObj* object, u32 first, u32 second)
-{
-	const void* script = object->GetEventScript();
-	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
-	}
 }
 
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
@@ -198,7 +191,6 @@ extern "C" {
 
 CObjArchive* FindFreeObjectArchive(CObjArchive*);
 u32 ARGetSize(void);
-u8* GetStageScriptByIndex(s32);
 BOOL IsStageDataLoaded();
 }
 
@@ -251,7 +243,7 @@ void XObj::InitializeObject(u32 id)
  */
 void XObj::ResetObjectState()
 {
-	mEventScript        = 0;
+	mEventScript        = NULL;
 	mFloorHit.mTriangle = -1;
 	mFloorHit.mTrigon   = 0;
 	mFloorHit.mHeight   = 0.0f;
@@ -261,7 +253,7 @@ void XObj::ResetObjectState()
 	mAnmQueue.Clear();
 	mAnchorX = mAnchorZ = NAN;
 	mMarkerOverride     = 0;
-	mMarkerOverride |= 0x80000000; // no marker override
+	mMarkerOverride |= MarkerUseAvailable;
 	mColorStep[0].mValue.x = mColorStep[0].mValue.y = mColorStep[0].mValue.z = 255.0f;
 	mColorStep[0].mTarget.x = mColorStep[0].mTarget.y = mColorStep[0].mTarget.z = 255.0f;
 	mColorStep[0].mSpeed.x = mColorStep[0].mSpeed.y = mColorStep[0].mSpeed.z = 0.0f;
@@ -397,7 +389,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
 			s32 index = GetStagePlacementIndex(mCoord.mPlacement); // the placement's index in the stage
 			if (index > 0)
-				mEventScript = (u32)GetStageScriptByIndex(index);
+				mEventScript = GetStageScriptByIndex(index);
 		}
 		UpdateObjectFloorHeights(this);
 		UpdateObjectFloorXZExtent(this);
@@ -1062,7 +1054,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
 			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				u8* script = (u8*)GetEventScript();
+				u8* script = GetEventScript();
 				StartOrQueueEventScript(&gGame.mEvt, script, this, -1, -1);
 			}
 		}
@@ -1858,9 +1850,9 @@ void XObj::OnHitFromPosition(const Vec& position, f32 strength)
 	if (mStatus.mFlags & 0x0000080000000000ULL) {
 		// a hit of the required force raises event 2001, less raises 2000
 		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-			TriggerObjectEvent(this, -1, 2001);
+			TriggerEvent(-1, 2001);
 		} else {
-			TriggerObjectEvent(this, -1, 2000);
+			TriggerEvent(-1, 2000);
 		}
 	}
 }
@@ -1872,11 +1864,7 @@ void XObj::OnHitFromPosition(const Vec& position, f32 strength)
 void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 {
 	if (mStatus.mFlags & 0x0000080000000000ULL) { // flag means: has a hit event
-		const void* script = this->GetEventScript();
-		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1,
-			                        (s16)((u32)value + 3000)); // squirts reach the script as 3000 + value
-		}
+		TriggerEvent(-1, (u32)value + 3000);      // squirts reach the script as 3000 + value
 	}
 }
 
@@ -1889,10 +1877,7 @@ BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 	if (mStatus.mFlags & 0x0000040000000000ULL) { // flag means: has an item-use event
 		if (value == 56)
 			return FALSE; // item 56 never triggers it
-		const void* script = this->GetEventScript();
-		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, (s16)value, -1);
-		}
+		TriggerEvent(value, -1);
 		return TRUE;
 	}
 	return FALSE;

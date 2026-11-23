@@ -15,7 +15,6 @@ void Attach__5CJObjFP9_HSD_JObj(CJObj* obj, HSD_JObj* joint);
 void HSD_MtxGetScale(Mtx mtx, Vec* scale);
 void PSMTXRotRad(Mtx mtx, char axis, f32 angle);
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
-CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
 static inline void LockPlayer(XObjChr* player)

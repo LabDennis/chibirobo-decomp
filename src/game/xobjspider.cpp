@@ -52,7 +52,6 @@ void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void ApplySpiderPlacement(XObjSpider* spider);
 void ResetSpiderState(XObjSpider* spider);
 
-CVec GetStagePlacementScale(XObj* obj);
 void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);

@@ -6137,17 +6137,17 @@ static inline XObj* CEvt_Born(s32 index)
  */
 s32 CEvt::_cmd_BORN(u8, s32)
 {
-	s16 id    = Evaluate();
-	s16 type  = Evaluate();
-	f32 x     = Evaluate() / 100.0f;
-	f32 y     = Evaluate() / 100.0f;
-	f32 z     = Evaluate() / 100.0f;
-	s16 rot   = Evaluate();
-	f32 sx    = Evaluate() / 100.0f;
-	f32 sy    = Evaluate() / 100.0f;
-	f32 sz    = Evaluate() / 100.0f;
-	s32 arg   = Evaluate();
-	XObj* obj = CEvt_FindObj(id);
+	s16 id     = Evaluate();
+	s16 type   = Evaluate();
+	f32 x      = Evaluate() / 100.0f;
+	f32 y      = Evaluate() / 100.0f;
+	f32 z      = Evaluate() / 100.0f;
+	s16 rot    = Evaluate();
+	f32 sx     = Evaluate() / 100.0f;
+	f32 sy     = Evaluate() / 100.0f;
+	f32 sz     = Evaluate() / 100.0f;
+	u8* script = (u8*)Evaluate();
+	XObj* obj  = CEvt_FindObj(id);
 	if (obj == NULL) {
 		obj = CEvt_Born(type + 0x16);
 		if (obj != NULL) {
@@ -6160,7 +6160,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		obj->SetScale(sx, sy, sz, 0);
 		UpdateObjectFloorHeights(obj);
 		UpdateObjectFloorXZExtent(obj);
-		obj->mEventScript = arg;
+		obj->mEventScript = script;
 		s16 index         = FindStageObjectIndex(&gGame.mXObjs, (CXObj*)obj);
 		if (CEvt_FindObj(id) == NULL) {
 			gEventObjectIds.mEntry[gEventObjectIds.mCount].mId    = id;
@@ -6545,10 +6545,10 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (flags == -1) {
 			XObj* obj            = CEvt_GetObj(this, id);
 			obj->mMarkerOverride = 0;
-			obj->mMarkerOverride |= 0x80000000;
+			obj->mMarkerOverride |= MarkerUseAvailable;
 		} else {
 			XObj* obj = CEvt_GetObj(this, id);
-			obj->mMarkerOverride &= ~0x80000000;
+			obj->mMarkerOverride &= ~MarkerUseAvailable;
 			obj->mMarkerOverride |= flags;
 		}
 		break;

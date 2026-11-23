@@ -90,7 +90,6 @@ XObjActor3Func gActor3UpdateHandlers[20] = {
 extern "C" {
 BOOL HSD_AudioSFXCheck(s32 id);
 void HSD_AudioSFXKeyOff(s32 id);
-CVec GetStagePlacementScale(XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 void OSReport(const char* fmt, ...);
 u16 GXGetTexObjWidth(const GXTexObj* obj);

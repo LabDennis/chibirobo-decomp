@@ -89,7 +89,6 @@ void HandleToyKind25ECommand(XObjActorToy*, u32 frames);
 
 extern "C" f32 GetJointAnimationCurrentFrame(CJObj*);
 extern "C" f32 GetJointAnimationEndFrame(CJObj*);
-extern "C" CVec GetStagePlacementScale(XObj* obj);
 extern "C" void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 
 // the toys' tables, separate arrays in .data: retail's ProcessPendingEvents loads the walk speed by its own

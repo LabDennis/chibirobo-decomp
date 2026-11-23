@@ -65,6 +65,20 @@ struct XObjColorStep {
 };
 typedef char XObjColorStep_size_check[sizeof(XObjColorStep) == 0x24 ? 1 : -1];
 
+// action markers shown over objects the player can interact with
+enum ObjectActionMarker {
+	MarkerEvent        = 0x01,
+	MarkerPush         = 0x02,
+	MarkerLift         = 0x04,
+	MarkerClimb        = 0x08,
+	MarkerLadder       = 0x10,
+	MarkerRope         = 0x20,
+	Marker40           = 0x40,
+	MarkerPlugIn       = 0x80,
+	MarkerAll          = 0xFF,
+	MarkerUseAvailable = 0x80000000
+};
+
 // the game's object, everything in a stage that has a model
 class XObj : public CXObjIntp {
 public:
@@ -91,7 +105,7 @@ public:
 	CVec mToppleOffset;  // _794, offset of the floors while the object topples off a ledge after a push: half its width sideways, half its
 	                     // height down; its XZ is added to the position when it lands, then it is cleared
 	CEvt mEvt;           // _7A4, the object's own script
-	u32 mEventScript;    // _80C, the placement's stage script (GetStageScriptByIndex), 0 if none; returned by GetEventScript
+	u8* mEventScript;    // _80C, the placement's stage script (GetStageScriptByIndex), NULL if none; returned by GetEventScript
 	CAnmQueue mAnmQueue; // _810
 	f32 mAnchorX;        // _898, NAN while there's no anchor to clamp around
 	f32 mAnchorZ;        // _89C
@@ -99,9 +113,12 @@ public:
 	f32 mLimitNegX;      // _8A4
 	f32 mLimitPosZ;      // _8A8
 	f32 mLimitNegZ;      // _8AC
-	u32 mMarkerOverride; // _8B0, clamp flags from the event call -11, 0x80000000 while it's off
+	u32 mMarkerOverride; // _8B0, action markers set by event call -11, MarkerUseAvailable while it's off
 	XObjColorStep mColorStep[2]; // _8B4
 	CJAnim mAnim;                // _8FC, anims from the object's second archive, ids from 1000 up
+
+	u32 GetMarkerOverride() const;
+	u32 GetMarkerOverride(u32 mask) const;
 
 	virtual ~XObj() { }     // _08
 	virtual void Release(); // _54
@@ -148,7 +165,7 @@ public:
 	virtual BOOL IsOutsideCameraDepth(CCamera* camera);           // _11C, TRUE when the model lies outside the camera depth range
 	virtual void SetCullMode(s32 mode);                           // _120, GX cull mode for every polygon
 	virtual s32 HandleEventCommand(s32 count, s32* args);         // _124
-	virtual const void* GetEventScript();                         // _128, the event script the object starts when used, NULL if none
+	virtual u8* GetEventScript();                                 // _128, the event script the object starts when used, NULL if none
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time); // _12C, steps material color 0 (modulate) or 1 (blend) to r,g,b over time
 	virtual void OnPushDisplacement(const Vec& displacement);     // _130
 	virtual BOOL ReceivePlugPower(f32 amount);                    // _134, power fed through the plug each frame; FALSE stops the feed
@@ -156,6 +173,9 @@ public:
 	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _13C, the squirter spray hit the object
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _140, a held tool touched the object; TRUE when it reacted
 	virtual void OnMicrophonePeak(s32 unused, s32 volume);               // _144, the microphone heard a sound louder than 1000
+
+	// starts the event script unless the player blocks events, game/xobjevent.h
+	void TriggerEvent(s16 useValue, s16 hitValue);
 
 	// todo: cleanup
 	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
@@ -300,6 +320,9 @@ public:
 class CJArchive;
 class CXObj;
 class CStatus;
+
+extern "C" CVec GetStagePlacementPosition(XObj* object);
+extern "C" CVec GetStagePlacementScale(XObj* object);
 
 // the object base functions, the units from 0x8008A000 to 0x80093000
 extern "C" {

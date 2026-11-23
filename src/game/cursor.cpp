@@ -275,10 +275,9 @@ void XObj::OnPushDisplacement(const Vec& displacement)
  * @note Address: 0x80025A98
  * @note Size: 0x8
  */
-// XObj's GetEventScript
-extern "C" s32 GetEventScript__4XObjFv(XObj* object)
+u8* XObj::GetEventScript()
 {
-	return object->mEventScript;
+	return mEventScript;
 }
 
 /**
