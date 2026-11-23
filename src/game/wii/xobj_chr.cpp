@@ -3212,6 +3212,133 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 	ADD_OBJECT_MARKER(allowed, 0x40); \
 	ADD_OBJECT_MARKER(allowed, 0x80)
 
+static inline bool IsLiftDone(WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift)) {
+		ret = true;
+	}
+	return ret;
+}
+
+// NONMATCHING: state 10's attachment request and the constant 20 use r0/r3 in the opposite roles;
+// every instruction, switch arm and call otherwise matches
+void UpdatePlayerAttachmentRequest(WiiPlayerState* chr, f32* weight)
+{
+	if (chr->mAttachmentRequest < 0)
+		return;
+	switch (chr->mAttachmentStep) {
+	case 0:
+		if (IsLiftDone(chr)) {
+			if (chr->mLift.mTarget != NULL) {
+				chr->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+				chr->mLift.mTarget = NULL;
+			}
+			chr->mLift.mState = 0;
+		}
+		switch (chr->mAttachment) {
+		case 1:
+			chr->mCopter.mState = 2;
+			break;
+		case 2:
+			chr->mPopper.mState = 9;
+			ResetPopperCharge(&((XActPopper*)&chr->mPopper)->mCharge);
+			break;
+		case 3:
+			chr->mRadar.mState = 2;
+			break;
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+		case 8:
+			chr->mLift.mState = 20;
+			break;
+		default:
+			if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingMug(&chr->mLift)
+			    || IsCarryingSquirter(&chr->mLift))
+				chr->mLift.mState = 20;
+			break;
+		}
+		chr->mAttachmentStep = 10;
+		// fall through
+	case 10:
+		if (chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0 && chr->mLift.mState == 0) {
+			chr->mAttachmentStep = 20;
+			chr->mAttachment     = chr->mAttachmentRequest;
+		}
+		break;
+	case 15:
+		chr->mAttachmentStep = 20;
+		// fall through
+	case 20:
+		switch (chr->mAttachmentRequest) {
+		case 1:
+			chr->mCopter.mState = 1;
+			break;
+		case 2:
+			chr->mPopper.mState = 1;
+			break;
+		case 3:
+			chr->mRadar.mState = 1;
+			break;
+		case 4:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x10;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x10;
+			}
+			break;
+		case 5:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x15;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x15;
+			}
+			break;
+		case 6:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x16;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x16;
+			}
+			break;
+		case 7:
+			if (chr->mScriptAttach == 0) {
+				chr->mLift.mState                        = 21;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x38;
+			} else {
+				chr->mLift.mState                        = 25;
+				((XActLift*)&chr->mLift)->mPendingItemId = 0x38;
+			}
+			break;
+		case 8:
+			chr->mAttachment = 0;
+			break;
+		}
+		chr->mAttachmentStep = 30;
+		chr->mScriptAttach   = 0;
+		break;
+	case 30:
+		if (chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0
+		    && (chr->mLift.mState == 0 || chr->mLift.mState == 4)) {
+			chr->mAttachmentRequest = -1;
+			chr->mAttachmentStep    = 0;
+			chr->mScriptAttach      = 0;
+			chr->mNextClimbType     = chr->mClimbType;
+			chr->mClimbType         = 0;
+		}
+		break;
+	}
+	*weight = 0.0f;
+}
+
 // NONMATCHING: the complete movement, collision and interaction flow is present,
 // including the Wii-only stage repairs and lift states; aggregate temporary homes,
 // duplicated branch tails and register/schedule allocation still differ
