@@ -6521,8 +6521,8 @@ void MenuStatus::State9(u32)
 			sStatusPhase = 0.0f;
 			for (int i = 0; i < 13; i++) {
 				if (i != 1) {
-					mPanes[i].mPointed = FALSE;
-					mPanes[i].mPicked  = FALSE;
+					mPanes[i + 12].mPointed = FALSE;
+					mPanes[i + 12].mPicked  = FALSE;
 				}
 			}
 			addPanes = false;
@@ -6540,7 +6540,7 @@ void MenuStatus::State9(u32)
 	if (addPanes) {
 		for (int i = 0; i < 13; i++) {
 			if (i != 1) {
-				AddPointerPane(&gPointerPanes, &mPanes[i]);
+				AddPointerPane(&gPointerPanes, &mPanes[i + 12]);
 			}
 		}
 	}
