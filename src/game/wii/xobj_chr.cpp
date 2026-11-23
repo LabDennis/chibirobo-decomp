@@ -2179,6 +2179,8 @@ XObj* GetGameObjectByIndex(const CGame* game, s32 index)
 	return game->mXObjs.mObjects[index];
 }
 
+// NONMATCHING: the complete search and eligibility checks are present; aggregate return
+// homes and float register/stack scheduling differ through the floor transform and probe loop
 s32 FindNearbyPlayerInteraction(WiiPlayerState* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -2304,9 +2306,9 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 	ADD_OBJECT_MARKER(allowed, 0x40); \
 	ADD_OBJECT_MARKER(allowed, 0x80)
 
-// NONMATCHING: the shared movement and contact flow is ported; the Wii-only floor
-// revalidation, special push targets and context-marker cases still need their
-// retail branches reconstructed
+// NONMATCHING: the complete movement, collision and interaction flow is present,
+// including the Wii-only stage repairs and lift states; aggregate temporary homes,
+// duplicated branch tails and register/schedule allocation still differ
 void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 speed, f32 direction)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
@@ -2385,6 +2387,8 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 		} else {
 			targetX = targetZ = 0.0f;
 		}
+		if (fn_800D1748(player))
+			targetX = targetZ = 0.0f;
 		SetObjectVectorTargetX(&player->mMotion, targetX);
 		SetObjectVectorTargetZ(&player->mMotion, targetZ);
 		player->mMoveSpeed = GetVectorMagnitude(GetObjectVectorTarget(&player->mMotion)) / movementFrames;
@@ -2501,7 +2505,7 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 							rate = turn * 0.15f;
 						else if (gGame.GetStatusFlags(0x800))
 							rate = turn * 0.2f;
-						else if (IsPlayerAttachmentEquipped(player, 2))
+						else if (IsPlayerAttachmentEquipped(player, 2) || fn_800D1748(player))
 							rate = turn * 0.1f;
 						else
 							rate = turn * 0.2f;
@@ -2639,10 +2643,10 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 	{
 		BOOL hit = FindMapFloorBelow(static_cast<XObjMap*>(map), &position, &player->mFloorHit, &player->mFloorHit);
 		if (hit) {
+			fn_800DB958((XObjMap*)map, &player->mFloorHit, player->mFloorTriangle);
 			SetVectorX(&player->mMoveTranslate, position.x);
 			SetVectorZ(&player->mMoveTranslate, position.z);
 			CVec normal;
-			fn_800DB958((XObjMap*)map, &player->mFloorHit, player->mFloorTriangle);
 			CalcTriangleNormal(&player->mFloorTriangle[0], &player->mFloorTriangle[1], &player->mFloorTriangle[2], &normal);
 			NormalizeVectorInPlace(&normal);
 			Vec down   = { 0, -1, 0 };
@@ -3049,45 +3053,41 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 			}
 		}
 	}
-	switch (fn_800D168C(&gGame, 0)) {
-	case 1:
+	if (fn_800D168C(&gGame, 0) == 1) {
 		if (floorIndex == 0xAC || floorIndex == 9) {
 			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
 		}
-		break;
-	case 4:
+	} else if (fn_800D168C(&gGame, 0) == 4) {
 		if (player->mFloorSupport != NULL && fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x4A) {
-			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit)
-			    && position.y < player->mFloorHit.mHeight && player->mFloorHit.mHeight >= 3.66519141f) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 3.66519141f) {
 				player->SetTranslateY(player->mFloorHit.mHeight);
 			}
 		} else if (floorIndex == 0x16B) {
 			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
 		}
-		break;
-	case 6:
+	} else if (fn_800D168C(&gGame, 0) == 6) {
 		if (player->mFloorSupport != NULL
 		    && (fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x62 || fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x253)) {
-			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit)
-			    && position.y < player->mFloorHit.mHeight && player->mFloorHit.mHeight >= 2.61799383f) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 2.61799383f) {
 				player->SetTranslateY(player->mFloorHit.mHeight);
 			}
 		} else if (floorIndex == 0x2A || floorIndex == 0xB0 || floorIndex == 0xB1) {
 			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
 		}
-		break;
-	case 18:
+	} else if (fn_800D168C(&gGame, 0) == 18) {
 		if (player->mFloorSupport != NULL
 		    && (fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x62 || fn_800DBD44(fn_800DBD60(player->mFloorSupport)) == 0x253)) {
-			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit)
-			    && position.y < player->mFloorHit.mHeight && player->mFloorHit.mHeight >= 2.61799383f) {
+			if (fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit) && position.y < player->mFloorHit.mHeight
+			    && player->mFloorHit.mHeight >= 2.61799383f) {
 				player->SetTranslateY(player->mFloorHit.mHeight);
 			}
-		} else if (floorIndex >= 0x3C && floorIndex <= 0x3E) {
+		} else if (floorIndex > 0x3C && floorIndex < 0x3F) {
 			fn_800C98E0((XObjMap*)map, &position, -1, &player->mFloorHit);
 		}
-		break;
 	}
+
 	if (floorHeight > player->mFloorHit.mHeight) {
 		player->mFloorHit.mHeight = floorHeight;
 		SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
@@ -3122,7 +3122,8 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 			f32 drop = player->mMoveTranslate.y - player->mFloorHit.mHeight;
 			if (speed > 0.1f && drop > 1) {
 				if (!(player->mFloorContactObjects[0] >= 0
-				      || (!IsLiftActionState(&player->mLift, 0) && !IsLiftActionState(&player->mLift, 4))
+				      || (!IsLiftActionState(&player->mLift, 0) && !IsLiftActionState(&player->mLift, 4)
+				          && !IsLiftActionState(&player->mLift, 29))
 				      || !IsHangActionState(&player->mHang, 0) || !IsJumpActionState(&player->mJump, 0)
 				      || !IsLadderActionState(&player->mLadder, 0) || !IsRopeActionState(&player->mRope, 0)
 				      || !IsTumbleActionState(&player->mTumble, 0)
@@ -3133,7 +3134,7 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 					if (IsCopterActionState(&player->mCopter, 3)) {
 						SetObjectVerticalSpeed((CObjVec*)&player->mMoveTranslate, 0);
 					} else {
-						if (IsPlayerRingMenuOpen(&player->mMenu))
+						if (IsGameMenuActive(&gGame) || IsPlayerRingMenuOpen(&player->mMenu))
 							ClosePlayerEquipmentRings(&player->mMenu, -1);
 						if (!IsPushActionState(&player->mPush, 0))
 							ReleasePushAction(&player->mPush);
@@ -3339,8 +3340,7 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 				if (IsObjectLiftable(object) && index != player->mFloorContactObjects[0])
 					available |= 4;
 				if (IsObjectPushable(object) && index != player->mFloorContactObjects[0]) {
-					if (IsLiftActionState(&player->mLift, 0)
-					    || IsPlayerCarryingPlug(player)) {
+					if (IsLiftActionState(&player->mLift, 0) || IsPlayerCarryingPlug(player)) {
 						available |= 2;
 						if (gGame.GetStatusFlags(0x80000000000ULL) != 0) {
 							target     = object;
