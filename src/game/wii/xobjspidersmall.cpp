@@ -28,6 +28,11 @@ BOOL fn_801298D0(XObjSpiderSmall* spider, const CoordInfo& info);
 BOOL fn_80131C58(void);
 s16 GetPlayerItemCount(s32 id);
 void UpdatePlayerCaughtInSpiderWeb(XObjSpiderSmall* spider, u32 frames);
+void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frames);
+void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim);
+void fn_80128998(XObjSpiderSmallFx* fx, const CVec& pos);
+void fn_801289C8(XObjSpiderSmallFx* fx);
+void ApplyPlayerHitReaction(WiiPlayerState* player, BOOL react, BOOL stop, f32 time);
 void UpdateSmallSpiderWebEffect(XObjSpiderSmallFx* shot, u8 i, u32 frames, BOOL unused);
 void ResetSmallSpiderWebEffect(XObjSpiderSmallFx* fx);
 void ResetSpiderCoinBounces(void* unused);
@@ -615,6 +620,85 @@ s32 XObjSpiderSmall::HandleEventCommand(s32 n, s32* args)
 	return 0;
 }
 
+static inline f32 GetSmallSpiderContactDistance(Vec* a, Vec* b)
+{
+	f32 dx = a->x - b->x;
+	f32 dy = a->y - b->y;
+	f32 dz = a->z - b->z;
+	return FSqrt(dx * dx + dy * dy + dz * dz);
+}
+
+static inline void DrainSmallSpiderPlayerBattery(f32 amount)
+{
+	f32 battery = gGame.GetPlayer()->mParams.mBattery - amount;
+	if (battery < 0.0f) {
+		battery = 0.0f;
+	}
+	gGame.GetPlayer()->mParams.SetBattery(battery);
+}
+
+/**
+ * @note Address: 0x8012AD58
+ * @note Size: 0x4A4
+ */
+// NONMATCHING: the red fade ratio uses different FPR/stack temporaries; the CPad vtable referent differs
+extern "C" void UpdatePlayerCaughtInSpiderWeb(XObjSpiderSmall* spider, u32 frames)
+{
+	CPad pad(0);
+	if ((spider->mSpiderStatus.mFlags & 2) && !(spider->mSpiderStatus.mFlags & 0x10)) {
+		StopWiiSfx(&gGame.mSound, 0x197, 0.0f);
+		spider->mSpiderStatus.mFlags &= ~2;
+		spider->SetState(1);
+		if (spider->mHitStrength >= 10.0f) {
+			spider->mHitsLeft -= 5;
+			if (spider->mHitsLeft <= 0) {
+				spider->mHitsLeft = 0;
+			}
+		} else if (--spider->mHitsLeft <= 0) {
+			spider->mHitsLeft = 0;
+		}
+	}
+	WiiPlayerState* player = gGame.GetPlayer();
+	Vec ppos               = *player->GetPos();
+	CVec pos(ppos);
+	GetSmallSpiderContactDistance(&pos, &spider->mMoveTranslate);
+	if ((spider->mSpiderStatus.mFlags & 0x800000) && gGame.mEvt.mData.mScript == NULL
+	    && GetPlayerCollisionRadius(gGame.GetPlayer()) < 2.0f) {
+		if (--spider->mDrainTimer <= 0) {
+			DrainSmallSpiderPlayerBattery(3.0f);
+			spider->mDrainTimer = 30;
+			if (gSpiderDrainFlashClaimed == 0) {
+				spider->mSpiderStatus.mFlags |= 0x1000000;
+				gSpiderDrainFlashClaimed = 1;
+				InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 1, 1);
+			}
+			if (spider->mSpiderStatus.mFlags & 0x1000000) {
+				gSpiderDrainFlashTimers[0] = gRefreshRate;
+				gSpiderDrainFlashTimers[1] = 0;
+			}
+		}
+	}
+	if (spider->mSpiderStatus.mFlags & 0x1000000) {
+		ApplyPlayerHitReaction(player, FALSE, TRUE, 0.0f);
+		if (gSpiderDrainFlashTimers[0] > 0) {
+			if ((gSpiderDrainFlashTimers[0] -= frames) < 0) {
+				gSpiderDrainFlashTimers[0] = 0;
+			}
+			gSpiderDrainFlashTimers[1]++;
+			if (gSpiderDrainFlashTimers[0] > 0) {
+				f32 time = gSpiderDrainFlashTimers[0] / (f32)gRefreshRate;
+				f32 red  = 128.0f * time;
+				player->SetColor(1, red, 0, 0, 0.0f);
+				StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
+			} else {
+				player->SetColor(1, 0, 0, 0, 0.0f);
+				StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
+			}
+		}
+	}
+	HandleSmallSpiderEventCommand(spider, frames);
+}
+
 /**
  * @note Address: 0x8012ACA4
  * @note Size: 0x9C
@@ -641,6 +725,242 @@ s32 XObjSpiderSmall::OnPlayerContact(s32 unused, s32 value)
 	return value;
 }
 
+static inline void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
+{
+	spider->mSpiderStatus.mFlags &= ~0x800000;
+	if (spider->mSpiderStatus.Check(0x1000000)) {
+		spider->mSpiderStatus.mFlags &= ~0x1000000;
+		gSpiderDrainFlashClaimed = 0;
+		gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0.0f);
+		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
+	}
+	if (--gAttachedSmallSpiderCount < 0) {
+		gAttachedSmallSpiderCount = 0;
+	}
+	if (gAttachedSmallSpiderCount == 0) {
+		gGame.GetPlayer()->mMoveSpeedScale = 1.0f;
+	}
+}
+
+/**
+ * @note Address: 0x8012B1FC
+ * @note Size: 0x58C
+ */
+// NONMATCHING: case 10's integer-to-float schedule and the jump-table referent differ
+extern "C" void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frames)
+{
+	switch (spider->mEvtArgs[0]) {
+	case 0:
+		break;
+	case 1:
+		if (!(spider->mSpiderStatus.mFlags & 0x8000)) {
+			spider->SetState(1);
+		}
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 2:
+		if (spider->mSpiderStatus.mFlags & 0x10000) {
+			gGame.mEvt.mSelectResult = 1;
+		} else {
+			gGame.mEvt.mSelectResult = 0;
+		}
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 3:
+		if (spider->mSpiderStatus.mFlags & 0x80000) {
+			gGame.mEvt.mSelectResult = 1;
+		} else {
+			gGame.mEvt.mSelectResult = 0;
+		}
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 4:
+		spider->mSpiderStatus.mFlags |= 0x200000;
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 5:
+		spider->mSpiderStatus.mFlags |= 0x400000;
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 6:
+		spider->mStatus.mFlags |= 0x4000000000000ULL;
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 7:
+		if (spider->mEvtArgs[1] == 1) {
+			spider->mSpiderStatus.mFlags &= ~0x2000000;
+		} else {
+			spider->mSpiderStatus.mFlags |= 0x2000000;
+		}
+		spider->mEvtArgs[0] = 0;
+		spider->mEvtArgs[1] = 0;
+		break;
+	case 8:
+		ResetSmallSpiderState(spider);
+		ApplySmallSpiderPlacement(spider);
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 9:
+		spider->mHome.x          = spider->mEvtArgs[1] / 100.0f;
+		spider->mHome.y          = spider->mEvtArgs[2] / 100.0f;
+		spider->mHome.z          = spider->mEvtArgs[3] / 100.0f;
+		spider->mTargetPos.x     = spider->mHome.x;
+		spider->mTargetPos.y     = spider->mHome.y;
+		spider->mTargetPos.z     = spider->mHome.z;
+		spider->mMoveTranslate.x = spider->mHome.x;
+		spider->mMoveTranslate.y = spider->mHome.y;
+		spider->mMoveTranslate.z = spider->mHome.z;
+		spider->mMoveTarget0.Set(spider->mMoveTranslate);
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 10:
+		spider->mAreaPos.x  = spider->mEvtArgs[1] / 100.0f;
+		spider->mAreaPos.y  = spider->mEvtArgs[2] / 100.0f;
+		spider->mAreaPos.z  = spider->mEvtArgs[3] / 100.0f;
+		spider->mAreaWidth  = spider->mEvtArgs[4] / 100.0f;
+		spider->mAreaDepth  = spider->mEvtArgs[5] / 100.0f;
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 11:
+		spider->mWalkSpeed = 0.0f;
+		spider->SetState(5);
+		fn_801289C8(&spider->mFx);
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 12:
+		spider->mSpiderStatus.mFlags |= 0x40000;
+		spider->mStatus.mFlags |= 0x10000;
+		spider->mStatus.mFlags |= 0x4000000000000ULL;
+		spider->SetState(6);
+		spider->mSpiderStatus.mFlags |= 0x8000;
+		spider->SetAnim(1, FALSE, 0.0f, 0.0f, 0.0f, 15.0f);
+		spider->mScale       = 0.0f;
+		spider->mTargetScale = 0.0f;
+		spider->mWalkSpeed   = 0.0f;
+		spider->TakeWeb();
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 21:
+		if (!(spider->mSpiderStatus.mFlags & 0x8000) && !(spider->mSpiderStatus.mFlags & 0x80000) && (spider->mStatus.mFlags & 0x10000)) {
+			spider->SetState(9);
+		}
+		spider->mEvtArgs[0] = 0;
+		break;
+	case 23:
+		if (spider->mEvtArgs[1] == 1) {
+			for (int i = 0; i < 48; i++) {
+				XObj* obj = gGame.mXObjs.mPools[7].Get(i);
+				if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x104) {
+					obj->mStatus.mFlags |= 0x10000;
+				}
+			}
+		} else {
+			for (int i = 0; i < 48; i++) {
+				XObj* obj = gGame.mXObjs.mPools[7].Get(i);
+				if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x104) {
+					obj->mStatus.mFlags &= ~0x10000ULL;
+				}
+			}
+		}
+		spider->mEvtArgs[0] = 0;
+		spider->mEvtArgs[1] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8012B788
+ * @note Size: 0x4
+ */
+extern "C" void fn_8012B788(void)
+{
+}
+
+/**
+ * @note Address: 0x8012B78C
+ * @note Size: 0x410
+ */
+// NONMATCHING: screen-shake literals use the double prototype; CVec temporary layout and jump-table referents differ
+void XObjSpiderSmall::State1(u32 frames)
+{
+	mTimer++;
+	if (mTimer % 30 < 15) {
+		SetColor(1, 0, 0x80, 0, 0.0f);
+	} else {
+		SetColor(1, 0, 0, 0, 0.0f);
+	}
+	switch (mStep) {
+	case 0:
+		if (mSpiderStatus.Check(0x800000)) {
+			DetachSmallSpiderFromPlayer(this);
+		}
+		PlayWiiSoundEffect(&gGame.mSound, 0x194, 1.0f, 0.0f);
+		if (!gGame.GetStatusFlags(0x100)) {
+			StartScreenShake(&gGame.mQuake, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f);
+		}
+		gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags |= 0x80000;
+		fn_80128998(&mFx, CVec(mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z));
+		mStep++;
+		break;
+	case 1: {
+		mStep++;
+		mTimer = 0;
+		State2(frames);
+		Vec pos;
+		pos.x = mMoveTranslate.x;
+		pos.y = mMoveTranslate.y;
+		pos.z = mMoveTranslate.z;
+		s32 kind;
+		if (IsStage("stage07")) {
+			switch (mPoolIndex) {
+			case 0:
+			case 3:
+			case 5:
+			case 7:
+			case 10:
+				kind = 1;
+				break;
+			case 2:
+			case 8:
+				kind = 0;
+				break;
+			case 1:
+			case 4:
+			case 6:
+			case 9:
+			default:
+				kind = 2;
+				break;
+			}
+		} else if (rand() % 2 > 0) {
+			kind = 2;
+		} else if (rand() % 4 > 1) {
+			kind = 1;
+		} else {
+			kind = 0;
+		}
+		if (_AD0) {
+			kind = 2;
+		}
+		SpawnSpiderBounceCoin(&pos, &mHome, kind);
+		break;
+	}
+	case 2:
+		mStatus.mFlags &= ~0x10000ULL;
+		if (IsSmallSpiderEffectAnimationFinished(&mFx, mFxIndex, frames)) {
+			if (mFxIndex != 0xFF) {
+				gSmallSpiderEffectSlotOwners[mFxIndex] = -1;
+				mFxObj                                 = NULL;
+				mFxIndex                               = 0xFF;
+			}
+			mStep++;
+		}
+		break;
+	case 3:
+		break;
+	}
+}
+
 /**
  * @note Address: 0x8012BB9C
  * @note Size: 0x38
@@ -663,14 +983,6 @@ static inline f32 SmallSpiderDistanceXZ(const Vec* a, const Vec* b)
 static inline f32 GetSmallSpiderDistanceXZ(Vec* a, Vec* b)
 {
 	return SmallSpiderDistanceXZ(a, b);
-}
-
-static inline f32 GetSmallSpiderContactDistance(Vec* a, Vec* b)
-{
-	f32 dx = a->x - b->x;
-	f32 dy = a->y - b->y;
-	f32 dz = a->z - b->z;
-	return FSqrt(dx * dx + dy * dy + dz * dz);
 }
 
 static inline bool IsSmallSpiderWithinTargetRadius(XObjSpiderSmall* spider)
@@ -711,23 +1023,6 @@ static inline void Catch(XObjSpiderSmall* spider)
 	gAttachedSmallSpiderCount++;
 	gGame.GetPlayer()->mMoveSpeedScale = 0.4f;
 	spider->SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-}
-
-static inline void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
-{
-	spider->mSpiderStatus.mFlags &= ~0x800000;
-	if (spider->mSpiderStatus.Check(0x1000000)) {
-		spider->mSpiderStatus.mFlags &= ~0x1000000;
-		gSpiderDrainFlashClaimed = 0;
-		gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0.0f);
-		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
-	}
-	if (--gAttachedSmallSpiderCount < 0) {
-		gAttachedSmallSpiderCount = 0;
-	}
-	if (gAttachedSmallSpiderCount == 0) {
-		gGame.GetPlayer()->mMoveSpeedScale = 1.0f;
-	}
 }
 
 /**
@@ -1511,6 +1806,59 @@ void XObjSpiderSmall::State8(u32 frames)
 		}
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x80131AFC
+ * @note Size: 0x15C
+ */
+// NONMATCHING: retail keeps 20.0f in a saved FPR across the GetPosY calls
+extern "C" bool IsPlayerInSmallSpiderArea(XObjSpiderSmall* spider)
+{
+	Vec pos = *gGame.GetPlayer()->GetPos();
+	f32 x   = pos.x;
+	f32 y   = pos.y;
+	f32 z   = pos.z;
+	CVec unused;
+	if (y < spider->GetPosY() - 20.0f || y > 20.0f + spider->GetPosY()) {
+		return false;
+	}
+	f32 minX = spider->mAreaPos.x + spider->mRadius;
+	f32 maxX = spider->mAreaPos.x + spider->mAreaWidth - spider->mRadius;
+	f32 minZ = spider->mAreaPos.z + spider->mRadius;
+	f32 maxZ = spider->mAreaPos.z + spider->mAreaDepth - spider->mRadius;
+	if (minX > x || maxX < x || minZ > z || maxZ < z) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * @note Address: 0x80131C58
+ * @note Size: 0x184
+ */
+// NONMATCHING: register allocation in the pool loop
+extern "C" BOOL fn_80131C58(void)
+{
+	Vec pos = *gGame.GetPlayer()->GetPos();
+	for (int i = 0; i < 16; i++) {
+		XObjSpiderSmall* spider = (XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i);
+		if ((spider->mStatus.mFlags & 1) && !(spider->mSpiderStatus.mFlags & 0x80000) && (spider->mStatus.mFlags & 0x10000)
+		    && !(spider->mSpiderStatus.mFlags & 0x2000000)) {
+			if (pos.y < spider->GetPosY() - 20.0f || pos.y > 20.0f + spider->GetPosY()) {
+				continue;
+			}
+			f32 minX = 1.5f + spider->mAreaPos.x;
+			f32 maxX = spider->mAreaPos.x + spider->mAreaWidth - 1.5f;
+			f32 minZ = 1.5f + spider->mAreaPos.z;
+			f32 maxZ = spider->mAreaPos.z + spider->mAreaDepth - 1.5f;
+			if (minX > pos.x || maxX < pos.x || minZ > pos.z || maxZ < pos.z) {
+				continue;
+			}
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 /**
