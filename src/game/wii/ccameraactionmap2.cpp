@@ -541,6 +541,17 @@ static inline void ResetMapCameraInterpolation(CCameraActionMap* map)
  * @note Address: 0x80159D70
  * @note Size: 0x308C
  */
+inline void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
+{
+	Vec bc;
+	Vec ba;
+	Vec n;
+	PSVECSubtract(b, c, &bc);
+	PSVECSubtract(b, a, &ba);
+	PSVECCrossProduct(&ba, &bc, &n);
+	PSVECCrossProduct(&bc, &n, out);
+}
+
 extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest,
                                              const CVec& previousInterest, const s32* mode)
 {
