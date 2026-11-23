@@ -1323,8 +1323,8 @@ game/wii/xobjspiderboss.cpp:
 	.text start:0x80132330 end:0x801370BC
 	.sdata2 start:0x805A5838 end:0x805A58B0
 
-game/wii/xobjactorstop.cpp:
-	.text start:0x80138560 end:0x80138598
+game/wii/xobjactor.cpp:
+	.text start:0x801370BC end:0x80138E28
 
 game/wii/xobjactor3.cpp:
 	.text start:0x80138E28 end:0x80142C38
