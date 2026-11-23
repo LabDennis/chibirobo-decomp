@@ -534,14 +534,7 @@ public:
 };
 STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 
-// an arrow at the left or right screen edge of the area and map cameras, Init places them
-struct CamEdgeArrow {
-	Vec mPos;  // _00, x and y on screen, z the rotation
-	u8 mShown; // _0C
-	u8 _0D;    // _0D
-	f32 _10;   // _10
-	f32 _14;   // _14
-};
+// CamEdgeArrow lives in ccameraaction.h (the leticker's action class carries a pair too)
 
 // the Wii area action, 0x2FC against the GameCube's 0x294. Only the members CCameraActions' constructor
 // (0x80034ACC) builds are placed: they sit at the GameCube class's offsets and carry its names. The plain
@@ -2005,7 +1998,10 @@ struct GamePointer {
 	f32 mScopeTimer; // _004, the robo eyes' lenses pulse while it runs and hide from 5 on
 	CTexObj mTex;    // _008, a copy of misc.tpl's texture 261
 	f32 _10C;        // _10C, a new game starts it at NAN
-	u8 _110[0x120 - 0x110];
+	CTexObj* _110;
+	f32 _114;
+	f32 _118;
+	u32 _11C;
 	f32 _120; // _120, a new game starts it at -1
 	u8 _124[0x128 - 0x124];
 	u8 mCursor[0xB40 - 0x128]; // _128, the Cursor BeforeUpdate places at spawn 12; xobj.h needs this header
