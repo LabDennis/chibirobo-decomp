@@ -1201,6 +1201,15 @@ static inline bool SpiderInView(XObjSpider* spider)
 	return spider->ProjectVisibleBounds(&width, &screenHeight, NULL, radius, height) ? true : false;
 }
 
+static inline f32 HeadTo(XObjSpider* spider, const Vec& to)
+{
+	spider->mDir = atan2(to.x - spider->mMoveTranslate.x, to.z - spider->mMoveTranslate.z);
+	f32 x        = to.x - spider->mMoveTranslate.x;
+	f32 y        = to.y - spider->mMoveTranslate.y;
+	f32 z        = to.z - spider->mMoveTranslate.z;
+	return FSqrt(x * x + y * y + z * z);
+}
+
 static inline f32 CombatHeading(XObjSpider* spider, const Vec& pos)
 {
 	return atan2(pos.x - spider->mMoveTranslate.x, pos.z - spider->mMoveTranslate.z);
@@ -1678,6 +1687,119 @@ void XObjSpider::State7(u32 frames)
  */
 void XObjSpider::State8(u32 frames)
 {
+}
+
+/**
+ * @note Address: 0x80126E28
+ * @note Size: 0x7A0
+ */
+// NONMATCHING: the CPad vtable referent differs as in UpdateObject; HeadTo uses another saved-FPR allocation
+void XObjSpider::State9(u32 frames)
+{
+	CPad pad(0);
+	if (pad.mPad->mTrigger & 0x10000ULL) {
+		mPhase           = 0;
+		mSpeed           = 0.0f;
+		mMoveTranslate.x = mHome.x;
+		mMoveTranslate.y = mHome.y;
+		mMoveTranslate.z = mHome.z;
+		SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		mFlags.mFlags &= ~0x100;
+	}
+	switch (mPhase) {
+	case 0:
+		if (pad.mPad->mTrigger & ((1ULL << RemoteB) | (1ULL << GameCubeB))) {
+			u64 button = pad.mPad->mButton;
+			if (button & (1ULL << RemoteUp)) {
+				mTarget.x = mHome.x;
+				mTarget.y = mHome.y;
+				mTarget.z = mHome.z - 60.0f;
+				SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mPhase++;
+				mSpeed = 0.3f;
+				mDir   = PI;
+			} else if (button & ((1ULL << RemoteDown) | (1ULL << (GameCubeDPad + 2)))) {
+				mTarget.x = mHome.x;
+				mTarget.y = mHome.y;
+				mTarget.z = 60.0f + mHome.z;
+				SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mPhase++;
+				mSpeed = 0.3f;
+				mDir   = PI;
+			} else if (button & ((1ULL << RemoteLeft) | (1ULL << GameCubeDPad))) {
+				mTarget.x = mHome.x - 60.0f;
+				mTarget.y = mHome.y;
+				mTarget.z = mHome.z;
+				SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mPhase++;
+				mSpeed = 0.3f;
+				mDir   = PI;
+			} else if (button & ((1ULL << RemoteRight) | (1ULL << (GameCubeDPad + 1)))) {
+				mTarget.x = 60.0f + mHome.x;
+				mTarget.y = mHome.y;
+				mTarget.z = mHome.z;
+				SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				mPhase++;
+				mSpeed = 0.3f;
+				mDir   = PI;
+			}
+		}
+		break;
+	case 1:
+		if (HeadTo(this, mTarget) < 20.0f) {
+			mPhase++;
+			SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	case 2:
+		if (HeadTo(this, mTarget) < 1.0f) {
+			mFlags.mFlags |= 0x100;
+			mSpeed = 0.0f;
+		}
+		if (GetAnimEndFrame() - frames <= GetAnimFrame()) {
+			mFlags.mFlags |= 0x100;
+			mSpeed = 0.0f;
+			mPhase++;
+			SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mSpeed = 0.3f;
+		}
+		break;
+	case 3:
+		if (mMoveTranslate.y >= 80.0f) {
+			mPhase++;
+			mSpeed = -0.3f;
+		}
+		break;
+	case 4:
+		if (mMoveTranslate.y <= 20.0f + mHome.y) {
+			mPhase++;
+			mMoveTranslate.y = 0.0f;
+			mFlags.mFlags &= ~0x100;
+			mTarget.x = mHome.x;
+			mTarget.y = mHome.y;
+			mTarget.z = mHome.z;
+			SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mSpeed = 0.3f;
+		}
+		break;
+	case 5: {
+		f32 distance = HeadTo(this, mTarget);
+		s32 done     = 0;
+		if (distance < 1.0f) {
+			mSpeed = 0.0f;
+			done   = 1;
+		}
+		f32 backEnd = GetAnimEndFrame();
+		if (backEnd - frames <= GetAnimFrame()) {
+			done++;
+		}
+		if (done >= 2) {
+			mPhase = 0;
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		break;
+	}
+	}
 }
 
 /**
