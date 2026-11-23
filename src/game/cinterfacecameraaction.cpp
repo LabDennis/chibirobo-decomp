@@ -4,6 +4,10 @@
 #include "game/cgame.h"
 #endif
 
+// NONMATCHING: Wii retail places its block of inline CGs destructors before these methods. Emitting
+// that block here would require different destructor forms in different translation units, so it
+// deliberately remains unmatched and all class definitions keep their single inline form.
+
 /**
  * @note Address: 0x80015EF0
  * @note Size: 0x8
