@@ -316,7 +316,7 @@ void XObjSpiderBoss::DrawObjectEffects()
  * @note Address: 0x80132DD0
  * @note Size: 0x7CC
  */
-// NONMATCHING: register allocation/frame layout and the three GetPos evaluation schedules differ
+// NONMATCHING: the GetPos evaluation schedules now match; command-switch register allocation and frame layout differ
 s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
@@ -349,7 +349,10 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 			}
 			mParts[i].mJoint = vf284(depth, path);
 			Mtx mtx;
-			PSMTXTrans(mtx, mParts[i].mObj->GetPos()->x, mParts[i].mObj->GetPos()->y, mParts[i].mObj->GetPos()->z);
+			f32 z = mParts[i].mObj->GetPos()->z;
+			f32 y = mParts[i].mObj->GetPos()->y;
+			f32 x = mParts[i].mObj->GetPos()->x;
+			PSMTXTrans(mtx, x, y, z);
 			PSMTXConcat(GetWorldMtx(mParts[i].mJoint), mtx, mParts[i].mMtx);
 			mParts[i].mObj->SetBaseMtx(mParts[i].mMtx);
 		}
