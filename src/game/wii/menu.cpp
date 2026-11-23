@@ -4584,7 +4584,7 @@ void DrawPanelBackground(f32 alpha)
 template void DrawPanelBackground<ItemStatusPanel>(f32);
 template void DrawPanelBackground<SavePanel>(f32);
 
-// NONMATCHING: the complete 19-call list matches; a 12-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 12 bytes smaller and register allocation differs
 extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 {
 	if (menu->mTitle.mActive) {
@@ -4629,7 +4629,7 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 				scale = 20.0f * (1.7f * scale);
 				pad   = (width / 24.0f) * scale;
 				pad   = scale - pad;
-				c     = (u32)(255.0f * t) | 0xFFFFFF00;
+				c     = (u32)(255.0f * t);
 				for (int j = 0; j < 4; j++) {
 					DrawGsTexturedQuad(&gGame.mGs, &tex, c, c, c, c, pad / 2.0f + (x + gStatusTitleOutlineX[j]),
 					                   bob + (64.0f + gStatusTitleOutlineY[j]), 0.0f, scale, scale, 0.0f, -zero, rot);
@@ -4722,7 +4722,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 value, f32 x, f32 y, f32 alpha, f
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// NONMATCHING: the complete 19-call list matches; a 12-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 12 bytes smaller and register allocation differs
 extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 {
 	if (menu->mTitle.mActive) {
@@ -4767,7 +4767,7 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 				scale = 20.0f * (1.7f * scale);
 				pad   = (width / 24.0f) * scale;
 				pad   = scale - pad;
-				c     = (u32)(255.0f * t) | 0xFFFFFF00;
+				c     = (u32)(255.0f * t);
 				for (int j = 0; j < 4; j++) {
 					DrawGsTexturedQuad(&gGame.mGs, &tex, c, c, c, c, pad / 2.0f + (x + gSaveTitleOutlineX[j]),
 					                   bob + (64.0f + gSaveTitleOutlineY[j]), 0.0f, scale, scale, 0.0f, -zero, rot);
@@ -4782,7 +4782,7 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 	}
 }
 
-// NONMATCHING: the complete 19-call list matches; a 12-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 12 bytes smaller and register allocation differs
 extern "C" void DrawItemMenuTitle(MenuItem* menu)
 {
 	if (menu->mTitle.mActive) {
@@ -4827,7 +4827,7 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 				scale = 20.0f * (1.7f * scale);
 				pad   = (width / 24.0f) * scale;
 				pad   = scale - pad;
-				c     = (u32)(255.0f * t) | 0xFFFFFF00;
+				c     = (u32)(255.0f * t);
 				for (int j = 0; j < 4; j++) {
 					DrawGsTexturedQuad(&gGame.mGs, &tex, c, c, c, c, pad / 2.0f + (x + gItemTitleOutlineX[j]),
 					                   bob + (64.0f + gItemTitleOutlineY[j]), 0.0f, scale, scale, 0.0f, -zero, rot);
@@ -4848,11 +4848,13 @@ static inline f32 HelpGlyphPadding(s32 width, f32 scale)
 	return scale - glyphWidth;
 }
 
-// NONMATCHING: the complete 15-call list matches; a 16-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 4 bytes larger and register allocation differs
 extern "C" void DrawStatusHelpText(MenuStatus* menu)
 {
 	f32 alpha   = menu->mAlpha * menu->mHelpAlpha;
 	f32 spacing = 30.0f;
+	f32 center  = gPointerScreenWidth / 2;
+	f32 bottom  = 160.0f + gPointerScreenHeight / 2;
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	CTexObj blob;
@@ -4879,10 +4881,7 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			}
 		}
 	}
-	f32 zero    = 0.0f;
-	f32 opacity = 255.0f * alpha;
-	f32 center  = gPointerScreenWidth / 2;
-	f32 bottom  = gPointerScreenHeight - 96;
+	f32 zero = 0.0f;
 	for (int i = 0; i < menu->mHelpCount; i++) {
 		MenuHelpChar* glyph = &menu->mHelpChars[i];
 		CFont font;
@@ -4900,7 +4899,7 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
 		f32 padding = HelpGlyphPadding(width, scale);
-		color       = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		color       = (u32)(255.0f * alpha);
 		for (int j = 0; j < 4; j++) {
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + gStatusHelpOutlineX[j] + padding / 2.0f,
 			                   bob + (bottom + gStatusHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
@@ -4911,11 +4910,13 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// NONMATCHING: the complete 15-call list matches; a 16-byte code-layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 4 bytes larger and register allocation differs
 extern "C" void DrawSaveHelpText(MenuSave* menu)
 {
 	f32 alpha   = menu->mAlpha * menu->mHelpAlpha;
 	f32 spacing = 30.0f;
+	f32 center  = gPointerScreenWidth / 2;
+	f32 bottom  = 160.0f + gPointerScreenHeight / 2;
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	CTexObj blob;
@@ -4942,10 +4943,7 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 			}
 		}
 	}
-	f32 zero    = 0.0f;
-	f32 opacity = 255.0f * alpha;
-	f32 center  = gPointerScreenWidth / 2;
-	f32 bottom  = gPointerScreenHeight - 96;
+	f32 zero = 0.0f;
 	for (int i = 0; i < menu->mHelpCount; i++) {
 		MenuHelpChar* glyph = &menu->mBg[i];
 		CFont font;
@@ -4963,7 +4961,7 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
 		f32 padding = HelpGlyphPadding(width, scale);
-		color       = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		color       = (u32)(255.0f * alpha);
 		for (int j = 0; j < 4; j++) {
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + gSaveHelpOutlineX[j] + padding / 2.0f,
 			                   bob + (bottom + gSaveHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
