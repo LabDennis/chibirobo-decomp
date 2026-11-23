@@ -83,16 +83,16 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dz = at.z - head->z;
 		f32 dx = at.x - head->x;
 		f32 dy = at.y - head->y;
-		*outB  = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy))
-		                    : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		*outB
+		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
 	} else if (__fpclassifyf(rec->mTarget.x) != FP_NAN) {
 		*outA   = (f32)atan2(rec->mTarget.x - head->x, rec->mTarget.z - head->z) - rot->y;
 		CVec at = rec->mTarget;
 		f32 dz  = at.z - head->z;
 		f32 dx  = at.x - head->x;
 		f32 dy  = at.y - head->y;
-		*outB   = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy))
-		                     : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		*outB
+		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
 	} else if (rec->m_20 != NULL) {
 		CVec* eye = &rec->m_20->mView.mEye;
 		*outA     = (f32)atan2(eye->x - head->x, eye->z - head->z) - rot->y;
@@ -100,8 +100,8 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dz    = at.z - head->z;
 		f32 dx    = at.x - head->x;
 		f32 dy    = at.y - head->y;
-		*outB     = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy))
-		                       : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		*outB
+		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
 	}
 	if (*outA > rec->m_30) {
 		*outA = rec->m_30;
