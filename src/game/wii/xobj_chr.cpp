@@ -33,9 +33,7 @@
 	         || ((u32)(exp) & 0xFF000000) == 0xC0000000 || ((u32)(exp) & 0xFF800000) == 0xC1000000                                         \
 	         || ((u32)(exp) & 0xF8000000) == 0xD0000000 || ((u32)(exp) & 0xFFFFC000) == 0xE0000000)                                        \
 	        || (nw4r::db::Panic(__FILE__, line, "NW4R:Pointer Error\n" #exp "(=%p) is not valid pointer.", (exp)), 0)))
-// NONMATCHING: ScaleVectorInPlace's retail body interleaves the paired-single loads,
-// multiplies and stores (its SDK inline's statement order); ours loads both pairs
-// first, so the wrapper stays below a match
+// NONMATCHING: ScaleVectorInPlace now uses nw4r's VEC3Scale; only the result registers differ (94 %)
 
 extern "C" void ReleasePushAction(XAction* action);
 extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
