@@ -29,6 +29,7 @@
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "nw4r/math/math_types.h"
 #include "game/wii/title.h"
+#include "game/titlepalette.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -77,10 +78,6 @@ void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
 }
 
 // the title screen's background and text colors, the logo's textures and which of each is in use
-struct TitlePaletteEntry {
-	GXColor background;
-	GXColor text;
-};
 const TitlePaletteEntry gTitlePalette[] = {
 	{ { 0, 0, 128, 0 }, {} },     { { 128, 0, 0, 0 }, {} },     { { 0, 128, 0, 0 }, {} },
 	{ { 200, 200, 200, 0 }, {} }, { { 128, 128, 128, 0 }, {} }, { { 0, 207, 233, 0 }, {} },
