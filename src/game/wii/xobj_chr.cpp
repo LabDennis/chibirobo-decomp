@@ -709,7 +709,7 @@ void XObjChr::ResetObjectState()
 	chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting = 1.0f;
 	chr->mHeldMoveAngle = chr->mMoveAngle = chr->mHeldStickAngle = NAN;
 	chr->mBatteryWarningFrames                                   = 0;
-	chr->mBatteryWarningFade = chr->mBatteryWarningAngle = 0.0f;
+	chr->mBatteryWarningAngle = chr->mBatteryWarningFade = 0.0f;
 	chr->mGaugeTarget                                    = NULL;
 	chr->mGaugeTime                                      = 0.0f;
 	chr->mPlug.ResetObjectState();

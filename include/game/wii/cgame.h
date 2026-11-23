@@ -1117,8 +1117,8 @@ struct WiiPlayerState : public XObj {
 	f32 mMoveAngle;                   // _9DFC
 	f32 mHeldStickAngle;              // _9E00, NANed while no stick direction is held
 	s32 mBatteryWarningFrames;        // _9E04
-	f32 mBatteryWarningAngle;         // _9E08
-	f32 mBatteryWarningFade;          // _9E0C
+	f32 mBatteryWarningFade;          // _9E08
+	f32 mBatteryWarningAngle;         // _9E0C
 	XObj* mGaugeTarget;               // _9E10, the object the battery gauge sits over
 	f32 mGaugeTime;                   // _9E14
 	s32 mLoadStep;                    // _9E18, the step of LoadFromPlacement's stage load to resume at
