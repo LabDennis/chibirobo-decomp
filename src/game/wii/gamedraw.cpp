@@ -44,7 +44,7 @@ void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
 void ClearSoundEffects(XSound* sound, s32 frames);
 s32 GetWiiSaveSlotStage(CSaveFile* manager, int index);
 void ResetTitleScreenState(Title* title);
-void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
+void ResetMenuGroup(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
 BOOL fn_800C61C8();
 void fn_8027B6B8(WiiGsSceneObj* scene, BOOL, s32);             // switches the scene's draws to and from the alpha pass
@@ -953,7 +953,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
 		ResetTitleScreenState(&game->mTitle);
-		fn_800848C0(&game->mMenu.mActive); // the menu group starts at its active word
+		ResetMenuGroup(&game->mMenu.mActive); // the menu group starts at its active word
 		ResetGameHudState(scrn);
 		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);

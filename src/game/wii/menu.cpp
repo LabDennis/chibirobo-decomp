@@ -8064,7 +8064,7 @@ extern "C" void InitGameMenus(MenuEx* ex)
 
 // the menus MenuEx keeps, the GameCube's menu group functions: the Wii has nine and its cursor only blinks.
 // LoadMenuGroupResources
-extern "C" BOOL fn_80084848(MenuEx* ex)
+extern "C" BOOL LoadMenuGroupResources(MenuEx* ex)
 {
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
 		if (ex->mMenus[i]) {
@@ -8076,7 +8076,7 @@ extern "C" BOOL fn_80084848(MenuEx* ex)
 }
 
 // ResetMenuGroup
-extern "C" void fn_800848C0(MenuEx* ex)
+extern "C" void ResetMenuGroup(MenuEx* ex)
 {
 	ex->mCursor.mFrame = 0;
 	ex->mCursor.mTimer = 0;
@@ -8093,7 +8093,7 @@ extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* 
 // tests the pointer against the menus' panes.
 // NONMATCHING: 80 %, the frame is retail's; the screen size's int to float conversions are scheduled apart
 // in retail and the rectangle's registers differ
-extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
+extern "C" void UpdateOpenMenus(MenuEx* ex, u32 frames)
 {
 	BOOL active = FALSE;
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
