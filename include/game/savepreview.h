@@ -1,7 +1,7 @@
 #ifndef _GAME_SAVEPREVIEW_H
 #define _GAME_SAVEPREVIEW_H
 
-#include "types.h"
+#include "Dolphin/card.h"
 
 // the part of the save the slot list reads without loading the rest
 struct SaveHeader {
@@ -24,42 +24,19 @@ struct SaveHeader {
 };
 STATIC_ASSERT(sizeof(SaveHeader) == 0x58);
 
-#if defined(_GAME_CCARD_H)
-typedef CARDStat SaveCardStat;
-#else
-// CARDStat, the sdk card header can't come in next to the hsd ones
-struct SaveCardStat {
-	char fileName[32];    // _00
-	u32 length;           // _20
-	u32 time;             // _24
-	u8 gameName[4];       // _28
-	u8 company[2];        // _2C
-	u8 bannerFormat;      // _2E
-	u8 _2F;               // _2F, the padding CARDStat leaves implicit
-	u32 iconAddr;         // _30
-	u16 iconFormat;       // _34
-	u16 iconSpeed;        // _36
-	u32 commentAddr;      // _38
-	u32 offsetBanner;     // _3C
-	u32 offsetBannerTlut; // _40
-	u32 offsetIcon[8];    // _44
-	u32 offsetIconTlut;   // _64
-	u32 offsetData;       // _68
-};
-#endif
-STATIC_ASSERT(sizeof(SaveCardStat) == 0x6C);
+STATIC_ASSERT(sizeof(CARDStat) == 0x6C);
 
-static inline BOOL HasSaveFileLayout(const SaveCardStat& stat)
+static inline BOOL HasSaveFileLayout(const CARDStat& stat)
 {
 	if (stat.length != 0xC000)
 		return FALSE;
-	if (stat.bannerFormat != 2)
+	if (stat.bannerFormat != CARD_STAT_BANNER_RGB5A3)
 		return FALSE;
 	if (stat.iconAddr != 0x40)
 		return FALSE;
-	if (stat.iconFormat != 2)
+	if (stat.iconFormat != CARD_STAT_ICON_RGB5A3)
 		return FALSE;
-	if (stat.iconSpeed != 3)
+	if (stat.iconSpeed != CARD_STAT_SPEED_SLOW)
 		return FALSE;
 	if (stat.commentAddr != 0)
 		return FALSE;
@@ -76,7 +53,7 @@ static inline BOOL HasSaveFileLayout(const SaveCardStat& stat)
 struct SavePreviewRecord {
 	s32 mState;         // _00, nonzero when the slot has a file
 	s32 mStatus;        // _04, nonzero when reading it failed
-	SaveCardStat mStat; // _08
+	CARDStat mStat;     // _08
 	SaveHeader mHeader; // _74
 };
 STATIC_ASSERT(sizeof(SavePreviewRecord) == 0xCC);
