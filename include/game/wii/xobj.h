@@ -2069,7 +2069,7 @@ public:
 	public:
 		CPtclSet();
 		~CPtclSet();
-		virtual void vf08(); // _08
+		virtual void vf08(CGs* gs); // _08, fn_800C6418: mPtcl's render state, set before each draw
 	};
 
 	XObjChr();

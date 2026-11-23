@@ -6873,6 +6873,7 @@ void XObjChr::DrawObjectEffects()
 	DrawTumbleRing(&chr->mTumble.mFade, (Vec) { chr->mMoveTranslate.x, chr->mFloorHit.mHeight, chr->mMoveTranslate.z }, chr->mMoveRotate.y);
 	DrawRadarTargetBeam((XActRadar*)&chr->mRadar);
 	DrawPopperShotParticles((XActPopper*)&chr->mPopper);
+	mDustPool.vf08(&gGame.mGs);
 	DrawParticlePool(&chr->mDust.mPtcl, &gGame.mGs);
 	DrawSpiralTrail(&lbl_8045BBD0, GetPos());
 }
