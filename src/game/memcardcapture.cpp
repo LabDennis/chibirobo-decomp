@@ -78,8 +78,5 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	}
 	save->mSquirterLiquid = Player()->mSquirterContent;
 	save->mItemTint       = Player()->mItemTintWord;
-	file->mChecksum       = 0;
-	const u8* cursor      = reinterpret_cast<const u8*>(save);
-	for (u32 i = 0; i < sizeof(SaveData); ++i)
-		file->mChecksum += *cursor++;
+	save->CalculateChecksum(file->mChecksum);
 }

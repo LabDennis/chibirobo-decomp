@@ -33,6 +33,23 @@ struct SaveData {
 	s32 mSquirterLiquid; // _2CE8, XObjChr _158A8: what the squirter holds. Script command 900 sets it with the item tint, a sprayed object
 	                     // runs event 3000 + it, cleared to 0 with the tint when the squirter runs dry
 	s32 mItemTint;       // _2CEC, XObjChr _158AC
+
+	bool HasValidSignature() const { return mHeader.mSignature == SAVE_SIGNATURE; }
+
+	void CalculateChecksum(u32& checksum) const
+	{
+		checksum       = 0;
+		const u8* data = reinterpret_cast<const u8*>(this);
+		for (u32 i = 0; i < sizeof(SaveData); ++i)
+			checksum += *data++;
+	}
+
+	u32 CalculateChecksum() const
+	{
+		u32 checksum;
+		CalculateChecksum(checksum);
+		return checksum;
+	}
 };
 STATIC_ASSERT(sizeof(SaveData) == 0x2CF0);
 
@@ -56,7 +73,7 @@ STATIC_ASSERT(sizeof(SaveFile) == 0x6000);
 
 extern "C" s32 GetStageNum();
 
-static inline BOOL IsValidSave(SaveHeader* save)
+static inline BOOL ValidateSaveHeader(SaveHeader* save)
 {
 	if (save->mVersion < 0x400)
 		return FALSE;
