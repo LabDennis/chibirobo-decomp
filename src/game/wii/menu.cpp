@@ -75,6 +75,7 @@ s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y
 void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide);
 void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
+void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -139,6 +140,8 @@ static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0
 
 extern "C" s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 extern "C" f32 gSaveSlotSpacing;
+extern "C" f32 gItemHelpOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
+extern "C" f32 gItemHelpOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gStatusTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gStatusTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gSaveTitleOutlineX[4]   = { -1.0f, 1.0f, 1.0f, -1.0f };
@@ -4880,6 +4883,108 @@ static inline f32 HelpGlyphPadding(s32 width, f32 scale)
 {
 	f32 glyphWidth = width / 24.0f * scale;
 	return scale - glyphWidth;
+}
+
+// NONMATCHING: the Wii call list, viewport/scissor blocks and constants match; the SJIS lead-byte expansion,
+// texture-object copies and floating-point schedules still differ
+BOOL MenuItem::Draw()
+{
+	if (CMenu::Draw()) {
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		f32 x = mGridX - 42.0f;
+		f32 y = 180.0f + mGridY;
+		GXSetScissor(gScreenLeft + (s32)margin, gPointerScreenHeight / 2 - 122, gPointerScreenWidth - (s32)margin * 2, 252);
+		DrawInventoryGrid(mSelection, x, y, mAlpha, 1.0f, mItemPhase);
+		char text[256];
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x19));
+		GXSetScissor(gScreenLeft + (s32)margin, gScreenTop, gPointerScreenWidth - (s32)margin * 2, gPointerScreenHeight);
+		DrawItemMenuTitle(this);
+		if (mName) {
+			f32 alpha   = mAlpha * mNameAlpha;
+			f32 spacing = 30.0f;
+			f32 center  = gPointerScreenWidth / 2;
+			f32 bottom  = 160.0f + gPointerScreenHeight / 2;
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			CTexObj blob;
+			InitPCPanelTexture(blob, 109);
+			mHelpCount       = 0;
+			const char* name = (const char*)mName;
+			if (name) {
+				for (int i = 0; i < 20 && *name; i++, name++) {
+					mBg[i].mText = name;
+					mHelpCount++;
+					if (gGame.mLanguage == 0) {
+						u8 c    = *name;
+						u8 lead = TRUE;
+						u8 a    = (c >= 0x81 && c <= 0x9F);
+						if (!a) {
+							u8 b = (c >= 0xE0 && c <= 0xFC);
+							if (!b) {
+								lead = FALSE;
+							}
+						}
+						if (lead) {
+							name++;
+						}
+					}
+				}
+			}
+			f32 zero = 0.0f;
+			for (int i = 0; i < mHelpCount; i++) {
+				MenuHelpChar* glyph = &mBg[i];
+				CFont font;
+				s32 glyphWidth;
+				CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, 0, &glyphWidth);
+				f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
+				f32 rotation = sin(0.7f * glyph->mAngle1);
+				f32 s1       = sin(3.1415927f * alpha);
+				f32 s2       = sin(1.5707964f * alpha);
+				f32 scale    = 0.2f * s1 + s2;
+				f32 glyphX   = 0.5f * spacing + (i * spacing + (center - mHelpCount * spacing / 2.0f));
+				f32 glyphY   = bottom + bob;
+				rotation     = -(0.017453292f * (10.0f * rotation));
+				u32 color    = (u32)(255.0f * alpha) | 0xFFFFFF00;
+				DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, glyphX, glyphY, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f,
+				                   -zero, rotation);
+				scale       = 30.0f * (0.8f * scale);
+				f32 padding = HelpGlyphPadding(glyphWidth, scale);
+				color       = (u32)(255.0f * alpha);
+				for (int j = 0; j < 4; j++) {
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, glyphX + gItemHelpOutlineX[j] + padding / 2.0f,
+					                   bob + (bottom + gItemHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+				}
+				color = (u32)(255.0f * alpha) | 0xFFFFFB00;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, glyphX + padding / 2.0f, glyphY, 1.0f, scale, scale, 0.0f,
+				                   -zero, rotation);
+			}
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		fn_8005A128(&mPaneFades, mGridX - 42.0f, 180.0f + mGridY, mAlpha);
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		GXSetScissor(gScreenLeft, gScreenTop, width, gPointerScreenHeight);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // NONMATCHING: the call list matches retail; this build is 4 bytes larger and register allocation differs

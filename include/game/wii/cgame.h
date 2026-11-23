@@ -1558,6 +1558,7 @@ class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
 	virtual void vf08(CbPane* pane);
