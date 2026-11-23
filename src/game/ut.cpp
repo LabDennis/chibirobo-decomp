@@ -2063,7 +2063,9 @@ extern "C" void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
  * @note Address: 0x8018E640
  * @note Size: 0x1E4
  */
-// NONMATCHING: float register allocation (f6..f13, f27..f30) differs; all instructions and branches match
+// NONMATCHING: float register allocation (f6..f13, f27..f30) differs; all instructions and branches match.
+// Retail keeps acx, acz, d - c and d->z - a->z in saved FPRs and abx, abz in f12/f13; writing every delta
+// inline (no abx..acz locals) loads the z components first and scores 96.8
 extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check)
 {
 	f32 abx = b->x - a->x;
