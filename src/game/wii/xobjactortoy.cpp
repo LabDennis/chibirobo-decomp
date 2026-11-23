@@ -24,6 +24,8 @@ void HandleToyKind25ECommand(XObjActorToy* toy, u32 frames);
 extern s32 gRefreshRate;
 }
 
+static inline void HideToyDroppedItem(XObjActorToy* toy);
+
 static f32 sToyMoveSpeeds[60] = {
 	0.0f,  0.1f,  0.1f,  0.1f,  0.2f,  0.2f,  0.3f,  0.3f,  0.35f, 0.35f, 0.4f,  0.4f,  0.4f,  0.43f, 0.43f,
 	0.47f, 0.48f, 0.45f, 0.44f, 0.43f, 0.4f,  0.4f,  0.4f,  0.4f,  0.37f, 0.36f, 0.31f, 0.3f,  0.3f,  0.3f,
@@ -1154,4 +1156,193 @@ void XObjActorToy::StatePickUp(u32 frames)
 		ResetMovementStep();
 		break;
 	}
+}
+
+extern "C" void HandleToyKind110Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		switch (object->mCmd[1]) {
+		case 0: {
+			object->mKindFlags.mFlags &= ~1;
+			object->mMoveSpeed = 0.0f;
+			object->mKindStep  = 0;
+			CVec pos(object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+			object->SetMoveDir(&pos, 0.0f);
+			break;
+		}
+		case 1:
+			object->mKindFlags.mFlags |= 1;
+			object->mVelocity.x = object->mCmd[2] / 100.0f;
+			object->mVelocity.y = object->mCmd[3] / 100.0f;
+			object->mVelocity.z = object->mCmd[4] / 100.0f;
+			object->mKindStep   = 1;
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 1:
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		if (object->mMoveTranslate.y <= 2.0f) {
+			gEventVars.mVars[object->mCmd[1]] = 1;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		if (object->mKindFlags.mFlags & 0x10) {
+			gEventVars.mVars[object->mCmd[1]] = 1;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 4:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = (XObjActor::StateFunc)&XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 5:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		object->mCmd[0] = 0;
+		break;
+	case 1:
+		StartScreenShake(&gGame.mQuake, object->mCmd[1], object->mCmd[2], object->mCmd[3], 0.0f, 0.0f, 0.0f, object->mCmd[4] / 100.0f);
+		PlayWiiSoundEffect(&gGame.mSound, 0x4F7, 1.0f, 0.0f);
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		switch (object->mCmd[1]) {
+		case 0:
+			object->mKindFlags.mFlags |= 1;
+			object->mCmd[0] = 0;
+			break;
+		case 1:
+			object->mKindFlags.mFlags &= ~1;
+			object->mCmd[0] = 0;
+			break;
+		}
+		break;
+	}
+}
+
+extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = (XObjActor::StateFunc)&XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		HideToyDroppedItem(object);
+		switch (object->mCmd[1]) {
+		case 0x341:
+			for (s32 i = 0; i < 200; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (object->mCmd[1] == obj->GetKind()) {
+					object->mHeldObjects[0] = obj;
+					obj->mStatus.mFlags |= 0x10000ULL;
+					object->mHideKinds.mFlags |= 0x40;
+				}
+			}
+			break;
+		default:
+			if (object->mHeldObjects[0] != NULL) {
+				object->mHeldObjects[0]->ClearBaseMtx();
+				object->mHeldObjects[0] = NULL;
+			}
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
+{
+	s32 id = -1;
+	if (object->mHideKinds.Check(1)) {
+		id = 0x3D;
+		object->mHideKinds.mFlags &= ~1;
+	} else if (object->mHideKinds.Check(2)) {
+		id = 0x3E;
+		object->mHideKinds.mFlags &= ~2;
+	} else if (object->mHideKinds.Check(4)) {
+		id = 0x3F;
+		object->mHideKinds.mFlags &= ~4;
+	} else if (object->mHideKinds.Check(8)) {
+		id = 0x3B;
+		object->mHideKinds.mFlags &= ~8;
+	} else if (object->mHideKinds.Check(0x80)) {
+		id = 0x21D;
+		object->mHideKinds.mFlags &= ~0x80;
+	} else if (object->mHideKinds.Check(0x10)) {
+		id = 0x21E;
+		object->mHideKinds.mFlags &= ~0x10;
+	} else if (object->mHideKinds.Check(0x40)) {
+		id = 0x341;
+		object->mHideKinds.mFlags &= ~0x40;
+	}
+	if (id < 0) {
+		return;
+	}
+	switch (id) {
+	case 0x3B:
+	case 0x3D:
+	case 0x3E:
+	case 0x3F:
+	case 0x21D:
+	case 0x21E:
+		for (s32 i = 0; i < 32; i++) {
+			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+			if (id == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x341:
+		for (s32 i = 0; i < 200; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (id == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	}
+}
+
+static inline void HideToyDroppedItem(XObjActorToy* toy)
+{
+	HandleToyKind1FCCommand(toy, 0);
 }
