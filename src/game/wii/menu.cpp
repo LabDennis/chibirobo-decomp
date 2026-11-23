@@ -7870,7 +7870,6 @@ static inline void ConfirmDiscardQuantity(MenuStatus* menu, bool inventoryTab)
 // 1396 bytes larger. The other call, control flow, field offsets and constants match.
 void MenuStatus::State2(u32)
 {
-	CPad pad(0);
 	bool addPanes         = true;
 	gPointerPanes.mActive = TRUE;
 	if (mItemSelection != -1) {
@@ -7885,12 +7884,12 @@ void MenuStatus::State2(u32)
 		}
 		if (!stick) {
 			if (count > 1) {
-				if (IsStickUp()) {
+				if (IsStickLeft()) {
 					if (--mItemSelection < 0) {
 						mItemSelection = count - 1;
 					}
 					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
-				} else if (IsStickDown()) {
+				} else if (IsStickRight()) {
 					mItemSelection++;
 					if (sStatusItemTable.mItems[mItemSelection].mItem < 0) {
 						mItemSelection = 0;
@@ -7900,24 +7899,24 @@ void MenuStatus::State2(u32)
 			}
 			if (count > 4) {
 				if (mItemSelection >= 4) {
-					if (IsStickLeft()) {
+					if (IsStickUp()) {
 						if ((mItemSelection -= 4) < 0) {
 							mItemSelection = count - 1;
 						}
 						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 					}
-					if (IsStickRight() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+					if (IsStickDown() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 						mTargetY = -56.0f;
 						mPhase   = 10;
 						addPanes = false;
 						break;
 					}
 				} else {
-					if (IsStickRight() && mItemSelection + 4 <= count - 1) {
+					if (IsStickDown() && mItemSelection + 4 <= count - 1) {
 						mItemSelection += 4;
 						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 					}
-					if (IsStickLeft()) {
+					if (IsStickUp()) {
 						CountMenuItems();
 						if (sStatusItemTable.mPage > 0) {
 							mTargetY = 128.0f;
