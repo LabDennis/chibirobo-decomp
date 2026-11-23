@@ -3465,8 +3465,8 @@ void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
 			if (act->mTarget->GetPool() == 8) {
 				return;
 			}
-			if (act->mOwner->mFloorContactObjects[4] >= 0
-			    && (gGame.mXObjs.mObjects[act->mOwner->mFloorContactObjects[4]]->mStatus.mFlags & 0x20)) {
+			if (act->mOwner->mPreviousContactObject >= 0
+			    && (gGame.mXObjs.mObjects[act->mOwner->mPreviousContactObject]->mStatus.mFlags & 0x20)) {
 				*weight = 0.0f;
 				return;
 			}
