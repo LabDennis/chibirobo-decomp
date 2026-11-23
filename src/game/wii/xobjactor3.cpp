@@ -3,7 +3,7 @@
 #include "game/wii/cpad.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
-#include "game/placement.h"
+#include "game/wii/spiderplacement.h"
 #include "arithmetic.h"
 #include <math.h>
 #include <stdlib.h>
@@ -12,6 +12,7 @@ extern "C" {
 BOOL IsPlayerFlashingFromHit(WiiPlayerState* player);
 BOOL IsUsingMug(XAction* action);
 f32 GetPlayerCollisionRadius(WiiPlayerState* player);
+f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
@@ -22,7 +23,6 @@ BOOL HasSpiderFinishedDeathAnimation(XObjSpider* spider);
 extern s32 gRefreshRate;
 s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
-Vec gActor3PlacementPosition;
 }
 
 extern "C" AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
@@ -1586,8 +1586,8 @@ void XObjActor3::Kind18(u32 frames)
 		break;
 	case 1:
 		mMoveTranslate.x -= 0.2f * frames;
-		if (mMoveTranslate.x <= PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f) {
-			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f;
+		if (mMoveTranslate.x <= PlacementPosition(mCoord).x - 10.0f) {
+			mMoveTranslate.x = PlacementPosition(mCoord).x - 10.0f;
 			++mKindStep;
 		}
 		break;
@@ -1598,8 +1598,8 @@ void XObjActor3::Kind18(u32 frames)
 		break;
 	case 3:
 		mMoveTranslate.x += 0.2f * frames;
-		if (mMoveTranslate.x >= gActor3PlacementPosition.x) {
-			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
+		if (mMoveTranslate.x >= PlacementPosition(mCoord).x) {
+			mMoveTranslate.x = PlacementPosition(mCoord).x;
 			mKindStep        = 0;
 		}
 		break;
@@ -1832,4 +1832,114 @@ inline void ResetActor3Fields(XObjActor3* actor)
 	actor->mHeld        = NULL;
 	actor->_1E20        = 0;
 	actor->mSe          = -1;
+}
+
+// NONMATCHING: the eight attached-object pointers at _1E88 still need a declaration that does not
+// add ResNode construction to XObjActor3's constructor.
+BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
+{
+	if (XObj::LoadFromPlacement(info)) {
+		bool ready = false;
+		mMoveSpeed = 0.0f;
+		mKindTimer = 0.0f;
+
+		mKindStep          = 0;
+		mFrameCount        = 0;
+		mActorFlags.mFlags = 0;
+		mActorFlags.mFlags |= 4;
+		mEventCommand      = 0;
+		mEventArg1         = 0;
+		mEventArg2         = 0;
+		mEventArg3         = 0;
+		mExtraEventArgs[0] = 0;
+		mExtraEventArgs[1] = 0;
+		mExtraEventArgs[2] = 0;
+		mExtraEventArgs[3] = 0;
+		mExtraEventArgs[4] = 0;
+		mExtraEventArgs[5] = 0;
+		mExtraEventArgs[6] = 0;
+		mWindowLeft        = 0.0f;
+		mWindowRight       = 0.0f;
+		mOrbitAngle        = 0.0f;
+		Vec zero           = { 0.0f, 0.0f, 0.0f };
+		mOrbitX            = zero.x;
+		mOrbitHeight       = zero.y;
+		mOrbitZ            = zero.z;
+
+		mMoveTranslate.x = PlacementPosition(mCoord).x;
+		mMoveTranslate.y = PlacementPosition(mCoord).y;
+		mMoveTranslate.z = PlacementPosition(mCoord).z;
+		mMoveRotate.x    = PlacementRotation(mCoord).x;
+		mMoveRotate.y    = PlacementRotation(mCoord).y;
+		mMoveRotate.z    = PlacementRotation(mCoord).z;
+		mHeading         = PlacementRotation(mCoord).y;
+		if (mPoolIndex == 0) {
+			gSpiderBossVolleySlot          = 0;
+			gActor3Kind15ActivationCounter = 0;
+		}
+		switch (GetKind()) {
+		case 0x42B:
+		case 0x149:
+			if (mPanelTpl.ReadEx("tpl/stage02.tpl", 0, 0)) {
+				ready = true;
+			}
+			return ready;
+		case 0x31B:
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[122 - StatusTextureOffset], 0);
+			mTex[0] = gGame.mTpl.mTex;
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[123 - StatusTextureOffset], 0);
+			mTex[1] = gGame.mTpl.mTex;
+			return TRUE;
+		default:
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void XObjActor3::Release()
+{
+	switch (GetKind()) {
+	case 0x149:
+	case 0x42B:
+		mPanelTpl.Close();
+		break;
+	}
+	XObj::Release();
+}
+
+void XObjActor3::DrawObjectEffects()
+{
+	if (GetKind() == 0x31B) {
+		mDustPool.vf08(&gGame.mGs);
+		DrawParticlePool(&mDustPool.mPtcl, &gGame.mGs);
+	}
+}
+
+void XObjActor3::DrawDebugStatus()
+{
+}
+
+void XObjActor3::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	XObj::SetAnim(id, force, frame, rate, blend, blendRate);
+	if (GetKind() == 0x31B) {
+		if (GetAnimId() == 7) {
+			mSe = PlayWiiSoundEffect(&gGame.mSound, 0x42B, 1.0f, 0.0f);
+		} else if (mSe != 0) {
+			nw4r::snd::detail::BasicSound* sound = *(nw4r::snd::detail::BasicSound**)mSe;
+			if (sound != NULL) {
+				sound->Stop(0);
+			}
+			mSe = 0;
+		}
+	}
+}
+
+void XObjActor3::UpdateAnimationSounds()
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && mPoolIndex == 3) {
+		f32 volume = GetSoundVolumeAtPosition(&gGame.mSound, GetPos(), 0);
+		mSfx.Update(GetAnimId(), GetAnimFrame(), volume);
+	}
 }
