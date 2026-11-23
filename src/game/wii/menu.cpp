@@ -5012,7 +5012,7 @@ BOOL MenuItem::Draw()
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
 		camera->vf24(view.top, view.bottom, view.left, view.right);
 		((CBase*)&gGame)->vf5C();
-		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		DrawStatusPanelBackground(mAlpha);
 		f32 x = mGridX - 42.0f;
 		f32 y = 180.0f + mGridY;
 		GXSetScissor(gScreenLeft + (s32)margin, gPointerScreenHeight / 2 - 122, gPointerScreenWidth - (s32)margin * 2, 252);
