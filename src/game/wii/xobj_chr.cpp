@@ -194,8 +194,31 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 }
 
 class EnvInfo;
+struct SuitChangeTrail;
+
+struct PlayerFrameParticle {
+	s32 mCode;
+	Vec mTranslate;
+	Vec mScale;
+	Vec mRotate;
+};
+STATIC_ASSERT(sizeof(PlayerFrameParticle) == 0x28);
 
 extern "C" {
+f32 GetControlStickMagnitude(const CPadOne* pad);
+s32 FindNearbyPlayerInteraction(WiiPlayerState* player, f32 extraRadius);
+f32 UpdatePlayerActions(WiiPlayerState* player, u32 frames);
+void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames);
+void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 speed, f32 direction);
+void UpdatePlayerBattery(WiiPlayerState* player, u32 frames);
+void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames);
+s32 GetPlayerGroundType(WiiPlayerState* chr);
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* time, const FrameEvent* table);
+void UpdateTumbleFade(XActTumbleFade* fade, BOOL increase, u32 frames);
+void UpdateRadarBeamAnimation(XActRadar* act, u32 frames);
+void UpdatePointParticleDisplay(PointPtcl* points, u32 frames);
+void UpdateSpiralTrail(SuitChangeTrail* trail, u32 frames);
+EffectInstance* fn_800A11A4(CEvtPtcl* particles, u32 code, s32 group);
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
 void UpdatePlayerHangAction(XActHang* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
 void UpdatePlayerJumpAction(XActJump* act, s32 anim, CObj* model, u32 frames, f32 frame, f32 end);
@@ -304,6 +327,7 @@ u8* GetStageBatteryDepletedScript();
 void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
 void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, XObj* target, f32 time);
 void SelectActiveAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time);
+void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 void SetGsChannelEnabled(CGs* gs, s32 channel, u8 enable);
 void ClearActiveObjectFloors(XObj* object);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
@@ -1394,6 +1418,428 @@ void SetPlayerActionTarget(XAction* action, XObj* target)
 s32 GetSelectedFloorIndex(const XObj* object)
 {
 	return object->mSelectedFloorIndex;
+}
+
+// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
+// effects are present; the one-time pose initialization data and several suit/scene
+// steps are unresolved, and aggregate/register allocation still differs
+struct PlayerTurnState {
+	f32 previousHeading;
+	f32 heading;
+	f32 previousChange;
+	f32 change;
+	f32 total;
+};
+PlayerTurnState gPlayerTurnState;
+
+void XObjChr::UpdateObject(u32 frames)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	CPadOne* pad        = &chr->mPad;
+	if (chr->mPadReset && !chr->mMenu.IsOpen() && !chr->mOXMenu.mStarted && !gGame.mMenu.mActive && !chr->mSuits.mChangeStep)
+		pad->Update(gWiiGameCubePads, 0);
+	else
+		pad->Clear();
+	if (chr->mMenu.IsOpening() && chr->mTumble.mState)
+		ClosePlayerEquipmentRings(&chr->mMenu, 0);
+	chr->mStick[1] = chr->mStick[0];
+	chr->mStick[3] = chr->mStick[2];
+	chr->mStick[0] = gGame.IsRunning() && !gGame.mEvt.mData.mScript ? GetControlStickMagnitude(pad) : 0.0f;
+	chr->mStick[2] = chr->mStick[0] > 0 ? -(f32)atan2(pad->mStick.x, pad->mStick.y) : -1.f;
+	if (gGame.IsRunning() && !gGame.GetStatusFlags(0x400) && !gGame.GetStatusFlags(0x800)
+	    && (!gGame.mEvt.mData.mScript || (gGame.mStage == 0x16 && (chr->mPlayerFlags & 0x80000000)))
+	    && (chr->mLift.mState == 0 || chr->mLift.mState == 4) && chr->mHang.mState == 0 && chr->mJump.mState == 0
+	    && chr->mLadder.mState == 0 && chr->mRope.mState == 0 && chr->mPush.mState == 0 && chr->mTumble.mState == 0
+	    && chr->mCopter.mState == 0 && chr->mPopper.mState == 0 && chr->mRadar.mState == 0 && chr->GetAnimId() != 0x79
+	    && chr->GetAnimId() != 0x89 && chr->GetAnimId() != 0xE0) {
+		f32 remote  = gWiiPointer.mRemoteAcceleration[1].z - gWiiPointer.mRemoteAcceleration[2].z;
+		f32 nunchuk = gWiiPointer.mNunchukAcceleration[1].z - gWiiPointer.mNunchukAcceleration[2].z;
+		if (fn_800D1740(remote) > 2.0f || fn_800D1740(nunchuk) > 2.0f) {
+			chr->_1C9B8[0] = 0.5f * gRefreshRate;
+		} else {
+			chr->_1C9B8[0] -= frames;
+			if (chr->_1C9B8[0] <= 0.0f) {
+				chr->_1C9B8[0] = 0.0f;
+				chr->_1C9B8[1] = 0.0f;
+			}
+		}
+		if (chr->_1C9B8[0] > 0.0f) {
+			if (fn_800D1740(remote) > 2.0f)
+				chr->_1C9B8[1] += frames;
+			if (fn_800D1740(nunchuk) > 2.0f)
+				chr->_1C9B8[1] += frames;
+		}
+		if (chr->_1C9B8[1] < 0.2f * gRefreshRate) {
+			chr->_1C9B8[2] -= 0.1f * frames;
+			if (chr->_1C9B8[2] < 0.0f)
+				chr->_1C9B8[2] = 0.0f;
+		} else {
+			chr->_1C9B8[2] += 0.15f * frames;
+			if (chr->_1C9B8[2] > 1.0f)
+				chr->_1C9B8[2] = 1.0f;
+		}
+		if (chr->_1C9B8[2] <= 0.0f) {
+			f32 angle      = WrapAngle(chr->mMoveRotate.y - gGame.mMotionControlCamera.mView.mAngle.y);
+			chr->_1C9C4[0] = angle / TWO_PI;
+		} else {
+			chr->mStick[0] = 0.5f * chr->_1C9B8[2];
+			chr->mStick[2] = -HALF_PI * fmodf(0.1f * chr->_1C9B8[2] + chr->_1C9C4[0], TWO_PI);
+		}
+		if (chr->_1C9B8[2] < 1.0f) {
+			chr->_1C9C4[0] = 0.0f;
+		} else {
+			chr->_1C9C4[0] += frames;
+			if (chr->_1C9C4[0] > 3.0f * gRefreshRate && (chr->mPlayerFlags & 0x20000000)) {
+				chr->mTumble.mState = 10;
+			}
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x76))
+				PlayWiiSoundEffect(&gGame.mSound, 0x76, 1.0f, 0.0f);
+		}
+	} else {
+		chr->_1C9B8[0] = 0.0f;
+		chr->_1C9B8[1] = 0.0f;
+		chr->_1C9B8[2] = 0.0f;
+		chr->_1C9C4[0] = 0.0f;
+	}
+	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && chr->GetAttachment() != 1 && chr->GetAttachment() != 2
+	    && chr->GetAttachment() != 3
+	    && (chr->mLift.mState == 0
+	        || (chr->mLift.mState == 4 && !IsCarryingToothbrush(&chr->mLift) && !IsCarryingSpoon(&chr->mLift) && !IsCarryingMug(&chr->mLift)
+	            && !IsCarryingSquirter(&chr->mLift)))
+	    && !chr->mHang.mState && !chr->mJump.mState && !chr->mLadder.mState && !chr->mRope.mState && !chr->mPush.mState
+	    && !chr->mTumble.mState && !chr->mCopter.mState && !chr->mPopper.mState && !chr->mRadar.mState) {
+		if (chr->mPreviousContactObject < 0 && !chr->_0A70 && (pad->mTrigger & 0x0001000000000010ULL) && !(gGame.GetStatusFlags(0x100))
+		    && (chr->mHitObjectIndex < 0 || chr->mHitObjectIndex == chr->mFloorContactObjects[0]
+		        || (!IsLiftTargetPlug(&chr->mLift) && chr->mHitObjectIndex >= 0
+		            && (GetGameObjectByIndex(&gGame, chr->mHitObjectIndex)->mStatus.mFlags & 0x20)))) {
+			chr->mNearDistance = 2;
+			do {
+				if ((chr->mPreviousContactObject = FindNearbyPlayerInteraction(chr, chr->mNearDistance)) >= 0) {
+					XObj* object                = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
+					chr->mContactPos.x          = object->mMoveTranslate.x;
+					chr->mContactPos.y          = object->mMoveTranslate.y;
+					chr->mContactPos.z          = object->mMoveTranslate.z;
+					chr->mLastContactFloorIndex = object->mSelectedFloorIndex;
+					chr->mEdgePos               = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+					break;
+				}
+			} while ((chr->mNearDistance += 1.0f) <= 10);
+		}
+		if (chr->mPreviousContactObject >= 0) {
+			chr->mStick[2] = WrapAngle((f32)atan2(chr->mEdgePos.x - chr->mMoveTranslate.x, chr->mEdgePos.z - chr->mMoveTranslate.z))
+			               - gGame.mMotionControlCamera.mView.mAngle.y;
+			chr->mStick[0] = 0.8f;
+		}
+	} else {
+		chr->mPreviousContactObject = -1;
+		chr->mNearDistance          = 2;
+	}
+	chr->mLiftPlugFlags &= ~0x80;
+
+	f32 direction;
+	f32 speed = 1.2f * chr->mStick[0];
+
+	s32 hangState = chr->mHang.mState;
+	if (!hangState && !chr->mJump.mState && !chr->mLadder.mState && !chr->mRope.mState && !chr->mPush.mState && !chr->mTumble.mState
+	    && !chr->mCopter.mState && (chr->mPopper.mState == 0 || chr->mPopper.mState == 8 || chr->mPopper.mState == 4)
+	    && !chr->mRadar.mState)
+		speed *= 1.2f;
+	if (speed > 0 && speed < 0.5f)
+		speed = 0.5f;
+	if (speed > 1.0f)
+		speed *= speed;
+
+	// the angle wraps are written out here: retail wraps direction (and the push yaw) in its own register, where the
+	// WrapAngle inline leaves a copy (fmr) behind each one
+	if (speed > 0) {
+
+		if (gGame.GetStatusFlags(0x100)) {
+			if (gGame.GetStatusFlags(0x200)) {
+				if ((chr->mStick[2] >= 0 && chr->mStick[2] <= HALF_PI) || (chr->mStick[2] <= 0 && chr->mStick[2] >= -HALF_PI)) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * (chr->mStick[2] / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (chr->mStick[2] >= HALF_PI && chr->mStick[2] <= 130 * DEG2RAD) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - chr->mStick[2]) / (40 * DEG2RAD));
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else if (chr->mStick[2] <= -HALF_PI && chr->mStick[2] >= -130 * DEG2RAD) {
+					direction = chr->mMoveTarget1.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - chr->mStick[2]) / HALF_PI);
+					while (direction < 0.0f)
+						direction += TWO_PI;
+					while (direction >= TWO_PI)
+						direction -= TWO_PI;
+				} else
+					direction = -WrapAngle(chr->mStick[2] + chr->mMoveTarget1.y);
+			} else {
+				direction = NAN;
+				speed     = 0;
+			}
+		} else if (hangState == 5) {
+			f32 yaw   = chr->mMoveRotate.y;
+			f32 angle = WrapAngle((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw);
+			if (angle >= 30 * DEG2RAD && angle < 150 * DEG2RAD) {
+				direction                 = TWO_PI + WrapAngle(HALF_PI + yaw);
+				chr->mHang.mMoveDirection = -1;
+				speed                     = 0.5f;
+			} else if (angle >= 210 * DEG2RAD && angle < 330 * DEG2RAD) {
+				direction                 = TWO_PI + WrapAngle(yaw - HALF_PI);
+				chr->mHang.mMoveDirection = 1;
+				speed                     = 0.5f;
+			} else {
+				direction                 = NAN;
+				speed                     = 0;
+				chr->mHang.mMoveDirection = 0;
+			}
+		} else if (chr->mCopter.mState == 3) {
+			chr->mCopter.mMoveDirection = 1;
+			direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		} else if (chr->mCopter.mState == 4 || chr->mCopter.mState == 7 || chr->mCopter.mState == 8) {
+			if ((gGame.GetStatusFlags(0x40000000)) && IsStopped(chr)) {
+				direction = NAN;
+				speed     = 0;
+			} else {
+				chr->mCopter.mMoveDirection = 1;
+				direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				while (direction < 0.0f)
+					direction += TWO_PI;
+				while (direction >= TWO_PI)
+					direction -= TWO_PI;
+				speed *= 0.75f;
+			}
+		} else if (chr->mPopper.mState == 3 || chr->mPopper.mState == 4 || chr->mPopper.mState == 8) {
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		} else if (chr->mRope.mState == 5) {
+			if (pad->mStick.y > 0.1f) {
+				chr->mRope.mMoveDirection = 1;
+				f32 anim                  = GetAnimId();
+				if (anim == 139.0f || anim == 138.0f)
+					speed = 0.32f;
+				else if (anim == 141.0f || anim == 140.0f)
+					speed = 0.12f;
+				else
+					speed = 0;
+			} else if (pad->mStick.y < -0.1f) {
+				chr->mRope.mMoveDirection = -1;
+				speed                     = 0.4f;
+			} else {
+				chr->mRope.mMoveDirection = 0;
+			}
+			direction = NAN;
+		} else if (chr->mLadder.mState == 5) {
+			if (pad->mStick.y > 0.1f) {
+				chr->mLadder.mMoveDirection = 1;
+				speed                       = 0;
+			} else if (pad->mStick.y < -0.1f) {
+				chr->mLadder.mMoveDirection = -1;
+				speed                       = 0;
+			} else {
+				chr->mLadder.mMoveDirection = 0;
+			}
+			direction = NAN;
+		} else if (chr->mPush.mState == 2) {
+			f32 yaw      = chr->mMoveRotate.y;
+			f32 relative = WrapAngle(HALF_PI + ((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw));
+			if (relative >= 0 && relative < PI) {
+				chr->mPush.mMoveDirection = 1;
+			} else {
+				chr->mPush.mMoveDirection = -1;
+				yaw                       = PI + yaw;
+			}
+			while (yaw < 0.0f)
+				yaw += TWO_PI;
+			while (yaw >= TWO_PI)
+				yaw -= TWO_PI;
+			direction = TWO_PI + yaw;
+			if (!chr->mPush.mTarget || ((XActPush*)&chr->mPush)->mPushPositionClamped)
+				speed = 0;
+			else
+				speed = 1.5f;
+		} else {
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			while (direction < 0.0f)
+				direction += TWO_PI;
+			while (direction >= TWO_PI)
+				direction -= TWO_PI;
+		}
+		if (__fpclassifyf(chr->mHeldMoveAngle) != FP_NAN)
+			direction = chr->mHeldMoveAngle + (chr->mStick[2] - chr->mHeldStickAngle);
+		chr->mMoveAngle = direction;
+	} else {
+		direction = NAN;
+		if (hangState == 5 && chr->mHang.mMoveDirection)
+			chr->mHang.mMoveDirection = 0;
+		else if (chr->mCopter.mState == 3 && chr->mCopter.mMoveDirection)
+			chr->mCopter.mMoveDirection = 0;
+		else if (chr->mRope.mState == 5) {
+			if (GetAnimId() == 139) {
+				speed                     = 0.32f;
+				chr->mRope.mMoveDirection = 2;
+			} else if (GetAnimId() == 141) {
+				speed                     = 0.12f;
+				chr->mRope.mMoveDirection = 2;
+			} else if (chr->mRope.mMoveDirection != 0) {
+				chr->mRope.mMoveDirection = 0;
+			}
+		} else if (chr->mLadder.mState == 5 && chr->mLadder.mMoveDirection)
+			chr->mLadder.mMoveDirection = 0;
+		else if (chr->mPush.mState == 2 && chr->mPush.mMoveDirection)
+			chr->mPush.mMoveDirection = 0;
+		chr->mHeldMoveAngle = chr->mMoveAngle = NAN;
+	}
+	if (__fpclassifyf(chr->mHeldMoveAngle) == FP_NAN)
+		chr->mHeldStickAngle = chr->mStick[2];
+	else if (Abs(chr->mStick[2] - chr->mHeldStickAngle) >= 3 * DEG2RAD) {
+		chr->mHeldMoveAngle = chr->mMoveAngle = NAN;
+		chr->mHeldStickAngle                  = chr->mStick[2];
+	}
+	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN)
+		direction = chr->mWalkHeading;
+	f32 scale = UpdatePlayerActions(chr, frames);
+	if (scale == 0.0f) {
+		speed     = 0.0f;
+		direction = NAN;
+	} else {
+		speed *= scale;
+	}
+	UpdatePlayerSuitChange(chr);
+	UpdatePlayerMovementAndContacts(chr, frames, speed, direction);
+	UpdatePlayerActionAnimations(chr, frames);
+	XObj::UpdateObject(frames);
+	((XObj*)chr->mCopterObj)->UpdateObject(frames);
+	((XObj*)chr->mPopperObj)->UpdateObject(frames);
+	((XObj*)chr->mRadarObj)->UpdateObject(frames);
+	((XObj*)chr->mOXObj)->UpdateObject(frames);
+	if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent]) && chr->mSuits.mChangeStep != 3) {
+		WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+		suit->SetPos(*GetPos());
+		suit->SetRot(chr->mMoveRotate);
+		suit->SetScale(*GetScale());
+		suit->UpdateObject(frames);
+	}
+	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift)) {
+		for (s32 i = 0; i < 2; ++i) {
+			const Vec& rgb = chr->mAnmQueue.mColorStep[i].mValue;
+			CColor* color  = i == 0 ? &chr->mLift.mTarget->mColor1 : &chr->mLift.mTarget->mColor0;
+			color->r       = (u32)rgb.x;
+			color->g       = (u32)rgb.y;
+			color->b       = (u32)rgb.z;
+			color->a       = 0;
+		}
+	}
+	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN) {
+		CVec& target = chr->mMoveTarget0;
+		if (chr->mMoveTranslate == target) {
+			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+			chr->mWalkHeading = NAN;
+		} else if (PSVECDistance(&chr->mMoveTranslate, &target) <= 0.000001f) {
+			SetPos(target);
+			chr->mMoveSpeed0.Set(0.0f, 0.0f, 0.0f);
+			chr->mWalkHeading = NAN;
+		}
+	}
+	if (chr->mJump.mState == 2 || chr->mJump.mState == 3 || chr->mHang.mState == 10 || chr->mRope.mState == 9 || chr->mLadder.mState == 10
+	    || chr->mCopter.mState == 5)
+		chr->mFallDistance += chr->mLastPos.y - chr->mMoveTranslate.y;
+	else
+		chr->mFallDistance = 0.0f;
+	UpdatePlayerBattery(chr, frames);
+	chr->mGroundType             = GetPlayerGroundType(chr);
+	chr->mFrameTime.mLastFrame   = chr->mFrameTime.mFrame;
+	chr->mFrameTime.mFrame       = GetAnimFrame();
+	PlayerFrameParticle particle = ProcessPlayerFrameEvents(chr, &chr->mFrameTime, gPlayerAnimationFrameEvents);
+	if (particle.mCode >= 0 && !gGame.GetStatusFlags(0x100)) {
+		EffectInstance* effect = fn_800A11A4(&gGame.mEvtPtcl, particle.mCode | 0x10000, 1);
+		if (effect != NULL) {
+			effect->pos   = particle.mTranslate;
+			effect->rot   = particle.mRotate;
+			effect->scale = particle.mScale;
+			UpdateEffectMtx(effect);
+		}
+	}
+	if (((XObjAttachment*)chr->mCopterObj)->mVisible) {
+		ProcessPlayerFrameEvents((XObj*)chr->mCopterObj, NULL, gCopterAnimationFrameEvents);
+	}
+	CVec neck          = GetJointWorldPos("neck");
+	chr->mLook.mOffset = (Vec) { 0.0f, neck.y - chr->mMoveTranslate.y + 3.0f * chr->mMoveScale.y, 0.0f };
+	if (chr->mLook.mActive == 0) {
+		if (chr->mLook.mFade < chr->mLook.mPulse) {
+			chr->mLook.mFade -= 1.0f / (0.3f * gRefreshRate) * frames;
+			if (chr->mLook.mFade <= chr->mLook.mPulse)
+				chr->mLook.mFade = chr->mLook.mPulse;
+		}
+	} else if (chr->mLook.mFade < 1.0f) {
+		chr->mLook.mFade += 1.0f / (0.3f * gRefreshRate) * frames;
+		chr->mLook.mPulse = chr->mLook.mFade;
+		if (chr->mLook.mFade >= 1.0f) {
+			chr->mLook.mPulse = 2.0f;
+			chr->mLook.mFade  = 1.0f;
+		}
+	}
+	if (chr->mLook.mFade < chr->mLook.mPulse) {
+		chr->mLook.mPhase = fmodf(6.0f * frames + chr->mLook.mPhase, TWO_PI);
+		if (chr->mLook.mPulse >= 1.0f) {
+			chr->mLook.mPulse += 1.0f / (0.3f * gRefreshRate) * frames;
+			if (chr->mLook.mPulse >= 2.0f)
+				chr->mLook.mPulse = fmodf(chr->mLook.mPulse, 2.0f);
+		}
+	}
+	UpdateParticlePool(&chr->mDust.mPtcl, frames);
+	UpdateTumbleFade(&chr->mTumble.mFade, chr->mTumble.mState == 2 || chr->mTumble.mState == 16, frames);
+	UpdateRadarBeamAnimation((XActRadar*)&chr->mRadar, frames);
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticleSlots[i]) {
+			UpdatePointParticleDisplay(gPointParticleSlots[i], frames);
+			if (gPointParticleSlots[i]->IsFree())
+				gPointParticleSlots[i] = NULL;
+		}
+	}
+	UpdateSpiralTrail(&lbl_8045BBD0, frames);
+	if (chr->mPadReset) {
+		gPlayerTurnState.previousHeading = gPlayerTurnState.heading;
+		gPlayerTurnState.heading         = WrapAngle(chr->mMoveRotate.y);
+		gPlayerTurnState.previousChange  = gPlayerTurnState.change;
+		gPlayerTurnState.change          = gPlayerTurnState.heading - gPlayerTurnState.previousHeading;
+		if (gPlayerTurnState.change > PI)
+			gPlayerTurnState.change -= TWO_PI;
+		else if (gPlayerTurnState.change < -PI)
+			gPlayerTurnState.change += TWO_PI;
+		if (chr->mLift.mState || chr->mCopter.mState || chr->mPopper.mState == 4) {
+			gPlayerTurnState.total = 0.0f;
+		} else {
+			gPlayerTurnState.total += gPlayerTurnState.change;
+			if (gPlayerTurnState.change * gPlayerTurnState.previousChange <= 0.0f)
+				gPlayerTurnState.total = 0.0f;
+			else if (fn_800D1740(gPlayerTurnState.change) < 10.0f * DEG2RAD)
+				gPlayerTurnState.total = 0.0f;
+		}
+		s32 turns = (s32)(gPlayerTurnState.total / TWO_PI);
+		if ((turns < 0 ? -turns : turns) >= 5) {
+			chr->mTumble.mState    = 10;
+			gPlayerTurnState.total = 0.0f;
+		}
+	}
+	if (chr->mCameraTargetMargin < chr->mCameraTargetMarginSetting) {
+		if ((chr->mCameraTargetMargin += 0.01f * frames) > chr->mCameraTargetMarginSetting)
+			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
+	} else if (chr->mCameraTargetMargin > chr->mCameraTargetMarginSetting) {
+		if ((chr->mCameraTargetMargin -= 0.01f * frames) < chr->mCameraTargetMarginSetting)
+			chr->mCameraTargetMargin = chr->mCameraTargetMarginSetting;
+	}
+	((CObjVec*)&chr->mEyeAim)->Step(frames);
+	UpdatePlayerHeadOffset(chr, frames);
 }
 
 TVec* GetObjectMoveRotation(CObj* object)
@@ -4419,6 +4865,11 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 	}
 }
 
+static inline bool InAnimRange(s32 anim, s32 first, s32 last)
+{
+	return anim >= first && anim <= last;
+}
+
 // NONMATCHING: action costs, battery depletion and warning fades are present;
 // the untyped particle-manager call is unresolved; switch layout, global minimum
 // tracking and register scheduling still differ
@@ -4431,15 +4882,17 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 		switch (p->mLift.mState) {
 		case 1:
 		case 2:
-		case 20:
+		case 21:
 			index = 7;
 			break;
 		case 6:
-		case 19:
+		case 20:
 			index = 8;
 			break;
 		case 3:
 		case 4:
+		case 29:
+		case 30:
 			if (IsJumpActionState(&p->mJump, 0)) {
 				switch (p->GetAnimId()) {
 				case 0x89:
@@ -4463,6 +4916,7 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 					break;
 				case 0x8B7:
 				case 0x8AF:
+				case 0x157:
 					index = 35;
 					break;
 				case 0x8B1:
@@ -4475,14 +4929,26 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 			}
 			break;
 		case 28: // using the toothbrush
-		case 29:
+		case 31:
 			if (p->GetAnimId() == 0x895)
 				index = 34;
+			else if (p->GetAnimId() == 0x152)
+				index = 4;
 			break;
 		case 32: // the spoon
 		case 33:
-			if (p->GetAnimId() == 0x8B7)
+			switch (p->GetAnimId()) {
+			case 0x8AF:
+			case 0x157:
 				index = 35;
+				break;
+			case 0x8B7:
+				index = 4;
+				break;
+			case 0x156:
+				index = 0;
+				break;
+			}
 			break;
 		case 34: // the mug
 		case 35:
@@ -4504,7 +4970,7 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 				break;
 			}
 			break;
-		case 13:
+		case 14:
 			index = 9;
 			break;
 		}
@@ -4754,6 +5220,7 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 			SetAreaCameraInterestTarget((CCameraActionArea*)gGame.mCameraActions.mTable[1], 4, p, 0.5f);
 			SelectActiveAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 1.0f);
 			gGame.mSubwin.mEnabled = 0;
+			fn_800A12F8((EffectInstance*)&gGame.mEvtPtcl, 0x1D, FALSE);
 			if (IsWiiSfxPlaying(&gGame.mSound, 0x75))
 				StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
 			if (IsWiiSfxPlaying(&gGame.mSound, 499))
@@ -4777,8 +5244,7 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 			StartScreenFade(&gGame.mScrnTex.mColor, 255, 100, 0, 0, 100, 100, 200, 0, 1.0f);
 			p->mBatteryWarningFrames = 0;
 			p->mBatteryWarningFade   = 1.0f;
-			if (IsWiiSfxPlaying(&gGame.mSound, 0x11E))
-				StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
+			StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
 			PlayWiiSoundEffect(&gGame.mSound, 0x11E, 1.0f, 0.0f);
 		}
 	} else if (p->mBatteryWarningFrames > 0) {
@@ -4790,7 +5256,8 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 			p->mBatteryWarningFade = 0.0f;
 		p->mBatteryWarningAngle -= DEG2RAD * 5.0f * (f32)frames;
 	}
-	if ((p->mParams.mBattery <= 0.0f || p->mParams.mBattery > 30.0f || gGame.mEvt.mData.mScript != NULL)
+	if ((p->mParams.mBattery <= 0.0f || p->mParams.mBattery > 30.0f
+	     || (gGame.mEvt.mData.mScript != NULL && gGame.mEvt.mData.mScript != GetStageZButtonScript()))
 	    && IsWiiSfxPlaying(&gGame.mSound, 0x11E)) {
 		StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
 	}
