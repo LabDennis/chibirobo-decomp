@@ -35,10 +35,14 @@ void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
 void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
 void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim);
 void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
+s32 FindNearbyDroppedSpider(XObjSpider* spider);
+bool HasNearbyDroppedSpider(XObjSpider* spider);
 void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 u32 GetPlayerActionParameter(s32 index);
+void ApproachHudValue(f32* value, f32* target, f32 step);
+BOOL IsPlayerFlashingFromHit(WiiPlayerState* chr);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
 
@@ -1099,6 +1103,367 @@ void XObjSpider::State3(u32 frames)
 		break;
 	case 3:
 		break;
+	}
+}
+
+static inline f32 DistXZ(const Vec* first, const Vec* second)
+{
+	f32 x = first->x - second->x;
+	f32 y = 0.0f;
+	f32 z = first->z - second->z;
+	return FSqrt(x * x + y * y + z * z);
+}
+
+static inline f32 GetSpiderDistanceXZ(Vec* first, Vec* second)
+{
+	return DistXZ(first, second);
+}
+
+static inline bool IsSpiderInsideMovementArea(XObjSpider* spider)
+{
+	f32 x     = spider->mMoveTranslate.x;
+	f32 z     = spider->mMoveTranslate.z;
+	f32 left  = spider->mAreaPos.x + spider->mRadius;
+	f32 right = (spider->mAreaPos.x + spider->mAreaWidth) - spider->mRadius;
+	f32 near  = spider->mAreaPos.z + spider->mRadius;
+	f32 far   = (spider->mAreaPos.z + spider->mAreaDepth) - spider->mRadius;
+	if (left > x || right < x || near > z || far < z)
+		return FALSE;
+	return TRUE;
+}
+
+static inline void PlaySpiderVariantSound(XObjSpider* spider)
+{
+	switch (spider->mPoolIndex % 5) {
+	case 0:
+		PlayWiiSoundEffect(&gGame.mSound, 0x198, 1.0f, 0.0f);
+		break;
+	case 1:
+		PlayWiiSoundEffect(&gGame.mSound, 0x199, 1.0f, 0.0f);
+		break;
+	case 2:
+		PlayWiiSoundEffect(&gGame.mSound, 0x19A, 1.0f, 0.0f);
+		break;
+	case 3:
+		PlayWiiSoundEffect(&gGame.mSound, 0x19B, 1.0f, 0.0f);
+		break;
+	case 4:
+		PlayWiiSoundEffect(&gGame.mSound, 0x19C, 1.0f, 0.0f);
+		break;
+	}
+}
+
+static inline void CombatAnim(XObjSpider* spider, s32 anim, BOOL restart = FALSE, f32 rate = 1.0f)
+{
+	spider->SetAnim(anim, restart, 0.0f, rate, 0.0f, 15.0f);
+}
+
+static inline bool CombatAnimDone(XObjSpider* spider, u32 frames)
+{
+	f32 now = spider->GetAnimFrame();
+	return spider->GetAnimEndFrame() - frames <= now;
+}
+
+#define SPIDER_AT_FRAME(spider, mark)                                            \
+	(((mark) <= (spider)->GetAnimFrame() && (mark) >= (spider)->mAnimStartFrame) \
+	 || ((mark) <= (spider)->GetAnimFrame() && (spider)->mAnimStartFrame > (spider)->GetAnimFrame()))
+
+static inline void CombatFootsteps(XObjSpider* spider)
+{
+	if (SPIDER_AT_FRAME(spider, 1.0f))
+		PlaySpiderVariantSound(spider);
+	else if (SPIDER_AT_FRAME(spider, 15.0f))
+		PlaySpiderVariantSound(spider);
+}
+
+static inline bool SpiderInView(XObjSpider* spider)
+{
+	f32 radius = spider->GetFloorXZExtent() / 2;
+	if (radius < 1.0f)
+		radius = 1.0f;
+	f32 height = spider->GetCollisionHeight();
+	if (height < 1.0f)
+		height = 1.0f;
+	f32 width, screenHeight;
+	return spider->ProjectVisibleBounds(&width, &screenHeight, NULL, radius, height) ? true : false;
+}
+
+static inline f32 CombatHeading(XObjSpider* spider, const Vec& pos)
+{
+	return atan2(pos.x - spider->mMoveTranslate.x, pos.z - spider->mMoveTranslate.z);
+}
+
+static inline void RetreatTarget(XObjSpider* spider)
+{
+	spider->mTarget.x = spider->mMoveTranslate.x + 48.0f * (f32)sin(PI + spider->mDir);
+	spider->mTarget.y = spider->mMoveTranslate.y;
+	spider->mTarget.z = spider->mMoveTranslate.z + 48.0f * (f32)cos(PI + spider->mDir);
+}
+
+static inline void EndSpiderCombatTurn(XObjSpider* spider, u32 frames)
+{
+	if (CombatAnimDone(spider, frames)) {
+		spider->mDir = spider->mSavedDir;
+		CombatAnim(spider, 15);
+		spider->mFacing    = spider->mDir;
+		spider->mTurnSpeed = .1f;
+		spider->mPhase     = 1;
+	}
+}
+
+/**
+ * @note Address: 0x80123AD0
+ * @note Size: 0x2350
+ */
+// NONMATCHING: the call sequence, CFG and frame match; inlined distance/combat helpers still use different saved FPRs and load schedules
+void XObjSpider::State4(u32 frames)
+{
+	Vec pos = *gGame.GetPlayer()->GetPos();
+	CVec chr(pos);
+	f32 dist  = GetSpiderDistanceXZ(&chr, &mMoveTranslate);
+	u8* event = gGame.mEvt.mData.mScript;
+	if (event) {
+		SetState(7);
+		return;
+	}
+	if (((mFlags.mFlags & 0x400) || event) && !IsSpiderInsideMovementArea(this)) {
+		SetState(7);
+		return;
+	}
+	switch (mPhase) {
+	case 0:
+		CombatAnim(this, 1);
+		mSpeed = 0.0f;
+		if (dist <= 120.0f) {
+			mFacing  = mDir;
+			mCounter = (rand() % 30 + 30) / frames;
+			++mPhase;
+			_9B4 = mFacing;
+		}
+		break;
+	case 1:
+		if (--mCounter < 0) {
+			mPhase = 40;
+			break;
+		}
+		mDir = CombatHeading(this, chr);
+		if (mFacing - mDir > PI)
+			mDir = mDir + TWO_PI;
+		else if (mFacing - mDir < -PI)
+			mDir = mDir - TWO_PI;
+		ApproachHudValue(&mFacing, &mDir, 0.018f);
+		if (mDir > mFacing) {
+			if (CombatAnimDone(this, frames))
+				CombatAnim(this, 6, TRUE);
+			else
+				CombatAnim(this, 6);
+		} else if (mDir < mFacing) {
+			if (CombatAnimDone(this, frames))
+				CombatAnim(this, 7, TRUE);
+			else
+				CombatAnim(this, 7);
+		} else
+			CombatAnim(this, 15);
+		if (dist <= 68.0f) {
+			mTurnSpeed = 0;
+			CombatAnim(this, 9);
+			mTurnSpeed = 0.1f;
+			mPhase     = 2;
+		} else if (dist > 120) {
+			mTurnSpeed = 0.1f;
+			mPhase     = 0;
+		}
+		break;
+	case 2:
+		if (CombatAnimDone(this, frames)) {
+			CombatAnim(this, 10);
+			mCounter = rand() % 5 + 5;
+			++mPhase;
+		}
+		break;
+	case 3: {
+		mDir     = CombatHeading(this, chr);
+		f32 diff = mDir - mFacing;
+		if (diff < 0) {
+			if (CombatAnimDone(this, frames))
+				CombatAnim(this, 14, TRUE);
+		} else if (diff > 0) {
+			if (CombatAnimDone(this, frames))
+				CombatAnim(this, 13, TRUE);
+		} else if (CombatAnimDone(this, frames))
+			CombatAnim(this, 10);
+		mFacing = mDir;
+		if (--mCounter < 0 && SpiderInView(this)) {
+			CombatAnim(this, 24);
+			PlayWiiSoundEffect(&gGame.mSound, 0x20D, 1.0f, 0.0f);
+			mPhase = 20;
+			return;
+		}
+		if (dist <= 48.0f) {
+			if (!SpiderInView(this))
+				return;
+			CombatAnim(this, 26);
+			mTarget = pos;
+			mDir    = CombatHeading(this, mTarget);
+			mPhase  = 5;
+		}
+		break;
+	}
+	case 4:
+		mDir   = CombatHeading(this, chr);
+		mSpeed = 0.0f;
+		if (CombatAnimDone(this, frames)) {
+			CombatAnim(this, 1);
+			mFacing = mDir;
+			mPhase  = 1;
+		}
+		break;
+	case 5:
+		if (CombatAnimDone(this, frames)) {
+			mTarget = pos;
+			mDir    = CombatHeading(this, mTarget);
+			CombatAnim(this, 11, FALSE, 2.0f);
+			mSpeed   = 1.25f;
+			mCounter = frames * 24;
+			mFlags.mFlags |= 0x1000;
+			mPhase = 6;
+		}
+		break;
+	case 6:
+		if (GetSpiderDistanceXZ(&chr, &mMoveTranslate) < 20.0f && !IsPlayerFlashingFromHit(gGame.GetPlayer()) && (mFlags.mFlags & 0x1000)
+		    && nw4r::math::FAbs(chr.y - mMoveTranslate.y) < 8.0f) {
+			gGame.GetPlayer()->OnHitFromPosition(pos, 10);
+			if (!gGame.GetStatusFlags(0x100))
+				StartScreenShake(&gGame.mQuake, 0, 2, 0, 0, 0, 0, 0.4f);
+			CombatAnim(this, 12);
+			mSpeed = 0;
+			mFlags.mFlags &= ~0x1000;
+			mRumble = 1;
+			mPhase  = 7;
+		} else {
+			CombatFootsteps(this);
+			if (--mCounter < 0) {
+				CombatAnim(this, 12);
+				mSpeed = 0;
+				mFlags.mFlags &= ~0x1000;
+				mPhase = 7;
+			} else if (FindNearbyDroppedSpider(this) != -1) {
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
+			}
+		}
+		break;
+	case 7:
+		if (CombatAnimDone(this, frames)) {
+			mHome      = mMoveTranslate;
+			mTurnSpeed = .1f;
+			mPhase     = 0;
+		}
+		break;
+	case 8:
+		CombatFootsteps(this);
+		if (GetSpiderDistanceXZ(&mTarget, &mMoveTranslate) <= 1.0f) {
+			mSpeed = 0;
+			if (CombatAnimDone(this, frames)) {
+				CombatAnim(this, 1);
+				mCounter = 0;
+				mPhase   = 0;
+			}
+		}
+		break;
+	case 10:
+		mDir -= PI / 30;
+		EndSpiderCombatTurn(this, frames);
+		break;
+	case 11:
+		mDir += PI / 30;
+		EndSpiderCombatTurn(this, frames);
+		break;
+	case 20:
+		if (SPIDER_AT_FRAME(this, 30) || SPIDER_AT_FRAME(this, 31) || SPIDER_AT_FRAME(this, 32)) {
+			fn_80122ED8(this);
+			++mPhase;
+		}
+		break;
+	case 21:
+		if (!(mCarry.mFlags.mFlags & 1)) {
+			StopWiiSfx(&gGame.mSound, 0x197, 0.0f);
+			mCounter = rand() % 30 + 30;
+			if (CombatAnimDone(this, frames))
+				CombatAnim(this, 10);
+			CombatAnim(this, 12);
+			mPhase = 4;
+		}
+		break;
+	case 30:
+		CombatAnim(this, 12);
+		mSpeed = 0;
+		++mPhase;
+		break;
+	case 31:
+		if (CombatAnimDone(this, frames)) {
+			CombatAnim(this, 8);
+			Vec other = gGame.mXObjs.mPools[17].Get(mDroppedSpiderIndex)->mMoveTranslate;
+			mDir      = CombatHeading(this, other);
+			RetreatTarget(this);
+			mCounter = 24 / frames;
+			mDir     = PI + CombatHeading(this, mTarget);
+			mSpeed   = -.5f;
+			++mPhase;
+		}
+		break;
+	case 32:
+		CombatFootsteps(this);
+		if ((GetSpiderDistanceXZ(&mTarget, &mMoveTranslate) <= 2 || --mCounter < 0) && !HasNearbyDroppedSpider(this)) {
+			mSpeed = 0;
+			if (CombatAnimDone(this, frames)) {
+				CombatAnim(this, 1);
+				mPhase = 0;
+			}
+		}
+		break;
+	case 33:
+		if (!HasNearbyDroppedSpider(this) || --mCounter < 0) {
+			CombatAnim(this, 8);
+			RetreatTarget(this);
+			mCounter = 24 * frames;
+			mDir     = PI + CombatHeading(this, mTarget);
+			mSpeed   = -.5f;
+			mPhase   = 32;
+		}
+		break;
+	case 40:
+		CombatAnim(this, 2, FALSE, 2.0f);
+		mTarget  = pos;
+		mDir     = CombatHeading(this, mTarget);
+		mCounter = (rand() % 32 + 32) / frames;
+		mSpeed   = 1;
+		++mPhase;
+		break;
+	case 41: {
+		CombatFootsteps(this);
+		f32 remaining = GetSpiderDistanceXZ(&mTarget, &mMoveTranslate);
+		if (remaining <= 68.0f) {
+			mSpeed = 0;
+			CombatAnim(this, 9);
+			mTurnSpeed = .1f;
+			mPhase     = 2;
+		} else {
+			if (remaining <= 2.0f || --mCounter < 0) {
+				mSpeed = 0;
+				if (CombatAnimDone(this, frames)) {
+					CombatAnim(this, 1);
+					mPhase = 0;
+					break;
+				}
+			}
+			if (FindNearbyDroppedSpider(this) != -1) {
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
+			}
+		}
+		break;
+	}
 	}
 }
 
