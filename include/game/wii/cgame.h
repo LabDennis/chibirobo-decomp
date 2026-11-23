@@ -1815,7 +1815,8 @@ public:
 	s32 mTextPhase;         // _170
 	s32 mChoice;            // _174
 	s32 mItemShopSelection; // _178
-	u8 _17C[0x184 - 0x17C];
+	s32 _17C;
+	s32 _180;
 	s32 mYesNo;              // _184
 	s32 mMoneyDigit;         // _188
 	s32 mScrapShopSelection; // _18C

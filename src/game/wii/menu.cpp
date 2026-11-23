@@ -56,6 +56,12 @@ void fn_80061014(MenuStatus* menu);
 void fn_80061FF4(MenuStatus* menu, const char* text, u32 color);
 void fn_80062338(MenuStatus* menu, u32 frames);
 void MarkAvailableStatusEntries(u8* available);
+void PopulateItemShopPage(MenuPCPage* list);
+void PopulateScrapShopPage(MenuPCPage* list);
+s16 GetAttachmentShopPrice(s32 id);
+s16 GetItemShopPrice(s32 id);
+s16 GetUtilibotPrice(s32 id);
+s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 CSoundHandle* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames);
 void DrawPlayerStatusOverview(MenuStatus* menu);
 void fn_80061DBC(MenuStatus* menu);
@@ -90,6 +96,8 @@ CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
 void ClearStatusTable(MenuStatusTable* table);
+void ClearItemShopPage(MenuPCPage* page);
+void ClearScrapShopPage(MenuPCPage* page);
 
 // the Wii's text is Japanese with the language setting at 0
 static inline bool IsJapanese()
@@ -5760,6 +5768,130 @@ static inline void ResetPCText(MenuPC* menu, s32 step)
 	ResetPCCharacters(menu);
 }
 
+static inline s32 GetMoney();
+static inline s32 GetScrap();
+
+void MenuPC::Open()
+{
+	CMenu::Open();
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	mMode               = 0;
+	mPrevMode           = mMode;
+	mPhase              = 0;
+	mTextPhase          = 0;
+	mChoice             = 0;
+	mItemShopSelection  = 0;
+	_17C                = 0;
+	_180                = 0;
+	mMoneyDigit         = 0;
+	mScrapShopSelection = 0;
+	mScrapDigit         = 0;
+	mProgress           = 0.0f;
+	mTargetProgress     = 0.0f;
+	mSpeed              = 1.0f;
+	_19C                = -10.0f;
+	mFrameHeight        = 0.0f;
+	_1A4                = -10.0f;
+	mTargetFrameHeight  = 60.0f;
+	mTextX              = 210.0f;
+	mTextY              = 129.0f;
+	mTargetX            = mTextX;
+	mTargetY            = mTextY;
+	ResetPCCharacters(this);
+	mAmount          = 0;
+	mListAlpha       = 1.0f;
+	mTargetListAlpha = 1.0f;
+	mPanelAlpha      = 0.0f;
+	mPanelTarget     = 0.0f;
+	for (int i = 0; i < 4; i++) {
+		mChoices[i] = -1;
+	}
+	mChoiceCount = 0;
+	mTexScroll   = 0.0f;
+	if (IsStage("stage05")) {
+		mShopOnly = FALSE;
+	} else {
+		mShopOnly = TRUE;
+	}
+	if (gGame.mRoomCount + 1 == gGame.mStage) {
+		mShopOnly = FALSE;
+	}
+	FindStageIndexByName("shun");
+	mItemShopBase  = 600;
+	mItemShopCount = 20;
+	if (mItemShopCount > 0) {
+		for (int i = 0; i < mItemShopCount; i++) {
+			MenuPCItem* row = &sItemShopEntries[i];
+			s32 id          = gEventVars.mVars[mItemShopBase + i];
+			row->mItem      = id;
+			row->mCount     = gEventVars.mVars[mItemShopBase + i + mItemShopCount];
+			if (id != -1) {
+				if (id & 0x10000) {
+					id &= ~0x10000;
+					row->mItem         = id;
+					row->mIsAttachment = TRUE;
+					row->mPrice        = GetAttachmentShopPrice(id);
+				} else {
+					row->mIsAttachment = FALSE;
+					row->mPrice        = GetItemShopPrice(id);
+				}
+			}
+		}
+	}
+	mChoices[mChoiceCount++] = 3;
+	mCanSelect               = TRUE;
+	mScrapShopBase           = 560;
+	mScrapShopCount          = 20;
+	int count                = 0;
+	if (mScrapShopCount > 0) {
+		for (int i = 0; i < mScrapShopCount; i++) {
+			MenuPCItem* row = &sScrapShopEntries[i];
+			s32 id          = gEventVars.mVars[mScrapShopBase + i];
+			row->mItem      = id;
+			row->mCount     = gEventVars.mVars[mScrapShopBase + i + mScrapShopCount];
+			if (id != -1) {
+				row->mPrice = GetUtilibotPrice(id);
+				count++;
+			}
+		}
+	}
+	if (count == 0) {
+		mCanSelect = FALSE;
+	}
+	mChoices[mChoiceCount++] = 7;
+	if (IsUtilibotStatusIconUnlocked()) {
+		mChoices[mChoiceCount++] = 10;
+	}
+	for (int i = 0; i < 5; i++) {
+		mRankingOffsets[i]        = 0.0f;
+		mRankingRows[i].nameIndex = 0;
+		mRankingRows[i].score     = 0;
+	}
+	mRankingEnd      = 0;
+	mGreetingVariant = rand() % 8;
+	ClearItemShopPage(&gItemShopPage);
+	PopulateItemShopPage(&gItemShopPage);
+	ClearScrapShopPage(&gScrapShopPage);
+	PopulateScrapShopPage(&gScrapShopPage);
+	mScroll                = 0.0f;
+	mScrollTarget          = 0.0f;
+	s32 money              = GetMoney();
+	mMoneyDisplay.shown    = money;
+	mMoneyDisplay.target   = money;
+	s32 scrap              = GetScrap();
+	mScrapDisplay.shown    = scrap;
+	mScrapDisplay.target   = scrap;
+	mDepositDisplay.shown  = mDepositBalance;
+	mDepositDisplay.target = mDepositBalance;
+	_428                   = 0.0f;
+	_42C                   = 0.0f;
+	mScrapRate             = 1.0f;
+	mExitState             = -1;
+	StopWiiSfx(&gGame.mSound, 0x359, 0.0f);
+	gGame.SetStatusFlags(2);
+}
+
 void MenuPC::State0(u32)
 {
 	if (mShopOnly) {
@@ -7614,6 +7746,222 @@ static void ResetPCCharacters(MenuPC* menu)
 	gPointerScreenWidth   = width;
 }
 
+static inline void SelectPreviousShopRow(s32& selection)
+{
+	if (--selection < 0) {
+		selection = 19;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+}
+
+static inline void SelectNextShopRow(s32& selection, const MenuPCPage& page, bool allowEmptyRows)
+{
+	s32 next = selection + 1;
+	if (next <= 19) {
+		selection = next;
+		if (allowEmptyRows || page.mRows[selection].mItem >= 0) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+	}
+}
+
+static inline s32 ResetPCShopPage(MenuPC* menu, MenuPCItem*& table)
+{
+	menu->mPhase = 0;
+	return PCShopMaxPage(table);
+}
+
+void MenuPC::State3(u32 frames)
+{
+	CPad pad(0);
+	MenuPCItem* table = sItemShopEntries;
+	s32 count         = CountPCShopItems(table);
+	ApproachHudValue(&mPanelAlpha, &mPanelTarget, 0.08f * frames);
+	switch (mPhase) {
+	case 0:
+		if (count > 1) {
+			if (mItemShopSelection == 0) {
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mItemShopSelection, gItemShopPage, true);
+				}
+				if (gWiiPointer.Check(PadActStickUp)) {
+					CountPCShopItems(table);
+					if (gItemShopPage.mStart > 0) {
+						mScrollTarget = 17.0f;
+						mPhase        = 20;
+						break;
+					}
+				}
+			} else if (mItemShopSelection == 8) {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mItemShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					MenuPCItem* row = table;
+					if (gItemShopPage.mStart < PCShopMaxPage(row) - 1) {
+						mScrollTarget = -17.0f;
+						mPhase        = 10;
+						break;
+					}
+				}
+			} else {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mItemShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mItemShopSelection, gItemShopPage, true);
+				}
+			}
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			if (gItemShopPage.mRows[mItemShopSelection].mItem >= 0 && gItemShopPage.mRows[mItemShopSelection].mCount > 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mPanelTarget = 1.0f;
+				mPhase++;
+				mYesNo           = 0;
+				mTargetListAlpha = 0.5f;
+				break;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			break;
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			if (mShopOnly) {
+				ResetPCText(this, 11);
+				mTargetFrameHeight = 0.0f;
+				SavePCShopState(this);
+				mPanelTarget = 0.0f;
+			} else {
+				ResetPCText(this, 2);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+				mPanelTarget = 0.0f;
+			}
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickUp)) {
+			mYesNo--;
+			if (mYesNo < 0) {
+				mYesNo = 1;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			mYesNo++;
+			if (mYesNo > 1) {
+				mYesNo = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mYesNo == 0) {
+				s32 entryIndex    = gItemShopPage.mIndex[mItemShopSelection];
+				s32 money         = GetMoney();
+				MenuPCItem* entry = &sItemShopEntries[entryIndex];
+				if (entry->mPrice <= money) {
+					money -= entry->mPrice;
+					gGame.GetPlayer()->mParams.SetMoney(money);
+					mMoneyDisplay.target = money;
+					mYesNo               = 2;
+					PlayWiiSoundEffect(&gGame.mSound, 0x35B, 1.0f, 0.0f);
+					if (entry->mIsAttachment) {
+						s32 id = entry->mItem;
+						if (id >= 0 && id < 9) {
+							s32 level = GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id) + 1;
+							if (level >= 3) {
+								level = 3;
+							}
+							SetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id, level);
+						}
+					} else {
+						s16 id = entry->mItem;
+						if (id >= 0 && id < 0x9F) {
+							s32 index    = FindOwnedInventoryItemIndex(gGame.GetPlayer()->mParams.mInventory.mItems, id);
+							s32 quantity = index >= 0 ? gGame.GetPlayer()->mParams.mInventory.mItems[index].mCount : 0;
+							SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, id, quantity + 1, FALSE);
+						}
+					}
+					s16& stock = entry->mCount;
+					s16 left   = stock;
+					stock      = left > 0 ? left - 1 : left;
+					switch (entry->mItem) {
+					case 0x57:
+					case 0x59:
+					case 0x5A:
+						for (int i = 0; i < 20; i++) {
+							MenuPCItem& other = table[i];
+							s16 otherId       = other.mItem;
+							if (otherId >= 0 && !other.mIsAttachment) {
+								switch (otherId) {
+								case 0x57:
+								case 0x59:
+								case 0x5A:
+									if (otherId != entry->mItem) {
+										other.mCount = 0;
+										SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, otherId, 0, FALSE);
+									}
+									break;
+								case 0x58:
+									break;
+								}
+							}
+						}
+						break;
+					case 0x58:
+						break;
+					}
+					mPhase++;
+					return;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else {
+				mPhase       = 0;
+				mPanelTarget = 0.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mTargetListAlpha = 1.0f;
+			}
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPhase           = 0;
+			mPanelTarget     = 0.0f;
+			mTargetListAlpha = 1.0f;
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mTargetListAlpha = 1.0f;
+			PopulateItemShopPage(&gItemShopPage);
+		}
+		break;
+	case 10:
+		if (mScroll == mScrollTarget) {
+			if (gItemShopPage.mStart < ResetPCShopPage(this, table) - 1) {
+				gItemShopPage.mStart++;
+				PopulateItemShopPage(&gItemShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	case 20:
+		if (mScroll == mScrollTarget) {
+			mPhase = 0;
+			CountPCShopItems(table);
+			if (gItemShopPage.mStart > 0) {
+				gItemShopPage.mStart--;
+				PopulateItemShopPage(&gItemShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	}
+}
+
 void MenuPC::State4(u32)
 {
 	MenuPC* menu = this;
@@ -7632,6 +7980,166 @@ void MenuPC::State5(u32)
 		gGame.mSubwin.mEnabled = 0;
 		ResetPCText(menu, 2);
 		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	}
+}
+
+static inline s16 PCShopEntryId(s32 index)
+{
+	return gScrapShopPage.mRows[index].mItem;
+}
+
+void MenuPC::State7(u32 frames)
+{
+	CPad pad(0);
+	MenuPCItem* table = sScrapShopEntries;
+	s32 count         = CountPCShopItems(table);
+	ApproachHudValue(&mPanelAlpha, &mPanelTarget, 0.08f * frames);
+	switch (mPhase) {
+	case 0:
+		if (count > 1) {
+			if (mScrapShopSelection == 0) {
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mScrapShopSelection, gScrapShopPage, true);
+				}
+				if (gWiiPointer.Check(PadActStickUp)) {
+					CountPCShopItems(table);
+					if (gScrapShopPage.mStart > 0) {
+						mScrollTarget = 17.0f;
+						mPhase        = 20;
+						break;
+					}
+				}
+			} else if (mScrapShopSelection == 8) {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mScrapShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					if (gScrapShopPage.mStart < PCShopMaxPage(table) - 1) {
+						mScrollTarget = -17.0f;
+						mPhase        = 10;
+						break;
+					}
+				}
+			} else {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mScrapShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mScrapShopSelection, gScrapShopPage, false);
+				}
+			}
+		}
+		if (PCShopEntryId(mScrapShopSelection) < 0) {
+			do {
+				mScrapShopSelection--;
+				s16 id = gScrapShopPage.mRows[mScrapShopSelection].mItem;
+				if (id >= 0) {
+					break;
+				}
+			} while (mScrapShopSelection != 0);
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			if (PCShopEntryId(mScrapShopSelection) >= 0 && gScrapShopPage.mRows[mScrapShopSelection].mCount > 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mPanelTarget = 1.0f;
+				mPhase++;
+				mYesNo = 0;
+				break;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			break;
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			ResetPCText(this, 2);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPanelTarget = 0.0f;
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickUp)) {
+			mYesNo--;
+			if (mYesNo < 0) {
+				mYesNo = 1;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			mYesNo++;
+			if (mYesNo > 1) {
+				mYesNo = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mYesNo == 0) {
+				s32 item          = gScrapShopPage.mIndex[mScrapShopSelection];
+				s32 scrap         = GetScrap();
+				MenuPCItem* entry = &sScrapShopEntries[item];
+				s16 price         = entry->mPrice;
+				if (price <= scrap) {
+					scrap -= price;
+					gGame.GetPlayer()->mParams.SetScrap(scrap);
+					mScrapDisplay.target = scrap;
+					mYesNo               = 2;
+					PlayWiiSoundEffect(&gGame.mSound, 0x35B, 1.0f, 0.0f);
+					gEventVars.mVars[mScrapShopBase + entry->mItem] = 1;
+					mExitState                                      = item;
+					s16& quantity                                   = entry->mCount;
+					s16 stock                                       = quantity;
+					s32 remaining                                   = stock;
+					if (stock > 0) {
+						remaining = stock - 1;
+					}
+					quantity = remaining;
+					mPhase++;
+					return;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else {
+				mPhase       = 0;
+				mPanelTarget = 0.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mTargetListAlpha = 1.0f;
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			PopulateScrapShopPage(&gScrapShopPage);
+			ResetPCText(this, 11);
+			mTargetFrameHeight = 0.0f;
+			SavePCShopState(this);
+		}
+		break;
+	case 10:
+		if (mScroll == mScrollTarget) {
+			if (gScrapShopPage.mStart < ResetPCShopPage(this, table) - 1) {
+				gScrapShopPage.mStart++;
+				PopulateScrapShopPage(&gScrapShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	case 20:
+		if (mScroll == mScrollTarget) {
+			mPhase = 0;
+			CountPCShopItems(table);
+			if (gScrapShopPage.mStart > 0) {
+				gScrapShopPage.mStart--;
+				PopulateScrapShopPage(&gScrapShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
 	}
 }
 
