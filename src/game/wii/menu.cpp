@@ -2160,39 +2160,39 @@ static inline void DrawPCShopCenteredText(const char* text, u32 color, f32 x, f3
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, y, 0.0f, size, size);
 }
 
-static inline void DrawPCPurchaseResult(char (&)[256], s32 bought, f32 x, f32 y, f32 size, u32 white)
+static inline void DrawPCPurchaseResult(s32 bought, f32 x, f32 y, f32 size, u32 white)
 {
 	f32 labelWidth = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(bought), TRUE, size);
 	DrawGsProportionalTextFormat(&gGame.mGs, white, GetLocalizedInterfaceText(bought), x - labelWidth / 2.0f, y, 0.0f, size, size);
 }
 
-static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 offset, f32 margin, f32 y, f32 size, u32 color)
+static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 y, f32 size, f32 alpha)
 {
 	const char* text = GetLocalizedInterfaceText(id);
+	u32 color        = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	x -= MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), TRUE, size) / 2.0f;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, size, size);
 }
 
-static inline f32 PCRecycleChoiceX(f32 x, f32 size, f32 scale, f32 margin, f32 offset, f32 widthScale)
+static inline f32 PCRecycleChoiceX(f32 x, f32 size, f32 scale, f32 margin, f32 offset)
 {
-	f32 base = (4.0f * scale + ((widthScale * size) / 2.0f + (x + size))) - 40.0f * scale;
+	f32 base = (4.0f * scale + (size / 2.0f + (x + size))) - 40.0f * scale;
 	return 40.0f * scale + (margin + (offset + base));
 }
 
 static inline void DrawPCPurchaseLabels(s32 question, s32 yes, s32 no, f32 left, f32 top, f32 size, f32 scale, f32 margin, f32 offset,
-                                        f32 rowY, f32 extraW, u32 white)
+                                        f32 rowY, f32 extraW, f32 alpha)
 {
-	f32 textX = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
-	DrawPCRecycleLabel(question, textX, offset, 40.0f * scale, (top + rowY) - 4.0f * scale, size, white);
-	DrawPCRecycleLabel(yes, textX, offset, 40.0f * scale, rowY + (top + size), size, white);
-	DrawPCRecycleLabel(no, textX, offset, 40.0f * scale, rowY + (2.0f * size + top), size, white);
+	f32 textX = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
+	DrawPCRecycleLabel(question, textX, (top + rowY) - 4.0f * scale, size, alpha);
+	DrawPCRecycleLabel(yes, textX, rowY + (top + size), size, alpha);
+	DrawPCRecycleLabel(no, textX, rowY + (2.0f * size + top), size, alpha);
 }
 
 enum PCShopListKind { PriceList, ItemPriceList };
 
-template <PCShopListKind kind>
-static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top, f32 scale, f32 extraW,
-                                      f32 extraH)
+static inline f32 DrawPCPurchasePrice(PCShopListKind kind, CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top,
+                                      f32 scale, f32 extraW, f32 extraH)
 {
 	InitPCPanelTexture(tex, 126);
 	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
@@ -2223,8 +2223,7 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 select
 	return digitY;
 }
 
-template <PCShopListKind kind>
-static inline void DrawPCPriceUnit(CTexObj& tex, f32 scale, f32 left, f32 digitY, f32 opacity)
+static inline void DrawPCPriceUnit(PCShopListKind kind, CTexObj& tex, f32 scale, f32 left, f32 digitY, f32 opacity)
 {
 	InitPCPanelTexture(tex, kind == ItemPriceList ? 145 : 149);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
@@ -2273,7 +2272,8 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 	                             0.0f, 18.0f * scale, 18.0f * scale);
 }
 
-// NONMATCHING: the complete call list matches; the current spelling needs 88 more bytes and a different stack/register layout
+// NONMATCHING: one colour conversion comes a call later than in retail; this build is 64 bytes larger and the stack layout and
+// registers differ
 extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 scrap, f32 money, f32 scroll, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -2290,7 +2290,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset);
 		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -2313,24 +2313,21 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	f32 numberX    = places * (scale * digitWidth) + (120.0f * scale + originX);
 	DrawPCGoldNumber(false, numberX, originY + height, alpha, scale, money);
 	if (choice != 2) {
-		f32 textX = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
-		DrawPCRecycleLabel(0x4E, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
-		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
-		DrawPCRecycleLabel(0x4F, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size,
-		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
-		DrawPCRecycleLabel(0x41, textX, labelOffset, 40.0f * scale, rowOffset + (originY + size), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
-		DrawPCRecycleLabel(0x42, textX, labelOffset, 40.0f * scale, rowOffset + (2 * size + originY), size,
-		                   (u32)(255.0f * alpha) | 0xFFFFFF00);
+		f32 textX = PCRecycleChoiceX(originX, size, scale, margin, labelOffset);
+		DrawPCRecycleLabel(0x4E, textX, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size, alpha);
+		DrawPCRecycleLabel(0x4F, textX, (originY + rowOffset) - 4.0f * scale, size, alpha);
+		DrawPCRecycleLabel(0x41, textX, rowOffset + (originY + size), size, alpha);
+		DrawPCRecycleLabel(0x42, textX, rowOffset + (2 * size + originY), size, alpha);
 	} else {
 		const char* text = GetLocalizedInterfaceText(0x48);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x48), TRUE, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text,
-		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset) - textWidth / 2.0f,
 		                             (originY + rowOffset) - 4.0f * scale, 0.0f, size, size);
 	}
 }
 
-// NONMATCHING: the complete call list matches; a 48-byte stack/layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 52 bytes smaller and the stack layout and registers differ
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -2339,8 +2336,8 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (scale <= 0.0f) {
 		return;
 	}
-	f32 extraH = IsJapanese() ? 0.0f : 17.0f;
-	f32 extraW = IsJapanese() ? 0.0f : 8.0f;
+	f32 extraH = IsJapanese() ? 0 : 17;
+	f32 extraW = IsJapanese() ? 0 : 8;
 	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
 	f32 left    = (x - width / 2.0f) - 34.0f * scale;
 	f32 top     = ((y - extraH / 2.0f) - height / 2.0f) - 13.0f * scale;
@@ -2352,9 +2349,9 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
 	char text[256];
 	if (choice == 2) {
-		DrawPCPurchaseResult(text, 0x3F, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
+		DrawPCPurchaseResult(0x3F, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -2380,9 +2377,9 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	}
 	DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
-		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, gShopHistoryPage, selected, opacity, left, top, scale, extraW, extraH);
-		DrawPCPriceUnit<ItemPriceList>(tex, scale, left, digitY, 255.0f * alpha);
-		DrawPCPurchaseLabels(0x40, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, (u32)(255.0f * alpha) | 0xFFFFFF00);
+		f32 digitY = DrawPCPurchasePrice(ItemPriceList, tex, gShopHistoryPage, selected, opacity, left, top, scale, extraW, extraH);
+		DrawPCPriceUnit(ItemPriceList, tex, scale, left, digitY, 255.0f * alpha);
+		DrawPCPurchaseLabels(0x40, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, alpha);
 	}
 	s32 icon;
 	f32 w, h;
@@ -2404,7 +2401,8 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	}
 }
 
-// NONMATCHING: the complete call list matches; a 44-byte stack/layout and register-allocation difference remains
+// NONMATCHING: one colour conversion comes a call later than in retail; this build is 48 bytes smaller and the stack layout and
+// registers differ
 extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
 {
 	static u32 frame = 0;
@@ -2413,8 +2411,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (scale <= 0.0f) {
 		return;
 	}
-	f32 extraH = IsJapanese() ? 0.0f : 17.0f;
-	f32 extraW = IsJapanese() ? 0.0f : 8.0f;
+	f32 extraH = IsJapanese() ? 0 : 17;
+	f32 extraW = IsJapanese() ? 0 : 8;
 	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
 	f32 left    = (x - width / 2.0f) - 34.0f * scale;
 	f32 top     = ((y - extraH / 2.0f) - height / 2.0f) - 13.0f * scale;
@@ -2426,9 +2424,9 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
 	char text[256];
 	if (choice == 2) {
-		DrawPCPurchaseResult(text, 0x52, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
+		DrawPCPurchaseResult(0x52, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -2445,9 +2443,9 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	sprintf(text, "%s", GetUtilibotName(id));
 	DrawPCShopCenteredText(text, (u32)(255.0f * alpha) | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
-		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, gShopCatalogPage, selected, opacity, left, top, scale, extraW, extraH);
-		DrawPCPriceUnit<PriceList>(tex, scale, left, digitY, 255.0f * alpha);
-		DrawPCPurchaseLabels(0x51, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, (u32)(255.0f * alpha) | 0xFFFFFF00);
+		f32 digitY = DrawPCPurchasePrice(PriceList, tex, gShopCatalogPage, selected, opacity, left, top, scale, extraW, extraH);
+		DrawPCPriceUnit(PriceList, tex, scale, left, digitY, 255.0f * alpha);
+		DrawPCPurchaseLabels(0x51, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, alpha);
 	}
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
@@ -2463,7 +2461,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	DrawOverviewTexture(tex, color, iconX, iconY, scale * w, scale * h);
 }
 
-// NONMATCHING: the call list matches; a 36-byte stack/layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 4 bytes smaller and the stack layout and registers differ
 extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -2486,13 +2484,11 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, 
 	} else {
 		sprintf(text, "%s", GetItemName(id));
 	}
-	alpha       = 255.0f * alpha;
-	u32 opacity = (u32)alpha;
 	u32 color;
 	if (count <= 0) {
-		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+		color = (u32)(0.4f * (255.0f * alpha)) | 0xFFFFFF00;
 	} else {
-		color = opacity | 0xFFFFFF00;
+		color = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	}
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
@@ -2516,11 +2512,11 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, 
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u32 top, bottom;
 			if (count <= 0) {
-				top    = (u8)(0.4f * alpha) | 0xEFEBC500;
-				bottom = (u8)(0.4f * alpha) | 0xEDA83600;
+				top    = (u8)(0.4f * (255.0f * alpha)) | 0xEFEBC500;
+				bottom = (u8)(0.4f * (255.0f * alpha)) | 0xEDA83600;
 			} else {
-				top    = (u8)alpha | 0xEFEBC500;
-				bottom = (u8)alpha | 0xEDA83600;
+				top    = (u8)(255.0f * alpha) | 0xEFEBC500;
+				bottom = (u8)(255.0f * alpha) | 0xEDA83600;
 			}
 			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
 			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
@@ -2537,7 +2533,7 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, 
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// NONMATCHING: the call list matches; a 40-byte stack/layout and register-allocation difference remains
+// NONMATCHING: the call list matches retail; this build is 8 bytes smaller and the stack layout and registers differ
 extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	CTexObj tex;
@@ -2559,13 +2555,11 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	}
 	char text[256];
 	sprintf(text, "%s", GetUtilibotName(id));
-	alpha       = 255.0f * alpha;
-	u32 opacity = (u32)alpha;
 	u32 color;
 	if (count <= 0) {
-		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+		color = (u32)(0.4f * (255.0f * alpha)) | 0xFFFFFF00;
 	} else {
-		color = opacity | 0xFFFFFF00;
+		color = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	}
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
@@ -2589,11 +2583,11 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			u32 top, bottom;
 			if (count <= 0) {
-				top    = (u8)(0.4f * alpha) | 0xCECEFF00;
-				bottom = (u8)(0.4f * alpha) | 0x5959FF00;
+				top    = (u8)(0.4f * (255.0f * alpha)) | 0xCECEFF00;
+				bottom = (u8)(0.4f * (255.0f * alpha)) | 0x5959FF00;
 			} else {
-				top    = (u8)alpha | 0xCECEFF00;
-				bottom = (u8)alpha | 0x5959FF00;
+				top    = (u8)(255.0f * alpha) | 0xCECEFF00;
+				bottom = (u8)(255.0f * alpha) | 0x5959FF00;
 			}
 			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
 			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
@@ -2610,8 +2604,7 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-template <PCShopListKind kind>
-static inline void DrawPCListRow(MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
+static inline void DrawPCListRow(PCShopListKind kind, MenuPCItem& row, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (kind == ItemPriceList) {
 		DrawPCItemPriceRow(row.mItem, row.mCount, row.mPrice, row.mIsAttachment, x, y, alpha, scale);
@@ -2696,11 +2689,12 @@ static inline void DrawMenuSelectionBar(CTexObj& tex, f32 barX, f32 barY, f32 ba
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// NONMATCHING: the complete call list matches; the current inline expansion needs 384 more bytes and a different register layout
+// NONMATCHING: the call list matches retail; this build is 400 bytes larger and register allocation differs
 template <PCShopListKind kind>
-void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale)
+void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f32 scale, f32 scroll)
 {
 	CTexObj tex;
+	y -= scroll;
 	f32 left;
 	f32 width = 296.0f * scale, height = 156.0f * scale;
 	left        = x - width / 2.0f;
@@ -2727,22 +2721,22 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
 	for (int i = 0; i < 9; i++) {
-		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
+		DrawPCListRow(kind, (kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
 	}
 	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
 	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart < PCShopMaxPage(items) - 1) {
-		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
+		DrawPCListRow(kind, (kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
 	}
 	CountPCShopItems(kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries);
 	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart > 0) {
-		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mPrev[0], left, rowY - step, alpha, scale);
+		DrawPCListRow(kind, (kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mPrev[0], left, rowY - step, alpha, scale);
 	}
-	DrawPCListMask(97.0f, 40.0f, (u32)(255.0f * alpha) | 0x0A0A0A00);
-	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
+	DrawPCListMask(97.0f - scroll, 40.0f, (u32)(255.0f * alpha) | 0x0A0A0A00);
+	DrawPCListMask(292.5f - scroll, 40.0f + scroll, opacity | 0x0A0A0A00);
 }
 
-template void DrawPCShopList<ItemPriceList>(s32, f32, f32, f32, f32, f32);
-template void DrawPCShopList<PriceList>(s32, f32, f32, f32, f32, f32);
+template void DrawPCShopList<ItemPriceList>(s32, f32, f32, f32, f32, f32, f32);
+template void DrawPCShopList<PriceList>(s32, f32, f32, f32, f32, f32, f32);
 
 static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32 scale, f32 opacity)
 {
@@ -2957,13 +2951,27 @@ static inline s32 CountDecimalDigits(s32 value)
 		(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0;      \
 	} while (0)
 
-// NONMATCHING: the complete 296-call list matches; the current spelling is 256 bytes smaller and saves GPRs from r16 instead of r17
+// NONMATCHING: the call list matches retail; this build is 40 bytes smaller and register allocation differs
 BOOL MenuPC::Draw()
 {
 	if (CMenu::Draw()) {
 		CTexObj tex;
 		char labelText[256];
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
 		{
 			f32 left = 130.0f, top = 40.0f, right = 510.0f, bottom = 360.0f;
 			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
@@ -3059,10 +3067,11 @@ BOOL MenuPC::Draw()
 				center    = 224.0f + 0.5f * ((chars - 1) * 20.0f);
 				width     = 0.9f * ((chars + 2) * 20.0f);
 			} else {
-				const char* text = GetPCMenuLabelText(pcChoiceArt[mChoices[mChoice]].label);
-				f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, 20.0f);
 				InitPCPanelTexture(tex, pcChoiceArt[mChoices[mChoice]].icon);
-				width  = 6.0f + (1.1f * GXGetTexObjWidth(&tex) + textWidth);
+				f32 iconWidth = 1.1f * GXGetTexObjWidth(&tex);
+				width
+				    = 6.0f
+				    + (iconWidth + MeasureGameTextWidth(&gGame.mGs, GetPCMenuLabelText(pcChoiceArt[mChoices[mChoice]].label), TRUE, 20.0f));
 				center = 204.0f + width / 2.0f;
 			}
 			f32 y     = 2.0f + (step * mChoice + (8.0f + top));
@@ -3122,7 +3131,7 @@ BOOL MenuPC::Draw()
 		case 3: {
 			s32 selected = mPurchaseSelection;
 			f32 alpha    = mListAlpha;
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, alpha, 1.0f);
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, alpha, 1.0f, 0.0f);
 			DrawPCGoldNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mMoneyDisplay.shown);
 			f32 barY      = 76.0f;
 			s32 positions = CountPCShopItems(sShopHistoryEntries) - 8;
@@ -3144,7 +3153,7 @@ BOOL MenuPC::Draw()
 			break;
 		case 7: {
 			s32 selected = mShopSelection;
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, 1.0f, 1.0f);
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + mScroll, mTexScroll, 1.0f, 1.0f, 0.0f);
 			DrawPCBlueNumber(true, 339.0f, 316.0f, mAlpha, 1.0f, mScrapDisplay.shown);
 			f32 barY      = 76.0f;
 			s32 positions = CountPCShopItems(sShopCatalogEntries) - 8;
@@ -3378,7 +3387,7 @@ BOOL MenuPC::Draw()
 		PSMTXScale(tex.mTexMtx.mMtx[2], 380.0f / GXGetTexObjWidth(&tex), v, 1.0f);
 		tex.mTexMtx.mDirty = TRUE;
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_TRUE);
-		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurTevStage->SetMode(GX_BLEND);
 		u32 frameColor = (u32)(16.0f * mAlpha) | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, frameColor, frameColor, frameColor, frameColor, 510.0f, 360.0f, -11.0f, 380.0f, height, 0.0f,
@@ -3726,7 +3735,7 @@ BOOL MenuPC::Draw()
 		}
 		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
 		((CBase*)&gGame)->vf5C();
-		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
 		gRingScreenWidth    = width;
 		gPointerScreenWidth = width;
 		return TRUE;
