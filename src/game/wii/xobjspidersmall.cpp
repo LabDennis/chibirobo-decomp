@@ -626,7 +626,7 @@ void XObjSpiderSmall::State3(u32 frames)
 		mMoveTranslate.y = 10.0f + ppos.y + mClingOffset.y;
 		mMoveTranslate.z = ppos.z + size * (f32)cos(prot.y + mClingAngle);
 		mWalkHeading     = atan2(ppos.x - mMoveTranslate.x, ppos.z - mMoveTranslate.z);
-		if (gGame.IsRunning() && gGame.GetPlayer()->mMoveSpeedScale <= 1.0f) {
+		if (gGame.IsRunning() && gGame.GetPlayer()->_1C9B8[2] >= 1.0f) {
 			mHoldTime -= mShakeStrength;
 			f32 strength = 0.0f;
 			f32 remote   = nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].y);
@@ -881,7 +881,7 @@ void XObjSpiderSmall::State8(u32 frames)
 		mMoveTranslate.y = 10.0f + ppos.y + mClingOffset.y;
 		mMoveTranslate.z = ppos.z + size * (f32)cos(prot.y + mClingAngle);
 		mWalkHeading     = atan2(ppos.x - mMoveTranslate.x, ppos.z - mMoveTranslate.z);
-		if (gGame.IsRunning() && gGame.GetPlayer()->mMoveSpeedScale <= 1.0f) {
+		if (gGame.IsRunning() && gGame.GetPlayer()->_1C9B8[2] >= 1.0f) {
 			mHoldTime -= mShakeStrength;
 			f32 strength = 0.0f;
 			f32 remote   = nw4r::math::FAbs(gWiiPointer.mRemoteAcceleration[0].y - gWiiPointer.mRemoteAcceleration[1].y);
