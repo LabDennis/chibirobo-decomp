@@ -53,6 +53,7 @@ u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
 void DrawStatusMenuTabs(MenuStatus* menu);
 void fn_80061014(MenuStatus* menu);
+void fn_80061FF4(MenuStatus* menu, const char* text, u32 color);
 void DrawPlayerStatusOverview(MenuStatus* menu);
 void fn_80061DBC(MenuStatus* menu);
 void DrawStatusIconGrid(MenuStatus* menu);
@@ -6180,6 +6181,32 @@ void MenuSave::State17(u32)
 }
 
 // a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
+void MenuStatus::State5(u32)
+{
+	CPad pad(0);
+	if (IsCancelPressed()) {
+		mTargetDiagramX = 1086.0f;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		for (int i = 0; i < 4; i++) {
+			mTabs[i].mX = 0.0f;
+			if (mHasFourthTab) {
+				mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+			} else {
+				mTabs[i].mTargetX = 252.0f + i * 108;
+			}
+		}
+		mPrevMode        = mMode;
+		mMode            = 4;
+		mNextMode        = 1;
+		mPhase           = 0;
+		const char* text = GetLocalizedInterfaceText(0x18);
+		fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+		mSelection   = -1;
+		mShowHelp    = 3;
+		sStatusPhase = 0.0f;
+	}
+}
+
 void MenuStatus::State3(u32)
 {
 	OSPanic("menu_status.cpp", 1313, "UpdateItem");
