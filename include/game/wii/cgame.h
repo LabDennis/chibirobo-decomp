@@ -1389,7 +1389,8 @@ public:
 	f32 _178;                  // _178
 	f32 mOffset;               // _17C
 	WiiMenuSaveSlot mSlots[3]; // _180, the three save files
-	u8 _27C[0x284 - 0x27C];
+	u32 mFreeBlocks;           // _27C
+	u32 mFreeEntries;          // _280
 	s32 mResult;               // _284, the save operation's result
 	s32 mMessage;              // _288
 	u8 mReady;                 // _28C
@@ -1556,7 +1557,9 @@ struct MenuPaneFadePair {
 // the item menu, the GameCube class of the same name
 class MenuItem : public Menu, public MenuPad, public CContainCallback {
 public:
+	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
 	virtual void vf08(CbPane* pane);
@@ -1635,10 +1638,22 @@ struct MenuPCPage {
 };
 STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
+struct MenuStatusTab {
+	f32 mX;       // _00
+	f32 mY;       // _04
+	f32 mTargetX; // _08
+	f32 mTargetY; // _0C
+};
+STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
+
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
 	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 
@@ -1656,8 +1671,9 @@ public:
 	void RestoreSelections();
 
 	u8 _160[0x518 - 0x160];
-	s32 mMode; // _518
-	u8 _51C[0x524 - 0x51C];
+	s32 mMode;                   // _518
+	s32 mPrevMode;               // _51C
+	s32 mNextMode;               // _520, where a wait mode goes after
 	s32 mOverviewSelection;      // _524
 	s32 mPrevOverviewSelection;  // _528
 	s32 mStickOverviewSelection; // _52C
@@ -1669,27 +1685,38 @@ public:
 	s32 mPrevSelection;  // _548
 	f32 mOffsetX;        // _54C
 	f32 mOffsetY;        // _550
-	u8 _554[0x5FC - 0x554];
-	f32 mOverviewX; // _5FC
-	f32 mOverviewY; // _600
-	u8 _604[0x60C - 0x604];
-	f32 mGridX; // _60C
-	f32 mGridY; // _610
-	u8 _614[0x66C - 0x614];
+	u8 _554[0x568 - 0x554];
+	f32 mTargetPanelY; // _568
+	u8 _56C[0x5AC - 0x56C];
+	MenuStatusTab mTabs[4]; // _5AC
+	u8 _5EC[0x5FC - 0x5EC];
+	f32 mOverviewX;       // _5FC
+	f32 mOverviewY;       // _600
+	f32 mTargetOverviewX; // _604
+	u8 _608[0x60C - 0x608];
+	f32 mGridX;       // _60C
+	f32 mGridY;       // _610
+	f32 mTargetGridX; // _614
+	u8 _618[0x624 - 0x618];
+	f32 mTargetDiagramX; // _624
+	u8 _628[0x66C - 0x628];
 	s32 mPhase; // _66C
-	u8 _670[0x67C - 0x670];
-	f32 mDetailScale; // _67C
-	u8 _680[0x689 - 0x680];
+	f32 mDelay; // _670
+	u8 _674[0x67C - 0x674];
+	f32 mDetailScale;       // _67C
+	f32 mTargetDetailScale; // _680
+	u8 mHasFourthTab;       // _684
+	u8 _685[0x689 - 0x685];
 	u8 mShowGauge; // _689
 	u8 _68A[0x68C - 0x68A];
 	u8 mIconLit; // _68C
 	u8 _68D[0x690 - 0x68D];
-	f32 mGaugeValue; // _690
-	u8 _694[0x698 - 0x694];
+	f32 mGaugeValue;       // _690
+	s32 mShowHelp;         // _694
 	f32 mHelpAlpha;        // _698
 	const char* mHelpText; // _69C
-	u8 _6A0[0x6A4 - 0x6A0];
-	f32 mPulsePhase; // _6A4
+	const char* mHelp;     // _6A0
+	f32 mPulsePhase;       // _6A4
 	u8 _6A8[0x6AC - 0x6A8];
 	s32 mItemSelection;          // _6AC
 	s32 mPrevItemSelection;      // _6B0
@@ -1697,7 +1724,8 @@ public:
 	MenuTitle mTitle;            // _6B8
 	s32 mHelpCount;              // _854
 	MenuHelpChar mHelpChars[20]; // _858
-	u8 _948[0x1938 - 0x948];
+	CbPane mPanes[49];           // _948, tabs, grid cells and detail controls
+	u8 _1898[0x1938 - 0x1898];
 	u8 mHovered; // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C

@@ -30,6 +30,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
 extern MEMiHeapHead* gWiiGameHeap;
+extern u8 lbl_8044B700[];
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
 extern s32 gScreenLeft, gScreenTop;
@@ -52,8 +53,10 @@ u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
 void DrawStatusMenuTabs(MenuStatus* menu);
 void fn_80061014(MenuStatus* menu);
+void fn_80061FF4(MenuStatus* menu, const char* text, u32 color);
 void DrawPlayerStatusOverview(MenuStatus* menu);
 void fn_80061DBC(MenuStatus* menu);
+void fn_800695EC(MenuStatus* menu);
 void DrawStatusIconGrid(MenuStatus* menu);
 void DrawStatusHelpText(MenuStatus* menu);
 void DrawStatusMenuTitle(MenuStatus* menu);
@@ -64,6 +67,8 @@ u8* GetPCRankingName(s32 index);
 void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
                          f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void DrawSaveHelpText(MenuSave* menu);
+void DrawSaveDetailText(const char* text, f32 x, f32 y, f32 size, f32 alpha);
+extern "C" void DrawSavePlayTime(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 offsetScale, f32 sy);
 void DrawStatusIconDetails(s32 icon, f32 x, f32 y, f32 alpha, f32 scale);
 void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale);
 void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha, f32 phase);
@@ -75,6 +80,9 @@ s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y
 void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide);
 void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
+void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
+void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
+void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32 selected, f32 x, f32 y, f32 alpha, f32 sx, f32 sy);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
@@ -139,6 +147,8 @@ static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0
 
 extern "C" s32 gPCLevelDialogueIds[11] = { 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 extern "C" f32 gSaveSlotSpacing;
+extern "C" f32 gItemHelpOutlineX[4]    = { -1.0f, 1.0f, 1.0f, -1.0f };
+extern "C" f32 gItemHelpOutlineY[4]    = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gStatusTitleOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 extern "C" f32 gStatusTitleOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern "C" f32 gSaveTitleOutlineX[4]   = { -1.0f, 1.0f, 1.0f, -1.0f };
@@ -2018,6 +2028,31 @@ extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
 	pane->mWidth   = layout->mWidth;
 	pane->mHeight  = layout->mHeight;
 	pane->mKind    = layout->mKind;
+}
+
+extern CbPaneLayout lbl_802E87E8[51]; // the file's pane layout table, built by the static initializer
+
+// NONMATCHING: retail stores the two page panes' kinds as the constants 8 and 9 while it indexes the panes by i;
+// this build keeps kind in a register
+void MenuItem::Init()
+{
+	CMenu::Init();
+	mSelection = 0;
+	int i      = 0;
+	int kind   = 0;
+	for (; i < 8; i++) {
+		fn_800556B0(&mCells[i], &lbl_802E87E8[i + 4]);
+		mCells[i].mKind = kind++;
+	}
+	fn_800556B0(&mPanes[i - 8], &lbl_802E87E8[49]);
+	mPanes[i - 8].mKind = kind++;
+	i++;
+	fn_800556B0(&mPanes[i - 8], &lbl_802E87E8[50]);
+	mPanes[i - 8].mKind = kind++;
+	i++;
+	if (i > 10) {
+		OSPanic("menu_item.cpp", 0x255, "@MenuItem::Init MenuItemが保持できるCbPaneの最大数を超えています！(num = %d)", i);
+	}
 }
 
 // the pane's rectangle round its centre, y up
@@ -4644,8 +4679,65 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
+// NONMATCHING: the Wii call list, slot fields, text ids and coordinates are reconstructed; with -ipa file this build
+// still inlines all ten DrawSaveDetailText calls and grows to 4404 bytes, while retail calls it out of line in 1936
+extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
+                                    f32 alpha, f32 fileAlpha, f32 sx, f32 sy)
+{
+	fn_8007D734(index, selected, newest, x, y, width, height, alpha, fileAlpha, sx, sy);
+	if (slot->mState == 1) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9F), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA0), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->mUsed) {
+		CTexObj tex;
+		InitPCPanelTexture(tex, 114);
+		f32 offsetY = -24.0f * sy;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 w     = 0.6f * (sx * GXGetTexObjWidth(&tex));
+		f32 h     = 0.6f * (sy * GXGetTexObjHeight(&tex));
+		f32 iconX = ((x - 10.0f * (17.0f * sx)) + 100.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx;
+		f32 iconY = offsetY + ((218.0f * sy + ((y - 5.0f * (17.0f * sy)) - 6.0f * sy)));
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, iconX, iconY, 0.0f, w, h, 0.0f, 0.0f,
+		                   0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		s32 stage       = slot->mStage;
+		char* stageName = GetStageName(stage);
+		if (stageName == NULL) {
+			stageName = GetStageFileName(stage);
+		}
+		if (stage == 14) {
+			stageName = GetStageName(7);
+		}
+		f32 size       = 23.0f * sx;
+		f32 stageWidth = MeasureGameTextWidth(&gGame.mGs, stageName, TRUE, 0.8f * size);
+		f32 stageX     = ((x + 88.0f * sx) - stageWidth * 0.5f) + (gSaveSlotSpacing * 0.5f) * sx - 5.0f * sx;
+		f32 stageY     = offsetY + (210.0f * sy + (4.0f * sy + (y - 5.0f * (17.0f * sy))));
+		DrawSaveDetailText(stageName, stageX, stageY, size, alpha);
+		DrawSavePlayTime(0xB5, slot->mRank, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (y - 64.0f * sy), alpha,
+		                 sx, sy);
+		DrawSavePlayTime(0xF4, slot->mActive ? -1 : (s32)slot->mBattery, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx,
+		                 offsetY + (y - 32.0f * sy), alpha, sx, sy);
+		DrawSavePlayTime(0x9B, slot->mExp, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, y + offsetY, alpha, sx, sy);
+		DrawSavePlayTime(0x99, slot->mMoney, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (32.0f * sy + y), alpha,
+		                 sx, sy);
+		DrawSavePlayTime(0x9A, slot->mScrap, selected, (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (64.0f * sy + y), alpha,
+		                 sx, sy);
+		fn_8007ECC4(slot->mTimeMode == 0 ? 157 : 158, slot->mHours, slot->mMinutes, selected,
+		            (x - 70.0f * sx) - (gSaveSlotSpacing * 0.5f) * sx, offsetY + (96.0f * sy + y), alpha, sx, sy);
+	} else if (slot->_44) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x64), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 86.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->_48) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9A), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0x9B), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	} else if (slot->_4C) {
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA4), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
+		DrawSaveDetailText(GetLocalizedInterfaceText(0xA5), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
+	}
+}
+
 // NONMATCHING: the call list and size match retail; register allocation differs
-extern "C" void DrawSavePlayTime(s32 icon, s32 value, f32 x, f32 y, f32 alpha, f32 offsetScale)
+extern "C" void DrawSavePlayTime(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f)) {
 		return;
@@ -4846,6 +4938,108 @@ static inline f32 HelpGlyphPadding(s32 width, f32 scale)
 {
 	f32 glyphWidth = width / 24.0f * scale;
 	return scale - glyphWidth;
+}
+
+// NONMATCHING: the Wii call list, viewport/scissor blocks and constants match; the SJIS lead-byte expansion,
+// texture-object copies and floating-point schedules still differ
+BOOL MenuItem::Draw()
+{
+	if (CMenu::Draw()) {
+		gRingScreenWidth    = 640;
+		gPointerScreenWidth = 640;
+		s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+		MenuSize size;
+		size.height = gPointerScreenHeight;
+		size.width  = width;
+		f32 margin  = (width - 640) / 2;
+		MenuRect view;
+		view.top        = 0.0f;
+		view.right      = size.width - margin;
+		view.left       = -margin;
+		view.bottom     = size.height;
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		camera->vf24(view.top, view.bottom, view.left, view.right);
+		((CBase*)&gGame)->vf5C();
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		f32 x = mGridX - 42.0f;
+		f32 y = 180.0f + mGridY;
+		GXSetScissor(gScreenLeft + (s32)margin, gPointerScreenHeight / 2 - 122, gPointerScreenWidth - (s32)margin * 2, 252);
+		DrawInventoryGrid(mSelection, x, y, mAlpha, 1.0f, mItemPhase);
+		char text[256];
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x19));
+		GXSetScissor(gScreenLeft + (s32)margin, gScreenTop, gPointerScreenWidth - (s32)margin * 2, gPointerScreenHeight);
+		DrawItemMenuTitle(this);
+		if (mName) {
+			f32 alpha   = mAlpha * mNameAlpha;
+			f32 spacing = 30.0f;
+			f32 center  = gPointerScreenWidth / 2;
+			f32 bottom  = 160.0f + gPointerScreenHeight / 2;
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			CTexObj blob;
+			InitPCPanelTexture(blob, 109);
+			mHelpCount       = 0;
+			const char* name = (const char*)mName;
+			if (name) {
+				for (int i = 0; i < 20 && *name; i++, name++) {
+					mBg[i].mText = name;
+					mHelpCount++;
+					if (gGame.mLanguage == 0) {
+						u8 c    = *name;
+						u8 lead = TRUE;
+						u8 a    = (c >= 0x81 && c <= 0x9F);
+						if (!a) {
+							u8 b = (c >= 0xE0 && c <= 0xFC);
+							if (!b) {
+								lead = FALSE;
+							}
+						}
+						if (lead) {
+							name++;
+						}
+					}
+				}
+			}
+			f32 zero = 0.0f;
+			for (int i = 0; i < mHelpCount; i++) {
+				MenuHelpChar* glyph = &mBg[i];
+				CFont font;
+				s32 glyphWidth;
+				CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, 0, &glyphWidth);
+				f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
+				f32 rotation = sin(0.7f * glyph->mAngle1);
+				f32 s1       = sin(3.1415927f * alpha);
+				f32 s2       = sin(1.5707964f * alpha);
+				f32 scale    = 0.2f * s1 + s2;
+				f32 glyphX   = 0.5f * spacing + (i * spacing + (center - mHelpCount * spacing / 2.0f));
+				f32 glyphY   = bottom + bob;
+				rotation     = -(0.017453292f * (10.0f * rotation));
+				u32 color    = (u32)(255.0f * alpha) | 0xFFFFFF00;
+				DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, glyphX, glyphY, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f,
+				                   -zero, rotation);
+				scale       = 30.0f * (0.8f * scale);
+				f32 padding = HelpGlyphPadding(glyphWidth, scale);
+				color       = (u32)(255.0f * alpha);
+				for (int j = 0; j < 4; j++) {
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, glyphX + gItemHelpOutlineX[j] + padding / 2.0f,
+					                   bob + (bottom + gItemHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+				}
+				color = (u32)(255.0f * alpha) | 0xFFFFFB00;
+				DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, glyphX + padding / 2.0f, glyphY, 1.0f, scale, scale, 0.0f,
+				                   -zero, rotation);
+			}
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		fn_8005A128(&mPaneFades, mGridX - 42.0f, 180.0f + mGridY, mAlpha);
+		InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+		((CBase*)&gGame)->vf5C();
+		width               = gGame.mAspectRatio == 0 ? 640 : 854;
+		gRingScreenWidth    = width;
+		gPointerScreenWidth = width;
+		GXSetScissor(gScreenLeft, gScreenTop, width, gPointerScreenHeight);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // NONMATCHING: the call list matches retail; this build is 4 bytes larger and register allocation differs
@@ -5563,6 +5757,56 @@ void MenuSave::State0(u32)
 	menu->SetMode(1);
 }
 
+// NONMATCHING: four bytes smaller because the result == 0 branch becomes one bne instead of retail's beq plus branch
+void MenuSave::State1(u32 frames)
+{
+	s32 result = gGame.mSaveManager.mFile.mResult;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		for (int i = 0; i < 3; i++) {
+			WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
+			if (entry->mStatus & 1) {
+				fn_8007A2E8(&mSlots[i], entry, TRUE);
+				if (entry->mStatus & 2) {
+					mSlots[i].mState = 1;
+				}
+			} else if (entry->mStatus & 8) {
+				mSlots[i]._48 = 1;
+			} else if (entry->mStatus & 16) {
+				mSlots[i]._4C = 1;
+			} else {
+				mSlots[i]._44 = 1;
+			}
+		}
+		if (mSaved == TRUE) {
+			SetMode(4);
+			mTime  = 0.5f * gRefreshRate;
+			mSaved = FALSE;
+		} else {
+			SetMode(2);
+			fn_80083350(this);
+		}
+	} else {
+		mResult = result;
+		if (result == -9 || result == -11) {
+			SetMode(11);
+			mOffset = -32.0f;
+		} else if (result == -4) {
+			SetMode(13);
+			mShowMessage       = TRUE;
+			lbl_8044B700[0x14] = TRUE;
+		} else {
+			SetMode(11);
+			mOffset            = -32.0f;
+			lbl_8044B700[0x14] = TRUE;
+		}
+		mTargetAlpha = 1.0f;
+	}
+}
+
 // the file records cleared, as title.cpp's OnCardRemoved; State2, State3, State18 and State19 differ from retail only
 // in the panic messages' pool offsets (see State6)
 static inline void OnCardRemoved(MenuSave* menu)
@@ -5715,6 +5959,53 @@ void MenuSave::State4(u32 frames)
 			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
 		}
 		break;
+	}
+}
+
+// NONMATCHING: the state transitions match; the result load is scheduled before the delay subtraction here, and the
+// outer zero-result branch uses one bne instead of retail's beq plus branch
+void MenuSave::State5(u32 frames)
+{
+	s32 result = gGame.mSaveManager.mFile.mResult;
+	mSaved     = FALSE;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[mFile];
+		if (entry->mStatus & 1) {
+			fn_8007A2E8(&mSlots[mFile], entry, TRUE);
+		}
+		u32 blocks, inodes;
+		GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+		mFreeBlocks  = blocks;
+		mFreeEntries = inodes;
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+		SetMode(1);
+		mLastFile   = mFile;
+		mNewestFile = -1;
+		mSaved      = TRUE;
+		mOffset     = 0.0f;
+	} else {
+		mResult = result;
+		switch (result) {
+		case -9:
+		case -11:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		case -4:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		default:
+			SetMode(13);
+			mShowMessage = TRUE;
+			break;
+		}
+		lbl_8044B700[0x14] = TRUE;
+		mTargetAlpha       = 1.0f;
 	}
 }
 
@@ -5940,6 +6231,321 @@ void MenuSave::State17(u32)
 }
 
 // a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
+static s32 sStatusTabTextIds[5] = { 1, 3, 2, 4, -1 };
+
+// NONMATCHING: the mode-specific text selection and transition match Wii retail, but all four fn_800695EC calls inline;
+// the emitted function grows to 3624 bytes instead of calling it four times in 712 bytes
+void MenuStatus::State4(u32 frames)
+{
+	CPad pad(0); // unused, retail builds one here
+	switch (mPhase) {
+	case 0:
+		mTargetPanelY = -200.0f;
+		mDelay        = 8.0f * gFrameRateScale;
+		mPhase++;
+		// fall through
+	case 1:
+		mDelay -= frames;
+		if (mDelay < 0.0f) {
+			if (mNextMode != 5) {
+				mTargetPanelY = 0.0f;
+			}
+			mPrevMode = mMode;
+			mMode     = mNextMode;
+			mPhase    = 0;
+			if (mMode == 1) {
+				fn_800695EC(this);
+				s32 id;
+				if (mSelection >= 4) {
+					id = 0;
+				} else {
+					id = sStatusTabTextIds[mSelection == -1 ? 4 : mSelection];
+				}
+				const char* text = "";
+				if (id != -1) {
+					text = GetLocalizedInterfaceText(id + 0x18);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+			if (mMode == 2) {
+				fn_800695EC(this);
+				s32 id = -1;
+				if (mItemSelection != -1) {
+					id = sStatusItemTable.mItems[mItemSelection].mItem;
+				}
+				if (id >= 0 && CountMenuItems() > 0) {
+					mHelp     = (const char*)GetItemName(id);
+					mShowHelp = 1;
+				} else {
+					mShowHelp = 1;
+					mHelp     = NULL;
+				}
+			}
+			if (mMode == 9) {
+				fn_800695EC(this);
+				s32 id = mOverviewSelection;
+				const char* text;
+				if (id == -1) {
+					text = NULL;
+				} else if (gStatusEntryAvailable[id]) {
+					text = GetStatusOverviewLabel(id);
+				} else {
+					text = GetLocalizedInterfaceText(0xF);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+			if (mMode == 8) {
+				fn_800695EC(this);
+				s32 id = mIconSelection;
+				const char* text;
+				if (id == -1) {
+					text = NULL;
+				} else if (gStatusIconUnlocked[id]) {
+					text = (const char*)GetStatusIconName(id);
+				} else {
+					text = GetLocalizedInterfaceText(0xF);
+				}
+				mHelp     = text;
+				mShowHelp = 1;
+			}
+		}
+		break;
+	}
+}
+
+void MenuStatus::State5(u32)
+{
+	CPad pad(0);
+	if (IsCancelPressed()) {
+		mTargetDiagramX = 1086.0f;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		for (int i = 0; i < 4; i++) {
+			mTabs[i].mX = 0.0f;
+			if (mHasFourthTab) {
+				mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+			} else {
+				mTabs[i].mTargetX = 252.0f + i * 108;
+			}
+		}
+		mPrevMode        = mMode;
+		mMode            = 4;
+		mNextMode        = 1;
+		mPhase           = 0;
+		const char* text = GetLocalizedInterfaceText(0x18);
+		fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+		mSelection   = -1;
+		mShowHelp    = 3;
+		sStatusPhase = 0.0f;
+	}
+}
+
+// NONMATCHING: navigation, help transitions and pointer panes match; this build fully unrolls the 24-pane clear loop,
+// while retail keeps three groups of eight, and the tab reset uses different float registers
+void MenuStatus::State8(u32)
+{
+	bool addPanes = true;
+	if (mIconSelection != -1) {
+		mStickIconSelection = mIconSelection;
+	}
+	switch (mPhase) {
+	case 0: {
+		bool stick = false;
+		if (IsStickUsedOverPointer()) {
+			stick = true;
+		}
+		if (!stick) {
+			if (IsStickLeft()) {
+				if (--mIconSelection < 0) {
+					mIconSelection = 23;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickRight()) {
+				if (++mIconSelection > 23) {
+					mIconSelection = 0;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			if (IsStickUp()) {
+				s32 row = mIconSelection / 6;
+				s32 col = mIconSelection % 6;
+				if (--row < 0) {
+					row = 3;
+				}
+				mIconSelection = col + row * 6;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickDown()) {
+				s32 row = mIconSelection / 6;
+				s32 col = mIconSelection % 6;
+				if (++row > 3) {
+					row = 0;
+				}
+				mIconSelection = col + row * 6;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (mIconSelection != mPrevIconSelection) {
+			s32 id = mIconSelection;
+			const char* text;
+			if (id == -1) {
+				text = NULL;
+			} else if (gStatusIconUnlocked[id]) {
+				text = (const char*)GetStatusIconName(id);
+			} else {
+				text = GetLocalizedInterfaceText(0xF);
+			}
+			if (text != NULL) {
+				mHelp     = text;
+				mShowHelp = 1;
+			} else {
+				mShowHelp = 3;
+			}
+		}
+		mPrevIconSelection = mIconSelection;
+		if (IsCancelPressed()) {
+			mTargetGridX = 959.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			for (int i = 0; i < 4; i++) {
+				mTabs[i].mX = 0.0f;
+				if (mHasFourthTab) {
+					mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				} else {
+					mTabs[i].mTargetX = 252.0f + i * 108;
+				}
+			}
+			mPrevMode        = mMode;
+			mMode            = 4;
+			mNextMode        = 1;
+			mPhase           = 0;
+			const char* text = GetLocalizedInterfaceText(0x18);
+			fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+			mSelection   = -1;
+			mShowHelp    = 3;
+			sStatusPhase = 0.0f;
+			for (int i = 0; i < 24; i++) {
+				mPanes[i + 25].mPointed = FALSE;
+				mPanes[i + 25].mPicked  = FALSE;
+			}
+			addPanes = false;
+		}
+		break;
+	}
+	case 100:
+		if (IsConfirmPressed() || IsCancelPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mPhase             = 0;
+			mTargetDetailScale = 0.0f;
+		}
+		break;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 24; i++) {
+			AddPointerPane(&gPointerPanes, &mPanes[i + 25]);
+		}
+	}
+}
+
+// NONMATCHING: the neighbor table and all state transitions match; this build is eight bytes shorter because the
+// addPanes initialization and the pane-loop branches are scheduled differently
+void MenuStatus::State9(u32)
+{
+	CPad pad(0);
+	s32 neighbors[13][4] = {
+		{ 4, 2, 9, 5 },  { 0, 2, 10, 6 }, { 0, 3, 10, 6 },  { 2, 4, 11, 7 }, { 3, 0, 12, 8 },  { 8, 6, 0, 9 },  { 5, 7, 2, 10 },
+		{ 6, 8, 3, 11 }, { 7, 5, 4, 12 }, { 12, 10, 5, 0 }, { 9, 11, 6, 2 }, { 10, 12, 7, 3 }, { 11, 9, 8, 4 },
+	};
+	bool addPanes = true;
+	if (mOverviewSelection != -1) {
+		mStickOverviewSelection = mOverviewSelection;
+	}
+	switch (mPhase) {
+	case 0: {
+		bool stick = false;
+		if (IsStickUsedOverPointer()) {
+			stick = true;
+		}
+		if (!stick) {
+			if (IsStickLeft()) {
+				mOverviewSelection = neighbors[mOverviewSelection][2];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickRight()) {
+				mOverviewSelection = neighbors[mOverviewSelection][3];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			if (IsStickUp()) {
+				mOverviewSelection = neighbors[mOverviewSelection][0];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickDown()) {
+				mOverviewSelection = neighbors[mOverviewSelection][1];
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (mOverviewSelection != mPrevOverviewSelection) {
+			s32 id = mOverviewSelection;
+			const char* text;
+			if (id == -1) {
+				text = NULL;
+			} else if (gStatusEntryAvailable[id]) {
+				text = GetStatusOverviewLabel(id);
+			} else {
+				text = GetLocalizedInterfaceText(0xF);
+			}
+			if (text != NULL) {
+				mHelp     = text;
+				mShowHelp = 1;
+			} else {
+				mShowHelp = 3;
+			}
+		}
+		mPrevOverviewSelection = mOverviewSelection;
+		if (IsCancelPressed()) {
+			mTargetOverviewX = 1086.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			for (int i = 0; i < 4; i++) {
+				mTabs[i].mX = 0.0f;
+				if (mHasFourthTab) {
+					mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				} else {
+					mTabs[i].mTargetX = 252.0f + i * 108;
+				}
+			}
+			mPrevMode        = mMode;
+			mMode            = 4;
+			mNextMode        = 1;
+			mPhase           = 0;
+			const char* text = GetLocalizedInterfaceText(0x18);
+			fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+			mSelection   = -1;
+			mShowHelp    = 3;
+			sStatusPhase = 0.0f;
+			for (int i = 0; i < 13; i++) {
+				if (i != 1) {
+					mPanes[i + 12].mPointed = FALSE;
+					mPanes[i + 12].mPicked  = FALSE;
+				}
+			}
+			addPanes = false;
+		}
+		break;
+	}
+	case 100:
+		if (IsConfirmPressed() || IsCancelPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mPhase             = 0;
+			mTargetDetailScale = 0.0f;
+		}
+		break;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 13; i++) {
+			if (i != 1) {
+				AddPointerPane(&gPointerPanes, &mPanes[i + 12]);
+			}
+		}
+	}
+}
+
 void MenuStatus::State3(u32)
 {
 	OSPanic("menu_status.cpp", 1313, "UpdateItem");
