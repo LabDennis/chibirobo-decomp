@@ -4,12 +4,12 @@
 #include "arithmetic.h"
 #include <math.h>
 
-extern "C" BOOL fn_800C98E0(XObjMap* map, Vec* pos, XObjMapHit* hit, XObjMapHit* tri);
+extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 extern "C" void fn_800C659C(void* record, XObj* obj);
 extern "C" void fn_800C6CF0(void* record, u32 frames);
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
-extern "C" u8 HasSmallSpiderEmerged(XObjSpiderSmall* spider);
-extern "C" u8 IsSmallSpiderGrabbingPlayer(XObjSpiderSmall* spider);
+extern "C" BOOL fn_80131DDC(XObjSpiderSmall* spider);
+extern "C" BOOL fn_80131DE8(XObjSpiderSmall* spider);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
 extern s32 gRefreshRate;
 
@@ -67,8 +67,7 @@ void XObjActor::ResetObjectState()
 	_A60 = 0.0f;
 	_A64 = 0.0f;
 	for (u32 i = 0; i < 8; ++i) {
-		mParts[i].mObj   = NULL;
-		mParts[i].mJoint = nw4r::g3d::ResNode(NULL);
+		mParts[i].mObj = NULL;
 	}
 	mAttachedId     = -1;
 	mAttached       = NULL;
@@ -118,8 +117,7 @@ void XObjActor::ResetForNewGame()
 	_A60 = 0.0f;
 	_A64 = 0.0f;
 	for (u32 i = 0; i < 8; ++i) {
-		mParts[i].mObj   = NULL;
-		mParts[i].mJoint = nw4r::g3d::ResNode(NULL);
+		mParts[i].mObj = NULL;
 	}
 	mSfx.Init((WiiPlayerState*)this, NULL);
 	mAttachedId     = -1;
@@ -184,7 +182,7 @@ void XObjActor::UpdateObject(u32 frames)
 	}
 	XObj::UpdateObject(frames);
 	UpdateAnimationSounds(GetAnimFrame());
-	for (u32 i = 0; i < 2; ++i) {
+	for (s32 i = 0; i < 2; ++i) {
 		mSfxActors[i].Update(GetPos(), (f32)frames);
 	}
 }
@@ -281,13 +279,13 @@ void XObjActor::vf16C(u32 frames)
 	ProcessPendingEvents(frames);
 	RunStateHandler(frames);
 	UpdateAfterAnim(frames);
-	if (mActorStatus.mFlags & 0x2000) {
+	if (mActorStatus.mFlags & 0x1000) {
 		for (u32 i = 0; i < 8; ++i) {
 			XObjJointPart* part = &mParts[i];
 			if (part->mObj == NULL) {
 				continue;
 			}
-			if (mStatus.mFlags & 2) {
+			if ((mStatus.mFlags & 0x10001) == 0x10001) {
 				if (part->mObj->GetKind() == 0x423) {
 					part->mObj->SetBaseMtx(GetWorldMtx(part->mJoint));
 				} else {
@@ -468,7 +466,7 @@ void XObjActor::UpdateGroundMovement(u32 frames)
 		break;
 	}
 	mActorStatus.mFlags &= ~0x20;
-	if (fn_800C98E0((XObjMap*)gGame.mXObjs.mPools[3].mObjects, &pos, &mFloorHit, &mFloorHit)) {
+	if (fn_800C98E0((XObjMap*)gGame.mXObjs.mPools[3].mObjects, &pos, mFloorHit.mTriangle, &mFloorHit)) {
 		mGroundHeight = mFloorHit.mHeight + offset;
 		if (!(mActorStatus.mFlags & 8)) {
 			mMoveTranslate.y = mFloorHit.mHeight + offset;
@@ -520,7 +518,7 @@ extern "C" s32 CountSmallSpidersGrabbingPlayer()
 	s32 count = 0;
 	for (s32 i = 0; i < 16; ++i) {
 		XObjSpiderSmall* spider = (XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i);
-		if ((spider->mStatus.mFlags & 1) && IsSmallSpiderGrabbingPlayer(spider)) {
+		if ((spider->mStatus.mFlags & 1) && fn_80131DDC(spider)) {
 			++count;
 		}
 	}
@@ -532,7 +530,7 @@ extern "C" s32 CountEmergedSmallSpiders()
 	s32 count = 0;
 	for (s32 i = 0; i < 16; ++i) {
 		XObjSpiderSmall* spider = (XObjSpiderSmall*)gGame.mXObjs.mPools[18].Get(i);
-		if ((spider->mStatus.mFlags & 1) && HasSmallSpiderEmerged(spider)) {
+		if ((spider->mStatus.mFlags & 1) && fn_80131DE8(spider)) {
 			++count;
 		}
 	}
@@ -541,12 +539,14 @@ extern "C" s32 CountEmergedSmallSpiders()
 
 void XObjActor::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
-	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	u16 nodeId = pFuncObj->GetCallbackNodeID();
+	XObj::ExecCallbackB(pResult, mdl, pFuncObj);
 	if (nodeId == 0) {
-		if (mHeadAimSnap[0] == 0 && mHeadAimSnap[1] == 0) {
+		if (mHeadAimSnap[0] != 0 || mHeadAimSnap[1] != 0) {
 			nw4r::g3d::ResNode node = GetHeadJoint();
-			pFuncObj->SetCallbackNodeID(node.GetID());
+			if (node.IsValid()) {
+				pFuncObj->SetCallbackNodeID(node.GetID());
+			}
 		}
 	} else {
 		GetResNode(nodeId);
@@ -567,7 +567,7 @@ nw4r::g3d::ResNode XObjActor::GetHeadJoint()
 
 void XObjActor::ResumeSounds(f32 fade)
 {
-	for (u32 i = 0; i < 2; ++i) {
+	for (s32 i = 0; i < 2; ++i) {
 		CSoundHandle* handle = mSfxActors[i].GetHandle();
 		if (handle != NULL && mSfxActors[i].mActor != NULL && mSfxActors[i].mActor->mHandle.IsPause()) {
 			mSfxActors[i].mActor->mHandle.nw4r::snd::SoundHandle::Pause(false, (s32)(gRefreshRate * fade));
@@ -578,7 +578,7 @@ void XObjActor::ResumeSounds(f32 fade)
 
 void XObjActor::PauseSounds(f32 fade)
 {
-	for (u32 i = 0; i < 2; ++i) {
+	for (s32 i = 0; i < 2; ++i) {
 		CSoundHandle* handle = mSfxActors[i].GetHandle();
 		if (handle != NULL && mSfxActors[i].mActor != NULL && !mSfxActors[i].mActor->mHandle.IsPause()) {
 			mSfxActors[i].mActor->mHandle.nw4r::snd::SoundHandle::Pause(true, (s32)(gRefreshRate * fade));
