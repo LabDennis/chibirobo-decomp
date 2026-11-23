@@ -885,6 +885,32 @@ private:
 	u16 mCallbackExecOpMask;        // _DA
 };
 
+class ScnGroup : public ScnObj {
+public:
+	virtual bool Insert(u32 idx, ScnObj* pObj); // _34
+	virtual ScnObj* Remove(u32 idx);            // _38
+	virtual bool Remove(ScnObj* pObj);          // _3C
+	bool Empty() const { return mNumScnObj == 0; }
+	bool PushBack(ScnObj* pObj) { return Insert(mNumScnObj, pObj); }
+	ScnObj* PopBack()
+	{
+		if (!Empty()) {
+			return Remove(mNumScnObj - 1);
+		}
+		return NULL;
+	}
+	void Clear()
+	{
+		while (!Empty()) {
+			PopBack();
+		}
+	}
+
+	ScnObj** mpScnObjArray; // _DC
+	u32 mSizeScnObj;        // _E0
+	u32 mNumScnObj;         // _E4
+};
+
 class ScnLeaf : public ScnObj {
 private:
 	u8 mScale[0xC]; // _DC, nw4r's VEC3
@@ -1153,7 +1179,7 @@ public:
 };
 
 // the scene root, as far as the game calls it: the current camera's handle is reduced to its data
-class ScnRoot : public G3dObj {
+class ScnRoot : public ScnGroup {
 public:
 	// the allocator, the size out and the four counts, all 1 for the stage's scene
 	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
@@ -1163,6 +1189,7 @@ public:
 	AnmScn* RemoveAnmScn();          // 0x8027AF0C
 	void UpdateFrame();              // 0x8027AF78
 	void CalcWorld();                // 0x8027B388
+	void CalcVtx();                  // 0x8027B3F0
 	void CalcView();                 // 0x8027B40C
 	void GatherDrawScnObj();
 	void DrawOpa();
@@ -2053,6 +2080,7 @@ public:
 	using XObj::SetAnim;
 	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
 	                     f32 blendRate);                               // _108
+	virtual void UpdateAnim(f32 speed);                                // _118
 	virtual void InitializeObject();                                   // _14C
 	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults

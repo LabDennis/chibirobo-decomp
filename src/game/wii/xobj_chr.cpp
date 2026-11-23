@@ -1962,6 +1962,35 @@ f32 GetVectorDistance(const Vec* a, const Vec* b)
 	return PSVECDistance((Vec*)a, (Vec*)b);
 }
 
+// NONMATCHING: the scene-group clear keeps mNumScnObj in r4 across Remove, while the build reloads it into r0;
+// a direct removal loop instead of Clear scores lower
+void XObjChr::UpdateAnim(f32 speed)
+{
+	CObj::UpdateAnim(speed);
+	if (speed == 0.0f) {
+		WiiPlayerState* chr = (WiiPlayerState*)this;
+		m_pRoot->PushBack(mObject.m_pScnMdl);
+		if (IsObjectActive(&chr->mSuits.mObjects[chr->mSuits.mCurrent])) {
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetPos(*GetPos());
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetRot(chr->mMoveRotate);
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].SetScale(*GetScale());
+			chr->mSuits.mObjects[chr->mSuits.mCurrent].UpdateAnim(speed);
+			m_pRoot->PushBack(chr->mSuits.mObjects[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+			if (chr->mSuits.mCurrent == 3 || chr->mSuits.mCurrent == 6) {
+				m_pRoot->PushBack(chr->mSuitParts[chr->mSuits.mCurrent].mObject.m_pScnMdl);
+			}
+		}
+		if (IsLiftTargetPlug(&chr->mLift)) {
+			UpdateHeldObject(&chr->mLift, 1);
+			m_pRoot->PushBack(chr->mPlug.mObject.m_pScnMdl);
+		}
+		m_pRoot->UpdateFrame();
+		m_pRoot->CalcVtx();
+		m_pRoot->CalcWorld();
+		m_pRoot->Clear();
+	}
+}
+
 // moves what he carries along and queues its model for the scene
 void fn_800D1A8C(WiiPlayerState* player, u32 frames)
 {

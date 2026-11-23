@@ -626,6 +626,7 @@ WrapPlayerActionAngle = .text:0x800D1778; // type:function size:0x34
 GetCameraAngles = .text:0x800D17AC; // type:function size:0x8
 GetGameObjectByIndex = .text:0x800D17B4; // type:function size:0x14
 GetHeadingBetweenPositions = .text:0x800D17C8; // type:function size:0x3C
+UpdateAnim__7XObjChrFf = .text:0x800D183C; // type:function size:0x250
 GetPlayerActionMoveDirection = .text:0x800D1804; // type:function size:0x8
 SetObjectVectorAndTargetXYZ = .text:0x800D180C; // type:function size:0x1C
 SetObjectVelocity = .text:0x800D1828; // type:function size:0x10
