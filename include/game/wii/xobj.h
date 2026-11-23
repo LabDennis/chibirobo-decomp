@@ -1938,6 +1938,7 @@ public:
 	void ResetMovementStep();
 	virtual ~XObjActor();
 	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
+	virtual void UpdateAnimationSounds(f32 frame);            // _2A8
 	f32 mHeading;                                             // _9A8, the way it walks
 	f32 mMoveSpeed;                                           // _9AC, move speed
 	f32 mFacing;                                              // _9B0, the yaw the model is turned to
@@ -2342,6 +2343,9 @@ public:
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void ResetActorState();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void RunStateHandler(u32 frames);
+	virtual void ClearStateHandler();
+	virtual void UpdateAnimationSounds(f32 frame);
 	void ProcessPendingEvents(u32 frames); // _29C; the shared Actor vtable slots remain to be declared
 
 	void StateCarry(u32 frames);
@@ -2469,6 +2473,23 @@ class XObjActorDeca : public XObjActor {
 public:
 	XObjActorDeca();
 	virtual ~XObjActorDeca();
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void ExecCallbackC();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateAnim(f32 frames);
+	virtual void UpdateObject(u32 frames);
+	virtual Vec GetCameraTarget();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void StateHold(u32 frames);
+	void StatePickUp(u32 frames);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
+	nw4r::g3d::ResNode GetHeadJoint();
+	CVec GetHeadWorldPosition();
 
 private:
 	f32 _D78;              // _D78, the GameCube's _C84
