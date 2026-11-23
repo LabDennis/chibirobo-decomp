@@ -5353,6 +5353,73 @@ static inline f32 PlayerAnimRateScale(WiiPlayerState* chr, s32 anim)
 	return rate * (60.0f / gRefreshRate);
 }
 
+// NONMATCHING: variant selection, archives, suit parts and plug rate are present;
+// temporary lifetime and register allocation still differ
+static inline void FindPlayerAnimVariant(s32& id, s32 variant)
+{
+	for (s32 i = 0; gPlayerAnimVariants[i].normal >= 0; ++i) {
+		if (gPlayerAnimVariants[i].normal != id)
+			continue;
+		if (variant == 0 && gPlayerAnimVariants[i].carrying >= 0)
+			id = gPlayerAnimVariants[i].carrying;
+		else if (variant == 2) {
+			if (gPlayerAnimVariants[i].attachment >= 0)
+				id = gPlayerAnimVariants[i].attachment;
+		} else if (gPlayerAnimVariants[i].lifted >= 0)
+			id = gPlayerAnimVariants[i].lifted;
+		break;
+	}
+}
+
+void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	WiiPlayerState* chr = (WiiPlayerState*)this;
+	if (chr->_969C != 0) {
+		frame      = 1.0f;
+		chr->_969C = 0;
+	}
+	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift))
+		FindPlayerAnimVariant(id, 0);
+	else if (chr->mLift.mState == 4)
+		FindPlayerAnimVariant(id, 1);
+	else if (chr->mLift.mState == 0 && (chr->GetAttachment() == 1 || chr->GetAttachment() == 3))
+		FindPlayerAnimVariant(id, 2);
+	if (id >= 3000 && chr->mSuitAnm.mAnm.mFile.IsLoaded()) {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f),
+		              blend, blendRate);
+	} else if (id >= 2000 && chr->mAttachmentAnm.mAnm.mFile.IsLoaded()) {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f),
+		              blend, blendRate);
+	} else {
+		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f),
+		              blend, blendRate);
+	}
+	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
+	if (IsObjectActive(suit)) {
+		suit->SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f),
+		              blend, blendRate);
+		if (chr->mSuits.mCurrent == 6) {
+			WiiSuitPart* part = &chr->mSuitParts[6];
+			if (id == 0xCE8) {
+				if (part->GetAnimId() != 2)
+					part->SetAnim(2, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f), blend,
+					              blendRate);
+			} else if (id == 0xCE7) {
+				if (part->GetAnimId() != 1)
+					part->SetAnim(1, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f), blend,
+					              blendRate);
+			} else if (id == 0xCE6) {
+				if (part->GetAnimId() != 0)
+					part->SetAnim(0, force, frame,
+					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 0.4f : 1.0f), blend,
+					              blendRate);
+			}
+		}
+	}
+}
+
 // scales his own anim rate and the worn suit's by frame
 void fn_800E3968(WiiPlayerState* chr, f32 frame)
 {

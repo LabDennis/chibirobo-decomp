@@ -9653,3 +9653,4 @@ gSpiderStateHandlers = .data:0x8030A560; // type:object size:0x78
 SpawnSpiderBounceCoin = .text:0x80128160; // type:function size:0x1E0
 ActivateWaitingKind43AActorsAtPosition = .text:0x8013EE70; // type:function size:0xF0
 gPlayerSuitIdleAnimations = .data:0x803040EC; // type:object size:0x24
+gPlayerTurnState = .bss:0x8045BDB4; // type:object size:0x14

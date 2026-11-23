@@ -2046,8 +2046,11 @@ public:
 	XObjChr();
 	virtual ~XObjChr();
 
-	virtual void Release();                                            // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
-	virtual void SetMoveDir(const Vec* dir, f32 speed);                // _100
+	virtual void Release();                             // _40, the GameCube's plus the suit teardown RemovePlayerSuit did
+	virtual void SetMoveDir(const Vec* dir, f32 speed); // _100
+	using XObj::SetAnim;
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                               // _108
 	virtual void InitializeObject();                                   // _14C
 	virtual void ResetForNewGame();                                    // _150
 	virtual void ResetObjectState();                                   // _154, the player state back to its defaults
