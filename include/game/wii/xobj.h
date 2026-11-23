@@ -1979,7 +1979,8 @@ public:
 	const Vec* mLookTarget;     // _BA4
 	f32 mHeadPitch;             // _BA8
 	XObjJointPart mParts[8];    // _BAC
-	u8 _D6C[0xD78 - 0xD6C];
+	typedef void (XObjActor::*StateFunc)(u32 frames);
+	StateFunc mState; // _D6C
 
 	Vec GetCameraTarget();
 };
@@ -2369,6 +2370,11 @@ class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
 	virtual ~XObjActorJenny();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
 
 private:
 	f32 _D78;              // _D78, the GameCube's _C84

@@ -9,6 +9,10 @@
 extern "C" {
 void ApproachHudValue(f32* value, f32* target, f32 step);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+CVec GetStagePlacementScale(const XObj* obj);
+void HSD_MtxGetScale(Mtx matrix, Vec* scale);
+StagePlacement* GetStageObjectPlacementByIndex(s32 index);
+XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 direct, BOOL async);
 void HandleToyKind0FCommand(XObjActorToy* toy, u32 frames);
 void HandleToyKind110Command(XObjActorToy* toy, u32 frames);
 void HandleToyKind156Command(XObjActorToy* toy, u32 frames);
@@ -35,6 +39,11 @@ static const Vec sToyBurstScales[10] = {
 static inline XObjActorToy* GetToy(s32 index)
 {
 	return (XObjActorToy*)gGame.mXObjs.mPools[10].Get(index);
+}
+
+static inline XObj* ReadObj(s16 id)
+{
+	return SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(id)), 0, TRUE);
 }
 
 static inline f32 GetToyHorizontalDistance(Vec* first, Vec* second)
@@ -814,5 +823,335 @@ void XObjActorToy::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::Re
 		}
 		break;
 	}
+	}
+}
+
+void XObjActorToy::StateCarry(u32 frames)
+{
+	Vec position;
+	switch (GetKind()) {
+	case 0x6F:
+	case 0x110:
+	case 0x117:
+	case 0x158:
+	case 0x16C:
+	case 0x1D3:
+	case 0x1FB:
+	case 0x1FC:
+	case 0x26C:
+	case 0x26D:
+	case 0x485:
+		break;
+	case 0xF:
+		if (mAttachedId >= 0 && mAttached) {
+			nw4r::g3d::ResNode joint = FindResNode("r_hand");
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', HALF_PI);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, -1.2f, -5.5f, -0.5f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			if (mStatus.mFlags & 0x10000) {
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		break;
+	case 0x156:
+		if (mAttachedId >= 0 && mAttached) {
+			nw4r::g3d::ResNode joint = FindResNode("sphere2");
+			position                 = GetJointPos(joint);
+			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', 0.0f);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, 0.0f, 2.0f, 2.0f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			if (mStatus.mFlags & 0x10000) {
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		break;
+	case 0x159:
+		if (mAttachedId >= 0 && mAttached) {
+			nw4r::g3d::ResNode joint = FindResNode("obj7");
+			position                 = GetJointPos(joint);
+			mAttached->SetPos(position.x, 12.0f + position.y, position.z);
+			PSMTXCopy(GetWorldMtx(joint), mAttachedMtx);
+			HSD_MtxGetScale(mAttachedMtx, &position);
+			position.x = GetStagePlacementScale(mAttached).x / position.x;
+			position.y = GetStagePlacementScale(mAttached).y / position.y;
+			position.z = GetStagePlacementScale(mAttached).z / position.z;
+			Mtx scale, translation, rotation, result;
+			PSMTXScale(scale, position.x, position.y, position.z);
+			PSMTXConcat(mAttachedMtx, scale, result);
+			PSMTXRotRad(rotation, 'y', -PI);
+			PSMTXConcat(result, rotation, result);
+			PSMTXRotRad(rotation, 'x', -HALF_PI);
+			PSMTXConcat(result, rotation, result);
+			PSMTXTrans(translation, 5.0f, 12.0f, 2.0f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			if (mStatus.mFlags & 0x10000) {
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		break;
+	case 0x25E:
+		if (mAttachedId >= 0 && mAttached) {
+			nw4r::g3d::ResNode joint = FindResNode("obj1_1");
+			position                 = GetJointPos(joint);
+			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', 0.0f);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, 0.0f, 1.1f, 1.4f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			if (mStatus.mFlags & 0x10000) {
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		break;
+	}
+}
+
+void XObjActorToy::StateHitRecovery(u32 frames)
+{
+	if (mAttachedId >= 0 && mAttached) {
+		Mtx mount, translation, rotation, result;
+		switch (GetKind()) {
+		case 0xF: {
+			nw4r::g3d::ResNode joint = FindResNode("r_hand");
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', HALF_PI);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, -1.2f, -5.5f, -0.5f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			break;
+		}
+		case 0x156: {
+			nw4r::g3d::ResNode joint = FindResNode("sphere2");
+			Vec pos                  = GetJointPos(joint);
+			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', 0.0f);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, 0.0f, 2.0f, 2.0f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			break;
+		}
+		case 0x25E: {
+			nw4r::g3d::ResNode joint = FindResNode("obj1_1");
+			Vec pos                  = GetJointPos(joint);
+			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z);
+			mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			PSMTXCopy(GetWorldMtx(joint), mount);
+			PSMTXRotRad(rotation, 'z', 0.0f);
+			PSMTXConcat(mount, rotation, result);
+			PSMTXTrans(translation, 0.0f, 2.0f, 2.0f);
+			PSMTXConcat(result, translation, result);
+			mAttached->SetBaseMtx(result);
+			break;
+		}
+		}
+		if (mStatus.mFlags & 0x10000) {
+			mAttached->mStatus.mFlags |= 0x10000ULL;
+		} else {
+			mAttached->mStatus.mFlags &= ~0x10000ULL;
+		}
+	}
+	switch (mKindStep) {
+	case 0: {
+		Vec& player = gGame.GetPlayer()->mMoveTranslate;
+		mHeading    = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		Vec pos     = { 0.0f, 0.0f, 0.0f };
+		pos.x       = mMoveTranslate.x;
+		pos.y       = mMoveTranslate.y;
+		pos.z       = mMoveTranslate.z;
+		mHomePos.x  = pos.x;
+		mHomePos.y  = pos.y;
+		mHomePos.z  = pos.z;
+		mActorStatus.mFlags |= 8;
+		mActorStatus.mFlags |= 0x10;
+		mActorStatus.mFlags |= 4;
+		if (mHitStrength >= 10.0f) {
+			mMoveSpeed = 0.0f;
+			mFallSpeed = 6.8f;
+		} else {
+			mMoveSpeed = 0.0f;
+			mFallSpeed = 4.8f;
+		}
+		mKindCounter = 0;
+		++mKindStep;
+		break;
+	}
+	case 1:
+		++mKindCounter;
+		if (mActorStatus.Check(0x20)) {
+			mFallSpeed = 0.0f;
+			++mKindStep;
+		}
+		break;
+	case 2:
+		mMoveSpeed -= 0.04f * frames;
+		if (mMoveSpeed <= 0.0f) {
+			mMoveSpeed       = 0.0f;
+			mMoveTranslate.x = mHomePos.x;
+			mMoveTranslate.y = mHomePos.y;
+			mMoveTranslate.z = mHomePos.z;
+			mKindStep        = 4;
+		}
+		break;
+	case 3: {
+		mMoveSpeed = 0.5f;
+		mHeading   = atan2(mHomePos.x - mMoveTranslate.x, mHomePos.z - mMoveTranslate.z);
+		mFacing    = mHeading;
+		CVec home(mHomePos);
+		if (GetToyHorizontalDistance(&home, &mMoveTranslate) < 1.0f) {
+			mMoveTranslate.x = mHomePos.x;
+			mMoveTranslate.y = mHomePos.y;
+			mMoveTranslate.z = mHomePos.z;
+			mMoveSpeed       = 0.0f;
+			++mKindStep;
+		}
+		break;
+	}
+	case 4:
+		mActorStatus.mFlags &= ~4;
+		mActorStatus.mFlags &= ~0x40;
+		mState = (StateFunc)&XObjActorToy::StateCarry;
+		ResetMovementStep();
+		break;
+	}
+}
+
+void XObjActorToy::StatePickUp(u32 frames)
+{
+	switch (mKindStep) {
+	case 0: {
+		XObjActorTao* tao = (XObjActorTao*)gGame.mXObjs.mPools[14].First();
+		if ((tao->mStatus.mFlags & 1) && !tao->IsFree()) {
+			return;
+		}
+		XObjActorPapa* papa = (XObjActorPapa*)gGame.mXObjs.mPools[13].First();
+		if ((papa->mStatus.mFlags & 1) && !((XObjActorTao*)papa)->IsFree()) {
+			return;
+		}
+		if (mAttached) {
+			mAttached->Release();
+		}
+		if (mAttachedId >= 0) {
+			mAttached = ReadObj(mAttachedId);
+		} else {
+			mAttached = NULL;
+		}
+		mActorStatus.mFlags |= 0x2000;
+		++mKindStep;
+	}
+	case 1:
+		if (mAttached) {
+			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
+				return;
+			}
+			gGame.mStatus.mFlags |= 0x1000;
+		}
+		++mKindStep;
+	case 2:
+		if (mAttachedId >= 0 && mAttached) {
+			mAttached->SetScale(1.0f, 1.0f, 1.0f);
+			Mtx mount, translation, rotation, result;
+			switch (GetKind()) {
+			case 0xF: {
+				nw4r::g3d::ResNode joint = FindResNode("r_hand");
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				PSMTXCopy(GetWorldMtx(joint), mount);
+				PSMTXRotRad(rotation, 'z', HALF_PI);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translation, -1.2f, -5.5f, -0.5f);
+				PSMTXConcat(result, translation, result);
+				mAttached->SetBaseMtx(result);
+				break;
+			}
+			case 0x156: {
+				nw4r::g3d::ResNode joint = FindResNode("sphere2");
+				Vec position             = GetJointPos(joint);
+				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				PSMTXCopy(GetWorldMtx(joint), mount);
+				PSMTXRotRad(rotation, 'z', 0.0f);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translation, 0.0f, 2.0f, 2.0f);
+				PSMTXConcat(result, translation, result);
+				mAttached->SetBaseMtx(result);
+				break;
+			}
+			case 0x159: {
+				nw4r::g3d::ResNode joint = FindResNode("obj7");
+				Vec position             = GetJointPos(joint);
+				mAttached->SetPos(position.x, 12.0f + position.y, position.z);
+				PSMTXCopy(GetWorldMtx(joint), mAttachedMtx);
+				HSD_MtxGetScale(mAttachedMtx, &position);
+				position.x = GetStagePlacementScale(mAttached).x / position.x;
+				position.y = GetStagePlacementScale(mAttached).y / position.y;
+				position.z = GetStagePlacementScale(mAttached).z / position.z;
+				PSMTXScale(mount, position.x, position.y, position.z);
+				PSMTXConcat(mAttachedMtx, mount, result);
+				PSMTXRotRad(rotation, 'y', -PI);
+				PSMTXConcat(result, rotation, result);
+				PSMTXRotRad(rotation, 'x', -HALF_PI);
+				PSMTXConcat(result, rotation, result);
+				PSMTXTrans(translation, 5.0f, 12.0f, 2.0f);
+				PSMTXConcat(result, translation, result);
+				mAttached->SetBaseMtx(result);
+				break;
+			}
+			case 0x25E: {
+				nw4r::g3d::ResNode joint = FindResNode("obj1_1");
+				Vec position             = GetJointPos(joint);
+				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z);
+				mAttached->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				PSMTXCopy(GetWorldMtx(joint), mount);
+				PSMTXRotRad(rotation, 'z', 0.0f);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translation, 0.0f, 2.0f, 2.0f);
+				PSMTXConcat(result, translation, result);
+				mAttached->SetBaseMtx(result);
+				break;
+			}
+			}
+			if (mStatus.mFlags & 0x10000) {
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		mActorStatus.mFlags &= ~0x2000;
+		mState = (StateFunc)&XObjActorToy::StateCarry;
+		ResetMovementStep();
+		break;
 	}
 }

@@ -1335,6 +1335,9 @@ game/wii/xobjactortoy.cpp:
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 
+game/wii/xobjactorjenny.cpp:
+	.text start:0x8014A74C end:0x8014C10C
+
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
 
