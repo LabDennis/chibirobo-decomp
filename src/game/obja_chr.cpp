@@ -1298,7 +1298,9 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 						} else if (use.emptyHands && IsObjectClimbableLedge(object)) {
 							// Only the Japanese release starts a hang or a jump from this height check.
 							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
-							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value
+							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value.
+							// It also drops it for an empty if/else, an empty inline in either arm and an else-if on the height;
+							// only a body with code keeps retail's beq/b pair (US 0x800B3E68)
 							f32 height = ABS(object->mSelectedFloorHeight - player->mMoveTranslate.y);
 							if (height != 0) {
 #if defined(VERSION_JP)
@@ -2562,7 +2564,7 @@ void DrawEquipmentRing(OctaMenu* ring);
  * @note Size: 0x7D8
  */
 // NONMATCHING: saved float registers, retail gives the cursor branch's radius, y and x f29 to f31 and the hint loop's constants
-// the ones below; here it is the other way round
+// the ones below; here it is the other way round. Left: the hint label is loaded after the z and size arguments (US 0x80097910)
 extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 {
 	if (menu->mSel == 0) {
@@ -2761,6 +2763,8 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
  * @note Address: 0x80098204
  * @note Size: 0x1B4
  */
+// NONMATCHING (and the Atc and Octa ones): retail colours the channels before the pulse phase offset (red r30, offset r27 at
+// US 0x80098310), here the offset takes r30; red first in the declaration, pointer parameters or the pulse written out do not move it
 u32 DrsMenu::GetItemColor(s32 index)
 {
 	s32 green, blue, red;
@@ -3128,6 +3132,8 @@ static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, 
  * @note Address: 0x80099224
  * @note Size: 0x1DB0 (US/PAL), 0x1DC4 (JP)
  */
+// NONMATCHING: register picks: retail gives the outline loop's j r31 and the menu r30 (US 0x80099258, 0x8009ADDC), here the
+// menu takes r31; the label block's schedule (US 0x8009AD10 on) differs with rotation declared before or after cx
 extern "C" void DrawEquipmentRing(OctaMenu* menu)
 {
 	if (!(menu->mFade > 0))
@@ -3959,7 +3965,9 @@ void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
  * @note Address: 0x8009DAA8
  * @note Size: 0x1DC
  */
-// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C)
+// NONMATCHING: retail reads the map hit's trigon again for the call (US 0x8009DC4C) after comparing it (0x8009DC3C).
+// Scratch compiles reload only a direct global array element (gO.idx[k]); through a pointer, a reference, a hit
+// reference, an s32& accessor, != -1, nested ifs or a u32 copy the load is shared
 extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 {
 	s32 type = 0;
@@ -4001,7 +4009,8 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  */
 // NONMATCHING: retail compares the contact index through lwzu (US 0x8009DC90) and reads it again after the branch
 // (0x8009DCA4), loads NAN after the owner, and keeps owner + group * 4 for the mask test; declaring best inside the
-// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload
+// if moved the NAN load further from retail, and an (int) cast on the index for GetObject does not bring the reload;
+// nor do the .object union member, an s32& accessor, a contact pointer, an early return or a mask local (see GetPlayerGroundType)
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
@@ -5485,7 +5494,7 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  */
 // NONMATCHING: retail keeps the anim gauge's frame, fraction and left edge in three saved float registers (fdivs f30,
 // f31, f0 at US 0x800A59C8) where the build reuses the frame's for the fraction; an unnamed frame or a separate end
-// local changed nothing
+// local changed nothing, x - 36.0f as the gauge argument scores lower
 void XObjChr::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
@@ -5774,7 +5783,9 @@ void XObjAttachment::DrawWithView(Mtx view)
  * @note Size: 0x1AC
  */
 // NONMATCHING: retail hands CreateSRT the rotation straight out of the particle copy (addi r8, r1, 0x74 at
-// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help
+// US 0x800A7DC8) where the build copies it once more and grows its frame by 0x10; a const particle did not help,
+// nor a Vec& alias, a particle pointer, a const& inline, a member function or four separate locals: the compiler
+// passes only a whole named Vec local without a copy
 extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
 {
 	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
