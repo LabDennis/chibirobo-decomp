@@ -1016,8 +1016,14 @@ bool CObj::IsAnmScnEnd()
 extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
-	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
-		return camera->IsAnmScnEnd();
+	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+		BOOL hasScene = FALSE;
+		if (camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+			hasScene = TRUE;
+		}
+		if (hasScene) {
+			return camera->IsAnmScnEnd();
+		}
 	}
 	return TRUE;
 }
@@ -1054,7 +1060,15 @@ extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
-		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+		BOOL hasAnimation        = FALSE;
+		BOOL hasEntries          = FALSE;
+		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn()) {
+			hasAnimation = TRUE;
+		}
+		if (hasAnimation && file->GetResAnmScnNumEntries() != 0) {
+			hasEntries = TRUE;
+		}
+		if (hasEntries) {
 			camera->SetAnmScn(id, frame, rate);
 			return camera;
 		}
