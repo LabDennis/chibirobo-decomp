@@ -319,7 +319,7 @@ void XObjArmy::StateMarch()
 		next.x = gArmyPatrolMin.x + (gArmyPatrolMax.x - gArmyPatrolMin.x) * ArmyRandf();
 		next.y = gArmyPatrolMin.y;
 		next.z = gArmyPatrolMin.z + (gArmyPatrolMax.z - gArmyPatrolMin.z) * ArmyRandf();
-		SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(3, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetMoveDir(&next, .4f);
 		SetRotateY(GetAngleY(next, *GetPos()), .5f);
 		++mStep;
@@ -335,17 +335,13 @@ void XObjArmy::StateMarch()
 		} else if (distance < 80 && Abs(height) < 10) {
 			f32 facing = cos(angle - GetRotY());
 			if ((f32)cos(20.f * DEG2RAD) < facing) { // the player inside a twenty-degree cone
-				// The original selects the same step on both sides of the distance check.
-				if (distance < 60.0f)
-					mStep = 10;
-				else
-					mStep = 10;
+				mStep = 10;
 			} else if (distance < 40) // not facing him but close: step aside
 				++mStep;
 		}
 		break;
 	case 2: // a long step sideways
-		SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		next.x = GetPos()->x;
 		next.y = GetPos()->y;
 		next.z = GetPos()->z;
@@ -366,7 +362,7 @@ void XObjArmy::StateMarch()
 			mStep = 0;
 		break;
 	case 10: // turn to the player and close in
-		SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetRotateY(angle, .5f);
 		SetMoveDir(&target, .5f);
 		++mStep;
@@ -387,7 +383,7 @@ void XObjArmy::StateMarch()
 			f32 facing = cos(angle - GetRotY());
 			if ((f32)cos(20.) < facing) { // radians, not degrees: a wide cone
 				if (rand() % 100 < 30) {
-					SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					SetAnim(7, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					SetMoveDir(GetPos(), 1.0f);
 					++mStep;
 				} else
@@ -400,7 +396,7 @@ void XObjArmy::StateMarch()
 	case 12:
 		if (GetAnimEndFrame() <= GetAnimFrame()) {
 			SetRotateY(angle, .05f);
-			SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			++mStep;
 		}
 		break;
@@ -439,7 +435,7 @@ void XObjArmy::StateWait()
 	switch (mStep) {
 	case 0:
 		mTimer = 30;
-		SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetMoveDir(GetPos(), 1.0f);
 		SetRotateY(GetRotY(), 1.0f);
 		mStep++;
@@ -465,7 +461,7 @@ void XObjArmy::StateKnock()
 		gArmyKnockdownCount++;
 		f32 angle = GetAngleY(*GetPos(), *((XObj*)gGame.mXObjs.mPools[2].mObjects)->GetPos());
 		pos       = *GetPos();
-		SetAnim(0xA, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(0xA, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetRotateY(angle - PI, 1.0f); // face the player
 		SetMoveDir(&pos, 0.1f);
 		mStep++;
@@ -493,7 +489,7 @@ void XObjArmy::StateFall()
 		gArmyKnockdownCount++;
 		f32 angle = GetAngleY(*GetPos(), *((XObj*)gGame.mXObjs.mPools[2].mObjects)->GetPos());
 		pos       = *GetPos();
-		SetAnim(0x13, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(0x13, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetRotateY(angle - PI, 1.0f); // face the player
 		SetMoveDir(&pos, 0.5f);
 		mStep++;
@@ -516,7 +512,7 @@ void XObjArmy::StateGuard()
 {
 	switch (mStep) {
 	case 0:
-		SetAnim(9, TRUE, 0.0f, 1.0f, 0.0f, 10.0f);
+		SetAnim(9, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 		SetRotateY(GetAngleY(mGuardPos, *GetPos()), 1.0f);
 		mStep++;
 		break;
@@ -533,7 +529,7 @@ void XObjArmy::StateGuard()
 		break;
 	case 2: // then back to doing nothing
 		if (GetAnimEndFrame() <= 2.0f + GetAnimFrame()) {
-			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			SetMode(this, 0);
 		}
 		break;
@@ -781,6 +777,9 @@ void DrawArmyShot(XObjArmySlot* shot)
 		gArmyShotModel->SetTranslateY(shot->mPos.y);
 		gArmyShotModel->SetTranslateZ(shot->mPos.z);
 		scene->vf034(scene->mPending, gArmyShotModel->mObject.m_pScnMdl);
+		((nw4r::g3d::ScnRoot*)scene)->UpdateFrame();
+		((nw4r::g3d::ScnRoot*)scene)->CalcWorld();
+		((nw4r::g3d::ScnRoot*)scene)->CalcView();
 		((nw4r::g3d::ScnRoot*)scene)->GatherDrawScnObj();
 		((nw4r::g3d::ScnRoot*)scene)->DrawOpa();
 		((nw4r::g3d::ScnRoot*)scene)->DrawXlu();
