@@ -1549,9 +1549,9 @@ BOOL CheckCarriedObjectContacts(XActLift*, const Vec*, f32, f32, BOOL, BOOL, BOO
 // this function is 1035 units under the 128 -> 64 drop, 1758 under 32 -> 16 and 2010 under 16 -> 8. The missing weight
 // is not in this file: the helpers retail calls here are declared below or in obja_chr.cpp and weigh a call each.
 // GetItemSoundIndex: retail extends the release sound's index for its test and again for the call (0x800D249C,
-// 0x800D24A4), which only an s8 prototype gives (a u8 local with two (s8) casts is extended once); that prototype
-// needs the definitions in stage_data.cpp/globalresources.cpp and the s8 local in obja_chr's ProcessPlayerFrameEvents
-// (one extension, 0x800A80A4) to follow.
+// 0x800D24A4), which only an s8 prototype gives (a u8 local with two (s8) casts is extended once). The exact callee
+// instead returns u8 without an extension. A consistent s8 header and definitions adds extsb there and lowers
+// ProcessPlayerFrameEvents and this function in US, so retail's definition did not see the caller's prototype.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
