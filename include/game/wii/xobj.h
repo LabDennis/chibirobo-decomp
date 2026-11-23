@@ -2227,6 +2227,12 @@ public:
 	void Kind11(u32 frames);
 	void Kind12(u32 frames);
 	void Kind13(u32 frames);
+	void UpdateSpiderCounterPanel(u32 frames);
+	void Kind15(u32 frames);
+	void Kind16(u32 frames);
+	void Kind17(u32 frames);
+	void Kind18(u32 frames);
+	void Kind19(u32 frames);
 
 	CTpl mPanelTpl; // _9A8, the stage02 timer and spider counter panels
 	f32 _BA0;
