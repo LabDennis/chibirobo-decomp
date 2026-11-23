@@ -29,6 +29,7 @@
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "nw4r/math/math_types.h"
 #include "game/wii/title.h"
+#include "game/titlepalette.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -74,13 +75,16 @@ void UpdateTitleDust(Title* title, const char* text, u32 color);
 bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 // fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
+void fn_800556B0(CbPane* pane, const CbPaneLayout* layout);
+void ResetTitleScreenState(Title* title);
+void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8 emptyMessage, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
+                         f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
+s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 id, f32 x, f32 y, f32 size, f32 alpha);
+s32 DrawJapaneseCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha);
+void DrawMenuBannerPanels(const char* text, f32 x, f32 y, f32 alpha, f32 slide);
 }
 
 // the title screen's background and text colors, the logo's textures and which of each is in use
-struct TitlePaletteEntry {
-	GXColor background;
-	GXColor text;
-};
 const TitlePaletteEntry gTitlePalette[] = {
 	{ { 0, 0, 128, 0 }, {} },     { { 128, 0, 0, 0 }, {} },     { { 0, 128, 0, 0 }, {} },
 	{ { 200, 200, 200, 0 }, {} }, { { 128, 128, 128, 0 }, {} }, { { 0, 207, 233, 0 }, {} },
@@ -93,6 +97,15 @@ s32 gTitleLogoIndex             = 1;
 f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
+
+CbPaneLayout lbl_802E7F48[11] = {
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 1 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 2 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 3 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 4 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 5 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 6 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 7 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 8 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 9 },
+	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 10 },
+};
 
 // the outline offsets of the name's letter shadows, then of the help text's
 f32 gTitleNameOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
@@ -211,6 +224,48 @@ static inline bool FadeDone()
 	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
 }
 
+extern "C" void InitTitleScreen(Title* title)
+{
+	title->mCursor[0].InitializeObject();
+	title->mCursor[1].InitializeObject();
+	ResetTitleScreenState(title);
+	for (s32 i = 0; i < 3; ++i) {
+		title->mDemo[i].InitializeObject();
+	}
+	for (s32 i = 0; i < 16; ++i) {
+		title->mDust[i].mState  = 0;
+		title->mDust[i].mTimer  = 0;
+		title->mDust[i].mX      = rand() % gRingScreenWidth;
+		title->mDust[i].mY      = rand() % gRingScreenHeight;
+		title->mDust[i].mSpeedX = 0.0f;
+		title->mDust[i].mSpeedY = 0.0f;
+	}
+	title->mEntryLines[0]     = lbl_802E7F48[5].mTrans.y;
+	title->mEntryLines[1]     = lbl_802E7F48[6].mTrans.y;
+	title->mEntryLines[2]     = lbl_802E7F48[7].mTrans.y;
+	title->mOptionBarLines[0] = lbl_802E7F48[8].mTrans.y;
+	title->mOptionBarLines[1] = lbl_802E7F48[9].mTrans.y;
+	title->mOptionBarLines[2] = lbl_802E7F48[10].mTrans.y;
+	gRingScreenWidth          = 640;
+	gPointerScreenWidth       = 640;
+	CbPaneLayout* layout      = lbl_802E7F48;
+	s32 i                     = 11;
+	do {
+		Vec trans        = layout->mTrans;
+		layout->mTrans.x = trans.x - 0.5f * (f32)gPointerScreenWidth;
+		layout->mTrans.y = 0.5f * (f32)gPointerScreenHeight - trans.y;
+		++layout;
+	} while (--i > 0);
+	for (s32 i = 0; i < 11; ++i) {
+		fn_800556B0(&title->mPanes[i], &lbl_802E7F48[i]);
+	}
+	s32 width             = gGame.mAspectRatio == 0 ? 640 : 854;
+	gRingScreenWidth      = width;
+	gPointerScreenWidth   = width;
+	title->mSaveError     = 0;
+	title->mSaveErrorCode = 0;
+}
+
 /**
  * @note Address: 0x800452B8
  * @note Size: 0x264
@@ -243,8 +298,8 @@ extern "C" void ResetTitleScreenState(Title* title)
 	title->mLastChoice        = -1;
 	title->mLoadAlpha         = 0.0f;
 	title->mAlpha             = 0.0f;
-	title->mLastMode          = 0;
-	title->mModeParam         = 0;
+	title->mPrevMode          = 0;
+	title->mPhase             = 0;
 	title->mDelay             = 0;
 	title->mPanelX            = -10.0f;
 	title->mPanelY            = -200.0f;
@@ -1541,12 +1596,12 @@ void Title::State23(u32)
 // waits out the delay, then fades the labels and leaves for the game
 void Title::State24(u32 frames)
 {
-	switch (mModeParam) {
+	switch (mPhase) {
 	case 0:
 		mDelay -= frames;
 		if (mDelay < 0) {
 			mDelay = 0;
-			++mModeParam;
+			++mPhase;
 		}
 		break;
 	case 1:
@@ -1833,6 +1888,272 @@ extern "C" void DrawTitleScreen(Title* title)
 // put together after the frame is drawn. The heading's text is fetched once more and dropped; OK works
 // out its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
 // the options page: the frame, its heading, the pointer and stick settings with their highlight bars and OK
+static f32 sSaveSlotExtraWidth;
+
+static inline f32 LoadPromptY(Title* title, f32 panelY)
+{
+	return ((8.0f + (356.0f - panelY)) - 6.0f) + title->mLoadOffset;
+}
+
+static inline u32 LoadTextColor(f32 alpha)
+{
+	return (u32)(255.0f * alpha) | 0x14141400;
+}
+
+static inline void InitPCPanelTexture(CTexObj& tex, s32 icon)
+{
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+	tex = gGame.mTpl.mTex;
+}
+
+static inline void DrawLoadSelectionBar(Title* title, f32 barX, f32 barY, f32 barW, f32 barH)
+{
+	CTexObj fill, edges;
+	u32 barColor = (u32)(200.0f * title->mLoadAlpha) | 0x181CC600;
+	f32 alpha    = title->mLoadAlpha;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	InitPCPanelTexture(edges, 118);
+	PSMTXScale(edges.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+	edges.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(edges.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
+	edges.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &edges, barColor, barColor, barColor, barColor, barX, barY, 0.0f, barW, barH, 0.0f, 0.0f, 0.0f);
+	PSMTXTrans(edges.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	edges.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &edges, barColor, barColor, barColor, barColor, (barX - barW / 2.0f) - 4.0f, barY, 0.0f, 8.0f, barH,
+	                   0.0f, 0.0f, 0.0f);
+	PSMTXTrans(edges.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+	edges.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &edges, barColor, barColor, barColor, barColor, 4.0f + (barX + barW / 2.0f), barY, 0.0f, 8.0f, barH,
+	                   0.0f, 0.0f, 0.0f);
+	InitPCPanelTexture(fill, 119);
+	PSMTXTrans(fill.mTexMtx.mMtx[0], title->mLoadScroll, 0.0f, 0.0f);
+	fill.mTexMtx.mDirty = TRUE;
+	PSMTXScale(fill.mTexMtx.mMtx[2], 0.5f * (barW / GXGetTexObjWidth(&fill)), 0.5f, 1.0f);
+	fill.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &fill, (u32)(40.0f * alpha) | 0xFFFFFF00, (u32)(40.0f * alpha) | 0xFFFFFF00,
+	                   (u32)(40.0f * alpha) | 0xFFFFFF00, (u32)(40.0f * alpha) | 0xFFFFFF00, 2.0f + barX, barY, 0.0f, barW, barH - 4.0f,
+	                   0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+static inline void DrawLoadChoiceLabel(Title* title, s32 id, f32 x, f32 y)
+{
+	u32 color        = LoadTextColor(title->mLoadAlpha);
+	const char* text = GetLocalizedInterfaceText(id);
+	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, y, 0.0f, 21.0f, 21.0f);
+}
+
+static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
+{
+	return DrawJapaneseSaveStatusMessage(title->mChannel, id, panelX + gPointerScreenWidth / 2, LoadPromptY(title, panelY), 21.0f,
+	                                     title->mLoadAlpha);
+}
+
+extern "C" void DrawTitleLoadScreen(Title* title)
+{
+	switch (title->mMode) {
+	case 2:
+	case 3:
+	case 8:
+	case 15:
+	case 24:
+	case 27: {
+		f32 height = 230.0f;
+		for (s32 i = 0; i < 3; ++i) {
+			f32 width   = 154.0f + sSaveSlotExtraWidth;
+			f32 x       = 49.0f + ((width * 0.5f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) * 0.5f;
+			u8 selected = 0, newest = 0;
+			if (title->mFile == i) {
+				selected = 1;
+			}
+			if (title->mNewestFile == i) {
+				newest = 1;
+			}
+			DrawSaveSlotDetails(&gTitleSaveSlots[i], 0, i, selected, newest, x, height * 0.5f + 108.0f, width, height, title->mLoadAlpha,
+			                    title->mFileSlides[i], 1.0f, 1.0f);
+		}
+		break;
+	}
+	}
+	f32 panelX = title->mPanelX, panelY = title->mPanelY - 8.0f;
+	DrawMenuBannerPanels(NULL, panelX, panelY, 1.0f, title->mLoadOffset);
+	s32 lines        = 2;
+	bool showMessage = false;
+	char text[256];
+
+	switch (title->mMode) {
+	case 2:
+		if (title->mSelection == 0) {
+			u32 color        = LoadTextColor(title->mLoadAlpha);
+			f32 top          = 8.0f + (356.0f - panelY);
+			f32 y            = (top - 6.0f) + title->mLoadOffset;
+			const char* line = GetLocalizedInterfaceText(0x95);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, line,
+			                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, line, TRUE, 21.0f) / 2.0f, y,
+			                             0.0f, 21.0f, 21.0f);
+			line = GetLocalizedInterfaceText(0x96);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, line,
+			                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, line, TRUE, 21.0f) / 2.0f,
+			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
+			lines = 2;
+		} else {
+			sprintf(text, "%s", GetLocalizedInterfaceText(0xc2));
+			showMessage = true;
+		}
+		break;
+	case 3:
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x12a));
+		showMessage = true;
+		break;
+	case 5:
+		lines = LoadStatusLines(title, 10, panelX, panelY);
+		break;
+	case 6:
+		OSPanic("title.cpp", 0x1222, "ここにはこない");
+		lines = LoadStatusLines(title, 12, panelX, panelY);
+		break;
+	case 8:
+		sprintf(text, "%s", GetLocalizedInterfaceText(0xc7));
+		showMessage = true;
+		break;
+	case 9:
+	case 14:
+		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, panelX + gPointerScreenWidth / 2,
+		                                     LoadPromptY(title, panelY), 21.0f, title->mLoadAlpha);
+		break;
+	case 11: {
+		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
+		if (title->mPhase == 0) {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 5, x, y, 21.0f, title->mLoadAlpha);
+		} else {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 6, x, y, 21.0f, title->mLoadAlpha);
+		}
+		break;
+	}
+	case 12:
+		lines = LoadStatusLines(title, 7, panelX, panelY);
+		break;
+	case 13: {
+		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
+		if (title->mPhase == 0) {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 7, x, y, 21.0f, title->mLoadAlpha);
+		} else {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 9, x, y, 21.0f, title->mLoadAlpha);
+		}
+		break;
+	}
+	case 15:
+		lines = LoadStatusLines(title, 4, panelX, panelY);
+		break;
+	case 18:
+		lines = LoadStatusLines(title, 1, panelX, panelY);
+		break;
+	case 19: {
+		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
+		if (title->mResult == -4) {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 13, x, y, 21.0f, title->mLoadAlpha);
+		} else if ((u32)(title->mResult + 3) <= 1) {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 16, x, y, 21.0f, title->mLoadAlpha);
+		} else {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 17, x, y, 21.0f, title->mLoadAlpha);
+		}
+		break;
+	}
+	case 20:
+		lines = LoadStatusLines(title, 3, panelX, panelY);
+		break;
+	case 21:
+		lines = LoadStatusLines(title, 8, panelX, panelY);
+		break;
+	case 22:
+		lines = LoadStatusLines(title, 19, panelX, panelY);
+		break;
+	case 24: {
+		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
+		if (title->mPhase == 0) {
+			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 4, x, y, 21.0f, title->mLoadAlpha);
+		}
+		break;
+	}
+	case 26:
+		lines = LoadStatusLines(title, 11, panelX, panelY);
+		break;
+	case 27:
+		sprintf(text, "%s", GetLocalizedInterfaceText(0x12b));
+		showMessage = true;
+		break;
+	}
+	if (lines <= 2) {
+		lines = 2;
+	}
+	title->mOffset = -(lines - 2) * 21;
+	if (showMessage) {
+		u32 color = LoadTextColor(title->mLoadAlpha);
+		f32 y     = LoadPromptY(title, panelY);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text,
+		                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f, y, 0.0f,
+		                             21.0f, 21.0f);
+	}
+
+	switch (title->mMode) {
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 11:
+	case 26:
+	case 27: {
+		f32 extra = 0.0f;
+		if (lines > 1) {
+			extra = (lines - 2) * 21;
+		}
+		f32 barWidth = 61.5f;
+		f32 barX;
+		if (title->mChoice == -1) {
+			barX = gPointerScreenWidth + 0x96;
+		} else if (title->mChoice == 0) {
+			barX = gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f;
+		} else {
+			barX = gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f;
+		}
+		f32 base   = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
+		f32 labelY = extra + (base + title->mLoadOffset);
+		DrawLoadSelectionBar(title, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f);
+		for (s32 i = 0; i < 2; ++i) {
+			CbPaneLayout* layout = &lbl_802E7F48[3 + i];
+			layout->mTrans.y     = 2.0f + (8.0f + labelY);
+			f32 screenX          = (f32)gPointerScreenWidth;
+			f32 screenY          = (f32)gPointerScreenHeight;
+			Vec trans            = layout->mTrans;
+			f32 left             = -0.5f * screenX;
+			f32 top              = 0.5f * screenY;
+			f32 right            = 0.5f * screenX;
+			f32 bottom           = -0.5f * screenY;
+			layout->mTrans.y     = -(trans.y + 0.5f * (bottom - top));
+			fn_800556B0(&title->mPanes[3 + i], layout);
+		}
+		labelY = extra + (base + title->mLoadOffset);
+		if (gGame.mLanguage == 0) {
+			DrawLoadChoiceLabel(title, 0x66, gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f, labelY);
+			DrawLoadChoiceLabel(title, 0x67, gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f, labelY);
+		} else {
+			DrawLoadChoiceLabel(title, 0x66, 2.0f + (gPointerScreenWidth / 2 - (16.0f + barWidth) * 0.5f), labelY - 1.0f);
+			DrawLoadChoiceLabel(title, 0x67, 2.0f + (gPointerScreenWidth / 2 + (16.0f + barWidth) * 0.5f), labelY - 1.0f);
+		}
+		break;
+	}
+	}
+	if (title->mOptionAlpha > 0.0f) {
+		u32 color        = LoadTextColor(title->mOptionAlpha);
+		const char* text = GetLocalizedInterfaceText(0x62);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text,
+		                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f,
+		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
+	}
+}
+
 extern "C" void DrawTitleOptions(Title* title)
 {
 	if (title->mOptionAlpha > 0.0f) {

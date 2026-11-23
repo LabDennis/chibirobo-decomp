@@ -13,9 +13,11 @@
 #include "game/wii/infoscrn.h"
 #include "game/logo.h"
 #include "game/evt.h"
+#include "game/evttime.h"
 #include "game/cptcl.h"
 #include "game/wii/msg.h"
 #include "game/cscrn.h"
+#include "game/gamescrencolor.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
 #include "game/cmotioncontrolcamera.h"
@@ -31,6 +33,10 @@
 #include "game/playeranimationdata.h"
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
+#include "game/menudata.h"
+#include "game/xactdata.h"
+#include "game/cameraactionids.h"
+#include "game/ccameramemento.h"
 #
 
 class CCamera;
@@ -327,15 +333,6 @@ public:
 	}
 };
 
-// the time-of-day state, same fields as the GameCube EvtTimeState
-struct WiiTimeState {
-	s32 mMode;
-	f32 mTime;
-	f32 mDuration;
-	s32 mRunning;
-};
-STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
-
 // one letter of a name that pops in, the GameCube StageNameChar with two more words
 struct StageNameChar {
 	const char* mText; // _00
@@ -358,60 +355,6 @@ struct StageName {
 STATIC_ASSERT(sizeof(StageName) == 0x23C);
 
 class CInterfaceCameraAction;
-
-// the camera action table indices, same enum the GameCube camera uses
-enum {
-	CAMACTION_DEFAULT, // 0
-	CAMACTION_AREA,    // 1
-	CAMACTION_CHASE,   // 2
-	CAMACTION_EVT,     // 3
-	CAMACTION_SCROLL2, // 4
-	CAMACTION_EYE,     // 5
-	CAMACTION_ANIM,    // 6
-	CAMACTION_MAP,     // 7
-	CAMACTION_LADR,    // 8
-	CAMACTION_RESET,   // 9
-	CAMACTION_10,      // 10, always null
-	CAMACTION_SCROLL,  // 11
-	CAMACTION_NUM,
-};
-
-// what CreateMemento saves of the camera, the same class the GameCube version keeps
-class CCameraMemento {
-public:
-	CCameraMemento() { }
-	virtual ~CCameraMemento() { } // _08
-
-	CVec mEye;                       // _04
-	CVec mInterest;                  // _14
-	CVec mAngle;                     // _24
-	f32 mFov;                        // _34
-	f32 mDistance;                   // _38
-	CInterfaceCameraAction* mAction; // _3C
-
-	void SetEye(f32 x, f32 y, f32 z)
-	{
-		mEye.x = x;
-		mEye.y = y;
-		mEye.z = z;
-	}
-	void SetInterest(f32 x, f32 y, f32 z)
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-	}
-	void SetAngle(f32 x, f32 y, f32 z)
-	{
-		mAngle.x = x;
-		mAngle.y = y;
-		mAngle.z = z;
-	}
-	void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }
-	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
-	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
-};
-STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xD7620.
 // The member layout is the GameCube class's shifted by 0x64: there the camera was a member at
@@ -947,72 +890,9 @@ struct WiiOXMenu {
 // mState to tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
 struct WiiPlayerState;
 struct EffectInstance; // game/wii/ceffect.h
-class XAction {
-public:
-	WiiPlayerState* mOwner; // _00
-	s32 mState;             // _04
-	// _08 vtable
+#include "game/xactionbase.h"
 
-	virtual void Init(WiiPlayerState* owner); // _08
-	virtual void Reset();                     // _0C
-
-	s32 mMoveDirection; // _0C
-	CVec mTargetOffset; // _10
-	XObj* mTarget;      // _20
-	s32 mTargetState;   // _24
-	s32 mTargetFloor;   // _28, the selected floor when the target was picked
-
-	void SetTarget(XObj* target)
-	{
-		mTarget      = target;
-		mTargetFloor = mTarget->mSelectedFloorIndex;
-	}
-};
-STATIC_ASSERT(sizeof(XAction) == 0x2C);
-
-// hanging from a ledge
-class XActHang : public XAction {
-public:
-	XActHang();
-	~XActHang();
-
-	BOOL mStickAway;      // _2C, set when the stick points away
-	Vec mHangStartOffset; // _30, player position relative to the target
-	Vec mFloorCenter;     // _3C
-	f32 mDistance;        // _48
-	u8 _4C[0x50 - 0x4C];  // _4C
-};
-STATIC_ASSERT(sizeof(XActHang) == 0x50);
-
-// the ring on the floor around him while he tumbles
-struct XActTumbleFade {
-	BOOL mActive; // _00
-	Vec mOffset;  // _04, from his feet, turned with him
-	f32 mAmount;  // _10
-};
-STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
-
-class XActTumble : public XAction {
-public:
-	XActTumble();
-	~XActTumble();
-
-	XActTumbleFade mFade;        // _2C
-	f32 mSavedYaw;               // _40
-	EffectInstance* mIdleEffect; // _44, the GameCube's idle particle: the sleep effect while he lies idle
-};
-STATIC_ASSERT(sizeof(XActTumble) == 0x48);
-
-class XActCopter : public XAction {
-public:
-	XActCopter();
-	~XActCopter();
-
-	f32 mTime;  // _2C, flight time left, a copter parameter count of hundredths of a second in frames
-	f32 mPhase; // _30, where the propeller bob is in its sine
-	f32 mBob;   // _34, the height the copter joint rides at
-};
-STATIC_ASSERT(sizeof(XActCopter) == 0x38);
+#include "game/xactclasses.h"
 
 class CSound3DActor;
 class XObj;
@@ -1249,9 +1129,6 @@ STATIC_ASSERT(sizeof(ScrnTex) == 0x13C);
 
 // the two screen colors behind it, at _5908 and _593C. Each sits in a struct of its own as on the GameCube, but the
 // Wii has a constructor for each (0x80033EC8, 0x80033F0C), so they are two types; the second one's name is ours
-struct GameScrnColor {
-	CScrnColor mColor; // _00
-};
 struct GameScrnColor1 {
 	CScrnColor mColor; // _00
 };
@@ -1329,12 +1206,6 @@ public:
 	f32 mRowCount; // _158
 };
 
-// one of MenuMain's rows and what picking it does
-struct MenuMainItem {
-	char* mText; // _00, "\x01" for a separator
-	s32 mAction; // _04, -1 for a separator
-};
-
 class MenuMain : public Menu {
 public:
 	struct ExtraRow {
@@ -1370,25 +1241,6 @@ public:
 };
 STATIC_ASSERT(offsetof(MenuMain, mChannel) == 0x1D0);
 STATIC_ASSERT(offsetof(MenuStageSelect, mLabelWidth) == 0x1A60);
-
-// a letter of a title that flies in, one after the other, the GameCube struct
-struct MenuTitleChar {
-	const char* mText; // _00
-	f32 mFade;         // _04
-	f32 mHold;         // _08, the letter fades out once this is 0
-	f32 mAngle0;       // _0C
-	f32 mAngle1;       // _10
-};
-STATIC_ASSERT(sizeof(MenuTitleChar) == 0x14);
-
-// a title of up to 20 letters, the GameCube struct
-struct MenuTitle {
-	BOOL mActive;             // _00
-	s32 mCount;               // _04
-	u32 mColor;               // _08
-	MenuTitleChar mChars[20]; // _0C
-};
-STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
 // the save menu, the GameCube class of the same name. Its RTTI has the bases MenuPad and CContainCallback at
 // _15C, as the item and status menus have them; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
@@ -1446,6 +1298,7 @@ public:
 		mPhase    = 0;
 	}
 
+	virtual void Init();
 	virtual void Reset();
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -1493,9 +1346,19 @@ struct MenuTextRow {
 	BOOL IsSeparator() const { return mText != NULL && mText[0] == 1; } // "\x01" rows can't be picked
 };
 
-class MenuSFTest : public Menu {
+// the save file test menus' common base, named by retail's RTTI: Init lays out the rows through InitRows
+class MenuUtil : public Menu {
+public:
+	virtual void Init();     // _08, 0x80053410
+	virtual ~MenuUtil() { }  // _38
+	virtual void InitRows(); // _3C, 0x800534D4
+};
+
+class MenuSFTest : public MenuUtil {
 public:
 	virtual void Init();
+	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 	virtual ~MenuSFTest() { }
 	virtual void InitRows(); // _3C, 0x80052F98
@@ -1510,9 +1373,8 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
 
-// todo: retail's RTTI puts a common base under the three, MenuUtil : Menu, whose Init (0x80053410), empty InitRows
-// (0x800534D4), destructor (0x80084EEC) and row draw (0x80050314) Sub and Err inherit
-class MenuSFTestSub : public Menu {
+// Sub and Err keep MenuUtil's Init; its row draw (0x80050314) is still a free function here
+class MenuSFTestSub : public MenuUtil {
 public:
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -1525,7 +1387,7 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuSFTestSub) == 0x164);
 
-class MenuSFTestErr : public Menu {
+class MenuSFTestErr : public MenuUtil {
 public:
 	virtual BOOL Update(u32 frames);
 	virtual BOOL Draw();
@@ -1616,54 +1478,14 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 
-// a row of the status menu's item pages, the GameCube struct
-struct MenuStatusEntry {
-	s16 mItem;       // _00
-	s16 mCount;      // _02
-	CStatus mStatus; // _04
-};
-STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
-
-// the items the status screen pages through, the GameCube struct
-struct MenuStatusTable {
-	s32 mPage;                   // _00, in fours
-	MenuStatusEntry mItems[256]; // _04, the eight on screen
-	MenuStatusEntry mPrev[4];    // _C04, the four before them
-	MenuStatusEntry mNext[4];    // _C34, the four after
-};
-STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
-
-// a row of the PC shop's lists, the GameCube struct
-struct MenuPCItem {
-	s16 mItem;        // _00, -1 for an empty row
-	s16 mCount;       // _02, -1 for an empty row
-	s16 mPrice;       // _04
-	u8 mIsAttachment; // _06
-	u8 _07;           // _07
-};
-STATIC_ASSERT(sizeof(MenuPCItem) == 8);
-
-// the nine rows on screen and the ones just off either end, the GameCube struct
-struct MenuPCPage {
-	s32 mStart;           // _00, list index of the first row
-	MenuPCItem mRows[20]; // _04
-	s32 mIndex[20];       // _A4, list index of each row
-	MenuPCItem mPrev[1];  // _F4
-	MenuPCItem mNext[1];  // _FC
-};
-STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
-
-struct MenuStatusTab {
-	f32 mX;       // _00
-	f32 mY;       // _04
-	f32 mTargetX; // _08
-	f32 mTargetY; // _0C
-};
-STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
-
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public Menu, public MenuPad, public CContainCallback {
 public:
+	void Init();
+	BOOL Update(u32 frames);
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
 	void State3(u32 frames);
 	void State4(u32 frames);
 	void State5(u32 frames);
@@ -1695,32 +1517,53 @@ public:
 	s32 mIconSelection;          // _530
 	s32 mPrevIconSelection;      // _534
 	s32 mStickIconSelection;     // _538
-	u8 _53C[0x544 - 0x53C];
-	s32 mStickSelection; // _544
-	s32 mPrevSelection;  // _548
-	f32 mOffsetX;        // _54C
-	f32 mOffsetY;        // _550
-	u8 _554[0x568 - 0x554];
-	f32 mTargetPanelY; // _568
-	u8 _56C[0x5AC - 0x56C];
-	MenuStatusTab mTabs[4]; // _5AC
-	u8 _5EC[0x5FC - 0x5EC];
-	f32 mOverviewX;       // _5FC
-	f32 mOverviewY;       // _600
-	f32 mTargetOverviewX; // _604
-	u8 _608[0x60C - 0x608];
-	f32 mGridX;       // _60C
-	f32 mGridY;       // _610
-	f32 mTargetGridX; // _614
-	u8 _618[0x624 - 0x618];
-	f32 mTargetDiagramX; // _624
-	u8 _628[0x66C - 0x628];
-	s32 mPhase; // _66C
-	f32 mDelay; // _670
-	u8 _674[0x67C - 0x674];
-	f32 mDetailScale;       // _67C
-	f32 mTargetDetailScale; // _680
-	u8 mHasFourthTab;       // _684
+	s32 mChoice;                 // _53C, yes or no when discarding items
+	s32 mCount;                  // _540, number to discard
+	s32 mStickSelection;         // _544
+	s32 mPrevSelection;          // _548
+	f32 mOffsetX;                // _54C
+	f32 mOffsetY;                // _550
+	f32 mTargetOffsetX;          // _554
+	f32 mTargetOffsetY;          // _558
+	f32 mPanelX;                 // _55C
+	f32 mPanelY;                 // _560
+	f32 mTargetPanelX;           // _564
+	f32 mTargetPanelY;           // _568
+	u8 _56C[0x57C - 0x56C];
+	f32 mItemPanelX;          // _57C
+	f32 mItemPanelY;          // _580
+	f32 mTargetItemPanelX;    // _584
+	f32 mTargetItemPanelY;    // _588
+	f32 mDiscardPanelX;       // _58C
+	f32 mDiscardPanelY;       // _590
+	f32 mTargetDiscardPanelX; // _594
+	f32 mTargetDiscardPanelY; // _598
+	u8 _59C[0x5AC - 0x59C];
+	MenuStatusTab mTabs[4];  // _5AC
+	f32 mX;                  // _5EC
+	f32 mY;                  // _5F0
+	f32 mTargetX;            // _5F4
+	f32 mTargetY;            // _5F8
+	f32 mOverviewX;          // _5FC
+	f32 mOverviewY;          // _600
+	f32 mTargetOverviewX;    // _604
+	f32 mTargetOverviewY;    // _608
+	f32 mGridX;              // _60C
+	f32 mGridY;              // _610
+	f32 mTargetGridX;        // _614
+	f32 mTargetGridY;        // _618
+	f32 mDiagramX;           // _61C
+	f32 mDiagramY;           // _620
+	f32 mTargetDiagramX;     // _624
+	f32 mTargetDiagramY;     // _628
+	MenuStatusTab mTabs2[4]; // _62C
+	s32 mPhase;              // _66C
+	f32 mDelay;              // _670
+	s32 mSavedBgm;           // _674
+	f32 mSavedBgmVolume;     // _678
+	f32 mDetailScale;        // _67C
+	f32 mTargetDetailScale;  // _680
+	u8 mHasFourthTab;        // _684
 	u8 _685[0x689 - 0x685];
 	u8 mShowGauge; // _689
 	u8 _68A[0x68C - 0x68A];
@@ -1732,34 +1575,22 @@ public:
 	const char* mHelpText; // _69C
 	const char* mHelp;     // _6A0
 	f32 mPulsePhase;       // _6A4
-	u8 _6A8[0x6AC - 0x6A8];
+	s16 _6A8;
+	s16 _6AA;
 	s32 mItemSelection;          // _6AC
 	s32 mPrevItemSelection;      // _6B0
 	s32 mStickItemSelection;     // _6B4
 	MenuTitle mTitle;            // _6B8
 	s32 mHelpCount;              // _854
 	MenuHelpChar mHelpChars[20]; // _858
-	CbPane mPanes[49];           // _948, tabs, grid cells and detail controls
-	u8 _1898[0x1938 - 0x1898];
-	u8 mHovered; // _1938
+	CbPane mPanes[51];           // _948, tabs, grid cells and detail controls
+	u8 mHovered;                 // _1938
 	u8 _1939[0x193C - 0x1939];
 	MenuPaneFadePair mPaneFades; // _193C
-	u8 _1954[0x1958 - 0x1954];
+	s32 _1954;
 };
 STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
-struct PCRankingRow {
-	s32 rank;
-	s32 nameIndex;
-	s32 score;
-};
-STATIC_ASSERT(sizeof(PCRankingRow) == 12);
-
-// a number the pc shows easing toward its value, the GameCube struct of the same name
-struct PCAmount {
-	f32 shown;
-	f32 target;
-};
 // the chibi-pc shop, the GameCube class of the same name; its members sit four bytes further on because
 // Menu is a word longer here (State4, State11, ResetPCCharacters)
 class MenuPC : public Menu {
@@ -1790,7 +1621,8 @@ public:
 	s32 mTextPhase;         // _170
 	s32 mChoice;            // _174
 	s32 mItemShopSelection; // _178
-	u8 _17C[0x184 - 0x17C];
+	s32 _17C;
+	s32 _180;
 	s32 mYesNo;              // _184
 	s32 mMoneyDigit;         // _188
 	s32 mScrapShopSelection; // _18C
@@ -2173,7 +2005,7 @@ public:
 	CEvt mEvt;                    // _4C8E0
 	u8 _4C94C[0x4C950 - 0x4C94C];
 	CMsg mMsgs[2];                             // _4C950
-	WiiTimeState mTimeState;                   // _D7610
+	EvtTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
 	CLight* mLightList;                        // _D9B58, the lights the scene draws under, CBase's own set when the stage brings none

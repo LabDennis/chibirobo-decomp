@@ -6,10 +6,8 @@
 #include "game/xobj.h"
 #include "game/xobjdemo.h"
 #include "game/ctpl.h"
+#include "game/titlepalette.h"
 
-struct TitlePaletteEntry {
-	GXColor background, text;
-};
 extern "C" {
 extern const TitlePaletteEntry gTitlePalette[];
 extern const s32 gTitleLogoTextures[3];

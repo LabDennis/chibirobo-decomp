@@ -29,6 +29,7 @@ extern "C" void LayoutMainMenuRows(MenuMain* menu);
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
+extern s32 gSoundFadeFrames;
 extern MEMiHeapHead* gWiiGameHeap;
 extern u8 lbl_8044B700[];
 
@@ -37,10 +38,12 @@ extern s32 gScreenLeft, gScreenTop;
 extern "C" {
 char* GetStageFileName(s32 stage);
 char* GetStageName(s32 stage);
+const char* GetStageNameOrFileName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 void ResumeGameSounds(CGame* game, f32 fadeSeconds);
+void PauseGameSounds(CGame* game, f32 fadeSeconds);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 u8* GetAttachmentDescription(s32 id);
@@ -54,6 +57,15 @@ char* GetStatusOverviewLabel(s32 id);
 void DrawStatusMenuTabs(MenuStatus* menu);
 void fn_80061014(MenuStatus* menu);
 void fn_80061FF4(MenuStatus* menu, const char* text, u32 color);
+void fn_80062338(MenuStatus* menu, u32 frames);
+void MarkAvailableStatusEntries(u8* available);
+void PopulateItemShopPage(MenuPCPage* list);
+void PopulateScrapShopPage(MenuPCPage* list);
+s16 GetAttachmentShopPrice(s32 id);
+s16 GetItemShopPrice(s32 id);
+s16 GetUtilibotPrice(s32 id);
+s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
+CSoundHandle* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames);
 void DrawPlayerStatusOverview(MenuStatus* menu);
 void fn_80061DBC(MenuStatus* menu);
 void fn_800695EC(MenuStatus* menu);
@@ -81,11 +93,17 @@ void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha);
+void fn_8005A68C(MenuItem* menu, const char* text, u32 color);
+void fn_800556B0(CbPane* pane, const CbPaneLayout* layout);
+GXColor fn_8016A96C(u8* from, u8* to, f32 t);
 void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32 sx, f32 sy);
 void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32 selected, f32 x, f32 y, f32 alpha, f32 sx, f32 sy);
 CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
+void ClearStatusTable(MenuStatusTable* table);
+void ClearItemShopPage(MenuPCPage* page);
+void ClearScrapShopPage(MenuPCPage* page);
 
 // the Wii's text is Japanese with the language setting at 0
 static inline bool IsJapanese()
@@ -198,9 +216,34 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
-// draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), which this code
-// does not model yet
-extern "C" void fn_80050314(Menu* menu, s32 index, BOOL, BOOL);
+// draws row index of a save file test menu: a member of retail's MenuUtil row base (see cgame.h), still a free
+// function here
+// NONMATCHING: row-count conversions and float register lifetimes differ; retail converts the alpha again before the
+// second line segment, this build reuses the first conversion
+extern "C" void fn_80050314(Menu* menu, s32 index, BOOL useRowWidth, BOOL proportional)
+{
+	MenuSFTest* rows = (MenuSFTest*)menu;
+	MenuTextRow* row = &rows->mRows[index];
+	if (row->IsSeparator()) {
+		f32 rowHeight = 2.0f + menu->mFontSize;
+		f32 x         = menu->mWindow.mX - (30.0f + menu->mMaxWidth) / 2.0f;
+		f32 y         = menu->mWindow.mY - rowHeight * rows->mRowTotal / 2.0f + rowHeight * (index + 0.5f);
+		u32 alpha     = (u32)(255.0f * menu->mAlpha);
+		DrawGsLineSegment(&gGame.mGs, NULL, x, y, 0.0f, alpha | 0x96969600, 30.0f + menu->mMaxWidth + x, y, 0.0f, alpha | 0x96969600);
+		DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + x, 1.0f + y, 0.0f, alpha | 0xFAFAFA00, 1.0f + (30.0f + menu->mMaxWidth + x), 1.0f + y,
+		                  0.0f, alpha | 0xFAFAFA00);
+		return;
+	}
+	f32 width = useRowWidth ? row->mWidth : menu->mMaxWidth;
+	f32 x     = menu->mWindow.mX - width / 2.0f;
+	f32 y     = menu->mWindow.mY - (2.0f + menu->mFontSize) * rows->mRowTotal / 2.0f + (2.0f + menu->mFontSize) * index;
+	u32 color = index == menu->mSelection ? (u32)(255.0f * menu->mAlpha) | 0x20202000 : (u32)(255.0f * menu->mAlpha) | 0x40404000;
+	if (proportional) {
+		DrawGsProportionalTextFormat(&gGame.mGs, color, row->mText, x, y, 0.0f, menu->mFontSize, menu->mFontSize);
+	} else {
+		DrawGsFixedWidthTextFormat(&gGame.mGs, color, row->mText, x, y, 0.0f, menu->mFontSize, menu->mFontSize);
+	}
+}
 
 // NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
 // draws no texture, and it skips a window without size
@@ -672,6 +715,16 @@ BOOL MenuStageSelect::Draw()
 	return FALSE;
 }
 
+void MenuUtil::Init()
+{
+	Menu::Init();
+	InitRows();
+}
+
+void MenuUtil::InitRows()
+{
+}
+
 void MenuSFTest::InitRows()
 {
 	if (mRows == NULL) {
@@ -777,6 +830,219 @@ void MenuSFTest::StartOperation(s32 which)
 	}
 }
 
+BOOL MenuSFTest::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		if (gGame.mSaveManager.mJobStarted) {
+			return IsOpen();
+		}
+		s32 result = gGame.mSaveManager.mFile.mResult;
+		if (result < 0) {
+			sMenuSFTestErr.mWindow.mX = mWindow.mX;
+			sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
+			sMenuSFTestErr.mState     = 1;
+			sMenuSFTestErr.Resume();
+			sMenuSFTestErr.mWindow.mOpen = TRUE;
+			sMenuSFTestErr.InitRows();
+			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
+			sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
+			    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText, 1, sMenuSFTestErr.mFontSize);
+			if (sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth > sMenuSFTestErr.mMaxWidth) {
+				sMenuSFTestErr.mMaxWidth = sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth;
+			}
+			sMenuSFTestErr.mCount++;
+			sMenuSFTestErr.mWindow.mHeight = sMenuSFTestErr.mCount * (2.0f + sMenuSFTestErr.mFontSize) + 24.0f;
+			sMenuSFTestErr.mWindow.mWidth  = 60.0f + sMenuSFTestErr.mMaxWidth;
+			sMenuSFTestErr.mSelection      = 0;
+			Suspend(FALSE);
+			return IsOpen();
+		}
+		switch (mOperation) {
+		case 1: {
+			for (s32 i = 0; i < 10; i++) {
+				WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
+				char* text              = mRows[i].mText;
+				if (entry->mStatus & 1) {
+					if (entry->mStatus & 2) {
+						sprintf(text, "(%d) ", i);
+						sprintf(text + strlen(text) + 1, "broken");
+					} else {
+						WiiSaveSlotHeader* header = (WiiSaveSlotHeader*)entry->mData;
+						OSCalendarTime time;
+						OSTicksToCalendarTime(header->mTimestamp, &time);
+						s32 seconds           = header->mPlayTime / 3600.0f;
+						s32 hours             = header->mPlayTime / 216000.0f;
+						s32 stage             = header->mStages[0];
+						const char* stageName = GetStageNameOrFileName(stage);
+						sprintf(text, "(%d) %02d/%02d %2d:%02d [%2d:%02d] (%3d)", i, time.mon + 1, time.mday, time.hour, time.min, hours,
+						        seconds % 60, stage);
+						sprintf(text + strlen(text) + 1, stageName);
+					}
+				} else {
+					sprintf(text, "(%d) ", i);
+					if (entry->mStatus & 8) {
+						sprintf(text + strlen(text) + 1, "insufficient space");
+					} else if (entry->mStatus & 0x10) {
+						sprintf(text + strlen(text) + 1, "insufficient inode");
+					} else {
+						sprintf(text + strlen(text) + 1, "none");
+					}
+				}
+			}
+			u32 blocks, inodes;
+			GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+			sprintf(mRows[mRowTotal - 1].mText, "FREE FSBLOCK:%4d   FREE INODE: %2d", blocks, inodes);
+			StartOperation(0);
+			break;
+		}
+		case 3:
+			if (result < 0) {
+				sMenuSFTestErr.mWindow.mX = mWindow.mX;
+				sMenuSFTestErr.mWindow.mY = mWindow.mY - (2.0f + mFontSize);
+				sMenuSFTestErr.mState     = 1;
+				sMenuSFTestErr.Resume();
+				sMenuSFTestErr.mWindow.mOpen = TRUE;
+				sMenuSFTestErr.InitRows();
+				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText = (char*)GetNandGameResultName(&gGame.mSaveManager.mFile, result);
+				sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth
+				    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mText, 1, sMenuSFTestErr.mFontSize);
+				if (sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth > sMenuSFTestErr.mMaxWidth) {
+					sMenuSFTestErr.mMaxWidth = sMenuSFTestErr.mRows[sMenuSFTestErr.mCount].mWidth;
+				}
+				sMenuSFTestErr.mCount++;
+				sMenuSFTestErr.mWindow.mHeight = sMenuSFTestErr.mCount * (2.0f + sMenuSFTestErr.mFontSize) + 24.0f;
+				sMenuSFTestErr.mWindow.mWidth  = 60.0f + sMenuSFTestErr.mMaxWidth;
+				sMenuSFTestErr.mSelection      = 0;
+				Suspend(FALSE);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			} else {
+				StartOperation(1);
+			}
+			return IsOpen();
+		case 5:
+			StartOperation(0);
+			if (result == 0) {
+				Close(5);
+				if (sMenuStageSelect.IsOpen()) {
+					sMenuStageSelect.Close(5);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					gGame.ClearStatusFlags(2);
+				}
+				_168 = 10002;
+			}
+			return IsOpen();
+		case 7:
+			StartOperation(1);
+			return IsOpen();
+		}
+		if (gWiiPointer.Check(PadActStickUp)) {
+			if (mRowTotal <= 0) {
+				goto done;
+			}
+			do {
+				if (--mSelection < 0) {
+					mSelection = 9;
+				}
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			if (mRowTotal <= 0) {
+				goto done;
+			}
+			do {
+				if (++mSelection > 9) {
+					mSelection = 0;
+				}
+			} while (mRows[mSelection].IsSeparator());
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+			if (sMenuStageSelect.mSuspended) {
+				gGame.SetStatusFlags(2);
+			}
+			sMenuStageSelect.mSuspended   = FALSE;
+			sMenuStageSelect.mSuspendFade = FALSE;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			sMenuSFTestSub.mWindow.mX = 88.0f + (mWindow.mX - mWindow.mWidth / 2.0f);
+			sMenuSFTestSub.mWindow.mY = 80.0f + (mWindow.mY - mWindow.mHeight / 2.0f) + (2.0f + mFontSize) * mSelection;
+			sMenuSFTestSub.mState     = 1;
+			sMenuSFTestSub.Resume();
+			sMenuSFTestSub.mWindow.mOpen = TRUE;
+			sMenuSFTestSub.InitRows();
+			for (s32 i = 0; i < 4; i++) {
+				sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mText = sSFTestSubLines[i].mText;
+				sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth
+				    = MeasureGameTextWidth(&gGame.mGs, sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mText, 1, sMenuSFTestSub.mFontSize);
+				if (sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth > sMenuSFTestSub.mMaxWidth) {
+					sMenuSFTestSub.mMaxWidth = sMenuSFTestSub.mRows[sMenuSFTestSub.mCount].mWidth;
+				}
+				sMenuSFTestSub.mCount++;
+			}
+			sMenuSFTestSub.mWindow.mHeight = sMenuSFTestSub.mCount * (2.0f + sMenuSFTestSub.mFontSize) + 24.0f;
+			sMenuSFTestSub.mWindow.mWidth  = 60.0f + sMenuSFTestSub.mMaxWidth;
+			sMenuSFTestSub.mSelection      = 0;
+			Suspend(FALSE);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+
+done:
+	if (IsOpen()) {
+		return TRUE;
+	}
+	if (_168 >= 0) {
+		ChangeGameStage(&gGame, _168, TRUE);
+	}
+	return FALSE;
+}
+
+BOOL MenuSFTest::Draw()
+{
+	BOOL draw;
+	if (!IsOpen()) {
+		draw = FALSE;
+	} else {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+		DrawMenuWindow(&mWindow);
+		draw = TRUE;
+	}
+	if (draw) {
+		for (s32 i = 0; i < mRowTotal; i++) {
+			char* text = mRows[i].mText;
+			if (mRows[i].IsSeparator()) {
+				fn_80050314(this, i, TRUE, TRUE);
+				continue;
+			}
+			if (*text == 0) {
+				continue;
+			}
+			fn_80050314(this, i, FALSE, FALSE);
+			f32 rowHeight = 2.0f + mFontSize;
+			f32 x         = mWindow.mX - mMaxWidth / 2.0f + MeasureGameTextWidth(&gGame.mGs, text, 0, mFontSize);
+			f32 y         = mWindow.mY - rowHeight * mRowTotal / 2.0f + rowHeight * i;
+			u32 color     = i == mSelection ? (u32)(255.0f * mAlpha) | 0x20202000 : (u32)(255.0f * mAlpha) | 0x40404000;
+			DrawGsProportionalTextFormat(&gGame.mGs, color, text + strlen(text) + 1, x, y, 0.0f, mFontSize, mFontSize);
+		}
+		f32 rowHeight = 2.0f + mFontSize;
+		f32 x         = mWindow.mX - mMaxWidth / 2.0f;
+		f32 y         = mWindow.mY - rowHeight * mRowTotal / 2.0f + rowHeight * mSelection;
+		f32 alpha;
+		if (sMenuSFTestSub.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTestSub.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSFTestErr.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTestErr.mWindow.mDrawAlpha : 0.0f;
+		} else {
+			alpha = mAlpha;
+		}
+		DrawMenuSelectionCursor(mCursor, x, y, mMaxWidth, mFontSize, mAlpha, alpha);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void MenuMain::Reset()
 {
 	CMenu::Reset();
@@ -786,6 +1052,22 @@ void MenuMain::Reset()
 		mExtraRows[i].mAction = 0;
 	}
 	LayoutMainMenuRows(this);
+}
+
+extern CbPaneLayout lbl_802E94C0[5];
+
+void MenuSave::Init()
+{
+	CMenu::Init();
+	mLastFile = -1;
+	for (s32 i = 0; i < 5; i++) {
+		lbl_802E94C0[i].mTrans.x -= 0.5f * 640;
+		lbl_802E94C0[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E94C0[i].mTrans.y;
+		fn_800556B0(&mPanes[i], &lbl_802E94C0[i]);
+	}
+	s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+	gRingScreenWidth    = width;
+	gPointerScreenWidth = width;
 }
 
 void MenuSave::Reset()
@@ -862,6 +1144,71 @@ extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 	if (list->mCount < 0x100) {
 		list->mPanes[list->mCount++] = pane;
 	}
+}
+
+void MenuItem::Open()
+{
+	CMenu::Open();
+	gGame.SetStatusFlags(2);
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	ClearStatusTable(&sStatusItemTable);
+	PopulateOwnedItemPage(&sStatusItemTable);
+	s32 count = CountMenuItems();
+	mGridX    = 758.0f;
+	mGridY    = 36.0f;
+	if (count == 0) {
+		mTargetGridX = 360.0f;
+	} else {
+		mTargetGridX = 360.0f - (count - 1) * 51;
+	}
+	mTargetGridX    = 207.0f;
+	mTargetGridY    = 36.0f;
+	mPanelX         = -10.0f;
+	mPanelY         = -200.0f;
+	mTargetPanelX   = -10.0f;
+	mTargetPanelY   = 0.0f;
+	mMode           = 0;
+	mDelay          = 0;
+	sInventoryPhase = 0.0f;
+	mSelection      = 0;
+	mPrevSelection  = mSelection;
+	mStickSelection = 0;
+	_198            = 0.0f;
+	_19C            = 0.0f;
+	fn_8005A68C(this, GetLocalizedInterfaceText(0x19), (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+	mShowHelp  = 0;
+	mNameAlpha = 0.0f;
+	mSelection = -1;
+	mName      = NULL;
+	mShowHelp  = 1;
+	mHelp      = NULL;
+	mHelpCount = 0;
+	for (int i = 0; i < 20; i++) {
+		mBg[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mBg[i].mAngle1 = DEG2RAD * (rand() % 360);
+	}
+	gPointerPanes.mMenu   = this;
+	gPointerPanes.mActive = TRUE;
+	for (int i = 0; i < 8; i++) {
+		mCells[i].mPointed = FALSE;
+		mCells[i].mPicked  = FALSE;
+	}
+	for (int i = 0; i < 2; i++) {
+		mPanes[i].mPointed = FALSE;
+		mPanes[i].mPicked  = FALSE;
+		mPanes[i].mEnabled = FALSE;
+		mPanes[i]._48      = 0.0f;
+	}
+	mHovered                      = 0;
+	mPaneFades.mFades[0].mPane    = &mPanes[0];
+	mPaneFades.mFades[0].mAlpha   = 0.0f;
+	mPaneFades.mFades[0].mShown   = FALSE;
+	mPaneFades.mFades[0].mHovered = FALSE;
+	mPaneFades.mFades[1].mPane    = &mPanes[1];
+	mPaneFades.mFades[1].mAlpha   = 0.0f;
+	mPaneFades.mFades[1].mShown   = FALSE;
+	mPaneFades.mFades[1].mHovered = FALSE;
 }
 
 // NONMATCHING: retail calls MenuPaneFadePair::Update where this build expands it; the function comes out 88 bytes larger
@@ -1413,6 +1760,40 @@ static inline s32 CountMenuItems()
 	return count;
 }
 
+void MenuItem::vf08(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = TRUE;
+	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 8 && sStatusItemTable.mPage > 0) {
+		mTargetGridY = 128.0f;
+		mMode        = 20;
+	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetGridY = -56.0f;
+		mMode        = 10;
+	}
+}
+
+void MenuItem::vf14(CbPane* pane)
+{
+	if (!mHovered) {
+		return;
+	}
+	s32 kind = pane->mKind;
+	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 8 && sStatusItemTable.mPage > 0) {
+		mTargetGridY = 128.0f;
+		mMode        = 20;
+	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetGridY = -56.0f;
+		mMode        = 10;
+	}
+}
+
 // the pointer left a pane
 void MenuItem::vf0C(CbPane* pane)
 {
@@ -1699,6 +2080,88 @@ extern "C" void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 s
 	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
 	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
 	                             2.0f * scale + fontSize);
+}
+
+static inline void DrawDiscardOutline(MenuStatus* menu, f32 x, f32 y)
+{
+	f32 left = x - 120.0f, top = y - 72.0f;
+	f32 right = 240.0f + left, bottom = 144.0f + top;
+	f32 depth      = -10.0f;
+	Vec outline[5] = { (Vec) { left, top, depth }, (Vec) { right, top, depth }, (Vec) { right, bottom, depth },
+		               (Vec) { left, bottom, depth }, (Vec) { left, top, depth } };
+	DrawGsLineStrip(&gGame.mGs, outline, (u32)(255.0f * menu->mAlpha) | 0xC8282800, 5);
+}
+
+static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f32 x, f32 y, f32 width, f32 height, f32 alpha)
+{
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xC8C8C800;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: retail calls DrawMenuRectWithShadow where this build expands it, adding 696 bytes.
+// The other draw calls, texture indices, constants and state-specific text paths match.
+extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
+{
+	f32 alpha = 1.0f;
+	f32 phase = fmod(sStatusPhase, 360.0);
+	f32 wave  = 2.0f * (f32)sin(DEG2RAD * (24.0f * phase));
+	f32 x     = (240.0f + ((menu->mDiscardPanelX - 52.0f) + menu->mOffsetX)) - 204.0f;
+	f32 y     = (144.0f + (((180.0f + menu->mDiscardPanelY) + menu->mOffsetY) - 96.0f)) - 36.0f;
+	DrawMenuRectWithShadow(menu, (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFB62800, x, y, 240.0f, 144.0f);
+	if (menu->mCount == 0) {
+		DrawDiscardOutline(menu, x, y);
+	}
+	char label[256];
+	u32 halfWidth = (24 * (strlen(label) / 2 - 1)) / 2;
+	f32 labelX    = 12.0f + ((12.0f + (4.0f + ((40.0f + ((72.0f + x) - halfWidth)) - 120.0f))) - 20.0f);
+	f32 labelY    = (12.0f + ((2.0f + (((22.0f + y) - 12.0f) - 2.0f)) - 22.0f)) - 36.0f;
+	DrawDoubleByteMenuText(label, labelX, labelY, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
+
+	CTexObj tex;
+	f32 radius = 30.0f + wave;
+	for (s32 i = 0; i < 2; i++) {
+		f32 angle = PI * i + HALF_PI;
+		f32 sine = (f32)sin(angle), cosine = (f32)cos(angle);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[128], 0);
+		tex       = gGame.mTpl.mTex;
+		u16 width = GXGetTexObjWidth(&tex), height = GXGetTexObjHeight(&tex);
+		u32 color = (u32)((255.0f * menu->mAlpha) * alpha) | 0xFFEA0000;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0.0f,
+		                   1.4f * (1.1f * width), 1.4f * height, 0.0f, 0.0f, PI + angle);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+
+	switch (menu->mPhase) {
+	case 1: {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[125], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		s32 count  = menu->mCount;
+		f32 mix    = 1.0f;
+		f32 width  = (1.0f - mix) * GXGetTexObjWidth(&tex) + (1.4f * mix) * GXGetTexObjWidth(&tex);
+		f32 height = (1.0f - mix) * (GXGetTexObjHeight(&tex) / 10) + (1.4f * mix) * (GXGetTexObjHeight(&tex) / 10);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		if (count >= 10) {
+			DrawDiscardDigit(menu, tex, count / 10, x - width / 3.0f, 14.0f + y, width, height, alpha);
+			DrawDiscardDigit(menu, tex, count % 10, x + width / 3.0f, 14.0f + y, width, height, alpha);
+		} else {
+			DrawDiscardDigit(menu, tex, count, x, 14.0f + y, width, height, alpha);
+		}
+		break;
+	}
+	case 2: {
+		char message[256];
+		(void)strlen(message);
+		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha * alpha);
+		break;
+	}
+	}
 }
 
 BOOL MenuMain::Update(u32 frames)
@@ -2069,6 +2532,92 @@ extern "C" MenuRect fn_800556E4(const CbPane* pane)
 	return rect;
 }
 
+extern "C" bool fn_80055A7C(CbPaneList* list, CbPane* pane, f32 x, f32 y);
+
+extern "C" void fn_800559D8(CbPaneList* list, CbPane* pane, s32 event, s32)
+{
+	switch (event) {
+	case 1:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf10(pane);
+		}
+		break;
+	case 2:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf0C(pane);
+		}
+		break;
+	case 0:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf08(pane);
+		}
+		break;
+	case 3:
+		break;
+	case 6:
+		if (list->mMenu != NULL) {
+			list->mMenu->vf14(pane);
+		}
+		break;
+	}
+}
+
+// NONMATCHING: MWCC inlines fn_80055A7C and fn_800559D8 throughout the pane loop; retail calls both out of line
+extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames)
+{
+	if (list->mEnabled) {
+		pointerOn = pointerOn && (gGame.mMenuControls & MenuControlPointer);
+	}
+	bool released = false;
+	if (list->mActive) {
+		if (pointerOn && !list->_408[1]) {
+			if (list->mMenu != NULL) {
+				list->mMenu->vf18(pos);
+			}
+		} else if (!pointerOn && list->_408[1]) {
+			released = true;
+		}
+		list->_408[1] = pointerOn;
+	}
+	CbPane* focused = NULL;
+	for (s32 i = 0; i < list->mCount; i++) {
+		CbPane* pane = list->mPanes[i];
+		bool current = false;
+		if (pointerOn && fn_80055A7C(list, pane, pos->x, pos->y)) {
+			if (pane->mPointed) {
+				fn_800559D8(list, pane, 3, 0);
+			} else {
+				pane->mPointed = TRUE;
+				fn_800559D8(list, pane, 1, 0);
+			}
+			current = true;
+		} else if (pane->mPointed) {
+			pane->mPointed = FALSE;
+			fn_800559D8(list, pane, 2, 0);
+		}
+		if (current) {
+			focused = pane;
+		}
+	}
+	if (gWiiPointer.mButton & 0x10) {
+		list->_408[0] += frames;
+	} else {
+		list->_408[0] = 0;
+	}
+	if (focused != NULL) {
+		if (gWiiPointer.Check(PadActConfirm)) {
+			fn_800559D8(list, focused, 0, 0);
+		}
+		if (list->_408[0] >= 24 && list->_408[0] % 6 == 0) {
+			fn_800559D8(list, focused, 6, 0);
+			list->_408[0] = 24;
+		}
+	}
+	if (released && list->mMenu != NULL) {
+		list->mMenu->vf1C(pos);
+	}
+}
+
 // the pointer at x, y is on the pane, tested like an nw4r::lyt pane: through the inverse of its matrix.
 // NONMATCHING: our build expands fn_800556E4 here, retail calls it
 extern "C" bool fn_80055A7C(CbPaneList* list, CbPane* pane, f32 x, f32 y)
@@ -2122,6 +2671,75 @@ static inline void BeginOverviewTexture(CTexObj& tex)
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+}
+
+extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
+{
+	CTexObj tex;
+	f32 offset = 0.0f;
+	if (menu->mSelection == -1) {
+		sStatusPhase = 0.0f;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	for (int i = 0; i < 4; i++) {
+		if (!menu->mHasFourthTab && i == 3) {
+			continue;
+		}
+		f32 bob;
+		if (menu->mSelection == i && menu->mMode == 1) {
+			f32 phase = fmod(sStatusPhase, 360.0);
+			bob       = 4.0f * (f32)sin(DEG2RAD * (20.0f * phase));
+		} else {
+			bob = 0.0f;
+		}
+		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mX - 52.0f) + menu->mOffsetX));
+		f32 y = bob + ((180.0f + menu->mTabs[i].mY) + menu->mOffsetY);
+		switch (i) {
+		case 0:
+			offset = -12.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[0], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 1:
+			offset = 0.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[238], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 2:
+			offset = 12.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[236], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		case 3:
+			offset = 24.0f;
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[237], 0);
+			tex = gGame.mTpl.mTex;
+			break;
+		}
+		f32 width  = 1.2f * GXGetTexObjWidth(&tex);
+		f32 height = 1.2f * GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+		x += offset;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+		if (menu->mSelection == i && menu->mMode == 1) {
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(PI * menu->mPulsePhase) + 0.2f);
+			if (pulse < 0.0f) {
+				pulse = 0.0f;
+			}
+			DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+			           (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		}
+	}
 }
 
 // NONMATCHING: register allocation and floating-point scheduling
@@ -4772,6 +5390,40 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
+// NONMATCHING: the packed CColor construction and register lifetimes differ; colors, blending and the frame call match
+extern "C" void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32, f32)
+{
+	if (index < 0) {
+		return;
+	}
+	CTexObj frameTexture;
+	u32 whiteColor = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+	CColor white;
+	white.Set((s32)(whiteColor >> 24), (s32)((whiteColor >> 16) & 0xFF), (s32)((whiteColor >> 8) & 0xFF), (s32)(whiteColor & 0xFF));
+	CColor fill;
+	if (newest == 1) {
+		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x2B4C5000;
+		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
+	} else {
+		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x28282800;
+		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
+	}
+	u32 border;
+	if (selected == 1) {
+		if (newest == 1) {
+			border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+		} else {
+			border = (u32)(255.0f * fileAlpha) | 0xFFB62800;
+		}
+	} else if (newest == 1) {
+		border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+	} else {
+		border = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+	}
+	CColor color(fn_8016A96C(&fill.r, &white.r, alpha));
+	DrawTexturedWindowFrame(*(u32*)&color.r, border, x, y - height / 2.0f, width - 56.0f, height, alpha, 1.0f, 1.0f);
+}
+
 // NONMATCHING: the Wii call list, slot fields, text ids and coordinates are reconstructed; with -ipa file this build
 // still inlines all ten DrawSaveDetailText calls and grows to 4404 bytes, while retail calls it out of line in 1936
 extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height,
@@ -4827,6 +5479,71 @@ extern "C" void DrawSaveSlotDetails(WiiMenuSaveSlot* slot, u8, s16 index, u8 sel
 		DrawSaveDetailText(GetLocalizedInterfaceText(0xA4), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 76.0f * sy, 23.0f * sx, alpha);
 		DrawSaveDetailText(GetLocalizedInterfaceText(0xA5), x, (y - 5.0f * (17.0f * sy)) - 6.0f * sy + 96.0f * sy, 23.0f * sx, alpha);
 	}
+}
+
+extern "C" void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32, f32 x, f32 y, f32 alpha, f32 sx, f32)
+{
+	if (!(alpha > 0.0f)) {
+		return;
+	}
+	CTexObj tex;
+	f32 scale = 1.2f;
+	s32 value = hours * 100 + minutes;
+	if (value >= 9959) {
+		value = 9959;
+	}
+	for (int places = 1;; places++) {
+		f32 divisor = 1.0f;
+		for (int j = 0; j < places; j++) {
+			divisor *= 10.0f;
+		}
+		if ((s32)(value / divisor) == 0) {
+			break;
+		}
+	}
+	InitPCPanelTexture(tex, icon);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 w = 0.6f * GXGetTexObjWidth(&tex);
+	f32 h = 0.6f * GXGetTexObjHeight(&tex);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+	InitPCPanelTexture(tex, 126);
+	w = scale * GXGetTexObjWidth(&tex);
+	h = scale * (GXGetTexObjHeight(&tex) / 10);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	f32 offset         = 10.0f * scale + ((6.0f * (w - 3.0f * scale) - 98.0f * scale) - 10.0f * scale);
+	u8 alphaByte       = 255.0f * alpha;
+	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
+	for (int i = 0; i < 4; i++) {
+		f32 div = 1.0f;
+		if (i > 0) {
+			for (int j = 0; j < i; j++) {
+				div *= 10.0f;
+			}
+		}
+		s32 digit = value / div;
+		if (i != 3 || digit != 0) {
+			digit %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			f32 gap = 0.0f;
+			if (i < 2) {
+				gap = w - 3.0f * scale;
+			}
+			f32 digitX = gSaveSlotSpacing * sx + (gap + (offset + (7.0f * w + (x - i * (w - 3.0f * scale)))));
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, y - 2.0f * scale, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+	InitPCPanelTexture(tex, 130);
+	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 sepX = gSaveSlotSpacing * sx + (10.0f * scale + (x + 81.0f * scale));
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - scale, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
+	                   0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
 // NONMATCHING: the call list and size match retail; register allocation differs
@@ -4967,6 +5684,87 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 	}
 }
 
+extern "C" void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha)
+{
+	if (alpha <= 0.0f) {
+		return;
+	}
+	for (s32 i = 0; i < 2; i++) {
+		MenuPaneFade* fade = &fades->mFades[i];
+		if (fade->mAlpha <= 0.0f) {
+			continue;
+		}
+		f32 wave   = 0.8f * (f32)sin(HALF_PI * alpha * fade->mAlpha);
+		f32 arrowX = 412.0f + x;
+		f32 arrowY;
+		if (i == 0) {
+			arrowY = (gPointerScreenHeight / 2 + 4) - 126.0f;
+		} else {
+			arrowY = 126.0f + (gPointerScreenHeight / 2 + 4);
+		}
+		f32 pulse = fade->mAlpha * (0.2f * (f32)sin(PI * (fade->mHovered ? 0.5f : 1.5f)) + 0.2f);
+		if (pulse < 0.0f) {
+			pulse = 0.0f;
+		}
+		f32 rot[2] = { 0.0f, PI };
+		CTexObj tex;
+		InitPCPanelTexture(tex, 266);
+		f32 width  = wave * (1.1f * GXGetTexObjWidth(&tex));
+		f32 height = wave * (1.1f * GXGetTexObjHeight(&tex));
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u32 color = (u32)(255.0f * fade->mAlpha) | 0xC8C8C800;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, arrowX, arrowY, 1.0f, width, height, 0.0f, 0.0f, rot[i]);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+		DrawGsQuad(&gGame.mGs, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00, (u32)(255.0f * pulse) | 0xFFFFFF00,
+		           (u32)(255.0f * pulse) | 0xFFFFFF00, arrowX, arrowY, 1.0f, width, height, 0.0f, 0.0f, rot[i]);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	}
+}
+
+extern "C" void fn_8005A68C(MenuItem* menu, const char* text, u32 color)
+{
+	const char* p        = text;
+	menu->mTitle.mActive = TRUE;
+	menu->mTitle.mCount  = 0;
+	if (text) {
+		menu->mTitle.mColor = color;
+		int i;
+		for (i = 0; i < 20 && *p; i++, p++) {
+			menu->mTitle.mChars[i].mText   = p;
+			menu->mTitle.mChars[i].mFade   = -0.2f * i;
+			menu->mTitle.mChars[i].mHold   = gRefreshRate;
+			menu->mTitle.mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mCount++;
+			if (gGame.mLanguage == 0) {
+				u8 c    = *p;
+				u8 lead = TRUE;
+				u8 a    = (c >= 0x81 && c <= 0x9F);
+				if (!a) {
+					u8 b = (c >= 0xE0 && c <= 0xFC);
+					if (!b) {
+						lead = FALSE;
+					}
+				}
+				if (lead) {
+					p++;
+				}
+			}
+		}
+		for (i = menu->mTitle.mCount; i < 20; i++) {
+			menu->mTitle.mChars[i].mText = NULL;
+			menu->mTitle.mChars[i].mFade = 0.0f;
+			menu->mTitle.mChars[i].mHold = 0.0f;
+		}
+	}
+}
+
 // NONMATCHING: the call list matches retail; this build is 12 bytes smaller and register allocation differs
 extern "C" void DrawItemMenuTitle(MenuItem* menu)
 {
@@ -5024,6 +5822,36 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	}
+}
+
+extern "C" void fn_8005A9D0(MenuItem* menu, u32 frames)
+{
+	if (menu->mTitle.mActive && menu->mTitle.mActive > 0) {
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mHold > 0.0f) {
+				if (menu->mTitle.mChars[i].mFade < 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+						menu->mTitle.mChars[i].mFade = 1.0f;
+					}
+				}
+			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+					menu->mTitle.mChars[i].mFade = 0.0f;
+				}
+			}
+		}
+		s32 shown = 0;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mFade != 0.0f) {
+				shown++;
+				menu->mTitle.mChars[i].mAngle0 += 0.08726646f * frames;
+				menu->mTitle.mChars[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		if (shown == 0) {
+			menu->mTitle.mActive = FALSE;
+		}
 	}
 }
 
@@ -5756,6 +6584,130 @@ static inline void ResetPCText(MenuPC* menu, s32 step)
 	ResetPCCharacters(menu);
 }
 
+static inline s32 GetMoney();
+static inline s32 GetScrap();
+
+void MenuPC::Open()
+{
+	CMenu::Open();
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	mMode               = 0;
+	mPrevMode           = mMode;
+	mPhase              = 0;
+	mTextPhase          = 0;
+	mChoice             = 0;
+	mItemShopSelection  = 0;
+	_17C                = 0;
+	_180                = 0;
+	mMoneyDigit         = 0;
+	mScrapShopSelection = 0;
+	mScrapDigit         = 0;
+	mProgress           = 0.0f;
+	mTargetProgress     = 0.0f;
+	mSpeed              = 1.0f;
+	_19C                = -10.0f;
+	mFrameHeight        = 0.0f;
+	_1A4                = -10.0f;
+	mTargetFrameHeight  = 60.0f;
+	mTextX              = 210.0f;
+	mTextY              = 129.0f;
+	mTargetX            = mTextX;
+	mTargetY            = mTextY;
+	ResetPCCharacters(this);
+	mAmount          = 0;
+	mListAlpha       = 1.0f;
+	mTargetListAlpha = 1.0f;
+	mPanelAlpha      = 0.0f;
+	mPanelTarget     = 0.0f;
+	for (int i = 0; i < 4; i++) {
+		mChoices[i] = -1;
+	}
+	mChoiceCount = 0;
+	mTexScroll   = 0.0f;
+	if (IsStage("stage05")) {
+		mShopOnly = FALSE;
+	} else {
+		mShopOnly = TRUE;
+	}
+	if (gGame.mRoomCount + 1 == gGame.mStage) {
+		mShopOnly = FALSE;
+	}
+	FindStageIndexByName("shun");
+	mItemShopBase  = 600;
+	mItemShopCount = 20;
+	if (mItemShopCount > 0) {
+		for (int i = 0; i < mItemShopCount; i++) {
+			MenuPCItem* row = &sItemShopEntries[i];
+			s32 id          = gEventVars.mVars[mItemShopBase + i];
+			row->mItem      = id;
+			row->mCount     = gEventVars.mVars[mItemShopBase + i + mItemShopCount];
+			if (id != -1) {
+				if (id & 0x10000) {
+					id &= ~0x10000;
+					row->mItem         = id;
+					row->mIsAttachment = TRUE;
+					row->mPrice        = GetAttachmentShopPrice(id);
+				} else {
+					row->mIsAttachment = FALSE;
+					row->mPrice        = GetItemShopPrice(id);
+				}
+			}
+		}
+	}
+	mChoices[mChoiceCount++] = 3;
+	mCanSelect               = TRUE;
+	mScrapShopBase           = 560;
+	mScrapShopCount          = 20;
+	int count                = 0;
+	if (mScrapShopCount > 0) {
+		for (int i = 0; i < mScrapShopCount; i++) {
+			MenuPCItem* row = &sScrapShopEntries[i];
+			s32 id          = gEventVars.mVars[mScrapShopBase + i];
+			row->mItem      = id;
+			row->mCount     = gEventVars.mVars[mScrapShopBase + i + mScrapShopCount];
+			if (id != -1) {
+				row->mPrice = GetUtilibotPrice(id);
+				count++;
+			}
+		}
+	}
+	if (count == 0) {
+		mCanSelect = FALSE;
+	}
+	mChoices[mChoiceCount++] = 7;
+	if (IsUtilibotStatusIconUnlocked()) {
+		mChoices[mChoiceCount++] = 10;
+	}
+	for (int i = 0; i < 5; i++) {
+		mRankingOffsets[i]        = 0.0f;
+		mRankingRows[i].nameIndex = 0;
+		mRankingRows[i].score     = 0;
+	}
+	mRankingEnd      = 0;
+	mGreetingVariant = rand() % 8;
+	ClearItemShopPage(&gItemShopPage);
+	PopulateItemShopPage(&gItemShopPage);
+	ClearScrapShopPage(&gScrapShopPage);
+	PopulateScrapShopPage(&gScrapShopPage);
+	mScroll                = 0.0f;
+	mScrollTarget          = 0.0f;
+	s32 money              = GetMoney();
+	mMoneyDisplay.shown    = money;
+	mMoneyDisplay.target   = money;
+	s32 scrap              = GetScrap();
+	mScrapDisplay.shown    = scrap;
+	mScrapDisplay.target   = scrap;
+	mDepositDisplay.shown  = mDepositBalance;
+	mDepositDisplay.target = mDepositBalance;
+	_428                   = 0.0f;
+	_42C                   = 0.0f;
+	mScrapRate             = 1.0f;
+	mExitState             = -1;
+	StopWiiSfx(&gGame.mSound, 0x359, 0.0f);
+	gGame.SetStatusFlags(2);
+}
+
 void MenuPC::State0(u32)
 {
 	if (mShopOnly) {
@@ -6321,6 +7273,745 @@ void MenuSave::State17(u32)
 // a state the status menu never enters. NONMATCHING: the messages' offsets in the string pool, as in MenuSave::State6
 static s32 sStatusTabTextIds[5] = { 1, 3, 2, 4, -1 };
 
+void MenuStatus::Init()
+{
+	CMenu::Init();
+	mSelection                = 0;
+	mStickSelection           = 0;
+	mPrevSelection            = 0;
+	mHovered                  = 0;
+	lbl_802E87E8[49].mTrans.x = 577.0f;
+	lbl_802E87E8[49].mTrans.y = (gPointerScreenHeight / 2 + 4) - 126.0f;
+	lbl_802E87E8[50].mTrans.x = 577.0f;
+	lbl_802E87E8[50].mTrans.y = 126.0f + (gPointerScreenHeight / 2 + 4);
+	for (s32 i = 0; i < 51; i++) {
+		lbl_802E87E8[i].mTrans.x -= 0.5f * 640;
+		lbl_802E87E8[i].mTrans.y = 0.5f * (f32)gPointerScreenHeight - lbl_802E87E8[i].mTrans.y;
+		fn_800556B0(&mPanes[i], &lbl_802E87E8[i]);
+	}
+	s32 width           = gGame.mAspectRatio == 0 ? 640 : 854;
+	gRingScreenWidth    = width;
+	gPointerScreenWidth = width;
+}
+
+void MenuStatus::Open()
+{
+	CMenu::Open();
+	gGame.SetStatusFlags(2);
+	mFontSize            = 22.0f;
+	mRowCount            = 14.0f;
+	mMaxWidth            = 0.0f;
+	mOffsetX             = 0.0f;
+	mOffsetY             = 0.0f;
+	mTargetOffsetX       = 0.0f;
+	mTargetOffsetY       = 0.0f;
+	mPanelX              = -10.0f;
+	mPanelY              = -200.0f;
+	mTargetPanelX        = -10.0f;
+	mTargetPanelY        = 0.0f;
+	mItemPanelX          = 725.0f;
+	mItemPanelY          = 100.0f;
+	mTargetItemPanelX    = 725.0f;
+	mTargetItemPanelY    = 100.0f;
+	mDiscardPanelX       = 937.0f;
+	mDiscardPanelY       = 100.0f;
+	mTargetDiscardPanelX = 937.0f;
+	mTargetDiscardPanelY = 100.0f;
+	mHasFourthTab        = TRUE;
+	for (int i = 0; i < 4; i++) {
+		mTabs[i].mX = 758.0f;
+		mTabs[i].mY = 36.0f;
+		if (mHasFourthTab) {
+			mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+		} else {
+			mTabs[i].mTargetX = 252.0f + i * 108;
+		}
+		mTabs[i].mTargetY  = 36.0f;
+		mTabs2[i].mX       = 758.0f;
+		mTabs2[i].mY       = 36.0f;
+		mTabs2[i].mTargetX = 758.0f;
+		mTabs2[i].mTargetY = 36.0f;
+	}
+	mX               = 758.0f;
+	mY               = 36.0f;
+	mTargetX         = 758.0f;
+	mTargetY         = 36.0f;
+	mOverviewX       = 1086.0f;
+	mOverviewY       = 36.0f;
+	mTargetOverviewX = 1086.0f;
+	mTargetOverviewY = 36.0f;
+	mGridX           = 959.0f;
+	mGridY           = 36.0f;
+	mTargetGridX     = 959.0f;
+	mTargetGridY     = 36.0f;
+	mDiagramX        = 1086.0f;
+	mDiagramY        = 36.0f;
+	mTargetDiagramX  = 1086.0f;
+	mTargetDiagramY  = 36.0f;
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	mMode                   = 0;
+	mPrevMode               = 0;
+	mNextMode               = 0;
+	sStatusPhase            = 0.0f;
+	sInventoryPhase         = 0.0f;
+	mPhase                  = 0;
+	mDelay                  = 0.0f;
+	_6A8                    = 0;
+	_6AA                    = 0;
+	mItemSelection          = 0;
+	mPrevItemSelection      = 0;
+	mStickItemSelection     = 0;
+	mOverviewSelection      = 0;
+	mPrevOverviewSelection  = 0;
+	mStickOverviewSelection = 0;
+	mIconSelection          = 0;
+	mPrevIconSelection      = 0;
+	mStickIconSelection     = 0;
+	mChoice                 = 0;
+	mCount                  = 0;
+	ClearStatusTable(&sStatusItemTable);
+	PopulateOwnedItemPage(&sStatusItemTable);
+	mPrevMode          = mMode;
+	mMode              = 0;
+	mPhase             = 0;
+	mDetailScale       = 0.0f;
+	mTargetDetailScale = 0.0f;
+	mSavedBgm          = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+	mSavedBgmVolume    = gGame.mSound.mMusicVolume;
+	if (!mHasFourthTab && mSelection >= 3) {
+		mSelection = 0;
+	}
+	if (!mHasFourthTab && mStickSelection >= 3) {
+		mStickSelection = 0;
+	}
+	if (gEventFlags.mFlags[0] & 4) {
+		mIconLit = TRUE;
+	} else {
+		mIconLit = FALSE;
+	}
+	if ((gEventFlags.mFlags[0] & 0x20000000) && (gEventFlags.mFlags[0] & 0x40000000)) {
+		mShowGauge = TRUE;
+	} else {
+		mShowGauge = FALSE;
+	}
+	mGaugeValue = gEventVars.mVars[0x220 / 4] / 10000.0f;
+	for (int i = 0; i < 24; i++) {
+		gStatusIconUnlocked[i] = 0;
+	}
+	for (int i = 0; i < 24; i++) {
+		s32 flag = GetStatusIconEventFlagId(i);
+		if (flag >= 0 && (gEventFlags.mFlags[(u32)flag / 32] & (1u << (flag & 31)))) {
+			gStatusIconUnlocked[i] = 1;
+		}
+	}
+	for (int i = 0; i < 13; i++) {
+		gStatusEntryAvailable[i] = 0;
+	}
+	MarkAvailableStatusEntries(gStatusEntryAvailable);
+	const char* title = GetLocalizedInterfaceText(0x18);
+	fn_80061FF4(this, title, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+	mShowHelp  = 0;
+	mHelpAlpha = 0.0f;
+	mHelpText  = NULL;
+	mSelection = -1;
+	mShowHelp  = 1;
+	mHelp      = NULL;
+	mHelpCount = 0;
+	for (int i = 0; i < 20; i++) {
+		mHelpChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mHelpChars[i].mAngle1 = DEG2RAD * (rand() % 360);
+	}
+	gPointerPanes.mMenu   = this;
+	gPointerPanes.mActive = TRUE;
+	for (int i = 0; i < 51; i++) {
+		mPanes[i].mPointed = FALSE;
+		mPanes[i].mPicked  = FALSE;
+	}
+	mHovered                      = 0;
+	mPanes[49].mEnabled           = FALSE;
+	mPanes[50].mEnabled           = FALSE;
+	mPanes[49]._48                = 0.0f;
+	mPanes[50]._48                = 0.0f;
+	mPaneFades.mFades[0].mPane    = &mPanes[49];
+	mPaneFades.mFades[0].mAlpha   = 0.0f;
+	mPaneFades.mFades[0].mShown   = FALSE;
+	mPaneFades.mFades[0].mHovered = FALSE;
+	mPaneFades.mFades[1].mPane    = &mPanes[50];
+	mPaneFades.mFades[1].mAlpha   = 0.0f;
+	mPaneFades.mFades[1].mShown   = FALSE;
+	mPaneFades.mFades[1].mHovered = FALSE;
+	u32 controls                  = gGame.mMenuControls;
+	if ((controls & MenuControlStick) && (controls & MenuControlPointer)) {
+		_1954 = 0x10C;
+	} else if (controls & MenuControlPointer) {
+		_1954 = 0x10D;
+	} else if (controls & MenuControlStick) {
+		_1954 = 0x10E;
+	}
+}
+
+static void (MenuStatus::*gStatusStepHandlers[])(u32)
+    = { &MenuStatus::State0, &MenuStatus::State1, &MenuStatus::State2, &MenuStatus::State3, &MenuStatus::State4,
+	    &MenuStatus::State5, &MenuStatus::State6, &MenuStatus::State7, &MenuStatus::State8, &MenuStatus::State9 };
+
+// NONMATCHING: retail calls MenuPaneFadePair::Update where this build expands it, adding 180 bytes.
+BOOL MenuStatus::Update(u32 frames)
+{
+	if (mState == 6) {
+		gPointerPanes.mMenu = NULL;
+	}
+	if (CMenu::Update(frames) == 4) {
+		gPointerPanes.mCount = 0;
+		mPaneFades.Update(frames);
+		sStatusPhase += gFrameRateScale * (0.5f * frames);
+		sInventoryPhase += gFrameRateScale * (0.5f * frames);
+		if ((mPulsePhase += (1.0f / (0.3f * gRefreshRate)) * frames) >= 2.0f) {
+			mPulsePhase = fmod(mPulsePhase, 2.0);
+		}
+		PCEase(mOffsetX, mTargetOffsetX);
+		PCEase(mOffsetY, mTargetOffsetY);
+		PCEase(mPanelX, mTargetPanelX);
+		PCEase(mPanelY, mTargetPanelY);
+		for (int i = 0; i < 4; i++) {
+			PCEase(mTabs[i].mX, mTabs[i].mTargetX);
+			PCEase(mTabs[i].mY, mTabs[i].mTargetY);
+			PCEase(mTabs2[i].mX, mTabs2[i].mTargetX);
+			PCEase(mTabs2[i].mY, mTabs2[i].mTargetY);
+		}
+		PCEase(mX, mTargetX);
+		ApproachHudValue(&mY, &mTargetY, 20.0f);
+		PCEase(mOverviewX, mTargetOverviewX);
+		ApproachHudValue(&mDetailScale, &mTargetDetailScale, 0.08f * frames);
+		PCEase(mGridX, mTargetGridX);
+		ApproachHudValue(&mGridY, &mTargetGridY, 20.0f);
+		PCEase(mDiagramX, mTargetDiagramX);
+		ApproachHudValue(&mDiagramY, &mTargetDiagramY, 20.0f);
+		(this->*gStatusStepHandlers[mMode])(frames);
+	}
+	fn_80062338(this, frames);
+	switch (mShowHelp) {
+	case 0:
+		break;
+	case 1:
+		mHelpAlpha = 0.0f;
+		mShowHelp++;
+		mHelpText = mHelp;
+		break;
+	case 2:
+		mHelpAlpha += (1.0f / (0.2f * gRefreshRate)) * frames;
+		if (mHelpAlpha >= 1.0f) {
+			mHelpAlpha = 1.0f;
+			mShowHelp  = 0;
+		}
+		break;
+	case 3:
+		mHelpAlpha -= (1.0f / (0.25f * gRefreshRate)) * frames;
+		if (mHelpAlpha <= 0.0f) {
+			mHelpAlpha = 0.0f;
+		}
+		break;
+	}
+	if (mAlpha > 0.0f) {
+		for (int i = 0; i < 20; i++) {
+			mHelpChars[i].mAngle0 += 0.08726646f * frames;
+			mHelpChars[i].mAngle1 += 0.05235988f * frames;
+		}
+	}
+	return IsOpen();
+}
+
+// NONMATCHING: retail expands StartSound here; this build calls its out-of-line copy.
+void MenuStatus::State0(u32)
+{
+	mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+	mSavedBgmVolume = gGame.mSound.mMusicVolume;
+	StartSound(&gGame.mSound, 4, 1.0f, 0);
+	mPrevMode = mMode;
+	mMode     = 4;
+	mNextMode = 1;
+	mPhase    = 0;
+}
+
+static inline const char* StatusTabHelp(s32 selection)
+{
+	if (selection == -1) {
+		return NULL;
+	}
+	if (!gStatusEntryAvailable[selection]) {
+		OSPanic("menu_status.cpp", 539, "ここにきたらおかしい");
+	}
+	s32 id           = selection >= 4 ? 0 : sStatusTabTextIds[selection];
+	const char* text = "";
+	if (id != -1) {
+		text = GetLocalizedInterfaceText(id + 0x18);
+	}
+	return text;
+}
+
+// the status menu's tabs: pick one and open its page, or close the menu
+void MenuStatus::State1(u32 frames)
+{
+	bool addPanes = true;
+	if (mSelection != -1) {
+		mStickSelection = mSelection;
+	}
+	switch (mPhase) {
+	case 0: {
+		s32 last   = mHasFourthTab ? 3 : 2;
+		bool stick = false;
+		if (IsStickUsedOverPointer()) {
+			stick = true;
+		}
+		if (!stick) {
+			if (IsStickUp()) {
+				if (mSelection != -1 && --mSelection < 0) {
+					mSelection = last;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			} else if (IsStickDown()) {
+				if (mSelection != -1 && ++mSelection > last) {
+					mSelection = 0;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (mSelection != mPrevSelection) {
+			const char* text = StatusTabHelp(mSelection);
+			if (text != NULL) {
+				mHelp     = text;
+				mShowHelp = 1;
+			} else {
+				mShowHelp = 3;
+			}
+		}
+		mPrevSelection = mSelection;
+		if (gWiiPointer.Check(0x80) || gWiiPointer.Check(0x400) || IsCancelPressed()) {
+			for (int i = 0; i < 4; i++) {
+				mTabs[i].mTargetX = -102.0f;
+			}
+			mTargetPanelY = -200.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPhase++;
+			mDelay = 8.0f * gFrameRateScale;
+			for (int i = 0; i < 20; i++) {
+				mTitle.mChars[i].mHold = 0.0f;
+			}
+			addPanes = false;
+		} else if (IsConfirmPressed()) {
+			switch (mSelection) {
+			case 0:
+				mPrevMode = mMode;
+				mMode     = 4;
+				mNextMode = 2;
+				mPhase    = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				for (int i = 0; i < 4; i++) {
+					mTabs[i].mTargetX = -102.0f;
+				}
+				for (int i = 0; i < 4; i++) {
+					mTabs2[i].mX = 758.0f;
+					if (mHasFourthTab) {
+						mTabs2[i].mTargetX = 198.0f + i * 108 - 8.0f;
+					} else {
+						mTabs2[i].mTargetX = 252.0f + i * 108;
+					}
+				}
+				{
+					s32 count = CountMenuItems();
+					for (int i = 0; i < 4; i++) {
+						mTabs2[i].mTargetX = 0.0f;
+					}
+					mTargetX = 360.0f - (count - 1) * 51;
+					if (count == 0) {
+						mTargetX = 360.0f;
+					}
+					mTargetX = 207.0f;
+				}
+				{
+					const char* text = GetLocalizedInterfaceText(0x19);
+					fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+				}
+				mItemSelection = -1;
+				mShowHelp      = 3;
+				break;
+			case 1:
+				mTargetOverviewX = 360.0f;
+				mPrevMode        = mMode;
+				mMode            = 4;
+				mNextMode        = 9;
+				mPhase           = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				for (int i = 0; i < 4; i++) {
+					mTabs[i].mTargetX = -102.0f;
+				}
+				{
+					const char* text = GetLocalizedInterfaceText(0x1B);
+					fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+				}
+				mOverviewSelection = -1;
+				mShowHelp          = 3;
+				break;
+			case 2:
+				mTargetDiagramX = 320.0f;
+				mPrevMode       = mMode;
+				mMode           = 4;
+				mNextMode       = 5;
+				mPhase          = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				for (int i = 0; i < 4; i++) {
+					mTabs[i].mTargetX = -102.0f;
+				}
+				{
+					const char* text = GetLocalizedInterfaceText(0x1A);
+					fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+				}
+				mShowHelp = 3;
+				break;
+			case 3:
+				mTargetGridX = 360.0f;
+				mPrevMode    = mMode;
+				mMode        = 4;
+				mNextMode    = 8;
+				mPhase       = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				for (int i = 0; i < 4; i++) {
+					mTabs[i].mTargetX = -102.0f;
+				}
+				{
+					const char* text = GetLocalizedInterfaceText(0x1C);
+					fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+				}
+				mIconSelection = -1;
+				mShowHelp      = 3;
+				break;
+			default:
+				PlayWiiSoundEffect(&gGame.mSound, 0x1B4, 1.0f, 0.0f);
+				break;
+			}
+			if (mSelection != -1) {
+				for (int i = 0; i < 4; i++) {
+					mPanes[i].mPointed = FALSE;
+					mPanes[i].mPicked  = FALSE;
+				}
+				addPanes = false;
+			}
+		}
+		break;
+	}
+	case 1:
+		mDelay -= frames;
+		if (mDelay < 0.0f) {
+			gGame.ClearStatusFlags(2);
+			Close(5);
+			sMenuMain.Resume();
+			StopWiiSfx(&gGame.mSound, 4, 0.0f);
+			mPhase++;
+		}
+		addPanes = false;
+		break;
+	case 2:
+		addPanes = false;
+		break;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 4; i++) {
+			AddPointerPane(&gPointerPanes, &mPanes[i]);
+		}
+	}
+}
+
+static inline void UpdateOwnedItemHelp(MenuStatus* menu)
+{
+	if (menu->mItemSelection != -1 && sStatusItemTable.mItems[menu->mItemSelection].mItem < 0) {
+		do {
+			--menu->mItemSelection;
+		} while (sStatusItemTable.mItems[menu->mItemSelection].mItem < 0 && menu->mItemSelection != 0);
+	}
+	if (menu->mItemSelection != menu->mPrevItemSelection) {
+		s16 id = menu->mItemSelection != -1 ? sStatusItemTable.mItems[menu->mItemSelection].mItem : -1;
+		if (id >= 0 && CountMenuItems() > 0) {
+			menu->mHelp     = (const char*)GetItemName(id);
+			menu->mShowHelp = 1;
+		} else {
+			menu->mShowHelp = 3;
+		}
+	}
+	menu->mPrevItemSelection = menu->mItemSelection;
+}
+
+static inline void FinishStatusItemScroll(MenuStatus* menu)
+{
+	menu->mY       = 36.0f;
+	menu->mTargetY = 36.0f;
+	fn_800695EC(menu);
+	if (menu->mItemSelection == -1) {
+		menu->mShowHelp = 3;
+	} else {
+		s16 id = sStatusItemTable.mItems[menu->mItemSelection].mItem;
+		if (id != -1) {
+			menu->mHelp              = (const char*)GetItemName(id);
+			menu->mShowHelp          = 1;
+			menu->mPrevItemSelection = menu->mItemSelection;
+		}
+	}
+}
+
+static inline void SelectDiscardQuantity(MenuStatus* menu)
+{
+	if (menu->mItemSelection == -1) {
+		OSPanic("menu_status.cpp", 1057, "ここが-1になるのはおかしい！");
+	}
+	s32 num = sStatusItemTable.mItems[menu->mItemSelection].mCount;
+	if (num >= 1) {
+		if (menu->IsStickUp()) {
+			if (--menu->mCount < 1) {
+				menu->mCount = num;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (menu->IsStickDown()) {
+			if (++menu->mCount > num) {
+				menu->mCount = 1;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+		if (menu->IsConfirmPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			menu->mPhase++;
+		} else if (menu->IsCancelPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			menu->mTargetItemPanelX    = 725.0f;
+			menu->mTargetDiscardPanelX = 937.0f;
+			menu->mPhase               = 0;
+		}
+	}
+}
+
+static inline void ConfirmDiscardQuantity(MenuStatus* menu, bool inventoryTab)
+{
+	if (menu->mItemSelection == -1) {
+		OSPanic("menu_status.cpp", 1099, "ここが-1になるのはおかしい！");
+	}
+	if (menu->IsStickUp()) {
+		if (menu->mChoice > 0) {
+			menu->mChoice--;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+	} else if (menu->IsStickDown()) {
+		if (menu->mChoice < 1) {
+			menu->mChoice++;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+	}
+	if (menu->IsCancelPressed()) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		menu->mPhase = 1;
+	} else if (menu->IsConfirmPressed()) {
+		if (menu->mChoice == 0) {
+			MenuStatusEntry* entry = &sStatusItemTable.mItems[menu->mItemSelection];
+			RemoveInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, entry->mItem, (s16)menu->mCount);
+			menu->mTargetItemPanelX    = 725.0f;
+			menu->mTargetDiscardPanelX = 937.0f;
+			menu->mPhase               = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			menu->mItemSelection = 0;
+			PopulateOwnedItemPage(&sStatusItemTable);
+			menu->mTargetX = 360.0f - (CountMenuItems() - 1) * 54;
+			if (CountMenuItems() == 0) {
+				menu->mTargetX = 360.0f;
+			}
+			if (inventoryTab) {
+				menu->mTargetX = 207.0f;
+			}
+		} else {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			menu->mPhase = 1;
+		}
+	}
+}
+
+// the status menu's owned items, their details and the discard flow
+// NONMATCHING: retail calls fn_800695EC after either page scroll; this build expands both calls, making the function
+// 1396 bytes larger. The other call, control flow, field offsets and constants match.
+void MenuStatus::State2(u32)
+{
+	bool addPanes         = true;
+	gPointerPanes.mActive = TRUE;
+	if (mItemSelection != -1) {
+		mStickItemSelection = mItemSelection;
+	}
+	s32 count = CountMenuItems();
+	switch (mPhase) {
+	case 0: {
+		bool stick = false;
+		if (IsStickUsedOverPointer()) {
+			stick = true;
+		}
+		if (!stick) {
+			if (count > 1) {
+				if (IsStickUp()) {
+					if (--mItemSelection < 0) {
+						mItemSelection = count - 1;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (IsStickDown()) {
+					mItemSelection++;
+					if (sStatusItemTable.mItems[mItemSelection].mItem < 0) {
+						mItemSelection = 0;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				}
+			}
+			if (count > 4) {
+				if (mItemSelection >= 4) {
+					if (IsStickLeft()) {
+						if ((mItemSelection -= 4) < 0) {
+							mItemSelection = count - 1;
+						}
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+					if (IsStickRight() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+						mTargetY = -56.0f;
+						mPhase   = 10;
+						addPanes = false;
+						break;
+					}
+				} else {
+					if (IsStickRight() && mItemSelection + 4 <= count - 1) {
+						mItemSelection += 4;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+					if (IsStickLeft()) {
+						CountMenuItems();
+						if (sStatusItemTable.mPage > 0) {
+							mTargetY = 128.0f;
+							mPhase   = 20;
+							addPanes = false;
+							break;
+						}
+					}
+				}
+			}
+		}
+		UpdateOwnedItemHelp(this);
+		if (IsCancelPressed()) {
+			mPrevMode = mMode;
+			mMode     = 4;
+			mNextMode = 1;
+			mPhase    = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			for (int i = 0; i < 4; i++) {
+				mTabs2[i].mX = 0.0f;
+				if (mHasFourthTab) {
+					mTabs2[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				} else {
+					mTabs2[i].mTargetX = 252.0f + i * 108;
+				}
+			}
+			mTargetX = 758.0f;
+			for (int i = 0; i < 4; i++) {
+				mTabs[i].mX = 0.0f;
+				if (mHasFourthTab) {
+					mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				} else {
+					mTabs[i].mTargetX = 252.0f + i * 108;
+				}
+			}
+			for (int i = 0; i < 4; i++) {
+				mTabs2[i].mTargetX = 758.0f;
+			}
+			const char* text = GetLocalizedInterfaceText(0x18);
+			fn_80061FF4(this, text, (u32)(255.0f * mAlpha) | 0xFFFFFF00);
+			mSelection   = -1;
+			mShowHelp    = 3;
+			sStatusPhase = 0.0f;
+			for (int i = 0; i < 8; i++) {
+				mPanes[i + 4].mPointed = FALSE;
+				mPanes[i + 4].mPicked  = FALSE;
+			}
+			mPanes[49].mPointed = FALSE;
+			mPanes[49].mPicked  = FALSE;
+			mPanes[50].mPointed = FALSE;
+			mPanes[50].mPicked  = FALSE;
+			addPanes            = false;
+		} else if (IsConfirmPressed() && mItemSelection != -1 && !mPanes[49].mPointed && !mPanes[50].mPointed) {
+			if (count > 0) {
+				mTargetDetailScale = 1.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mPhase = 100;
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			}
+			gPointerPanes.mActive = FALSE;
+			addPanes              = false;
+		}
+		break;
+	}
+	case 1:
+		SelectDiscardQuantity(this);
+		break;
+	case 2:
+		ConfirmDiscardQuantity(this, true);
+		break;
+	case 10:
+		if (mY == mTargetY) {
+			mPhase = 0;
+			if (sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+				sStatusItemTable.mPage++;
+				PopulateOwnedItemPage(&sStatusItemTable);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			FinishStatusItemScroll(this);
+		}
+		addPanes = false;
+		break;
+	case 20:
+		if (mY == mTargetY) {
+			mPhase = 0;
+			CountMenuItems();
+			if (sStatusItemTable.mPage > 0) {
+				sStatusItemTable.mPage--;
+				PopulateOwnedItemPage(&sStatusItemTable);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			FinishStatusItemScroll(this);
+		}
+		addPanes = false;
+		break;
+	case 100:
+		if (IsConfirmPressed() || IsCancelPressed()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mPhase             = 101;
+			mTargetDetailScale = 0.0f;
+		}
+		gPointerPanes.mActive = FALSE;
+		addPanes              = false;
+		break;
+	case 101:
+		if (mDetailScale == mTargetDetailScale) {
+			mPhase = 0;
+		}
+		gPointerPanes.mActive = FALSE;
+		addPanes              = false;
+		break;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 8; i++) {
+			AddPointerPane(&gPointerPanes, &mPanes[i + 4]);
+		}
+		AddPointerPane(&gPointerPanes, &mPanes[49]);
+		AddPointerPane(&gPointerPanes, &mPanes[50]);
+	}
+	if (mPhase == 0) {
+		mPanes[49].mEnabled = FALSE;
+		mPanes[50].mEnabled = FALSE;
+		if (count > 4) {
+			mPanes[49].mEnabled = sStatusItemTable.mPage > 0;
+			mPanes[50].mEnabled = sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1;
+		}
+	}
+}
+
 // NONMATCHING: the mode-specific text selection and transition match Wii retail, but all four fn_800695EC calls inline;
 // the emitted function grows to 3624 bytes instead of calling it four times in 712 bytes
 void MenuStatus::State4(u32 frames)
@@ -6648,6 +8339,57 @@ void MenuStatus::State6(u32)
 {
 }
 
+extern "C" void fn_80061014(MenuStatus* menu)
+{
+	if (menu->mMode != 2 && menu->mMode != 4) {
+		return;
+	}
+	s32 width  = gGame.mAspectRatio == 0 ? 640 : 854;
+	s32 margin = (width - gRingScreenWidth) / 2;
+	GXSetScissor(gScreenLeft + margin, gPointerScreenHeight / 2 - 122, gPointerScreenWidth - margin * 2, 252);
+	f32 x = (menu->mX - 42.0f) + menu->mOffsetX;
+	f32 y = 180.0f + (menu->mY + menu->mOffsetY);
+	DrawInventoryGrid(menu->mPhase == 100 ? -1 : menu->mItemSelection, x, y, menu->mAlpha, 1.0f, menu->mPulsePhase);
+	if (menu->mItemSelection != -1) {
+		DrawStatusItemDetails(sStatusItemTable.mItems[menu->mItemSelection].mItem, gPointerScreenWidth / 2, gPointerScreenHeight / 2,
+		                      menu->mAlpha, menu->mDetailScale);
+	}
+	CountMenuItems();
+	DrawDiscardCountPanel(menu);
+	GXSetScissor(gScreenLeft + margin, gScreenTop, gPointerScreenWidth - margin * 2, gPointerScreenHeight);
+	fn_8005A128(&menu->mPaneFades, x, y, menu->mAlpha);
+}
+
+extern "C" void fn_80062338(MenuStatus* menu, u32 frames)
+{
+	if (menu->mTitle.mActive && menu->mTitle.mActive > 0) {
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mHold > 0.0f) {
+				if (menu->mTitle.mChars[i].mFade < 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+						menu->mTitle.mChars[i].mFade = 1.0f;
+					}
+				}
+			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+					menu->mTitle.mChars[i].mFade = 0.0f;
+				}
+			}
+		}
+		s32 shown = 0;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mFade != 0.0f) {
+				shown++;
+				menu->mTitle.mChars[i].mAngle0 += 0.08726646f * frames;
+				menu->mTitle.mChars[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		if (shown == 0) {
+			menu->mTitle.mActive = FALSE;
+		}
+	}
+}
+
 // NONMATCHING: retail keeps the SJIS byte in r4 and the lead flag in r3; this form swaps them and inverts the final branch
 extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 {
@@ -6683,6 +8425,40 @@ extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 		menu->mTitle.mChars[i].mText = NULL;
 		menu->mTitle.mChars[i].mFade = 0.0f;
 		menu->mTitle.mChars[i].mHold = 0.0f;
+	}
+}
+
+void MenuStatus::vf08(CbPane* pane)
+{
+	s32 kind = pane->mKind;
+	mHovered = TRUE;
+	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 49 && sStatusItemTable.mPage > 0) {
+		mTargetY = 128.0f;
+		mPhase   = 20;
+	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetY = -56.0f;
+		mPhase   = 10;
+	}
+}
+
+void MenuStatus::vf14(CbPane* pane)
+{
+	if (!mHovered) {
+		return;
+	}
+	s32 kind = pane->mKind;
+	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
+		return;
+	}
+	if (kind == 49 && sStatusItemTable.mPage > 0) {
+		mTargetY = 128.0f;
+		mPhase   = 20;
+	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+		mTargetY = -56.0f;
+		mPhase   = 10;
 	}
 }
 
@@ -6889,6 +8665,222 @@ static void ResetPCCharacters(MenuPC* menu)
 	gPointerScreenWidth   = width;
 }
 
+static inline void SelectPreviousShopRow(s32& selection)
+{
+	if (--selection < 0) {
+		selection = 19;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+}
+
+static inline void SelectNextShopRow(s32& selection, const MenuPCPage& page, bool allowEmptyRows)
+{
+	s32 next = selection + 1;
+	if (next <= 19) {
+		selection = next;
+		if (allowEmptyRows || page.mRows[selection].mItem >= 0) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+	}
+}
+
+static inline s32 ResetPCShopPage(MenuPC* menu, MenuPCItem*& table)
+{
+	menu->mPhase = 0;
+	return PCShopMaxPage(table);
+}
+
+void MenuPC::State3(u32 frames)
+{
+	CPad pad(0);
+	MenuPCItem* table = sItemShopEntries;
+	s32 count         = CountPCShopItems(table);
+	ApproachHudValue(&mPanelAlpha, &mPanelTarget, 0.08f * frames);
+	switch (mPhase) {
+	case 0:
+		if (count > 1) {
+			if (mItemShopSelection == 0) {
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mItemShopSelection, gItemShopPage, true);
+				}
+				if (gWiiPointer.Check(PadActStickUp)) {
+					CountPCShopItems(table);
+					if (gItemShopPage.mStart > 0) {
+						mScrollTarget = 17.0f;
+						mPhase        = 20;
+						break;
+					}
+				}
+			} else if (mItemShopSelection == 8) {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mItemShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					MenuPCItem* row = table;
+					if (gItemShopPage.mStart < PCShopMaxPage(row) - 1) {
+						mScrollTarget = -17.0f;
+						mPhase        = 10;
+						break;
+					}
+				}
+			} else {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mItemShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mItemShopSelection, gItemShopPage, true);
+				}
+			}
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			if (gItemShopPage.mRows[mItemShopSelection].mItem >= 0 && gItemShopPage.mRows[mItemShopSelection].mCount > 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mPanelTarget = 1.0f;
+				mPhase++;
+				mYesNo           = 0;
+				mTargetListAlpha = 0.5f;
+				break;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			break;
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			if (mShopOnly) {
+				ResetPCText(this, 11);
+				mTargetFrameHeight = 0.0f;
+				SavePCShopState(this);
+				mPanelTarget = 0.0f;
+			} else {
+				ResetPCText(this, 2);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+				mPanelTarget = 0.0f;
+			}
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickUp)) {
+			mYesNo--;
+			if (mYesNo < 0) {
+				mYesNo = 1;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			mYesNo++;
+			if (mYesNo > 1) {
+				mYesNo = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mYesNo == 0) {
+				s32 entryIndex    = gItemShopPage.mIndex[mItemShopSelection];
+				s32 money         = GetMoney();
+				MenuPCItem* entry = &sItemShopEntries[entryIndex];
+				if (entry->mPrice <= money) {
+					money -= entry->mPrice;
+					gGame.GetPlayer()->mParams.SetMoney(money);
+					mMoneyDisplay.target = money;
+					mYesNo               = 2;
+					PlayWiiSoundEffect(&gGame.mSound, 0x35B, 1.0f, 0.0f);
+					if (entry->mIsAttachment) {
+						s32 id = entry->mItem;
+						if (id >= 0 && id < 9) {
+							s32 level = GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id) + 1;
+							if (level >= 3) {
+								level = 3;
+							}
+							SetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id, level);
+						}
+					} else {
+						s16 id = entry->mItem;
+						if (id >= 0 && id < 0x9F) {
+							s32 index    = FindOwnedInventoryItemIndex(gGame.GetPlayer()->mParams.mInventory.mItems, id);
+							s32 quantity = index >= 0 ? gGame.GetPlayer()->mParams.mInventory.mItems[index].mCount : 0;
+							SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, id, quantity + 1, FALSE);
+						}
+					}
+					s16& stock = entry->mCount;
+					s16 left   = stock;
+					stock      = left > 0 ? left - 1 : left;
+					switch (entry->mItem) {
+					case 0x57:
+					case 0x59:
+					case 0x5A:
+						for (int i = 0; i < 20; i++) {
+							MenuPCItem& other = table[i];
+							s16 otherId       = other.mItem;
+							if (otherId >= 0 && !other.mIsAttachment) {
+								switch (otherId) {
+								case 0x57:
+								case 0x59:
+								case 0x5A:
+									if (otherId != entry->mItem) {
+										other.mCount = 0;
+										SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, otherId, 0, FALSE);
+									}
+									break;
+								case 0x58:
+									break;
+								}
+							}
+						}
+						break;
+					case 0x58:
+						break;
+					}
+					mPhase++;
+					return;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else {
+				mPhase       = 0;
+				mPanelTarget = 0.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mTargetListAlpha = 1.0f;
+			}
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPhase           = 0;
+			mPanelTarget     = 0.0f;
+			mTargetListAlpha = 1.0f;
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mTargetListAlpha = 1.0f;
+			PopulateItemShopPage(&gItemShopPage);
+		}
+		break;
+	case 10:
+		if (mScroll == mScrollTarget) {
+			if (gItemShopPage.mStart < ResetPCShopPage(this, table) - 1) {
+				gItemShopPage.mStart++;
+				PopulateItemShopPage(&gItemShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	case 20:
+		if (mScroll == mScrollTarget) {
+			mPhase = 0;
+			CountPCShopItems(table);
+			if (gItemShopPage.mStart > 0) {
+				gItemShopPage.mStart--;
+				PopulateItemShopPage(&gItemShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	}
+}
+
 void MenuPC::State4(u32)
 {
 	MenuPC* menu = this;
@@ -6907,6 +8899,166 @@ void MenuPC::State5(u32)
 		gGame.mSubwin.mEnabled = 0;
 		ResetPCText(menu, 2);
 		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	}
+}
+
+static inline s16 PCShopEntryId(s32 index)
+{
+	return gScrapShopPage.mRows[index].mItem;
+}
+
+void MenuPC::State7(u32 frames)
+{
+	CPad pad(0);
+	MenuPCItem* table = sScrapShopEntries;
+	s32 count         = CountPCShopItems(table);
+	ApproachHudValue(&mPanelAlpha, &mPanelTarget, 0.08f * frames);
+	switch (mPhase) {
+	case 0:
+		if (count > 1) {
+			if (mScrapShopSelection == 0) {
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mScrapShopSelection, gScrapShopPage, true);
+				}
+				if (gWiiPointer.Check(PadActStickUp)) {
+					CountPCShopItems(table);
+					if (gScrapShopPage.mStart > 0) {
+						mScrollTarget = 17.0f;
+						mPhase        = 20;
+						break;
+					}
+				}
+			} else if (mScrapShopSelection == 8) {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mScrapShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					if (gScrapShopPage.mStart < PCShopMaxPage(table) - 1) {
+						mScrollTarget = -17.0f;
+						mPhase        = 10;
+						break;
+					}
+				}
+			} else {
+				if (gWiiPointer.Check(PadActStickUp)) {
+					SelectPreviousShopRow(mScrapShopSelection);
+				}
+				if (gWiiPointer.Check(PadActStickDown)) {
+					SelectNextShopRow(mScrapShopSelection, gScrapShopPage, false);
+				}
+			}
+		}
+		if (PCShopEntryId(mScrapShopSelection) < 0) {
+			do {
+				mScrapShopSelection--;
+				s16 id = gScrapShopPage.mRows[mScrapShopSelection].mItem;
+				if (id >= 0) {
+					break;
+				}
+			} while (mScrapShopSelection != 0);
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			if (PCShopEntryId(mScrapShopSelection) >= 0 && gScrapShopPage.mRows[mScrapShopSelection].mCount > 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mPanelTarget = 1.0f;
+				mPhase++;
+				mYesNo = 0;
+				break;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			break;
+		}
+		if (gWiiPointer.Check(PadActCancel)) {
+			ResetPCText(this, 2);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPanelTarget = 0.0f;
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickUp)) {
+			mYesNo--;
+			if (mYesNo < 0) {
+				mYesNo = 1;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			mYesNo++;
+			if (mYesNo > 1) {
+				mYesNo = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mYesNo == 0) {
+				s32 item          = gScrapShopPage.mIndex[mScrapShopSelection];
+				s32 scrap         = GetScrap();
+				MenuPCItem* entry = &sScrapShopEntries[item];
+				s16 price         = entry->mPrice;
+				if (price <= scrap) {
+					scrap -= price;
+					gGame.GetPlayer()->mParams.SetScrap(scrap);
+					mScrapDisplay.target = scrap;
+					mYesNo               = 2;
+					PlayWiiSoundEffect(&gGame.mSound, 0x35B, 1.0f, 0.0f);
+					gEventVars.mVars[mScrapShopBase + entry->mItem] = 1;
+					mExitState                                      = item;
+					s16& quantity                                   = entry->mCount;
+					s16 stock                                       = quantity;
+					s32 remaining                                   = stock;
+					if (stock > 0) {
+						remaining = stock - 1;
+					}
+					quantity = remaining;
+					mPhase++;
+					return;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			} else {
+				mPhase       = 0;
+				mPanelTarget = 0.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				mTargetListAlpha = 1.0f;
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			mPhase       = 0;
+			mPanelTarget = 0.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			PopulateScrapShopPage(&gScrapShopPage);
+			ResetPCText(this, 11);
+			mTargetFrameHeight = 0.0f;
+			SavePCShopState(this);
+		}
+		break;
+	case 10:
+		if (mScroll == mScrollTarget) {
+			if (gScrapShopPage.mStart < ResetPCShopPage(this, table) - 1) {
+				gScrapShopPage.mStart++;
+				PopulateScrapShopPage(&gScrapShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
+	case 20:
+		if (mScroll == mScrollTarget) {
+			mPhase = 0;
+			CountPCShopItems(table);
+			if (gScrapShopPage.mStart > 0) {
+				gScrapShopPage.mStart--;
+				PopulateScrapShopPage(&gScrapShopPage);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+			mScroll       = 0.0f;
+			mScrollTarget = 0.0f;
+		}
+		break;
 	}
 }
 
@@ -8064,7 +10216,7 @@ extern "C" void InitGameMenus(MenuEx* ex)
 
 // the menus MenuEx keeps, the GameCube's menu group functions: the Wii has nine and its cursor only blinks.
 // LoadMenuGroupResources
-extern "C" BOOL fn_80084848(MenuEx* ex)
+extern "C" BOOL LoadMenuGroupResources(MenuEx* ex)
 {
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
 		if (ex->mMenus[i]) {
@@ -8076,7 +10228,7 @@ extern "C" BOOL fn_80084848(MenuEx* ex)
 }
 
 // ResetMenuGroup
-extern "C" void fn_800848C0(MenuEx* ex)
+extern "C" void ResetMenuGroup(MenuEx* ex)
 {
 	ex->mCursor.mFrame = 0;
 	ex->mCursor.mTimer = 0;
@@ -8087,13 +10239,11 @@ extern "C" void fn_800848C0(MenuEx* ex)
 	}
 }
 
-extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* pos, u32 frames);
-
 // UpdateOpenMenus: steps the open menus, lets the game go on once the last one closes, blinks the cursor and
 // tests the pointer against the menus' panes.
 // NONMATCHING: 80 %, the frame is retail's; the screen size's int to float conversions are scheduled apart
 // in retail and the rectangle's registers differ
-extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
+extern "C" void UpdateOpenMenus(MenuEx* ex, u32 frames)
 {
 	BOOL active = FALSE;
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
@@ -8131,6 +10281,31 @@ extern "C" void fn_8008492C(MenuEx* ex, u32 frames)
 	pos.x          = pointer.x - halfWidth;
 	pos.y          = -(pointer.y + halfHeight);
 	fn_8005575C(&gPointerPanes, gWiiPointer.mPointerValid != 0, &pos, frames);
+}
+
+extern "C" void fn_80084C84(MenuEx* ex)
+{
+	if (!ex->mActive) {
+		return;
+	}
+	WiiFbTexture* texture = (WiiFbTexture*)&ex->_34;
+	if (texture->mImage == NULL) {
+		CreateFbTexture(texture, gGame.mGs.mScreen.fbWidth, gGame.mGs.mScreen.efbHeight, GX_TF_RGB565, FALSE, NULL, "(menu)");
+		CopyFbTexture(texture, texture->mFormat, FALSE, TRUE);
+		PauseGameSounds(&gGame, 0.2f);
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	gGame.mGs.mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+	gGame.mGs.mCurTevStage->SetColorIn(GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
+	gGame.mGs.mCurTevStage->SetColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	gGame.mGs.mCurTevStage->SetAlphaIn(GX_CA_RASA, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
+	gGame.mGs.mCurTevStage->SetAlphaOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
+	DrawFbTexture(texture, 0xFFFFFFFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 0.0f, gPointerScreenWidth, gPointerScreenHeight,
+	              0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 }
 
 extern "C" void DrawOpenMenus(MenuEx* ex)

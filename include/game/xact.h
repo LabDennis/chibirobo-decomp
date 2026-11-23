@@ -5,6 +5,7 @@
 #include "game/cptcl.h"
 #include "game/cscrn.h"
 #include "game/xaction.h"
+#include "game/xactdata.h"
 
 // chibi robo's actions, XAction and its XAct* kinds from RTTI. every one of them sits in
 // XObjChr and shares XAction's two virtuals. offsets are the same in every region
@@ -12,36 +13,7 @@
 class XObjChr;
 struct HSD_Generator;
 
-class XAction {
-public:
-	XObjChr* mOwner; // _00
-	s32 mState;      // _04, 0 while idle
-	// _08 vtable
-
-	virtual void Init(XObjChr* owner); // _08, 0x800BBD7C
-	virtual void Reset();              // _0C, 0x800BB708
-
-	s32 mMoveDirection; // _0C
-	CVec mTargetOffset; // _10, push keeps the offset to its target here
-	XObj* mTarget;      // _20
-	s32 mTargetState;   // _24
-	s32 mTargetFloor;   // _28, the selected floor when the target was picked
-
-	// todo: cleanup
-	void SetTarget(XObj* target)
-	{
-		mTarget      = target;
-		mTargetFloor = mTarget->mSelectedFloorIndex;
-	}
-	void SetState(s32 state, XObj* target)
-	{
-		mState = state;
-		if (target != NULL) {
-			SetTarget(target);
-		}
-	}
-};
-STATIC_ASSERT(sizeof(XAction) == 0x2C);
+#include "game/xactionbase.h"
 
 // picking things up and carrying them
 class XActLift : public XAction {
@@ -72,103 +44,9 @@ STATIC_ASSERT(sizeof(XActLift) == 0x7C);
 extern "C" void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end);
 extern "C" void UpdateHeldObject(XActLift* act, s32 frames);
 
-class XActHang : public XAction {
-public:
-	BOOL mStickAway;      // _2C, set when the stick points away
-	Vec mHangStartOffset; // _30, player position relative to the target
-	Vec mFloorCenter;     // _3C
-	f32 mDistance;        // _48
-	u8 _4C[0x50 - 0x4C];  // _4C
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActHang) == 0x50);
-
-class XActJump : public XAction {
-public:
-	Vec mArcPosition;    // _2C, horizontal position and starting height
-	f32 mRise;           // _38
-	f32 mArcAngle;       // _3C
-	f32 mArcStep;        // _40
-	f32 mForward;        // _44
-	f32 mStrength;       // _48
-	f32 mTargetStrength; // _4C
-	f32 mTargetHeight;   // _50
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActJump) == 0x54);
-
-class XActLadder : public XAction {
-public:
-	BOOL mBPressed; // _2C, set when b is pressed on it
-	Vec mPos;       // _30, where he hangs, in front of the ladder
-	f32 mDist;      // _3C, how far he still has to go to get there
-	f32 mAngle;     // _40, from mPos to where he started
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActLadder) == 0x44);
-
-class XActRope : public XAction {
-public:
-	Vec mPos;   // _2C, horizontal approach point
-	f32 mDist;  // _38
-	f32 mAngle; // _3C
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActRope) == 0x40);
-
-class XActPush : public XAction {
-public:
-	u8 _2C[0x34 - 0x2C];       // _2C
-	CVec _34;                  // _34, no access in any edition
-	CVec _44;                  // _44
-	BOOL mPushPositionClamped; // _54
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActPush) == 0x58);
+#include "game/xactclasses.h"
 
 extern "C" void CancelPlayerPushAction(XActPush* act);
-
-// the ring on the floor around him while he tumbles
-struct XActTumbleFade {
-	BOOL mActive; // _00
-	Vec mOffset;  // _04, from his feet, turned with him
-	f32 mAmount;  // _10
-};
-STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
-
-class XActTumble : public XAction {
-public:
-	XActTumbleFade mFade;         // _2C
-	f32 mSavedYaw;                // _40
-	HSD_Generator* mIdleParticle; // _44
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActTumble) == 0x48);
-
-class XActCopter : public XAction {
-public:
-	f32 mTime;  // _2C, how long he can stay up
-	f32 mPhase; // _30, of the bob
-	f32 mBob;   // _34, how high the bob lifts him
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActCopter) == 0x38);
-
-// one of the popper's rings, drawn as two glow sprites and a soft disc
-struct XActPopperRing {
-	Vec mPos;    // _00
-	f32 mAmount; // _0C, 0 when it's gone
-	f32 mRadius; // _10
-	u32 mColor;  // _14
-};
-STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
 
 struct PopperShotDust {
 	CPtcl mPtcl;           // _00
@@ -230,30 +108,5 @@ public:
 	void HandleInput(const CPadOne& pad, f32& moveWeight);
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8778);
-
-struct RadarAimAxis {
-	f32 angle, targetAngle, reached;
-};
-
-// the beam's two colours. retail's destructor tests this object's address before it destroys them, so they sit
-// in an object of their own. whether it holds more than the colours is not known
-struct RadarBeamColors {
-	CScrnColor mColor[2]; // _00
-};
-STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
-
-class XActRadar : public XAction {
-public:
-	XObj* mTarget;         // _2C
-	RadarAimAxis mYaw;     // _30
-	RadarAimAxis mPitch;   // _3C
-	RadarBeamColors mBeam; // _48
-	f32 mFade;             // _B0
-	f32 mAngle[2];         // _B4
-	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
-
-	void HandleInput(const CPadOne& pad, f32& moveWeight);
-};
-STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 
 #endif

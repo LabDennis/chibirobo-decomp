@@ -89,8 +89,8 @@ u32 GetStageEntryTimeComponent(s32 index);
 u32 CheckStageFlag(s32 stage, u32 flag);
 BOOL LoadStageByIndex(s32 stage);
 void ApplyStageClearColor();
-BOOL fn_80084848(void* menu);             // the menus' resources, the GameCube's LoadMenuGroupResources
-void fn_8008492C(void* menu, s32 frames); // steps the open menus
+BOOL LoadMenuGroupResources(void* menu);      // the menus' resources, the GameCube's LoadMenuGroupResources
+void UpdateOpenMenus(void* menu, s32 frames); // steps the open menus
 }
 
 extern s32 gRefreshRate;
@@ -251,7 +251,7 @@ void CBase::ClearStatusFlags(u64 mask)
 static inline BOOL IsStageBusy(CGame* game)
 {
 	if (game->mMenu.mActive) {
-		fn_8008492C(&game->mMenu.mActive, 10);
+		UpdateOpenMenus(&game->mMenu.mActive, 10);
 		if (game->mMenu.mActive) {
 			return TRUE;
 		}
@@ -393,7 +393,7 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 11:
-		if (!fn_80084848(&mMenu.mActive))
+		if (!LoadMenuGroupResources(&mMenu.mActive))
 			break;
 		++mLoadStep;
 	case 12:
@@ -1355,7 +1355,7 @@ void CGame::Update(u32 frames)
 		UpdateBootLogos(&mLogo, frames);
 		UpdateTitleScreen(&mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
-			fn_8008492C(&mMenu.mActive, frames);
+			UpdateOpenMenus(&mMenu.mActive, frames);
 		}
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {

@@ -6,6 +6,7 @@
 #include "game/ccamera.h"
 #include "game/coordinfo.h"
 #include "game/evt.h"
+#include "game/xobjdata.h"
 
 // class names from RTTI and the vtable at 0x80225984, the virtuals past CXObjIntp's are unnamed.
 // offsets are usa, japan's CJArchive is 8 bytes shorter so everything here sits 8 lower there
@@ -48,22 +49,6 @@ struct XObjFloor {
 	s32 mExtent[3];       // _14, in hundredths
 };
 typedef char XObjFloor_size_check[sizeof(XObjFloor) == 0x20 ? 1 : -1];
-
-// a floor's edge, offsets from the object's position
-struct XObjEdge {
-	Vec mContactOffset; // _00
-	Vec mFrom;          // _0C
-	Vec mTo;            // _18
-};
-typedef char XObjEdge_size_check[sizeof(XObjEdge) == 0x24 ? 1 : -1];
-
-// a material color stepping towards a target, the two of them end up in CXObj's mColors
-struct XObjColorStep {
-	Vec mValue;  // _00
-	Vec mTarget; // _0C
-	Vec mSpeed;  // _18
-};
-typedef char XObjColorStep_size_check[sizeof(XObjColorStep) == 0x24 ? 1 : -1];
 
 // action markers shown over objects the player can interact with
 enum ObjectActionMarker {

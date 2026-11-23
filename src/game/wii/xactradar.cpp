@@ -696,14 +696,14 @@ CVec AddScalarToVectorComponents(const CVec& v, f32 d)
 // XActPopperRing* local scored lower (one cursor, 96.08).
 
 // one shot's two rings, drawn only while the projection lands inside the frame's
-// bounds and a 0..1 depth. The GameCube's DrawPopperShotRings walked all ten shots
+// bounds and a 0..1 depth. The GameCube's DrawPopperShotRing walked all ten shots
 // itself; on the Wii the ten-step loop is a caller of its own at 0x8010BE94 and this
 // draws a single shot, the ring math and colors unchanged
 /**
  * @note Address: 0x80109C88
  * @note Size: 0x344
  */
-void DrawPopperShotRings(XActPopperShot* shot)
+void DrawPopperShotRing(XActPopperShot* shot)
 {
 	for (s32 j = 0; j < 2; j++) {
 		if (shot->mRing[j].mAmount > 0.0f) {
@@ -1173,18 +1173,18 @@ void DrawPopperShotParticles(XActPopper* act)
 	}
 }
 
-// the GameCube's DrawPopperShotRings tail loop on its own: the overlay draw walks all
-// ten shots here while DrawPopperShotRings itself stays a per-shot helper
+// the GameCube's DrawPopperShotRing tail loop on its own: the overlay draw walks all
+// ten shots here while DrawPopperShotRing itself stays a per-shot helper
 /**
  * @note Address: 0x8010BE94
  * @note Size: 0x4C
  */
-void fn_8010BE94(XActPopper* act)
+void DrawPopperShotRings(XActPopper* act)
 {
 	s32 i;
 	XActPopperShot* shot;
 	for (i = 0, shot = act->mShots.mShot; i < 10; i++, shot++) {
-		DrawPopperShotRings(shot);
+		DrawPopperShotRing(shot);
 	}
 }
 
