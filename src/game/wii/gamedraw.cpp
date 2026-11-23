@@ -343,7 +343,7 @@ extern "C" void fn_80028998(CGame* game)
 	if (game->mHomeMenu.IsActive()) {
 		return;
 	}
-	if (game->GetStatusFlags(4) && game->mLogo.mState != 12) {
+	if (game->GetStatusFlags(0x400000000ULL) && game->mLogo.mState != 12) {
 		return;
 	}
 	if (game->mLoadStep < 2) {
