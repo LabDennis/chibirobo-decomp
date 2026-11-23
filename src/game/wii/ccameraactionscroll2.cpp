@@ -205,8 +205,8 @@ void CCameraActionScroll2::Init()
  * @note Address: 0x801622F8
  * @note Size: 0x5E4
  */
-// NONMATCHING: the Wii additions (quad tex init at _E0, mMtx at _120, the flag at _11C and the
-// drag fields) are not fully decoded yet; the GameCube flow plus drag init follows
+// NONMATCHING: register and stack placement; the Wii adds the drag reset and the edge texture
+// (image 264 of the global TPL) behind CalcLimits
 void CCameraActionScroll2::Reset()
 {
 	if (gGame.mStage == 11) {
@@ -251,6 +251,7 @@ void CCameraActionScroll2::Reset()
 	mCenter.y    = center.y;
 	mCenter.z    = center.z;
 	mCenterPtr   = &mCenter;
+	CalcLimits(this, GetLimits(gGame.mStage));
 	mDragging    = FALSE;
 	mDragDamping = 0.85f;
 	mDragVec.x   = 0.0f;
@@ -258,10 +259,10 @@ void CCameraActionScroll2::Reset()
 	mDragVec.z   = 0.0f;
 	mDragStart.Set(0.0f, 0.0f, 0.0f);
 	mDragLast.Set(0.0f, 0.0f, 0.0f);
-	CalcLimits(this, GetLimits(gGame.mStage));
-	_E0 = gGame.mTpl.mTex;
-	PSMTXTrans(_E0.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
-	_E0.mTexMtx.mDirty = TRUE;
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[264], 0);
+	mEdgeTex = gGame.mTpl.mTex;
+	PSMTXTrans(mEdgeTex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	mEdgeTex.mTexMtx.mDirty = TRUE;
 	InitQuads(this);
 	Update(1);
 }
@@ -868,7 +869,7 @@ static void InitQuads(CCameraActionScroll2* camera)
 	};
 	for (s32 i = 0; i < 4; i++) {
 		ScrollEdgeQuad* quad = &camera->mQuads[i];
-		quad->mTex           = &camera->_E0;
+		quad->mTex           = &camera->mEdgeTex;
 		quad->mActive        = FALSE;
 		quad->mUnk24         = FALSE;
 		quad->mX             = positions[i][0];
