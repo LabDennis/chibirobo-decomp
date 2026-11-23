@@ -13,8 +13,7 @@ void OSVAttention(const char* fmt, va_list args);
 extern "C" {
 #endif
 
-typedef s64 OSTime;
-typedef u32 OSTick;
+#include <dolphin/os/OSTime.h>
 
 #include <dolphin/os/OSAlloc.h>
 #include <dolphin/os/OSCache.h>
@@ -27,7 +26,7 @@ typedef u32 OSTick;
 #include <dolphin/os/OSReset.h>
 #include <dolphin/os/OSResetSW.h>
 #include <dolphin/os/OSError.h>
-#include <dolphin/os/OSTime.h>
+#include <dolphin/os/OSStopwatch.h>
 #include <dolphin/os/OSSerial.h>
 #include <dolphin/os/OSRtc.h>
 #include <dolphin/os/OSMessage.h>
@@ -133,24 +132,6 @@ typedef struct OSBootInfo_s {
     void* FSTLocation;
     u32 FSTMaxLength;
 } OSBootInfo;
-
-typedef struct OSStopwatch {
-    char* name;
-    u32 hits;
-    OSTime total;
-    OSTime min;
-    OSTime max;
-    OSTime last;
-    BOOL running;
-    u32 _padding;
-} OSStopwatch;
-
-void OSInitStopwatch(OSStopwatch* sw, char* name);
-void OSStartStopwatch(OSStopwatch* sw);
-void OSStopStopwatch(OSStopwatch* sw);
-OSTime OSCheckStopwatch(OSStopwatch* sw);
-void OSResetStopwatch(OSStopwatch* sw);
-void OSDumpStopwatch(OSStopwatch* sw);
 
 OSTick OSGetTick(void);
 OSTime OSGetTime(void);
