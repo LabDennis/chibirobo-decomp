@@ -299,6 +299,11 @@ void DrawPlayerRadarEffects(XActRadar* act);
 void DrawPlayerLookMarker(XObjChrLook* look);
 void DrawPointParticleDisplay(PointPtcl* points, f32 row);
 f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
+u32 GetPlayerActionParameter(s32 index);
+u8* GetStageBatteryDepletedScript();
+void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
+void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, XObj* target, f32 time);
+void SelectActiveAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time);
 void SetGsChannelEnabled(CGs* gs, s32 channel, u8 enable);
 void ClearActiveObjectFloors(XObj* object);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
@@ -4081,6 +4086,247 @@ void UpdatePlayerMovementAndContacts(WiiPlayerState* player, u32 frames, f32 spe
 	}
 }
 
+s32 gPlayerSuitIdleAnimations[9] = { 1, 0xCF7, 0xCF9, 0xCF8, 0xCFD, 1, 0xCFA, 0xCFB, 0xCFC };
+
+static inline f32 GetStickMotion(CPadOne* pad)
+{
+	u8 blocked = (gGame.GetStatusFlags(0x20)) != 0;
+	if (!blocked) {
+		blocked = gGame.mEvt.mData.mScript != NULL;
+	}
+	if (blocked) {
+		return 0.0f;
+	}
+	f32 x = pad->mStick.x;
+	f32 y = pad->mStick.y;
+	return FSqrt(x * x + y * y);
+}
+
+static inline f32 PlayerGaitRate(f32 speed, bool slow)
+{
+	if (slow) {
+		f32 rate = speed > 1.0f ? 1.0f : speed;
+		if (rate < 0.5f)
+			rate = 0.5f;
+		return rate;
+	} else {
+		f32 rate = 0.5f * speed;
+		if (rate > 1.0f)
+			rate = 1.0f;
+		if (rate < 0.7f)
+			rate = 0.7f;
+		return rate;
+	}
+}
+
+static inline void ChangePlayerGait(WiiPlayerState* p, s32 id, f32 rate)
+{
+	p->mFrameTime.mFrame = 4.0f + p->GetAnimFrame();
+	if (p->mFrameTime.mFrame >= p->GetAnimEndFrame())
+		p->mFrameTime.mFrame -= p->GetAnimEndFrame();
+	p->SetAnim(id, FALSE, p->mFrameTime.mFrame, rate, 0.0f, 10.0f);
+}
+
+static inline void SetPlayerIdleAnim(WiiPlayerState* p, s32 id)
+{
+	p->SetAnim(id, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+}
+
+/**
+ * @note Address: 0x800DCD40
+ * @note Size: 0x11EC
+ */
+// NONMATCHING: gait, idle, fidget and action-specific animation selection are present;
+// the ordered call set matches; switch layout, rate scheduling and register allocation still differ
+void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f32, f32)
+{
+	CPadOne* pad = &p->mPad;
+	f32 motion   = GetStickMotion(pad);
+	if (motion == 0.0f && p->mPreviousContactObject >= 0)
+		motion = 0.8f;
+	if (motion > 0.0f && (gGame.GetStatusFlags(0x100)) && !(gGame.GetStatusFlags(0x200)))
+		motion = 0.0f;
+	if (__fpclassifyf(p->mWalkHeading) != FP_NAN)
+		motion = PSVECMag(&p->mMoveSpeed0);
+
+	// the gait goes by the speed he tries to go: divide out what the walk code scaled him by (obstacles or the rate multiplier)
+	f32 speed;
+	if (sBlockedObstacleCount >= 1) {
+		f32 scale = 1.0f - 0.15f * (f32)sBlockedObstacleCount;
+		if (scale < 0.7f)
+			scale = 0.7f;
+		speed = p->mMoveSpeed / scale;
+	} else {
+		speed = p->mMoveSpeed / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 0.4f : 1.0f) * (60.0f / gRefreshRate));
+	}
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
+		f32 distance = PSVECDistance(&p->mMotion.mValue, &p->mMotion.mTarget);
+		if (distance / (((IsLiftActionState(&p->mLift, 4) && IsLiftTargetPlug(&p->mLift)) ? 0.4f : 1.0f) * (60.0f / gRefreshRate))
+		    >= 3.0f) {
+			p->SetAnim(0x79, FALSE, 0.0f, 1.0f, 0.0f, 30.0f);
+		} else if (p->GetAnimId() == 0x79 || p->GetAnimId() == 0x89 || p->GetAnimId() == 0xE0) {
+			SetPlayerIdleAnim(p, 0x11);
+			p->mIdleLoops = 3;
+		}
+	}
+	if (p->mPopper.mState == 8 && ((XObjPopper*)p->mPopperObj)->GetAnimId() == 5 && ((XObjPopper*)p->mPopperObj)->GetAnimFrame() <= 10.0f) {
+		if (gGame.mStage != 0xB || (p->GetAnimId() != 0x35 && p->GetAnimId() != 0x36)) {
+			p->SetAnim(0x822, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		}
+		return;
+	}
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
+		switch (p->GetAnimId()) {
+		case 0x160:
+		case 0x161:
+		case 0x162:
+		case 0x163:
+			p->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			p->mIdleLoops = rand() % 10 + 5;
+			break;
+		// standing and idle anims: moving starts the walk, standing still he may fidget
+		case 0:
+		case 1:
+		case 2:
+		case 8:
+		case 0x11:
+		case 0x12:
+		case 0x4A:
+		case 0xA1:
+		case 0xA3:
+		case 0x822:
+		case 0x874:
+		case 0x894:
+		case 0x8B2:
+		case 0xCF7:
+		case 0xCF8:
+		case 0xCF9:
+		case 0xCFA:
+		case 0xCFB:
+		case 0xCFC:
+		case 0xCFD: {
+			BOOL script = gGame.mEvt.mData.mScript != NULL;
+			if (script && __fpclassifyf(p->mWalkHeading) == FP_NAN
+			    && (((XObjAttachment*)p->mCopterObj)->mVisible || ((XObjAttachment*)p->mPopperObj)->mVisible
+			        || ((XObjAttachment*)p->mRadarObj)->mVisible || ((XObjAttachment*)p->mOXObj)->mVisible))
+				break;
+			if (p->_1C9B8[2] > 0.0f) {
+				if (p->mLift.mState == 4) {
+					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
+						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+					else
+						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				} else if (p->GetAttachment() == 2) {
+					p->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				} else {
+					p->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				}
+				break;
+			}
+			if (motion != 0.0f) {
+				SetPlayerIdleAnim(p, 3);
+				p->mIdleLoops = 0;
+				break;
+			}
+			if (p->mLift.mState != 0 || p->mFloorContactObjects[2] >= 0 || p->mSuits.mChangeStep)
+				break;
+			if (p->GetAttachment() == 1 || p->GetAttachment() == 3) {
+				SetPlayerIdleAnim(p, 0x4A);
+			} else if (p->GetAttachment() == 2) {
+				SetPlayerIdleAnim(p, 0x822);
+			} else if ((gGame.GetStatusFlags(0x100)) || script) {
+				SetPlayerIdleAnim(p, 0x11);
+				p->mIdleLoops = 3;
+			} else if (model->IsAnimDone()) {
+				if (p->mIdleLoops > 0)
+					--p->mIdleLoops;
+				if (p->mIdleLoops == 0 && (p->mPlayerFlags & 4)) {
+					s32 id = 0x11;
+					if (!gGame.mEvt.mData.mScript && (p->mHitObjectIndex < 0 || p->mHitObjectIndex == p->mFloorContactObjects[0])) {
+						// one time in four he fidgets, bits 4-5 of the same roll pick which
+						s32 pick = rand();
+						if (!(pick & 3)) {
+							switch (pick & 0x30) {
+							case 0x10:
+								id = 1;
+								break;
+							case 0x20:
+								id = 2;
+								break;
+							case 0x30:
+								id = 0x12;
+								break;
+							default:
+								id = gPlayerSuitIdleAnimations[p->mSuits.mCurrent];
+								break;
+							}
+							p->mIdleLoops = rand() % 10 + 5;
+						}
+					}
+					SetPlayerIdleAnim(p, id);
+				}
+			}
+			break;
+		}
+		// walking, anim 3 and its variants (gPlayerAnimVariants)
+		case 3:
+		case 0xC:
+		case 0x818:
+		case 0x896:
+			if (motion == 0.0f) {
+				if (p->GetAttachment() == 1 || p->GetAttachment() == 3)
+					SetPlayerIdleAnim(p, 0x4A);
+				else {
+					SetPlayerIdleAnim(p, 0x11);
+					p->mIdleLoops = 3;
+				}
+			} else if (speed >= 1.25f) {
+				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, false));
+			} else {
+				p->SetAnimRate(PlayerGaitRate(speed, true));
+			}
+			break;
+		// jogging, anim 0x77 and its variants
+		case 0x77:
+		case 0x88:
+		case 0x882:
+		case 0x897:
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed >= 1.9f)
+				ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
+			else
+				p->SetAnimRate(PlayerGaitRate(speed, false));
+			break;
+		// running, anim 4 and its variants
+		case 4:
+		case 0xD:
+		case 0x819:
+		case 0x898:
+			if (speed < 1.25f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 3, rate);
+			} else if (speed < 1.9f) {
+				f32 rate = speed > 1.0f ? 1.0f : speed;
+				if (rate < 0.5f)
+					rate = 0.5f;
+				ChangePlayerGait(p, 0x77, rate);
+			} else
+				p->SetAnimRate(PlayerGaitRate(speed, false));
+			break;
+		}
+	}
+}
+
 // the eyelids: in the anims that allow it he blinks after a random wait, stepping the lids two frames at a time
 void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
 {
@@ -4170,6 +4416,383 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 			player->SetColor(1, 0, 0, 0, 0.0f);
 			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
 		}
+	}
+}
+
+// NONMATCHING: action costs, battery depletion and warning fades are present;
+// the untyped particle-manager call is unresolved; switch layout, global minimum
+// tracking and register scheduling still differ
+void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
+{
+	const CPadOne* pad = &p->mPad;
+	// the row of the action battery costs (GetPlayerActionParameter) for what he does: 0-1 standing, 2 walk, 3 jog, 4 run; -1 none
+	s32 index = -1;
+	if (p->mLift.mState && IsJumpActionState(&p->mJump, 0)) {
+		switch (p->mLift.mState) {
+		case 1:
+		case 2:
+		case 20:
+			index = 7;
+			break;
+		case 6:
+		case 19:
+			index = 8;
+			break;
+		case 3:
+		case 4:
+			if (IsJumpActionState(&p->mJump, 0)) {
+				switch (p->GetAnimId()) {
+				case 0x89:
+				case 0xE0:
+					index = 5;
+					break;
+				case 0x896:
+				case 0xC:
+					index = 2;
+					break;
+				case 0x897:
+				case 0x88:
+					index = 3;
+					break;
+				case 0x898:
+				case 0xD:
+					index = 4;
+					break;
+				case 0x895:
+					index = 34;
+					break;
+				case 0x8B7:
+				case 0x8AF:
+					index = 35;
+					break;
+				case 0x8B1:
+					index = 36;
+					break;
+				default:
+					index = 0;
+					break;
+				}
+			}
+			break;
+		case 28: // using the toothbrush
+		case 29:
+			if (p->GetAnimId() == 0x895)
+				index = 34;
+			break;
+		case 32: // the spoon
+		case 33:
+			if (p->GetAnimId() == 0x8B7)
+				index = 35;
+			break;
+		case 34: // the mug
+		case 35:
+			if (p->GetAnimId() == 0x8B1)
+				index = 36;
+			break;
+		case 38: // the squirter
+		case 39:
+			switch (p->GetAnimId()) {
+			case 0x8C0:
+			case 0x8C1:
+				index = 37;
+				break;
+			case 0x8C2:
+			case 0x8C3:
+			case 0x8C4:
+			case 0x8C5:
+				index = 38;
+				break;
+			}
+			break;
+		case 13:
+			index = 9;
+			break;
+		}
+	} else if (p->mHang.mState) {
+		switch (p->mHang.mState) {
+		case 1:
+		case 2:
+			index = 10;
+			break;
+		case 4:
+			index = 14;
+			break;
+		case 5:
+			if (p->mHang.mMoveDirection == -1 || p->mHang.mMoveDirection == 1)
+				index = 11;
+			else
+				index = 0;
+			break;
+		case 6:
+		case 7:
+			index = 12;
+			break;
+		case 9:
+			index = 13;
+			break;
+		}
+	} else if (p->mJump.mState) {
+		switch (p->mJump.mState) {
+		case 8:
+		case 9:
+		case 11:
+		case 12:
+		case 14:
+		case 15:
+			index = 15;
+			break;
+		case 6:
+			index = 16;
+			break;
+		}
+	} else if (p->mLadder.mState) {
+		switch (p->mLadder.mState) {
+		case 1:
+		case 2:
+			index = 17;
+			break;
+		case 5:
+			if (p->mLadder.mMoveDirection == 1)
+				index = 18;
+			else if (p->mLadder.mMoveDirection == -1)
+				index = 19;
+			else
+				index = 0;
+			break;
+		case 6:
+			index = 20;
+			break;
+		case 7:
+		case 9:
+			index = 21;
+			break;
+		}
+	} else if (p->mRope.mState) {
+		switch (p->mRope.mState) {
+		case 1:
+		case 2:
+			index = 22;
+			break;
+		case 5:
+			if (p->mRope.mMoveDirection == 1 || p->mRope.mMoveDirection == 2)
+				index = 23;
+			else if (p->mRope.mMoveDirection == -1)
+				index = 24;
+			else
+				index = 0;
+			break;
+		case 6:
+			index = 25;
+			break;
+		case 8:
+			index = 26;
+			break;
+		}
+	} else if (p->mPush.mState) {
+		switch (p->mPush.mState) {
+		case 2:
+			if (p->mPush.mMoveDirection == 1 || p->mPush.mMoveDirection == -1)
+				index = 27;
+			else
+				index = 0;
+			break;
+		}
+	} else if (p->mCopter.mState) {
+		switch (p->mCopter.mState) {
+		case 1:
+		case 2:
+			index = 6;
+			break;
+		case 3:
+			index = 28;
+			break;
+		case 4:
+			index = 29;
+			break;
+		}
+	} else {
+		if (p->mPopper.mState != 0 && p->mPopper.mState != 4) {
+			switch (p->mPopper.mState) {
+			case 1:
+			case 2:
+			case 9:
+			case 10:
+				index = 6;
+				break;
+			case 3:
+				index = 0;
+				break;
+			case 6:
+			case 7:
+			case 8:
+				if (((XActPopper*)&p->mPopper)->mShotStrength)
+					index = 30;
+				break;
+			default:
+				break;
+			}
+		} else if (p->mRadar.mState != 0) {
+			switch (p->mRadar.mState) {
+			case 1:
+			case 2:
+				index = 6;
+				break;
+			case 3:
+			case 4:
+			case 5:
+				index = 32;
+				break;
+			default:
+				if (p->mRadar.mTarget)
+					index = 33;
+				break;
+			}
+		} else if (p->mRadar.mTarget) {
+			index = 33;
+		} else {
+			switch (p->GetAnimId()) {
+			case 0x79:
+				index = 5;
+				break;
+			case 3:
+			case 0xA3:
+			case 0x818:
+			case 0x874:
+				index = 2;
+				break;
+			case 0x77:
+			case 0x882:
+				index = 3;
+				break;
+			case 4:
+			case 0x819:
+				index = 4;
+				break;
+			case 1:
+			case 0x11:
+			case 0x4A:
+			case 0xA1:
+			case 0x822:
+				index = 0;
+				break;
+			case 2:
+			case 0x12:
+			case 0xCF7:
+			case 0xCF8:
+			case 0xCF9:
+			case 0xCFA:
+			case 0xCFB:
+			case 0xCFC:
+			case 0xCFD:
+				index = 1;
+				break;
+			}
+		}
+	}
+	// battery per second, the table holds hundredths; row 9 instead drains about the lift's mBatteryCost each update
+	f32 drain = 0.0f;
+	if (index >= 0) {
+		if (index == 9) {
+			f32 rate = (u32)gRefreshRate / frames;
+			drain    = rate * ((XActLift*)&p->mLift)->mBatteryCost;
+		} else
+			drain = GetPlayerActionParameter(index) / 100.0f;
+	}
+	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
+		drain = 0.0f;
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
+	} else if (p->mPlug.mConnection > 0 && (u8)p->mPlug.mConnection) {
+		drain = 0.0f;
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
+	} else if (gGame.mEvt.mData.mScript || (gGame.GetStatusFlags(0xC00))) {
+		drain = 0.0f;
+	} else if ((gGame.GetStatusFlags(0x80000000)) && !(gGame.GetStatusFlags(0x120)) && pad->mSubStick.y != 0.0f) {
+		drain = 0.0f;
+	}
+	if (drain > 0.0f)
+		drain /= (f32)gRefreshRate;
+	// mIdleTimer runs down while he stands or idles in place, else resets to a second; at 0 the HUD slides its counters in
+	s32 anim = p->GetAnimId();
+	if (!gGame.mEvt.mData.mScript
+	    && (p->mAttachmentRequest >= 0 || (anim >= 1 && anim <= 2) || (anim >= 0x11 && anim <= 0x12) || (anim >= 0xCF7 && anim <= 0xCFD)
+	        || (anim >= 5 && anim <= 11) || (anim >= 0x158 && anim <= 0x159) || (anim >= 0x894 && anim <= 0x895)
+	        || (anim >= 0x8AE && anim <= 0x8AF) || (anim >= 0x8B1 && anim <= 0x8B3) || anim == 0x14 || (anim >= 0x67 && anim <= 0x68)
+	        || anim == 0x8A || anim == 0x8C || anim == 0x3F || anim == 0x4A || anim == 0xA1 || anim == 0x822
+	        || (anim >= 0x5D && anim <= 0x5E) || anim == 0x5F)) {
+		if (p->mIdleTimer > 0.0f) {
+			if ((p->mIdleTimer -= (f32)frames) < 0.0f)
+				p->mIdleTimer = 0.0f;
+		}
+	} else {
+		p->mIdleTimer = (f32)gRefreshRate;
+	}
+	if (p->mBatteryDrains) {
+		f32 battery;
+		if ((p->mTumble.mState == 8 || p->mTumble.mState == 9) && p->mHitStrength > 0.0f) {
+			battery         = p->mParams.mBattery - p->mHitStrength;
+			p->mHitStrength = 0.0f;
+		} else {
+			battery = p->mParams.mBattery - drain * (f32)frames;
+		}
+		if (battery < 0.0f)
+			battery = 0.0f;
+		if (battery != p->mParams.mBattery)
+			p->mParams.SetBattery(battery);
+		// the battery ran out: he collapses (tumble 4), the camera turns to him and the sounds of what he was doing stop
+		if (IsStopped(p) && !gGame.mEvt.mData.mScript && gGame.GetStatusFlags(0x40000000) && GetStageBatteryDepletedScript()
+		    && p->mAttachmentRequest < 0
+		    && (p->mLift.mState == 0 || p->mLift.mState == 4 || p->mLift.mState == 29 || p->mLift.mState == 33 || p->mLift.mState == 35
+		        || (p->mLift.mState == 2 && p->GetAnimId() == 0x159))
+		    && p->mCopter.mState == 0 && p->mTumble.mState != 4) {
+			ResetPlayerAttachment(p, -1);
+			p->mTumble.mState = 4;
+			p->SetColor(1, 255, 0, 0, 0.0f);
+			p->SetColor(1, 0, 0, 0, 0.4f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, 0.4f);
+			p->mPlug.mConnection = 0;
+			gGame.mMotionControlCamera.EndEye();
+			SetAreaCameraInterestTarget((CCameraActionArea*)gGame.mCameraActions.mTable[1], 4, p, 0.5f);
+			SelectActiveAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 1.0f);
+			gGame.mSubwin.mEnabled = 0;
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x75))
+				StopWiiSfx(&gGame.mSound, 0x75, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 499))
+				StopWiiSfx(&gGame.mSound, 499, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1F8))
+				StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1F9))
+				StopWiiSfx(&gGame.mSound, 0x1F9, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1FA))
+				StopWiiSfx(&gGame.mSound, 0x1FA, 0.0f);
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x1FB))
+				StopWiiSfx(&gGame.mSound, 0x1FB, 0.0f);
+		}
+	}
+	if (p->mParams.mBattery > 0.0f && p->mParams.mBattery <= 30.0f) {
+		p->mBatteryWarningFrames += frames;
+		if (p->mAnmQueue.mColorStep[1].mSpeed.x == 0.0f && p->mAnmQueue.mColorStep[1].mSpeed.y == 0.0f
+		    && p->mAnmQueue.mColorStep[1].mSpeed.z == 0.0f && p->mBatteryWarningFrames >= gRefreshRate && !gGame.mEvt.mData.mScript) {
+			p->SetColor(1, 255, 100, 0, 0.0f);
+			p->SetColor(1, 0, 0, 0, 1.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, 255, 100, 0, 0, 100, 100, 200, 0, 1.0f);
+			p->mBatteryWarningFrames = 0;
+			p->mBatteryWarningFade   = 1.0f;
+			if (IsWiiSfxPlaying(&gGame.mSound, 0x11E))
+				StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
+			PlayWiiSoundEffect(&gGame.mSound, 0x11E, 1.0f, 0.0f);
+		}
+	} else if (p->mBatteryWarningFrames > 0) {
+		p->mBatteryWarningFrames = 0;
+		p->mBatteryWarningFade   = 0.0f;
+	}
+	if (p->mBatteryWarningFade > 0.0f) {
+		if ((p->mBatteryWarningFade -= 0.02f * (f32)frames) < 0.0f)
+			p->mBatteryWarningFade = 0.0f;
+		p->mBatteryWarningAngle -= DEG2RAD * 5.0f * (f32)frames;
+	}
+	if ((p->mParams.mBattery <= 0.0f || p->mParams.mBattery > 30.0f || gGame.mEvt.mData.mScript != NULL)
+	    && IsWiiSfxPlaying(&gGame.mSound, 0x11E)) {
+		StopWiiSfx(&gGame.mSound, 0x11E, 0.0f);
 	}
 }
 
@@ -4710,7 +5333,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				}
 			} while (chr->mLift.mState == 7);
 			chr->_0AF8 = 0;
-			result = -1;
+			result     = -1;
 			break;
 		}
 		case 104: {
