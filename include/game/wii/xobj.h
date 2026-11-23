@@ -2398,9 +2398,16 @@ class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
 	virtual ~XObjActorMama();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
 
 private:
-	u8 _tail[0xD88 - sizeof(XObjActor)];
+	f32 _D78;
+	f32 _D7C;
+	CStatus32 mHideKinds;
 };
 STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
 
@@ -2408,9 +2415,19 @@ class XObjActorPapa : public XObjActor {
 public:
 	XObjActorPapa();
 	virtual ~XObjActorPapa();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
+	void StatePickUp(u32 frames);
 
 private:
-	u8 _tail[0xD90 - sizeof(XObjActor)];
+	f32 _D78;
+	f32 _D7C;
+	CStatus32 mHideKinds;
+	u8 mJointShown;
+	u8 _D89[0xD90 - 0xD89];
 };
 STATIC_ASSERT(sizeof(XObjActorPapa) == 0xD90);
 
