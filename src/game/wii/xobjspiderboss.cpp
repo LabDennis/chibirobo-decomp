@@ -37,11 +37,26 @@ void fn_800FCE60(XAction* act);
 void ResetPlayerPopperAction(XAction* act);
 void fn_8010C0F4(XAction* act);
 void FinishTumbleAction(XActTumble* act);
+f32 GetPlayerCollisionRadius(WiiPlayerState* player);
+BOOL IsPlayerFlashingFromHit(WiiPlayerState* player);
+void ApplyPlayerHitReaction(WiiPlayerState* player, BOOL react, BOOL stop, f32 time);
+u32 GetPlayerActionParameter(s32 index);
+BOOL IsLiftTargetPlug(XAction* act);
+BOOL IsCarryingMug(XAction* act);
+BOOL IsCarryingToothbrush(XAction* act);
+BOOL IsCarryingSpoon(XAction* act);
+BOOL IsCarryingSquirter(XAction* act);
+CVec GetStagePlacementScale(const XObj* obj);
+void HSD_MtxGetScale(Mtx mat, Vec* vec);
+void fn_8013C7EC(s32 index);
+void fn_8013D0C8(void);
+void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
 
 extern s32 gRefreshRate;
 extern AnimSfxEvent gSpiderBossAnimSfxEvents[];
 extern u32 gSpiderBossCoinBounceContext;
 extern u8 gSpiderDrainFlashClaimed;
+extern s32 gSpiderDrainFlashTimers[2];
 // the states, by number
 extern void (XObjSpiderBoss::*gSpiderBossStateHandlers[5])(u32 frames); // the boss's coin bounce token, the callbacks never touch it
 }
@@ -445,6 +460,225 @@ static inline f32 SpiderContactDistance(const Vec* a, const Vec* b)
 	f32 dy = a->y - b->y;
 	f32 dz = a->z - b->z;
 	return FSqrt(dx * dx + dy * dy + dz * dz);
+}
+
+static inline void DrainPlayerBattery(f32 amount)
+{
+	f32 battery = gGame.GetPlayer()->mParams.mBattery - amount;
+	if (battery < 0.0f) {
+		battery = 0.0f;
+	}
+	gGame.GetPlayer()->mParams.SetBattery(battery);
+}
+
+/**
+ * @note Address: 0x8013376C
+ * @note Size: 0x9E4
+ */
+// NONMATCHING: call set matches; vector temporary lifetimes leave a 0x10 smaller frame and different FPR schedules
+extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
+{
+	CPad pad(0);
+	switch (spider->mDamageStep) {
+	case 0:
+		if ((spider->mSpiderStatus.mFlags & 2) && !(spider->mSpiderStatus.mFlags & 0x10)) {
+			StopWiiSfx(&gGame.mSound, 0x197, 0.0f);
+			spider->mSpiderStatus.mFlags &= ~2;
+			if (spider->mHitStrength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
+				spider->mHits -= 3;
+				if (spider->mHits <= 0)
+					spider->mHits = 0;
+			} else if (--spider->mHits <= 0)
+				spider->mHits = 0;
+			if (gGame.GetPlayer()->mParams.mBattery <= 30.0f && (spider->mSpiderStatus.mFlags & 0x40000000))
+				spider->mHits = 0;
+			if (!(spider->mSpiderStatus.mFlags & 0x40000000)) {
+				if (spider->mHits < 22)
+					fn_8013C7EC(0);
+				if (spider->mHits < 19)
+					fn_8013C7EC(1);
+				if (spider->mHits < 16) {
+					fn_8013C7EC(2);
+					fn_8013C7EC(8);
+				}
+				if (spider->mHits < 13)
+					fn_8013C7EC(3);
+				if (spider->mHits < 11) {
+					fn_8013C7EC(4);
+					fn_8013C7EC(9);
+				}
+				if (spider->mHits < 9)
+					fn_8013C7EC(5);
+				if (spider->mHits < 6) {
+					fn_8013C7EC(6);
+					fn_8013C7EC(10);
+				}
+				if (spider->mHits < 3)
+					fn_8013C7EC(7);
+				if (spider->mHits < 1)
+					fn_8013D0C8();
+			}
+			if (spider->mHits <= 0) {
+				fn_8013F558();
+				StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
+				spider->mSpeed = 0;
+				if (spider->mSpiderStatus.mFlags & 0x40000000) {
+					spider->SetState(2);
+					spider->mSpiderStatus.mFlags |= 0x10;
+				} else {
+					spider->SetState(1);
+				}
+			} else {
+				spider->mDamageStep = 1;
+				spider->mBlinkTimer = 0;
+				spider->mSpiderStatus.mFlags |= 0x10;
+			}
+		}
+		break;
+	case 1:
+		if (spider->mBlinkTimer % 30 < 15)
+			spider->SetColor(1, 0x80, 0, 0, 0.0f);
+		else
+			spider->SetColor(1, 0, 0, 0, 0.0f);
+		spider->mBlinkTimer++;
+		if (spider->mBlinkTimer > 20) {
+			spider->mSpiderStatus.mFlags &= ~0x10;
+			spider->SetColor(1, 0, 0, 0, 0.0f);
+			spider->mBlinkTimer = 0;
+			spider->mDamageStep = 0;
+		}
+		break;
+	}
+	if (spider->mSpiderStatus.mFlags & 0x200) {
+		f32 heading, speed, x, z;
+		Vec p = *gGame.GetPlayer()->GetPos();
+		CVec position(p);
+		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate));
+		if (speed > 4.0f)
+			speed = 4.0f;
+		heading = PI + (f32)atan2(p.x - spider->mMoveTranslate.x, p.z - spider->mMoveTranslate.z);
+		x       = speed * (f32)sin(heading);
+		z       = speed * (f32)cos(heading);
+		if (IsUsingMug(&gGame.GetPlayer()->mLift)) {
+			gGame.GetPlayer()->_1C9A8.x = 0.0f;
+			gGame.GetPlayer()->_1C9A8.y = 0.0f;
+			gGame.GetPlayer()->_1C9A8.z = 0.0f;
+		} else {
+			gGame.GetPlayer()->_1C9A8.x = x;
+			gGame.GetPlayer()->_1C9A8.y = 0.0f;
+			gGame.GetPlayer()->_1C9A8.z = z;
+		}
+	} else {
+		gGame.GetPlayer()->_1C9A8.x = 0.0f;
+		gGame.GetPlayer()->_1C9A8.y = 0.0f;
+		gGame.GetPlayer()->_1C9A8.z = 0.0f;
+	}
+	WiiPlayerState* player = gGame.GetPlayer();
+	Vec ppos               = *player->GetPos();
+	CVec pos(ppos);
+	if (SpiderContactDistance(&pos, &spider->mMoveTranslate) < 28.0f && !IsPlayerFlashingFromHit(player)
+	    && (spider->mSpiderStatus.mFlags & 0x1000) && !(spider->mSpiderStatus.mFlags & 0x80000))
+		player->OnHitFromPosition(ppos, 4.0f);
+	if (GetPlayerCollisionRadius(gGame.GetPlayer()) < 2.0f && (spider->mSpiderStatus.mFlags & 0x20000)) {
+		if (--spider->mDrainTimer <= 0) {
+			DrainPlayerBattery(4.0f);
+			spider->mDrainTimer = 30;
+			if (!gSpiderDrainFlashClaimed) {
+				spider->mSpiderStatus.mFlags |= 0x1000000;
+				gSpiderDrainFlashClaimed = 1;
+			}
+			if (spider->mSpiderStatus.mFlags & 0x1000000) {
+				gSpiderDrainFlashTimers[0] = gRefreshRate;
+				gSpiderDrainFlashTimers[1] = 0;
+			}
+		}
+	}
+	if (spider->mSpiderStatus.mFlags & 0x1000000) {
+		ApplyPlayerHitReaction(player, FALSE, TRUE, 0.0f);
+		if (gSpiderDrainFlashTimers[0] > 0) {
+			if ((gSpiderDrainFlashTimers[0] -= frames) < 0) {
+				gSpiderDrainFlashTimers[0] = 0;
+			}
+			gSpiderDrainFlashTimers[1]++;
+			if (gSpiderDrainFlashTimers[0] > 0) {
+				f32 red = 128.0f * (gSpiderDrainFlashTimers[0] / (f32)gRefreshRate);
+				player->SetColor(1, red, 0, 0, 0.0f);
+				StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
+			} else {
+				player->SetColor(1, 0, 0, 0, 0.0f);
+				StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
+			}
+		}
+	}
+	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && (spider->mSpiderStatus.mFlags & 0x20000)) {
+		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
+		spider->mSpiderStatus.mFlags &= ~0x20000;
+		WiiPlayerState* chr = gGame.GetPlayer();
+		chr->mPlayerFlags   = 0;
+		chr->mPlayerFlags |= 0x20000000;
+		chr->mPlayerFlags |= 7;
+		chr->mPadReset = TRUE;
+	}
+}
+
+/**
+ * @note Address: 0x80134150
+ * @note Size: 0x5C0
+ */
+// NONMATCHING: call set matches; ours keeps one more saved FPR and a 0x10 larger matrix/vector frame
+extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	CPad pad(0);
+	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->mPlayerFlags & 0x80000000)) {
+		CVec position = spider->GetJointPos(spider->FindResNode("cyl3"));
+		f32 radius    = GetPlayerCollisionRadius(gGame.GetPlayer());
+		position.y -= 6.0f;
+		f32 heading = PI + (f32)atan2(spider->GetPos()->x - player->GetPos()->x, spider->GetPos()->z - player->GetPos()->z);
+		position.x += (radius + 0.5f) * (f32)sin(heading);
+		position.z += (radius + 0.5f) * (f32)cos(heading);
+		player->SetPos(position);
+		if (gGame.IsRunning() && player->mMoveSpeedScale <= 1.0f) {
+			if (player->GetAttachment() == 2) {
+				player->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (player->mLift.mState == 4 && (IsLiftTargetPlug(&player->mLift) || IsCarryingMug(&player->mLift))) {
+				player->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else if (player->mLift.mState == 4
+			           && (IsCarryingToothbrush(&player->mLift) || IsCarryingSpoon(&player->mLift) || IsCarryingSquirter(&player->mLift))) {
+				player->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			} else {
+				player->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			}
+			heading = gGame.mMotionControlCamera.mView.mAngle.y + 0.5f * (PI * player->_1C9C4[0]);
+		} else if (radius < 2.0f)
+			player->SetAnim(0xE6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		else
+			player->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		player->SetRotateY(heading, 0.0f);
+	}
+	if (spider->mSpiderStatus.mFlags & 0x20000000) {
+		for (u32 i = 0; i < 8; ++i) {
+			SpiderTie& part = spider->mParts[i];
+			if (part.mObj == NULL)
+				continue;
+			Mtx scaling, translation, result, mount;
+			PSMTXCopy(spider->GetWorldMtx(part.mJoint), mount);
+			Vec scale;
+			HSD_MtxGetScale(mount, &scale);
+			scale.x = GetStagePlacementScale(part.mObj).x / scale.x;
+			scale.y = GetStagePlacementScale(part.mObj).y / scale.y;
+			scale.z = GetStagePlacementScale(part.mObj).z / scale.z;
+			PSMTXScale(scaling, scale.x, scale.y, scale.z);
+			PSMTXConcat(mount, scaling, result);
+			f32 y, z;
+			z     = part.mObj->GetPos()->z;
+			y     = part.mObj->GetPos()->y;
+			f32 x = part.mObj->GetPos()->x;
+			PSMTXTrans(translation, x, y, z);
+			PSMTXConcat(result, translation, result);
+			part.mObj->SetBaseMtx(result);
+		}
+	}
 }
 
 static inline void SetAttackAnim(XObjSpiderBoss* boss, s32 id, BOOL restart = FALSE)
