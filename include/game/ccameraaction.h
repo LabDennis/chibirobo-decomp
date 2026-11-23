@@ -1002,11 +1002,22 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
 
+// an arrow at the left or right screen edge of the area, map and leticker cameras,
+// Init places them; vf24 draws them over GetCornerIconPosition's corner
+struct CamEdgeArrow {
+	Vec mPos;  // _00, x and y on screen, z the rotation
+	u8 mShown; // _0C
+	u8 _0D;    // _0D
+	f32 _10;   // _10
+	f32 _14;   // _14
+};
+
 // the leticker's camera: a ladr the player turns in 90-degree steps while riding.
 // The GameCube fields keep their offsets (mTarget _44 through mMaxZ _64 verified
-// in the retail Reset at 0x801192EC); the Wii class adds a block behind them that
-// Reset also clears: three flags at _74-_76, words at _8C/_90/_A0/_A4/_A8 and a
-// vector at _94-_9C. Their roles are not identified yet
+// in the retail Reset at 0x801192EC); the Wii class adds the pointer-twist block
+// behind them: the cross buttons arrive as edge bits in gWiiPointer.mFlags, the
+// pointer itself drags the camera once the cross is held down. Verified against
+// the retail Update at 0x80119398
 class CCameraActionLeticker : public CCameraActionLadr {
 public:
 	Vec* mTarget;    // _44, the leticker's mStackTopPosition
@@ -1018,20 +1029,31 @@ public:
 	f32 mMaxX;       // _5C
 	f32 mMinZ;       // _60
 	f32 mMaxZ;       // _64
-	u8 _68[0x74 - 0x68];
-	u8 _74;
+	f32 _68;         // _68, the twist amount: positive drags toward arrow 0, negative arrow 1
+	f32 _6C;         // _6C, reset beside it
+	f32 _70;         // _70, frames the turn cross has been held for
+	u8 _74;          // _74, once held past the threshold the pointer drags the camera
 	u8 _75;
 	u8 _76;
-	u8 _77[0x8C - 0x77];
-	u32 _8C;
-	u32 _90;
+	u8 _77;
+	Vec _78; // _78, the pointer mapped into camera space by fn_8016AA78
+	u8 _84[0x8C - 0x84];
+	u32 _8C; // _8C, consecutive frames twisting toward arrow 0
+	u32 _90; // _90, consecutive frames twisting toward arrow 1
 	Vec _94;
-	u32 _A0;
-	u32 _A4;
-	u32 _A8;
+	u32 _A0;                 // _A0, arrow-0 twist latched, an edge was injected into mFlags
+	u32 _A4;                 // _A4, arrow-1 twist latched
+	u32 _A8;                 // _A8, the pointer sits inside the neutral zone
+	CamEdgeArrow mArrows[2]; // _AC, left and right
 
+	// __sinit writes mTarget = NULL behind the three CVec vptrs and the class
+	// vtable (retail 0x8011D93C)
+	CCameraActionLeticker() { mTarget = NULL; }
 	virtual void Update(u32 step);  // _10
 	virtual void Reset();           // _14
+	virtual void Init();            // _1C
+	virtual void vf24();            // _24
+	virtual void DrawDebug2d();     // _28
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetMode();          // _60
@@ -1050,7 +1072,7 @@ public:
 		mMaxZ    = maxZ;
 	}
 };
-STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0xAC);
+STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0xDC);
 
 // just looks at the player, the camera keeps everything else
 class CCameraActionDefault : public CInterfaceCameraAction {

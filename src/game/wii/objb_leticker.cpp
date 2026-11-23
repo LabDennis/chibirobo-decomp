@@ -1,6 +1,7 @@
 #include "game/wii/xobjleticker.h" // first: its AnimSfx needs the real nw4r::math
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #include "game/ccameraaction.h"
 #include "game/gmath.h"
 #include "game/evt.h"
@@ -10,14 +11,29 @@
 // the rising lifts and their camera action. The GameCube's objb_leticker.cpp carries
 // the same code; the Wii keeps the member layout shifted 0x28 behind the bigger XObj
 // and turns the camera with extra helpers living in the units above (fn_8016A81C,
-// fn_8016AA78), so the action's Update stays out until those are decompiled
+// fn_8016AA78), so the pointer work in the action's Update goes through them
 
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 which);
 extern "C" void fn_800A12F8(void* effects, u32 id, BOOL retireParticles); // retires the event effect with that id
 extern "C" void UpdateObjectFloorXZExtent(XObj* object);
 extern "C" void UpdateObjectFloorHeights(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+extern "C" void fn_8016AA74(const f32* params);
+extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max);
+extern "C" void fn_8016AA78(f32* out, f32* in, f32* limits);
+extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
+extern "C" CVec GetCornerIconPosition(CGame* game);
+extern s32 gScreenSafeWidth;
+extern s32 gScreenSafeBottom;
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
+extern f32 lbl_805A1188[2];
+extern f32 lbl_805A1288[2];
+extern f32 lbl_805A1290[2];
 extern CCameraActionLeticker gLetickerCameraAction;
+
+// the debug overlay's pulse parameters, shared with the other camera actions
+static const f32 sDebugParams[4] = { 1.1f, 0.9f, 1.0f, 0.6f };
 
 // which of the leticker's four sides angle is closest to, counting quarter turns
 // counterclockwise; the GameCube reads Cos/Sin off a table, the Wii uses MSL cosf/sinf
@@ -139,6 +155,12 @@ static inline void SetFloors(XObj* obj, XObjFloor* floors)
 	UpdateObjectFloorHeights(obj);
 }
 
+// the turn-cross edges for this frame: Update pulls them out of
+// gWiiPointer.mFlags at its top and hands them back at its end, so the cross
+// still reaches the actions that run behind it in the same frame
+static BOOL sTurnLeftEdge;  // .sbss 0x805A1C80, bit 0 turns mTurnTo a quarter down
+static BOOL sTurnRightEdge; // .sbss 0x805A1C84, bit 1 turns it a quarter up
+
 // whether the camera's eye still sits inside the lift's bounds when it faces angle;
 // ReceivePlugPower turns it a quarter turn at a time until it fits
 static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
@@ -152,6 +174,33 @@ static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
 		return false;
 	}
 	return true;
+}
+
+/**
+ * @note Address: 0x80119220
+ * @note Size: 0xCC
+ */
+void CCameraActionLeticker::Init()
+{
+	// the turn arrows sit 30 pixels in from the safe area's edges, the right one turned round
+	nw4r::math::_VEC2 pos[2] = { 0 };
+	pos[0].x                 = gScreenSafeWidth / 2 - 30;
+	pos[1].x                 = -(gScreenSafeWidth / 2 - 30);
+	f32 rot[2]               = { 0.0f, PI };
+	mArrows[0].mPos.x        = pos[0].x;
+	mArrows[0].mPos.y        = pos[0].y;
+	mArrows[0].mPos.z        = rot[0];
+	mArrows[0].mShown        = 0;
+	mArrows[0]._0D           = 0;
+	mArrows[0]._10           = 0.0f;
+	mArrows[0]._14           = 0.0f;
+	mArrows[1].mPos.x        = pos[1].x;
+	mArrows[1].mPos.y        = pos[1].y;
+	mArrows[1].mPos.z        = rot[1];
+	mArrows[1].mShown        = 0;
+	mArrows[1]._0D           = 0;
+	mArrows[1]._10           = 0.0f;
+	mArrows[1]._14           = 0.0f;
 }
 
 /**
@@ -170,6 +219,295 @@ void CCameraActionLeticker::Reset()
 	Vec v     = { 0.0f, 0.0f, 0.0f };
 	_94       = v;
 	_A8 = _90 = _8C = 0;
+}
+
+// NONMATCHING: first draft — retail frames the locals at 0x120 (ours 0xc0):
+// the pointer Vec is copied word-for-word behind a second set of locals we
+// don't have, its fn_8016AA78 limits argument is the unit's own {1.1,0.9,1,0.6}
+// table at .rodata 0x802DAEA8 (sDebugParams, still waiting on the unit's
+// .rodata split, retail's RTTI strings sit right behind it), and the callee
+// register set is f30/f31 where we use only f31
+/**
+ * @note Address: 0x80119398
+ * @note Size: 0xABC
+ */
+void CCameraActionLeticker::Update(u32 step)
+{
+	sTurnLeftEdge  = (gWiiPointer.mFlags & 1) != 0;
+	sTurnRightEdge = (gWiiPointer.mFlags & 2) != 0;
+	gWiiPointer.mFlags &= ~1ULL;
+	gWiiPointer.mFlags &= ~2ULL;
+	_68 = 0.0f;
+	_6C = 0.0f;
+
+	if (gWiiPointer.mButton & 4) {
+		if (_70 > lbl_805A1288[0]) {
+			if (_74 == 0) {
+				_74 = 1;
+			}
+		} else {
+			_70 += step;
+		}
+	} else {
+		_74      = 0;
+		_70      = 0.0f;
+		Vec zero = { 0.0f, 0.0f, 0.0f };
+		_78      = zero;
+	}
+
+	CVec input(0.0f, 0.0f, 0.0f);
+	if (gWiiPointer.mPointerValid) {
+		Vec pointer;
+		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
+		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
+		pointer.z = gWiiPointer.mPointer.z;
+		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
+		_78 = input;
+	} else if (!(gGame._41B0 & 8)) {
+		input = _78;
+	}
+
+	CVec direction(0.0f, 0.0f, 0.0f);
+	if (gWiiPointer.mButton & 2) {
+		direction.y = 1.0f;
+	} else if (gWiiPointer.mButton & 1) {
+		direction.y = -1.0f;
+	}
+
+	if (_74) {
+		if (gWiiPointer.mPointerValid) {
+			f32 y = fn_8016A81C(2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, -sDebugParams[0], sDebugParams[0]);
+			f32 x = fn_8016A81C(2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f, -sDebugParams[0], sDebugParams[0]);
+			if (nw4r::math::FAbs(y) < sDebugParams[2] && nw4r::math::FAbs(x) < sDebugParams[3]) {
+				_A8 = 1;
+			}
+		}
+		if (_A8) {
+			_68 = input.y;
+		}
+	} else {
+		_A8 = 0;
+		_68 = direction.y;
+	}
+
+	if (_68 > 0.0f) {
+		_8C += step;
+	} else {
+		_8C = 0;
+	}
+	if (_68 < 0.0f) {
+		_90 += step;
+	} else {
+		_90 = 0;
+	}
+
+	// a twist edge is injected back into mFlags so the turn runs below;
+	// holding past the threshold keeps re-arming it on the repeat counters
+	BOOL changed = FALSE;
+	if (_68 > 0.0f) {
+		if (_A0 == 0) {
+			_A0     = 1;
+			changed = TRUE;
+		}
+	} else {
+		_A0 = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 1;
+		if (_A0 == 0) {
+			_A0 = 1;
+		}
+	}
+	if (_A0 != 0 && _8C >= 30 && _8C >= 60) {
+		gWiiPointer.mFlags |= 1;
+		_8C = 30;
+	}
+
+	changed = FALSE;
+	if (_68 < 0.0f) {
+		if (_A4 == 0) {
+			_A4     = 1;
+			changed = TRUE;
+		}
+	} else if (_A4 != 0) {
+		_A4 = 0;
+	}
+	if (changed) {
+		gWiiPointer.mFlags |= 2;
+		if (_A4 == 0) {
+			_A4 = 1;
+		}
+	}
+	if (_A4 != 0 && _90 >= 30 && _90 >= 60) {
+		gWiiPointer.mFlags |= 2;
+		_90 = 30;
+	}
+
+	mArrows[0]._0D    = 0;
+	mArrows[1]._0D    = 0;
+	mArrows[0].mShown = 0;
+	mArrows[1].mShown = 0;
+	if (_74) {
+		mArrows[0]._0D = 1;
+		mArrows[1]._0D = 1;
+		if (_68 > 0.0f) {
+			mArrows[0].mShown = 1;
+		} else if (_68 < 0.0f) {
+			mArrows[1].mShown = 1;
+		}
+	} else {
+		if (_68 > 0.0f) {
+			mArrows[0]._0D    = 1;
+			mArrows[0].mShown = 1;
+		} else if (_68 < 0.0f) {
+			mArrows[1]._0D    = 1;
+			mArrows[1].mShown = 1;
+		}
+	}
+
+	if (mTurnFrames == 0) {
+		if (!CanTurn(this, mTurnTo - HALF_PI)) {
+			mArrows[0]._0D = 0;
+		}
+		if (!CanTurn(this, mTurnTo + HALF_PI)) {
+			mArrows[1]._0D = 0;
+		}
+	}
+	if (mArrows[0]._0D) {
+		if (mArrows[0]._14 < 1.0f) {
+			mArrows[0]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[0]._14 > 1.0f) {
+				mArrows[0]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[0]._14 > 0.0f) {
+		mArrows[0]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[0]._14 < 0.0f) {
+			mArrows[0]._14 = 0.0f;
+		}
+	}
+	if (mArrows[1]._0D) {
+		if (mArrows[1]._14 < 1.0f) {
+			mArrows[1]._14 += 0.1f * lbl_805A1290[0] * step;
+			if (mArrows[1]._14 > 1.0f) {
+				mArrows[1]._14 = 1.0f;
+			}
+		}
+	} else if (mArrows[1]._14 > 0.0f) {
+		mArrows[1]._14 -= 0.1f * lbl_805A1290[1] * step;
+		if (mArrows[1]._14 < 0.0f) {
+			mArrows[1]._14 = 0.0f;
+		}
+	}
+
+	if (mTurnFrames == 0) {
+		if ((gWiiPointer.mFlags & 1) != 0) {
+			if (CanTurn(this, mTurnTo - HALF_PI)) {
+				mTurnTo -= HALF_PI;
+				mTurnSpeed  = -0.08726646f; // five degrees a frame, a quarter in 18
+				mTurnFrames = 18;
+			}
+		} else if ((gWiiPointer.mFlags & 2) != 0) {
+			if (CanTurn(this, HALF_PI + mTurnTo)) {
+				mTurnTo += HALF_PI;
+				mTurnSpeed  = 0.08726646f;
+				mTurnFrames = 18;
+			}
+		}
+	} else {
+		mTurnFrames -= step;
+		if (mTurnFrames <= 0) {
+			mAngle      = mTurnTo;
+			mTurnFrames = 0;
+		} else {
+			mAngle += mTurnSpeed * step;
+		}
+	}
+	CCameraActionLadr::Update(step);
+
+	if (sTurnRightEdge) {
+		gWiiPointer.mFlags |= 2;
+	} else {
+		gWiiPointer.mFlags &= ~2ULL;
+	}
+	if (sTurnLeftEdge) {
+		gWiiPointer.mFlags |= 1;
+	} else {
+		gWiiPointer.mFlags &= ~1ULL;
+	}
+}
+
+// NONMATCHING: first draft — retail's frame is 0x210 (ours 0x220), the two
+// f-loads into the scale expression swap a gGame member against a pool literal,
+// and the _0D/mShown test folds differently (beq vs our ble after cror)
+/**
+ * @note Address: 0x80119E54
+ * @note Size: 0x494
+ */
+void CCameraActionLeticker::vf24()
+{
+	CVec corner = GetCornerIconPosition(&gGame);
+	f32 limit   = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mHeight;
+	if (limit >= gScreenSafeBottom) {
+		limit = gScreenSafeBottom;
+	}
+	f32 bottom = corner.y;
+	if (bottom > limit) {
+		bottom = gGame.mWipeCine.mY + 0.5f * gGame.mWipeCine.mHeight;
+		if (bottom >= gScreenSafeBottom) {
+			bottom = gScreenSafeBottom;
+		}
+	}
+	f32 maxY = ((bottom - 58.0f) - 40.0f) - 50.0f;
+	for (s32 i = 0; i < 2; i++) {
+		CamEdgeArrow* arrow = &mArrows[i];
+		f32 scale;
+		if (arrow->_0D) {
+			arrow->_10 = 0.5f;
+			if (arrow->mShown) {
+				arrow->_10 = 1.0f;
+			}
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1188[0]);
+		} else {
+			scale = arrow->_10 * fn_8016A8D4(0.0f, 1.0f, arrow->_14, lbl_805A1188[0]);
+		}
+		if (scale <= 0.0f) {
+			continue;
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		if (i == 1) {
+			gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_NONE);
+		}
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[271], 0);
+		CTexObj tex = gGame.mTpl.mTex;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+		tex.mTexMtx.mDirty = true;
+		GXColor color      = { 0xFF, 0xFF, 0xFF, 0xFF };
+		color.a            = color.a * scale;
+		f32 x              = arrow->mPos.x + 0.5f * gPointerScreenWidth;
+		f32 y              = arrow->mPos.y + 0.5f * gPointerScreenHeight;
+		if (y > maxY) {
+			y = maxY;
+		}
+		f32 width  = GXGetTexObjWidth(&tex);
+		f32 height = GXGetTexObjHeight(&tex);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, *(u32*)&color, *(u32*)&color, *(u32*)&color, *(u32*)&color, x, y, 0.0f, width, height, 0.0f,
+		                   arrow->mPos.z, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
+	}
+}
+
+/**
+ * @note Address: 0x8011A328
+ * @note Size: 0xC
+ */
+void CCameraActionLeticker::DrawDebug2d()
+{
+	fn_8016AA74(sDebugParams);
 }
 
 /**
@@ -373,6 +711,40 @@ void XObjLeticker::DrawObject()
 	case 3:
 		break;
 	}
+}
+
+// NONMATCHING: register coloring residue — ours gives i r29 and the drain pointer r27,
+// retail i r27 / drain r29; the mState guard also folds to a single bne where retail
+// keeps beq into the body + b to the exit, and two float pool referents differ
+/**
+ * @note Address: 0x8011AFE8
+ * @note Size: 0x1B8
+ */
+void XObjLeticker::DrawLate()
+{
+	if (mState != 1) {
+		return;
+	}
+	// the lift's stack: the linked part is redrawn at each 20-unit step of the
+	// height, its position yanked back once the pass is done
+	s32 i;
+	XObj* part = gGame.mXObjs.mObjects[mLinked[0]];
+	f32 y      = part->GetPos()->y;
+	WiiGsSceneObj* scene;
+	for (i = 0; 0.0f < mHeight - 20.0f * i; i++) {
+		part->SetTranslateY(y + mHeight - 20.0f * i);
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, part->mObject.m_pScnMdl);
+		((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->UpdateFrame();
+		((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcWorld();
+		((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->CalcView();
+		((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->GatherDrawScnObj();
+		((nw4r::g3d::ScnRoot*)gGame.mGs.mScene.mHead)->DrawOpa();
+		scene = gGame.mGs.mScene.mHead;
+		while (scene->mPending != 0) {
+			scene->PopPending();
+		}
+	}
+	part->SetTranslateY(y);
 }
 
 // NONMATCHING: ours keeps one more float in a saved register (f21, a 0x10 bigger frame);
@@ -698,10 +1070,35 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
 
 extern "C" {
 
+// the leticker's world callback: after the base handling it rotates joint 2's
+// world matrix to face the player. the GameCube did this in UpdateObject with
+// HSD_JObjSetRotationY; on the Wii it rides the calc-world chain
 /**
- * @note Address: 0x8011D1E8, an unnamed helper between OnPushDisplacement and the
- * turn helpers, is not ported yet
+ * @note Address: 0x8011D1E8
+ * @note Size: 0x164
  */
+void fn_8011D1E8(XObjLeticker* self, nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	self->XObj::ExecCallbackB(pResult, mdl, pFuncObj);
+	if (pFuncObj->GetCallbackNodeID() == 0) {
+		nw4r::g3d::ResNode node = self->GetResNode(2);
+		if (node.IsValid()) {
+			pFuncObj->SetCallbackNodeID(node.GetID());
+		}
+		return;
+	}
+	Mtx m;
+	PSMTXCopy(pResult->mpMtx, m);
+	const CVec* playerPos = gGame.GetPlayer()->GetPos();
+	const CVec* pos       = self->GetPos();
+	f32 angle             = (f32)atan2(playerPos->x - pos->x, playerPos->z - pos->z);
+	Mtx rot;
+	PSMTXRotRad(rot, 'y', angle);
+	// retail re-writes the translation column it just copied before concatenating
+	PSMTXTrans(m, m[0][3], m[1][3], m[2][3]);
+	PSMTXConcat(m, rot, m);
+	PSMTXCopy(m, pResult->mpMtx);
+}
 
 // NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf where our math.h inlines it,
 // and copies the CVec with float loads where ours copies words

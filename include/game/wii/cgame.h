@@ -534,14 +534,7 @@ public:
 };
 STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 
-// an arrow at the left or right screen edge of the area and map cameras, Init places them
-struct CamEdgeArrow {
-	Vec mPos;  // _00, x and y on screen, z the rotation
-	u8 mShown; // _0C
-	u8 _0D;    // _0D
-	f32 _10;   // _10
-	f32 _14;   // _14
-};
+// CamEdgeArrow lives in ccameraaction.h (the leticker's action class carries a pair too)
 
 // the Wii area action, 0x2FC against the GameCube's 0x294. Only the members CCameraActions' constructor
 // (0x80034ACC) builds are placed: they sit at the GameCube class's offsets and carry its names. The plain
