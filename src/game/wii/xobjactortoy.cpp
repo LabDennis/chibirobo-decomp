@@ -2051,7 +2051,11 @@ void XObjActorToy::ResetActorState()
 		mKindFlags.mFlags &= ~8;
 		break;
 	case 0x156:
+		mHeading = PlacementRotation(mCoord).y;
+		break;
 	case 0x157:
+		mHeading = PlacementRotation(mCoord).y;
+		break;
 	case 0x16C:
 		mHeading = PlacementRotation(mCoord).y;
 		break;
