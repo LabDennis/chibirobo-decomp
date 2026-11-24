@@ -3598,12 +3598,13 @@ extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha,
 	quads[3][2].y   = bottom;
 	quads[3][3].x   = x;
 	quads[3][3].y   = bottom;
-	DrawGsLineStrip(&gGame.mGs, quads[0], (u32)(255.0f * alpha) | 0xC8C8C800, 5);
+	u32 color       = (u32)(255.0f * alpha);
+	DrawGsLineStrip(&gGame.mGs, quads[0], color | 0xC8C8C800, 5);
 	gGame.mGs.mCurRenderState->SetLineWidth(6, GX_TO_ONE);
-	DrawSolidQuad(&gGame.mGs, quads[1], (u32)(255.0f * alpha));
-	DrawSolidQuad(&gGame.mGs, quads[2], (u32)(255.0f * alpha) | 0xFFB62800);
-	DrawSolidQuad(&gGame.mGs, quads[3], (u32)(255.0f * alpha));
-	DrawGsLineStrip(&gGame.mGs, quads[2], (u32)(255.0f * alpha) | 0xFFFFFF00, 5);
+	DrawSolidQuad(&gGame.mGs, quads[1], color);
+	DrawSolidQuad(&gGame.mGs, quads[2], color | 0xFFB62800);
+	DrawSolidQuad(&gGame.mGs, quads[3], color);
+	DrawGsLineStrip(&gGame.mGs, quads[2], color | 0xFFFFFF00, 5);
 	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
 }
 
