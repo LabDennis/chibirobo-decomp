@@ -454,6 +454,12 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
 extern PilotNwing pilotNwing;
 extern u8* soundCueTable;
 
+extern "C" void ClearFighterObjects(void)
+{
+	fighterWork.mBody = fighterWork.mPath = fighterWork.mExtra = NULL;
+	pilotNwing.mCarriedObj = pilotNwing.mPathObj = NULL;
+}
+
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
 extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
 extern "C" void FighterPanels_Draw(FighterPanels* fade);
