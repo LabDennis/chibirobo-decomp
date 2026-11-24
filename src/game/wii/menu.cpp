@@ -2401,7 +2401,7 @@ BOOL MenuSFTestSub::Draw()
 		f32 rowHeight = 2.0f + mFontSize;
 		f32 x         = mWindow.mX - mMaxWidth / 2.0f;
 		f32 y         = mWindow.mY - rowHeight * mCount / 2.0f + rowHeight * mSelection;
-		DrawMenuSelectionCursor(mCursor, x, y, mMaxWidth, mFontSize, mAlpha, 1.0f);
+		DrawMenuSelectionCursor(mCursor, x, y, mMaxWidth, mFontSize, mAlpha, mAlpha);
 		return TRUE;
 	}
 	return FALSE;
