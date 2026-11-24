@@ -1,13 +1,16 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/ctpl.h"
 
 class DecaPanel {
 public:
 	void ResetInput();
 
-	u8 _000[0x1FC];
+	s32 mState;
+	CTpl mTpl;
 	s32 mActive;
-	u8 _200[0x518];
+	f32 mFade;
+	CTexObj mTexs[5];
 	u8 mDigits[6];
 	u8 _71E[2];
 	s32 mCode;
@@ -125,6 +128,13 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 	gGame.SetStatusFlags(2);
 	StopWiiSfx(&gGame.mSound, 0x2F6, 0.0f);
 	return 0;
+}
+
+extern "C" s32 Stage03_Exit(u32 arg)
+{
+	decaPanel.mState = 0;
+	decaPanel.mTpl.Close();
+	return 1;
 }
 
 extern "C" s32 Stage03_DrawHud(u32 arg)
