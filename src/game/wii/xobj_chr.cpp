@@ -42,6 +42,7 @@ extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
 extern CustomShadow gCustomShadow;
 extern MEMAllocator gWiiPadAllocator;
+extern "C" CVec fn_800E5A48(XObj* player);
 
 static s32 sBlockedObstacleCount;
 
@@ -1426,13 +1427,43 @@ s32 GetSelectedFloorIndex(const XObj* object)
 
 PlayerTurnState gPlayerTurnState;
 
-// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
-// effects are present; the one-time pose initialization data and several suit/scene
-// steps are unresolved, and aggregate/register allocation still differs
+// NONMATCHING: the one-time pose calibration (the hang offset is read at anim 0x13's end frame), regular frame, turning, auto-approach,
+// attachments, events and effects are present; retail inlines ClosePlayerEquipmentRings and unrolls the held-item color loop, and
+// aggregate/register allocation still differs
 void XObjChr::UpdateObject(u32 frames)
 {
+	static bool sPoseInitPending = true; // the name is ours
+
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	CPadOne* pad        = &chr->mPad;
+	if (sPoseInitPending) {
+		sPoseInitPending = false;
+		s32 savedAnim    = GetAnimId();
+		Vec savedRot     = mMoveRotate;
+		SetRotationY(0.0f);
+		SetAnim(8, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, mObject.m_pScnMdl);
+		fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+		WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+		while (scene->mPending != 0) {
+			scene->PopPending();
+		}
+		chr->mLift.mTargetOffset = fn_800E5A48(chr);
+		SetAnim(0x13, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		SetAnim(0x13, TRUE, GetAnimEndFrame(), 1.0f, 1.0f, 15.0f);
+		UpdateAnim(0.0f);
+		chr->mHang.mTargetOffset = GetWorldPos("second_null") - *GetPos();
+		SetAnim(0x8A, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		UpdateAnim(0.0f);
+		chr->mRope.mTargetOffset = GetWorldPos("second_null") - *GetPos();
+		SetAnim(0x36, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
+		UpdateAnim(0.0f);
+		chr->mTumble.mFade.mActive = FALSE;
+		chr->mTumble.mFade.mOffset = GetWorldPos("neck") - *GetPos();
+		chr->mTumble.mFade.mAmount = 0.0f;
+		SetAnim(savedAnim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		SetRotationY(savedRot.y);
+	}
 	if (chr->mPadReset && !chr->mMenu.IsOpen() && !chr->mOXMenu.mStarted && !gGame.mMenu.mActive && !chr->mSuits.mChangeStep)
 		pad->Update(gWiiGameCubePads, 0);
 	else
@@ -1526,12 +1557,10 @@ void XObjChr::UpdateObject(u32 frames)
 			chr->mNearDistance = 2;
 			do {
 				if ((chr->mPreviousContactObject = FindNearbyPlayerInteraction(chr, chr->mNearDistance)) >= 0) {
-					XObj* object                = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
-					chr->mContactPos.x          = object->mMoveTranslate.x;
-					chr->mContactPos.y          = object->mMoveTranslate.y;
-					chr->mContactPos.z          = object->mMoveTranslate.z;
+					XObj* object = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
+					chr->mContactPos.Set(*object->GetPos());
 					chr->mLastContactFloorIndex = object->mSelectedFloorIndex;
-					chr->mEdgePos               = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+					chr->mEdgePos               = object->mMoveTranslate + object->mEdges[object->mSelectedFloorIndex].mContactOffset;
 					break;
 				}
 			} while ((chr->mNearDistance += 1.0f) <= 10);
