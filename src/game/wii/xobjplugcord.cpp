@@ -16,7 +16,7 @@
 extern "C" {
 // the Wii build's SRT-matrix helper, it takes no parent scale where the GameCube's
 // HSD_MtxSRT takes a fifth
-void fn_802A5A84(Mtx m, Vec* scale, Vec* rotation, Vec* translation);
+void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation);
 // the Wii build's segment draw, the GameCube's DrawGsCylinderWithMatrix
 void fn_802AD130(CGs* gs, Mtx m, u32 color, s32 sides);
 // the Wii map-floor probe: writes the hit record, returns nonzero when it found a floor
@@ -182,7 +182,7 @@ extern "C" void DrawPlugCordSparks(XObjPlugCordNodes* nodes, Mtx view, f32 scale
 			if (node->mState != 0) {
 				Vec rotation = CVec(0.0f, 0.0f, 0.0f);
 				Vec scale    = CVec(0.7f, 0.7f, 0.7f);
-				fn_802A5A84(local, &scale, &rotation, &node->mPos);
+				HSD_MtxSRT(local, &scale, &rotation, &node->mPos);
 				PSMTXConcat(view, local, combined);
 				DrawGsSphereWithMatrix(&gGame.mGs, combined, (nodes->mColor & 0xFFFFFF00) | (s32)(300.0 / pow(2.0, i)), 8, 8);
 			}
@@ -479,7 +479,7 @@ extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f
 		// and keeps the view pointer in r25; the compiler folds the address into the
 		// point pointer chain instead, which shifts every callee-saved register choice.
 		scale.z = 0.5f * PSVECDistance(current, next);
-		fn_802A5A84(local, &scale, &rotation, &position);
+		HSD_MtxSRT(local, &scale, &rotation, &position);
 		PSMTXConcat(selectedView, local, combined);
 		fn_802AD130(&gGame.mGs, combined, cord->mColor, 6);
 	}
