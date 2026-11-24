@@ -17,8 +17,6 @@ extern "C" {
 // the Wii build's SRT-matrix helper, it takes no parent scale where the GameCube's
 // HSD_MtxSRT takes a fifth
 void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation);
-// the Wii build's segment draw, the GameCube's DrawGsCylinderWithMatrix
-void fn_802AD130(CGs* gs, Mtx m, u32 color, s32 sides);
 // the Wii map-floor probe: writes the hit record, returns nonzero when it found a floor
 s32 fn_800C98E0(void* map, const Vec* pos, s32 triangle, XObjMapHit* hit);
 // the Wii wire effect, the GameCube's XObjWireEff calls
@@ -481,7 +479,7 @@ extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f
 		scale.z = 0.5f * PSVECDistance(current, next);
 		HSD_MtxSRT(local, &scale, &rotation, &position);
 		PSMTXConcat(selectedView, local, combined);
-		fn_802AD130(&gGame.mGs, combined, cord->mColor, 6);
+		DrawGsCylinderWithMatrix(&gGame.mGs, combined, cord->mColor, 6);
 	}
 	scale.z = 0.9f * cord->mWidth;
 }
