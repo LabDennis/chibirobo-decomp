@@ -325,6 +325,8 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 // NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
 // in for them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round.
 // Wii: the geometry and draw calls match; aggregate temporary lifetimes, stack slots and registers remain
+// NONMATCHING: retail's next/previous debug buttons are GameCube X/Y (mTrigger high-word
+// bits 18/19), not D-pad right/left
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->mAreaRecords == NULL)
