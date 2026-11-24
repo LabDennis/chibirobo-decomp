@@ -30,6 +30,16 @@ extern "C" s32 Stage20_Update(void* arg)
 	}
 	return 1;
 }
+
+extern "C" s32 Stage20_NoOpSlot5(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage20_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
 #else
 #include "types.h"
 #include "Version.h"

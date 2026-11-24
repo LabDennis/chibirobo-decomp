@@ -348,7 +348,7 @@ rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 
 rel/stage20/stage20.cpp:
-	.text start:0x8017B184 end:0x8017B258
+	.text start:0x8017B184 end:0x8017B268
 	.sbss start:0x805A1E20 end:0x805A1E24
 	.sdata2 start:0x805A63E8 end:0x805A63F8
 
