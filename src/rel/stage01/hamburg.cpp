@@ -243,6 +243,61 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 	slot->mAbove      = NULL;
 }
 
+static inline bool IsOnGasPlate(XObj* actor)
+{
+	Vec* pos = actor->GetPos();
+	if (pos->x < -289.0f || -239.0f < pos->x || pos->z < 21.4f || 62.6f < pos->z) {
+		return false;
+	}
+	return true;
+}
+
+static inline bool IsLeavingGasPlate(HamObj* slot)
+{
+	Vec* pos = slot->mActor->GetPos();
+	if ((62.6f < pos->z && 0.0f < (f32)cos(slot->mMoveAngle)) || (pos->z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
+	    || (-239.0f < pos->x && 0.0f < (f32)sin(slot->mMoveAngle)) || (pos->x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
+		return true;
+	}
+	return false;
+}
+
+static inline f32 AngleFrom(const Vec* from, const Vec* to)
+{
+	return atan2(to->x - from->x, to->z - from->z);
+}
+
+extern "C" HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist);
+
+// NONMATCHING: frame/register layout and gas-plate helper inlining differ; all collision tests and success state resets are present.
+extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
+{
+	PSVECDistance(slot->mActor->GetPos(), &slot->mActor->mMoveTarget0);
+	HamObj* best = FindStackBase(*slot->mActor->GetPos(), slot->mId, slot->mStackLevel, 10.0f);
+	if (best != NULL) {
+		f32 angle = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+		f32 c     = cos(angle - slot->mMoveAngle);
+		if ((f32)cos(45.0) < c) {
+			f32 distance;
+			angle    = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+			distance = slot->mSlideDistance * 0.5f;
+			if (10.0f < distance) {
+				distance = 10.0f;
+			}
+			best->StartSlide(distance, slot->mMoveSpeed, angle);
+			if (IsOnGasPlate(slot->mActor)) {
+				slot->SetState(NULL);
+				return true;
+			}
+		}
+	}
+	if (IsLeavingGasPlate(slot)) {
+		slot->SetState(NULL);
+		return true;
+	}
+	return false;
+}
+
 static HamObj hamObjs[9];
 
 static inline bool IsActive(XObj* actor)
