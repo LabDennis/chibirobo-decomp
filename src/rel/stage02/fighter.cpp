@@ -626,7 +626,7 @@ extern "C" void SetSpeedRateTable(u8* rates)
 	fighterWork.mSpeedRates = rates;
 }
 
-// NONMATCHING: ipa file inlines SetParams into this wrapper; the out-of-line helper itself matches.
+// NONMATCHING: retail calls SetParams out of line; this build inlines it into the wrapper. The helper itself matches.
 extern "C" void SetFighterParams(u8* data)
 {
 	fighterWork.SetParams(data);

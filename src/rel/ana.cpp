@@ -112,7 +112,8 @@ s32 CmdAddAna(s32 cmd, s32 count, s32* args)
 	return AddAna(-1, args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
 }
 
-// NONMATCHING: ipa file inlines both GetNearestAna calls; the helper itself and the three GetPos calls match.
+// NONMATCHING: retail calls GetNearestAna out of line twice; this build inlines both calls. The helper itself and the three GetPos calls
+// match.
 s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
 {
 	Ana* best = NULL;
