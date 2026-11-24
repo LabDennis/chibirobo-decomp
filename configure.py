@@ -1387,12 +1387,12 @@ if wii:
                 # the floor test still come from the retail asm
                 # -i include/rvl_msl like the other xobj units
                 Object(NonMatching, "game/wii/obja.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the XObj floors, projections and event virtuals, 0x800B1558-0x800BD66C
+                # the XObj floors, projections and event virtuals, 0x800B1558-0x800BD6B4
                 # (wii_units.md Nr. 46); the GameCube's cjanim.cpp plus obja.cpp's and
                 # xobjfloor.cpp's floor helpers - the stepper, callbacks and __sinit
                 # still come from the retail asm
                 Object(NonMatching, "game/wii/cjanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
+                # the pool unit: InitializeObjectPools matches; the XObj/Light/Map
                 # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
                 # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
                 # headers, which want the Wii MSL

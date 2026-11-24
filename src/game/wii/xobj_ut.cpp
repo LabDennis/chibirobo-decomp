@@ -5,12 +5,8 @@
 #include "game/wii/xobjfree.h"
 #include "game/wii/xobjleticker.h"
 
-// retail's xobj_ut.cpp: the small XObj classes (XObj, XObjLight, XObjMap and the
-// CustomShadow helper) plus the object pools and their two reader threads
-
-CustomShadow::~CustomShadow()
-{
-}
+// retail's xobj_ut.cpp: the small XObj classes (XObj, XObjLight, XObjMap)
+// plus the object pools and their two reader threads
 
 // builds the 23 pools from heap arrays and starts the two reader threads
 extern "C" void InitializeObjectPools(XOBJS* list)
