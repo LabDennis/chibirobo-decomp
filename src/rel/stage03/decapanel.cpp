@@ -1,11 +1,21 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #include "game/ctpl.h"
 
 struct DecaPanelKey {
 	f32 x;
 	f32 y;
 	u8 mChar;
+};
+
+struct DecaPanelKeySprite {
+	s32 mTex;
+	f32 mScale;
+	f32 mTrans;
+	s32 mKey;
+	f32 mW;
+	f32 mH;
 };
 
 extern DecaPanelKey decaPanelKeys[12];
@@ -252,6 +262,241 @@ extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
 {
 	return decaPanel.mCode;
 }
+extern s32 gRefreshRate;
+
+static s32 decaPanelKeySounds[12] = {
+	0x5000E, 0x5000F, 0x50010, 0x5000B, 0x5000C, 0x5000D, 0x50008, 0x50009, 0x5000A, 0x50012, 0x50012, 0x50011,
+};
+
+static f32 decaPanelDigitPos[6][2] = {
+	{ -68.0f, -115.0f }, { -41.0f, -115.0f }, { -14.0f, -115.0f }, { 13.0f, -115.0f }, { 40.0f, -115.0f }, { 67.0f, -115.0f },
+};
+
+// which cell of the digit strip each of '0' to '9' uses
+static s32 decaPanelDigitCells[10] = { 9, 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+inline u32 FadeColor(f32 fade)
+{
+	return (u32)(255.0f * fade) | 0xFFFFFF00;
+}
+
+extern "C" void fn_80178D6C(DecaPanel* work)
+{
+	CTexObj* tex;
+
+	if (work->mState != 2) {
+		return;
+	}
+
+	if (work->mActive) {
+		if (work->mFade < 1.0f && (work->mFade += (1.0f / (0.2f * (f32)gRefreshRate)) * 2.0f) > 1.0f) {
+			work->mFade = 1.0f;
+		}
+	} else if (work->mFade > 0.0f && (work->mFade -= (1.0f / (0.2f * (f32)gRefreshRate)) * 2.0f) < 0.0f) {
+		work->mFade = 0.0f;
+	}
+
+	if (work->mFade >= 1.0f) {
+
+		u8 cur = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
+		if (gWiiPointer.mButton & 0x100) { // A
+			work->mLocked = 1;
+		} else {
+			work->mLocked = 0;
+			if (gWiiPointer.mRepeat & 1) { // left
+				do {                       // skip cells that show the same glyph
+					if (--work->mCursorX < 0) {
+						work->mCursorX = 2;
+					}
+				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
+			} else if (gWiiPointer.mRepeat & 2) { // right
+				do {
+					if (++work->mCursorX > 2) {
+						work->mCursorX = 0;
+					}
+				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
+			}
+			if (gWiiPointer.mRepeat & 8) { // up
+				do {
+					if (--work->mCursorY < 0) {
+						work->mCursorY = 3;
+					}
+				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
+			} else if (gWiiPointer.mRepeat & 4) { // down
+				do {
+					if (++work->mCursorY > 3) {
+						work->mCursorY = 0;
+					}
+				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
+			}
+		}
+
+		if (gWiiPointer.mTrigger & 0x100) { // A confirms the key
+			u8 ch = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
+			PlayWiiSoundEffect(&gGame.mSound, decaPanelKeySounds[work->mCursorX + work->mCursorY * 3], 1.0f, 0.0f);
+			if (ch == 'C') { // clear
+				work->mDigits[0] = ' ';
+				work->mDigits[1] = ' ';
+				work->mDigits[2] = ' ';
+				work->mDigits[3] = ' ';
+				work->mDigits[4] = ' ';
+				work->mDigits[5] = ' ';
+				work->mDigitNum  = 0;
+				work->mCode      = 0;
+			} else {
+				if (work->mDigitNum < 6) {
+					if (work->mDigitNum != 0) { // shift left, the new digit lands last
+						work->mDigits[0] = work->mDigits[1];
+						work->mDigits[1] = work->mDigits[2];
+						work->mDigits[2] = work->mDigits[3];
+						work->mDigits[3] = work->mDigits[4];
+						work->mDigits[4] = work->mDigits[5];
+					}
+					work->mDigits[5] = ch;
+					work->mDigitNum++;
+				}
+				if (work->mDigitNum >= 6) { // full entry, build the code
+					work->mCode = 0;
+					if (work->mDigits[0] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[0] - '0');
+					}
+					if (work->mDigits[1] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[1] - '0');
+					}
+					if (work->mDigits[2] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[2] - '0');
+					}
+					if (work->mDigits[3] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[3] - '0');
+					}
+					if (work->mDigits[4] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[4] - '0');
+					}
+					if (work->mDigits[5] != ' ') {
+						work->mCode = work->mCode * 10 + (work->mDigits[5] - '0');
+					}
+					work->mActive = 0;
+					gGame.mStatus.mFlags &= ~2ULL;
+				}
+			}
+		}
+		if (gWiiPointer.mTrigger & 0x200) { // B cancels
+			work->mCode   = -1;
+			work->mActive = 0;
+			gGame.mStatus.mFlags &= ~2ULL;
+		}
+	}
+
+	if (work->mFade > 0.0f) {
+		f32 w1, h1, w2, h2; // sprite sizes, reused per texture
+		s32 i;
+
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+
+		s32 idx        = work->mCursorX + work->mCursorY * 3;
+		work->mTargetX = decaPanelKeys[idx].x;
+		work->mTargetY = decaPanelKeys[idx].y;
+		// the cursor sprite chases the current key
+		work->mCurX += 0.8f * (work->mTargetX - work->mCurX);
+		work->mCurY += 0.8f * (work->mTargetY - work->mCurY);
+
+		tex = &work->mTexs[0];
+		{
+			u16 w     = GXGetTexObjWidth(tex);
+			u16 h     = GXGetTexObjHeight(tex);
+			u32 color = FadeColor(work->mFade);
+			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
+		}
+
+		// tex1 is a 10-cell digit strip, one cell per key
+		w1 = 0.9f * (work->mTexs[1].GetWidth() / 10);
+		h1 = 0.9f * work->mTexs[1].GetHeight();
+		w2 = 0.9f * work->mTexs[2].GetWidth();
+		h2 = 0.9f * work->mTexs[2].GetHeight();
+
+		// tex1's cell picks the digit, tex2 is the wide 'C'
+		DecaPanelKeySprite draws[12] = {
+			{ 1, 0.1f, 0.6f, 0, 0.0f, 0.0f }, { 1, 0.1f, 0.7f, 1, 0.0f, 0.0f },  { 1, 0.1f, 0.8f, 2, 0.0f, 0.0f },
+			{ 1, 0.1f, 0.3f, 3, 0.0f, 0.0f }, { 1, 0.1f, 0.4f, 4, 0.0f, 0.0f },  { 1, 0.1f, 0.5f, 5, 0.0f, 0.0f },
+			{ 1, 0.1f, 0.0f, 6, 0.0f, 0.0f }, { 1, 0.1f, 0.1f, 7, 0.0f, 0.0f },  { 1, 0.1f, 0.2f, 8, 0.0f, 0.0f },
+			{ 2, 1.0f, 0.0f, 9, 0.0f, 0.0f }, { 2, 1.0f, 0.0f, 10, 0.0f, 0.0f }, { 1, 0.1f, 0.1f * 9, 11, 0.0f, 0.0f },
+		};
+		draws[0].mW  = w1;
+		draws[0].mH  = h1;
+		draws[1].mW  = w1;
+		draws[1].mH  = h1;
+		draws[2].mW  = w1;
+		draws[2].mH  = h1;
+		draws[3].mW  = w1;
+		draws[3].mH  = h1;
+		draws[4].mW  = w1;
+		draws[4].mH  = h1;
+		draws[5].mW  = w1;
+		draws[5].mH  = h1;
+		draws[6].mW  = w1;
+		draws[6].mH  = h1;
+		draws[7].mW  = w1;
+		draws[7].mH  = h1;
+		draws[8].mW  = w1;
+		draws[8].mH  = h1;
+		draws[9].mW  = w2;
+		draws[9].mH  = h2;
+		draws[10].mW = w2;
+		draws[10].mH = h2;
+		draws[11].mW = w1;
+		draws[11].mH = h1;
+
+		for (i = 0; i < 12; i++) {
+			if (work->mLocked && decaPanelKeys[idx].mChar == decaPanelKeys[i].mChar) {
+				continue; // the held key stays hidden
+			}
+			tex = &work->mTexs[draws[i].mTex];
+			PSMTXScale(tex->mTexMtx.mMtx[1], draws[i].mScale, 1.0f, 1.0f);
+			tex->mTexMtx.mDirty = 1;
+			PSMTXTrans(tex->mTexMtx.mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
+			tex->mTexMtx.mDirty = 1;
+			f32 x               = decaPanelKeys[draws[i].mKey].x;
+			x                   = 0.9f * x;
+			u32 color           = FadeColor(work->mFade);
+			f32 y               = 0.9f * decaPanelKeys[draws[i].mKey].y;
+			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f,
+			                   0.0f, 0.0f);
+		}
+
+		// tex4 is the digit strip for the typed entry
+		tex = &work->mTexs[4];
+		PSMTXScale(tex->mTexMtx.mMtx[1], 0.1f, 1.0f, 1.0f);
+		tex->mTexMtx.mDirty = 1;
+		w2                  = 0.9f * (tex->GetWidth() / 10);
+		h2                  = 0.9f * tex->GetHeight();
+		for (s32 i = 0; i < 6; i++) {
+			u8 ch = work->mDigits[i];
+			if (ch != ' ') {
+				PSMTXTrans(tex->mTexMtx.mMtx[0], 0.1f * decaPanelDigitCells[ch - '0'], 0.0f, 0.0f);
+				tex->mTexMtx.mDirty = 1;
+				u32 color           = FadeColor(work->mFade);
+				f32 x               = 0.9f * decaPanelDigitPos[i][0];
+				f32 y               = 0.9f * decaPanelDigitPos[i][1];
+				DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, w2, h2, 0.0f, 0.0f, 0.0f);
+			}
+		}
+
+		// tex3 is the cursor
+		tex = &work->mTexs[3];
+		w1  = 0.9f * tex->GetWidth();
+		h1  = 0.9f * tex->GetHeight();
+		{
+			u32 color = FadeColor(work->mFade);
+			f32 x     = 0.9f * work->mCurX;
+			f32 y     = 0.9f * work->mCurY;
+			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, w1 / 3.0f + (320.0f + x), h1 / 3.0f + (200.0f + y), 0.0f, w1,
+			                   h1, 0.0f, 0.0f, 0.0f);
+		}
+		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+	}
+}
+
 #else
 #include "game/hsd_jobj.h"
 #include "game/gmath.h"

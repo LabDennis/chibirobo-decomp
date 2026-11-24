@@ -53,6 +53,8 @@ public:
 
 	virtual ~CTexObj() { }
 	void Init(TPLDescriptor* desc, u32 tlutName);
+	u16 GetWidth() const { return GXGetTexObjWidth(this); }
+	u16 GetHeight() const { return GXGetTexObjHeight(this); }
 	void Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap);
 	void Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap, u32 tlutName);
 	void InitMatrices();

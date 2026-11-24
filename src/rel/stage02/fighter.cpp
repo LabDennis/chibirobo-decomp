@@ -804,6 +804,195 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 		return;
 	}
 }
+f32 reticleSpin[10];
+
+extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* cam, Mtx fighterMtx)
+{
+	Vec pos;
+	Vec ring[65];
+	f32 cx;
+	f32 cy;
+	s32 k;
+	s32 i;
+	s32 j;
+
+	// the reticle only draws while the lock-on sound plays or a target is locked
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x20006) == 0 && aim->mTarget == NULL) {
+		return;
+	}
+	PSMTXMultVec(fighterMtx, &aim->mPos, &pos);
+	GXProject(pos.x, pos.y, pos.z, cam->mViewMtx, &cam->mIsOrtho, cam->mViewport, &aim->mScreenX, &aim->mScreenY, &aim->mScreenZ);
+	if (aim->mTarget == NULL) {
+		cx = aim->mScreenX;
+		cy = aim->mScreenY;
+	} else {
+		cx = aim->mTarget->mScreenX;
+		cy = aim->mTarget->mScreenY;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+	for (i = 9; i > 0; i--) {
+		reticleSpin[i] = reticleSpin[i - 1];
+	}
+	reticleSpin[0] = 0.0f;
+	for (k = 0; k < 2; k++) { // an inner and an outer ring
+		f32 radius = k == 0 ? 10.0f : 30.000002f;
+		f32 innerRadius;
+		s32 spokeColor;
+		for (i = 0; i < 65; i++) { // the ring as 64 segments plus the closing point
+			f32 angle = 0.09817477f * i;
+			f32 s     = sin(angle);
+			f32 c     = cos(angle);
+			ring[i].x = s * radius + cx;
+			ring[i].y = c * radius + cy;
+			ring[i].z = 0.0f;
+		}
+		DrawGsLineStrip(&gGame.mGs, ring, -1, 65);
+		innerRadius = radius - 10.0f;
+		spokeColor  = -1;
+		for (j = 0; j < 10; j++) { // ten spoke sets, each dimmer than the last
+			for (i = 0; i < 5; i++) {
+				f32 angle = HALF_PI * i;
+				f32 s     = sin(angle + reticleSpin[j]);
+				f32 c     = cos(angle + reticleSpin[j]);
+				DrawGsLineSegment(&gGame.mGs, NULL, spokeColor, spokeColor, s * radius + cx, c * radius + cy, 0.0f, s * innerRadius + cx,
+				                  c * innerRadius + cy, 0.0f);
+			}
+			spokeColor = 0xFFFFFF00 | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
+		}
+	}
+	{
+		CTexObj tex;
+		static s32 frame = 0;
+		frame++;
+		for (i = 0; i < 4; i++) { // four icons 90 degrees apart, radius wobbling +/-3 as frame turns
+			f32 angle = HALF_PI * i;
+			f32 ds    = sin(DEG2RAD * ((frame * 24) % 360));
+			f32 dist  = ds * 3.0f;
+			dist += 30.000002f;
+			f32 s = sin(angle);
+			f32 c = cos(angle);
+			u16 w;
+			u16 h;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			tex = gGame.mTpl.mTex;
+			w   = GXGetTexObjWidth(&tex);
+			h   = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, dist * s + cx, dist * c + cy, 0.0f, 1.1f * w, h, 0.0f, 0.0f, angle);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+		}
+	}
+}
+
+extern "C" void FighterPanels_Draw(FighterPanels* fade)
+{
+	CTexObj tex;
+	f32 scale = 1.0f;
+	s32 i;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
+
+	stage   = gGame.mStage;
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
+		for (i = 0; i < 48; i++) {
+			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			s32 kind        = obj->GetKind();
+			f32 y;
+			f32 half;
+			f32 top;
+			f32 w;
+			f32 h;
+			// kind 0x149 is the object that carries the stage02 panel textures
+			if (kind != 0x149 || !obj->mPanelTpl.mBound) {
+				continue;
+			}
+			if (fade->mLowerOpen > 0.0f) {
+				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[10], 0);
+				tex  = obj->mPanelTpl.mTex;
+				tw   = GXGetTexObjWidth(&tex);
+				w    = 1.1f * (scale * tw);
+				th   = GXGetTexObjHeight(&tex);
+				half = fade->mLowerOpen * (scale * th);
+				y    = 320.0f;
+#if !defined(VERSION_JP)
+				y -= 32.0f;
+#endif
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mLowerFrame + 25], 0);
+				tex = obj->mPanelTpl.mTex;
+				tw  = GXGetTexObjWidth(&tex);
+				w   = 1.1f * (scale * tw);
+				th  = GXGetTexObjHeight(&tex);
+				h   = fade->mLowerOpen * (scale * th);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[11], 0);
+				tex = obj->mPanelTpl.mTex;
+				half *= 0.5f;
+				top = y;
+				top -= half;
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = scale * th;
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			}
+			if (fade->mCenterOpen > 0.0f) {
+				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[8], 0);
+				tex  = obj->mPanelTpl.mTex;
+				tw   = GXGetTexObjWidth(&tex);
+				th   = GXGetTexObjHeight(&tex);
+				half = fade->mCenterOpen * (scale * th);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (scale * tw), half, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				if (fade->mCenterVariant == 0) {
+					obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mCenterFrame + 12], 0);
+					tex = obj->mPanelTpl.mTex;
+				} else {
+					obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mCenterFrame + 18], 0);
+					tex = obj->mPanelTpl.mTex;
+				}
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = fade->mCenterOpen * (scale * th);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[9], 0);
+				tex = obj->mPanelTpl.mTex;
+				half *= 0.5f;
+				top = 180.0f;
+				top -= half;
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = scale * th;
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			}
+		}
+	}
+}
+
 #else
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
