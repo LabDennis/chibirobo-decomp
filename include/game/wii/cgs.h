@@ -731,7 +731,8 @@ struct WiiGsSlot {
 	u8 _09[0x0C - 0x09];
 	Vec mPos; // _0C
 	u8 _18;   // _18
-	u8 _19[0xF];
+	u8 _19[3];
+	Vec mDir; // _1C
 
 	// LIGHT @COLOR and @POS write through these
 	void SetColor(GXColor color)
@@ -796,7 +797,7 @@ STATIC_ASSERT(sizeof(CLight) == 0x6C);
 // (fn_802AEDA0 and on) take its address; the destructor null-checks it as an object of its own
 struct WiiGsScene {
 	WiiGsSceneObj* mHead; // _00, the list the scene pass drains
-	BOOL _04;             // _04, Update queues the map's model on the list while it is set
+	WiiGsSceneObj* _04;   // _04, the scene animation selected by fn_802AEE44; Update queues the map's model while it is set
 	CLight mLights[10];   // _08
 	WiiGsSlot mSlots[9];  // _440, fn_802AEBF0 and FinalizeStageObjectSetup clear each one's three flags
 };

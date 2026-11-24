@@ -1298,6 +1298,8 @@ if wii:
                 # from DrawGsStrokeText, both of which -inline auto folds into their one caller
                 # -i include/rvl_msl: <cmath>'s std::sinf/cosf, which the Wii MSL provides
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # NW4R scene adapter after cgs.cpp's static initialiser, named by its pointer assert
+                Object(NonMatching, "game/wii/cgs_nw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
@@ -1579,12 +1581,9 @@ if wii:
                 # interpolation plus the Linear/None scalar methods, in the Wii's
                 # reversed order (the GameCube spreads them over three files)
                 Object(Equivalent, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii TU 0x80032C48-0x8003366C (wii_units.md #19): the divide
-                # interpolations and the Linear/None Update tail-calls; the Wii-only
-                # tail (deleting dtors, CThread::Create, the unit's __sinit) is open
+                # the Wii TU 0x80032C48-0x800354DC: the divide interpolations, gGame and all
+                # member constructors its static initializer emits; some deleting dtors remain open
                 Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x8003366C-0x800354DC (wii_units.md #20): constructors and the nw4r sound wrappers
-                Object(NonMatching, "game/wii/unit_8003366C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii sound file 0x80036694-0x8003CEB0 (wii_units.md #23-#25): the sound front end,
                 # the sound banks, the sound picks, the glyph sounds, the stage reverb and AnimSfx. The
                 # nw4r sound headers need the Wii MSL's <cstdarg> and <new>
@@ -2345,7 +2344,7 @@ if wii:
     # pikmin2's JAudio_DSP, https://github.com/projectPiki/pikmin2/blob/999140f3521e22619547d5d61862a6577ea73882/configure.py#L632
     # Petari's JASDsp, https://github.com/SMGCommunity/Petari/blob/b135d455de9bb5ed32ceaa80ee49dfcbed0526c0/configure.py#L328
     WII_NOAUTO_BLOCK = {
-        "game/wii/ut.cpp", "game/wii/mem.cpp", "game/wii/cobjvec.cpp", "game/wii/cgs.cpp",
+        "game/wii/ut.cpp", "game/wii/mem.cpp", "game/wii/cobjvec.cpp", "game/wii/cgs.cpp", "game/wii/cgs_nw.cpp",
         "game/wii/cprimitive.cpp", "game/wii/cpad.cpp", "game/wii/cfont.cpp", "game/wii/cfile.cpp",
         "game/wii/ctpl.cpp", "game/wii/cresfile.cpp", "game/wii/cobj.cpp", "game/wii/ctrigon.cpp",
         "game/ctoon.cpp", "game/wii/ceffect.cpp", "game/wii/fbeffect.cpp",

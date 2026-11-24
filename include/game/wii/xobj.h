@@ -1202,22 +1202,72 @@ private:
 	ResAnmShp mRes; // _2C
 };
 
-// nw4r's light object, as far as LIGHT reads it: the enable flag in front of the GX light
+// nw4r's light object, the enable and kind flags in front of the GX light
 class LightObj {
 public:
+	LightObj(const LightObj& other);
 	LightObj()
 	    : mFlag(0)
 	{
 	}
 	~LightObj() { }
 
+	operator GXLightObj*() { return &mObj; }
+	operator const GXLightObj*() const { return &mObj; }
+
+	void InitLightColor(GXColor color);
+	void InitLightPos(f32 x, f32 y, f32 z);
+	void InitLightDir(f32 x, f32 y, f32 z);
+	void InitLightAttnA(f32 a0, f32 a1, f32 a2);
+	void InitLightAttnK(f32 k0, f32 k1, f32 k2);
+	void GetLightAttnA(f32* a0, f32* a1, f32* a2) const;
+	void GetLightAttnK(f32* k0, f32* k1, f32* k2) const;
+	void GetLightPos(math::VEC3* pos) const;
+	void GetLightDir(math::VEC3* dir) const;
+	void GetLightColor(GXColor* color) const;
+
+	void Enable() { mFlag |= FLAG_ENABLE_LIGHT; }
+	void Disable() { mFlag &= ~FLAG_ENABLE_LIGHT; }
 	bool IsEnable() const { return (mFlag & FLAG_ENABLE_LIGHT) ? true : false; }
+	bool IsSpecularLight() const { return (mFlag & FLAG_SPECULAR) ? true : false; }
 
 private:
-	enum LightObjFlag { FLAG_ENABLE_LIGHT = (1 << 2) };
+	enum LightObjFlag { FLAG_SPECULAR = (1 << 1), FLAG_ENABLE_LIGHT = (1 << 2) };
 
 	u32 mFlag;       // _00
 	GXLightObj mObj; // _04
+};
+
+struct LightSetData {
+	s8 idxLight[8]; // _00
+	s8 idxAmbLight; // _08
+	u8 _09[3];
+};
+
+class LightSetting;
+
+struct AmbLightObj {
+	u8 r, g, b, a;
+};
+
+class LightSet {
+public:
+	LightSet(LightSetting* setting, LightSetData* data)
+	    : mpSetting(setting)
+	    , mpLightSetData(data)
+	{
+	}
+	~LightSet() { }
+
+	bool IsValid() const { return mpSetting != NULL && mpLightSetData != NULL; }
+	LightObj* GetLightObj(u32 lightIdx);
+	AmbLightObj* GetAmbLightObj();
+	bool SelectLightObj(u32 lightIdx, int lightObjIdx);
+	bool SelectAmbLightObj(int lightObjIdx);
+
+private:
+	LightSetting* mpSetting;      // _00
+	LightSetData* mpLightSetData; // _04
 };
 
 class AnmScnRes;
@@ -1272,6 +1322,7 @@ public:
 	Camera GetCamera(int idx);       // 0x8027AD6C
 	void SetCurrentCamera(int idx);  // 0x8027AE04
 	Fog GetFog(int idx);             // 0x8027AE0C
+	LightSet GetLightSet(int idx);   // 0x8027AE54
 	bool SetAnmScn(AnmScn* pAnmScn); // 0x8027AE70
 	AnmScn* RemoveAnmScn();          // 0x8027AF0C
 	void UpdateFrame();              // 0x8027AF78

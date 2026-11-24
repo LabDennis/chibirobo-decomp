@@ -1,13 +1,14 @@
 #include "game/ccameraaction.h"
+#include "game/wii/cgame.h"
 #include "game/cthread.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/csoundfx.h"
 #include "revolution/mem.h"
 
-// The Wii unit 0x80032C48-0x8003366C (wii_units.md #19): the tail of the game's main file, the one
-// that holds gGame. The divide interpolations come first, in the reverse of the GameCube file's
-// order; behind them are the weak virtuals of the classes gGame is made of, and the file's static
-// initializer. The weak virtuals whose bodies are in the headers (CFile::IsLoaded, the nw4r::snd
+// The Wii unit 0x80032C48-0x800354DC (wii_units.md #19 and #20): the tail of the game's main file, the
+// one that holds gGame. The divide interpolations come first, in the reverse of the GameCube file's
+// order; behind them are the weak virtuals of the classes gGame is made of, the file's static
+// initializer and the member constructors it emits. The weak virtuals whose bodies are in the headers (CFile::IsLoaded, the nw4r::snd
 // ones) come out of this file once gGame's constructor does.
 
 extern MEMiHeapHead* gWiiMem1Heap;
@@ -19,9 +20,10 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-// NONMATCHING: the static initializer (0x800332D8, 0x394) is the compiler's. Retail's constructs
-// gGame ahead of these two, which unit_8003366C.cpp defines, and sets gCmdLineArgs' crosshair
-// (retail _54 and _58) to the middle of the pointer's screen.
+// NONMATCHING: the static initializer (0x800332D8, 0x394) is the compiler's. It constructs gGame
+// ahead of these two and sets gCmdLineArgs' crosshair (retail _54 and _58) to the middle of the
+// pointer's screen. gGame's member-constructor emissions follow at 0x8003366C in this same unit.
+CGame gGame;
 CPadAct gWiiPointer;
 extern "C" {
 CThread gMovieUpdateThread;
@@ -36,7 +38,7 @@ CThread gMovieUpdateThread;
 //   0x800331B0 nw4r::snd::DvdSoundArchive::detail_GetWaveDataFileAddress
 //   0x800331B8 nw4r::snd::DvdSoundArchive::detail_GetFileAddress
 //
-// NONMATCHING: five more are not written, because include/game/wii/xobj.h and title.h model their
+// NONMATCHING: four more are not written, because include/game/wii/xobj.h and title.h model their
 // classes with another shape:
 //   0x800331C0 the second virtual of NW_Obj, `return mData != NULL;` with mData at _00. NW_Obj is
 //              0x5C bytes with its vtable at _58.
@@ -44,11 +46,9 @@ CThread gMovieUpdateThread;
 //              xobj.h calls CJArchive: NW_Obj and the CFile at _5C.
 //   0x800332D4, 0x800332D0 the second and third virtual of nw4r::g3d::IScnObjCallback, both empty.
 //              Its vtable (0x802E6A10) has six slots, not the 75 of xobj.h.
-//   0x80033040 CContainCallback::vf14, the empty fourth slot Title and MenuSave do not override. It is
-//              written in menuutil.h; which file emits it depends on where those vtables land.
 
-// 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. Written there, it
-// is emitted by unit_8003366C.cpp instead, so it stays out of line here.
+// 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. It stays out of line
+// until the in-class form is tried now that this file holds gGame (csound.h reaches other units).
 BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param)
 {
 	if (mWorkBuffer != NULL) {

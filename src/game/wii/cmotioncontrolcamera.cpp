@@ -37,15 +37,11 @@ f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
 
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 
-// the Wii map action is not reconstructed yet; GetMapCameraHorizontalTargetDistance takes it
-class CCameraActionMap;
 extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
 
 // the last two map cameras, Update copies the map action here every frame it runs.
-// __sinit_cmotioncontrolcamera_cpp calls __construct_array(lbl_80483630, fn_8016AC28,
-// __dt__16CCameraActionMapFv, 0x128C, 2), so retail holds a static CCameraActionMap[2]
-// of the Wii 0x128C layout; the class is not reconstructed yet, so it stays storage
-static u8 gMapCameraActions[2][0x128C];
+// __sinit_cmotioncontrolcamera_cpp constructs this pair and registers its array destructor
+static CCameraActionMap gMapCameraActions[2];
 
 // a camera action the stage keeps ready, owned by the map camera's unit; its concrete class is
 // not reconstructed yet, so the extern names the storage and the uses cast it to the interface

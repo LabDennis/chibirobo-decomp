@@ -1071,12 +1071,19 @@ Runtime.PPCEABI.H/GCN_mem_alloc.c:
 	.rodata start:0x802DFDE0 end:0x802DFE50
 
 game/wii/cgs.cpp:
-	extab start:0x800101F4 end:0x8001074C
-	extabindex start:0x80016B44 end:0x80016F58
-	.text start:0x802A80FC end:0x802AF8B0
+	extab start:0x800101F4 end:0x800106B4
+	extabindex start:0x80016B44 end:0x80016F10
+	.text start:0x802A80FC end:0x802AEBF0
 	.ctors start:0x802C4650 end:0x802C4654
-	.data start:0x80334D8C end:0x80334FF0
-	.rodata start:0x802E5160 end:0x802E51A8
+	.data start:0x80334D8C end:0x80335048
+	.rodata start:0x802E5160 end:0x802E5230
+
+game/wii/cgs_nw.cpp:
+	extab start:0x800106B4 end:0x8001074C
+	extabindex start:0x80016F10 end:0x80016F58
+	.text start:0x802AEBF0 end:0x802AF8B8
+	.data start:0x80335048 end:0x80335078
+	.rodata start:0x802E5230 end:0x802E5278
 
 game/wii/cpad.cpp:
 	extab start:0x8001082C end:0x800108CC
@@ -1438,7 +1445,7 @@ game/wii/cinterpolation.cpp:
 	.data start:0x802E6110 end:0x802E6250
 
 game/wii/cinterpolationeaseoutdivide.cpp:
-	.text start:0x80032FD4 end:0x8003366C
+	.text start:0x80032FD4 end:0x800354DC
 
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4
@@ -2890,6 +2897,3 @@ nw4r/g3d/g3d_light.cpp:
 nw4r/g3d/g3d_calcvtx.cpp:
 	.text start:0x802824A8 end:0x80282CA0
 	.sdata2 start:0x805A7520 end:0x805A7524
-
-game/wii/unit_8003366C.cpp:
-	.text start:0x8003366C end:0x800354DC
