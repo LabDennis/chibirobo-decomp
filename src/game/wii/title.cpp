@@ -356,10 +356,10 @@ extern "C" void ResetTitleScreenState(Title* title)
  * @note Size: 0x1D8C
  */
 // NONMATCHING: the frame skeleton, the save scan and states 1-9, 13, 14 and 22 are as retail read
-// them. Inside state 9 the newest slot's saved pointer/stick bits are restored (the block after
-// IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input
-// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the
-// binary shares with UpdateTitleOptions.
+// them. Retail uses mtctr/bdnz for State1's eleven-pane reset; this build uses subic./bne and is 20 bytes
+// larger. The remaining differences are register allocation and scheduling. Inside state 9 the newest slot's saved pointer/stick bits are
+// restored (the block after IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input and the mode
+// dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the binary shares with UpdateTitleOptions.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 	gPointerPanes.mCount = 0;
@@ -424,11 +424,13 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		gPointerPanes.mMenu    = title;
 		gPointerPanes.mEnabled = 1;
 		gPointerPanes.mActive  = 1;
-		// NONMATCHING: retail keeps this loop as a counted loop, this build unrolls it
-		for (s32 i = 0; i < 11; ++i) {
-			title->mPanes[i].mPointed = 0;
-			title->mPanes[i].mPicked  = 0;
-		}
+		s32 i                  = 11;
+		CbPane* pane           = title->mPanes;
+		do {
+			pane->mPointed = 0;
+			pane->mPicked  = 0;
+			++pane;
+		} while (--i);
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f);
 		break;
 	case 2: {
