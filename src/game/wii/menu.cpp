@@ -4556,17 +4556,18 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				}
 			}
 			break;
+		case 2:
+			break;
 		}
 		CTexObj tex;
 		f32 left    = 17.0f + (10.0f + ((120.0f + (174.0f + x)) - 70.0f));
-		f32 top     = 168.0f + y;
 		f32 opacity = 255.0f * alpha;
 		u8 a        = (u8)opacity;
 		for (int i = 0; i < 5; i++) {
 			if (gPCRankingRows[i].nameIndex == -1) {
 				continue;
 			}
-			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
+			f32 rowY = (menu->mRankingOffsets[i] + ((168.0f + y) + i * 48)) - 48.0f;
 			InitPCPanelTexture(tex, 181);
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			f32 w = 1.1f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.1f * GXGetTexObjHeight(&tex);
