@@ -126,7 +126,7 @@ struct CbPaneList {
 	{
 		mCount   = 0;
 		mMenu    = NULL;
-		_408[1]  = 0;
+		_409     = 0;
 		mEnabled = TRUE;
 		mActive  = FALSE;
 	}
@@ -134,7 +134,8 @@ struct CbPaneList {
 	CbPane* mPanes[0x100];   // _000
 	s32 mCount;              // _400
 	CContainCallback* mMenu; // _404, the menu whose panes are tested, NULL disables the pointer
-	u8 _408[2];
+	u8 _408;
+	u8 _409;
 	u8 mEnabled; // _40A
 	u8 mActive;  // _40B
 };

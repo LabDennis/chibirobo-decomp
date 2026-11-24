@@ -46,7 +46,7 @@ s32 GetWiiSaveSlotStage(CSaveFile* manager, int index);
 void ResetTitleScreenState(Title* title);
 void ResetMenuGroup(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
-BOOL fn_800C61C8();
+BOOL HasPendingObjectReads();
 void fn_8027B6B8(WiiGsSceneObj* scene, BOOL, s32);             // switches the scene's draws to and from the alpha pass
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL); // sorts the queued scene draws under camera
 void fn_8027B40C(WiiGsSceneObj* scene);                        // the shadow pass' five scene draws
@@ -55,7 +55,7 @@ void fn_8027B570(WiiGsSceneObj* scene);
 void fn_8027B644(WiiGsSceneObj* scene);
 void fn_8027B5D0(WiiGsSceneObj* scene);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index); // as gameupdate.cpp declares it
-void fn_8001E1C8(CGame* game);
+void BuildSceneDrawLists(CGame* game);
 void fn_802BE414(void* obj, CLight* light); // as gameupdate.cpp declares them
 void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
@@ -739,6 +739,14 @@ bool CGame::IsSystemMessage3Shown()
 	return shown;
 }
 
+extern "C" void fn_8002BBD8(CGs* gs, f32 x, f32 y)
+{
+}
+
+extern "C" void fn_8002BBDC(CGs* gs)
+{
+}
+
 /**
  * @note Address: 0x8002B6D8
  * @note Size: 0x500
@@ -856,7 +864,7 @@ void XObj::PauseSounds(f32)
  */
 // NONMATCHING: FbSubwin::Reset is a virtual call in retail (fbtexeff.h's Wii class has no CFbTexEff base
 // yet); the float literals are addressed from the whole file's pool
-// changes to another stage: 10000 is the title, 20000 the stage from the save, below 0 the next
+// changes to another stage: 10001 is the title, 10002 the stage from the save, below 0 the next
 // one. everything that belongs to the old stage is let go of, and the new stage's name is set up to
 // pop in when showName is set
 extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
@@ -929,13 +937,13 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
 	}
 
-	if (stage == 10000) {
+	if (stage == 10001) {
 		if (gCmdLineArgs.mStage < 0 || game->GetStatusFlags(0x0008000000000000)) {
 			game->SetStage(GetDefaultStageIndex());
 		} else {
 			game->SetStage(gCmdLineArgs.mStage);
 		}
-	} else if (stage == 20000) {
+	} else if (stage == 10002) {
 		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 1));
 		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 0));
 		game->mMemcardLoaded = TRUE;
@@ -948,7 +956,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		}
 	}
 
-	if (stage == 10000) {
+	if (stage == 10001) {
 		game->SetStatusFlags(0x20000000);
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
@@ -969,7 +977,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		blur->mTarget   = 0.0f;
 		blur->mSpeed    = 0.0f;
 		game->mLoadStep = 20;
-	} else if (stage == 20000) {
+	} else if (stage == 10002) {
 		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -1832,7 +1840,7 @@ void CGame::Draw()
 		GetCamera()->SetInterest(moved);
 		GetCamera()->CalcEye();
 	}
-	fn_8001E1C8(this);
+	BuildSceneDrawLists(this);
 	if (gGame.mGs.mCurRenderState != NULL) {
 		gGame.mGs.mCurRenderState->Apply();
 	}
@@ -2115,7 +2123,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 	if (game->mHomeMenu.IsOpen()) {
 		return;
 	}
-	if (fn_800C61C8()) {
+	if (HasPendingObjectReads()) {
 		return;
 	}
 	if (game->GetPlayer()->mSuits.mLoadStep != 0) {
@@ -2147,7 +2155,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 			game->Reset(3);
 		} else {
 			fn_80084BF0(&game->mMenu.mActive, 6);
-			ChangeGameStage(game, 10000, TRUE);
+			ChangeGameStage(game, 10001, TRUE);
 		}
 		break;
 	default:

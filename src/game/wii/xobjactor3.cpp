@@ -1356,7 +1356,7 @@ void XObjActor3::Kind11(u32 frames)
 		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
 		mKindStep = 1;
-		if (pad.mPad->mTrigger & 0x10) {
+		if (pad.mPad->mTrigger & 0x0010000000001000ULL) {
 			mKindStep = 5;
 			mStatus.mFlags |= 0x10000;
 			mActorFlags.mFlags &= ~4;
@@ -1887,13 +1887,15 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
 		break;
-	case 4:
+	case 4: {
+		Vec playerPos = *gGame.GetPlayer()->GetPos();
 		if (!IsBusyAnim(gGame.GetPlayer()->GetAnimId()) && gGame.GetPlayer()->mAttachmentRequest < 0) {
 			gEventVars.mVars[actor->mEventArg1] = 1;
 		}
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
 		break;
+	}
 	}
 }
 
@@ -2085,7 +2087,7 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
 	actor->mRumbleTimer = 0;
 	actor->mHeld        = NULL;
 	actor->_1E20        = 0;
-	actor->mSe          = -1;
+	actor->mSe          = 0;
 }
 
 void XObjActor3::InitializeObject()
@@ -2157,9 +2159,9 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 			}
 			return ready;
 		case 0x31B:
-			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[122 - StatusTextureOffset], 0);
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[123], 0);
 			mTex[0] = gGame.mTpl.mTex;
-			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[123 - StatusTextureOffset], 0);
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[124], 0);
 			mTex[1] = gGame.mTpl.mTex;
 			return TRUE;
 		default:

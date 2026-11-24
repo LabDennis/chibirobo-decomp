@@ -84,6 +84,7 @@ public:
 	// 0x800AE340 do it on the member). The conversion runs that on the new object's own,
 	// still unset components: CObj::Init and CObj::Load compare against registers nothing wrote
 	CColor(GXColor c) { Set(c.r, c.g, c.b, c.a); }
+	CColor(u8 r, u8 g, u8 b, u8 a) { Set(r, g, b, a); }
 	void Set(int r, int g, int b, int a)
 	{
 		if (this->r != r) {
