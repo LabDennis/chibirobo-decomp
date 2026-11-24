@@ -449,8 +449,8 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
 	} else if (slot->mSpawned && slot->mDish == NULL) {
-		Vec center = { -263.9f, 76.98f, 42.0f };
-		f32 angle  = AngleFrom(slot->mActor->GetPos(), &center);
+		CVec center(-263.9f, 76.98f, 42.0f);
+		f32 angle = AngleFrom(slot->mActor->GetPos(), &center);
 		if (!IsOnGasPlate(slot->mActor)) {
 			slot->StartSlide(5.0f, 0.2f, angle);
 			slot->mStackLevel = 0;

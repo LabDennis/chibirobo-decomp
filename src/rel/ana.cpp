@@ -7,7 +7,7 @@ extern "C" CVec fn_800E5A2C(XObj* player);
 class Ana {
 public:
 	Ana() { }
-	virtual ~Ana() { }
+	~Ana() { }
 	virtual bool IsActive() { return mStatus.mFlags & 1; }
 
 	void Set(f32 x, f32 y, f32 z)
