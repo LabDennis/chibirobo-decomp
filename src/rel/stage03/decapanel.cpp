@@ -31,7 +31,7 @@ struct DecaPanelKey {
 	u8 mChar;
 };
 
-extern DecaPanel decaPanel;
+DecaPanel decaPanel;
 extern DecaPanelKey decaPanelKeys[12];
 
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
@@ -56,7 +56,7 @@ struct SavedObjFlagList {
 };
 STATIC_ASSERT(sizeof(SavedObjFlagList) == 0x964);
 
-extern SavedObjFlagList savedObjFlags;
+SavedObjFlagList savedObjFlags;
 
 void SavedObjFlagList::Apply(s32 mode)
 {
