@@ -356,10 +356,10 @@ extern "C" void ResetTitleScreenState(Title* title)
  * @note Size: 0x1D8C
  */
 // NONMATCHING: the frame skeleton, the save scan and states 1-9, 13, 14 and 22 are as retail read
-// them. Inside state 9 the newest slot's saved pointer/stick bits are restored (the block after
-// IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input
-// and the mode dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the
-// binary shares with UpdateTitleOptions.
+// them. Retail uses mtctr/bdnz for State1's eleven-pane reset; this build uses subic./bne and is 20 bytes
+// larger. The remaining differences are register allocation and scheduling. Inside state 9 the newest slot's saved pointer/stick bits are
+// restored (the block after IndexOfLargestOfThree is only partly read) and inside 11-12 and 20-21 the pointer/confirm input and the mode
+// dispatch follow the GameCube flow; the Wii input calls are the MenuPad methods the binary shares with UpdateTitleOptions.
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 	gPointerPanes.mCount = 0;
@@ -424,11 +424,13 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		gPointerPanes.mMenu    = title;
 		gPointerPanes.mEnabled = 1;
 		gPointerPanes.mActive  = 1;
-		// NONMATCHING: retail keeps this loop as a counted loop, this build unrolls it
-		for (s32 i = 0; i < 11; ++i) {
-			title->mPanes[i].mPointed = 0;
-			title->mPanes[i].mPicked  = 0;
-		}
+		s32 i                  = 11;
+		CbPane* pane           = title->mPanes;
+		do {
+			pane->mPointed = 0;
+			pane->mPicked  = 0;
+			++pane;
+		} while (--i);
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f);
 		break;
 	case 2: {
@@ -1722,7 +1724,8 @@ extern "C" void DrawTitleScreen(Title* title)
 	s32 w               = gGame.mAspectRatio != 0 ? 0x356 : 0x280;
 	s32 off             = (w - 0x280) / 2;
 	CCamera* camera     = ((CBase*)&gGame)->GetScreenCamera();
-	camera->vf24(0.0f, (f32)gPointerScreenHeight, -(f32)off, (f32)w - (f32)off);
+	nw4r::ut::Rect view(-(f32)off, 0.0f, (f32)w - (f32)off, (f32)gPointerScreenHeight);
+	camera->vf24(view.top, view.bottom, view.left, view.right);
 	((CBase*)&gGame)->vf5C();
 	DrawSavePanelBackground(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
@@ -1745,7 +1748,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		u32 rgb = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
 		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
 		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
-		u32 lit      = normal;
+		u32 lit      = rgb | (u8)(255.0f * title->mMenuAlpha);
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
 		f32 w0       = DrawTitleEntry(title, 0, 0, x, y, progress, normal, lit);
 		y            = top + ((f32)(gScreenSafeBottom - 0x36) + gap) - 30.0f;
@@ -2141,11 +2144,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			f32 screenX            = (f32)gPointerScreenWidth;
 			f32 screenY            = (f32)gPointerScreenHeight;
 			nw4r::math::VEC3 trans = layout->mTrans;
-			f32 left               = -0.5f * screenX;
-			f32 top                = 0.5f * screenY;
-			f32 right              = 0.5f * screenX;
-			f32 bottom             = -0.5f * screenY;
-			layout->mTrans.y       = -(trans.y + 0.5f * (bottom - top));
+			nw4r::ut::Rect rect(-0.5f * screenX, 0.5f * screenY, 0.5f * screenX, -0.5f * screenY);
+			layout->mTrans.y = -(trans.y + 0.5f * (rect.bottom - rect.top));
 			fn_800556B0(&title->mPanes[3 + i], layout);
 		}
 		labelY = extra + (base + title->mLoadOffset);
