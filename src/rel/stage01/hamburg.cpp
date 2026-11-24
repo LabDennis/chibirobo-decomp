@@ -6,6 +6,8 @@ extern "C" void AllowIdleHudCounters(void* obj);
 extern "C" void SuppressIdleHudCounters(void* obj);
 extern "C" BOOL IsLiftTargetPlug(XAction* action);
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+extern "C" void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 
 struct HamDish;
 
@@ -362,7 +364,124 @@ static u8 playerOffGasPlate;
 static u32 yakiLoopLevel;
 static CStatus32 yakiResultFlags;
 
-extern "C" void HamObj_Update(HamObj* slot, u32 step);
+// NONMATCHING: local vector homes and register/stack layout differ; cooking levels, effect transforms, state calls and slide checks match.
+extern "C" void HamObj_Update(HamObj* slot, u32 step)
+{
+	if (!IsActive(slot->mActor)) {
+		slot->mSpawned = 0;
+	}
+
+	if (slot->mType == 1 && slot->mSpawned && slot->mStackLevel == 0 && !IsHeld(slot->mActor)) {
+		s32 oldLevel = slot->mYakiTime[slot->mSide] / 600 + 1;
+		f32 rate;
+		if (oldLevel < 1 || oldLevel >= 6) {
+			rate = 1.0f;
+		} else {
+			rate = yakiRates[oldLevel];
+		}
+		slot->mYakiTime[slot->mSide] += step * rate;
+
+		s32 level = slot->mYakiTime[slot->mSide] / 600 + 1;
+		if (oldLevel > 5) {
+			oldLevel = 5;
+		}
+		if (level > 5) {
+			level = 5;
+		}
+
+		CVec* actorPos = slot->mActor->GetPos();
+		Vec pos;
+		pos.x = actorPos->x;
+		pos.y = actorPos->y;
+		pos.z = actorPos->z;
+		pos.y += 2.5f;
+		Vec scale;
+		scale.x = scale.y = scale.z = 1.0f;
+
+		if (level < 4 && oldLevel < level) {
+			Vec rot;
+			rot.x = rot.y = rot.z  = 0.0f;
+			EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3A, 0);
+			if (effect != NULL) {
+				effect->pos   = pos;
+				effect->rot   = rot;
+				effect->scale = scale;
+				UpdateEffectMtx(effect);
+			}
+		}
+		if (level == 4) {
+			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
+				Vec rot;
+				rot.x = rot.y = rot.z = 0.0f;
+				fn_800A12F8(gGame.mEvtPtcl.mEffects, 0x3B, FALSE);
+				EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3B, 0);
+				if (effect != NULL) {
+					effect->pos   = pos;
+					effect->rot   = rot;
+					effect->scale = scale;
+					UpdateEffectMtx(effect);
+				}
+			}
+		} else if (level >= 5) {
+			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
+				Vec rot;
+				rot.x = rot.y = rot.z = 0.0f;
+				fn_800A12F8(gGame.mEvtPtcl.mEffects, 0x3B, FALSE);
+				EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3B, 0);
+				if (effect != NULL) {
+					effect->pos   = pos;
+					effect->rot   = rot;
+					effect->scale = scale;
+					UpdateEffectMtx(effect);
+				}
+			}
+		}
+
+		if (yakiLoopLevel < 1) {
+			yakiLoopLevel = 1;
+		}
+		if (level >= 4) {
+			yakiLoopLevel = 2;
+		}
+
+		if (slot->mYakiEffect == NULL) {
+			MtxP mtx               = slot->mActor->GetWorldMtx(1);
+			EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x78, 0);
+			if (effect != NULL) {
+				effect->mtx = mtx;
+				UpdateEffectMtx(effect);
+			}
+			slot->mYakiEffect = effect;
+		}
+	}
+
+	if (slot->mState != NULL) {
+		(slot->*(slot->mState))();
+	} else if (slot->mSpawned && slot->mDish == NULL) {
+		CVec* actorPos = slot->mActor->GetPos();
+		f32 angle      = atan2(-263.9f - actorPos->x, 42.0f - actorPos->z);
+		if (!IsOnGasPlate(slot->mActor)) {
+			slot->StartSlide(5.0f, 0.2f, angle);
+			slot->mStackLevel = 0;
+		} else if (slot->mStackLevel == 0 && playerOffGasPlate) {
+			if (PSVECDistance(((XObj*)gGame.GetPlayer())->GetPos(), slot->mActor->GetPos()) < 8.0f) {
+				slot->StartSlide(5.0f, 0.2f, angle);
+			}
+		} else if (GetStackPlacementPosition(slot->mActor->mCoord).y + 2.0f * slot->mStackLevel < slot->mActor->GetPos()->y) {
+			slot->StartSlide(0.0f, 0.5f, angle);
+		}
+
+		if (!putDownActive && !(slot->mActor->mStatus.mFlags & 0x100000000ULL)
+		    && (slot->mAbove == NULL || (slot->mAbove != NULL && slot->mStackLevel == slot->mAbove->mStackLevel))) {
+			slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+		}
+	}
+
+	if (slot->mSpawned && slot->mActor->GetPos()->y < 77.5f) {
+		slot->mActor->SetTranslateY(78.0f);
+		slot->mActor->SetRotationZ(slot->mRotZ);
+	}
+}
 
 // NONMATCHING: player/track checks are inlined differently; all nine updates and the three sound paths match.
 extern "C" void UpdateHamObjs(u32 arg)
