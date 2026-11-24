@@ -137,6 +137,7 @@ extern "C" CLight* fn_802AF1D0(WiiGsScene* scene, CLight* light, MtxP view, BOOL
 				current->InitAmbient(0, 0, 0, 0xFF);
 			}
 			current->vf2C();
+			current++;
 
 			u32 numLights = 0;
 			for (u32 i = 0; i < 8; i++) {
