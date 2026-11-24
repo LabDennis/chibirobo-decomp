@@ -954,6 +954,93 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 }
 
+// NONMATCHING: all texture reads and draw calls match; stack/register scheduling for the safe-screen positions
+// and half-opening values remains different.
+extern "C" void FighterPanels_Draw(FighterPanels* fade)
+{
+	CTexObj tex;
+	f32 scale = 1.0f;
+	if (FindStageIndexByName("stage02") != gGame.mStage) {
+		return;
+	}
+	for (s32 i = 0; i < 48; i++) {
+		XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+		if (obj->GetKind() != 0x149 || !obj->mPanelTpl.mBound) {
+			continue;
+		}
+		f32 x;
+		if (fade->mLowerOpen > 0.0f) {
+			f32 y;
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[10], 0);
+			tex      = obj->mPanelTpl.mTex;
+			f32 w    = 1.1f * (scale * GXGetTexObjWidth(&tex));
+			f32 half = fade->mLowerOpen * (scale * GXGetTexObjHeight(&tex));
+			x        = 84.0f + gScreenSafeLeft;
+			y        = 140.0f + gScreenSafeTop - 32.0f;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mLowerFrame + 25], 0);
+			tex   = obj->mPanelTpl.mTex;
+			w     = 1.1f * (scale * GXGetTexObjWidth(&tex));
+			f32 h = fade->mLowerOpen * (scale * GXGetTexObjHeight(&tex));
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[11], 0);
+			tex        = obj->mPanelTpl.mTex;
+			f32 top    = y - half * 0.5f;
+			f32 bottom = y + half * 0.5f;
+			u16 tw     = GXGetTexObjWidth(&tex);
+			w          = 1.1f * (scale * tw);
+			u16 th     = GXGetTexObjHeight(&tex);
+			h          = scale * th;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, bottom, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+		}
+		if (fade->mCenterOpen > 0.0f) {
+			f32 y;
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[8], 0);
+			tex      = obj->mPanelTpl.mTex;
+			u16 tw   = GXGetTexObjWidth(&tex);
+			u16 th   = GXGetTexObjHeight(&tex);
+			f32 half = fade->mCenterOpen * (scale * th);
+			x        = 84.0f + gScreenSafeLeft;
+			y        = 150.0f + gScreenSafeTop;
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, 1.1f * (scale * tw), half, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			if (fade->mCenterVariant == 0) {
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mCenterFrame + 12], 0);
+			} else {
+				obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[fade->mCenterFrame + 18], 0);
+			}
+			tex   = obj->mPanelTpl.mTex;
+			f32 w = 1.1f * (scale * GXGetTexObjWidth(&tex));
+			f32 h = fade->mCenterOpen * (scale * GXGetTexObjHeight(&tex));
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[9], 0);
+			tex        = obj->mPanelTpl.mTex;
+			f32 top    = y - half * 0.5f;
+			f32 bottom = y + half * 0.5f;
+			w          = 1.1f * (scale * GXGetTexObjWidth(&tex));
+			h          = scale * GXGetTexObjHeight(&tex);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, bottom, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+		}
+	}
+}
+
 // the stage02 score, time and gauge panels, drawn from the timer actor's panel TPL
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
