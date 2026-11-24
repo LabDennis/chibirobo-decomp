@@ -388,7 +388,7 @@ rel/stage06/parent.cpp:
 	.sdata2 start:0x805A6368 end:0x805A6378
 
 rel/stage07/living.cpp:
-	.text start:0x80179E5C end:0x80179FD0
+	.text start:0x80179E5C end:0x8017A16C
 	.sdata2 start:0x805A6388 end:0x805A6390
 
 revolution/MEM/mem_heapCommon.c:

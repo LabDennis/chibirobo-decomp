@@ -5,6 +5,7 @@ extern "C" void InitTrash(void);
 extern "C" void UpdateTrash(u32 frames);
 extern "C" void DrawTrashStack(void);
 extern "C" void ExitTrash(void);
+extern "C" void SetFafaPartVisibility(s32 mode);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind);
 
 extern "C" s32 Stage07_Init(void* arg)
@@ -45,6 +46,35 @@ extern "C" s32 Stage07_Exit(void* arg)
 
 extern "C" s32 Stage07_CmdNop(s32 cmd, s32 count, s32* args)
 {
+	return 0;
+}
+
+extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
+{
+	SetFafaPartVisibility(args[0]);
+	return 0;
+}
+
+// NONMATCHING: pool/stride/counter registers differ; all 400 checks and the return value match retail.
+extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 count, s32* args)
+{
+	s32 size = gGame.mXObjs.mPools[10].mStride;
+	u8* pool = gGame.mXObjs.mPools[10].mObjects;
+	s32 i;
+	for (i = 0; i < 400; i++) {
+		XObj* entry = (XObj*)(pool + i * size);
+		if (entry->GetKind() == 0x37) {
+			break;
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
+{
+	for (s32 i = 0; i < count; i++) {
+		((CCameraActionScroll2*)gGame.mCameraActions.mTable[4])->AddHideObj(values[i]);
+	}
 	return 0;
 }
 #else
