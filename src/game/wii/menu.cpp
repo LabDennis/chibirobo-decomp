@@ -1466,17 +1466,18 @@ BOOL MenuItem::Update(u32 frames)
 	return IsOpen();
 }
 
-// NONMATCHING: the call list matches retail; 32 bytes of float constant/register lifetime and scheduling differences remain
+// NONMATCHING: the call list matches retail; this build is 72 bytes smaller, reserves 16 more stack bytes,
+// and differs in float register lifetimes and scheduling
 extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
 {
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 	for (int i = 0; i < 8; i++) {
 		f32 w = 92.0f * scale, h = 80.0f * scale;
+		f32 top = (h - h / 8.0f) / 2.0f;
 		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
-		f32 top = -dy / 2.0f;
-		f32 xx  = (i % 4) * dx + x;
-		f32 yy  = 12.0f + (top + ((i / 4) * dy + y));
+		f32 xx = (i % 4) * dx + x;
+		f32 yy = 12.0f + (top + ((i / 4) * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mItems[i].mItem, count = sStatusItemTable.mItems[i].mCount;
 		scale = 1.0f;
@@ -1562,10 +1563,10 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 	for (int i = 0; i < 4; i++) {
 		if (sStatusItemTable.mPage >= (CountMenuItems() - 1) / 4 - 1)
 			break;
+		f32 top = (h - h / 8.0f) / 2.0f;
 		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
-		f32 top = -dy / 2.0f;
-		f32 xx  = (i % 4) * dx + x;
-		f32 yy  = 12.0f + (top + (2 * dy + y));
+		f32 xx = (i % 4) * dx + x;
+		f32 yy = 12.0f + (top + (2 * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mNext[i].mItem, count = sStatusItemTable.mNext[i].mCount;
 		if (id >= 0 && count > 0) {
@@ -1633,10 +1634,10 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 		CountMenuItems();
 		if (sStatusItemTable.mPage <= 0)
 			break;
+		f32 top = (h - h / 8.0f) / 2.0f;
 		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
-		f32 top = -dy / 2.0f;
-		f32 xx  = (i % 4) * dx + x;
-		f32 yy  = 12.0f + (top + (-1 * dy + y));
+		f32 xx = (i % 4) * dx + x;
+		f32 yy = 12.0f + (top + (-1 * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mPrev[i].mItem, count = sStatusItemTable.mPrev[i].mCount;
 		if (id >= 0 && count > 0) {
