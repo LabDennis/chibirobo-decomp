@@ -1354,9 +1354,8 @@ void Title::State7(u32)
  * @note Address: 0x80048744
  * @note Size: 0x198
  */
-// NONMATCHING: retail tests -9, -11 and -4 in a row, an if chain, and still keeps three copies of the
-// same body; written as an if chain this build merges the bodies (70 %), as a switch it keeps them but
-// searches the values as a tree
+// NONMATCHING: the mixed if/switch keeps retail's linear tests and three bodies; only the -4 branch polarity
+// differs. A plain if chain merges the bodies, while one switch searches the values as a tree.
 // waits for the save file to be read: into the game when it was, else the error is shown
 void Title::State8(u32)
 {
@@ -1374,20 +1373,20 @@ void Title::State8(u32)
 		return;
 	}
 	mResult = result;
-	switch (result) {
-	case -9:
-	case -11:
+	if (result == -9 || result == -11) {
 		SetMode(19);
 		mShowMessage = 1;
-		break;
-	case -4:
-		SetMode(19);
-		mShowMessage = 1;
-		break;
-	default:
-		SetMode(19);
-		mShowMessage = 1;
-		break;
+	} else {
+		switch (result) {
+		default:
+			SetMode(19);
+			mShowMessage = 1;
+			break;
+		case -4:
+			SetMode(19);
+			mShowMessage = 1;
+			break;
+		}
 	}
 	gSaveFatal.mActive = 1;
 	mAlpha             = 1.0f;
@@ -1510,20 +1509,20 @@ void Title::State15(u32 frames)
 		return;
 	}
 	mResult = result;
-	switch (result) {
-	case -9:
-	case -11:
+	if (result == -9 || result == -11) {
 		SetMode(19);
 		mShowMessage = 1;
-		break;
-	case -4:
-		SetMode(19);
-		mShowMessage = 1;
-		break;
-	default:
-		SetMode(19);
-		mShowMessage = 1;
-		break;
+	} else {
+		switch (result) {
+		default:
+			SetMode(19);
+			mShowMessage = 1;
+			break;
+		case -4:
+			SetMode(19);
+			mShowMessage = 1;
+			break;
+		}
 	}
 	gSaveFatal.mActive = 1;
 	mAlpha             = 1.0f;
