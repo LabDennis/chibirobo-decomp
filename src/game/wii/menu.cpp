@@ -4981,16 +4981,17 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
 	gGame.mGs.mCurRenderState->SetLineWidth(6, GX_TO_ONE);
 	f32 left         = 16.0f + x;
+	f32 shadowX      = 4.0f + left;
 	f32 right        = 168.0f + left;
 	f32 fill         = 168.0f * value + left;
-	f32 bottom       = 16.0f + y;
+	f32 shadowRight  = 168.0f + shadowX;
 	Vec vertices[20] = {};
+	f32 bottom       = 16.0f + y;
+	f32 shadowY      = 4.0f + y;
 	SetGaugeQuad(vertices, left, right, y, bottom);
 	SetGaugeQuad(vertices + 4, left, fill, y, bottom);
 	SetGaugeQuad(vertices + 8, fill, right, y, bottom);
-	f32 shadowX = 4.0f + left;
-	f32 shadowY = 4.0f + y;
-	SetGaugeQuad(vertices + 12, shadowX, 168.0f + shadowX, shadowY, 16.0f + shadowY);
+	SetGaugeQuad(vertices + 12, shadowX, shadowRight, shadowY, 16.0f + shadowY);
 	SetGaugeQuad(vertices + 16, left, fill, shadowY, (bottom - 4.0f) - 1.0f);
 	DrawGsVertexQuad(&gGame.mGs, vertices[12].x, vertices[12].y, vertices[12].z, (u32)(100.0f * alpha) | 0x0A0A0A00, vertices[13].x,
 	                 vertices[13].y, vertices[13].z, (u32)(100.0f * alpha) | 0x0A0A0A00, vertices[14].x, vertices[14].y, vertices[14].z,
