@@ -2286,8 +2286,8 @@ public:
 	virtual void DrawDebugStatus();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);
-	virtual void PauseSounds(f32 fade) { mSfx.Pause(fade); }
-	virtual void ResumeSounds(f32 fade) { mSfx.Resume(fade); }
+	virtual void PauseSounds(f32 fade);
+	virtual void ResumeSounds(f32 fade);
 	virtual void UpdateAnimationSounds();
 
 	void Kind0(u32 frames);
