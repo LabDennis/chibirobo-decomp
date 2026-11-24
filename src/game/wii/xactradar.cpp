@@ -737,18 +737,21 @@ static inline void ClearPopperCharge(XActPopperCharge* charge)
 	charge->mMtx   = NULL;
 	KillGen(charge->mGen);
 	KillGen(charge->mChargeGen);
-	for (s32 i = 0; i < 2; ++i) {
-		CSound3DActor* actor = charge->mSfxActors[i].mActor;
-		if (actor != NULL) {
-			actor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
-		}
+	CSound3DActor* actor = charge->mSfxActors[0].mActor;
+	if (actor != NULL) {
+		f32 fade = 0.0f;
+		actor->mHandle.Stop((s32)(fade * gRefreshRate));
+	}
+	actor = charge->mSfxActors[1].mActor;
+	if (actor != NULL) {
+		f32 fade = 0.0f;
+		actor->mHandle.Stop((s32)(fade * gRefreshRate));
 	}
 	StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
 	StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
 }
 
-// NONMATCHING: retail re-evaluates (s32)(gRefreshRate * 0.0f) per actor instead of
-// folding it to 0 the way this build does
+// NONMATCHING: the actor stops and fade calculations match; only f0/f2 allocation for the conversion constants remains.
 /**
  * @note Address: 0x80109FCC
  * @note Size: 0x148
@@ -864,7 +867,7 @@ void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner)
 
 // the action's reset on the Wii: the base vcall, every shot cleared, then the same
 // charge teardown ResetPopperCharge does on its own
-// NONMATCHING: inherits the ResetPopperCharge residue through ClearPopperCharge
+// NONMATCHING: inherits ResetPopperCharge's conversion-constant FPR allocation through ClearPopperCharge
 /**
  * @note Address: 0x8010A6CC
  * @note Size: 0x1FC
@@ -917,7 +920,7 @@ static inline int ActivePopperShots(XActPopper* act)
 // GameCube scanned the object list for a target the Wii reads the one CGame::Update
 // locked, and without a target or the eye camera it aims through the remote's pointer
 // NONMATCHING: same control flow and call set as retail; the inlined helpers
-// (ClearPopperCharge's fade math, GetAttachment and the CVec temporaries around the
+// (ClearPopperCharge's conversion-constant registers, GetAttachment and the CVec temporaries around the
 // pointer ray) still schedule differently
 /**
  * @note Address: 0x8010A92C
