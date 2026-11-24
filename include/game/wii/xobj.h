@@ -2171,6 +2171,8 @@ class XObjLight : public XObj {
 public:
 	XObjLight();
 	virtual ~XObjLight();
+	virtual void Release();          // _40
+	virtual void InitializeObject(); // _14C
 
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void UpdateObject(u32 frames);                 // _164, retail's is empty
@@ -2520,6 +2522,7 @@ class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
 	virtual ~XObjActorMama();
+	virtual void UpdateObject(u32 frames);
 	void RunStateHandler(u32 frames);
 	void ClearStateHandler();
 	void ResetActorState();

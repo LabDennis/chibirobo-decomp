@@ -982,10 +982,20 @@ void XObjActorToy::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::Re
 	}
 }
 
+// NONMATCHING: the case set and calls match; MWCC folds the no-op 0x158 case to a
+// 0x157 boundary and emits an extra equality branch for the no-op 0x1FB case
 void XObjActorToy::UpdateAfterAnim(u32 frames)
 {
 	XObjActor::UpdateAfterAnim(frames);
 	switch (GetKind()) {
+	case 0x6F:
+	case 0x110:
+	case 0x117:
+	case 0x16C:
+	case 0x1D3:
+	case 0x1FB:
+	case 0x26D:
+		break;
 	case 0xF:
 		UpdateToy0FCarriedObjects(this, frames);
 		break;
@@ -994,13 +1004,15 @@ void XObjActorToy::UpdateAfterAnim(u32 frames)
 			for (s32 i = 0; i < 15; ++i) {
 				XObjActorToy* toy = GetToy(i);
 				if (toy->GetKind() == 0x157) {
-					CVec position    = *toy->GetPos();
+					Vec position     = *toy->GetPos();
 					mMoveTranslate.x = position.x;
 					mMoveTranslate.y = position.y;
 					mMoveTranslate.z = position.z;
 				}
 			}
 		}
+		break;
+	case 0x158:
 		break;
 	case 0x26C:
 	case 0x485:
@@ -1020,7 +1032,7 @@ extern "C" void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames)
 		toy->_21E0 = (XObj*)1;
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.mXObjs.mObjects[i];
-			if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
+			if ((obj->mStatus.mFlags & 1) == 1 && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
 				toy->_21E0 = obj;
 				break;
 			}
@@ -2039,7 +2051,11 @@ void XObjActorToy::ResetActorState()
 		mKindFlags.mFlags &= ~8;
 		break;
 	case 0x156:
+		mHeading = PlacementRotation(mCoord).y;
+		break;
 	case 0x157:
+		mHeading = PlacementRotation(mCoord).y;
+		break;
 	case 0x16C:
 		mHeading = PlacementRotation(mCoord).y;
 		break;
@@ -2294,12 +2310,12 @@ void XObjActorToy::UpdateAnimationSounds(f32 frame)
 {
 	switch (GetKind()) {
 	case 0x1FC:
-		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 0x10) {
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 0x10 && mSfx.mActors[5].mActor != NULL) {
 			mSfx.mActors[5].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
 		}
 		break;
 	case 0x159:
-		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 7) {
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 7 && mSfx.mActors[5].mActor != NULL) {
 			mSfx.mActors[5].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
 		}
 		break;

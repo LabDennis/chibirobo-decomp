@@ -496,6 +496,11 @@ void XObjScnCam::InitializeObject()
 	mScene = NULL;
 }
 
+void XObjLight::InitializeObject()
+{
+	XObj::InitializeObject();
+}
+
 /**
  * @note Address: 0x800C7C58
  * @note Size: 0x30
@@ -515,6 +520,11 @@ void XObjLight::ResetObjectState()
 BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 {
 	return XObj::LoadFromPlacement(info) != FALSE;
+}
+
+void XObjLight::Release()
+{
+	XObj::Release();
 }
 
 /**

@@ -219,6 +219,11 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 	}
 }
 
+void XObjActorMama::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
+}
+
 void XObjActorMama::UpdateAfterAnim(u32 frames)
 {
 	XObjActor::UpdateAfterAnim(frames);

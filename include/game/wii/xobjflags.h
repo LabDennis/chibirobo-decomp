@@ -20,6 +20,7 @@ public:
 	virtual void PauseSounds(f32 fade);    // _20C
 	virtual void ResumeSounds(f32 fade);   // _210
 	virtual void SoundUpdate(f32 frame);   // _28C
+	virtual ~XObjSound();                  // _08
 
 	AnimSfx mAnimSfx; // _9A8
 	s32 _A04;         // _A04, cleared on reset; what they hold is not decoded yet
