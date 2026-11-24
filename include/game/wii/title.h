@@ -114,17 +114,17 @@ public:
 	virtual void SetPos(f32 x, f32 y, f32 z); // _084
 	virtual void vf088();
 	virtual void SetScale(f32 x, f32 y, f32 z); // _08C
-	virtual void SetPos(void*);                 // _090, given the other cursor's GetPos result
+	virtual void SetPos(const Vec& pos);        // _090, given the other cursor's GetPos result
 	virtual void vf094();
-	virtual void SetScale(void*);     // _098, given the other cursor's GetScale result
-	virtual void SetScale(f32 scale); // _09C, a uniform scale
+	virtual void SetScale(const Vec& scale); // _098, given the other cursor's GetScale result
+	virtual void SetScale(f32 scale);        // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
 	virtual void vf0AC();
 	virtual void vf0B0();
 	virtual Vec vf0B4(const s32* path); // _0B4, a joint's world position by path
-	virtual Vec GetWorldPos(s32 index); // _0B8, the world position for a node index
+	virtual Vec GetWorldPos(u32 index); // _0B8, the world position for a node index
 	virtual void vf0BC();
 	virtual void vf0C0();
 	virtual void vf0C4();
@@ -163,10 +163,10 @@ public:
 	virtual void vf140();
 	virtual void vf144();
 	virtual void vf148();
-	virtual void InitializeObject();               // _14C
-	virtual void ResetForNewGame();                // _150
-	virtual void ResetObjectState();               // _154
-	virtual s32 LoadFromPlacement(CoordInfo info); // _158
+	virtual void InitializeObject();                      // _14C
+	virtual void ResetForNewGame();                       // _150
+	virtual void ResetObjectState();                      // _154
+	virtual s32 LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
 	virtual void vf160();
 	virtual void UpdateObject(u32 frames); // _164
@@ -200,7 +200,7 @@ public:
 	virtual void vf1CC();
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen
-	virtual void ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, s32, s32);
+	virtual void ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera);
 	virtual f32 GetFloorXZExtent();                                                                            // _1D8
 	virtual f32 GetCollisionHeight();                                                                          // _1DC
 	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight); // _1E0

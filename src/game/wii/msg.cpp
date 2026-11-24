@@ -743,7 +743,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 {
 	WiiTitleObject* anchor = font->mPlacement;
 	if (anchor != NULL && (anchor->mStatus & 1) && (anchor->mStatus & 0x10000)) {
-		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, 0, 0);
+		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, NULL, NULL);
 		font->mWindowY -= font->mHeight;
 	}
 	f32& winX      = font->mWindowX;
@@ -913,9 +913,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
 				font->mCursor[0].DrawScreenOverlay();
 				if (anim == 0x13 || anim == 0x3FB) {
-					font->mCursor[1].SetPos(font->mCursor[0].GetPos());
+					font->mCursor[1].SetPos(*font->mCursor[0].GetPos());
 					font->mCursor[1].SetRotationY(font->mCursor[0].GetRotY());
-					font->mCursor[1].SetScale(font->mCursor[0].GetScale());
+					font->mCursor[1].SetScale(*font->mCursor[0].GetScale());
 					if (font->mCursor[1].GetAnimId() == 0) {
 						font->mCursor[1].SetAnim(1, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 					}
