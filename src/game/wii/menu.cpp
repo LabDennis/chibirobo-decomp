@@ -2896,7 +2896,7 @@ static inline void DrawPCPriceUnit(PCShopListKind kind, CTexObj& tex, f32 scale,
 {
 	InitPCPanelTexture(tex, kind == ItemPriceList ? 145 : 149);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	u16 unitW = GXGetTexObjWidth(&tex), unitH = GXGetTexObjHeight(&tex);
+	f32 unitW = GXGetTexObjWidth(&tex), unitH = GXGetTexObjHeight(&tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)opacity | 0xFFFFFF00, (u32)opacity | 0xFFFFFF00, (u32)opacity | 0xFFFFFF00,
 	                   (u32)opacity | 0xFFFFFF00, 287.0f * scale + (18.0f * scale + left), digitY, 0.0f, 1.1f * unitW, unitH, 0.0f, 0.0f,
 	                   0.0f);
