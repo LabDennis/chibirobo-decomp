@@ -2,6 +2,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/cgs.h"
+#include "game/ccameraaction.h"
 #include "game/globals.h"
 #include <stdlib.h>
 
@@ -11,6 +12,64 @@ extern s32 gScreenSafeTop;
 extern s32 gScreenSafeLeft;
 extern s32 gPointerScreenWidth;
 }
+
+namespace fighter {
+
+class CCameraActionFighter : public CInterfaceCameraAction {
+public:
+	CCameraActionFighter()
+	{
+		mTargetMtx        = NULL;
+		mInterestOffset.x = mInterestOffset.y = mInterestOffset.z = 0.0f;
+		mEyeOffset.x = mEyeOffset.y = mEyeOffset.z = 0.0f;
+		mCenterView                                = true;
+	}
+	virtual ~CCameraActionFighter() { }
+
+	virtual void Update(u32 step);
+	virtual void Init() { mCenterView = false; }
+	virtual u32 GetMode() { return 0; }
+	virtual u32 GetCameraFlags() { return 11; }
+	virtual f32 GetFollowDivisor() { return 0.1f; }
+
+	MtxP mTargetMtx;
+	Vec mInterestOffset;
+	Vec mEyeOffset;
+	u8 _5C[0xC];
+	bool mCenterView;
+};
+
+void CCameraActionFighter::Update(u32 step)
+{
+	if (mTargetMtx == NULL) {
+		return;
+	}
+	CPad pad(0);
+	if (pad.mPad->mTrigger & 0x800ULL) {
+		if (mCenterView) {
+			mCenterView = false;
+		} else {
+			mCenterView = true;
+		}
+	}
+	SetFov(40.0f);
+	Vec pos;
+	if (mCenterView) {
+		pos.y = pos.x = 0.0f;
+		pos.z         = 80.0f;
+		PSMTXMultVec(mTargetMtx, &pos, &pos);
+		SetInterest(pos);
+		pos.z = pos.x = 0.0f;
+		SetEye(pos);
+	} else {
+		PSMTXMultVec(mTargetMtx, &mEyeOffset, &pos);
+		SetEye(pos);
+		PSMTXMultVec(mTargetMtx, &mInterestOffset, &pos);
+		SetInterest(pos);
+	}
+}
+
+} // namespace fighter
 
 struct MatoList;
 

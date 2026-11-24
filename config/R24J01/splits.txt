@@ -365,7 +365,7 @@ rel/stage01/hamburg.cpp:
 	.sdata2 start:0x805A6140 end:0x805A6198
 
 rel/stage02/fighter.cpp:
-	.text start:0x801715E8 end:0x80175E8C
+	.text start:0x80171498 end:0x80175E8C
 
 rel/stage20/stage20.cpp:
 	.text start:0x8017B184 end:0x8017B268
