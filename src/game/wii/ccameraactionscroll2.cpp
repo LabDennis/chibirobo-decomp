@@ -440,7 +440,7 @@ Scroll2Limits* CCameraActionScroll2::GetLimits(s32 room)
  * @note Address: 0x8016319C
  * @note Size: 0xB4
  */
-// NONMATCHING: out of line on the Wii; retail folds the fov blend differently
+// NONMATCHING: out of line on the Wii; retail's wide/narrow load order and register assignment remain
 static void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 {
 	camera->mMaxFov = limits->mMaxFov;
@@ -453,10 +453,13 @@ static void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 	} else {
 		zBlend = (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
 	}
-	camera->mMinX = xBlend * (limits->mWideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
-	camera->mMaxX = xBlend * (limits->mWideMaxX - limits->mNarrowMaxX) + limits->mNarrowMaxX;
-	camera->mMinZ = zBlend * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
-	camera->mMaxZ = zBlend * (limits->mWideMaxZ - limits->mNarrowMaxZ) + limits->mNarrowMaxZ;
+	f32 wideMinX   = limits->mWideMinX;
+	camera->mMinX  = xBlend * (wideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
+	f32 narrowMaxX = limits->mNarrowMaxX;
+	camera->mMaxX  = xBlend * (limits->mWideMaxX - narrowMaxX) + narrowMaxX;
+	camera->mMinZ  = zBlend * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
+	f32 wideMaxZ   = limits->mWideMaxZ;
+	camera->mMaxZ  = zBlend * (wideMaxZ - limits->mNarrowMaxZ) + limits->mNarrowMaxZ;
 	camera->mMinX += camera->mStart.x;
 	camera->mMaxX += camera->mStart.x;
 	camera->mMinZ += camera->mStart.z;
