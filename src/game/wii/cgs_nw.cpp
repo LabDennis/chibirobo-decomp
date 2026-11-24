@@ -60,7 +60,7 @@ extern "C" void fn_802AEE44(WiiGsSceneObj** head, XObj* obj)
 	} else {
 		head[1] = NULL;
 	}
-	if (head[1] != NULL && ((nw4r::g3d::AnmScn*)head[1])->GetNumFog() == 0) {
+	if (head[1] == NULL || ((nw4r::g3d::AnmScn*)head[1])->GetNumFog() == 0) {
 		nw4r::g3d::Fog fog = ((nw4r::g3d::ScnRoot*)*head)->GetFog(0);
 		if (!fog.IsValid()) {
 			nw4r::db::Panic("g3d_fog.h", 0x41, "NW4R:Failed assertion IsValid()");
@@ -74,6 +74,8 @@ extern "C" void fn_802AEE44(WiiGsSceneObj** head, XObj* obj)
 	}
 }
 
+// NONMATCHING: the calls and projection cases match. Retail uses a 0x100 frame; the remaining PostureInfo temporary
+// layout and ordering differ, and the named viewport bounds raise this frame to 0x110 while matching the f30/f31 lifetime.
 extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
 {
 	nw4r::g3d::Camera nwCamera = ((nw4r::g3d::ScnRoot*)*head)->GetCamera(flag);
@@ -100,16 +102,18 @@ extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
 		PSMTXCopy(camera->GetViewSource(), view);
 		nwCamera.SetCameraMtxDirectly(view);
 	} else {
-		nw4r::g3d::Camera::PostureInfo posture = { nw4r::g3d::Camera::POSTURE_LOOKAT };
 		nwCamera.SetPosition(camera->mView.mEye);
-		posture.cameraUp     = camera->mView.mUp;
-		posture.cameraTarget = camera->mView.mInterest;
-		posture.cameraRotate = nw4r::math::VEC3(0.0f, 0.0f, 0.0f);
-		posture.cameraTwist  = 0.0f;
+		nw4r::g3d::Camera::PostureInfo posture = { nw4r::g3d::Camera::POSTURE_LOOKAT };
+		posture.cameraUp                       = camera->mView.mUp;
+		posture.cameraTarget                   = camera->mView.mInterest;
+		posture.cameraRotate                   = nw4r::math::VEC3(0.0f, 0.0f, 0.0f);
+		posture.cameraTwist                    = 0.0f;
 		nwCamera.SetPosture(posture);
 	}
+	f32 viewportNear = camera->mViewport[4];
+	f32 viewportFar  = camera->mViewport[5];
 	nwCamera.SetViewport(camera->mViewport[0], camera->mViewport[1], camera->mViewport[2], camera->mViewport[3]);
-	nwCamera.SetViewportZRange(camera->mViewport[4], camera->mViewport[5]);
+	nwCamera.SetViewportZRange(viewportNear, viewportFar);
 	nwCamera.GXSetViewport();
 	nwCamera.GXSetProjection();
 	nwCamera.GXSetScissor();
