@@ -595,6 +595,7 @@ STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 // builds up to _11E0 is where the GameCube class has it, the vec group at _11FC is new
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
+	CCameraActionMap();
 	virtual void DrawDebug3d(); // _28, 0x8015F34C
 
 	s32 mInterestMode;       // _40, what GetInterestMode returns
