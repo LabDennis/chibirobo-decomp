@@ -142,6 +142,40 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 	}
 }
 
+extern "C" f64 cos(f64 x);
+
+// NONMATCHING: basic-block layout and local symbol names differ; both flip states, all calls and values match.
+void HamObj::StateFlip()
+{
+	switch (mStateTime) {
+	case 0:
+		if (0.0f < (f32)cos(mActor->GetRotZ())) {
+			mRotZ = 3.1415927f;
+		} else {
+			mRotZ = 0.0f;
+		}
+		mStateTime++;
+		break;
+	case 1:
+		mFlipFrames -= 1.0f;
+		if (0.0f < mFlipFrames) {
+			f32 rot = mActor->GetRotZ();
+			mActor->SetRotationZ(rot + (mRotZ - rot) / mFlipFrames);
+		} else {
+			PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+			yakiSoundPlayed = 1;
+			s32 level       = mYakiTime[mSide] / 600;
+			if (level >= 5) {
+				level = 4;
+			}
+			mActor->SetAnim(level, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mSide = 1 - mSide;
+			SetState(NULL);
+		}
+		break;
+	}
+}
+
 extern "C" void HamObj_Respawn(HamObj* slot)
 {
 	if (putDownActive) {
