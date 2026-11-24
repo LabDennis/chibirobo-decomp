@@ -29,9 +29,8 @@ inline void AddCopy(CVec& a, Vec b)
 	PSVECAdd(&a, &b, &a);
 }
 
-// NONMATCHING: retail inlines PSVECDotProduct, PSVECScale and PSVECAdd as paired-single code
-// (the SDK the game was built against ships them as static asm in the vec header); this repo's
-// include/Dolphin/vec.h only declares the out-of-line copies, so the calls stay calls here
+// NONMATCHING: the CVec subtraction and call set match; remaining differences are CVec temporary
+// GPR allocation and paired-single register/order choices.
 /**
  * @note Address: 0x80160D30
  * @note Size: 0x1FC
@@ -40,12 +39,12 @@ CVec CalcSpring(CVec& eye, const CVec& target, const CVec& last, f32 dt, f32 sti
 {
 	CVec dir;
 	CVec vel;
-	dir     = eye - target;
-	f32 len = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-	vel     = (last - target) * dt;
-	f32 dot = PSVECDotProduct(&dir, &vel);
-	PSVECNormalize(&dir, &dir);
+	dir       = eye - target;
+	f32 len   = sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+	vel       = (last - target) * dt;
+	f32 dot   = PSVECDotProduct(&dir, &vel);
 	f32 force = stiffness * (rest - len) + damping * (dot / len); // spring toward the rest distance
+	PSVECNormalize(&dir, &dir);
 	PSVECScale(&dir, &dir, force * dt);
 	AddCopy(eye, dir);
 	return eye;
