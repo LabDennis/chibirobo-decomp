@@ -131,9 +131,10 @@ extern "C" void UpdateTrash(u32 frames)
 		trashState = 99;
 		break;
 	case 10: {
-		trashResult = 3;
-		Vec impact  = *trashObj->GetPos();
-		f32 angle   = atan2(impact.x - trashTarget->GetPos()->x, impact.z - trashTarget->GetPos()->z);
+		trashResult     = 3;
+		Vec impact      = *trashObj->GetPos();
+		CVec* targetPos = trashTarget->GetPos();
+		f32 angle       = atan2(impact.x - targetPos->x, impact.z - targetPos->z);
 		impact.x += 2.0f * (f32)sin(angle);
 		impact.y = 0.0f;
 		impact.z += 2.0f * (f32)cos(angle);
@@ -190,7 +191,7 @@ extern "C" void DrawTrashStack(void)
 			mtx[2][3]        = z * trashStackScale + pos.z;
 			obj->mBaseMtxPtr = obj->mBaseMtx;
 			PSMTXCopy(mtx, obj->mBaseMtx);
-			obj->SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 0.0f, 0.0f, 15.0f);
+			trashObjs[i].SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 0.0f, 0.0f, 15.0f);
 			gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
 		}
 	}

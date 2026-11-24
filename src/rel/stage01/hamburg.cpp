@@ -116,8 +116,9 @@ static inline bool IsSamePos(const Vec& a, const Vec& b)
 
 static inline bool IsOnGasPlate(XObj* actor)
 {
-	Vec* pos = actor->GetPos();
-	if (pos->x < -289.0f || -239.0f < pos->x || pos->z < 21.4f || 62.6f < pos->z) {
+	f32 x = actor->GetPos()->x;
+	f32 z = actor->GetPos()->z;
+	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		return false;
 	}
 	return true;
@@ -125,9 +126,10 @@ static inline bool IsOnGasPlate(XObj* actor)
 
 static inline bool IsLeavingGasPlate(HamObj* slot)
 {
-	Vec* pos = slot->mActor->GetPos();
-	if ((62.6f < pos->z && 0.0f < (f32)cos(slot->mMoveAngle)) || (pos->z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
-	    || (-239.0f < pos->x && 0.0f < (f32)sin(slot->mMoveAngle)) || (pos->x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
+	f32 z = slot->mActor->GetPos()->z;
+	f32 x = slot->mActor->GetPos()->x;
+	if ((62.6f < z && 0.0f < (f32)cos(slot->mMoveAngle)) || (z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
+	    || (-239.0f < x && 0.0f < (f32)sin(slot->mMoveAngle)) || (x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
 		return true;
 	}
 	return false;
