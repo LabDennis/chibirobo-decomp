@@ -2,10 +2,10 @@
 // __sinit_\ctrigon_cpp). Unlike the GameCube file, whose functions sit in reverse, the Wii
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
-// NONMATCHING: the NW4R shape parser and grid builder are reconstructed; stack lifetimes
-// and assertion ordering still differ. Retail reaches the g3d accessors (ResShp, ResVtxPos,
-// ResTagDL, ResDic, ResUserData) through their _ac.h inlines with assertions, which the
-// nw4r headers here leave out. TrigonGetVtxS8 differs from retail in register choice.
+// NONMATCHING: the NW4R shape parser and grid builder are reconstructed; stack lifetimes,
+// accessor inlining and assertion counts still differ. The resource wrappers now carry their
+// _ac.h assertions, but not yet with retail's exact expansion at every call site.
+// TrigonGetVtxS8 differs from retail in register choice.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
 #include "nw4r/g3d/g3d_scnmdl.h"
@@ -329,9 +329,9 @@ extern "C" void fn_802BA678(CTrigon* trigon, nw4r::g3d::ScnMdl* model, nw4r::mat
 			info->mShapes[info->mNum]    = shape;
 			info->mMaterials[info->mNum] = material;
 			info->mNum++;
-			mdl.GetResNode(node);
-			mdl.GetResShp(shape);
-			mdl.GetResMat(material);
+			mdl.GetResNode(node).ref();
+			mdl.GetResShp(shape).ref();
+			mdl.GetResMat(material).ref();
 		}
 	}
 
