@@ -8,6 +8,7 @@ extern "C" BOOL IsLiftTargetPlug(XAction* action);
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 extern "C" void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
 
 struct HamDish;
 
@@ -977,6 +978,19 @@ extern "C" HamObj* FindHamObj(s32 id);
 extern "C" HamObj* RegisterHamObj(s32 id);
 extern "C" HamObj* FindFacingHamburg(void);
 extern "C" HamDish* RegisterHamDish(s32 id);
+extern "C" HamDish* FindHamDish(s32 id);
+extern "C" s32 CountHamDishObjs(HamDish* group);
+extern "C" HamObj* FindFreeHamObj(void);
+extern "C" HamObj* FindHamObjByActor(XObj* actor);
+extern "C" void HamObj_Respawn(HamObj* slot);
+extern "C" void HamObj_SetRot(HamObj* slot, f32 angle);
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle);
+extern "C" void HamObj_StartPutDown(HamObj* slot);
+extern "C" void AddTempActor(s32 id);
+extern "C" void ClearTempActors(void);
+extern "C" void SetYakiRates(u8* data);
+extern "C" void PlayYakiSound(void);
+extern "C" s32 CheckYakiResult(void);
 
 // NONMATCHING: ipa file inlines ResetYakiRates before the InitAnas call.
 extern "C" s32 InitStage(u32 arg)
@@ -1048,6 +1062,120 @@ extern "C" s32 CmdFlipHamburg(s32 cmd, s32 count, s32* args)
 		HamObj_StartFlip(slot, args[1]);
 	}
 	return 1;
+}
+
+// NONMATCHING: ipa file inlines the find and state helpers into most command wrappers.
+extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return 0;
+	}
+	f32 angle
+	    = atan2(slot->mActor->GetPos()->x - gGame.GetPlayer()->GetPos()->x, slot->mActor->GetPos()->z - gGame.GetPlayer()->GetPos()->z);
+	HamObj_StartSlide(slot, args[1], 0.2f, angle);
+	return 1;
+}
+
+extern "C" s32 CmdRespawnHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return 0;
+	}
+	HamObj_Respawn(slot);
+	return 1;
+}
+
+extern "C" s32 CmdGetFreeHamObjId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindFreeHamObj();
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdSetHamObjRot(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return -1;
+	}
+	HamObj_SetRot(slot, 0.017453292f * args[1]);
+	return 0;
+}
+
+extern "C" s32 CmdPutDownHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return -1;
+	}
+	ClearTempActors();
+	for (s32 i = 1; i < count; i++) {
+		AddTempActor(args[i]);
+	}
+	HamObj_StartPutDown(slot);
+	return 0;
+}
+
+extern "C" s32 CmdGetYakiTime(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		return slot->mYakiTime[args[1]];
+	}
+	return -1;
+}
+
+extern "C" s32 CmdGetHeldHamObjId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdExitHamburg(s32 cmd, s32 count, s32* args)
+{
+	ExitHamburg();
+	return 1;
+}
+
+extern "C" s32 CmdGetHamDishCount(s32 cmd, s32 count, s32* args)
+{
+	HamDish* group = FindHamDish(args[0]);
+	if (group != NULL) {
+		return CountHamDishObjs(group);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdSetYakiRates(s32 cmd, s32 count, s32* args)
+{
+	SetYakiRates((u8*)args[0]);
+	return 0;
+}
+
+extern "C" s32 CmdPlayYakiSound(s32 cmd, s32 count, s32* args)
+{
+	PlayYakiSound();
+	return 0;
+}
+
+extern "C" s32 CmdCheckYakiResult(s32 cmd, s32 count, s32* args)
+{
+	return CheckYakiResult();
+}
+
+extern "C" s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args)
+{
+	XObj* actor = gGame.mXObjs.mObjects[args[1]];
+	Vec pos     = *actor->GetPos();
+	PlayWiiSoundEffect(&gGame.mSound, args[0], GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	return 0;
 }
 #else
 #include "Version.h"
