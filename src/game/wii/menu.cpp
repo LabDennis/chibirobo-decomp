@@ -2954,12 +2954,12 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	u32 opacity  = (u32)(255.0f * alpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, panel, opacity, 5);
 	y += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale;
-	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
+	f32 size        = 17.0f * scale;
+	f32 labelOffset = 155.0f * scale + 20.0f * scale, rowOffset = 204.0f * scale;
 	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset);
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset);
 		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -2982,7 +2982,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	f32 numberX    = places * (scale * digitWidth) + (120.0f * scale + originX);
 	DrawPCGoldNumber(false, numberX, originY + height, alpha, scale, money);
 	if (choice != 2) {
-		f32 textX = PCRecycleChoiceX(originX, size, scale, margin, labelOffset);
+		f32 textX = PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset);
 		DrawPCRecycleLabel(0x4E, textX, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size, alpha);
 		DrawPCRecycleLabel(0x4F, textX, (originY + rowOffset) - 4.0f * scale, size, alpha);
 		DrawPCRecycleLabel(0x41, textX, rowOffset + (originY + size), size, alpha);
@@ -2991,7 +2991,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 		const char* text = GetLocalizedInterfaceText(0x48);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x48), TRUE, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text,
-		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset) - textWidth / 2.0f,
+		                             PCRecycleChoiceX(originX, size, scale, 20.0f * scale, labelOffset) - textWidth / 2.0f,
 		                             (originY + rowOffset) - 4.0f * scale, 0.0f, size, size);
 	}
 }
