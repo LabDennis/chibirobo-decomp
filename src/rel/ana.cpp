@@ -362,6 +362,66 @@ extern "C" void DrawAnas(void)
 		gGame.mGs.mScene.GetRoot()->PopBack();
 	}
 }
+
+extern XObj trashObjs[10];
+extern XObj* trashTarget;
+extern XObj* trashObj;
+extern s32 trashStackNum;
+extern f32 trashStackScale;
+extern s32 trashState;
+extern s32 trashResult;
+extern u8 trashActive;
+
+// NONMATCHING: argument conversion and target setup are scheduled differently; all stores and the gauge call match.
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
+{
+	trashTarget     = gGame.mXObjs.mObjects[args[0]];
+	trashStackNum   = args[1];
+	trashStackScale = args[2] / 100.0f;
+	if (trashTarget != NULL) {
+		trashResult = 0;
+		trashState  = 0;
+		trashActive = TRUE;
+		if (gGame.GetPlayer()->mLift.mTarget != NULL) {
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
+{
+	if (trashTarget != NULL) {
+		trashObj    = NULL;
+		trashActive = FALSE;
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+	}
+	return 0;
+}
+
+// NONMATCHING: inactive-test and loop-register selection differ; both release paths and the 0x9A8 array stride match.
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
+{
+	WiiPlayerState* robot = gGame.GetPlayer();
+	if (robot->mLift.mTarget != NULL) {
+		robot->mLift.mState = 6;
+	}
+	if (trashObj != NULL && (trashObj->mStatus.mFlags & 1)) {
+		trashObj->Release();
+		trashObj = NULL;
+	}
+	for (s32 i = 0; i < 10; i++) {
+		if (!(trashObjs[i].mStatus.mFlags & 1)) {
+			trashObjs[i].Release();
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
+{
+	return trashResult;
+}
 #else
 #include "Version.h"
 
