@@ -350,6 +350,11 @@ rel/fafa.cpp:
 rel/ana.cpp:
 	.text start:0x8016BA00 end:0x8016BA04
 
+rel/trash.cpp:
+	.text start:0x8016C39C end:0x8016D0CC
+	.ctors start:0x802C45D4 end:0x802C45D8
+	.bss start:0x804C2478 end:0x804C8530
+
 rel/stage01/hamburg.cpp:
 	.text start:0x8016D0CC end:0x80171498
 	.ctors start:0x802C45D8 end:0x802C45DC

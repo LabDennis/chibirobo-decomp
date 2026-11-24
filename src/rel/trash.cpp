@@ -1,3 +1,46 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+static XObj trashObjs[10];
+static XObj* trashTarget;
+static XObj* trashObj;
+static s32 trashboxIndex;
+static u8 trashActive;
+static u8 trashObjsInitialized;
+
+// NONMATCHING: object-table and loop registers differ; initialization, both box kinds and the scan match.
+extern "C" void InitTrash(void)
+{
+	trashTarget = NULL;
+	trashObj    = NULL;
+	if (!trashObjsInitialized) {
+		for (s32 i = 0; i < 10; i++) {
+			trashObjs[i].InitializeObject();
+		}
+		trashObjsInitialized = TRUE;
+	}
+	trashboxIndex = -1;
+	trashActive   = 0;
+	for (s32 i = 0; trashboxIndex < 0 && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* actor = gGame.mXObjs.mObjects[i];
+		if (actor->mStatus.mFlags & 1) {
+			if (actor->mCoord.mPlacement->mObjectId == 0x12D || actor->mCoord.mPlacement->mObjectId == 0x477) {
+				trashboxIndex = i;
+			}
+		}
+	}
+}
+
+// NONMATCHING: object/counter registers differ; all ten active checks and releases match.
+extern "C" void ExitTrash(void)
+{
+	for (s32 i = 0; i < 10; i++) {
+		if (trashObjs[i].mStatus.mFlags & 1) {
+			trashObjs[i].Release();
+		}
+	}
+}
+#else
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
@@ -1512,3 +1555,4 @@ extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 	}
 	return 0;
 }
+#endif
