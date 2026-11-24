@@ -26,14 +26,12 @@ extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 ang
 extern "C" void HamObj_StartPutDown(HamObj* slot);
 extern "C" void AddTempActor(s32 id);
 extern "C" void ClearTempActors(void);
-extern "C" void SetYakiRates(u8* data);
 extern "C" void fn_80170EE4(u8* data);
 extern "C" void PlayYakiSound(void);
 extern "C" s32 CheckYakiResult(void);
 extern "C" f64 atan2(f64 y, f64 x);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
 
-// NONMATCHING: ipa file inlines ResetYakiRates before the InitAnas call.
 extern "C" s32 InitStage(u32 arg)
 {
 	ResetYakiRates();
@@ -121,7 +119,6 @@ extern "C" s32 CmdInitHamburg(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-// NONMATCHING: ipa file inlines FindHamObj before reading the placement id.
 extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
@@ -139,7 +136,6 @@ extern "C" s32 CmdRegisterHamDishes(s32 cmd, s32 count, s32* args)
 	return 1;
 }
 
-// NONMATCHING: ipa file inlines RegisterHamObj at each loop call.
 extern "C" s32 CmdRegisterHamObjs(s32 cmd, s32 count, s32* args)
 {
 	for (s32 i = 0; i < count; i++) {
@@ -157,7 +153,6 @@ extern "C" s32 CmdGetFacingHamburgId(s32 cmd, s32 count, s32* args)
 	return -1;
 }
 
-// NONMATCHING: ipa file inlines HamObj_StartFlip when the slot exists.
 extern "C" s32 CmdFlipHamburg(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
@@ -167,7 +162,6 @@ extern "C" s32 CmdFlipHamburg(s32 cmd, s32 count, s32* args)
 	return 1;
 }
 
-// NONMATCHING: ipa file inlines the find and state helpers into most command wrappers.
 extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
