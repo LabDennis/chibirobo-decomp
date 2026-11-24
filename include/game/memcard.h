@@ -202,8 +202,6 @@ BOOL OpenOrCreateSaveFile(Memcard* card, char* name, BOOL create);
 BOOL ScanMemoryCardForSaveFiles(Memcard* card, s32 channel);
 BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel);
 BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 file);
-// "CHIBIROBO(%d...", a slot's file name
-extern const char gSaveFileNameFormat[];
 // a slot's file name while reading previews
 extern char gSaveReadFileName[0xC8];
 // CARDRead's DMA target, so the buffer itself is 32-byte aligned
