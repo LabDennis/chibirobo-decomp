@@ -18,6 +18,18 @@ public:
 	s32* mBirdSounds;
 	s32 mBirdSoundCount;
 
+	void Clear()
+	{
+		for (u32 i = 0; i < 10; i++) {
+			seqs[i].data = NULL;
+			seqs[i].pos  = 0;
+			seqs[i].wait = 0;
+		}
+		mPaused         = 0;
+		mBirdSounds     = NULL;
+		mBirdSoundCount = 0;
+	}
+
 	void Update(s32 dt);
 };
 
@@ -95,6 +107,52 @@ void AmbientPlayer::Update(s32 dt)
 			mBirdTimer = rand() % 600 + 600;
 		}
 	}
+}
+
+static AmbientPlayer ambient;
+
+extern "C" void InitAnas(void);
+extern "C" void DrawAnas(void);
+extern "C" void UpdateAnas(s32 dt);
+extern "C" void ExitAnas(void);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind);
+
+// NONMATCHING: retail keeps the ambient base in r4 and the clear cursor in r3; the stores and InitAnas call otherwise match.
+extern "C" s32 Stage09_Init(s32 dt)
+{
+	AmbientPlayer* player = &ambient;
+	player->Clear();
+	InitAnas();
+	return 1;
+}
+
+extern "C" s32 Stage09_Update(s32 dt)
+{
+	Vec pos;
+
+	IsWiiSfxPlaying(&gGame.mSound, 0x554);
+	IsWiiSfxPlaying(&gGame.mSound, 0x555);
+	pos.x = 458.0f;
+	pos.y = 0.0f;
+	pos.z = -555.5f;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x400)) {
+		SetWiiSfxVolume(&gGame.mSound, 0x400, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 4), 0.0f);
+	}
+	ambient.Update(dt);
+	UpdateAnas(dt);
+	return 1;
+}
+
+extern "C" s32 Stage09_Draw(s32 dt)
+{
+	DrawAnas();
+	return 1;
+}
+
+extern "C" s32 Stage09_Exit(s32 dt)
+{
+	ExitAnas();
+	return 1;
 }
 #else
 #include "Version.h"

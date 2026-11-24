@@ -373,8 +373,9 @@ rel/stage08/stage08.cpp:
 	.text start:0x8017A16C end:0x8017A174
 
 rel/stage09/ambient.cpp:
-	.text start:0x8017A174 end:0x8017A488
-	.sdata2 start:0x805A6390 end:0x805A63A8
+	.text start:0x8017A174 end:0x8017A63C
+	.bss start:0x804CB370 end:0x804CB3F8
+	.sdata2 start:0x805A6390 end:0x805A63B0
 
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
