@@ -72,6 +72,86 @@ inline void DropObj(XObj* obj)
 	obj->mReleaseCountdown = 2;
 }
 
+Ana* GetNearestAna(f32 x, f32 y, f32 z);
+
+extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
+{
+	CVec pos(x, y, z);
+
+	if (id >= 0 && id < 20) {
+		Ana* ana = &anas[id];
+		if (!(ana->mStatus.mFlags & 1)) {
+			activeAnaNum++;
+		}
+		ana->Set(x, y, z);
+		ana->mId = id;
+		return id;
+	}
+
+	for (u32 i = 0; i < 20; i++) {
+		if ((anas[i].mStatus.mFlags & 1) && PSVECDistance(&pos, &anas[i].mPos) < 5.0f) {
+			return -1;
+		}
+	}
+	for (u32 i = 0; i < 20; i++) {
+		if (!(anas[i].mStatus.mFlags & 1)) {
+			activeAnaNum++;
+			anas[i].Set(x, y, z);
+			anas[i].mId = i;
+			return i;
+		}
+	}
+	return -1;
+}
+
+s32 CmdAddAna(s32 cmd, s32 count, s32* args)
+{
+	if (count >= 4) {
+		return AddAna(args[3], args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
+	}
+	return AddAna(-1, args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
+}
+
+// NONMATCHING: ipa file inlines both GetNearestAna calls; the helper itself and the three GetPos calls match.
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
+{
+	Ana* best = NULL;
+
+	if (count == 3) {
+		f32 x = args[0] / 100.0f;
+		f32 y = args[1] / 100.0f;
+		f32 z = args[2] / 100.0f;
+		best  = GetNearestAna(x, y, z);
+	} else {
+		XObj* contact = gGame.mXObjs.mObjects[gGame.GetPlayer()->mFloorContactObjects[2]];
+		if (contact != NULL) {
+			best = GetNearestAna(contact->GetPos()->x, contact->GetPos()->y, contact->GetPos()->z);
+			if (best != NULL) {
+				return best->mId;
+			}
+		}
+	}
+	if (best != NULL) {
+		return best->mId;
+	}
+	return -1;
+}
+
+Ana* GetNearestAna(f32 x, f32 y, f32 z)
+{
+	Ana* nearest = NULL;
+	CVec pos(x, y, z);
+	for (u32 i = 0; i < 20; i++) {
+		if (anas[i].mStatus.mFlags & 1) {
+			f32 dist = PSVECDistance(&pos, &anas[i].mPos);
+			if (nearest == NULL || dist < PSVECDistance(&pos, &nearest->mPos)) {
+				nearest = &anas[i];
+			}
+		}
+	}
+	return nearest;
+}
+
 s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana = GetAna(args[0]);
