@@ -8118,6 +8118,7 @@ void MenuStatus::State2(u32)
 		mPanes[49].mEnabled = FALSE;
 		mPanes[50].mEnabled = FALSE;
 		if (count > 4) {
+			CountMenuItems();
 			mPanes[49].mEnabled = sStatusItemTable.mPage > 0;
 			mPanes[50].mEnabled = sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1;
 		}
