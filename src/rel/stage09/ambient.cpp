@@ -1,3 +1,66 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+class AmbientSeq {
+public:
+	s32* data;
+	s32 pos;
+	s32 wait;
+};
+
+// NONMATCHING: the sound/zero registers and local literal names differ; every command, call and wait calculation matches.
+extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
+{
+	XSound* sound;
+	bool cont;
+
+	if (seq->wait > 0) {
+		seq->wait -= dt;
+		if (seq->wait > 0) {
+			return;
+		}
+	}
+	cont  = true;
+	sound = &gGame.mSound;
+	while (cont) {
+		s32* cmd = &seq->data[seq->pos];
+		switch (cmd[0]) {
+		case 0:
+			seq->pos  = 0;
+			seq->wait = 0;
+			break;
+		case 1:
+			PlayWiiSoundEffect(sound, cmd[1], 1.0f, 0.0f);
+			seq->pos += 2;
+			break;
+		case 2:
+			if (IsWiiSfxPlaying(sound, cmd[1]) != 0) {
+				cont = false;
+			} else {
+				seq->pos += 2;
+			}
+			break;
+		case 3:
+			cont      = false;
+			seq->wait = (60.0f * cmd[1]) / 100.0f;
+			seq->pos += 2;
+			break;
+		case 4:
+			StopWiiSfx(sound, cmd[1], 0.0f);
+			seq->pos += 2;
+			break;
+		case 5: {
+			s32 range = cmd[2] - cmd[1];
+			s32 time  = seq->data[seq->pos + 1] + rand() % range;
+			cont      = false;
+			seq->wait = (60.0f * time) / 100.0f;
+			seq->pos += 3;
+			break;
+		}
+		}
+	}
+}
+#else
 #include "Version.h"
 #include "game/hsd_jobj.h"
 
@@ -1027,3 +1090,4 @@ extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
  * @note Size: 0xC
  */
 // fn_11_BDC
+#endif
