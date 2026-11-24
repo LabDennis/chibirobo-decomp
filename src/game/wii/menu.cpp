@@ -5502,30 +5502,30 @@ extern "C" void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32
 		return;
 	}
 	CTexObj frameTexture;
-	u32 whiteColor = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+	u32 whiteColor = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	CColor white;
 	white.Set((s32)(whiteColor >> 24), (s32)((whiteColor >> 16) & 0xFF), (s32)((whiteColor >> 8) & 0xFF), (s32)(whiteColor & 0xFF));
 	CColor fill;
 	if (newest == 1) {
-		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x2B4C5000;
+		u32 fillColor = (u32)(160.0f * alpha) | 0x2B4C5000;
 		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
 	} else {
-		u32 fillColor = (u32)(160.0f * fileAlpha) | 0x28282800;
+		u32 fillColor = (u32)(160.0f * alpha) | 0x28282800;
 		fill.Set((s32)(fillColor >> 24), (s32)((fillColor >> 16) & 0xFF), (s32)((fillColor >> 8) & 0xFF), (s32)(fillColor & 0xFF));
 	}
 	u32 border;
 	if (selected == 1) {
 		if (newest == 1) {
-			border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+			border = (u32)(255.0f * alpha) | 0x80C8F500;
 		} else {
-			border = (u32)(255.0f * fileAlpha) | 0xFFB62800;
+			border = (u32)(255.0f * alpha) | 0xFFB62800;
 		}
 	} else if (newest == 1) {
-		border = (u32)(255.0f * fileAlpha) | 0x80C8F500;
+		border = (u32)(255.0f * alpha) | 0x80C8F500;
 	} else {
-		border = (u32)(255.0f * fileAlpha) | 0xFFFFFF00;
+		border = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	}
-	CColor color(fn_8016A96C(&fill.r, &white.r, alpha));
+	CColor color(fn_8016A96C(&fill.r, &white.r, fileAlpha));
 	DrawTexturedWindowFrame(*(u32*)&color.r, border, x, y - height / 2.0f, width - 56.0f, height, alpha, 1.0f, 1.0f);
 }
 
