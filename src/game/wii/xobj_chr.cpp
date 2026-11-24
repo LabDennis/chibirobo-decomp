@@ -6885,6 +6885,11 @@ void XObjChr::DrawObjectEffects()
 	DrawSpiralTrail(&lbl_8045BBD0, GetPos());
 }
 
+static inline void DrawPlayerLiftCylinder(u32 color, const Vec& pos, const Vec& rotation, const Vec& size)
+{
+	DrawGsCylinder(&gGame.mGs, color, 16, pos.x, pos.y, pos.z, rotation.x, rotation.y, rotation.z, size.x, size.y, size.z);
+}
+
 // NONMATCHING: the floor, lift and player collision draws are present; matrix
 // temporary order and the remaining render-state schedule differ
 void XObjChr::DrawCollisionShapes()
@@ -6893,13 +6898,11 @@ void XObjChr::DrawCollisionShapes()
 	SetGsChannelEnabled(&gGame.mGs, 0, FALSE);
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
 	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)7, FALSE);
-	PrimVertex triangle[3];
-	triangle[0].pos   = chr->mFloorTriangle[0];
-	triangle[0].color = 0xFF000080;
-	triangle[1].pos   = chr->mFloorTriangle[1];
-	triangle[1].color = 0x00FF0080;
-	triangle[2].pos   = chr->mFloorTriangle[2];
-	triangle[2].color = 0x0000FF80;
+	PrimVertex triangle[3] = {
+		{ chr->mFloorTriangle[0], 0xFF000080 },
+		{ chr->mFloorTriangle[1], 0x00FF0080 },
+		{ chr->mFloorTriangle[2], 0x0000FF80 },
+	};
 	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, triangle, 3);
 	SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
@@ -6907,25 +6910,25 @@ void XObjChr::DrawCollisionShapes()
 	if (chr->mLift.mState != 0) {
 		if (IsCarryingToothbrush(&chr->mLift)) {
 			CVec pos = chr->mLift.mTarget->GetJointPos("null");
-			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 3.0f, 3.0f, 1.0f);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 3.0f, 3.0f, 1.0f });
 		}
 		if (IsCarryingSpoon(&chr->mLift)) {
 			f32 yaw = chr->mMoveRotate.y;
 			Vec pos = *GetPos();
 			pos.x += 3.0f * sin(yaw);
 			pos.z += 3.0f * cos(yaw);
-			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 1.0f, 1.0f, 1.0f });
 		}
 		if (IsCarryingSquirter(&chr->mLift)) {
 			f32 yaw = chr->mMoveRotate.y;
 			Vec pos = *GetPos();
 			pos.x += 2.0f * sin(yaw);
 			pos.z += 2.0f * cos(yaw);
-			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 1.0f);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 2.0f, 2.0f, 1.0f });
 			pos.x += 2.0f * sin(yaw);
 			pos.z += 2.0f * cos(yaw);
 			pos.y += 7.0f;
-			DrawGsCylinder(&gGame.mGs, 0x00FFFF80, 16, pos.x, pos.y, pos.z, HALF_PI, 0.0f, 0.0f, 2.0f, 2.0f, 3.0f);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 2.0f, 2.0f, 3.0f });
 			if (IsCarryingSquirter(&chr->mLift)) {
 				s32 anim = chr->GetAnimId();
 				if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
@@ -6936,8 +6939,8 @@ void XObjChr::DrawCollisionShapes()
 					CVec delta               = tip - origin;
 					if (PSVECMag(&delta) > 0.1f) {
 						CVec scale = object->GetJointScale(atari);
-						DrawGsCylinder(&gGame.mGs, chr->mItemTintWord, 16, origin.x, origin.y, origin.z, HALF_PI, 0.0f, 0.0f, scale.x,
-						               scale.z, 0.5f * scale.y);
+						DrawPlayerLiftCylinder(chr->mItemTintWord, origin, (Vec) { HALF_PI, 0.0f, 0.0f },
+						                       (Vec) { scale.x, scale.z, 0.5f * scale.y });
 					}
 				}
 			}

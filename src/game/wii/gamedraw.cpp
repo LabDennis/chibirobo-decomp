@@ -146,7 +146,7 @@ static inline MtxP GetEffectView(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	bool scene         = false;
-	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1 && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 		scene = true;
 	}
 	if (scene) {
@@ -1016,7 +1016,7 @@ bool CObj::IsAnmScnEnd()
 extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
-	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1) {
 		BOOL hasScene = FALSE;
 		if (camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 			hasScene = TRUE;
@@ -1038,7 +1038,7 @@ extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 extern "C" void StopSceneCameraAnm(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
-	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
 			camera->ReleaseModelWork();
@@ -1058,7 +1058,7 @@ extern "C" void StopSceneCameraAnm(CGame* game)
 extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
-	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		BOOL hasAnimation        = FALSE;
 		BOOL hasEntries          = FALSE;

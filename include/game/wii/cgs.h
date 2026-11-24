@@ -721,7 +721,7 @@ public:
 	void* _2888; // _2888, set when the stage's scene brings its own lights and fog
 };
 
-// nine of these sit in the CGs at _1FE4; LIGHT @COLOR fills the color half, LIGHT @POS the position
+// nine of these sit in the scene at _440 (the CGs's _1FE4); LIGHT @COLOR fills the color half, LIGHT @POS the position
 // half, the stage setup clears the three flag bytes (_00, _08, _18)
 struct WiiGsSlot {
 	u8 mColorSet;   // _00
@@ -798,6 +798,7 @@ struct WiiGsScene {
 	WiiGsSceneObj* mHead; // _00, the list the scene pass drains
 	BOOL _04;             // _04, Update queues the map's model on the list while it is set
 	CLight mLights[10];   // _08
+	WiiGsSlot mSlots[9];  // _440, fn_802AEBF0 and FinalizeStageObjectSetup clear each one's three flags
 };
 
 class CGs {
@@ -840,11 +841,10 @@ public:
 
 	virtual ~CGs() { } // _08
 
-	Vec mTextRot;       // _1B94, the text rotation, cleared by the light setup
-	u32 mTextFont;      // _1BA0, the font argument handed to the glyph lookups
-	WiiGsScene mScene;  // _1BA4
-	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
-	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
+	Vec mTextRot;      // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont;     // _1BA0, the font argument handed to the glyph lookups
+	WiiGsScene mScene; // _1BA4
+	CFont mFont;       // _214C, the game font; CBase::BeforeUpdate loads its resource
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }

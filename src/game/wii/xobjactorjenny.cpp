@@ -4,6 +4,20 @@
 #include <math.h>
 #include <stdlib.h>
 
+extern "C" {
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+void ResetActorLook(XObjActor* actor, f32 rate);
+void SetActorLookAtPosition(XObjActor* actor, const Vec* target, f32 rate);
+void SetActorLookTarget(XObjActor* actor, const Vec* target, f32 rate);
+void SetActorLookAngle(XObjActor* actor, f32 value, f32 rate);
+extern s32 gRefreshRate;
+}
+
+static inline XObj* FindObj(s16 id)
+{
+	return gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
+}
+
 static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 {
 	if (jenny->mStatus.mFlags & 0x10000) {
@@ -23,6 +37,17 @@ static inline void ReleasePlayerAt(WiiPlayerState* player, const Vec& position)
 {
 	player->SetPos(position);
 	player->RestoreControl();
+}
+
+BOOL XObjActorJenny::LoadFromPlacement(const CoordInfo& info)
+{
+	if (XObjActor::LoadFromPlacement(info)) {
+		if (mObject.m_pScnMdl != NULL) {
+			mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+		}
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void XObjActorJenny::ResetActorState()
@@ -213,6 +238,21 @@ void XObjActorJenny::ProcessPendingEvents(u32 frames)
 	}
 }
 
+void XObjActorJenny::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
+	if (GetAnimId() == 0x47) {
+		if (mSfxActors[0].GetHandle() == NULL) {
+			CSound3DActor* actor = mSfxActors[0].mActor;
+			if (actor != NULL && actor->StartSound(&actor->mHandle, 0x208)) {
+				actor->mHandle.SetVolume(1.0f, 0);
+			}
+		}
+	} else if (mSfxActors[0].GetHandle() != NULL && mSfxActors[0].mActor != NULL) {
+		mSfxActors[0].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+	}
+}
+
 void XObjActorJenny::UpdateAnim(f32 speed)
 {
 	XObjActor::UpdateAnim(speed);
@@ -336,6 +376,97 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 
 void XObjActorJenny::StateNone(u32 frames)
 {
+}
+
+s32 XObjActorJenny::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1:
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, DEG2RAD * 5.0f);
+			break;
+		case 1:
+			SetActorLookAtPosition(this, gGame.GetPlayer()->GetPos(), DEG2RAD * 5.0f);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, FindObj(command[2])->GetPos(), DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		for (s32 i = 0; i < 8; i++) {
+			mCmd[i + 2] = command[i + 2];
+		}
+		if (mCmd[1] == 0xD0) {
+			mCmd[19] = (s32)FindObj(mCmd[2]);
+			((XObj*)mCmd[19])->GetPos();
+		}
+		break;
+	}
+	return 0;
+}
+
+f32 XObjActorJenny::GetMaxHeadPitch()
+{
+	switch (GetAnimId()) {
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return 0.0f;
+	default:
+		return DEG2RAD * 10.0f;
+	}
+}
+
+f32 XObjActorJenny::GetMinHeadPitch()
+{
+	switch (GetAnimId()) {
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return 0.0f;
+	default:
+		return -(DEG2RAD * 20.0f);
+	}
+}
+
+void XObjActorJenny::ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
+{
+	if (timing == 4) {
+		nw4r::g3d::ResNode node = GetResNode("kaeru_mask");
+		nw4r::g3d::ScnMdl::CopiedVisAccess access(mObject.m_pScnMdl, node.GetID());
+		if (access.IsValid()) {
+			access.SetVisibilityEx(!mJointHidden);
+		} else {
+			node.SetVisibility(!mJointHidden);
+		}
+	}
+}
+
+CVec XObjActorJenny::GetHeadWorldPosition()
+{
+	return GetJointWorldPos("head");
+}
+
+nw4r::g3d::ResNode XObjActorJenny::GetHeadJoint()
+{
+	return FindResNode("head");
 }
 
 void XObjActorJenny::RunStateHandler(u32 frames)
