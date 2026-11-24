@@ -395,8 +395,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		u16 h     = GXGetTexObjHeight(tex);
 		u32 color = FadeColor(work->mFade);
 		f32 cx    = gPointerScreenWidth / 2;
-		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + 0.0f, 200.0f + 0.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f,
-		                   0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
 
 		f32 w1                       = 0.9f * (GXGetTexObjWidth(&work->mTexs[1]) / 10);
 		f32 h1                       = 0.9f * GXGetTexObjHeight(&work->mTexs[1]);
