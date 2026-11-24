@@ -887,6 +887,87 @@ extern "C" s32 CheckYakiResult(void)
 	}
 	return result;
 }
+
+// NONMATCHING: switch/block layout and local registers differ; both states, all calls and every constant match.
+void HamObj::StatePutDown()
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+
+	switch (mStateTime) {
+	case 0: {
+		if (player->mLift.mState != 6 || player->GetAnimId() != 9) {
+			break;
+		}
+		if (player->GetAnimFrame() < 15.0f) {
+			break;
+		}
+
+		if (IsHeld(mActor)) {
+			player->mLift.mTarget = NULL;
+		}
+		mActor->mStatus.mFlags &= ~0x400000000000000ULL;
+		mMoveAngle = player->mMoveRotate.y;
+		mMoveSpeed = 2.0f;
+		Vec pos    = *mActor->GetPos();
+		pos.x += 5.0f * (f32)sin(mMoveAngle);
+		pos.z += 5.0f * (f32)cos(mMoveAngle);
+
+		if (mDish != NULL) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x296, 1.0f, 0.0f);
+			pos         = *mDish->mActor->GetPos();
+			mStackLevel = CountHamDishObjs(mDish);
+			pos.y       = GetStackHeight();
+			mActor->SetMoveDir(&pos, mMoveSpeed);
+			SetState(NULL);
+			if (mYakiEffect != NULL) {
+				RetireEffect(&mYakiEffect->handle, FALSE);
+			}
+			mYakiEffect = NULL;
+			UpdateHamPickupFlags();
+			break;
+		}
+
+		if (mType == 1) {
+			PlayYakiSound();
+		}
+
+		for (s32 level = 4; level >= 0; level--) {
+			HamObj* base = FindStackBase(pos, mId, level, 5.0f);
+			if (base != NULL) {
+				pos.y        = base->mActor->GetPos()->y;
+				base->mAbove = this;
+				mStackLevel  = base->mStackLevel + 1;
+				pos.y        = GetStackHeight();
+				mActor->SetMoveDir(&pos, mMoveSpeed);
+				SetState(&HamObj::StateSlide);
+				UpdateHamPickupFlags();
+				return;
+			}
+		}
+
+		UpdateHamPickupFlags();
+		mStackLevel = 0;
+		pos.y       = GetStackHeight();
+		mActor->SetMoveDir(&pos, mMoveSpeed);
+		mStateTime++;
+		break;
+	}
+	case 1:
+		if (PSVECDistance(mActor->GetPos(), &mActor->mMoveTarget0) <= 0.001f) {
+			UpdateHamPickupFlags();
+			if (IsOnGasPlate(mActor)) {
+				Vec pos = *mActor->GetPos();
+				pos.y   = GetStackPlacementPosition(mActor->mCoord).y;
+				mActor->SetMoveDir(&pos, 10.0f);
+				StartSlide(5.0f, 0.2f, mMoveAngle);
+			} else {
+				mStackLevel = 1;
+				SetState(NULL);
+			}
+		}
+		break;
+	}
+}
 #else
 #include "Version.h"
 #include "game/hsd_jobj.h"
