@@ -5213,29 +5213,31 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f3
 	gs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
 }
 
-// NONMATCHING: the call list matches retail; this build is 120 bytes larger and the stack and vertex layout differ
+// NONMATCHING: the call list matches retail; this build is 180 bytes larger and the stack and vertex layout differ
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
-	f32 top    = 10.0f;
-	f32 height = 88.0f;
+	f32 top    = 0.0f;
+	f32 height = 98.0f;
 	sBannerScrollX -= 0.008f;
 	sBannerScrollY -= 0.008f;
-	DrawMenuBannerStrip(tex, x, y + top, 660.0f, height, alpha);
+	f32 width = (gGame.mAspectRatio == 0 ? 640 : 854) + 20.0f;
+	f32 left  = x - (width - 640.0f) * 0.5f;
+	DrawMenuBannerStrip(tex, left, y + top, width, height, alpha);
 	if (title) {
 		char text[256];
 		sprintf(text, "%s", title);
-		u32 count   = strlen(text) / 2;
-		f32 left    = (320.0f + x) - ((count - 1) * 30) / 2;
-		f32 textTop = 4.0f + (8.0f + (22.0f + y));
-		DrawDoubleByteMenuText(text, 8.0f + left, 8.0f + (15.0f + textTop), -10.0f, 30.0f, 30.0f, alpha);
+		u32 count    = strlen(text) / 2;
+		f32 textLeft = (left + gPointerScreenWidth / 2) - ((count - 1) * 30) / 2;
+		f32 textTop  = 4.0f + (8.0f + (22.0f + y));
+		DrawDoubleByteMenuText(text, 8.0f + textLeft, 8.0f + (15.0f + textTop), -10.0f, 30.0f, 30.0f, alpha);
 	}
 	f32 bottomY = (356.0f - y) - 6.0f + slide;
 	height -= slide;
 	if (height < 8.0f) {
 		height = 8.0f;
 	}
-	DrawMenuBannerStrip(tex, x, bottomY, 660.0f, height, alpha);
+	DrawMenuBannerStrip(tex, left, bottomY, width, height, alpha);
 }
 
 // NONMATCHING: the complete 22-call list matches; this build is 8 bytes smaller and the vertex stores are scheduled differently
