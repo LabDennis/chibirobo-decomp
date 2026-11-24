@@ -211,7 +211,11 @@ extern "C" s32 CmdShowFighterCenterPanel(s32 cmd, s32 count, s32* args)
 
 extern "C" s32 CmdSetJunkUnkoFlag(s32 cmd, s32 count, s32* args)
 {
-	SetJunkUnkoFlag(args[0] != 0);
+	if (args[0] != 0) {
+		SetJunkUnkoFlag(1);
+	} else {
+		SetJunkUnkoFlag(0);
+	}
 	return 0;
 }
 
@@ -294,8 +298,10 @@ extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
 		StartCars();
 		return 0;
 	}
-	if (args[0] == 1) {
+	switch (args[0]) {
+	case 1:
 		StartCarCamera();
+		break;
 	}
 	return 0;
 }
