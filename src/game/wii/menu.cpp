@@ -1508,7 +1508,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
 			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
 			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
 			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
@@ -1544,7 +1544,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			f32 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
 			                   0.0f, 0.0f, 0.0f);
@@ -1569,7 +1569,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				GXGetTexObjWidth(&tex);
 				GXGetTexObjHeight(&tex);
 				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-				u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
+				f32 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 				                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * iw,
 				                   scale * ih, 0.0f, 0.0f, 0.0f);
@@ -1579,7 +1579,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
 			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
 			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
 			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
@@ -1615,7 +1615,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			f32 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
 			                   0.0f, 0.0f, 0.0f);
@@ -1640,7 +1640,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 				GXGetTexObjWidth(&tex);
 				GXGetTexObjHeight(&tex);
 				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-				u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
+				f32 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
 				                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, xx, yy, 0.0f, scale * iw,
 				                   scale * ih, 0.0f, 0.0f, 0.0f);
@@ -1650,7 +1650,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+			f32 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
 			f32 digitWidth  = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
 			int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
 			f32 digitHeight = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
@@ -1686,7 +1686,7 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[235], 0);
 			tex = gGame.mTpl.mTex;
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+			f32 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, 0.0f, scale * tw, scale * th,
 			                   0.0f, 0.0f, 0.0f);
