@@ -30,7 +30,7 @@ void fn_8016AA74(const f32* params);
 // clamps a value into [min, max], in cmotioncontrolcamera.cpp
 f32 fn_8016A81C(f32 value, f32 min, f32 max);
 // clamps the screen point into the per-axis limits, in cmotioncontrolcamera.cpp
-void fn_8016AA78(f32* out, f32* in, f32* limits);
+Vec fn_8016AA78(Vec in, f32* limits);
 }
 
 // the first person eye of the player object, xobj_chr.cpp
@@ -192,10 +192,9 @@ void CCameraActionEye::Update(u32 step)
 				// the pointer picks the aim point
 				CVec aim(0.0f, 0.0f, 0.0f);
 				if (gWiiPointer.mPointerValid) {
-					Vec in = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
-						       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, gWiiPointer.mPointer.z };
-					Vec out;
-					fn_8016AA78((f32*)&out, (f32*)&in, (f32*)sEyePointerLimits);
+					Vec in     = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
+						           2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, gWiiPointer.mPointer.z };
+					Vec out    = fn_8016AA78(in, (f32*)sEyePointerLimits);
 					Vec scaled = out;
 					aim.Set(scaled);
 					mB0              = 0.0f;
@@ -374,9 +373,7 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 			f32 d = pointerY - bandHigh;
 			mVec10C.y += d;
 			sPrev += -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2]));
-		} else if ((winLow > bandLow || winHigh < bandHigh) && gWiiPointer.mPointerValid) {
-			// the pointer holds the aim while it stays inside the window
-		} else {
+		} else if (!((winLow > bandLow || winHigh < bandHigh) && gWiiPointer.mPointerValid)) {
 			mVec10C.y = pointerY;
 			sPrev     = 0.0f;
 			f32 lo    = 0.5f * mRange + winLow;
