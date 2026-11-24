@@ -230,8 +230,8 @@ extern "C" void fn_80050314(Menu* menu, s32 index, BOOL useRowWidth, BOOL propor
 		f32 y         = menu->mWindow.mY - rowHeight * rows->mRowTotal / 2.0f + rowHeight * (index + 0.5f);
 		u32 alpha     = (u32)(255.0f * menu->mAlpha);
 		DrawGsLineSegment(&gGame.mGs, NULL, x, y, 0.0f, alpha | 0x96969600, 30.0f + menu->mMaxWidth + x, y, 0.0f, alpha | 0x96969600);
-		DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + x, 1.0f + y, 0.0f, alpha | 0xFAFAFA00, 1.0f + (30.0f + menu->mMaxWidth + x), 1.0f + y,
-		                  0.0f, alpha | 0xFAFAFA00);
+		DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + x, 1.0f + y, 0.0f, (u32)(255.0f * menu->mAlpha) | 0xFAFAFA00,
+		                  1.0f + (30.0f + menu->mMaxWidth + x), 1.0f + y, 0.0f, (u32)(255.0f * menu->mAlpha) | 0xFAFAFA00);
 		return;
 	}
 	f32 width = useRowWidth ? row->mWidth : menu->mMaxWidth;
