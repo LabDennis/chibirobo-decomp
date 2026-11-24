@@ -347,6 +347,9 @@ rel/module.c:
 rel/fafa.cpp:
 	.text start:0x8016AF80 end:0x8016B078
 
+rel/ana.cpp:
+	.text start:0x8016BA00 end:0x8016BA04
+
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 

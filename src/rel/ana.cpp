@@ -1,3 +1,10 @@
+#if defined(VERSION_R24J01)
+#include "types.h"
+
+extern "C" void UpdateAnas(s32 dt)
+{
+}
+#else
 #include "Version.h"
 
 // the holes the player digs and plants. linked into five stages
@@ -840,3 +847,4 @@ s32 CmdAddAna(s32 cmd, s32 count, s32* args)
  * @note Size: 0x24
  */
 // Ana::Ana
+#endif
