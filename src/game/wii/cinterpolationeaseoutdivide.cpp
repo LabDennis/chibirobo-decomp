@@ -23,6 +23,7 @@ inline void operator delete(void* ptr) throw()
 // NONMATCHING: the static initializer (0x800332D8, 0x394) is the compiler's. It constructs gGame
 // ahead of these two and sets gCmdLineArgs' crosshair (retail _54 and _58) to the middle of the
 // pointer's screen. gGame's member-constructor emissions follow at 0x8003366C in this same unit.
+CGame gGame;
 CPadAct gWiiPointer;
 extern "C" {
 CThread gMovieUpdateThread;
@@ -63,5 +64,3 @@ BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param
 	}
 	return FALSE;
 }
-
-CGame gGame;
