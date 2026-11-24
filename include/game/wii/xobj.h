@@ -2425,7 +2425,15 @@ class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
 	virtual ~XObjActorJenny();
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
 	virtual void UpdateAnim(f32 speed);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
 	void RunStateHandler(u32 frames);
 	void ClearStateHandler();
 	void ResetActorState();
