@@ -3,6 +3,8 @@
 #include "game/ccameraaction.h"
 
 extern u8* carParams;
+extern u8 carsStarted;
+extern u32 carCameraTrailIndex;
 
 inline s32 ReadS32LE(u8* p)
 {
@@ -109,6 +111,19 @@ STATIC_ASSERT(sizeof(PlayerCarRoot) == 0x84);
 
 extern CCameraActionCar carCamera;
 extern PlayerCarRoot playerCar;
+extern CarRoot racerCar;
+
+void Init(void)
+{
+	playerCar.mPath       = NULL;
+	playerCar.mCar        = NULL;
+	playerCar.mBrakeFrame = 0.0f;
+	racerCar.mPath        = NULL;
+	racerCar.mCar         = NULL;
+	carsStarted           = 0;
+	carCameraTrailIndex   = 0;
+	carParams             = NULL;
+}
 
 } // namespace Car
 
@@ -126,6 +141,51 @@ extern "C" void StartCarCamera(void)
 	v.z = 60.0f;
 	Car::carCamera.SetOffset(v);
 	Car::carCamera.mCarMtx = Car::playerCar.mCarMtx;
+}
+
+extern "C" void StartCars(void)
+{
+	Car::playerCar.mStarted = TRUE;
+	carsStarted             = TRUE;
+	PlayWiiSoundEffect(&gGame.mSound, 0x2BC, 1.0f, 0.0f);
+	Car::racerCar.mStarted = TRUE;
+}
+
+extern "C" s32 GetPlayerCarResult(void)
+{
+	CPad pad(0);
+	if (Car::playerCar.mBraking && Car::playerCar.mSpeed <= 0.0f) {
+		return 1;
+	}
+	if (Car::playerCar.mPath->GetAnimEndFrame() <= Car::playerCar.mFrame) {
+		return 2;
+	}
+	return 0;
+}
+
+extern "C" s32 GetPlayerCarFrame(void)
+{
+	return 100.0f * Car::playerCar.mFrame;
+}
+
+extern "C" void Terminate(void)
+{
+	Car::playerCar.mCar->ClearBaseMtx();
+	if (Car::playerCar.mAttached != NULL) {
+		Car::playerCar.mAttached->ClearBaseMtx();
+	}
+	Car::playerCar.mStarted = FALSE;
+	Car::playerCar.mBraking = FALSE;
+	Car::racerCar.mCar->ClearBaseMtx();
+	if (Car::racerCar.mAttached != NULL) {
+		Car::racerCar.mAttached->ClearBaseMtx();
+	}
+	Car::racerCar.mStarted = FALSE;
+	Car::racerCar.mBraking = FALSE;
+	gGame.GetPlayer()->RestoreControl();
+	gGame.GetPlayer()->ClearBaseMtx();
+	gGame.mMotionControlCamera.ChangeAction(gGame.mMotionControlCamera.mPrevAction);
+	Car::Init();
 }
 
 #else
