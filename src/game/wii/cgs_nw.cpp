@@ -26,7 +26,7 @@ extern "C" void fn_802AEBF0(WiiGsScene* scene, u32 renderStates, u32 tevStages, 
 	nw4r::g3d::ScnRoot* m_pRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, renderStates, tevStages, channels, texGens);
 	scene->mHead                = (WiiGsSceneObj*)m_pRoot;
 	NW4R_ASSERT_VALID_ROOT(m_pRoot);
-	scene->_04 = FALSE;
+	scene->_04 = NULL;
 	for (int i = 0; i < 9; i++) {
 		scene->mSlots[i]._18       = FALSE;
 		scene->mSlots[i].mPosSet   = FALSE;
@@ -114,4 +114,133 @@ extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
 	nwCamera.GXSetProjection();
 	nwCamera.GXSetScissor();
 	nwCamera.GXSetScissorBoxOffset();
+}
+
+extern "C" nw4r::g3d::LightSet fn_802AF8B0(WiiGsScene* scene, int index);
+
+// NONMATCHING: all calls and control flow match, but retail uses a 0x210 frame and saves r24; this source uses 0x1d0
+// and r23, with different temporary spill ordering around the light position, direction and attenuation calls.
+extern "C" CLight* fn_802AF1D0(WiiGsScene* scene, CLight* light, MtxP view, BOOL flag)
+{
+	if (scene->_04 != NULL && flag) {
+		nw4r::g3d::LightSet set = fn_802AF8B0(scene, 0);
+		if (set.IsValid()) {
+			nw4r::g3d::AmbLightObj* ambient = set.GetAmbLightObj();
+			CLight* current                 = &scene->mLights[0];
+			if (ambient != NULL) {
+				current->InitAmbient(ambient->r, ambient->g, ambient->b, ambient->a);
+			} else {
+				current->InitAmbient(0, 0, 0, 0xFF);
+			}
+			current->vf2C();
+
+			u32 numLights = 0;
+			for (u32 i = 0; i < 8; i++) {
+				nw4r::g3d::LightObj* lightObj = set.GetLightObj(i);
+				if (lightObj != NULL && lightObj->IsEnable() && !lightObj->IsSpecularLight()) {
+					GXColor color;
+					lightObj->GetLightColor(&color);
+					WiiGsSlot* slot = &scene->mSlots[i + 1];
+					if (slot->mColorSet) {
+						color = slot->mColor;
+						lightObj->InitLightColor(color);
+					}
+					current->SetColor(color.r, color.g, color.b, color.a);
+
+					nw4r::math::VEC3 pos;
+					lightObj->GetLightPos(&pos);
+					if (slot->mPosSet) {
+						pos = slot->mPos;
+						lightObj->InitLightPos(pos.x, pos.y, pos.z);
+					}
+					GXInitLightPos(current, pos.x, pos.y, pos.z);
+
+					nw4r::math::VEC3 dir;
+					lightObj->GetLightDir(&dir);
+					if (slot->_18) {
+						dir = slot->mDir;
+						lightObj->InitLightDir(dir.x, dir.y, dir.z);
+					}
+					GXInitLightDir(current, dir.x, dir.y, dir.z);
+
+					f32 a0, a1, a2;
+					f32 k0, k1, k2;
+					lightObj->GetLightAttnA(&a0, &a1, &a2);
+					lightObj->GetLightAttnK(&k0, &k1, &k2);
+					GXInitLightAttn(current, a0, a1, a2, k0, k1, k2);
+					current->vf2C();
+
+					nw4r::g3d::LightObj viewLight = *lightObj;
+					Vec viewPos                   = current->GetViewPosition(view);
+					Vec viewDir                   = current->GetViewDirection(view);
+					viewLight.InitLightPos(viewPos.x, viewPos.y, viewPos.z);
+					viewLight.InitLightDir(viewDir.x, viewDir.y, viewDir.z);
+					GXLoadLightObjImm(viewLight, (GXLightID)(1 << numLights));
+					numLights++;
+					current++;
+				}
+			}
+			for (u32 i = 0; i < numLights; i++) {
+				scene->mLights[i].mNext = &scene->mLights[i + 1];
+			}
+			scene->mLights[numLights].mNext = NULL;
+		}
+		return &scene->mLights[0];
+	}
+
+	nw4r::g3d::LightSet set = fn_802AF8B0(scene, 0);
+	u32 numLights           = 0;
+	u32 lightIndex          = 0;
+	for (CLight* current = light; current != NULL; current = current->mNext) {
+		if (!(current->mFlags & 0x8000)) {
+			continue;
+		}
+		GXColor color = current->GetColor();
+		if ((u8)current->mFlags == 1) {
+			set.SelectAmbLightObj(0);
+			nw4r::g3d::AmbLightObj* ambient = set.GetAmbLightObj();
+			ambient->r                      = color.r;
+			ambient->g                      = color.g;
+			ambient->b                      = color.b;
+			ambient->a                      = color.a;
+			continue;
+		}
+
+		set.SelectLightObj(numLights, lightIndex);
+		nw4r::g3d::LightObj* lightObj = set.GetLightObj(numLights);
+		lightObj->InitLightColor(color);
+		CVec pos = current->GetPosition();
+		lightObj->InitLightPos(pos.x, pos.y, pos.z);
+		CVec dir = current->mInterest;
+		PSVECNormalize(&dir, &dir);
+		lightObj->InitLightDir(dir.x, dir.y, dir.z);
+		f32 a0, a1, a2;
+		f32 k0, k1, k2;
+		GXGetLightAttnA(current, &a0, &a1, &a2);
+		lightObj->InitLightAttnA(a0, a1, a2);
+		GXGetLightAttnK(current, &k0, &k1, &k2);
+		lightObj->InitLightAttnK(k0, k1, k2);
+		lightObj->Enable();
+
+		nw4r::g3d::LightObj viewLight = *lightObj;
+		Vec viewPos                   = current->GetViewPosition(view);
+		Vec viewDir                   = current->GetViewDirection(view);
+		viewLight.InitLightPos(viewPos.x, viewPos.y, viewPos.z);
+		viewLight.InitLightDir(viewDir.x, viewDir.y, viewDir.z);
+		GXLoadLightObjImm(viewLight, (GXLightID)(1 << numLights));
+		numLights++;
+		lightIndex++;
+	}
+	for (u32 i = numLights; i < 8; i++) {
+		set.SelectLightObj(numLights, lightIndex);
+		set.GetLightObj(numLights)->Disable();
+		numLights++;
+		lightIndex++;
+	}
+	return light;
+}
+
+extern "C" nw4r::g3d::LightSet fn_802AF8B0(WiiGsScene* scene, int index)
+{
+	return ((nw4r::g3d::ScnRoot*)scene->mHead)->GetLightSet(index);
 }

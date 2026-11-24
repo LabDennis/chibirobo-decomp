@@ -51,7 +51,7 @@ void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
 void fn_802AEBF0(WiiGsScene* scene, u32 renderStates, u32 tevStages, u32 channels, u32 texGens);
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
-CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
+CLight* fn_802AF1D0(WiiGsScene* scene, CLight* light, MtxP view, BOOL flag);
 extern MEMiHeapHead* gWiiMem1Heap;
 extern MEMAllocator gWiiPadAllocator;
 }
@@ -907,7 +907,7 @@ BOOL CGs::BeginCamera()
 
 void CGs::fn_802AB81C(MtxP view, BOOL flag)
 {
-	mLight = fn_802AF1D0(&mScene.mHead, mLight, view, flag);
+	mLight = fn_802AF1D0(&mScene, mLight, view, flag);
 }
 
 extern "C" void EndGsCamera(CGs* gs)
