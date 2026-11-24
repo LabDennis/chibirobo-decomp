@@ -1,5 +1,9 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
+
+extern "C" void AllowIdleHudCounters(void* obj);
+extern "C" void SuppressIdleHudCounters(void* obj);
 
 struct HamObj {
 	typedef void (HamObj::*StateFunc)();
@@ -46,9 +50,15 @@ struct HamObj {
 	void* mDish;
 	u8 mSpawned;
 	u8 _39[3];
-	void* mYakiEffect;
+	EffectInstance* mYakiEffect;
 	StateFunc mState;
 	s32 mStateTime;
+};
+
+struct HamDish {
+	XObj* mActor;
+	s32 mId;
+	HamObj* mObjs[4];
 };
 
 extern "C" void HamObj_Init(HamObj* slot, s32 id)
@@ -315,6 +325,8 @@ extern "C" void ResetYakiRates(void)
 }
 
 static HamObj hamObjs[9];
+static HamDish hamDishes[4];
+static XObj* tempActors[4];
 
 static inline bool IsActive(XObj* actor)
 {
@@ -324,6 +336,7 @@ static inline bool IsActive(XObj* actor)
 static XObj* gasPlate;
 static u8 playerOffGasPlate;
 static u32 yakiLoopLevel;
+static u32 yakiResultFlags;
 
 extern "C" void HamObj_Update(HamObj* slot, u32 step);
 
@@ -399,6 +412,75 @@ extern "C" void HamObj_StartPutDown(HamObj* slot)
 	} else if (player->mLift.mState == 4) {
 		player->mLift.mState = 6;
 	}
+}
+
+// NONMATCHING: retail partially unrolls the nine-slot reset three times; the build fully unrolls it and uses a smaller frame.
+extern "C" void InitHamburg(void)
+{
+	HamObj* slot = hamObjs;
+	for (s32 i = 0; i < 9; i++, slot++) {
+		slot->mId         = -1;
+		slot->mActor      = NULL;
+		slot->mState      = NULL;
+		slot->mYakiEffect = NULL;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		hamDishes[i].mId    = -1;
+		hamDishes[i].mActor = NULL;
+	}
+
+	gasPlate = NULL;
+	for (s32 i = 0; gasPlate == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* actor = gGame.mXObjs.mObjects[i];
+		if ((actor->mStatus.mFlags & 1) && actor->mCoord.mPlacement->mObjectId == 0x200) {
+			gasPlate = actor;
+		}
+	}
+	if (gasPlate != NULL) {
+		gasPlate->mStatus.mFlags &= ~0x200000000ULL;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		tempActors[i] = NULL;
+	}
+	yakiResultFlags = 0;
+	putDownActive   = 0;
+	SuppressIdleHudCounters(&gGame.mInfoScrn);
+}
+
+// NONMATCHING: the slot, group and effect cursors use different callee-saved registers; size, calls and effect loops match.
+extern "C" void ExitHamburg(void)
+{
+	if (gasPlate != NULL) {
+		gasPlate->mStatus.mFlags |= 0x200000000ULL;
+	}
+
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (slot->mYakiEffect != NULL) {
+			if (slot->mYakiEffect != NULL) {
+				RetireEffect(&slot->mYakiEffect->handle, FALSE);
+			}
+		}
+		slot->mId         = -1;
+		slot->mActor      = NULL;
+		slot->mState      = NULL;
+		slot->mYakiEffect = NULL;
+	}
+	gasPlate = NULL;
+
+	for (u32 group = 0; group < 6; group++) {
+		for (s32 i = 0; i < 0x80; i++) {
+			EffectInstance* effect = &gGame.mEvtPtcl.mEffects[i];
+			if (!effect->IsFinished() && gGame.mEvtPtcl.mEffects[i].group == group) {
+				RetireEffect(&effect->handle, TRUE);
+			}
+		}
+	}
+	StopWiiSfx(&gGame.mSound, 0x294, 0.0f);
+	StopWiiSfx(&gGame.mSound, 0x295, 0.0f);
+	AllowIdleHudCounters(&gGame.mInfoScrn);
 }
 #else
 #include "Version.h"

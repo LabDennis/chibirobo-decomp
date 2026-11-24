@@ -9942,3 +9942,5 @@ __dt__7XActionFv = .text:0x800BF108; // type:function size:0x40
 __dt__8CPtclOneFv = .text:0x800BF614; // type:function size:0x40
 __ct__12CamAreaEntryFv = .text:0x80153AFC; // type:function size:0x18
 __dt__12CamAreaEntryFv = .text:0x80153B14; // type:function size:0x40
+InitHamburg = .text:0x801701F8; // type:function size:0x18C
+ExitHamburg = .text:0x80170384; // type:function size:0x184
