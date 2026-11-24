@@ -956,6 +956,7 @@ Update__4ShotFUl = .text:0x80171830; // type:function size:0x218
 Draw__4ShotFv = .text:0x80171A48; // type:function size:0x2C0
 Start__4ShotF3Vec3VecP4Mato = .text:0x80171D08; // type:function size:0x190
 ShotList_Update = .text:0x80171E98; // type:function size:0xCC
+FighterPanels_Update = .text:0x801725E0; // type:function size:0x1C4
 GetPos__4MatoFv = .text:0x80173A24; // type:function size:0x60
 Init__Q27fighter20CCameraActionFighterFv = .text:0x80173E10; // type:function size:0xC
 AddMato = .text:0x80173E1C; // type:function size:0x38

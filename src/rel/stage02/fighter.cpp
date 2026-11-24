@@ -385,6 +385,63 @@ struct PilotNwing {
 STATIC_ASSERT(sizeof(PilotNwing) == 0xA8);
 
 extern FighterPanels panels;
+
+extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
+{
+	switch (fade->mLowerState) {
+	case 0:
+		break;
+	case 1:
+		fade->mLowerOpen += 0.06f * dt;
+		if (fade->mLowerOpen > 1.0f) {
+			fade->mLowerOpen  = 1.0f;
+			fade->mLowerState = 0;
+		}
+		break;
+	case 2:
+		fade->mLowerOpen -= 0.06f * dt;
+		if (fade->mLowerOpen < 0.0f) {
+			fade->mLowerOpen  = 0.0f;
+			fade->mLowerState = 0;
+		}
+		break;
+	}
+	fade->mLowerFrameTimer -= dt;
+	if (--fade->mLowerFrameTimer < 0) {
+		fade->mLowerFrame++;
+		if (fade->mLowerFrame > 8) {
+			fade->mLowerFrame = 0;
+		}
+		fade->mLowerFrameTimer = 6;
+	}
+	switch (fade->mCenterState) {
+	case 0:
+		break;
+	case 1:
+		fade->mCenterOpen += 0.06f * dt;
+		if (fade->mCenterOpen > 1.0f) {
+			fade->mCenterOpen  = 1.0f;
+			fade->mCenterState = 0;
+		}
+		break;
+	case 2:
+		fade->mCenterOpen -= 0.06f * dt;
+		if (fade->mCenterOpen < 0.0f) {
+			fade->mCenterOpen  = 0.0f;
+			fade->mCenterState = 0;
+		}
+		break;
+	}
+	fade->mCenterFrameTimer -= dt;
+	if (--fade->mCenterFrameTimer < 0) {
+		fade->mCenterFrame++;
+		if (fade->mCenterFrame >= (fade->mCenterVariant == 0 ? 6 : 7)) {
+			fade->mCenterFrame = 0;
+		}
+		fade->mCenterFrameTimer = 6;
+	}
+}
+
 extern PilotNwing pilotNwing;
 extern u8* soundCueTable[2];
 
