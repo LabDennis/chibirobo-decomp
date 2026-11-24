@@ -431,7 +431,7 @@ extern "C" s32 LoadFontCursors(CMsgFont* font)
 {
 	s32 loaded = 0;
 	if (!(font->mCursor[0].mStatus & 1)) {
-		if (font->mCursor[0].vf158(CoordInfo(GetSpawnData(13)))) {
+		if (font->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(13)))) {
 			loaded = 1;
 		}
 	}
@@ -442,7 +442,7 @@ extern "C" s32 LoadFontCursors(CMsgFont* font)
 	}
 	loaded = 0;
 	if (!(font->mCursor[1].mStatus & 1)) {
-		if (font->mCursor[1].vf158(CoordInfo(GetSpawnData(0x2C)))) {
+		if (font->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x2C)))) {
 			loaded = 1;
 		}
 	}
@@ -743,7 +743,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 {
 	WiiTitleObject* anchor = font->mPlacement;
 	if (anchor != NULL && (anchor->mStatus & 1) && (anchor->mStatus & 0x10000)) {
-		anchor->vf1D4(&font->mPosition, &font->mWindowX, &font->mWindowY, 0, 0);
+		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, 0, 0);
 		font->mWindowY -= font->mHeight;
 	}
 	f32& winX      = font->mWindowX;
@@ -903,7 +903,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 			if (portrait != NULL && font->_1484 == 0) {
 				// the Wii draws a copy of the portrait through its own cursor object: the anim
 				// and pose move over, the head joint's height decides how far it sits raised
-				Vec head       = portrait->vf234("head");
+				Vec head       = portrait->GetJointPos("head");
 				Vec base       = portrait->vf0B8(0);
 				f32 headHeight = head.y - base.y - 1.2f;
 				f32 frame      = portrait->GetAnimFrame();
@@ -913,9 +913,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
 				font->mCursor[0].DrawScreenOverlay();
 				if (anim == 0x13 || anim == 0x3FB) {
-					font->mCursor[1].vf090(font->mCursor[0].GetPos());
-					font->mCursor[1].vf070(font->mCursor[0].GetRotY());
-					font->mCursor[1].vf098(font->mCursor[0].GetScale());
+					font->mCursor[1].SetPos(font->mCursor[0].GetPos());
+					font->mCursor[1].SetRotationY(font->mCursor[0].GetRotY());
+					font->mCursor[1].SetScale(font->mCursor[0].GetScale());
 					if (font->mCursor[1].GetAnimId() == 0) {
 						font->mCursor[1].SetAnim(1, 1, 0.0f, 0.0f, 0.0f, 15.0f);
 					}
@@ -1740,7 +1740,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	WiiTitleObject* obj = FindObj(id);
 	if (obj != NULL && (obj->mStatus & 1)) {
 		if (anim == -1) {
-			if (!obj->vf130((f32)gGame.mRetraceStep)) {
+			if (!obj->IsAnimEnd((f32)gGame.mRetraceStep)) {
 				msg->mData.mCursor -= 8;
 				return 1;
 			}

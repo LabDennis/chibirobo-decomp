@@ -631,7 +631,7 @@ extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 h
 		s32 floor = 0;
 		while (floor != -1) {
 			CVec from(pos->x, pos->y, pos->z), to(pos->x, pos->y, pos->z);
-			if (object->vf1C8(&from, &to, &push, &contact, &floor, 0, radius, height, pos->y, pos->z) & 1) {
+			if (object->TestFloorCollision(&from, &to, &push, &contact, &floor, 0, radius, height, pos->y, pos->z) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;

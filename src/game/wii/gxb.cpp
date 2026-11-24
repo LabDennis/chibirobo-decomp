@@ -845,7 +845,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 			work.entries[work.visible].object = object;
 			Vec offset                        = { 0, 0, 0 };
 			f32 x, y;
-			object->vf1D4(&offset, &x, &y, 0, 0);
+			object->ProjectOffsetToScreen(&offset, &x, &y, 0, 0);
 			y -= radius / 2.0f;
 			f32 dx = (f32)(gPointerScreenWidth / 2) - x, dy = (f32)(gPointerScreenHeight / 2) - y;
 			work.entries[work.visible].distance = FSqrt(dx * dx + dy * dy);

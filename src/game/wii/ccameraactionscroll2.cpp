@@ -490,20 +490,20 @@ void CCameraActionScroll2::Draw()
 		switch (*(s32*)obj->mSpawnData) {
 		case 0x10E: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
-			obj->vf1D4(&ofs, &x, &y, 0, 0);
+			obj->ProjectOffsetToScreen(&ofs, &x, &y, 0, 0);
 			DrawMapMarker(163, 0x000000FF, x, y, blink, MARK_SCALE);
 			break;
 		}
 		case 0x9D: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
-			obj->vf1D4(&ofs, &x, &y, 0, 0);
+			obj->ProjectOffsetToScreen(&ofs, &x, &y, 0, 0);
 			DrawMapMarker(166, 0x0000C8FF, x, y, blink, MARK_SCALE);
 			break;
 		}
 		case 0x115:
 			if (obj->mStatus & 0x10000) {
 				Vec ofs = { 0.0f, 0.0f, 0.0f };
-				obj->vf1D4(&ofs, &x, &y, 0, 0);
+				obj->ProjectOffsetToScreen(&ofs, &x, &y, 0, 0);
 				DrawMapMarker(164, 0x0000C8FF, x, y, blink, MARK_SCALE);
 			}
 			break;
@@ -549,7 +549,7 @@ void CCameraActionScroll2::Draw()
 
 			Vec at = { 0.0f, 0.0f, 0.0f };
 			at     = pos;
-			obj->vf1D4(&at, &x, &y, 0, 0);
+			obj->ProjectOffsetToScreen(&at, &x, &y, 0, 0);
 			obj->GetFloorXZExtent();   // the GameCube's GetFloorXZExtent
 			obj->GetCollisionHeight(); // the GameCube's GetCollisionHeight
 
@@ -642,7 +642,7 @@ void CCameraActionScroll2::Draw()
 		}
 
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
-		obj->vf1D4(&ofs, &x, &y, 0, 0);
+		obj->ProjectOffsetToScreen(&ofs, &x, &y, 0, 0);
 		if (((u8*)obj)[0xA54]) { // _A54, the leticker's running particle flag
 			DrawMapMarker(164, 0x0000C8FF, x, y, fastBlink, MARK_SCALE);
 			DrawMapLabel(x, y, 1.0f - fastBlink, MARK_SCALE);
@@ -653,7 +653,7 @@ void CCameraActionScroll2::Draw()
 
 	{
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
-		((WiiTitleObject*)gGame.GetPlayer())->vf1D4(&ofs, &x, &y, 0, 0);
+		((WiiTitleObject*)gGame.GetPlayer())->ProjectOffsetToScreen(&ofs, &x, &y, 0, 0);
 		DrawMapMarker(165, 0xC80000FF, x, y, blink, MARK_SCALE);
 	}
 
