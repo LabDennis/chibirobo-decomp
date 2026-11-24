@@ -1724,7 +1724,8 @@ extern "C" void DrawTitleScreen(Title* title)
 	s32 w               = gGame.mAspectRatio != 0 ? 0x356 : 0x280;
 	s32 off             = (w - 0x280) / 2;
 	CCamera* camera     = ((CBase*)&gGame)->GetScreenCamera();
-	camera->vf24(0.0f, (f32)gPointerScreenHeight, -(f32)off, (f32)w - (f32)off);
+	nw4r::ut::Rect view(-(f32)off, 0.0f, (f32)w - (f32)off, (f32)gPointerScreenHeight);
+	camera->vf24(view.top, view.bottom, view.left, view.right);
 	((CBase*)&gGame)->vf5C();
 	DrawSavePanelBackground(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
@@ -1747,7 +1748,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		u32 rgb = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
 		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
 		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
-		u32 lit      = normal;
+		u32 lit      = rgb | (u8)(255.0f * title->mMenuAlpha);
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
 		f32 w0       = DrawTitleEntry(title, 0, 0, x, y, progress, normal, lit);
 		y            = top + ((f32)(gScreenSafeBottom - 0x36) + gap) - 30.0f;
@@ -1775,13 +1776,10 @@ extern "C" void DrawTitleScreen(Title* title)
 			break;
 		}
 		// the pointer's rectangles around the three entries
-		f32 margin               = 24.0f;
-		title->mPanes[5].mWidth  = 40.0f + (2.0f * margin + w0);
-		title->mPanes[5].mHeight = 28.0f;
-		title->mPanes[6].mWidth  = 40.0f + (2.0f * margin + w1);
-		title->mPanes[6].mHeight = 28.0f;
-		title->mPanes[7].mWidth  = 40.0f + (2.0f * margin + w2);
-		title->mPanes[7].mHeight = 28.0f;
+		f32 margin = 24.0f;
+		title->mPanes[5].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w0), 28.0f));
+		title->mPanes[6].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w1), 28.0f));
+		title->mPanes[7].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w2), 28.0f));
 		if ((title->mCursor[0].mRequest.mFile != NULL ? title->mCursor[0].mRequest.mFile->mSize : 0) == 0x3CA80) {
 			y -= 10.0f;
 		}
@@ -1830,13 +1828,10 @@ extern "C" void DrawTitleScreen(Title* title)
 		u32 optionWidth = 2.0f * (labelW + gap);
 		f32 okWidth     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, size);
 		// the pointer's rectangles around the three lines keep the first one's height
-		f32 height                = title->mPanes[8].mHeight;
-		title->mPanes[8].mWidth   = 40.0f + (2.0f * margin + optionWidth);
-		title->mPanes[8].mHeight  = height;
-		title->mPanes[9].mWidth   = 40.0f + (2.0f * margin + optionWidth);
-		title->mPanes[9].mHeight  = height;
-		title->mPanes[10].mWidth  = 40.0f + (2.0f * margin + okWidth);
-		title->mPanes[10].mHeight = height;
+		f32 height = title->mPanes[8].mHeight;
+		title->mPanes[8].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + optionWidth), height));
+		title->mPanes[9].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + optionWidth), height));
+		title->mPanes[10].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + okWidth), height));
 		f32 width;
 		f32 y;
 		switch (title->mOptionLine != -1 ? title->mOptionLine : title->mLastOptionLine) {
