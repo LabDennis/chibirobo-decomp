@@ -4,6 +4,8 @@
 // gWiiPointer's flag words instead of an HSD pad. The room camera and the pointer look are
 // reworked for the remote.
 
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
+
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
@@ -35,7 +37,8 @@ extern "C" {
 f32 GetAreaCameraFovRatio(CMotionControlCamera* camera);
 }
 
-extern s32 gPointerScreenWidth, gPointerScreenHeight;
+extern s32 gPointerScreenWidth, gPointerScreenHeight, gRingScreenHeight;
+extern f32 gScreenWidthScale;
 
 extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
 
@@ -149,9 +152,9 @@ void CMotionControlCamera::fn_80167728()
 	_240          = -1;
 }
 
-// NONMATCHING: the GameCube Update this is ported from is 0xB1C; the Wii body is 0x16CC,
-// the remote's button and pointer reads, the extra scroll push and the running test's added
-// menu/reset checks are reconstructed but not yet byte-proven
+// NONMATCHING: retail's Update is 0x16CC, ours 0x16C0. The behavior and direct call list match;
+// the residue is deferred-inline selection (one extra ReadAction expansion) and register/frame
+// allocation throughout the body.
 /**
  * @note Address: 0x8016778C
  * @note Size: 0x16CC
@@ -162,7 +165,7 @@ void CMotionControlCamera::Update(u32 step)
 		return;
 	}
 
-	if (gGame.mEvt.mData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL)) {
+	if (gGame.mEvt.mData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL) && !gGame.mHomeMenu.IsActive()) {
 		CCameraActionScroll2* room = (CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2);
 		if (room->GetLimits(gGame.mStage) != NULL && !gGame.GetStatusFlags(0x600000000000C00ULL)) {
 			// the remote's button opens the room camera over the area, scroll and map cameras
@@ -170,6 +173,11 @@ void CMotionControlCamera::Update(u32 step)
 				if (gWiiPointer.mFlags & 0x200) {
 					PushAction(room);
 					room->HideObjs();
+					CColor color(0, 0, 0, 0xFF);
+					room->mWipe.StartTransition(color.r, color.g, color.b, 0, 0xFF, color.g, color.b, 640.0f, gPointerScreenHeight / 2,
+					                            640.0f / gScreenWidthScale, gRingScreenHeight / gScreenWidthScale,
+					                            (640.0f - 20.0f) / gScreenWidthScale, (gRingScreenHeight - 60.0f) / gScreenWidthScale, 0.0f,
+					                            0xFF, FALSE);
 					gGame.SetStatusFlags(2); // gGame.IsRunning() is false while the room camera is up
 				}
 			} else if (IsCurrent(CAMACTION_SCROLL2)) {
@@ -181,6 +189,7 @@ void CMotionControlCamera::Update(u32 step)
 				} else if (gWiiPointer.mFlags & 0x2) {
 					PopAction();
 					room->ShowObjs();
+					room->mWipe.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 					gGame.ClearStatusFlags(2);
 					// read the player's pad again so the press that closed it doesn't reach the player too
 					fn_800CE48C(PLAYER);
@@ -189,7 +198,11 @@ void CMotionControlCamera::Update(u32 step)
 		}
 	}
 
-	if (gGame.GetStatusFlags(0x80000000) && (gWiiPointer.mDirTrigger & 0x2000000000010000ULL)
+	if (gGame.GetStatusFlags(2) && !IsCurrent(CAMACTION_SCROLL2)) {
+		return;
+	}
+
+	if (gGame.GetStatusFlags(0x80000000) && (gWiiPointer.mTrigger & 0x2000000000010000ULL)
 	    && (gWiiPointer.mDirButton & 0x2000000000020ULL)) {
 		if (!IsCurrent(CAMACTION_CHASE)) {
 			ChangeAction(CAMACTION_CHASE);
@@ -200,15 +213,7 @@ void CMotionControlCamera::Update(u32 step)
 
 	BOOL look = FALSE;
 	if (((gWiiPointer.mFlags & 0x10000) || (gWiiPointer.mFlags & 0x2)) && gGame.mEvt.mData.mScript == NULL) {
-		// CBase::IsRunning's test, written out
-		bool running = false;
-		if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x2000000000000022ULL)) {
-			bool discError = (gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0;
-			if (!discError) {
-				running = true;
-			}
-		}
-		if (running && (PLAYER->mPlayerFlags & 0x20000000) && !gGame.GetStatusFlags(0x80)) {
+		if (gGame.IsRunning() && (PLAYER->mPlayerFlags & 0x20000000) && !gGame.GetStatusFlags(0x80)) {
 			if (!gGame.GetStatusFlags(0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
 				// the remote's look button toggles the eye camera, B only takes it down
@@ -220,8 +225,8 @@ void CMotionControlCamera::Update(u32 step)
 					look = TRUE;
 				}
 			} else if (gWiiPointer.mFlags & 0x10000) {
-				// 0x85 is the buzz the menus play for a choice that isn't available
-				PlayWiiSoundEffect(&gGame.mSound, 0x85, 1.0f, 0.0f);
+				// 0xF2 is the buzz the menus play for a choice that isn't available
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
 			}
 		}
 	}
@@ -231,7 +236,7 @@ void CMotionControlCamera::Update(u32 step)
 			if (PlayerCanLook()) {
 				StartEye();
 			} else {
-				PlayWiiSoundEffect(&gGame.mSound, 0x85, 1.0f, 0.0f);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
 			}
 		} else {
 			EndEye();
