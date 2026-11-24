@@ -962,6 +962,7 @@ Init__Q27fighter20CCameraActionFighterFv = .text:0x80173E10; // type:function si
 Update__Q23Car16CCameraActionCarFUl = .text:0x8017624C; // type:function size:0x70
 Update__Q23Car7CarRootFUl = .text:0x801762BC; // type:function size:0x210
 Brake__Q23Car7CarRootFv = .text:0x801764CC; // type:function size:0xC0
+StartCarCamera = .text:0x80176A7C; // type:function size:0xF4
 SetParams__7FighterFPUc = .text:0x801735B4; // type:function size:0x158
 AddMato = .text:0x80173E1C; // type:function size:0x38
 SetFighterParams = .text:0x80173E64; // type:function size:0x98

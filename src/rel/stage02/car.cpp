@@ -17,6 +17,8 @@ namespace Car {
 class CCameraActionCar : public CInterfaceCameraAction {
 public:
 	virtual ~CCameraActionCar() { }
+	void SetTarget(Vec pos) { _50 = pos; }
+	void SetOffset(Vec pos) { mInterestOffset = pos; }
 	virtual void Update(u32 step);
 	virtual u32 GetMode() { return 0; }
 	virtual u32 GetCameraFlags() { return 11; }
@@ -97,7 +99,35 @@ void CarRoot::Update(u32 frames)
 	}
 }
 
+class PlayerCarRoot : public CarRoot {
+public:
+	virtual void Start();
+
+	f32 mBrakeFrame;
+};
+STATIC_ASSERT(sizeof(PlayerCarRoot) == 0x84);
+
+extern CCameraActionCar carCamera;
+extern PlayerCarRoot playerCar;
+
 } // namespace Car
+
+extern "C" void StartCarCamera(void)
+{
+	gGame.GetPlayer()->LockControl();
+	gGame.mMotionControlCamera.ChangeAction(&Car::carCamera);
+	Vec v;
+	v.x = 0.0f;
+	v.y = 30.0f;
+	v.z = -120.0f;
+	Car::carCamera.SetTarget(v);
+	v.x = 0.0f;
+	v.y = 0.0f;
+	v.z = 60.0f;
+	Car::carCamera.SetOffset(v);
+	Car::carCamera.mCarMtx = Car::playerCar.mCarMtx;
+}
+
 #else
 #include "Version.h"
 
