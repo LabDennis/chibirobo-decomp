@@ -1373,14 +1373,13 @@ f32 CObj::GetNodeRotateZ(nw4r::g3d::ResNode node)
  * @note Address: 0x80043518
  * @note Size: 0xB8
  */
-// NONMATCHING: retail builds the vec in a temporary of its own (z first) and copy-constructs the
-// result from it; this build constructs the result in place, 0x1C bytes shorter. The source form
-// that keeps the temporary is not found (a named local, a const local and an inline operator ruled out)
+// NONMATCHING: only the ResNode::ref assertion strings' positions in the unit's string pool remain
 CVec NW_Obj::GetNodeRotate(nw4r::g3d::ResNode node) const
 {
 	const nw4r::g3d::ResNodeData& data = node.ref();
 	CVec rotate(DEG2RAD * data.mRotate.x, DEG2RAD * data.mRotate.y, DEG2RAD * data.mRotate.z);
-	return rotate;
+	CVec result(rotate);
+	return result;
 }
 
 /**
