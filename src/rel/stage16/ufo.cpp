@@ -1,3 +1,43 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" f64 atan2(f64 y, f64 x);
+
+static XObj* gameBotan2;
+
+extern "C" s32 Stage16_Init(void* arg)
+{
+	gameBotan2 = NULL;
+	return 1;
+}
+
+// NONMATCHING: the object/placement temporaries and local literal/global names differ; both virtual calls and the scan match.
+extern "C" s32 Stage16_Update(void* arg)
+{
+	if (gameBotan2 != NULL) {
+		XObj* other    = (XObj*)gGame.GetPlayer();
+		CVec* otherPos = other->GetPos();
+		CVec* pos      = gameBotan2->GetPos();
+		f32 angle      = atan2(otherPos->x - pos->x, otherPos->z - pos->z);
+		gameBotan2->SetRotateY(angle, 0.0f);
+	} else {
+		XObj* obj;
+		s32 i;
+		for (i = 0; i < gGame.mXObjs.mObjectCount && gameBotan2 == NULL; i++) {
+			obj = gGame.mXObjs.mObjects[i];
+			if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x2E9) {
+				gameBotan2 = obj;
+			}
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage16_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "types.h"
 #include "Version.h"
 #include "game/cgame.h"
@@ -58,3 +98,4 @@ extern "C" void InitStage(void* arg)
 {
 	gameBotan2 = 0;
 }
+#endif

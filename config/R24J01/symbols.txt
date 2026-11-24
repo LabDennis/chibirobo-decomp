@@ -952,6 +952,9 @@ ExecCallbackB__12XObjActorToyFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw
 DrawScoreHud = .text:0x80174934; // type:function size:0x1558
 Stage20_Init = .text:0x8017B184; // type:function size:0x5C
 Stage20_Update = .text:0x8017B1E0; // type:function size:0x78
+Stage16_Init = .text:0x8017AF18; // type:function size:0x10
+Stage16_Update = .text:0x8017AF28; // type:function size:0x114
+Stage16_CmdNop = .text:0x8017B03C; // type:function size:0x8
 HandleEventCommand__12XObjActorToyFlPl = .text:0x80148B88; // type:function size:0xBC
 IsFree__12XObjActorTaoFv = .text:0x80150B4C; // type:function size:0x28
 Start__23CInterpolationEaseInOutFfff = .text:0x80151D1C; // type:function size:0x4C
