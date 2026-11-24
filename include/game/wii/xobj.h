@@ -1992,8 +1992,8 @@ class XObjActor : public XObj {
 public:
 	XObjActor();
 	void ResetMovementStep();
-	virtual ~XObjActor();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual ~XObjActor();
 	virtual void Release();
 	virtual void InitializeObject();
 	virtual void ResetForNewGame();
@@ -2325,8 +2325,8 @@ public:
 	};
 
 	XObjActor3();
-	virtual ~XObjActor3();
 	virtual void Release();
+	virtual ~XObjActor3();
 	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);
 	virtual void InitializeObject();
 	virtual void ResetForNewGame();
@@ -2485,8 +2485,8 @@ STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
 class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
-	virtual ~XObjActorJenny();
 	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual ~XObjActorJenny();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void UpdateObject(u32 frames);
 	virtual void UpdateAnim(f32 speed);
@@ -2519,7 +2519,6 @@ STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
 class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
-	virtual ~XObjActorMama();
 	void RunStateHandler(u32 frames);
 	void ClearStateHandler();
 	void ResetActorState();
@@ -2527,7 +2526,9 @@ public:
 	void UpdateAfterAnim(u32 frames);
 	void Drop();
 	void StateNone(u32 frames);
+	virtual void UpdateObject(u32 frames);
 	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual ~XObjActorMama();
 	virtual nw4r::g3d::ResNode GetHeadJoint();
 	virtual CVec GetHeadWorldPosition();
 	virtual f32 GetMaxHeadYaw();
@@ -2545,7 +2546,6 @@ STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
 class XObjActorPapa : public XObjActor {
 public:
 	XObjActorPapa();
-	virtual ~XObjActorPapa();
 	void RunStateHandler(u32 frames);
 	void ClearStateHandler();
 	void ResetActorState();
@@ -2555,6 +2555,7 @@ public:
 	void StateNone(u32 frames);
 	void StatePickUp(u32 frames);
 	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual ~XObjActorPapa();
 	virtual nw4r::g3d::ResNode GetHeadJoint();
 	virtual CVec GetHeadWorldPosition();
 	virtual f32 GetMaxHeadPitch();
@@ -2573,8 +2574,8 @@ STATIC_ASSERT(sizeof(XObjActorPapa) == 0xD90);
 class XObjActorTao : public XObjActor {
 public:
 	XObjActorTao();
-	virtual ~XObjActorTao();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual ~XObjActorTao();
 	void ResetActorState();
 	void ProcessPendingEvents(u32 frames);
 	void UpdateAfterAnim(u32 frames);
@@ -2604,8 +2605,8 @@ STATIC_ASSERT(sizeof(XObjActorTao) == 0xDF8);
 class XObjActorDeca : public XObjActor {
 public:
 	XObjActorDeca();
-	virtual ~XObjActorDeca();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual ~XObjActorDeca();
 	virtual void ExecCallbackC();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void UpdateAnim(f32 frames);
