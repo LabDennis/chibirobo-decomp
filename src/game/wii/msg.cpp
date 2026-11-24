@@ -1141,11 +1141,15 @@ extern "C" void InitMessageWindow(CMsg* msg, s32 mode)
 	msg->mStay            = 0;
 	msg->mGlyphSoundGroup = -1;
 	CMsg_ResetPos(msg);
-	msg->mFont.mColor = gMessageWindowDefaultColor;
+	GXColor color       = gMessageWindowDefaultColor;
+	msg->mFont.mColor.r = color.r;
+	msg->mFont.mColor.g = color.g;
+	msg->mFont.mColor.b = color.b;
+	msg->mFont.mColor.a = color.a;
 	for (int i = 0; i < 2; i++) {
 		msg->mFont.mCursor[i].InitializeObject();
 	}
-	msg->mFont.mMode = mode;
+	msg->mFont._1484 = mode;
 }
 
 /**
