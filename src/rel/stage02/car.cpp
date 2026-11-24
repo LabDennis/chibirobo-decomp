@@ -57,6 +57,13 @@ public:
 };
 STATIC_ASSERT(sizeof(CarRoot) == 0x80);
 
+void CarRoot::Brake()
+{
+	mBraking = TRUE;
+	mPath->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+	mPath->PushAnim(3, 0, 100);
+}
+
 void CarRoot::Update(u32 frames)
 {
 	if (mCar == NULL || mPath == NULL) {
