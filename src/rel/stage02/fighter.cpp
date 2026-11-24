@@ -341,6 +341,54 @@ extern "C" void ShotList_Update(ShotList* list, u32 dt)
 	}
 }
 
+struct FighterPanels {
+	s32 mLowerState;
+	s32 mCenterState;
+	f32 mLowerOpen;
+	f32 mCenterOpen;
+	s32 mLowerFrame;
+	s32 mCenterFrame;
+	s32 mLowerFrameTimer;
+	s32 mCenterFrameTimer;
+	s32 mCenterVariant;
+};
+STATIC_ASSERT(sizeof(FighterPanels) == 0x24);
+
+extern MatoList matoList;
+extern FighterPanels panels;
+
+extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
+extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
+extern "C" void FighterPanels_Draw(FighterPanels* fade);
+
+extern "C" void DrawShots(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	Shot* entry = fighterWork.mShots.mShots;
+	for (u32 i = 0; i < 5; i++, entry++) {
+		entry->Draw();
+	}
+}
+
+// NONMATCHING: global-address and aim-copy stack layout differs; the update and all three draw calls match.
+extern "C" void DrawFighterHud(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	matoList.mAimPos.x = fighterWork.mAim.mPos.x;
+	matoList.mAimPos.y = fighterWork.mAim.mPos.y;
+	matoList.mAimPos.z = fighterWork.mAim.mPos.z;
+	for (s32 i = 0; i < matoList.mCount; i++) {
+		matoList.mMatos[i].Update();
+	}
+	DrawScoreHud(matoList.mScore, matoList.mTimeLeft, 100.0f * matoList.mProgress);
+	FighterAim_Draw(&fighterWork.mAim, &gGame.mMotionControlCamera, fighterWork.mBodyMtx);
+	FighterPanels_Draw(&panels);
+}
+
 f32 captionShadowX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
 f32 captionShadowY[4] = { -2.0f, -2.0f, 2.0f, 2.0f };
 
