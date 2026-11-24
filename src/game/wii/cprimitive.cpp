@@ -4,7 +4,8 @@
 //
 // NONMATCHING: the nine CLine and CTriangle vertex loops are the GameCube file's wall: retail reads
 // x and y before it writes x and reads z after. Splitting GXPosition2f32 plus GX_WRITE_F32 recovers
-// that shape in CLine::Draw(PrimVertex*); its x/y argument order and the other eight loops remain open.
+// that shape in CLine::Draw and CTriangle::Draw(PrimVertex*); their x/y argument order and the other
+// seven loops remain open.
 
 #include "game/cprimitive.h"
 #include "game/ut.h"
@@ -260,7 +261,8 @@ void CTriangle::Draw(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
 		PrimVertex* v = vtx + i;
-		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
+		GXPosition2f32(v->pos.x, v->pos.y);
+		GX_WRITE_F32(v->pos.z);
 		GXColor1u32(v->color);
 	}
 }
