@@ -522,6 +522,58 @@ void Fighter::SetParams(u8* data)
 	mTimeLimit    = READ_LE32(data + 0x20) * 60 + 59;
 }
 
+// NONMATCHING: instructions, matrix calls, SetAnim(15) and table clamps match; only local literal-pool
+// symbols and unit-relative branch targets differ.
+static inline f32 SampleSpeedRate(const u8* rates, f32 frame)
+{
+	f32 rate;
+	if (rates == NULL) {
+		rate = 0.0f;
+	} else {
+		rate = rates[(s32)frame] / 100.0f;
+		if (rate <= 0.0f) {
+			rate = 1.0f;
+		}
+		if (2.5f < rate) {
+			rate = 2.5f;
+		}
+	}
+	return rate;
+}
+
+extern "C" void Fighter_Update(Fighter* work, u32 dt)
+{
+	Mtx rot;
+	Mtx scale;
+	Mtx offset;
+
+	work->mTimeLeft -= dt;
+	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
+	PSMTXConcat(work->mPath->GetWorldMtx(2), scale, work->mBodyMtx);
+	work->mBody->SetBaseMtx(work->mBodyMtx);
+	Vec zero;
+	zero.x = zero.y = zero.z = 0.0f;
+	PSMTXMultVec(work->mBodyMtx, &zero, &work->mPos);
+	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
+	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
+	PSMTXConcat(offset, rot, offset);
+	PSMTXConcat(work->mBody->GetWorldMtx(1), offset, work->mPlayerMtx);
+	gGame.GetPlayer()->SetBaseMtx(work->mPlayerMtx);
+	if (work->mExtra != NULL) {
+		PSMTXTrans(offset, 0.0f, 4.11f, -1.0f);
+		PSMTXConcat(work->mBodyMtx, offset, work->mExtraMtx);
+		work->mExtra->SetBaseMtx(work->mExtraMtx);
+	}
+	work->mSpeed += dt * work->mAccel / 60.0f;
+	if (work->mMaxSpeed < work->mSpeed) {
+		work->mSpeed = work->mMaxSpeed;
+	}
+	work->mPrevFrame = work->mFrame;
+	work->mFrame += work->mSpeed * SampleSpeedRate(work->mSpeedRates, work->mFrame);
+	work->mPath->SetAnim(0, TRUE, work->mFrame, 1.0f, 0.0f, 15.0f);
+	ShotList_Update(&work->mShots, dt);
+}
+
 extern "C" void SetSoundCueTable(u8* data)
 {
 	soundCueTable = data;
