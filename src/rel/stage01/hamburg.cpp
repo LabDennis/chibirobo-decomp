@@ -1,3 +1,1191 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
+
+extern "C" void AllowIdleHudCounters(void* obj);
+extern "C" void SuppressIdleHudCounters(void* obj);
+extern "C" BOOL IsLiftTargetPlug(XAction* action);
+extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
+extern "C" void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
+
+struct HamDish;
+
+struct HamObj {
+	typedef void (HamObj::*StateFunc)();
+
+	void SetState(StateFunc func)
+	{
+		mState     = func;
+		mStateTime = 0;
+	}
+	void StateFlip();
+	void StateSlide();
+	void StatePutDown();
+	void StateStackLand();
+
+	f32 GetStackHeight();
+
+	void SetRot(f32 rot)
+	{
+		mRotZ = rot;
+		mActor->SetRotationZ(mRotZ);
+	}
+
+	void StartSlide(f32 distance, f32 speed, f32 angle)
+	{
+		if (mState != &HamObj::StateFlip) {
+			mMoveAngle     = angle;
+			mSlideDistance = distance;
+			mMoveSpeed     = speed;
+			SetState(&HamObj::StateSlide);
+		}
+	}
+
+	HamObj* mAbove;
+	XObj* mActor;
+	s32 mId;
+	s32 mType;
+	f32 mRotZ;
+	f32 mFlipFrames;
+	f32 mMoveAngle;
+	f32 mSlideDistance;
+	f32 mMoveSpeed;
+	s32 mSide;
+	s32 mYakiTime[2];
+	s32 mStackLevel;
+	HamDish* mDish;
+	u8 mSpawned;
+	u8 _39[3];
+	EffectInstance* mYakiEffect;
+	StateFunc mState;
+	s32 mStateTime;
+};
+
+struct HamDish {
+	XObj* mActor;
+	s32 mId;
+	HamObj* mObjs[4];
+};
+
+static f32 yakiRates[6];
+
+extern "C" void SetYakiRates(u8* data)
+{
+	for (s32 i = 0; i < 5; i++) {
+		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000) / 100.0f;
+		data += 4;
+	}
+}
+
+extern "C" void HamObj_Init(HamObj* slot, s32 id)
+{
+	slot->mId    = id;
+	slot->mActor = gGame.mXObjs.mObjects[id];
+	slot->mSide  = 0;
+	slot->mDish  = NULL;
+	slot->mAbove = NULL;
+	switch (slot->mActor->mCoord.mPlacement->mObjectId) {
+	case 0x1F9:
+		slot->mYakiTime[1] = 0;
+		slot->mYakiTime[0] = 0;
+		slot->mType        = 1;
+		break;
+	case 0x263:
+		slot->mYakiTime[1] = 9999;
+		slot->mYakiTime[0] = 9999;
+		slot->mType        = 2;
+		break;
+	case 0x264:
+		slot->mYakiTime[1] = 9999;
+		slot->mYakiTime[0] = 9999;
+		slot->mType        = 3;
+		break;
+	default:
+		slot->mType = 0;
+		break;
+	}
+	if (slot->mActor != NULL) {
+		slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+		slot->mActor->mStatus.mFlags |= 0x10000000000ULL;
+	}
+}
+
+extern "C" f64 atan2(f64 y, f64 x);
+
+extern "C" void HamObj_StartFlip(HamObj* slot, u32 frames)
+{
+	slot->mFlipFrames = frames;
+	CVec* actorPos    = slot->mActor->GetPos();
+	CVec* playerPos   = ((XObj*)gGame.GetPlayer())->GetPos();
+	slot->mMoveAngle  = atan2(actorPos->x - playerPos->x, actorPos->z - playerPos->z);
+	slot->SetState(&HamObj::StateFlip);
+}
+
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle)
+{
+	slot->StartSlide(distance, speed, angle);
+}
+
+static u8 putDownActive;
+static u8 yakiSoundPlayed;
+
+extern "C" void HamObj_SetRot(HamObj* slot, f32 rot)
+{
+	slot->SetRot(rot);
+}
+
+static inline Vec GetStackPlacementPosition(const CoordInfo& coord)
+{
+	Vec position;
+	position.x = coord.mPlacement->mPos[0] / 100.0f;
+	position.y = coord.mPlacement->mPos[1] / 100.0f;
+	position.z = coord.mPlacement->mPos[2] / 100.0f;
+	return position;
+}
+
+f32 HamObj::GetStackHeight()
+{
+	return GetStackPlacementPosition(mActor->mCoord).y + 2.0f * mStackLevel;
+}
+
+// NONMATCHING: recursion unrolling and stack-slot layout differ; the height calculation, SetMoveDir speed and recursion match.
+extern "C" void HamObj_LowerStack(HamObj* slot)
+{
+	if (slot->mStackLevel > 0) {
+		slot->mStackLevel--;
+		Vec pos = *slot->mActor->GetPos();
+		pos.y   = slot->GetStackHeight();
+		slot->mActor->SetMoveDir(&pos, 0.1f);
+		if (slot->mAbove != NULL) {
+			HamObj_LowerStack(slot->mAbove);
+		}
+	}
+}
+
+extern "C" f64 cos(f64 x);
+extern "C" f64 sin(f64 x);
+
+static inline bool IsSamePos(const Vec& a, const Vec& b)
+{
+	return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+static inline bool IsOnGasPlate(XObj* actor)
+{
+	Vec* pos = actor->GetPos();
+	if (pos->x < -289.0f || -239.0f < pos->x || pos->z < 21.4f || 62.6f < pos->z) {
+		return false;
+	}
+	return true;
+}
+
+static inline bool IsLeavingGasPlate(HamObj* slot)
+{
+	Vec* pos = slot->mActor->GetPos();
+	if ((62.6f < pos->z && 0.0f < (f32)cos(slot->mMoveAngle)) || (pos->z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
+	    || (-239.0f < pos->x && 0.0f < (f32)sin(slot->mMoveAngle)) || (pos->x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
+		return true;
+	}
+	return false;
+}
+
+static inline f32 AngleFrom(const Vec* from, const Vec* to)
+{
+	return atan2(to->x - from->x, to->z - from->z);
+}
+
+extern "C" HamObj* FindStackBase(Vec pos, s32 level, s32 id, f32 maxDist);
+
+static inline bool HamObj_CheckSlideHit(HamObj* slot)
+{
+	HamObj* best = FindStackBase(*slot->mActor->GetPos(), slot->mStackLevel, slot->mId, 10.0f);
+	if (best != NULL) {
+		f32 angle = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+		f32 c     = cos(angle - slot->mMoveAngle);
+		if ((f32)cos(45.0) < c) {
+			f32 distance;
+			angle    = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+			distance = slot->mSlideDistance * 0.5f;
+			if (10.0f < distance) {
+				distance = 10.0f;
+			}
+			best->StartSlide(distance, slot->mMoveSpeed, angle);
+			if (IsOnGasPlate(slot->mActor)) {
+				return true;
+			}
+		}
+	}
+	if (IsLeavingGasPlate(slot)) {
+		return true;
+	}
+	return false;
+}
+
+// NONMATCHING: helper recursion and stack frame differ; the slide-hit test is inlined as in Retail.
+void HamObj::StateSlide()
+{
+	Vec pos;
+	switch (mStateTime) {
+	case 0:
+		pos = *mActor->GetPos();
+		pos.x += mSlideDistance * (f32)sin(mMoveAngle);
+		pos.y = GetStackPlacementPosition(mActor->mCoord).y;
+		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
+		mActor->SetMoveDir(&pos, mMoveSpeed);
+		if (HamObj_CheckSlideHit(this)) {
+			mActor->SetMoveDir(mActor->GetPos(), 0.0f);
+			SetState(NULL);
+		}
+		if (mStateTime == 0) {
+			mStateTime++;
+		}
+		break;
+	case 1:
+		if (HamObj_CheckSlideHit(this)) {
+			mActor->SetMoveDir(mActor->GetPos(), 0.0f);
+			SetState(NULL);
+		} else if (IsSamePos(*mActor->GetPos(), mActor->mMoveTarget0)) {
+			SetState(NULL);
+		}
+		if (mAbove != NULL && 8.0f < PSVECDistance(mActor->GetPos(), mAbove->mActor->GetPos())) {
+			HamObj_LowerStack(mAbove);
+			mAbove = NULL;
+		}
+		break;
+	}
+}
+
+// NONMATCHING: basic-block layout and local symbol names differ; both flip states, all calls and values match.
+void HamObj::StateFlip()
+{
+	switch (mStateTime) {
+	case 0:
+		if (0.0f < (f32)cos(mActor->GetRotZ())) {
+			mRotZ = 3.1415927f;
+		} else {
+			mRotZ = 0.0f;
+		}
+		mStateTime++;
+		break;
+	case 1:
+		mFlipFrames -= 1.0f;
+		if (0.0f < mFlipFrames) {
+			f32 rot = mActor->GetRotZ();
+			mActor->SetRotationZ(rot + (mRotZ - rot) / mFlipFrames);
+		} else {
+			PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+			yakiSoundPlayed = 1;
+			s32 level       = mYakiTime[mSide] / 600;
+			if (level >= 5) {
+				level = 4;
+			}
+			mActor->SetAnim(level, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			mSide = 1 - mSide;
+			SetState(NULL);
+		}
+		break;
+	}
+}
+
+extern "C" void HamObj_Respawn(HamObj* slot)
+{
+	if (putDownActive) {
+		slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
+	}
+	if (slot->mType == 1) {
+		slot->mSide        = 0;
+		slot->mYakiTime[1] = 0;
+		slot->mYakiTime[0] = 0;
+		PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+		yakiSoundPlayed = 1;
+	} else {
+		PlayWiiSoundEffect(&gGame.mSound, 0x296, 1.0f, 0.0f);
+	}
+	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f);
+	slot->mActor->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	slot->SetRot(0.0f);
+	f32 distance;
+	f32 angle = 0.017453292f * (rand() % 60 + 240);
+	distance  = 30.0f + rand() % 15;
+	slot->StartSlide(distance, 0.5f, angle);
+	slot->mSpawned    = 1;
+	slot->mStackLevel = 0;
+	slot->mAbove      = NULL;
+}
+
+extern "C" void PlayYakiSound(void)
+{
+	PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+	yakiSoundPlayed = 1;
+}
+
+extern "C" void ResetYakiRates(void)
+{
+	f32* rate = yakiRates;
+	for (s32 i = 0; i < 6; i++) {
+		*rate++ = 1.0f;
+	}
+}
+
+static HamObj hamObjs[9];
+static HamDish hamDishes[4];
+static XObj* tempActors[4];
+
+static inline bool IsActive(XObj* actor)
+{
+	if (actor == NULL) {
+		return false;
+	}
+	if (!(actor->mStatus.mFlags & 0x10000)) {
+		return false;
+	}
+	return true;
+}
+
+static inline bool IsHeld(XObj* actor)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	return player->mLift.mState != 0 && player->mLift.mTarget == actor;
+}
+
+static XObj* gasPlate;
+static u8 playerOffGasPlate;
+static u32 yakiLoopLevel;
+static CStatus32 yakiResultFlags;
+
+// NONMATCHING: local vector homes and register/stack layout differ; cooking levels, effect transforms, state calls and slide checks match.
+extern "C" void HamObj_Update(HamObj* slot, u32 step)
+{
+	if (!IsActive(slot->mActor)) {
+		slot->mSpawned = 0;
+	}
+
+	if (slot->mType == 1 && slot->mSpawned && slot->mStackLevel == 0 && !IsHeld(slot->mActor)) {
+		s32 oldLevel = slot->mYakiTime[slot->mSide] / 600 + 1;
+		f32 rate;
+		if (oldLevel < 1 || oldLevel >= 6) {
+			rate = 1.0f;
+		} else {
+			rate = yakiRates[oldLevel];
+		}
+		slot->mYakiTime[slot->mSide] += step * rate;
+
+		s32 level = slot->mYakiTime[slot->mSide] / 600 + 1;
+		if (oldLevel > 5) {
+			oldLevel = 5;
+		}
+		if (level > 5) {
+			level = 5;
+		}
+
+		CVec* actorPos = slot->mActor->GetPos();
+		Vec pos;
+		pos.x = actorPos->x;
+		pos.y = actorPos->y;
+		pos.z = actorPos->z;
+		pos.y += 2.5f;
+		Vec scale;
+		scale.x = scale.y = scale.z = 1.0f;
+
+		if (level < 4 && oldLevel < level) {
+			Vec rot;
+			rot.x = rot.y = rot.z  = 0.0f;
+			EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3A, 0);
+			if (effect != NULL) {
+				effect->pos   = pos;
+				effect->rot   = rot;
+				effect->scale = scale;
+				UpdateEffectMtx(effect);
+			}
+		}
+		if (level == 4) {
+			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
+				Vec rot;
+				rot.x = rot.y = rot.z = 0.0f;
+				fn_800A12F8(gGame.mEvtPtcl.mEffects, 0x3B, FALSE);
+				EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3B, 0);
+				if (effect != NULL) {
+					effect->pos   = pos;
+					effect->rot   = rot;
+					effect->scale = scale;
+					UpdateEffectMtx(effect);
+				}
+			}
+		} else if (level >= 5) {
+			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
+				Vec rot;
+				rot.x = rot.y = rot.z = 0.0f;
+				fn_800A12F8(gGame.mEvtPtcl.mEffects, 0x3B, FALSE);
+				EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x3B, 0);
+				if (effect != NULL) {
+					effect->pos   = pos;
+					effect->rot   = rot;
+					effect->scale = scale;
+					UpdateEffectMtx(effect);
+				}
+			}
+		}
+
+		if (yakiLoopLevel < 1) {
+			yakiLoopLevel = 1;
+		}
+		if (level >= 4) {
+			yakiLoopLevel = 2;
+		}
+
+		if (slot->mYakiEffect == NULL) {
+			MtxP mtx               = slot->mActor->GetWorldMtx(1);
+			EffectInstance* effect = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x78, 0);
+			if (effect != NULL) {
+				effect->mtx = mtx;
+				UpdateEffectMtx(effect);
+			}
+			slot->mYakiEffect = effect;
+		}
+	}
+
+	if (slot->mState != NULL) {
+		(slot->*(slot->mState))();
+	} else if (slot->mSpawned && slot->mDish == NULL) {
+		CVec center(-263.9f, 76.98f, 42.0f);
+		f32 angle = AngleFrom(slot->mActor->GetPos(), &center);
+		if (!IsOnGasPlate(slot->mActor)) {
+			slot->StartSlide(5.0f, 0.2f, angle);
+			slot->mStackLevel = 0;
+		} else if (slot->mStackLevel == 0 && playerOffGasPlate) {
+			if (PSVECDistance(((XObj*)gGame.GetPlayer())->GetPos(), slot->mActor->GetPos()) < 8.0f) {
+				slot->StartSlide(5.0f, 0.2f, angle);
+			}
+		} else if (GetStackPlacementPosition(slot->mActor->mCoord).y + 2.0f * slot->mStackLevel < slot->mActor->GetPos()->y) {
+			slot->StartSlide(0.0f, 0.5f, angle);
+		}
+
+		if (!putDownActive && !(slot->mActor->mStatus.mFlags & 0x100000000ULL)
+		    && (slot->mAbove == NULL || (slot->mAbove != NULL && slot->mStackLevel == slot->mAbove->mStackLevel))) {
+			slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+		}
+	}
+
+	if (slot->mSpawned && slot->mActor->GetPos()->y < 77.5f) {
+		slot->mActor->SetTranslateY(78.0f);
+		slot->mActor->SetRotationZ(slot->mRotZ);
+	}
+}
+
+// NONMATCHING: player/track checks are inlined differently; all nine updates and the three sound paths match.
+extern "C" void UpdateHamObjs(u32 arg)
+{
+	if (gasPlate == NULL) {
+		return;
+	}
+	if (IsOnGasPlate((XObj*)gGame.GetPlayer())) {
+		playerOffGasPlate = 0;
+	} else {
+		playerOffGasPlate = 1;
+	}
+	yakiLoopLevel = 0;
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (IsActive(slot->mActor)) {
+			HamObj_Update(slot, arg);
+		}
+	}
+	switch (yakiLoopLevel) {
+	case 1:
+		StopWiiSfx(&gGame.mSound, 0x295, 0.0f);
+		PlayWiiSoundEffect(&gGame.mSound, 0x294, 1.0f, 0.0f);
+		SetWiiSfxVolume(&gGame.mSound, 0x294, 1.0f, 0.0f);
+		break;
+	case 2:
+		StopWiiSfx(&gGame.mSound, 0x294, 0.0f);
+		PlayWiiSoundEffect(&gGame.mSound, 0x295, 1.0f, 0.0f);
+		SetWiiSfxVolume(&gGame.mSound, 0x295, 1.0f, 0.0f);
+		break;
+	default: {
+		CSoundHandle* track = gGame.mSound.FindTrack(0x294);
+		if (track != NULL && track->GetVolume() == 1.0f) {
+			FadeOutGameSfx(&gGame.mSound, 0x294, 3.0f);
+		}
+		track = gGame.mSound.FindTrack(0x295);
+		if (track != NULL && track->GetVolume() == 1.0f) {
+			FadeOutGameSfx(&gGame.mSound, 0x295, 3.0f);
+		}
+		break;
+	}
+	}
+}
+
+static inline bool IsOnTopOf(HamObj* other, HamObj* slot)
+{
+	return other->mAbove != NULL ? other->mAbove->mId == slot->mId : false;
+}
+
+// NONMATCHING: gGame/held and array/object registers differ; the lift test, nine slot updates and StatePutDown match.
+extern "C" void HamObj_StartPutDown(HamObj* slot)
+{
+	XObj* actor            = slot->mActor;
+	s32 held               = 0;
+	WiiPlayerState* player = gGame.GetPlayer();
+	if (player->mLift.mState != 0 && player->mLift.mTarget == actor) {
+		held = 1;
+	}
+	if (held) {
+		putDownActive = 1;
+		for (s32 i = 0; i < 9; i++) {
+			HamObj* other = &hamObjs[i];
+			if (IsActive(other->mActor)) {
+				other->mActor->mStatus.mFlags &= ~0x100000000ULL;
+				if (IsOnTopOf(other, slot)) {
+					other->mAbove = NULL;
+				}
+			}
+		}
+		slot->SetState(&HamObj::StatePutDown);
+	} else if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
+	}
+}
+
+// NONMATCHING: retail partially unrolls the nine-slot reset three times; the build fully unrolls it and uses a smaller frame.
+extern "C" void InitHamburg(void)
+{
+	HamObj* slot = hamObjs;
+	for (s32 i = 0; i < 9; i++, slot++) {
+		slot->mId         = -1;
+		slot->mActor      = NULL;
+		slot->mState      = NULL;
+		slot->mYakiEffect = NULL;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		hamDishes[i].mId    = -1;
+		hamDishes[i].mActor = NULL;
+	}
+
+	gasPlate = NULL;
+	for (s32 i = 0; gasPlate == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* actor = gGame.mXObjs.mObjects[i];
+		if ((actor->mStatus.mFlags & 1) && actor->mCoord.mPlacement->mObjectId == 0x200) {
+			gasPlate = actor;
+		}
+	}
+	if (gasPlate != NULL) {
+		gasPlate->mStatus.mFlags &= ~0x200000000ULL;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		tempActors[i] = NULL;
+	}
+	yakiResultFlags.mFlags = 0;
+	putDownActive          = 0;
+	SuppressIdleHudCounters(&gGame.mInfoScrn);
+}
+
+// NONMATCHING: the slot, group and effect cursors use different callee-saved registers; size, calls and effect loops match.
+extern "C" void ExitHamburg(void)
+{
+	if (gasPlate != NULL) {
+		gasPlate->mStatus.mFlags |= 0x200000000ULL;
+	}
+
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (slot->mYakiEffect != NULL) {
+			if (slot->mYakiEffect != NULL) {
+				RetireEffect(&slot->mYakiEffect->handle, FALSE);
+			}
+		}
+		slot->mId         = -1;
+		slot->mActor      = NULL;
+		slot->mState      = NULL;
+		slot->mYakiEffect = NULL;
+	}
+	gasPlate = NULL;
+
+	for (u32 group = 0; group < 6; group++) {
+		for (s32 i = 0; i < 0x80; i++) {
+			EffectInstance* effect = &gGame.mEvtPtcl.mEffects[i];
+			if (!effect->IsFinished() && gGame.mEvtPtcl.mEffects[i].group == group) {
+				RetireEffect(&effect->handle, TRUE);
+			}
+		}
+	}
+	StopWiiSfx(&gGame.mSound, 0x294, 0.0f);
+	StopWiiSfx(&gGame.mSound, 0x295, 0.0f);
+	AllowIdleHudCounters(&gGame.mInfoScrn);
+}
+
+extern "C" HamObj* FindHamObjByActor(XObj* actor)
+{
+	if (actor == NULL) {
+		return NULL;
+	}
+	for (s32 i = 0; i < 9; i++) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
+}
+
+// NONMATCHING: local label and register names differ; both search loops and the held-object path match.
+extern "C" HamObj* FindHamObj(s32 id)
+{
+	if (id < 0) {
+		return FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (hamObjs[i].mActor != NULL && hamObjs[i].mId == id) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
+}
+
+extern "C" HamObj* RegisterHamObj(s32 id)
+{
+	HamObj* slot = FindHamObj(id);
+	if (slot != NULL) {
+		return slot;
+	}
+
+	for (s32 i = 0; i < 9; i++) {
+		if (hamObjs[i].mActor == NULL) {
+			slot = &hamObjs[i];
+			HamObj_Init(slot, id);
+			return slot;
+		}
+	}
+	return NULL;
+}
+
+// NONMATCHING: callee-saved register allocation and the loop comparison differ; all virtual calls, distances and constants match.
+extern "C" HamObj* FindFacingHamburg(void)
+{
+	HamObj* best = NULL;
+	f32 bestDist = 0.0f;
+
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (IsActive(slot->mActor) && (slot->mActor->mStatus.mFlags & 0x100000000ULL) && slot->mStackLevel <= 0
+		    && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9) {
+			CVec* actorPos = slot->mActor->GetPos();
+			f32 dist       = PSVECDistance(((XObj*)gGame.GetPlayer())->GetPos(), actorPos);
+			f32 angle      = AngleFrom(((XObj*)gGame.GetPlayer())->GetPos(), slot->mActor->GetPos());
+			f32 c          = cos(angle - gGame.GetPlayer()->mMoveRotate.y);
+			if ((f32)cos(0.7853981852531433) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
+				best     = slot;
+				bestDist = dist;
+			}
+		}
+	}
+	return best;
+}
+
+extern "C" HamObj* FindFreeHamObj(void)
+{
+	for (s32 i = 0; i < 9; i++) {
+		if (!IsActive(hamObjs[i].mActor)) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
+}
+
+extern "C" HamDish* FindHamDish(s32 id)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (hamDishes[i].mActor != NULL && hamDishes[i].mId == id) {
+			return &hamDishes[i];
+		}
+	}
+	return NULL;
+}
+
+static inline void AddToHamDish(HamDish* group, HamObj* slot)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (group->mObjs[i] == NULL) {
+			group->mObjs[i] = slot;
+			break;
+		}
+	}
+}
+
+// NONMATCHING: local label and register names differ; the plug test, inlined searches and dish update match.
+extern "C" s32 PutHeldHamObjOnDish(s32 id)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	if (IsLiftTargetPlug(&player->mLift)) {
+		return -1;
+	}
+
+	HamObj* slot = FindHamObjByActor(player->mLift.mTarget);
+	if (slot == NULL) {
+		return -1;
+	}
+
+	HamDish* group = FindHamDish(id);
+	slot->mDish    = group;
+	AddToHamDish(group, slot);
+	if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
+	}
+	return slot->mId;
+}
+
+extern "C" void fn_80170EE4(u8* data)
+{
+	SetYakiRates(data);
+}
+
+extern "C" s32 CountHamDishObjs(HamDish* group)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (group->mObjs[i] == NULL) {
+			return i;
+		}
+	}
+	return 4;
+}
+
+// NONMATCHING: gGame, dish, index and zero registers differ; both searches and all four initializers match.
+extern "C" HamDish* RegisterHamDish(s32 id)
+{
+	HamDish* group = FindHamDish(id);
+	if (group != NULL) {
+		return group;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		if (hamDishes[i].mActor == NULL) {
+			group           = &hamDishes[i];
+			group->mId      = id;
+			group->mActor   = gGame.mXObjs.mObjects[id];
+			group->mObjs[0] = NULL;
+			group->mObjs[1] = NULL;
+			group->mObjs[2] = NULL;
+			group->mObjs[3] = NULL;
+			return group;
+		}
+	}
+	return NULL;
+}
+
+extern "C" void ClearTempActors(void)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (tempActors[i] != NULL) {
+			tempActors[i]->mStatus.mFlags &= ~0x10000ULL;
+			tempActors[i] = NULL;
+		}
+	}
+}
+
+// NONMATCHING: the by-value Vec has separate local and argument homes, enlarging the frame; all flag updates and calls match.
+extern "C" void UpdateHamPickupFlags(void)
+{
+	putDownActive = 0;
+	for (u32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (!IsActive(slot->mActor)) {
+			continue;
+		}
+		if (slot->mDish != NULL) {
+			slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
+			slot->mActor->mStatus.mFlags &= ~0x10000000000ULL;
+		} else {
+			Vec pos      = *slot->mActor->GetPos();
+			HamObj* best = FindStackBase(pos, slot->mStackLevel + 1, slot->mId, 7.0f);
+			if (best == NULL) {
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+			}
+		}
+	}
+	ClearTempActors();
+}
+
+// NONMATCHING: one local label/relocation differs; conditions, both virtual position calls and distance updates match.
+extern "C" HamObj* FindStackBase(Vec pos, s32 level, s32 id, f32 maxDist)
+{
+	HamObj* best = NULL;
+
+	for (u32 i = 0; i < 9; i++) {
+		HamObj* other = &hamObjs[i];
+		if (IsActive(other->mActor) && id != other->mId && level == other->mStackLevel && other->mDish == NULL && !IsHeld(other->mActor)) {
+			pos.y    = other->mActor->GetPos()->y;
+			f32 dist = PSVECDistance(other->mActor->GetPos(), &pos);
+			if (dist < maxDist) {
+				best    = other;
+				maxDist = dist;
+			}
+		}
+	}
+	return best;
+}
+
+extern "C" void AddTempActor(s32 id)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (tempActors[i] == NULL) {
+			XObj* actor;
+			if (gGame.mEvt.mData.mScript != NULL) {
+				actor = ResolveEventObjectId(&gGame.mEvt.mData, id);
+			} else {
+				actor = NULL;
+			}
+			tempActors[i] = actor;
+			tempActors[i]->mStatus.mFlags |= 0x10000ULL;
+			return;
+		}
+	}
+}
+
+extern "C" s32 CheckYakiResult(void)
+{
+	if (gGame.mEvt.mData.mScript != NULL) {
+		return 0;
+	}
+
+	XObj* player = (XObj*)gGame.GetPlayer();
+	if (player->GetPos()->x < -295.0f || -225.0 < player->GetPos()->x || player->GetPos()->z < 10.0f || 74.0f < player->GetPos()->z) {
+		return 9;
+	}
+
+	s32 result = 0;
+	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
+		for (u32 i = 0; i < 9 && result == 0; i++) {
+			HamObj* slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
+			    && slot->mYakiTime[1] / 600 + 1 >= 3) {
+				result = 1;
+			}
+		}
+		if (result != 0) {
+			yakiResultFlags.mFlags |= 2;
+		}
+	}
+
+	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
+		for (u32 i = 0; i < 9 && result == 0; i++) {
+			HamObj* slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9
+			    && (slot->mYakiTime[0] / 600 + 1 >= 5 || slot->mYakiTime[1] / 600 + 1 >= 5)) {
+				result = 2;
+			}
+		}
+		if (result != 0) {
+			yakiResultFlags.mFlags |= 4;
+		}
+	}
+	return result;
+}
+
+// NONMATCHING: switch/block layout and local registers differ; both states, all calls and every constant match.
+void HamObj::StatePutDown()
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+
+	switch (mStateTime) {
+	case 0: {
+		if (player->mLift.mState != 6 || player->GetAnimId() != 9) {
+			break;
+		}
+		if (player->GetAnimFrame() < 15.0f) {
+			break;
+		}
+
+		if (IsHeld(mActor)) {
+			player->mLift.mTarget = NULL;
+		}
+		mActor->mStatus.mFlags &= ~0x400000000000000ULL;
+		mMoveAngle = player->mMoveRotate.y;
+		mMoveSpeed = 2.0f;
+		Vec pos    = *mActor->GetPos();
+		pos.x += 5.0f * (f32)sin(mMoveAngle);
+		pos.z += 5.0f * (f32)cos(mMoveAngle);
+
+		if (mDish != NULL) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x296, 1.0f, 0.0f);
+			pos         = *mDish->mActor->GetPos();
+			mStackLevel = CountHamDishObjs(mDish);
+			pos.y       = GetStackHeight();
+			mActor->SetMoveDir(&pos, mMoveSpeed);
+			SetState(NULL);
+			if (mYakiEffect != NULL) {
+				RetireEffect(&mYakiEffect->handle, FALSE);
+			}
+			mYakiEffect = NULL;
+			UpdateHamPickupFlags();
+			break;
+		}
+
+		if (mType == 1) {
+			PlayYakiSound();
+		}
+
+		for (s32 level = 4; level >= 0; level--) {
+			HamObj* base = FindStackBase(pos, level, mId, 5.0f);
+			if (base != NULL) {
+				pos.y        = base->mActor->GetPos()->y;
+				base->mAbove = this;
+				mStackLevel  = base->mStackLevel + 1;
+				pos.y        = GetStackHeight();
+				mActor->SetMoveDir(&pos, mMoveSpeed);
+				SetState(&HamObj::StateStackLand);
+				UpdateHamPickupFlags();
+				return;
+			}
+		}
+
+		UpdateHamPickupFlags();
+		mStackLevel = 0;
+		pos.y       = GetStackHeight();
+		mActor->SetMoveDir(&pos, mMoveSpeed);
+		mStateTime++;
+		break;
+	}
+	case 1:
+		if (PSVECDistance(mActor->GetPos(), &mActor->mMoveTarget0) <= 0.001f) {
+			UpdateHamPickupFlags();
+			if (IsOnGasPlate(mActor)) {
+				Vec pos = *mActor->GetPos();
+				pos.y   = GetStackPlacementPosition(mActor->mCoord).y;
+				mActor->SetMoveDir(&pos, 10.0f);
+				StartSlide(5.0f, 0.2f, mMoveAngle);
+			} else {
+				mStackLevel = 1;
+				SetState(NULL);
+			}
+		}
+		break;
+	}
+}
+
+// NONMATCHING: register allocation around the inlined slide-hit test differs; calls and values follow Retail.
+void HamObj::StateStackLand()
+{
+	f32 dist = PSVECDistance(mActor->GetPos(), &mActor->mMoveTarget0);
+	if (HamObj_CheckSlideHit(this)) {
+		mActor->SetMoveDir(mActor->GetPos(), 0.0f);
+		SetState(NULL);
+	} else if (dist <= 0.001f) {
+		SetState(NULL);
+	}
+}
+
+extern "C" s32 InitAnas(void);
+extern "C" void DrawAnas(void);
+extern "C" void ExitAnas(void);
+extern "C" void ResetYakiRates(void);
+extern "C" HamObj* FindHamObj(s32 id);
+extern "C" HamObj* RegisterHamObj(s32 id);
+extern "C" HamObj* FindFacingHamburg(void);
+extern "C" HamDish* RegisterHamDish(s32 id);
+extern "C" HamDish* FindHamDish(s32 id);
+extern "C" s32 CountHamDishObjs(HamDish* group);
+extern "C" HamObj* FindFreeHamObj(void);
+extern "C" HamObj* FindHamObjByActor(XObj* actor);
+extern "C" void HamObj_Respawn(HamObj* slot);
+extern "C" void HamObj_SetRot(HamObj* slot, f32 angle);
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle);
+extern "C" void HamObj_StartPutDown(HamObj* slot);
+extern "C" void AddTempActor(s32 id);
+extern "C" void ClearTempActors(void);
+extern "C" void SetYakiRates(u8* data);
+extern "C" void fn_80170EE4(u8* data);
+extern "C" void PlayYakiSound(void);
+extern "C" s32 CheckYakiResult(void);
+
+// NONMATCHING: ipa file inlines ResetYakiRates before the InitAnas call.
+extern "C" s32 InitStage(u32 arg)
+{
+	ResetYakiRates();
+	InitAnas();
+	return 1;
+}
+
+extern "C" s32 DrawStage(u32 arg)
+{
+	DrawAnas();
+	return 1;
+}
+
+extern "C" s32 ExitStage(u32 arg)
+{
+	ExitAnas();
+	return 1;
+}
+
+extern "C" s32 CmdInitHamburg(s32 cmd, s32 count, s32* args)
+{
+	InitHamburg();
+	return 0;
+}
+
+// NONMATCHING: ipa file inlines FindHamObj before reading the placement id.
+extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		return slot->mActor->mCoord.mPlacement->mObjectId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdRegisterHamDishes(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		RegisterHamDish(args[i]);
+	}
+	return 1;
+}
+
+// NONMATCHING: ipa file inlines RegisterHamObj at each loop call.
+extern "C" s32 CmdRegisterHamObjs(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		RegisterHamObj(args[i]);
+	}
+	return 1;
+}
+
+extern "C" s32 CmdGetFacingHamburgId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindFacingHamburg();
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+// NONMATCHING: ipa file inlines HamObj_StartFlip when the slot exists.
+extern "C" s32 CmdFlipHamburg(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		HamObj_StartFlip(slot, args[1]);
+	}
+	return 1;
+}
+
+// NONMATCHING: ipa file inlines the find and state helpers into most command wrappers.
+extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return 0;
+	}
+	f32 angle
+	    = atan2(slot->mActor->GetPos()->x - gGame.GetPlayer()->GetPos()->x, slot->mActor->GetPos()->z - gGame.GetPlayer()->GetPos()->z);
+	HamObj_StartSlide(slot, args[1], 0.2f, angle);
+	return 1;
+}
+
+extern "C" s32 CmdRespawnHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return 0;
+	}
+	HamObj_Respawn(slot);
+	return 1;
+}
+
+extern "C" s32 CmdGetFreeHamObjId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindFreeHamObj();
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdSetHamObjRot(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return -1;
+	}
+	HamObj_SetRot(slot, 0.017453292f * args[1]);
+	return 0;
+}
+
+extern "C" s32 CmdPutDownHamObj(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot == NULL) {
+		return -1;
+	}
+	ClearTempActors();
+	for (s32 i = 1; i < count; i++) {
+		AddTempActor(args[i]);
+	}
+	HamObj_StartPutDown(slot);
+	return 0;
+}
+
+extern "C" s32 CmdGetYakiTime(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		return slot->mYakiTime[args[1]];
+	}
+	return -1;
+}
+
+extern "C" s32 CmdGetHeldHamObjId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdExitHamburg(s32 cmd, s32 count, s32* args)
+{
+	ExitHamburg();
+	return 1;
+}
+
+extern "C" s32 CmdGetHamDishCount(s32 cmd, s32 count, s32* args)
+{
+	HamDish* group = FindHamDish(args[0]);
+	if (group != NULL) {
+		return CountHamDishObjs(group);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdSetYakiRates(s32 cmd, s32 count, s32* args)
+{
+	fn_80170EE4((u8*)args[0]);
+	return 0;
+}
+
+extern "C" s32 CmdPlayYakiSound(s32 cmd, s32 count, s32* args)
+{
+	PlayYakiSound();
+	return 0;
+}
+
+extern "C" s32 CmdCheckYakiResult(s32 cmd, s32 count, s32* args)
+{
+	return CheckYakiResult();
+}
+
+extern "C" s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args)
+{
+	XObj* actor = gGame.mXObjs.mObjects[args[1]];
+	Vec pos     = *actor->GetPos();
+	PlayWiiSoundEffect(&gGame.mSound, args[0], GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	return 0;
+}
+#else
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
@@ -4499,3 +5687,4 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
  * @note Size: 0x48
  */
 // fn_4_4728
+#endif
