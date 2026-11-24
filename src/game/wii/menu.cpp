@@ -2346,7 +2346,7 @@ BOOL MenuSFTestSub::Update(u32 frames)
 			switch (operation) {
 			case 4: {
 				u32 status = gGame.mSaveManager.mScanEntries[sMenuSFTest.mSelection].mStatus;
-				if (!(status & 1) || !(status & 2)) {
+				if (!(status & 1) || (status & 2)) {
 					PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
 					goto done;
 				}
