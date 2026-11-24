@@ -2978,7 +2978,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 		}
 	}
 	InitPCPanelTexture(tex, 126);
-	u16 digitWidth = GXGetTexObjWidth(&tex);
+	f32 digitWidth = GXGetTexObjWidth(&tex);
 	f32 numberX    = places * (scale * digitWidth) + (120.0f * scale + originX);
 	DrawPCGoldNumber(false, numberX, originY + height, alpha, scale, money);
 	if (choice != 2) {
@@ -3125,7 +3125,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 		icon = 240;
 	}
 	InitPCPanelTexture(tex, icon);
-	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+	f32 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
 	u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	DrawOverviewTexture(tex, color, iconX, iconY, scale * w, scale * h);
 }
@@ -5199,7 +5199,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 width, f3
 	InitPCPanelTexture(tex, 139);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], sBannerScrollX, sBannerScrollY, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	u16 h = GXGetTexObjHeight(&tex), w = GXGetTexObjWidth(&tex);
+	f32 h = GXGetTexObjHeight(&tex), w = GXGetTexObjWidth(&tex);
 	PSMTXScale(tex.mTexMtx.mMtx[2], width / w, height / h, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	gs.mCurRenderState->SetZMode(GX_TRUE, GX_GREATER, GX_TRUE);
