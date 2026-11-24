@@ -360,7 +360,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 	case 9:
 		if (owner->IsAnimDone()) {
 			WiiPlayerState* chr = act->mOwner;
-			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			chr->mIdleLoops = 3;
 			act->mState     = 0;
 		}
@@ -1306,7 +1306,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 			DeactivatePlayerRadar((XObjRadar*)act->mOwner->mRadarObj);
 		} else if (animObj->IsAnimDone()) {
 			WiiPlayerState* owner = act->mOwner;
-			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			owner->mIdleLoops = 3;
 			act->mState       = 0;
 			act->mTarget      = NULL;
@@ -1567,7 +1567,7 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	if (!(act->mFade > 0))
 		return;
 	CVec origin = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
-	CVec target = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+	CVec target = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 	f32 yaw     = atan2(target.x - origin.x, target.z - origin.z);
 	f32 pitch   = TargetPitch(origin, target) - DEG2RAD * 3;
 	f32 span    = PSVECDistance(&origin, &target) / 20;
