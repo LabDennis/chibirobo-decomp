@@ -129,7 +129,7 @@ void CMotionControlCamera::Init()
 	mPushedAction = NULL;
 	_244          = -1;
 	_240          = -1;
-	mFlags        = 0;
+	mFlags.mFlags = 0;
 	mInterestMode = 0;
 	mEyeMode      = 0;
 	mFollowDivide = 12.0f;
@@ -258,19 +258,19 @@ void CMotionControlCamera::Update(u32 step)
 		}
 		ReadAction();
 		// what the action drives goes into the targets; Interpolate works the view toward them
-		if (mFlags & CAMFLAG_EYE) {
+		if (mFlags.mFlags & CAMFLAG_EYE) {
 			mEye = mAction->mEye;
 		}
-		if (mFlags & CAMFLAG_INTEREST) {
+		if (mFlags.mFlags & CAMFLAG_INTEREST) {
 			mInterest = mAction->mInterest;
 		}
-		if (mFlags & CAMFLAG_DISTANCE) {
+		if (mFlags.mFlags & CAMFLAG_DISTANCE) {
 			mDistance = mAction->mDistance;
 		}
-		if (mFlags & CAMFLAG_FOV) {
+		if (mFlags.mFlags & CAMFLAG_FOV) {
 			mFov = mAction->mFov;
 		}
-		if (mFlags & CAMFLAG_ANGLE) {
+		if (mFlags.mFlags & CAMFLAG_ANGLE) {
 			mAngle = mAction->mAngle;
 		}
 	}
@@ -278,7 +278,7 @@ void CMotionControlCamera::Update(u32 step)
 	Interpolate(step);
 
 	// work out whatever the action didn't drive from what it did
-	u32 flags = mFlags;
+	u32 flags = mFlags.mFlags;
 	if ((flags & CAMFLAG_EYE) && (flags & CAMFLAG_INTEREST)) {
 		CalcAngle();
 		CalcDistance();
@@ -304,7 +304,7 @@ void CMotionControlCamera::Update(u32 step)
 		CalcEye();
 	}
 	// 0x40000 comes with CAMFLAG_ANGLE (anim, evt, reset), CalcUp rolls the up vector by the angle's z
-	if (mFlags & 0x40000) {
+	if (mFlags.mFlags & 0x40000) {
 		CalcUp();
 	}
 }
@@ -317,26 +317,26 @@ void CMotionControlCamera::Interpolate(u32 step)
 {
 	switch (mMode) {
 	case 0:
-		if (mFlags & CAMFLAG_DISTANCE) {
+		if (mFlags.mFlags & CAMFLAG_DISTANCE) {
 			SetDistance(mDistance);
 		}
-		if (mFlags & CAMFLAG_FOV) {
+		if (mFlags.mFlags & CAMFLAG_FOV) {
 			SetFov(mFov);
 		}
-		if (mFlags & CAMFLAG_ANGLE) {
+		if (mFlags.mFlags & CAMFLAG_ANGLE) {
 			SetAngle(mAngle);
 		}
 		break;
 	case 1: {
 		CObjVec vec;
-		if (mFlags & CAMFLAG_EYE) {
+		if (mFlags.mFlags & CAMFLAG_EYE) {
 			vec.Reset(mView.mEye);
 			vec.SetTarget(mEye);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
 			vec.Step(step);
 			SetEye(vec.mValue);
 		}
-		if (mFlags & CAMFLAG_INTEREST) {
+		if (mFlags.mFlags & CAMFLAG_INTEREST) {
 			vec.Reset(mView.mInterest);
 			vec.SetTarget(mInterest);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
@@ -347,7 +347,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 	}
 	}
 
-	if (mFlags & CAMFLAG_INTEREST) {
+	if (mFlags.mFlags & CAMFLAG_INTEREST) {
 		switch (mInterestMode) {
 		case 0:
 			SetInterest(mInterest);
@@ -368,7 +368,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 		}
 	}
 
-	if (mFlags & CAMFLAG_EYE) {
+	if (mFlags.mFlags & CAMFLAG_EYE) {
 		// Init and ReadAction only ever set mEyeMode to 0, so only case 0 runs
 		switch (mEyeMode) {
 		case 0:
@@ -518,7 +518,7 @@ void CMotionControlCamera::ApplyAction()
  */
 void CMotionControlCamera::UpdateTarget(XObj* obj)
 {
-	if (mAction != NULL && obj == mAction->GetTarget() && (mFlags & CAMFLAG_INTEREST)) {
+	if (mAction != NULL && obj == mAction->GetTarget() && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		// obj is the Wii player; its unreconstructed base class keeps the focus point
 		// accessor at vtable +0x1B0, the GameCube's XObj::GetCameraTarget
 		SetInterest(((WiiPlayerState*)obj)->GetCameraTarget());
@@ -535,18 +535,18 @@ void CMotionControlCamera::ReadAction()
 	mEyeMode = 0;
 	if (mAction != NULL) {
 		if (mAction == GetAction(CAMACTION_ANIM)) {
-			mMode  = 0;
-			mFlags = 0;
-			mFlags |= CAMFLAG_EYE;
-			mFlags |= CAMFLAG_INTEREST;
-			mFlags |= CAMFLAG_FOV;
-			mFlags |= CAMFLAG_ANGLE;
-			mFlags |= CAMFLAG_DISTANCE;
-			mFlags |= 0x40000;
+			mMode         = 0;
+			mFlags.mFlags = 0;
+			mFlags.mFlags |= CAMFLAG_EYE;
+			mFlags.mFlags |= CAMFLAG_INTEREST;
+			mFlags.mFlags |= CAMFLAG_FOV;
+			mFlags.mFlags |= CAMFLAG_ANGLE;
+			mFlags.mFlags |= CAMFLAG_DISTANCE;
+			mFlags.mFlags |= 0x40000;
 		} else {
-			mFlags = 0;
-			mMode  = mAction->GetMode();
-			mFlags |= mAction->GetCameraFlags();
+			mFlags.mFlags = 0;
+			mMode         = mAction->GetMode();
+			mFlags.mFlags |= mAction->GetCameraFlags();
 			mFollowDivide = mAction->GetFollowDivisor();
 			mInterestMode = mAction->GetInterestMode();
 		}

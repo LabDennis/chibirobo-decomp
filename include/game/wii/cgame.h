@@ -357,6 +357,8 @@ STATIC_ASSERT(sizeof(StageName) == 0x23C);
 class CInterfaceCameraAction;
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xD7620.
+// NONMATCHING: retail's constructor also stores the derived vtable at _258; the inheritance form that
+// places it there is not recovered.
 // The member layout is the GameCube class's shifted by 0x64: there the camera was a member at
 // _00 of size 0x194 and the derived fields started at _194, here CCamera is the base subobject
 // of size 0x1F8 and they start at _1F8. Offsets verified in retail Init at 0x80167638.
@@ -373,8 +375,7 @@ public:
 	CInterfaceCameraAction* mPushedAction; // _23C
 	s32 _240;                              // _240, written -1 in Init, never read
 	s32 _244;                              // _244, written -1 in Init, never read
-	u32 mFlags;                            // _248, the action's GetCameraFlags, see CAMFLAG in cmotioncontrolcamera.h
-	u8 _24C[0x250 - 0x24C];                // _24C, Init clears _248/_250/_254 but never this
+	CStatus32 mFlags;                      // _248, the action's GetCameraFlags, see CAMFLAG in cmotioncontrolcamera.h
 	s32 mInterestMode;                     // _250, the action's GetInterestMode, 2 and 3 follow the interest in
 	s32 mEyeMode;                          // _254, 2 and 3 follow the eye in
 	u8 _258[0x25C - 0x258];
@@ -454,19 +455,19 @@ public:
 	void CopyAction()
 	{
 		if (mAction != NULL) {
-			if (mFlags & CAMFLAG_EYE) {
+			if (mFlags.mFlags & CAMFLAG_EYE) {
 				SetEye(mAction->mEye);
 			}
-			if (mFlags & CAMFLAG_INTEREST) {
+			if (mFlags.mFlags & CAMFLAG_INTEREST) {
 				SetInterest(mAction->mInterest);
 			}
-			if (mFlags & CAMFLAG_DISTANCE) {
+			if (mFlags.mFlags & CAMFLAG_DISTANCE) {
 				SetDistance(mAction->mDistance);
 			}
-			if (mFlags & CAMFLAG_FOV) {
+			if (mFlags.mFlags & CAMFLAG_FOV) {
 				SetFov(mAction->mFov);
 			}
-			if (mFlags & CAMFLAG_ANGLE) {
+			if (mFlags.mFlags & CAMFLAG_ANGLE) {
 				SetAngle(mAction->mAngle);
 			}
 		}
