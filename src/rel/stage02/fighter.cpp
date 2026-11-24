@@ -239,6 +239,8 @@ void Shot::Update(u32 dt)
 	}
 }
 
+#define READ_LE32(p) (((u8*)(p))[0] + (((u8*)(p))[1] * 0x100) + (((u8*)(p))[2] * 0x10000) + (((u8*)(p))[3] * 0x1000000))
+
 struct FighterAim {
 	Vec mPos;
 	f32 mScreenX;
@@ -248,6 +250,8 @@ struct FighterAim {
 };
 
 struct Fighter {
+	void SetParams(u8* data);
+
 	XObj* mBody;
 	XObj* mPath;
 	XObj* mExtra;
@@ -480,6 +484,24 @@ extern "C" void DrawFighterHud(void)
 extern "C" void SetSpeedRateTable(u8* rates)
 {
 	fighterWork.mSpeedRates = rates;
+}
+
+// NONMATCHING: ipa file inlines SetParams into this wrapper; the out-of-line helper itself matches.
+extern "C" void SetFighterParams(u8* data)
+{
+	fighterWork.SetParams(data);
+	matoList.mKindPoints[0] = READ_LE32(data + 0x24);
+	matoList.mKindPoints[1] = READ_LE32(data + 0x28);
+}
+
+void Fighter::SetParams(u8* data)
+{
+	mParams       = data;
+	mMinSpeed     = (s32)READ_LE32(data + 0x10) / 100.0f;
+	mMaxSpeed     = (s32)READ_LE32(data + 0x14) / 100.0f;
+	mAccel        = (s32)READ_LE32(data + 0x18) / 100.0f;
+	mFireSlowdown = (s32)READ_LE32(data + 0x1C) / 100.0f;
+	mTimeLimit    = READ_LE32(data + 0x20) * 60 + 59;
 }
 
 extern "C" void SetSoundCueTable(u8* data)
