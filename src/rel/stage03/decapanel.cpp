@@ -1,3 +1,109 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+class DecaPanel;
+
+extern DecaPanel decaPanel;
+
+extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+extern "C" void DecaPanel_Update(DecaPanel* work);
+
+inline XObj* GetObjById(s16 id)
+{
+	return gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
+}
+
+struct SavedObjFlag {
+	s32 mId;
+	u8 mFlags;
+};
+
+struct SavedObjFlagList {
+	void Apply(s32 mode);
+	void Clear();
+
+	SavedObjFlag mEntries[300];
+	s32 mNum;
+};
+STATIC_ASSERT(sizeof(SavedObjFlagList) == 0x964);
+
+extern SavedObjFlagList savedObjFlags;
+
+void SavedObjFlagList::Apply(s32 mode)
+{
+	if (mNum <= 0) {
+		return;
+	}
+	for (s32 i = 0; i < mNum; i++) {
+		if (mEntries[i].mId == -1) {
+			break;
+		}
+		XObj* obj = GetObjById(mEntries[i].mId);
+		if (mode != 0) {
+			if (obj != NULL && (mEntries[i].mFlags & 1)) {
+				obj->mStatus.mFlags |= 0x10000ULL;
+			}
+		} else if (obj != NULL) {
+			obj->mStatus.mFlags &= ~0x10000ULL;
+		}
+	}
+}
+
+void SavedObjFlagList::Clear()
+{
+	mNum = 0;
+	for (s32 i = 0; i < 300; i++) {
+		mEntries[i].mId    = -1;
+		mEntries[i].mFlags = 0;
+	}
+}
+
+extern "C" s32 Stage03_DrawHud(u32 arg)
+{
+	DecaPanel_Update(&decaPanel);
+	return 1;
+}
+
+extern "C" s32 Stage03_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+extern "C" s32 Stage03_CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		gGame.mCameraActions.mScroll2.AddHideObj(args[i]);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage03_CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	gGame.mCameraActions.mScroll2.ClearHideList();
+	return 0;
+}
+
+extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
+{
+	if (savedObjFlags.mNum < 300) {
+		savedObjFlags.mEntries[savedObjFlags.mNum].mId = args[0];
+		XObj* obj                                      = GetObjById(savedObjFlags.mEntries[savedObjFlags.mNum].mId);
+		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+			if (obj->mStatus.mFlags & 0x10000ULL) {
+				savedObjFlags.mEntries[savedObjFlags.mNum].mFlags |= 1;
+			}
+			savedObjFlags.mNum++;
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 count, s32* args)
+{
+	savedObjFlags.Apply(args[0]);
+	return 0;
+}
+#else
 #include "game/hsd_jobj.h"
 #include "game/gmath.h"
 #include "game/video.h"
@@ -1781,3 +1887,5 @@ extern "C" void InitStage(void* arg)
  * @note Size: 0x48
  */
 // CTexObj::~CTexObj, inline in the class above
+
+#endif

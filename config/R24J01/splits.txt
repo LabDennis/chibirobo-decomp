@@ -374,6 +374,9 @@ rel/stage02/car.cpp:
 rel/stage02/rouka.cpp:
 	.text start:0x80177A84 end:0x80178580
 
+rel/stage03/decapanel.cpp:
+	.text start:0x801789A0 end:0x80178D6C
+
 rel/stage20/stage20.cpp:
 	.text start:0x8017B184 end:0x8017B268
 	.sbss start:0x805A1E20 end:0x805A1E24
