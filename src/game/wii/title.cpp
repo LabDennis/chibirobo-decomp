@@ -2138,11 +2138,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			f32 screenX            = (f32)gPointerScreenWidth;
 			f32 screenY            = (f32)gPointerScreenHeight;
 			nw4r::math::VEC3 trans = layout->mTrans;
-			f32 left               = -0.5f * screenX;
-			f32 top                = 0.5f * screenY;
-			f32 right              = 0.5f * screenX;
-			f32 bottom             = -0.5f * screenY;
-			layout->mTrans.y       = -(trans.y + 0.5f * (bottom - top));
+			nw4r::ut::Rect rect(-0.5f * screenX, 0.5f * screenY, 0.5f * screenX, -0.5f * screenY);
+			layout->mTrans.y = -(trans.y + 0.5f * (rect.bottom - rect.top));
 			fn_800556B0(&title->mPanes[3 + i], layout);
 		}
 		labelY = extra + (base + title->mLoadOffset);
