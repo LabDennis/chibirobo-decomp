@@ -50,6 +50,8 @@ public:
 	virtual void Brake();
 	virtual void Start();
 
+	void Register(XObj* car, XObj* path, XObj* attached);
+
 	XObj* mCar;
 	XObj* mPath;
 	XObj* mAttached;
@@ -101,6 +103,20 @@ void CarRoot::Update(u32 frames)
 		}
 		mSpeed = rate;
 	}
+}
+
+void CarRoot::Register(XObj* car, XObj* path, XObj* attached)
+{
+	mCar      = car;
+	mPath     = path;
+	mAttached = attached;
+	car->mStatus.mFlags |= 0x10000ULL;
+	mPath->mStatus.mFlags &= ~0x10000ULL;
+	mFrame     = 0.0f;
+	mPrevFrame = 0.0f;
+	mSpeed     = 1.0f;
+	mBraking   = FALSE;
+	mStarted   = FALSE;
 }
 
 class PlayerCarRoot : public CarRoot {
@@ -166,6 +182,19 @@ void Init(void)
 }
 
 } // namespace Car
+
+extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached)
+{
+	if (Car::playerCar.mCar == NULL) {
+		Car::playerCar.Register(car, path, attached);
+		return 1;
+	}
+	if (Car::racerCar.mCar == NULL) {
+		Car::racerCar.Register(car, path, attached);
+		return 2;
+	}
+	return 0;
+}
 
 extern "C" void StartCarCamera(void)
 {
