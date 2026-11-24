@@ -1310,7 +1310,7 @@ void Cursor::DrawObject()
  * @note Address: 0x8004341C
  * @note Size: 0x4
  */
-void CObj::_unk_00C()
+void CObj::ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info)
 {
 }
 

@@ -1056,8 +1056,8 @@ static inline bool IsScopeRareItem(s32 item)
  * @note Size: 0x57C4
  */
 // NONMATCHING: retail auto-inlines PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown (one
-// original game.cpp; here they sit in gamedraw.cpp's unit) and fn_80114564; vf16C is called without the
-// frame count retail passes. The rest is register and stack placement that follows from those
+// original game.cpp; here they sit in gamedraw.cpp's unit) and fn_80114564. The rest is register and stack
+// placement that follows from those
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
@@ -1414,7 +1414,7 @@ void CGame::Update(u32 frames)
 			XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->_188 && obj->mBaseMtxPtr == NULL) {
-					obj->vf16C();
+					obj->vf16C(frames);
 				} else {
 					obj->vf15C();
 					obj->UpdateObject(frames);

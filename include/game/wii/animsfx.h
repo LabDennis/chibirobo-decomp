@@ -58,12 +58,12 @@ public:
 		}
 	}
 	// moves a playing actor to pos and steps its fades
-	void Update(const Vec* pos)
+	void Update(const Vec* pos, f32 step = 2.0f)
 	{
 		CSound3DActor* actor = mActor;
 		if (actor != NULL && actor->mHandle.IsAttachedSound()) {
 			actor->SetPosition(nw4r::math::VEC3(*pos));
-			actor->UpdateFade(2.0f);
+			actor->UpdateFade(step);
 		}
 	}
 	// the actor's handle while it plays a sound

@@ -1157,7 +1157,7 @@ extern "C" void GetHudPointParticleOrigin(InfoScrn* scrn, f32* x, f32* y)
  * @note Address: 0x8008C15C
  * @note Size: 0x14
  */
-extern "C" void ShowHappyPointCounter()
+extern "C" void ShowHappyPointCounter(InfoScrn* scrn)
 {
 	gHudHappyPointCounter.mVisible = TRUE;
 }
@@ -1166,7 +1166,7 @@ extern "C" void ShowHappyPointCounter()
  * @note Address: 0x8008C170
  * @note Size: 0x14
  */
-extern "C" void HideHappyPointCounter()
+extern "C" void HideHappyPointCounter(InfoScrn* scrn)
 {
 	gHudHappyPointCounter.mVisible = FALSE;
 }
@@ -1175,7 +1175,7 @@ extern "C" void HideHappyPointCounter()
  * @note Address: 0x8008C184
  * @note Size: 0x14
  */
-extern "C" void ShowMoolahCounter()
+extern "C" void ShowMoolahCounter(InfoScrn* scrn)
 {
 	gHudMoneyCounter.mVisible = TRUE;
 }
@@ -1184,7 +1184,7 @@ extern "C" void ShowMoolahCounter()
  * @note Address: 0x8008C198
  * @note Size: 0x14
  */
-extern "C" void HideMoolahCounter()
+extern "C" void HideMoolahCounter(InfoScrn* scrn)
 {
 	gHudMoneyCounter.mVisible = FALSE;
 }
@@ -1193,7 +1193,7 @@ extern "C" void HideMoolahCounter()
  * @note Address: 0x8008C1AC
  * @note Size: 0x14
  */
-extern "C" void ShowScrapCounter()
+extern "C" void ShowScrapCounter(InfoScrn* scrn)
 {
 	gHudScrapCounter.mVisible = TRUE;
 }
@@ -1202,7 +1202,7 @@ extern "C" void ShowScrapCounter()
  * @note Address: 0x8008C1C0
  * @note Size: 0x14
  */
-extern "C" void HideScrapCounter()
+extern "C" void HideScrapCounter(InfoScrn* scrn)
 {
 	gHudScrapCounter.mVisible = FALSE;
 }

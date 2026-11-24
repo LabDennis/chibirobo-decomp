@@ -27,8 +27,8 @@ s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
 void fn_8013E788(s32 command);
-void fn_8013F41C(s32 anim);
-void fn_8013F558(void);
+void PlaySpiderBossAttachmentAnimation(s32 anim);
+void ResetSpiderBossAttachment(void);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 BOOL IsUsingMug(XAction* lift);
 void fn_800FCD1C(XAction* act);
@@ -487,7 +487,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		mCommand = 0;
 		break;
 	case 20:
-		fn_8013F41C(4);
+		PlaySpiderBossAttachmentAnimation(4);
 		mCommand = 0;
 		break;
 	case 22:
@@ -705,7 +705,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 					fn_8013D0C8();
 			}
 			if (spider->mHits <= 0) {
-				fn_8013F558();
+				ResetSpiderBossAttachment();
 				StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
 				spider->mSpeed = 0;
 				if (spider->mSpiderStatus.mFlags & 0x40000000) {
@@ -1007,7 +1007,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		break;
 	case 10:
 		if (AttackAnimEnding(this, frames)) {
-			fn_8013F41C(1);
+			PlaySpiderBossAttachmentAnimation(1);
 			mTimer = gRefreshRate / frames;
 			SetAttackAnim(this, 17);
 			mGrabCooldown = 5;
@@ -1039,7 +1039,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			mTimer       = 3 * gRefreshRate / frames + (gRefreshRate / frames) / 2;
 			mActionTimer = rand() % 30 + 30;
 			GetJointPos(FindResNode("cyl3"));
-			fn_8013F41C(2);
+			PlaySpiderBossAttachmentAnimation(2);
 			PlayWiiSoundEffect(&gGame.mSound, 0x476, 1.0f, 0.0f);
 			++mStep;
 		}
@@ -1103,7 +1103,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			SetAttackAnim(this, 7);
 			mSpiderStatus.mFlags &= ~0x200;
 			StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
-			fn_8013F558();
+			ResetSpiderBossAttachment();
 			StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
 			mStep = 0;
 		}
@@ -1112,7 +1112,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			SetAttackAnim(this, 7);
 			mSpiderStatus.mFlags &= ~0x200;
 			mStep = 0;
-			fn_8013F558();
+			ResetSpiderBossAttachment();
 			StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
 		}
 		break;
@@ -1149,13 +1149,13 @@ void XObjSpiderBoss::State3(u32 frames)
 			SetAttackAnim(this, 7);
 			mStep = 0;
 			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
-			fn_8013F558();
+			ResetSpiderBossAttachment();
 			StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
 		}
 		if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			SetAttackAnim(this, 7);
 			mStep = 30;
-			fn_8013F558();
+			ResetSpiderBossAttachment();
 			StopWiiSfx(&gGame.mSound, 0x476, 0.0f);
 		}
 		break;

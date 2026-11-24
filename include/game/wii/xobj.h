@@ -29,6 +29,8 @@
 #include "game/wii/xchrmenu.h"
 #include "revolution/mem.h"
 
+struct EffectInstance;
+
 extern "C" {
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"
@@ -128,8 +130,8 @@ public:
 	virtual ~IScnObjCallback() { } // _08
 	// the library's order: CALC_WORLD, CALC_MAT, CALC_VIEW, DRAW_OPA, DRAW_XLU.
 	// the timing is ScnObj's Timing enum, which needs the library's header
-	virtual void _unk_00C();
-	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info); // _10
+	virtual void ExecCallback_CALC_WORLD(int timing, ScnObj* obj, u32 param, void* info); // _0C
+	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info);   // _10
 	virtual void _unk_014();
 	virtual void _unk_018();
 	virtual void _unk_01C();
@@ -1474,7 +1476,6 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 // go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
-	// defined in xobj_ut.cpp (retail 0x800BE7E0, right behind CObjVec's ctor)
 	CJArchive();
 
 	NW_Anm mAnm; // _00, its vtable at _58 and its CFile at _5C
@@ -1623,7 +1624,7 @@ public:
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
-	virtual void _unk_00C();                             // _144, IScnObjCallback's
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _144, IScnObjCallback's
 	// the IScnObjCallback override: overriding a second base's virtual adds a slot here
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _148
 
@@ -1697,7 +1698,7 @@ public:
 	BOOL PassedAnimFrame(f32 f) { return mLastAnimFrame < f && GetAnimFrame() >= f; }
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168(u32 frames);        // _168, steps the two queued material colors to their targets
-	virtual void vf16C();                  // _16C, empty
+	virtual void vf16C(u32 frames);        // _16C, empty
 	// queues the model on the scene draw list; the view argument is unused in the
 	// body but callers pass it: DrawWithView hands its view through (retail emits
 	// no argument setup), the DrawGroundShadow call sites pass NULL (li r4, 0)
@@ -1931,8 +1932,38 @@ public:
 	XObjActor();
 	void ResetMovementStep();
 	virtual ~XObjActor();
-	virtual void OnPushDisplacement(const Vec& displacement); // _1F4 override
-
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void Release();
+	virtual void InitializeObject();
+	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void vf16C(u32 frames);
+	virtual void DrawObject();
+	virtual void DrawScreenOverlay();
+	virtual void DrawDebugStatus();
+	virtual Vec GetCameraTarget();
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnPushDisplacement(const Vec& displacement);
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);
+	virtual void PauseSounds(f32 fade);
+	virtual void ResumeSounds(f32 fade);
+	virtual void UpdateAfterAnim(u32 frames);
+	virtual void RunStateHandler(u32 frames) = 0;
+	virtual void ClearStateHandler()         = 0;
+	virtual void UpdateGroundMovement(u32 frames);
+	virtual void ProcessPendingEvents(u32 frames) = 0;
+	virtual void ResetActorState();
+	virtual BOOL IsHitPending();
+	virtual void UpdateAnimationSounds(f32 frame);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadYaw();
+	virtual f32 GetMinHeadYaw();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
 	f32 mHeading;           // _9A8, the way it walks
 	f32 mMoveSpeed;         // _9AC, move speed
 	f32 mFacing;            // _9B0, the yaw the model is turned to
@@ -1961,10 +1992,20 @@ public:
 	XObj* mAttached;       // _A78, the attached object
 	Mtx mAttachedMtx;      // _A7C, where the attached object is held
 	XObj* mHeldObjects[2]; // _AAC, Mama can carry a pair
-	u8 _AB4[0xAC4 - 0xAB4];
-	CVec _AC4; // _AC4, its vptr ends it at _AD0
-	u8 _AD4[0xAF0 - 0xAD4];
-	CObjVec _AF0;               // _AF0, a TVec and two CVecs, head-look tween shape
+	u16 _AB4;
+	s16 mHeadAimSnap[2]; // _AB6
+	u16 _ABA;
+	XObj* _ABC;
+	XObj* mHeadAimObject; // _AC0
+	CVec mHeadAimTarget;  // _AC4
+	CCamera* mHeadAimCamera;
+	f32 mHeadAimPitch; // _AD8
+	f32 mHeadAimYaw;   // _ADC
+	f32 _AE0;
+	f32 _AE4;
+	f32 _AE8;
+	f32 _AEC;
+	CObjVec _AF0;               // _AF0
 	AnimSfx mSfx;               // _B20, the sounds UpdateAnimationSounds plays
 	AnimSfxActor mSfxActors[2]; // _B7C, the secondary sound slots
 	s32 mLookMode;              // _B94, 0 ahead, 1 at mLookTarget, 3 at mLookAngle
@@ -1974,9 +2015,8 @@ public:
 	const Vec* mLookTarget;     // _BA4
 	f32 mHeadPitch;             // _BA8
 	XObjJointPart mParts[8];    // _BAC
-	u8 _D6C[0xD78 - 0xD6C];
-
-	Vec GetCameraTarget();
+	typedef void (XObjActor::*StateFunc)(u32 frames);
+	StateFunc mState; // _D6C
 };
 STATIC_ASSERT(sizeof(XObjActor) == 0xD78);
 
@@ -2202,6 +2242,16 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjChr) == 0x1CCA0);
 
+struct XObjActor3Part {
+	nw4r::g3d::ResNode mJoint; // _00
+	XObj* mObj;                // _04
+	Mtx mMtx;                  // _08
+	u8 _38[0x68 - 0x38];
+
+	void Clear() { mObj = NULL; }
+};
+STATIC_ASSERT(sizeof(XObjActor3Part) == 0x68);
+
 // the three-object actor: like XObjChr it carries a dust pool (its own nested
 // CPtclSet at _C3C), a CTexObj[2] at _1BF4 and an AnimSfx at _1E28
 class XObjActor3 : public XObj {
@@ -2210,24 +2260,107 @@ public:
 	public:
 		CPtclSet() { }
 		~CPtclSet();
-		virtual void vf08(); // _08
+		virtual void vf08(CGs* gs); // _08
 	};
 
 	XObjActor3();
 	virtual ~XObjActor3();
+	virtual void Release();
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);
+	virtual void InitializeObject();
+	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void vf16C(u32 frames);
+	virtual void DrawObject();
+	virtual void DrawObjectEffects();
+	virtual void DrawScreenOverlay();
+	virtual void DrawDebugStatus();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);
+	virtual void PauseSounds(f32 fade) { mSfx.Pause(fade); }
+	virtual void ResumeSounds(f32 fade) { mSfx.Resume(fade); }
+	virtual void UpdateAnimationSounds();
 
-private:
+	void Kind0(u32 frames);
+	void UpdateObjectGauge(u32 frames);
+	void Kind2(u32 frames);
+	void Kind3(u32 frames);
+	void Kind4(u32 frames);
+	void Kind5(u32 frames);
+	void Kind6(u32 frames);
+	void Kind7(u32 frames);
+	void Kind8(u32 frames);
+	void Kind9(u32 frames);
+	void Kind10(u32 frames);
+	void Kind11(u32 frames);
+	void Kind12(u32 frames);
+	void Kind13(u32 frames);
+	void UpdateSpiderCounterPanel(u32 frames);
+	void Kind15(u32 frames);
+	void Kind16(u32 frames);
+	void Kind17(u32 frames);
+	void Kind18(u32 frames);
+	void Kind19(u32 frames);
+
 	CTpl mPanelTpl; // _9A8, the stage02 timer and spider counter panels
-	u8 _BA0[0xC3C - 0xBA0];
+	f32 _BA0;
+	f32 mMoveSpeed;
+	f32 mKindTimer;
+	f32 mHeading;
+	s32 mKindStep;
+	u32 _BB4;
+	s32 mFrameCount;
+	CStatus32 mActorFlags;
+	s32 mEventCommand;
+	s32 mEventArg1;
+	s32 mEventArg2;
+	s32 mEventArg3;
+	u32 mExtraEventArgs[7];
+	f32 mWindowLeft;
+	f32 mWindowRight;
+	f32 mOrbitAngle;
+	f32 mOrbitX;
+	f32 mOrbitHeight;
+	f32 mOrbitZ;
+	f32 mOrbitDistance;
+	CVec _C0C;
+	s32 mTimerFadeMode;
+	f32 mTimerPanelAlpha;
+	f32 mCountdownFrames;
+	u8 mCountdownRunning;
+	u8 _C29[0xC2C - 0xC29];
+	s32 mCounterFadeMode;
+	f32 mCounterPanelAlpha;
+	s32 mSpiderCount;
+	u8 _C38;
+	u8 _C39[0xC3C - 0xC39];
 	CPtclSet mDustPool; // _C3C
 	CTexObj mTex[2];    // _1BF4
-	u8 _1DFC[0x1E28 - 0x1DFC];
-	AnimSfx mSfx; // _1E28
-	u8 _1E84[0x21C8 - 0x1E84];
+	EffectInstance* mGens[6];
+	s32 mRumble;
+	s32 mRumbleTimer;
+	XObj* mHeld;
+	s32 _1E20;
+	s32 mSe;
+	AnimSfx mSfx;             // _1E28
+	XObjActor3Part mParts[8]; // _1E84
+	u8 _21C4[0x21C8 - 0x21C4];
 };
 STATIC_ASSERT(sizeof(XObjActor3) == 0x21C8);
 
+typedef void (XObjActor3::*XObjActor3Func)(u32 frames);
+
 // XObjLeticker's recovered fields live in game/wii/xobjleticker.h
+
+struct XObjActorToyPiece {
+	s16 mId;    // _00, -1 for none
+	s32 mState; // _04
+	XObj* mObj; // _08
+	Mtx mMount; // _0C
+};
+STATIC_ASSERT(sizeof(XObjActorToyPiece) == 0x3C);
 
 // toys made of two more objects, read after the toy itself; the retail ctor
 // (0x800C2404) calls the member ctors out of line: CStatus32 at _D78, the two
@@ -2237,17 +2370,49 @@ class XObjActorToy : public XObjActor {
 public:
 	XObjActorToy();
 	virtual ~XObjActorToy();
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	virtual void Release();
+	virtual void InitializeObject();
+	virtual void ResetForNewGame();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void ResetActorState();
+	virtual void DrawObject();
+	virtual void DrawScreenOverlay();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void OnPushDisplacement(const Vec& displacement);
+	virtual s32 vf208(const Vec* pointer, const Vec* motion, u8 over, f32 speed);
+	virtual void OnMoveRequest();
+	virtual void UpdateAfterAnim(u32 frames);
+	virtual void RunStateHandler(u32 frames);
+	virtual void ClearStateHandler();
+	virtual void UpdateAnimationSounds(f32 frame);
+	void ProcessPendingEvents(u32 frames); // _29C
 
-private:
+	void StateCarry(u32 frames);
+	void StateHitRecovery(u32 frames);
+	void StatePickUp(u32 frames);
+	BOOL IsFree();
+
 	CStatus32 mHideKinds; // _D78, kinds queued to hide
-	u8 _D80[8];
-	XObj mFirst;               // _D88
-	XObj mSecond;              // _1730
-	s32 mShownPart;            // _20D8
-	CVec mPendingMove;         // _20DC
-	u8 _20EC[0x21E4 - 0x20EC]; // the piece records and pending state, ctor writes none of it
-	CStatus32 mKindFlags;      // _21E4
-	u8 _21EC[0x2208 - 0x21EC];
+	s32 mLoad;            // _D80
+	u8 _D84[4];
+	XObj mFirst;                  // _D88
+	XObj mSecond;                 // _1730
+	s32 mShownPart;               // _20D8
+	CVec mPendingMove;            // _20DC
+	s32 _20EC;                    // _20EC, cleared with mPendingMove
+	XObjActorToyPiece mPieces[4]; // _20F0
+	XObj* _21E0;
+	CStatus32 mKindFlags; // _21E4
+	f32 _21EC;
+	f32 _21F0;
+	f32 _21F4;
+	s32 _21F8;
+	s32 _21FC;
+	EffectInstance* _2200;
+	f32 _2204;
 };
 STATIC_ASSERT(sizeof(XObjActorToy) == 0x2208);
 
@@ -2260,6 +2425,14 @@ class XObjActorJenny : public XObjActor {
 public:
 	XObjActorJenny();
 	virtual ~XObjActorJenny();
+	virtual void UpdateAnim(f32 speed);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
 
 private:
 	f32 _D78;              // _D78, the GameCube's _C84
@@ -2272,20 +2445,31 @@ private:
 };
 STATIC_ASSERT(sizeof(XObjActorJenny) == 0xD98);
 
-// the same decode holds for Mama/Papa/Tao: their retail ctors end with one
-// CStatus32 init pair at _D80, the rest of the tail matches the GameCube
-// layout at +0xF4 (_D78/_D7C scalars, mHideKinds _D80; Papa adds mJointShown
-// _D88; Tao mCarryMtx _D88, mMountMtx _DB8, mMountObjId _DE8, mMountState
-// _DEC, mMountObj _DF0) -- but declaring the member drops their ctor scores
-// 48.07 -> 45.45 while emitting the same tail stores, so the pads stay until
-// the member-init block matches
+// Mama/Papa/Tao have one CStatus32 at _D80; their other fields follow the
+// GameCube layout shifted by the larger Wii actor base.
 class XObjActorMama : public XObjActor {
 public:
 	XObjActorMama();
 	virtual ~XObjActorMama();
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadYaw();
+	virtual f32 GetMinHeadYaw();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
 
 private:
-	u8 _tail[0xD88 - sizeof(XObjActor)];
+	f32 _D78;
+	s32 _D7C;
+	CStatus32 mHideKinds;
 };
 STATIC_ASSERT(sizeof(XObjActorMama) == 0xD88);
 
@@ -2293,9 +2477,27 @@ class XObjActorPapa : public XObjActor {
 public:
 	XObjActorPapa();
 	virtual ~XObjActorPapa();
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
+	void StatePickUp(u32 frames);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual nw4r::g3d::ResNode GetHeadJoint();
+	virtual CVec GetHeadWorldPosition();
+	virtual f32 GetMaxHeadPitch();
+	virtual f32 GetMinHeadPitch();
+	BOOL IsFree();
 
 private:
-	u8 _tail[0xD90 - sizeof(XObjActor)];
+	f32 _D78;
+	s32 _D7C;
+	CStatus32 mHideKinds;
+	u8 mJointShown;
+	u8 _D89[0xD90 - 0xD89];
 };
 STATIC_ASSERT(sizeof(XObjActorPapa) == 0xD90);
 
@@ -2303,10 +2505,30 @@ class XObjActorTao : public XObjActor {
 public:
 	XObjActorTao();
 	virtual ~XObjActorTao();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void Drop();
+	void StateNone(u32 frames);
+	void StatePickUp(u32 frames);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
 	BOOL IsFree();
+	nw4r::g3d::ResNode GetHeadJoint();
+	CVec GetHeadWorldPosition();
 
 private:
-	u8 _tail[0xDF8 - sizeof(XObjActor)];
+	f32 _D78;
+	s32 _D7C;
+	CStatus32 mHideKinds;
+	Mtx mCarryMtx;
+	Mtx mMountMtx;
+	s16 mMountObjId;
+	u8 _DEA[0xDEC - 0xDEA];
+	s32 mMountState;
+	XObj* mMountObj;
+	u8 _DF4[0xDF8 - 0xDF4];
 };
 STATIC_ASSERT(sizeof(XObjActorTao) == 0xDF8);
 
@@ -2314,6 +2536,23 @@ class XObjActorDeca : public XObjActor {
 public:
 	XObjActorDeca();
 	virtual ~XObjActorDeca();
+	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual void ExecCallbackC();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateAnim(f32 frames);
+	virtual void UpdateObject(u32 frames);
+	virtual Vec GetCameraTarget();
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
+	void ResetActorState();
+	void ProcessPendingEvents(u32 frames);
+	void UpdateAfterAnim(u32 frames);
+	void StateHold(u32 frames);
+	void StatePickUp(u32 frames);
+	void RunStateHandler(u32 frames);
+	void ClearStateHandler();
+	nw4r::g3d::ResNode GetHeadJoint();
+	CVec GetHeadWorldPosition();
 
 private:
 	f32 _D78;              // _D78, the GameCube's _C84
@@ -2334,23 +2573,61 @@ struct XObjArmySlot {
 	XObjArmySlot();
 	~XObjArmySlot();
 
-	u8 _00[0x8];
-	CVec _08;
-	CVec _18;
-	u8 _28[0x8];
+	s32 mActive; // _00
+	u32 mLife;   // _04
+	CVec mPos;   // _08
+	CVec mVel;   // _18
+	f32 mSpeed;  // _28
+	s32 mPhase;  // _2C
+
+	void Move()
+	{
+		mPos.x += mSpeed * mVel.x;
+		mPos.y += mSpeed * mVel.y;
+		mPos.z += mSpeed * mVel.z;
+	}
 };
 STATIC_ASSERT(sizeof(XObjArmySlot) == 0x30);
 
-// the army object: five slot records at _9E4, then its own AnimSfx at _AD4
+// the army object: the GameCube's layout shifted 0x28 behind the bigger XObj
 class XObjArmy : public XObj {
 public:
+	typedef void (XObjArmy::*Func)();
+
 	XObjArmy();
 	virtual ~XObjArmy();
-	virtual void DrawLate(); // _28C
+	virtual void ResetForNewGame();                               // _150
+	virtual void ResetObjectState();                              // _154
+	virtual void UpdateObject(u32 frames);                        // _164
+	virtual void DrawObjectEffects();                             // _188
+	virtual s32 HandleEventCommand(s32 argc, s32* args);          // _1E8
+	virtual void OnHitFromPosition(const Vec& pos, f32 strength); // _1FC
+	virtual void PauseSounds(f32 fade);                           // _20C
+	virtual void ResumeSounds(f32 fade);                          // _210
+	virtual void DrawLate();                                      // _28C
+	virtual void UpdateAnimationSounds();                         // _290
 
-private:
-	u8 _9A8[0x9E4 - 0x9A8];
-	XObjArmySlot mSlots[5]; // _9E4
+	void StateMarch();
+	void StateWait();
+	void StateKnock();
+	void StateFall();
+	void StateGuard();
+
+	Func mFunc;  // _9A8, what UpdateObject runs
+	s32 mStep;   // _9B4
+	s32 mTimer;  // _9B8
+	f32 _9BC;    // _9BC
+	u32 _9C0[2]; // _9C0
+	// _9C8, 1 knocked down, 2 floors swapped, 0x80 silences the shots, 0x100 full volume. A
+	// CStatus32 in retail (vptr _9CC); kept as words so the ctor's code stays put while its
+	// CJArchive member can't expand inline yet
+	u32 mFlags;
+	u32 _9CC;
+	// _9D0, a CVec in retail (vptr _9DC), same reason
+	Vec mGuardPos;
+	u32 _9DC;
+	s32 mMode;              // _9E0, 1 marches, 2 guards a spot
+	XObjArmySlot mShots[5]; // _9E4
 	AnimSfx mSfx;           // _AD4
 };
 STATIC_ASSERT(sizeof(XObjArmy) == 0xB30);

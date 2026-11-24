@@ -13,6 +13,7 @@
 #include "game/scrollroomdata.h"
 #if defined(VERSION_R24J01)
 #include "game/cscrn.h"
+#include "game/ctpl.h"
 class CCamera;
 class XObj;
 class XObjCamera;
@@ -925,9 +926,7 @@ public:
 	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
 	CVec mDragStart;          // _C0, the pointer position the drag started at
 	CVec mDragLast;           // _D0, the pointer position the last update saw
-	u8 _E0[0x40];             // _E0
-	Mtx mMtx;                 // _120
-	u8 _150[0x94];            // _150
+	CTexObj mEdgeTex;         // _E0, the global TPL's image 264 that the edge quads draw
 	ScrollEdgeQuad mQuads[4]; // _1E4
 	CScrnWipeTile mWipe;      // _284, its vptr lands at _2B4, behind CScrnColor's color data
 
