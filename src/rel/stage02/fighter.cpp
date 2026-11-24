@@ -3,12 +3,180 @@
 #include "game/wii/xobj.h"
 #include "game/wii/cgs.h"
 #include "game/globals.h"
+#include <stdlib.h>
 
 extern "C" {
 extern s32 gScreenSafeRight;
 extern s32 gScreenSafeTop;
 extern s32 gScreenSafeLeft;
 extern s32 gPointerScreenWidth;
+}
+
+struct MatoList;
+
+struct Mato {
+	void Set(XObj* obj, MatoList* list, s32 id);
+	s32 GetPoints() const;
+
+	s32 mId;
+	XObj* mObj;
+	f32 mScreenX;
+	f32 mScreenY;
+	f32 mScreenZ;
+	u32 mMarkerColor;
+	u8 mOnScreen;
+	u8 mPending;
+	u8 _1A[2];
+	s32 mOnScreenTime;
+	f32 mMarkerPhase;
+	s32 mShotsLeft;
+	s32 mHitsLeft;
+	s32 mKind;
+	MatoList* mList;
+};
+STATIC_ASSERT(sizeof(Mato) == 0x34);
+
+struct MatoList {
+	s32 mCount;
+	Vec mAimPos;
+	s32 mScore;
+	s32 mFrameCount;
+	f32 mProgress;
+	u32 mTimeLeft;
+	s32 mKindPoints[2];
+	Mato* mDestroyed;
+	Mato mMatos[0x50];
+};
+STATIC_ASSERT(sizeof(MatoList) == 0x106C);
+
+inline s32 Mato::GetPoints() const
+{
+	return mList->mKindPoints[mKind];
+}
+
+void Mato::Set(XObj* obj, MatoList* list, s32 id)
+{
+	mObj          = obj;
+	mId           = id;
+	mOnScreenTime = 0;
+	mPending      = FALSE;
+	mMarkerPhase  = rand() % 0x10000;
+	mObj->mStatus.mFlags |= 0x10000ULL;
+	switch (mObj->GetKind()) {
+	case 0x14D:
+		mShotsLeft = 1;
+		mHitsLeft  = 1;
+		mKind      = 0;
+		break;
+	case 0x2EA:
+		mShotsLeft = 3;
+		mHitsLeft  = 3;
+		mKind      = 1;
+		break;
+	}
+	mList = list;
+}
+
+extern CStatus32 shotEvents;
+
+struct Shot {
+	void Start(Vec from, Vec to, Mato* item);
+	void Update(u32 dt);
+
+	u8 mActive;
+	u8 _01[3];
+	Vec mStartPos;
+	Vec mEndPos;
+	Vec mPos;
+	Vec mVelocity;
+	s32 mTimer;
+	Vec mTrail[10];
+	Mato* mTarget;
+	CStatus32 mResult;
+};
+STATIC_ASSERT(sizeof(Shot) == 0xBC);
+
+struct ShotList {
+	Shot mShots[5];
+	s32 mHitStreak;
+	s32 mMissStreak;
+};
+STATIC_ASSERT(sizeof(ShotList) == 0x3B4);
+
+void Shot::Update(u32 dt)
+{
+	if (mActive) {
+		mTimer -= dt;
+		if (mTimer <= 0) {
+			mActive    = false;
+			Mato* item = mTarget;
+			if (item != NULL) {
+				if (--item->mHitsLeft > 0) {
+					item->mPending = false;
+				} else if (item->mObj != NULL && (item->mObj->mStatus.mFlags & 0x10000ULL)) {
+					item->mList->mDestroyed = item;
+					item->mList->mScore += item->GetPoints();
+					shotEvents.mFlags |= 1;
+				}
+				mResult.mFlags |= 1;
+			} else {
+				mResult.mFlags |= 2;
+			}
+		} else {
+			mPos.x = mVelocity.x * dt + mPos.x;
+			mPos.y = mVelocity.y * dt + mPos.y;
+			mPos.z = mVelocity.z * dt + mPos.z;
+			for (s32 j = 9; j > 0; j--) {
+				mTrail[j] = mTrail[j - 1];
+			}
+			mTrail[0] = mPos;
+		}
+	}
+}
+
+// NONMATCHING: the trail loop is fully unrolled instead of five copies in each of two iterations.
+void Shot::Start(Vec from, Vec to, Mato* item)
+{
+	mActive     = true;
+	mStartPos   = from;
+	mEndPos     = to;
+	mPos        = from;
+	mTarget     = item;
+	mTimer      = 60;
+	mVelocity.x = (mEndPos.x - mStartPos.x) / mTimer;
+	mVelocity.y = (mEndPos.y - mStartPos.y) / mTimer;
+	mVelocity.z = (mEndPos.z - mStartPos.z) / mTimer;
+	for (u32 i = 0; i < 10; i++) {
+		mTrail[i] = mPos;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0x78, 1.0f, 0.0f);
+}
+
+extern "C" void ShotList_Update(ShotList* list, u32 dt)
+{
+	for (u32 i = 0; i < 5; i++) {
+		Shot* entry = &list->mShots[i];
+		if (!entry->mActive) {
+			continue;
+		}
+		entry->Update(dt);
+		if (entry->mResult.mFlags & 1) {
+			list->mHitStreak++;
+			list->mMissStreak = 0;
+			if (list->mHitStreak >= 5) {
+				shotEvents.mFlags |= 4;
+				list->mHitStreak = 0;
+			}
+		} else if (entry->mResult.mFlags & 2) {
+			list->mHitStreak = 0;
+			list->mMissStreak++;
+			if (list->mMissStreak >= 5) {
+				shotEvents.mFlags |= 8;
+				list->mMissStreak = 0;
+			}
+		}
+		entry->mResult.mFlags = 0;
+	}
 }
 
 f32 captionShadowX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
