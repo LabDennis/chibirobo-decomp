@@ -3741,7 +3741,7 @@ static inline s32 CountDecimalDigits(s32 value)
 		(menu)->mCharCopies[(menu)->mNextGlyph][2]     = 0;      \
 	} while (0)
 
-// NONMATCHING: the call list matches retail; this build is 40 bytes smaller and register allocation differs
+// NONMATCHING: the call list matches retail; this build is 28 bytes smaller and register allocation differs
 BOOL MenuPC::Draw()
 {
 	if (CMenu::Draw()) {
@@ -3763,9 +3763,10 @@ BOOL MenuPC::Draw()
 		camera->vf24(view.top, view.bottom, view.left, view.right);
 		((CBase*)&gGame)->vf5C();
 		{
-			f32 left = 130.0f, top = 40.0f, right = 510.0f, bottom = 360.0f;
-			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { right, top, -10.0f }, (Vec) { right, bottom, -10.0f },
-				               (Vec) { left, bottom, -10.0f }, (Vec) { left, top, -10.0f } };
+			f32 w = 380.0f, h = 320.0f;
+			f32 left = 320.0f - w / 2.0f, top = 200.0f - h / 2.0f;
+			Vec vertices[] = { (Vec) { left, top, -10.0f }, (Vec) { w + left, top, -10.0f }, (Vec) { w + left, h + top, -10.0f },
+				               (Vec) { left, h + top, -10.0f }, (Vec) { left, top, -10.0f } };
 			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, (u32)(255.0f * mAlpha), 5);
 		}
