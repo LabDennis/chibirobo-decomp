@@ -1,3 +1,53 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" void InitTrash(void);
+extern "C" void UpdateTrash(u32 frames);
+extern "C" void DrawTrashStack(void);
+extern "C" void ExitTrash(void);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind);
+
+extern "C" s32 Stage07_Init(void* arg)
+{
+	InitTrash();
+	return 1;
+}
+
+// NONMATCHING: the object-table cursor and current-object registers are swapped; every test and call otherwise matches.
+extern "C" s32 Stage07_Update(void* arg)
+{
+	XObj* actor;
+	s32 i;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x3CB)) {
+		for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+			actor = gGame.mXObjs.mObjects[i];
+			if ((actor->mStatus.mFlags & 1) && (actor->mStatus.mFlags & 0x10000) && actor->mCoord.mPlacement->mObjectId == 0xD0) {
+				PSVECDistance(&gGame.mMotionControlCamera.mView.mInterest, actor->GetPos());
+				SetWiiSfxVolume(&gGame.mSound, 0x3CB, GetSoundVolumeAtPosition(&gGame.mSound, actor->GetPos(), 1), 0.0f);
+			}
+		}
+	}
+	UpdateTrash((u32)arg);
+	return 1;
+}
+
+extern "C" s32 Stage07_Draw(void* arg)
+{
+	DrawTrashStack();
+	return 1;
+}
+
+extern "C" s32 Stage07_Exit(void* arg)
+{
+	ExitTrash();
+	return 1;
+}
+
+extern "C" s32 Stage07_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "Version.h"
 #include "game/cjobj.h"
 #include "game/cjobjset.h"
@@ -1304,3 +1354,4 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
  * @note Size: 0x80
  */
 // CJObj::SetAnimRate, inline
+#endif
