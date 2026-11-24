@@ -2003,14 +2003,14 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			u32 color        = LoadTextColor(title->mLoadAlpha);
 			f32 top          = 8.0f + (356.0f - panelY);
 			f32 y            = (top - 6.0f) + title->mLoadOffset;
+			f32 center       = gPointerScreenWidth / 2;
+			f32 size         = 21.0f;
 			const char* line = GetLocalizedInterfaceText(0x95);
-			DrawGsProportionalTextFormat(&gGame.mGs, color, line,
-			                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, line, TRUE, 21.0f) / 2.0f, y,
-			                             0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, line, center - MeasureGameTextWidth(&gGame.mGs, line, TRUE, size) / 2.0f, y,
+			                             0.0f, size, size);
 			line = GetLocalizedInterfaceText(0x96);
-			DrawGsProportionalTextFormat(&gGame.mGs, color, line,
-			                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, line, TRUE, 21.0f) / 2.0f,
-			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, line, center - MeasureGameTextWidth(&gGame.mGs, line, TRUE, size) / 2.0f,
+			                             (21.0f + (8.0f + (356.0f - panelY))) + title->mLoadOffset, 0.0f, size, size);
 			lines = 2;
 		} else {
 			sprintf(text, "%s", GetLocalizedInterfaceText(0xc2));
@@ -2104,10 +2104,10 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	}
 	title->mOffset = -(lines - 2) * 21;
 	if (showMessage) {
-		u32 color = LoadTextColor(title->mLoadAlpha);
-		f32 y     = LoadPromptY(title, panelY);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text,
-		                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f, y, 0.0f,
+		u32 color  = LoadTextColor(title->mLoadAlpha);
+		f32 y      = LoadPromptY(title, panelY);
+		f32 center = gPointerScreenWidth / 2;
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f, y, 0.0f,
 		                             21.0f, 21.0f);
 	}
 
@@ -2160,11 +2160,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	}
 	}
 	if (title->mOptionAlpha > 0.0f) {
+		f32 y            = LoadPromptY(title, panelY);
 		u32 color        = LoadTextColor(title->mOptionAlpha);
 		const char* text = GetLocalizedInterfaceText(0x62);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text,
-		                             (f32)(gPointerScreenWidth / 2) - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f,
-		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
+		f32 center       = gPointerScreenWidth / 2;
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - MeasureGameTextWidth(&gGame.mGs, text, TRUE, 21.0f) / 2.0f, y, 0.0f,
+		                             21.0f, 21.0f);
 	}
 }
 
