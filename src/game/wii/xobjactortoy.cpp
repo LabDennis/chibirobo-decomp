@@ -1032,7 +1032,7 @@ extern "C" void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames)
 		toy->_21E0 = (XObj*)1;
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.mXObjs.mObjects[i];
-			if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
+			if ((obj->mStatus.mFlags & 1) == 1 && obj->GetKind() == 0x6A && obj->mPlacementParam0 == 1) {
 				toy->_21E0 = obj;
 				break;
 			}
