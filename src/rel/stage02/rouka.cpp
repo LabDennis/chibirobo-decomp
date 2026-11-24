@@ -1,3 +1,60 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+namespace Car {
+void Init(void);
+}
+
+extern XObj* takiObj;
+
+extern "C" void ClearFighterObjects(void);
+extern "C" void UpdateFighter(u32 arg);
+extern "C" void UpdateCars(u32 arg);
+extern "C" void DrawShots(void);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
+
+extern "C" s32 Stage02_Init(u32 arg)
+{
+	ClearFighterObjects();
+	Car::Init();
+	takiObj = NULL;
+	for (s32 i = 0; takiObj == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* obj = gGame.mXObjs.mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x254) {
+			takiObj = obj;
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage02_Update(u32 arg)
+{
+	UpdateFighter(arg);
+	UpdateCars(arg);
+	if (takiObj != NULL) {
+		if (takiObj->GetAnimId() == 0) {
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x2C8)) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x2C8, 1.0f, 0.0f);
+			}
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x2C9)) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x2C9, 1.0f, 0.0f);
+			}
+			SetWiiSfxVolume(&gGame.mSound, 0x2C8, GetSoundVolumeAtPosition(&gGame.mSound, takiObj->GetPos(), 1), 0.0f);
+			SetWiiSfxVolume(&gGame.mSound, 0x2C9, GetSoundVolumeAtPosition(&gGame.mSound, takiObj->GetPos(), 1), 0.0f);
+		} else {
+			StopWiiSfx(&gGame.mSound, 0x2C8, 0.0f);
+			StopWiiSfx(&gGame.mSound, 0x2C9, 0.0f);
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage02_Draw(u32 arg)
+{
+	DrawShots();
+	return 1;
+}
+#else
 #include "Version.h"
 
 // the hallway stage: its entry points and its script commands. the cars are in car.cpp.
@@ -793,3 +850,4 @@ void InitStage(void* arg)
 */
 
 } // extern "C"
+#endif
