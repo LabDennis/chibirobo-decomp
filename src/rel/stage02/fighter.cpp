@@ -320,6 +320,14 @@ struct Fighter {
 	FighterAim mAim;
 	Mato* mLastTarget;
 	ShotList mShots;
+
+	void SetTarget(Mato* target)
+	{
+		mAim.mTarget = target;
+		if (target != NULL) {
+			mLastTarget = target;
+		}
+	}
 };
 STATIC_ASSERT(sizeof(Fighter) == 0x4C8);
 
@@ -517,9 +525,9 @@ static inline void Fighter_Init(Fighter* work, XObj* body, XObj* path, XObj* ext
 	f32 aimY;
 	f32 aimZ;
 	work->mTimeLeft    = work->mTimeLimit;
-	aimZ               = work->mParams == NULL ? 170.0f : (s32)READ_LE32(work->mParams + 8) / 100.0f;
-	aimY               = work->mParams == NULL ? 20.0f : (s32)READ_LE32(work->mParams + 4) / 100.0f;
 	aimX               = work->mParams == NULL ? 0.0f : (s32)READ_LE32(work->mParams) / 100.0f;
+	aimY               = work->mParams == NULL ? 20.0f : (s32)READ_LE32(work->mParams + 4) / 100.0f;
+	aimZ               = work->mParams == NULL ? 170.0f : (s32)READ_LE32(work->mParams + 8) / 100.0f;
 	work->mAim.mPos.x  = aimX;
 	work->mAim.mPos.y  = aimY;
 	work->mAim.mPos.z  = aimZ;
@@ -532,8 +540,8 @@ static inline void Fighter_Init(Fighter* work, XObj* body, XObj* path, XObj* ext
 	work->mShots.mHitStreak = work->mShots.mMissStreak = 0;
 }
 
-// NONMATCHING: all initialization stores and calls are present; the global base-register allocation and the
-// aim parameter conversion order still differ.
+// NONMATCHING: all initialization stores and calls are present; the global base-register allocation still
+// differs.
 extern "C" void StartFighter(XObj* body, XObj* path, XObj* extra)
 {
 	if (body == NULL || path == NULL) {
@@ -541,16 +549,13 @@ extern "C" void StartFighter(XObj* body, XObj* path, XObj* extra)
 	}
 	shotEvents.mFlags = 0;
 	Fighter_Init(&fighterWork, body, path, extra);
-	matoList.mCount        = 0;
-	matoList.mScore        = 0;
-	matoList.mFrameCount   = 0;
-	matoList.mProgress     = 0.0f;
-	matoList.mTimeLeft     = 6000;
-	matoList.mDestroyed    = NULL;
-	WiiPlayerState* player = gGame.GetPlayer();
-	player->mPlayerFlags   = 0;
-	player->mPlayerFlags |= 0x40000000;
-	player->mPadReset = FALSE;
+	matoList.mCount      = 0;
+	matoList.mScore      = 0;
+	matoList.mFrameCount = 0;
+	matoList.mProgress   = 0.0f;
+	matoList.mTimeLeft   = 6000;
+	matoList.mDestroyed  = NULL;
+	gGame.GetPlayer()->LockControl();
 	gGame.mMotionControlCamera.ChangeAction(&fighterCamera);
 	Vec eye;
 	eye.x = 0.0f;
@@ -643,24 +648,24 @@ void Fighter::SetParams(u8* data)
 extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 {
 	Mato* item = work->mAim.mTarget;
-	CVec end;
+	CVec from;
 	Vec local;
-	Vec start;
+	Vec to;
 
-	local.x = local.z = local.y = 0.0f;
-	local.y                     = 10.0f;
-	PSMTXMultVec(work->mBodyMtx, &local, &end);
+	local.x = local.z = 0.0f;
+	local.y           = 10.0f;
+	PSMTXMultVec(work->mBodyMtx, &local, &from);
 	if (item == NULL) {
 		local = work->mAim.mPos;
-		PSMTXMultVec(work->mBodyMtx, &local, &start);
-		work->mShots.Add(end, start, item);
+		PSMTXMultVec(work->mBodyMtx, &local, &to);
+		work->mShots.Add(from, to, item);
 	} else {
 		item->mShotsLeft--;
 		if (item->mShotsLeft <= 0) {
 			item->mPending = true;
 		}
 		work->mLastTarget = NULL;
-		work->mShots.Add(end, item->GetPos(), item);
+		work->mShots.Add(from, item->GetPos(), item);
 	}
 	Params* params = &gGame.GetPlayer()->mParams;
 	f32 battery    = params->mBattery - batteryCost;
@@ -914,8 +919,8 @@ extern "C" void UpdateFighter(u32 dt)
 		Vec pos;
 		Mato* best = NULL;
 		f32 bestDist;
-		work->mAim.mTarget = NULL;
-		pos                = work->mAim.mPos;
+		work->SetTarget(NULL);
+		pos = work->mAim.mPos;
 		PSMTXMultVec(work->mBodyMtx, &pos, &pos);
 		for (s32 i = 0; i < matoList.mCount; i++) {
 			Mato* item = &matoList.mMatos[i];
@@ -942,8 +947,7 @@ extern "C" void UpdateFighter(u32 dt)
 			if (best != NULL && work->mLastTarget != best) {
 				PlayWiiSoundEffect(&gGame.mSound, 0x2B5, 1.0f, 0.0f);
 			}
-			work->mAim.mTarget = best;
-			work->mLastTarget  = best;
+			work->SetTarget(best);
 		}
 	}
 	FighterPanels_Update(&panels, dt);
@@ -956,8 +960,8 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 }
 
-// NONMATCHING: the visibility checks, projection arguments, rings and icons are present; FPR allocation and an
-// extra float-to-unsigned helper in the spoke color conversion remain.
+// NONMATCHING: the visibility checks, projection arguments, rings and icons are present; FPR allocation and
+// scheduling remain.
 extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx)
 {
 	Vec pos;
@@ -989,9 +993,14 @@ extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx
 	for (i = 9; i > 0; i--) {
 		reticleSpin[i] = reticleSpin[i - 1];
 	}
-	reticleSpin[0] = 0.0f;
+	reticleSpin[0]   = 0.0f;
+	f32 size         = 200.0f;
+	f32 scale        = 0.6f;
+	u32 alpha        = 255;
+	f32 innerRadius0 = scale * (size / 6.0f * 0.5f);
+	f32 outerRadius  = scale * (size * 0.5f * 0.5f);
 	for (k = 0; k < 2; k++) {
-		f32 radius = k == 0 ? 10.0f : 30.000002f;
+		f32 radius = k == 0 ? innerRadius0 : outerRadius;
 		f32 innerRadius;
 		s32 spokeColor;
 		for (i = 0; i < 65; i++) {
@@ -1010,10 +1019,10 @@ extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx
 				f32 angle = HALF_PI * i;
 				f32 s     = sin(angle + reticleSpin[j]);
 				f32 c     = cos(angle + reticleSpin[j]);
-				DrawGsLineSegment(&gGame.mGs, 0, spokeColor, spokeColor, s * radius + cx, c * radius + cy, 0.0f, s * innerRadius + cx,
-				                  c * innerRadius + cy, 0.0f);
+				DrawGsLineSegment(&gGame.mGs, 0, s * radius + cx, c * radius + cy, 0.0f, spokeColor, s * innerRadius + cx,
+				                  c * innerRadius + cy, 0.0f, spokeColor);
 			}
-			spokeColor = 0xFFFFFF00 | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
+			spokeColor = 0xFFFFFF00 | (u8)(s32)(0.5f * ((f32)alpha * (10 - j) / 10.0f));
 		}
 	}
 	{
@@ -1023,10 +1032,9 @@ extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx
 		for (i = 0; i < 4; i++) {
 			f32 angle = HALF_PI * i;
 			f32 ds    = sin(DEG2RAD * ((frame * 24) % 360));
-			f32 dist  = ds * 3.0f;
-			dist += 30.000002f;
-			f32 s = sin(angle);
-			f32 c = cos(angle);
+			f32 dist  = outerRadius + 3.0f * ds;
+			f32 s     = sin(angle);
+			f32 c     = cos(angle);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[129], 0);
 			tex   = gGame.mTpl.mTex;
@@ -1043,7 +1051,8 @@ extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
 	CTexObj tex;
-	f32 scale = 1.0f;
+	f32 scale  = 1.0f;
+	f32 offset = 0.0f;
 	if (FindStageIndexByName("stage02") != gGame.mStage) {
 		return;
 	}
@@ -1059,8 +1068,8 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			tex      = obj->mPanelTpl.mTex;
 			f32 w    = 1.1f * (scale * GXGetTexObjWidth(&tex));
 			f32 half = fade->mLowerOpen * (scale * GXGetTexObjHeight(&tex));
-			x        = 84.0f + gScreenSafeLeft;
-			y        = 140.0f + gScreenSafeTop - 32.0f;
+			x        = 84.0f + (offset + gScreenSafeLeft);
+			y        = 140.0f + (150.0f + (offset + gScreenSafeTop)) - 32.0f;
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
@@ -1093,8 +1102,8 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			u16 tw   = GXGetTexObjWidth(&tex);
 			u16 th   = GXGetTexObjHeight(&tex);
 			f32 half = fade->mCenterOpen * (scale * th);
-			x        = 84.0f + gScreenSafeLeft;
-			y        = 150.0f + gScreenSafeTop;
+			x        = 84.0f + (offset + gScreenSafeLeft);
+			y        = 150.0f + (offset + gScreenSafeTop);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, y, 0.0f, 1.1f * (scale * tw), half, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
