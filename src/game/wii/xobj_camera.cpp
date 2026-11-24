@@ -170,7 +170,11 @@ extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 			}
 		} else {
 			if (rec->mSnap[i] > 0) {
-				rec->mSnap[i] = rec->mSnap[i] == 2 ? 0 : -rec->mSnap[i];
+				if (rec->mSnap[i] == 2) {
+					rec->mSnap[i] = 0;
+				} else {
+					rec->mSnap[i] = -rec->mSnap[i];
+				}
 			}
 			*speed = 0.0f;
 			*cur   = *target;
