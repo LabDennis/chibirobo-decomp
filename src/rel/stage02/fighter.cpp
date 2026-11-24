@@ -169,6 +169,7 @@ extern CStatus32 shotEvents;
 struct Shot {
 	void Start(Vec from, Vec to, Mato* item);
 	void Update(u32 dt);
+	void Draw();
 
 	u8 mActive;
 	u8 _01[3];
@@ -219,6 +220,80 @@ void Shot::Update(u32 dt)
 			mTrail[0] = mPos;
 		}
 	}
+}
+
+struct FighterAim {
+	Vec mPos;
+	f32 mScreenX;
+	f32 mScreenY;
+	f32 mScreenZ;
+	Mato* mTarget;
+};
+
+struct Fighter {
+	XObj* mBody;
+	XObj* mPath;
+	XObj* mExtra;
+	Mtx mBodyMtx;
+	Mtx mPlayerMtx;
+	Mtx mExtraMtx;
+	f32 mPlayerRotY;
+	f32 mFrame;
+	f32 mPrevFrame;
+	f32 mEndFrame;
+	f32 mSpeed;
+	u8* mSpeedRates;
+	u8* mParams;
+	u32 _B8;
+	u32 mTimeLeft;
+	u8 _C0[8];
+	Vec mPos;
+	u8 _D4[0xC];
+	f32 mMinSpeed;
+	f32 mMaxSpeed;
+	f32 mAccel;
+	f32 mFireSlowdown;
+	s32 mTimeLimit;
+	FighterAim mAim;
+	Mato* mLastTarget;
+	ShotList mShots;
+};
+STATIC_ASSERT(sizeof(Fighter) == 0x4C8);
+
+extern Fighter fighterWork;
+
+// NONMATCHING: size expressions fold to literal loads and the trail's register/stack layout differs; all draw calls match.
+void Shot::Draw()
+{
+	if (!mActive) {
+		return;
+	}
+	gGame.mGs.mBillboardEnabled = TRUE;
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	f32 smallSize = 1.0f + 3.0f;
+	f32 largeSize = 2.0f + 3.0f;
+	for (s32 j = 0; j < 10; j++) {
+		Vec* pos  = &mTrail[j];
+		Vec up    = { 0.0f, 0.0f, 0.0f };
+		u32 alpha = 96.0f * (1.0f - 0.1f * j);
+		DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, smallSize, smallSize, up.x, up.y, up.z);
+	}
+	Vec* pos = &mPos;
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)2, (GXBlendFactor)4, (GXLogicOp)15);
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, smallSize, smallSize, up.x, up.y, up.z);
+	}
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, largeSize, largeSize, up.x, up.y, up.z);
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0x64FF6400, pos->x, pos->y, pos->z, largeSize, largeSize, up.x, up.y, up.z);
+	}
+	gGame.mGs.mBillboardEnabled = FALSE;
 }
 
 // NONMATCHING: the trail loop is fully unrolled instead of five copies in each of two iterations.
