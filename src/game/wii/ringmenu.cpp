@@ -173,7 +173,7 @@ void OctaMenu::FinishClose()
 // NONMATCHING: regalloc and li scheduling, same wall as the GameCube's copy
 u32 OctaMenu::GetItemColor(s32 index)
 {
-	s32 green, blue, red;
+	s32 red, green, blue;
 	if (mItems[index].mAvailable == 0) {
 		blue  = 32;
 		green = 32;

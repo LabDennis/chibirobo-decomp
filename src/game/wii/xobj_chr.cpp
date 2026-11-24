@@ -899,7 +899,7 @@ void ResetPlayerAttachment(WiiPlayerState* chr, s32 nextAnimation)
 	chr->mActionObjectIndex      = -1;
 	chr->mFloorContactObjects[2] = -1;
 	if (nextAnimation >= 0) {
-		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+		chr->SetAnim(nextAnimation, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 	}
 	chr->mFallDistance = 0.0f;
 	InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 0);
@@ -2553,7 +2553,7 @@ void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex)
 		chr->mOXMenu.mSelectedIndex = selectedIndex;
 		SpinMarks(*chr);
 		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-		chr->mOXMenu.mChr->SetAnim(0x5D, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mOXMenu.mChr->SetAnim(0x5D, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		gGame.SetStatusFlags(0x800ULL);
 	}
 }
@@ -3185,10 +3185,11 @@ s32 FindNearbyPlayerInteraction(WiiPlayerState* player, f32 extraRadius)
 		}
 		SelectHighestActiveFloor(object);
 		if (best < 0 || __fpclassifyf(bestHeight) == FP_NAN || object->mMaxFloorHeight > bestHeight) {
-			BOOL eligible = FALSE;
-			CVec target   = object->mMoveTranslate + GetFloorCenterOffset(&object->mFloors, object->mSelectedFloorIndex);
-			f32 angle     = atan2(target.x - player->GetPos()->x, target.z - player->GetPos()->z);
-			angle         = WrapAngle(angle - player->mMoveRotate.y);
+			BOOL eligible         = FALSE;
+			CVec target           = object->mMoveTranslate + GetFloorCenterOffset(&object->mFloors, object->mSelectedFloorIndex);
+			const CVec* playerPos = player->GetPos();
+			f32 angle             = atan2(target.x - playerPos->x, target.z - playerPos->z);
+			angle                 = WrapAngle(angle - player->mMoveRotate.y);
 			if (angle <= HALF_PI || angle >= 3.0f * HALF_PI) {
 				if (object->GetEventScript() != NULL) {
 					eligible = TRUE;
@@ -4821,10 +4822,10 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 			}
 			if (p->_1C9B8[2] > 0.0f) {
 				if (p->mLift.mState == 4) {
-					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
-						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-					else
+					if (IsCarryingToothbrush(&p->mLift) || IsCarryingSpoon(&p->mLift) || IsCarryingSquirter(&p->mLift))
 						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					else
+						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				} else if (p->GetAttachment() == 2) {
 					p->SetAnim(0x161, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				} else {
@@ -5084,12 +5085,12 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 		switch (anim) {
 		case 0x5D:
 			if (player->IsAnimDone()) {
-				player->SetAnim(0x5E, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->SetAnim(0x5E, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			}
 			break;
 		case 0x5F:
 			if (player->IsAnimDone()) {
-				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				player->mIdleLoops = 3;
 			}
 			break;
@@ -5097,7 +5098,7 @@ void UpdatePlayerActionAnimations(WiiPlayerState* player, u32 frames)
 		case 0x13B:
 		case 0xEF:
 			if (player->IsAnimDone()) {
-				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				player->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				player->mIdleLoops = 3;
 			}
 			break;
@@ -5187,10 +5188,14 @@ void UpdatePlayerBattery(WiiPlayerState* p, u32 frames)
 			break;
 		case 28: // using the toothbrush
 		case 31:
-			if (p->GetAnimId() == 0x895)
+			switch (p->GetAnimId()) {
+			case 0x895:
 				index = 34;
-			else if (p->GetAnimId() == 0x152)
+				break;
+			case 0x152:
 				index = 4;
+				break;
+			}
 			break;
 		case 32: // the spoon
 		case 33:
@@ -6619,9 +6624,9 @@ void ApplyPlayerHitReaction(WiiPlayerState* chr, BOOL start, BOOL cancel, f32 va
 		    && chr->mPush.mState == 0 && chr->mTumble.mState == 0 && chr->mCopter.mState == 0
 		    && (chr->mPopper.mState == 0 || chr->mPopper.mState == 4 || chr->mPopper.mState == 8) && chr->mRadar.mState == 0) {
 			if (chr->mLift.mState == 0)
-				chr->SetAnim(0xD4, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				chr->SetAnim(0xD4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			else
-				chr->SetAnim(0x94, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+				chr->SetAnim(0x94, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			if (chr->mPlayerFlags & 0x20000000)
 				chr->mTumble.mState = 8;
 		} else if (cancel) {

@@ -21,7 +21,7 @@ extern "C" void SelectHighestActiveFloor(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 extern "C" void fn_8016AA74(const f32* params);
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max);
-extern "C" void fn_8016AA78(f32* out, f32* in, f32* limits);
+extern "C" Vec fn_8016AA78(Vec in, f32* limits);
 extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
 extern "C" CVec GetCornerIconPosition(CGame* game);
 extern s32 gScreenSafeWidth;
@@ -278,7 +278,8 @@ void CCameraActionLeticker::Update(u32 step)
 		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
 		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
 		pointer.z = gWiiPointer.mPointer.z;
-		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
+		Vec out   = fn_8016AA78(pointer, (f32*)sDebugParams);
+		input.Set(out);
 		_78 = input;
 	} else if (!(gGame._41B0 & 8)) {
 		input = _78;
@@ -1109,8 +1110,10 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		return FALSE;
 	}
 	CPad pad(0);
-	f32 heading = (f32)atan2(player->GetPos()->x - GetPos()->x, player->GetPos()->z - GetPos()->z);
-	f32 angle   = heading - GetRotY();
+	const CVec* playerPos = gGame.GetPlayer()->GetPos();
+	const CVec* pos       = GetPos();
+	f32 heading           = (f32)atan2(playerPos->x - pos->x, playerPos->z - pos->z);
+	f32 angle             = heading - GetRotY();
 	// the pushed direction snaps the target rotation to a quarter turn
 	s32 side = GetSide(angle);
 	switch (side) {
@@ -1209,7 +1212,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		}
 		break;
 	}
-	if (player->mParams.mBattery <= 0.0f) {
+	if (gGame.GetPlayer()->mParams.mBattery <= 0.0f) {
 		return FALSE;
 	}
 	if (pad.mPad->mButton & (1ULL << (NunchukStick + 2))) {

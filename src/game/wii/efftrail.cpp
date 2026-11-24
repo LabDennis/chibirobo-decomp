@@ -1038,8 +1038,8 @@ static inline Vec FloorExtent(XObjFloor* floor)
 {
 	Vec v;
 	v.x = floor->mExtent[0] / 100.0f;
-	v.z = floor->mExtent[1] / 100.0f;
-	v.y = floor->mExtent[2] / 100.0f;
+	v.z = floor->mExtent[2] / 100.0f;
+	v.y = floor->mExtent[1] / 100.0f;
 	return v;
 }
 

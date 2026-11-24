@@ -342,18 +342,14 @@ void XObjArmy::StateMarch()
 		break;
 	case 2: // a long step sideways
 		SetAnim(5, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-		next.x = GetPos()->x;
-		next.y = GetPos()->y;
-		next.z = GetPos()->z;
+		next = *GetPos();
 		next.x += 50 * (f32)sin(HALF_PI + GetRotY());
 		next.z += 50 * (f32)cos(HALF_PI + GetRotY());
 		SetMoveDir(&next, .4f);
 		++mStep;
 		break;
 	case 3:
-		next.x = GetPos()->x;
-		next.y = patrolY;
-		next.z = GetPos()->z;
+		next = *GetPos();
 		next.x += 5 * (f32)sin(HALF_PI + GetRotY());
 		next.z += 5 * (f32)cos(HALF_PI + GetRotY());
 		if (SoldierBlocksMarch(this, next))
@@ -368,9 +364,7 @@ void XObjArmy::StateMarch()
 		++mStep;
 		break;
 	case 11:
-		next.x = GetPos()->x;
-		next.y = patrolY;
-		next.z = GetPos()->z;
+		next = *GetPos();
 		next.x += 5 * (f32)sin(GetRotY());
 		next.z += 5 * (f32)cos(GetRotY());
 		if (SoldierBlocksMarch(this, next))
@@ -408,10 +402,7 @@ void XObjArmy::StateMarch()
 		}
 		break;
 	case 14: {
-		bool finished = GetAnimEndFrame() <= GetAnimFrame();
-		if (!finished)
-			finished = IsAnimDone();
-		if (finished) {
+		if (IsAnimDone()) {
 			if (distance < 40) {
 				f32 facing = cos(angle - GetRotY());
 				if ((f32)cos(45.) < facing) // radians again: a wide cone

@@ -46,7 +46,7 @@ void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
 void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step);
 void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32 mode);
 // clamps the screen point into the per-axis limits, in cmotioncontrolcamera.cpp
-void fn_8016AA78(f32* out, f32* in, f32* limits);
+Vec fn_8016AA78(Vec in, f32* limits);
 CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance);
 s32 CollectCameraAreasContainingPoint(CamAreaState* state, Vec pos, s32* ids);
 }
@@ -1538,10 +1538,9 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 	if (map->mPointerHeld) {
 		CVec vec(0.0f, 0.0f, 0.0f);
 		if (gWiiPointer.mPointerValid) {
-			Vec in = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
-				       2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, gWiiPointer.mPointer.z };
-			Vec out;
-			fn_8016AA78((f32*)&out, (f32*)&in, (f32*)lbl_802DB578);
+			Vec in     = { 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f,
+				           2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f, gWiiPointer.mPointer.z };
+			Vec out    = fn_8016AA78(in, (f32*)lbl_802DB578);
 			Vec scaled = out;
 			vec.Set(scaled);
 			map->mOrbitPointer = scaled;
