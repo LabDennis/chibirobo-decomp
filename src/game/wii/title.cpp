@@ -28,6 +28,7 @@
 // glyph loop's float scheduling and register pressure differ: retail saves r15 and folds the padding
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "nw4r/math/math_types.h"
+#include "nw4r/ut/ut_Rect.h"
 #include "game/wii/title.h"
 #include "game/titlepalette.h"
 #include "game/wii/cgame.h"
@@ -98,18 +99,23 @@ f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
+CColor lbl_805A1BA8((GXColor) { 255, 255, 255, 255 });
+CbPaneList gPointerPanes;
+nw4r::lyt::Size lbl_805A1BB0((f32)gPointerScreenWidth * 0.5f, (f32)gPointerScreenHeight * 0.5f);
+nw4r::ut::Rect lbl_80445748(-lbl_805A1BB0.width, lbl_805A1BB0.height, lbl_805A1BB0.width, -lbl_805A1BB0.height);
+
 CbPaneLayout lbl_802E7F48[11] = {
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 0 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 1 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 2 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 3 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 4 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 5 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 6 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 7 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 8 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 9 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 10 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 0 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 1 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 2 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 3 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 4 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 5 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 6 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 7 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 8 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 9 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 10 },
 };
 
 // the outline offsets of the name's letter shadows, then of the help text's

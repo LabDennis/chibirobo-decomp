@@ -122,6 +122,15 @@ STATIC_ASSERT(sizeof(CbPaneLayout) == 0x28);
 
 // the panes the pointer is tested against this frame
 struct CbPaneList {
+	CbPaneList()
+	{
+		mCount   = 0;
+		mMenu    = NULL;
+		_408[1]  = 0;
+		mEnabled = TRUE;
+		mActive  = FALSE;
+	}
+
 	CbPane* mPanes[0x100];   // _000
 	s32 mCount;              // _400
 	CContainCallback* mMenu; // _404, the menu whose panes are tested, NULL disables the pointer
