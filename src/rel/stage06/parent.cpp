@@ -1,3 +1,33 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind);
+
+extern "C" s32 Stage06_Init(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage06_Update(void* arg)
+{
+	Vec pos;
+	pos.x = 241.83f;
+	pos.y = 220.56f;
+	pos.z = 195.85f;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x501)) {
+		SetWiiSfxVolume(&gGame.mSound, 0x501, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x502)) {
+		SetWiiSfxVolume(&gGame.mSound, 0x502, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	}
+	return 1;
+}
+
+extern "C" s32 Stage06_NoOpSlot5(void* arg)
+{
+	return 1;
+}
+#else
 #include "game/cgame.h"
 #include "types.h"
 #include "Version.h"
@@ -210,3 +240,4 @@ extern "C" void UpdateStage(void* arg)
 extern "C" void InitStage(void* arg)
 {
 }
+#endif

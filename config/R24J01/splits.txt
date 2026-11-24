@@ -380,6 +380,10 @@ rel/stage09/ambient.cpp:
 rel/stage04/jenny.cpp:
 	.text start:0x80179B1C end:0x80179BCC
 
+rel/stage06/parent.cpp:
+	.text start:0x80179BCC end:0x80179C94
+	.sdata2 start:0x805A6368 end:0x805A6378
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98
