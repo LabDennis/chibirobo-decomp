@@ -2148,9 +2148,9 @@ class WiiGsSceneObj;
 class XObjScnCam : public XObj {
 public:
 	XObjScnCam();
-	virtual ~XObjScnCam();
 
-	virtual void Release();                                // _40
+	virtual void Release(); // _40
+	virtual ~XObjScnCam();
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate);   // _138
 	virtual void ReleaseModelWork();                       // _13C
 	virtual void InitializeObject();                       // _14C, only drops the scene, no base call in retail
@@ -2170,8 +2170,10 @@ STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 class XObjLight : public XObj {
 public:
 	XObjLight();
-	virtual ~XObjLight();
 
+	virtual void Release(); // _40
+	virtual ~XObjLight();
+	virtual void InitializeObject();                       // _14C
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void UpdateObject(u32 frames);                 // _164, retail's is empty
 	virtual void ResetObjectState();                       // _154
