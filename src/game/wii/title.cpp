@@ -101,21 +101,22 @@ f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
 CColor lbl_805A1BA8((GXColor) { 255, 255, 255, 255 });
 CbPaneList gPointerPanes;
-nw4r::lyt::Size lbl_805A1BB0((f32)gPointerScreenWidth * 0.5f, (f32)gPointerScreenHeight * 0.5f);
-nw4r::ut::Rect lbl_80445748(-lbl_805A1BB0.width, lbl_805A1BB0.height, lbl_805A1BB0.width, -lbl_805A1BB0.height);
+nw4r::lyt::Size lbl_805A1BB0((f32)gPointerScreenWidth, (f32)gPointerScreenHeight);
+nw4r::ut::Rect lbl_80445748(-lbl_805A1BB0.width * 0.5f, lbl_805A1BB0.height * 0.5f, lbl_805A1BB0.width * 0.5f, -lbl_805A1BB0.height * 0.5f);
+// lbl_805A1BB8, a pointer to lbl_80445748 that retail's __sinit stores at run time, has no source yet
 
 CbPaneLayout lbl_802E7F48[11] = {
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 0 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 1 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 2 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 3 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 4 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 5 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 6 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 7 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 8 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 9 },
-	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), lbl_805A1BA8, 10 },
+	{ nw4r::math::VEC3(126.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 0 },
+	{ nw4r::math::VEC3(320.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 1 },
+	{ nw4r::math::VEC3(514.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 2 },
+	{ nw4r::math::VEC3(281.25f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), lbl_805A1BA8, 3 },
+	{ nw4r::math::VEC3(358.75f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), lbl_805A1BA8, 4 },
+	{ nw4r::math::VEC3(320.0f, 284.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 5 },
+	{ nw4r::math::VEC3(320.0f, 322.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 6 },
+	{ nw4r::math::VEC3(320.0f, 360.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 7 },
+	{ nw4r::math::VEC3(320.0f, 194.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(192.0f, 38.4f), lbl_805A1BA8, 8 },
+	{ nw4r::math::VEC3(320.0f, 242.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(216.0f, 38.4f), lbl_805A1BA8, 9 },
+	{ nw4r::math::VEC3(320.0f, 290.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(72.0f, 38.4f), lbl_805A1BA8, 10 },
 };
 
 // the outline offsets of the name's letter shadows, then of the help text's

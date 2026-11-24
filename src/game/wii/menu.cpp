@@ -2649,14 +2649,14 @@ extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* 
 	}
 	bool released = false;
 	if (list->mActive) {
-		if (pointerOn && !list->_408[1]) {
+		if (pointerOn && !list->_409) {
 			if (list->mMenu != NULL) {
 				list->mMenu->vf18(pos);
 			}
-		} else if (!pointerOn && list->_408[1]) {
+		} else if (!pointerOn && list->_409) {
 			released = true;
 		}
-		list->_408[1] = pointerOn;
+		list->_409 = pointerOn;
 	}
 	CbPane* focused = NULL;
 	for (s32 i = 0; i < list->mCount; i++) {
@@ -2679,17 +2679,17 @@ extern "C" void fn_8005575C(CbPaneList* list, bool pointerOn, nw4r::math::VEC2* 
 		}
 	}
 	if (gWiiPointer.mButton & 0x10) {
-		list->_408[0] += frames;
+		list->_408 += frames;
 	} else {
-		list->_408[0] = 0;
+		list->_408 = 0;
 	}
 	if (focused != NULL) {
 		if (gWiiPointer.Check(PadActConfirm)) {
 			fn_800559D8(list, focused, 0, 0);
 		}
-		if (list->_408[0] >= 24 && list->_408[0] % 6 == 0) {
+		if (list->_408 >= 24 && list->_408 % 6 == 0) {
 			fn_800559D8(list, focused, 6, 0);
-			list->_408[0] = 24;
+			list->_408 = 24;
 		}
 	}
 	if (released && list->mMenu != NULL) {
