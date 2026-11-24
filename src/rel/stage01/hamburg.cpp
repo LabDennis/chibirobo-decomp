@@ -65,6 +65,16 @@ struct HamDish {
 	HamObj* mObjs[4];
 };
 
+static f32 yakiRates[6];
+
+extern "C" void SetYakiRates(u8* data)
+{
+	for (s32 i = 0; i < 5; i++) {
+		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000) / 100.0f;
+		data += 4;
+	}
+}
+
 extern "C" void HamObj_Init(HamObj* slot, s32 id)
 {
 	slot->mId    = id;
@@ -317,8 +327,6 @@ extern "C" void PlayYakiSound(void)
 	PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
 	yakiSoundPlayed = 1;
 }
-
-static f32 yakiRates[6];
 
 extern "C" void ResetYakiRates(void)
 {

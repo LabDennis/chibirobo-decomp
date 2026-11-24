@@ -9959,3 +9959,4 @@ ClearTempActors = .text:0x80171074; // type:function size:0xB8
 AddTempActor = .text:0x8017112C; // type:function size:0xA0
 CheckYakiResult = .text:0x801711CC; // type:function size:0x290
 __sinit_\hamburg_cpp = .text:0x8017145C; // type:function size:0x3C scope:local
+SetYakiRates = .text:0x8016D0CC; // type:function size:0x168
