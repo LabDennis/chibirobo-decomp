@@ -143,6 +143,47 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 }
 
 extern "C" f64 cos(f64 x);
+extern "C" f64 sin(f64 x);
+extern "C" bool HamObj_CheckSlideHit(HamObj* slot);
+
+static inline bool IsSamePos(const Vec& a, const Vec& b)
+{
+	return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+// NONMATCHING: HamObj_CheckSlideHit and helper recursion stay out of line; Retail inlines them and expands the frame.
+void HamObj::StateSlide()
+{
+	Vec pos;
+	switch (mStateTime) {
+	case 0:
+		pos = *mActor->GetPos();
+		pos.x += mSlideDistance * (f32)sin(mMoveAngle);
+		pos.y = GetStackPlacementPosition(mActor->mCoord).y;
+		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
+		mActor->SetMoveDir(&pos, mMoveSpeed);
+		if (HamObj_CheckSlideHit(this)) {
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
+			SetState(NULL);
+		}
+		if (mStateTime == 0) {
+			mStateTime++;
+		}
+		break;
+	case 1:
+		if (HamObj_CheckSlideHit(this)) {
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
+			SetState(NULL);
+		} else if (IsSamePos(mActor->mMoveTranslate, mActor->mMoveTarget0)) {
+			SetState(NULL);
+		}
+		if (mAbove != NULL && 8.0f < PSVECDistance(mActor->GetPos(), mAbove->mActor->GetPos())) {
+			HamObj_LowerStack(mAbove);
+			mAbove = NULL;
+		}
+		break;
+	}
+}
 
 // NONMATCHING: basic-block layout and local symbol names differ; both flip states, all calls and values match.
 void HamObj::StateFlip()
