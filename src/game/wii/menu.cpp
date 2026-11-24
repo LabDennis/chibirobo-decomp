@@ -1265,11 +1265,11 @@ BOOL MenuItem::Update(u32 frames)
 				mStickSelection = mSelection;
 			if (!IsStickUsedOverPointer()) {
 				if (count > 1) {
-					if (IsStickUp()) {
+					if (IsStickLeft()) {
 						if (--mSelection < 0)
 							mSelection = count - 1;
 						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
-					} else if (IsStickDown()) {
+					} else if (IsStickRight()) {
 						mSelection++;
 						if (sStatusItemTable.mItems[mSelection].mItem < 0)
 							mSelection = 0;
@@ -1278,22 +1278,22 @@ BOOL MenuItem::Update(u32 frames)
 				}
 				if (count > 4) {
 					if (mSelection >= 4) {
-						if (IsStickLeft()) {
+						if (IsStickUp()) {
 							if ((mSelection -= 4) < 0)
 								mSelection = count - 1;
 							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 						}
-						if (IsStickRight() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
+						if (IsStickDown() && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 							mTargetGridY = -56.0f;
 							mMode        = 10;
 							break;
 						}
 					} else {
-						if (IsStickRight() && mSelection + 4 <= count - 1) {
+						if (IsStickDown() && mSelection + 4 <= count - 1) {
 							mSelection += 4;
 							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 						}
-						if (IsStickLeft()) {
+						if (IsStickUp()) {
 							CountMenuItems();
 							if (sStatusItemTable.mPage > 0) {
 								mTargetGridY = 128.0f;
