@@ -40,47 +40,29 @@ extern "C" s32 Stage06_CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-struct ParentState {
-	u32 _00;
-	u32 _04;
-	u32 _08;
-	u32 _0C;
-	u32 _10;
-	u32 _14;
-	u32 _18;
-	u32 _1C;
-	u32 _20;
+struct Stage06Work {
+	u8 _00[0x4];  // _00
+	s32 _04;      // _04, never accessed
+	s32 _08;      // _08, counted up by CmdStopRobo each time it stops the player, never read
+	u8 _0C[0x18]; // _0C
 };
 
-static ParentState sParentState;
-
-extern "C" s32 Stage06_CmdStopRobo(s32 cmd, s32 count, s32* args)
-{
-	gGame.GetPlayer()->LockControl();
-	sParentState._08++;
-	return 0;
-}
-
-extern "C" s32 Stage06_CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
-{
-	return 0;
-}
-
-struct ParentCamera {
-	u32 _00;
-	u32 _04;
-	f32 _08;
-	f32 _0C;
-	f32 _10;
-	f32 _14;
-	f32 _18;
-	u32 _1C;
-	f32 _20;
+struct Stage06Cam {
+	u8 _00[0x4]; // _00
+	s32 _04;     // _04, set to 1 by SetCam, never read
+	f32 _08;     // _08, SetCam copies the player's x here, never read
+	f32 _0C;     // _0C, SetCam copies the player's y here, never read
+	f32 _10;     // _10, SetCam copies the player's z here, never read
+	f32 _14;     // _14, SetCam's first angle in radians, -pi/8 for preset 0, -7pi/8 for preset 1, never read
+	f32 _18;     // _18, always 0.15f from SetCam, never read
+	u8 _1C[0x4]; // _1C
+	f32 _20;     // _20, SetCam's second angle in radians, about -pi/2 for preset 0, 0 for preset 1, never read
 };
 
-static ParentCamera sParentCamera;
+static Stage06Work sParentState;
+static Stage06Cam sParentCamera;
 
-static inline void Stage06_SetCam(f32 a, f32 b)
+static inline void SetCam(f32 a, f32 b)
 {
 	WiiPlayerState* player = gGame.GetPlayer();
 	player->LockControl();
@@ -94,19 +76,31 @@ static inline void Stage06_SetCam(f32 a, f32 b)
 	sParentCamera._18 = 0.15f;
 }
 
-extern "C" s32 Stage06_CmdStopRoboPreset(s32 cmd, s32 count, s32* args)
+extern "C" s32 Stage06_CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
 {
-	s32 type = *args;
-	if (type == 0) {
-		Stage06_SetCam(-0.3926991f, -1.570196f);
-	} else if (type == 1) {
-		Stage06_SetCam(-2.7488937f, 0.0f);
-	}
 	return 0;
 }
 
 extern "C" s32 Stage06_CmdParentNoOpSlot4(s32 cmd, s32 count, s32* args)
 {
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdStopRobo(s32 cmd, s32 count, s32* args)
+{
+	gGame.GetPlayer()->LockControl();
+	sParentState._08++;
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdStopRoboPreset(s32 cmd, s32 count, s32* args)
+{
+	s32 type = *args;
+	if (type == 0) {
+		SetCam(-0.3926991f, -1.570196f);
+	} else if (type == 1) {
+		SetCam(-2.7488937f, 0.0f);
+	}
 	return 0;
 }
 
