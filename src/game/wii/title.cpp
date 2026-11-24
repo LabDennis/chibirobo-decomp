@@ -99,12 +99,17 @@ f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
 CbPaneLayout lbl_802E7F48[11] = {
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 1 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 2 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 3 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 4 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 5 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 6 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 7 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 8 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 9 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 10 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 0 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 1 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 2 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 3 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 4 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 5 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 6 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 7 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 8 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 9 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(0.0f, 0.0f), nw4r::lyt::Size(0.0f, 0.0f), CColor(), 10 },
 };
 
 // the outline offsets of the name's letter shadows, then of the help text's
@@ -251,9 +256,9 @@ extern "C" void InitTitleScreen(Title* title)
 	CbPaneLayout* layout      = lbl_802E7F48;
 	s32 i                     = 11;
 	do {
-		Vec trans        = layout->mTrans;
-		layout->mTrans.x = trans.x - 0.5f * (f32)gPointerScreenWidth;
-		layout->mTrans.y = 0.5f * (f32)gPointerScreenHeight - trans.y;
+		nw4r::math::VEC3 trans = layout->mTrans;
+		layout->mTrans.x       = trans.x - 0.5f * (f32)gPointerScreenWidth;
+		layout->mTrans.y       = 0.5f * (f32)gPointerScreenHeight - trans.y;
 		++layout;
 	} while (--i > 0);
 	for (s32 i = 0; i < 11; ++i) {
@@ -2124,16 +2129,16 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		f32 labelY = extra + (base + title->mLoadOffset);
 		DrawLoadSelectionBar(title, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f);
 		for (s32 i = 0; i < 2; ++i) {
-			CbPaneLayout* layout = &lbl_802E7F48[3 + i];
-			layout->mTrans.y     = 2.0f + (8.0f + labelY);
-			f32 screenX          = (f32)gPointerScreenWidth;
-			f32 screenY          = (f32)gPointerScreenHeight;
-			Vec trans            = layout->mTrans;
-			f32 left             = -0.5f * screenX;
-			f32 top              = 0.5f * screenY;
-			f32 right            = 0.5f * screenX;
-			f32 bottom           = -0.5f * screenY;
-			layout->mTrans.y     = -(trans.y + 0.5f * (bottom - top));
+			CbPaneLayout* layout   = &lbl_802E7F48[3 + i];
+			layout->mTrans.y       = 2.0f + (8.0f + labelY);
+			f32 screenX            = (f32)gPointerScreenWidth;
+			f32 screenY            = (f32)gPointerScreenHeight;
+			nw4r::math::VEC3 trans = layout->mTrans;
+			f32 left               = -0.5f * screenX;
+			f32 top                = 0.5f * screenY;
+			f32 right              = 0.5f * screenX;
+			f32 bottom             = -0.5f * screenY;
+			layout->mTrans.y       = -(trans.y + 0.5f * (bottom - top));
 			fn_800556B0(&title->mPanes[3 + i], layout);
 		}
 		labelY = extra + (base + title->mLoadOffset);

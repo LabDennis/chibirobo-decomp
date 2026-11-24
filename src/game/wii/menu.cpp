@@ -31,7 +31,13 @@ extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
 extern s32 gSoundFadeFrames;
 extern MEMiHeapHead* gWiiGameHeap;
-extern u8 lbl_8044B700[];
+struct MenuTextColors {
+	void* mText;
+	CColor mColor;
+	CColor mShadowColor;
+	bool mActive;
+};
+extern MenuTextColors lbl_8044B700;
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
 extern s32 gScreenLeft, gScreenTop;
@@ -155,6 +161,7 @@ MenuPCPage gItemShopPage;
 MenuPCPage gScrapShopPage;
 u8 gStatusIconUnlocked[24];
 u8 gStatusEntryAvailable[16];
+CColor lbl_805A1BC8((GXColor) { 255, 255, 255, 255 });
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 // the status menu's pulse phase at 0x805A1BD4: MenuStatus::Open, Update and the State functions write it, all still in asm
@@ -2488,12 +2495,84 @@ extern "C" void fn_800556B0(CbPane* pane, const CbPaneLayout* layout)
 	pane->mTrans.x = layout->mTrans.x;
 	pane->mTrans.y = layout->mTrans.y;
 	pane->mTrans.z = layout->mTrans.z;
-	pane->mWidth   = layout->mWidth;
-	pane->mHeight  = layout->mHeight;
+	pane->mWidth   = layout->mSize.width;
+	pane->mHeight  = layout->mSize.height;
 	pane->mKind    = layout->mKind;
 }
 
-extern CbPaneLayout lbl_802E87E8[51]; // the file's pane layout table, built by the static initializer
+CbPaneLayout lbl_802E87E8[51] = {
+	{ nw4r::math::VEC3(152.0f + -12, 216.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(76.8f, 76.8f), lbl_805A1BC8, 0 },
+	{ nw4r::math::VEC3(260.0f + 0, 216.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(76.8f, 76.8f), lbl_805A1BC8, 1 },
+	{ nw4r::math::VEC3(368.0f + 12, 216.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(76.8f, 76.8f), lbl_805A1BC8, 2 },
+	{ nw4r::math::VEC3(476.0f + 24, 216.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(76.8f, 76.8f), lbl_805A1BC8, 3 },
+	{ nw4r::math::VEC3(165.0f, 183.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 4 },
+	{ nw4r::math::VEC3(268.5f, 183.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 5 },
+	{ nw4r::math::VEC3(372.0f, 183.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 6 },
+	{ nw4r::math::VEC3(475.5f, 183.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 7 },
+	{ nw4r::math::VEC3(165.0f, 273.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 8 },
+	{ nw4r::math::VEC3(268.5f, 273.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 9 },
+	{ nw4r::math::VEC3(372.0f, 273.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 10 },
+	{ nw4r::math::VEC3(475.5f, 273.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 11 },
+	{ nw4r::math::VEC3(58.0f, 136.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(28.8f, 28.8f), lbl_805A1BC8, 12 },
+	{ nw4r::math::VEC3(58.0f, 136.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(28.8f, 28.8f), lbl_805A1BC8, 12 },
+	{ nw4r::math::VEC3(58.0f, 220.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(28.8f, 28.8f), lbl_805A1BC8, 14 },
+	{ nw4r::math::VEC3(58.0f, 264.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(28.8f, 28.8f), lbl_805A1BC8, 15 },
+	{ nw4r::math::VEC3(58.0f, 308.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(28.8f, 28.8f), lbl_805A1BC8, 16 },
+	{ nw4r::math::VEC3(306.0f, 148.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 17 },
+	{ nw4r::math::VEC3(306.0f, 200.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 18 },
+	{ nw4r::math::VEC3(306.0f, 252.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 19 },
+	{ nw4r::math::VEC3(306.0f, 304.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 20 },
+	{ nw4r::math::VEC3(570.0f, 148.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 21 },
+	{ nw4r::math::VEC3(570.0f, 200.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 22 },
+	{ nw4r::math::VEC3(570.0f, 252.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 23 },
+	{ nw4r::math::VEC3(570.0f, 304.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(38.4f, 38.4f), lbl_805A1BC8, 24 },
+	{ nw4r::math::VEC3(117.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 25 },
+	{ nw4r::math::VEC3(197.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 26 },
+	{ nw4r::math::VEC3(277.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 27 },
+	{ nw4r::math::VEC3(357.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 28 },
+	{ nw4r::math::VEC3(437.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 29 },
+	{ nw4r::math::VEC3(517.0f, 135.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 30 },
+	{ nw4r::math::VEC3(117.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 31 },
+	{ nw4r::math::VEC3(197.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 32 },
+	{ nw4r::math::VEC3(277.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 33 },
+	{ nw4r::math::VEC3(357.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 34 },
+	{ nw4r::math::VEC3(437.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 35 },
+	{ nw4r::math::VEC3(517.0f, 195.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 36 },
+	{ nw4r::math::VEC3(117.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 37 },
+	{ nw4r::math::VEC3(197.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 38 },
+	{ nw4r::math::VEC3(277.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 39 },
+	{ nw4r::math::VEC3(357.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 40 },
+	{ nw4r::math::VEC3(437.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 41 },
+	{ nw4r::math::VEC3(517.0f, 255.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 42 },
+	{ nw4r::math::VEC3(117.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 43 },
+	{ nw4r::math::VEC3(197.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 44 },
+	{ nw4r::math::VEC3(277.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 45 },
+	{ nw4r::math::VEC3(357.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 46 },
+	{ nw4r::math::VEC3(437.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 47 },
+	{ nw4r::math::VEC3(517.0f, 315.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(51.2f, 51.2f), lbl_805A1BC8, 48 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 49 },
+	{ nw4r::math::VEC3(0.0f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(64.0f, 64.0f), lbl_805A1BC8, 50 },
+};
+
+MenuTextColors lbl_8044B700 = {
+	NULL,
+	CColor((GXColor) { 255, 255, 255, 0 }),
+	CColor((GXColor) { 0, 0, 0, 0 }),
+	FALSE,
+};
+
+CbPaneLayout lbl_802E94C0[5] = {
+	{ nw4r::math::VEC3(126.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
+	  CColor((GXColor) { 255, 255, 255, 255 }), 0 },
+	{ nw4r::math::VEC3(320.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
+	  CColor((GXColor) { 255, 255, 255, 255 }), 1 },
+	{ nw4r::math::VEC3(514.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
+	  CColor((GXColor) { 255, 255, 255, 255 }), 2 },
+	{ nw4r::math::VEC3(281.25f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f),
+	  CColor((GXColor) { 255, 255, 255, 255 }), 3 },
+	{ nw4r::math::VEC3(358.75f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f),
+	  CColor((GXColor) { 255, 255, 255, 255 }), 4 },
+};
 
 // NONMATCHING: retail stores the two page panes' kinds as the constants 8 and 9 while it indexes the panes by i;
 // this build keeps kind in a register
@@ -6862,12 +6941,12 @@ void MenuSave::State1(u32 frames)
 			mOffset = -32.0f;
 		} else if (result == -4) {
 			SetMode(13);
-			mShowMessage       = TRUE;
-			lbl_8044B700[0x14] = TRUE;
+			mShowMessage         = TRUE;
+			lbl_8044B700.mActive = TRUE;
 		} else {
 			SetMode(11);
-			mOffset            = -32.0f;
-			lbl_8044B700[0x14] = TRUE;
+			mOffset              = -32.0f;
+			lbl_8044B700.mActive = TRUE;
 		}
 		mTargetAlpha = 1.0f;
 	}
@@ -7070,8 +7149,8 @@ void MenuSave::State5(u32 frames)
 			mShowMessage = TRUE;
 			break;
 		}
-		lbl_8044B700[0x14] = TRUE;
-		mTargetAlpha       = 1.0f;
+		lbl_8044B700.mActive = TRUE;
+		mTargetAlpha         = 1.0f;
 	}
 }
 
