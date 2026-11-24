@@ -2430,8 +2430,8 @@ STATIC_ASSERT(sizeof(XObjActorToyPiece) == 0x3C);
 class XObjActorToy : public XObjActor {
 public:
 	XObjActorToy();
-	virtual ~XObjActorToy();
 	virtual void ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj);
+	virtual ~XObjActorToy();
 	virtual void ExecCallback_CALC_WORLD(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);
 	virtual void Release();
 	virtual void InitializeObject();

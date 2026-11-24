@@ -922,6 +922,7 @@ ClearStateHandler__12XObjActorToyFv = .text:0x8014A7CC; // type:function size:0x
 UpdateAnimationSounds__12XObjActorToyFf = .text:0x8014A5A0; // type:function size:0x1AC
 ExecCallback_CALC_WORLD__12XObjActorToyFiPQ34nw4r3g3d6ScnObjUlPv = .text:0x8014A110; // type:function size:0x490
 @4@ExecCallback_CALC_WORLD__12XObjActorToyFiPQ34nw4r3g3d6ScnObjUlPv = .text:0x8014A7FC; // type:function size:0x8
+@4@__dt__12XObjActorToyFv = .text:0x8014A804; // type:function size:0x8
 HandleToyKind0FCommand = .text:0x80145860; // type:function size:0x3B0
 HandleToyKind110Command = .text:0x80145C10; // type:function size:0x138
 HandleToyKind156Command = .text:0x80145D48; // type:function size:0x130
