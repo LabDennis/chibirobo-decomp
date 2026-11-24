@@ -2159,9 +2159,9 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 			}
 			return ready;
 		case 0x31B:
-			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[122 - StatusTextureOffset], 0);
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[123], 0);
 			mTex[0] = gGame.mTpl.mTex;
-			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[123 - StatusTextureOffset], 0);
+			(&gGame.mTpl)->mTex.Init(&(&gGame.mTpl)->mPalette->descriptorArray[124], 0);
 			mTex[1] = gGame.mTpl.mTex;
 			return TRUE;
 		default:
