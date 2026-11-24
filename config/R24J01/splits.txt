@@ -359,16 +359,17 @@ rel/trash.cpp:
 
 rel/stage01/hamburg.cpp:
 	.text start:0x8016D0CC end:0x80171498
+	.text start:0x80177238 end:0x8017764C
 	.ctors start:0x802C45D8 end:0x802C45DC
 	.data start:0x8030E6D4 end:0x8030E704
 	.bss start:0x804C8548 end:0x804C8888
 	.sdata2 start:0x805A6140 end:0x805A6198
 
 rel/stage02/fighter.cpp:
-	.text start:0x80171498 end:0x80175E8C
+	.text start:0x80171498 end:0x8017624C
 
 rel/stage02/car.cpp:
-	.text start:0x8017624C end:0x80177158
+	.text start:0x8017624C end:0x80177238
 
 rel/stage20/stage20.cpp:
 	.text start:0x8017B184 end:0x8017B268

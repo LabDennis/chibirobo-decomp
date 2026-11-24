@@ -968,6 +968,87 @@ void HamObj::StatePutDown()
 		break;
 	}
 }
+
+extern "C" void InitAnas(void);
+extern "C" void DrawAnas(void);
+extern "C" void ExitAnas(void);
+extern "C" void ResetYakiRates(void);
+extern "C" HamObj* FindHamObj(s32 id);
+extern "C" HamObj* RegisterHamObj(s32 id);
+extern "C" HamObj* FindFacingHamburg(void);
+extern "C" HamDish* RegisterHamDish(s32 id);
+
+// NONMATCHING: ipa file inlines ResetYakiRates before the InitAnas call.
+extern "C" s32 InitStage(u32 arg)
+{
+	ResetYakiRates();
+	InitAnas();
+	return 1;
+}
+
+extern "C" s32 DrawStage(u32 arg)
+{
+	DrawAnas();
+	return 1;
+}
+
+extern "C" s32 ExitStage(u32 arg)
+{
+	ExitAnas();
+	return 1;
+}
+
+extern "C" s32 CmdInitHamburg(s32 cmd, s32 count, s32* args)
+{
+	InitHamburg();
+	return 0;
+}
+
+// NONMATCHING: ipa file inlines FindHamObj before reading the placement id.
+extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		return slot->mActor->mCoord.mPlacement->mObjectId;
+	}
+	return -1;
+}
+
+extern "C" s32 CmdRegisterHamDishes(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		RegisterHamDish(args[i]);
+	}
+	return 1;
+}
+
+// NONMATCHING: ipa file inlines RegisterHamObj at each loop call.
+extern "C" s32 CmdRegisterHamObjs(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		RegisterHamObj(args[i]);
+	}
+	return 1;
+}
+
+extern "C" s32 CmdGetFacingHamburgId(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindFacingHamburg();
+	if (slot != NULL) {
+		return slot->mId;
+	}
+	return -1;
+}
+
+// NONMATCHING: ipa file inlines HamObj_StartFlip when the slot exists.
+extern "C" s32 CmdFlipHamburg(s32 cmd, s32 count, s32* args)
+{
+	HamObj* slot = FindHamObj(args[0]);
+	if (slot != NULL) {
+		HamObj_StartFlip(slot, args[1]);
+	}
+	return 1;
+}
 #else
 #include "Version.h"
 #include "game/hsd_jobj.h"
