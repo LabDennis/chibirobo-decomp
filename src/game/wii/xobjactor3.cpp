@@ -2585,6 +2585,16 @@ void XObjActor3::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32
 	}
 }
 
+void XObjActor3::ResumeSounds(f32 fade)
+{
+	mSfx.Resume(fade);
+}
+
+void XObjActor3::PauseSounds(f32 fade)
+{
+	mSfx.Pause(fade);
+}
+
 void XObjActor3::UpdateAnimationSounds()
 {
 	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && mPoolIndex == 3) {
