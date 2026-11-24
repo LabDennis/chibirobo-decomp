@@ -849,24 +849,21 @@ void XObj::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blend
 		blend = 15.0f;
 	}
 	s32 animIndex      = (id & 0xFFFF) % 1000;
-	XObjSource* source = NULL;
-	if (mAttr.mObjData != NULL) {
-		source = mAttr.mObjData->mSource;
-	}
+	XObjSource* source = mAttr.mObjData != NULL ? mAttr.mObjData->mSource : NULL;
 	if (source != NULL && source->mAnimNames != NULL) {
 		if (animIndex >= source->mAnimCount) {
 			animIndex = 0;
 		}
 		CObjAnim anim;
-		anim.mId   = id;
 		anim.mName = source->mAnimNames[animIndex];
+		anim.mId   = id;
 		CObj::SetAnim(&anim, force, frame, rate, blend, blendRate);
-		if ((id >> 16) != 0) {
+		if ((id & ~0xFFFF) != 0) {
 			s32 matIndex = (id >> 16) % 1000;
 			if (matIndex < source->mAnimCount) {
 				CObjAnim matAnim;
-				matAnim.mId   = id;
 				matAnim.mName = source->mAnimNames[matIndex];
+				matAnim.mId   = id;
 				SetMatAnim(&matAnim, frame);
 			}
 		}
