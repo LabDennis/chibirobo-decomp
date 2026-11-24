@@ -333,7 +333,11 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 	u32 colors[7];
 	for (s32 i = 0; i < 7; ++i)
 		colors[i] = sMapCameraDebugColors[i];
+#if defined(VERSION_R24J01)
+	f32 scale = 2.0f / nw4r::math::FSqrt(3.0f);
+#else
 	f32 scale = 2.0f / sqrtf(3.0f);
+#endif
 	for (s32 i = 0; i < state->mAreaCount; ++i) {
 		u16 flags = CamAreaInfo(&state->mAreaRecords[i]).mRecord->mFlags & 4;
 		if (flags == 0) // skip areas whose camera is off
