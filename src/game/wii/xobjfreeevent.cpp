@@ -49,7 +49,7 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 	if ((GetObjFlags() & 2) && kind == 16) {
 		if (GetObjFlags() & 0x10) {
 			mAnimId2++;
-			SetAnim(mAnimId2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			SetAnim(mAnimId2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			if (mAnimId2 >= mAnimCount - 1) {
 				mStatus.mFlags |= 0x4000000000000000ULL;
 				mEventId = kind;
@@ -90,7 +90,7 @@ void XObjFree::ResetObjectState()
 	}
 	mMatAnim = NULL;
 	if (HasModel() && (mStatus.mFlags & 0x1000ULL)) {
-		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 10.0f);
+		SetAnim(mCoord.mPlacement->mStartAnim, TRUE, 0.0f, 1.0f, 1.0f, 15.0f);
 	}
 }
 

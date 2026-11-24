@@ -1068,32 +1068,36 @@ void XObjSpiderBoss::State3(u32 frames)
 		}
 		if (--mGrabCooldown < 0)
 			mGrabCooldown = 0;
+		gGame.GetPlayer()->GetPos(); // retail discards the position before checking the anim
 		if (IsGrabBlocked(gGame.GetPlayer()->GetAnimId()))
 			mGrabCooldown = 5;
 		f32 distance = SpiderContactDistance(&position, &mMoveTranslate);
-		if (distance <= 70 && !IsUsingMug(&gGame.GetPlayer()->mLift) && !IsGrabBlocked(gGame.GetPlayer()->GetAnimId())
-		    && gGame.GetPlayer()->mAttachmentRequest < 0 && mGrabCooldown == 0) {
-			mStatus.mFlags |= 0x100000;
-			ShakeSpiderArena();
-			mSpiderStatus.mFlags |= 0x20000;
-			WiiPlayerState* chr = gGame.GetPlayer();
-			chr->mPlayerFlags   = 0;
-			chr->mPlayerFlags |= 0x80000000;
-			chr->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-			fn_800FCD1C(&chr->mLift);
-			fn_800FCDF0(&chr->mLift);
-			fn_800FCE60(&chr->mLift);
-			ResetPlayerPopperAction(&chr->mPopper);
-			fn_8010C0F4(&chr->mRadar);
-			FinishTumbleAction(&chr->mTumble);
-			mEscapeInputStrength = 1;
-			mEscapeRemaining     = 450;
-			++mStep;
-			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 1, 1);
-			mSpiderStatus.mFlags &= ~0x200;
-			PlayWiiSoundEffect(&gGame.mSound, 0x474, 1.0f, 0.0f);
-			PlayWiiSoundEffect(&gGame.mSound, 0x475, 1.0f, 0.0f);
-			break;
+		if (distance <= 70 && !IsUsingMug(&gGame.GetPlayer()->mLift)) {
+			gGame.GetPlayer()->GetPos(); // retail discards this position as well
+			if (!IsGrabBlocked(gGame.GetPlayer()->GetAnimId()) && gGame.GetPlayer()->mAttachmentRequest < 0 && mGrabCooldown == 0) {
+				gGame.GetPlayer()->GetAnimId(); // retail discards the id on a successful grab
+				mStatus.mFlags |= 0x100000;
+				ShakeSpiderArena();
+				mSpiderStatus.mFlags |= 0x20000;
+				WiiPlayerState* chr = gGame.GetPlayer();
+				chr->mPlayerFlags   = 0;
+				chr->mPlayerFlags |= 0x80000000;
+				chr->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+				fn_800FCD1C(&chr->mLift);
+				fn_800FCDF0(&chr->mLift);
+				fn_800FCE60(&chr->mLift);
+				ResetPlayerPopperAction(&chr->mPopper);
+				fn_8010C0F4(&chr->mRadar);
+				FinishTumbleAction(&chr->mTumble);
+				mEscapeInputStrength = 1;
+				mEscapeRemaining     = 450;
+				++mStep;
+				InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 1, 1);
+				mSpiderStatus.mFlags &= ~0x200;
+				PlayWiiSoundEffect(&gGame.mSound, 0x474, 1.0f, 0.0f);
+				PlayWiiSoundEffect(&gGame.mSound, 0x475, 1.0f, 0.0f);
+				break;
+			}
 		}
 		if (distance <= 220) {
 			mSpiderStatus.mFlags |= 0x200;

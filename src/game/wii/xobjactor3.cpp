@@ -752,9 +752,11 @@ void XObjActor3::Kind9(u32 frames)
 				CPad pad(0);
 				if (radius < 2.0f) {
 					SetAnim(11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+					gGame.GetPlayer()->GetPos(); // retail discards the position before checking the anim
 					if (!IsBusyAnim(gGame.GetPlayer()->GetAnimId()) && gGame.GetPlayer()->mAttachmentRequest < 0
 					    && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 						mActorFlags.mFlags |= 0x80;
+						gGame.GetPlayer()->GetAnimId(); // retail discards the id before clearing the status flags
 						gGame.ClearStatusFlags(0x800000000000ULL);
 					} else {
 						PlayWiiSoundEffect(&gGame.mSound, 0x42F, 1.0f, 0.0f);

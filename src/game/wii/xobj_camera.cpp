@@ -75,8 +75,9 @@ extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj);
 extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* outA, f32* outB)
 {
 	if (rec->m_0C != NULL) {
-		*outA   = (f32)atan2(rec->m_0C->GetPos()->x - head->x, rec->m_0C->GetPos()->z - head->z) - rot->y;
-		CVec at = fn_800C6CEC(rec, rec->m_0C);
+		const CVec* targetPos = rec->m_0C->GetPos();
+		*outA                 = (f32)atan2(targetPos->x - head->x, targetPos->z - head->z) - rot->y;
+		CVec at               = fn_800C6CEC(rec, rec->m_0C);
 		if (at.y == rec->m_0C->GetPos()->y) {
 			at.y = head->y;
 		}

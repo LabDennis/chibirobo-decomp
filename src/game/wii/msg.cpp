@@ -912,6 +912,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				font->mCursor[0].SetPos(portraitX, 4.0f * headHeight + portraitY, 80.0f * portraitScale);
 				font->mCursor[0].SetScale((9.0f * portraitScale) * font->mAlpha);
 				font->mCursor[0].DrawScreenOverlay();
+				anim = portrait->GetAnimId();
 				if (anim == 0x13 || anim == 0x3FB) {
 					font->mCursor[1].SetPos(*font->mCursor[0].GetPos());
 					font->mCursor[1].SetRotationY(font->mCursor[0].GetRotY());
