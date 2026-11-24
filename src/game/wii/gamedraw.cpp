@@ -910,11 +910,8 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	WiiPlayerState* player = game->GetPlayer();
 	for (s32 i = 0; i < 2; i++) {
-		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
-		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
-		if (sound != NULL && actor != NULL) {
-			f32 fade = 0.0f;
-			actor->mHandle.Stop(fade * gRefreshRate);
+		if (((AnimSfx*)player->mSfx)->mActors[i].GetHandle() != NULL) {
+			((AnimSfx*)player->mSfx)->mActors[i].Stop(0.0f);
 		}
 	}
 	gGame.mSound.StopAllTracks(0.0f);

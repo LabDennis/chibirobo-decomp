@@ -275,10 +275,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 					actor->mHandle.SetVolume(1.0f, 0);
 				}
 			}
-			if (((toy->mSfxActors[0].GetHandle() != NULL && !(toy->mStatus.mFlags & 0x10000)) || gGame.mMovie.mState != 0)
-			    && toy->mSfxActors[0].mActor != NULL) {
-				f32 fade = 0.0f;
-				toy->mSfxActors[0].mActor->mHandle.Stop((s32)(fade * gRefreshRate));
+			if ((toy->mSfxActors[0].GetHandle() != NULL && !(toy->mStatus.mFlags & 0x10000)) || gGame.mMovie.mState != 0) {
+				toy->mSfxActors[0].Stop(0.0f);
 			}
 			if (toy->mFirst.mStatus.mFlags & 0x10000) {
 				toy->mFirst.UpdateObject(frames);
@@ -2311,15 +2309,13 @@ void XObjActorToy::UpdateAnimationSounds(f32 frame)
 {
 	switch (GetKind()) {
 	case 0x1FC:
-		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 0x10 && mSfx.mActors[5].mActor != NULL) {
-			f32 fade = 0.0f;
-			mSfx.mActors[5].mActor->mHandle.Stop((s32)(fade * gRefreshRate));
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 0x10) {
+			mSfx.mActors[5].Stop(0.0f);
 		}
 		break;
 	case 0x159:
-		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 7 && mSfx.mActors[5].mActor != NULL) {
-			f32 fade = 0.0f;
-			mSfx.mActors[5].mActor->mHandle.Stop((s32)(fade * gRefreshRate));
+		if (mSfx.mActors[5].GetHandle() != NULL && GetAnimId() != 7) {
+			mSfx.mActors[5].Stop(0.0f);
 		}
 		break;
 	}

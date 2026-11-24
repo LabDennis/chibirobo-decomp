@@ -180,6 +180,9 @@ public:
 	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
 	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
 	void StopAllTracks(f32 fade);
+	// pauses or resumes every playing track over fade seconds; the message script's SFX -2 expands them
+	void PauseAllTracks(f32 fade);
+	void ResumeAllTracks(f32 fade);
 
 	// the track playing the archive sound id, or NULL; FindSound is its out-of-line copy, and
 	// retail expands it in other files too (CGame::Update's scope check, the jingle code)

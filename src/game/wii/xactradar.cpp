@@ -23,7 +23,7 @@ extern "C" void PlayCopterDescentAnimation(XObjCopter* copter);
 extern "C" void PlayCopterLandingAnimation(XObjCopter* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
-extern "C" s32 gRefreshRate;
+extern s32 gRefreshRate;
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
@@ -737,21 +737,12 @@ static inline void ClearPopperCharge(XActPopperCharge* charge)
 	charge->mMtx   = NULL;
 	KillGen(charge->mGen);
 	KillGen(charge->mChargeGen);
-	CSound3DActor* actor = charge->mSfxActors[0].mActor;
-	if (actor != NULL) {
-		f32 fade = 0.0f;
-		actor->mHandle.Stop((s32)(fade * gRefreshRate));
-	}
-	actor = charge->mSfxActors[1].mActor;
-	if (actor != NULL) {
-		f32 fade = 0.0f;
-		actor->mHandle.Stop((s32)(fade * gRefreshRate));
-	}
+	charge->mSfxActors[0].Stop(0.0f);
+	charge->mSfxActors[1].Stop(0.0f);
 	StopWiiSfx(&gGame.mSound, 0x1F3, 0.0f);
 	StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
 }
 
-// NONMATCHING: the actor stops and fade calculations match; only f0/f2 allocation for the conversion constants remains.
 /**
  * @note Address: 0x80109FCC
  * @note Size: 0x148
@@ -867,7 +858,7 @@ void InitializePlayerPopperAction(XActPopper* act, WiiPlayerState* owner)
 
 // the action's reset on the Wii: the base vcall, every shot cleared, then the same
 // charge teardown ResetPopperCharge does on its own
-// NONMATCHING: inherits ResetPopperCharge's conversion-constant FPR allocation through ClearPopperCharge
+// NONMATCHING: register and scheduling residue outside ClearPopperCharge
 /**
  * @note Address: 0x8010A6CC
  * @note Size: 0x1FC
@@ -920,7 +911,7 @@ static inline int ActivePopperShots(XActPopper* act)
 // GameCube scanned the object list for a target the Wii reads the one CGame::Update
 // locked, and without a target or the eye camera it aims through the remote's pointer
 // NONMATCHING: same control flow and call set as retail; the inlined helpers
-// (ClearPopperCharge's conversion-constant registers, GetAttachment and the CVec temporaries around the
+// (GetAttachment and the CVec temporaries around the
 // pointer ray) still schedule differently
 /**
  * @note Address: 0x8010A92C
