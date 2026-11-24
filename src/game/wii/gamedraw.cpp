@@ -129,6 +129,26 @@ inline void CSound::StopAllTracks(f32 fade)
 	}
 }
 
+inline void CSound::PauseAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && !mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+			mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(true, frames);
+		}
+	}
+}
+
+inline void CSound::ResumeAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+			mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(false, frames);
+		}
+	}
+}
+
 // the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
 // (game/cgameutil.h, which the Wii cannot include). todo: one definition with gameupdate.cpp's
 struct WiiStageInfo {
@@ -752,20 +772,15 @@ extern "C" void fn_8002BBDC(CGs* gs)
  * @note Address: 0x8002B6D8
  * @note Size: 0x500
  */
-// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// NONMATCHING: the all-tracks loops match through ResumeAllTracks; the frame count and loop counter still swap
+// registers, and the jingle-specific track lookup has further register differences
 // undoes one PauseGameSounds. the last resume lets the tracks, the objects' sounds and the movie go
 // again; the music pause underneath holds the jingle (sound 4) until its own count runs out
 extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 {
 	// _D9B5C counts the pauses, _D9B60 the music pauses under them
 	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
-		s32 frames = gRefreshRate * fade;
-		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			if (handle.IsAttachedSound() && handle.IsPause()) {
-				handle.Pause(false, frames);
-			}
-		}
+		gGame.mSound.ResumeAllTracks(fade);
 		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
 			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
@@ -807,19 +822,14 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
  * @note Address: 0x8002B2F0
  * @note Size: 0x3E8
  */
-// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// NONMATCHING: the all-tracks loop matches through PauseAllTracks; the frame count and loop counter still swap
+// registers, and the jingle-specific track lookup has further register differences
 // holds every playing track, the objects' own sounds and the movie's volume; pauses nest, only the
 // first one acts. a nested pause holds the jingle (sound 4) too
 extern "C" void PauseGameSounds(CGame* game, f32 fade)
 {
 	if (game->_D9B5C == 0) {
-		s32 frames = gRefreshRate * fade;
-		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
-			if (handle.IsAttachedSound() && !handle.IsPause()) {
-				handle.Pause(true, frames);
-			}
-		}
+		gGame.mSound.PauseAllTracks(fade);
 		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
 			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
