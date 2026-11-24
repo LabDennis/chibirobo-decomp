@@ -1,3 +1,452 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/wii/xobjflags.h"
+
+extern "C" CVec fn_800E5A2C(XObj* player);
+
+class Ana {
+public:
+	Ana() { }
+	~Ana() { }
+	virtual bool IsActive() { return mStatus.mFlags & 1; }
+
+	void Set(f32 x, f32 y, f32 z)
+	{
+		mStatus.mFlags |= 1;
+		mPos.x = x;
+		mPos.y = y;
+		mPos.z = z;
+	}
+
+	void SetJObj(s32 kind, s32 which)
+	{
+		mJObjKind  = kind;
+		mJObjWhich = which;
+	}
+
+	Vec mPos;
+	f32 mRotY;
+	CStatus32 mStatus;
+	s32 mId;
+	s32 mJObjKind;
+	s32 mJObjWhich;
+};
+
+class AnaNull : public Ana {
+public:
+	virtual bool IsActive() { return false; }
+};
+
+static Ana anas[20];
+static AnaNull anaNull;
+static XObj anaXObjs[20][5];
+
+s32 activeAnaNum;
+static XObj* tutiAnaObj;
+static XObj* tutiHutaObj;
+static XObj* flowerObjs[3];
+static u8 anaXObjsInitialized;
+
+inline Ana* GetAna(s32 id)
+{
+	if (id < 0 || id >= 20) {
+		return &anaNull;
+	}
+	return &anas[id];
+}
+
+inline void ReleaseHeld(WiiPlayerState* player)
+{
+	if (player->mLift.mTarget != NULL) {
+		player->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+		player->mLift.mTarget = NULL;
+	}
+	player->mLift.mState = 0;
+}
+
+inline void DropObj(XObj* obj)
+{
+	if (obj->GetCategory() == XOBJS::ITEMS) {
+		static_cast<XObjItem*>(obj)->SetFlag();
+	}
+	obj->mReleaseCountdown = 2;
+}
+
+Ana* GetNearestAna(f32 x, f32 y, f32 z);
+
+extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
+{
+	CVec pos(x, y, z);
+
+	if (id >= 0 && id < 20) {
+		Ana* ana = &anas[id];
+		if (!(ana->mStatus.mFlags & 1)) {
+			activeAnaNum++;
+		}
+		ana->Set(x, y, z);
+		ana->mId = id;
+		return id;
+	}
+
+	for (u32 i = 0; i < 20; i++) {
+		if ((anas[i].mStatus.mFlags & 1) && PSVECDistance(&pos, &anas[i].mPos) < 5.0f) {
+			return -1;
+		}
+	}
+	for (u32 i = 0; i < 20; i++) {
+		if (!(anas[i].mStatus.mFlags & 1)) {
+			activeAnaNum++;
+			anas[i].Set(x, y, z);
+			anas[i].mId = i;
+			return i;
+		}
+	}
+	return -1;
+}
+
+s32 CmdAddAna(s32 cmd, s32 count, s32* args)
+{
+	if (count >= 4) {
+		return AddAna(args[3], args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
+	}
+	return AddAna(-1, args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
+}
+
+// NONMATCHING: ipa file inlines both GetNearestAna calls; the helper itself and the three GetPos calls match.
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
+{
+	Ana* best = NULL;
+
+	if (count == 3) {
+		f32 x = args[0] / 100.0f;
+		f32 y = args[1] / 100.0f;
+		f32 z = args[2] / 100.0f;
+		best  = GetNearestAna(x, y, z);
+	} else {
+		XObj* contact = gGame.mXObjs.mObjects[gGame.GetPlayer()->mFloorContactObjects[2]];
+		if (contact != NULL) {
+			best = GetNearestAna(contact->GetPos()->x, contact->GetPos()->y, contact->GetPos()->z);
+			if (best != NULL) {
+				return best->mId;
+			}
+		}
+	}
+	if (best != NULL) {
+		return best->mId;
+	}
+	return -1;
+}
+
+Ana* GetNearestAna(f32 x, f32 y, f32 z)
+{
+	Ana* nearest = NULL;
+	CVec pos(x, y, z);
+	for (u32 i = 0; i < 20; i++) {
+		if (anas[i].mStatus.mFlags & 1) {
+			f32 dist = PSVECDistance(&pos, &anas[i].mPos);
+			if (nearest == NULL || dist < PSVECDistance(&pos, &nearest->mPos)) {
+				nearest = &anas[i];
+			}
+		}
+	}
+	return nearest;
+}
+
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(1, 0);
+	return 1;
+}
+
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(2, 0);
+	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
+	if (obj != NULL) {
+		ReleaseHeld(gGame.GetPlayer());
+		DropObj(obj);
+	}
+	return 1;
+}
+
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(args[1], args[2]);
+	return 1;
+}
+
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana   = GetAna(args[0]);
+	ana->mRotY = 57.295776f * args[1];
+	return 1;
+}
+
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args)
+{
+	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
+	if (obj != NULL) {
+		obj->mStatus.mFlags &= ~0x10000ULL;
+		ReleaseHeld(gGame.GetPlayer());
+		DropObj(obj);
+	}
+	return 0;
+}
+
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->mStatus.mFlags |= 8;
+	return 0;
+}
+
+extern "C" void UpdateAnas(s32 dt)
+{
+}
+
+// NONMATCHING: reset and placement block layout differs; all five load paths and the status/JObj resets match.
+extern "C" s32 InitAnas(void)
+{
+	tutiAnaObj    = NULL;
+	tutiHutaObj   = NULL;
+	flowerObjs[0] = NULL;
+	flowerObjs[1] = NULL;
+	flowerObjs[2] = NULL;
+	activeAnaNum  = 0;
+	for (s32 i = 0; i < 20; i++) {
+		anas[i].mStatus.mFlags = 0;
+		anas[i].SetJObj(0, 0);
+	}
+
+	if (!anaXObjsInitialized) {
+		anaXObjsInitialized = TRUE;
+		for (s32 i = 0; i < 20; i++) {
+			for (s32 j = 0; j < 5; j++) {
+				anaXObjs[i][j].InitializeObject();
+			}
+		}
+	}
+
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* obj = gGame.mXObjs.mObjects[i];
+		if (!(obj->mStatus.mFlags & 1)) {
+			continue;
+		}
+		s32 kind = obj->mCoord.mPlacement->mObjectId;
+		if (kind == 0x2A9) {
+			tutiAnaObj = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][0].mStatus.mFlags & 1)) {
+					anaXObjs[j][0].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x178) {
+			tutiHutaObj = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][1].mStatus.mFlags & 1)) {
+					anaXObjs[j][1].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x2B7) {
+			flowerObjs[0] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][2].mStatus.mFlags & 1)) {
+					anaXObjs[j][2].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x2B8) {
+			flowerObjs[1] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][3].mStatus.mFlags & 1)) {
+					anaXObjs[j][3].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x2B9) {
+			flowerObjs[2] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][4].mStatus.mFlags & 1)) {
+					anaXObjs[j][4].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+	}
+	return 1;
+}
+
+extern "C" void ExitAnas(void)
+{
+	for (s32 i = 0; i < 20; i++) {
+		for (s32 j = 0; j < 5; j++) {
+			anaXObjs[i][j].Release();
+		}
+	}
+}
+
+// NONMATCHING: case/local register layout differs; index selection and animation IDs 1-5 match.
+extern "C" XObj* GetAnaJObj(s32 index, s32 kind, s32 which)
+{
+	if (tutiAnaObj == NULL) {
+		return NULL;
+	}
+	if (which < 0 || which >= 3) {
+		which = 0;
+	}
+
+	XObj* group = anaXObjs[index];
+	XObj* obj   = &group[which + 2];
+	switch (kind) {
+	case 1:
+		return &group[0];
+	case 2:
+		return &group[1];
+	case 3:
+		if (obj != NULL) {
+			obj = &group[2];
+			obj->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 4:
+		if (obj != NULL) {
+			obj->SetAnim(2, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 5:
+		if (obj != NULL) {
+			obj->SetAnim(3, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 6:
+		if (obj != NULL) {
+			obj->SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 7:
+		if (obj != NULL) {
+			obj->SetAnim(5, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	}
+	return NULL;
+}
+
+// NONMATCHING: position/scene-list register layout differs; carry/position selection and all render calls match.
+extern "C" void DrawAnas(void)
+{
+	for (u32 i = 0; i < 20; i++) {
+		if (!(anas[i].mStatus.mFlags & 1)) {
+			continue;
+		}
+		XObj* obj = GetAnaJObj(i, anas[i].mJObjKind, anas[i].mJObjWhich);
+		if (obj == NULL) {
+			continue;
+		}
+		Vec pos;
+		if (anas[i].mStatus.mFlags & 8) {
+			pos = fn_800E5A2C(gGame.GetPlayer());
+		} else {
+			pos = anas[i].mPos;
+		}
+		obj->SetPos(pos);
+		gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
+	}
+
+	gGame.mGs.mScene.GetRoot()->UpdateFrame();
+	gGame.mGs.mScene.GetRoot()->CalcWorld();
+	gGame.mGs.mScene.GetRoot()->CalcView();
+	gGame.mGs.mScene.GetRoot()->GatherDrawScnObj();
+	gGame.mGs.mScene.GetRoot()->DrawOpa();
+	gGame.mGs.mScene.GetRoot()->DrawXlu();
+	while (!gGame.mGs.mScene.GetRoot()->Empty()) {
+		gGame.mGs.mScene.GetRoot()->PopBack();
+	}
+}
+
+extern XObj trashObjs[10];
+extern XObj* trashTarget;
+extern XObjFlags* trashObj;
+extern s32 trashStackNum;
+extern f32 trashStackScale;
+extern s32 trashState;
+extern s32 trashResult;
+extern u8 trashActive;
+
+// NONMATCHING: argument conversion and target setup are scheduled differently; all stores and the gauge call match.
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
+{
+	trashTarget     = gGame.mXObjs.mObjects[args[0]];
+	trashStackNum   = args[1];
+	trashStackScale = args[2] / 100.0f;
+	if (trashTarget != NULL) {
+		trashResult = 0;
+		trashState  = 0;
+		trashActive = TRUE;
+		if (gGame.GetPlayer()->mLift.mTarget != NULL) {
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 1, 1, 1);
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
+{
+	if (trashTarget != NULL) {
+		trashObj    = NULL;
+		trashActive = FALSE;
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+	}
+	return 0;
+}
+
+// NONMATCHING: loop-register selection differs; the active test, both release paths and the 0x9A8 array stride match.
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
+{
+	WiiPlayerState* robot = gGame.GetPlayer();
+	if (robot->mLift.mTarget != NULL) {
+		robot->mLift.mState = 6;
+	}
+	if (trashObj != NULL && (trashObj->mStatus.mFlags & 1)) {
+		trashObj->Release();
+		trashObj = NULL;
+	}
+	for (s32 i = 0; i < 10; i++) {
+		if ((trashObjs[i].mStatus.mFlags & 1) == 1) {
+			trashObjs[i].Release();
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
+{
+	return trashResult;
+}
+
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args);
+
+extern "C" s32 fn_8016C398(s32 cmd, s32 count, s32* args)
+{
+	return CmdIsNearTrashbox(cmd, count, args);
+}
+#else
 #include "Version.h"
 
 // the holes the player digs and plants. linked into five stages
@@ -840,3 +1289,4 @@ s32 CmdAddAna(s32 cmd, s32 count, s32* args)
  * @note Size: 0x24
  */
 // Ana::Ana
+#endif

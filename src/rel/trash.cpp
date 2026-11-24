@@ -1,3 +1,252 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
+#include "game/wii/xobjflags.h"
+
+XObj trashObjs[10];
+XObj* trashTarget;
+XObjFlags* trashObj;
+s32 trashStackNum;
+f32 trashStackScale;
+static Vec trashPos;
+static Vec trashDest;
+static Vec trashStep;
+static f32 trashArc;
+s32 trashState;
+s32 trashResult;
+static s32 trashboxIndex;
+u8 trashActive;
+static u8 trashObjsInitialized;
+
+// NONMATCHING: object-table and loop registers differ; initialization, both box kinds and the scan match.
+extern "C" void InitTrash(void)
+{
+	trashTarget = NULL;
+	trashObj    = NULL;
+	if (!trashObjsInitialized) {
+		for (s32 i = 0; i < 10; i++) {
+			trashObjs[i].InitializeObject();
+		}
+		trashObjsInitialized = TRUE;
+	}
+	trashboxIndex = -1;
+	trashActive   = 0;
+	for (s32 i = 0; trashboxIndex < 0 && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* actor = gGame.mXObjs.mObjects[i];
+		if (actor->mStatus.mFlags & 1) {
+			if (actor->mCoord.mPlacement->mObjectId == 0x12D || actor->mCoord.mPlacement->mObjectId == 0x477) {
+				trashboxIndex = i;
+			}
+		}
+	}
+}
+
+// NONMATCHING: object/counter registers differ; all ten active checks and releases match.
+// NONMATCHING: state/local register scheduling differs; all states, placements, sounds and collision paths match.
+extern "C" void UpdateTrash(u32 frames)
+{
+	if (trashTarget == NULL || !trashActive) {
+		return;
+	}
+
+	WiiPlayerState* robot = gGame.GetPlayer();
+	switch (trashState) {
+	case 0:
+		trashObj = (XObjFlags*)robot->mLift.mTarget;
+		if (trashObj != NULL) {
+			for (s32 i = 0; i < 10; i++) {
+				if (!(trashObjs[i].mStatus.mFlags & 1)) {
+					trashObjs[i].LoadFromPlacement(trashObj->mCoord);
+				}
+			}
+		}
+		if (gWiiPointer.GetSwing(NULL, NULL)) {
+			robot->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			trashState++;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+		} else if (gWiiPointer.Check(2)) {
+			trashResult = 4;
+			trashState  = 99;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+		}
+		break;
+	case 1:
+		if (robot->mMoveRotate.y == robot->mMoveTarget1.y) {
+			robot->mLift.mState = 6;
+			trashTarget->mStatus.mFlags |= 0x10000000000ULL;
+			trashState++;
+		}
+		break;
+	case 2:
+		if (robot->GetAnimFrame() >= 14.0f) {
+			robot->mLift.mTarget = NULL;
+			trashObj->mStatus.mFlags &= ~0x400000000000000ULL;
+			trashDest = *trashTarget->GetPos();
+			trashDest.y += 30.0f;
+			trashPos    = *trashObj->GetPos();
+			trashStep.x = (trashDest.x - trashPos.x) / 36.0f;
+			trashArc    = 0.0f;
+			trashState++;
+			trashStep.y = (trashDest.y - trashPos.y) / 36.0f;
+			trashStep.z = (trashDest.z - trashPos.z) / 36.0f;
+		}
+		break;
+	case 3: {
+		if (robot->GetAnimFrame() >= 30.0f && robot->GetAnimFrame() < 33.0f && !IsWiiSfxPlaying(&gGame.mSound, 0x226)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x226, 1.0f, 0.0f);
+		}
+		trashArc += 0.08726646f * frames;
+		if ((f32)sin(trashArc) < 0.0f) {
+			trashResult = 2;
+			if (trashObj->GetCategory() == 8) {
+				u32 bit = trashObj->GetFlagIndex();
+				trashObj->mFlags->mFlags[bit >> 5] |= 1 << (bit & 31);
+			}
+			trashObj->mStatus.mFlags &= ~0x10000ULL;
+			trashState++;
+		} else {
+			Vec pos = *trashObj->GetPos();
+			pos.y   = trashTarget->GetPos()->y;
+			if (PSVECDistance(trashTarget->GetPos(), &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
+				trashState = 10;
+			} else {
+				trashPos.x += trashStep.x * frames;
+				trashPos.y += trashStep.y * frames;
+				trashPos.z += trashStep.z * frames;
+				pos = trashPos;
+				pos.y += 10.0f * (f32)sin(trashArc);
+				trashObj->SetMoveDir(&pos, 10.0f);
+			}
+		}
+		break;
+	}
+	case 4:
+		trashObj->Release();
+		trashObj = NULL;
+		for (s32 i = 0; i < 10; i++) {
+			if (trashObjs[i].mStatus.mFlags & 1) {
+				trashObjs[i].Release();
+			}
+		}
+		trashState = 99;
+		break;
+	case 10: {
+		trashResult = 3;
+		Vec impact  = *trashObj->GetPos();
+		f32 angle   = atan2(impact.x - trashTarget->GetPos()->x, impact.z - trashTarget->GetPos()->z);
+		impact.x += 2.0f * (f32)sin(angle);
+		impact.y = 0.0f;
+		impact.z += 2.0f * (f32)cos(angle);
+		trashObj->SetMoveDir(&impact, 1.0f);
+		trashState = 99;
+		break;
+	}
+	case 99:
+		break;
+	}
+}
+
+// NONMATCHING: floating-point register allocation and one word differ; transforms, animation and scene-list calls match.
+extern "C" void DrawTrashStack(void)
+{
+	if (trashTarget == NULL) {
+		return;
+	}
+	XObj* actor = trashObj;
+	if (actor == NULL || !(actor->mStatus.mFlags & 1) || !(actor->mStatus.mFlags & 0x10000) || !trashActive) {
+		return;
+	}
+
+	s32 count = trashStackNum;
+	Vec pos   = *actor->GetPos();
+	f32 angle = 1.0471976f + actor->mMoveRotate.y;
+	if (count < 0) {
+		count = 0;
+	}
+	if (count > 10) {
+		count = 10;
+	}
+
+	for (s32 i = 1; i < count; i++) {
+		f32 x, y, z;
+		s32 step = i - 1;
+		if (step % 4 == 0) {
+			x = 0.0f;
+			z = x;
+			y = 2.0f * step / 4.0f + 2.0f;
+		} else {
+			f32 a = 0.017453292f * (step % 4 * 120) + angle;
+			x     = 2.0f * (f32)sin(a);
+			y     = 2.0f * step / 4.0f + 1.0f;
+			z     = 2.0f * (f32)cos(a);
+		}
+
+		XObj* obj = &trashObjs[i];
+		if (!(obj->mStatus.mFlags & 1)) {
+			Mtx mtx;
+			PSMTXCopy(trashObj->GetWorldMtx(), mtx);
+			mtx[0][3]        = x * trashStackScale + pos.x;
+			mtx[1][3]        = y * trashStackScale + pos.y;
+			mtx[2][3]        = z * trashStackScale + pos.z;
+			obj->mBaseMtxPtr = obj->mBaseMtx;
+			PSMTXCopy(mtx, obj->mBaseMtx);
+			obj->SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 0.0f, 0.0f, 15.0f);
+			gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
+		}
+	}
+
+	gGame.mGs.mScene.GetRoot()->UpdateFrame();
+	gGame.mGs.mScene.GetRoot()->CalcWorld();
+	gGame.mGs.mScene.GetRoot()->CalcView();
+	gGame.mGs.mScene.GetRoot()->GatherDrawScnObj();
+	gGame.mGs.mScene.GetRoot()->DrawOpa();
+	gGame.mGs.mScene.GetRoot()->DrawXlu();
+	while (!gGame.mGs.mScene.GetRoot()->Empty()) {
+		gGame.mGs.mScene.GetRoot()->PopBack();
+	}
+}
+
+extern "C" void ExitTrash(void)
+{
+	for (s32 i = 0; i < 10; i++) {
+		if (trashObjs[i].mStatus.mFlags & 1) {
+			trashObjs[i].Release();
+		}
+	}
+}
+
+static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
+{
+	CVec b, a;
+	a.x          = pos.x;
+	a.y          = pos.y;
+	a.z          = pos.z;
+	XObj* obj    = gGame.mXObjs.mObjects[index];
+	CVec* objPos = obj->GetPos();
+	b.x          = objPos->x;
+	b.y          = objPos->y;
+	b.z          = objPos->z;
+	b.y          = 0.0f;
+	a.y          = 0.0f;
+	if (11.5f < PSVECDistance(&a, &b)) {
+		return 0;
+	}
+	return 1;
+}
+
+// NONMATCHING: the inlined helper keeps the box index in a callee-saved register and orders the CVec copies differently.
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
+{
+	if (trashboxIndex < 0) {
+		return 0;
+	}
+	WiiPlayerState* robot = gGame.GetPlayer();
+	if (trashboxIndex != robot->mFloorContactObjects[0]) {
+		return 0;
+	}
+	return IsNearObjectXZ(*robot->GetPos(), trashboxIndex);
+}
+#else
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
@@ -1512,3 +1761,4 @@ extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 	}
 	return 0;
 }
+#endif

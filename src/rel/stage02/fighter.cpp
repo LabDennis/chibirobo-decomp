@@ -2,13 +2,627 @@
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/wii/cgs.h"
+#include "game/ccameraaction.h"
 #include "game/globals.h"
+#include <stdlib.h>
 
 extern "C" {
 extern s32 gScreenSafeRight;
 extern s32 gScreenSafeTop;
 extern s32 gScreenSafeLeft;
 extern s32 gPointerScreenWidth;
+}
+
+namespace fighter {
+
+class CCameraActionFighter : public CInterfaceCameraAction {
+public:
+	CCameraActionFighter()
+	{
+		mTargetMtx        = NULL;
+		mInterestOffset.x = mInterestOffset.y = mInterestOffset.z = 0.0f;
+		mEyeOffset.x = mEyeOffset.y = mEyeOffset.z = 0.0f;
+		mCenterView                                = true;
+	}
+	virtual ~CCameraActionFighter() { }
+
+	virtual void Update(u32 step);
+	virtual void Init();
+	virtual u32 GetMode() { return 0; }
+	virtual u32 GetCameraFlags() { return 11; }
+	virtual f32 GetFollowDivisor() { return 0.1f; }
+
+	MtxP mTargetMtx;
+	Vec mInterestOffset;
+	Vec mEyeOffset;
+	u8 _5C[0xC];
+	bool mCenterView;
+};
+
+void CCameraActionFighter::Update(u32 step)
+{
+	if (mTargetMtx == NULL) {
+		return;
+	}
+	CPad pad(0);
+	if (pad.mPad->mTrigger & 0x800ULL) {
+		if (mCenterView) {
+			mCenterView = false;
+		} else {
+			mCenterView = true;
+		}
+	}
+	SetFov(40.0f);
+	Vec pos;
+	if (mCenterView) {
+		pos.y = pos.x = 0.0f;
+		pos.z         = 80.0f;
+		PSMTXMultVec(mTargetMtx, &pos, &pos);
+		SetInterest(pos);
+		pos.z = pos.x = 0.0f;
+		SetEye(pos);
+	} else {
+		PSMTXMultVec(mTargetMtx, &mEyeOffset, &pos);
+		SetEye(pos);
+		PSMTXMultVec(mTargetMtx, &mInterestOffset, &pos);
+		SetInterest(pos);
+	}
+}
+
+} // namespace fighter
+
+struct MatoList;
+
+struct Mato {
+	void Set(XObj* obj, MatoList* list, s32 id);
+	s32 GetPoints() const;
+	void Update();
+	CVec GetPos();
+
+	s32 mId;
+	XObj* mObj;
+	f32 mScreenX;
+	f32 mScreenY;
+	f32 mScreenZ;
+	u32 mMarkerColor;
+	u8 mOnScreen;
+	u8 mPending;
+	u8 _1A[2];
+	s32 mOnScreenTime;
+	f32 mMarkerPhase;
+	s32 mShotsLeft;
+	s32 mHitsLeft;
+	s32 mKind;
+	MatoList* mList;
+};
+STATIC_ASSERT(sizeof(Mato) == 0x34);
+
+struct MatoList {
+	s32 mCount;
+	Vec mAimPos;
+	s32 mScore;
+	s32 mFrameCount;
+	f32 mProgress;
+	u32 mTimeLeft;
+	s32 mKindPoints[2];
+	Mato* mDestroyed;
+	Mato mMatos[0x50];
+};
+STATIC_ASSERT(sizeof(MatoList) == 0x106C);
+
+extern MatoList matoList;
+
+inline s32 Mato::GetPoints() const
+{
+	return mList->mKindPoints[mKind];
+}
+
+void Mato::Set(XObj* obj, MatoList* list, s32 id)
+{
+	mObj          = obj;
+	mId           = id;
+	mOnScreenTime = 0;
+	mPending      = FALSE;
+	mMarkerPhase  = rand() % 0x10000;
+	mObj->mStatus.mFlags |= 0x10000ULL;
+	switch (mObj->GetKind()) {
+	case 0x14D:
+		mShotsLeft = 1;
+		mHitsLeft  = 1;
+		mKind      = 0;
+		break;
+	case 0x2EA:
+		mShotsLeft = 3;
+		mHitsLeft  = 3;
+		mKind      = 1;
+		break;
+	}
+	mList = list;
+}
+
+CVec Mato::GetPos()
+{
+	return *mObj->GetPos();
+}
+
+void Mato::Update()
+{
+	if (mObj != NULL && (mObj->mStatus.mFlags & 1) && !mPending) {
+		f32 halfW = mObj->GetFloorXZExtent() / 2.0f;
+		if (halfW < 1.0f) {
+			halfW = 1.0f;
+		}
+		f32 height = mObj->GetCollisionHeight();
+		if (height < 1.0f) {
+			height = 1.0f;
+		}
+		f32 projW;
+		f32 projH;
+		if (mObj->ProjectVisibleBounds(&projW, &projH, NULL, halfW, height)) {
+			mOnScreen = TRUE;
+			if (projW > projH) {
+				projW = projH;
+			}
+			Vec zero = { 0.0f, 0.0f, 0.0f };
+			mObj->ProjectOffsetToScreen(&zero, &mScreenX, &mScreenY, &mScreenZ, NULL);
+			mScreenY -= projW / 2.0f;
+		} else {
+			mOnScreen = FALSE;
+		}
+	}
+}
+
+void fighter::CCameraActionFighter::Init()
+{
+	mCenterView = false;
+}
+
+extern "C" void AddMato(XObj* obj, s32 id)
+{
+	if ((u32)matoList.mCount >= 0x50) {
+		return;
+	}
+	Mato* item = &matoList.mMatos[matoList.mCount++];
+	item->Set(obj, &matoList, id);
+}
+
+extern CStatus32 shotEvents;
+
+struct Shot {
+	void Start(Vec from, Vec to, Mato* item);
+	void Update(u32 dt);
+	void Draw();
+
+	u8 mActive;
+	u8 _01[3];
+	Vec mStartPos;
+	Vec mEndPos;
+	Vec mPos;
+	Vec mVelocity;
+	s32 mTimer;
+	Vec mTrail[10];
+	Mato* mTarget;
+	CStatus32 mResult;
+};
+STATIC_ASSERT(sizeof(Shot) == 0xBC);
+
+struct ShotList {
+	Shot mShots[5];
+	s32 mHitStreak;
+	s32 mMissStreak;
+};
+STATIC_ASSERT(sizeof(ShotList) == 0x3B4);
+
+void Shot::Update(u32 dt)
+{
+	if (mActive) {
+		mTimer -= dt;
+		if (mTimer <= 0) {
+			mActive    = false;
+			Mato* item = mTarget;
+			if (item != NULL) {
+				if (--item->mHitsLeft > 0) {
+					item->mPending = false;
+				} else if (item->mObj != NULL && (item->mObj->mStatus.mFlags & 0x10000ULL)) {
+					item->mList->mDestroyed = item;
+					item->mList->mScore += item->GetPoints();
+					shotEvents.mFlags |= 1;
+				}
+				mResult.mFlags |= 1;
+			} else {
+				mResult.mFlags |= 2;
+			}
+		} else {
+			mPos.x = mVelocity.x * dt + mPos.x;
+			mPos.y = mVelocity.y * dt + mPos.y;
+			mPos.z = mVelocity.z * dt + mPos.z;
+			for (s32 j = 9; j > 0; j--) {
+				mTrail[j] = mTrail[j - 1];
+			}
+			mTrail[0] = mPos;
+		}
+	}
+}
+
+#define READ_LE32(p) (((u8*)(p))[0] + (((u8*)(p))[1] * 0x100) + (((u8*)(p))[2] * 0x10000) + (((u8*)(p))[3] * 0x1000000))
+
+struct FighterAim {
+	Vec mPos;
+	f32 mScreenX;
+	f32 mScreenY;
+	f32 mScreenZ;
+	Mato* mTarget;
+};
+
+struct Fighter {
+	void SetParams(u8* data);
+
+	XObj* mBody;
+	XObj* mPath;
+	XObj* mExtra;
+	Mtx mBodyMtx;
+	Mtx mPlayerMtx;
+	Mtx mExtraMtx;
+	f32 mPlayerRotY;
+	f32 mFrame;
+	f32 mPrevFrame;
+	f32 mEndFrame;
+	f32 mSpeed;
+	u8* mSpeedRates;
+	u8* mParams;
+	u32 _B8;
+	u32 mTimeLeft;
+	u8 _C0[8];
+	Vec mPos;
+	u8 _D4[0xC];
+	f32 mMinSpeed;
+	f32 mMaxSpeed;
+	f32 mAccel;
+	f32 mFireSlowdown;
+	s32 mTimeLimit;
+	FighterAim mAim;
+	Mato* mLastTarget;
+	ShotList mShots;
+};
+STATIC_ASSERT(sizeof(Fighter) == 0x4C8);
+
+extern Fighter fighterWork;
+
+// NONMATCHING: size expressions fold to literal loads and the trail's register/stack layout differs; all draw calls match.
+void Shot::Draw()
+{
+	if (!mActive) {
+		return;
+	}
+	gGame.mGs.mBillboardEnabled = TRUE;
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	f32 smallSize = 1.0f + 3.0f;
+	f32 largeSize = 2.0f + 3.0f;
+	for (s32 j = 0; j < 10; j++) {
+		Vec* pos  = &mTrail[j];
+		Vec up    = { 0.0f, 0.0f, 0.0f };
+		u32 alpha = 96.0f * (1.0f - 0.1f * j);
+		DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, smallSize, smallSize, up.x, up.y, up.z);
+	}
+	Vec* pos = &mPos;
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)2, (GXBlendFactor)4, (GXLogicOp)15);
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, smallSize, smallSize, up.x, up.y, up.z);
+	}
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, largeSize, largeSize, up.x, up.y, up.z);
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	{
+		Vec up = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0x64FF6400, pos->x, pos->y, pos->z, largeSize, largeSize, up.x, up.y, up.z);
+	}
+	gGame.mGs.mBillboardEnabled = FALSE;
+}
+
+// NONMATCHING: the trail loop is fully unrolled instead of five copies in each of two iterations.
+void Shot::Start(Vec from, Vec to, Mato* item)
+{
+	mActive     = true;
+	mStartPos   = from;
+	mEndPos     = to;
+	mPos        = from;
+	mTarget     = item;
+	mTimer      = 60;
+	mVelocity.x = (mEndPos.x - mStartPos.x) / mTimer;
+	mVelocity.y = (mEndPos.y - mStartPos.y) / mTimer;
+	mVelocity.z = (mEndPos.z - mStartPos.z) / mTimer;
+	for (u32 i = 0; i < 10; i++) {
+		mTrail[i] = mPos;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0x78, 1.0f, 0.0f);
+}
+
+extern "C" void ShotList_Update(ShotList* list, u32 dt)
+{
+	for (u32 i = 0; i < 5; i++) {
+		Shot* entry = &list->mShots[i];
+		if (!entry->mActive) {
+			continue;
+		}
+		entry->Update(dt);
+		if (entry->mResult.mFlags & 1) {
+			list->mHitStreak++;
+			list->mMissStreak = 0;
+			if (list->mHitStreak >= 5) {
+				shotEvents.mFlags |= 4;
+				list->mHitStreak = 0;
+			}
+		} else if (entry->mResult.mFlags & 2) {
+			list->mHitStreak = 0;
+			list->mMissStreak++;
+			if (list->mMissStreak >= 5) {
+				shotEvents.mFlags |= 8;
+				list->mMissStreak = 0;
+			}
+		}
+		entry->mResult.mFlags = 0;
+	}
+}
+
+struct FighterPanels {
+	s32 mLowerState;
+	s32 mCenterState;
+	f32 mLowerOpen;
+	f32 mCenterOpen;
+	s32 mLowerFrame;
+	s32 mCenterFrame;
+	s32 mLowerFrameTimer;
+	s32 mCenterFrameTimer;
+	s32 mCenterVariant;
+};
+STATIC_ASSERT(sizeof(FighterPanels) == 0x24);
+
+struct PilotNwing {
+	XObj* mCarriedObj;
+	XObj* mPathObj;
+	XObj* mAttachedObj0;
+	XObj* mAttachedObj1;
+	Mtx mCarriedMtx;
+	Mtx mAttachedMtx0;
+	Mtx mAttachedMtx1;
+	f32 mAnimFrame;
+	f32 _A4;
+};
+STATIC_ASSERT(sizeof(PilotNwing) == 0xA8);
+
+extern FighterPanels panels;
+
+extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
+{
+	switch (fade->mLowerState) {
+	case 0:
+		break;
+	case 1:
+		fade->mLowerOpen += 0.06f * dt;
+		if (fade->mLowerOpen > 1.0f) {
+			fade->mLowerOpen  = 1.0f;
+			fade->mLowerState = 0;
+		}
+		break;
+	case 2:
+		fade->mLowerOpen -= 0.06f * dt;
+		if (fade->mLowerOpen < 0.0f) {
+			fade->mLowerOpen  = 0.0f;
+			fade->mLowerState = 0;
+		}
+		break;
+	}
+	fade->mLowerFrameTimer -= dt;
+	if (--fade->mLowerFrameTimer < 0) {
+		fade->mLowerFrame++;
+		if (fade->mLowerFrame > 8) {
+			fade->mLowerFrame = 0;
+		}
+		fade->mLowerFrameTimer = 6;
+	}
+	switch (fade->mCenterState) {
+	case 0:
+		break;
+	case 1:
+		fade->mCenterOpen += 0.06f * dt;
+		if (fade->mCenterOpen > 1.0f) {
+			fade->mCenterOpen  = 1.0f;
+			fade->mCenterState = 0;
+		}
+		break;
+	case 2:
+		fade->mCenterOpen -= 0.06f * dt;
+		if (fade->mCenterOpen < 0.0f) {
+			fade->mCenterOpen  = 0.0f;
+			fade->mCenterState = 0;
+		}
+		break;
+	}
+	fade->mCenterFrameTimer -= dt;
+	if (--fade->mCenterFrameTimer < 0) {
+		fade->mCenterFrame++;
+		if (fade->mCenterFrame >= (fade->mCenterVariant == 0 ? 6 : 7)) {
+			fade->mCenterFrame = 0;
+		}
+		fade->mCenterFrameTimer = 6;
+	}
+}
+
+extern PilotNwing pilotNwing;
+extern u8* soundCueTable;
+
+extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
+extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
+extern "C" void FighterPanels_Draw(FighterPanels* fade);
+
+extern "C" void DrawFighterStage(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+}
+
+extern "C" void DrawShots(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	Shot* entry = fighterWork.mShots.mShots;
+	for (u32 i = 0; i < 5; i++, entry++) {
+		entry->Draw();
+	}
+}
+
+// NONMATCHING: global-address and aim-copy stack layout differs; the update and all three draw calls match.
+extern "C" void DrawFighterHud(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	matoList.mAimPos.x = fighterWork.mAim.mPos.x;
+	matoList.mAimPos.y = fighterWork.mAim.mPos.y;
+	matoList.mAimPos.z = fighterWork.mAim.mPos.z;
+	for (s32 i = 0; i < matoList.mCount; i++) {
+		matoList.mMatos[i].Update();
+	}
+	DrawScoreHud(matoList.mScore, matoList.mTimeLeft, 100.0f * matoList.mProgress);
+	FighterAim_Draw(&fighterWork.mAim, &gGame.mMotionControlCamera, fighterWork.mBodyMtx);
+	FighterPanels_Draw(&panels);
+}
+
+extern "C" void SetSpeedRateTable(u8* rates)
+{
+	fighterWork.mSpeedRates = rates;
+}
+
+// NONMATCHING: ipa file inlines SetParams into this wrapper; the out-of-line helper itself matches.
+extern "C" void SetFighterParams(u8* data)
+{
+	fighterWork.SetParams(data);
+	matoList.mKindPoints[0] = READ_LE32(data + 0x24);
+	matoList.mKindPoints[1] = READ_LE32(data + 0x28);
+}
+
+void Fighter::SetParams(u8* data)
+{
+	mParams       = data;
+	mMinSpeed     = (s32)READ_LE32(data + 0x10) / 100.0f;
+	mMaxSpeed     = (s32)READ_LE32(data + 0x14) / 100.0f;
+	mAccel        = (s32)READ_LE32(data + 0x18) / 100.0f;
+	mFireSlowdown = (s32)READ_LE32(data + 0x1C) / 100.0f;
+	mTimeLimit    = READ_LE32(data + 0x20) * 60 + 59;
+}
+
+extern "C" void SetSoundCueTable(u8* data)
+{
+	soundCueTable = data;
+}
+
+extern "C" f32 GetFighterProgress(void)
+{
+	return matoList.mProgress;
+}
+
+extern "C" u32 GetTimeLeft(void)
+{
+	return matoList.mTimeLeft;
+}
+
+extern "C" s32 GetScore(void)
+{
+	return matoList.mScore;
+}
+
+extern "C" s32 TakeDestroyedMatoId(void)
+{
+	s32 ret             = matoList.mDestroyed != NULL ? matoList.mDestroyed->mId : -1;
+	matoList.mDestroyed = NULL;
+	return ret;
+}
+
+extern "C" s32 GetShotEvent(void)
+{
+	s32 ret   = 0;
+	u32 flags = shotEvents.mFlags;
+	if (flags & 4) {
+		ret = 3;
+	} else if (flags & 8) {
+		ret = 4;
+	} else if (flags & 1) {
+		ret = 1;
+	} else if (flags & 2) {
+		ret = 2;
+	}
+	return ret;
+}
+
+extern "C" void EndFighter(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	gGame.GetPlayer()->RestoreControl();
+	gGame.GetPlayer()->ClearBaseMtx();
+	gGame.mMotionControlCamera.ChangeAction(gGame.mMotionControlCamera.mPrevAction);
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x2B3)) {
+		StopWiiSfx(&gGame.mSound, 0x2B3, 0.0f);
+	}
+	if (fighterWork.mBody != NULL) {
+		fighterWork.mBody->ClearBaseMtx();
+		if (fighterWork.mExtra != NULL) {
+			fighterWork.mExtra->ClearBaseMtx();
+		}
+	}
+	pilotNwing.mCarriedObj->ClearBaseMtx();
+	if (pilotNwing.mAttachedObj0 != NULL) {
+		pilotNwing.mAttachedObj0->ClearBaseMtx();
+	}
+	if (pilotNwing.mAttachedObj1 != NULL) {
+		pilotNwing.mAttachedObj1->ClearBaseMtx();
+	}
+	fighterWork.mBody = fighterWork.mPath = fighterWork.mExtra = NULL;
+	pilotNwing.mCarriedObj = pilotNwing.mPathObj = NULL;
+}
+
+extern "C" void InitPilotNwing(XObj* carried, XObj* path, XObj* attached0, XObj* attached1)
+{
+	if (carried == NULL || path == NULL) {
+		return;
+	}
+	pilotNwing.mCarriedObj   = carried;
+	pilotNwing.mPathObj      = path;
+	pilotNwing.mAttachedObj0 = attached0;
+	pilotNwing.mAttachedObj1 = attached1;
+	carried->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mPathObj->mStatus.mFlags &= ~0x10000ULL;
+	pilotNwing.mAttachedObj0->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mAttachedObj1->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mAnimFrame = 0.0f;
+	pilotNwing._A4        = 1.0f;
+}
+
+extern "C" void ShowLowerPanel(bool on)
+{
+	if (on) {
+		panels.mLowerState = 1;
+		panels.mLowerFrame = 0;
+	} else {
+		panels.mLowerState = 2;
+	}
+}
+
+extern "C" void ShowCenterPanel(bool on, s32 variant)
+{
+	if (on) {
+		panels.mCenterState   = 1;
+		panels.mCenterFrame   = 0;
+		panels.mCenterVariant = variant;
+	} else {
+		panels.mCenterState = 2;
+	}
 }
 
 f32 captionShadowX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };

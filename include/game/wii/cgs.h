@@ -7,6 +7,12 @@
 #include "game/ut.h"
 #include <Dolphin/gx.h>
 
+namespace nw4r {
+namespace g3d {
+class ScnRoot;
+}
+} // namespace nw4r
+
 class CCamera;
 class CLight;
 struct TextChar;
@@ -800,6 +806,8 @@ struct WiiGsScene {
 	WiiGsSceneObj* _04;   // _04, the scene animation selected by fn_802AEE44; Update queues the map's model while it is set
 	CLight mLights[10];   // _08
 	WiiGsSlot mSlots[9];  // _440, fn_802AEBF0 and FinalizeStageObjectSetup clear each one's three flags
+
+	nw4r::g3d::ScnRoot* GetRoot() { return (nw4r::g3d::ScnRoot*)mHead; }
 };
 
 class CGs {

@@ -1,3 +1,371 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+namespace Car {
+void Init(void);
+}
+
+extern XObj* takiObj;
+
+extern "C" void ClearFighterObjects(void);
+extern "C" void UpdateFighter(u32 arg);
+extern "C" void UpdateCars(u32 arg);
+extern "C" void DrawShots(void);
+extern "C" void DrawFighterStage(void);
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
+extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
+extern "C" void DrawFighterHud(void);
+extern "C" void DrawCarHud(u32 arg);
+extern "C" void EndFighter(void);
+extern "C" void RestoreDefaultCamera(void);
+extern "C" void StartFighter(XObj* body, XObj* path, XObj* extra);
+extern "C" void AddMato(XObj* obj, s32 id);
+extern "C" void SetSpeedRateTable(u8* data);
+extern "C" void SetFighterParams(u8* data);
+extern "C" void SetSoundCueTable(u8* data);
+extern "C" f32 GetFighterProgress(void);
+extern "C" u32 GetTimeLeft(void);
+extern "C" s32 GetScore(void);
+extern "C" s32 TakeDestroyedMatoId(void);
+extern "C" s32 GetShotEvent(void);
+extern "C" void InitPilotNwing(XObj* carried, XObj* path, XObj* attached0, XObj* attached1);
+extern "C" void ShowLowerPanel(bool on);
+extern "C" void ShowCenterPanel(bool on, s32 variant);
+extern "C" void SetJunkUnkoFlag(s32 value);
+extern "C" void StartCars(void);
+extern "C" void StartCarCamera(void);
+extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached);
+extern "C" s32 GetPlayerCarResult(void);
+extern "C" s32 GetPlayerCarFrame(void);
+extern "C" void Terminate(void);
+extern "C" void SetCarParams(u8* data);
+extern "C" void SetCarSoundCues(u8* data);
+
+inline XObj* ObjTable_Find(s16 id)
+{
+	return gGame.mEvt.mData.mScript != NULL ? ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
+}
+
+extern "C" s32 Stage02_Init(u32 arg)
+{
+	ClearFighterObjects();
+	Car::Init();
+	takiObj = NULL;
+	for (s32 i = 0; takiObj == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* obj = gGame.mXObjs.mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x254) {
+			takiObj = obj;
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage02_Update(u32 arg)
+{
+	UpdateFighter(arg);
+	UpdateCars(arg);
+	if (takiObj != NULL) {
+		if (takiObj->GetAnimId() == 0) {
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x2C8)) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x2C8, 1.0f, 0.0f);
+			}
+			if (!IsWiiSfxPlaying(&gGame.mSound, 0x2C9)) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x2C9, 1.0f, 0.0f);
+			}
+			SetWiiSfxVolume(&gGame.mSound, 0x2C8, GetSoundVolumeAtPosition(&gGame.mSound, takiObj->GetPos(), 1), 0.0f);
+			SetWiiSfxVolume(&gGame.mSound, 0x2C9, GetSoundVolumeAtPosition(&gGame.mSound, takiObj->GetPos(), 1), 0.0f);
+		} else {
+			StopWiiSfx(&gGame.mSound, 0x2C8, 0.0f);
+			StopWiiSfx(&gGame.mSound, 0x2C9, 0.0f);
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage02_Draw(u32 arg)
+{
+	DrawFighterStage();
+	return 1;
+}
+
+extern "C" s32 Stage02_DrawEffects(u32 arg)
+{
+	DrawShots();
+	return 1;
+}
+
+extern "C" s32 Stage02_DrawHud(u32 arg)
+{
+	DrawFighterHud();
+	DrawCarHud(arg);
+	return 1;
+}
+
+extern "C" s32 Stage02_Exit(u32 arg)
+{
+	EndFighter();
+	RestoreDefaultCamera();
+	InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 0, 1);
+	InfoScrn_HideTimer(&gGame.mInfoScrn);
+	return 1;
+}
+
+extern "C" s32 CmdStartFighter(s32 cmd, s32 count, s32* args)
+{
+	XObj* objs[3];
+	for (u32 j = 0; j < 3 && (s32)j - 1 < count; j++) {
+		objs[j] = ObjTable_Find(args[j]);
+	}
+	StartFighter(objs[0], objs[1], objs[2]);
+	return 0;
+}
+
+extern "C" s32 CmdAddMato(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		AddMato(gGame.mXObjs.mObjects[args[i]], args[i]);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdEndFighter(s32 cmd, s32 count, s32* args)
+{
+	EndFighter();
+	return 0;
+}
+
+extern "C" s32 CmdSetFighterData(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] == 0) {
+		SetSpeedRateTable((u8*)args[1]);
+		SetFighterParams((u8*)args[2]);
+		if (count >= 4) {
+			SetSoundCueTable((u8*)args[3]);
+		}
+	}
+	return 0;
+}
+
+extern "C" s32 CmdQueryFighter(s32 cmd, s32 count, s32* args)
+{
+	s32 percent = GetFighterProgress() * 100.0f;
+	u32 flag    = GetTimeLeft();
+	switch (args[0]) {
+	case 0:
+		if (percent < 100 && flag != 0) {
+			return 1;
+		}
+		return 0;
+	case 1:
+		return GetScore();
+	case 2:
+		return flag;
+	case 3:
+		return percent * 100;
+	case 4:
+		return TakeDestroyedMatoId();
+	}
+	if (args[0] == 0) {
+		return GetFighterProgress() * 100.0f;
+	}
+	return 0;
+}
+
+extern "C" s32 CmdGetFighterEvent(s32 cmd, s32 count, s32* args)
+{
+	return GetShotEvent();
+}
+
+extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 count, s32* args)
+{
+	XObj* objs[4];
+	for (u32 i = 0; i < 4; i++) {
+		objs[i] = NULL;
+	}
+	for (u32 i = 0; i < 4 && (s32)i - 1 < count; i++) {
+		objs[i] = ObjTable_Find(args[i]);
+	}
+	InitPilotNwing(objs[0], objs[1], objs[2], objs[3]);
+	return 0;
+}
+
+extern "C" s32 CmdShowFighterLowerPanel(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] != 0) {
+		ShowLowerPanel(true);
+	} else {
+		ShowLowerPanel(false);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdShowFighterCenterPanel(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] != 0) {
+		ShowCenterPanel(true, args[1]);
+	} else {
+		ShowCenterPanel(false, 0);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdSetJunkUnkoFlag(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] != 0) {
+		SetJunkUnkoFlag(1);
+	} else {
+		SetJunkUnkoFlag(0);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage02_CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		gGame.mCameraActions.mScroll2.AddHideObj(args[i]);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage02_CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	gGame.mCameraActions.mScroll2.ClearHideList();
+	return 0;
+}
+
+class CamInfo {
+public:
+	CamInfo(s32* values) { m_values = values; }
+	virtual ~CamInfo() { }
+	void Set(s32 idx, s32 value) { m_values[idx] = value; }
+
+	s32* m_values;
+};
+
+extern "C" s32 CmdSetCamInfo(s32 cmd, s32 count, s32* args)
+{
+	s32 info[8];
+	{
+		CamInfo c(info);
+		c.Set(1, 0);
+	}
+	{
+		CamInfo c(info);
+		c.Set(2, 79300);
+	}
+	{
+		CamInfo c(info);
+		c.Set(3, 0);
+	}
+	{
+		CamInfo c(info);
+		c.Set(4, 1);
+	}
+	{
+		CamInfo c(info);
+		c.Set(5, 10000);
+	}
+	{
+		CamInfo c(info);
+		c.Set(6, 0);
+	}
+	{
+		CamInfo c(info);
+		c.Set(7, 6000);
+	}
+	gGame.mCameraActions.mScroll2.SaveCamInfo(info);
+	return 0;
+}
+
+extern "C" s32 CmdClearCamInfo(s32 cmd, s32 count, s32* args)
+{
+	gGame.mCameraActions.mScroll2.SaveCamInfo(NULL);
+	return 0;
+}
+
+extern "C" s32 CmdRegisterCar(s32 cmd, s32 count, s32* args)
+{
+	XObj* attached = NULL;
+	if (count >= 3) {
+		attached = ObjTable_Find(args[2]);
+	}
+	return RegisterCar(ObjTable_Find(args[0]), ObjTable_Find(args[1]), attached);
+}
+
+extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
+{
+	if (count == 0) {
+		StartCars();
+		return 0;
+	}
+	switch (args[0]) {
+	case 1:
+		StartCarCamera();
+		break;
+	}
+	return 0;
+}
+
+extern "C" s32 CmdGetCarState(s32 cmd, s32 count, s32* args)
+{
+	if (count == 0) {
+		return GetPlayerCarResult();
+	}
+	switch (args[0]) {
+	case 1:
+		return GetPlayerCarFrame();
+	}
+	return -1;
+}
+
+extern "C" s32 CmdTerminateCars(s32 cmd, s32 count, s32* args)
+{
+	Terminate();
+	return 0;
+}
+
+extern "C" s32 CmdShowTimer(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] != 0) {
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 1, 1);
+	} else {
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 0, 1);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args)
+{
+	if (args[0] != 0) {
+		InfoScrn_ShowTimer(&gGame.mInfoScrn);
+	} else {
+		InfoScrn_HideTimer(&gGame.mInfoScrn);
+	}
+	return 0;
+}
+
+extern "C" s32 CmdSetTimer(s32 cmd, s32 count, s32* args)
+{
+	InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, args[0]);
+	return 0;
+}
+
+extern "C" s32 CmdGetTimer(s32 cmd, s32 count, s32* args)
+{
+	return InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
+}
+
+extern "C" s32 CmdSetCarData(s32 cmd, s32 count, s32* args)
+{
+	SetCarParams((u8*)args[0]);
+	if (count < 2) {
+		return 0;
+	}
+	SetCarSoundCues((u8*)args[1]);
+	return 0;
+}
+
+#else
 #include "Version.h"
 
 // the hallway stage: its entry points and its script commands. the cars are in car.cpp.
@@ -793,3 +1161,4 @@ void InitStage(void* arg)
 */
 
 } // extern "C"
+#endif

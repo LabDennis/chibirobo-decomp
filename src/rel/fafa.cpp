@@ -1,3 +1,16 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" void SetFafaPartVisibility(s32 mode)
+{
+	for (s32 i = 0; i < 15; i++) {
+		XObj* item = gGame.mXObjs.mPools[10].Get(i);
+		if (item->GetKind() == 0x117) {
+			return;
+		}
+	}
+}
+#else
 #include "Version.h"
 #include "game/cjobj.h"
 
@@ -154,3 +167,4 @@ extern "C" void SetFafaPartVisibility(s32 mode)
 		break; // only the first 0x117 item
 	}
 }
+#endif

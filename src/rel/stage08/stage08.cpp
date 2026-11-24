@@ -1,3 +1,11 @@
+#if defined(VERSION_R24J01)
+#include "types.h"
+
+extern "C" s32 Stage08_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "types.h"
 
 extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
@@ -18,3 +26,4 @@ extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
+#endif
