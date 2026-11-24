@@ -399,7 +399,7 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-// NONMATCHING: inactive-test and loop-register selection differ; both release paths and the 0x9A8 array stride match.
+// NONMATCHING: loop-register selection differs; the inactive test, both release paths and the 0x9A8 array stride match.
 extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 {
 	WiiPlayerState* robot = gGame.GetPlayer();
@@ -411,7 +411,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 		trashObj = NULL;
 	}
 	for (s32 i = 0; i < 10; i++) {
-		if (!(trashObjs[i].mStatus.mFlags & 1)) {
+		if ((trashObjs[i].mStatus.mFlags & 1) != 1) {
 			trashObjs[i].Release();
 		}
 	}
