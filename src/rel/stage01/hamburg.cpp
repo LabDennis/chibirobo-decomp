@@ -13,6 +13,14 @@ struct HamObj {
 	void StateSlide();
 	void StatePutDown();
 
+	f32 GetStackHeight();
+
+	void SetRot(f32 rot)
+	{
+		mRotZ = rot;
+		mActor->SetRotationZ(mRotZ);
+	}
+
 	void StartSlide(f32 distance, f32 speed, f32 angle)
 	{
 		if (mState != &HamObj::StateFlip) {
@@ -99,6 +107,25 @@ static inline void SetHamRot(HamObj* slot, f32 rot)
 {
 	slot->mRotZ = rot;
 	slot->mActor->SetRotationZ(rot);
+}
+
+extern "C" void HamObj_SetRot(HamObj* slot, f32 rot)
+{
+	slot->SetRot(rot);
+}
+
+static inline Vec GetStackPlacementPosition(const CoordInfo& coord)
+{
+	Vec position;
+	position.x = coord.mPlacement->mPos[0] / 100.0f;
+	position.y = coord.mPlacement->mPos[1] / 100.0f;
+	position.z = coord.mPlacement->mPos[2] / 100.0f;
+	return position;
+}
+
+f32 HamObj::GetStackHeight()
+{
+	return GetStackPlacementPosition(mActor->mCoord).y + 0.5f * mStackLevel;
 }
 
 extern "C" void HamObj_Respawn(HamObj* slot)
