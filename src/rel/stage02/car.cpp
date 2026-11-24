@@ -1,3 +1,35 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/ccameraaction.h"
+
+namespace Car {
+
+class CCameraActionCar : public CInterfaceCameraAction {
+public:
+	virtual ~CCameraActionCar() { }
+	virtual void Update(u32 step);
+	virtual u32 GetMode() { return 0; }
+	virtual u32 GetCameraFlags() { return 11; }
+	virtual f32 GetFollowDivisor() { return 0.1f; }
+
+	MtxP mCarMtx;
+	Vec mInterestOffset;
+	Vec _50;
+	u8 _5C[0xC];
+};
+
+void CCameraActionCar::Update(u32 step)
+{
+	if (mCarMtx != NULL) {
+		SetFov(40.0f);
+		Vec pos;
+		PSMTXMultVec(mCarMtx, &mInterestOffset, &pos);
+		SetInterest(pos);
+	}
+}
+
+} // namespace Car
+#else
 #include "Version.h"
 
 // the two cars of the hallway race and the camera that follows them. retail built this as a file
@@ -153,8 +185,8 @@ struct RoboView {
 #endif
 };
 
-#define GAME_OBJ() (*(RoboView**)GAME_AT(GAME_OFS(0x96BC, 0x9674)))
-#define SOUND()    GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
+#define GAME_OBJ()            (*(RoboView**)GAME_AT(GAME_OFS(0x96BC, 0x9674)))
+#define SOUND()               GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
 
 static Car::CCameraActionCar carCamera;
 
@@ -1550,3 +1582,4 @@ extern "C" void RestoreDefaultCamera(void)
 	((CMotionControlCamera*)GAME_AT(GAME_OFS(0xE5D38, 0xE5050)))
 	    ->ChangeAction(*(CInterfaceCameraAction**)GAME_AT(GAME_OFS(0xE5F0C, 0xE5224)));
 }
+#endif

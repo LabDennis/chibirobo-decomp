@@ -367,6 +367,9 @@ rel/stage01/hamburg.cpp:
 rel/stage02/fighter.cpp:
 	.text start:0x80171498 end:0x80175E8C
 
+rel/stage02/car.cpp:
+	.text start:0x8017624C end:0x801762BC
+
 rel/stage20/stage20.cpp:
 	.text start:0x8017B184 end:0x8017B268
 	.sbss start:0x805A1E20 end:0x805A1E24
