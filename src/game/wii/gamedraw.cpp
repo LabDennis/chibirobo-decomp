@@ -739,6 +739,14 @@ bool CGame::IsSystemMessage3Shown()
 	return shown;
 }
 
+extern "C" void fn_8002BBD8(CGs* gs, f32 x, f32 y)
+{
+}
+
+extern "C" void fn_8002BBDC(CGs* gs)
+{
+}
+
 /**
  * @note Address: 0x8002B6D8
  * @note Size: 0x500
