@@ -26,6 +26,14 @@ public:
 	}
 	virtual ~CCameraActionFighter() { }
 
+	void SetEyeOffset(Vec eye)
+	{
+		mCenterView = false;
+		mEyeOffset  = eye;
+	}
+	void SetInterestOffset(Vec interest) { mInterestOffset = interest; }
+	void SetTargetMtx(MtxP mtx) { mTargetMtx = mtx; }
+
 	virtual void Update(u32 step);
 	virtual void Init();
 	virtual u32 GetMode() { return 0; }
@@ -74,6 +82,13 @@ void CCameraActionFighter::Update(u32 step)
 struct MatoList;
 
 struct Mato {
+	Mato()
+	{
+		mObj         = NULL;
+		mId          = -1;
+		mMarkerColor = 0xFFFFFFC8;
+	}
+
 	void Set(XObj* obj, MatoList* list, s32 id);
 	s32 GetPoints() const;
 	void Update();
@@ -189,6 +204,9 @@ extern "C" void AddMato(XObj* obj, s32 id)
 extern CStatus32 shotEvents;
 
 struct Shot {
+	Shot() { }
+	~Shot() { }
+
 	void Start(Vec from, Vec to, Mato* item);
 	void Update(u32 dt);
 	void Draw();
@@ -247,6 +265,8 @@ void Shot::Update(u32 dt)
 #define READ_LE32(p) (((u8*)(p))[0] + (((u8*)(p))[1] * 0x100) + (((u8*)(p))[2] * 0x10000) + (((u8*)(p))[3] * 0x1000000))
 
 struct FighterAim {
+	FighterAim() { mTarget = NULL; }
+
 	Vec mPos;
 	f32 mScreenX;
 	f32 mScreenY;
@@ -255,6 +275,8 @@ struct FighterAim {
 };
 
 struct Fighter {
+	~Fighter() { }
+
 	void SetParams(u8* data);
 
 	XObj* mBody;
@@ -287,6 +309,9 @@ struct Fighter {
 STATIC_ASSERT(sizeof(Fighter) == 0x4C8);
 
 extern Fighter fighterWork;
+extern fighter::CCameraActionFighter fighterCamera;
+extern s32 fireHoldFrames;
+extern u8 lbl_5_bss_0;
 
 // NONMATCHING: size expressions fold to literal loads and the trail's register/stack layout differs; all draw calls match.
 void Shot::Draw()
@@ -460,6 +485,81 @@ extern "C" void ClearFighterObjects(void)
 	pilotNwing.mCarriedObj = pilotNwing.mPathObj = NULL;
 }
 
+static inline void Fighter_Init(Fighter* work, XObj* body, XObj* path, XObj* extra)
+{
+	work->mBody  = body;
+	work->mPath  = path;
+	work->mExtra = extra;
+	work->mBody->mStatus.mFlags |= 0x10000ULL;
+	work->mBody->mStatus.mFlags |= 0x40000ULL;
+	work->mPath->mStatus.mFlags &= ~0x10000ULL;
+	work->mFrame    = 0.0f;
+	work->mEndFrame = work->mPath->GetAnimEndFrame();
+	work->mSpeed    = 1.0f;
+	work->_B8       = 0;
+	f32 aimX;
+	f32 aimY;
+	f32 aimZ;
+	work->mTimeLeft    = work->mTimeLimit;
+	aimZ               = work->mParams == NULL ? 170.0f : (s32)READ_LE32(work->mParams + 8) / 100.0f;
+	aimY               = work->mParams == NULL ? 20.0f : (s32)READ_LE32(work->mParams + 4) / 100.0f;
+	aimX               = work->mParams == NULL ? 0.0f : (s32)READ_LE32(work->mParams) / 100.0f;
+	work->mAim.mPos.x  = aimX;
+	work->mAim.mPos.y  = aimY;
+	work->mAim.mPos.z  = aimZ;
+	work->mAim.mTarget = NULL;
+	work->mLastTarget  = NULL;
+	for (s32 i = 0; i < 5; i++) {
+		work->mShots.mShots[i].mActive        = false;
+		work->mShots.mShots[i].mResult.mFlags = 0;
+	}
+	work->mShots.mHitStreak = work->mShots.mMissStreak = 0;
+}
+
+// NONMATCHING: all initialization stores and calls are present; the global base-register allocation and the
+// aim parameter conversion order still differ.
+extern "C" void StartFighter(XObj* body, XObj* path, XObj* extra)
+{
+	if (body == NULL || path == NULL) {
+		return;
+	}
+	shotEvents.mFlags = 0;
+	Fighter_Init(&fighterWork, body, path, extra);
+	matoList.mCount        = 0;
+	matoList.mScore        = 0;
+	matoList.mFrameCount   = 0;
+	matoList.mProgress     = 0.0f;
+	matoList.mTimeLeft     = 6000;
+	matoList.mDestroyed    = NULL;
+	WiiPlayerState* player = gGame.GetPlayer();
+	player->mPlayerFlags   = 0;
+	player->mPlayerFlags |= 0x40000000;
+	player->mPadReset = FALSE;
+	gGame.mMotionControlCamera.ChangeAction(&fighterCamera);
+	Vec eye;
+	eye.x = 0.0f;
+	eye.y = 40.0f;
+	eye.z = -180.0f;
+	fighterCamera.SetEyeOffset(eye);
+	Vec interest;
+	interest.x = 0.0f;
+	interest.y = 0.0f;
+	interest.z = 120.0f;
+	fighterCamera.SetInterestOffset(interest);
+	fighterCamera.SetTargetMtx(fighterWork.mBodyMtx);
+	fireHoldFrames           = 0;
+	lbl_5_bss_0              = 0;
+	panels.mLowerState       = 0;
+	panels.mCenterState      = 0;
+	panels.mLowerOpen        = 0.0f;
+	panels.mCenterOpen       = 0.0f;
+	panels.mLowerFrame       = 0;
+	panels.mCenterFrame      = 0;
+	panels.mLowerFrameTimer  = 6;
+	panels.mCenterFrameTimer = 6;
+	panels.mCenterVariant    = 0;
+}
+
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
 extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
 extern "C" void FighterPanels_Draw(FighterPanels* fade);
@@ -522,8 +622,6 @@ void Fighter::SetParams(u8* data)
 	mTimeLimit    = READ_LE32(data + 0x20) * 60 + 59;
 }
 
-// NONMATCHING: instructions, matrix calls, SetAnim(15) and table clamps match; only local literal-pool
-// symbols and unit-relative branch targets differ.
 static inline f32 SampleSpeedRate(const u8* rates, f32 frame)
 {
 	f32 rate;
@@ -862,6 +960,18 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 		return;
 	}
 }
+
+CStatus32 shotEvents;
+f32 reticleSpin[10];
+fighter::CCameraActionFighter fighterCamera;
+MatoList matoList;
+Fighter fighterWork;
+PilotNwing pilotNwing;
+FighterPanels panels;
+s32 fireHoldFrames;
+u8* soundCueTable;
+u8 lbl_5_bss_0;
+
 #else
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
