@@ -4,6 +4,7 @@
 #include "game/wii/cgs.h"
 #include "game/ccameraaction.h"
 #include "game/globals.h"
+#include <math.h>
 #include <stdlib.h>
 
 extern "C" {
@@ -323,6 +324,7 @@ struct Fighter {
 STATIC_ASSERT(sizeof(Fighter) == 0x4C8);
 
 extern Fighter fighterWork;
+extern f32 reticleSpin[10];
 extern fighter::CCameraActionFighter fighterCamera;
 extern s32 fireHoldFrames;
 extern u8 lbl_5_bss_0;
@@ -950,6 +952,88 @@ extern "C" void UpdateFighter(u32 dt)
 		s32 id    = GET_LE32(&soundCueTable[i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
 			PlayWiiSoundEffect(&gGame.mSound, id, 1.0f, 0.0f);
+		}
+	}
+}
+
+// NONMATCHING: the visibility checks, projection arguments, rings and icons are present; FPR allocation and an
+// extra float-to-unsigned helper in the spoke color conversion remain.
+extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx)
+{
+	Vec pos;
+	Vec ring[65];
+	f32 cx;
+	f32 cy;
+	s32 k;
+	s32 i;
+	s32 j;
+
+	if (!IsWiiSfxPlaying(&gGame.mSound, 0x2B5) && aim->mTarget == NULL) {
+		return;
+	}
+	if (aim->mTarget != NULL && (!aim->mTarget->mOnScreen || aim->mTarget->mPending)) {
+		return;
+	}
+	PSMTXMultVec(fighterMtx, &aim->mPos, &pos);
+	GXProject(pos.x, pos.y, pos.z, (const float(*)[4])camera->mViewMtx, camera->mProjParams, camera->mViewport, &aim->mScreenX,
+	          &aim->mScreenY, &aim->mScreenZ);
+	if (aim->mTarget == NULL) {
+		cx = aim->mScreenX;
+		cy = aim->mScreenY;
+	} else {
+		cx = aim->mTarget->mScreenX;
+		cy = aim->mTarget->mScreenY;
+	}
+	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, (GXTexOffset)5);
+	for (i = 9; i > 0; i--) {
+		reticleSpin[i] = reticleSpin[i - 1];
+	}
+	reticleSpin[0] = 0.0f;
+	for (k = 0; k < 2; k++) {
+		f32 radius = k == 0 ? 10.0f : 30.000002f;
+		f32 innerRadius;
+		s32 spokeColor;
+		for (i = 0; i < 65; i++) {
+			f32 angle = 0.09817477f * i;
+			f32 s     = sin(angle);
+			f32 c     = cos(angle);
+			ring[i].x = s * radius + cx;
+			ring[i].y = c * radius + cy;
+			ring[i].z = 0.0f;
+		}
+		DrawGsLineStrip(&gGame.mGs, ring, -1, 65);
+		innerRadius = radius - 10.0f;
+		spokeColor  = -1;
+		for (j = 0; j < 10; j++) {
+			for (i = 0; i < 5; i++) {
+				f32 angle = HALF_PI * i;
+				f32 s     = sin(angle + reticleSpin[j]);
+				f32 c     = cos(angle + reticleSpin[j]);
+				DrawGsLineSegment(&gGame.mGs, 0, spokeColor, spokeColor, s * radius + cx, c * radius + cy, 0.0f, s * innerRadius + cx,
+				                  c * innerRadius + cy, 0.0f);
+			}
+			spokeColor = 0xFFFFFF00 | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
+		}
+	}
+	{
+		CTexObj tex;
+		static s32 frame = 0;
+		frame++;
+		for (i = 0; i < 4; i++) {
+			f32 angle = HALF_PI * i;
+			f32 ds    = sin(DEG2RAD * ((frame * 24) % 360));
+			f32 dist  = ds * 3.0f;
+			dist += 30.000002f;
+			f32 s = sin(angle);
+			f32 c = cos(angle);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[129], 0);
+			tex   = gGame.mTpl.mTex;
+			u16 w = GXGetTexObjWidth(&tex);
+			u16 h = GXGetTexObjHeight(&tex);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, dist * s + cx, dist * c + cy, 0.0f, 1.1f * w, h, 0.0f, 0.0f, angle);
+			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 		}
 	}
 }

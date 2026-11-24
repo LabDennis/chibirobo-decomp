@@ -956,6 +956,7 @@ Update__4ShotFUl = .text:0x80171830; // type:function size:0x218
 Draw__4ShotFv = .text:0x80171A48; // type:function size:0x2C0
 Start__4ShotF3Vec3VecP4Mato = .text:0x80171D08; // type:function size:0x190
 ShotList_Update = .text:0x80171E98; // type:function size:0xCC
+FighterAim_Draw = .text:0x80171F64; // type:function size:0x67C
 FighterPanels_Update = .text:0x801725E0; // type:function size:0x1C4
 FighterPanels_Draw = .text:0x801727A4; // type:function size:0xBA4
 Fighter_Update = .text:0x80173348; // type:function size:0x26C
