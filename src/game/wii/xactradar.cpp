@@ -23,7 +23,7 @@ extern "C" void PlayCopterDescentAnimation(XObjCopter* copter);
 extern "C" void PlayCopterLandingAnimation(XObjCopter* copter);
 extern "C" CVec GetPlayerFloorSlope(WiiPlayerState* chr);
 extern "C" u32 GetCopterParameter(s32 index);
-extern "C" u32 gRefreshRate;
+extern "C" s32 gRefreshRate;
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern "C" EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group); // takes a free slot; ids 0x4E-0x50 here
 extern "C" void fn_80108BCC(XActPopperShot* shot);                                  // the shot's impact-detection pass (scan + floor probe)
