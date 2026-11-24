@@ -365,6 +365,10 @@ rel/stage11/haisui.cpp:
 	.text start:0x8017B044 end:0x8017B108
 	.sdata2 start:0x805A63C8 end:0x805A63D8
 
+rel/stage18/kako.cpp:
+	.text start:0x8017B108 end:0x8017B184
+	.sdata2 start:0x805A63D8 end:0x805A63E8
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98

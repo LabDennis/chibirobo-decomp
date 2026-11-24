@@ -959,6 +959,7 @@ Stage17_Init = .text:0x8017AE54; // type:function size:0x8
 Stage17_CmdSetCameraScroll = .text:0x8017AE5C; // type:function size:0xBC
 Stage11_Init = .text:0x8017B044; // type:function size:0x8
 Stage11_CmdSetCameraScroll = .text:0x8017B04C; // type:function size:0xBC
+Stage18_Update = .text:0x8017B108; // type:function size:0x7C
 HandleEventCommand__12XObjActorToyFlPl = .text:0x80148B88; // type:function size:0xBC
 IsFree__12XObjActorTaoFv = .text:0x80150B4C; // type:function size:0x28
 Start__23CInterpolationEaseInOutFfff = .text:0x80151D1C; // type:function size:0x4C
