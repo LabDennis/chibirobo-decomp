@@ -85,8 +85,6 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 	PSMTXConcat(result, scale, result);
 }
 
-// NONMATCHING: retail builds the result in a stack CVec and copies it to the sret slot;
-// MWCC elides it into the sret object here (same source as the GameCube unit)
 // CVec::operator* per component
 CVec CVec::operator*(Vec other) const
 {
@@ -94,7 +92,8 @@ CVec CVec::operator*(Vec other) const
 	result.x *= other.x;
 	result.y *= other.y;
 	result.z *= other.z;
-	return result;
+	CVec out(result);
+	return out;
 }
 
 extern "C" CVec ReflectVectorAboutNormal(const Vec* source, const Vec* normal)
