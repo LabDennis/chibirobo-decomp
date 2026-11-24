@@ -1557,10 +1557,8 @@ void XObjChr::UpdateObject(u32 frames)
 			chr->mNearDistance = 2;
 			do {
 				if ((chr->mPreviousContactObject = FindNearbyPlayerInteraction(chr, chr->mNearDistance)) >= 0) {
-					XObj* object                = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
-					chr->mContactPos.x          = object->mMoveTranslate.x;
-					chr->mContactPos.y          = object->mMoveTranslate.y;
-					chr->mContactPos.z          = object->mMoveTranslate.z;
+					XObj* object = GetGameObjectByIndex(&gGame, chr->mPreviousContactObject);
+					chr->mContactPos.Set(*object->GetPos());
 					chr->mLastContactFloorIndex = object->mSelectedFloorIndex;
 					chr->mEdgePos               = object->mMoveTranslate + object->mEdges[object->mSelectedFloorIndex].mContactOffset;
 					break;
