@@ -7586,12 +7586,12 @@ void MenuStatus::State1(u32 frames)
 			stick = true;
 		}
 		if (!stick) {
-			if (IsStickUp()) {
+			if (IsStickLeft()) {
 				if (mSelection != -1 && --mSelection < 0) {
 					mSelection = last;
 				}
 				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
-			} else if (IsStickDown()) {
+			} else if (IsStickRight()) {
 				if (mSelection != -1 && ++mSelection > last) {
 					mSelection = 0;
 				}
