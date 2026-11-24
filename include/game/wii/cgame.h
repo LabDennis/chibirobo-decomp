@@ -800,15 +800,21 @@ typedef Params WiiPlayerParams;
 // player forwards to the one he wears. The class name is RTTI.
 class XObjDress : public XObj {
 public:
-	XObjDress() { }
+	XObjDress()
+	{
+		u32* p = _9AC;
+		do {
+			*p++ = 0;
+		} while (p < _9AC + 7);
+	}
 	virtual ~XObjDress() { }
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
 
-	XObj* mOwner;           // _9A8
-	u8 _9AC[0x9C8 - 0x9AC]; // retail's ctor clears these seven words
-	u8 m_9C8;               // _9C8, vf28C hides the head nodes while it is set
-	u8 m_9C9;               // _9C9, vf290 hides the left-arm nodes
+	XObj* mOwner; // _9A8
+	u32 _9AC[7];  // retail's ctor clears these seven words
+	u8 m_9C8;     // _9C8, vf28C hides the head nodes while it is set
+	u8 m_9C9;     // _9C9, vf290 hides the left-arm nodes
 	u8 _9CA[0x9D0 - 0x9CA];
 };
 STATIC_ASSERT(sizeof(XObjDress) == 0x9D0);
@@ -831,8 +837,8 @@ typedef XObjDressOpt WiiSuitPart;
 // ctor/dtor names in symbols.txt (0x800C08B8, 0x800C0E18); retail's XObjChrBase RTTI is polymorphic and this has
 // no vptr, so the name is unconfirmed
 struct XObjChrBase {
-	XObjChrBase() { }
-	~XObjChrBase() { }
+	XObjChrBase();
+	~XObjChrBase();
 
 	s32 mLoadStep;          // _00
 	s32 mChangeStep;        // _04, a queued suit change
