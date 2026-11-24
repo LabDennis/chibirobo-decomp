@@ -228,7 +228,8 @@ CVec CVec::operator/(f32 divisor) const
 	result.x /= divisor;
 	result.y /= divisor;
 	result.z /= divisor;
-	return result;
+	CVec out(result);
+	return out;
 }
 
 /**
