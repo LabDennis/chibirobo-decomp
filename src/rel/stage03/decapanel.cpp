@@ -2,18 +2,58 @@
 #include "game/wii/cgame.h"
 #include "game/ctpl.h"
 
+struct DecaPanelKey {
+	f32 x;
+	f32 y;
+	u8 mChar;
+};
+
+extern DecaPanelKey decaPanelKeys[12];
+
 class DecaPanel {
 public:
-	void ResetInput();
-	void LoadTextures();
+	void ResetInput()
+	{
+		mDigits[0] = ' ';
+		mDigits[1] = ' ';
+		mDigits[2] = ' ';
+		mDigits[3] = ' ';
+		mDigits[4] = ' ';
+		mDigits[5] = ' ';
+		mDigits[6] = '\0';
+		mCode      = 0;
+		mCursorX   = 0;
+		mCursorY   = 3;
+		mLocked    = 0;
+		mDigitNum  = 0;
+		s32 idx    = mCursorX + mCursorY * 3;
+		mCurX = mTargetX = decaPanelKeys[idx].x;
+		mCurY = mTargetY = decaPanelKeys[idx].y;
+	}
+
+	void LoadTextures()
+	{
+		if (mState == 1) {
+			if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
+				for (s32 i = 0; i < 5; i++) {
+					mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[i], 0);
+					mTexs[i] = mTpl.mTex;
+				}
+				mState              = 2;
+				mActive             = 0;
+				gGame.mPointer._110 = NULL;
+				mFade               = 0.0f;
+			}
+		}
+	}
 
 	s32 mState;
 	CTpl mTpl;
 	s32 mActive;
 	f32 mFade;
 	CTexObj mTexs[5];
-	u8 mDigits[6];
-	u8 _71E[2];
+	u8 mDigits[7];
+	u8 _71F;
 	s32 mCode;
 	u8 mCursorX;
 	u8 mCursorY;
@@ -25,17 +65,10 @@ public:
 	f32 mTargetY;
 };
 
-struct DecaPanelKey {
-	f32 x;
-	f32 y;
-	u8 mChar;
-};
-
 DecaPanel decaPanel;
-extern DecaPanelKey decaPanelKeys[12];
 
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
-extern "C" void DecaPanel_Update(DecaPanel* work);
+extern "C" void fn_80178D6C(DecaPanel* work);
 
 inline XObj* GetObjById(s16 id)
 {
@@ -57,6 +90,78 @@ struct SavedObjFlagList {
 STATIC_ASSERT(sizeof(SavedObjFlagList) == 0x964);
 
 SavedObjFlagList savedObjFlags;
+
+extern "C" s32 Stage03_Init(u32 arg)
+{
+	decaPanel.mActive   = 0;
+	decaPanel.mState    = 1;
+	gGame.mPointer._110 = NULL;
+	decaPanel.mFade     = 0.0f;
+	decaPanel.ResetInput();
+	return 1;
+}
+
+extern "C" s32 Stage03_Update(s32 frames)
+{
+	static s32 sTimer = 0;
+	sTimer += frames;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0xFF000E)) {
+		SetGameSfxPitch(&gGame.mSound, 0xFF000E, (s16)(5.0f * (f32)sin(0.017453292f * sTimer)), 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0xFF000F)) {
+		SetGameSfxPitch(&gGame.mSound, 0xFF000F, (s16)(5.0f * (f32)sin(0.017453292f * sTimer)), 0.0f);
+	}
+	if (gGame.mEvt.mData.mScript == NULL && rand() % 5000 < 10) {
+		switch (rand() % 4) {
+		case 0:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E5, 1.0f, 0.0f);
+			break;
+		case 1:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E6, 1.0f, 0.0f);
+			break;
+		case 2:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E7, 1.0f, 0.0f);
+			break;
+		case 3:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E8, 1.0f, 0.0f);
+			break;
+		}
+	}
+	decaPanel.LoadTextures();
+	return 1;
+}
+
+extern "C" s32 Stage03_DrawHud(u32 arg)
+{
+	fn_80178D6C(&decaPanel);
+	return 1;
+}
+
+extern "C" s32 Stage03_Exit(u32 arg)
+{
+	decaPanel.mState = 0;
+	decaPanel.mTpl.Close();
+	return 1;
+}
+
+extern "C" s32 Stage03_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+extern "C" s32 Stage03_CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	for (s32 i = 0; i < count; i++) {
+		((CCameraActionScroll2*)gGame.mCameraActions.mTable[4])->AddHideObj(args[i]);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage03_CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
+{
+	((CCameraActionScroll2*)gGame.mCameraActions.mTable[4])->ClearHideList();
+	return 0;
+}
 
 void SavedObjFlagList::Apply(s32 mode)
 {
@@ -89,136 +194,6 @@ inline void SavedObjFlagList::Clear()
 	}
 }
 
-void DecaPanel::ResetInput()
-{
-	mDigits[0] = ' ';
-	mDigits[1] = ' ';
-	mDigits[2] = ' ';
-	mDigits[3] = ' ';
-	mDigits[4] = ' ';
-	mDigits[5] = ' ';
-	mCode      = 0;
-	mCursorX   = 0;
-	mCursorY   = 3;
-	mLocked    = 0;
-	mDigitNum  = 0;
-	s32 idx    = mCursorX + mCursorY * 3;
-	mCurX = mTargetX = decaPanelKeys[idx].x;
-	mCurY = mTargetY = decaPanelKeys[idx].y;
-}
-
-extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
-{
-	return decaPanel.mCode;
-}
-
-extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
-{
-	return decaPanel.mActive;
-}
-
-extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
-{
-	decaPanel.mActive = 0;
-	gGame.ClearStatusFlags(2);
-	return 0;
-}
-
-extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
-{
-	decaPanel.ResetInput();
-	decaPanel.mActive = 1;
-	gGame.SetStatusFlags(2);
-	StopWiiSfx(&gGame.mSound, 0x2F6, 0.0f);
-	return 0;
-}
-
-void DecaPanel::LoadTextures()
-{
-	if (mState == 1) {
-		if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
-			for (s32 i = 0; i < 5; i++) {
-				mTpl.mTex.Init((TPLDescriptor*)((u8*)mTpl.mBuffer + 8 + i * 8), 0);
-				mTexs[i] = mTpl.mTex;
-			}
-			mState  = 2;
-			mActive = 0;
-			mFade   = 0.0f;
-		}
-	}
-}
-
-extern "C" s32 Stage03_Update(s32 frames)
-{
-	static s32 sTimer = 0;
-	sTimer += frames;
-	if (IsWiiSfxPlaying(&gGame.mSound, 0x1000E)) {
-		SetGameSfxPitch(&gGame.mSound, 0x1000E, 5.0f * (f32)sin(0.017453292f * sTimer), 0.0f);
-	}
-	if (IsWiiSfxPlaying(&gGame.mSound, 0x1000F)) {
-		SetGameSfxPitch(&gGame.mSound, 0x1000F, 5.0f * (f32)sin(0.017453292f * sTimer), 0.0f);
-	}
-	if (gGame.mEvt.mData.mScript == NULL && rand() % 5000 < 10) {
-		switch (rand() % 4) {
-		case 0:
-			PlayWiiSoundEffect(&gGame.mSound, 0x2E5, 1.0f, 0.0f);
-			break;
-		case 1:
-			PlayWiiSoundEffect(&gGame.mSound, 0x2E6, 1.0f, 0.0f);
-			break;
-		case 2:
-			PlayWiiSoundEffect(&gGame.mSound, 0x2E7, 1.0f, 0.0f);
-			break;
-		case 3:
-			PlayWiiSoundEffect(&gGame.mSound, 0x2E8, 1.0f, 0.0f);
-			break;
-		}
-	}
-	decaPanel.LoadTextures();
-	return 1;
-}
-
-extern "C" s32 Stage03_Init(u32 arg)
-{
-	decaPanel.mActive = 0;
-	decaPanel.mState  = 1;
-	decaPanel.mFade   = 0.0f;
-	decaPanel.ResetInput();
-	return 1;
-}
-
-extern "C" s32 Stage03_Exit(u32 arg)
-{
-	decaPanel.mState = 0;
-	decaPanel.mTpl.Close();
-	return 1;
-}
-
-extern "C" s32 Stage03_DrawHud(u32 arg)
-{
-	DecaPanel_Update(&decaPanel);
-	return 1;
-}
-
-extern "C" s32 Stage03_CmdNop(s32 cmd, s32 count, s32* args)
-{
-	return 0;
-}
-
-extern "C" s32 Stage03_CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
-{
-	for (s32 i = 0; i < count; i++) {
-		gGame.mCameraActions.mScroll2.AddHideObj(args[i]);
-	}
-	return 0;
-}
-
-extern "C" s32 Stage03_CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
-{
-	gGame.mCameraActions.mScroll2.ClearHideList();
-	return 0;
-}
-
 extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 count, s32* args)
 {
 	savedObjFlags.Clear();
@@ -248,6 +223,34 @@ extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 count, s32* args)
 		savedObjFlags.Apply(0);
 	}
 	return 0;
+}
+
+extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
+{
+	decaPanel.ResetInput();
+	decaPanel.mActive = 1;
+	gGame.SetStatusFlags(2);
+	StopWiiSfx(&gGame.mSound, 0x2F6, 0.0f);
+	gGame.mPointer._110 = &decaPanel.mTexs[3];
+	return 0;
+}
+
+extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
+{
+	decaPanel.mActive = 0;
+	gGame.ClearStatusFlags(2);
+	gGame.mPointer._110 = NULL;
+	return 0;
+}
+
+extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
+{
+	return decaPanel.mActive;
+}
+
+extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
+{
+	return decaPanel.mCode;
 }
 #else
 #include "game/hsd_jobj.h"
