@@ -7,6 +7,7 @@
 #include "game/wii/cpadact.h"
 #endif
 #include "game/gmath.h"
+#include "game/cvec.h"
 #include "game/ut.h"
 #include <string.h>
 #include <math.h>
@@ -810,16 +811,11 @@ void CCameraActionArea::DrawDebug3d()
 // panics name ccameraactionmap2.cpp, its true source file; the GameCube's src/game/ccameraactionmap2.cpp
 // has the same function
 
-// CVec's += takes a reference, this one copies b first like retail does here
-inline void AddCopy(CVec& a, Vec b)
-{
-	PSVECAdd(&a, &b, &a);
-}
-
 /**
  * @note Address: 0x80156E7C
  * @note Size: 0x2D8
  */
+// NONMATCHING: the arithmetic and call set match; CVec stack temporaries and register allocation still differ
 extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance)
 {
 	CVec displacement;
@@ -831,11 +827,11 @@ extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f3
 		        FormatToStaticBuffer("CCameraActionMap ... disp(%f, %f, %f)\n", displacement.x, displacement.y, displacement.z));
 	}
 	velocity  = (previous - target) * step;
-	f32 speed = PSVECDotProduct(&displacement, &velocity) / distance;
+	f32 speed = nw4r::math::VEC3Dot((nw4r::math::VEC3*)&displacement, (nw4r::math::VEC3*)&velocity) / distance;
 	f32 force = stiffness * (restDistance - distance) + damping * speed;
 	PSVECNormalize(&displacement, &displacement);
-	PSVECScale(&displacement, &displacement, force * step);
-	AddCopy(position, displacement);
+	nw4r::math::VEC3Scale((nw4r::math::VEC3*)&displacement, (nw4r::math::VEC3*)&displacement, force * step);
+	position += displacement;
 	if (__fpclassifyf(position.x) == FP_NAN || __fpclassifyf(position.y) == FP_NAN || __fpclassifyf(position.z) == FP_NAN) {
 		// retail's format and args don't line up
 		OSPanic("ccameraactionmap2.cpp", 206,
