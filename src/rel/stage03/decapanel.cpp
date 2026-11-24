@@ -1,5 +1,6 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 #include "game/ctpl.h"
 
 struct DecaPanelKey {
@@ -8,25 +9,29 @@ struct DecaPanelKey {
 	u8 mChar;
 };
 
-extern DecaPanelKey decaPanelKeys[12];
+DecaPanelKey decaPanelKeys[12] = {
+	{ -58.0f, -40.0f, '7' }, { -1.0f, -40.0f, '8' },  { 56.0f, -40.0f, '9' },  { -58.0f, 17.0f, '4' },
+	{ -1.0f, 17.0f, '5' },   { 56.0f, 17.0f, '6' },   { -58.0f, 74.0f, '1' },  { -1.0f, 74.0f, '2' },
+	{ 56.0f, 74.0f, '3' },   { -29.0f, 131.0f, 'C' }, { -29.0f, 131.0f, 'C' }, { 56.0f, 131.0f, '0' },
+};
 
 class DecaPanel {
 public:
 	void ResetInput()
 	{
-		mDigits[0] = ' ';
-		mDigits[1] = ' ';
-		mDigits[2] = ' ';
-		mDigits[3] = ' ';
-		mDigits[4] = ' ';
-		mDigits[5] = ' ';
-		mDigits[6] = '\0';
-		mCode      = 0;
-		mCursorX   = 0;
-		mCursorY   = 3;
-		mLocked    = 0;
-		mDigitNum  = 0;
-		s32 idx    = mCursorX + mCursorY * 3;
+		mDigits[0]  = ' ';
+		mDigits[1]  = ' ';
+		mDigits[2]  = ' ';
+		mDigits[3]  = ' ';
+		mDigits[4]  = ' ';
+		mDigits[5]  = ' ';
+		mDigitCount = 0;
+		mCode       = 0;
+		mCursorX    = 0;
+		mCursorY    = 3;
+		mLocked     = 0;
+		mDigitNum   = 0;
+		s32 idx     = mCursorX + mCursorY * 3;
 		mCurX = mTargetX = decaPanelKeys[idx].x;
 		mCurY = mTargetY = decaPanelKeys[idx].y;
 	}
@@ -49,16 +54,17 @@ public:
 
 	s32 mState;
 	CTpl mTpl;
-	s32 mActive;
+	u32 mActive;
 	f32 mFade;
 	CTexObj mTexs[5];
-	u8 mDigits[7];
+	u8 mDigits[6];
+	u8 mDigitCount;
 	u8 _71F;
 	s32 mCode;
-	u8 mCursorX;
-	u8 mCursorY;
-	u8 mLocked;
-	u8 mDigitNum;
+	s8 mCursorX;
+	s8 mCursorY;
+	s8 mLocked;
+	s8 mDigitNum;
 	f32 mCurX;
 	f32 mCurY;
 	f32 mTargetX;
@@ -68,7 +74,9 @@ public:
 DecaPanel decaPanel;
 
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
-extern "C" void fn_80178D6C(DecaPanel* work);
+extern "C" void DecaPanel_Update(DecaPanel* work);
+extern "C" s32 gRefreshRate;
+extern "C" s32 gPointerScreenWidth;
 
 inline XObj* GetObjById(s16 id)
 {
@@ -133,7 +141,7 @@ extern "C" s32 Stage03_Update(s32 frames)
 
 extern "C" s32 Stage03_DrawHud(u32 arg)
 {
-	fn_80178D6C(&decaPanel);
+	DecaPanel_Update(&decaPanel);
 	return 1;
 }
 
@@ -251,6 +259,189 @@ extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
 {
 	return decaPanel.mCode;
+}
+
+static s32 decaPanelKeySounds[12] = {
+	0x2EF, 0x2F0, 0x2F1, 0x2EC, 0x2ED, 0x2EE, 0x2E9, 0x2EA, 0x2EB, 0x2F3, 0x2F3, 0x2F2,
+};
+
+static f32 decaPanelDigitPos[6][2] = {
+	{ -68.0f, -115.0f }, { -41.0f, -115.0f }, { -14.0f, -115.0f }, { 13.0f, -115.0f }, { 40.0f, -115.0f }, { 67.0f, -115.0f },
+};
+
+static s32 decaPanelDigitCells[10] = { 9, 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+struct DecaPanelKeySprite {
+	s32 mTex;
+	f32 mScale;
+	f32 mTrans;
+	s32 mKey;
+	f32 mW;
+	f32 mH;
+};
+
+static inline u32 FadeColor(f32 fade)
+{
+	return (u32)(255.0f * fade) | 0xFFFFFF00;
+}
+
+// NONMATCHING: pointer hit-testing, digit input and all draw calls are present; register allocation around
+// the key sprites remains open, and retail tests mState unsigned here (cmplwi) though Stage03_Update's switch on
+// it is signed.
+extern "C" void DecaPanel_Update(DecaPanel* work)
+{
+	CTexObj* tex;
+	if (work->mState != 2) {
+		return;
+	}
+	if ((work->mActive & 1) && !(work->mActive & 2)) {
+		work->mActive |= 2;
+		PlayWiiSoundEffect(&gGame.mSound, 0x2F6, 1.0f, 0.0f);
+	}
+	u32 frames = 2;
+	if (work->mActive) {
+		if (work->mFade < 1.0f && (work->mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+			work->mFade = 1.0f;
+		}
+	} else if (work->mFade > 0.0f && (work->mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+		work->mFade = 0.0f;
+	}
+
+	if (work->mFade >= 1.0f) {
+		if (work->mLocked) {
+			if (!(gWiiPads[0].mButton & 0x0001000000000010ULL)) {
+				work->mLocked = 0;
+			}
+		} else {
+			work->mLocked = 0;
+			if (gWiiPointer.mPointerValid) {
+				work->mDigitNum = 0;
+				for (s32 i = 0; i < 12; i++) {
+					f32 height = 44.28f;
+					f32 half   = (u32)(i - 9) <= 1 ? 88.56f : 44.28f;
+					f32 x      = 0.9f * decaPanelKeys[i].x + gPointerScreenWidth / 2;
+					f32 y      = 0.9f * decaPanelKeys[i].y + 200.0f;
+					f32 minX   = x - half * 0.5f;
+					f32 maxX   = x + half * 0.5f;
+					f32 minY   = y - height * 0.5f;
+					f32 maxY   = y + height * 0.5f;
+					if (gWiiPointer.mPointer.x >= minX && gWiiPointer.mPointer.x <= maxX && gWiiPointer.mPointer.y >= minY
+					    && gWiiPointer.mPointer.y <= maxY) {
+						work->mDigitNum = 1;
+						work->mCursorY  = i / 3;
+						work->mCursorX  = i % 3;
+						break;
+					}
+				}
+			}
+		}
+		if (gWiiPointer.Check(1) && work->mDigitNum) {
+			work->mLocked = 1;
+			u8 ch         = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
+			PlayWiiSoundEffect(&gGame.mSound, decaPanelKeySounds[work->mCursorX + work->mCursorY * 3], 1.0f, 0.0f);
+			if (ch == 'C') {
+				work->mDigits[0]  = ' ';
+				work->mDigits[1]  = ' ';
+				work->mDigits[2]  = ' ';
+				work->mDigits[3]  = ' ';
+				work->mDigits[4]  = ' ';
+				work->mDigits[5]  = ' ';
+				work->mDigitCount = 0;
+				work->mCode       = 0;
+			} else {
+				if (work->mDigitCount < 6) {
+					if (work->mDigitCount != 0) {
+						work->mDigits[0] = work->mDigits[1];
+						work->mDigits[1] = work->mDigits[2];
+						work->mDigits[2] = work->mDigits[3];
+						work->mDigits[3] = work->mDigits[4];
+						work->mDigits[4] = work->mDigits[5];
+					}
+					work->mDigits[5] = ch;
+					work->mDigitCount++;
+				}
+				if (work->mDigitCount >= 6) {
+					work->mCode = 0;
+					for (s32 i = 0; i < 6; i++) {
+						if (work->mDigits[i] != ' ') {
+							work->mCode = work->mCode * 10 + (work->mDigits[i] - '0');
+						}
+					}
+					work->mActive = 0;
+					gGame.ClearStatusFlags(2);
+					gGame.mPointer._110 = NULL;
+				}
+			}
+		}
+		if (gWiiPointer.Check(2)) {
+			work->mCode   = -1;
+			work->mActive = 0;
+			gGame.ClearStatusFlags(2);
+			gGame.mPointer._110 = NULL;
+		}
+	}
+
+	if (work->mFade > 0.0f) {
+		gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
+		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+		s32 idx        = work->mCursorX + work->mCursorY * 3;
+		work->mTargetX = decaPanelKeys[idx].x;
+		work->mTargetY = decaPanelKeys[idx].y;
+		work->mCurX += 0.8f * (work->mTargetX - work->mCurX);
+		work->mCurY += 0.8f * (work->mTargetY - work->mCurY);
+
+		tex       = &work->mTexs[0];
+		u16 w     = GXGetTexObjWidth(tex);
+		u16 h     = GXGetTexObjHeight(tex);
+		u32 color = FadeColor(work->mFade);
+		f32 cx    = gPointerScreenWidth / 2;
+		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
+
+		f32 w1                       = 0.9f * (GXGetTexObjWidth(&work->mTexs[1]) / 10);
+		f32 h1                       = 0.9f * GXGetTexObjHeight(&work->mTexs[1]);
+		f32 w2                       = 0.9f * GXGetTexObjWidth(&work->mTexs[2]);
+		f32 h2                       = 0.9f * GXGetTexObjHeight(&work->mTexs[2]);
+		DecaPanelKeySprite draws[12] = {
+			{ 1, 0.1f, 0.6f, 0, w1, h1 }, { 1, 0.1f, 0.7f, 1, w1, h1 }, { 1, 0.1f, 0.8f, 2, w1, h1 },  { 1, 0.1f, 0.3f, 3, w1, h1 },
+			{ 1, 0.1f, 0.4f, 4, w1, h1 }, { 1, 0.1f, 0.5f, 5, w1, h1 }, { 1, 0.1f, 0.0f, 6, w1, h1 },  { 1, 0.1f, 0.1f, 7, w1, h1 },
+			{ 1, 0.1f, 0.2f, 8, w1, h1 }, { 2, 1.0f, 0.0f, 9, w2, h2 }, { 2, 1.0f, 0.0f, 10, w2, h2 }, { 1, 0.1f, 0.1f * 9, 11, w1, h1 },
+		};
+		for (s32 i = 0; i < 12; i++) {
+			if (work->mLocked && decaPanelKeys[idx].mChar == decaPanelKeys[i].mChar) {
+				continue;
+			}
+			tex = &work->mTexs[draws[i].mTex];
+			PSMTXScale(tex->mTexMtx.mMtx[1], draws[i].mScale, 1.0f, 1.0f);
+			tex->mTexMtx.mDirty = TRUE;
+			PSMTXTrans(tex->mTexMtx.mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
+			tex->mTexMtx.mDirty = TRUE;
+			f32 x               = 0.9f * decaPanelKeys[draws[i].mKey].x;
+			u8 intensity        = decaPanelKeys[idx].mChar == decaPanelKeys[i].mChar && work->mDigitNum ? 0xFF : 0xC8;
+			u32 color           = (u32)(255.0f * work->mFade) | (intensity << 24) | (intensity << 16) | (intensity << 8);
+			f32 y               = 0.9f * decaPanelKeys[draws[i].mKey].y;
+			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f, 0.0f,
+			                   0.0f);
+		}
+
+		tex = &work->mTexs[4];
+		PSMTXScale(tex->mTexMtx.mMtx[1], 0.1f, 1.0f, 1.0f);
+		tex->mTexMtx.mDirty = TRUE;
+		w2                  = 0.9f * (GXGetTexObjWidth(tex) / 10);
+		h2                  = 0.9f * GXGetTexObjHeight(tex);
+		for (s32 i = 0; i < 6; i++) {
+			u8 ch = work->mDigits[i];
+			if (ch != ' ') {
+				PSMTXTrans(tex->mTexMtx.mMtx[0], 0.1f * decaPanelDigitCells[ch - '0'], 0.0f, 0.0f);
+				tex->mTexMtx.mDirty = TRUE;
+				u32 color           = FadeColor(work->mFade);
+				f32 x               = 0.9f * decaPanelDigitPos[i][0];
+				f32 y               = 0.9f * decaPanelDigitPos[i][1];
+				DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + x, 200.0f + y, 0.0f, w2, h2, 0.0f, 0.0f, 0.0f);
+			}
+		}
+
+		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
+	}
 }
 #else
 #include "game/hsd_jobj.h"

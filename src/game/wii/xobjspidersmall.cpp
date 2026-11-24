@@ -2296,7 +2296,7 @@ void XObjSpiderSmall::TakeWeb()
  * @note Address: 0x80131F94
  * @note Size: 0x110
  */
-extern "C" void fn_80131F94(s32 visible)
+extern "C" void SetJunkUnkoFlag(s32 visible)
 {
 	for (int i = 0; i < 96; i++) {
 		XObj* obj = gGame.mXObjs.mPools[7].Get(i);

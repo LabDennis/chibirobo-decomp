@@ -183,16 +183,6 @@ void Init(void)
 
 } // namespace Car
 
-extern "C" void SetCarParams(u8* data)
-{
-	carParams = data;
-}
-
-extern "C" void SetCarSoundCues(u8* data)
-{
-	carSoundCues = data;
-}
-
 extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached)
 {
 	if (Car::playerCar.mCar == NULL) {
@@ -272,6 +262,20 @@ extern "C" void UpdateCars(u32 frames)
 	if (!Car::racerCar.mBraking && ReadS32LE(carParams + 0xC) <= Car::racerCar.mFrame) {
 		Car::racerCar.Brake();
 	}
+}
+
+extern "C" void DrawCarHud(u32 arg)
+{
+}
+
+extern "C" void SetCarParams(u8* data)
+{
+	carParams = data;
+}
+
+extern "C" void SetCarSoundCues(u8* data)
+{
+	carSoundCues = data;
 }
 
 extern "C" s32 GetPlayerCarResult(void)

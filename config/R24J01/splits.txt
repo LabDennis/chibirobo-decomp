@@ -370,6 +370,9 @@ rel/stage02/fighter.cpp:
 rel/stage02/car.cpp:
 	.text start:0x8017624C end:0x80177238
 
+rel/stage01/hamburgcmd.cpp:
+	.text start:0x80177238 end:0x80177A84
+
 rel/stage02/rouka.cpp:
 	.text start:0x80177A84 end:0x80178580
 

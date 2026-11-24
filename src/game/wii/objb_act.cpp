@@ -127,11 +127,6 @@ static inline BOOL IsState(const XAction* act, s32 state)
 
 static const s32 sSquirterChargeLevels[11] = { 0, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3 };
 
-static inline void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
-{
-	target->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, target));
-}
-
 static inline bool IsDrinking(XAction* act)
 {
 	return act->mState == 34 || act->mState == 35;
@@ -1796,21 +1791,6 @@ void fn_800FCD1C(XActLift* act)
 }
 
 /**
- * @note Address: 0x800FCBCC
- * @note Size: 0x150
- */
-Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
-{
-	// a plug (24) is held by its end joint
-	if (target->GetPool() == 24) {
-		CVec pos = target->GetWorldPos("plug_model");
-		return pos - *target->GetPos();
-	}
-	Vec offset = *target->GetPos() * -1.0f;
-	return GetFloorContactPosition(target, act->mTargetFloor, &offset);
-}
-
-/**
  * @note Address: 0x800FCB14
  * @note Size: 0xB8
  */
@@ -3081,8 +3061,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames,
  * @note Address: 0x800F9EC0
  * @note Size: 0x2C54
  */
-// NONMATCHING: retail keeps GetLiftTargetContactOffset out of line at all 15 sites; this build inlines the nearly
-// identical helper, adding its GetFloorContactPosition and CVec operator calls at each site. No pragma is used.
+// NONMATCHING: GetLiftTargetContactOffset is defined after this function, so it stays out of line at all 14 sites
+// as in retail and the size matches; the remaining difference is not yet classified.
 void UpdateHeldObject(XActLift* act, u32 frames)
 {
 	if (!act->mTargetState) {
@@ -3131,7 +3111,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 				             0.0f, 15.0f);
 			}
 		} else {
-			UpdateCarriedObjectPosition(act, obj);
+			obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 			CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 			obj->SetScale(GetStagePlacementScale(obj) * scale);
 			act->mYawOffset = 0.0f;
@@ -3223,7 +3203,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 			break;
 		}
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y);
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (IsCarryingMug(act)) {
 			s32 id;
 			if (act->mState == 34) {
@@ -3248,7 +3228,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 5: {
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (act->mOwner->GetAnimFrame() < 24.0f) {
 			break;
 		}
@@ -3271,7 +3251,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		break;
 	}
 	case 6:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTarget = NULL;
@@ -3284,7 +3264,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 7:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
@@ -3297,7 +3277,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 8:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 9;
@@ -3310,7 +3290,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 10:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
@@ -3320,7 +3300,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 11:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 12;
@@ -3330,10 +3310,10 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	case 12:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		break;
 	case 13:
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		if (obj->GetPool() == 24) {
 			if (act->mOwner->IsAnimDone()) {
 				act->mTargetState = 4;
@@ -3352,7 +3332,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 				             0.0f, 15.0f);
 			}
 		} else {
-			UpdateCarriedObjectPosition(act, obj);
+			obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 			CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 			obj->SetScale(GetStagePlacementScale(obj) * scale);
 			if (IsCarryingMug(act)) {
@@ -3396,7 +3376,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		obj->ClearBaseMtx();
 		act->mYawOffset = 0.0f;
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y);
-		UpdateCarriedObjectPosition(act, obj);
+		obj->SetPos(fn_800E5A2C(act->mOwner) - GetLiftTargetContactOffset(act, obj));
 		CVec scale = act->mOwner->GetJointScale(act->mOwner->FindResNode("carry_obj_nll"));
 		obj->SetScale(GetStagePlacementScale(obj) * scale);
 		act->mTargetState = 4;
@@ -3413,6 +3393,21 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 		}
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x800FCBCC
+ * @note Size: 0x150
+ */
+Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
+{
+	// a plug (24) is held by its end joint
+	if (target->GetPool() == 24) {
+		CVec pos = target->GetWorldPos("plug_model");
+		return pos - *target->GetPos();
+	}
+	Vec offset = *target->GetPos() * -1.0f;
+	return GetFloorContactPosition(target, act->mTargetFloor, &offset);
 }
 
 /**
