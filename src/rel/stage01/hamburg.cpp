@@ -90,6 +90,41 @@ extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 ang
 {
 	slot->StartSlide(distance, speed, angle);
 }
+
+static u8 putDownActive;
+static u8 yakiSoundPlayed;
+
+static inline void SetHamRot(HamObj* slot, f32 rot)
+{
+	slot->mRotZ = rot;
+	slot->mActor->SetRotationZ(rot);
+}
+
+extern "C" void HamObj_Respawn(HamObj* slot)
+{
+	if (putDownActive) {
+		slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
+	}
+	if (slot->mType == 1) {
+		slot->mSide        = 0;
+		slot->mYakiTime[1] = 0;
+		slot->mYakiTime[0] = 0;
+		PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+		yakiSoundPlayed = 1;
+	} else {
+		PlayWiiSoundEffect(&gGame.mSound, 0x296, 1.0f, 0.0f);
+	}
+	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f);
+	slot->mActor->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	SetHamRot(slot, 0.0f);
+	f32 distance;
+	f32 angle = 0.017453292f * (rand() % 60 + 240);
+	distance  = 30.0f + rand() % 15;
+	slot->StartSlide(distance, 0.5f, angle);
+	slot->mSpawned    = 1;
+	slot->mStackLevel = 0;
+	slot->mAbove      = NULL;
+}
 #else
 #include "Version.h"
 #include "game/hsd_jobj.h"

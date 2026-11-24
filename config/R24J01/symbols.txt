@@ -956,6 +956,7 @@ HamObj_StartFlip = .text:0x8016DBAC; // type:function size:0xCC
 StateFlip__6HamObjFv = .text:0x8016E604; // type:function size:0xD04
 HamObj_StartSlide = .text:0x8016DC78; // type:function size:0x94
 StateSlide__6HamObjFv = .text:0x8016E470; // type:function size:0x194
+HamObj_Respawn = .text:0x8016DD0C; // type:function size:0x244
 Stage20_Init = .text:0x8017B184; // type:function size:0x5C
 Stage20_Update = .text:0x8017B1E0; // type:function size:0x78
 Stage20_NoOpSlot5 = .text:0x8017B258; // type:function size:0x8
