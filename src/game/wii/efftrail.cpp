@@ -537,12 +537,9 @@ extern "C" void fn_800F2CF4(SpiralTrail* trail)
 	trail->rings[1][0].angle = PI + trail->rings[0][0].angle;
 }
 
-// NONMATCHING (99.8 %): identical instruction stream, same size as retail; the remaining
-// diff is literal-pool @labels in place of the unit's named constants and branch targets
-// into the shared restore-tail area, which sits eight bytes earlier in our build — both
-// close with the unit's data and tail layout, not with this function's source. The scale
-// sum is written trail->rings[i][j]: retail keeps a second ring pointer for it (the GameCube
-// source's point[j].scale spelling merges both into one induction pointer on the Wii).
+// The scale sum is written trail->rings[i][j]: retail keeps a second ring pointer for it
+// (the GameCube source's point[j].scale spelling merges both into one induction pointer on
+// the Wii).
 /**
  * @note Address: 0x800F2EA4
  * @note Size: 0x29C
@@ -685,19 +682,19 @@ extern "C" BOOL fn_800F35E8(WiiPlayerState* self, const CoordInfo& info)
 // the eyelid rotation keyframes ExecCallbackA applies while the player blinks: down lid,
 // then up lid, left eye then right eye, each indexed by WiiPlayerState::mBlinkFrame.
 // the values are bit-exact retail data; they read as designer-authored near-zero noise.
-static const Vec sBlinkRotLDown[11] = {
+static Vec sBlinkRotLDown[11] = {
 	{ -64.99999237060547f, 180.0f, 0.00003f },  { -32.45600128173828f, 180.0f, 0.00003f }, { 0.08800685f, 180.0f, 0.00003f },
 	{ 0.08800685f, 180.0f, 0.00003f },          { 0.08800685f, 180.0f, 0.00003f },         { 0.08800685f, 180.0f, 0.00003f },
 	{ 0.08800685f, 180.0f, 0.00003f },          { 0.08800685f, 180.0f, 0.00003f },         { -16.78667449951172f, 180.0f, 0.00003f },
 	{ -48.125328063964844f, 180.0f, 0.00003f }, { -64.99999237060547f, 180.0f, 0.00003f },
 };
-static const Vec sBlinkRotLUp[11] = {
+static Vec sBlinkRotLUp[11] = {
 	{ -64.9999771118164f, 0.0f, 0.000004f },   { -32.45599365234375f, 0.0f, 0.000004f }, { 0.08800685f, 0.0f, 0.000004f },
 	{ 0.08800685f, 0.0f, 0.000004f },          { 0.08800685f, 0.0f, 0.000004f },         { 0.08800685f, 0.0f, 0.000004f },
 	{ 0.08800685f, 0.0f, 0.000004f },          { 0.08800685f, 0.0f, 0.000004f },         { -16.786663055419922f, 0.0f, 0.000004f },
 	{ -48.125343322753906f, 0.0f, 0.000004f }, { -64.9999771118164f, 0.0f, 0.000004f },
 };
-static const Vec sBlinkRotRDown[11] = {
+static Vec sBlinkRotRDown[11] = {
 	{ -65.00001525878906f, 180.0f, -0.000013f },  { -32.45600891113281f, 180.0f, -0.000013f },
 	{ 0.08799900114536285f, 180.0f, -0.000013f }, { 0.08799900114536285f, 180.0f, -0.000013f },
 	{ 0.08799900114536285f, 180.0f, -0.000013f }, { 0.08799900114536285f, 180.0f, -0.000013f },
@@ -705,7 +702,7 @@ static const Vec sBlinkRotRDown[11] = {
 	{ -16.786680221557617f, 180.0f, -0.000013f }, { -48.12534713745117f, 180.0f, -0.000013f },
 	{ -65.00001525878906f, 180.0f, -0.000013f },
 };
-static const Vec sBlinkRotRUp[11] = {
+static Vec sBlinkRotRUp[11] = {
 	{ -64.9999771118164f, -0.000001f, 0.0f },   { -32.455989837646484f, -0.000001f, 0.0f }, { 0.08800685f, -0.000001f, 0.0f },
 	{ 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },
 	{ 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },          { -16.786659240722656f, -0.000001f, 0.0f },
@@ -716,14 +713,11 @@ static const Vec sBlinkRotRUp[11] = {
 // and the four eyelid joints. head_cap gets a fixed nod rotation while an attachment is
 // worn; each eyelid gets the blink keyframe at mBlinkFrame and hands the next joint id
 // back to the CalcWorld walker.
-// NONMATCHING (98.2 %): one instruction short — retail turns the
-// `animId != 0x817 && animId != 0x814` test into cmpwi/beq, a bge fast path past the
-// second compare, then cmpwi/beq; every spelling tried here gives the plain two-compare
-// chain. Everything else is pool labels and the rodata anchor register (retail pins the
-// unit's .rodata in r28, ours in r27 with nodeId one register down). mPlayer is read as
+// NONMATCHING (99.8 %): pool labels and the data anchor register (retail pins the
+// unit's .data in r28, ours in r27 with nodeId one register down). mPlayer is read as
 // self->mPlayer at each site because retail rematerializes the load, and the blink tables
-// are `static const Vec` so they land in .rodata like retail's (math::VEC3's user ctor
-// would force a dynamic-init .bss copy).
+// are plain `static Vec` aggregates so they land in .data like retail's (math::VEC3's user
+// ctor would force a dynamic-init .bss copy).
 /**
  * @note Address: 0x800F3714
  * @note Size: 0x474
@@ -736,10 +730,15 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 
 	if (self->mHeadNodes[2].IsValid() && nodeId == self->mHeadNodes[2].GetID()) {
 		if ((self->mPlayer->GetAttachment() == 1 || self->mPlayer->GetAttachment() == 3) && self->mPlayer->mAttachmentRequest < 0) {
-			s32 animId = self->GetAnimId();
-			if (animId != 0x817 && animId != 0x814) {
+			switch (self->GetAnimId()) {
+			case 0x814:
+			case 0x817:
+				break;
+			default: {
 				static nw4r::math::MTX33 sHeadRot(-0.0f, -0.970757f, 0.239911f, -0.0f, -0.239911f, -0.970757f, 1.0f, -0.0f, -0.0f);
 				pResult->SetRotateMtx(&sHeadRot);
+				break;
+			}
 			}
 		}
 		if (self->mPlayer->mBlinkFrame < 0) {
