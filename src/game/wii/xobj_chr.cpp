@@ -42,8 +42,11 @@ extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws, as gameupdate.cpp declares it
 extern CustomShadow gCustomShadow;
 extern MEMAllocator gWiiPadAllocator;
+extern "C" CVec fn_800E5A48(XObj* player);
 
 static s32 sBlockedObstacleCount;
+// one-time action-offset calibration on the first player update; the name is ours
+static bool sPoseInitPending = true;
 
 // the GameCube kept a weak copy of it
 static inline BOOL IsObjectActive(XObj* object)
@@ -1426,13 +1429,41 @@ s32 GetSelectedFloorIndex(const XObj* object)
 
 PlayerTurnState gPlayerTurnState;
 
-// NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
-// effects are present; the one-time pose initialization data and several suit/scene
-// steps are unresolved, and aggregate/register allocation still differs
+// NONMATCHING: the one-time pose calibration, regular frame, turning, auto-approach, attachments, events
+// and effects are present; retail inlines ClosePlayerEquipmentRings and unrolls the held-item color loop,
+// and aggregate/register allocation still differs
 void XObjChr::UpdateObject(u32 frames)
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	CPadOne* pad        = &chr->mPad;
+	if (sPoseInitPending) {
+		sPoseInitPending = false;
+		s32 savedAnim    = GetAnimId();
+		Vec savedRot     = mMoveRotate;
+		SetRotationY(0.0f);
+		SetAnim(8, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, mObject.m_pScnMdl);
+		fn_802AEDA0(&gGame.mGs.mScene.mHead, 0);
+		WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
+		while (scene->mPending != 0) {
+			scene->PopPending();
+		}
+		chr->mLift.mTargetOffset = fn_800E5A48(chr);
+		SetAnim(0x13, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		GetAnimEndFrame();
+		UpdateAnim(0.0f);
+		chr->mHang.mTargetOffset = GetWorldPos("second_null") - *GetPos();
+		SetAnim(0x8A, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		UpdateAnim(0.0f);
+		chr->mRope.mTargetOffset = GetWorldPos("second_null") - *GetPos();
+		SetAnim(0x36, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		UpdateAnim(0.0f);
+		chr->mTumble.mFade.mActive = FALSE;
+		chr->mTumble.mFade.mOffset = GetWorldPos("neck") - *GetPos();
+		chr->mTumble.mFade.mAmount = 0.0f;
+		SetAnim(savedAnim, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+		SetRotationY(savedRot.y);
+	}
 	if (chr->mPadReset && !chr->mMenu.IsOpen() && !chr->mOXMenu.mStarted && !gGame.mMenu.mActive && !chr->mSuits.mChangeStep)
 		pad->Update(gWiiGameCubePads, 0);
 	else
@@ -1531,7 +1562,7 @@ void XObjChr::UpdateObject(u32 frames)
 					chr->mContactPos.y          = object->mMoveTranslate.y;
 					chr->mContactPos.z          = object->mMoveTranslate.z;
 					chr->mLastContactFloorIndex = object->mSelectedFloorIndex;
-					chr->mEdgePos               = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+					chr->mEdgePos               = object->mMoveTranslate + object->mEdges[object->mSelectedFloorIndex].mContactOffset;
 					break;
 				}
 			} while ((chr->mNearDistance += 1.0f) <= 10);
@@ -6019,7 +6050,7 @@ CVec fn_800E5A2C(XObj* player)
 
 // and relative to its joint
 // NONMATCHING: as above, the name's place
-CVec fn_800E5A48(XObj* player)
+extern "C" CVec fn_800E5A48(XObj* player)
 {
 	return player->GetJointTranslate("carry_obj_nll");
 }
