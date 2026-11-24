@@ -1775,9 +1775,12 @@ void MenuItem::vf08(CbPane* pane)
 	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
 		return;
 	}
-	if (kind == 8 && sStatusItemTable.mPage > 0) {
-		mTargetGridY = 128.0f;
-		mMode        = 20;
+	if (kind == 8) {
+		CountMenuItems();
+		if (sStatusItemTable.mPage > 0) {
+			mTargetGridY = 128.0f;
+			mMode        = 20;
+		}
 	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 		mTargetGridY = -56.0f;
 		mMode        = 10;
@@ -1793,9 +1796,12 @@ void MenuItem::vf14(CbPane* pane)
 	if (kind < 8 || kind > 9 || mMode != 2 || CountMenuItems() <= 4) {
 		return;
 	}
-	if (kind == 8 && sStatusItemTable.mPage > 0) {
-		mTargetGridY = 128.0f;
-		mMode        = 20;
+	if (kind == 8) {
+		CountMenuItems();
+		if (sStatusItemTable.mPage > 0) {
+			mTargetGridY = 128.0f;
+			mMode        = 20;
+		}
 	} else if (kind == 9 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 		mTargetGridY = -56.0f;
 		mMode        = 10;
@@ -8538,9 +8544,12 @@ void MenuStatus::vf08(CbPane* pane)
 	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
 		return;
 	}
-	if (kind == 49 && sStatusItemTable.mPage > 0) {
-		mTargetY = 128.0f;
-		mPhase   = 20;
+	if (kind == 49) {
+		CountMenuItems();
+		if (sStatusItemTable.mPage > 0) {
+			mTargetY = 128.0f;
+			mPhase   = 20;
+		}
 	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 		mTargetY = -56.0f;
 		mPhase   = 10;
@@ -8556,9 +8565,12 @@ void MenuStatus::vf14(CbPane* pane)
 	if (kind < 49 || kind > 50 || mMode != 2 || mPhase != 0 || CountMenuItems() <= 4) {
 		return;
 	}
-	if (kind == 49 && sStatusItemTable.mPage > 0) {
-		mTargetY = 128.0f;
-		mPhase   = 20;
+	if (kind == 49) {
+		CountMenuItems();
+		if (sStatusItemTable.mPage > 0) {
+			mTargetY = 128.0f;
+			mPhase   = 20;
+		}
 	} else if (kind == 50 && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 		mTargetY = -56.0f;
 		mPhase   = 10;
