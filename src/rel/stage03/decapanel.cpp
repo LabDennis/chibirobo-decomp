@@ -8,7 +8,11 @@ struct DecaPanelKey {
 	u8 mChar;
 };
 
-extern DecaPanelKey decaPanelKeys[12];
+DecaPanelKey decaPanelKeys[12] = {
+	{ -58.0f, -40.0f, '7' }, { -1.0f, -40.0f, '8' },  { 56.0f, -40.0f, '9' },  { -58.0f, 17.0f, '4' },
+	{ -1.0f, 17.0f, '5' },   { 56.0f, 17.0f, '6' },   { -58.0f, 74.0f, '1' },  { -1.0f, 74.0f, '2' },
+	{ 56.0f, 74.0f, '3' },   { -29.0f, 131.0f, 'C' }, { -29.0f, 131.0f, 'C' }, { 56.0f, 131.0f, '0' },
+};
 
 class DecaPanel {
 public:

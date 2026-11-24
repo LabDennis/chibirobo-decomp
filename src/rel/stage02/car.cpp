@@ -193,6 +193,10 @@ extern "C" void SetCarSoundCues(u8* data)
 	carSoundCues = data;
 }
 
+extern "C" void DrawCarHud(u32 arg)
+{
+}
+
 extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached)
 {
 	if (Car::playerCar.mCar == NULL) {
