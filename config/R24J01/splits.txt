@@ -347,6 +347,11 @@ rel/module.c:
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 
+rel/stage20/stage20.cpp:
+	.text start:0x8017B184 end:0x8017B258
+	.sbss start:0x805A1E20 end:0x805A1E24
+	.sdata2 start:0x805A63E8 end:0x805A63F8
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98
