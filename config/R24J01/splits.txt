@@ -377,6 +377,9 @@ rel/stage09/ambient.cpp:
 	.bss start:0x804CB370 end:0x804CB3F8
 	.sdata2 start:0x805A6390 end:0x805A63B0
 
+rel/stage04/jenny.cpp:
+	.text start:0x80179B1C end:0x80179BCC
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98
