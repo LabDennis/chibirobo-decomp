@@ -277,7 +277,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			}
 			if (((toy->mSfxActors[0].GetHandle() != NULL && !(toy->mStatus.mFlags & 0x10000)) || gGame.mMovie.mState != 0)
 			    && toy->mSfxActors[0].mActor != NULL) {
-				toy->mSfxActors[0].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+				f32 fade = 0.0f;
+				toy->mSfxActors[0].mActor->mHandle.Stop((s32)(fade * gRefreshRate));
 			}
 			if (toy->mFirst.mStatus.mFlags & 0x10000) {
 				toy->mFirst.UpdateObject(frames);
