@@ -950,6 +950,7 @@ StateHitRecovery__12XObjActorToyFUl = .text:0x80147CEC; // type:function size:0x
 StatePickUp__12XObjActorToyFUl = .text:0x80148420; // type:function size:0x768
 ExecCallbackB__12XObjActorToyFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw4r3g3d16FuncObjCalcWorld = .text:0x801491E0; // type:function size:0xF30
 Set__4MatoFP4XObjP8MatoListl = .text:0x801715E8; // type:function size:0xF4
+Update__4MatoFv = .text:0x801716DC; // type:function size:0x154
 Update__4ShotFUl = .text:0x80171830; // type:function size:0x218
 Start__4ShotF3Vec3VecP4Mato = .text:0x80171D08; // type:function size:0x190
 ShotList_Update = .text:0x80171E98; // type:function size:0xCC

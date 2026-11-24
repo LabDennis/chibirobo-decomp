@@ -17,6 +17,7 @@ struct MatoList;
 struct Mato {
 	void Set(XObj* obj, MatoList* list, s32 id);
 	s32 GetPoints() const;
+	void Update();
 
 	s32 mId;
 	XObj* mObj;
@@ -75,6 +76,33 @@ void Mato::Set(XObj* obj, MatoList* list, s32 id)
 		break;
 	}
 	mList = list;
+}
+
+void Mato::Update()
+{
+	if (mObj != NULL && (mObj->mStatus.mFlags & 1) && !mPending) {
+		f32 halfW = mObj->GetFloorXZExtent() / 2.0f;
+		if (halfW < 1.0f) {
+			halfW = 1.0f;
+		}
+		f32 height = mObj->GetCollisionHeight();
+		if (height < 1.0f) {
+			height = 1.0f;
+		}
+		f32 projW;
+		f32 projH;
+		if (mObj->ProjectVisibleBounds(&projW, &projH, NULL, halfW, height)) {
+			mOnScreen = TRUE;
+			if (projW > projH) {
+				projW = projH;
+			}
+			Vec zero = { 0.0f, 0.0f, 0.0f };
+			mObj->ProjectOffsetToScreen(&zero, &mScreenX, &mScreenY, &mScreenZ, NULL);
+			mScreenY -= projW / 2.0f;
+		} else {
+			mOnScreen = FALSE;
+		}
+	}
 }
 
 extern CStatus32 shotEvents;
