@@ -7786,12 +7786,12 @@ static inline void SelectDiscardQuantity(MenuStatus* menu)
 	}
 	s32 num = sStatusItemTable.mItems[menu->mItemSelection].mCount;
 	if (num >= 1) {
-		if (menu->IsStickUp()) {
+		if (menu->IsStickLeft()) {
 			if (--menu->mCount < 1) {
 				menu->mCount = num;
 			}
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
-		} else if (menu->IsStickDown()) {
+		} else if (menu->IsStickRight()) {
 			if (++menu->mCount > num) {
 				menu->mCount = 1;
 			}
@@ -7814,12 +7814,12 @@ static inline void ConfirmDiscardQuantity(MenuStatus* menu, bool inventoryTab)
 	if (menu->mItemSelection == -1) {
 		OSPanic("menu_status.cpp", 1099, "ここが-1になるのはおかしい！");
 	}
-	if (menu->IsStickUp()) {
+	if (menu->IsStickLeft()) {
 		if (menu->mChoice > 0) {
 			menu->mChoice--;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 		}
-	} else if (menu->IsStickDown()) {
+	} else if (menu->IsStickRight()) {
 		if (menu->mChoice < 1) {
 			menu->mChoice++;
 			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
