@@ -77,6 +77,7 @@ struct Mato {
 	void Set(XObj* obj, MatoList* list, s32 id);
 	s32 GetPoints() const;
 	void Update();
+	CVec GetPos();
 
 	s32 mId;
 	XObj* mObj;
@@ -109,6 +110,8 @@ struct MatoList {
 };
 STATIC_ASSERT(sizeof(MatoList) == 0x106C);
 
+extern MatoList matoList;
+
 inline s32 Mato::GetPoints() const
 {
 	return mList->mKindPoints[mKind];
@@ -137,6 +140,11 @@ void Mato::Set(XObj* obj, MatoList* list, s32 id)
 	mList = list;
 }
 
+CVec Mato::GetPos()
+{
+	return *mObj->GetPos();
+}
+
 void Mato::Update()
 {
 	if (mObj != NULL && (mObj->mStatus.mFlags & 1) && !mPending) {
@@ -162,6 +170,15 @@ void Mato::Update()
 			mOnScreen = FALSE;
 		}
 	}
+}
+
+extern "C" void AddMato(XObj* obj, s32 id)
+{
+	if ((u32)matoList.mCount >= 0x50) {
+		return;
+	}
+	Mato* item = &matoList.mMatos[matoList.mCount++];
+	item->Set(obj, &matoList, id);
 }
 
 extern CStatus32 shotEvents;
@@ -354,8 +371,22 @@ struct FighterPanels {
 };
 STATIC_ASSERT(sizeof(FighterPanels) == 0x24);
 
-extern MatoList matoList;
+struct PilotNwing {
+	XObj* mCarriedObj;
+	XObj* mPathObj;
+	XObj* mAttachedObj0;
+	XObj* mAttachedObj1;
+	Mtx mCarriedMtx;
+	Mtx mAttachedMtx0;
+	Mtx mAttachedMtx1;
+	f32 mAnimFrame;
+	f32 _A4;
+};
+STATIC_ASSERT(sizeof(PilotNwing) == 0xA8);
+
 extern FighterPanels panels;
+extern PilotNwing pilotNwing;
+extern u8* soundCueTable[2];
 
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
 extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
@@ -387,6 +418,92 @@ extern "C" void DrawFighterHud(void)
 	DrawScoreHud(matoList.mScore, matoList.mTimeLeft, 100.0f * matoList.mProgress);
 	FighterAim_Draw(&fighterWork.mAim, &gGame.mMotionControlCamera, fighterWork.mBodyMtx);
 	FighterPanels_Draw(&panels);
+}
+
+extern "C" void SetSpeedRateTable(u8* rates)
+{
+	fighterWork.mSpeedRates = rates;
+}
+
+extern "C" void SetSoundCueTable(u8* data)
+{
+	soundCueTable[0] = data;
+}
+
+extern "C" f32 GetFighterProgress(void)
+{
+	return matoList.mProgress;
+}
+
+extern "C" u32 GetTimeLeft(void)
+{
+	return matoList.mTimeLeft;
+}
+
+extern "C" s32 GetScore(void)
+{
+	return matoList.mScore;
+}
+
+extern "C" s32 TakeDestroyedMatoId(void)
+{
+	s32 ret             = matoList.mDestroyed != NULL ? matoList.mDestroyed->mId : -1;
+	matoList.mDestroyed = NULL;
+	return ret;
+}
+
+extern "C" s32 GetShotEvent(void)
+{
+	s32 ret   = 0;
+	u32 flags = shotEvents.mFlags;
+	if (flags & 4) {
+		ret = 3;
+	} else if (flags & 8) {
+		ret = 4;
+	} else if (flags & 1) {
+		ret = 1;
+	} else if (flags & 2) {
+		ret = 2;
+	}
+	return ret;
+}
+
+extern "C" void InitPilotNwing(XObj* carried, XObj* path, XObj* attached0, XObj* attached1)
+{
+	if (carried == NULL || path == NULL) {
+		return;
+	}
+	pilotNwing.mCarriedObj   = carried;
+	pilotNwing.mPathObj      = path;
+	pilotNwing.mAttachedObj0 = attached0;
+	pilotNwing.mAttachedObj1 = attached1;
+	carried->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mPathObj->mStatus.mFlags &= ~0x10000ULL;
+	pilotNwing.mAttachedObj0->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mAttachedObj1->mStatus.mFlags |= 0x10000ULL;
+	pilotNwing.mAnimFrame = 0.0f;
+	pilotNwing._A4        = 1.0f;
+}
+
+extern "C" void ShowLowerPanel(bool on)
+{
+	if (on) {
+		panels.mLowerState = 1;
+		panels.mLowerFrame = 0;
+	} else {
+		panels.mLowerState = 2;
+	}
+}
+
+extern "C" void ShowCenterPanel(bool on, s32 variant)
+{
+	if (on) {
+		panels.mCenterState   = 1;
+		panels.mCenterFrame   = 0;
+		panels.mCenterVariant = variant;
+	} else {
+		panels.mCenterState = 2;
+	}
 }
 
 f32 captionShadowX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
