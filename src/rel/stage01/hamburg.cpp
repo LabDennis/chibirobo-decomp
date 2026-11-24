@@ -298,6 +298,22 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 	return false;
 }
 
+extern "C" void PlayYakiSound(void)
+{
+	PlayWiiSoundEffect(&gGame.mSound, 0x293, 1.0f, 0.0f);
+	yakiSoundPlayed = 1;
+}
+
+static f32 yakiRates[6];
+
+extern "C" void ResetYakiRates(void)
+{
+	f32* rate = yakiRates;
+	for (s32 i = 0; i < 6; i++) {
+		*rate++ = 1.0f;
+	}
+}
+
 static HamObj hamObjs[9];
 
 static inline bool IsActive(XObj* actor)
