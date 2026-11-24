@@ -5,6 +5,7 @@
 class DecaPanel {
 public:
 	void ResetInput();
+	void LoadTextures();
 
 	s32 mState;
 	CTpl mTpl;
@@ -128,6 +129,51 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 	gGame.SetStatusFlags(2);
 	StopWiiSfx(&gGame.mSound, 0x2F6, 0.0f);
 	return 0;
+}
+
+void DecaPanel::LoadTextures()
+{
+	if (mState == 1) {
+		if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
+			for (s32 i = 0; i < 5; i++) {
+				mTpl.mTex.Init((TPLDescriptor*)((u8*)mTpl.mBuffer + 8 + i * 8), 0);
+				mTexs[i] = mTpl.mTex;
+			}
+			mState  = 2;
+			mActive = 0;
+			mFade   = 0.0f;
+		}
+	}
+}
+
+extern "C" s32 Stage03_Update(s32 frames)
+{
+	static s32 sTimer = 0;
+	sTimer += frames;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1000E)) {
+		SetGameSfxPitch(&gGame.mSound, 0x1000E, 5.0f * (f32)sin(0.017453292f * sTimer), 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x1000F)) {
+		SetGameSfxPitch(&gGame.mSound, 0x1000F, 5.0f * (f32)sin(0.017453292f * sTimer), 0.0f);
+	}
+	if (gGame.mEvt.mData.mScript == NULL && rand() % 5000 < 10) {
+		switch (rand() % 4) {
+		case 0:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E5, 1.0f, 0.0f);
+			break;
+		case 1:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E6, 1.0f, 0.0f);
+			break;
+		case 2:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E7, 1.0f, 0.0f);
+			break;
+		case 3:
+			PlayWiiSoundEffect(&gGame.mSound, 0x2E8, 1.0f, 0.0f);
+			break;
+		}
+	}
+	decaPanel.LoadTextures();
+	return 1;
 }
 
 extern "C" s32 Stage03_Init(u32 arg)
