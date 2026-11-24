@@ -2189,15 +2189,15 @@ STATIC_ASSERT(sizeof(XObjLight) == 0xD30);
 class XObjMap : public XObj {
 public:
 	XObjMap();
-	virtual ~XObjMap();
 
 	virtual void Release();                                // _40
 	virtual void InitializeObject();                       // _14C
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
-	virtual void UpdateObject(u32 frames);                 // _164
-	virtual void DrawWithView(Mtx view);                   // _178
-	virtual void DrawGroundShadow(f32 opacity);            // _180
+	virtual ~XObjMap();
+	virtual void UpdateObject(u32 frames);      // _164
+	virtual void DrawWithView(Mtx view);        // _178
+	virtual void DrawGroundShadow(f32 opacity); // _180
 
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
