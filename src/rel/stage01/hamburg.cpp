@@ -330,7 +330,13 @@ static XObj* tempActors[4];
 
 static inline bool IsActive(XObj* actor)
 {
-	return actor != NULL ? (actor->mStatus.mFlags & 0x10000) != 0 : false;
+	if (actor == NULL) {
+		return false;
+	}
+	if (!(actor->mStatus.mFlags & 0x10000)) {
+		return false;
+	}
+	return true;
 }
 
 static XObj* gasPlate;
@@ -481,6 +487,84 @@ extern "C" void ExitHamburg(void)
 	StopWiiSfx(&gGame.mSound, 0x294, 0.0f);
 	StopWiiSfx(&gGame.mSound, 0x295, 0.0f);
 	AllowIdleHudCounters(&gGame.mInfoScrn);
+}
+
+extern "C" HamObj* FindHamObjByActor(XObj* actor)
+{
+	if (actor == NULL) {
+		return NULL;
+	}
+	for (s32 i = 0; i < 9; i++) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
+}
+
+// NONMATCHING: local label and register names differ; both search loops and the held-object path match.
+extern "C" HamObj* FindHamObj(s32 id)
+{
+	if (id < 0) {
+		return FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
+	}
+	for (s32 i = 0; i < 9; i++) {
+		if (hamObjs[i].mActor != NULL && hamObjs[i].mId == id) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
+}
+
+extern "C" HamObj* RegisterHamObj(s32 id)
+{
+	HamObj* slot = FindHamObj(id);
+	if (slot != NULL) {
+		return slot;
+	}
+
+	for (s32 i = 0; i < 9; i++) {
+		if (hamObjs[i].mActor == NULL) {
+			slot = &hamObjs[i];
+			HamObj_Init(slot, id);
+			return slot;
+		}
+	}
+	return NULL;
+}
+
+// NONMATCHING: callee-saved register allocation and the loop comparison differ; all virtual calls, distances and constants match.
+extern "C" HamObj* FindFacingHamburg(void)
+{
+	HamObj* best = NULL;
+	f32 bestDist = 0.0f;
+
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (IsActive(slot->mActor) && (slot->mActor->mStatus.mFlags & 0x100000000ULL) && slot->mStackLevel <= 0
+		    && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9) {
+			CVec* actorPos = slot->mActor->GetPos();
+			f32 dist       = PSVECDistance(((XObj*)gGame.GetPlayer())->GetPos(), actorPos);
+			f32 angle      = AngleFrom(((XObj*)gGame.GetPlayer())->GetPos(), slot->mActor->GetPos());
+			f32 c          = cos(angle - gGame.GetPlayer()->mMoveRotate.y);
+			if ((f32)cos(0.7853981852531433) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
+				best     = slot;
+				bestDist = dist;
+			}
+		}
+	}
+	return best;
+}
+
+extern "C" HamObj* FindFreeHamObj(void)
+{
+	for (s32 i = 0; i < 9; i++) {
+		if (!IsActive(hamObjs[i].mActor)) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
 }
 #else
 #include "Version.h"
