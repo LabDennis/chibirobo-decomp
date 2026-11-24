@@ -3061,8 +3061,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames,
  * @note Address: 0x800F9EC0
  * @note Size: 0x2C54
  */
-// NONMATCHING: retail keeps GetLiftTargetContactOffset out of line at all 14 sites; this build expands it
-// despite its later definition, adding the floor-contact and CVec calls at every site
+// NONMATCHING: the ordered call set now matches, including all 14 GetLiftTargetContactOffset calls;
+// vector temporary homes, stack layout and register scheduling still differ
 void UpdateHeldObject(XActLift* act, u32 frames)
 {
 	if (!act->mTargetState) {
@@ -3402,7 +3402,8 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
 {
 	// a plug (24) is held by its end joint
-	if (target->GetPool() == 24) {
+	s32 pool = target->GetPool();
+	if (pool == 24) {
 		CVec pos = target->GetWorldPos("plug_model");
 		return pos - *target->GetPos();
 	}
