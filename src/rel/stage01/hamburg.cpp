@@ -321,6 +321,55 @@ static inline bool IsActive(XObj* actor)
 	return actor != NULL ? (actor->mStatus.mFlags & 0x10000) != 0 : false;
 }
 
+static XObj* gasPlate;
+static u8 playerOffGasPlate;
+static u32 yakiLoopLevel;
+
+extern "C" void HamObj_Update(HamObj* slot, u32 step);
+
+// NONMATCHING: player/track checks are inlined differently; all nine updates and the three sound paths match.
+extern "C" void UpdateHamObjs(u32 arg)
+{
+	if (gasPlate == NULL) {
+		return;
+	}
+	if (IsOnGasPlate((XObj*)gGame.GetPlayer())) {
+		playerOffGasPlate = 0;
+	} else {
+		playerOffGasPlate = 1;
+	}
+	yakiLoopLevel = 0;
+	for (s32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (IsActive(slot->mActor)) {
+			HamObj_Update(slot, arg);
+		}
+	}
+	switch (yakiLoopLevel) {
+	case 1:
+		StopWiiSfx(&gGame.mSound, 0x295, 0.0f);
+		PlayWiiSoundEffect(&gGame.mSound, 0x294, 1.0f, 0.0f);
+		SetWiiSfxVolume(&gGame.mSound, 0x294, 1.0f, 0.0f);
+		break;
+	case 2:
+		StopWiiSfx(&gGame.mSound, 0x294, 0.0f);
+		PlayWiiSoundEffect(&gGame.mSound, 0x295, 1.0f, 0.0f);
+		SetWiiSfxVolume(&gGame.mSound, 0x295, 1.0f, 0.0f);
+		break;
+	default: {
+		CSoundHandle* track = gGame.mSound.FindTrack(0x294);
+		if (track != NULL && track->GetVolume() == 1.0f) {
+			FadeOutGameSfx(&gGame.mSound, 0x294, 600);
+		}
+		track = gGame.mSound.FindTrack(0x295);
+		if (track != NULL && track->GetVolume() == 1.0f) {
+			FadeOutGameSfx(&gGame.mSound, 0x295, 600);
+		}
+		break;
+	}
+	}
+}
+
 static inline bool IsOnTopOf(HamObj* other, HamObj* slot)
 {
 	return other->mAbove != NULL ? other->mAbove->mId == slot->mId : false;
