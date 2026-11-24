@@ -68,8 +68,8 @@ STATIC_ASSERT(sizeof(CarRoot) == 0x80);
 void CarRoot::Brake()
 {
 	mBraking = TRUE;
-	mPath->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
-	mPath->PushAnim(3, 0, 100);
+	mCar->SetAnim(2, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+	mCar->PushAnim(3, 0, 100);
 }
 
 void CarRoot::Update(u32 frames)
@@ -91,9 +91,9 @@ void CarRoot::Update(u32 frames)
 		mPrevFrame = mFrame;
 		mFrame     = mSpeed * frames + mFrame;
 	}
-	mPath->SetAnim(0, TRUE, mFrame, 1.0f, 0.0f, 10.0f);
+	mPath->SetAnim(0, TRUE, mFrame, 1.0f, 0.0f, 15.0f);
 	if (!mBraking) {
-		mCar->SetAnim(1, TRUE, mFrame, 1.0f, 0.0f, 10.0f);
+		mCar->SetAnim(1, TRUE, mFrame, 1.0f, 0.0f, 15.0f);
 		return;
 	}
 	if (0.0f < mSpeed) {
@@ -105,7 +105,7 @@ void CarRoot::Update(u32 frames)
 	}
 }
 
-void CarRoot::Register(XObj* car, XObj* path, XObj* attached)
+inline void CarRoot::Register(XObj* car, XObj* path, XObj* attached)
 {
 	mCar      = car;
 	mPath     = path;
@@ -135,7 +135,7 @@ void PlayerCarRoot::Update(u32 frames)
 		return;
 	}
 	CPad pad(0);
-	if (!mBraking && (pad.mPad->mTrigger & 0x200)) {
+	if (!mBraking && (pad.mPad->mTrigger & 0x0002000000000020ULL)) {
 		Brake();
 		mBrakeFrame = mFrame;
 		StopWiiSfx(&gGame.mSound, 0x2BC, 0.0f);
@@ -151,7 +151,7 @@ void PlayerCarRoot::Update(u32 frames)
 		if (mPrevFrame < frame && frame <= mFrame) {
 			PlayWiiSoundEffect(&gGame.mSound, id, 1.0f, 0.0f);
 			if (id == 0x2CE) {
-				FadeOutGameSfx(&gGame.mSound, -0x10000, 0.1f);
+				FadeOutGameSfx(&gGame.mSound, 0xFF0000, 0.1f);
 			} else if (id == 0x2BE) {
 				StopWiiSfx(&gGame.mSound, 0x2CE, 0.0f);
 			}
@@ -160,7 +160,7 @@ void PlayerCarRoot::Update(u32 frames)
 	if (ReadS32LE(carParams + 4) <= mFrame) {
 		mSpeed = 1.0f;
 		if (mBraking && mCar->GetAnimId() != 4) {
-			mCar->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			mCar->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 	}
 }
@@ -254,10 +254,9 @@ extern "C" void UpdateCars(u32 frames)
 		Car::carCamera.mCarMtx = NULL;
 	} else {
 		Vec pos;
-		pos.y = 0.0f;
-		pos.z = 0.0f;
 		pos.x = 0.0f;
 		pos.y = 20.0f;
+		pos.z = 0.0f;
 		PSMTXMultVec(Car::playerCar.mCarMtx, &pos, &pos);
 		carCameraTrail[carCameraTrailIndex] = pos;
 		s32 prev                            = carCameraTrailIndex - 10;
