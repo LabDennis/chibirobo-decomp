@@ -127,8 +127,8 @@ void XObj::ResetObjectState()
 
 // 0x800AC238, the placement read: copies the stage entry's transform, flags and parameters
 // into the object, starts its animation, wires the event script and records its scope
-// NONMATCHING: ~91% fuzzy - the object-id compare chains allocate their per-id flags to different
-// registers and retail tests the id ranges with subtract/compare forms ours does not produce
+// NONMATCHING: ~91% fuzzy - the remaining object-id compare chains allocate their per-id flags to different
+// registers and some id tests use another compare order.
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
@@ -224,7 +224,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		UpdateObjectFloorXZExtent(this);
 		if (fpclassify(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
 			s16 cat = GetCategory();
-			if (cat == 7 || cat == 8 || (cat >= 0x14 && cat <= 0x16)) {
+			if (cat == 7 || cat == 8 || (u16)(cat - 0x14) <= 2) {
 				mStatus.mFlags |= 0x80000000ULL;
 			}
 		}
@@ -236,9 +236,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		}
 		mSelectedFloorHeight = NAN;
 		mSelectedFloorIndex  = 0;
-		_188 = GetCategory() == 2 || GetCategory() == 9 || GetCategory() == 5 || GetCategory() == 0xA || GetCategory() == 0xB
-		    || GetCategory() == 0xC || GetCategory() == 0xD || GetCategory() == 0xE || GetCategory() == 0xF || GetCategory() == 0x10
-		    || GetCategory() == 0x11 || GetCategory() == 0x12 || GetCategory() == 0x13;
+		_188 = !(GetCategory() != 2 && GetCategory() != 9 && GetCategory() != 5 && GetCategory() != 0xA && GetCategory() != 0xB
+		         && GetCategory() != 0xC && GetCategory() != 0xD && GetCategory() != 0xE && GetCategory() != 0xF && GetCategory() != 0x10
+		         && GetCategory() != 0x11 && GetCategory() != 0x12 && GetCategory() != 0x13);
 		switch (GetKind()) {
 		case 0x0:
 			_18C = 0;
@@ -370,8 +370,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 // 0x800AD498, the load half of LoadFromPlacement: the kind's archive, model id and a tex-stage
 // count out of the object data, "<name>.brres" through CObj::Load. the GameCube keeps this
 // inline in xobjinit.cpp (there with "%s.dat" and ARAM flags instead of the stage count)
-// NONMATCHING: ~92% fuzzy - the pool-range clause binds the pool once for both compares, like
-// retail (two GetPool evals per block), but retail also materializes that && as a bool; the rest is
+// NONMATCHING: ~94% fuzzy - the pool-range clauses and their bool materialization match; the rest is
 // register/scheduling debris: retail drops the dead inner select-else in the first eval, keeps an unexplained li r3,0
 // per status block, and schedules the "ufo/wall2" address before the ModelName checks
 extern "C" BOOL fn_800AD498(XObj* obj)
@@ -398,13 +397,13 @@ extern "C" BOOL fn_800AD498(XObj* obj)
 	}
 	if (gGame.GetStatusFlags(0x2000000000ULL) != 0) {
 		s32 pool;
-		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16)) {
+		if ((objFlags & 0x20000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16) != FALSE) {
 			texNum += 1;
 		}
 	}
 	if (gGame.GetStatusFlags(0x100000000000ULL) != 0) {
 		s32 pool;
-		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16)) {
+		if ((objFlags & 0x200000000000ULL) || obj->GetPool() == 2 || ((pool = obj->GetPool()) >= 4 && pool <= 16) != FALSE) {
 			texNum += 5;
 		}
 	}
