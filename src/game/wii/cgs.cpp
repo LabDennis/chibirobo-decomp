@@ -54,7 +54,14 @@ void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 chan
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
 CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
 extern MEMiHeapHead* gWiiMem1Heap;
+extern MEMAllocator gWiiPadAllocator;
 }
+
+#define NW4R_ASSERT_VALID_ROOT(exp)                                                                                                        \
+	((void)((((u32)(exp) & 0xFF000000) == 0x80000000 || ((u32)(exp) & 0xFF800000) == 0x81000000 || ((u32)(exp) & 0xF8000000) == 0x90000000 \
+	         || ((u32)(exp) & 0xFF000000) == 0xC0000000 || ((u32)(exp) & 0xFF800000) == 0xC1000000                                         \
+	         || ((u32)(exp) & 0xF8000000) == 0xD0000000 || ((u32)(exp) & 0xFFFFC000) == 0xE0000000)                                        \
+	        || (nw4r::db::Panic("cgs_nw.cpp", 0x1A, "NW4R:Pointer Error\nm_pRoot(=%p) is not valid pointer.", (exp)), 0)))
 
 // The camera, light and fog code in front of the screen code, 0x802A80FC-0x802A90C8. It belongs to this
 // translation unit (the camera and light vtables sit in its data); which included files it came from is
@@ -799,6 +806,41 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 
 	nw4r::g3d::G3dInit(false);
 	fn_802AEBF0(&mScene.mHead, renderStates, tevStages, channels, texGens);
+}
+
+extern "C" void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
+{
+	nw4r::g3d::ScnRoot* m_pRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, renderStates, tevStages, channels, texGens);
+	*head                       = (WiiGsSceneObj*)m_pRoot;
+	NW4R_ASSERT_VALID_ROOT(m_pRoot);
+	head[1]                         = NULL;
+	((WiiGsSceneObj*)m_pRoot)->_458 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_448 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_440 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_480 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_470 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_468 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4A8 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_498 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_490 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4D0 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4C0 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4B8 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4F8 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4E8 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_4E0 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_520 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_510 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_508 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_548 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_538 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_530 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_570 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_560 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_558 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_598 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_588 = 0;
+	((WiiGsSceneObj*)m_pRoot)->_580 = 0;
 }
 
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32)
