@@ -1,3 +1,43 @@
+#if defined(VERSION_R24J01)
+#include "types.h"
+
+extern "C" s32 InitAnas(void);
+extern "C" void DrawAnas(void);
+extern "C" void UpdateAnas(s32 dt);
+extern "C" void ExitAnas(void);
+extern "C" void InitTrash(void);
+extern "C" void UpdateTrash(u32 frames);
+extern "C" void DrawTrashStack(void);
+extern "C" void ExitTrash(void);
+
+extern "C" s32 Stage04_Init(void* arg)
+{
+	InitAnas();
+	InitTrash();
+	return 1;
+}
+
+extern "C" s32 Stage04_Update(void* arg)
+{
+	UpdateAnas((s32)arg);
+	UpdateTrash((u32)arg);
+	return 1;
+}
+
+extern "C" s32 Stage04_Draw(void* arg)
+{
+	DrawAnas();
+	DrawTrashStack();
+	return 1;
+}
+
+extern "C" s32 Stage04_Exit(void* arg)
+{
+	ExitAnas();
+	ExitTrash();
+	return 1;
+}
+#else
 #include "rel/trash.h"
 
 // rel/ana.cpp
@@ -57,3 +97,4 @@ extern "C" void InitStage(void* arg)
 	InitAnas();
 	InitTrash();
 }
+#endif

@@ -370,6 +370,22 @@ rel/stage03/decapanel.cpp:
 	.ctors start:0x802C45E4 end:0x802C45E8
 	.bss start:0x804CA258 end:0x804CB308
 
+rel/stage04/jenny.cpp:
+	.text start:0x80179B1C end:0x80179BCC
+
+rel/stage06/parent.cpp:
+	.text start:0x80179BCC end:0x80179E5C
+	.bss start:0x804CB308 end:0x804CB32C
+	.bss start:0x804CB32C end:0x804CB350
+	.sdata2 start:0x805A6368 end:0x805A6388
+
+rel/stage07/living.cpp:
+	.text start:0x80179E5C end:0x8017A16C
+	.sdata2 start:0x805A6388 end:0x805A6390
+
+rel/stage08/stage08.cpp:
+	.text start:0x8017A16C end:0x8017A174
+
 rel/stage09/ambient.cpp:
 	.text start:0x8017A174 end:0x8017AE54
 	.ctors start:0x802C45E8 end:0x802C45EC
@@ -377,6 +393,28 @@ rel/stage09/ambient.cpp:
 	.data start:0x8030EEB8 end:0x8030F1D0
 	.bss start:0x804CB370 end:0x804CB3F8
 	.sdata2 start:0x805A6390 end:0x805A63B0
+
+rel/stage11/haisui.cpp:
+	.text start:0x8017AE54 end:0x8017AF18
+	.sdata2 start:0x805A63B0 end:0x805A63C0
+
+rel/stage16/ufo.cpp:
+	.text start:0x8017AF18 end:0x8017B044
+	.sbss start:0x805A1E18 end:0x805A1E1C
+	.sdata2 start:0x805A63C0 end:0x805A63C8
+
+rel/stage17/stage17.cpp:
+	.text start:0x8017B044 end:0x8017B108
+	.sdata2 start:0x805A63C8 end:0x805A63D8
+
+rel/stage18/kako.cpp:
+	.text start:0x8017B108 end:0x8017B184
+	.sdata2 start:0x805A63D8 end:0x805A63E8
+
+rel/stage20/stage20.cpp:
+	.text start:0x8017B184 end:0x8017B268
+	.sbss start:0x805A1E20 end:0x805A1E24
+	.sdata2 start:0x805A63E8 end:0x805A63F8
 
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14

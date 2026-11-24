@@ -1,3 +1,46 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+static XObj* timeAnimObj;
+
+// NONMATCHING: retail chooses r5 for the object-table cursor and r4 for the current object; the build swaps them.
+extern "C" s32 Stage20_Init(void* arg)
+{
+	XObj* obj;
+	s32 i;
+	timeAnimObj = NULL;
+	for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		obj = gGame.mXObjs.mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x2CD) {
+			timeAnimObj = obj;
+		}
+	}
+	return 1;
+}
+
+// NONMATCHING: local literal/global names and the floating-point register numbers differ; the call and values match.
+extern "C" s32 Stage20_Update(void* arg)
+{
+	if (timeAnimObj != NULL) {
+		f32 x = 150.0f * gGame.mTimeState.mTime;
+		if (gGame.mTimeState.mMode == 1) {
+			x += 150.0f;
+		}
+		timeAnimObj->SetAnim(0, TRUE, x, 1.0f, 0.0f, 15.0f);
+	}
+	return 1;
+}
+
+extern "C" s32 Stage20_NoOpSlot5(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage20_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "types.h"
 #include "Version.h"
 #include "game/cgame.h"
@@ -66,3 +109,4 @@ extern "C" void InitStage(void* arg)
 		}
 	}
 }
+#endif

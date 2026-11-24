@@ -1,3 +1,35 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+#define STAGE11_SCROLL() ((CCameraActionScroll*)gGame.mCameraActions.mTable[11])
+
+extern "C" s32 Stage11_Init(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage11_CmdSetCameraScroll(s32 cmd, s32 count, s32* values)
+{
+	for (s32 i = 0; i < count; i++) {
+		f32 v = values[i] / 100.0f;
+		if (v <= 0.0f) {
+			continue;
+		}
+		switch (i) {
+		case 0:
+			STAGE11_SCROLL()->mNearDistance = v;
+			break;
+		case 1:
+			STAGE11_SCROLL()->mFarDistance = v;
+			break;
+		case 2:
+			STAGE11_SCROLL()->mScrollFov = v;
+			break;
+		}
+	}
+	return 0;
+}
+#else
 #include "types.h"
 #include "Version.h"
 
@@ -65,3 +97,4 @@ extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values)
 extern "C" void InitStage(void* arg)
 {
 }
+#endif
