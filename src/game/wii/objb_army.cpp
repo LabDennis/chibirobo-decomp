@@ -788,15 +788,13 @@ void DrawArmyShot(XObjArmySlot* shot)
  */
 void XObjArmy::UpdateAnimationSounds()
 {
-	s32 anim;
 	f32 volume;
 	if (mFlags & 0x100) {
 		volume = 1.0f;
 	} else {
 		volume = GetSoundVolumeAtPosition(&gGame.mSound, GetPos(), 0);
 	}
-	anim = GetAnimId();
-	mSfx.Update(anim, GetAnimFrame(), volume);
+	mSfx.Update(GetAnimId(), GetAnimFrame(), volume);
 }
 
 /**
