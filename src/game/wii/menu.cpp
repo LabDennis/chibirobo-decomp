@@ -161,7 +161,7 @@ MenuPCPage gItemShopPage;
 MenuPCPage gScrapShopPage;
 u8 gStatusIconUnlocked[24];
 u8 gStatusEntryAvailable[16];
-CColor lbl_805A1BC8((GXColor) { 255, 255, 255, 255 });
+CColor lbl_805A1BC8(255, 255, 255, 255);
 // shared item/status pulse phase at 0x805A1BD0: Open resets it, Update advances it, DrawInventoryGrid reads it
 static f32 sInventoryPhase;
 // the status menu's pulse phase at 0x805A1BD4: MenuStatus::Open, Update and the State functions write it, all still in asm
@@ -2556,22 +2556,20 @@ CbPaneLayout lbl_802E87E8[51] = {
 
 MenuTextColors lbl_8044B700 = {
 	NULL,
-	CColor((GXColor) { 255, 255, 255, 0 }),
-	CColor((GXColor) { 0, 0, 0, 0 }),
+	CColor(255, 255, 255, 0),
+	CColor(0, 0, 0, 0),
 	FALSE,
 };
 
 CbPaneLayout lbl_802E94C0[5] = {
-	{ nw4r::math::VEC3(126.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
-	  CColor((GXColor) { 255, 255, 255, 255 }), 0 },
-	{ nw4r::math::VEC3(320.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
-	  CColor((GXColor) { 255, 255, 255, 255 }), 1 },
-	{ nw4r::math::VEC3(514.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f),
-	  CColor((GXColor) { 255, 255, 255, 255 }), 2 },
-	{ nw4r::math::VEC3(281.25f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f),
-	  CColor((GXColor) { 255, 255, 255, 255 }), 3 },
-	{ nw4r::math::VEC3(358.75f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f),
-	  CColor((GXColor) { 255, 255, 255, 255 }), 4 },
+	{ nw4r::math::VEC3(126.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), CColor(255, 255, 255, 255),
+	  0 },
+	{ nw4r::math::VEC3(320.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), CColor(255, 255, 255, 255),
+	  1 },
+	{ nw4r::math::VEC3(514.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), CColor(255, 255, 255, 255),
+	  2 },
+	{ nw4r::math::VEC3(281.25f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), CColor(255, 255, 255, 255), 3 },
+	{ nw4r::math::VEC3(358.75f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), CColor(255, 255, 255, 255), 4 },
 };
 
 // NONMATCHING: retail stores the two page panes' kinds as the constants 8 and 9 while it indexes the panes by i;

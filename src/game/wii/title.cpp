@@ -99,7 +99,7 @@ f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
-CColor lbl_805A1BA8((GXColor) { 255, 255, 255, 255 });
+CColor lbl_805A1BA8(255, 255, 255, 255);
 CbPaneList gPointerPanes;
 nw4r::lyt::Size lbl_805A1BB0((f32)gPointerScreenWidth, (f32)gPointerScreenHeight);
 nw4r::ut::Rect lbl_80445748(-lbl_805A1BB0.width * 0.5f, lbl_805A1BB0.height * 0.5f, lbl_805A1BB0.width * 0.5f, -lbl_805A1BB0.height * 0.5f);
