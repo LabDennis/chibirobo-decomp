@@ -8,6 +8,19 @@ public:
 	s32 wait;
 };
 
+extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt);
+
+class AmbientPlayer {
+public:
+	u8 mPaused;
+	AmbientSeq seqs[10];
+	s32 mBirdTimer;
+	s32* mBirdSounds;
+	s32 mBirdSoundCount;
+
+	void Update(s32 dt);
+};
+
 // NONMATCHING: the sound/zero registers and local literal names differ; every command, call and wait calculation matches.
 extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
 {
@@ -57,6 +70,29 @@ extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
 			seq->pos += 3;
 			break;
 		}
+		}
+	}
+}
+
+void AmbientPlayer::Update(s32 dt)
+{
+	s32 count;
+	if (mPaused) {
+		return;
+	}
+	for (u32 i = 0; i < 10; i++) {
+		AmbientSeq* seq = &seqs[i];
+		if (seq->data != NULL) {
+			AmbientSeq_Update(seq, dt);
+		}
+	}
+	if (mBirdSounds != NULL) {
+		mBirdTimer -= dt;
+		if (mBirdTimer <= 0) {
+			count     = mBirdSoundCount;
+			s32 index = rand() % count;
+			PlayWiiSoundEffect(&gGame.mSound, mBirdSounds[index], 1.0f, 0.0f);
+			mBirdTimer = rand() % 600 + 600;
 		}
 	}
 }
