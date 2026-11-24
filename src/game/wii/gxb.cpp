@@ -1106,7 +1106,6 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
  * @note Address: 0x80042C54
  * @note Size: 0x16C
  */
-// NONMATCHING: Move's add uses six float registers where retail's VEC3Add uses three, see Move
 void CPtclDust2::Update(u32 frames)
 {
 	if (!mActive) {
@@ -1125,7 +1124,8 @@ void CPtclDust2::Update(u32 frames)
 		}
 	}
 	mVel.y -= 0.05f * (f32)frames;
-	Move(mPos, (mVel * 1.0f) * (f32)frames);
+	Vec offset = (mVel * 1.0f) * (f32)frames;
+	nw4r::math::VEC3Add((nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&offset);
 	mAngle += mAngleSpeed;
 }
 
