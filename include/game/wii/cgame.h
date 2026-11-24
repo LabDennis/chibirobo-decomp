@@ -1204,11 +1204,14 @@ public:
 	virtual void Resume();           // _2C
 	virtual void vf28();
 	virtual void vf2C();
+	virtual void vf38();
 };
 
 // a menu of text rows, the GameCube class of the same name
 class Menu : public CMenu {
 public:
+	virtual void InitRows() { }
+
 	f32 mFontSize; // _150
 	f32 mMaxWidth; // _154, of the widest row
 	f32 mRowCount; // _158

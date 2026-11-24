@@ -1667,8 +1667,8 @@ extern "C" void DrawTitleScreen(Title* title)
 			}
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 			CTexObj& logo = title->mTex[gTitleLogoTextures[gTitleLogoIndex]];
-			u16 w         = GXGetTexObjWidth(&logo);
-			u16 h         = GXGetTexObjHeight(&logo);
+			f32 w         = GXGetTexObjWidth(&logo);
+			f32 h         = GXGetTexObjHeight(&logo);
 			u32 color     = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
 			DrawGsTexturedQuad(&gGame.mGs, &logo, color, color, color, color, (f32)(gPointerScreenWidth / 2),
 			                   (f32)(gPointerScreenHeight / 2 - 0x68) - 6.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
