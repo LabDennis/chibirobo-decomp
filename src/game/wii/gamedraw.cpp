@@ -2155,7 +2155,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 			game->Reset(3);
 		} else {
 			fn_80084BF0(&game->mMenu.mActive, 6);
-			ChangeGameStage(game, 10000, TRUE);
+			ChangeGameStage(game, 10001, TRUE);
 		}
 		break;
 	default:
