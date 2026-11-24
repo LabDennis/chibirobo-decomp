@@ -2228,22 +2228,24 @@ void CObj::SetPos(f32 x, f32 y, f32 z)
  * @note Address: 0x80024B4C
  * @note Size: 0x6C
  */
-// NONMATCHING: retail builds the sum in a local and copies it out, this one builds it in the result
+// NONMATCHING: retail allocates the paired-single addition result to f2 instead of f0.
 CVec CVec::operator+(Vec v) const
 {
 	CVec sum = *this;
 	nw4r::math::VEC3Add((nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&v);
-	return sum;
+	CVec result(sum);
+	return result;
 }
 
 /**
  * @note Address: 0x80024AE8
  * @note Size: 0x64
  */
-// NONMATCHING: as operator+
+// NONMATCHING: as operator+, the paired-single scale result uses f0 instead of retail's f2.
 CVec CVec::operator*(f32 s) const
 {
 	CVec product = *this;
 	nw4r::math::VEC3Scale((nw4r::math::VEC3*)&product, (nw4r::math::VEC3*)&product, s);
-	return product;
+	CVec result(product);
+	return result;
 }
