@@ -130,6 +130,15 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
+extern "C" s32 Stage03_Init(u32 arg)
+{
+	decaPanel.mActive = 0;
+	decaPanel.mState  = 1;
+	decaPanel.mFade   = 0.0f;
+	decaPanel.ResetInput();
+	return 1;
+}
+
 extern "C" s32 Stage03_Exit(u32 arg)
 {
 	decaPanel.mState = 0;

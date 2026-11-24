@@ -1022,6 +1022,7 @@ CmdShowTimer = .text:0x80178474; // type:function size:0x68
 CmdSetTimerRunning = .text:0x801784DC; // type:function size:0x58
 CmdSetTimer = .text:0x80178534; // type:function size:0x38
 CmdGetTimer = .text:0x8017856C; // type:function size:0x14
+Stage03_Init = .text:0x80178580; // type:function size:0x9C
 Stage03_Exit = .text:0x801789CC; // type:function size:0x44
 Stage03_DrawHud = .text:0x801789A0; // type:function size:0x2C
 Stage03_CmdNop = .text:0x80178A10; // type:function size:0x8

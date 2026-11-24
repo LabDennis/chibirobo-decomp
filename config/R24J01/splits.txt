@@ -375,7 +375,7 @@ rel/stage02/rouka.cpp:
 	.text start:0x80177A84 end:0x80178580
 
 rel/stage03/decapanel.cpp:
-	.text start:0x801789A0 end:0x801799F4
+	.text start:0x80178580 end:0x801799F4
 
 rel/stage20/stage20.cpp:
 	.text start:0x8017B184 end:0x8017B268
