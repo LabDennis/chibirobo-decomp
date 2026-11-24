@@ -273,6 +273,12 @@ extern "C" void Terminate(void)
 	Car::Init();
 }
 
+extern "C" void RestoreDefaultCamera(void)
+{
+	gGame.GetPlayer()->ClearBaseMtx();
+	gGame.mMotionControlCamera.ChangeAction(gGame.mMotionControlCamera.mPrevAction);
+}
+
 #else
 #include "Version.h"
 
