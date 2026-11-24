@@ -4592,7 +4592,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
 			InitPCPanelTexture(tex, 155);
 			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			u16 iconWidth = GXGetTexObjWidth(&tex), iconHeight = GXGetTexObjHeight(&tex);
+			f32 iconWidth = GXGetTexObjWidth(&tex), iconHeight = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, 140.0f * scale + left,
 			                   rowY + 10.0f * scale, 0.0f, 0.6f * (scale * iconWidth), 0.6f * (scale * iconHeight), 0.0f, 0.0f, 0.0f);
