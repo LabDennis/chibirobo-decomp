@@ -11,6 +11,7 @@ struct HamObj {
 	}
 	void StateFlip();
 	void StateSlide();
+	void StatePutDown();
 
 	void StartSlide(f32 distance, f32 speed, f32 angle)
 	{
@@ -124,6 +125,44 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 	slot->mSpawned    = 1;
 	slot->mStackLevel = 0;
 	slot->mAbove      = NULL;
+}
+
+static HamObj hamObjs[9];
+
+static inline bool IsActive(XObj* actor)
+{
+	return actor != NULL ? (actor->mStatus.mFlags & 0x10000) != 0 : false;
+}
+
+static inline bool IsOnTopOf(HamObj* other, HamObj* slot)
+{
+	return other->mAbove != NULL ? other->mAbove->mId == slot->mId : false;
+}
+
+// NONMATCHING: gGame/held and array/object registers differ; the lift test, nine slot updates and StatePutDown match.
+extern "C" void HamObj_StartPutDown(HamObj* slot)
+{
+	XObj* actor            = slot->mActor;
+	s32 held               = 0;
+	WiiPlayerState* player = gGame.GetPlayer();
+	if (player->mLift.mState != 0 && player->mLift.mTarget == actor) {
+		held = 1;
+	}
+	if (held) {
+		putDownActive = 1;
+		for (s32 i = 0; i < 9; i++) {
+			HamObj* other = &hamObjs[i];
+			if (IsActive(other->mActor)) {
+				other->mActor->mStatus.mFlags &= ~0x100000000ULL;
+				if (IsOnTopOf(other, slot)) {
+					other->mAbove = NULL;
+				}
+			}
+		}
+		slot->SetState(&HamObj::StatePutDown);
+	} else if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
+	}
 }
 #else
 #include "Version.h"
