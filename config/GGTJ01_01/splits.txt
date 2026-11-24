@@ -133,41 +133,11 @@ game/msgdataformat.cpp:
 	.data       start:0x80224C60 end:0x80224CC4
 
 game/memcard.cpp:
-	.text       start:0x80088D20 end:0x80089EE8
-	.sdata2     start:0x80637420 end:0x80637428
-
-game/memcardcapture.cpp:
-	.text       start:0x80089EE8 end:0x8008A2EC
-
-game/memcardbanner.cpp:
-	.text       start:0x8008A2EC end:0x8008A640
-	.rodata     start:0x80209EC8 end:0x80209EF4
-
-game/memcardformat.cpp:
-	.text       start:0x8008A640 end:0x8008AD18
-
-game/memcardscan.cpp:
-	.text       start:0x8008AD18 end:0x8008B050
-
-game/memcardscanjob.cpp:
-	.text       start:0x8008B050 end:0x8008B134
-
-game/memcardreadstate.cpp:
-	.text       start:0x8008B134 end:0x8008B658
-
-game/memcardread.cpp:
-	.text       start:0x8008B658 end:0x8008BB34
-
-game/memcardwritestate.cpp:
-	.text       start:0x8008BB34 end:0x8008BFB8
-
-game/memcardjob.cpp:
-	.text       start:0x8008BFB8 end:0x8008C10C
-
-game/memcardinit.cpp:
-	.text       start:0x8008C10C end:0x8008C158
+	.text       start:0x80088D20 end:0x8008C158
 	.ctors      start:0x801FEF3C end:0x801FEF40
+	.rodata     start:0x80209EC8 end:0x80209F08
 	.bss        start:0x80349200 end:0x80356680
+	.sdata2     start:0x80637420 end:0x80637428
 
 game/obja.cpp:
 	.text       start:0x8008C158 end:0x8009489C

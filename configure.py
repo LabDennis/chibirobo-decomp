@@ -436,7 +436,6 @@ gamecube_libs = [
             Object(Matching, "game/cevtdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/csounddtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xsounddtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/memcarddtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cmoviedtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecbaselight.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cthread.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -558,9 +557,6 @@ gamecube_libs = [
             # records in front of 0x8022AF38 (.data) and the "Vec"/"CVec" in front of 0x806382D8 end the previous file
             Object(NonMatching, "game/xobjspiderboss.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorstop.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(JP), "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (JP addresses): .text from ~XObjActor3 (0x8010A164) to __sinit (0x80116E80, .ctors 0x801FEF58),
             # whose table reaches .data through the file's first object (0x8022B758). -inline deferred, as retail shows:
             # the local initializers in .rodata (Kind2's 0x8020C120, Kind3's, Kind16's, ResetActor3Fields', LoadFromPlacement's
@@ -584,7 +580,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorpapa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjspidersmallstatus.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
@@ -596,9 +591,6 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(Matching, "game/xobjspiderbossstop.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjdustevent.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
-            Object(EquivalentFor(JP), "game/memcardload.cpp", cflags=cflags_game),
-            Object(NonMatching, "game/memcardscan.cpp", cflags=with_hsd_headers(cflags_game)),
             # one retail file (US .text 0x80027A98..0x8003135C: CXObj::SetScale*, XObjDemo, title draw/options/states,
             # ResetTitleScreenState, InitTitleScreen and __sinit_titlestates_cpp). -inline auto,deferred, as retail
             # shows: GC .text runs XObjDemo..InitTitleScreen, the exact reverse of the Wii file (game/wii/title.cpp:
@@ -610,15 +602,19 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossgetup.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/memcardpos.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossattack.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/memcard.cpp", cflags=with_hsd_headers(cflags_game)),
+            # One retail file (US .text 0x80086F24..0x8008A360, JP 0x80088D20..0x8008C158, PAL 0x80088E80..0x8008C2FC):
+            # starts with IsValidSavePreview after msg.cpp/CMsgData_Format (.sdata2 restarts at 0.0f) and ends with
+            # __sinit_memcard_cpp (.ctors) and one contiguous .rodata/.bss/.sdata2 run before obja.cpp.
+            # NONMATCHING: MWCC emits ReadMemoryCardPreviews and BuildSaveBanner after StartMemoryCardSaveRead, not in
+            # source order (ReadMemoryCardPreviews is held back by its compiler-generated CARDStat assignment;
+            # BuildSaveBanner's cause is open), so the pooled "CHIBIROBO(%d)" lands ahead of the banner strings in
+            # .rodata and the file cannot link in retail order yet. -inline noauto keeps the worker functions as calls from
+            # their thread entry wrappers and OpenOrCreateSaveFile/BuildSaveBanner/CaptureGameSaveData out of line.
+            Object(NonMatching, "game/memcard.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjactorground.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/memcardcheck.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline noauto, as retail shows: it keeps CheckDustScatterHeading (0x238) as a call from
             # UpdateDriftingDust (and UpdateFallingCoin as a call from XObjCoin::UpdateObject), which every GC
             # compiler (2.0 to 2.7) auto-inlines by size alone under -inline auto.
@@ -627,14 +623,10 @@ gamecube_libs = [
             # (not deferred), and ends with the weak tail Dust/Flags/HBox/HBoxPart/Coin/Item dtors,
             # XObjFlags::ResetForNewGame, and __sinit_xobjfree_cpp; one .rodata/.data/.bss/.sdata/.sdata2/.sbss2 run.
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
-            Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
-            Object(Matching, "game/memcardread.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
-            Object(Matching, "game/memcardscanjob.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossse.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossstates34.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjspiderbossload.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorupdate.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/memcardfile.cpp", cflags=cflags_game),
             Object(NonMatching, "game/params.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/inventory.cpp"),
             # -inline deferred, as retail shows: .sdata2 has the RTTI names "CJObj", "CXObj", "XObj"
@@ -647,7 +639,6 @@ gamecube_libs = [
             # ~XObjLight, then UpdateObject to InitializeObject; -inline deferred, as retail shows: only
             # deferred codegen of the file written last-address-first puts the vtable's destructor in front
             Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/memcardjob.cpp"),
             # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
             # what deferred codegen does to one source; the Wii build of the same file has no deferred
