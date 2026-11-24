@@ -913,7 +913,8 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
 		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
 		if (sound != NULL && actor != NULL) {
-			actor->mHandle.Stop(gRefreshRate * 0.0f);
+			f32 fade = 0.0f;
+			actor->mHandle.Stop(fade * gRefreshRate);
 		}
 	}
 	gGame.mSound.StopAllTracks(0.0f);
