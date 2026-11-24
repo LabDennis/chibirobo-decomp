@@ -344,10 +344,9 @@ void Shot::Draw()
 		return;
 	}
 	gGame.mGs.mBillboardEnabled = TRUE;
-	f32 smallSize               = 1.0f;
-	f32 largeSize               = 2.0f;
-	smallSize += 3.0f;
-	largeSize += 3.0f;
+	f32 border                  = 3.0f;
+	f32 smallSize               = 1.0f + border;
+	f32 largeSize               = 2.0f + border;
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
 	for (s32 j = 0; j < 10; j++) {
 		u32 alpha = 96.0f * (1.0f - 0.1f * j);

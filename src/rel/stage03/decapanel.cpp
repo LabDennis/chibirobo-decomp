@@ -286,11 +286,12 @@ static inline u32 FadeColor(f32 fade)
 }
 
 // NONMATCHING: pointer hit-testing, digit input and all draw calls are present; register allocation around
-// the key sprites and the packed colour construction remains open.
+// the key sprites and the packed colour construction remains open, and retail tests mState unsigned here (cmplwi)
+// though Stage03_Update's switch on it is signed.
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	CTexObj* tex;
-	if (work->mState != 2u) {
+	if (work->mState != 2) {
 		return;
 	}
 	if ((work->mActive & 1) && !(work->mActive & 2)) {
