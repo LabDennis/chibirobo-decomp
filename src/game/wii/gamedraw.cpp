@@ -878,7 +878,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		FbMirror* mirror = &mirrors[i];
 		if (mirror->IsUsed() && mirror->mJoint != NULL) {
 			if (mirror->mJointAnm != NULL) { // the object's own material animation goes back
-				memcpy(mirror->mJointAnm, mirror->mJointAnmCopy, 0x20);
+				memcpy(mirror->mJointAnm, &mirror->mJointAnmCopy, sizeof(GXTexObj));
 				mirror->mJointAnm = NULL;
 			}
 			mirror->mJoint   = NULL;

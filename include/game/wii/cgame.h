@@ -1796,8 +1796,8 @@ public:
 class FbMirror : public CFbTexEff {
 public:
 	CMirrorObj* mJoint;     // _128
-	void* mJointAnm;        // _12C, the ResAnmTexPat bound to "mirror_mat"
-	u8 mJointAnmCopy[0x20]; // _130, a copy of the anm with the mirror's texture patched in
+	GXTexObj* mJointAnm;    // _12C, the ResAnmTexPat bound to "mirror_mat"
+	GXTexObj mJointAnmCopy; // _130, a copy of the anm with the mirror's texture patched in
 	CCamera mCamera;        // _150
 	BOOL mVisible;          // _348, the eye is in front of the mirror
 	Mtx mView;              // _34C
