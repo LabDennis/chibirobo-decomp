@@ -612,7 +612,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
-		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight * 0.5f + gScreenSafeTop);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight / 2.0f + gScreenSafeTop);
 	}
 }
 
@@ -5834,31 +5834,30 @@ extern "C" void fn_8005A128(MenuPaneFadePair* fades, f32 x, f32 y, f32 alpha)
 
 extern "C" void fn_8005A68C(MenuItem* menu, const char* text, u32 color)
 {
-	const char* p        = text;
 	menu->mTitle.mActive = TRUE;
 	menu->mTitle.mCount  = 0;
 	if (text) {
 		menu->mTitle.mColor = color;
 		int i;
-		for (i = 0; i < 20 && *p; i++, p++) {
-			menu->mTitle.mChars[i].mText   = p;
+		for (i = 0; i < 20 && *text; i++, text++) {
+			menu->mTitle.mChars[i].mText   = text;
 			menu->mTitle.mChars[i].mFade   = -0.2f * i;
 			menu->mTitle.mChars[i].mHold   = gRefreshRate;
 			menu->mTitle.mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
 			menu->mTitle.mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
 			menu->mTitle.mCount++;
 			if (gGame.mLanguage == 0) {
-				u8 c    = *p;
-				u8 lead = TRUE;
-				u8 a    = (c >= 0x81 && c <= 0x9F);
-				if (!a) {
+				s32 lead = TRUE;
+				u8 c     = *text;
+				u8 a     = (c >= 0x81 && c <= 0x9F);
+				if (a == FALSE) {
 					u8 b = (c >= 0xE0 && c <= 0xFC);
-					if (!b) {
+					if (b == FALSE) {
 						lead = FALSE;
 					}
 				}
 				if (lead) {
-					p++;
+					text++;
 				}
 			}
 		}
@@ -8495,7 +8494,6 @@ extern "C" void fn_80062338(MenuStatus* menu, u32 frames)
 	}
 }
 
-// NONMATCHING: retail keeps the SJIS byte in r4 and the lead flag in r3; this form swaps them and inverts the final branch
 extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 {
 	menu->mTitle.mActive = TRUE;
@@ -8512,16 +8510,16 @@ extern "C" void fn_80061FF4(MenuStatus* menu, const char* text, u32 color)
 		menu->mTitle.mChars[i].mAngle1 = DEG2RAD * (rand() % 360);
 		menu->mTitle.mCount++;
 		if (gGame.mLanguage == 0) {
-			u8 c      = *text;
-			u8 single = FALSE;
-			u8 a      = (c >= 0x81 && c <= 0x9F);
-			if (!a) {
+			s32 lead = TRUE;
+			u8 c     = *text;
+			u8 a     = (c >= 0x81 && c <= 0x9F);
+			if (a == FALSE) {
 				u8 b = (c >= 0xE0 && c <= 0xFC);
-				if (!b) {
-					single = TRUE;
+				if (b == FALSE) {
+					lead = FALSE;
 				}
 			}
-			if (!single) {
+			if (lead) {
 				text++;
 			}
 		}
@@ -9475,34 +9473,33 @@ void MenuPC::State11(u32)
 }
 
 // the GameCube's inline MenuTitle::Set: the letters come in one after the other; the lead byte test is spelled as
-// title.cpp has it. NONMATCHING: retail keeps the lead flag in r3 and both range results in r0, and r28/r29 swap
+// title.cpp has it.
 static void SetMenuTitle(MenuSave* menu, const char* text, u32 color)
 {
-	const char* p        = text;
 	menu->mTitle.mActive = TRUE;
 	menu->mTitle.mCount  = 0;
 	if (text) {
 		menu->mTitle.mColor = color;
 		int i;
-		for (i = 0; i < 20 && *p; i++, p++) {
-			menu->mTitle.mChars[i].mText   = p;
+		for (i = 0; i < 20 && *text; i++, text++) {
+			menu->mTitle.mChars[i].mText   = text;
 			menu->mTitle.mChars[i].mFade   = -0.2f * i;
 			menu->mTitle.mChars[i].mHold   = gRefreshRate;
 			menu->mTitle.mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
 			menu->mTitle.mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
 			menu->mTitle.mCount++;
 			if (gGame.mLanguage == 0) {
-				u8 c    = *p;
-				u8 lead = TRUE;
-				u8 a    = (c >= 0x81 && c <= 0x9F);
-				if (!a) {
+				s32 lead = TRUE;
+				u8 c     = *text;
+				u8 a     = (c >= 0x81 && c <= 0x9F);
+				if (a == FALSE) {
 					u8 b = (c >= 0xE0 && c <= 0xFC);
-					if (!b) {
+					if (b == FALSE) {
 						lead = FALSE;
 					}
 				}
 				if (lead) {
-					p++;
+					text++;
 				}
 			}
 		}

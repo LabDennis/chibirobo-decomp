@@ -2412,12 +2412,12 @@ extern "C" void UpdateTitleDust(Title* title, const char* text, u32 color)
 		title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 		title->mName.mCount++;
 		if (gGame.mLanguage == 0) {
-			u8 c    = *text;
-			u8 lead = TRUE;
-			u8 a    = (c >= 0x81 && c <= 0x9F);
-			if (!a) {
+			s32 lead = TRUE;
+			u8 c     = *text;
+			u8 a     = (c >= 0x81 && c <= 0x9F);
+			if (a == FALSE) {
 				u8 b = (c >= 0xE0 && c <= 0xFC);
-				if (!b) {
+				if (b == FALSE) {
 					lead = FALSE;
 				}
 			}
@@ -2544,12 +2544,12 @@ extern "C" void DrawTitleHelpText(Title* menu)
 			menu->mBg[i].mText = text;
 			menu->mHelpCount++;
 			if (gGame.mLanguage == 0) {
-				u8 c    = *text;
-				u8 lead = TRUE;
-				u8 a    = (c >= 0x81 && c <= 0x9F);
-				if (!a) {
+				s32 lead = TRUE;
+				u8 c     = *text;
+				u8 a     = (c >= 0x81 && c <= 0x9F);
+				if (a == FALSE) {
 					u8 b = (c >= 0xE0 && c <= 0xFC);
-					if (!b) {
+					if (b == FALSE) {
 						lead = FALSE;
 					}
 				}
