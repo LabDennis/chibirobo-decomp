@@ -5560,7 +5560,7 @@ extern "C" void fn_8007ECC4(s32 icon, s32 hours, s32 minutes, s32, f32 x, f32 y,
 		}
 	}
 	InitPCPanelTexture(tex, 130);
-	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	f32 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	f32 sepX = gSaveSlotSpacing * sx + (10.0f * scale + (x + 81.0f * scale));
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - scale, 0.0f, 0.7f * (scale * sw), 0.7f * (scale * sh), 0.0f,
