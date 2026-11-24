@@ -1,3 +1,60 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+struct HamObj {
+	HamObj* mAbove;
+	XObj* mActor;
+	s32 mId;
+	s32 mType;
+	f32 mRotZ;
+	f32 mFlipFrames;
+	f32 mMoveAngle;
+	f32 mSlideDistance;
+	f32 mMoveSpeed;
+	s32 mSide;
+	s32 mYakiTime[2];
+	s32 mStackLevel;
+	void* mDish;
+	u8 mSpawned;
+	u8 _39[3];
+	void* mYakiEffect;
+	u32 mState[3];
+	s32 mStateTime;
+};
+
+extern "C" void HamObj_Init(HamObj* slot, s32 id)
+{
+	slot->mId    = id;
+	slot->mActor = gGame.mXObjs.mObjects[id];
+	slot->mSide  = 0;
+	slot->mDish  = NULL;
+	slot->mAbove = NULL;
+	switch (slot->mActor->mCoord.mPlacement->mObjectId) {
+	case 0x1F9:
+		slot->mYakiTime[1] = 0;
+		slot->mYakiTime[0] = 0;
+		slot->mType        = 1;
+		break;
+	case 0x263:
+		slot->mYakiTime[1] = 9999;
+		slot->mYakiTime[0] = 9999;
+		slot->mType        = 2;
+		break;
+	case 0x264:
+		slot->mYakiTime[1] = 9999;
+		slot->mYakiTime[0] = 9999;
+		slot->mType        = 3;
+		break;
+	default:
+		slot->mType = 0;
+		break;
+	}
+	if (slot->mActor != NULL) {
+		slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+		slot->mActor->mStatus.mFlags |= 0x10000000000ULL;
+	}
+}
+#else
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
@@ -4499,3 +4556,4 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
  * @note Size: 0x48
  */
 // fn_4_4728
+#endif

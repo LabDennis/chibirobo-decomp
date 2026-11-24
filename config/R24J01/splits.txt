@@ -350,6 +350,9 @@ rel/fafa.cpp:
 rel/ana.cpp:
 	.text start:0x8016BA00 end:0x8016BA04
 
+rel/stage01/hamburg.cpp:
+	.text start:0x8016DAD8 end:0x8016DBAC
+
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 
