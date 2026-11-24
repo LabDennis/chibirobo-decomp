@@ -68,17 +68,19 @@ void SavedObjFlagList::Apply(s32 mode)
 			break;
 		}
 		XObj* obj = GetObjById(mEntries[i].mId);
-		if (mode != 0) {
-			if (obj != NULL && (mEntries[i].mFlags & 1)) {
-				obj->mStatus.mFlags |= 0x10000ULL;
+		if (obj != NULL) {
+			if (mode != 0) {
+				if (mEntries[i].mFlags & 1) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+				}
+			} else {
+				obj->mStatus.mFlags &= ~0x10000ULL;
 			}
-		} else if (obj != NULL) {
-			obj->mStatus.mFlags &= ~0x10000ULL;
 		}
 	}
 }
 
-void SavedObjFlagList::Clear()
+inline void SavedObjFlagList::Clear()
 {
 	mNum = 0;
 	for (s32 i = 0; i < 300; i++) {
@@ -217,6 +219,12 @@ extern "C" s32 Stage03_CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
+extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 count, s32* args)
+{
+	savedObjFlags.Clear();
+	return 0;
+}
+
 extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 {
 	if (savedObjFlags.mNum < 300) {
@@ -234,7 +242,11 @@ extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 
 extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 count, s32* args)
 {
-	savedObjFlags.Apply(args[0]);
+	if (args[0] != 0) {
+		savedObjFlags.Apply(1);
+	} else {
+		savedObjFlags.Apply(0);
+	}
 	return 0;
 }
 #else
