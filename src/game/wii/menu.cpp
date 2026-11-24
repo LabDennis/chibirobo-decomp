@@ -5360,7 +5360,6 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		CTexObj blob;
-		InitPCPanelTexture(blob, 108);
 		f32 t;
 		f32 s0;
 		f32 bob;
@@ -5378,6 +5377,7 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 			MenuTitleChar* glyph = &menu->mTitle.mChars[i];
 			t                    = glyph->mFade;
 			if (!(t <= 0.0f)) {
+				InitPCPanelTexture(blob, 108);
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
@@ -5654,7 +5654,6 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		CTexObj blob;
-		InitPCPanelTexture(blob, 108);
 		f32 t;
 		f32 s0;
 		f32 bob;
@@ -5672,6 +5671,7 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 			MenuTitleChar* glyph = &menu->mTitle.mChars[i];
 			t                    = glyph->mFade;
 			if (!(t <= 0.0f)) {
+				InitPCPanelTexture(blob, 108);
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
@@ -5795,7 +5795,6 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		CTexObj blob;
-		InitPCPanelTexture(blob, 108);
 		f32 t;
 		f32 s0;
 		f32 bob;
@@ -5813,6 +5812,7 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 			MenuTitleChar* glyph = &menu->mTitle.mChars[i];
 			t                    = glyph->mFade;
 			if (!(t <= 0.0f)) {
+				InitPCPanelTexture(blob, 108);
 				CFont font;
 				s32 width;
 				CTexObj tex = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
