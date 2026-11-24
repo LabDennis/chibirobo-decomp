@@ -4873,7 +4873,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, bool selected, f32 x,
 	outline[1].y = outline[0].y;
 	InitPCPanelTexture(tex, 156);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	u16 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
+	f32 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, outline[1].x, outline[1].y, 0.0f,
 	                   1.2f * markerWidth, 1.2f * markerHeight, 0.0f, 0.0f, 0.0f);
@@ -5125,7 +5125,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	outline[1].y = outline[0].y;
 	InitPCPanelTexture(tex, 156);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	u16 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
+	f32 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 	                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, outline[1].x, outline[1].y, 0.0f,
 	                   1.2f * markerWidth, 1.2f * markerHeight, 0.0f, 0.0f, 0.0f);
