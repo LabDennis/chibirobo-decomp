@@ -56,7 +56,7 @@ s32 AtcMenu::GetItemIconTextureIndex(s32 index)
 	return 0x69;
 }
 
-// NONMATCHING (~85%): the request<0 && lift-state gate stays in cr0 where
+// NONMATCHING (~90%): the request<0 && lift-state gate stays in cr0 where
 // retail keeps it in cr1 for the inlined GetAttachment select below it;
 // sLabel also lands on a local sdata label instead of retail's lbl_805A10DC
 /**
@@ -66,8 +66,8 @@ s32 AtcMenu::GetItemIconTextureIndex(s32 index)
 const char* AtcMenu::GetItemLabel(s32 index)
 {
 	static const char* sLabel = "";
-	WiiPlayerState* player    = (WiiPlayerState*)mChr;
 	if (mItems[index].mAvailable > 0) {
+		WiiPlayerState* player = (WiiPlayerState*)mChr;
 		if (player->mAttachmentRequest < 0 && player->mLift.mState != 21 && player->mLift.mState != 22 && player->mLift.mState != 23) {
 			if (mItems[index].mType == player->GetAttachment()) {
 				sLabel = GetLocalizedInterfaceText(13);
@@ -81,9 +81,10 @@ const char* AtcMenu::GetItemLabel(s32 index)
 	return sLabel;
 }
 
-// NONMATCHING (~89%): register/scheduling wall — retail caches mChr in r9
-// across the three inlined GetAttachment selects, ours rematerializes the
-// load per block; the branch structure and AddPulse tail are identical
+// NONMATCHING (~96%): selects, branch structure and AddPulse tail now match —
+// retail reloads mChr per GetAttachment site, so there is no player local;
+// the remaining delta is callee-save coloring (r28/r30 for the colors) plus
+// the prologue's stw/lwz interleave and float literals on local @labels
 /**
  * @note Address: 0x800ED5E8
  * @note Size: 0x1F8
@@ -91,13 +92,12 @@ const char* AtcMenu::GetItemLabel(s32 index)
 u32 AtcMenu::GetItemColor(s32 index)
 {
 	s32 red, green, blue;
-	WiiPlayerState* player = (WiiPlayerState*)mChr;
 	if (mItems[index].mAvailable == 0) {
 		red   = 0x20;
 		green = 0x20;
 		blue  = 0x20;
 	} else if (mMenuType == 3) {
-		if (mItems[index].mType == player->GetAttachment()) {
+		if (mItems[index].mType == ((WiiPlayerState*)mChr)->GetAttachment()) {
 			red   = 0x32;
 			green = 0xC8;
 			blue  = 0xC8;
@@ -106,7 +106,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 			green = 0x32;
 			blue  = 0xC8;
 		}
-	} else if (index == mCursorIndex && mItems[index].mType == player->GetAttachment()) {
+	} else if (index == mCursorIndex && mItems[index].mType == ((WiiPlayerState*)mChr)->GetAttachment()) {
 		red   = 0xC8;
 		green = 0x64;
 		blue  = 0x96;
@@ -114,7 +114,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 		red   = 0xC8;
 		green = 0x64;
 		blue  = 0x64;
-	} else if (mItems[index].mType == player->GetAttachment()) {
+	} else if (mItems[index].mType == ((WiiPlayerState*)mChr)->GetAttachment()) {
 		red   = 0x32;
 		green = 0xC8;
 		blue  = 0xC8;
@@ -132,9 +132,9 @@ u32 AtcMenu::GetItemColor(s32 index)
 // the costume ring's item set and menu defaults, run once when the player spawns.
 // The GameCube split this over SetupPlayerRing/SetRingItems; the Wii gives each
 // ring an Init that also latches the command line's menu type override
-// NONMATCHING (~78%): scheduling/register-allocation residue around the
-// field-init block and the cmdline menu-type clamp; also the float literals
-// pool to local sdata2 labels where retail has named unit constants
+// NONMATCHING (~99.8%): code matches except the three float literals
+// (0.0f, 1.0f, 0.9f) referencing named unit sdata2 constants in retail,
+// local pool labels in the rebuild
 /**
  * @note Address: 0x800ED7E0
  * @note Size: 0x10C
@@ -144,17 +144,18 @@ void DrsMenu::Init(XObjChr* chr)
 	mChr         = chr;
 	mOpen        = 0;
 	mCursorIndex = 0;
-	mMenuType    = gCmdLineArgs.mAttachmentMenuType;
-	if (mMenuType > 3) {
+	if (gCmdLineArgs.mAttachmentMenuType <= 3) {
+		mMenuType = gCmdLineArgs.mAttachmentMenuType;
+	} else {
 		mMenuType = 0;
 	}
 	mFocus                   = 0;
 	mKeepPointedItemOnOpen   = 0;
-	mPendingFirstVisibleItem = -1;
-	mLastPointedItem         = 3;
 	mHeadTurn                = NAN;
 	mRowOffset               = 0.0f;
 	mFirstVisibleItem        = 0;
+	mPendingFirstVisibleItem = -1;
+	mLastPointedItem         = 3;
 	_10                      = 1.0f;
 	if (mMenuType == 3) {
 		mItems[0].mType = 1;
@@ -237,10 +238,10 @@ void DrsMenu::Open(s32 focus)
  */
 void DrsMenu::ConfirmSelection()
 {
-	s8 canEquip[]          = { 0, 1, 1, 1, 1, 0, 1, 1, 1 };
-	s32 type               = mItems[mCursorIndex].mType;
-	WiiPlayerState* player = (WiiPlayerState*)mChr;
+	s8 canEquip[] = { 0, 1, 1, 1, 1, 0, 1, 1, 1 };
+	s32 type      = mItems[mCursorIndex].mType;
 	if (canEquip[type]) {
+		WiiPlayerState* player = (WiiPlayerState*)mChr;
 		if (type == player->mSuits.mCurrent) {
 			if (player->mSuits.mChangeStep == 0) {
 				player->mSuits.mRequested  = 0;
@@ -250,9 +251,12 @@ void DrsMenu::ConfirmSelection()
 			player->mSuits.mRequested  = type;
 			player->mSuits.mChangeStep = 1;
 		}
-	} else if (player->mSuits.mChangeStep == 0) {
-		player->mSuits.mRequested  = 0;
-		player->mSuits.mChangeStep = 1;
+	} else {
+		WiiPlayerState* player = (WiiPlayerState*)mChr;
+		if (player->mSuits.mChangeStep == 0) {
+			player->mSuits.mRequested  = 0;
+			player->mSuits.mChangeStep = 1;
+		}
 	}
 }
 
@@ -302,7 +306,8 @@ const char* DrsMenu::GetItemLabel(s32 index)
 	return GetLocalizedInterfaceText(15);
 }
 
-// NONMATCHING (~88%): same mChr-cache wall as AtcMenu::GetItemColor
+// NONMATCHING (~95%): same remaining delta as AtcMenu::GetItemColor — callee-save
+// coloring, the prologue's stw/lwz interleave, one constant-block's value layout
 /**
  * @note Address: 0x800EDDC4
  * @note Size: 0x1C8
@@ -310,13 +315,12 @@ const char* DrsMenu::GetItemLabel(s32 index)
 u32 DrsMenu::GetItemColor(s32 index)
 {
 	s32 red, green, blue;
-	WiiPlayerState* player = (WiiPlayerState*)mChr;
 	if (mItems[index].mAvailable == 0) {
 		red   = 0x20;
 		green = 0x20;
 		blue  = 0x20;
 	} else if (mMenuType == 3) {
-		if (mItems[index].mType == player->mSuits.mCurrent) {
+		if (mItems[index].mType == ((WiiPlayerState*)mChr)->mSuits.mCurrent) {
 			red   = 0x32;
 			green = 0xC8;
 			blue  = 0xC8;
@@ -325,7 +329,7 @@ u32 DrsMenu::GetItemColor(s32 index)
 			green = 0x32;
 			blue  = 0xC8;
 		}
-	} else if (index == mCursorIndex && mItems[index].mType == player->mSuits.mCurrent) {
+	} else if (index == mCursorIndex && mItems[index].mType == ((WiiPlayerState*)mChr)->mSuits.mCurrent) {
 		red   = 0xC8;
 		green = 0x64;
 		blue  = 0x96;
@@ -333,7 +337,7 @@ u32 DrsMenu::GetItemColor(s32 index)
 		red   = 0xC8;
 		green = 0x64;
 		blue  = 0x64;
-	} else if (mItems[index].mType == player->mSuits.mCurrent) {
+	} else if (mItems[index].mType == ((WiiPlayerState*)mChr)->mSuits.mCurrent) {
 		red   = 0x32;
 		green = 0xC8;
 		blue  = 0xC8;
@@ -713,32 +717,35 @@ void XObjChrMenu::PointDrsItem(s32 item)
 
 // the yes/no menu's confirm and cancel, split out of the GameCube's
 // HandleOXMenuInput; the head-aim record reset runs either way
-// NONMATCHING (~90%): scheduling around the sound calls and the head-aim
-// record writes; float literals pool to local sdata2 labels
+// NONMATCHING (~98%): instruction stream matches with menu->mChr read at each
+// site (a chr local pins it in a callee-save and grows the frame); remaining
+// delta is the r4/r5 swap on the aim pointer and float literals on local
+// @labels instead of the unit's named sdata2 globals
 /**
  * @note Address: 0x800EF3F8
  * @note Size: 0x194
  */
 extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 {
-	WiiPlayerState* chr = (WiiPlayerState*)menu->mChr;
-	menu->mStarted      = -1;
-	if (result > 0) {
-		PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
-		menu->mConfirmedIndex = menu->mSelectedIndex;
-		menu->mChr->SetAnim(0x78, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
-		if (!(menu->mCrossMask & (1 << menu->mConfirmedIndex))) {
-			ShowOXCircle((XObjOX*)chr->mOXObj);
-		} else {
-			ShowOXCross((XObjOX*)chr->mOXObj);
+	menu->mStarted = -1;
+	if (result != 0) {
+		if (result > 0) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			menu->mConfirmedIndex = menu->mSelectedIndex;
+			menu->mChr->SetAnim(0x78, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			if (!(menu->mCrossMask & (1 << menu->mConfirmedIndex))) {
+				ShowOXCircle((XObjOX*)((WiiPlayerState*)menu->mChr)->mOXObj);
+			} else {
+				ShowOXCross((XObjOX*)((WiiPlayerState*)menu->mChr)->mOXObj);
+			}
+		} else if (result < 0) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+			menu->mConfirmedIndex = -1;
+			menu->mChr->SetAnim(0x5F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			menu->mChr->SetRotateY(menu->mStartRot, DEG2RAD * 12.0f);
 		}
-	} else if (result < 0) {
-		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-		menu->mConfirmedIndex = -1;
-		menu->mChr->SetAnim(0x5F, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-		menu->mChr->SetRotateY(menu->mStartRot, DEG2RAD * 12.0f);
 	}
-	XObjScnCamInitRec* aim = &chr->mHeadAimRecord;
+	XObjScnCamInitRec* aim = &((WiiPlayerState*)menu->mChr)->mHeadAimRecord;
 	aim->mSnap[0] = aim->mSnap[1] = 2;
 	aim->m_0C                     = NULL;
 	aim->mTarget.x                = NAN;

@@ -1465,7 +1465,7 @@ void XObjChr::UpdateObject(u32 frames)
 		SetRotationY(savedRot.y);
 	}
 	if (chr->mPadReset && !chr->mMenu.IsOpen() && !chr->mOXMenu.mStarted && !gGame.mMenu.mActive && !chr->mSuits.mChangeStep)
-		pad->Update(gWiiGameCubePads, 0);
+		*pad = gWiiPads[0];
 	else
 		pad->Clear();
 	if (chr->mMenu.IsOpening() && chr->mTumble.mState)
