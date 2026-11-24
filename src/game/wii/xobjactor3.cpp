@@ -1887,13 +1887,15 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
 		break;
-	case 4:
+	case 4: {
+		Vec playerPos = *gGame.GetPlayer()->GetPos();
 		if (!IsBusyAnim(gGame.GetPlayer()->GetAnimId()) && gGame.GetPlayer()->mAttachmentRequest < 0) {
 			gEventVars.mVars[actor->mEventArg1] = 1;
 		}
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
 		break;
+	}
 	}
 }
 
