@@ -3195,8 +3195,8 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, 
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[145], 0);
 	tex = gGame.mTpl.mTex;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	u16 iconW = GXGetTexObjWidth(&tex);
-	u16 iconH = GXGetTexObjHeight(&tex);
+	f32 iconW = GXGetTexObjWidth(&tex);
+	f32 iconH = GXGetTexObjHeight(&tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 80.0f * scale + (12.0f * scale + (203.0f * scale + x)),
 	                   9.0f * scale + y, 0.0f, scale * (1.1f * iconW), scale * iconH, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
@@ -3266,8 +3266,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[149], 0);
 	tex = gGame.mTpl.mTex;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	u16 iconW = GXGetTexObjWidth(&tex);
-	u16 iconH = GXGetTexObjHeight(&tex);
+	f32 iconW = GXGetTexObjWidth(&tex);
+	f32 iconH = GXGetTexObjHeight(&tex);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 80.0f * scale + (12.0f * scale + (203.0f * scale + x)),
 	                   8.5f * scale + y, 0.0f, 0.9f * (scale * (1.1f * iconW)), 0.9f * (scale * iconH), 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
