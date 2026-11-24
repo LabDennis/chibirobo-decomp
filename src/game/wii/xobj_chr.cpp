@@ -5664,6 +5664,14 @@ static inline void FindPlayerAnimVariant(s32& id, s32 variant)
 	}
 }
 
+static inline f32 PlayerAnimRateMultiplier(WiiPlayerState* chr, s32 anim)
+{
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && anim != 0x13B) {
+		return 1.135f;
+	}
+	return 1.0f;
+}
+
 // anims from 3000 up are the suit's, from 2000 up the attachment's, as on the GameCube
 static inline s32 SuitAnimGroup(WiiPlayerState* chr, s32 id)
 {
@@ -5697,36 +5705,26 @@ void XObjChr::SetAnim(s32 id, BOOL force, void*, void*, void*, f32 frame, f32 ra
 	else if (chr->mLift.mState == 0 && (chr->GetAttachment() == 1 || chr->GetAttachment() == 3))
 		FindPlayerAnimVariant(id, 2);
 	if (SuitAnimGroup(chr, id) == 1) {
-		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
-		              blend, blendRate);
+		XObj::SetAnim(id, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 	} else if (AtcAnimGroup(chr, id) == 1) {
-		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
-		              blend, blendRate);
+		XObj::SetAnim(id, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 	} else {
-		XObj::SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
-		              blend, blendRate);
+		XObj::SetAnim(id, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 	}
 	WiiSuitObject* suit = &chr->mSuits.mObjects[chr->mSuits.mCurrent];
-	if (IsObjectActive(suit)) {
-		suit->SetAnim(id, force, frame, rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f),
-		              blend, blendRate);
+	if (IsObjectActive(suit) == TRUE) {
+		suit->SetAnim(id, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 		if (chr->mSuits.mCurrent == 6) {
-			WiiSuitPart* part = &chr->mSuits.mParts[6];
+			WiiSuitPart* part = &chr->mSuits.mParts[chr->mSuits.mCurrent];
 			if (id == 0xCE8) {
-				if (part->GetAnimId() != 2)
-					part->SetAnim(2, force, frame,
-					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
-					              blendRate);
-			} else if (id == 0xCE7) {
 				if (part->GetAnimId() != 1)
-					part->SetAnim(1, force, frame,
-					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
-					              blendRate);
+					part->SetAnim(1, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
+			} else if (id == 0xCE7) {
+				if (part->GetAnimId() != 2)
+					part->SetAnim(2, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 			} else {
 				if (part->GetAnimId() != 0)
-					part->SetAnim(0, force, frame,
-					              rate * (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && id != 0x13B ? 1.135f : 1.0f), blend,
-					              blendRate);
+					part->SetAnim(0, force, frame, rate * PlayerAnimRateMultiplier(chr, id), blend, blendRate);
 			}
 		}
 	}

@@ -19,8 +19,8 @@ void* fn_8025CFC8(void* mdl);                   // the model's resource data
 void* fn_8025D564(void* mdl, const char* name); // ResMdl named material lookup
 void* fn_8027E5CC(void* out, void* model, void* mat);
 void* fn_8027E3D4(void* search, s32 index);
-s32 fn_8025F66C(void* anms, s32 index);   // has anm
-void* fn_8025F638(void* anms, s32 index); // the nth 0x20-byte anm record
+s32 fn_8025F66C(void* anms, s32 index);       // has anm
+GXTexObj* fn_8025F638(void* anms, s32 index); // the nth 0x20-byte anm record
 }
 
 namespace nw4r {
@@ -137,10 +137,10 @@ void FbMirror::Reset()
  * @note Size: 0x1BC
  */
 // NONMATCHING: binds the model's "mirror" node and the "mirror_mat" ResAnmTexPat, copies the
-// anm in at _130 and patches our texobj over its head so it samples the mirror's copy. Retail's
-// frame is 0x50 - real nw4r ResMat/iterator/ResAnmTexPat locals - so its CreateFbTexture call
-// stays a call; ours is small enough that ipa inlines it. The nw4r calls go through externed
-// addresses - the real types and the g3d_resmat_ac.h inlines they came from aren't known.
+// anm in at _130 and patches our texobj over its head so it samples the mirror's copy. The
+// GXTexObj replacement is a typed assignment like retail. Retail's frame is 0x50 - real nw4r
+// ResMat/iterator locals - so its CreateFbTexture call stays a call; ours is small enough that
+// ipa inlines it. The other nw4r calls still go through externed addresses.
 void FbMirror::SetMirror(CMirrorObj* obj)
 {
 	mJoint   = obj;
@@ -169,10 +169,10 @@ void FbMirror::SetMirror(CMirrorObj* obj)
 		}
 	}
 	if (fn_8025F66C(&scn, 0)) {
-		void* anm = fn_8025F638(&scn, 0);
-		mJointAnm = anm;
-		memcpy(mJointAnmCopy, anm, 0x20);
-		memcpy(mJointAnm, &mTexture.mTex, 0x20);
+		GXTexObj* anm = fn_8025F638(&scn, 0);
+		mJointAnm     = anm;
+		memcpy(&mJointAnmCopy, anm, sizeof(GXTexObj));
+		*mJointAnm = mTexture.mTex;
 	} else {
 		mJointAnm = NULL;
 	}

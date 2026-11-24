@@ -3097,8 +3097,7 @@ void UpdateHeldObject(XActLift* act, u32 frames)
 	switch (act->mTargetState) {
 	case 1: {
 		obj->mStatus.mFlags |= 0x0400000000000000ULL;
-		CVec liftOffset = *obj->GetPos() - fn_800E5A2C(act->mOwner);
-		act->mLiftStartOffset.Set(liftOffset);
+		act->mLiftStartOffset.Set(*obj->GetPos() - fn_800E5A2C(act->mOwner));
 		act->mYawOffset = obj->mMoveRotate.y - act->mOwner->mMoveRotate.y;
 		obj->SetPos(fn_800E5A2C(act->mOwner) - act->mLiftStartOffset * (1.0f - frame / end));
 		if (obj->GetPool() == 24) {

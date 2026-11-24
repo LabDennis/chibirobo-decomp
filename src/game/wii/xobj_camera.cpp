@@ -70,8 +70,8 @@ extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj);
 
 // NONMATCHING: the aim-angle helper the trackers below share: *outA gets the yaw from
 // head to the tracked target, *outB the pitch; both are clamped to the record's
-// m_30/m_2C ranges. first honest pass, scheduling and the exact source shape of the
-// CVec temporaries are not recovered
+// m_30/m_2C ranges. The pitch calls and branch shape follow retail; the CVec temporary
+// layout and FPR/GPR allocation still differ
 extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* outA, f32* outB)
 {
 	if (rec->m_0C != NULL) {
@@ -80,19 +80,19 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		if (at.y == rec->m_0C->GetPos()->y) {
 			at.y = head->y;
 		}
-		f32 dz = at.z - head->z;
-		f32 dx = at.x - head->x;
-		f32 dy = at.y - head->y;
-		*outB
-		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		f32 dz    = at.z - head->z;
+		f32 dx    = at.x - head->x;
+		f32 dy    = at.y - head->y;
+		f32 pitch = atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy));
+		*outB     = dy < 0.0f ? pitch - HALF_PI : HALF_PI - pitch;
 	} else if (__fpclassifyf(rec->mTarget.x) != FP_NAN) {
-		*outA   = (f32)atan2(rec->mTarget.x - head->x, rec->mTarget.z - head->z) - rot->y;
-		CVec at = rec->mTarget;
-		f32 dz  = at.z - head->z;
-		f32 dx  = at.x - head->x;
-		f32 dy  = at.y - head->y;
-		*outB
-		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		*outA     = (f32)atan2(rec->mTarget.x - head->x, rec->mTarget.z - head->z) - rot->y;
+		CVec at   = rec->mTarget;
+		f32 dz    = at.z - head->z;
+		f32 dx    = at.x - head->x;
+		f32 dy    = at.y - head->y;
+		f32 pitch = atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy));
+		*outB     = dy < 0.0f ? pitch - HALF_PI : HALF_PI - pitch;
 	} else if (rec->m_20 != NULL) {
 		CVec* eye = &rec->m_20->mView.mEye;
 		*outA     = (f32)atan2(eye->x - head->x, eye->z - head->z) - rot->y;
@@ -100,8 +100,8 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 dz    = at.z - head->z;
 		f32 dx    = at.x - head->x;
 		f32 dy    = at.y - head->y;
-		*outB
-		    = dy >= 0.0f ? HALF_PI - atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) : atan2(FSqrt(dz * dz + dx * dx), __fabsf(dy)) - HALF_PI;
+		f32 pitch = atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy));
+		*outB     = dy < 0.0f ? pitch - HALF_PI : HALF_PI - pitch;
 	}
 	if (*outA > rec->m_30) {
 		*outA = rec->m_30;
@@ -170,7 +170,11 @@ extern "C" void fn_800C6CF0(XObjScnCamInitRec* rec, u32 frames)
 			}
 		} else {
 			if (rec->mSnap[i] > 0) {
-				rec->mSnap[i] = rec->mSnap[i] == 2 ? 0 : -rec->mSnap[i];
+				if (rec->mSnap[i] == 2) {
+					rec->mSnap[i] = 0;
+				} else {
+					rec->mSnap[i] = -rec->mSnap[i];
+				}
 			}
 			*speed = 0.0f;
 			*cur   = *target;
