@@ -286,12 +286,11 @@ static inline u32 FadeColor(f32 fade)
 }
 
 // NONMATCHING: pointer hit-testing, digit input and all draw calls are present; register allocation around
-// the key sprites remains open, and retail tests mState unsigned here (cmplwi) though Stage03_Update's switch on
-// it is signed.
+// the key sprites and the packed colour construction remains open.
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	CTexObj* tex;
-	if (work->mState != 2) {
+	if (work->mState != 2u) {
 		return;
 	}
 	if ((work->mActive & 1) && !(work->mActive & 2)) {
@@ -391,10 +390,10 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		work->mCurY += 0.8f * (work->mTargetY - work->mCurY);
 
 		tex       = &work->mTexs[0];
+		f32 cx    = gPointerScreenWidth / 2;
 		u16 w     = GXGetTexObjWidth(tex);
 		u16 h     = GXGetTexObjHeight(tex);
 		u32 color = FadeColor(work->mFade);
-		f32 cx    = gPointerScreenWidth / 2;
 		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
 
 		f32 w1                       = 0.9f * (GXGetTexObjWidth(&work->mTexs[1]) / 10);
@@ -411,7 +410,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				continue;
 			}
 			tex = &work->mTexs[draws[i].mTex];
-			PSMTXScale(tex->mTexMtx.mMtx[1], draws[i].mScale, 1.0f, 1.0f);
+			PSMTXScale(tex->mTexMtx.mMtx[2], draws[i].mScale, 1.0f, 1.0f);
 			tex->mTexMtx.mDirty = TRUE;
 			PSMTXTrans(tex->mTexMtx.mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
 			tex->mTexMtx.mDirty = TRUE;
@@ -424,7 +423,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		}
 
 		tex = &work->mTexs[4];
-		PSMTXScale(tex->mTexMtx.mMtx[1], 0.1f, 1.0f, 1.0f);
+		PSMTXScale(tex->mTexMtx.mMtx[2], 0.1f, 1.0f, 1.0f);
 		tex->mTexMtx.mDirty = TRUE;
 		w2                  = 0.9f * (GXGetTexObjWidth(tex) / 10);
 		h2                  = 0.9f * GXGetTexObjHeight(tex);
