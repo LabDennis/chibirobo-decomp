@@ -2492,6 +2492,7 @@ RestoreSelections__5TitleFv = .text:0x8004E430; // type:function size:0x104
 UpdateSelections__5TitleFv = .text:0x8004E534; // type:function size:0x1B8
 AddPointerPane = .text:0x8005573C; // type:function size:0x20
 __dt__12CbPaneLayoutFv = .text:0x8004F8B0; // type:function size:0x40 scope:weak
+@4@__dt__8XObjDemoFv = .text:0x8004F8F0; // type:function size:0x8 scope:weak
 gTitleSaveSlots = .bss:0x80445230; // type:object size:0xFC
 gPointerPanes = .bss:0x8044532C; // type:object size:0x404
 __dt__19CCameraActionScrollFv = .text:0x8002DE54; // type:function size:0x6C
