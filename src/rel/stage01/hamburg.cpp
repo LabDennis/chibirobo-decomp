@@ -10,6 +10,17 @@ struct HamObj {
 		mStateTime = 0;
 	}
 	void StateFlip();
+	void StateSlide();
+
+	void StartSlide(f32 distance, f32 speed, f32 angle)
+	{
+		if (mState != &HamObj::StateFlip) {
+			mMoveAngle     = angle;
+			mSlideDistance = distance;
+			mMoveSpeed     = speed;
+			SetState(&HamObj::StateSlide);
+		}
+	}
 
 	HamObj* mAbove;
 	XObj* mActor;
@@ -73,6 +84,11 @@ extern "C" void HamObj_StartFlip(HamObj* slot, u32 frames)
 	CVec* playerPos   = ((XObj*)gGame.GetPlayer())->GetPos();
 	slot->mMoveAngle  = atan2(actorPos->x - playerPos->x, actorPos->z - playerPos->z);
 	slot->SetState(&HamObj::StateFlip);
+}
+
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle)
+{
+	slot->StartSlide(distance, speed, angle);
 }
 #else
 #include "Version.h"
