@@ -1268,9 +1268,8 @@ void CGame::Update(u32 frames)
 				StopWiiSfx(&gGame.mSound, 0x1F8, 0.0f);
 			}
 			for (i = 0; i < 2; i++) {
-				CSoundHandle* handle = ((AnimSfx*)GetPlayer()->mSfx)->mActors[i].GetHandle();
-				if (handle != NULL) {
-					handle->Stop(gRefreshRate * 0.0f);
+				if (((AnimSfx*)GetPlayer()->mSfx)->mActors[i].GetHandle() != NULL) {
+					((AnimSfx*)GetPlayer()->mSfx)->mActors[i].Stop(0.0f);
 				}
 			}
 		}

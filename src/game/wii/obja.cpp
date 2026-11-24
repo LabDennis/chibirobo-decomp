@@ -127,8 +127,8 @@ void XObj::ResetObjectState()
 
 // 0x800AC238, the placement read: copies the stage entry's transform, flags and parameters
 // into the object, starts its animation, wires the event script and records its scope
-// NONMATCHING: ~91% fuzzy - the object-id compare chains allocate their per-id flags to different
-// registers and retail tests the id ranges with subtract/compare forms ours does not produce
+// NONMATCHING: ~91% fuzzy - the remaining object-id compare chains allocate their per-id flags to different
+// registers and some id tests use another compare order.
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
@@ -224,7 +224,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		UpdateObjectFloorXZExtent(this);
 		if (fpclassify(mFloorXZExtent[0]) != FP_NAN && mFloorXZExtent[0] < 40.0f || (mStatus.mFlags & 0x400ULL)) {
 			s16 cat = GetCategory();
-			if (cat == 7 || cat == 8 || (cat >= 0x14 && cat <= 0x16)) {
+			if (cat == 7 || cat == 8 || cat == 0x14 || cat == 0x15 || cat == 0x16) {
 				mStatus.mFlags |= 0x80000000ULL;
 			}
 		}
@@ -849,24 +849,21 @@ void XObj::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blend
 		blend = 15.0f;
 	}
 	s32 animIndex      = (id & 0xFFFF) % 1000;
-	XObjSource* source = NULL;
-	if (mAttr.mObjData != NULL) {
-		source = mAttr.mObjData->mSource;
-	}
+	XObjSource* source = Source(mAttr);
 	if (source != NULL && source->mAnimNames != NULL) {
 		if (animIndex >= source->mAnimCount) {
 			animIndex = 0;
 		}
 		CObjAnim anim;
-		anim.mId   = id;
 		anim.mName = source->mAnimNames[animIndex];
+		anim.mId   = id;
 		CObj::SetAnim(&anim, force, frame, rate, blend, blendRate);
-		if ((id >> 16) != 0) {
+		if ((id & ~0xFFFF) != 0) {
 			s32 matIndex = (id >> 16) % 1000;
 			if (matIndex < source->mAnimCount) {
 				CObjAnim matAnim;
-				matAnim.mId   = id;
 				matAnim.mName = source->mAnimNames[matIndex];
+				matAnim.mId   = id;
 				SetMatAnim(&matAnim, frame);
 			}
 		}

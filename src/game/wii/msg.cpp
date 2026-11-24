@@ -1141,11 +1141,11 @@ extern "C" void InitMessageWindow(CMsg* msg, s32 mode)
 	msg->mStay            = 0;
 	msg->mGlyphSoundGroup = -1;
 	CMsg_ResetPos(msg);
-	msg->mFont.mColor = gMessageWindowDefaultColor;
+	msg->SetColor(gMessageWindowDefaultColor);
 	for (int i = 0; i < 2; i++) {
 		msg->mFont.mCursor[i].InitializeObject();
 	}
-	msg->mFont.mMode = mode;
+	msg->mFont._1484 = mode;
 }
 
 /**
@@ -1755,6 +1755,36 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	return 0;
 }
 
+inline void CSound::StopAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks.mHandles[i].Stop(frames);
+		}
+	}
+}
+
+inline void CSound::PauseAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && !mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+			mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(true, frames);
+		}
+	}
+}
+
+inline void CSound::ResumeAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+			mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(false, frames);
+		}
+	}
+}
+
 /**
  * @note Address: 0x800A7A68
  * @note Size: 0x44C
@@ -1769,15 +1799,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	switch (command) {
 	case 0:
 		if (sfx == -2) {
-			// stop every playing track at once (0 seconds of fade)
-			// retail computes the frame count at runtime (sdata2 0.0f multiply
-			// is not folded there); the value is 0 either way
-			u32 frames = gRefreshRate * 0.0f;
-			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
-				if (track != NULL)
-					track->Stop(frames);
-			}
+			gGame.mSound.StopAllTracks(0.0f);
 		} else {
 			StopWiiSfx(&gGame.mSound, sfx, 0.0f);
 		}
@@ -1807,24 +1829,14 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	}
 	case 5:
 		if (sfx == -2) {
-			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
-			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
-				if (track != NULL && !track->IsPause())
-					track->Pause(true, frames);
-			}
+			gGame.mSound.PauseAllTracks(0.0f);
 		} else {
 			PauseWiiSfx(&gGame.mSound, sfx, 0.0f);
 		}
 		break;
 	case 6:
 		if (sfx == -2) {
-			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
-			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
-				if (track != NULL && track->IsPause())
-					track->Pause(false, frames);
-			}
+			gGame.mSound.ResumeAllTracks(0.0f);
 		} else {
 			ResumeWiiSfx(&gGame.mSound, sfx, 0.0f);
 		}

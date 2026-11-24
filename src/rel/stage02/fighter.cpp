@@ -337,21 +337,22 @@ extern fighter::CCameraActionFighter fighterCamera;
 extern s32 fireHoldFrames;
 extern u8 lbl_5_bss_0;
 
-// NONMATCHING: size expressions fold to literal loads and the trail's register/stack layout differs; all draw calls match.
+// NONMATCHING: the size arithmetic's load order and the trail loop's alpha/argument register schedule differ; all draw calls match.
 void Shot::Draw()
 {
 	if (!mActive) {
 		return;
 	}
 	gGame.mGs.mBillboardEnabled = TRUE;
+	f32 border                  = 3.0f;
+	f32 smallSize               = 1.0f + border;
+	f32 largeSize               = 2.0f + border;
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
-	f32 smallSize = 1.0f + 3.0f;
-	f32 largeSize = 2.0f + 3.0f;
 	for (s32 j = 0; j < 10; j++) {
-		Vec* pos  = &mTrail[j];
-		Vec up    = { 0.0f, 0.0f, 0.0f };
 		u32 alpha = 96.0f * (1.0f - 0.1f * j);
-		DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, smallSize, smallSize, up.x, up.y, up.z);
+		Vec up    = { 0.0f, 0.0f, 0.0f };
+		DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, mTrail[j].x, mTrail[j].y, mTrail[j].z, smallSize, smallSize, up.x,
+		             up.y, up.z);
 	}
 	Vec* pos = &mPos;
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)2, (GXBlendFactor)4, (GXLogicOp)15);

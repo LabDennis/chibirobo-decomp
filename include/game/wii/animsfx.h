@@ -9,6 +9,8 @@
 
 struct WiiPlayerState;
 
+extern s32 gRefreshRate;
+
 // one sound an anim plays between two frames, a negative mAnim ends an object's table. The
 // GameCube's AnimSfxEvent with the actor that plays it added
 struct AnimSfxEvent {
@@ -64,6 +66,14 @@ public:
 		if (actor != NULL && actor->mHandle.IsAttachedSound()) {
 			actor->SetPosition(nw4r::math::VEC3(*pos));
 			actor->UpdateFade(step);
+		}
+	}
+	// stops the actor's sound over fade seconds
+	void Stop(f32 fade)
+	{
+		CSound3DActor* actor = mActor;
+		if (actor != NULL) {
+			actor->mHandle.Stop(gRefreshRate * fade);
 		}
 	}
 	// the actor's handle while it plays a sound

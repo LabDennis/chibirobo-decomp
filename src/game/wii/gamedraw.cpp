@@ -18,6 +18,7 @@
 #include "game/wii/fbeffect.h"
 #include "game/fbtexeff.h"
 #include "game/cmdline.h"
+#include "game/cvec.h"
 #include "game/mm.h"
 #include "game/cfont.h"
 #include "game/stagetable.h"
@@ -910,10 +911,8 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	WiiPlayerState* player = game->GetPlayer();
 	for (s32 i = 0; i < 2; i++) {
-		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
-		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
-		if (sound != NULL && actor != NULL) {
-			actor->mHandle.Stop(gRefreshRate * 0.0f);
+		if (((AnimSfx*)player->mSfx)->mActors[i].GetHandle() != NULL) {
+			((AnimSfx*)player->mSfx)->mActors[i].Stop(0.0f);
 		}
 	}
 	gGame.mSound.StopAllTracks(0.0f);
@@ -2228,22 +2227,18 @@ void CObj::SetPos(f32 x, f32 y, f32 z)
  * @note Address: 0x80024B4C
  * @note Size: 0x6C
  */
-// NONMATCHING: retail builds the sum in a local and copies it out, this one builds it in the result
 CVec CVec::operator+(Vec v) const
 {
 	CVec sum = *this;
-	nw4r::math::VEC3Add((nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&v);
-	return sum;
+	return sum += v;
 }
 
 /**
  * @note Address: 0x80024AE8
  * @note Size: 0x64
  */
-// NONMATCHING: as operator+
 CVec CVec::operator*(f32 s) const
 {
 	CVec product = *this;
-	nw4r::math::VEC3Scale((nw4r::math::VEC3*)&product, (nw4r::math::VEC3*)&product, s);
-	return product;
+	return product *= s;
 }

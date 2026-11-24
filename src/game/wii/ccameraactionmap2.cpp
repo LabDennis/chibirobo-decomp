@@ -461,6 +461,10 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		x0 /= 100.0f;
 		f32 z0 = corner[1];
 		z0 /= 100.0f;
+		Vec point0;
+		point0.x = x0;
+		point0.y = 0.0f;
+		point0.z = z0;
 		if (side == 3) {
 			corner = rec->_04[0];
 		} else {
@@ -470,24 +474,20 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		x1 /= 100.0f;
 		f32 z1 = corner[1];
 		z1 /= 100.0f;
+		Vec point1;
+		point1.x = x1;
+		point1.y = 0.0f;
+		point1.z = z1;
 
 		if (cross.y > 0.0f) {
-			map->mSideStart.x = x0;
-			map->mSideStart.y = 0.0f;
-			map->mSideStart.z = z0;
-			map->mSideEnd.x   = x1;
-			map->mSideEnd.y   = 0.0f;
-			map->mSideEnd.z   = z1;
-			map->mSideSign    = 1;
+			map->mSideStart = point0;
+			map->mSideEnd   = point1;
+			map->mSideSign  = 1;
 		}
 		if (cross.y < 0.0f) {
-			map->mSideStart.x = x1;
-			map->mSideStart.y = 0.0f;
-			map->mSideStart.z = z1;
-			map->mSideEnd.x   = x0;
-			map->mSideEnd.y   = 0.0f;
-			map->mSideEnd.z   = z0;
-			map->mSideSign    = -1;
+			map->mSideStart = point1;
+			map->mSideEnd   = point0;
+			map->mSideSign  = -1;
 		}
 		return TRUE;
 	}

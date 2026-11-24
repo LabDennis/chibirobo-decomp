@@ -10,7 +10,7 @@
 // dolphin/mtx/vec.h or dolphin/vec.h first. the casts are for the hsd one, it
 // takes non const pointers
 
-inline void CVec::operator+=(const Vec& v)
+inline CVec& CVec::operator+=(const Vec& v)
 {
 #if defined(VERSION_R24J01)
 	// the Wii body is nw4r's VEC3Add (its three work registers show in every retail add),
@@ -19,6 +19,17 @@ inline void CVec::operator+=(const Vec& v)
 #else
 	PSVECAdd(this, (Vec*)&v, this);
 #endif
+	return *this;
+}
+
+inline CVec& CVec::operator*=(f32 s)
+{
+#if defined(VERSION_R24J01)
+	nw4r::math::VEC3Scale((nw4r::math::VEC3*)this, (nw4r::math::VEC3*)this, s);
+#else
+	PSVECScale(this, this, s);
+#endif
+	return *this;
 }
 
 inline void CVec::operator-=(const Vec& v)
