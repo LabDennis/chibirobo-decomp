@@ -3,7 +3,10 @@
 
 #include "types.h"
 #include "Dolphin/vec.h"
+#include "Dolphin/mtx.h"
+#include "game/ut.h"
 #include "nw4r/math/math_types.h"
+#include "nw4r/lyt/lyt_types.h"
 
 // CPadAct's flags the menus read
 enum {
@@ -109,13 +112,11 @@ STATIC_ASSERT(sizeof(CbPane) == 0x50);
 
 // where a pane sits, one entry of the tables the title and the menus place their panes from
 struct CbPaneLayout {
-	Vec mTrans;  // _00
-	f32 _0C;     // _0C
-	f32 _10;     // _10
-	f32 mWidth;  // _14
-	f32 mHeight; // _18
-	u8 _1C[0x24 - 0x1C];
-	s32 mKind; // _24
+	nw4r::math::VEC3 mTrans; // _00
+	nw4r::math::VEC2 mScale; // _0C
+	nw4r::lyt::Size mSize;   // _14
+	CColor mColor;           // _1C
+	s32 mKind;               // _24
 };
 STATIC_ASSERT(sizeof(CbPaneLayout) == 0x28);
 
