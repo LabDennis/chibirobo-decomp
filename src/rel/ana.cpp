@@ -1,8 +1,197 @@
 #if defined(VERSION_R24J01)
-#include "types.h"
+#include "game/wii/cgame.h"
+
+extern "C" CVec fn_800E5A2C(XObj* player);
+
+class Ana {
+public:
+	Ana() { }
+	virtual ~Ana() { }
+	virtual bool IsActive() { return mStatus.mFlags & 1; }
+
+	void Set(f32 x, f32 y, f32 z)
+	{
+		mStatus.mFlags |= 1;
+		mPos.x = x;
+		mPos.y = y;
+		mPos.z = z;
+	}
+
+	void SetJObj(s32 kind, s32 which)
+	{
+		mJObjKind  = kind;
+		mJObjWhich = which;
+	}
+
+	Vec mPos;
+	f32 mRotY;
+	CStatus32 mStatus;
+	s32 mId;
+	s32 mJObjKind;
+	s32 mJObjWhich;
+};
+
+class AnaNull : public Ana {
+public:
+	virtual bool IsActive() { return false; }
+};
+
+static Ana anas[20];
+static AnaNull anaNull;
+static XObj anaXObjs[20][5];
+
+s32 activeAnaNum;
+static XObj* tutiAnaObj;
+static XObj* tutiHutaObj;
+static XObj* flowerObjs[3];
+static u8 anaXObjsInitialized;
 
 extern "C" void UpdateAnas(s32 dt)
 {
+}
+
+// NONMATCHING: reset and placement block layout differs; all five load paths and the status/JObj resets match.
+extern "C" void InitAnas(void)
+{
+	tutiAnaObj    = NULL;
+	tutiHutaObj   = NULL;
+	flowerObjs[0] = NULL;
+	flowerObjs[1] = NULL;
+	flowerObjs[2] = NULL;
+	activeAnaNum  = 0;
+	for (s32 i = 0; i < 20; i++) {
+		anas[i].mStatus.mFlags = 0;
+		anas[i].SetJObj(0, 0);
+	}
+
+	if (!anaXObjsInitialized) {
+		anaXObjsInitialized = TRUE;
+		for (s32 i = 0; i < 20; i++) {
+			for (s32 j = 0; j < 5; j++) {
+				anaXObjs[i][j].InitializeObject();
+			}
+		}
+	}
+
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		XObj* obj = gGame.mXObjs.mObjects[i];
+		if (!(obj->mStatus.mFlags & 1)) {
+			continue;
+		}
+		s32 kind = obj->mCoord.mPlacement->mObjectId;
+		if (kind == 0x2A9) {
+			tutiAnaObj = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][0].mStatus.mFlags & 1)) {
+					anaXObjs[j][0].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x178) {
+			tutiHutaObj = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][1].mStatus.mFlags & 1)) {
+					anaXObjs[j][1].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind >= 0x2B7 && kind <= 0x2B9) {
+			s32 which         = kind - 0x2B7;
+			flowerObjs[which] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][which + 2].mStatus.mFlags & 1)) {
+					anaXObjs[j][which + 2].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+	}
+}
+
+extern "C" void ExitAnas(void)
+{
+	for (s32 i = 0; i < 20; i++) {
+		for (s32 j = 0; j < 5; j++) {
+			anaXObjs[i][j].Release();
+		}
+	}
+}
+
+// NONMATCHING: case/local register layout differs; index selection and animation IDs 1-5 match.
+extern "C" XObj* GetAnaJObj(s32 index, s32 kind, s32 which)
+{
+	if (tutiAnaObj == NULL) {
+		return NULL;
+	}
+	if (which < 0 || which >= 3) {
+		which = 0;
+	}
+
+	XObj* group = anaXObjs[index];
+	XObj* obj   = &group[which + 2];
+	switch (kind) {
+	case 1:
+		return &group[0];
+	case 2:
+		return &group[1];
+	case 3:
+		if (obj != NULL) {
+			obj->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 4:
+		if (obj != NULL) {
+			obj->SetAnim(2, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 5:
+		if (obj != NULL) {
+			obj->SetAnim(3, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 6:
+		if (obj != NULL) {
+			obj->SetAnim(4, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	case 7:
+		if (obj != NULL) {
+			obj->SetAnim(5, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		return obj;
+	}
+	return NULL;
+}
+
+// NONMATCHING: position/scene-list register layout differs; carry/position selection and all render calls match.
+extern "C" void DrawAnas(void)
+{
+	for (s32 i = 0; i < 20; i++) {
+		if (!(anas[i].mStatus.mFlags & 1)) {
+			continue;
+		}
+		XObj* obj = GetAnaJObj(i, anas[i].mJObjKind, anas[i].mJObjWhich);
+		if (obj == NULL) {
+			continue;
+		}
+		Vec pos;
+		if (anas[i].mStatus.mFlags & 8) {
+			pos = fn_800E5A2C(gGame.GetPlayer());
+		} else {
+			pos = anas[i].mPos;
+		}
+		obj->SetPos(pos);
+		gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
+	}
+
+	gGame.mGs.mScene.GetRoot()->UpdateFrame();
+	gGame.mGs.mScene.GetRoot()->CalcWorld();
+	gGame.mGs.mScene.GetRoot()->CalcView();
+	gGame.mGs.mScene.GetRoot()->GatherDrawScnObj();
+	gGame.mGs.mScene.GetRoot()->DrawOpa();
+	gGame.mGs.mScene.GetRoot()->DrawXlu();
+	while (!gGame.mGs.mScene.GetRoot()->Empty()) {
+		gGame.mGs.mScene.GetRoot()->PopBack();
+	}
 }
 #else
 #include "Version.h"

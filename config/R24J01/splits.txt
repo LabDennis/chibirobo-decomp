@@ -348,7 +348,9 @@ rel/fafa.cpp:
 	.text start:0x8016AF80 end:0x8016B078
 
 rel/ana.cpp:
-	.text start:0x8016BA00 end:0x8016BA04
+	.text start:0x8016B71C end:0x8016C39C
+	.ctors start:0x802C45D0 end:0x802C45D4
+	.bss start:0x80485B48 end:0x804C2468
 
 rel/trash.cpp:
 	.text start:0x8016C39C end:0x8016D0CC

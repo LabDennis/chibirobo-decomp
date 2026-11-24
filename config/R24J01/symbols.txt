@@ -9961,3 +9961,5 @@ CheckYakiResult = .text:0x801711CC; // type:function size:0x290
 __sinit_\hamburg_cpp = .text:0x8017145C; // type:function size:0x3C scope:local
 SetYakiRates = .text:0x8016D0CC; // type:function size:0x168
 __sinit_\trash_cpp = .text:0x8016D058; // type:function size:0x58 scope:local
+__sinit_\ana_cpp = .text:0x8016C008; // type:function size:0xD4 scope:local
+GetAnaJObj = .text:0x8016BE50; // type:function size:0x1B8
