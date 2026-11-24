@@ -2200,6 +2200,7 @@ if wii:
                 Object(Matching, "TRK_MINNOW_DOLPHIN/notify.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/flush_cache.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/__exception.c"),
                 Object(Matching, "rvl_trk/string_TRK.c"),
                 Object(Matching, "rvl_trk/targimpl.c"),
                 # an assembled file in the original: four trap stubs, built from targsupp.s
