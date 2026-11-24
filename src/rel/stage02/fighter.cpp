@@ -547,6 +547,34 @@ extern "C" s32 GetShotEvent(void)
 	return ret;
 }
 
+extern "C" void EndFighter(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	gGame.GetPlayer()->RestoreControl();
+	gGame.GetPlayer()->ClearBaseMtx();
+	gGame.mMotionControlCamera.ChangeAction(gGame.mMotionControlCamera.mPrevAction);
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x2B3)) {
+		StopWiiSfx(&gGame.mSound, 0x2B3, 0.0f);
+	}
+	if (fighterWork.mBody != NULL) {
+		fighterWork.mBody->ClearBaseMtx();
+		if (fighterWork.mExtra != NULL) {
+			fighterWork.mExtra->ClearBaseMtx();
+		}
+	}
+	pilotNwing.mCarriedObj->ClearBaseMtx();
+	if (pilotNwing.mAttachedObj0 != NULL) {
+		pilotNwing.mAttachedObj0->ClearBaseMtx();
+	}
+	if (pilotNwing.mAttachedObj1 != NULL) {
+		pilotNwing.mAttachedObj1->ClearBaseMtx();
+	}
+	fighterWork.mBody = fighterWork.mPath = fighterWork.mExtra = NULL;
+	pilotNwing.mCarriedObj = pilotNwing.mPathObj = NULL;
+}
+
 extern "C" void InitPilotNwing(XObj* carried, XObj* path, XObj* attached0, XObj* attached1)
 {
 	if (carried == NULL || path == NULL) {

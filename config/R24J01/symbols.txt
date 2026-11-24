@@ -969,6 +969,7 @@ GetTimeLeft = .text:0x80173F14; // type:function size:0x10
 GetScore = .text:0x80173F24; // type:function size:0x10
 TakeDestroyedMatoId = .text:0x80173F34; // type:function size:0x34
 GetShotEvent = .text:0x801740D4; // type:function size:0x4C
+EndFighter = .text:0x80173F68; // type:function size:0x16C
 InitPilotNwing = .text:0x80174120; // type:function size:0x94
 ShowLowerPanel = .text:0x801741B4; // type:function size:0x34
 ShowCenterPanel = .text:0x801741E8; // type:function size:0x3C
