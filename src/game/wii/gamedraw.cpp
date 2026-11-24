@@ -864,7 +864,7 @@ void XObj::PauseSounds(f32)
  */
 // NONMATCHING: FbSubwin::Reset is a virtual call in retail (fbtexeff.h's Wii class has no CFbTexEff base
 // yet); the float literals are addressed from the whole file's pool
-// changes to another stage: 10000 is the title, 20000 the stage from the save, below 0 the next
+// changes to another stage: 10001 is the title, 10002 the stage from the save, below 0 the next
 // one. everything that belongs to the old stage is let go of, and the new stage's name is set up to
 // pop in when showName is set
 extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
@@ -937,13 +937,13 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
 	}
 
-	if (stage == 10000) {
+	if (stage == 10001) {
 		if (gCmdLineArgs.mStage < 0 || game->GetStatusFlags(0x0008000000000000)) {
 			game->SetStage(GetDefaultStageIndex());
 		} else {
 			game->SetStage(gCmdLineArgs.mStage);
 		}
-	} else if (stage == 20000) {
+	} else if (stage == 10002) {
 		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 1));
 		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 0));
 		game->mMemcardLoaded = TRUE;
@@ -956,7 +956,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		}
 	}
 
-	if (stage == 10000) {
+	if (stage == 10001) {
 		game->SetStatusFlags(0x20000000);
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
@@ -977,7 +977,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		blur->mTarget   = 0.0f;
 		blur->mSpeed    = 0.0f;
 		game->mLoadStep = 20;
-	} else if (stage == 20000) {
+	} else if (stage == 10002) {
 		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
