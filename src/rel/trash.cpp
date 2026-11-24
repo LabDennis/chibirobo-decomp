@@ -1,9 +1,24 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/cpadact.h"
 
-static XObj trashObjs[10];
+struct TrashObj : public XObj {
+	virtual u32 GetFlag() { return GetObjFlags(); }
+
+	u32* mFlags;
+};
+
+static TrashObj trashObjs[10];
 static XObj* trashTarget;
-static XObj* trashObj;
+static TrashObj* trashObj;
+static s32 trashStackNum;
+static f32 trashStackScale;
+static Vec trashPos;
+static Vec trashDest;
+static Vec trashStep;
+static f32 trashArc;
+static s32 trashState;
+static s32 trashResult;
 static s32 trashboxIndex;
 static u8 trashActive;
 static u8 trashObjsInitialized;
@@ -32,6 +47,168 @@ extern "C" void InitTrash(void)
 }
 
 // NONMATCHING: object/counter registers differ; all ten active checks and releases match.
+// NONMATCHING: state/local register scheduling differs; all states, placements, sounds and collision paths match.
+extern "C" void UpdateTrash(u32 frames)
+{
+	if (trashTarget == NULL || !trashActive) {
+		return;
+	}
+
+	WiiPlayerState* robot = gGame.GetPlayer();
+	switch (trashState) {
+	case 0:
+		trashObj = (TrashObj*)robot->mLift.mTarget;
+		for (s32 i = 0; i < 10; i++) {
+			if (!(trashObjs[i].mStatus.mFlags & 1)) {
+				trashObjs[i].LoadFromPlacement(trashObj->mCoord);
+			}
+		}
+		if (gWiiPointer.GetSwing(NULL, NULL)) {
+			robot->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			trashState++;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+		} else if (gWiiPointer.mFlags & 0x200000000ULL) {
+			trashResult = 4;
+			trashState  = 99;
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+		}
+		break;
+	case 1:
+		if (robot->mMoveRotate.y == robot->mMoveTarget1.y) {
+			robot->mLift.mState = 6;
+			trashTarget->mStatus.mFlags |= 0x10000000000ULL;
+			trashState++;
+		}
+		break;
+	case 2:
+		if (robot->GetAnimFrame() >= 15.0f) {
+			robot->mLift.mTarget = NULL;
+			trashObj->mStatus.mFlags &= ~0x400000000000000ULL;
+			trashDest = *trashTarget->GetPos();
+			trashDest.y += 30.0f;
+			trashPos    = *trashObj->GetPos();
+			trashStep.x = (trashDest.x - trashPos.x) / 36.0f;
+			trashArc    = 0.0f;
+			trashState++;
+			trashStep.y = (trashDest.y - trashPos.y) / 36.0f;
+			trashStep.z = (trashDest.z - trashPos.z) / 36.0f;
+		}
+		break;
+	case 3: {
+		if (robot->GetAnimFrame() >= 30.0f && robot->GetAnimFrame() < 33.0f && !IsWiiSfxPlaying(&gGame.mSound, 0x226)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x226, 1.0f, 0.0f);
+		}
+		trashArc += 0.08726646f * frames;
+		if ((f32)sin(trashArc) < 0.0f) {
+			trashResult = 2;
+			if (trashObj->GetCategory() == 8) {
+				u32 bit = trashObj->GetFlag();
+				trashObj->mFlags[bit >> 5] |= 1 << (bit & 31);
+			}
+			trashObj->mStatus.mFlags &= ~1ULL;
+			trashState++;
+		} else {
+			Vec pos = *trashObj->GetPos();
+			pos.y   = trashTarget->GetPos()->y;
+			if (PSVECDistance(trashTarget->GetPos(), &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
+				trashState = 10;
+			} else {
+				trashPos.x += trashStep.x * frames;
+				trashPos.y += trashStep.y * frames;
+				trashPos.z += trashStep.z * frames;
+				pos = trashPos;
+				pos.y += 10.0f * (f32)sin(trashArc);
+				trashObj->SetMoveDir(&pos, 10.0f);
+			}
+		}
+		break;
+	}
+	case 4:
+		trashObj->Release();
+		trashObj = NULL;
+		for (s32 i = 0; i < 10; i++) {
+			if (trashObjs[i].mStatus.mFlags & 1) {
+				trashObjs[i].Release();
+			}
+		}
+		trashState = 99;
+		break;
+	case 10: {
+		trashResult = 3;
+		Vec impact  = *trashObj->GetPos();
+		f32 angle   = atan2(impact.x - trashTarget->GetPos()->x, impact.z - trashTarget->GetPos()->z);
+		impact.x += 2.0f * (f32)sin(angle);
+		impact.y = 0.0f;
+		impact.z += 2.0f * (f32)cos(angle);
+		trashObj->SetMoveDir(&impact, 1.0f);
+		trashState = 99;
+		break;
+	}
+	case 99:
+		break;
+	}
+}
+
+// NONMATCHING: floating-point register allocation and one word differ; transforms, animation and scene-list calls match.
+extern "C" void DrawTrashStack(void)
+{
+	if (trashTarget == NULL) {
+		return;
+	}
+	XObj* actor = trashObj;
+	if (actor == NULL || !(actor->mStatus.mFlags & 1) || !(actor->mStatus.mFlags & 0x10000) || !trashActive) {
+		return;
+	}
+
+	s32 count = trashStackNum;
+	Vec pos   = *actor->GetPos();
+	f32 angle = 1.0471976f + actor->mMoveRotate.y;
+	if (count < 0) {
+		count = 0;
+	}
+	if (count > 10) {
+		count = 10;
+	}
+
+	for (s32 i = 1; i < count; i++) {
+		f32 x, y, z;
+		s32 step = i - 1;
+		if (step % 4 == 0) {
+			x = 0.0f;
+			z = x;
+			y = 2.0f * step / 4.0f + 2.0f;
+		} else {
+			f32 a = 0.017453292f * (step % 4 * 120) + angle;
+			x     = 2.0f * (f32)sin(a);
+			y     = 2.0f * step / 4.0f + 1.0f;
+			z     = 2.0f * (f32)cos(a);
+		}
+
+		XObj* obj = &trashObjs[i - 1];
+		if (!(obj->mStatus.mFlags & 1)) {
+			Mtx mtx;
+			PSMTXCopy(trashObj->GetWorldMtx(), mtx);
+			mtx[0][3]        = x * trashStackScale + pos.x;
+			mtx[1][3]        = y * trashStackScale + pos.y;
+			mtx[2][3]        = z * trashStackScale + pos.z;
+			obj->mBaseMtxPtr = obj->mBaseMtx;
+			PSMTXCopy(mtx, obj->mBaseMtx);
+			obj->SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 1.0f, 1.0f, 15.0f);
+			gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
+		}
+	}
+
+	gGame.mGs.mScene.GetRoot()->UpdateFrame();
+	gGame.mGs.mScene.GetRoot()->CalcWorld();
+	gGame.mGs.mScene.GetRoot()->CalcView();
+	gGame.mGs.mScene.GetRoot()->GatherDrawScnObj();
+	gGame.mGs.mScene.GetRoot()->DrawOpa();
+	gGame.mGs.mScene.GetRoot()->DrawXlu();
+	while (!gGame.mGs.mScene.GetRoot()->Empty()) {
+		gGame.mGs.mScene.GetRoot()->PopBack();
+	}
+}
+
 extern "C" void ExitTrash(void)
 {
 	for (s32 i = 0; i < 10; i++) {
