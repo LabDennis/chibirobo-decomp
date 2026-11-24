@@ -2,6 +2,16 @@
 #include "game/wii/cgame.h"
 #include "game/ccameraaction.h"
 
+extern u8* carParams;
+
+inline s32 ReadS32LE(u8* p)
+{
+	if (p != NULL) {
+		return p[0] + p[1] * 0x100 + p[2] * 0x10000 + p[3] * 0x1000000;
+	}
+	return 0;
+}
+
 namespace Car {
 
 class CCameraActionCar : public CInterfaceCameraAction {
@@ -25,6 +35,58 @@ void CCameraActionCar::Update(u32 step)
 		Vec pos;
 		PSMTXMultVec(mCarMtx, &mInterestOffset, &pos);
 		SetInterest(pos);
+	}
+}
+
+class CarRoot {
+public:
+	virtual void Update(u32 frames);
+	virtual void Brake();
+	virtual void Start();
+
+	XObj* mCar;
+	XObj* mPath;
+	XObj* mAttached;
+	f32 mFrame;
+	f32 mPrevFrame;
+	f32 mSpeed;
+	Mtx mCarMtx;
+	Mtx mAttachedMtx;
+	u8 mBraking;
+	u8 mStarted;
+};
+STATIC_ASSERT(sizeof(CarRoot) == 0x80);
+
+void CarRoot::Update(u32 frames)
+{
+	if (mCar == NULL || mPath == NULL) {
+		return;
+	}
+	Mtx scale;
+	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
+	PSMTXConcat(mPath->GetWorldMtx(1), scale, mCarMtx);
+	mCar->SetBaseMtx(mCarMtx);
+	if (mAttached != NULL) {
+		Mtx m;
+		PSMTXTrans(m, 3.75f, 5.0f, -1.0f);
+		PSMTXConcat(mCarMtx, m, mAttachedMtx);
+		mAttached->SetBaseMtx(mAttachedMtx);
+	}
+	if (mStarted) {
+		mPrevFrame = mFrame;
+		mFrame     = mSpeed * frames + mFrame;
+	}
+	mPath->SetAnim(0, TRUE, mFrame, 1.0f, 0.0f, 10.0f);
+	if (!mBraking) {
+		mCar->SetAnim(1, TRUE, mFrame, 1.0f, 0.0f, 10.0f);
+		return;
+	}
+	if (0.0f < mSpeed) {
+		f32 rate = mSpeed - ReadS32LE(carParams) / 1000.0f;
+		if (rate < 0.0f) {
+			rate = 0.0f;
+		}
+		mSpeed = rate;
 	}
 }
 
