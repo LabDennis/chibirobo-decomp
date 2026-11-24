@@ -21,7 +21,7 @@ extern "C" void SelectHighestActiveFloor(XObj* object);
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 extern "C" void fn_8016AA74(const f32* params);
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max);
-extern "C" void fn_8016AA78(f32* out, f32* in, f32* limits);
+extern "C" Vec fn_8016AA78(Vec in, f32* limits);
 extern "C" f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
 extern "C" CVec GetCornerIconPosition(CGame* game);
 extern s32 gScreenSafeWidth;
@@ -278,7 +278,8 @@ void CCameraActionLeticker::Update(u32 step)
 		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
 		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
 		pointer.z = gWiiPointer.mPointer.z;
-		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
+		Vec out   = fn_8016AA78(pointer, (f32*)sDebugParams);
+		input.Set(out);
 		_78 = input;
 	} else if (!(gGame._41B0 & 8)) {
 		input = _78;

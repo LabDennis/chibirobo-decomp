@@ -55,7 +55,7 @@ s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area);
 void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices);
 void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const Vec& dir);
 f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
-void fn_8016AA78(f32* out, f32* in, f32* limits);
+Vec fn_8016AA78(Vec in, f32* limits);
 f32 fn_8016A81C(f32 value, f32 min, f32 max);
 f32 fn_8016A8D4(f32 from, f32 to, f32 t, f32 scale);
 Vec GetCornerIconPosition(CGame* game);
@@ -241,8 +241,8 @@ void CCameraActionArea::Update(u32 step)
 		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
 		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
 		pointer.z = gWiiPointer.mPointer.z;
-		fn_8016AA78((f32*)&input, (f32*)&pointer, (f32*)sDebugParams);
-		_2D4 = input;
+		input     = fn_8016AA78(pointer, (f32*)sDebugParams);
+		_2D4      = input;
 	} else if (!(gGame._41B0 & 8)) {
 		input = _2D4;
 	}
