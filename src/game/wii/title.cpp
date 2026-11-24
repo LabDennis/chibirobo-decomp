@@ -29,6 +29,7 @@
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "nw4r/math/math_types.h"
 #include "game/wii/title.h"
+#include "game/titlepalette.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -84,10 +85,6 @@ void DrawMenuBannerPanels(const char* text, f32 x, f32 y, f32 alpha, f32 slide);
 }
 
 // the title screen's background and text colors, the logo's textures and which of each is in use
-struct TitlePaletteEntry {
-	GXColor background;
-	GXColor text;
-};
 const TitlePaletteEntry gTitlePalette[] = {
 	{ { 0, 0, 128, 0 }, {} },     { { 128, 0, 0, 0 }, {} },     { { 0, 128, 0, 0 }, {} },
 	{ { 200, 200, 200, 0 }, {} }, { { 128, 128, 128, 0 }, {} }, { { 0, 207, 233, 0 }, {} },
@@ -301,8 +298,8 @@ extern "C" void ResetTitleScreenState(Title* title)
 	title->mLastChoice        = -1;
 	title->mLoadAlpha         = 0.0f;
 	title->mAlpha             = 0.0f;
-	title->mLastMode          = 0;
-	title->mModeParam         = 0;
+	title->mPrevMode          = 0;
+	title->mPhase             = 0;
 	title->mDelay             = 0;
 	title->mPanelX            = -10.0f;
 	title->mPanelY            = -200.0f;
@@ -1599,12 +1596,12 @@ void Title::State23(u32)
 // waits out the delay, then fades the labels and leaves for the game
 void Title::State24(u32 frames)
 {
-	switch (mModeParam) {
+	switch (mPhase) {
 	case 0:
 		mDelay -= frames;
 		if (mDelay < 0) {
 			mDelay = 0;
-			++mModeParam;
+			++mPhase;
 		}
 		break;
 	case 1:
@@ -2032,7 +2029,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 11: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 5, x, y, 21.0f, title->mLoadAlpha);
 		} else {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 6, x, y, 21.0f, title->mLoadAlpha);
@@ -2044,7 +2041,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 13: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 7, x, y, 21.0f, title->mLoadAlpha);
 		} else {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 9, x, y, 21.0f, title->mLoadAlpha);
@@ -2084,7 +2081,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	case 24: {
 		f32 x = panelX + gPointerScreenWidth / 2, y = LoadPromptY(title, panelY);
-		if (title->mModeParam == 0) {
+		if (title->mPhase == 0) {
 			lines = DrawJapaneseSaveStatusMessage(title->mChannel, 4, x, y, 21.0f, title->mLoadAlpha);
 		}
 		break;

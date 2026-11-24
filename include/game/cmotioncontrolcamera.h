@@ -2,32 +2,14 @@
 #define _GAME_CMOTIONCONTROLCAMERA_H
 
 #include "game/ccameraaction.h"
+#include "game/cameraactionids.h"
+#include "game/ccameramemento.h"
 #if !defined(VERSION_R24J01)
 #include "game/ccameraactioneye.h"
 #endif
 
 // the game's camera and the actions that drive it. class names are RTTI, layouts are from
 // CGame's ctor at 0x80019480 and the action ctor at 0x80019E5C
-
-// where the actions sit in CCameraActions's table; the Wii build gets the same
-// numbering from wii/cgame.h
-#if !defined(VERSION_R24J01)
-enum {
-	CAMACTION_DEFAULT, // 0
-	CAMACTION_AREA,    // 1
-	CAMACTION_CHASE,   // 2
-	CAMACTION_EVT,     // 3
-	CAMACTION_SCROLL2, // 4
-	CAMACTION_EYE,     // 5
-	CAMACTION_ANIM,    // 6
-	CAMACTION_MAP,     // 7
-	CAMACTION_LADR,    // 8
-	CAMACTION_RESET,   // 9
-	CAMACTION_10,      // 10, always null
-	CAMACTION_SCROLL,  // 11
-	CAMACTION_NUM,
-};
-#endif // !defined(VERSION_R24J01)
 
 // what the camera's flags say an action drives, from its GetCameraFlags
 enum {
@@ -62,44 +44,6 @@ public:
 	void Init();
 };
 STATIC_ASSERT(sizeof(CCameraActions) == 0x1E74);
-
-// what CreateMemento saves of the camera, the class name is RTTI
-class CCameraMemento {
-public:
-	CCameraMemento() { }
-	// _00 vtable
-	virtual ~CCameraMemento() { } // _08
-
-	CVec mEye;                       // _04
-	CVec mInterest;                  // _14
-	CVec mAngle;                     // _24
-	f32 mFov;                        // _34
-	f32 mDistance;                   // _38
-	CInterfaceCameraAction* mAction; // _3C
-
-	void SetEye(f32 x, f32 y, f32 z)
-	{
-		mEye.x = x;
-		mEye.y = y;
-		mEye.z = z;
-	}
-	void SetInterest(f32 x, f32 y, f32 z)
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-	}
-	void SetAngle(f32 x, f32 y, f32 z)
-	{
-		mAngle.x = x;
-		mAngle.y = y;
-		mAngle.z = z;
-	}
-	void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }
-	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
-	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
-};
-STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xE5D38
 class CMotionControlCamera {

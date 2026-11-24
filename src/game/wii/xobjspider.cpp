@@ -32,7 +32,7 @@ void ResetSpiderCoinBounces(void* unused);
 void UpdateSpiderCoinBounces(void* unused, u32 frames);
 void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void ExecuteSpiderCommand(XObjSpider* spider, u32 frames);
-void fn_80122ED8(XObjSpider* spider);
+void LaunchSpiderShot(XObjSpider* spider);
 void UpdateSpiderShot(XObjSpider* spider, u32 frames);
 void UpdateSpiderAttachments(XObjSpider* spider, u32 frames);
 void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode);
@@ -935,7 +935,7 @@ extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
  */
 // the GameCube's LaunchSpiderShot
 // NONMATCHING: variant 12/13 and the carried position schedule their float loads around sin/cos and atan2 differently
-extern "C" void fn_80122ED8(XObjSpider* spider)
+extern "C" void LaunchSpiderShot(XObjSpider* spider)
 {
 	CVec pos = spider->GetJointPos(spider->FindResNode("cyl1"));
 	switch (spider->mPlacementParam0) {
@@ -1466,7 +1466,7 @@ void XObjSpider::State4(u32 frames)
 		break;
 	case 20:
 		if (SPIDER_AT_FRAME(this, 30)) {
-			fn_80122ED8(this);
+			LaunchSpiderShot(this);
 			++mPhase;
 		}
 		break;

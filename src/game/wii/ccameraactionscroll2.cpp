@@ -544,8 +544,8 @@ void CCameraActionScroll2::Draw()
 			Vec at = { 0.0f, 0.0f, 0.0f };
 			at     = pos;
 			obj->vf1D4(&at, &x, &y, 0, 0);
-			obj->vf1D8(); // the GameCube's GetFloorXZExtent
-			obj->vf1DC(); // the GameCube's GetCollisionHeight
+			obj->GetFloorXZExtent();   // the GameCube's GetFloorXZExtent
+			obj->GetCollisionHeight(); // the GameCube's GetCollisionHeight
 
 			s32 stage = 0;
 			switch (gGame.mStage) {

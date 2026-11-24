@@ -6,6 +6,7 @@
 #include "game/cptcl.h"
 #include "Dolphin/mtx.h"
 #include "game/wii/ceffect.h"
+#include "game/xactdata.h"
 
 // chibi robo's actions on the Wii player, the GameCube's XAct* kinds (game/xact.h). XAction, XActHang and
 // XActTumble live in game/wii/cgame.h with the player; WiiPlayerState still declares the others as XAction
@@ -25,7 +26,7 @@ public:
 	u8 _4A[2];                      // _4A
 	XObj* mPendingItem;             // _4C
 	XObj* mPlugTarget;              // _50, WiiPlayerState's mLiftPlugTarget
-	s32 mPlugConnection;            // _54, the GameCube's _54, copied to the plug's connection word with 0x10000 set
+	s32 mPlugConnection;            // _54, the GameCube field of the same name, copied to the plug's connection word with 0x10000 set
 	s32 _58;                        // _58, cleared on reset
 	f32 mBatteryCost;               // _5C
 	u32 mContactEffectId;           // _60
@@ -44,66 +45,6 @@ public:
 	u8 _AD[0xB0 - 0xAD];
 };
 STATIC_ASSERT(sizeof(XActLift) == 0xB0);
-
-class XActJump : public XAction {
-public:
-	XActJump();
-	~XActJump();
-
-	Vec mArcPosition;    // _2C, horizontal position and starting height
-	f32 mRise;           // _38
-	f32 mArcAngle;       // _3C
-	f32 mArcStep;        // _40
-	f32 mForward;        // _44
-	f32 mStrength;       // _48
-	f32 mTargetStrength; // _4C
-	f32 mTargetHeight;   // _50
-};
-STATIC_ASSERT(sizeof(XActJump) == 0x54);
-
-class XActLadder : public XAction {
-public:
-	XActLadder();
-	~XActLadder();
-
-	BOOL mBPressed; // _2C
-	Vec mPos;       // _30, where he hangs, in front of the ladder
-	f32 mDist;      // _3C
-	f32 mAngle;     // _40
-};
-STATIC_ASSERT(sizeof(XActLadder) == 0x44);
-
-class XActRope : public XAction {
-public:
-	XActRope();
-	~XActRope();
-
-	Vec mPos;   // _2C, horizontal approach point
-	f32 mDist;  // _38
-	f32 mAngle; // _3C
-};
-STATIC_ASSERT(sizeof(XActRope) == 0x40);
-
-class XActPush : public XAction {
-public:
-	XActPush();
-	~XActPush();
-
-	u8 _2C[0x34 - 0x2C];       // _2C
-	CVec _34;                  // _34
-	CVec _44;                  // _44
-	BOOL mPushPositionClamped; // _54
-};
-STATIC_ASSERT(sizeof(XActPush) == 0x58);
-
-// one of the popper's rings, drawn as two glow sprites and a soft disc
-struct XActPopperRing {
-	Vec mPos;    // _00
-	f32 mAmount; // _0C, 0 when it's gone
-	f32 mRadius; // _10
-	u32 mColor;  // _14
-};
-STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
 
 // the shot's dust pool: like XObjChr::CPtclSet it wraps the pool and its array in a
 // class of its own whose vtable gains a first virtual at _08 (retail RTTI names the
@@ -175,32 +116,5 @@ public:
 	XActPopperCharge mCharge; // _8848
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8884);
-
-struct RadarAimAxis {
-	f32 angle, targetAngle, reached;
-};
-
-// the beam's two colours, the GameCube's RadarBeamColors
-struct RadarBeamColors {
-	CScrnColor mColor[2]; // _00
-};
-STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
-
-// the radar action, the GameCube's XActRadar: the fields the Wii reaches are the
-// GameCube layout's own. WiiPlayerState reserves _95D4 to _96A0 for it
-class XActRadar : public XAction {
-public:
-	XActRadar();
-	~XActRadar();
-
-	XObj* mTarget;         // _2C
-	RadarAimAxis mYaw;     // _30
-	RadarAimAxis mPitch;   // _3C
-	RadarBeamColors mBeam; // _48
-	f32 mFade;             // _B0
-	f32 mAngle[2];         // _B4
-	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
-};
-STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 
 #endif

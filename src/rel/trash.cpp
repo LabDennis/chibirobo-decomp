@@ -152,19 +152,19 @@ typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA58 ? 1 : -1];
 typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA68 ? 1 : -1];
 #endif
 
-static TrashObj* trashTarget;
-static s32 trashStackNum;
-static f32 trashStackScale;
-static TrashObj* trashObj;
-static s32 trashState;
-static Vec trashPos;
-static Vec trashDest;
-static Vec trashStep;
-static f32 trashArc;
+TrashObj* trashTarget;
+s32 trashStackNum;
+f32 trashStackScale;
+TrashObj* trashObj;
+s32 trashState;
+Vec trashPos;
+Vec trashDest;
+Vec trashStep;
+f32 trashArc;
 // 0 while it runs, 2 the arc finished over the box and the piece was released, 3 it hit the box low and fell beside it, 4 cancelled on B
-static s32 trashResult;
-static u8 trashActive;
-static s32 trashboxIndex;
+s32 trashResult;
+u8 trashActive;
+s32 trashboxIndex;
 
 extern "C" void DrawTrashStack(void* arg);
 extern "C" void UpdateTrash(u32 frames);
@@ -176,7 +176,7 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args);
 
 // whether pos is within reach of object index's position, on the XZ plane
-static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
+static s32 IsNearObjectXZ(const Vec& pos, s32 index)
 {
 	CVec a, b;
 	a.x           = pos.x;
@@ -195,188 +195,471 @@ static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
 }
 
 /**
- * @note Address: stage04 .text 0x28C0
- * @note Size: 0xA8
+ * @note Address: stage04 .text 0x183C
+ * @note Size: 0x5B8
  */
-extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
+extern "C" void DrawTrashStack(void* arg)
 {
-	CGame* game     = &gGame;
-	f32 scale       = args[2] / 100.0f; // percent
-	s32 idx         = args[0];          // the trashbox's object index
-	s32 num         = args[1];          // pieces in the stack
-	trashTarget     = (TrashObj*)game->mXObjs.mObjects[idx];
-	trashStackNum   = num;
-	trashStackScale = scale;
-	if (trashTarget != NULL) {
-		trashResult = 0;
-		trashState  = 0;
-		trashActive = 1;
-	}
-	return 0;
-}
-
-/**
- * @note Address: stage04 .text 0x28B0
- * @note Size: 0x10
- */
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
-{
-	return trashResult;
-}
-
-/**
- * @note Address: stage04 .text 0x2884
- * @note Size: 0x2C
- */
-extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
-{
-	if (trashTarget != NULL) {
-		trashObj    = NULL;
-		trashActive = 0;
-	}
-	return 0;
-}
-
-/**
- * @note Address: stage04 .text 0x27E8
- * @note Size: 0x9C
- */
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
-{
-	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
-
-	if (robot->mLiftTarget != NULL) {
-		robot->mLiftState = 6;
-	}
-	if (trashObj != NULL && (trashObj->mStatus & 1)) {
-		trashObj->Release();
-		trashObj = NULL;
-	}
-	return 0;
-}
-
-/**
- * @note Address: stage04 .text 0x26E8
- * @note Size: 0x100
- */
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
-{
-	CGame* game;
-	TrashObj* robot;
-
-	if (trashboxIndex < 0) {
-		return 0;
-	}
-	game  = &gGame;
-	robot = (TrashObj*)game->GetPlayer();
-	if (trashboxIndex != robot->mFloorContacts) { // the box must be the contacted object
-		return 0;
-	}
-	return IsNearObjectXZ(robot->mMoveTranslate, trashboxIndex);
-}
-// CmdIsNearTrashbox
-/*
-    stwu     r1, -0x30(r1)
-    mflr     r0
-    lis      r3, trashboxIndex@ha
-    stw      r0, 0x34(r1)
-    lwz      r5, trashboxIndex@l(r3)
-    cmpwi    r5, 0x0
-    bge      .L_0000270C
-    li       r3, 0x0
-    b        .L_000027D8
-.L_0000270C:
-    lis      r3, gGame@ha
-    addi     r3, r3, gGame@l
-    addis    r4, r3, 0x1
-    lwz      r7, -0x6944(r4)
-    lwz      r0, 0x9d4(r7)
-    cmpw     r5, r0
-    beq      .L_00002730
-    li       r3, 0x0
-    b        .L_000027D8
-.L_00002730:
-    lis      r3, __vt__4CVec@ha
-    slwi     r0, r5, 2
-    addi     r6, r3, __vt__4CVec@l
-    lis      r3, lbl_7_rodata_168@ha
-    stw      r6, 0x14(r1)
-    add      r5, r4, r0
-    addi     r4, r3, lbl_7_rodata_168@l
-    lwz      r5, -0x67a0(r5)
-    stw      r6, 0x24(r1)
-    addi     r3, r1, 0x8
-    lfs      f0, 0x0(r4)
-    addi     r4, r1, 0x18
-    lfs      f1, 0xc8(r7)
-    stfs     f1, 0x8(r1)
-    lfs      f1, 0xcc(r7)
-    stfs     f1, 0xc(r1)
-    lfs      f1, 0xd0(r7)
-    stfs     f1, 0x10(r1)
-    lfs      f1, 0xc8(r5)
-    stfs     f1, 0x18(r1)
-    lfs      f1, 0xcc(r5)
-    stfs     f1, 0x1c(r1)
-    lfs      f1, 0xd0(r5)
-    stfs     f1, 0x20(r1)
-    stfs     f0, 0x1c(r1)
-    stfs     f0, 0xc(r1)
-    bl       PSVECDistance
-    lis      r3, lbl_7_rodata_16C@ha
-    lfs      f0, lbl_7_rodata_16C@l(r3)
-    fcmpo    cr0, f0, f1
-    bge      .L_000027C4
-    lis      r4, __vt__4CVec@ha
-    li       r3, 0x0
-    addi     r0, r4, __vt__4CVec@l
-    stw      r0, 0x24(r1)
-    stw      r0, 0x14(r1)
-    b        .L_000027D8
-.L_000027C4:
-    lis      r4, __vt__4CVec@ha
-    li       r3, 0x1
-    addi     r0, r4, __vt__4CVec@l
-    stw      r0, 0x24(r1)
-    stw      r0, 0x14(r1)
-.L_000027D8:
-    lwz      r0, 0x34(r1)
-    mtlr     r0
-    addi     r1, r1, 0x30
-    blr
-*/
-
-/**
- * @note Address: stage04 .text 0x261C
- * @note Size: 0xCC
- */
-extern "C" void InitTrash(void* arg)
-{
+	// NONMATCHING: one scheduling rotation — retail emits `lwz r31, 0x0(r6)` (jobj),
+	// `fadds f29` (angle), `stw r5, 0x8(r1)` (pos.x); the build stores pos.x first and
+	// loads jobj last; the unit's weak __dt__4CVecFv/__vt__4CVec/RTTI copies are
+	// link-deduplicated to fafa.o as in retail
 	TrashObj* actor;
-	CGame* game = &gGame;
+	HSD_JObj* jobj;
+	f32 a;
+	f32 angle;
+	f32 x;
+	f32 y;
+	f32 z;
+	s32 num;
 	s32 count;
 	s32 i;
 
-	trashTarget   = NULL;
-	trashObj      = NULL;
-	trashboxIndex = -1;
-	trashActive   = 0;
-	count         = game->mXObjs.mObjectCount;
-	for (i = 0; trashboxIndex < 0 && i < count; i++) {
-		actor = (TrashObj*)game->mXObjs.mObjects[i];
-		if (actor->mStatus & 1) { // live objects only
-			// the trashbox's object ids
-			if (*actor->mCoord == 0x12D) {
-				trashboxIndex = i;
-			}
-			if (*actor->mCoord == 0x477) {
-				trashboxIndex = i;
-			}
-		}
+	if (trashTarget == NULL) {
+		return;
 	}
-}
+	actor = trashObj;
+	if (actor == NULL || !(actor->mStatus & 1)) {
+		return;
+	}
+	if (!trashActive) {
+		return;
+	}
 
-// the kind id, -1 without kind data
+	num     = trashStackNum;
+	Vec pos = actor->mMoveTranslate;
+	jobj    = actor->jobj;
+	angle   = THIRD_PI + actor->mMoveRotateY;
+	count   = num;
+	if (num < 0) {
+		count = 0;
+	}
+	if (count > 10) {
+		count = 10;
+	}
+
+	for (i = 1; i < count; i++) {
+		int step = i - 1;
+		if (step % 4 == 0) { // every fourth piece sits on the axis
+			x = 0.0f;
+			z = x;
+			y = 2.0f * step / 4.0f + 2.0f;
+		} else {
+			a = DEG2RAD * (step % 4 * 120) + angle; // the other three at 120 degrees
+			x = 2.0f * (f32)sin(a);
+			y = 2.0f * (i - 1) / 4.0f + 1.0f; // half a unit higher each step
+			z = 2.0f * (f32)cos(a);
+		}
+		HSD_JObjSetTranslateX(jobj, x * trashStackScale + pos.x);
+		HSD_JObjSetTranslateY(jobj, y * trashStackScale + pos.y);
+		HSD_JObjSetTranslateZ(jobj, z * trashStackScale + pos.z);
+		HSD_JObjDispAll(jobj, NULL, 7, 0);
+	}
+	HSD_JObjSetTranslateX(jobj, pos.x);
+	HSD_JObjSetTranslateY(jobj, pos.y);
+	HSD_JObjSetTranslateZ(jobj, pos.z);
+}
+// DrawTrashStack
+/*
+    stwu     r1, -0xb0(r1)
+    mflr     r0
+    stw      r0, 0xb4(r1)
+    stfd     f31, 0xa0(r1)
+    psq_st   f31, 0xa8(r1), 0, qr0
+    stfd     f30, 0x90(r1)
+    psq_st   f30, 0x98(r1), 0, qr0
+    stfd     f29, 0x80(r1)
+    psq_st   f29, 0x88(r1), 0, qr0
+    stfd     f28, 0x70(r1)
+    psq_st   f28, 0x78(r1), 0, qr0
+    stfd     f27, 0x60(r1)
+    psq_st   f27, 0x68(r1), 0, qr0
+    stfd     f26, 0x50(r1)
+    psq_st   f26, 0x58(r1), 0, qr0
+    stfd     f25, 0x40(r1)
+    psq_st   f25, 0x48(r1), 0, qr0
+    stw      r31, 0x3c(r1)
+    stw      r30, 0x38(r1)
+    stw      r29, 0x34(r1)
+    stw      r28, 0x30(r1)
+    lis      r3, trashTarget@ha
+    lwz      r0, trashTarget@l(r3)
+    cmplwi   r0, 0x0
+    beq      .L_00001D9C
+    lis      r3, trashObj@ha
+    lwz      r6, trashObj@l(r3)
+    cmplwi   r6, 0x0
+    beq      .L_00001D9C
+    lwz      r0, 0x228(r6)
+    li       r4, 0x0
+    lwz      r5, 0x22c(r6)
+    li       r3, 0x1
+    and      r0, r0, r4
+    and      r3, r5, r3
+    xor      r3, r3, r4
+    xor      r0, r0, r4
+    or.      r0, r3, r0
+    bne      .L_000018DC
+    b        .L_00001D9C
+.L_000018DC:
+    lis      r3, trashActive@ha
+    lbz      r0, trashActive@l(r3)
+    cmplwi   r0, 0x0
+    beq      .L_00001D9C
+    lis      r4, trashStackNum@ha
+    lis      r3, lbl_7_rodata_170@ha
+    lwz      r7, trashStackNum@l(r4)
+    lwz      r5, 0xc8(r6)
+    lwz      r4, 0xcc(r6)
+    cmpwi    r7, 0x0
+    lwz      r0, 0xd0(r6)
+    mr       r29, r7
+    lfs      f1, lbl_7_rodata_170@l(r3)
+    lfs      f0, 0xfc(r6)
+    lwz      r31, 0x0(r6)
+    fadds    f29, f1, f0
+    stw      r5, 0x8(r1)
+    stw      r4, 0xc(r1)
+    stw      r0, 0x10(r1)
+    bge      .L_00001930
+    li       r29, 0x0
+.L_00001930:
+    cmpwi    r29, 0xa
+    ble      .L_0000193C
+    li       r29, 0xa
+.L_0000193C:
+    lis      r3, trashStackScale@ha
+    lfs      f31, 0xc(r1)
+    lfs      f30, 0x10(r1)
+    addi     r30, r3, trashStackScale@l
+    lfs      f28, 0x8(r1)
+    li       r28, 0x1
+    b        .L_00001C10
+.L_00001958:
+    subi     r4, r28, 0x1
+    slwi     r0, r4, 30
+    srwi     r3, r4, 31
+    subf     r0, r3, r0
+    rotlwi   r0, r0, 2
+    add.     r0, r0, r3
+    bne      .L_000019C0
+    xoris    r3, r4, 0x8000
+    lis      r0, 0x4330
+    lis      r4, sTrashSignedConversionBias@ha
+    stw      r3, 0x1c(r1)
+    addi     r3, r4, sTrashSignedConversionBias@l
+    lis      r5, lbl_7_rodata_168@ha
+    stw      r0, 0x18(r1)
+    lis      r4, lbl_7_rodata_174@ha
+    lfd      f1, 0x0(r3)
+    lis      r3, lbl_7_rodata_178@ha
+    lfd      f0, 0x18(r1)
+    lfs      f2, lbl_7_rodata_174@l(r4)
+    fsubs    f1, f0, f1
+    lfs      f27, lbl_7_rodata_168@l(r5)
+    lfs      f0, lbl_7_rodata_178@l(r3)
+    fmr      f25, f27
+    fmuls    f1, f2, f1
+    fmadds   f26, f1, f0, f2
+    b        .L_00001A60
+.L_000019C0:
+    mulli    r4, r0, 0x78
+    lis      r0, 0x4330
+    stw      r0, 0x18(r1)
+    lis      r3, sTrashSignedConversionBias@ha
+    lis      r5, lbl_7_rodata_17C@ha
+    lfd      f1, sTrashSignedConversionBias@l(r3)
+    xoris    r0, r4, 0x8000
+    lfs      f2, lbl_7_rodata_17C@l(r5)
+    stw      r0, 0x1c(r1)
+    lfd      f0, 0x18(r1)
+    fsubs    f0, f0, f1
+    fmadds   f27, f2, f0, f29
+    fmr      f1, f27
+    bl       sin
+    subi     r3, r28, 0x1
+    lis      r0, 0x4330
+    xoris    r3, r3, 0x8000
+    lis      r5, lbl_7_rodata_174@ha
+    lis      r4, sTrashSignedConversionBias@ha
+    stw      r3, 0x24(r1)
+    addi     r3, r4, sTrashSignedConversionBias@l
+    frsp     f5, f1
+    stw      r0, 0x20(r1)
+    lis      r4, lbl_7_rodata_178@ha
+    lfd      f2, 0x0(r3)
+    lis      r3, sTrashScalePercent@ha
+    lfd      f0, 0x20(r1)
+    lfs      f4, lbl_7_rodata_174@l(r5)
+    fmr      f1, f27
+    fsubs    f3, f0, f2
+    lfs      f2, lbl_7_rodata_178@l(r4)
+    lfs      f0, sTrashScalePercent@l(r3)
+    fmuls    f27, f4, f5
+    fmuls    f3, f4, f3
+    fmadds   f26, f3, f2, f0
+    bl       cos
+    lis      r3, lbl_7_rodata_174@ha
+    frsp     f1, f1
+    lfs      f0, lbl_7_rodata_174@l(r3)
+    fmuls    f25, f0, f1
+.L_00001A60:
+    lfs      f0, 0x0(r30)
+    cmplwi   r31, 0x0
+    fmadds   f27, f27, f0, f28
+    bne      .L_00001A88
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3b8
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001A88:
+    stfs     f27, 0x38(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001AE8
+    cmplwi   r31, 0x0
+    beq      .L_00001AE8
+    bne      .L_00001ABC
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001ABC:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001AD8
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001AD8
+    li       r3, 0x1
+.L_00001AD8:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001AE8
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001AE8:
+    lfs      f0, 0x0(r30)
+    cmplwi   r31, 0x0
+    fmadds   f27, f26, f0, f31
+    bne      .L_00001B10
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3c6
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001B10:
+    stfs     f27, 0x3c(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001B70
+    cmplwi   r31, 0x0
+    beq      .L_00001B70
+    bne      .L_00001B44
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001B44:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001B60
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001B60
+    li       r3, 0x1
+.L_00001B60:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001B70
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001B70:
+    lfs      f0, 0x0(r30)
+    cmplwi   r31, 0x0
+    fmadds   f27, f25, f0, f30
+    bne      .L_00001B98
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3d4
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001B98:
+    stfs     f27, 0x40(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001BF8
+    cmplwi   r31, 0x0
+    beq      .L_00001BF8
+    bne      .L_00001BCC
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001BCC:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001BE8
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001BE8
+    li       r3, 0x1
+.L_00001BE8:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001BF8
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001BF8:
+    mr       r3, r31
+    li       r4, 0x0
+    li       r5, 0x7
+    li       r6, 0x0
+    bl       HSD_JObjDispAll
+    addi     r28, r28, 0x1
+.L_00001C10:
+    cmpw     r28, r29
+    blt      .L_00001958
+    cmplwi   r31, 0x0
+    bne      .L_00001C38
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3b8
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001C38:
+    lfs      f0, 0x8(r1)
+    stfs     f0, 0x38(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001C9C
+    cmplwi   r31, 0x0
+    beq      .L_00001C9C
+    bne      .L_00001C70
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001C70:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001C8C
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001C8C
+    li       r3, 0x1
+.L_00001C8C:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001C9C
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001C9C:
+    cmplwi   r31, 0x0
+    bne      .L_00001CBC
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3c6
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001CBC:
+    stfs     f31, 0x3c(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001D1C
+    cmplwi   r31, 0x0
+    beq      .L_00001D1C
+    bne      .L_00001CF0
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001CF0:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001D0C
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001D0C
+    li       r3, 0x1
+.L_00001D0C:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001D1C
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001D1C:
+    cmplwi   r31, 0x0
+    bne      .L_00001D3C
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x3d4
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001D3C:
+    stfs     f30, 0x40(r31)
+    lwz      r0, 0x14(r31)
+    rlwinm.  r0, r0, 0, 6, 6
+    bne      .L_00001D9C
+    cmplwi   r31, 0x0
+    beq      .L_00001D9C
+    bne      .L_00001D70
+    lis      r3, lbl_7_rodata_184@ha
+    lis      r5, lbl_7_rodata_18C@ha
+    addi     r3, r3, lbl_7_rodata_184@l
+    li       r4, 0x25d
+    addi     r5, r5, lbl_7_rodata_18C@l
+    bl       __assert
+.L_00001D70:
+    lwz      r4, 0x14(r31)
+    li       r3, 0x0
+    rlwinm.  r0, r4, 0, 8, 8
+    bne      .L_00001D8C
+    rlwinm.  r0, r4, 0, 25, 25
+    beq      .L_00001D8C
+    li       r3, 0x1
+.L_00001D8C:
+    clrlwi.  r0, r3, 24
+    bne      .L_00001D9C
+    mr       r3, r31
+    bl       HSD_JObjSetMtxDirtySub
+.L_00001D9C:
+    psq_l    f31, 0xa8(r1), 0, qr0
+    lfd      f31, 0xa0(r1)
+    psq_l    f30, 0x98(r1), 0, qr0
+    lfd      f30, 0x90(r1)
+    psq_l    f29, 0x88(r1), 0, qr0
+    lfd      f29, 0x80(r1)
+    psq_l    f28, 0x78(r1), 0, qr0
+    lfd      f28, 0x70(r1)
+    psq_l    f27, 0x68(r1), 0, qr0
+    lfd      f27, 0x60(r1)
+    psq_l    f26, 0x58(r1), 0, qr0
+    lfd      f26, 0x50(r1)
+    psq_l    f25, 0x48(r1), 0, qr0
+    lfd      f25, 0x40(r1)
+    lwz      r31, 0x3c(r1)
+    lwz      r30, 0x38(r1)
+    lwz      r29, 0x34(r1)
+    lwz      r0, 0xb4(r1)
+    lwz      r28, 0x30(r1)
+    mtlr     r0
+    addi     r1, r1, 0xb0
+    blr
+*/
+
 static inline s16 GetKindId(TrashObj* obj)
 {
 	return obj->mAttr != NULL ? (obj->mAttr != NULL ? obj->mAttr->mCategory : 0) : -1;
@@ -1042,464 +1325,190 @@ extern "C" void UpdateTrash(u32 frames)
  */
 // CPad::~CPad
 
+// retail's .text has the weak CPad destructor emitted here, between UpdateTrash
+// and InitTrash; MWCC flushes pending weak copies at the next C++-linkage
+// declaration (extern "C" does not), so the file must have declared one here
+Vec* TrashObj::GetPos();
+
 /**
- * @note Address: stage04 .text 0x183C
- * @note Size: 0x5B8
+ * @note Address: stage04 .text 0x261C
+ * @note Size: 0xCC
  */
-extern "C" void DrawTrashStack(void* arg)
+extern "C" void InitTrash(void* arg)
 {
-	// NONMATCHING: retail keeps trashStackNum and the clamped count in separate registers
-	// (lwz/cmpwi/mr); one jobj-load/pos-store swap; rest is literal-pool label layout
 	TrashObj* actor;
-	HSD_JObj* jobj;
-	f32 a;
-	f32 angle;
-	f32 x;
-	f32 y;
-	f32 z;
+	CGame* game = &gGame;
 	s32 count;
 	s32 i;
 
-	if (trashTarget == NULL) {
-		return;
-	}
-	actor = trashObj;
-	if (actor == NULL || !(actor->mStatus & 1)) {
-		return;
-	}
-	if (!trashActive) {
-		return;
-	}
-
-	count   = trashStackNum;
-	Vec pos = actor->mMoveTranslate;
-	angle   = THIRD_PI + actor->mMoveRotateY;
-	jobj    = actor->jobj;
-	if (count < 0) {
-		count = 0;
-	}
-	if (count > 10) {
-		count = 10;
-	}
-
-	for (i = 1; i < count; i++) {
-		int step = i - 1;
-		if (step % 4 == 0) { // every fourth piece sits on the axis
-			x = 0.0f;
-			z = x;
-			y = 2.0f * step / 4.0f + 2.0f;
-		} else {
-			a = DEG2RAD * (step % 4 * 120) + angle; // the other three at 120 degrees
-			x = 2.0f * (f32)sin(a);
-			y = 2.0f * (i - 1) / 4.0f + 1.0f; // half a unit higher each step
-			z = 2.0f * (f32)cos(a);
+	trashTarget   = NULL;
+	trashObj      = NULL;
+	trashboxIndex = -1;
+	trashActive   = 0;
+	count         = game->mXObjs.mObjectCount;
+	for (i = 0; trashboxIndex < 0 && i < count; i++) {
+		actor = (TrashObj*)game->mXObjs.mObjects[i];
+		if (actor->mStatus & 1) { // live objects only
+			// the trashbox's object ids
+			if (*actor->mCoord == 0x12D) {
+				trashboxIndex = i;
+			}
+			if (*actor->mCoord == 0x477) {
+				trashboxIndex = i;
+			}
 		}
-		HSD_JObjSetTranslateX(jobj, x * trashStackScale + pos.x);
-		HSD_JObjSetTranslateY(jobj, y * trashStackScale + pos.y);
-		HSD_JObjSetTranslateZ(jobj, z * trashStackScale + pos.z);
-		HSD_JObjDispAll(jobj, NULL, 7, 0);
 	}
-	HSD_JObjSetTranslateX(jobj, pos.x);
-	HSD_JObjSetTranslateY(jobj, pos.y);
-	HSD_JObjSetTranslateZ(jobj, pos.z);
 }
-// DrawTrashStack
+
+// the kind id, -1 without kind data
+/**
+ * @note Address: stage04 .text 0x26E8
+ * @note Size: 0x100
+ */
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
+{
+	CGame* game;
+	TrashObj* robot;
+
+	if (trashboxIndex < 0) {
+		return 0;
+	}
+	game  = &gGame;
+	robot = (TrashObj*)game->GetPlayer();
+	if (trashboxIndex != robot->mFloorContacts) { // the box must be the contacted object
+		return 0;
+	}
+	return IsNearObjectXZ(robot->mMoveTranslate, trashboxIndex);
+}
+// CmdIsNearTrashbox
 /*
-    stwu     r1, -0xb0(r1)
+    stwu     r1, -0x30(r1)
     mflr     r0
-    stw      r0, 0xb4(r1)
-    stfd     f31, 0xa0(r1)
-    psq_st   f31, 0xa8(r1), 0, qr0
-    stfd     f30, 0x90(r1)
-    psq_st   f30, 0x98(r1), 0, qr0
-    stfd     f29, 0x80(r1)
-    psq_st   f29, 0x88(r1), 0, qr0
-    stfd     f28, 0x70(r1)
-    psq_st   f28, 0x78(r1), 0, qr0
-    stfd     f27, 0x60(r1)
-    psq_st   f27, 0x68(r1), 0, qr0
-    stfd     f26, 0x50(r1)
-    psq_st   f26, 0x58(r1), 0, qr0
-    stfd     f25, 0x40(r1)
-    psq_st   f25, 0x48(r1), 0, qr0
-    stw      r31, 0x3c(r1)
-    stw      r30, 0x38(r1)
-    stw      r29, 0x34(r1)
-    stw      r28, 0x30(r1)
-    lis      r3, trashTarget@ha
-    lwz      r0, trashTarget@l(r3)
-    cmplwi   r0, 0x0
-    beq      .L_00001D9C
-    lis      r3, trashObj@ha
-    lwz      r6, trashObj@l(r3)
-    cmplwi   r6, 0x0
-    beq      .L_00001D9C
-    lwz      r0, 0x228(r6)
-    li       r4, 0x0
-    lwz      r5, 0x22c(r6)
-    li       r3, 0x1
-    and      r0, r0, r4
-    and      r3, r5, r3
-    xor      r3, r3, r4
-    xor      r0, r0, r4
-    or.      r0, r3, r0
-    bne      .L_000018DC
-    b        .L_00001D9C
-.L_000018DC:
-    lis      r3, trashActive@ha
-    lbz      r0, trashActive@l(r3)
-    cmplwi   r0, 0x0
-    beq      .L_00001D9C
-    lis      r4, trashStackNum@ha
-    lis      r3, lbl_7_rodata_170@ha
-    lwz      r7, trashStackNum@l(r4)
-    lwz      r5, 0xc8(r6)
-    lwz      r4, 0xcc(r6)
-    cmpwi    r7, 0x0
-    lwz      r0, 0xd0(r6)
-    mr       r29, r7
-    lfs      f1, lbl_7_rodata_170@l(r3)
-    lfs      f0, 0xfc(r6)
-    lwz      r31, 0x0(r6)
-    fadds    f29, f1, f0
-    stw      r5, 0x8(r1)
-    stw      r4, 0xc(r1)
-    stw      r0, 0x10(r1)
-    bge      .L_00001930
-    li       r29, 0x0
-.L_00001930:
-    cmpwi    r29, 0xa
-    ble      .L_0000193C
-    li       r29, 0xa
-.L_0000193C:
-    lis      r3, trashStackScale@ha
-    lfs      f31, 0xc(r1)
-    lfs      f30, 0x10(r1)
-    addi     r30, r3, trashStackScale@l
-    lfs      f28, 0x8(r1)
-    li       r28, 0x1
-    b        .L_00001C10
-.L_00001958:
-    subi     r4, r28, 0x1
-    slwi     r0, r4, 30
-    srwi     r3, r4, 31
-    subf     r0, r3, r0
-    rotlwi   r0, r0, 2
-    add.     r0, r0, r3
-    bne      .L_000019C0
-    xoris    r3, r4, 0x8000
-    lis      r0, 0x4330
-    lis      r4, sTrashSignedConversionBias@ha
-    stw      r3, 0x1c(r1)
-    addi     r3, r4, sTrashSignedConversionBias@l
-    lis      r5, lbl_7_rodata_168@ha
-    stw      r0, 0x18(r1)
-    lis      r4, lbl_7_rodata_174@ha
-    lfd      f1, 0x0(r3)
-    lis      r3, lbl_7_rodata_178@ha
-    lfd      f0, 0x18(r1)
-    lfs      f2, lbl_7_rodata_174@l(r4)
-    fsubs    f1, f0, f1
-    lfs      f27, lbl_7_rodata_168@l(r5)
-    lfs      f0, lbl_7_rodata_178@l(r3)
-    fmr      f25, f27
-    fmuls    f1, f2, f1
-    fmadds   f26, f1, f0, f2
-    b        .L_00001A60
-.L_000019C0:
-    mulli    r4, r0, 0x78
-    lis      r0, 0x4330
-    stw      r0, 0x18(r1)
-    lis      r3, sTrashSignedConversionBias@ha
-    lis      r5, lbl_7_rodata_17C@ha
-    lfd      f1, sTrashSignedConversionBias@l(r3)
-    xoris    r0, r4, 0x8000
-    lfs      f2, lbl_7_rodata_17C@l(r5)
-    stw      r0, 0x1c(r1)
-    lfd      f0, 0x18(r1)
-    fsubs    f0, f0, f1
-    fmadds   f27, f2, f0, f29
-    fmr      f1, f27
-    bl       sin
-    subi     r3, r28, 0x1
-    lis      r0, 0x4330
-    xoris    r3, r3, 0x8000
-    lis      r5, lbl_7_rodata_174@ha
-    lis      r4, sTrashSignedConversionBias@ha
-    stw      r3, 0x24(r1)
-    addi     r3, r4, sTrashSignedConversionBias@l
-    frsp     f5, f1
-    stw      r0, 0x20(r1)
-    lis      r4, lbl_7_rodata_178@ha
-    lfd      f2, 0x0(r3)
-    lis      r3, sTrashScalePercent@ha
-    lfd      f0, 0x20(r1)
-    lfs      f4, lbl_7_rodata_174@l(r5)
-    fmr      f1, f27
-    fsubs    f3, f0, f2
-    lfs      f2, lbl_7_rodata_178@l(r4)
-    lfs      f0, sTrashScalePercent@l(r3)
-    fmuls    f27, f4, f5
-    fmuls    f3, f4, f3
-    fmadds   f26, f3, f2, f0
-    bl       cos
-    lis      r3, lbl_7_rodata_174@ha
-    frsp     f1, f1
-    lfs      f0, lbl_7_rodata_174@l(r3)
-    fmuls    f25, f0, f1
-.L_00001A60:
-    lfs      f0, 0x0(r30)
-    cmplwi   r31, 0x0
-    fmadds   f27, f27, f0, f28
-    bne      .L_00001A88
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3b8
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001A88:
-    stfs     f27, 0x38(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001AE8
-    cmplwi   r31, 0x0
-    beq      .L_00001AE8
-    bne      .L_00001ABC
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001ABC:
-    lwz      r4, 0x14(r31)
+    lis      r3, trashboxIndex@ha
+    stw      r0, 0x34(r1)
+    lwz      r5, trashboxIndex@l(r3)
+    cmpwi    r5, 0x0
+    bge      .L_0000270C
     li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001AD8
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001AD8
-    li       r3, 0x1
-.L_00001AD8:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001AE8
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001AE8:
-    lfs      f0, 0x0(r30)
-    cmplwi   r31, 0x0
-    fmadds   f27, f26, f0, f31
-    bne      .L_00001B10
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3c6
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001B10:
-    stfs     f27, 0x3c(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001B70
-    cmplwi   r31, 0x0
-    beq      .L_00001B70
-    bne      .L_00001B44
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001B44:
-    lwz      r4, 0x14(r31)
+    b        .L_000027D8
+.L_0000270C:
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
+    addis    r4, r3, 0x1
+    lwz      r7, -0x6944(r4)
+    lwz      r0, 0x9d4(r7)
+    cmpw     r5, r0
+    beq      .L_00002730
     li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001B60
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001B60
-    li       r3, 0x1
-.L_00001B60:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001B70
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001B70:
-    lfs      f0, 0x0(r30)
-    cmplwi   r31, 0x0
-    fmadds   f27, f25, f0, f30
-    bne      .L_00001B98
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3d4
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001B98:
-    stfs     f27, 0x40(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001BF8
-    cmplwi   r31, 0x0
-    beq      .L_00001BF8
-    bne      .L_00001BCC
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001BCC:
-    lwz      r4, 0x14(r31)
+    b        .L_000027D8
+.L_00002730:
+    lis      r3, __vt__4CVec@ha
+    slwi     r0, r5, 2
+    addi     r6, r3, __vt__4CVec@l
+    lis      r3, lbl_7_rodata_168@ha
+    stw      r6, 0x14(r1)
+    add      r5, r4, r0
+    addi     r4, r3, lbl_7_rodata_168@l
+    lwz      r5, -0x67a0(r5)
+    stw      r6, 0x24(r1)
+    addi     r3, r1, 0x8
+    lfs      f0, 0x0(r4)
+    addi     r4, r1, 0x18
+    lfs      f1, 0xc8(r7)
+    stfs     f1, 0x8(r1)
+    lfs      f1, 0xcc(r7)
+    stfs     f1, 0xc(r1)
+    lfs      f1, 0xd0(r7)
+    stfs     f1, 0x10(r1)
+    lfs      f1, 0xc8(r5)
+    stfs     f1, 0x18(r1)
+    lfs      f1, 0xcc(r5)
+    stfs     f1, 0x1c(r1)
+    lfs      f1, 0xd0(r5)
+    stfs     f1, 0x20(r1)
+    stfs     f0, 0x1c(r1)
+    stfs     f0, 0xc(r1)
+    bl       PSVECDistance
+    lis      r3, lbl_7_rodata_16C@ha
+    lfs      f0, lbl_7_rodata_16C@l(r3)
+    fcmpo    cr0, f0, f1
+    bge      .L_000027C4
+    lis      r4, __vt__4CVec@ha
     li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001BE8
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001BE8
+    addi     r0, r4, __vt__4CVec@l
+    stw      r0, 0x24(r1)
+    stw      r0, 0x14(r1)
+    b        .L_000027D8
+.L_000027C4:
+    lis      r4, __vt__4CVec@ha
     li       r3, 0x1
-.L_00001BE8:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001BF8
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001BF8:
-    mr       r3, r31
-    li       r4, 0x0
-    li       r5, 0x7
-    li       r6, 0x0
-    bl       HSD_JObjDispAll
-    addi     r28, r28, 0x1
-.L_00001C10:
-    cmpw     r28, r29
-    blt      .L_00001958
-    cmplwi   r31, 0x0
-    bne      .L_00001C38
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3b8
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001C38:
-    lfs      f0, 0x8(r1)
-    stfs     f0, 0x38(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001C9C
-    cmplwi   r31, 0x0
-    beq      .L_00001C9C
-    bne      .L_00001C70
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001C70:
-    lwz      r4, 0x14(r31)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001C8C
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001C8C
-    li       r3, 0x1
-.L_00001C8C:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001C9C
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001C9C:
-    cmplwi   r31, 0x0
-    bne      .L_00001CBC
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3c6
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001CBC:
-    stfs     f31, 0x3c(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001D1C
-    cmplwi   r31, 0x0
-    beq      .L_00001D1C
-    bne      .L_00001CF0
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001CF0:
-    lwz      r4, 0x14(r31)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001D0C
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001D0C
-    li       r3, 0x1
-.L_00001D0C:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001D1C
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001D1C:
-    cmplwi   r31, 0x0
-    bne      .L_00001D3C
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x3d4
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001D3C:
-    stfs     f30, 0x40(r31)
-    lwz      r0, 0x14(r31)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_00001D9C
-    cmplwi   r31, 0x0
-    beq      .L_00001D9C
-    bne      .L_00001D70
-    lis      r3, lbl_7_rodata_184@ha
-    lis      r5, lbl_7_rodata_18C@ha
-    addi     r3, r3, lbl_7_rodata_184@l
-    li       r4, 0x25d
-    addi     r5, r5, lbl_7_rodata_18C@l
-    bl       __assert
-.L_00001D70:
-    lwz      r4, 0x14(r31)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_00001D8C
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_00001D8C
-    li       r3, 0x1
-.L_00001D8C:
-    clrlwi.  r0, r3, 24
-    bne      .L_00001D9C
-    mr       r3, r31
-    bl       HSD_JObjSetMtxDirtySub
-.L_00001D9C:
-    psq_l    f31, 0xa8(r1), 0, qr0
-    lfd      f31, 0xa0(r1)
-    psq_l    f30, 0x98(r1), 0, qr0
-    lfd      f30, 0x90(r1)
-    psq_l    f29, 0x88(r1), 0, qr0
-    lfd      f29, 0x80(r1)
-    psq_l    f28, 0x78(r1), 0, qr0
-    lfd      f28, 0x70(r1)
-    psq_l    f27, 0x68(r1), 0, qr0
-    lfd      f27, 0x60(r1)
-    psq_l    f26, 0x58(r1), 0, qr0
-    lfd      f26, 0x50(r1)
-    psq_l    f25, 0x48(r1), 0, qr0
-    lfd      f25, 0x40(r1)
-    lwz      r31, 0x3c(r1)
-    lwz      r30, 0x38(r1)
-    lwz      r29, 0x34(r1)
-    lwz      r0, 0xb4(r1)
-    lwz      r28, 0x30(r1)
+    addi     r0, r4, __vt__4CVec@l
+    stw      r0, 0x24(r1)
+    stw      r0, 0x14(r1)
+.L_000027D8:
+    lwz      r0, 0x34(r1)
     mtlr     r0
-    addi     r1, r1, 0xb0
+    addi     r1, r1, 0x30
     blr
 */
+
+/**
+ * @note Address: stage04 .text 0x27E8
+ * @note Size: 0x9C
+ */
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
+{
+	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
+
+	if (robot->mLiftTarget != NULL) {
+		robot->mLiftState = 6;
+	}
+	if (trashObj != NULL && (trashObj->mStatus & 1)) {
+		trashObj->Release();
+		trashObj = NULL;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: stage04 .text 0x2884
+ * @note Size: 0x2C
+ */
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
+{
+	if (trashTarget != NULL) {
+		trashObj    = NULL;
+		trashActive = 0;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: stage04 .text 0x28B0
+ * @note Size: 0x10
+ */
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
+{
+	return trashResult;
+}
+
+/**
+ * @note Address: stage04 .text 0x28C0
+ * @note Size: 0xA8
+ */
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
+{
+	CGame* game     = &gGame;
+	f32 scale       = args[2] / 100.0f; // percent
+	s32 idx         = args[0];          // the trashbox's object index
+	s32 num         = args[1];          // pieces in the stack
+	trashTarget     = (TrashObj*)game->mXObjs.mObjects[idx];
+	trashStackNum   = num;
+	trashStackScale = scale;
+	if (trashTarget != NULL) {
+		trashResult = 0;
+		trashState  = 0;
+		trashActive = 1;
+	}
+	return 0;
+}

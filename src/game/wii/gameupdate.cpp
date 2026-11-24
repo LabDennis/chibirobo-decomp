@@ -89,8 +89,8 @@ u32 GetStageEntryTimeComponent(s32 index);
 u32 CheckStageFlag(s32 stage, u32 flag);
 BOOL LoadStageByIndex(s32 stage);
 void ApplyStageClearColor();
-BOOL fn_80084848(void* menu);             // the menus' resources, the GameCube's LoadMenuGroupResources
-void fn_8008492C(void* menu, s32 frames); // steps the open menus
+BOOL LoadMenuGroupResources(void* menu);      // the menus' resources, the GameCube's LoadMenuGroupResources
+void UpdateOpenMenus(void* menu, s32 frames); // steps the open menus
 }
 
 extern s32 gRefreshRate;
@@ -251,7 +251,7 @@ void CBase::ClearStatusFlags(u64 mask)
 static inline BOOL IsStageBusy(CGame* game)
 {
 	if (game->mMenu.mActive) {
-		fn_8008492C(&game->mMenu.mActive, 10);
+		UpdateOpenMenus(&game->mMenu.mActive, 10);
 		if (game->mMenu.mActive) {
 			return TRUE;
 		}
@@ -393,7 +393,7 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 11:
-		if (!fn_80084848(&mMenu.mActive))
+		if (!LoadMenuGroupResources(&mMenu.mActive))
 			break;
 		++mLoadStep;
 	case 12:
@@ -1175,14 +1175,14 @@ void CGame::Update(u32 frames)
 		if (!GetStatusFlags(8)) {
 			SetStatusFlags(8);
 			PauseGameSounds(this, 0.0f);
-			UpdateXSound(&gGame.mSound, frames);
+			UpdateGameSound(&gGame.mSound, frames);
 		}
 		if (gGame.mGs.mScene._04) {
 			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
-		UpdateXSound(&gGame.mSound, frames);
+		UpdateGameSound(&gGame.mSound, frames);
 		return;
 	}
 	if (GetStatusFlags(8)) {
@@ -1194,7 +1194,7 @@ void CGame::Update(u32 frames)
 			if (!GetStatusFlags(0x800000000000000ULL)) {
 				SetStatusFlags(0x800000000000000ULL);
 				PauseGameSounds(this, 0.0f);
-				UpdateXSound(&gGame.mSound, frames);
+				UpdateGameSound(&gGame.mSound, frames);
 			}
 			if (gGame.mGs.mScene._04) {
 				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
@@ -1202,7 +1202,7 @@ void CGame::Update(u32 frames)
 				StepSceneDraws(frames);
 			}
 			UpdateWiiHomeMenu(&mHomeMenu, frames);
-			UpdateXSound(&gGame.mSound, frames);
+			UpdateGameSound(&gGame.mSound, frames);
 			return;
 		}
 		if (GetStatusFlags(0x800000000000000ULL)) {
@@ -1355,7 +1355,7 @@ void CGame::Update(u32 frames)
 		UpdateBootLogos(&mLogo, frames);
 		UpdateTitleScreen(&mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
-			fn_8008492C(&mMenu.mActive, frames);
+			UpdateOpenMenus(&mMenu.mActive, frames);
 		}
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
@@ -1390,7 +1390,7 @@ void CGame::Update(u32 frames)
 		}
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &mListener.mPos);
 	}
-	UpdateXSound(&gGame.mSound, frames);
+	UpdateGameSound(&gGame.mSound, frames);
 	for (i = 0; i < mDrawLists[1].mCount; i++) {
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {

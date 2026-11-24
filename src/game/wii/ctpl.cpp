@@ -405,7 +405,7 @@ void CSound::RestoreHeapLevel(s32 level)
 
 // NONMATCHING: retail keeps the slot counter in r31 and the slot walker in r30,
 // this build swaps the two (98.5%).
-extern "C" void UpdateGameSound(CSound* sound, u32 step)
+extern "C" void UpdateCSound(CSound* sound, u32 step)
 {
 	if (sound->mLoadPending && OSIsThreadTerminated(&sLoader.mThread)) {
 		sound->mLoadPending = FALSE;

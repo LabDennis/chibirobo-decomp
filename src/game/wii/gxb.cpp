@@ -724,13 +724,13 @@ static inline s32 GetItem(const WiiTitleObject* object)
 
 static inline BOOL ProjectRoboeyesItem(WiiTitleObject* object, f32* width, f32* height)
 {
-	f32 r = object->vf1D8() / 2.0f;
+	f32 r = object->GetFloorXZExtent() / 2.0f;
 	if (r < 1.0f)
 		r = 1.0f;
-	f32 h = object->vf1DC();
+	f32 h = object->GetCollisionHeight();
 	if (h < 1.0f)
 		h = 1.0f;
-	return object->vf1E0(width, height, NULL, r, h);
+	return object->ProjectVisibleBounds(width, height, NULL, r, h);
 }
 
 // the object's last drawn bounds touch the screen

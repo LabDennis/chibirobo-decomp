@@ -2,6 +2,7 @@
 #define GAME_WII_TITLE_H
 
 #include "game/wii/menuutil.h"
+#include "game/titledust.h"
 // before xobj.h: see its note on the two CObjVec
 #include "game/ccameraactioneye.h"
 #include "game/wii/xobjdemo.h"
@@ -93,7 +94,7 @@ public:
 	virtual void vf034();
 	virtual void vf038();
 	virtual void vf03C();
-	virtual void vf040(); // _040, Release
+	virtual void Release(); // _040
 	virtual void vf044();
 	virtual void vf048();
 	virtual void vf04C();
@@ -105,18 +106,18 @@ public:
 	virtual void vf064();
 	virtual void vf068();
 	virtual void vf06C();
-	virtual void vf070(f32); // _070, a pose value; the other cursor's vf26C feeds it
+	virtual void vf070(f32); // _070, a pose value; the other cursor's GetRotY feeds it
 	virtual void vf074();
 	virtual void vf078();
 	virtual void vf07C();
 	virtual void vf080();
-	virtual void vf084(f32 x, f32 y, f32 z); // _084, a position
+	virtual void SetPos(f32 x, f32 y, f32 z); // _084
 	virtual void vf088();
-	virtual void vf08C(f32 x, f32 y, f32 z);
-	virtual void vf090(void*); // _090, given the other cursor's vf244 result
+	virtual void SetScale(f32 x, f32 y, f32 z); // _08C
+	virtual void vf090(void*);                  // _090, given the other cursor's GetPos result
 	virtual void vf094();
-	virtual void vf098(void*);     // _098, given the other cursor's vf258 result
-	virtual void vf09C(f32 scale); // _09C, a uniform scale
+	virtual void vf098(void*);        // _098, given the other cursor's GetScale result
+	virtual void SetScale(f32 scale); // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
@@ -144,27 +145,27 @@ public:
 	virtual void vf100();
 	virtual void vf104();
 	// _108, the Wii's SetAnim: the GameCube passed the resolved resources, the Wii resolves them itself
-	virtual void vf108(s32 anim, s32 flags, f32, f32, f32, f32);
+	virtual void SetAnim(s32 anim, s32 flags, f32, f32, f32, f32); // _108
 	virtual void vf10C();
-	virtual void vf110();
-	virtual void vf114(f32 frame);  // _114, the playing animation's frame
-	virtual void vf118(f32 frames); // _118, steps the playing animation, the GameCube's UpdateAnim
-	virtual s32 vf11C();            // _11C, the playing animation's id
+	virtual void ClearAnim();            // _110
+	virtual void SetAnimRate(f32 rate);  // _114
+	virtual void UpdateAnim(f32 frames); // _118, steps the playing animation
+	virtual s32 GetAnimId();             // _11C, the playing animation's id
 	virtual void vf120();
 	virtual void vf124();
-	virtual f32 vf128(); // _128, the playing animation's frame
-	virtual f32 vf12C(); // _12C, the playing animation's length
+	virtual f32 GetAnimFrame();    // _128, the playing animation's frame
+	virtual f32 GetAnimEndFrame(); // _12C, the playing animation's length
 	// _130, nonzero once the current animation has played out at the given frame count
 	virtual s32 vf130(f32 frames);
 	virtual s32 vf134(); // _134, the animation flags check
 	virtual void vf138();
-	virtual void vf13C();
+	virtual void ReleaseModelWork(); // _13C
 	virtual void vf140();
 	virtual void vf144();
 	virtual void vf148();
-	virtual void vf14C();
-	virtual void vf150();
-	virtual void vf154();
+	virtual void InitializeObject(); // _14C
+	virtual void ResetForNewGame();  // _150
+	virtual void ResetObjectState(); // _154
 	virtual s32 vf158(CoordInfo info);
 	virtual void vf15C();
 	virtual void vf160();
@@ -172,15 +173,15 @@ public:
 	virtual void vf168();
 	virtual void vf16C();
 	virtual void vf170();
-	virtual void vf174();
+	virtual void DrawObject(); // _174
 	virtual void vf178();
 	virtual void vf17C();
 	virtual void vf180();
 	virtual void vf184();
-	virtual void vf188();
-	virtual void vf18C();
-	virtual void vf190(); // _190, draws the object, the GameCube's DrawObject
-	virtual void vf194();
+	virtual void DrawObjectEffects();   // _188
+	virtual void DrawCollisionShapes(); // _18C
+	virtual void DrawScreenOverlay();   // _190
+	virtual void DrawDebugStatus();     // _194
 	virtual void vf198();
 	virtual void vf19C();
 	virtual void vf1A0();
@@ -199,10 +200,9 @@ public:
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
 	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
-	virtual f32 vf1D8(); // _1D8, the GameCube's GetFloorXZExtent
-	virtual f32 vf1DC(); // _1DC, the GameCube's GetCollisionHeight
-	// _1E0, the GameCube's ProjectVisibleBounds
-	virtual BOOL vf1E0(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
+	virtual f32 GetFloorXZExtent();                                                                            // _1D8
+	virtual f32 GetCollisionHeight();                                                                          // _1DC
+	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight); // _1E0
 	virtual void vf1E4();
 	virtual void vf1E8();
 	virtual void vf1EC();
@@ -227,17 +227,17 @@ public:
 	virtual void vf238();
 	virtual void vf23C();
 	virtual void vf240();
-	virtual CVec* vf244(); // _244, the object's pose position, the GameCube's mMoveTranslate
+	virtual CVec* GetPos(); // _244, the object's pose position
 	virtual void vf248();
 	virtual void vf24C();
 	virtual void vf250();
 	virtual void vf254();
-	virtual CVec* vf258(); // _258, the object's pose scale, the GameCube's mMoveScale
+	virtual CVec* GetScale(); // _258, the object's pose scale
 	virtual void vf25C();
 	virtual void vf260();
 	virtual void vf264();
 	virtual void vf268();
-	virtual f32 vf26C(); // _26C, another pose component
+	virtual f32 GetRotY(); // _26C
 
 	u8 _004[0x014 - 0x004];
 	StagePlacement* mSpawn; // _014, the placement the object loaded from
@@ -298,17 +298,6 @@ public:
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 
-// one mote of dust drifting over the menu, the GameCube TitleDust
-struct TitleDust {
-	u32 mState;  // _00
-	s32 mTimer;  // _04
-	f32 mX;      // _08
-	f32 mY;      // _0C
-	f32 mSpeedX; // _10, also the quad's scale
-	f32 mSpeedY; // _14, also the quad's alpha
-};
-STATIC_ASSERT(sizeof(TitleDust) == 0x18);
-
 // one letter of the name that pops in, as the GameCube StageNameChar
 struct TitleNameChar {
 	const char* mText; // _00
@@ -366,8 +355,8 @@ public:
 	u8 _4967;
 	f32 mLoadAlpha;  // _4968
 	f32 mAlpha;      // _496C
-	s32 mLastMode;   // _4970
-	s32 mModeParam;  // _4974, the mode's own step
+	s32 mPrevMode;   // _4970
+	s32 mPhase;      // _4974, the mode's own step
 	s32 mDelay;      // _4978
 	s32 mFile;       // _497C, the save file picked, -1 with the pointer on none
 	s32 mLastFile;   // _4980
@@ -452,9 +441,9 @@ public:
 
 	void SetMode(s32 mode)
 	{
-		mLastMode  = mMode;
-		mMode      = mode;
-		mModeParam = 0;
+		mPrevMode = mMode;
+		mMode     = mode;
+		mPhase    = 0;
 	}
 };
 

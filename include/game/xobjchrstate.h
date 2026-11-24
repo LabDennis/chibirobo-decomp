@@ -3,6 +3,7 @@
 #include "game/xchr.h"
 #include "game/cgame.h"
 #include "game/pointptcl.h"
+#include "game/playerturnstate.h"
 
 struct SuitParticle {
 	Vec position;
@@ -25,13 +26,6 @@ struct SuitChangeEffect {
 			}
 		}
 	}
-};
-
-// joints that follow an item's own anim
-struct PlayerTurnState {
-	f32 heading, previousHeading;
-	f32 change, previousChange;
-	f32 total;
 };
 
 extern "C" {

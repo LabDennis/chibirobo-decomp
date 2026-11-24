@@ -118,7 +118,7 @@ public:
 	Vec mCordJointTip;   // _D2C
 	s32 mCordEndsPinned; // _D38, 1 while cord ends 1 and 2 follow mCordJointPos and mCordJointTip (plug held or connected), 0 once they are
 	                     // let go
-	s32 mConnection;     // _D3C, XActLift's _54 with 0x10000 set
+	s32 mConnection;     // _D3C, XActLift's mPlugConnection with 0x10000 set
 	s32 mLoadState;      // _D40
 	u32 _D44;            // _D44, never accessed
 	XObjWireEff mWire;   // _D48

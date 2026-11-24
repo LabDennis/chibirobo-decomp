@@ -15,6 +15,7 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
+#include "game/playerturnstate.h"
 #include "game/pointptcl.h"
 #include "game/wii/xact.h"
 #include "game/mapfloorhit.h"
@@ -323,7 +324,7 @@ void FinishTumbleAction(XActTumble* act);
 void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle);
 void DrawRadarTargetBeam(XActRadar* act);
 void DrawPopperShotParticles(XActPopper* act);
-void fn_8010BE94(XActPopper* act);
+void DrawPopperShotRings(XActPopper* act);
 void fn_8010E548(XActRadar* act);
 void DrawPlayerLookMarker(XObjChrLook* look);
 void DrawPointParticleDisplay(PointPtcl* points, f32 row);
@@ -1423,14 +1424,6 @@ s32 GetSelectedFloorIndex(const XObj* object)
 	return object->mSelectedFloorIndex;
 }
 
-// the same struct as game/xobjchrstate.h's, which pulls in the GameCube xchr.h and cgame.h (sysdolphin) and cannot be included here
-struct PlayerTurnState {
-	f32 heading;
-	f32 previousHeading;
-	f32 change;
-	f32 previousChange;
-	f32 total;
-};
 PlayerTurnState gPlayerTurnState;
 
 // NONMATCHING: the regular frame, turning, auto-approach, attachments, events and
@@ -7008,7 +7001,7 @@ void XObjChr::DrawScreenOverlay()
 {
 	WiiPlayerState* chr = (WiiPlayerState*)this;
 	XObj::DrawScreenOverlay();
-	fn_8010BE94((XActPopper*)&chr->mPopper);
+	DrawPopperShotRings((XActPopper*)&chr->mPopper);
 	fn_8010E548((XActRadar*)&chr->mRadar);
 	if (!(gGame.GetStatusFlags(0x100)))
 		DrawPlayerLookMarker(&chr->mLook);

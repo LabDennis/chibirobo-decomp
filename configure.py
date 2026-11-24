@@ -1164,10 +1164,10 @@ gamecube_libs = [
             Object(Matching, "rel/stage02/car.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "rel/stage03/decapanel.cpp"),
             Object(Matching, "rel/stage04/jenny.cpp"),
-            # -inline deferred, as retail shows: .text runs DrawTrashStack, UpdateTrash,
-            # __dt__4CPadFv, InitTrash, ... CmdStartTrash, the layout deferred codegen gives
-            # for this file order; with auto the CPad dtor lands at the end of the file
-            Object(NonMatching, "rel/trash.cpp", extra_cflags=["-inline auto,deferred"]),
+            # retail .text and .rodata order follow the source: helpers/IsNearObjectXZ,
+            # DrawTrashStack, UpdateTrash, InitTrash, then the commands — the file is in
+            # retail order, so no deferred flag
+            Object(NonMatching, "rel/trash.cpp"),
             Object(Matching, "rel/stage06/parent.cpp"),
             # -inline deferred, as retail shows: .rodata has the RTTI names "CVec", "Vec" before "CJObj" and
             # the dtors after SetObj37, the layout deferred codegen gives; without it CVec's RTTI (no key

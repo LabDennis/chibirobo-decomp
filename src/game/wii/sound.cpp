@@ -126,14 +126,14 @@ BOOL XSound::LoadGroupAsync(s32 groupId)
  * @note Address: 0x800366EC
  * @note Size: 0x8FC
  */
-// The XSound half of the frame's sound update; CGame::Update calls it. The name is ours, the
-// GameCube's UpdateGameSound is the counterpart (that name is the CSound update's here).
+// The XSound half of the frame's sound update; CGame::Update calls it. It shares the
+// GameCube's UpdateGameSound name; the CSound update it calls is UpdateCSound.
 // NONMATCHING: retail clears mStartedSfx in a counted loop of four rounds with eight stores each
 // (0x80036738), this compiler writes the 32 stores out; for, while, do-while, pointer and nested
 // forms were tried.
-extern "C" void UpdateXSound(XSound* sound, s32 step)
+extern "C" void UpdateGameSound(XSound* sound, s32 step)
 {
-	UpdateGameSound(sound, step);
+	UpdateCSound(sound, step);
 	for (int i = 0; i < 32; i++) {
 		sound->mStartedSfx[i] = 0;
 	}
@@ -343,7 +343,7 @@ extern "C" s32 PlayWiiSoundEffect(XSound* sound, s32 sfx, f32 volume, f32 fade)
 		sfx = SelectMappedSound(sfx);
 		break;
 	case 0x18A:
-		// at most once in 60 frames, UpdateXSound counts mCooldown down
+		// at most once in 60 frames, UpdateGameSound counts mCooldown down
 		if (sound->mCooldown > 0) {
 			return 0;
 		}
@@ -424,7 +424,7 @@ static inline CSoundHandle* FindFreeSlot(CSound* sound)
 	return NULL;
 }
 
-// the slot's volume moves to its target over frames; UpdateGameSound steps it
+// the slot's volume moves to its target over frames; UpdateCSound steps it
 static inline void SetSlotVolume(CSoundHandle* slot, f32 volume, s32 frames, BOOL apply)
 {
 	slot->mVolumeTarget = volume;

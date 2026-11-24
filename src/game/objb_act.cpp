@@ -4138,7 +4138,7 @@ void XActHang::HandleInput(const CPadOne& pad, f32& moveWeight)
  */
 void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 {
-	act->_54 = value;
+	act->mPlugConnection = value;
 	if (apply) {
 		act->mOwner->mPlug.mConnection = value | 0x10000;
 	}
@@ -4413,9 +4413,10 @@ void UpdateHeldObject(XActLift* act, s32)
 				if (anim->flags & 0x44000000)
 					act->mTarget = NULL;
 				else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 90) {
-					((XObjPlug*)obj)->mConnection = act->_54 | 0x10000;
+					((XObjPlug*)obj)->mConnection = act->mPlugConnection | 0x10000;
 					obj->mStatus.mFlags &= ~0x0400000000000000ULL;
-				} else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 34 && act->_54 == 0x200)
+				} else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 34
+				           && act->mPlugConnection == 0x200)
 					end.SetRotationZ(-40.f * DEG2RAD, 0);
 			}
 			break;
