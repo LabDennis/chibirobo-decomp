@@ -648,12 +648,12 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 				}
 				y = 150.0f - 30.0f * std::sinf(0.9f * (3.1415927f * game->mStageName.mChars[i]._18));
 			}
-			DrawGsTexturedQuad(&gGame.mGs, &bubble, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
-			                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, x, y + bob, 0.0f,
-			                   glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), 0.0f, -0.0f, -rot);
+			u32 alpha = 255.0f * scale;
+			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x,
+			                   y + bob, 0.0f, glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), 0.0f, -0.0f, -rot);
 			f32 size   = glyphSize * (1.5f * pop);
 			f32 shrink = width / 24.0f * size;
-			u32 alpha  = 255.0f * scale;
+			alpha      = 255.0f * scale;
 			for (s32 j = 0; j < 4; j++) {
 				DrawGsTexturedQuad(&gGame.mGs, &letter, alpha, alpha, alpha, alpha, (size - shrink) * 0.5f + (x + sStageNameShadowX[j]),
 				                   bob + (y + sStageNameShadowY[j]), 0.0f, size, size, 0.0f, -0.0f, -rot);
