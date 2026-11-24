@@ -360,7 +360,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, WiiPlayerState* owner, 
 	case 9:
 		if (owner->IsAnimDone()) {
 			WiiPlayerState* chr = act->mOwner;
-			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
+			chr->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			chr->mIdleLoops = 3;
 			act->mState     = 0;
 		}
@@ -1306,7 +1306,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, XObj* animObj, u32 frames)
 			DeactivatePlayerRadar((XObjRadar*)act->mOwner->mRadarObj);
 		} else if (animObj->IsAnimDone()) {
 			WiiPlayerState* owner = act->mOwner;
-			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
+			owner->SetAnim(0x11, FALSE, 0.0f, 1.0f, 1.0f, 15.0f);
 			owner->mIdleLoops = 3;
 			act->mState       = 0;
 			act->mTarget      = NULL;

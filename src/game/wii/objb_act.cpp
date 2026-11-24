@@ -1459,11 +1459,11 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, CObj* model, u32 frames, f3
 					act->mArcStep = DEG2RAD * 12.0f;
 				}
 				act->mForward = 5.0f;
-				f32 radius    = act->mOwner->mMoveScale.x * GetFloorExtent(act->mOwner, 0).x;
-				f32 height    = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(act->mOwner, 0).y + GetFloorExtent(act->mOwner, 0).y));
+				f32 radius    = act->mOwner->GetScale()->x * GetFloorExtent(act->mOwner, 0).x;
+				f32 height    = 0.5f * (act->mOwner->GetScale()->x * (GetFloorOffset(act->mOwner, 0).y + GetFloorExtent(act->mOwner, 0).y));
 				Mtx rot;
 				PSMTXRotRad(rot, 'y', act->mOwner->mMoveRotate.y);
-				Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner, 0);
+				Vec offset = *act->mOwner->GetScale() * GetFloorOffset(act->mOwner, 0);
 				PSMTXMultVec(rot, &offset, &offset);
 				f32 yaw = act->mOwner->mMoveRotate.y;
 				f32 x   = 3.0f * (f32)sin(yaw) + (offset.x + act->mOwner->GetPos()->x);
