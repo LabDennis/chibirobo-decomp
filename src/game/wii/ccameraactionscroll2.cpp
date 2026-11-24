@@ -795,14 +795,13 @@ void CCameraActionScroll2::DrawDebug2d()
  * @note Address: 0x801644E4
  * @note Size: 0x294
  */
-// NONMATCHING: index-table pick and limit margin guessed from retail
+// NONMATCHING: the three local index arrays and the CVec center copy follow retail;
+// table/load scheduling and saved-register allocation still differ
 static void CheckQuads(CCameraActionScroll2* camera, u32 step, BOOL dragging, Vec* unused)
 {
-	static const s32 sEdgeOrder[3][4] = {
-		{ 3, 2, 0, 1 },
-		{ 1, 0, 3, 2 },
-		{ 0, 1, 2, 3 },
-	};
+	const s32 sEdgeOrder0[4] = { 3, 2, 0, 1 };
+	const s32 sEdgeOrder1[4] = { 1, 0, 3, 2 };
+	const s32 sEdgeOrder2[4] = { 0, 1, 2, 3 };
 	if (!dragging) {
 		for (s32 i = 0; i < 4; i++) {
 			camera->mQuads[i].mActive = TRUE;
@@ -817,28 +816,29 @@ static void CheckQuads(CCameraActionScroll2* camera, u32 step, BOOL dragging, Ve
 	PSVECNormalize(&dir, &dir);
 	const s32* order;
 	if (dir.z == 0.0f && dir.x < 0.0f) {
-		order = sEdgeOrder[0];
+		order = sEdgeOrder0;
 	} else if (dir.x == 0.0f && dir.z < 0.0f) {
-		order = sEdgeOrder[1];
+		order = sEdgeOrder1;
 	} else if (dir.x == 0.0f && dir.z > 0.0f) {
-		order = sEdgeOrder[2];
+		order = sEdgeOrder2;
 	} else {
-		order = sEdgeOrder[0];
+		order = sEdgeOrder0;
 	}
 	for (s32 i = 0; i < 4; i++) {
 		camera->mQuads[i].mActive = TRUE;
 		camera->mQuads[i].mUnk24  = TRUE;
 	}
-	if (camera->mCenter.x <= camera->mMinX + 0.5f) {
+	CVec center = camera->mCenter;
+	if (center.x <= camera->mMinX + 0.5f) {
 		camera->mQuads[order[0]].mUnk24 = FALSE;
 	}
-	if (camera->mCenter.x >= camera->mMaxX - 0.5f) {
+	if (center.x >= camera->mMaxX - 0.5f) {
 		camera->mQuads[order[1]].mUnk24 = FALSE;
 	}
-	if (camera->mCenter.z <= camera->mMinZ + 0.5f) {
+	if (center.z <= camera->mMinZ + 0.5f) {
 		camera->mQuads[order[2]].mUnk24 = FALSE;
 	}
-	if (camera->mCenter.z >= camera->mMaxZ - 0.5f) {
+	if (center.z >= camera->mMaxZ - 0.5f) {
 		camera->mQuads[order[3]].mUnk24 = FALSE;
 	}
 }
