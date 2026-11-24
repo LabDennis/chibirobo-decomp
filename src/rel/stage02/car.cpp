@@ -183,6 +183,16 @@ void Init(void)
 
 } // namespace Car
 
+extern "C" void SetCarParams(u8* data)
+{
+	carParams = data;
+}
+
+extern "C" void SetCarSoundCues(u8* data)
+{
+	carSoundCues = data;
+}
+
 extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached)
 {
 	if (Car::playerCar.mCar == NULL) {

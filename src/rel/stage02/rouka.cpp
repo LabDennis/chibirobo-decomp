@@ -302,7 +302,11 @@ extern "C" s32 CmdTerminateCars(s32 cmd, s32 count, s32* args)
 
 extern "C" s32 CmdShowTimer(s32 cmd, s32 count, s32* args)
 {
-	InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, args[0] != 0, 1);
+	if (args[0] != 0) {
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 1, 1);
+	} else {
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 0, 1);
+	}
 	return 0;
 }
 
