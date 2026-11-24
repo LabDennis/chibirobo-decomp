@@ -225,6 +225,19 @@ struct Shot {
 STATIC_ASSERT(sizeof(Shot) == 0xBC);
 
 struct ShotList {
+	void Add(Vec from, Vec to, Mato* item)
+	{
+		u32 i;
+		for (i = 0; i < 5; i++) {
+			if (!mShots[i].mActive) {
+				break;
+			}
+		}
+		if (i < 5) {
+			mShots[i].Start(from, to, item);
+		}
+	}
+
 	Shot mShots[5];
 	s32 mHitStreak;
 	s32 mMissStreak;
@@ -620,6 +633,39 @@ void Fighter::SetParams(u8* data)
 	mAccel        = (s32)READ_LE32(data + 0x18) / 100.0f;
 	mFireSlowdown = (s32)READ_LE32(data + 0x1C) / 100.0f;
 	mTimeLimit    = READ_LE32(data + 0x20) * 60 + 59;
+}
+
+// NONMATCHING: the shot and battery logic matches; only the f1/f2 allocation of the battery-cost conversion
+// remains different.
+extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
+{
+	Mato* item = work->mAim.mTarget;
+	CVec end;
+	Vec local;
+	Vec start;
+
+	local.x = local.z = local.y = 0.0f;
+	local.y                     = 10.0f;
+	PSMTXMultVec(work->mBodyMtx, &local, &end);
+	if (item == NULL) {
+		local = work->mAim.mPos;
+		PSMTXMultVec(work->mBodyMtx, &local, &start);
+		work->mShots.Add(end, start, item);
+	} else {
+		item->mShotsLeft--;
+		if (item->mShotsLeft <= 0) {
+			item->mPending = true;
+		}
+		work->mLastTarget = NULL;
+		work->mShots.Add(end, item->GetPos(), item);
+	}
+	Params* params = &gGame.GetPlayer()->mParams;
+	f32 battery    = params->mBattery - batteryCost;
+	params->SetBattery(battery);
+	work->mSpeed -= work->mFireSlowdown;
+	if (work->mSpeed < work->mMinSpeed) {
+		work->mSpeed = work->mMinSpeed;
+	}
 }
 
 static inline f32 SampleSpeedRate(const u8* rates, f32 frame)
