@@ -890,8 +890,7 @@ static void InitQuads(CCameraActionScroll2* camera)
  * @note Address: 0x801649B0
  * @note Size: 0x228
  */
-// NONMATCHING: render-state pokes guessed from retail; retail builds the colour word as an immediate
-// (lis/addi 0xFFFF00FF), our compiler copies the GXColor initializer byte by byte
+// NONMATCHING: render-state and stack scheduling remain
 void CCameraActionScroll2::DrawQuads()
 {
 	gGame.mGs.mCurRenderState->mZMode.mEnable = GX_FALSE;
@@ -904,14 +903,13 @@ void CCameraActionScroll2::DrawQuads()
 		if (!quad->mActive) {
 			continue;
 		}
-		f32 alpha     = quad->mUnk24 ? 1.0f : 0.5f;
-		GXColor color = { 0xFF, 0xFF, 0x00, 0xFF };
-		color.a       = color.a * alpha;
-		f32 w         = quad->mScale * GXGetTexObjWidth((GXTexObj*)quad->mTex);
-		f32 h         = quad->mScale * GXGetTexObjHeight((GXTexObj*)quad->mTex);
-		DrawGsTexturedQuad(&gGame.mGs, (CTexObj*)quad->mTex, *(u32*)&color, *(u32*)&color, *(u32*)&color, *(u32*)&color,
-		                   gPointerScreenWidth * 0.5f + quad->mX, gPointerScreenHeight * 0.5f + quad->mY, 0.0f, w, h, 0.0f, 0.0f,
-		                   quad->mRot);
+		f32 alpha             = quad->mUnk24 ? 1.0f : 0.5f;
+		u32 color             = 0xFFFF00FF;
+		((GXColor*)&color)->a = (u8)(((GXColor*)&color)->a * alpha);
+		f32 w                 = quad->mScale * GXGetTexObjWidth((GXTexObj*)quad->mTex);
+		f32 h                 = quad->mScale * GXGetTexObjHeight((GXTexObj*)quad->mTex);
+		DrawGsTexturedQuad(&gGame.mGs, (CTexObj*)quad->mTex, color, color, color, color, gPointerScreenWidth * 0.5f + quad->mX,
+		                   gPointerScreenHeight * 0.5f + quad->mY, 0.0f, w, h, 0.0f, 0.0f, quad->mRot);
 	}
 	// the GameCube code pokes the tev ops after the quad loop; on the Wii they're structs
 	gGame.mGs.mCurTevStage->mColorOp.mOp = (GXTevOp)4;
