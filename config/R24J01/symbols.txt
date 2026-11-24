@@ -1063,6 +1063,7 @@ Stage03_CmdClearObjFlagList = .text:0x80178A90; // type:function size:0x34
 Apply__16SavedObjFlagListFl = .text:0x80178AC4; // type:function size:0xE4
 CmdSaveObjFlag = .text:0x80178C54; // type:function size:0xC8
 CmdApplySavedObjFlags = .text:0x80178D1C; // type:function size:0x50
+DecaPanel_Update = .text:0x80178D6C; // type:function size:0xB14
 CmdOpenDecaPanel = .text:0x80179880; // type:function size:0xE8
 CmdIsDecaPanelOpen = .text:0x801799D4; // type:function size:0x10
 CmdGetDecaPassword = .text:0x801799E4; // type:function size:0x10
