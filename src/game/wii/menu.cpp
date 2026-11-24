@@ -612,7 +612,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
-		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight * 0.5f + gScreenSafeTop);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight / 2.0f + gScreenSafeTop);
 	}
 }
 
