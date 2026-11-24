@@ -1270,7 +1270,8 @@ void CGame::Update(u32 frames)
 			for (i = 0; i < 2; i++) {
 				CSoundHandle* handle = ((AnimSfx*)GetPlayer()->mSfx)->mActors[i].GetHandle();
 				if (handle != NULL) {
-					handle->Stop(gRefreshRate * 0.0f);
+					f32 fade = 0.0f;
+					handle->Stop(fade * gRefreshRate);
 				}
 			}
 		}
