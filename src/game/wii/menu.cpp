@@ -3090,12 +3090,12 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	DrawTexturedWindowFrame((u32)(255.0f * alpha), (u32)(255.0f * alpha) | 0xFFFFFF00, x, top + 13.0f * scale, width, height, alpha, 1.0f,
 	                        1.0f);
 	top += scale;
-	f32 margin = 20.0f * scale, size = 17.0f * scale, offset = 130.0f * scale + margin, rowY = 24.0f * scale;
+	f32 size = 17.0f * scale, offset = 130.0f * scale + 20.0f * scale, rowY = 24.0f * scale;
 	char text[256];
 	if (choice == 2) {
 		DrawPCPurchaseResult(0x52, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, (u32)(255.0f * alpha) | 0xFFFFFF00);
 	} else {
-		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, 20.0f * scale, offset);
 		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
@@ -3114,7 +3114,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (choice != 2) {
 		f32 digitY = DrawPCPurchasePrice(PriceList, tex, gScrapShopPage, selected, opacity, left, top, scale, extraW, extraH);
 		DrawPCPriceUnit(PriceList, tex, scale, left, digitY, 255.0f * alpha);
-		DrawPCPurchaseLabels(0x51, 0x41, 0x42, left, top, size, scale, margin, offset, rowY, extraW, alpha);
+		DrawPCPurchaseLabels(0x51, 0x41, 0x42, left, top, size, scale, 20.0f * scale, offset, rowY, extraW, alpha);
 	}
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
