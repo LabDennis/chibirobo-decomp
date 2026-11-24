@@ -265,8 +265,8 @@ extern "C" void DrawMenuWindow(MenuWindow* window)
 			                (Vec) { dx + (x + width) - 8.0f, dy + (y + height), z },
 			                (Vec) { 8.0f + (x - dx), dy + (y + height), z },
 			                (Vec) { x - dx, dy + (y + height) - 8.0f, z },
-			                (Vec) { x - dx, 8.0f + (y - dy), z },
-			                (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z },
+			                (Vec) { x - dx, 8.0f + (y - dy), z } };
+		Vec inner[9]    = { (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z },
 			                (Vec) { 8.0f + ((6.0f + x) - dx), (6.0f + y) - dy, z },
 			                (Vec) { dx + (width + (6.0f + x)) - 8.0f, (6.0f + y) - dy, z },
 			                (Vec) { dx + (width + (6.0f + x)), 8.0f + ((6.0f + y) - dy), z },
@@ -280,7 +280,7 @@ extern "C" void DrawMenuWindow(MenuWindow* window)
 		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 9);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
 		color = (u32)(96.0f * window->mDrawAlpha);
-		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[9], color, 9);
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, inner, color, 9);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
 		color = (u32)(255.0f * window->mDrawAlpha) | 0xFAFAFA00;
