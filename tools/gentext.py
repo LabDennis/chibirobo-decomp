@@ -23,6 +23,11 @@ TABLES = [
     for lang in ("English", "German", "French", "Spanish", "Italian", "Japanese")
     for kind in ("InterfaceText", "PCDialogue")
 ]
+# Wii NAND save banner title and comment are UTF-16BE wide literals cast to const char*.
+WIDE_ENTRIES = {
+    ("R24J01", "gJapaneseInterfaceText", 1),
+    ("R24J01", "gJapaneseInterfaceText", 2),
+}
 
 HEX = b"0123456789abcdefABCDEF"
 ESCAPES = {ord("\\"): "\\\\", ord('"'): '\\"', ord("\n"): "\\n", ord("\t"): "\\t"}
@@ -77,12 +82,29 @@ def symbols(path: Path):
     return found
 
 
-def table_lines(dol: bytes, at, addr: int, size: int):
+def quote_wide(dol: bytes, start: int) -> str:
+    """C wide string literal cast to const char* for UTF-16BE entries."""
+    out = ""
+    pos = start
+    while True:
+        (unit,) = struct.unpack_from(">H", dol, pos)
+        if unit == 0:
+            break
+        out += f"\\x{unit:04X}"
+        pos += 2
+    return f'(const char*)L"{out}"'
+
+
+def table_lines(dol: bytes, at, version: str, name: str, addr: int, size: int):
     lines = []
     for i in range(size // 4):
         (ptr,) = struct.unpack_from(">I", dol, at(addr + 4 * i))
         start = at(ptr)
-        lines.append("\t" + quote(dol[start : dol.index(b"\0", start)]) + ",\n")
+        if (version, name, i) in WIDE_ENTRIES:
+            lit = quote_wide(dol, start)
+        else:
+            lit = quote(dol[start : dol.index(b"\0", start)])
+        lines.append(f"\t{lit},\n")
     return "".join(lines)
 
 
@@ -105,7 +127,7 @@ def generate(version: str, root: Path):
     for out, (addr, size) in tables(version, root).items():
         assert size % 4 == 0, f"{out.stem}: size 0x{size:X} is not a pointer table"
         out.parent.mkdir(parents=True, exist_ok=True)
-        text = table_lines(dol, at, addr, size)
+        text = table_lines(dol, at, version, out.stem, addr, size)
         if not out.exists() or out.read_text(encoding="ascii") != text:
             out.write_text(text, encoding="ascii")
         written.append(out)
@@ -116,6 +138,7 @@ def _selftest():
     assert quote(b"\x83b\x83V") == '"\\x83" "b\\x83V"'
     assert quote(b'a\\b\n\t"') == '"a\\\\b\\n\\t\\""'
     assert quote(b"\x81@") == '"\\x81@"'
+    assert quote_wide(b"\x30\x61\x00\x20\x00\x00", 0) == '(const char*)L"\\x3061\\x0020"'
 
 
 if __name__ == "__main__":

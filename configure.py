@@ -1181,7 +1181,8 @@ if wii:
     wii_cflags = [
         "-nodefaults", "-proc gekko", "-align powerpc", "-enum int", "-fp hardware",
         "-O4,p", "-func_align 4", "-inline auto", "-use_lmw_stmw on", "-fp_contract on",
-        "-nosyspath", "-gccinc", "-i include", "-i include/stl", "-DVERSION_R24J01",
+        "-nosyspath", "-gccinc", "-i include", "-i include/stl", f"-i build/{config.version}/include",
+        "-DVERSION_R24J01",
         f"-DDTK_CONFIG_NONMATCHING={config.non_matching:d}",
     ]
     if args.warn:
@@ -1220,19 +1221,13 @@ if wii:
                 # the Wii file defines Load, Unload, Print in that order (the GameCube one the reverse)
                 Object(Matching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
-                # stage_data group: only GC/3.0a* emits __register_global_object for the
-                # two globals, Wii/1.3 leaves the calls out. No -ipa file: it flips the
-                # string-base register in LoadGlobalResourceData away from retail's r7
-                Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
-                       extra_cflags=["-Cpp_exceptions on"]),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
                 Object(Equivalent, "game/THPDraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/THPSimple.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
-                # ApplyStageClearColor copies its GXColor argument bytewise (0x8006F9xx); the
-                # same shape is a word copy under Wii/1.3
-                Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5",
+                # one retail file on Wii (0x80092308-0x8009453C): stage_data + globalresources in forward
+                # source order, sharing gStageResources/gGlobalScriptResources, @stringBase0, .data and .sdata2
+                Object(Equivalent, "game/wii/stage_data.cpp", mw_version="GC/3.0a5",
                        extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
                 # the whole file, 0x800AAD1C-0x800AC07C. GC/3.0a3 to 3.0a5 reproduce it; 3.0a5.2 puts the
