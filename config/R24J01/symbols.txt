@@ -9956,3 +9956,6 @@ CountHamDishObjs = .text:0x80170EE8; // type:function size:0x58
 RegisterHamDish = .text:0x80170F40; // type:function size:0xE0
 FindHamDish = .text:0x80171020; // type:function size:0x54
 ClearTempActors = .text:0x80171074; // type:function size:0xB8
+AddTempActor = .text:0x8017112C; // type:function size:0xA0
+CheckYakiResult = .text:0x801711CC; // type:function size:0x290
+__sinit_\hamburg_cpp = .text:0x8017145C; // type:function size:0x3C scope:local

@@ -5,6 +5,7 @@
 extern "C" void AllowIdleHudCounters(void* obj);
 extern "C" void SuppressIdleHudCounters(void* obj);
 extern "C" BOOL IsLiftTargetPlug(XAction* action);
+extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 
 struct HamDish;
 
@@ -351,7 +352,7 @@ static inline bool IsHeld(XObj* actor)
 static XObj* gasPlate;
 static u8 playerOffGasPlate;
 static u32 yakiLoopLevel;
-static u32 yakiResultFlags;
+static CStatus32 yakiResultFlags;
 
 extern "C" void HamObj_Update(HamObj* slot, u32 step);
 
@@ -459,8 +460,8 @@ extern "C" void InitHamburg(void)
 	for (s32 i = 0; i < 4; i++) {
 		tempActors[i] = NULL;
 	}
-	yakiResultFlags = 0;
-	putDownActive   = 0;
+	yakiResultFlags.mFlags = 0;
+	putDownActive          = 0;
 	SuppressIdleHudCounters(&gGame.mInfoScrn);
 }
 
@@ -701,6 +702,63 @@ extern "C" HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
 		}
 	}
 	return best;
+}
+
+extern "C" void AddTempActor(s32 id)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (tempActors[i] == NULL) {
+			XObj* actor;
+			if (gGame.mEvt.mData.mScript != NULL) {
+				actor = ResolveEventObjectId(&gGame.mEvt.mData, id);
+			} else {
+				actor = NULL;
+			}
+			tempActors[i] = actor;
+			tempActors[i]->mStatus.mFlags |= 0x10000ULL;
+			return;
+		}
+	}
+}
+
+extern "C" s32 CheckYakiResult(void)
+{
+	if (gGame.mEvt.mData.mScript != NULL) {
+		return 0;
+	}
+
+	XObj* player = (XObj*)gGame.GetPlayer();
+	if (player->GetPos()->x < -295.0f || -225.0 < player->GetPos()->x || player->GetPos()->z < 10.0f || 74.0f < player->GetPos()->z) {
+		return 9;
+	}
+
+	s32 result = 0;
+	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
+		for (u32 i = 0; i < 9 && result == 0; i++) {
+			HamObj* slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
+			    && slot->mYakiTime[1] / 600 + 1 >= 3) {
+				result = 1;
+			}
+		}
+		if (result != 0) {
+			yakiResultFlags.mFlags |= 2;
+		}
+	}
+
+	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
+		for (u32 i = 0; i < 9 && result == 0; i++) {
+			HamObj* slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9
+			    && (slot->mYakiTime[0] / 600 + 1 >= 5 || slot->mYakiTime[1] / 600 + 1 >= 5)) {
+				result = 2;
+			}
+		}
+		if (result != 0) {
+			yakiResultFlags.mFlags |= 4;
+		}
+	}
+	return result;
 }
 #else
 #include "Version.h"
