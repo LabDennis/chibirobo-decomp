@@ -239,18 +239,18 @@ void CCameraActionScroll2::Reset()
 		}
 	}
 
-	mStart.x     = mInterest.x;
-	mStart.y     = mInterest.y;
-	mStart.z     = mInterest.z;
-	CVec offset  = mEye - mInterest;
-	mOffset.x    = offset.x;
-	mOffset.y    = offset.y;
-	mOffset.z    = offset.z;
-	CVec center  = mInterest;
-	mCenter.x    = center.x;
-	mCenter.y    = center.y;
-	mCenter.z    = center.z;
-	mCenterPtr   = &mCenter;
+	mStart.x    = mInterest.x;
+	mStart.y    = mInterest.y;
+	mStart.z    = mInterest.z;
+	CVec offset = mEye - mInterest;
+	mOffset.x   = offset.x;
+	mOffset.y   = offset.y;
+	mOffset.z   = offset.z;
+	CVec center = mInterest;
+	mCenter.x   = center.x;
+	mCenter.y   = center.y;
+	mCenter.z   = center.z;
+	mCenterPtr  = &mCenter;
 	CalcLimits(this, GetLimits(gGame.mStage));
 	mDragging    = FALSE;
 	mDragDamping = 0.85f;

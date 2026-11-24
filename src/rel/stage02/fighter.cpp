@@ -23,8 +23,8 @@ static inline void DrawCaption(s32 id, f32 scale, f32 x, f32 y)
 	f32 left = x - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), TRUE, size) * 0.5f;
 	f32 top  = y - size * 0.5f - 3.0f;
 	for (s32 i = 0; i < 4; i++) {
-		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(id), left + captionShadowX[i], top + captionShadowY[i], 0.0f,
-		                             size * scale, size * scale);
+		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(id), left + captionShadowX[i], top + captionShadowY[i],
+		                             0.0f, size * scale, size * scale);
 	}
 	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(id), left, top, 0.0f, size * scale, size * scale);
 }
@@ -89,8 +89,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 				u32 top    = (u32)(255.0f * scale) | 0xFAE0CF00;
 				u32 bottom = (u32)(255.0f * scale) | 0xE9813A00;
-				DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, 7.0f * dw + (left - d * dw) - 32.0f * scale, digitY, 0.0f, dw, dh,
-				                   0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, 7.0f * dw + (left - d * dw) - 32.0f * scale, digitY, 0.0f,
+				                   dw, dh, 0.0f, 0.0f, 0.0f);
 				gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 			}
 		}
@@ -153,8 +153,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 		if (time < 10) {
 			lead = 1;
 		}
-		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, 7.0f * dw + (left - lead * (dw - 8.0f * scale)) - 32.0f * scale, digitY,
-		                   0.0f, dw, dh, 0.0f, 0.0f, 0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, 7.0f * dw + (left - lead * (dw - 8.0f * scale)) - 32.0f * scale,
+		                   digitY, 0.0f, dw, dh, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 
 		// the third label, at the left edge, and its gauge
@@ -170,10 +170,10 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 		DrawCaption(0x5D, scale, x, y);
 
 		obj->mPanelTpl.mTex.Init(&obj->mPanelTpl.mPalette->descriptorArray[6], 0);
-		tex          = obj->mPanelTpl.mTex;
-		f32 gaugeY   = 28.0f + y;
-		f32 gaugeW   = scale * GXGetTexObjWidth(&tex);
-		h            = GXGetTexObjHeight(&tex);
+		tex        = obj->mPanelTpl.mTex;
+		f32 gaugeY = 28.0f + y;
+		f32 gaugeW = scale * GXGetTexObjWidth(&tex);
+		h          = GXGetTexObjHeight(&tex);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, gaugeY, 0.0f, gaugeW, scale * h, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);

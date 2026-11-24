@@ -352,7 +352,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		CVec pos = GetJointPos(FindResNode("hand_r_4"));
 		pos.y += 2.0f;
 		player->SetPos(pos);
-		pos = GetJointPos(FindResNode("face"));
+		pos            = GetJointPos(FindResNode("face"));
 		const CVec* at = player->GetPos();
 		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}

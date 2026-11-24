@@ -1025,8 +1025,7 @@ extern "C" void UpdateToyLinkedObject(XObjActorToy* toy, u32 frames)
 				break;
 			}
 		}
-	} else if (toy->_21E0 != (XObj*)1 && toy->_21E0 != NULL
-	           && (toy->_21E0->mStatus.mFlags & 0x10001) == 0x10001) {
+	} else if (toy->_21E0 != (XObj*)1 && toy->_21E0 != NULL && (toy->_21E0->mStatus.mFlags & 0x10001) == 0x10001) {
 		Mtx translation, result;
 		Vec position;
 		PSMTXTrans(translation, 0.0f, 5.5f, -5.5f);
@@ -1293,13 +1292,13 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	case 0: {
 		const Vec* player = gGame.GetPlayer()->GetPos();
 		mHeading          = PI + (f32)atan2(player->x - mMoveTranslate.x, player->z - mMoveTranslate.z);
-		Vec pos     = { 0.0f, 0.0f, 0.0f };
-		pos.x       = mMoveTranslate.x;
-		pos.y       = mMoveTranslate.y;
-		pos.z       = mMoveTranslate.z;
-		mHomePos.x  = pos.x;
-		mHomePos.y  = pos.y;
-		mHomePos.z  = pos.z;
+		Vec pos           = { 0.0f, 0.0f, 0.0f };
+		pos.x             = mMoveTranslate.x;
+		pos.y             = mMoveTranslate.y;
+		pos.z             = mMoveTranslate.z;
+		mHomePos.x        = pos.x;
+		mHomePos.y        = pos.y;
+		mHomePos.z        = pos.z;
 		mActorStatus.mFlags |= 8;
 		mActorStatus.mFlags |= 0x10;
 		mActorStatus.mFlags |= 4;

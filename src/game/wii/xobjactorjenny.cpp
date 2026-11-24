@@ -4,7 +4,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-
 static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 {
 	if (jenny->mStatus.mFlags & 0x10000) {
@@ -310,18 +309,18 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 		}
 	}
 	if ((mActorStatus.mFlags & 0x200) && (player->mPlayerFlags & 0x40000000)) {
-		CVec pos  = GetJointPos(FindResNode("hand_l_4"));
+		CVec pos         = GetJointPos(FindResNode("hand_l_4"));
 		const CVec* self = GetPos();
 		f32 angle        = atan2(pos.x - self->x, pos.z - self->z);
-		f32 sx    = (f32)sin(angle - HALF_PI);
-		f32 cz    = (f32)cos(angle - HALF_PI);
-		f32 dx    = 3.0f * sx;
-		f32 dz    = 3.0f * cz;
+		f32 sx           = (f32)sin(angle - HALF_PI);
+		f32 cz           = (f32)cos(angle - HALF_PI);
+		f32 dx           = 3.0f * sx;
+		f32 dz           = 3.0f * cz;
 		pos.x += dx;
 		pos.y += 2.0f;
 		pos.z += dz;
 		player->SetPos(pos);
-		pos = GetJointPos(FindResNode("head"));
+		pos            = GetJointPos(FindResNode("head"));
 		const CVec* at = player->GetPos();
 		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}
@@ -329,7 +328,7 @@ void XObjActorJenny::UpdateAfterAnim(u32 frames)
 		CVec pos = GetJointPos(FindResNode("hand_l_4"));
 		pos.y += 2.0f;
 		player->SetPos(pos);
-		pos = GetJointPos(FindResNode("head"));
+		pos            = GetJointPos(FindResNode("head"));
 		const CVec* at = player->GetPos();
 		player->SetRotateY(atan2(pos.x - at->x, pos.z - at->z), 0.0f);
 	}
