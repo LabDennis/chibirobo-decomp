@@ -1,5 +1,6 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "game/wii/xobjflags.h"
 
 extern "C" CVec fn_800E5A2C(XObj* player);
 
@@ -45,6 +46,94 @@ static XObj* tutiAnaObj;
 static XObj* tutiHutaObj;
 static XObj* flowerObjs[3];
 static u8 anaXObjsInitialized;
+
+inline Ana* GetAna(s32 id)
+{
+	if (id < 0 || id >= 20) {
+		return &anaNull;
+	}
+	return &anas[id];
+}
+
+inline void ReleaseHeld(WiiPlayerState* player)
+{
+	if (player->mLift.mTarget != NULL) {
+		player->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+		player->mLift.mTarget = NULL;
+	}
+	player->mLift.mState = 0;
+}
+
+inline void DropObj(XObj* obj)
+{
+	if (obj->GetCategory() == XOBJS::ITEMS) {
+		static_cast<XObjItem*>(obj)->SetFlag();
+	}
+	obj->mReleaseCountdown = 2;
+}
+
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(1, 0);
+	return 1;
+}
+
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(2, 0);
+	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
+	if (obj != NULL) {
+		ReleaseHeld(gGame.GetPlayer());
+		DropObj(obj);
+	}
+	return 1;
+}
+
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->SetJObj(args[1], args[2]);
+	return 1;
+}
+
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana   = GetAna(args[0]);
+	ana->mRotY = 57.295776f * args[1];
+	return 1;
+}
+
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args)
+{
+	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
+	if (obj != NULL) {
+		obj->mStatus.mFlags &= ~0x10000ULL;
+		ReleaseHeld(gGame.GetPlayer());
+		DropObj(obj);
+	}
+	return 0;
+}
+
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args)
+{
+	Ana* ana = GetAna(args[0]);
+	if (!ana->IsActive()) {
+		return 0;
+	}
+	ana->mStatus.mFlags |= 8;
+	return 0;
+}
 
 extern "C" void UpdateAnas(s32 dt)
 {
