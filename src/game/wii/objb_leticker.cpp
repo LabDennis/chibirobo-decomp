@@ -1109,8 +1109,10 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		return FALSE;
 	}
 	CPad pad(0);
-	f32 heading = (f32)atan2(player->GetPos()->x - GetPos()->x, player->GetPos()->z - GetPos()->z);
-	f32 angle   = heading - GetRotY();
+	const CVec* playerPos = player->GetPos();
+	const CVec* pos       = GetPos();
+	f32 heading           = (f32)atan2(playerPos->x - pos->x, playerPos->z - pos->z);
+	f32 angle             = heading - GetRotY();
 	// the pushed direction snaps the target rotation to a quarter turn
 	s32 side = GetSide(angle);
 	switch (side) {
