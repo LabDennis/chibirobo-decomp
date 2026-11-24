@@ -64,6 +64,10 @@ STATIC_ASSERT(sizeof(XObjFloor) == 0x20);
 // _14C (verified against InitializeObjectPools' virtual calls and against the
 // calls inside the two classes' small virtuals at 0x800433FC-0x80044500).
 namespace nw4r {
+namespace g3d {
+class Fog;
+}
+
 namespace db {
 void Panic(const char* file, int line, const char* fmt, ...);
 }
@@ -1264,13 +1268,16 @@ public:
 	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
 	                          u32 numLightSet); // 0x8027AB88
 	// Destroy is G3dObj's, 0x8026C574, frees the constructed buffers
+	Fog GetFog(int idx);             // 0x8027AE0C
 	bool SetAnmScn(AnmScn* pAnmScn); // 0x8027AE70
 	AnmScn* RemoveAnmScn();          // 0x8027AF0C
 	void UpdateFrame();              // 0x8027AF78
 	void CalcWorld();                // 0x8027B388
+	void CalcMaterial();             // 0x8027B3D4
 	void CalcVtx();                  // 0x8027B3F0
 	void CalcView();                 // 0x8027B40C
 	void GatherDrawScnObj();
+	void ZSort();
 	void DrawOpa();
 	void DrawXlu();
 	MtxP GetCurrentCamera(); // 0x8027ADC8

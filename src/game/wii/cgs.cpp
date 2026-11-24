@@ -26,6 +26,7 @@
 extern "C" u16 GXReadDrawSync(void);
 
 #include "nw4r/g3d/g3d_camera.h"
+#include "nw4r/g3d/g3d_fog.h"
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
 #include "game/cprimitive.h"
@@ -48,6 +49,7 @@ void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
 void PSMTX44Identity(Mtx44 mtx);
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
+void Invalidate__Q34nw4r3g3d8G3DStateFUl(u32 flags);
 void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 channels, u32 texGens);
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
 CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
@@ -797,6 +799,46 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 
 	nw4r::g3d::G3dInit(false);
 	fn_802AEBF0(&mScene.mHead, renderStates, tevStages, channels, texGens);
+}
+
+extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32)
+{
+	nw4r::g3d::G3dReset();
+	((nw4r::g3d::ScnRoot*)*head)->UpdateFrame();
+	((nw4r::g3d::ScnRoot*)*head)->CalcVtx();
+	((nw4r::g3d::ScnRoot*)*head)->CalcWorld();
+	((nw4r::g3d::ScnRoot*)*head)->CalcMaterial();
+}
+
+extern "C" void fn_802AEDEC(WiiGsSceneObj** head, Mtx)
+{
+	((nw4r::g3d::ScnRoot*)*head)->CalcView();
+	((nw4r::g3d::ScnRoot*)*head)->GatherDrawScnObj();
+	((nw4r::g3d::ScnRoot*)*head)->ZSort();
+	Invalidate__Q34nw4r3g3d8G3DStateFUl(0x7FF);
+	((nw4r::g3d::ScnRoot*)*head)->DrawOpa();
+	((nw4r::g3d::ScnRoot*)*head)->DrawXlu();
+}
+
+extern "C" void fn_802AEE44(WiiGsSceneObj** head, XObj* obj)
+{
+	if (obj != NULL) {
+		head[1] = obj->mObject.m_resFile.HasResAnmScn() ? (WiiGsSceneObj*)obj->mObject.m_resources.scn : NULL;
+	} else {
+		head[1] = NULL;
+	}
+	if (head[1] != NULL && ((nw4r::g3d::AnmScn*)head[1])->GetNumFog() == 0) {
+		nw4r::g3d::Fog fog = ((nw4r::g3d::ScnRoot*)*head)->GetFog(0);
+		if (!fog.IsValid()) {
+			nw4r::db::Panic("g3d_fog.h", 0x41, "NW4R:Failed assertion IsValid()");
+		}
+		fog.SetFogType((GXFogType)0);
+	}
+	if (head[1] != NULL) {
+		((nw4r::g3d::ScnRoot*)*head)->SetAnmScn((nw4r::g3d::AnmScn*)head[1]);
+	} else {
+		((nw4r::g3d::ScnRoot*)*head)->RemoveAnmScn();
+	}
 }
 
 void CGs::SetScreenMode(s32 mode, u16 hor, u16 ver)
