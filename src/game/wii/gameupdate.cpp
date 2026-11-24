@@ -642,9 +642,9 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
-			gGame.mGs._1FE4[i]._18       = FALSE;
-			gGame.mGs._1FE4[i].mPosSet   = FALSE;
-			gGame.mGs._1FE4[i].mColorSet = FALSE;
+			gGame.mGs.mScene.mSlots[i]._18       = FALSE;
+			gGame.mGs.mScene.mSlots[i].mPosSet   = FALSE;
+			gGame.mGs.mScene.mSlots[i].mColorSet = FALSE;
 		}
 		game->SetCameraLight();
 		game->mEffects.UpdateLights(gGame.mGs.mLight);

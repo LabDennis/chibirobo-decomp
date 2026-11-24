@@ -868,7 +868,7 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 		u8 b = CEvt_Evaluate(this);
 		if (diff.IsEnable()) {
 			GXColor color = { r, g, b, sEvtLightAlpha };
-			gGame.mGs._1FE4[index].SetColor(color);
+			gGame.mGs.mScene.mSlots[index].SetColor(color);
 		}
 		break;
 	}
@@ -878,7 +878,7 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 		f32 z = CEvt_Evaluate(this) / 100.0f;
 		if (diff.IsEnable()) {
 			Vec pos = { x, y, z };
-			gGame.mGs._1FE4[index].SetPos(pos);
+			gGame.mGs.mScene.mSlots[index].SetPos(pos);
 		}
 		break;
 	}

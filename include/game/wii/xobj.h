@@ -65,8 +65,9 @@ STATIC_ASSERT(sizeof(XObjFloor) == 0x20);
 // calls inside the two classes' small virtuals at 0x800433FC-0x80044500).
 namespace nw4r {
 namespace g3d {
+class Camera;
 class Fog;
-}
+} // namespace g3d
 
 namespace db {
 void Panic(const char* file, int line, const char* fmt, ...);
@@ -1268,6 +1269,8 @@ public:
 	static ScnRoot* Construct(MEMAllocator* pAllocator, u32* pSize, u32 maxChildren, u32 maxScnObj, u32 numLightObj,
 	                          u32 numLightSet); // 0x8027AB88
 	// Destroy is G3dObj's, 0x8026C574, frees the constructed buffers
+	Camera GetCamera(int idx);       // 0x8027AD6C
+	void SetCurrentCamera(int idx);  // 0x8027AE04
 	Fog GetFog(int idx);             // 0x8027AE0C
 	bool SetAnmScn(AnmScn* pAnmScn); // 0x8027AE70
 	AnmScn* RemoveAnmScn();          // 0x8027AF0C

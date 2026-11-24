@@ -49,13 +49,21 @@ void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
 void PSMTX44Identity(Mtx44 mtx);
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
-void Invalidate__Q34nw4r3g3d8G3DStateFUl(u32 flags);
-void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 channels, u32 texGens);
+void fn_802AEBF0(WiiGsScene* scene, u32 renderStates, u32 tevStages, u32 channels, u32 texGens);
 void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
 CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
 extern MEMiHeapHead* gWiiMem1Heap;
 extern MEMAllocator gWiiPadAllocator;
 }
+
+// nw4r/g3d/g3d_state.h's declaration, as cgs_scrn.cpp gives it: the header clashes with the Dolphin GX headers
+namespace nw4r {
+namespace g3d {
+namespace G3DState {
+void Invalidate(u32 flag);
+}
+} // namespace g3d
+} // namespace nw4r
 
 #define NW4R_ASSERT_VALID_ROOT(exp)                                                                                                        \
 	((void)((((u32)(exp) & 0xFF000000) == 0x80000000 || ((u32)(exp) & 0xFF800000) == 0x81000000 || ((u32)(exp) & 0xF8000000) == 0x90000000 \
@@ -805,42 +813,20 @@ void CGs::Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 	mTextFont = 0;
 
 	nw4r::g3d::G3dInit(false);
-	fn_802AEBF0(&mScene.mHead, renderStates, tevStages, channels, texGens);
+	fn_802AEBF0(&mScene, renderStates, tevStages, channels, texGens);
 }
 
-extern "C" void fn_802AEBF0(WiiGsSceneObj** head, u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
+extern "C" void fn_802AEBF0(WiiGsScene* scene, u32 renderStates, u32 tevStages, u32 channels, u32 texGens)
 {
 	nw4r::g3d::ScnRoot* m_pRoot = nw4r::g3d::ScnRoot::Construct(&gWiiPadAllocator, NULL, renderStates, tevStages, channels, texGens);
-	*head                       = (WiiGsSceneObj*)m_pRoot;
+	scene->mHead                = (WiiGsSceneObj*)m_pRoot;
 	NW4R_ASSERT_VALID_ROOT(m_pRoot);
-	head[1]                         = NULL;
-	((WiiGsSceneObj*)m_pRoot)->_458 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_448 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_440 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_480 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_470 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_468 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4A8 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_498 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_490 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4D0 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4C0 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4B8 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4F8 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4E8 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_4E0 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_520 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_510 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_508 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_548 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_538 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_530 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_570 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_560 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_558 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_598 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_588 = 0;
-	((WiiGsSceneObj*)m_pRoot)->_580 = 0;
+	scene->_04 = FALSE;
+	for (int i = 0; i < 9; i++) {
+		scene->mSlots[i]._18       = FALSE;
+		scene->mSlots[i].mPosSet   = FALSE;
+		scene->mSlots[i].mColorSet = FALSE;
+	}
 }
 
 extern "C" void fn_802AEDA0(WiiGsSceneObj** head, u32)
@@ -857,7 +843,7 @@ extern "C" void fn_802AEDEC(WiiGsSceneObj** head, Mtx)
 	((nw4r::g3d::ScnRoot*)*head)->CalcView();
 	((nw4r::g3d::ScnRoot*)*head)->GatherDrawScnObj();
 	((nw4r::g3d::ScnRoot*)*head)->ZSort();
-	Invalidate__Q34nw4r3g3d8G3DStateFUl(0x7FF);
+	nw4r::g3d::G3DState::Invalidate(0x7FF);
 	((nw4r::g3d::ScnRoot*)*head)->DrawOpa();
 	((nw4r::g3d::ScnRoot*)*head)->DrawXlu();
 }
@@ -1832,13 +1818,10 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	}
 }
 
-extern "C" nw4r::g3d::Camera GetCamera__Q34nw4r3g3d7ScnRootFi(nw4r::g3d::ScnRoot* root, s32 index);
-extern "C" void SetCurrentCamera__Q34nw4r3g3d7ScnRootFi(nw4r::g3d::ScnRoot* root, s32 index);
-
 extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
 {
-	nw4r::g3d::Camera nwCamera = GetCamera__Q34nw4r3g3d7ScnRootFi((nw4r::g3d::ScnRoot*)*head, flag);
-	SetCurrentCamera__Q34nw4r3g3d7ScnRootFi((nw4r::g3d::ScnRoot*)*head, flag);
+	nw4r::g3d::Camera nwCamera = ((nw4r::g3d::ScnRoot*)*head)->GetCamera(flag);
+	((nw4r::g3d::ScnRoot*)*head)->SetCurrentCamera(flag);
 	if (camera->GetProjectionSource() != NULL) {
 		nw4r::math::MTX44 projection;
 		nw4r::math::MTX44Copy(&projection, (const nw4r::math::MTX44*)camera->GetProjectionSource());
@@ -1865,7 +1848,7 @@ extern "C" void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag)
 		nwCamera.SetPosition(camera->mView.mEye);
 		posture.cameraUp     = camera->mView.mUp;
 		posture.cameraTarget = camera->mView.mInterest;
-		posture.cameraRotate = camera->mView.mAngle;
+		posture.cameraRotate = nw4r::math::VEC3(0.0f, 0.0f, 0.0f);
 		posture.cameraTwist  = 0.0f;
 		nwCamera.SetPosture(posture);
 	}

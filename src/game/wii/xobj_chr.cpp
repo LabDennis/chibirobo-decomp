@@ -6899,13 +6899,10 @@ void XObjChr::DrawCollisionShapes()
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);
 	gGame.mGs.mCurRenderState->SetZMode(TRUE, (GXCompare)7, FALSE);
 	PrimVertex triangle[3] = {
-		{ { 1.0f, 1.0f, 1.0f }, 0 },
-		{ { 0.0f, 0.0f, 0.0f }, 0xFF000080 },
-		{ { 0.0f, 0.0f, 0.0f }, 0x00FF0080 },
+		{ chr->mFloorTriangle[0], 0xFF000080 },
+		{ chr->mFloorTriangle[1], 0x00FF0080 },
+		{ chr->mFloorTriangle[2], 0x0000FF80 },
 	};
-	triangle[0].pos = chr->mFloorTriangle[0];
-	triangle[1].pos = chr->mFloorTriangle[1];
-	triangle[2].pos = chr->mFloorTriangle[2];
 	DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, triangle, 3);
 	SetGsChannelEnabled(&gGame.mGs, 0, TRUE);
 	gGame.mGs.mCurRenderState->SetBlendMode((GXBlendMode)1, (GXBlendFactor)4, (GXBlendFactor)5, (GXLogicOp)15);

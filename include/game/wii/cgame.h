@@ -837,8 +837,8 @@ typedef XObjDressOpt WiiSuitPart;
 // ctor/dtor names in symbols.txt (0x800C08B8, 0x800C0E18); retail's XObjChrBase RTTI is polymorphic and this has
 // no vptr, so the name is unconfirmed
 struct XObjChrBase {
-	XObjChrBase();
-	~XObjChrBase();
+	XObjChrBase() { }
+	~XObjChrBase() { }
 
 	s32 mLoadStep;          // _00
 	s32 mChangeStep;        // _04, a queued suit change
