@@ -1592,7 +1592,7 @@ if wii:
                 Object(Equivalent, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii TU 0x80032C48-0x800354DC: the divide interpolations, gGame and all
                 # member constructors its static initializer emits; some deleting dtors remain open
-                Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-DNW4R_ASSERT"]),
                 # the Wii sound file 0x80036694-0x8003CEB0 (wii_units.md #23-#25): the sound front end,
                 # the sound banks, the sound picks, the glyph sounds, the stage reverb and AnimSfx. The
                 # nw4r sound headers need the Wii MSL's <cstdarg> and <new>
