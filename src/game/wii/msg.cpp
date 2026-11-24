@@ -904,7 +904,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 				// the Wii draws a copy of the portrait through its own cursor object: the anim
 				// and pose move over, the head joint's height decides how far it sits raised
 				Vec head       = portrait->GetJointPos("head");
-				Vec base       = portrait->vf0B8(0);
+				Vec base       = portrait->GetWorldPos(0);
 				f32 headHeight = head.y - base.y - 1.2f;
 				f32 frame      = portrait->GetAnimFrame();
 				s32 anim       = portrait->GetAnimId();

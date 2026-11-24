@@ -124,7 +124,7 @@ public:
 	virtual void vf0AC();
 	virtual void vf0B0();
 	virtual Vec vf0B4(const s32* path); // _0B4, a joint's world position by path
-	virtual Vec vf0B8(s32 index);       // _0B8, the object's own position
+	virtual Vec GetWorldPos(s32 index); // _0B8, the world position for a node index
 	virtual void vf0BC();
 	virtual void vf0C0();
 	virtual void vf0C4();
