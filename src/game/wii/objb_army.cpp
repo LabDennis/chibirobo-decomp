@@ -266,7 +266,7 @@ void XObjArmy::UpdateObject(u32 frames)
  * @note Address: 0x8011DE9C
  * @note Size: 0x4
  */
-void XObjArmy::DrawLate()
+void XObjArmy::DrawObjectEffects()
 {
 }
 
@@ -274,7 +274,7 @@ void XObjArmy::DrawLate()
  * @note Address: 0x8011DEA0
  * @note Size: 0x4C
  */
-void XObjArmy::DrawObjectEffects()
+void XObjArmy::DrawLate()
 {
 	for (u32 i = 0; i < 5; i++) {
 		DrawArmyShot(&mShots[i]);
