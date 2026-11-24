@@ -3061,8 +3061,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames,
  * @note Address: 0x800F9EC0
  * @note Size: 0x2C54
  */
-// NONMATCHING: GetLiftTargetContactOffset is defined after this function, so it stays out of line at all 14 sites
-// as in retail and the size matches; the remaining difference is not yet classified.
+// NONMATCHING: retail keeps GetLiftTargetContactOffset out of line at all 14 sites; this build expands it
+// despite its later definition, adding the floor-contact and CVec calls at every site
 void UpdateHeldObject(XActLift* act, u32 frames)
 {
 	if (!act->mTargetState) {
