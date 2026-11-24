@@ -1,9 +1,34 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
 
-class DecaPanel;
+class DecaPanel {
+public:
+	void ResetInput();
+
+	u8 _000[0x1FC];
+	s32 mActive;
+	u8 _200[0x518];
+	u8 mDigits[6];
+	u8 _71E[2];
+	s32 mCode;
+	u8 mCursorX;
+	u8 mCursorY;
+	u8 mLocked;
+	u8 mDigitNum;
+	f32 mCurX;
+	f32 mCurY;
+	f32 mTargetX;
+	f32 mTargetY;
+};
+
+struct DecaPanelKey {
+	f32 x;
+	f32 y;
+	u8 mChar;
+};
 
 extern DecaPanel decaPanel;
+extern DecaPanelKey decaPanelKeys[12];
 
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 extern "C" void DecaPanel_Update(DecaPanel* work);
@@ -56,6 +81,50 @@ void SavedObjFlagList::Clear()
 		mEntries[i].mId    = -1;
 		mEntries[i].mFlags = 0;
 	}
+}
+
+void DecaPanel::ResetInput()
+{
+	mDigits[0] = ' ';
+	mDigits[1] = ' ';
+	mDigits[2] = ' ';
+	mDigits[3] = ' ';
+	mDigits[4] = ' ';
+	mDigits[5] = ' ';
+	mCode      = 0;
+	mCursorX   = 0;
+	mCursorY   = 3;
+	mLocked    = 0;
+	mDigitNum  = 0;
+	s32 idx    = mCursorX + mCursorY * 3;
+	mCurX = mTargetX = decaPanelKeys[idx].x;
+	mCurY = mTargetY = decaPanelKeys[idx].y;
+}
+
+extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
+{
+	return decaPanel.mCode;
+}
+
+extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
+{
+	return decaPanel.mActive;
+}
+
+extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
+{
+	decaPanel.mActive = 0;
+	gGame.ClearStatusFlags(2);
+	return 0;
+}
+
+extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
+{
+	decaPanel.ResetInput();
+	decaPanel.mActive = 1;
+	gGame.SetStatusFlags(2);
+	StopWiiSfx(&gGame.mSound, 0x2F6, 0.0f);
+	return 0;
 }
 
 extern "C" s32 Stage03_DrawHud(u32 arg)
