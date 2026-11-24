@@ -128,6 +128,20 @@ f32 HamObj::GetStackHeight()
 	return GetStackPlacementPosition(mActor->mCoord).y + 0.5f * mStackLevel;
 }
 
+// NONMATCHING: recursion unrolling and stack-slot layout differ; the height calculation, SetMoveDir speed and recursion match.
+extern "C" void HamObj_LowerStack(HamObj* slot)
+{
+	if (slot->mStackLevel > 0) {
+		slot->mStackLevel--;
+		Vec pos = *slot->mActor->GetPos();
+		pos.y   = slot->GetStackHeight();
+		slot->mActor->SetMoveDir(&pos, 0.1f);
+		if (slot->mAbove != NULL) {
+			HamObj_LowerStack(slot->mAbove);
+		}
+	}
+}
+
 extern "C" void HamObj_Respawn(HamObj* slot)
 {
 	if (putDownActive) {
