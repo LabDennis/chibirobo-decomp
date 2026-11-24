@@ -170,6 +170,11 @@ extern "C" s32 CmdQueryFighter(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
+extern "C" s32 CmdGetFighterEvent(s32 cmd, s32 count, s32* args)
+{
+	return GetShotEvent();
+}
+
 extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 count, s32* args)
 {
 	XObj* objs[4];
@@ -292,6 +297,18 @@ extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
 		StartCarCamera();
 	}
 	return 0;
+}
+
+extern "C" s32 CmdGetCarState(s32 cmd, s32 count, s32* args)
+{
+	if (count == 0) {
+		return GetPlayerCarResult();
+	}
+	switch (args[0]) {
+	case 1:
+		return GetPlayerCarFrame();
+	}
+	return -1;
 }
 
 extern "C" s32 CmdTerminateCars(s32 cmd, s32 count, s32* args)
