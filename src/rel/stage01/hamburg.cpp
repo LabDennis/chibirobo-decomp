@@ -23,6 +23,7 @@ struct HamObj {
 	void StateFlip();
 	void StateSlide();
 	void StatePutDown();
+	void StateStackLand();
 
 	f32 GetStackHeight();
 
@@ -130,12 +131,6 @@ extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 ang
 static u8 putDownActive;
 static u8 yakiSoundPlayed;
 
-static inline void SetHamRot(HamObj* slot, f32 rot)
-{
-	slot->mRotZ = rot;
-	slot->mActor->SetRotationZ(rot);
-}
-
 extern "C" void HamObj_SetRot(HamObj* slot, f32 rot)
 {
 	slot->SetRot(rot);
@@ -152,7 +147,7 @@ static inline Vec GetStackPlacementPosition(const CoordInfo& coord)
 
 f32 HamObj::GetStackHeight()
 {
-	return GetStackPlacementPosition(mActor->mCoord).y + 0.5f * mStackLevel;
+	return GetStackPlacementPosition(mActor->mCoord).y + 2.0f * mStackLevel;
 }
 
 // NONMATCHING: recursion unrolling and stack-slot layout differ; the height calculation, SetMoveDir speed and recursion match.
@@ -171,14 +166,64 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 
 extern "C" f64 cos(f64 x);
 extern "C" f64 sin(f64 x);
-extern "C" bool HamObj_CheckSlideHit(HamObj* slot);
 
 static inline bool IsSamePos(const Vec& a, const Vec& b)
 {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-// NONMATCHING: HamObj_CheckSlideHit and helper recursion stay out of line; Retail inlines them and expands the frame.
+static inline bool IsOnGasPlate(XObj* actor)
+{
+	Vec* pos = actor->GetPos();
+	if (pos->x < -289.0f || -239.0f < pos->x || pos->z < 21.4f || 62.6f < pos->z) {
+		return false;
+	}
+	return true;
+}
+
+static inline bool IsLeavingGasPlate(HamObj* slot)
+{
+	Vec* pos = slot->mActor->GetPos();
+	if ((62.6f < pos->z && 0.0f < (f32)cos(slot->mMoveAngle)) || (pos->z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
+	    || (-239.0f < pos->x && 0.0f < (f32)sin(slot->mMoveAngle)) || (pos->x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
+		return true;
+	}
+	return false;
+}
+
+static inline f32 AngleFrom(const Vec* from, const Vec* to)
+{
+	return atan2(to->x - from->x, to->z - from->z);
+}
+
+extern "C" HamObj* FindStackBase(Vec pos, s32 level, s32 id, f32 maxDist);
+
+static inline bool HamObj_CheckSlideHit(HamObj* slot)
+{
+	HamObj* best = FindStackBase(*slot->mActor->GetPos(), slot->mStackLevel, slot->mId, 10.0f);
+	if (best != NULL) {
+		f32 angle = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+		f32 c     = cos(angle - slot->mMoveAngle);
+		if ((f32)cos(45.0) < c) {
+			f32 distance;
+			angle    = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
+			distance = slot->mSlideDistance * 0.5f;
+			if (10.0f < distance) {
+				distance = 10.0f;
+			}
+			best->StartSlide(distance, slot->mMoveSpeed, angle);
+			if (IsOnGasPlate(slot->mActor)) {
+				return true;
+			}
+		}
+	}
+	if (IsLeavingGasPlate(slot)) {
+		return true;
+	}
+	return false;
+}
+
+// NONMATCHING: helper recursion and stack frame differ; the slide-hit test is inlined as in Retail.
 void HamObj::StateSlide()
 {
 	Vec pos;
@@ -190,7 +235,7 @@ void HamObj::StateSlide()
 		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
 		mActor->SetMoveDir(&pos, mMoveSpeed);
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
+			mActor->SetMoveDir(mActor->GetPos(), 0.0f);
 			SetState(NULL);
 		}
 		if (mStateTime == 0) {
@@ -199,9 +244,9 @@ void HamObj::StateSlide()
 		break;
 	case 1:
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
+			mActor->SetMoveDir(mActor->GetPos(), 0.0f);
 			SetState(NULL);
-		} else if (IsSamePos(mActor->mMoveTranslate, mActor->mMoveTarget0)) {
+		} else if (IsSamePos(*mActor->GetPos(), mActor->mMoveTarget0)) {
 			SetState(NULL);
 		}
 		if (mAbove != NULL && 8.0f < PSVECDistance(mActor->GetPos(), mAbove->mActor->GetPos())) {
@@ -260,7 +305,7 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 	}
 	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f);
 	slot->mActor->SetAnim(0, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
-	SetHamRot(slot, 0.0f);
+	slot->SetRot(0.0f);
 	f32 distance;
 	f32 angle = 0.017453292f * (rand() % 60 + 240);
 	distance  = 30.0f + rand() % 15;
@@ -268,61 +313,6 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 	slot->mSpawned    = 1;
 	slot->mStackLevel = 0;
 	slot->mAbove      = NULL;
-}
-
-static inline bool IsOnGasPlate(XObj* actor)
-{
-	Vec* pos = actor->GetPos();
-	if (pos->x < -289.0f || -239.0f < pos->x || pos->z < 21.4f || 62.6f < pos->z) {
-		return false;
-	}
-	return true;
-}
-
-static inline bool IsLeavingGasPlate(HamObj* slot)
-{
-	Vec* pos = slot->mActor->GetPos();
-	if ((62.6f < pos->z && 0.0f < (f32)cos(slot->mMoveAngle)) || (pos->z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
-	    || (-239.0f < pos->x && 0.0f < (f32)sin(slot->mMoveAngle)) || (pos->x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
-		return true;
-	}
-	return false;
-}
-
-static inline f32 AngleFrom(const Vec* from, const Vec* to)
-{
-	return atan2(to->x - from->x, to->z - from->z);
-}
-
-extern "C" HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist);
-
-// NONMATCHING: frame/register layout and gas-plate helper inlining differ; all collision tests and success state resets are present.
-extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
-{
-	PSVECDistance(slot->mActor->GetPos(), &slot->mActor->mMoveTarget0);
-	HamObj* best = FindStackBase(*slot->mActor->GetPos(), slot->mId, slot->mStackLevel, 10.0f);
-	if (best != NULL) {
-		f32 angle = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
-		f32 c     = cos(angle - slot->mMoveAngle);
-		if ((f32)cos(45.0) < c) {
-			f32 distance;
-			angle    = AngleFrom(slot->mActor->GetPos(), best->mActor->GetPos());
-			distance = slot->mSlideDistance * 0.5f;
-			if (10.0f < distance) {
-				distance = 10.0f;
-			}
-			best->StartSlide(distance, slot->mMoveSpeed, angle);
-			if (IsOnGasPlate(slot->mActor)) {
-				slot->SetState(NULL);
-				return true;
-			}
-		}
-	}
-	if (IsLeavingGasPlate(slot)) {
-		slot->SetState(NULL);
-		return true;
-	}
-	return false;
 }
 
 extern "C" void PlayYakiSound(void)
@@ -459,8 +449,8 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
 	} else if (slot->mSpawned && slot->mDish == NULL) {
-		CVec* actorPos = slot->mActor->GetPos();
-		f32 angle      = atan2(-263.9f - actorPos->x, 42.0f - actorPos->z);
+		Vec center = { -263.9f, 76.98f, 42.0f };
+		f32 angle  = AngleFrom(slot->mActor->GetPos(), &center);
 		if (!IsOnGasPlate(slot->mActor)) {
 			slot->StartSlide(5.0f, 0.2f, angle);
 			slot->mStackLevel = 0;
@@ -516,11 +506,11 @@ extern "C" void UpdateHamObjs(u32 arg)
 	default: {
 		CSoundHandle* track = gGame.mSound.FindTrack(0x294);
 		if (track != NULL && track->GetVolume() == 1.0f) {
-			FadeOutGameSfx(&gGame.mSound, 0x294, 600);
+			FadeOutGameSfx(&gGame.mSound, 0x294, 3.0f);
 		}
 		track = gGame.mSound.FindTrack(0x295);
 		if (track != NULL && track->GetVolume() == 1.0f) {
-			FadeOutGameSfx(&gGame.mSound, 0x295, 600);
+			FadeOutGameSfx(&gGame.mSound, 0x295, 3.0f);
 		}
 		break;
 	}
@@ -747,6 +737,11 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
 	return slot->mId;
 }
 
+extern "C" void fn_80170EE4(u8* data)
+{
+	SetYakiRates(data);
+}
+
 extern "C" s32 CountHamDishObjs(HamDish* group)
 {
 	for (s32 i = 0; i < 4; i++) {
@@ -804,7 +799,7 @@ extern "C" void UpdateHamPickupFlags(void)
 			slot->mActor->mStatus.mFlags &= ~0x10000000000ULL;
 		} else {
 			Vec pos      = *slot->mActor->GetPos();
-			HamObj* best = FindStackBase(pos, slot->mId, slot->mStackLevel + 1, 7.0f);
+			HamObj* best = FindStackBase(pos, slot->mStackLevel + 1, slot->mId, 7.0f);
 			if (best == NULL) {
 				slot->mActor->mStatus.mFlags |= 0x100000000ULL;
 			}
@@ -814,7 +809,7 @@ extern "C" void UpdateHamPickupFlags(void)
 }
 
 // NONMATCHING: one local label/relocation differs; conditions, both virtual position calls and distance updates match.
-extern "C" HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
+extern "C" HamObj* FindStackBase(Vec pos, s32 level, s32 id, f32 maxDist)
 {
 	HamObj* best = NULL;
 
@@ -933,14 +928,14 @@ void HamObj::StatePutDown()
 		}
 
 		for (s32 level = 4; level >= 0; level--) {
-			HamObj* base = FindStackBase(pos, mId, level, 5.0f);
+			HamObj* base = FindStackBase(pos, level, mId, 5.0f);
 			if (base != NULL) {
 				pos.y        = base->mActor->GetPos()->y;
 				base->mAbove = this;
 				mStackLevel  = base->mStackLevel + 1;
 				pos.y        = GetStackHeight();
 				mActor->SetMoveDir(&pos, mMoveSpeed);
-				SetState(&HamObj::StateSlide);
+				SetState(&HamObj::StateStackLand);
 				UpdateHamPickupFlags();
 				return;
 			}
@@ -970,6 +965,18 @@ void HamObj::StatePutDown()
 	}
 }
 
+// NONMATCHING: register allocation around the inlined slide-hit test differs; calls and values follow Retail.
+void HamObj::StateStackLand()
+{
+	f32 dist = PSVECDistance(mActor->GetPos(), &mActor->mMoveTarget0);
+	if (HamObj_CheckSlideHit(this)) {
+		mActor->SetMoveDir(mActor->GetPos(), 0.0f);
+		SetState(NULL);
+	} else if (dist <= 0.001f) {
+		SetState(NULL);
+	}
+}
+
 extern "C" void InitAnas(void);
 extern "C" void DrawAnas(void);
 extern "C" void ExitAnas(void);
@@ -989,6 +996,7 @@ extern "C" void HamObj_StartPutDown(HamObj* slot);
 extern "C" void AddTempActor(s32 id);
 extern "C" void ClearTempActors(void);
 extern "C" void SetYakiRates(u8* data);
+extern "C" void fn_80170EE4(u8* data);
 extern "C" void PlayYakiSound(void);
 extern "C" s32 CheckYakiResult(void);
 
@@ -1155,7 +1163,7 @@ extern "C" s32 CmdGetHamDishCount(s32 cmd, s32 count, s32* args)
 
 extern "C" s32 CmdSetYakiRates(s32 cmd, s32 count, s32* args)
 {
-	SetYakiRates((u8*)args[0]);
+	fn_80170EE4((u8*)args[0]);
 	return 0;
 }
 
