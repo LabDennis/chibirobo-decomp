@@ -1671,7 +1671,7 @@ extern "C" void DrawTitleScreen(Title* title)
 			f32 h         = GXGetTexObjHeight(&logo);
 			u32 color     = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
 			DrawGsTexturedQuad(&gGame.mGs, &logo, color, color, color, color, (f32)(gPointerScreenWidth / 2),
-			                   (f32)(gPointerScreenHeight / 2 - 0x68) - 6.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			                   10.0f + (f32)(gPointerScreenHeight / 2 - 0x68), 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		}
 		((CBase*)&gGame)->vf54();

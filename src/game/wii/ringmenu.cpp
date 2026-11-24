@@ -499,7 +499,6 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		f32 baseline = 52.f + y;
 		f32 tileSize = 30.f;
 		f32 spacing  = tileSize;
-		spacing *= 0.9f;
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		CTexObj tile       = RingTexture(menu, -2);

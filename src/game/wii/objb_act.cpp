@@ -2421,8 +2421,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, CObj* model, u32 frames,
 				if (act->mPlugTarget != NULL) {
 					InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, (WiiTitleObject*)act->mPlugTarget, 1, 1, 0);
 				}
-				act->_80 = act->_84 = act->_88 = 0.0f;
-				act->mState                    = 16;
+				act->_84 = act->_88 = 0.0f;
+				act->mState         = 16;
 			}
 		}
 		break;
