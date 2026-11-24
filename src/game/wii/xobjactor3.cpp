@@ -1356,7 +1356,7 @@ void XObjActor3::Kind11(u32 frames)
 		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
 		mKindStep = 1;
-		if (pad.mPad->mTrigger & 0x10) {
+		if (pad.mPad->mTrigger & 0x0010000000001000ULL) {
 			mKindStep = 5;
 			mStatus.mFlags |= 0x10000;
 			mActorFlags.mFlags &= ~4;
