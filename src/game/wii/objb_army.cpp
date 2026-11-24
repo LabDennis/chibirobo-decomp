@@ -349,8 +349,7 @@ void XObjArmy::StateMarch()
 		++mStep;
 		break;
 	case 3:
-		next   = *GetPos();
-		next.y = patrolY;
+		next = *GetPos();
 		next.x += 5 * (f32)sin(HALF_PI + GetRotY());
 		next.z += 5 * (f32)cos(HALF_PI + GetRotY());
 		if (SoldierBlocksMarch(this, next))
@@ -365,8 +364,7 @@ void XObjArmy::StateMarch()
 		++mStep;
 		break;
 	case 11:
-		next   = *GetPos();
-		next.y = patrolY;
+		next = *GetPos();
 		next.x += 5 * (f32)sin(GetRotY());
 		next.z += 5 * (f32)cos(GetRotY());
 		if (SoldierBlocksMarch(this, next))

@@ -1110,7 +1110,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		return FALSE;
 	}
 	CPad pad(0);
-	const CVec* playerPos = player->GetPos();
+	const CVec* playerPos = gGame.GetPlayer()->GetPos();
 	const CVec* pos       = GetPos();
 	f32 heading           = (f32)atan2(playerPos->x - pos->x, playerPos->z - pos->z);
 	f32 angle             = heading - GetRotY();
@@ -1212,7 +1212,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		}
 		break;
 	}
-	if (player->mParams.mBattery <= 0.0f) {
+	if (gGame.GetPlayer()->mParams.mBattery <= 0.0f) {
 		return FALSE;
 	}
 	if (pad.mPad->mButton & (1ULL << (NunchukStick + 2))) {

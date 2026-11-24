@@ -3149,7 +3149,6 @@ public:
 
 	CMsgQueue mQueue;     // _324
 	XObjReadReq mReqs[8]; // _34C
-	u8 _38C[4];           // tail past the requests, not touched by any retail function
 };
 STATIC_ASSERT(sizeof(XObjRead) == 0x390);
 STATIC_ASSERT(offsetof(XObjRead, mQueue) == 0x324);

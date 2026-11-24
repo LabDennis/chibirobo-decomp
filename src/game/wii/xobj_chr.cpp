@@ -4822,7 +4822,7 @@ void UpdatePlayerLocomotionAnimation(WiiPlayerState* p, s32, CObj* model, u32, f
 			}
 			if (p->_1C9B8[2] > 0.0f) {
 				if (p->mLift.mState == 4) {
-					if (!IsCarryingToothbrush(&p->mLift) && !IsCarryingSpoon(&p->mLift) && !IsCarryingSquirter(&p->mLift))
+					if (IsCarryingToothbrush(&p->mLift) || IsCarryingSpoon(&p->mLift) || IsCarryingSquirter(&p->mLift))
 						p->SetAnim(0x163, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 					else
 						p->SetAnim(0x162, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);

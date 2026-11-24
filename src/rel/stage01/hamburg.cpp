@@ -126,8 +126,8 @@ static inline bool IsOnGasPlate(XObj* actor)
 
 static inline bool IsLeavingGasPlate(HamObj* slot)
 {
-	f32 z = slot->mActor->GetPos()->z;
 	f32 x = slot->mActor->GetPos()->x;
+	f32 z = slot->mActor->GetPos()->z;
 	if ((62.6f < z && 0.0f < (f32)cos(slot->mMoveAngle)) || (z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
 	    || (-239.0f < x && 0.0f < (f32)sin(slot->mMoveAngle)) || (x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
 		return true;
