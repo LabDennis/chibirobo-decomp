@@ -276,6 +276,7 @@ void Shot::Update(u32 dt)
 }
 
 #define READ_LE32(p) (((u8*)(p))[0] + (((u8*)(p))[1] * 0x100) + (((u8*)(p))[2] * 0x10000) + (((u8*)(p))[3] * 0x1000000))
+#define GET_LE32(p)  ((p) != NULL ? READ_LE32(p) : 0)
 
 struct FighterAim {
 	FighterAim() { mTarget = NULL; }
@@ -843,6 +844,114 @@ static inline void DrawCaption(s32 id, f32 scale, f32 x, f32 y)
 		                             0.0f, size * scale, size * scale);
 	}
 	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(id), left, top, 0.0f, size * scale, size * scale);
+}
+
+static inline void PilotNwing_Update(PilotNwing* link, f32 animFrame)
+{
+	Mtx scale;
+	Mtx attach;
+
+	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
+	PSMTXConcat(link->mPathObj->GetWorldMtx(2), scale, link->mCarriedMtx);
+	link->mCarriedObj->SetBaseMtx(link->mCarriedMtx);
+	link->mAnimFrame = animFrame;
+	link->mPathObj->SetAnim(0, TRUE, link->mAnimFrame, 1.0f, 0.0f, 15.0f);
+	if (link->mAttachedObj0 != NULL) {
+		PSMTXTrans(attach, 0.0f, -1.89f, -1.0f);
+		PSMTXConcat(link->mCarriedMtx, attach, link->mAttachedMtx0);
+		link->mAttachedObj0->SetBaseMtx(link->mAttachedMtx0);
+	}
+	if (link->mAttachedObj1 != NULL) {
+		PSMTXTrans(attach, 0.0f, -1.89f, -7.16f);
+		PSMTXConcat(link->mCarriedMtx, attach, link->mAttachedMtx1);
+		link->mAttachedObj1->SetBaseMtx(link->mAttachedMtx1);
+	}
+}
+
+// NONMATCHING: the complete Wii update is present; global base/index register allocation and the CueReader's
+// null-branch layout still differ.
+extern "C" void UpdateFighter(u32 dt)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+	shotEvents.mFlags = 0;
+	CPad pad(0);
+	if (pad.mPad->mButton & 0x0001000000000010ULL) {
+		if (pad.mPad->mTrigger & 0x0001000000000010ULL) {
+			Fighter_Fire(&fighterWork, 1);
+		}
+		fireHoldFrames++;
+	} else {
+		if (fireHoldFrames >= 20) {
+			Fighter_Fire(&fighterWork, 10);
+		}
+		fireHoldFrames = 0;
+	}
+	fighterWork.mPlayerRotY = -80.0f * DEG2RAD * pad.mPad->mStick.x;
+	Fighter_Update(&fighterWork, dt);
+	PilotNwing_Update(&pilotNwing, fighterWork.mFrame);
+	matoList.mProgress = fighterWork.mFrame / fighterWork.mEndFrame;
+	matoList.mTimeLeft = fighterWork.mTimeLeft / 60;
+	matoList.mFrameCount++;
+	for (s32 i = 0; i < matoList.mCount; i++) {
+		Mato* item = &matoList.mMatos[i];
+		if (!item->mOnScreen) {
+			item->mOnScreenTime = 0;
+		} else {
+			if (item->mOnScreenTime >= 15) {
+				item->mMarkerColor = 0xFF0000C8;
+			} else {
+				item->mMarkerColor = 0xFFFFFF50;
+			}
+			item->mMarkerPhase += 1.0f;
+		}
+	}
+	if (!IsWiiSfxPlaying(&gGame.mSound, 0x2B5) && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+		Fighter* work = &fighterWork;
+		Vec pos;
+		Mato* best = NULL;
+		f32 bestDist;
+		work->mAim.mTarget = NULL;
+		pos                = work->mAim.mPos;
+		PSMTXMultVec(work->mBodyMtx, &pos, &pos);
+		for (s32 i = 0; i < matoList.mCount; i++) {
+			Mato* item = &matoList.mMatos[i];
+			if (!(item->mObj->mStatus.mFlags & 0x10000ULL) || item->mShotsLeft <= 0) {
+				continue;
+			}
+			CVec itemPos = item->GetPos();
+			f32 dist     = PSVECDistance(&itemPos, &pos);
+			f32 range;
+			if (fighterWork.mParams == NULL) {
+				range = 75.0f;
+			} else {
+				range = (s32)READ_LE32(fighterWork.mParams + 0xC) / 100.0f;
+			}
+			if (range < dist) {
+				continue;
+			}
+			if (best == NULL || dist < bestDist) {
+				best     = item;
+				bestDist = dist;
+			}
+		}
+		if (best != NULL && !best->mPending) {
+			if (best != NULL && work->mLastTarget != best) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x2B5, 1.0f, 0.0f);
+			}
+			work->mAim.mTarget = best;
+			work->mLastTarget  = best;
+		}
+	}
+	FighterPanels_Update(&panels, dt);
+	for (s32 i = 0; i < GET_LE32(&soundCueTable[i * 8]); i++) {
+		s32 frame = GET_LE32(&soundCueTable[i * 8]);
+		s32 id    = GET_LE32(&soundCueTable[i * 8 + 4]);
+		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
+			PlayWiiSoundEffect(&gGame.mSound, id, 1.0f, 0.0f);
+		}
+	}
 }
 
 // the stage02 score, time and gauge panels, drawn from the timer actor's panel TPL

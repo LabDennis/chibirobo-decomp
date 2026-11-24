@@ -962,6 +962,7 @@ Fighter_Fire = .text:0x8017370C; // type:function size:0x318
 GetPos__4MatoFv = .text:0x80173A24; // type:function size:0x60
 ClearFighterObjects = .text:0x80173A84; // type:function size:0x2C
 StartFighter = .text:0x80173AB0; // type:function size:0x360
+UpdateFighter = .text:0x80174224; // type:function size:0x5C4
 GetFollowDivisor__Q27fighter20CCameraActionFighterFv = .text:0x80175E8C; // type:function size:0x8
 GetCameraFlags__Q27fighter20CCameraActionFighterFv = .text:0x80175E94; // type:function size:0x8
 GetMode__Q27fighter20CCameraActionFighterFv = .text:0x80175E9C; // type:function size:0x8
