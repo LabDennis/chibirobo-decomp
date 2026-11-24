@@ -3,6 +3,7 @@
 #include "game/ccameraaction.h"
 
 extern u8* carParams;
+extern u8* carSoundCues;
 extern u8 carsStarted;
 extern u32 carCameraTrailIndex;
 
@@ -103,11 +104,49 @@ void CarRoot::Update(u32 frames)
 
 class PlayerCarRoot : public CarRoot {
 public:
+	virtual void Update(u32 frames);
 	virtual void Start();
 
 	f32 mBrakeFrame;
 };
 STATIC_ASSERT(sizeof(PlayerCarRoot) == 0x84);
+
+void PlayerCarRoot::Update(u32 frames)
+{
+	CarRoot::Update(frames);
+	if (!mStarted) {
+		return;
+	}
+	CPad pad(0);
+	if (!mBraking && (pad.mPad->mTrigger & 0x200)) {
+		Brake();
+		mBrakeFrame = mFrame;
+		StopWiiSfx(&gGame.mSound, 0x2BC, 0.0f);
+		if (mBrakeFrame < ReadS32LE(carParams + 8)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0x2BD, 1.0f, 0.0f);
+		} else {
+			PlayWiiSoundEffect(&gGame.mSound, 0x2C0, 1.0f, 0.0f);
+		}
+	}
+	for (s32 i = 0; ReadS32LE(carSoundCues + i * 8) > 0; i++) {
+		s32 frame = ReadS32LE(carSoundCues + i * 8);
+		s32 id    = ReadS32LE(carSoundCues + (i * 2 + 1) * 4);
+		if (mPrevFrame < frame && frame <= mFrame) {
+			PlayWiiSoundEffect(&gGame.mSound, id, 1.0f, 0.0f);
+			if (id == 0x2CE) {
+				FadeOutGameSfx(&gGame.mSound, -0x10000, 0.1f);
+			} else if (id == 0x2BE) {
+				StopWiiSfx(&gGame.mSound, 0x2CE, 0.0f);
+			}
+		}
+	}
+	if (ReadS32LE(carParams + 4) <= mFrame) {
+		mSpeed = 1.0f;
+		if (mBraking && mCar->GetAnimId() != 4) {
+			mCar->SetAnim(4, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		}
+	}
+}
 
 extern CCameraActionCar carCamera;
 extern PlayerCarRoot playerCar;
