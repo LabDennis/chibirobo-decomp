@@ -19,19 +19,19 @@ class DecaPanel {
 public:
 	void ResetInput()
 	{
-		mDigits[0] = ' ';
-		mDigits[1] = ' ';
-		mDigits[2] = ' ';
-		mDigits[3] = ' ';
-		mDigits[4] = ' ';
-		mDigits[5] = ' ';
-		mDigits[6] = '\0';
-		mCode      = 0;
-		mCursorX   = 0;
-		mCursorY   = 3;
-		mLocked    = 0;
-		mDigitNum  = 0;
-		s32 idx    = mCursorX + mCursorY * 3;
+		mDigits[0]  = ' ';
+		mDigits[1]  = ' ';
+		mDigits[2]  = ' ';
+		mDigits[3]  = ' ';
+		mDigits[4]  = ' ';
+		mDigits[5]  = ' ';
+		mDigitCount = 0;
+		mCode       = 0;
+		mCursorX    = 0;
+		mCursorY    = 3;
+		mLocked     = 0;
+		mDigitNum   = 0;
+		s32 idx     = mCursorX + mCursorY * 3;
 		mCurX = mTargetX = decaPanelKeys[idx].x;
 		mCurY = mTargetY = decaPanelKeys[idx].y;
 	}
@@ -57,7 +57,8 @@ public:
 	u32 mActive;
 	f32 mFade;
 	CTexObj mTexs[5];
-	u8 mDigits[7];
+	u8 mDigits[6];
+	u8 mDigitCount;
 	u8 _71F;
 	s32 mCode;
 	s8 mCursorX;
@@ -261,7 +262,7 @@ extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
 }
 
 static s32 decaPanelKeySounds[12] = {
-	0x5000E, 0x5000F, 0x50010, 0x5000B, 0x5000C, 0x5000D, 0x50008, 0x50009, 0x5000A, 0x50012, 0x50012, 0x50011,
+	0x2EF, 0x2F0, 0x2F1, 0x2EC, 0x2ED, 0x2EE, 0x2E9, 0x2EA, 0x2EB, 0x2F3, 0x2F3, 0x2F2,
 };
 
 static f32 decaPanelDigitPos[6][2] = {
@@ -285,7 +286,8 @@ static inline u32 FadeColor(f32 fade)
 }
 
 // NONMATCHING: pointer hit-testing, digit input and all draw calls are present; register allocation around
-// the key sprites and fade conversions remains open.
+// the key sprites remains open, and retail tests mState unsigned here (cmplwi) though Stage03_Update's switch on
+// it is signed.
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	CTexObj* tex;
@@ -296,11 +298,12 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		work->mActive |= 2;
 		PlayWiiSoundEffect(&gGame.mSound, 0x2F6, 1.0f, 0.0f);
 	}
+	u32 frames = 2;
 	if (work->mActive) {
-		if (work->mFade < 1.0f && (work->mFade += (1.0f / (0.2f * gRefreshRate)) * 2.0f) > 1.0f) {
+		if (work->mFade < 1.0f && (work->mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
 			work->mFade = 1.0f;
 		}
-	} else if (work->mFade > 0.0f && (work->mFade -= (1.0f / (0.2f * gRefreshRate)) * 2.0f) < 0.0f) {
+	} else if (work->mFade > 0.0f && (work->mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
 		work->mFade = 0.0f;
 	}
 
@@ -311,16 +314,17 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 		} else {
 			work->mLocked = 0;
-			if (gWiiPointer.mPointerChanged) {
+			if (gWiiPointer.mPointerValid) {
 				work->mDigitNum = 0;
 				for (s32 i = 0; i < 12; i++) {
-					f32 half = (u32)(i - 9) <= 1 ? 88.56f : 44.28f;
-					f32 x    = 0.9f * decaPanelKeys[i].x + gPointerScreenWidth / 2;
-					f32 y    = 0.9f * decaPanelKeys[i].y + 200.0f;
-					f32 minX = x - half * 0.5f;
-					f32 maxX = x + half * 0.5f;
-					f32 minY = y - 44.28f * 0.5f;
-					f32 maxY = y + 44.28f * 0.5f;
+					f32 height = 44.28f;
+					f32 half   = (u32)(i - 9) <= 1 ? 88.56f : 44.28f;
+					f32 x      = 0.9f * decaPanelKeys[i].x + gPointerScreenWidth / 2;
+					f32 y      = 0.9f * decaPanelKeys[i].y + 200.0f;
+					f32 minX   = x - half * 0.5f;
+					f32 maxX   = x + half * 0.5f;
+					f32 minY   = y - height * 0.5f;
+					f32 maxY   = y + height * 0.5f;
 					if (gWiiPointer.mPointer.x >= minX && gWiiPointer.mPointer.x <= maxX && gWiiPointer.mPointer.y >= minY
 					    && gWiiPointer.mPointer.y <= maxY) {
 						work->mDigitNum = 1;
@@ -331,22 +335,22 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				}
 			}
 		}
-		if ((gWiiPointer.mFlags & 1) && work->mDigitNum) {
+		if (gWiiPointer.Check(1) && work->mDigitNum) {
 			work->mLocked = 1;
 			u8 ch         = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
 			PlayWiiSoundEffect(&gGame.mSound, decaPanelKeySounds[work->mCursorX + work->mCursorY * 3], 1.0f, 0.0f);
 			if (ch == 'C') {
-				work->mDigits[0] = ' ';
-				work->mDigits[1] = ' ';
-				work->mDigits[2] = ' ';
-				work->mDigits[3] = ' ';
-				work->mDigits[4] = ' ';
-				work->mDigits[5] = ' ';
-				work->mDigitNum  = 0;
-				work->mCode      = 0;
+				work->mDigits[0]  = ' ';
+				work->mDigits[1]  = ' ';
+				work->mDigits[2]  = ' ';
+				work->mDigits[3]  = ' ';
+				work->mDigits[4]  = ' ';
+				work->mDigits[5]  = ' ';
+				work->mDigitCount = 0;
+				work->mCode       = 0;
 			} else {
-				if (work->mDigitNum < 6) {
-					if (work->mDigitNum != 0) {
+				if (work->mDigitCount < 6) {
+					if (work->mDigitCount != 0) {
 						work->mDigits[0] = work->mDigits[1];
 						work->mDigits[1] = work->mDigits[2];
 						work->mDigits[2] = work->mDigits[3];
@@ -354,9 +358,9 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 						work->mDigits[4] = work->mDigits[5];
 					}
 					work->mDigits[5] = ch;
-					work->mDigitNum++;
+					work->mDigitCount++;
 				}
-				if (work->mDigitNum >= 6) {
+				if (work->mDigitCount >= 6) {
 					work->mCode = 0;
 					for (s32 i = 0; i < 6; i++) {
 						if (work->mDigits[i] != ' ') {
@@ -369,7 +373,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				}
 			}
 		}
-		if (gWiiPointer.mFlags & 2) {
+		if (gWiiPointer.Check(2)) {
 			work->mCode   = -1;
 			work->mActive = 0;
 			gGame.ClearStatusFlags(2);
@@ -390,7 +394,9 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		u16 w     = GXGetTexObjWidth(tex);
 		u16 h     = GXGetTexObjHeight(tex);
 		u32 color = FadeColor(work->mFade);
-		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
+		f32 cx    = gPointerScreenWidth / 2;
+		DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + 0.0f, 200.0f + 0.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f,
+		                   0.0f);
 
 		f32 w1                       = 0.9f * (GXGetTexObjWidth(&work->mTexs[1]) / 10);
 		f32 h1                       = 0.9f * GXGetTexObjHeight(&work->mTexs[1]);
@@ -414,8 +420,8 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			u8 intensity        = decaPanelKeys[idx].mChar == decaPanelKeys[i].mChar && work->mDigitNum ? 0xFF : 0xC8;
 			u32 color           = (u32)(255.0f * work->mFade) | (intensity << 24) | (intensity << 16) | (intensity << 8);
 			f32 y               = 0.9f * decaPanelKeys[draws[i].mKey].y;
-			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f,
-			                   0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f, 0.0f,
+			                   0.0f);
 		}
 
 		tex = &work->mTexs[4];
@@ -431,7 +437,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				u32 color           = FadeColor(work->mFade);
 				f32 x               = 0.9f * decaPanelDigitPos[i][0];
 				f32 y               = 0.9f * decaPanelDigitPos[i][1];
-				DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, w2, h2, 0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(&gGame.mGs, tex, color, color, color, color, cx + x, 200.0f + y, 0.0f, w2, h2, 0.0f, 0.0f, 0.0f);
 			}
 		}
 
