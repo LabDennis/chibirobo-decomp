@@ -56,11 +56,9 @@ s32 AtcMenu::GetItemIconTextureIndex(s32 index)
 	return 0x69;
 }
 
-// NONMATCHING (~98%): instruction stream matches since the select is spelled
-// out with the gate's req>=0 polarity (the accessor call GetAttachment() loses
-// the cr1 CSE); retail then colors the mChr pointer r5 and the loaded values
-// r0, ours r7/r5, and sLabel lands on a local sdata label instead of retail's
-// shared lbl_805A10DC
+// NONMATCHING (~90%): the request<0 && lift-state gate stays in cr0 where
+// retail keeps it in cr1 for the inlined GetAttachment select below it;
+// sLabel also lands on a local sdata label instead of retail's lbl_805A10DC
 /**
  * @note Address: 0x800ED540
  * @note Size: 0xA8
@@ -71,7 +69,7 @@ const char* AtcMenu::GetItemLabel(s32 index)
 	if (mItems[index].mAvailable > 0) {
 		WiiPlayerState* player = (WiiPlayerState*)mChr;
 		if (player->mAttachmentRequest < 0 && player->mLift.mState != 21 && player->mLift.mState != 22 && player->mLift.mState != 23) {
-			if (mItems[index].mType == (player->mAttachmentRequest >= 0 ? player->mAttachmentRequest : player->mAttachment)) {
+			if (mItems[index].mType == player->GetAttachment()) {
 				sLabel = GetLocalizedInterfaceText(13);
 			} else {
 				sLabel = (const char*)GetAttachmentName(mItems[index].mType);
