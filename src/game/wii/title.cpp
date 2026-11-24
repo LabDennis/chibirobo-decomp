@@ -28,6 +28,7 @@
 // glyph loop's float scheduling and register pressure differ: retail saves r15 and folds the padding
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "nw4r/math/math_types.h"
+#include "nw4r/ut/ut_Rect.h"
 #include "game/wii/title.h"
 #include "game/titlepalette.h"
 #include "game/wii/cgame.h"
@@ -98,13 +99,24 @@ f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
+CColor lbl_805A1BA8(255, 255, 255, 255);
+CbPaneList gPointerPanes;
+nw4r::lyt::Size lbl_805A1BB0((f32)gPointerScreenWidth, (f32)gPointerScreenHeight);
+nw4r::ut::Rect lbl_80445748(-lbl_805A1BB0.width * 0.5f, lbl_805A1BB0.height * 0.5f, lbl_805A1BB0.width * 0.5f, -lbl_805A1BB0.height * 0.5f);
+// lbl_805A1BB8, a pointer to lbl_80445748 that retail's __sinit stores at run time, has no source yet
+
 CbPaneLayout lbl_802E7F48[11] = {
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 0 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 1 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 2 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 3 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 4 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 5 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 6 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 7 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 8 },  { { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 9 },
-	{ { 0.0f, 0.0f, 0.0f }, 0.0f, 0.0f, 0.0f, 0.0f, { 0 }, 10 },
+	{ nw4r::math::VEC3(126.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 0 },
+	{ nw4r::math::VEC3(320.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 1 },
+	{ nw4r::math::VEC3(514.0f, 223.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(176.0f, 244.0f), lbl_805A1BA8, 2 },
+	{ nw4r::math::VEC3(281.25f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), lbl_805A1BA8, 3 },
+	{ nw4r::math::VEC3(358.75f, 0.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(61.5f, 22.0f), lbl_805A1BA8, 4 },
+	{ nw4r::math::VEC3(320.0f, 284.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 5 },
+	{ nw4r::math::VEC3(320.0f, 322.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 6 },
+	{ nw4r::math::VEC3(320.0f, 360.0f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(120.0f, 26.0f), lbl_805A1BA8, 7 },
+	{ nw4r::math::VEC3(320.0f, 194.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(192.0f, 38.4f), lbl_805A1BA8, 8 },
+	{ nw4r::math::VEC3(320.0f, 242.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(216.0f, 38.4f), lbl_805A1BA8, 9 },
+	{ nw4r::math::VEC3(320.0f, 290.8f, 0.0f), nw4r::math::VEC2(1.0f, 1.0f), nw4r::lyt::Size(72.0f, 38.4f), lbl_805A1BA8, 10 },
 };
 
 // the outline offsets of the name's letter shadows, then of the help text's
@@ -251,9 +263,9 @@ extern "C" void InitTitleScreen(Title* title)
 	CbPaneLayout* layout      = lbl_802E7F48;
 	s32 i                     = 11;
 	do {
-		Vec trans        = layout->mTrans;
-		layout->mTrans.x = trans.x - 0.5f * (f32)gPointerScreenWidth;
-		layout->mTrans.y = 0.5f * (f32)gPointerScreenHeight - trans.y;
+		nw4r::math::VEC3 trans = layout->mTrans;
+		layout->mTrans.x       = trans.x - 0.5f * (f32)gPointerScreenWidth;
+		layout->mTrans.y       = 0.5f * (f32)gPointerScreenHeight - trans.y;
 		++layout;
 	} while (--i > 0);
 	for (s32 i = 0; i < 11; ++i) {
@@ -2124,16 +2136,16 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		f32 labelY = extra + (base + title->mLoadOffset);
 		DrawLoadSelectionBar(title, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f);
 		for (s32 i = 0; i < 2; ++i) {
-			CbPaneLayout* layout = &lbl_802E7F48[3 + i];
-			layout->mTrans.y     = 2.0f + (8.0f + labelY);
-			f32 screenX          = (f32)gPointerScreenWidth;
-			f32 screenY          = (f32)gPointerScreenHeight;
-			Vec trans            = layout->mTrans;
-			f32 left             = -0.5f * screenX;
-			f32 top              = 0.5f * screenY;
-			f32 right            = 0.5f * screenX;
-			f32 bottom           = -0.5f * screenY;
-			layout->mTrans.y     = -(trans.y + 0.5f * (bottom - top));
+			CbPaneLayout* layout   = &lbl_802E7F48[3 + i];
+			layout->mTrans.y       = 2.0f + (8.0f + labelY);
+			f32 screenX            = (f32)gPointerScreenWidth;
+			f32 screenY            = (f32)gPointerScreenHeight;
+			nw4r::math::VEC3 trans = layout->mTrans;
+			f32 left               = -0.5f * screenX;
+			f32 top                = 0.5f * screenY;
+			f32 right              = 0.5f * screenX;
+			f32 bottom             = -0.5f * screenY;
+			layout->mTrans.y       = -(trans.y + 0.5f * (bottom - top));
 			fn_800556B0(&title->mPanes[3 + i], layout);
 		}
 		labelY = extra + (base + title->mLoadOffset);

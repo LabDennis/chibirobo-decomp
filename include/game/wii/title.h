@@ -106,7 +106,7 @@ public:
 	virtual void vf064();
 	virtual void vf068();
 	virtual void vf06C();
-	virtual void vf070(f32); // _070, a pose value; the other cursor's GetRotY feeds it
+	virtual void SetRotationY(f32); // _070; the other cursor's GetRotY feeds it
 	virtual void vf074();
 	virtual void vf078();
 	virtual void vf07C();
@@ -114,17 +114,17 @@ public:
 	virtual void SetPos(f32 x, f32 y, f32 z); // _084
 	virtual void vf088();
 	virtual void SetScale(f32 x, f32 y, f32 z); // _08C
-	virtual void vf090(void*);                  // _090, given the other cursor's GetPos result
+	virtual void SetPos(const Vec& pos);        // _090, given the other cursor's GetPos result
 	virtual void vf094();
-	virtual void vf098(void*);        // _098, given the other cursor's GetScale result
-	virtual void SetScale(f32 scale); // _09C, a uniform scale
+	virtual void SetScale(const Vec& scale); // _098, given the other cursor's GetScale result
+	virtual void SetScale(f32 scale);        // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
 	virtual void vf0AC();
 	virtual void vf0B0();
 	virtual Vec vf0B4(const s32* path); // _0B4, a joint's world position by path
-	virtual Vec vf0B8(s32 index);       // _0B8, the object's own position
+	virtual Vec GetWorldPos(u32 index); // _0B8, the world position for a node index
 	virtual void vf0BC();
 	virtual void vf0C0();
 	virtual void vf0C4();
@@ -156,17 +156,17 @@ public:
 	virtual f32 GetAnimFrame();    // _128, the playing animation's frame
 	virtual f32 GetAnimEndFrame(); // _12C, the playing animation's length
 	// _130, nonzero once the current animation has played out at the given frame count
-	virtual s32 vf130(f32 frames);
-	virtual s32 vf134(); // _134, the animation flags check
+	virtual s32 IsAnimEnd(f32 frames);
+	virtual s32 IsAnimDone(); // _134, the animation flags check
 	virtual void vf138();
 	virtual void ReleaseModelWork(); // _13C
 	virtual void vf140();
 	virtual void vf144();
 	virtual void vf148();
-	virtual void InitializeObject(); // _14C
-	virtual void ResetForNewGame();  // _150
-	virtual void ResetObjectState(); // _154
-	virtual s32 vf158(CoordInfo info);
+	virtual void InitializeObject();                      // _14C
+	virtual void ResetForNewGame();                       // _150
+	virtual void ResetObjectState();                      // _154
+	virtual s32 LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
 	virtual void vf160();
 	virtual void UpdateObject(u32 frames); // _164
@@ -194,12 +194,13 @@ public:
 	virtual void vf1BC();
 	virtual void vf1C0();
 	virtual void vf1C4();
-	// _1C8, probes one floor record for the cord's collision scan, the GameCube's TestFloorCollision
-	virtual s32 vf1C8(Vec* from, Vec* to, Vec* push, Vec* contact, s32* floor, s32 flags, f32 radius, f32 height, f32 y, f32 z);
+	// _1C8, probes one floor record for the cord's collision scan
+	virtual s32 TestFloorCollision(Vec* from, Vec* to, Vec* push, Vec* contact, s32* floor, s32 flags, f32 radius, f32 height, f32 y,
+	                               f32 z);
 	virtual void vf1CC();
 	virtual void vf1D0();
-	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
-	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
+	// _1D4, projects a world position onto the screen
+	virtual void ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera);
 	virtual f32 GetFloorXZExtent();                                                                            // _1D8
 	virtual f32 GetCollisionHeight();                                                                          // _1DC
 	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight); // _1E0
@@ -223,7 +224,7 @@ public:
 	virtual void vf228();
 	virtual void vf22C();
 	virtual void vf230();
-	virtual Vec vf234(const char* joint); // _234, a joint's world position by name
+	virtual Vec GetJointPos(const char* joint); // _234, a joint's world position by name
 	virtual void vf238();
 	virtual void vf23C();
 	virtual void vf240();

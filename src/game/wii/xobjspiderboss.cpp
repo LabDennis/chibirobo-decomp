@@ -26,7 +26,7 @@ void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
 EffectInstance* fn_800A11A4(EffectInstance* effects, u32 id, s32 group);
 void fn_800A12F8(EffectInstance* effects, u32 id, BOOL retireParticles);
-void fn_8013E788(s32 command);
+void CommandSpiderBossProjectiles(s32 command);
 void PlaySpiderBossAttachmentAnimation(s32 anim);
 void ResetSpiderBossAttachment(void);
 void ApproachHudValue(f32* value, f32* target, f32 step);
@@ -48,9 +48,9 @@ BOOL IsCarryingSpoon(XAction* act);
 BOOL IsCarryingSquirter(XAction* act);
 CVec GetStagePlacementScale(const XObj* obj);
 void HSD_MtxGetScale(Mtx mat, Vec* vec);
-void fn_8013C7EC(s32 index);
-void fn_8013C6A4(s32 index);
-void fn_8013CF58(void);
+void LaunchSpiderBossPartByIndex(s32 index);
+void EnableSpiderBossPartByIndex(s32 index);
+void EnableSpiderBossCenterPart(void);
 XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 void fn_8013D0C8(void);
 void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
@@ -460,9 +460,9 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		break;
 	case 16:
 		for (int i = 0; i < 11; ++i) {
-			fn_8013C6A4(i);
+			EnableSpiderBossPartByIndex(i);
 		}
-		fn_8013CF58();
+		EnableSpiderBossCenterPart();
 		mCommand = 0;
 		break;
 	case 17:
@@ -491,7 +491,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		mCommand = 0;
 		break;
 	case 22:
-		fn_8013E788(2);
+		CommandSpiderBossProjectiles(2);
 		mCommand = 0;
 		break;
 	}
@@ -680,27 +680,27 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 				spider->mHits = 0;
 			if (!(spider->mSpiderStatus.mFlags & 0x40000000)) {
 				if (spider->mHits < 22)
-					fn_8013C7EC(0);
+					LaunchSpiderBossPartByIndex(0);
 				if (spider->mHits < 19)
-					fn_8013C7EC(1);
+					LaunchSpiderBossPartByIndex(1);
 				if (spider->mHits < 16) {
-					fn_8013C7EC(2);
-					fn_8013C7EC(8);
+					LaunchSpiderBossPartByIndex(2);
+					LaunchSpiderBossPartByIndex(8);
 				}
 				if (spider->mHits < 13)
-					fn_8013C7EC(3);
+					LaunchSpiderBossPartByIndex(3);
 				if (spider->mHits < 11) {
-					fn_8013C7EC(4);
-					fn_8013C7EC(9);
+					LaunchSpiderBossPartByIndex(4);
+					LaunchSpiderBossPartByIndex(9);
 				}
 				if (spider->mHits < 9)
-					fn_8013C7EC(5);
+					LaunchSpiderBossPartByIndex(5);
 				if (spider->mHits < 6) {
-					fn_8013C7EC(6);
-					fn_8013C7EC(10);
+					LaunchSpiderBossPartByIndex(6);
+					LaunchSpiderBossPartByIndex(10);
 				}
 				if (spider->mHits < 3)
-					fn_8013C7EC(7);
+					LaunchSpiderBossPartByIndex(7);
 				if (spider->mHits < 1)
 					fn_8013D0C8();
 			}
@@ -888,7 +888,7 @@ static inline void PulseSpiderArena(XObjSpiderBoss* boss)
 	if ((s32)--boss->mActionTimer < 0) {
 		boss->mActionTimer = rand() % 60 + 60;
 		ShakeSpiderArena();
-		fn_8013E788(0);
+		CommandSpiderBossProjectiles(0);
 	}
 }
 
@@ -1002,7 +1002,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			mTimer = 30;
 			mStep  = 20;
 			ShakeSpiderArena();
-			fn_8013E788(0);
+			CommandSpiderBossProjectiles(0);
 		}
 		break;
 	case 10:
@@ -1313,7 +1313,7 @@ void XObjSpiderBoss::State4(u32 frames)
 			mStep = 0;
 		} else {
 			PlayPatrolAnim(this, 0x1B);
-			fn_8013E788(1);
+			CommandSpiderBossProjectiles(1);
 			PlayWiiSoundEffect(&gGame.mSound, 0x472, 1.0f, 0.0f);
 			++mStep;
 		}
