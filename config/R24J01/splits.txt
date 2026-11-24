@@ -344,6 +344,9 @@ rel/module.c:
 	.text start:0x8016AD78 end:0x8016AF80
 	.rodata start:0x802DDCA0 end:0x802DDD10
 
+rel/fafa.cpp:
+	.text start:0x8016AF80 end:0x8016B078
+
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C
 
