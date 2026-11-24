@@ -40,11 +40,6 @@ extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
 
 // the last two map cameras, Update copies the map action here every frame it runs.
-// NONMATCHING: retail stores each CStatus member's flags before its vtable; this build emits the opposite order.
-CCameraActionMap::CCameraActionMap()
-{
-}
-
 // __sinit_cmotioncontrolcamera_cpp constructs this pair and registers its array destructor
 static CCameraActionMap gMapCameraActions[2];
 
