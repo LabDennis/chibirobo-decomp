@@ -27,6 +27,93 @@ extern "C" s32 Stage06_NoOpSlot5(void* arg)
 {
 	return 1;
 }
+
+extern "C" s32 Stage06_CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
+{
+	s16 pitch = args[0];
+	s32 time  = args[1] * 60 / 100;
+	if (time <= 0) {
+		time = 1;
+	}
+	gGame.mSound.mTargetMusicPitch = pitch;
+	gGame.mSound.mMusicPitchFrames = time;
+	return 0;
+}
+
+struct ParentState {
+	u32 _00;
+	u32 _04;
+	u32 _08;
+	u32 _0C;
+	u32 _10;
+	u32 _14;
+	u32 _18;
+	u32 _1C;
+	u32 _20;
+};
+
+static ParentState sParentState;
+
+extern "C" s32 Stage06_CmdStopRobo(s32 cmd, s32 count, s32* args)
+{
+	gGame.GetPlayer()->LockControl();
+	sParentState._08++;
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+struct ParentCamera {
+	u32 _00;
+	u32 _04;
+	f32 _08;
+	f32 _0C;
+	f32 _10;
+	f32 _14;
+	f32 _18;
+	u32 _1C;
+	f32 _20;
+};
+
+static ParentCamera sParentCamera;
+
+static inline void Stage06_SetCam(f32 a, f32 b)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	player->LockControl();
+	sParentCamera._04 = 1;
+	CVec* pos         = player->GetPos();
+	sParentCamera._08 = pos->x;
+	sParentCamera._0C = pos->y;
+	sParentCamera._10 = pos->z;
+	sParentCamera._14 = a;
+	sParentCamera._20 = b;
+	sParentCamera._18 = 0.15f;
+}
+
+extern "C" s32 Stage06_CmdStopRoboPreset(s32 cmd, s32 count, s32* args)
+{
+	s32 type = *args;
+	if (type == 0) {
+		Stage06_SetCam(-0.3926991f, -1.570196f);
+	} else if (type == 1) {
+		Stage06_SetCam(-2.7488937f, 0.0f);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot4(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot5(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
 #else
 #include "game/cgame.h"
 #include "types.h"

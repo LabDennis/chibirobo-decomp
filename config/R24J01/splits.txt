@@ -387,8 +387,10 @@ rel/stage04/jenny.cpp:
 	.text start:0x80179B1C end:0x80179BCC
 
 rel/stage06/parent.cpp:
-	.text start:0x80179BCC end:0x80179C94
-	.sdata2 start:0x805A6368 end:0x805A6378
+	.text start:0x80179BCC end:0x80179E5C
+	.bss start:0x804CB308 end:0x804CB32C
+	.bss start:0x804CB32C end:0x804CB350
+	.sdata2 start:0x805A6368 end:0x805A6388
 
 rel/stage07/living.cpp:
 	.text start:0x80179E5C end:0x8017A16C
