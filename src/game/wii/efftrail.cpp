@@ -17,9 +17,11 @@ extern s32 gPointerScreenWidth;
 extern s32 gScreenSafeLeft, gScreenSafeRight, gScreenSafeTop, gScreenSafeBottom;
 extern s32 gRefreshRate;
 
-// NONMATCHING: retail keeps `angle` in a saved FPR across the sin/cos calls and walks the vertex
-// array with a +0x18 pointer increment (uses f25-f31); this spelling rematerializes angle per call
-// and indexes the array, same shape as the GameCube source.
+// NONMATCHING: residual is register numbering and instruction scheduling only. Retail assigns the
+// angle constant to f26, 0.0f to f27 and the radii to f28/f29; this build assigns 10.0f to f26,
+// the angle constant to f27, 0.0f to f28 and the radii to f29/f30, and interleaves the loads
+// differently. The rematerialized `(TWO_PI / 24.0f) * i` per trig call and the recomputed
+// `&vertices[i * 2]` (byte-offset induction variable, s32 j = i * 2) now match retail's shape.
 /**
  * @note Address: 0x800F0100
  * @note Size: 0x45C
@@ -28,25 +30,25 @@ extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u
 {
 	Vec vertices[50];
 	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(secondRadius * std::sinf(angle));
-		vertices[2 * i + 1].y = secondRadius * std::cosf(angle);
-		vertices[2 * i + 1].z = 10.0f;
-		vertices[2 * i].x     = -(firstRadius * std::sinf(angle));
-		vertices[2 * i].y     = firstRadius * std::cosf(angle);
-		vertices[2 * i].z     = 10.0f;
+		s32 j             = i * 2;
+		vertices[j + 1].x = -(secondRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j + 1].y = secondRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j + 1].z = 10.0f;
+		vertices[j].x     = -(firstRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j].y     = firstRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j].z     = 10.0f;
 	}
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
 
 	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(firstRadius * std::sinf(angle));
-		vertices[2 * i + 1].y = firstRadius * std::cosf(angle);
-		vertices[2 * i + 1].z = 10.0f;
-		vertices[2 * i].x     = -(firstRadius * std::sinf(angle));
-		vertices[2 * i].y     = firstRadius * std::cosf(angle);
-		vertices[2 * i].z     = 0.0f;
+		s32 j             = i * 2;
+		vertices[j + 1].x = -(firstRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j + 1].y = firstRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j + 1].z = 10.0f;
+		vertices[j].x     = -(firstRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j].y     = firstRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j].z     = 0.0f;
 	}
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
 	if (separate) {
@@ -57,13 +59,13 @@ extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u
 	}
 
 	for (s32 i = 0; i < 25; i++) {
-		f32 angle             = (TWO_PI / 24.0f) * i;
-		vertices[2 * i + 1].x = -(secondRadius * std::sinf(angle));
-		vertices[2 * i + 1].y = secondRadius * std::cosf(angle);
-		vertices[2 * i + 1].z = 0.0f;
-		vertices[2 * i].x     = -(secondRadius * std::sinf(angle));
-		vertices[2 * i].y     = secondRadius * std::cosf(angle);
-		vertices[2 * i].z     = 10.0f;
+		s32 j             = i * 2;
+		vertices[j + 1].x = -(secondRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j + 1].y = secondRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j + 1].z = 0.0f;
+		vertices[j].x     = -(secondRadius * std::sinf((TWO_PI / 24.0f) * i));
+		vertices[j].y     = secondRadius * std::cosf((TWO_PI / 24.0f) * i);
+		vertices[j].z     = 10.0f;
 	}
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
 	if (separate) {
@@ -535,9 +537,12 @@ extern "C" void fn_800F2CF4(SpiralTrail* trail)
 	trail->rings[1][0].angle = PI + trail->rings[0][0].angle;
 }
 
-// NONMATCHING: the GameCube source ported over verbatim reaches 95.9 %; retail keeps a
-// second ring pointer for the scale sum (its offsets fold the +4 ring base in) and
-// schedules the head's loads around the sin/cos calls a little differently.
+// NONMATCHING (99.8 %): identical instruction stream, same size as retail; the remaining
+// diff is literal-pool @labels in place of the unit's named constants and branch targets
+// into the shared restore-tail area, which sits eight bytes earlier in our build — both
+// close with the unit's data and tail layout, not with this function's source. The scale
+// sum is written trail->rings[i][j]: retail keeps a second ring pointer for it (the GameCube
+// source's point[j].scale spelling merges both into one induction pointer on the Wii).
 /**
  * @note Address: 0x800F2EA4
  * @note Size: 0x29C
@@ -565,7 +570,7 @@ extern "C" void UpdateSpiralTrail(SpiralTrail* trail, u32 frames)
 			point[0].position.z = point[0].scale * (15.0f * ((1.0f - point[0].scale) * cosine));
 			point[0].position.y += 0.3f * frames;
 			for (int j = 0; j < 10; j++)
-				total += point[j].scale;
+				total += trail->rings[i][j].scale;
 		}
 		if (total == 0.0f)
 			trail->active = 0;
@@ -652,74 +657,73 @@ extern "C" void DrawSpiralTrail(SpiralTrail* trail, const CVec& origin)
 // a LoadFromPlacement override from a sibling class in this unit's retail file: the same
 // head-node block XObjChr::LoadFromPlacement keeps inline in xobj_chr.cpp. Whoever the class
 // is, the seven joint names and the ScnMdl slot are WiiPlayerState's layout.
-// NONMATCHING (94 %): identical instruction stream; the remaining diff is string-pool
-// referents that land in @labels until the unit's own literal section is split out
+// NONMATCHING (99 %): identical instruction stream; the remaining diff is string-pool
+// referents that land in @labels until the unit's own literal section is split out, and
+// two branch targets shifted by a sibling's shared tail block.
 /**
  * @note Address: 0x800F35E8
  * @note Size: 0x12C
  */
 extern "C" BOOL fn_800F35E8(WiiPlayerState* self, const CoordInfo& info)
 {
-	if (!self->XObj::LoadFromPlacement(info)) {
-		return FALSE;
+	if (self->XObj::LoadFromPlacement(info)) {
+		if (self->mObject.m_pScnMdl != NULL) {
+			self->mHeadNodes[0] = self->GetResNode("second_null");
+			self->mHeadNodes[1] = self->GetResNode("head_chn");
+			self->mHeadNodes[2] = self->GetResNode("head_cap");
+			self->mHeadNodes[3] = self->GetResNode("l_mabuta_down");
+			self->mHeadNodes[4] = self->GetResNode("l_mabuta_up");
+			self->mHeadNodes[5] = self->GetResNode("r_mabuta_down");
+			self->mHeadNodes[6] = self->GetResNode("r_mabuta_up");
+			self->mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
+		}
+		return TRUE;
 	}
-	if (self->mObject.m_pScnMdl != NULL) {
-		self->mHeadNodes[0] = self->GetResNode("second_null");
-		self->mHeadNodes[1] = self->GetResNode("head_chn");
-		self->mHeadNodes[2] = self->GetResNode("head_cap");
-		self->mHeadNodes[3] = self->GetResNode("l_mabuta_down");
-		self->mHeadNodes[4] = self->GetResNode("l_mabuta_up");
-		self->mHeadNodes[5] = self->GetResNode("r_mabuta_down");
-		self->mHeadNodes[6] = self->GetResNode("r_mabuta_up");
-		self->mObject.m_pScnMdl->EnableScnObjCallbackExecOp(nw4r::g3d::ScnObj::EXECOP_CALC_WORLD);
-	}
-	return TRUE;
+	return FALSE;
 }
 
 // the eyelid rotation keyframes ExecCallbackA applies while the player blinks: down lid,
 // then up lid, left eye then right eye, each indexed by WiiPlayerState::mBlinkFrame.
 // the values are bit-exact retail data; they read as designer-authored near-zero noise.
-static nw4r::math::VEC3 sBlinkRotLDown[11] = {
-	nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f), nw4r::math::VEC3(-32.45600128173828f, 180.0f, 0.00003f),
-	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-	nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),         nw4r::math::VEC3(0.08800685f, 180.0f, 0.00003f),
-	nw4r::math::VEC3(-16.78667449951172f, 180.0f, 0.00003f), nw4r::math::VEC3(-48.125328063964844f, 180.0f, 0.00003f),
-	nw4r::math::VEC3(-64.99999237060547f, 180.0f, 0.00003f),
+static const Vec sBlinkRotLDown[11] = {
+	{ -64.99999237060547f, 180.0f, 0.00003f },  { -32.45600128173828f, 180.0f, 0.00003f }, { 0.08800685f, 180.0f, 0.00003f },
+	{ 0.08800685f, 180.0f, 0.00003f },          { 0.08800685f, 180.0f, 0.00003f },         { 0.08800685f, 180.0f, 0.00003f },
+	{ 0.08800685f, 180.0f, 0.00003f },          { 0.08800685f, 180.0f, 0.00003f },         { -16.78667449951172f, 180.0f, 0.00003f },
+	{ -48.125328063964844f, 180.0f, 0.00003f }, { -64.99999237060547f, 180.0f, 0.00003f },
 };
-static nw4r::math::VEC3 sBlinkRotLUp[11] = {
-	nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),   nw4r::math::VEC3(-32.45599365234375f, 0.0f, 0.000004f),
-	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-	nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),          nw4r::math::VEC3(0.08800685f, 0.0f, 0.000004f),
-	nw4r::math::VEC3(-16.786663055419922f, 0.0f, 0.000004f), nw4r::math::VEC3(-48.125343322753906f, 0.0f, 0.000004f),
-	nw4r::math::VEC3(-64.9999771118164f, 0.0f, 0.000004f),
+static const Vec sBlinkRotLUp[11] = {
+	{ -64.9999771118164f, 0.0f, 0.000004f },   { -32.45599365234375f, 0.0f, 0.000004f }, { 0.08800685f, 0.0f, 0.000004f },
+	{ 0.08800685f, 0.0f, 0.000004f },          { 0.08800685f, 0.0f, 0.000004f },         { 0.08800685f, 0.0f, 0.000004f },
+	{ 0.08800685f, 0.0f, 0.000004f },          { 0.08800685f, 0.0f, 0.000004f },         { -16.786663055419922f, 0.0f, 0.000004f },
+	{ -48.125343322753906f, 0.0f, 0.000004f }, { -64.9999771118164f, 0.0f, 0.000004f },
 };
-static nw4r::math::VEC3 sBlinkRotRDown[11] = {
-	nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),  nw4r::math::VEC3(-32.45600891113281f, 180.0f, -0.000013f),
-	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-	nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f), nw4r::math::VEC3(0.08799900114536285f, 180.0f, -0.000013f),
-	nw4r::math::VEC3(-16.786680221557617f, 180.0f, -0.000013f), nw4r::math::VEC3(-48.12534713745117f, 180.0f, -0.000013f),
-	nw4r::math::VEC3(-65.00001525878906f, 180.0f, -0.000013f),
+static const Vec sBlinkRotRDown[11] = {
+	{ -65.00001525878906f, 180.0f, -0.000013f },  { -32.45600891113281f, 180.0f, -0.000013f },
+	{ 0.08799900114536285f, 180.0f, -0.000013f }, { 0.08799900114536285f, 180.0f, -0.000013f },
+	{ 0.08799900114536285f, 180.0f, -0.000013f }, { 0.08799900114536285f, 180.0f, -0.000013f },
+	{ 0.08799900114536285f, 180.0f, -0.000013f }, { 0.08799900114536285f, 180.0f, -0.000013f },
+	{ -16.786680221557617f, 180.0f, -0.000013f }, { -48.12534713745117f, 180.0f, -0.000013f },
+	{ -65.00001525878906f, 180.0f, -0.000013f },
 };
-static nw4r::math::VEC3 sBlinkRotRUp[11] = {
-	nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),   nw4r::math::VEC3(-32.455989837646484f, -0.000001f, 0.0f),
-	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-	nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),          nw4r::math::VEC3(0.08800685f, -0.000001f, 0.0f),
-	nw4r::math::VEC3(-16.786659240722656f, -0.000001f, 0.0f), nw4r::math::VEC3(-48.125328063964844f, -0.000001f, 0.0f),
-	nw4r::math::VEC3(-64.9999771118164f, -0.000001f, 0.0f),
+static const Vec sBlinkRotRUp[11] = {
+	{ -64.9999771118164f, -0.000001f, 0.0f },   { -32.455989837646484f, -0.000001f, 0.0f }, { 0.08800685f, -0.000001f, 0.0f },
+	{ 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },
+	{ 0.08800685f, -0.000001f, 0.0f },          { 0.08800685f, -0.000001f, 0.0f },          { -16.786659240722656f, -0.000001f, 0.0f },
+	{ -48.125328063964844f, -0.000001f, 0.0f }, { -64.9999771118164f, -0.000001f, 0.0f },
 };
 
 // the player character's ExecCallbackA: after the base handling it drives the head-cap
 // and the four eyelid joints. head_cap gets a fixed nod rotation while an attachment is
 // worn; each eyelid gets the blink keyframe at mBlinkFrame and hands the next joint id
 // back to the CalcWorld walker.
-// NONMATCHING: the node-walk compiles through the same ResNode::GetID()/IsValid()
-// asserts retail emits (g3d_resnode_ac.h:56); the residue is register coloring
-// (retail saves r27-r31, we r26-r31), the mPlayer load folded to its first use vs
-// hoisted once early, and the jump table's pool label.
+// NONMATCHING (98.2 %): one instruction short — retail turns the
+// `animId != 0x817 && animId != 0x814` test into cmpwi/beq, a bge fast path past the
+// second compare, then cmpwi/beq; every spelling tried here gives the plain two-compare
+// chain. Everything else is pool labels and the rodata anchor register (retail pins the
+// unit's .rodata in r28, ours in r27 with nodeId one register down). mPlayer is read as
+// self->mPlayer at each site because retail rematerializes the load, and the blink tables
+// are `static const Vec` so they land in .rodata like retail's (math::VEC3's user ctor
+// would force a dynamic-init .bss copy).
 /**
  * @note Address: 0x800F3714
  * @note Size: 0x474
@@ -728,18 +732,17 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
                             nw4r::g3d::FuncObjCalcWorld* pFuncObj)
 {
 	self->XObj::ExecCallbackA(pResult, mdl, pFuncObj);
-	u16 nodeId             = pFuncObj->GetCallbackNodeID();
-	WiiPlayerState* player = self->mPlayer;
+	u16 nodeId = pFuncObj->GetCallbackNodeID();
 
 	if (self->mHeadNodes[2].IsValid() && nodeId == self->mHeadNodes[2].GetID()) {
-		if ((player->GetAttachment() == 1 || player->GetAttachment() == 3) && player->mAttachmentRequest < 0) {
+		if ((self->mPlayer->GetAttachment() == 1 || self->mPlayer->GetAttachment() == 3) && self->mPlayer->mAttachmentRequest < 0) {
 			s32 animId = self->GetAnimId();
 			if (animId != 0x817 && animId != 0x814) {
 				static nw4r::math::MTX33 sHeadRot(-0.0f, -0.970757f, 0.239911f, -0.0f, -0.239911f, -0.970757f, 1.0f, -0.0f, -0.0f);
 				pResult->SetRotateMtx(&sHeadRot);
 			}
 		}
-		if (player->mBlinkFrame < 0) {
+		if (self->mPlayer->mBlinkFrame < 0) {
 			return;
 		}
 		if (self->mHeadNodes[3].IsValid()) {
@@ -748,28 +751,28 @@ extern "C" void fn_800F3714(WiiPlayerState* self, nw4r::g3d::ChrAnmResult* pResu
 		return;
 	}
 	if (self->mHeadNodes[3].IsValid() && nodeId == self->mHeadNodes[3].GetID()) {
-		pResult->SetRotateDeg(&sBlinkRotLDown[player->mBlinkFrame]);
+		pResult->SetRotateDeg((const nw4r::math::VEC3*)&sBlinkRotLDown[self->mPlayer->mBlinkFrame]);
 		if (self->mHeadNodes[4].IsValid()) {
 			pFuncObj->SetCallbackNodeID(self->mHeadNodes[4].GetID());
 		}
 		return;
 	}
 	if (self->mHeadNodes[4].IsValid() && nodeId == self->mHeadNodes[4].GetID()) {
-		pResult->SetRotateDeg(&sBlinkRotLUp[player->mBlinkFrame]);
+		pResult->SetRotateDeg((const nw4r::math::VEC3*)&sBlinkRotLUp[self->mPlayer->mBlinkFrame]);
 		if (self->mHeadNodes[5].IsValid()) {
 			pFuncObj->SetCallbackNodeID(self->mHeadNodes[5].GetID());
 		}
 		return;
 	}
 	if (self->mHeadNodes[5].IsValid() && nodeId == self->mHeadNodes[5].GetID()) {
-		pResult->SetRotateDeg(&sBlinkRotRDown[player->mBlinkFrame]);
+		pResult->SetRotateDeg((const nw4r::math::VEC3*)&sBlinkRotRDown[self->mPlayer->mBlinkFrame]);
 		if (self->mHeadNodes[6].IsValid()) {
 			pFuncObj->SetCallbackNodeID(self->mHeadNodes[6].GetID());
 		}
 		return;
 	}
 	if (self->mHeadNodes[6].IsValid() && nodeId == self->mHeadNodes[6].GetID()) {
-		pResult->SetRotateDeg(&sBlinkRotRUp[player->mBlinkFrame]);
+		pResult->SetRotateDeg((const nw4r::math::VEC3*)&sBlinkRotRUp[self->mPlayer->mBlinkFrame]);
 	}
 }
 
@@ -1038,16 +1041,16 @@ static inline Vec FloorExtent(XObjFloor* floor)
 {
 	Vec v;
 	v.x = floor->mExtent[0] / 100.0f;
-	v.z = floor->mExtent[2] / 100.0f;
 	v.y = floor->mExtent[1] / 100.0f;
+	v.z = floor->mExtent[2] / 100.0f;
 	return v;
 }
 
 static inline Vec FloorCenter(XObjFloor* floor)
 {
 	Vec v;
-	v.y = floor->mCenterOffset[1] / 100.0f;
 	v.x = floor->mCenterOffset[0] / 100.0f;
+	v.y = floor->mCenterOffset[1] / 100.0f;
 	v.z = floor->mCenterOffset[2] / 100.0f;
 	return v;
 }
