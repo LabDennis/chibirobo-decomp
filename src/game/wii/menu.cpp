@@ -5076,7 +5076,7 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	}
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	InitPCPanelTexture(tex, 169);
-	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
+	f32 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f,
 	                   0.0f, 0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0.0f, 0.0f, 0.0f);
@@ -5179,7 +5179,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	}
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	InitPCPanelTexture(tex, 169);
-	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
+	f32 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.0f,
 	                   0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0.0f, 0.0f, 0.0f);
