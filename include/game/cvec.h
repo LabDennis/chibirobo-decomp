@@ -22,13 +22,15 @@ inline CVec& CVec::operator+=(const Vec& v)
 	return *this;
 }
 
-#if defined(VERSION_R24J01)
 inline CVec& CVec::operator*=(f32 s)
 {
+#if defined(VERSION_R24J01)
 	nw4r::math::VEC3Scale((nw4r::math::VEC3*)this, (nw4r::math::VEC3*)this, s);
+#else
+	PSVECScale(this, this, s);
+#endif
 	return *this;
 }
-#endif
 
 inline void CVec::operator-=(const Vec& v)
 {
