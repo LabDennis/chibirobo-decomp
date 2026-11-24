@@ -1522,12 +1522,12 @@ CVec CObj::GetNodeTranslate(nw4r::g3d::ResNode node)
  * @note Address: 0x80043988
  * @note Size: 0x8C
  */
-// NONMATCHING: same instructions, but retail stores the result's vtable ahead of loading the node's
-// data pointer and this build behind it
 CVec NW_Obj::GetNodeTranslate(nw4r::g3d::ResNode node) const
 {
 	const nw4r::g3d::ResNodeData& data = node.ref();
-	return CVec(data.mTranslate.x, data.mTranslate.y, data.mTranslate.z);
+	CVec result;
+	result.Set(data.mTranslate.x, data.mTranslate.y, data.mTranslate.z);
+	return result;
 }
 
 /**
