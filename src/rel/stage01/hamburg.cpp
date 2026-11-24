@@ -4,6 +4,9 @@
 
 extern "C" void AllowIdleHudCounters(void* obj);
 extern "C" void SuppressIdleHudCounters(void* obj);
+extern "C" BOOL IsLiftTargetPlug(XAction* action);
+
+struct HamDish;
 
 struct HamObj {
 	typedef void (HamObj::*StateFunc)();
@@ -47,7 +50,7 @@ struct HamObj {
 	s32 mSide;
 	s32 mYakiTime[2];
 	s32 mStackLevel;
-	void* mDish;
+	HamDish* mDish;
 	u8 mSpawned;
 	u8 _39[3];
 	EffectInstance* mYakiEffect;
@@ -339,6 +342,12 @@ static inline bool IsActive(XObj* actor)
 	return true;
 }
 
+static inline bool IsHeld(XObj* actor)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	return player->mLift.mState != 0 && player->mLift.mTarget == actor;
+}
+
 static XObj* gasPlate;
 static u8 playerOffGasPlate;
 static u32 yakiLoopLevel;
@@ -565,6 +574,133 @@ extern "C" HamObj* FindFreeHamObj(void)
 		}
 	}
 	return NULL;
+}
+
+extern "C" HamDish* FindHamDish(s32 id)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (hamDishes[i].mActor != NULL && hamDishes[i].mId == id) {
+			return &hamDishes[i];
+		}
+	}
+	return NULL;
+}
+
+static inline void AddToHamDish(HamDish* group, HamObj* slot)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (group->mObjs[i] == NULL) {
+			group->mObjs[i] = slot;
+			break;
+		}
+	}
+}
+
+// NONMATCHING: local label and register names differ; the plug test, inlined searches and dish update match.
+extern "C" s32 PutHeldHamObjOnDish(s32 id)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	if (IsLiftTargetPlug(&player->mLift)) {
+		return -1;
+	}
+
+	HamObj* slot = FindHamObjByActor(player->mLift.mTarget);
+	if (slot == NULL) {
+		return -1;
+	}
+
+	HamDish* group = FindHamDish(id);
+	slot->mDish    = group;
+	AddToHamDish(group, slot);
+	if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
+	}
+	return slot->mId;
+}
+
+extern "C" s32 CountHamDishObjs(HamDish* group)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (group->mObjs[i] == NULL) {
+			return i;
+		}
+	}
+	return 4;
+}
+
+// NONMATCHING: gGame, dish, index and zero registers differ; both searches and all four initializers match.
+extern "C" HamDish* RegisterHamDish(s32 id)
+{
+	HamDish* group = FindHamDish(id);
+	if (group != NULL) {
+		return group;
+	}
+
+	for (s32 i = 0; i < 4; i++) {
+		if (hamDishes[i].mActor == NULL) {
+			group           = &hamDishes[i];
+			group->mId      = id;
+			group->mActor   = gGame.mXObjs.mObjects[id];
+			group->mObjs[0] = NULL;
+			group->mObjs[1] = NULL;
+			group->mObjs[2] = NULL;
+			group->mObjs[3] = NULL;
+			return group;
+		}
+	}
+	return NULL;
+}
+
+extern "C" void ClearTempActors(void)
+{
+	for (s32 i = 0; i < 4; i++) {
+		if (tempActors[i] != NULL) {
+			tempActors[i]->mStatus.mFlags &= ~0x10000ULL;
+			tempActors[i] = NULL;
+		}
+	}
+}
+
+// NONMATCHING: the by-value Vec has separate local and argument homes, enlarging the frame; all flag updates and calls match.
+extern "C" void UpdateHamPickupFlags(void)
+{
+	putDownActive = 0;
+	for (u32 i = 0; i < 9; i++) {
+		HamObj* slot = &hamObjs[i];
+		if (!IsActive(slot->mActor)) {
+			continue;
+		}
+		if (slot->mDish != NULL) {
+			slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
+			slot->mActor->mStatus.mFlags &= ~0x10000000000ULL;
+		} else {
+			Vec pos      = *slot->mActor->GetPos();
+			HamObj* best = FindStackBase(pos, slot->mId, slot->mStackLevel + 1, 7.0f);
+			if (best == NULL) {
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+			}
+		}
+	}
+	ClearTempActors();
+}
+
+// NONMATCHING: one local label/relocation differs; conditions, both virtual position calls and distance updates match.
+extern "C" HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
+{
+	HamObj* best = NULL;
+
+	for (u32 i = 0; i < 9; i++) {
+		HamObj* other = &hamObjs[i];
+		if (IsActive(other->mActor) && id != other->mId && level == other->mStackLevel && other->mDish == NULL && !IsHeld(other->mActor)) {
+			pos.y    = other->mActor->GetPos()->y;
+			f32 dist = PSVECDistance(other->mActor->GetPos(), &pos);
+			if (dist < maxDist) {
+				best    = other;
+				maxDist = dist;
+			}
+		}
+	}
+	return best;
 }
 #else
 #include "Version.h"
