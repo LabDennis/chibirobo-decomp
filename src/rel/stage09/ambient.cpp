@@ -3,6 +3,8 @@
 
 class AmbientSeq {
 public:
+	AmbientSeq() { data = NULL; }
+
 	s32* data;
 	s32 pos;
 	s32 wait;
@@ -31,6 +33,19 @@ public:
 	}
 
 	void Update(s32 dt);
+
+	void Start(s32* data)
+	{
+		for (u32 i = 0; i < 10; i++) {
+			AmbientSeq* seq = &seqs[i];
+			if (seq->data == NULL) {
+				seq->data = data;
+				seq->pos  = 0;
+				seq->wait = 0;
+				break;
+			}
+		}
+	}
 };
 
 // NONMATCHING: the sound/zero registers and local literal names differ; every command, call and wait calculation matches.
@@ -153,6 +168,96 @@ extern "C" s32 Stage09_Exit(s32 dt)
 {
 	ExitAnas();
 	return 1;
+}
+
+static s32 ambientTrafficCarLr[]            = { 5, 1000, 2000, 1, 0x3FE, 2, 0x3FE, 5, 3000, 6000, 0 };
+static s32 ambientTrafficCarRl[]            = { 5, 2000, 3000, 1, 0x3FF, 2, 0x3FF, 5, 3000, 6000, 0 };
+static s32 ambientTrafficDump[]             = { 5, 3000, 4000, 1, 0x3FD, 2, 0x3FD, 5, 3000, 6000, 0 };
+static s32 ambientConstructionNoko[]        = { 3, 3000, 1, 0x569, 4, 0x569, 0 };
+static s32 ambientConstructionHammer1[]     = { 1, 0x567, 2, 0x567, 3, 300, 0 };
+static s32 ambientConstructionHammer2[]     = { 3, 500, 1, 0x568, 2, 0x568, 0 };
+static s32 ambientConstructionHammer1Fast[] = { 1, 0x567, 2, 0x567, 3, 100, 0 };
+static s32 ambientConstructionHammer2Fast[] = { 3, 200, 1, 0x568, 4, 0x568, 0 };
+static s32 ambientNeighborMower[]           = {
+    3,  500, 1, 0x570, 3, 1000, 4,   0x570, 1,     0x571, 2,  0x571, 3, 500, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5,
+    70, 100, 1, 0x56F, 5, 70,   100, 1,     0x56F, 5,     70, 100,   3, 200, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5,
+    70, 100, 1, 0x56F, 5, 70,   100, 1,     0x56F, 5,     70, 100,   3, 200, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5, 70, 100, 1, 0x56F, 5,
+    70, 100, 1, 0x56F, 5, 70,   100, 1,     0x56F, 5,     70, 100,   0,
+};
+static s32 ambientNightHowling[] = { 5, 1000, 1500, 1, 0x577, 2, 0x577, 5, 500, 1000, 0, 0 };
+static s32 ambientNightCricket[] = { 5, 100, 500, 1, 0x578, 5, 500, 1500, 4, 0x578, 5, 500, 1000, 0 };
+static s32 ambientNatureBirds1[] = { 0x56A, 0x56B, 0x56C, 0x56D, 0x56E };
+static s32 ambientNatureBirds2[] = { 0x572, 0x573, 0x574, 0x575, 0x576 };
+
+// NONMATCHING: Start-loop base and cursor registers differ; every case, bank load, sequence and timer call matches.
+extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args)
+{
+	AmbientPlayer* player;
+	switch (args[0]) {
+	case 0:
+		if (count >= 2) {
+			if (args[1] != 0) {
+				ambient.mPaused = 1;
+				if (IsWiiSfxPlaying(&gGame.mSound, 0x570)) {
+					StopWiiSfx(&gGame.mSound, 0x570, 0.0f);
+				}
+			} else {
+				ambient.mPaused = 0;
+			}
+		} else {
+			ambient.mPaused = 1;
+		}
+		break;
+	case 1:
+		LoadWiiSoundBankByName(&gGame.mSound, "sfx_uraniwa_ambient1.ssm");
+		player = &ambient;
+		player->Start(ambientConstructionHammer1);
+		player->Start(ambientConstructionHammer2);
+		player->Start(ambientConstructionNoko);
+		player->Start(ambientTrafficCarLr);
+		player->Start(ambientTrafficCarRl);
+		player->Start(ambientTrafficDump);
+		ambient.mBirdTimer      = rand() % 600 + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
+		break;
+	case 2:
+		LoadWiiSoundBankByName(&gGame.mSound, "sfx_uraniwa_ambient1.ssm");
+		player = &ambient;
+		player->Start(ambientConstructionHammer1Fast);
+		player->Start(ambientConstructionHammer2Fast);
+		player->Start(ambientConstructionNoko);
+		player->Start(ambientTrafficCarLr);
+		player->Start(ambientTrafficCarRl);
+		player->Start(ambientTrafficDump);
+		ambient.mBirdTimer      = rand() % 600 + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
+		break;
+	case 3:
+		LoadWiiSoundBankByName(&gGame.mSound, "sfx_uraniwa_ambient2.ssm");
+		player = &ambient;
+		player->Start(ambientNeighborMower);
+		player->Start(ambientTrafficCarLr);
+		player->Start(ambientTrafficCarRl);
+		player->Start(ambientTrafficDump);
+		ambient.mBirdTimer      = rand() % 600 + 600;
+		ambient.mBirdSounds     = ambientNatureBirds2;
+		ambient.mBirdSoundCount = 5;
+		break;
+	case 4:
+		LoadWiiSoundBankByName(&gGame.mSound, "sfx_uraniwa_ambient3.ssm");
+		player = &ambient;
+		player->Start(ambientNightHowling);
+		player->Start(ambientNightCricket);
+		player->Start(ambientTrafficCarLr);
+		player->Start(ambientTrafficCarRl);
+		player->Start(ambientTrafficDump);
+		break;
+	default:
+		return 0;
+	}
+	return 0;
 }
 #else
 #include "Version.h"
