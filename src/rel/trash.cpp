@@ -1,16 +1,11 @@
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
+#include "game/wii/xobjflags.h"
 
-struct TrashObj : public XObj {
-	virtual u32 GetFlag() { return GetObjFlags(); }
-
-	u32* mFlags;
-};
-
-static TrashObj trashObjs[10];
+static XObj trashObjs[10];
 static XObj* trashTarget;
-static TrashObj* trashObj;
+static XObjFlags* trashObj;
 static s32 trashStackNum;
 static f32 trashStackScale;
 static Vec trashPos;
@@ -57,7 +52,7 @@ extern "C" void UpdateTrash(u32 frames)
 	WiiPlayerState* robot = gGame.GetPlayer();
 	switch (trashState) {
 	case 0:
-		trashObj = (TrashObj*)robot->mLift.mTarget;
+		trashObj = (XObjFlags*)robot->mLift.mTarget;
 		for (s32 i = 0; i < 10; i++) {
 			if (!(trashObjs[i].mStatus.mFlags & 1)) {
 				trashObjs[i].LoadFromPlacement(trashObj->mCoord);
@@ -102,8 +97,8 @@ extern "C" void UpdateTrash(u32 frames)
 		if ((f32)sin(trashArc) < 0.0f) {
 			trashResult = 2;
 			if (trashObj->GetCategory() == 8) {
-				u32 bit = trashObj->GetFlag();
-				trashObj->mFlags[bit >> 5] |= 1 << (bit & 31);
+				u32 bit = trashObj->GetFlagIndex();
+				trashObj->mFlags->mFlags[bit >> 5] |= 1 << (bit & 31);
 			}
 			trashObj->mStatus.mFlags &= ~1ULL;
 			trashState++;
@@ -216,6 +211,38 @@ extern "C" void ExitTrash(void)
 			trashObjs[i].Release();
 		}
 	}
+}
+
+static inline s32 IsNearObjectXZ(const Vec& pos, s32 index)
+{
+	CVec b, a;
+	a.x          = pos.x;
+	a.y          = pos.y;
+	a.z          = pos.z;
+	XObj* obj    = gGame.mXObjs.mObjects[index];
+	CVec* objPos = obj->GetPos();
+	b.x          = objPos->x;
+	b.y          = objPos->y;
+	b.z          = objPos->z;
+	b.y          = 0.0f;
+	a.y          = 0.0f;
+	if (11.5f < PSVECDistance(&a, &b)) {
+		return 0;
+	}
+	return 1;
+}
+
+// NONMATCHING: the inlined helper keeps the box index in a callee-saved register and orders the CVec copies differently.
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
+{
+	if (trashboxIndex < 0) {
+		return 0;
+	}
+	WiiPlayerState* robot = gGame.GetPlayer();
+	if (trashboxIndex != robot->mFloorContactObjects[0]) {
+		return 0;
+	}
+	return IsNearObjectXZ(*robot->GetPos(), trashboxIndex);
 }
 #else
 #include "Version.h"

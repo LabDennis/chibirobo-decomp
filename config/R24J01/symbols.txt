@@ -1111,6 +1111,7 @@ CmdStartTrash = .text:0x8016C1C0; // type:function size:0xB8
 CmdGetTrashResult = .text:0x8016C278; // type:function size:0x8
 CmdEndTrash = .text:0x8016C280; // type:function size:0x5C
 CmdCancelTrash = .text:0x8016C2DC; // type:function size:0xBC
+CmdIsNearTrashbox = .text:0x8016CF58; // type:function size:0x100
 AddAna = .text:0x8016BBF4; // type:function size:0x1A8
 GetNearestAna__Ffff = .text:0x8016BD9C; // type:function size:0xB4
 Stage04_Init = .text:0x80179B1C; // type:function size:0x28
