@@ -126,7 +126,7 @@ void AmbientPlayer::Update(s32 dt)
 
 static AmbientPlayer ambient;
 
-extern "C" void InitAnas(void);
+extern "C" s32 InitAnas(void);
 extern "C" void DrawAnas(void);
 extern "C" void UpdateAnas(s32 dt);
 extern "C" void ExitAnas(void);

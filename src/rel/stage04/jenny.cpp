@@ -1,7 +1,7 @@
 #if defined(VERSION_R24J01)
 #include "types.h"
 
-extern "C" void InitAnas(void);
+extern "C" s32 InitAnas(void);
 extern "C" void DrawAnas(void);
 extern "C" void UpdateAnas(s32 dt);
 extern "C" void ExitAnas(void);

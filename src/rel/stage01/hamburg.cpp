@@ -977,7 +977,7 @@ void HamObj::StateStackLand()
 	}
 }
 
-extern "C" void InitAnas(void);
+extern "C" s32 InitAnas(void);
 extern "C" void DrawAnas(void);
 extern "C" void ExitAnas(void);
 extern "C" void ResetYakiRates(void);

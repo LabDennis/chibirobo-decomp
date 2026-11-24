@@ -3,19 +3,19 @@
 #include "game/wii/cpadact.h"
 #include "game/wii/xobjflags.h"
 
-static XObj trashObjs[10];
-static XObj* trashTarget;
-static XObjFlags* trashObj;
-static s32 trashStackNum;
-static f32 trashStackScale;
+XObj trashObjs[10];
+XObj* trashTarget;
+XObjFlags* trashObj;
+s32 trashStackNum;
+f32 trashStackScale;
 static Vec trashPos;
 static Vec trashDest;
 static Vec trashStep;
 static f32 trashArc;
-static s32 trashState;
-static s32 trashResult;
+s32 trashState;
+s32 trashResult;
 static s32 trashboxIndex;
-static u8 trashActive;
+u8 trashActive;
 static u8 trashObjsInitialized;
 
 // NONMATCHING: object-table and loop registers differ; initialization, both box kinds and the scan match.
@@ -53,16 +53,18 @@ extern "C" void UpdateTrash(u32 frames)
 	switch (trashState) {
 	case 0:
 		trashObj = (XObjFlags*)robot->mLift.mTarget;
-		for (s32 i = 0; i < 10; i++) {
-			if (!(trashObjs[i].mStatus.mFlags & 1)) {
-				trashObjs[i].LoadFromPlacement(trashObj->mCoord);
+		if (trashObj != NULL) {
+			for (s32 i = 0; i < 10; i++) {
+				if (!(trashObjs[i].mStatus.mFlags & 1)) {
+					trashObjs[i].LoadFromPlacement(trashObj->mCoord);
+				}
 			}
 		}
 		if (gWiiPointer.GetSwing(NULL, NULL)) {
-			robot->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+			robot->SetAnim(9, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			trashState++;
 			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
-		} else if (gWiiPointer.mFlags & 0x200000000ULL) {
+		} else if (gWiiPointer.Check(2)) {
 			trashResult = 4;
 			trashState  = 99;
 			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
@@ -76,7 +78,7 @@ extern "C" void UpdateTrash(u32 frames)
 		}
 		break;
 	case 2:
-		if (robot->GetAnimFrame() >= 15.0f) {
+		if (robot->GetAnimFrame() >= 14.0f) {
 			robot->mLift.mTarget = NULL;
 			trashObj->mStatus.mFlags &= ~0x400000000000000ULL;
 			trashDest = *trashTarget->GetPos();
@@ -100,7 +102,7 @@ extern "C" void UpdateTrash(u32 frames)
 				u32 bit = trashObj->GetFlagIndex();
 				trashObj->mFlags->mFlags[bit >> 5] |= 1 << (bit & 31);
 			}
-			trashObj->mStatus.mFlags &= ~1ULL;
+			trashObj->mStatus.mFlags &= ~0x10000ULL;
 			trashState++;
 		} else {
 			Vec pos = *trashObj->GetPos();
@@ -179,7 +181,7 @@ extern "C" void DrawTrashStack(void)
 			z     = 2.0f * (f32)cos(a);
 		}
 
-		XObj* obj = &trashObjs[i - 1];
+		XObj* obj = &trashObjs[i];
 		if (!(obj->mStatus.mFlags & 1)) {
 			Mtx mtx;
 			PSMTXCopy(trashObj->GetWorldMtx(), mtx);
@@ -188,7 +190,7 @@ extern "C" void DrawTrashStack(void)
 			mtx[2][3]        = z * trashStackScale + pos.z;
 			obj->mBaseMtxPtr = obj->mBaseMtx;
 			PSMTXCopy(mtx, obj->mBaseMtx);
-			obj->SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 1.0f, 1.0f, 15.0f);
+			obj->SetAnim(trashObj->GetAnimId(), TRUE, trashObj->GetAnimFrame(), 0.0f, 0.0f, 15.0f);
 			gGame.mGs.mScene.GetRoot()->Insert(gGame.mGs.mScene.GetRoot()->mNumScnObj, obj->mObject.m_pScnMdl);
 		}
 	}

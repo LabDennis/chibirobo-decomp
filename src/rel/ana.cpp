@@ -220,7 +220,7 @@ extern "C" void UpdateAnas(s32 dt)
 }
 
 // NONMATCHING: reset and placement block layout differs; all five load paths and the status/JObj resets match.
-extern "C" void InitAnas(void)
+extern "C" s32 InitAnas(void)
 {
 	tutiAnaObj    = NULL;
 	tutiHutaObj   = NULL;
@@ -264,16 +264,32 @@ extern "C" void InitAnas(void)
 				}
 			}
 		}
-		if (kind >= 0x2B7 && kind <= 0x2B9) {
-			s32 which         = kind - 0x2B7;
-			flowerObjs[which] = obj;
+		if (kind == 0x2B7) {
+			flowerObjs[0] = obj;
 			for (s32 j = 0; j < 20; j++) {
-				if (!(anaXObjs[j][which + 2].mStatus.mFlags & 1)) {
-					anaXObjs[j][which + 2].LoadFromPlacement(obj->mCoord);
+				if (!(anaXObjs[j][2].mStatus.mFlags & 1)) {
+					anaXObjs[j][2].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x2B8) {
+			flowerObjs[1] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][3].mStatus.mFlags & 1)) {
+					anaXObjs[j][3].LoadFromPlacement(obj->mCoord);
+				}
+			}
+		}
+		if (kind == 0x2B9) {
+			flowerObjs[2] = obj;
+			for (s32 j = 0; j < 20; j++) {
+				if (!(anaXObjs[j][4].mStatus.mFlags & 1)) {
+					anaXObjs[j][4].LoadFromPlacement(obj->mCoord);
 				}
 			}
 		}
 	}
+	return 1;
 }
 
 extern "C" void ExitAnas(void)
@@ -304,6 +320,7 @@ extern "C" XObj* GetAnaJObj(s32 index, s32 kind, s32 which)
 		return &group[1];
 	case 3:
 		if (obj != NULL) {
+			obj = &group[2];
 			obj->SetAnim(1, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
 		return obj;
@@ -334,7 +351,7 @@ extern "C" XObj* GetAnaJObj(s32 index, s32 kind, s32 which)
 // NONMATCHING: position/scene-list register layout differs; carry/position selection and all render calls match.
 extern "C" void DrawAnas(void)
 {
-	for (s32 i = 0; i < 20; i++) {
+	for (u32 i = 0; i < 20; i++) {
 		if (!(anas[i].mStatus.mFlags & 1)) {
 			continue;
 		}
@@ -365,7 +382,7 @@ extern "C" void DrawAnas(void)
 
 extern XObj trashObjs[10];
 extern XObj* trashTarget;
-extern XObj* trashObj;
+extern XObjFlags* trashObj;
 extern s32 trashStackNum;
 extern f32 trashStackScale;
 extern s32 trashState;
@@ -383,7 +400,7 @@ extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 		trashState  = 0;
 		trashActive = TRUE;
 		if (gGame.GetPlayer()->mLift.mTarget != NULL) {
-			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 0, 1, 1);
+			InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, NULL, 1, 1, 1);
 		}
 	}
 	return 0;
@@ -399,7 +416,7 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
 	return 0;
 }
 
-// NONMATCHING: loop-register selection differs; the inactive test, both release paths and the 0x9A8 array stride match.
+// NONMATCHING: loop-register selection differs; the active test, both release paths and the 0x9A8 array stride match.
 extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 {
 	WiiPlayerState* robot = gGame.GetPlayer();
@@ -411,7 +428,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 		trashObj = NULL;
 	}
 	for (s32 i = 0; i < 10; i++) {
-		if ((trashObjs[i].mStatus.mFlags & 1) != 1) {
+		if ((trashObjs[i].mStatus.mFlags & 1) == 1) {
 			trashObjs[i].Release();
 		}
 	}
@@ -421,6 +438,13 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
 {
 	return trashResult;
+}
+
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args);
+
+extern "C" s32 fn_8016C398(s32 cmd, s32 count, s32* args)
+{
+	return CmdIsNearTrashbox(cmd, count, args);
 }
 #else
 #include "Version.h"
