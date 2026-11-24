@@ -1776,10 +1776,13 @@ extern "C" void DrawTitleScreen(Title* title)
 			break;
 		}
 		// the pointer's rectangles around the three entries
-		f32 margin = 24.0f;
-		title->mPanes[5].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w0), 28.0f));
-		title->mPanes[6].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w1), 28.0f));
-		title->mPanes[7].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + w2), 28.0f));
+		f32 margin               = 24.0f;
+		title->mPanes[5].mWidth  = 40.0f + (2.0f * margin + w0);
+		title->mPanes[5].mHeight = 28.0f;
+		title->mPanes[6].mWidth  = 40.0f + (2.0f * margin + w1);
+		title->mPanes[6].mHeight = 28.0f;
+		title->mPanes[7].mWidth  = 40.0f + (2.0f * margin + w2);
+		title->mPanes[7].mHeight = 28.0f;
 		if ((title->mCursor[0].mRequest.mFile != NULL ? title->mCursor[0].mRequest.mFile->mSize : 0) == 0x3CA80) {
 			y -= 10.0f;
 		}
@@ -1828,10 +1831,13 @@ extern "C" void DrawTitleScreen(Title* title)
 		u32 optionWidth = 2.0f * (labelW + gap);
 		f32 okWidth     = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, size);
 		// the pointer's rectangles around the three lines keep the first one's height
-		f32 height = title->mPanes[8].mHeight;
-		title->mPanes[8].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + optionWidth), height));
-		title->mPanes[9].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + optionWidth), height));
-		title->mPanes[10].SetSize(nw4r::lyt::Size(40.0f + (2.0f * margin + okWidth), height));
+		f32 height                = title->mPanes[8].mHeight;
+		title->mPanes[8].mWidth   = 40.0f + (2.0f * margin + optionWidth);
+		title->mPanes[8].mHeight  = height;
+		title->mPanes[9].mWidth   = 40.0f + (2.0f * margin + optionWidth);
+		title->mPanes[9].mHeight  = height;
+		title->mPanes[10].mWidth  = 40.0f + (2.0f * margin + okWidth);
+		title->mPanes[10].mHeight = height;
 		f32 width;
 		f32 y;
 		switch (title->mOptionLine != -1 ? title->mOptionLine : title->mLastOptionLine) {

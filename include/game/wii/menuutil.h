@@ -97,12 +97,6 @@ struct CbPane {
 	}
 	~CbPane() { }
 
-	void SetSize(const nw4r::lyt::Size& size)
-	{
-		mWidth  = size.width;
-		mHeight = size.height;
-	}
-
 	Vec mTrans;                // _00, the centre
 	f32 mWidth;                // _0C
 	f32 mHeight;               // _10
