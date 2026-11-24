@@ -2087,7 +2087,7 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
 	actor->mRumbleTimer = 0;
 	actor->mHeld        = NULL;
 	actor->_1E20        = 0;
-	actor->mSe          = -1;
+	actor->mSe          = 0;
 }
 
 void XObjActor3::InitializeObject()
