@@ -2,6 +2,15 @@
 #include "game/wii/cgame.h"
 
 struct HamObj {
+	typedef void (HamObj::*StateFunc)();
+
+	void SetState(StateFunc func)
+	{
+		mState     = func;
+		mStateTime = 0;
+	}
+	void StateFlip();
+
 	HamObj* mAbove;
 	XObj* mActor;
 	s32 mId;
@@ -18,7 +27,7 @@ struct HamObj {
 	u8 mSpawned;
 	u8 _39[3];
 	void* mYakiEffect;
-	u32 mState[3];
+	StateFunc mState;
 	s32 mStateTime;
 };
 
@@ -53,6 +62,17 @@ extern "C" void HamObj_Init(HamObj* slot, s32 id)
 		slot->mActor->mStatus.mFlags |= 0x100000000ULL;
 		slot->mActor->mStatus.mFlags |= 0x10000000000ULL;
 	}
+}
+
+extern "C" f64 atan2(f64 y, f64 x);
+
+extern "C" void HamObj_StartFlip(HamObj* slot, u32 frames)
+{
+	slot->mFlipFrames = frames;
+	CVec* actorPos    = slot->mActor->GetPos();
+	CVec* playerPos   = ((XObj*)gGame.GetPlayer())->GetPos();
+	slot->mMoveAngle  = atan2(actorPos->x - playerPos->x, actorPos->z - playerPos->z);
+	slot->SetState(&HamObj::StateFlip);
 }
 #else
 #include "Version.h"

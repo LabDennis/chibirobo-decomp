@@ -351,7 +351,9 @@ rel/ana.cpp:
 	.text start:0x8016BA00 end:0x8016BA04
 
 rel/stage01/hamburg.cpp:
-	.text start:0x8016DAD8 end:0x8016DBAC
+	.text start:0x8016DAD8 end:0x8016DC78
+	.data start:0x8030E6D4 end:0x8030E6E0
+	.sdata2 start:0x805A6140 end:0x805A6148
 
 rel/stage02/fighter.cpp:
 	.text start:0x80174934 end:0x80175E8C

@@ -952,6 +952,8 @@ ExecCallbackB__12XObjActorToyFPQ34nw4r3g3d12ChrAnmResultQ34nw4r3g3d6ResMdlPQ34nw
 DrawScoreHud = .text:0x80174934; // type:function size:0x1558
 SetFafaPartVisibility = .text:0x8016AF80; // type:function size:0xF8
 HamObj_Init = .text:0x8016DAD8; // type:function size:0xD4
+HamObj_StartFlip = .text:0x8016DBAC; // type:function size:0xCC
+StateFlip__6HamObjFv = .text:0x8016E604; // type:function size:0xD04
 Stage20_Init = .text:0x8017B184; // type:function size:0x5C
 Stage20_Update = .text:0x8017B1E0; // type:function size:0x78
 Stage20_NoOpSlot5 = .text:0x8017B258; // type:function size:0x8
