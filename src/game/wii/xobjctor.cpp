@@ -39,9 +39,12 @@ XObjActor3::~XObjActor3()
 }
 
 // NONMATCHING: retail expands CJArchive's ctor inline (__vt__5CFile stores, -1 at _93C,
-// 1 at _960) where MWCC calls __ct__9CJArchiveFv; retail's __dt__9XObjSoundFv
-// (0x800C1E20) is emitted here, ours stays implicit and weak
+// 1 at _960) where MWCC calls __ct__9CJArchiveFv
 XObjSound::XObjSound()
+{
+}
+
+XObjSound::~XObjSound()
 {
 }
 
