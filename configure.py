@@ -1540,6 +1540,8 @@ if wii:
                 Object(NonMatching, "rel/stage02/fighter.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "rel/stage20/stage20.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "rel/stage16/ufo.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "rel/stage17/stage17.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "rel/stage11/haisui.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "game/wii/xobjactorjenny.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "game/wii/xobjactormama.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(NonMatching, "game/wii/xobjactorpapa.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),

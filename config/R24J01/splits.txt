@@ -357,6 +357,14 @@ rel/stage16/ufo.cpp:
 	.sbss start:0x805A1E18 end:0x805A1E1C
 	.sdata2 start:0x805A63C0 end:0x805A63C8
 
+rel/stage17/stage17.cpp:
+	.text start:0x8017AE54 end:0x8017AF18
+	.sdata2 start:0x805A63B0 end:0x805A63C0
+
+rel/stage11/haisui.cpp:
+	.text start:0x8017B044 end:0x8017B108
+	.sdata2 start:0x805A63C8 end:0x805A63D8
+
 revolution/MEM/mem_heapCommon.c:
 	.text start:0x801AE7A8 end:0x801AEC14
 	.bss start:0x804E8C70 end:0x804E8C98
