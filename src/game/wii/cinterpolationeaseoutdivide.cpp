@@ -1,4 +1,5 @@
 #include "game/ccameraaction.h"
+#include "game/wii/cgame.h"
 #include "game/cthread.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/csoundfx.h"
@@ -19,9 +20,9 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-// NONMATCHING: the static initializer (0x800332D8, 0x394) is the compiler's. Retail's constructs
-// gGame ahead of these two, which unit_8003366C.cpp defines, and sets gCmdLineArgs' crosshair
-// (retail _54 and _58) to the middle of the pointer's screen.
+// NONMATCHING: the static initializer (0x800332D8, 0x394) is the compiler's. It constructs gGame
+// ahead of these two and sets gCmdLineArgs' crosshair (retail _54 and _58) to the middle of the
+// pointer's screen. gGame's member-constructor emissions follow at 0x8003366C in this same unit.
 CPadAct gWiiPointer;
 extern "C" {
 CThread gMovieUpdateThread;
@@ -62,3 +63,5 @@ BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param
 	}
 	return FALSE;
 }
+
+CGame gGame;

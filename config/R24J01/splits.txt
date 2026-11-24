@@ -1445,7 +1445,7 @@ game/wii/cinterpolation.cpp:
 	.data start:0x802E6110 end:0x802E6250
 
 game/wii/cinterpolationeaseoutdivide.cpp:
-	.text start:0x80032FD4 end:0x8003366C
+	.text start:0x80032FD4 end:0x800354DC
 
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4
@@ -2897,6 +2897,3 @@ nw4r/g3d/g3d_light.cpp:
 nw4r/g3d/g3d_calcvtx.cpp:
 	.text start:0x802824A8 end:0x80282CA0
 	.sdata2 start:0x805A7520 end:0x805A7524
-
-game/wii/unit_8003366C.cpp:
-	.text start:0x8003366C end:0x800354DC
