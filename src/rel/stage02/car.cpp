@@ -6,6 +6,7 @@ extern u8* carParams;
 extern u8* carSoundCues;
 extern u8 carsStarted;
 extern u32 carCameraTrailIndex;
+extern Vec carCameraTrail[32];
 
 inline s32 ReadS32LE(u8* p)
 {
@@ -188,6 +189,51 @@ extern "C" void StartCars(void)
 	carsStarted             = TRUE;
 	PlayWiiSoundEffect(&gGame.mSound, 0x2BC, 1.0f, 0.0f);
 	Car::racerCar.mStarted = TRUE;
+}
+
+extern "C" void UpdateCars(u32 frames)
+{
+	CPad pad(0);
+	if (!carsStarted) {
+		frames = 0;
+	}
+	if (Car::playerCar.mCar == NULL) {
+		return;
+	}
+	if (Car::racerCar.mCar == NULL) {
+		return;
+	}
+	Car::playerCar.Update(frames);
+	Car::racerCar.Update(frames);
+	bool done;
+	if (!Car::playerCar.mStarted) {
+		done = false;
+	} else {
+		done = ReadS32LE(carParams + 4) <= Car::playerCar.mFrame;
+	}
+	if (done) {
+		Car::carCamera.mCarMtx = NULL;
+	} else {
+		Vec pos;
+		pos.y = 0.0f;
+		pos.z = 0.0f;
+		pos.x = 0.0f;
+		pos.y = 20.0f;
+		PSMTXMultVec(Car::playerCar.mCarMtx, &pos, &pos);
+		carCameraTrail[carCameraTrailIndex] = pos;
+		s32 prev                            = carCameraTrailIndex - 10;
+		if (prev < 0) {
+			prev += 32;
+		}
+		CInterfaceCameraAction* cam = &Car::carCamera;
+		cam->SetEye(carCameraTrail[prev]);
+		if (++carCameraTrailIndex >= 32) {
+			carCameraTrailIndex = 0;
+		}
+	}
+	if (!Car::racerCar.mBraking && ReadS32LE(carParams + 0xC) <= Car::racerCar.mFrame) {
+		Car::racerCar.Brake();
+	}
 }
 
 extern "C" s32 GetPlayerCarResult(void)
