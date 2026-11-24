@@ -1567,7 +1567,7 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	if (!(act->mFade > 0))
 		return;
 	CVec origin = GetRadarDishWorldPosition((XObjRadar*)act->mOwner->mRadarObj);
-	CVec target = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
+	CVec target = *act->mTarget->GetPos() + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 	f32 yaw     = atan2(target.x - origin.x, target.z - origin.z);
 	f32 pitch   = TargetPitch(origin, target) - DEG2RAD * 3;
 	f32 span    = PSVECDistance(&origin, &target) / 20;
