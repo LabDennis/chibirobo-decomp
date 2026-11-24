@@ -2,10 +2,9 @@
 // GameCube file has as inline helpers are functions of the base class here: they take the view
 // matrix and load it themselves, and nothing invalidates an HSD state.
 //
-// NONMATCHING: the nine CLine and CTriangle vertex loops (62-75 %) are the GameCube file's wall: retail
-// reads x and y before it writes x and reads z after (lfs x; lfs y; stfs x; lfs z; stfs y; stfs z), ours
-// reads z, y, x and then writes all three. Writing to GXWGFifo directly gives the write order but no
-// read running ahead. Everything else in the file matches.
+// NONMATCHING: the nine CLine and CTriangle vertex loops are the GameCube file's wall: retail reads
+// x and y before it writes x and reads z after. Splitting GXPosition2f32 plus GX_WRITE_F32 recovers
+// that shape in CLine::Draw(PrimVertex*); its x/y argument order and the other eight loops remain open.
 
 #include "game/cprimitive.h"
 #include "game/ut.h"
@@ -201,7 +200,8 @@ void CLine::Draw(Mtx view, PrimVertex* vtx, u16 count)
 	GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
 		PrimVertex* v = vtx + i;
-		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
+		GXPosition2f32(v->pos.x, v->pos.y);
+		GX_WRITE_F32(v->pos.z);
 		GXColor1u32(v->color);
 	}
 }
