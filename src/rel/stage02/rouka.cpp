@@ -11,6 +11,7 @@ extern "C" void ClearFighterObjects(void);
 extern "C" void UpdateFighter(u32 arg);
 extern "C" void UpdateCars(u32 arg);
 extern "C" void DrawShots(void);
+extern "C" void DrawFighterStage(void);
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, const Vec* pos, s32 group);
 extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 extern "C" void DrawFighterHud(void);
@@ -83,7 +84,7 @@ extern "C" s32 Stage02_Update(u32 arg)
 
 extern "C" s32 Stage02_Draw(u32 arg)
 {
-	DrawShots();
+	DrawFighterStage();
 	return 1;
 }
 

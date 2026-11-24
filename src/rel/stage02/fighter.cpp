@@ -27,7 +27,7 @@ public:
 	virtual ~CCameraActionFighter() { }
 
 	virtual void Update(u32 step);
-	virtual void Init() { mCenterView = false; }
+	virtual void Init();
 	virtual u32 GetMode() { return 0; }
 	virtual u32 GetCameraFlags() { return 11; }
 	virtual f32 GetFollowDivisor() { return 0.1f; }
@@ -170,6 +170,11 @@ void Mato::Update()
 			mOnScreen = FALSE;
 		}
 	}
+}
+
+void fighter::CCameraActionFighter::Init()
+{
+	mCenterView = false;
 }
 
 extern "C" void AddMato(XObj* obj, s32 id)
@@ -447,11 +452,18 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
 }
 
 extern PilotNwing pilotNwing;
-extern u8* soundCueTable[2];
+extern u8* soundCueTable;
 
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge);
 extern "C" void FighterAim_Draw(FighterAim* aim, CCamera* camera, Mtx fighterMtx);
 extern "C" void FighterPanels_Draw(FighterPanels* fade);
+
+extern "C" void DrawFighterStage(void)
+{
+	if (fighterWork.mBody == NULL) {
+		return;
+	}
+}
 
 extern "C" void DrawShots(void)
 {
@@ -506,7 +518,7 @@ void Fighter::SetParams(u8* data)
 
 extern "C" void SetSoundCueTable(u8* data)
 {
-	soundCueTable[0] = data;
+	soundCueTable = data;
 }
 
 extern "C" f32 GetFighterProgress(void)
