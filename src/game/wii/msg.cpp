@@ -1770,9 +1770,8 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	case 0:
 		if (sfx == -2) {
 			// stop every playing track at once (0 seconds of fade)
-			// retail computes the frame count at runtime (sdata2 0.0f multiply
-			// is not folded there); the value is 0 either way
-			u32 frames = gRefreshRate * 0.0f;
+			f32 fade   = 0.0f;
+			u32 frames = fade * gRefreshRate;
 			for (int i = 0; i < 0x40; ++i) {
 				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL)
@@ -1807,7 +1806,8 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	}
 	case 5:
 		if (sfx == -2) {
-			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
+			f32 fade   = 0.0f;
+			u32 frames = (u32)(fade * (f32)gRefreshRate);
 			for (int i = 0; i < 0x40; ++i) {
 				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL && !track->IsPause())
@@ -1819,7 +1819,8 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		break;
 	case 6:
 		if (sfx == -2) {
-			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
+			f32 fade   = 0.0f;
+			u32 frames = (u32)(fade * (f32)gRefreshRate);
 			for (int i = 0; i < 0x40; ++i) {
 				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks.mHandles[i].detail_GetAttachedSound();
 				if (track != NULL && track->IsPause())
