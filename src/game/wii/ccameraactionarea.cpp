@@ -815,7 +815,8 @@ void CCameraActionArea::DrawDebug3d()
  * @note Address: 0x80156E7C
  * @note Size: 0x2D8
  */
-// NONMATCHING: the arithmetic and call set match; CVec stack temporaries and register allocation still differ
+// NONMATCHING: the arithmetic and call set match; retail copies displacement into a stack Vec (0x18) before the add, which this build
+// skips, so the frame is 0xF0 instead of 0x100 and the dot product's registers swap
 extern "C" CVec SpringDamp(CVec& position, Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance)
 {
 	CVec displacement;
