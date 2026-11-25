@@ -646,9 +646,9 @@ extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortR
 	}
 }
 
-// NONMATCHING: the direct initial-hit return and on-demand triangle addressing now match retail.
-// The remaining difference is register and Vec-slot allocation: retail starts at r25 rather than r24,
-// assigns the grid loop registers differently and uses the hint probe's Vec slots below the grid's (91.28%)
+// NONMATCHING: the on-demand triangle addressing matches retail, which keeps the initial hit in a
+// found flag before the sort-grid stage. The remaining difference is register and Vec-slot allocation:
+// retail assigns the grid loop registers differently and uses the hint probe's Vec slots below the grid's
 // 0x800C98E0, the Wii's out-of-line FindMapFloor: fills hit with the floor
 // triangle under pos — first trying the start triangle itself, then the
 // record list of the sort-grid cell the point falls in, then the trigon's
@@ -660,6 +660,7 @@ extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortR
  */
 extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit)
 {
+	BOOL found = FALSE;
 	if (start >= 0 && start < map->mTrigon.mNum) {
 		Vec v[3];
 		Vec at;
@@ -669,8 +670,11 @@ extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit*
 			hit->mTriangle = start;
 			hit->mTrigon   = map->mTrigon.mTri[start].mCell;
 			hit->mHeight   = at.y;
-			return TRUE;
+			found          = TRUE;
 		}
+	}
+	if (found) {
+		return TRUE;
 	}
 	if (map->mSortValid != 0) {
 		s32 cellX = (pos->x - map->mSortMin.x) / map->mSortCellX;
