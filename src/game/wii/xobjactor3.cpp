@@ -1539,7 +1539,7 @@ extern "C" void LaunchSpiderBossCenterPart(XObjActor3* obj)
 		obj->mKindTimer = 6.0f;
 		obj->ClearBaseMtx();
 		obj->mMoveTranslate.x = offset.x + holder->GetPosX();
-		obj->mMoveTranslate.y = 18.0f + offset.y;
+		obj->mMoveTranslate.y = 10.0f + (8.0f + offset.y);
 		obj->mMoveTranslate.z = offset.z + holder->GetPosZ();
 		obj->SetPos(obj->mMoveTranslate);
 		const CVec* holderPos = holder->GetPos();
