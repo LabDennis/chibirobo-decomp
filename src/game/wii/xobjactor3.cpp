@@ -2368,9 +2368,7 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
 	PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	u32 a              = 255.0f * alpha;
-	u32 c0             = a | 0xFFFFFF00;
-	u32 c1             = a | 0x1F33FF00;
+	u32 c0, c1;
 	for (s32 i = 0; i < 2; i++) {
 		f32 p = 1.0f;
 		if (i > 0) {
@@ -2384,6 +2382,8 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 			PSMTXTrans(tex.mTexMtx.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
 			tex.mTexMtx.mDirty = TRUE;
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			c0 = (u32)(255.0f * alpha) | 0xFFFFFF00;
+			c1 = (u32)(255.0f * alpha) | 0x1F33FF00;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f,
 			                   0.0f);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
@@ -2401,6 +2401,8 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 	if (count < 10.0f) {
 		digits = 1;
 	}
+	c0 = (u32)(255.0f * alpha) | 0xFFFFFF00;
+	c1 = (u32)(255.0f * alpha) | 0x1F33FF00;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 }
@@ -2438,9 +2440,7 @@ extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 	f32 count = actor->mSpiderCount;
 	PSMTXScale(tex.mTexMtx.mMtx[2], 0.09090909f, 1.0f, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	u32 a              = 255.0f * alpha;
-	u32 c0             = a | 0xFFFFFF00;
-	u32 c1             = a | 0x1F33FF00;
+	u32 c0, c1;
 	for (s32 i = 0; i < 2; i++) {
 		f32 p = 1.0f;
 		if (i > 0) {
@@ -2454,6 +2454,8 @@ extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 			PSMTXTrans(tex.mTexMtx.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
 			tex.mTexMtx.mDirty = TRUE;
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
+			c0 = (u32)(255.0f * alpha) | 0xFFFFFF00;
+			c1 = (u32)(255.0f * alpha) | 0x1F33FF00;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, y, 0.0f, dw, dh, 0.0f, 0.0f,
 			                   0.0f);
 			gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
