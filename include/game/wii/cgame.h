@@ -803,13 +803,7 @@ typedef Params WiiPlayerParams;
 // player forwards to the one he wears. The class name is RTTI.
 class XObjDress : public XObj {
 public:
-	XObjDress()
-	{
-		u32* p = _9AC;
-		do {
-			*p++ = 0;
-		} while (p < _9AC + 7);
-	}
+	XObjDress();
 	virtual ~XObjDress() { }
 	virtual void vf28C(BOOL on); // _28C
 	virtual void vf290(BOOL on); // _290
@@ -827,7 +821,7 @@ typedef XObjDress WiiSuitObject;
 // Its ExecCallbackB grafts the owner's head matrix onto the callback result.
 class XObjDressOpt : public XObj {
 public:
-	XObjDressOpt() { }
+	XObjDressOpt();
 	virtual ~XObjDressOpt() { }
 
 	XObj* mOwner; // _9A8, the object whose head joint this part follows
@@ -840,7 +834,7 @@ typedef XObjDressOpt WiiSuitPart;
 // ctor/dtor names in symbols.txt (0x800C08B8, 0x800C0E18); retail's XObjChrBase RTTI is polymorphic and this has
 // no vptr, so the name is unconfirmed
 struct XObjChrBase {
-	XObjChrBase() { }
+	XObjChrBase();
 	~XObjChrBase() { }
 
 	s32 mLoadStep;          // _00
