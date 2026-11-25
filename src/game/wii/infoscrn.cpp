@@ -1686,6 +1686,8 @@ static const char* sWide  = "\x81\x40\x81\x49\x81\x68\x81\x94\x81\x90\x81\x93\x8
  * @note Address: 0x8008EC74
  * @note Size: 0x32C
  */
+// NONMATCHING: the final inline LineWidth fields are stored after the history shift instead of before it;
+// the shared zero coordinate, line loop, history values, external calls and GX modes match.
 extern "C" void DrawHudScanlines(InfoScrn* scrn)
 {
 	f32 alpha = scrn->mScanlineAlpha;
@@ -1705,8 +1707,9 @@ extern "C" void DrawHudScanlines(InfoScrn* scrn)
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
 		u32 color = a | 0x30303000;
+		f32 z     = 0.0f;
 		for (s32 y = 0; y < gPointerScreenHeight; y += 4.0f) {
-			DrawGsLineSegment(&gGame.mGs, NULL, 0.0f, y + sScanline, 0.0f, color, (f32)gPointerScreenWidth, y + sScanline, 0.0f, color);
+			DrawGsLineSegment(&gGame.mGs, NULL, z, y + sScanline, z, color, (f32)gPointerScreenWidth, y + sScanline, z, color);
 		}
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
