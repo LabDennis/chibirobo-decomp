@@ -325,8 +325,6 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 // NONMATCHING: GameCube retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands
 // in for them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round.
 // Wii: the geometry and draw calls match; aggregate temporary lifetimes, stack slots and registers remain
-// NONMATCHING: retail's next/previous debug buttons are GameCube X/Y (mTrigger high-word
-// bits 18/19), not D-pad right/left
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->mAreaRecords == NULL)
@@ -347,13 +345,21 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		static s32 selected = 0;
 		selected            = i;
 		CPad pad(3);
+#if defined(VERSION_R24J01)
+		if (pad.mPad->mTrigger & (1ULL << (GameCubeDPad + 1))) { // d-pad right
+#else
 		if (pad.mPad->mTrigger & 2) { // d-pad right
+#endif
 			if (++selected >= state->mAreaCount)
 				selected = state->mAreaCount - 1;
 #if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
+#if defined(VERSION_R24J01)
+		} else if (pad.mPad->mTrigger & (1ULL << GameCubeDPad)) { // d-pad left
+#else
 		} else if (pad.mPad->mTrigger & 1) { // d-pad left
+#endif
 			if (--selected <= 0)
 				selected = 0;
 #if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
