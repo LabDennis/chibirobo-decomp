@@ -377,8 +377,7 @@ void CBase::DrawSystemMessage()
  * @note Address: 0x80018364
  * @note Size: 0x44C
  */
-// NONMATCHING: retail enters the mLastProbe == -1 block through beq/b, the shape a switch on it would give;
-// the if/else here falls through to it (registers otherwise follow)
+// NONMATCHING: only the __FILE__ string's position in this unit's incomplete string pool remains
 // the interface message in the screen's corner (3 while the remote is away, 5 when it points off
 // the screen, 4 for an unsupported controller) and the low-battery icon, both fading in and out
 void CBase::UpdateSystemMessage()
@@ -390,7 +389,8 @@ void CBase::UpdateSystemMessage()
 	u32 step     = mRetraceStep;
 	u32 device   = pad->mDeviceType;
 	s32 probe    = pad->mProbeResult;
-	if (mLastProbe == -1) {
+	switch (mLastProbe) {
+	case -1:
 		if (probe != -2 && probe != -3) {
 			mLastProbe           = probe;
 			mLastDeviceType      = device;
@@ -400,7 +400,8 @@ void CBase::UpdateSystemMessage()
 			mSystemMessageTarget = -(s32)((_41B0 >> 1) & 1);
 			mBatteryLow          = false;
 		}
-	} else {
+		break;
+	default:
 		if (probe != -2 && probe != -3) {
 			mLastProbe      = probe;
 			mLastDeviceType = device;
@@ -451,6 +452,7 @@ void CBase::UpdateSystemMessage()
 				mBatteryLow = false;
 			}
 		}
+		break;
 	}
 
 	if (0.0f != mSystemMessageTarget) {

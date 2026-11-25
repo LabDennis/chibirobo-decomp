@@ -262,7 +262,7 @@ game/wii/obja.cpp:
 	.text start:0x800AC07C end:0x800B1558
 
 game/wii/evt.cpp:
-	.text start:0x8009453C end:0x800A18B8
+	.text start:0x8009453C end:0x800A1938
 
 game/wii/xobjctor.cpp:
 	extab start:0x8000B2E4 end:0x8000B7B4
@@ -1580,6 +1580,9 @@ TRK_MINNOW_DOLPHIN/flush_cache.c:
 TRK_MINNOW_DOLPHIN/mem_TRK.c:
 	.text start:0x802256F0 end:0x802257A8
 	.init start:0x80004338 end:0x8000438C
+
+TRK_MINNOW_DOLPHIN/__exception.c:
+	.init start:0x8000438C end:0x800062C0
 
 TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
 	.text start:0x80227200 end:0x80227570

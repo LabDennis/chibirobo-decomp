@@ -784,18 +784,17 @@ void CCameraActionArea::vf24()
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[263], 0);
 		CTexObj tex = gGame.mTpl.mTex;
 		PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
-		tex.mTexMtx.mDirty = true;
-		GXColor color      = { 0xFF, 0xFF, 0x00, 0xFF };
-		color.a            = color.a * scale;
-		f32 x              = arrow->mPos.x + 0.5f * gPointerScreenWidth;
-		f32 y              = arrow->mPos.y + 0.5f * gPointerScreenHeight;
+		tex.mTexMtx.mDirty    = true;
+		u32 color             = 0xFFFF00FF;
+		((GXColor*)&color)->a = (u8)(((GXColor*)&color)->a * scale);
+		f32 x                 = arrow->mPos.x + 0.5f * gPointerScreenWidth;
+		f32 y                 = arrow->mPos.y + 0.5f * gPointerScreenHeight;
 		if (y > maxY) {
 			y = maxY;
 		}
 		f32 width  = GXGetTexObjWidth(&tex);
 		f32 height = GXGetTexObjHeight(&tex);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, *(u32*)&color, *(u32*)&color, *(u32*)&color, *(u32*)&color, x, y, 0.0f, width, height, 0.0f,
-		                   arrow->mPos.z, 0.0f);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, width, height, 0.0f, arrow->mPos.z, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 		gGame.mGs.mCurRenderState->SetCullMode(GX_CULL_BACK);
 	}

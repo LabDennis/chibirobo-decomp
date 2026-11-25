@@ -86,7 +86,7 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 }
 
 // NONMATCHING: retail builds the result in a stack CVec and copies it to the sret slot;
-// MWCC elides it into the sret object here (same source as the GameCube unit)
+// the Wii unit's build applies NRVO into the sret object (same source as the GameCube unit, which matches)
 // CVec::operator* per component
 CVec CVec::operator*(Vec other) const
 {
@@ -1128,8 +1128,6 @@ struct AnimNodeTable {
 extern "C" const AnimNodeTable lbl_80302300[];
 
 // fn_800B6BD8: the node name for the record matching the packed args
-// NONMATCHING (96 %): retail leaves the record loop with the name in a local and tests it
-// once more before it returns; that shape is not recovered
 static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 {
 	u64 key = 1;
@@ -1142,11 +1140,17 @@ static const char* FindAnimNodeName(XObj* object, s32 count, s32* args)
 			break;
 		}
 	}
+	const char* name = NULL;
 	if (records != NULL) {
 		for (s32 i = 0; records[i].mName != NULL; ++i) {
-			if (records[i].mKey == key)
-				return records[i].mName;
+			if (records[i].mKey == key) {
+				name = records[i].mName;
+				break;
+			}
 		}
+	}
+	if (name != NULL) {
+		return name;
 	}
 	return NULL;
 }

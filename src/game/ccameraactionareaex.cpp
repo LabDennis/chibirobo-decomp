@@ -333,7 +333,11 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 	u32 colors[7];
 	for (s32 i = 0; i < 7; ++i)
 		colors[i] = sMapCameraDebugColors[i];
+#if defined(VERSION_R24J01)
+	f32 scale = 2.0f / nw4r::math::FSqrt(3.0f);
+#else
 	f32 scale = 2.0f / sqrtf(3.0f);
+#endif
 	for (s32 i = 0; i < state->mAreaCount; ++i) {
 		u16 flags = CamAreaInfo(&state->mAreaRecords[i]).mRecord->mFlags & 4;
 		if (flags == 0) // skip areas whose camera is off
@@ -341,13 +345,21 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		static s32 selected = 0;
 		selected            = i;
 		CPad pad(3);
+#if defined(VERSION_R24J01)
+		if (pad.mPad->mTrigger & (1ULL << (GameCubeDPad + 1))) { // d-pad right
+#else
 		if (pad.mPad->mTrigger & 2) { // d-pad right
+#endif
 			if (++selected >= state->mAreaCount)
 				selected = state->mAreaCount - 1;
 #if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
+#if defined(VERSION_R24J01)
+		} else if (pad.mPad->mTrigger & (1ULL << GameCubeDPad)) { // d-pad left
+#else
 		} else if (pad.mPad->mTrigger & 1) { // d-pad left
+#endif
 			if (--selected <= 0)
 				selected = 0;
 #if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
@@ -421,7 +433,11 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	u32 colors[7];
 	for (s32 i = 0; i < 7; ++i)
 		colors[i] = sAreaCameraDebugColors[i];
+#if defined(VERSION_R24J01)
+	f32 scale = 2.0f / nw4r::math::FSqrt(3.0f);
+#else
 	f32 scale = 2.0f / sqrtf(3.0f);
+#endif
 	for (s32 i = 0; i < count; ++records, ++i) {
 		static s32 selected = 0;
 		CPad pad(3);

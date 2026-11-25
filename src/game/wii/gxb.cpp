@@ -222,6 +222,8 @@ extern "C" void StartScreenShake(CScrnQuake* quake, f64 x0, f64 y0, f64 z0, f64 
  * @note Address: 0x8003D020
  * @note Size: 0x70
  */
+// NONMATCHING: retail copies the stack CVec into the sret slot; the Wii unit's build applies
+// NRVO here (same source as the GameCube unit, which matches)
 CVec CVec::operator/(f32 divisor) const
 {
 	CVec result = *this;
@@ -705,14 +707,6 @@ void CScrnRoboeyes::ResetLensState(f32 width, f32 height)
 	mLensState                   = 0;
 }
 
-// moves a position by an offset passed by value. Retail's add is nw4r::math::VEC3Add, its three
-// work registers show; nw4r/math.h does not compile under the game's include path (<cstdarg>),
-// so the paired-single PSVECAdd the other Wii files use stands in and the two Updates differ in
-// those registers
-static inline void Move(CVec& pos, Vec offset)
-{
-	JMathInlineVEC::PSVECAdd(&pos, &offset, &pos);
-}
 // the item an object stands for, as the GameCube XObj::GetItem
 static inline s32 GetItem(const WiiTitleObject* object)
 {
@@ -1106,7 +1100,6 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
  * @note Address: 0x80042C54
  * @note Size: 0x16C
  */
-// NONMATCHING: Move's add uses six float registers where retail's VEC3Add uses three, see Move
 void CPtclDust2::Update(u32 frames)
 {
 	if (!mActive) {
@@ -1125,7 +1118,8 @@ void CPtclDust2::Update(u32 frames)
 		}
 	}
 	mVel.y -= 0.05f * (f32)frames;
-	Move(mPos, (mVel * 1.0f) * (f32)frames);
+	Vec offset = (mVel * 1.0f) * (f32)frames;
+	nw4r::math::VEC3Add((nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&offset);
 	mAngle += mAngleSpeed;
 }
 
@@ -1375,7 +1369,8 @@ f32 CObj::GetNodeRotateZ(nw4r::g3d::ResNode node)
  */
 // NONMATCHING: retail builds the vec in a temporary of its own (z first) and copy-constructs the
 // result from it; this build constructs the result in place, 0x1C bytes shorter. The source form
-// that keeps the temporary is not found (a named local, a const local and an inline operator ruled out)
+// that keeps the temporary is not found (a named local, a const local and an inline operator ruled out);
+// the GameCube unit matches with this source, so the Wii unit's build applies NRVO where retail does not
 CVec NW_Obj::GetNodeRotate(nw4r::g3d::ResNode node) const
 {
 	const nw4r::g3d::ResNodeData& data = node.ref();
@@ -1522,12 +1517,12 @@ CVec CObj::GetNodeTranslate(nw4r::g3d::ResNode node)
  * @note Address: 0x80043988
  * @note Size: 0x8C
  */
-// NONMATCHING: same instructions, but retail stores the result's vtable ahead of loading the node's
-// data pointer and this build behind it
 CVec NW_Obj::GetNodeTranslate(nw4r::g3d::ResNode node) const
 {
 	const nw4r::g3d::ResNodeData& data = node.ref();
-	return CVec(data.mTranslate.x, data.mTranslate.y, data.mTranslate.z);
+	CVec result;
+	result.Set(data.mTranslate.x, data.mTranslate.y, data.mTranslate.z);
+	return result;
 }
 
 /**
