@@ -1428,7 +1428,7 @@ s32 GetSelectedFloorIndex(const XObj* object)
 PlayerTurnState gPlayerTurnState;
 
 // NONMATCHING: the one-time pose calibration (the hang offset is read at anim 0x13's end frame), regular frame, turning, auto-approach,
-// attachments, events and effects are present; retail inlines ClosePlayerEquipmentRings and unrolls the held-item color loop, and
+// attachments, events and effects are present; retail inlines ClosePlayerEquipmentRings, and
 // aggregate/register allocation still differs
 void XObjChr::UpdateObject(u32 frames)
 {
@@ -1782,14 +1782,14 @@ void XObjChr::UpdateObject(u32 frames)
 		suit->UpdateObject(frames);
 	}
 	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift)) {
-		for (s32 i = 0; i < 2; ++i) {
-			const Vec& rgb = chr->mAnmQueue.mColorStep[i].mValue;
-			CColor* color  = i == 0 ? &chr->mLift.mTarget->mColor1 : &chr->mLift.mTarget->mColor0;
-			color->r       = (u32)rgb.x;
-			color->g       = (u32)rgb.y;
-			color->b       = (u32)rgb.z;
-			color->a       = 0;
-		}
+		const Vec& rgb1 = chr->mAnmQueue.mColorStep[0].mValue;
+		u32 color1      = ((u32)rgb1.x << 24) | ((u32)rgb1.y << 16) | ((u32)rgb1.z << 8);
+		chr->mLift.mTarget->mColor1.Set((color1 >> 24) & 0xFF, (color1 >> 16) & 0xFF, (color1 >> 8) & 0xFF, 0);
+		chr->mLift.mTarget->mColorsChanged = TRUE;
+		const Vec& rgb0                    = chr->mAnmQueue.mColorStep[1].mValue;
+		u32 color0                         = ((u32)rgb0.x << 24) | ((u32)rgb0.y << 16) | ((u32)rgb0.z << 8);
+		chr->mLift.mTarget->mColor0.Set((color0 >> 24) & 0xFF, (color0 >> 16) & 0xFF, (color0 >> 8) & 0xFF, 0);
+		chr->mLift.mTarget->mColorsChanged = TRUE;
 	}
 	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN) {
 		CVec& target = chr->mMoveTarget0;
