@@ -1491,6 +1491,8 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
  * @note Address: 0x8008DC34
  * @note Size: 0x4E8
  */
+// NONMATCHING: the final frame>=12 ternary uses different boolean arithmetic and matrix scheduling;
+// the float frame count, selected atlas entries, textures, calls and draw values match.
 extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 {
 	f32 alpha = scrn->mPlayerIconAlpha * gHudOpacityScale;
@@ -1510,15 +1512,16 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
-		tex        = gGame.mTpl.mTex;
-		u16 th     = GXGetTexObjHeight(&tex);
-		u16 tw     = GXGetTexObjWidth(&tex);
-		s32 frames = tw / th;
-		s32 frame  = scrn->mFrameCount % 16;
-		s32 idx    = frame < 4 ? 5 : frame < 8 ? 6 : frame >= 12 ? 7 : 6;
-		PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / (f32)frames), 0.0f, 0.0f);
+		tex            = gGame.mTpl.mTex;
+		u16 th         = GXGetTexObjHeight(&tex);
+		u16 tw         = GXGetTexObjWidth(&tex);
+		s32 frames     = tw / th;
+		f32 frameCount = frames;
+		s32 frame      = scrn->mFrameCount % 16;
+		s32 idx        = frame < 4 ? 5 : frame < 8 ? 6 : frame >= 12 ? 7 : 6;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / frameCount), 0.0f, 0.0f);
 		tex.mTexMtx.mDirty = TRUE;
-		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / frameCount, 1.0f, 1.0f);
 		tex.mTexMtx.mDirty = TRUE;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
 		                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
