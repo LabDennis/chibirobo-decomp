@@ -51,7 +51,7 @@ public:
 	// in game/cvec.h, they need the sdk's vec functions
 	CVec& operator+=(const Vec& v);
 	CVec& operator*=(f32 s);
-	void operator-=(const Vec& v);
+	CVec& operator-=(const Vec& v);
 	f32 Length() const;
 	CVec& Normalize();
 
