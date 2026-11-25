@@ -5,6 +5,8 @@
 #include "game/wii/csoundfx.h"
 #include "revolution/mem.h"
 
+// NONMATCHING: data: retail's assertion file string is "SoundArchivePlayer.h"; __FILE__ gives the
+// SDK header's name, "snd_SoundArchivePlayer.h"
 // The Wii unit 0x80032C48-0x800354DC (wii_units.md #19 and #20): the tail of the game's main file, the
 // one that holds gGame. The divide interpolations come first, in the reverse of the GameCube file's
 // order; behind them are the weak virtuals of the classes gGame is made of, the file's static
