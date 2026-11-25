@@ -207,7 +207,7 @@ void CMotionControlCamera::Update(u32 step)
 		if (!IsCurrent(CAMACTION_CHASE)) {
 			ChangeAction(CAMACTION_CHASE);
 		} else {
-			ChangeAction(mPrevAction);
+			ChangeAction(gGame.mMotionControlCamera.mPrevAction);
 		}
 	}
 
