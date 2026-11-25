@@ -4,113 +4,123 @@
 
 #include "__gx.h"
 
+enum {
+    GX_BP_FOG_RANGE_ADJ = 0xE8,
+    GX_BP_FOG_RANGE_TABLE = 0xE9,
+    GX_BP_FOG_PARAM_A = 0xEE,
+    GX_BP_FOG_PARAM_B_MAGNITUDE = 0xEF,
+    GX_BP_FOG_PARAM_B_SHIFT = 0xF0,
+    GX_BP_FOG_PARAM_C = 0xF1,
+    GX_BP_FOG_COLOR = 0xF2,
+};
+
 /**
  * @note Address: 0x8018AA44
  * @note Size: 0x214
  */
 void GXSetFog(GXFogType type, f32 startz, f32 endz, f32 nearz, f32 farz, GXColor color) {
-    u32 fogclr;
-    u32 fog0;
-    u32 fog1;
-    u32 fog2;
-    u32 fog3;
-    f32 A;
-    f32 B;
-    f32 B_mant;
-    f32 C;
-    f32 a;
-    f32 c;
-    u32 B_expn;
-    u32 b_m;
-    u32 b_s;
-    u32 a_hex;
-    u32 c_hex;
-    u32 fsel;
-    u32 proj;
-    u32 rgba;
+    u32 fogColor;
+    u32 fogParamA;
+    u32 fogParamBMagnitude;
+    u32 fogParamBShift;
+    u32 fogParamC;
+    f32 unscaledA;
+    f32 bMantissa;
+    f32 unscaledC;
+    union {
+        f32 value;
+        u32 bits;
+    } a, c;
+    s32 bExponent;
+    u32 bMagnitude;
+    u32 bShift;
+    u32 aBits;
+    u32 cBits;
+    u32 fogFunction;
+    u32 projection;
 
-    fogclr = 0;
-    fog0 = 0;
-    fog1 = 0;
-    fog2 = 0;
-    fog3 = 0;
+    fogColor = 0;
+    fogParamA = 0;
+    fogParamBMagnitude = 0;
+    fogParamBShift = 0;
+    fogParamC = 0;
 
     CHECK_GXBEGIN(138, "GXSetFog");
 
     ASSERTMSGLINE(140, farz >= 0.0f, "GXSetFog: The farz should be positive value");
     ASSERTMSGLINE(141, farz >= nearz, "GXSetFog: The farz should be larger than nearz");
 
-    fsel = type & 7;
-    proj = (type >> 3) & 1;
-    
-    if (proj) {
+    fogFunction = type & 7;
+    projection = (type >> 3) & 1;
+
+    if (projection) {
         if (farz == nearz || endz == startz) {
-            a = 0.0f;
-            c = 0.0f;
+            a.value = 0.0f;
+            c.value = 0.0f;
         } else {
-            A = (1.0f / (endz - startz));
-            a = A * (farz - nearz);
-            c = A * (startz - nearz);
+            unscaledA = 1.0f / (endz - startz);
+            a.value = unscaledA * (farz - nearz);
+            c.value = unscaledA * (startz - nearz);
         }
     } else {
         if (farz == nearz || endz == startz) {
-            A = 0.0f;
-            B = 0.5f;
-            C = 0.0f;
+            unscaledA = 0.0f;
+            bMantissa = 0.5f;
+            unscaledC = 0.0f;
         } else {
-            A = (farz * nearz) / ((farz - nearz) * (endz - startz));
-            B = farz / (farz - nearz);
-            C = startz / (endz - startz);
+            unscaledA = (farz * nearz) / ((farz - nearz) * (endz - startz));
+            bMantissa = farz / (farz - nearz);
+            unscaledC = startz / (endz - startz);
         }
 
-        B_mant = B;
-        B_expn = 0;
-        while (B_mant > 1.0) {
-            B_mant /= 2.0f;
-            B_expn++;
+        // Normalize B for the separate magnitude and shift registers.
+        bExponent = 0;
+        while (bMantissa > 1.0) {
+            bMantissa /= 2.0f;
+            bExponent++;
         }
-        while (B_mant > 0.0f && B_mant < 0.5) {
-            B_mant *= 2.0f;
-            B_expn--;
+        while (bMantissa > 0.0f && bMantissa < 0.5) {
+            bMantissa *= 2.0f;
+            bExponent--;
         }
 
-        a = A / (f32) (1 << (B_expn + 1));
-        b_m = 8.388638e6f * B_mant;
-        b_s = B_expn + 1;
-        c = C;
+        a.value = unscaledA / (f32) (1 << (bExponent + 1));
+        bMagnitude = 8388638.0f * bMantissa;
+        bShift = bExponent + 1;
+        c.value = unscaledC;
 
-        SET_REG_FIELD(198, fog1, 24, 0, b_m);
-        SET_REG_FIELD(198, fog1, 8, 24, 0xEF);
+        SET_REG_FIELD(198, fogParamBMagnitude, 24, 0, bMagnitude);
+        SET_REG_FIELD(198, fogParamBMagnitude, 8, 24, GX_BP_FOG_PARAM_B_MAGNITUDE);
 
-        SET_REG_FIELD(201, fog2, 5, 0, b_s);
-        SET_REG_FIELD(201, fog2, 8, 24, 0xF0);
+        SET_REG_FIELD(201, fogParamBShift, 5, 0, bShift);
+        SET_REG_FIELD(201, fogParamBShift, 8, 24, GX_BP_FOG_PARAM_B_SHIFT);
     }
 
-    a_hex = *(u32 *)&a;
-    c_hex = *(u32 *)&c;
+    // The BP registers use the sign, exponent, and high 11 mantissa bits of A and C.
+    aBits = a.bits;
+    cBits = c.bits;
 
-    SET_REG_FIELD(209, fog0, 11, 0, (a_hex >> 12) & 0x7FF);
-    SET_REG_FIELD(210, fog0, 8, 11, (a_hex >> 23) & 0xFF);
-    SET_REG_FIELD(211, fog0, 1, 19, (a_hex >> 31));
-    SET_REG_FIELD(211, fog0, 8, 24, 0xEE);
+    SET_REG_FIELD(209, fogParamA, 11, 0, (aBits >> 12) & 0x7FF);
+    SET_REG_FIELD(210, fogParamA, 8, 11, (aBits >> 23) & 0xFF);
+    SET_REG_FIELD(211, fogParamA, 1, 19, (aBits >> 31));
+    SET_REG_FIELD(211, fogParamA, 8, 24, GX_BP_FOG_PARAM_A);
 
-    SET_REG_FIELD(214, fog3, 11, 0, (c_hex >> 12) & 0x7FF);
-    SET_REG_FIELD(215, fog3, 8, 11, (c_hex >> 23) & 0xFF);
-    SET_REG_FIELD(216, fog3, 1, 19, (c_hex >> 31));
+    SET_REG_FIELD(214, fogParamC, 11, 0, (cBits >> 12) & 0x7FF);
+    SET_REG_FIELD(215, fogParamC, 8, 11, (cBits >> 23) & 0xFF);
+    SET_REG_FIELD(216, fogParamC, 1, 19, (cBits >> 31));
 
-    SET_REG_FIELD(217, fog3, 1, 20, proj);
-    SET_REG_FIELD(218, fog3, 3, 21, fsel);
-    SET_REG_FIELD(218, fog3, 8, 24, 0xF1);
+    SET_REG_FIELD(217, fogParamC, 1, 20, projection);
+    SET_REG_FIELD(218, fogParamC, 3, 21, fogFunction);
+    SET_REG_FIELD(218, fogParamC, 8, 24, GX_BP_FOG_PARAM_C);
 
-    rgba = *(u32*)&color;
-    SET_REG_FIELD(222, fogclr, 24, 0, rgba >> 8);
-    SET_REG_FIELD(222, fogclr, 8, 24, 0xF2);
+    SET_REG_FIELD(222, fogColor, 24, 0, __GXPackRGBA8(color) >> 8);
+    SET_REG_FIELD(222, fogColor, 8, 24, GX_BP_FOG_COLOR);
 
-    GX_WRITE_RAS_REG(fog0);
-    GX_WRITE_RAS_REG(fog1);
-    GX_WRITE_RAS_REG(fog2);
-    GX_WRITE_RAS_REG(fog3);
-    GX_WRITE_RAS_REG(fogclr);
+    GX_WRITE_RAS_REG(fogParamA);
+    GX_WRITE_RAS_REG(fogParamBMagnitude);
+    GX_WRITE_RAS_REG(fogParamBShift);
+    GX_WRITE_RAS_REG(fogParamC);
+    GX_WRITE_RAS_REG(fogColor);
 
     __GXData->bpSentNot = 0;
 }
@@ -120,12 +130,10 @@ void GXSetFog(GXFogType type, f32 startz, f32 endz, f32 nearz, f32 farz, GXColor
  * @note Size: ?
  */
 void GXSetFogColor(GXColor color) {
-    u32 rgba;
-    u32 fogclr = 0xF2000000;
+    u32 fogColor = (u32)GX_BP_FOG_COLOR << 24;
 
-    rgba = *(u32*)&color;
-    SET_REG_FIELD(250, fogclr, 24, 0, rgba >> 8);
-    GX_WRITE_RAS_REG(fogclr);
+    SET_REG_FIELD(250, fogColor, 24, 0, __GXPackRGBA8(color) >> 8);
+    GX_WRITE_RAS_REG(fogColor);
     __GXData->bpSentNot = 0;
 }
 
@@ -154,11 +162,11 @@ void GXInitFogAdjTable(GXFogAdjTable *table, u16 width, const f32 projmtx[4][4])
     }
 
     iw = 2.0f / width;
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < ARRAY_SIZEU(table->r); i++) {
         xi = (i + 1) << 5;
         xi *= iw;
         xi *= sideX;
-        rangeVal = sqrtf(1.0f + ((xi * xi) / (nearZ * nearZ)));
+        rangeVal = SDKFastSqrt(1.0f + ((xi * xi) / (nearZ * nearZ)));
         table->r[i] = (u32)(256.0f * rangeVal) & 0xFFF;
     }
 }
@@ -169,26 +177,26 @@ void GXInitFogAdjTable(GXFogAdjTable *table, u16 width, const f32 projmtx[4][4])
  */
 void GXSetFogRangeAdj(GXBool enable, u16 center, const GXFogAdjTable *table) {
     u32 i;
-    u32 range_adj;
-    u32 range_c;
+    u32 rangeCoefficients;
+    u32 rangeControl;
 
     CHECK_GXBEGIN(331, "GXSetFogRangeAdj");
 
     if (enable) {
         ASSERTMSGLINE(334, table != NULL, "GXSetFogRangeAdj: table pointer is null");
-        for (i = 0; i < 10; i += 2) {
-            range_adj = 0;
-            SET_REG_FIELD(338, range_adj, 12, 0, table->r[i]);
-            SET_REG_FIELD(339, range_adj, 12, 12, table->r[i + 1]);
-            SET_REG_FIELD(340, range_adj, 8, 24, (i >> 1) + 0xE9);
-            GX_WRITE_RAS_REG(range_adj);
+        for (i = 0; i < ARRAY_SIZEU(table->r); i += 2) {
+            rangeCoefficients = 0;
+            SET_REG_FIELD(338, rangeCoefficients, 12, 0, table->r[i]);
+            SET_REG_FIELD(339, rangeCoefficients, 12, 12, table->r[i + 1]);
+            SET_REG_FIELD(340, rangeCoefficients, 8, 24, (i >> 1) + GX_BP_FOG_RANGE_TABLE);
+            GX_WRITE_RAS_REG(rangeCoefficients);
         }
     }
-    range_c = 0;
-    SET_REG_FIELD(346, range_c, 10, 0, center + 342);
-    SET_REG_FIELD(347, range_c, 1, 10, enable);
-    SET_REG_FIELD(348, range_c, 8, 24, 0xE8);
-    GX_WRITE_RAS_REG(range_c);
+    rangeControl = 0;
+    SET_REG_FIELD(346, rangeControl, 10, 0, center + 342);
+    SET_REG_FIELD(347, rangeControl, 1, 10, enable);
+    SET_REG_FIELD(348, rangeControl, 8, 24, GX_BP_FOG_RANGE_ADJ);
+    GX_WRITE_RAS_REG(rangeControl);
     __GXData->bpSentNot = 0;
 }
 

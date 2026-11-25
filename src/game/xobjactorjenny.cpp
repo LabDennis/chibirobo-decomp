@@ -1,0 +1,546 @@
+#include "game/xobjactor.h"
+#include "game/heldpropmatrix.h"
+#include "game/xchr.h"
+#include "game/gmath.h"
+#include <stdlib.h>
+#include <math.h>
+
+void XObjActorJenny::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x80122E30
+ * @note Size: 0x58
+ */
+void XObjActorJenny::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x80122E88
+ * @note Size: 0x8C
+ */
+XObjActorJenny::~XObjActorJenny()
+{
+}
+
+/**
+ * @note Address: 0x80122F14
+ * @note Size: 0xA4
+ */
+HSD_JObj* XObjActorJenny::GetHeadJoint()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return FindJointByPath(mJObj, path, 3);
+}
+
+/**
+ * @note Address: 0x80122FB8
+ * @note Size: 0x54
+ */
+CVec XObjActorJenny::GetHeadWorldPosition()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return GetEventJointWorldPosition(this, 3, path);
+}
+
+/**
+ * @note Address: 0x8012300C
+ * @note Size: 0x28
+ */
+f32 XObjActorJenny::GetMinHeadPitch()
+{
+	switch (mAnimId) {
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return DEG2RAD * 20.0f;
+	default:
+		return -(DEG2RAD * 20.0f);
+	}
+}
+
+/**
+ * @note Address: 0x80123034
+ * @note Size: 0x28
+ */
+f32 XObjActorJenny::GetMaxHeadPitch()
+{
+	switch (mAnimId) { // anims 0x412-0x414 let her head tilt further
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return DEG2RAD * 60.0f;
+	default:
+		return DEG2RAD * 10.0f;
+	}
+}
+
+/**
+ * @note Address: 0x8012305C
+ * @note Size: 0x24C
+ */
+s32 XObjActorJenny::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1: // where to look
+		switch (command[1]) {
+		case 0: // nowhere
+			ResetActorLook(this, DEG2RAD * 5.0f);
+			break;
+		case 1: // at the player
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5.0f);
+			break;
+		case 2: // at another object
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3: // at an angle
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default: // the rest is queued for ProcessPendingEvents
+
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		for (int i = 0; i < 8; i++) {
+			mCmd[i + 2] = command[i + 2];
+		}
+		if (mCmd[1] == 0xD0) { // a 0xD0 command's object id resolves here
+			mCmd[19] = (s32)FindObj(mCmd[2]);
+		}
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x801232A8
+ * @note Size: 0x4
+ */
+void XObjActorJenny::StateNone(u32 frames)
+{
+}
+
+/**
+ * @note Address: 0x80124980
+ * @note Size: 0x430
+ */
+// NONMATCHING: the paths sit at other .rodata offsets
+void XObjActorJenny::UpdateAnim(u32 frames)
+{
+	CXObjIntp::UpdateAnim(frames);
+	CJObj joint;
+	if (mJointFlags.mFlags & 8) { // joint flag 8 unhides the joint
+		s32 path[7] = { 0, 3, 2, 0, 0, 1, 0 };
+		joint.Attach(GetJointFromRoot(mJObj, 7, path));
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
+	} else {
+		s32 path[7] = { 0, 3, 2, 0, 0, 1, 0 };
+		joint.Attach(GetJointFromRoot(mJObj, 7, path));
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
+	}
+}
+
+/**
+ * @note Address: 0x80124DB0
+ * @note Size: 0x4CC
+ */
+void XObjActorJenny::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
+	CJObj joint;
+	if (mStatus.mFlags & 0x10000) { // flag 0x10000 gates this
+		if (mJointHidden) {
+			s32 path[] = { 0, 3, 0, 0, 4 };
+			joint.Attach(GetJointFromRoot(mJObj, 5, path));
+			HSD_JObjSetFlags(joint.mJObj, HIDDEN);
+		} else {
+			s32 path[] = { 0, 3, 0, 0, 4 };
+			joint.Attach(GetJointFromRoot(mJObj, 5, path));
+			HSD_JObjClearFlags(joint.mJObj, HIDDEN);
+		}
+	}
+
+	XSound& sound = gGame.mSound;
+	if (mAnimId == 0x47) { // this anim loops a sound
+		if (!IsGameSoundPlaying(&sound, 0x19B)) {
+			u8 volume = (mActorStatus.mFlags & 0x800) ? 0xFF : GetSoundVolumeAtPosition(&sound, &mMoveTranslate, 0); // 0x800: full volume
+			PlayGameSound(&sound, 0x19B, volume);
+		}
+	} else {
+		sound.StopIfPlaying(0x19B);
+	}
+}
+
+static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
+{
+	if (jenny->mStatus.mFlags & 0x10000)
+		object->mStatus.mFlags |= 0x10000ULL;
+	else
+		object->mStatus.mFlags &= ~0x10000ULL;
+}
+
+// Positions the props Jenny holds and turns the carried player toward her head.
+void XObjActorJenny::UpdateAfterAnim(u32 frames)
+{
+	XObjActor::UpdateAfterAnim(frames);
+	CJObj joint;
+	XObjChr* player = gGame.GetPlayer();
+	if (mHideKinds.mFlags & 0x1f) {
+		CVec position;
+		s32 kind = -1;
+		if (mHideKinds.Check(1)) {
+			kind        = 0x3d;
+			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, hand, 6));
+			position = joint.GetPos();
+		} else if (mHideKinds.Check(2)) {
+			kind        = 0x3e;
+			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, hand, 6));
+			position = joint.GetPos();
+		} else if (mHideKinds.Check(4)) {
+			kind        = 0x3f;
+			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, hand, 6));
+			position = joint.GetPos();
+		} else if (mHideKinds.Check(8)) {
+			kind        = 0x3b;
+			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, hand, 6));
+			position = joint.GetPos();
+		} else if (mHideKinds.Check(16)) {
+			kind        = 0x401;
+			s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, hand, 6));
+			position = joint.GetPos();
+		}
+		Mtx mount, translation, rotation, result;
+		switch (kind) {
+		case 0x3c:
+			break;
+		case 0x401:
+			for (s32 i = 0; i < 288; ++i) {
+				XObj* prop = gGame.mXObjs.mPools[22].Get(i);
+				if (kind == prop->GetKind()) {
+					switch (kind) {
+					case 0x401:
+						PSMTXCopy(joint.GetMtx(), mount);
+						PSMTXRotRad(rotation, 'z', HALF_PI);
+						PSMTXConcat(mount, rotation, result);
+						PSMTXTrans(translation, -4, 4, 0);
+						PSMTXConcat(result, translation, result);
+						SetHeldPropMatrix(prop, result);
+						break;
+					default:
+						SetHeldPropMatrix(prop, joint.GetMtx());
+						break;
+					}
+					JennyPropVisibility(this, prop);
+				}
+			}
+			break;
+		case 0x3b:
+		case 0x3d:
+		case 0x3e:
+		case 0x3f:
+			for (s32 i = 0; i < 64; ++i) {
+				XObj* prop = gGame.mXObjs.mPools[8].Get(i);
+				if (kind == prop->GetKind()) {
+					switch (kind) {
+					case 0x3b: {
+						MtxPtr source = joint.GetMtx();
+						PSMTXCopy(source, mount);
+						PSMTXTrans(translation, -2, -2, -10);
+						PSMTXConcat(source, translation, result);
+						SetHeldPropMatrix(prop, result);
+						break;
+					}
+					case 0x3d:
+					case 0x3e:
+					case 0x3f:
+						PSMTXCopy(joint.GetMtx(), mount);
+						PSMTXRotRad(rotation, 'x', PI);
+						PSMTXConcat(mount, rotation, result);
+						PSMTXTrans(translation, 0, 0, 10);
+						PSMTXConcat(result, translation, result);
+						SetHeldPropMatrix(prop, result);
+						break;
+					default:
+						SetHeldPropMatrix(prop, joint.GetMtx());
+						break;
+					}
+					JennyPropVisibility(this, prop);
+				}
+			}
+			break;
+		}
+	}
+	// flag 0x200: the player rides along, three units to the side of the joint
+	if ((mActorStatus.mFlags & 0x200) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
+		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, hand, 6));
+		CVec pos = joint.GetPos();
+		{
+			f32 angle = atan2(pos.x - mMoveTranslate.x, pos.z - mMoveTranslate.z);
+			f32 sx    = (f32)sin(angle - HALF_PI);
+			f32 cz    = (f32)cos(angle - HALF_PI);
+			pos.x += 3.0f * sx;
+			pos.z += 3.0f * cz;
+		}
+		pos.y += 2;
+		player->SetPos(pos, 0);
+		s32 head[4] = { 0, 3, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, head, 4));
+		pos = joint.GetPos();
+		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
+	}
+	// flag 0x100: the player rides at the joint
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
+		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, hand, 6));
+		CVec pos = joint.GetPos();
+		pos.y += 2;
+		player->SetPos(pos, 0);
+		s32 head[4] = { 0, 3, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, head, 4));
+		pos = joint.GetPos();
+		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
+	}
+}
+
+/**
+ * @note Address: 0x8012527C
+ * @note Size: 0x298
+ */
+// lets go of what she carries
+void XObjActorJenny::Drop()
+{
+	s32 kind = -1;
+	if (mHideKinds.Check(1)) {
+		mHideKinds.mFlags &= ~1;
+		kind = 0x3D;
+	} else if (mHideKinds.Check(2)) {
+		mHideKinds.mFlags &= ~2;
+		kind = 0x3E;
+	} else if (mHideKinds.Check(4)) {
+		mHideKinds.mFlags &= ~4;
+		kind = 0x3F;
+	} else if (mHideKinds.Check(8)) {
+		mHideKinds.mFlags &= ~8;
+		kind = 0x3B;
+	} else if (mHideKinds.Check(0x10)) {
+		mHideKinds.mFlags &= ~0x10;
+		kind = 0x401;
+	}
+	if (kind < 0) {
+		return;
+	}
+	switch (kind) {
+	case 0x3B:
+	case 0x3D:
+	case 0x3E:
+	case 0x3F:
+		for (s32 i = 0; i < 64; i++) {
+			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x401:
+		for (s32 i = 0; i < 288; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	}
+}
+
+static inline void HoldPlayerForJenny(XObjChr* player)
+{
+	player->LockControl();
+	player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+}
+
+static inline void ReleasePlayerAt(XObjChr* player, const Vec& position)
+{
+	player->SetPos(position, 0);
+	player->RestoreControl();
+}
+
+/**
+ * @note Address: 0x80125514
+ * @note Size: 0xDDC
+ */
+void XObjActorJenny::ProcessPendingEvents(u32)
+{
+	CVec firstPos;
+	CJObj joint;
+	XObjChr* player = gGame.GetPlayer();
+	if (mActorStatus.mFlags & 2) { // flag 2: a random sound
+		mActorStatus.mFlags &= ~2;
+		PlayGameSound(&gGame.mSound, rand() % 10 + 0x92, 0xFF);
+	}
+	switch (mCmd[0]) {
+	case 2: // joint flag 8 on or off
+
+		if (mCmd[1] == 8)
+			mJointFlags.mFlags |= 8;
+		else
+			mJointFlags.mFlags &= ~8;
+		mCmd[0] = 0;
+		break;
+	case 3: // swap what she carries
+		Drop();
+		switch (mCmd[1]) {
+		case 0x3B: // a pool-8 prop
+
+		case 0x3D:
+		case 0x3E:
+		case 0x3F:
+			for (s32 i = 0; i < 64; ++i) {
+				XObj* object = gGame.mXObjs.mPools[8].Get(i);
+				if (mCmd[1] == object->GetKind()) {
+					object->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[0] = object;
+					switch (mCmd[1]) {
+					case 0x3B:
+						mHideKinds.mFlags |= 8;
+						break;
+					case 0x3D:
+						mHideKinds.mFlags |= 1;
+						break;
+					case 0x3E:
+						mHideKinds.mFlags |= 2;
+						break;
+					case 0x3F:
+						mHideKinds.mFlags |= 4;
+						break;
+					}
+				}
+			}
+			break;
+		case 0x401: // a pool-22 prop
+			for (s32 i = 0; i < 288; ++i) {
+				XObj* object = gGame.mXObjs.mPools[22].Get(i);
+				if (mCmd[1] == object->GetKind()) {
+					mHeldObjects[0] = object;
+					object->mStatus.mFlags |= 0x10000ULL;
+					if (mCmd[1] == 0x401)
+						mHideKinds.mFlags |= 0x10;
+				}
+			}
+			break;
+		default:
+			if (mHeldObjects[0]) {
+				HSD_JObjClearMtxFlags(mHeldObjects[0]->mJObj);
+				mHeldObjects[0] = NULL;
+			}
+		}
+		mCmd[0] = 0;
+		break;
+	case 4:
+		if (mCmd[1] == 1) { // carry the player offset to the side
+			mActorStatus.mFlags |= 0x200;
+			HoldPlayerForJenny(player);
+		} else { // set him down at the second joint
+
+			mActorStatus.mFlags &= ~0x200;
+			s32 first[] = { 0, 3, 1, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, first, 6));
+			firstPos     = CVec(joint.GetPos());
+			s32 second[] = { 0, 3, 2, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, second, 6));
+			CVec secondPos(joint.GetPos());
+			// Retail computes this midpoint, then releases the player at the second joint.
+			firstPos.x -= (firstPos.x - secondPos.x) * 0.5f;
+			firstPos.z -= (firstPos.z - secondPos.z) * 0.5f;
+			firstPos.y = mMoveTranslate.y;
+			ReleasePlayerAt(player, secondPos);
+		}
+		mCmd[0] = 0;
+		break;
+	case 5:
+		if (mCmd[1] == 1) { // carry the player at the joint
+			mActorStatus.mFlags |= 0x100;
+			HoldPlayerForJenny(player);
+		} else { // set him down at the joint
+
+			mActorStatus.mFlags &= ~0x100;
+			s32 path[] = { 0, 3, 2, 0, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, path, 6));
+			CVec position(joint.GetPos());
+			ReleasePlayerAt(player, position);
+		}
+		mCmd[0] = 0;
+		break;
+	case 7: { // play a one-off animation
+		void* anim  = GetJointAnimation(mCmd[1]);
+		void* mat   = GetMaterialAnimation(mCmd[2]);
+		void* shape = GetShapeAnimation(mCmd[1]);
+		SetAnim(0, TRUE, anim, mat, shape, 0, 1, 1, 10);
+		mStatus.mFlags |= 0x0008000000000000ULL;
+		mCmd[0] = 0;
+		break;
+	}
+	case 8: // hide or show the joint
+		switch (mCmd[1]) {
+		case 0:
+			mJointHidden = 1;
+			mCmd[0]      = 0;
+			break;
+		case 1:
+			mJointHidden = 0;
+			mCmd[0]      = 0;
+			break;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x801262F0
+ * @note Size: 0x12C
+ */
+void XObjActorJenny::ResetActorState()
+{
+	XObjChr* player = gGame.GetPlayer();
+	if (player->mPlayerStatus.mFlags & XObjChr::ControlLocked) {
+		player->RestoreControl();
+	}
+	mActorStatus.mFlags = 0;
+	mJointFlags.mFlags  = 0;
+	mHideKinds.mFlags   = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
+	_C88                = 0.0f;
+	_C8C                = 0;
+	mJointHidden        = 0;
+	mState              = &XObjActorJenny::StateNone;
+	ResetMovementStep();
+	for (u32 i = 0; i < 20; i++) {
+		mCmd[i] = 0;
+	}
+	mJointFlags.mFlags &= ~8;
+}

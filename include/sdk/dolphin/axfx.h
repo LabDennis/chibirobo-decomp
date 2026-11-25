@@ -1,7 +1,7 @@
 #ifndef _DOLPHIN_AXFX_H_
 #define _DOLPHIN_AXFX_H_
 
-#include <dolphin/types.h>
+#include <sdk/dolphin/ax.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,18 +38,8 @@ typedef struct AXFX_REVERBSTD {
     /* 0x150 */ f32 preDelay;
 } AXFX_REVERBSTD;
 
-typedef struct AXFX_BUFFERUPDATE {
-    /* 0x00 */ s32* left;
-    /* 0x04 */ s32* right;
-    /* 0x08 */ s32* surround;
-} AXFX_BUFFERUPDATE;
-
-typedef struct AXFX_BUFFERUPDATE_DPL2 {
-    /* 0x00 */ s32* L;
-    /* 0x04 */ s32* R;
-    /* 0x08 */ s32* Ls;
-    /* 0x0C */ s32* Rs;
-} AXFX_BUFFERUPDATE_DPL2;
+typedef AX_AUX_DATA AXFX_BUFFERUPDATE;
+typedef AX_AUX_DATA_DPL2 AXFX_BUFFERUPDATE_DPL2;
 
 // REVHI Structs
 
@@ -158,6 +148,8 @@ typedef struct AXFX_CHORUS {
     /* 0x98 */ u32 period;
 } AXFX_CHORUS;
 
+void AXFXSetHooks(void* (*alloc)(u32), void (*free)(void*));
+
 // chorus
 int AXFXChorusInit(AXFX_CHORUS* c);
 int AXFXChorusShutdown(AXFX_CHORUS* c);
@@ -171,7 +163,6 @@ int AXFXDelayInit(AXFX_DELAY* delay);
 int AXFXDelayShutdown(AXFX_DELAY* delay); 
 
 // reverb_hi
-void DoCrossTalk(s32* l, s32* r, f32 cross, f32 invcross);
 int AXFXReverbHiInit(AXFX_REVERBHI* rev);
 int AXFXReverbHiShutdown(AXFX_REVERBHI* rev);
 int AXFXReverbHiSettings(AXFX_REVERBHI* rev);

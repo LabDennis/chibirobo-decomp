@@ -2,15 +2,6 @@
 
 /**
  * @note Address: N/A
- * @note Size: 0x11C
- */
-// void mblen(void)
-// {
-// 	// UNUSED FUNCTION
-// }
-
-/**
- * @note Address: N/A
  * @note Size: 0xEC
  */
 static int is_utf8_complete(const char* s, size_t n)
@@ -49,15 +40,6 @@ static int is_utf8_complete(const char* s, size_t n)
 		return (-1);
 	}
 }
-
-/**
- * @note Address: N/A
- * @note Size: 0x120
- */
-// void utf8_to_unicode(void)
-// {
-// 	// UNUSED FUNCTION
-// }
 
 /**
  * @note Address: N/A
@@ -211,48 +193,3 @@ size_t wcstombs(char* s, const wchar_t* pwcs, size_t n)
 
 	return chars_written;
 }
-
-/**
- * @note Address: N/A
- * @note Size: 0x54
- */
-// void mbrlen(void)
-// {
-// 	// UNUSED FUNCTION
-// }
-
-/**
- * @note Address: N/A
- * @note Size: 0x188
- */
-// void mbrtowc(void)
-// {
-// 	// UNUSED FUNCTION
-// }
-
-/**
- * @note Address: N/A
- * @note Size: 0xB0
- */
-// void wcrtomb(void)
-// {
-// 	// UNUSED FUNCTION
-// }
-
-/**
- * @note Address: N/A
- * @note Size: 0x1E0
- */
-// void mbsrtowcs(void)
-// {
-// 	// UNUSED FUNCTION
-// }
-
-/**
- * @note Address: N/A
- * @note Size: 0x114
- */
-// void wcsrtombs(void)
-// {
-// 	// UNUSED FUNCTION
-// }

@@ -33,39 +33,3 @@ WEAK BOOL __write_console(s32 arg0, s32 arg1, s32* arg2, s32 arg3)
 	__TRK_write_console(arg0, arg1, arg2, arg3);
 	return FALSE;
 }
-
-/**
- * @note Address: N/A
- * @note Size: 0x48
- */
-void __init_uart_console(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-void __delete_file(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-void __rename_file(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xCC
- */
-void __temp_file_name(void)
-{
-	// UNUSED FUNCTION
-}

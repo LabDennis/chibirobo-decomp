@@ -1,91 +1,74 @@
 #include "types.h"
 
-#define WRITE(dst, add, n_dst, n_src) ((u##n_dst*)dst) = ((u##n_dst*)(((u##n_src*)dst) + add)) - 1
-#define WRITE_BYTE(dst, add)          WRITE(dst, add, 8, 32)
-#define WRITE_WORD(dst, add)          WRITE(dst, add, 32, 8)
+INIT void* TRK_memcpy(void* dst, const void* src, size_t n);
+INIT void* TRK_memset(void* dst, int val, size_t n);
 
-DECL_SECT(".init") void* TRK_memcpy(void* dst, const void* src, size_t n);
-DECL_SECT(".init") void* TRK_memset(void* dst, int val, size_t n);
+enum { FILL_BLOCK_SIZE = 32 };
 
-/**
- * @note Address: 0x8014D55C
- * @note Size: 0xB8
- */
-#pragma dont_inline on
 void TRK_fill_mem(void* dst, int val, size_t n)
 {
-	u32 v = (u8)val;
-	u32 i, j;
+	u8* bytes = dst;
+	u8 byte   = (u8)val;
 
-	WRITE_BYTE(dst, 0);
+	if (n >= FILL_BLOCK_SIZE) {
+		size_t leading = (-(size_t)bytes) & (sizeof(u32) - 1);
+		size_t blocks;
+		size_t words;
+		u32* aligned;
+		u32 word = byte;
 
-	if (n >= 32) {
-		i = (~(u32)dst) & 3;
-
-		if (i) {
-			n -= i;
-
+		if (leading) {
+			n -= leading;
 			do {
-				*++(((u8*)dst)) = v;
-			} while (--i);
+				*bytes++ = byte;
+			} while (--leading != 0);
 		}
 
-		if (v)
-			v |= v << 24 | v << 16 | v << 8;
-
-		WRITE_WORD(dst, 4);
-		WRITE_WORD(dst, 1);
-
-		i = n / 32;
-
-		if (i) {
+		// Replicate the fill byte across a word once the destination is aligned.
+		word |= word << 8;
+		word |= word << 16;
+		aligned = (u32*)bytes;
+		blocks = n / FILL_BLOCK_SIZE;
+		if (blocks) {
 			do {
-				for (j = 0; j < 8; j++)
-					*++((u32*)dst) = v;
-			} while (--i);
+				unsigned i;
+				for (i = 0; i < FILL_BLOCK_SIZE / sizeof(*aligned); ++i) {
+					aligned[i] = word;
+				}
+				aligned += FILL_BLOCK_SIZE / sizeof(*aligned);
+			} while (--blocks != 0);
+		}
+		words = (n % FILL_BLOCK_SIZE) / sizeof(*aligned);
+		if (words) {
+			do {
+				*aligned++ = word;
+			} while (--words != 0);
 		}
 
-		i = (n / 4) % 8;
-
-		if (i) {
-			do {
-				*++((u32*)dst) = v;
-			} while (--i);
-		}
-
-		WRITE_BYTE(dst, 1);
-
-		n %= 4;
+		bytes = (u8*)aligned;
+		n %= sizeof(*aligned);
 	}
 
-	if (n)
+	if (n) {
 		do {
-			*++((u8*)dst) = v;
-		} while (--n);
-
-	return;
+			*bytes++ = byte;
+		} while (--n != 0);
+	}
 }
-#pragma dont_inline reset
 
-/**
- * @note Address: 0x80003130
- * @note Size: 0x24
- */
 void* TRK_memcpy(void* dst, const void* src, size_t n)
 {
-	const u8* s = (const u8*)src - 1;
-	u8* d       = (u8*)dst - 1;
+	u8* destBytes      = dst;
+	const u8* srcBytes = src;
 
-	n++;
-	while (--n != 0)
-		*++d = *++s;
+	if (n) {
+		do {
+			*destBytes++ = *srcBytes++;
+		} while (--n != 0);
+	}
 	return dst;
 }
 
-/**
- * @note Address: 0x80003100
- * @note Size: 0x30
- */
 void* TRK_memset(void* dst, int val, size_t n)
 {
 	TRK_fill_mem(dst, val, n);

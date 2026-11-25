@@ -43,29 +43,6 @@ __OSExceptionHandler __OSGetExceptionHandler(__OSException exception);
 
 //////////////////////////////////
 
-///////// CONTEXT SAVING /////////
-// Macro for saving context on exception (for asm functions).
-#define OS_EXCEPTION_SAVE_GPRS(context)               \
-	stw r0, OS_CONTEXT_R0(context);                   \
-	stw r1, OS_CONTEXT_R1(context);                   \
-	stw r2, OS_CONTEXT_R2(context);                   \
-	stmw r6, OS_CONTEXT_R6(context);                  \
-	/* Save GQR1 to GQR7. GQR0 must always be zero */ \
-	mfspr r0, GQR1;                                   \
-	stw r0, OS_CONTEXT_GQR1(context);                 \
-	mfspr r0, GQR2;                                   \
-	stw r0, OS_CONTEXT_GQR2(context);                 \
-	mfspr r0, GQR3;                                   \
-	stw r0, OS_CONTEXT_GQR3(context);                 \
-	mfspr r0, GQR4;                                   \
-	stw r0, OS_CONTEXT_GQR4(context);                 \
-	mfspr r0, GQR5;                                   \
-	stw r0, OS_CONTEXT_GQR5(context);                 \
-	mfspr r0, GQR6;                                   \
-	stw r0, OS_CONTEXT_GQR6(context);                 \
-	mfspr r0, GQR7;                                   \
-	stw r0, OS_CONTEXT_GQR7(context);
-
 // Moved from OSContext.h due to include looping.
 void OSSwitchFPUContext(__OSException exception, OSContext* context);
 

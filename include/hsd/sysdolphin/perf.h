@@ -12,6 +12,8 @@ typedef struct _HSD_PerfStat {
     u32 env_blend[32];
 } HSD_PerfStat;
 
+extern HSD_PerfStat HSD_PerfCurrentStat;
+
 void HSD_PerfInitStat(void);
 void HSD_PerfSetStartTime(void);
 void HSD_PerfSetCPUTime(void);

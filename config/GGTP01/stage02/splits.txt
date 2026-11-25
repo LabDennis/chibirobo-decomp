@@ -14,11 +14,17 @@ rel/stage02/fighter.cpp:
 	.bss        start:0x00000000 end:0x000016D8
 
 rel/stage02/rouka.cpp:
-	.text       start:0x00006170 end:0x00008644
+	.text       start:0x00006170 end:0x00006E4C
+	.rodata     start:0x000001E8 end:0x000001F8
+	.data       start:0x00000180 end:0x00000210
+	.bss        start:0x000016D8 end:0x000016E0
+
+rel/stage02/car.cpp:
+	.text       start:0x00006E4C end:0x00008644
 	.ctors      start:0x00000004 end:0x00000008
-	.rodata     start:0x000001E8 end:0x000002C8
-	.data       start:0x00000180 end:0x000002D8
-	.bss        start:0x000016D8 end:0x000019E8
+	.rodata     start:0x000001F8 end:0x000002C8
+	.data       start:0x00000210 end:0x000002D8
+	.bss        start:0x000016E0 end:0x000019E8
 
 Runtime.PPCEABI.H/global_destructor_chain.c:
 	.text       start:0x00008644 end:0x000086B8

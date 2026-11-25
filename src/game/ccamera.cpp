@@ -9,13 +9,13 @@
  */
 void CCamera::Init(f32 near, f32 far, f32 fov, GXRenderModeObj* rmode)
 {
-	HSD_CObjPerspectiveDesc desc
-	    = { NULL, 0, PROJ_PERSPECTIVE, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, NULL, NULL, 0.0f, NULL, near, far, fov, 0.0f };
+	HSD_CObjDesc desc = { NULL, 0, PROJ_PERSPECTIVE, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, NULL, NULL, 0.0f, NULL, near, far };
+	desc.projection_param.perspective.fov = fov;
 
 	mFov        = fov;
 	mUseMtx     = FALSE;
 	mLoadedCObj = NULL;
-	HSD_CObjInit(this, (HSD_CObjDesc*)&desc);
+	HSD_CObjInit(this, &desc);
 	mEye.x      = 0.0f;
 	mEye.y      = 0.0f;
 	mEye.z      = 0.0f;
@@ -102,14 +102,14 @@ void CCamera::Init(f32 near, f32 far, GXRenderModeObj* rmode)
  */
 void CCamera::Init(HSD_CObjDesc* desc)
 {
-	mLoadedCObj      = HSD_CObjLoadDesc(desc);
-	*(HSD_CObj*)this = *mLoadedCObj;
+	mLoadedCObj                   = HSD_CObjLoadDesc(desc);
+	static_cast<HSD_CObj&>(*this) = *mLoadedCObj;
 	HSD_CObjGetEyePosition(this, &mEye);
 	HSD_CObjGetInterest(this, &mInterest);
-	if (HSD_CObjGetFlags(this) & 1) {
+	if (HSD_CObjGetFlags(this) & COBJ_USE_UP_VECTOR) { // flag 1: an up vector, else a roll
 		HSD_CObjGetUpVector(this, &mUp);
 	} else {
-		mRoll = fn_801C0DEC(this);
+		mRoll = GetCameraRoll(this);
 	}
 	CalcAngle();
 	CalcDistance();
@@ -126,7 +126,7 @@ void CCamera::Release()
 {
 	if (mLoadedCObj != NULL) {
 		// hand the current state back so the release frees what we're using now
-		*mLoadedCObj = *(HSD_CObj*)this;
+		*mLoadedCObj = static_cast<HSD_CObj&>(*this);
 		HSD_CObjUnref(mLoadedCObj);
 		mLoadedCObj = NULL;
 	}
@@ -145,6 +145,7 @@ void CCamera::SetAnim(HSD_CameraAnim* anim, f32 frame)
 	HSD_CObjAddAnim(this, anim);
 	HSD_CObjReqAnim(this, frame);
 
+	// remembers the longest animation so callers can wait on it
 	end  = 0.0f;
 	aobj = this->aobj;
 	if (aobj != NULL && (endFrame = HSD_AObjGetEndFrame(aobj)) > end) {
@@ -169,10 +170,10 @@ void CCamera::Anim()
 	HSD_CObjAnim(this);
 	HSD_CObjGetEyePosition(this, &mEye);
 	HSD_CObjGetInterest(this, &mInterest);
-	if (HSD_CObjGetFlags(this) & 1) {
+	if (HSD_CObjGetFlags(this) & COBJ_USE_UP_VECTOR) {
 		HSD_CObjGetUpVector(this, &mUp);
 	} else {
-		mRoll = fn_801C0DEC(this);
+		mRoll = GetCameraRoll(this);
 	}
 	CalcAngle();
 	CalcDistance();
@@ -194,7 +195,7 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
 	HSD_CObjSetViewportf(this, &viewport);
 	width  = rmode->fbWidth;
 	height = rmode->viHeight;
-	if (projection_type == PROJ_ORTHO) {
+	if (projection_type == PROJ_ORTHO) { // an ortho frame takes the rect, a perspective just the aspect
 		projection_param.ortho.top    = y;
 		projection_param.ortho.bottom = y + height;
 		projection_param.ortho.left   = x;
@@ -215,25 +216,6 @@ void CCamera::SetScissor(GXRenderModeObj* rmode)
 
 	HSD_CObjSetScissor(this, &scissor);
 }
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    lhz      r6, 0x6(r4)
-    stw      r0, 0x14(r1)
-    lwz      r5, lbl_80660298@sda21(r0)
-    lwz      r0, lbl_8066029C@sda21(r0)
-    stw      r5, 0x8(r1)
-    lhz      r5, 0x4(r4)
-    addi     r4, r1, 0x8
-    stw      r0, 0xc(r1)
-    sth      r5, 0xa(r1)
-    sth      r6, 0xe(r1)
-    bl       HSD_CObjSetScissor
-    lwz      r0, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
 
 /**
  * @note Address: 0x801929AC
@@ -244,81 +226,29 @@ void CCamera::CalcEye()
 	f32 y = HALF_PI + mAngle.y;
 	f32 x = mAngle.x;
 
-	mEye.x = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
-	mEye.z = mInterest.z + mDistance * -(f32)sin(y) * (f32)cos(x);
-	mEye.y = mInterest.y + mDistance * (f32)sin(x);
+	mEye.x       = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mEye.z       = mInterest.z + zOffset * cosPitch;
+	mEye.y       = mInterest.y + mDistance * (f32)sin(x);
 }
-/*
-    stwu     r1, -0x40(r1)
-    mflr     r0
-    stw      r0, 0x44(r1)
-    stfd     f31, 0x30(r1)
-    psq_st   f31, 0x38(r1), 0, qr0
-    stfd     f30, 0x20(r1)
-    psq_st   f30, 0x28(r1), 0, qr0
-    stfd     f29, 0x10(r1)
-    psq_st   f29, 0x18(r1), 0, qr0
-    stw      r31, 0xc(r1)
-    mr       r31, r3
-    lfs      f1, lbl_8065F528@sda21(r0)
-    lfs      f0, 0xb8(r3)
-    lfs      f29, 0xb4(r3)
-    fadds    f30, f1, f0
-    fmr      f1, f29
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       cos
-    frsp     f3, f1
-    lfs      f2, 0xe4(r31)
-    lfs      f0, 0xa4(r31)
-    fmr      f1, f29
-    fmuls    f2, f2, f3
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0x94(r31)
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       sin
-    frsp     f2, f1
-    lfs      f3, 0xe4(r31)
-    lfs      f0, 0xac(r31)
-    fmr      f1, f29
-    fneg     f2, f2
-    fmuls    f2, f3, f2
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0x9c(r31)
-    bl       sin
-    frsp     f2, f1
-    lfs      f1, 0xe4(r31)
-    lfs      f0, 0xa8(r31)
-    fmadds   f0, f1, f2, f0
-    stfs     f0, 0x98(r31)
-    psq_l    f31, 0x38(r1), 0, qr0
-    lfd      f31, 0x30(r1)
-    psq_l    f30, 0x28(r1), 0, qr0
-    lfd      f30, 0x20(r1)
-    psq_l    f29, 0x18(r1), 0, qr0
-    lfd      f29, 0x10(r1)
-    lwz      r0, 0x44(r1)
-    lwz      r31, 0xc(r1)
-    mtlr     r0
-    addi     r1, r1, 0x40
-    blr
-*/
 
 /**
  * @note Address: 0x801928C4
  * @note Size: 0xE8
  */
 void CCamera::CalcInterest()
-{
+{ // mirrors CalcEye with the pitch pushed past PI
 	f32 y = HALF_PI + mAngle.y;
 	f32 x = PI + mAngle.x;
 
-	mInterest.x = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
-	mInterest.z = mEye.z + mDistance * -(f32)sin(y) * (f32)cos(x);
-	mInterest.y = mEye.y + mDistance * (f32)sin(x);
+	mInterest.x  = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mInterest.z  = mEye.z + zOffset * cosPitch;
+	mInterest.y  = mEye.y + mDistance * (f32)sin(x);
 }
 /*
     stwu     r1, -0x40(r1)
@@ -390,7 +320,7 @@ void CCamera::CalcAngle()
 	f32 dx    = mInterest.x - mEye.x;
 	f32 dz    = mInterest.z - mEye.z;
 	f32 dy    = mInterest.y - mEye.y;
-	f32 angle = (f32)atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+	f32 angle = (f32)atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy)); // horizontal run against |rise|
 
 	mAngle.x = dy < 0.0f ? HALF_PI - angle : angle - HALF_PI;
 	mAngle.y = (f32)atan2(mInterest.x - mEye.x, mInterest.z - mEye.z);
@@ -424,11 +354,12 @@ MtxPtr CCamera::SetCurrent()
 {
 	MtxPtr mtx = NULL;
 
-	if (mUseMtx) {
+	if (mUseMtx) { // trusts the matrix it was given
 		if (HSD_CObjSetCurrent(this)) {
 			mtx = mViewMtx;
 		}
-	} else if (mLoadedCObj != NULL) {
+	} else if (mLoadedCObj != NULL) { // pushes our eye/interest into the loaded cobj
+
 		HSD_CObjClearViewingMtx(this);
 		HSD_CObjSetEyePosition(this, &mEye);
 		HSD_CObjSetInterest(this, &mInterest);
@@ -436,7 +367,7 @@ MtxPtr CCamera::SetCurrent()
 			HSD_CObjGetViewingMtx(this, mViewMtx);
 			mtx = mViewMtx;
 		}
-	} else {
+	} else { // otherwise builds the look-at itself
 		Vec eye      = mEye * mScale;
 		Vec interest = mInterest * mScale;
 

@@ -1,225 +1,166 @@
 #include <global.h>
 
+#include <string.h>
+
 #include <dolphin/os.h>
 #include <sysdolphin/jobj.h>
 #include <sysdolphin/object.h>
 #include <sysdolphin/particle.h>
+#include <sysdolphin/particle_internal.h>
+#include <sysdolphin/psinterpret.h>
 #include <sysdolphin/pslist.h>
 
-void psKillAllParticle(void);
 void psClearPointJObj(void);
-void psInitDataBankLocate(s32* cmdBank, s32* texBank, s32* formBank);
 
-extern void memset(void*, int, int);
-
-extern s32 psRemoveParticleAppSRT(HSD_Particle* pp);
-extern s32 psAttachParticleAppSRT(HSD_Particle* pp, HSD_psAppSRT* srt);
-extern s32 _psLinkInit(s32 count);
-extern void _psListClear(void);
-extern HSD_Particle* _psListNew(HSD_Particle* parent, s32 linkNo);
-extern u16 psGetNewIDNum(void);
-extern void psKillAllGenerator(void);
-
-static inline void particle_ref_INC(void* o)
-{
-	if (o != NULL) {
-		HSD_OBJ(o)->ref_count++;
-		((HSD_OBJ(o)->ref_count != HSD_OBJ_NOREF)) ? ((void)0) : __assert("object.h", 93, "HSD_OBJ(o)->ref_count != HSD_OBJ_NOREF");
-	}
-}
-
-// per bank data tables, all addressed off one base in the target
-void* ptclref[64];
-s32 lbl_8064CE50[64];
-HSD_PSTexGroup** psTexGroupArray[64];
-u8** psFormGroupArray[64];
-s32 psNumCmdList[64];
-HSD_PSCmdList** psCmdListArray[64];
+const u32* ptclref[PS_BANK_COUNT];
+s32 psBankTextureCounts[PS_BANK_COUNT];
+HSD_PSTexGroup** psTexGroupArray[PS_BANK_COUNT];
+HSD_PSFormGroup** psFormGroupArray[PS_BANK_COUNT];
 HSD_JObj* psPointJObj[8];
 
-#define BANK_REF(b)       (ptclref[b])
-#define BANK_TEXCOUNT(b)  (lbl_8064CE50[b])
-#define BANK_TEXARRAY(b)  (psTexGroupArray[b])
-#define BANK_FORMARRAY(b) (psFormGroupArray[b])
-#define BANK_CMDCOUNT(b)  (psNumCmdList[b])
-#define BANK_CMDARRAY(b)  (psCmdListArray[b])
+u16 psParticleCount;
+u16 psGeneratorCount;
+u16 psAppSRTCount;
+u16 psPeakParticleCount;
+u16 psPeakGeneratorCount;
+u16 psPeakAppSRTCount;
+PSParticleCallback* psParticleCallbackTable;
 
-// peak and live counts for appsrts, generators and particles, the 2005 game
-// keeps all six in particle.c, .sbss comes out last declaration first
-u16 lbl_8065BA8E; // live particles
-u16 lbl_8065BA8C; // live generators
-u16 lbl_8065BA8A; // live appsrts
-u16 lbl_8065BA88; // peak particles
-u16 lbl_8065BA86; // peak generators
-u16 lbl_8065BA84; // peak appsrts
-// user callback table psInterpretParticle0 picks pp->callback from
-int (**lbl_8065BA80)(HSD_Particle*);
+typedef struct {
+	HSD_PSCmdList** entries;
+	s32 firstId;
+	s32 count;
+} PSCommandBank;
 
-/**
- * @note Address: N/A
- * @note Size: 0x140
- */
-void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank)
+static PSCommandBank sCommandBanks[PS_BANK_COUNT];
+
+static BOOL readBankHeader(s32* cmdBank, const s32* texBank, const s32* formBank, PSCommandBank* commands)
 {
+	u16 version;
+
 	if (formBank != NULL && *formBank != *texBank) {
 		OSPanic("particle.c", 95, "illigal form data (strange number of group)\n");
+		return FALSE;
 	}
 
-	ptclref[bank]         = ref;
-	lbl_8064CE50[bank]    = *texBank;
-	psTexGroupArray[bank] = (HSD_PSTexGroup**)(texBank + 1);
-	if (formBank != NULL) {
-		psFormGroupArray[bank] = (u8**)(formBank + 1);
-	} else {
-		psFormGroupArray[bank] = NULL;
-	}
-
-	switch (*(u16*)cmdBank) {
-	case 0:
-		psNumCmdList[bank]   = cmdBank[1];
-		psCmdListArray[bank] = (HSD_PSCmdList**)(cmdBank + 2);
-		break;
-	case 0x40:
-	case 0x41:
-	case 0x42:
-	case 0x43: {
-		s32 count            = cmdBank[1];
-		psNumCmdList[bank]   = cmdBank[2] + count;
-		psCmdListArray[bank] = (HSD_PSCmdList**)(cmdBank + 3 - count);
-		break;
-	}
-	default:
-		OSPanic("particle.c", 125, "psInitDataBanks: unknown version\n");
-	}
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x374
- */
-void psInitDataBankLocate(s32* cmdBank, s32* texBank, s32* formBank)
-{
-	s32* group;
-	s32 num2;
-	s32* groups;
-	s32* ptr;
-	s32 num;
-	s32* base;
-	s32 version;
-	s32 j;
-	s32 i;
-
-	version = *(u16*)cmdBank;
+	memcpy(&version, cmdBank, sizeof(version));
 	switch (version) {
 	case 0:
-		num2 = cmdBank[1];
-		base = cmdBank + 2;
-		num  = 0;
-		for (i = 0; i < num2; i++) {
-			cmdBank[i + 2] += (s32)cmdBank;
-		}
+		commands->entries = (HSD_PSCmdList**)(cmdBank + 2);
+		commands->firstId = 0;
+		commands->count = cmdBank[1];
 		break;
 	case 0x40:
 	case 0x41:
 	case 0x42:
 	case 0x43:
-		num  = cmdBank[1];
-		num2 = cmdBank[2] + num;
-		base = cmdBank + 3 - num;
-		ptr  = cmdBank;
-		j    = 0;
-		while (j < cmdBank[2]) {
-			if (ptr[3] != 0) {
-				ptr[3] += (s32)cmdBank;
-			}
-			ptr++;
-			j++;
-		}
+		commands->entries = (HSD_PSCmdList**)(cmdBank + 3);
+		commands->firstId = cmdBank[1];
+		commands->count = cmdBank[2];
 		break;
+	default:
+		OSPanic("particle.c", 125, "psInitDataBanks: unknown version\n");
+		return FALSE;
 	}
 
-	ptr = base + num;
-	for (i = num; i < num2; i++) {
-		s32* cmd = (s32*)ptr[0];
-		if (cmd != NULL) {
-			cmd[2] = cmd[2] & 0xF1FFFFFF;
-			cmd    = (s32*)ptr[0];
-			cmd[2] = cmd[2] | 0x08000000;
+	return commands->firstId >= 0 && commands->count >= 0;
+}
+
+static void loadBank(s32 bank, const PSCommandBank* commands, s32* texBank, const void* ref, s32* formBank)
+{
+	sCommandBanks[bank] = *commands;
+	ptclref[bank] = ref;
+	psBankTextureCounts[bank] = *texBank;
+	psTexGroupArray[bank] = (HSD_PSTexGroup**)(texBank + 1);
+	psFormGroupArray[bank] = formBank != NULL ? (HSD_PSFormGroup**)(formBank + 1) : NULL;
+}
+
+/**
+ * @note Address: 0x801DD33C
+ * @note Size: 0x140
+ */
+void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank)
+{
+	PSCommandBank commands;
+
+	if (bank >= 0 && bank < PS_BANK_COUNT && readBankHeader(cmdBank, texBank, formBank, &commands)) {
+		loadBank(bank, &commands, texBank, ref, formBank);
+	}
+}
+
+static inline u8* bankPointer(void* bank, const void* offset)
+{
+	return (u8*)bank + (unsigned long)offset;
+}
+
+static void relocateBank(const PSCommandBank* commands, s32* cmdBank, s32* texBank, s32* formBank)
+{
+	s32 i;
+	HSD_PSTexGroup** textureGroups = (HSD_PSTexGroup**)(texBank + 1);
+	s32 groupCount = texBank[0];
+
+	for (i = 0; i < commands->count; i++) {
+		if (commands->entries[i] != NULL) {
+			commands->entries[i] = (HSD_PSCmdList*)bankPointer(cmdBank, commands->entries[i]);
 		}
-		ptr++;
 	}
 
-	{
-		s32 num_groups = texBank[0];
-		s32 k;
-
-		group = groups = texBank + 1;
-		for (k = 1; k <= num_groups; k++) {
-			if (group[0] != 0) {
-				group[0] += (s32)texBank;
-			}
-			group++;
+	for (i = 0; i < commands->count; i++) {
+		HSD_PSCmdList* command = commands->entries[i];
+		if (command != NULL) {
+			command->kind &= ~PS_PARTICLE_SORT_ORDER_MASK;
+			command->kind |= (PS_PARTICLE_SORT_ORDER_COUNT / 2) << PS_PARTICLE_SORT_ORDER_SHIFT;
 		}
+	}
 
-		group = groups;
-		for (k = 0; k < num_groups; group++, k++) {
-			HSD_PSTexGroup* tg = (HSD_PSTexGroup*)group[0];
-			if (tg == NULL) {
-				continue;
-			}
-			{
-				s32 ti;
-				for (ti = 0; (u32)ti < ((HSD_PSTexGroup*)group[0])->num; ti++) {
-					if (((HSD_PSTexGroup*)group[0])->texTable[ti] != NULL) {
-						((HSD_PSTexGroup*)group[0])->texTable[ti] = (u8*)((u32)((HSD_PSTexGroup*)group[0])->texTable[ti] + (u32)texBank);
-					}
-				}
-				tg = (HSD_PSTexGroup*)group[0];
-			}
-			{
-				u32 fmt = tg->fmt;
-				if (fmt != 8 && fmt != 9 && fmt != 10) {
-					continue;
-				}
-			}
-			if (tg->palflag & 1) {
-				i = tg->num;
-				if (tg->texTable[i] != NULL) {
-					tg->texTable[i] = (u8*)((u32)tg->texTable[i] + (u32)texBank);
-				}
-			} else if (tg->palnum != 0) {
-				i = tg->num;
-				for (; (u32)i < ((HSD_PSTexGroup*)group[0])->num + ((HSD_PSTexGroup*)group[0])->palnum; i++) {
-					HSD_PSTexGroup* tg2 = (HSD_PSTexGroup*)group[0];
-					u8** entry          = &tg2->texTable[i];
-					if (*entry != NULL) {
-						*entry = (u8*)((u32)*entry + (u32)texBank);
-					}
-				}
+	for (i = 0; i < groupCount; i++) {
+		if (textureGroups[i] != NULL) {
+			textureGroups[i] = (HSD_PSTexGroup*)bankPointer(texBank, textureGroups[i]);
+		}
+	}
+
+	for (i = 0; i < groupCount; i++) {
+		HSD_PSTexGroup* group = textureGroups[i];
+		u32 entryCount;
+		u32 j;
+
+		if (group == NULL) {
+			continue;
+		}
+		entryCount = group->num;
+		switch (group->fmt) {
+		case GX_TF_C4:
+		case GX_TF_C8:
+		case GX_TF_C14X2:
+			if (group->palflag & 1) {
+				entryCount++;
+			} else if (group->palnum != 0) {
+				entryCount += group->palnum;
 			} else {
-				i = tg->num;
-				for (; (u32)i < ((HSD_PSTexGroup*)group[0])->num * 2; i++) {
-					HSD_PSTexGroup* tg2 = (HSD_PSTexGroup*)group[0];
-					u8** entry          = &tg2->texTable[i];
-					if (*entry != NULL) {
-						*entry = (u8*)((u32)*entry + (u32)texBank);
-					}
-				}
+				entryCount += group->num;
+			}
+			break;
+		}
+		for (j = 0; j < entryCount; j++) {
+			if (group->texTable[j] != NULL) {
+				group->texTable[j] = bankPointer(texBank, group->texTable[j]);
 			}
 		}
+	}
 
-		if (formBank == NULL) {
-			return;
-		}
-		for (i = 1; i <= num_groups; i++) {
-			if (formBank[i] != 0) {
-				s32 fi;
-				u32* fg;
-				formBank[i] += (s32)formBank;
-				fg = (u32*)formBank[i];
-				for (fi = 0; (u32)fi < fg[0]; fi++) {
-					if (fg[1 + fi] != 0) {
-						fg[1 + fi] += (u32)formBank;
+	if (formBank != NULL) {
+		HSD_PSFormGroup** formGroups = (HSD_PSFormGroup**)(formBank + 1);
+
+		for (i = 0; i < groupCount; i++) {
+			HSD_PSFormGroup* group = formGroups[i];
+			if (group != NULL) {
+				u32 j;
+
+				group = (HSD_PSFormGroup*)bankPointer(formBank, group);
+				formGroups[i] = group;
+				for (j = 0; j < group->num; j++) {
+					if (group->formTable[j] != NULL) {
+						group->formTable[j] = (u32*)bankPointer(formBank, group->formTable[j]);
 					}
 				}
 			}
@@ -228,19 +169,66 @@ void psInitDataBankLocate(s32* cmdBank, s32* texBank, s32* formBank)
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DD47C
+ * @note Size: 0x374
+ */
+void psInitDataBankLocate(s32* cmdBank, s32* texBank, s32* formBank)
+{
+	PSCommandBank commands;
+
+	if (readBankHeader(cmdBank, texBank, formBank, &commands)) {
+		relocateBank(&commands, cmdBank, texBank, formBank);
+	}
+}
+
+/**
+ * @note Address: 0x801DD7F0
  * @note Size: 0x15C
  */
 void psInitDataBank(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank)
 {
-	if (bank < 0x40) {
-		psInitDataBankLocate(cmdBank, texBank, formBank);
-		psInitDataBankLoad(bank, cmdBank, texBank, ref, formBank);
+	PSCommandBank commands;
+
+	if (bank >= 0 && bank < PS_BANK_COUNT && readBankHeader(cmdBank, texBank, formBank, &commands)) {
+		relocateBank(&commands, cmdBank, texBank, formBank);
+		loadBank(bank, &commands, texBank, ref, formBank);
+	}
+}
+
+HSD_PSCmdList* psGetBankCommand(s32 bank, s32 id)
+{
+	const PSCommandBank* commands;
+	s32 index;
+
+	if (bank < 0 || bank >= PS_BANK_COUNT) {
+		return NULL;
+	}
+	commands = &sCommandBanks[bank];
+	if (id < commands->firstId) {
+		return NULL;
+	}
+	index = id - commands->firstId;
+	if (index >= commands->count) {
+		return NULL;
+	}
+	return commands->entries[index];
+}
+
+static void clearBanks(void)
+{
+	s32 i;
+
+	memset(sCommandBanks, 0, sizeof(sCommandBanks));
+	for (i = 0; i < PS_BANK_COUNT; i++) {
+		psBankTextureCounts[i] = 0;
+		psTexGroupArray[i]     = NULL;
+		psFormGroupArray[i]    = NULL;
+		ptclref[i]             = NULL;
 	}
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DD94C
  * @note Size: 0x164
  */
 void psInitParticle(s32 count)
@@ -248,41 +236,25 @@ void psInitParticle(s32 count)
 	int i;
 
 	_psLinkInit(count);
-	lbl_8065BA8E = 0;
-	lbl_8065BA88 = 0;
-	for (i = 0; i < 64; i++) {
-		psNumCmdList[i]     = 0;
-		lbl_8064CE50[i]     = 0;
-		psCmdListArray[i]   = NULL;
-		psTexGroupArray[i]  = NULL;
-		psFormGroupArray[i] = NULL;
-		ptclref[i]          = NULL;
-	}
-	lbl_8065BA80 = NULL;
+	psParticleCount     = 0;
+	psPeakParticleCount = 0;
+	clearBanks();
+	psParticleCallbackTable = NULL;
 	for (i = 0; i < 8; i++) {
 		psPointJObj[i] = NULL;
 	}
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DDAB0
  * @note Size: 0x13C
  */
 void psRemoveParticle(void)
 {
-	int i;
-
 	psKillAllParticle();
 	psKillAllGenerator();
 	_psListClear();
-	for (i = 0; i < 64; i++) {
-		psNumCmdList[i]     = 0;
-		lbl_8064CE50[i]     = 0;
-		psCmdListArray[i]   = NULL;
-		psTexGroupArray[i]  = NULL;
-		psFormGroupArray[i] = NULL;
-		ptclref[i]          = NULL;
-	}
+	clearBanks();
 	psClearPointJObj();
 }
 
@@ -331,12 +303,12 @@ HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, in
 	pp->cmdPtr     = 0;
 
 	if (palflag != 0) {
-		pp->kind = pp->kind | 0x10;
+		pp->kind |= PS_PARTICLE_SHARED_PALETTE;
 	}
 
 	pp->cmdWait       = (u16)(list != NULL);
 	pp->poseNum       = 0;
-	pp->palNum        = 0xFF;
+	pp->palNum        = PS_PARTICLE_PALETTE_DEFAULT;
 	pp->primCol.a     = 0xFF;
 	pp->primCol.b     = 0xFF;
 	pp->primCol.g     = 0xFF;
@@ -351,7 +323,7 @@ HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, in
 	pp->envColRemain  = 0;
 	pp->primColRemain = 0;
 	pp->aCmpMode      = 0x33;
-	if (((pp->kind >> 22) & 3) >= 2) {
+	if (((pp->kind >> PS_PARTICLE_BLEND_SHIFT) & PS_PARTICLE_BLEND_MODE_MASK) >= PS_PARTICLE_BLEND_SUBTRACT) {
 		pp->aCmpParam1 = 0;
 	} else {
 		pp->aCmpParam1 = 1;
@@ -391,7 +363,7 @@ HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, in
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DDEE4
  * @note Size: 0xF8
  */
 HSD_Particle* psGenerateParticleID0(HSD_Particle* head, int linkNo, int bank, int id, int flgInterpret)
@@ -400,29 +372,23 @@ HSD_Particle* psGenerateParticleID0(HSD_Particle* head, int linkNo, int bank, in
 	HSD_PSTexGroup* tg;
 	s32 palflag;
 
-	if (linkNo >= 8) {
-		return NULL;
-	}
-	if (bank >= 64) {
-		return NULL;
-	}
-	if (id >= (s32)BANK_CMDCOUNT(bank)) {
+	if (linkNo < 0 || linkNo >= 8) {
 		return NULL;
 	}
 
-	cl = ((HSD_PSCmdList**)BANK_CMDARRAY(bank))[id];
+	cl = psGetBankCommand(bank, id);
 	if (cl == NULL) {
 		return NULL;
 	}
 
-	tg = ((HSD_PSTexGroup**)BANK_TEXARRAY(bank))[cl->texGroup];
+	tg = psTexGroupArray[bank][cl->texGroup];
 	if (tg != NULL) {
 		palflag = tg->palflag;
 	} else {
 		palflag = 0;
 	}
 
-	return psGenerateParticle0(head, linkNo, bank, (int)tg, 0, cl->kind, cl->texGroup, cl->cmdList, 0.0F, 0.0F, 0.0F, cl->vx, cl->vy,
+	return psGenerateParticle0(head, linkNo, bank, 0, 0, cl->kind, cl->texGroup, cl->cmdList, 0.0F, 0.0F, 0.0F, cl->vx, cl->vy,
 	                           cl->vz, cl->size, cl->grav, cl->life, cl->fric, palflag, NULL, flgInterpret);
 }
 
@@ -430,8 +396,8 @@ HSD_Particle* psGenerateParticleID0(HSD_Particle* head, int linkNo, int bank, in
  * @note Address: N/A
  * @note Size: 0x64
  */
-HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy,
-                                 f32 vz, f32 size, f32 grav, int life, f32 fric, int palflag, HSD_Generator* gp)
+HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, int life, f32 x, f32 y, f32 z,
+                                 f32 vx, f32 vy, f32 vz, f32 size, f32 grav, f32 fric, int palflag, HSD_Generator* gp)
 {
 	return psGenerateParticle0(NULL, linkNo, bank, kind, reserved, kind, texGroup, list, x, y, z, vx, vy, vz, size, grav, life, fric,
 	                           palflag, gp, 1);
@@ -479,7 +445,7 @@ void psKillAllParticle(void)
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DE13C
  * @note Size: 0xF8
  */
 void psSetPointJObj(s32 no, HSD_JObj* jobj)
@@ -499,7 +465,7 @@ void psSetPointJObj(s32 no, HSD_JObj* jobj)
 			HSD_JObjUnref(old);
 		}
 		psPointJObj[no - 1] = jobj;
-		particle_ref_INC(jobj);
+		ref_INC(jobj);
 	} else {
 		int i;
 		for (i = 0; i < 8; i++) {
@@ -512,7 +478,7 @@ void psSetPointJObj(s32 no, HSD_JObj* jobj)
 }
 
 /**
- * @note Address: N/A
+ * @note Address: 0x801DE234
  * @note Size: 0xDC
  */
 void psSetPointJObjNodup(HSD_JObj* jobj, s32 no)
@@ -537,7 +503,7 @@ void psSetPointJObjNodup(HSD_JObj* jobj, s32 no)
 			HSD_JObjUnref(old);
 		}
 		psPointJObj[no - 1] = jobj;
-		particle_ref_INC(jobj);
+		ref_INC(jobj);
 	}
 }
 
@@ -555,313 +521,6 @@ void psClearPointJObj(void)
 		}
 	}
 }
-
-/**
- * @note Address: 0x801DD33C
- * @note Size: 0x140
- */
-// psInitDataBankLoad
-
-/**
- * @note Address: 0x801DD47C
- * @note Size: 0x374
- */
-// psInitDataBankLocate
-/*
-    lhz      r6, 0x0(r3)
-    cmpwi    r6, 0x40
-    bge      .L_801DD494
-    cmpwi    r6, 0x0
-    beq      .L_801DD4A0
-    b        .L_801DD5C4
-.L_801DD494:
-    cmpwi    r6, 0x44
-    bge      .L_801DD5C4
-    b        .L_801DD578
-.L_801DD4A0:
-    lwz      r7, 0x4(r3)
-    addi     r8, r3, 0x8
-    li       r0, 0x0
-    li       r6, 0x0
-    cmpwi    r7, 0x0
-    ble      .L_801DD5C4
-    cmpwi    r7, 0x8
-    subi     r10, r7, 0x8
-    ble      .L_801DD548
-    addi     r9, r10, 0x7
-    mr       r11, r3
-    srwi     r9, r9, 3
-    mtctr    r9
-    cmpwi    r10, 0x0
-    ble      .L_801DD548
-.L_801DD4DC:
-    lwz      r9, 0x8(r11)
-    addi     r6, r6, 0x8
-    add      r9, r9, r3
-    stw      r9, 0x8(r11)
-    lwz      r9, 0xc(r11)
-    add      r9, r9, r3
-    stw      r9, 0xc(r11)
-    lwz      r9, 0x10(r11)
-    add      r9, r9, r3
-    stw      r9, 0x10(r11)
-    lwz      r9, 0x14(r11)
-    add      r9, r9, r3
-    stw      r9, 0x14(r11)
-    lwz      r9, 0x18(r11)
-    add      r9, r9, r3
-    stw      r9, 0x18(r11)
-    lwz      r9, 0x1c(r11)
-    add      r9, r9, r3
-    stw      r9, 0x1c(r11)
-    lwz      r9, 0x20(r11)
-    add      r9, r9, r3
-    stw      r9, 0x20(r11)
-    lwz      r9, 0x24(r11)
-    add      r9, r9, r3
-    stw      r9, 0x24(r11)
-    addi     r11, r11, 0x20
-    bdnz     .L_801DD4DC
-.L_801DD548:
-    slwi     r10, r6, 2
-    subf     r9, r6, r7
-    add      r10, r3, r10
-    mtctr    r9
-    cmpw     r6, r7
-    bge      .L_801DD5C4
-.L_801DD560:
-    lwz      r6, 0x8(r10)
-    add      r6, r6, r3
-    stw      r6, 0x8(r10)
-    addi     r10, r10, 0x4
-    bdnz     .L_801DD560
-    b        .L_801DD5C4
-.L_801DD578:
-    lwz      r0, 0x4(r3)
-    addi     r6, r3, 0xc
-    lwz      r7, 0x8(r3)
-    mr       r9, r3
-    slwi     r8, r0, 2
-    li       r10, 0x0
-    add      r7, r7, r0
-    subf     r8, r8, r6
-    b        .L_801DD5B8
-.L_801DD59C:
-    lwz      r6, 0xc(r9)
-    cmpwi    r6, 0x0
-    beq      .L_801DD5B0
-    add      r6, r6, r3
-    stw      r6, 0xc(r9)
-.L_801DD5B0:
-    addi     r9, r9, 0x4
-    addi     r10, r10, 0x1
-.L_801DD5B8:
-    lwz      r6, 0x8(r3)
-    cmpw     r10, r6
-    blt      .L_801DD59C
-.L_801DD5C4:
-    slwi     r6, r0, 2
-    subf     r3, r0, r7
-    add      r6, r8, r6
-    mtctr    r3
-    cmpw     r0, r7
-    bge      .L_801DD60C
-.L_801DD5DC:
-    lwz      r3, 0x0(r6)
-    cmplwi   r3, 0x0
-    beq      .L_801DD604
-    lwz      r0, 0x8(r3)
-    rlwinm   r0, r0, 0, 7, 3
-    stw      r0, 0x8(r3)
-    lwz      r3, 0x0(r6)
-    lwz      r0, 0x8(r3)
-    oris     r0, r0, 0x800
-    stw      r0, 0x8(r3)
-.L_801DD604:
-    addi     r6, r6, 0x4
-    bdnz     .L_801DD5DC
-.L_801DD60C:
-    lwz      r0, 0x0(r4)
-    addi     r7, r4, 0x4
-    mr       r6, r7
-    mtctr    r0
-    cmpwi    r0, 0x1
-    blt      .L_801DD640
-.L_801DD624:
-    lwz      r3, 0x0(r6)
-    cmpwi    r3, 0x0
-    beq      .L_801DD638
-    add      r3, r3, r4
-    stw      r3, 0x0(r6)
-.L_801DD638:
-    addi     r6, r6, 0x4
-    bdnz     .L_801DD624
-.L_801DD640:
-    mr       r8, r7
-    mtctr    r0
-    cmpwi    r0, 0x0
-    ble      .L_801DD780
-.L_801DD650:
-    lwz      r3, 0x0(r8)
-    cmplwi   r3, 0x0
-    beq      .L_801DD778
-    li       r10, 0x0
-    li       r6, 0x0
-    b        .L_801DD688
-.L_801DD668:
-    addi     r9, r6, 0x18
-    lwzx     r3, r7, r9
-    cmplwi   r3, 0x0
-    beq      .L_801DD680
-    add      r3, r3, r4
-    stwx     r3, r7, r9
-.L_801DD680:
-    addi     r6, r6, 0x4
-    addi     r10, r10, 0x1
-.L_801DD688:
-    lwz      r7, 0x0(r8)
-    lwz      r3, 0x0(r7)
-    cmplw    r10, r3
-    blt      .L_801DD668
-    lwz      r3, 0x4(r7)
-    cmplwi   r3, 0x8
-    beq      .L_801DD6B4
-    cmplwi   r3, 0x9
-    beq      .L_801DD6B4
-    cmplwi   r3, 0xa
-    bne      .L_801DD778
-.L_801DD6B4:
-    lhz      r3, 0x16(r7)
-    clrlwi.  r3, r3, 31
-    beq      .L_801DD6E4
-    lwz      r3, 0x0(r7)
-    slwi     r3, r3, 2
-    addi     r6, r3, 0x18
-    lwzx     r3, r7, r6
-    cmplwi   r3, 0x0
-    beq      .L_801DD778
-    add      r3, r3, r4
-    stwx     r3, r7, r6
-    b        .L_801DD778
-.L_801DD6E4:
-    lhz      r3, 0x14(r7)
-    cmplwi   r3, 0x0
-    beq      .L_801DD738
-    lwz      r10, 0x0(r7)
-    slwi     r7, r10, 2
-    b        .L_801DD71C
-.L_801DD6FC:
-    addi     r6, r7, 0x18
-    lwzx     r3, r9, r6
-    cmplwi   r3, 0x0
-    beq      .L_801DD714
-    add      r3, r3, r4
-    stwx     r3, r9, r6
-.L_801DD714:
-    addi     r7, r7, 0x4
-    addi     r10, r10, 0x1
-.L_801DD71C:
-    lwz      r9, 0x0(r8)
-    lwz      r6, 0x0(r9)
-    lhz      r3, 0x14(r9)
-    add      r3, r6, r3
-    cmplw    r10, r3
-    blt      .L_801DD6FC
-    b        .L_801DD778
-.L_801DD738:
-    lwz      r10, 0x0(r7)
-    slwi     r6, r10, 2
-    b        .L_801DD764
-.L_801DD744:
-    addi     r9, r6, 0x18
-    lwzx     r3, r7, r9
-    cmplwi   r3, 0x0
-    beq      .L_801DD75C
-    add      r3, r3, r4
-    stwx     r3, r7, r9
-.L_801DD75C:
-    addi     r6, r6, 0x4
-    addi     r10, r10, 0x1
-.L_801DD764:
-    lwz      r7, 0x0(r8)
-    lwz      r3, 0x0(r7)
-    slwi     r3, r3, 1
-    cmplw    r10, r3
-    blt      .L_801DD744
-.L_801DD778:
-    addi     r8, r8, 0x4
-    bdnz     .L_801DD650
-.L_801DD780:
-    cmplwi   r5, 0x0
-    beqlr
-    addi     r4, r5, 0x4
-    mtctr    r0
-    cmpwi    r0, 0x1
-    bltlr
-.L_801DD798:
-    lwz      r0, 0x0(r4)
-    cmpwi    r0, 0x0
-    beq      .L_801DD7E4
-    add      r0, r0, r5
-    li       r6, 0x0
-    stw      r0, 0x0(r4)
-    lwz      r7, 0x0(r4)
-    mr       r3, r7
-    b        .L_801DD7D8
-.L_801DD7BC:
-    lwz      r0, 0x4(r3)
-    cmplwi   r0, 0x0
-    beq      .L_801DD7D0
-    add      r0, r0, r5
-    stw      r0, 0x4(r3)
-.L_801DD7D0:
-    addi     r3, r3, 0x4
-    addi     r6, r6, 0x1
-.L_801DD7D8:
-    lwz      r0, 0x0(r7)
-    cmplw    r6, r0
-    blt      .L_801DD7BC
-.L_801DD7E4:
-    addi     r4, r4, 0x4
-    bdnz     .L_801DD798
-    blr
-*/
-
-/**
- * @note Address: 0x801DD7F0
- * @note Size: 0x15C
- */
-// psInitDataBank
-
-/**
- * @note Address: 0x801DD94C
- * @note Size: 0x164
- */
-// psInitParticle
-
-/**
- * @note Address: 0x801DDAB0
- * @note Size: 0x13C
- */
-// psRemoveParticle
-
-/**
- * @note Address: 0x801DDEE4
- * @note Size: 0xF8
- */
-// psGenerateParticleID0
-
-/**
- * @note Address: 0x801DE13C
- * @note Size: 0xF8
- */
-// psSetPointJObj
-
-/**
- * @note Address: 0x801DE234
- * @note Size: 0xDC
- */
-// psSetPointJObjNodup
 
 /**
  * @note Address: 0x801DE378
@@ -882,8 +541,13 @@ void psDeletePntJObjwithParticle(HSD_Particle* pp)
 	}
 }
 
+static inline HSD_Particle* _psListGetNext(HSD_Particle* pp)
+{
+	return pp->next;
+}
+
 /**
- * @note Address: N/A
+ * @note Address: 0x801DE3D4
  * @note Size: 0x114
  */
 void psKillGeneratorChild(HSD_Generator* gp)
@@ -894,7 +558,7 @@ void psKillGeneratorChild(HSD_Generator* gp)
 
 	pp = _psListGetFirst(gp->linkNo);
 	while (pp != NULL) {
-		HSD_Particle* next = pp->next;
+		HSD_Particle* next = _psListGetNext(pp);
 		if (pp->idnum == idnum && pp->gen != NULL && pp->gen == gp) {
 			if (pp->gen != NULL) {
 				pp->gen->numChild--;
@@ -922,87 +586,3 @@ void psSetUserFunc(HSD_Generator* gp, HSD_PSUserFunc* userfunc)
 {
 	gp->userfunc = userfunc;
 }
-
-/**
- * @note Address: 0x801DE3D4
- * @note Size: 0x114
- */
-// psKillGeneratorChild
-/*
-    stwu     r1, -0x30(r1)
-    mflr     r0
-    stw      r0, 0x34(r1)
-    addi     r11, r1, 0x30
-    bl       _savegpr_25
-    mr       r28, r3
-    li       r31, 0x0
-    lhz      r29, 0x1c(r3)
-    lbz      r3, 0x19(r3)
-    bl       _psListGetFirst
-    mr       r30, r3
-    b        .L_801DE4C8
-.L_801DE404:
-    lhz      r0, 0x1e(r30)
-    lwz      r25, 0x0(r30)
-    cmplw    r0, r29
-    bne      .L_801DE4C0
-    lwz      r4, 0x8c(r30)
-    cmplwi   r4, 0x0
-    beq      .L_801DE4C0
-    cmplw    r4, r28
-    bne      .L_801DE4C0
-    cmplwi   r4, 0x0
-    beq      .L_801DE43C
-    lwz      r3, 0x50(r4)
-    subi     r0, r3, 0x1
-    stw      r0, 0x50(r4)
-.L_801DE43C:
-    lwz      r0, 0x90(r30)
-    cmplwi   r0, 0x0
-    beq      .L_801DE450
-    mr       r3, r30
-    bl       psRemoveParticleAppSRT
-.L_801DE450:
-    lwz      r4, 0x4(r30)
-    rlwinm.  r0, r4, 0, 16, 16
-    beq      .L_801DE480
-    lis      r3, psPointJObj@ha
-    rlwinm   r26, r4, 22, 27, 29
-    addi     r27, r3, psPointJObj@l
-    lwzx     r3, r27, r26
-    cmplwi   r3, 0x0
-    beq      .L_801DE480
-    bl       HSD_JObjUnref
-    li       r0, 0x0
-    stwx     r0, r27, r26
-.L_801DE480:
-    mr       r3, r30
-    mr       r4, r31
-    bl       _psListDelete
-    lwz      r3, 0x8c(r30)
-    cmplwi   r3, 0x0
-    beq      .L_801DE4C4
-    lwz      r3, 0x58(r3)
-    cmplwi   r3, 0x0
-    beq      .L_801DE4C4
-    lwz      r12, 0x4(r3)
-    cmplwi   r12, 0x0
-    beq      .L_801DE4C4
-    mr       r3, r30
-    mtctr    r12
-    bctrl
-    b        .L_801DE4C4
-.L_801DE4C0:
-    mr       r31, r30
-.L_801DE4C4:
-    mr       r30, r25
-.L_801DE4C8:
-    cmplwi   r30, 0x0
-    bne      .L_801DE404
-    addi     r11, r1, 0x30
-    bl       _restgpr_25
-    lwz      r0, 0x34(r1)
-    mtlr     r0
-    addi     r1, r1, 0x30
-    blr
-*/

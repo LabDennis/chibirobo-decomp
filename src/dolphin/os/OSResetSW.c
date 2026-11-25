@@ -72,8 +72,8 @@ BOOL OSGetResetButtonState()
 
 	LastState = state;
 
-	if (GameChoice & 0x1F) {
-		OSTime fire = (GameChoice & 0x1F) * 60;
+	if (GameChoice & OS_GAME_CHOICE_RESET_MINUTES_MASK) {
+		OSTime fire = (GameChoice & OS_GAME_CHOICE_RESET_MINUTES_MASK) * 60;
 		fire        = __OSStartTime + OSSecondsToTicks(fire);
 		if (fire < now) {
 			now -= fire;

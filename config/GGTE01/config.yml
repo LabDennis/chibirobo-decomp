@@ -14,6 +14,14 @@ block_relocations:
 - source: .text:0x801E4FC4
 - source: .text:0x801E4FD4
 
+# binary data the source includes as generated arrays (build/<version>/include)
+extract:
+# the 512x512 I4 sheet of the single-byte font
+- symbol: gSingleByteFontAtlas
+  binary: assets/font_sheet.bin
+  header: assets/font_sheet.inc
+  header_type: raw
+
 # All RELs live inside files/qp.bin, a U8 archive.
 modules:
 - object: files/qp.bin:rel/ahk.rel

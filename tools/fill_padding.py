@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Put retail's ASCII '0' padding back into a linked DOL.
 
-python3 tools/fill_padding.py <main.dol> <main.elf.MAP> [source_compilers.json]
+python3 tools/fill_padding.py <main.dol> <main.elf.MAP> <main_link_inputs.json>
 
 Our linker pads with zeros, retail used 0x30, so any unit linked from source
 breaks the hash without this. Retail fills:
-  - alignment gaps between objects, in .text and the data sections
-  - gaps between symbols inside an object, depending on how it was built.
-    configure.py's "padding" option says which, otherwise it goes by compiler
-    (GC/1.2.5n is small_data, everything else small_sections):
-      small_sections     any section 0x80 or smaller (MSL, Runtime, TRK)
-      small_data         .sdata and .sdata2 only (SDK, HSD)
-      small_data+data    plus .data (a few HSD objects)
-      small_data+rodata  plus .rodata (tobj)
-  - every gap in extab, there's only two, after a table in Gecko_ExceptionPPC
+  - alignment gaps between objects, based on the next input's ELF section alignment
+  - alignment gaps between symbols inside compiled objects with a padding rule
+    in configure.py
+      small_sections     eligible sections 0x80 bytes or smaller
+      small_data         .sdata and .sdata2
+      small_data+data    plus .data
+      small_data+rodata  plus .rodata
+  - alignment gaps between exception tables in compiled objects with any rule
 
 PAL doesn't do any of this, config.fill_padding turns it off there. Only
 zero bytes in our own DOL get touched, nothing comes from the retail one.
@@ -32,13 +31,39 @@ SMALL_SECTION = 0x80
 SMALL_DATA = {".sdata", ".sdata2"}
 
 
+def section_alignments(path: Path) -> dict[str, int]:
+    data = path.read_bytes()
+    if data[:6] != b"\x7fELF\x01\x02":
+        sys.exit(f"fill_padding: expected a 32-bit big-endian ELF object: {path}")
+
+    table_offset, = struct.unpack_from(">I", data, 32)
+    entry_size, count, names_index = struct.unpack_from(">HHH", data, 46)
+    section_header = struct.Struct(">10I")
+    headers = [
+        section_header.unpack_from(data, table_offset + i * entry_size)
+        for i in range(count)
+    ]
+    names_offset = headers[names_index][4]
+    alignments = {}
+    for name_offset, _, flags, _, _, _, _, _, alignment, _ in headers:
+        if flags & 2:  # SHF_ALLOC
+            start = names_offset + name_offset
+            name = data[start : data.index(b"\0", start)].decode("ascii")
+            alignments[name] = alignment
+    return alignments
+
+
+def is_alignment_gap(start: int, end: int, alignment: int) -> bool:
+    return (
+        0 < end - start < 0x20
+        and alignment > 1
+        and (start + alignment - 1) // alignment * alignment == end
+    )
+
+
 def fills_inside(rule: str, section: str, size: int) -> bool:
     if section == "extab":
         return True
-    if rule == "GC/1.2.5n":
-        rule = "small_data"
-    elif rule.startswith("GC/"):
-        rule = "small_sections"
     if rule == "small_sections":
         return size <= SMALL_SECTION
     if rule == "small_data":
@@ -51,11 +76,11 @@ def fills_inside(rule: str, section: str, size: int) -> bool:
 
 
 RE_LAYOUT = re.compile(r"^(\S+) section layout$")
-RE_ENTRY = re.compile(r"^  [0-9a-f]{8} ([0-9a-f]{6,8}) ([0-9a-f]{8}) +\d+ (\S+) \t(\S+)")
+RE_ENTRY = re.compile(r"^  [0-9a-f]{8} ([0-9a-f]{6,8}) ([0-9a-f]{8}) +(\d+) (\S+) \t(\S+)")
 
 
 def object_ranges(map_text: str):
-    """section -> [(start, end, object, [(sym_start, sym_end)])] for each object's piece of that section."""
+    """Return object ranges and their symbols' ranges and alignments by section."""
     out = {}
     current = None
     for line in map_text.splitlines():
@@ -68,62 +93,71 @@ def object_ranges(map_text: str):
         m = RE_ENTRY.match(line)
         if not m:
             continue
-        size, addr, name, obj = int(m.group(1), 16), int(m.group(2), 16), m.group(3), m.group(4)
+        size, addr, alignment, name, obj = m.groups()
+        size, addr, alignment = int(size, 16), int(addr, 16), int(alignment)
         # an object's section entry carries the section name as its symbol,
         # its symbols follow it
         if name == current:
             out.setdefault(current, []).append((addr, addr + size, obj, []))
         elif out.get(current) and out[current][-1][2] == obj and size:
-            out[current][-1][3].append((addr, addr + size))
+            out[current][-1][3].append((addr, addr + size, alignment))
     return out
 
 
 def main() -> None:
     dol_path, map_path = Path(sys.argv[1]), Path(sys.argv[2])
-    compilers = {}
-    if len(sys.argv) > 3:
-        compilers = json.loads(Path(sys.argv[3]).read_text())
+    link_inputs = json.loads(Path(sys.argv[3]).read_text())
+    padding_rules = {Path(path).name: rule for path, rule in link_inputs.items() if rule}
+    alignments = {Path(path).name: section_alignments(Path(path)) for path in link_inputs}
     dol = bytearray(dol_path.read_bytes())
     offs = struct.unpack(">18I", dol[0:72])
     addrs = struct.unpack(">18I", dol[72:144])
     sizes = struct.unpack(">18I", dol[144:216])
 
-    def file_offset(addr: int) -> int:
-        for i in range(18):
-            if sizes[i] and addrs[i] <= addr < addrs[i] + sizes[i]:
-                return offs[i] + addr - addrs[i]
-        raise ValueError(f"0x{addr:08X} is outside the DOL")
-
     filled = 0
 
     def fill(start: int, end: int, what: str) -> None:
         nonlocal filled
-        o = file_offset(start)
-        gap = dol[o : o + end - start]
+        for offset, address, size in zip(offs, addrs, sizes):
+            if address <= start < end <= address + size:
+                file_start = offset + start - address
+                file_end = offset + end - address
+                if file_end <= len(dol):
+                    break
+        else:
+            sys.exit(
+                f"fill_padding: {what} at 0x{start:08X}..0x{end:08X} "
+                "does not fit in a file-backed DOL section"
+            )
+        gap = dol[file_start:file_end]
         if any(gap):
             sys.exit(f"fill_padding: nonzero padding {what} at 0x{start:08X}")
-        dol[o : o + end - start] = bytes([FILL]) * len(gap)
+        dol[file_start:file_end] = bytes([FILL]) * len(gap)
         filled += 1
 
     for section, ranges in object_ranges(map_path.read_text(errors="replace")).items():
         ranges.sort()
         # rule 1, between objects. the linker only pads up to the next object's alignment.
-        # the map gives an object's size before dead stripping, so its last
-        # symbol is where it really ends
-        for (_, end, obj, syms), (start, _, _, _) in zip(ranges, ranges[1:]):
-            if syms:
-                end = max(e for _, e in syms)
-            if 0 < start - end < 0x20:
+        # The map gives source objects' sizes before dead stripping. Keep the
+        # declared extent of extracted objects, including unnamed tail bytes.
+        for (_, end, obj, syms), (start, _, next_obj, _) in zip(ranges, ranges[1:]):
+            if syms and obj in padding_rules:
+                end = max(e for _, e, _ in syms)
+            if is_alignment_gap(end, start, alignments[next_obj][section]):
                 fill(end, start, f"after {obj} in {section}")
         # rule 2, inside objects built from source
         for start, end, obj, syms in ranges:
-            compiler = compilers.get(obj)
-            if not compiler or not fills_inside(compiler, section, end - start):
+            rule = padding_rules.get(obj)
+            if not syms or not rule or not fills_inside(rule, section, end - start):
                 continue
-            syms.sort()
-            for (_, a_end), (b_start, _) in zip(syms, syms[1:]):
-                if 0 < b_start - a_end < 0x20:
-                    fill(a_end, b_start, f"inside {obj} {section}")
+            # At a shared address, the most aligned alias constrains the gap.
+            syms.sort(key=lambda symbol: (symbol[0], -symbol[2]))
+            covered_end = syms[0][1]
+            for sym_start, sym_end, alignment in syms[1:]:
+                if is_alignment_gap(covered_end, sym_start, alignment):
+                    fill(covered_end, sym_start, f"inside {obj} {section}")
+                # An alias can start inside a larger symbol and end before it.
+                covered_end = max(covered_end, sym_end)
     dol_path.write_bytes(dol)
     if filled:
         print(f"fill_padding: filled {filled} gap(s)")

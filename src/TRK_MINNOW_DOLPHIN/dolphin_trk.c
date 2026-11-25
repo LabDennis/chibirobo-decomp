@@ -1,10 +1,18 @@
 #include "PowerPC_EABI_Support/MetroTRK/trk.h"
 #include "Dolphin/ar.h"
+#include "Dolphin/OS/OSCache.h"
 
-extern u8 _db_stack_addr[];
 #define EXCEPTIONMASK_ADDR 0x80000044
+#define EXCEPTIONMASK_PHYSICAL_ADDR 0x00000044
+#define LOCKED_CACHE_SIZE 0x4000
+#define BAT_VALID_MASK 3
+
+enum {
+	TRK_EXTERNAL_INTERRUPT_VECTOR_INDEX = 4,
+};
 
 extern void OSResetSystem(BOOL reset, u32 resetCode, BOOL forceMenu);
+extern void __ARClearInterrupt(void);
 
 static u32 lc_base;
 
@@ -48,8 +56,8 @@ void EnableMetroTRKInterrupts(void)
  */
 u32 TRKTargetTranslate(u32 val)
 {
-	if (val >= lc_base && val < lc_base + 0x4000) {
-		if (((u32*)(&gTRKCPUState.Extended1))[36] & 3)
+	if (val >= lc_base && val < lc_base + LOCKED_CACHE_SIZE) {
+		if (gTRKCPUState.Extended1.DBAT3U_ & BAT_VALID_MASK)
 			return val;
 	}
 
@@ -77,28 +85,31 @@ void TRK_copy_vector(u32 offset)
  */
 void __TRK_copy_vectors(void)
 {
-	u32 r3 = lc_base;
-	u32* isrOffsetPtr;
-	int i;
-	u32 r29;
+	u32 maskAddress = lc_base;
+	u32* vectorOffsets;
+	int vectorIndex;
+	u32 exceptionMask;
 
-	if (r3 <= 0x44 && r3 + 0x4000 > 0x44 && gTRKCPUState.Extended1.DBAT3U_ & 3) {
-		r3 = 0x44;
+	if (maskAddress <= EXCEPTIONMASK_PHYSICAL_ADDR
+	    && maskAddress + LOCKED_CACHE_SIZE > EXCEPTIONMASK_PHYSICAL_ADDR
+	    && (gTRKCPUState.Extended1.DBAT3U_ & BAT_VALID_MASK)) {
+		maskAddress = EXCEPTIONMASK_PHYSICAL_ADDR;
 	} else {
-		r3 = EXCEPTIONMASK_ADDR;
+		maskAddress = EXCEPTIONMASK_ADDR;
 	}
 
-	i            = 0;
-	r29          = *(u32*)r3;
-	isrOffsetPtr = TRK_ISR_OFFSETS;
+	vectorIndex = 0;
+	exceptionMask = *(u32*)maskAddress;
+	vectorOffsets = TRK_ISR_OFFSETS;
 
+	// Leave the external interrupt vector in place.
 	do {
-		if ((r29 & (1 << i)) && i != 4) {
-			TRK_copy_vector(isrOffsetPtr[i]);
+		if ((exceptionMask & (1 << vectorIndex)) && vectorIndex != TRK_EXTERNAL_INTERRUPT_VECTOR_INDEX) {
+			TRK_copy_vector(vectorOffsets[vectorIndex]);
 		}
 
-		i++;
-	} while (i <= 14);
+		vectorIndex++;
+	} while (vectorIndex <= 14);
 }
 
 /**
@@ -113,269 +124,110 @@ DSError TRKInitializeTarget()
 	return DS_NoError;
 }
 
-#define __dcbi(a, b)    asm { dcbi a, b }
-#define __dcbfASM(a, b) asm { dcbf a, b }
+#define TRK_ARAM_ADDRESS_LIMIT 0x08000000
+
+static u32 CacheLengthForDMA(u32 address, u32 dmaLength)
+{
+	// The range APIs add the first line's offset before counting cache lines.
+	u32 lineOffset = address - OSRoundDown32B(address);
+	return dmaLength == 0 ? 0 : dmaLength - lineOffset;
+}
 
 /**
  * @note Address: 0x8014F848
  * @note Size: 0x134
  */
-void TRK__read_aram(register int c, register u32 p2, void* p3)
+void TRK__read_aram(u32 mainMemoryAddress, u32 aramAddress, const u32* length)
 {
-	u32 err;
-	int i;
-	register int counter;
-	u16 r;
-	u32 g;
-	u32 x;
-	u32 size;
+	u32 dmaAddress;
+	u32 dmaLength;
+	u16 pendingInterrupt;
 
-	if ((size_t)p2 < 0x4000 || p2 + *(u32*)p3 > 0x8000000) {
+	if (aramAddress < __AR_ARAM_USR_BASE_ADDR || aramAddress + *length > TRK_ARAM_ADDRESS_LIMIT) {
 		return;
 	}
 
-	x       = p2 & ~0x1F;
-	size    = *(u32*)p3 + (p2 & 0x1F);
-	size    = OSRoundUp32B(size);
-	counter = 0;
+	dmaAddress = OSRoundDown32B(aramAddress);
+	dmaLength = OSRoundUp32B(*length + (aramAddress - dmaAddress));
+	DCInvalidateRange((void*)mainMemoryAddress, CacheLengthForDMA(mainMemoryAddress, dmaLength));
 
-	for (i = 0; i < size; i += 0x20) {
-		__dcbi(counter, c);
-		counter += 0x20;
-	}
+	while (ARGetDMAStatus()) { }
 
-	do {
-		err = ARGetDMAStatus();
-	} while (err);
-
-	r = __ARGetInterruptStatus();
-	g = 0x8000000;
+	pendingInterrupt = __ARGetInterruptStatus();
 	__ARClearInterrupt();
-
-	ARStartDMA(1, c, x, size);
+	ARStartDMARead(mainMemoryAddress, dmaAddress, dmaLength);
 
 	while (!__ARGetInterruptStatus()) { }
 
-	if (!r) {
+	if (!pendingInterrupt) {
 		__ARClearInterrupt();
 	}
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x5C
- */
-void __read_aram_1block(void)
+static void ReadAramBlock(void* block, u32 aramAddress)
 {
-	// UNUSED FUNCTION
+	DCInvalidateRange(block, ARQ_DMA_ALIGNMENT);
+	__ARClearInterrupt();
+	ARStartDMARead((u32)block, aramAddress, ARQ_DMA_ALIGNMENT);
+
+	while (!__ARGetInterruptStatus()) { }
 }
 
 /**
  * @note Address: 0x8014F65C
  * @note Size: 0x1EC
  */
-void TRK__write_aram(register int c, register u32 p2, void* p3)
+void TRK__write_aram(u32 mainMemoryAddress, u32 aramAddress, const u32* length)
 {
-	u8 buff[32] ATTRIBUTE_ALIGN(32);
-	u32 err;
-	register int count = c;
-	register u32 bf;
-	u32 uVar1;
-	u32 size;
-	u16 r;
-	register u32 g;
-	register int counter;
-	u32 i;
+	u8 block[ARQ_DMA_ALIGNMENT] ATTRIBUTE_ALIGN(ARQ_DMA_ALIGNMENT);
+	u32 dmaAddress;
+	u32 dmaLength;
+	u32 cachedAramBlock = TRK_ARAM_ADDRESS_LIMIT;
+	u32 firstBlockOffset;
+	u32 endAddress;
+	u32 lastBlockAddress;
+	u32 lastBlockOffset;
+	u16 pendingInterrupt;
 
-	if ((size_t)p2 < 0x4000 || p2 + *(u32*)p3 > 0x8000000) {
+	if (aramAddress < __AR_ARAM_USR_BASE_ADDR || aramAddress + *length > TRK_ARAM_ADDRESS_LIMIT) {
 		return;
 	}
 
-	uVar1   = p2 & ~0x1f;
-	counter = 0;
-	size    = *(u32*)p3 + (p2 & 0x1f);
-	size    = OSRoundUp32B(size);
+	dmaAddress = OSRoundDown32B(aramAddress);
+	firstBlockOffset = aramAddress - dmaAddress;
+	dmaLength = OSRoundUp32B(*length + firstBlockOffset);
+	DCFlushRangeNoSync((void*)mainMemoryAddress, CacheLengthForDMA(mainMemoryAddress, dmaLength));
 
-	for (i = 0; i < size; i += 0x20) {
-		__dcbf((void*)counter, count);
-		counter += 0x20;
+	while (ARGetDMAStatus()) { }
+
+	pendingInterrupt = __ARGetInterruptStatus();
+	if (firstBlockOffset != 0) {
+		cachedAramBlock = dmaAddress;
+		ReadAramBlock(block, dmaAddress);
+		TRK_memcpy((void*)mainMemoryAddress, block, firstBlockOffset);
+		DCFlushRangeNoSync((void*)mainMemoryAddress, 1);
 	}
 
-	do {
-		err = ARGetDMAStatus();
-	} while (err);
+	endAddress = aramAddress + *length;
+	lastBlockAddress = OSRoundDown32B(endAddress);
+	lastBlockOffset = endAddress - lastBlockAddress;
+	if (lastBlockOffset != 0) {
+		void* tail = (void*)(mainMemoryAddress + endAddress);
 
-	r = __ARGetInterruptStatus();
-	g = 0x8000000;
-
-	counter = p2 & 0x1f;
-	if (counter) {
-		g  = uVar1;
-		bf = (u32)buff;
-		__dcbi(r0, bf);
-		__ARClearInterrupt();
-
-		ARStartDMA(1, bf, uVar1, 0x20);
-
-		while (!__ARGetInterruptStatus()) { }
-
-		TRK_memcpy((void*)c, buff, counter);
-		__dcbfASM(r0, c);
-	}
-
-	p2 += *(u32*)p3;
-	counter = p2 & 0x1f;
-	if (counter) {
-		u32 val = p2 & ~0x1F;
-		if (val != g) {
-			bf = (u32)buff;
-			__dcbi(r0, bf);
-			__ARClearInterrupt();
-			ARStartDMA(1, bf, val, 0x20);
-
-			while (!__ARGetInterruptStatus()) { }
+		if (lastBlockAddress != cachedAramBlock) {
+			ReadAramBlock(block, lastBlockAddress);
 		}
-		g = c + p2;
-		TRK_memcpy((void*)g, (void*)(buff + counter), 0x20 - counter);
-
-		__dcbfASM(r0, g);
+		TRK_memcpy(tail, block + lastBlockOffset, ARQ_DMA_ALIGNMENT - lastBlockOffset);
+		DCFlushRangeNoSync(tail, 1);
 	}
+
 	__sync();
 	__ARClearInterrupt();
-	ARStartDMA(0, c, uVar1, size);
-	if (!r) {
+	ARStartDMAWrite(mainMemoryAddress, dmaAddress, dmaLength);
+
+	if (!pendingInterrupt) {
 		while (!__ARGetInterruptStatus()) { }
 
 		__ARClearInterrupt();
 	}
-}
-
-/**
- * @note Address: 0x8014F530
- * @note Size: 0x98
- */
-ASM void InitMetroTRK(void)
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	addi r1, r1, -4
-	stw r3, 0(r1)
-	lis r3, gTRKCPUState@h
-	ori r3, r3, gTRKCPUState@l
-	stmw r0, ProcessorState_PPC.Default.GPR(r3) //Save the gprs
-	lwz r4, 0(r1)
-	addi r1, r1, 4
-	stw r1, ProcessorState_PPC.Default.GPR[1](r3)
-	stw r4, ProcessorState_PPC.Default.GPR[3](r3)
-	mflr r4
-	stw r4, ProcessorState_PPC.Default.LR(r3)
-	stw r4, ProcessorState_PPC.Default.PC(r3)
-	mfcr r4
-	stw r4, ProcessorState_PPC.Default.CR(r3)
-	//???
-	mfmsr r4
-	ori r3, r4, (1 << (31 - 16))
-	xori r3, r3, (1 << (31 - 16))
-	mtmsr r3
-	mtsrr1 r4 //Copy msr to srr1
-	//Save misc registers to gTRKCPUState
-	bl TRKSaveExtended1Block
-	lis r3, gTRKCPUState@h
-	ori r3, r3, gTRKCPUState@l
-	lmw r0, ProcessorState_PPC.Default.GPR(r3) //Restore the gprs
-	//Reset IABR and DABR
-	li r0, 0
-	mtspr  0x3f2, r0
-	mtspr  0x3f5, r0
-	//Restore stack pointer
-	lis r1, _db_stack_addr@h
-	ori r1, r1, _db_stack_addr@l
-	mr r3, r5
-	bl InitMetroTRKCommTable //Initialize comm table
-	/*
-	If InitMetroTRKCommTable returned 1 (failure), an invalid hardware
-	id or the id for GDEV was somehow passed. Since only BBA or NDEV
-	are supported, we return early. Otherwise, we proceed with
-	starting up TRK.
-	*/
-	cmpwi r3, 1
-	bne initCommTableSuccess
-	/*
-	BUG: The code probably originally reloaded gTRKCPUState here, but
-	as is it will read the returned value of InitMetroTRKCommTable
-	as a TRKCPUState struct pointer, causing the CPU to return to
-	a garbage code address.
-	*/
-	lwz r4, ProcessorState_PPC.Default.LR(r3)
-	mtlr r4
-	lmw r0, ProcessorState_PPC.Default.GPR(r3) //Restore the gprs
-	blr
-initCommTableSuccess:
-	b TRK_main //Jump to TRK_main
-	blr
-#endif // clang-format on
-}
-
-/**
- * @note Address: 0x8014F5C8
- * @note Size: 0x94
- */
-ASM void InitMetroTRK_BBA(void)
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	addi r1, r1, -4
-	stw r3, 0(r1)
-	lis r3, gTRKCPUState@h
-	ori r3, r3, gTRKCPUState@l
-	stmw r0, ProcessorState_PPC.Default.GPR(r3) //Save the gprs
-	lwz r4, 0(r1)
-	addi r1, r1, 4
-	stw r1, ProcessorState_PPC.Default.GPR[1](r3)
-	stw r4, ProcessorState_PPC.Default.GPR[3](r3)
-	mflr r4
-	stw r4, ProcessorState_PPC.Default.LR(r3)
-	stw r4, ProcessorState_PPC.Default.PC(r3)
-	mfcr r4
-	stw r4, ProcessorState_PPC.Default.CR(r3)
-	//Turn on external interrupts
-	mfmsr r4
-	ori r3, r4, (1 << (31 - 16))
-	mtmsr r3
-	mtsrr1 r4 //Copy original msr to srr1
-	//Save misc registers to gTRKCPUState
-	bl TRKSaveExtended1Block
-	lis r3, gTRKCPUState@h
-	ori r3, r3, gTRKCPUState@l
-	lmw r0, ProcessorState_PPC.Default.GPR(r3) //Restore the gprs
-	//Reset IABR and DABR
-	li r0, 0
-	mtspr  0x3f2, r0
-	mtspr 0x3f5, r0
-	//Restore the stack pointer
-	lis r1, _db_stack_addr@h
-	ori r1, r1, _db_stack_addr@l
-	li r3, 2
-	bl InitMetroTRKCommTable //Initialize comm table as BBA hardware
-	/*
-	If InitMetroTRKCommTable returned 1 (failure), something went wrong
-	or whatever reason. If everything goes as expected, we proceed with
-	starting up TRK.
-	*/
-	cmpwi r3, 1
-	bne initCommTableSuccess
-	/*
-	BUG: The code probably originally reloaded gTRKCPUState here, but
-	as is it will read the returned value of InitMetroTRKCommTable
-	as a TRKCPUState struct pointer, causing the CPU to return to
-	a garbage code address.
-	*/
-	lwz r4, ProcessorState_PPC.Default.LR(r3)
-	mtlr r4
-	lmw r0, ProcessorState_PPC.Default.GPR(r3)
-	blr
-initCommTableSuccess:
-	b TRK_main //Jump to TRK_main
-	blr
-#endif // clang-format on
 }

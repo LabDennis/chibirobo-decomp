@@ -2,11 +2,16 @@
 #define _DOLPHIN_GX_INTERNAL_H_
 
 #include <dolphin/gx.h>
+#include <dolphin/gx/GXCommandList.h>
 #include "global.h" // IWYU pragma: export
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static inline u32 __GXPackRGBA8(GXColor color) {
+    return ((u32)color.r << 24) | ((u32)color.g << 16) | ((u32)color.b << 8) | color.a;
+}
 
 // FIFO WRITE
 
@@ -82,7 +87,7 @@ do { \
 
 #define GX_WRITE_XF_REG(addr, value) \
 do { \
-    GX_WRITE_U8(0x10); \
+    GX_WRITE_U8(GX_LOAD_XF_REG); \
     GX_WRITE_U32(0x1000 + (addr)); \
     GX_WRITE_U32(value); \
     VERIF_XF_REG(addr, value); \
@@ -91,7 +96,7 @@ do { \
 #if DEBUG
 #define GX_WRITE_XF_REG_2(addr, value) \
 do { \
-    u32 xfData = (value); &xfData; \
+    u32 xfData = (value); \
     GX_WRITE_U32(value); \
     VERIF_XF_REG_alt(addr, xfData); \
 } while (0)
@@ -116,75 +121,22 @@ do { \
 
 #define GX_WRITE_RAS_REG(value) \
 do { \
-    GX_WRITE_U8(0x61); \
+    GX_WRITE_U8(GX_LOAD_BP_REG); \
     GX_WRITE_U32(value); \
     VERIF_RAS_REG(value); \
 } while (0)
 
-#if DEBUG
-#define GX_WRITE_SOME_REG2(a, b, c, addr) \
+#define GX_WRITE_CP_REG(addr, value) \
 do { \
-    long regAddr; \
-    GX_WRITE_U8(a); \
-    GX_WRITE_U8(b); \
-    GX_WRITE_U32(c); \
-    regAddr = addr; \
-    if (regAddr >= 0 && regAddr < 4) { \
-        __GXData->indexBase[regAddr] = c; \
-    } \
-} while (0)
-#else
-#define GX_WRITE_SOME_REG2(a, b, c, addr) \
-do { \
-    GX_WRITE_U8(a); \
-    GX_WRITE_U8(b); \
-    GX_WRITE_U32(c); \
-} while (0)
-#endif
-
-#if DEBUG
-#define GX_WRITE_SOME_REG3(a, b, c, addr) \
-do { \
-    long regAddr; \
-    GX_WRITE_U8(a); \
-    GX_WRITE_U8(b); \
-    GX_WRITE_U32(c); \
-    regAddr = addr; \
-    if (regAddr >= 0 && regAddr < 4) { \
-        __GXData->indexStride[regAddr] = c; \
-    } \
-} while (0)
-#else
-#define GX_WRITE_SOME_REG3(a, b, c, addr) \
-do { \
-    GX_WRITE_U8(a); \
-    GX_WRITE_U8(b); \
-    GX_WRITE_U32(c); \
-} while (0)
-#endif
-
-#define GX_WRITE_SOME_REG4(a, b, c, addr) \
-do { \
-    long regAddr; \
-    GX_WRITE_U8(a); \
-    GX_WRITE_U8(b); \
-    GX_WRITE_U32(c); \
-    regAddr = addr; \
+    GX_WRITE_U8(GX_LOAD_CP_REG); \
+    GX_WRITE_U8(addr); \
+    GX_WRITE_U32(value); \
 } while (0)
 
 // REG MACROS
 
 #define GET_REG_FIELD(reg, size, shift) ((int)((reg) >> (shift)) & ((1 << (size)) - 1))
 
-// TODO: reconcile reg macro differences
-// this one is needed to match non GX libs
-#define OLD_SET_REG_FIELD(line, reg, size, shift, val) \
-do { \
-    ASSERTMSGLINE(line, ((u32)(val) & ~((1 << (size)) - 1)) == 0, "GX Internal: Register field out of range"); \
-    (reg) = ((u32)(reg) & ~(((1 << (size)) - 1) << (shift))) | ((u32)(val) << (shift)); \
-} while (0)
-
-// above doesn't seem to work with GX, only can get it to work with this
 #define SET_REG_FIELD(line, reg, size, shift, val) \
 do { \
     ASSERTMSGLINE(line, ((u32)(val) & ~((1 << (size)) - 1)) == 0, "GX Internal: Register field out of range"); \
@@ -231,8 +183,14 @@ void __GXInitGX();
 void __GXInitRevisionBits(void);
 
 typedef struct __GXData_struct {
-    u16 vNumNot;
-    u16 bpSentNot;
+    union {
+        struct {
+            u16 vNumNot;
+            u16 bpSentNot;
+        };
+        // GXBegin checks both flush flags with one word load.
+        u32 flushFlags;
+    };
     u16 vNum;
     u16 vLim;
     u32 cpEnable;

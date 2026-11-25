@@ -9,7 +9,7 @@ extern "C" {
 #include <sysdolphin/lobj.h>
 
 // the empty function after HSD_StartRender in initialize.c
-void fn_801CAFC0(void);
+void HSD_EndRender(void);
 }
 
 // a light's shadow, an HSD_Shadow plus the viewing rect and a camera copy to render it
@@ -23,6 +23,11 @@ public:
 	u8 mIntensity;         // _1F0
 	// _1F4 vtable
 
+	CShadow()
+	{
+		mActive = FALSE;
+		mShadow = NULL;
+	}
 	virtual ~CShadow() { } // _08
 
 	void Init(HSD_LObj* lobj);

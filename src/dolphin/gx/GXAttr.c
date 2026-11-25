@@ -151,8 +151,8 @@ void GXSetVtxDescv(const GXVtxDescList *attrPtr) {
  * @note Size: 0xBC
  */
 void __GXSetVCD(void) {
-    GX_WRITE_SOME_REG4(8, 0x50, __GXData->vcdLo, -12);
-    GX_WRITE_SOME_REG4(8, 0x60, __GXData->vcdHi, -12);
+    GX_WRITE_CP_REG(GX_CP_REG_VCD_LO, __GXData->vcdLo);
+    GX_WRITE_CP_REG(GX_CP_REG_VCD_HI, __GXData->vcdHi);
     __GXXfVtxSpecs();
 }
 
@@ -425,9 +425,9 @@ void __GXSetVAT(void) {
     i = 0;
     do {
         if (dirty & 1) {
-            GX_WRITE_SOME_REG4(8, i | 0x70, __GXData->vatA[i], i - 12);
-            GX_WRITE_SOME_REG4(8, i | 0x80, __GXData->vatB[i], i - 12);
-            GX_WRITE_SOME_REG4(8, i | 0x90, __GXData->vatC[i], i - 12);
+            GX_WRITE_CP_REG(GX_CP_REG_VAT_GRP0 | i, __GXData->vatA[i]);
+            GX_WRITE_CP_REG(GX_CP_REG_VAT_GRP1 | i, __GXData->vatB[i]);
+            GX_WRITE_CP_REG(GX_CP_REG_VAT_GRP2 | i, __GXData->vatC[i]);
         }
 
         dirty >>= 1;
@@ -574,10 +574,8 @@ void GXGetVtxAttrFmtv(GXVtxFmt fmt, GXVtxAttrFmtList* vat) {
  * @note Size: 0x44
  */
 void GXSetArray(GXAttr attr, void* base_ptr, u8 stride) {
-    GXAttr cpAttr;
+    u32 arrayIndex;
     u32 phyAddr;
-
-    attr;  // needed to match
 
     CHECK_GXBEGIN(963, "GXSetArray");
     if (attr == GX_VA_NBT) {
@@ -585,11 +583,21 @@ void GXSetArray(GXAttr attr, void* base_ptr, u8 stride) {
     }
 
     CHECK_ATTRNAME5(966, attr);
-    cpAttr = attr - GX_VA_POS;
+    arrayIndex = attr - GX_VA_POS;
     phyAddr = (u32)base_ptr & 0x3FFFFFFF;
 
-    GX_WRITE_SOME_REG2(8, cpAttr | 0xA0, phyAddr, cpAttr - 12);
-    GX_WRITE_SOME_REG3(8, cpAttr | 0xB0, stride, cpAttr - 12);
+    GX_WRITE_CP_REG(GX_CP_REG_ARRAYBASE | arrayIndex, phyAddr);
+#if DEBUG
+    if (attr >= GX_POS_MTX_ARRAY && attr <= GX_LIGHT_ARRAY) {
+        __GXData->indexBase[attr - GX_POS_MTX_ARRAY] = phyAddr;
+    }
+#endif
+    GX_WRITE_CP_REG(GX_CP_REG_ARRAYSTRIDE | arrayIndex, stride);
+#if DEBUG
+    if (attr >= GX_POS_MTX_ARRAY && attr <= GX_LIGHT_ARRAY) {
+        __GXData->indexStride[attr - GX_POS_MTX_ARRAY] = stride;
+    }
+#endif
 }
 
 /**
@@ -598,7 +606,7 @@ void GXSetArray(GXAttr attr, void* base_ptr, u8 stride) {
  */
 void GXInvalidateVtxCache(void) {
     CHECK_GXBEGIN(988, "GXInvalidateVtxCache");
-    GX_WRITE_U8(0x48);
+    GX_WRITE_U8(GX_CMD_INVAL_VTX);
 }
 
 /**
@@ -608,7 +616,6 @@ void GXInvalidateVtxCache(void) {
 void GXSetTexCoordGen2(GXTexCoordID dst_coord, GXTexGenType func, GXTexGenSrc src_param, u32 mtx, GXBool normalize, u32 pt_texmtx) {
     u32 reg = 0;
     u32 row;
-    u32 bumprow;  // unused
     u32 form;
     GXAttr mtxIdAttr;
 
@@ -632,13 +639,14 @@ void GXSetTexCoordGen2(GXTexCoordID dst_coord, GXTexGenType func, GXTexGenSrc sr
     case GX_TG_TEX5:    row = 10; break;
     case GX_TG_TEX6:    row = 11; break;
     case GX_TG_TEX7:    row = 12; break;
-    case GX_TG_TEXCOORD0: bumprow; break;
-    case GX_TG_TEXCOORD1: bumprow; break;
-    case GX_TG_TEXCOORD2: bumprow; break;
-    case GX_TG_TEXCOORD3: bumprow; break;
-    case GX_TG_TEXCOORD4: bumprow; break;
-    case GX_TG_TEXCOORD5: bumprow; break;
-    case GX_TG_TEXCOORD6: bumprow; break;
+    case GX_TG_TEXCOORD0:
+    case GX_TG_TEXCOORD1:
+    case GX_TG_TEXCOORD2:
+    case GX_TG_TEXCOORD3:
+    case GX_TG_TEXCOORD4:
+    case GX_TG_TEXCOORD5:
+    case GX_TG_TEXCOORD6:
+        break;
     default:
         ASSERTMSGLINE(1059, 0, "GXSetTexCoordGen: Invalid source parameter");
         break;

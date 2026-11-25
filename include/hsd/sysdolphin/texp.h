@@ -164,5 +164,8 @@ void HSD_TExpColorIn(HSD_TExp* texp, HSD_TEInput sel_a, HSD_TExp* exp_a, HSD_TEI
 void HSD_TExpAlphaIn(HSD_TExp* texp, HSD_TEInput sel_a, HSD_TExp* exp_a, HSD_TEInput sel_b, HSD_TExp* exp_b, HSD_TEInput sel_c,
                      HSD_TExp* exp_c, HSD_TEInput sel_d, HSD_TExp* exp_d);
 void HSD_TExpOrder(HSD_TExp* texp, struct _HSD_TObj* tex, s32 chan);
+int HSD_TExpCompile(HSD_TExp* texp, HSD_TExpTevDesc** tevdesc, HSD_TExp** texp_list);
+void HSD_TExpSetupTev(HSD_TExpTevDesc* tevdesc, HSD_TExp* texp);
+void HSD_TExpFreeTevDesc(HSD_TExpTevDesc* tevdesc);
 
 #endif

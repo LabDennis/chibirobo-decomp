@@ -1,4 +1,5 @@
 #include "Dolphin/gx.h"
+#include <sdk/private/gx/GXCPRegs.h>
 
 /**
  * @note Address: 0x8018C878
@@ -19,7 +20,7 @@ void GXSetGPMetric(GXPerf0 perf0, GXPerf1 perf1)
 	case GX_PERF0_XF_REGRD_CLKS:
 	case GX_PERF0_CLIP_RATIO:
 	case GX_PERF0_CLOCKS:
-		GX_XF_LOAD_REG(0x1006, 0);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0);
 		break;
 
 	case GX_PERF0_TRIANGLES:
@@ -78,14 +79,14 @@ void GXSetGPMetric(GXPerf0 perf0, GXPerf1 perf1)
 	case GX_PERF1_VC_ALL_STALLS:
 	case GX_PERF1_VERTICES:
 		GX_SET_REG(gx->perfSel, 0, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 
 	case GX_PERF1_FIFO_REQ:
 	case GX_PERF1_CALL_REQ:
 	case GX_PERF1_VC_MISS_REQ:
 	case GX_PERF1_CP_ALL_REQ:
-		GX_SET_CP_REG(3, 0);
+		GX_SET_CP_REG(GX_CP_REG_PERF_SELECT, 0);
 		break;
 
 	case GX_PERF1_NONE:
@@ -96,40 +97,40 @@ void GXSetGPMetric(GXPerf0 perf0, GXPerf1 perf1)
 
 	switch (gx->perf0) {
 	case GX_PERF0_VERTICES:
-		GX_XF_LOAD_REG(0x1006, 0x273);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x273);
 		break;
 	case GX_PERF0_CLIP_VTX:
-		GX_XF_LOAD_REG(0x1006, 0x14A);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x14A);
 		break;
 	case GX_PERF0_CLIP_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x16B);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x16B);
 		break;
 	case GX_PERF0_XF_WAIT_IN:
-		GX_XF_LOAD_REG(0x1006, 0x84);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x84);
 		break;
 	case GX_PERF0_XF_WAIT_OUT:
-		GX_XF_LOAD_REG(0x1006, 0xC6);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0xC6);
 		break;
 	case GX_PERF0_XF_XFRM_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x210);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x210);
 		break;
 	case GX_PERF0_XF_LIT_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x252);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x252);
 		break;
 	case GX_PERF0_XF_BOT_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x231);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x231);
 		break;
 	case GX_PERF0_XF_REGLD_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x1AD);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x1AD);
 		break;
 	case GX_PERF0_XF_REGRD_CLKS:
-		GX_XF_LOAD_REG(0x1006, 0x1CE);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x1CE);
 		break;
 	case GX_PERF0_CLOCKS:
-		GX_XF_LOAD_REG(0x1006, 0x21);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x21);
 		break;
 	case GX_PERF0_CLIP_RATIO:
-		GX_XF_LOAD_REG(0x1006, 0x153);
+		GX_XF_LOAD_REG(GX_XF_REG_PERF0, 0x153);
 		break;
 
 	case GX_PERF0_TRIANGLES:
@@ -243,48 +244,48 @@ void GXSetGPMetric(GXPerf0 perf0, GXPerf1 perf1)
 
 	case GX_PERF1_VC_ELEMQ_FULL:
 		GX_SET_REG(gx->perfSel, 2, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_MISSQ_FULL:
 		GX_SET_REG(gx->perfSel, 3, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_MEMREQ_FULL:
 		GX_SET_REG(gx->perfSel, 4, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_STATUS7:
 		GX_SET_REG(gx->perfSel, 5, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_MISSREP_FULL:
 		GX_SET_REG(gx->perfSel, 6, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_STREAMBUF_LOW:
 		GX_SET_REG(gx->perfSel, 7, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VC_ALL_STALLS:
 		GX_SET_REG(gx->perfSel, 9, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 	case GX_PERF1_VERTICES:
 		GX_SET_REG(gx->perfSel, 8, 24, 27);
-		GX_CP_LOAD_REG(0x20, gx->perfSel);
+		GX_CP_LOAD_REG(GX_CP_CMD_PERF_SELECT, gx->perfSel);
 		break;
 
 	case GX_PERF1_FIFO_REQ:
-		GX_SET_CP_REG(3, 2);
+		GX_SET_CP_REG(GX_CP_REG_PERF_SELECT, 2);
 		break;
 	case GX_PERF1_CALL_REQ:
-		GX_SET_CP_REG(3, 3);
+		GX_SET_CP_REG(GX_CP_REG_PERF_SELECT, 3);
 		break;
 	case GX_PERF1_VC_MISS_REQ:
-		GX_SET_CP_REG(3, 4);
+		GX_SET_CP_REG(GX_CP_REG_PERF_SELECT, 4);
 		break;
 	case GX_PERF1_CP_ALL_REQ:
-		GX_SET_CP_REG(3, 5);
+		GX_SET_CP_REG(GX_CP_REG_PERF_SELECT, 5);
 		break;
 
 	case GX_PERF1_NONE:
@@ -295,133 +296,21 @@ void GXSetGPMetric(GXPerf0 perf0, GXPerf1 perf1)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x1A8
- */
-void GXReadGPMetric(u32* count0, u32* count1)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x8018D0C0
  * @note Size: 0x10
  */
 void GXClearGPMetric(void)
 {
-	GX_SET_CP_REG(2, 4);
+	GX_SET_CP_REG(GX_CP_REG_CLEAR, GX_CP_CLEAR_METRICS);
 }
 
 /**
  * @note Address: N/A
- * @note Size: 0x2C
  */
-u32 GXReadGP0Metric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x2C
- */
-u32 GXReadGP1Metric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x214
- */
-void GXReadMemMetric(u32* cpReq, u32* tcReq, u32* cpuReadReq, u32* cpuWriteReq, u32* dspReq, u32* ioReq, u32* viReq, u32* peReq, u32* rfReq,
-                     u32* fiReq)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xA8
- */
-void GXClearMemMetric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x138
- */
-void GXReadPixMetric(u32* topIn, u32* topOut, u32* bottomIn, u32* bottomOut, u32* clearIn, u32* copyClocks)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x30
- */
-void GXClearPixMetric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x44
- */
-void GXSetVCacheMetric(GXVCachePerf attr)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x94
- */
-void GXReadVCacheMetric(u32* check, u32* miss, u32* stall)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x1C
- */
-void GXClearVCacheMetric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x44
- */
-void GXInitXfRasMetric(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xC4
- * TODO: use enums for the read regs
- */
-#pragma scheduling off
 void GXReadXfRasMetric(u32* xfWaitIn, u32* xfWaitOut, u32* rasBusy, u32* clocks)
 {
-	*rasBusy   = GXReadCPReg(32, 33);
-	*clocks    = GXReadCPReg(34, 35);
-	*xfWaitIn  = GXReadCPReg(36, 37);
-	*xfWaitOut = GXReadCPReg(38, 39);
-}
-#pragma scheduling reset
-/**
- * @note Address: N/A
- * @note Size: 0x40
- */
-u32 GXReadClksPerVtx(void)
-{
-	// UNUSED FUNCTION
+	*rasBusy   = GXReadCPReg(GX_CP_REG_RAS_BUSY_LO, GX_CP_REG_RAS_BUSY_HI);
+	*clocks    = GXReadCPReg(GX_CP_REG_CLOCKS_LO, GX_CP_REG_CLOCKS_HI);
+	*xfWaitIn  = GXReadCPReg(GX_CP_REG_XF_WAIT_IN_LO, GX_CP_REG_XF_WAIT_IN_HI);
+	*xfWaitOut = GXReadCPReg(GX_CP_REG_XF_WAIT_OUT_LO, GX_CP_REG_XF_WAIT_OUT_HI);
 }

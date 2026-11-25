@@ -1,5 +1,5 @@
 #include <dolphin/dolphin.h>
-#include <dolphin/ax.h>
+#include <dolphin/axfx.h>
 
 /**
  * @note Address: 0x8017CD24

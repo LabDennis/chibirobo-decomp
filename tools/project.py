@@ -57,12 +57,13 @@ class Object:
             "asflags": None,
             "asm_dir": None,
             "cflags": None,
-            "extab_padding": None,
             "extra_asflags": [],
+            "extra_as_implicit": [],
             "extra_cflags": [],
             "extra_clang_flags": [],
             "lib": None,
             "mw_version": None,
+            "padding": None,
             "progress_category": None,
             "rels": None,
             "scratch_preset_id": None,
@@ -94,7 +95,6 @@ class Object:
         set_default("add_to_all", True)
         set_default("asflags", config.asflags)
         set_default("asm_dir", config.asm_dir)
-        set_default("extab_padding", None)
         set_default("mw_version", config.linker_version)
         set_default("rels", False)
         set_default("scratch_preset_id", config.scratch_preset_id)
@@ -123,6 +123,10 @@ class Object:
                 Path(obj.options["asm_dir"]) / obj.options["source"]
             ).with_suffix(".s")
         base_name = Path(self.name).with_suffix("")
+        # MWCC names its object and dependency file after the input source.
+        # Give an aliased C/C++ source its own output directory.
+        if file_is_c_cpp(obj.src_path) and base_name.name != obj.src_path.stem:
+            base_name /= obj.src_path.stem
         # a REL only build of a name the DOL also has gets its own output folder
         src_dir = "src_rels" if obj.options["rels"] else "src"
         obj.src_obj_path = build_dir / src_dir / f"{base_name}.o"
@@ -282,6 +286,9 @@ class ProjectConfig:
     # Gets the output path for build-related files.
     def out_path(self) -> Path:
         return self.build_dir / str(self.version)
+
+    def report_project_path(self) -> Path:
+        return self.out_path() / "report"
 
     # Gets the path to the compilers directory.
     # Exits the program if neither `compilers_path` nor `compilers_tag` is provided.
@@ -470,8 +477,8 @@ def generate_build(config: ProjectConfig) -> None:
     config.validate()
     objects = config.objects()
     build_config = load_build_config(config, config.out_path() / "config.json")
-    generate_build_ninja(config, objects, build_config)
-    generate_objdiff_config(config, objects, build_config)
+    source_linkage = generate_build_ninja(config, objects, build_config)
+    generate_objdiff_config(config, objects, build_config, source_linkage)
     generate_compile_commands(config, objects, build_config)
 
 
@@ -480,7 +487,9 @@ def generate_build_ninja(
     config: ProjectConfig,
     objects: Dict[str, Object],
     build_config: Optional[BuildConfig],
-) -> None:
+) -> Dict[Tuple[int, str], bool]:
+    # Record units with a source build rule and whether that object is linked.
+    source_linkage: Dict[Tuple[int, str], bool] = {}
     out = io.StringIO()
     n = ninja_syntax.Writer(out)
     n.variable("ninja_required_version", "1.3")
@@ -511,6 +520,8 @@ def generate_build_ninja(
     n.comment("Tooling")
 
     build_path = config.out_path()
+    report_project = config.report_project_path()
+    report_config_path = report_project / "objdiff.json"
     report_path = build_path / "report.json"
     build_tools_path = config.build_dir / "tools"
     download_tool = config.tools_dir / "download_tool.py"
@@ -704,14 +715,6 @@ def generate_build_ninja(
     mwcc_pch_sjis_cmd = f"{wrapper_cmd}{sjiswrap} {mwcc} $cflags -MMD -c $in -o $basedir -precompile $basefilestem.mch"
     mwcc_pch_sjis_implicit: List[Optional[Path]] = [*mwcc_implicit, sjiswrap]
 
-    # MWCC with extab post-processing
-    mwcc_extab_cmd = (
-        f'{CHAIN}{mwcc_cmd} && {dtk} extab clean --padding "$extab_padding" $out $out'
-    )
-    mwcc_extab_implicit: List[Optional[Path]] = [*mwcc_implicit, dtk]
-    mwcc_sjis_extab_cmd = f'{CHAIN}{mwcc_sjis_cmd} && {dtk} extab clean --padding "$extab_padding" $out $out'
-    mwcc_sjis_extab_implicit: List[Optional[Path]] = [*mwcc_sjis_implicit, dtk]
-
     # MWLD
     mwld = compiler_path / "mwldeppc.exe"
     mwld_cmd = f"{wrapper_cmd}{mwld} $ldflags -o $out @$out.rsp"
@@ -733,14 +736,10 @@ def generate_build_ninja(
         mwcc_sjis_cmd += f" && $python {transform_dep} $basefile.d $basefile.d"
         mwcc_pch_cmd += f" && $python {transform_dep} $basefile.d $basefile.d"
         mwcc_pch_sjis_cmd += f" && $python {transform_dep} $basefile.d $basefile.d"
-        mwcc_extab_cmd += f" && $python {transform_dep} $basefile.d $basefile.d"
-        mwcc_sjis_extab_cmd += f" && $python {transform_dep} $basefile.d $basefile.d"
         mwcc_implicit.append(transform_dep)
         mwcc_sjis_implicit.append(transform_dep)
         mwcc_pch_implicit.append(transform_dep)
         mwcc_pch_sjis_implicit.append(transform_dep)
-        mwcc_extab_implicit.append(transform_dep)
-        mwcc_sjis_extab_implicit.append(transform_dep)
 
     n.comment("Link ELF file")
     n.rule(
@@ -755,12 +754,14 @@ def generate_build_ninja(
     n.comment("Generate DOL")
     # retail's linker padded between objects with '0' bytes, fill_padding.py
     # redoes that from our link map
+    fill_dol_padding = getattr(config, "fill_padding", True)
     fill_padding = config.tools_dir / "fill_padding.py"
+    padding_config = build_path / "main_link_inputs.json"
     n.rule(
         name="elf2dol",
         command=(
-            f"{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $compilers"
-            if getattr(config, "fill_padding", True)
+            f"{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $link_inputs"
+            if fill_dol_padding
             else f"{dtk} elf2dol $in $out"
         ),
         description="DOL $out",
@@ -786,25 +787,6 @@ def generate_build_ninja(
         deps="gcc",
     )
     n.newline()
-
-    n.comment("MWCC build (with extab post-processing)")
-    n.rule(
-        name="mwcc_extab",
-        command=mwcc_extab_cmd,
-        description="MWCC $out",
-        depfile="$basefile.d",
-        deps="gcc",
-    )
-    n.newline()
-
-    n.comment("MWCC build (with UTF-8 to Shift JIS wrapper and extab post-processing)")
-    n.rule(
-        name="mwcc_sjis_extab",
-        command=mwcc_sjis_extab_cmd,
-        description="MWCC $out",
-        depfile="$basefile.d",
-        deps="gcc",
-    )
 
     n.comment("Assemble asm")
     n.rule(
@@ -911,10 +893,10 @@ def generate_build_ninja(
             self.module_id = config["module_id"]
             self.ldscript: Optional[Path] = Path(config["ldscript"])
             self.entry = config["entry"]
-            self.inputs: List[str] = []
+            self.inputs: List[Path] = []
 
         def add(self, obj: Path) -> None:
-            self.inputs.append(serialize_path(obj))
+            self.inputs.append(obj)
 
         def output(self) -> Path:
             if self.module_id == 0:
@@ -989,11 +971,23 @@ def generate_build_ninja(
             n.newline()
 
     link_outputs: List[Path] = []
+    split_objects: List[Path] = []
+    split_scripts: List[Path] = []
     if build_config:
+        split_modules = [build_config, *build_config["modules"]]
+        split_objects = sorted({
+            Path(unit["object"])
+            for module in split_modules
+            for unit in module["units"]
+            if unit["object"] is not None
+        })
+        split_scripts = sorted({Path(module["ldscript"]) for module in split_modules})
+
         link_steps: List[LinkStep] = []
         used_compiler_versions: Set[str] = set()
         source_inputs: List[Path] = []
         source_added: Set[Path] = set()
+        source_padding: Dict[Path, str] = {}
 
         if config.precompiled_headers:
             for pch in config.precompiled_headers:
@@ -1065,21 +1059,9 @@ def generate_build_ninja(
                 "basefile": obj.src_obj_path.with_suffix(""),
             }
 
-            if obj.options["shift_jis"] and obj.options["extab_padding"] is not None:
-                build_rule = "mwcc_sjis_extab"
-                build_implcit = mwcc_sjis_extab_implicit
-                variables["extab_padding"] = "".join(
-                    f"{i:02x}" for i in obj.options["extab_padding"]
-                )
-            elif obj.options["shift_jis"]:
+            if obj.options["shift_jis"]:
                 build_rule = "mwcc_sjis"
                 build_implcit = mwcc_sjis_implicit
-            elif obj.options["extab_padding"] is not None:
-                build_rule = "mwcc_extab"
-                build_implcit = mwcc_extab_implicit
-                variables["extab_padding"] = "".join(
-                    f"{i:02x}" for i in obj.options["extab_padding"]
-                )
             n.comment(f"{obj.name}: {lib_name} (linked {obj.completed})")
             n.build(
                 outputs=obj.src_obj_path,
@@ -1145,7 +1127,7 @@ def generate_build_ninja(
                 rule="as",
                 inputs=src_path,
                 variables={"asflags": asflags_str},
-                implicit=gnu_as_implicit,
+                implicit=[*gnu_as_implicit, *obj.options["extra_as_implicit"]],
                 order_only="pre-compile",
             )
             n.newline()
@@ -1180,9 +1162,17 @@ def generate_build_ninja(
                 else:
                     sys.exit(f"Unknown source file type {obj.src_path}")
             else:
+                if obj.completed and not config.non_matching:
+                    sys.exit(
+                        f"Missing source file {obj.src_path} for matching unit {obj_name}"
+                    )
                 if config.warn_missing_source or obj.completed:
                     print(f"Missing source file {obj.src_path}")
                 link_built_obj = False
+
+            unit_key = (link_step.module_id, obj_name)
+            if built_obj_path is not None:
+                source_linkage[unit_key] = False
 
             # Assembly overrides
             if (
@@ -1197,31 +1187,56 @@ def generate_build_ninja(
             if link_built_obj and built_obj_path is not None:
                 # Use the source-built object
                 link_step.add(built_obj_path)
-                # fill_padding.py needs each source built object's padding rule,
-                # the "padding" option from configure.py or else its compiler
-                source_compilers.setdefault(built_obj_path.name, set()).add(
-                    str(obj.options.get("padding") or obj.options["mw_version"])
-                )
+                if built_obj_path == obj.src_obj_path:
+                    source_linkage[unit_key] = True
+                    padding = obj.options["padding"]
+                    if (
+                        fill_dol_padding
+                        and link_step.module_id == 0
+                        and obj.src_path is not None
+                        and file_is_c_cpp(obj.src_path)
+                        and padding is not None
+                    ):
+                        source_padding[built_obj_path] = padding
             elif obj_path is not None:
                 # Use the original (extracted) object
                 link_step.add(Path(obj_path))
 
         # Add DOL link step
-        source_compilers: Dict[str, Set[str]] = {}
         link_step = LinkStep(build_config)
         for unit in build_config["units"]:
             add_unit(unit, link_step)
         link_steps.append(link_step)
-        # object file name -> padding rule, for the main link only. a name
-        # built two ways maps to null and gets no inside padding fill
-        build_path.mkdir(parents=True, exist_ok=True)
-        with open(build_path / "source_compilers.json", "w", encoding="utf-8") as f:
-            json.dump(
-                {k: (next(iter(v)) if len(v) == 1 else None) for k, v in sorted(source_compilers.items())},
-                f,
-                indent=1,
+        if fill_dol_padding:
+            n.rule(
+                name="copy_link_input",
+                command=(
+                    '$python -c "import shutil, sys; '
+                    'shutil.copyfile(sys.argv[1], sys.argv[2])" $in $out'
+                ),
+                description="COPY $out",
             )
-        source_compilers = {}
+            # The map reports basenames. Give repeated inputs unique names so a
+            # source padding rule cannot also apply to an extracted object.
+            used_names = {path.name for path in link_step.inputs}
+            seen_names: Set[str] = set()
+            padding_inputs: Dict[str, Optional[str]] = {}
+            for index, path in enumerate(link_step.inputs):
+                link_path = path
+                if path.name in seen_names:
+                    alias = f"{index}_{path.name}"
+                    while alias in used_names:
+                        alias = f"_{alias}"
+                    used_names.add(alias)
+                    link_path = build_path / "link-objects" / alias
+                    n.build(outputs=link_path, rule="copy_link_input", inputs=path)
+                    link_step.inputs[index] = link_path
+                seen_names.add(path.name)
+                padding_inputs[link_path.as_posix()] = source_padding.get(path)
+
+            build_path.mkdir(parents=True, exist_ok=True)
+            with padding_config.open("w", encoding="utf-8") as f:
+                json.dump(padding_inputs, f, indent=1)
 
         if config.build_rels:
             # Add REL link steps
@@ -1272,12 +1287,16 @@ def generate_build_ninja(
         ###
         # Generate DOL
         ###
+        main_elf = link_steps[0].partial_output()
+        dol_implicit = [dtk]
+        if fill_dol_padding:
+            dol_implicit.extend([fill_padding, padding_config, map_path(main_elf)])
         n.build(
             outputs=link_steps[0].output(),
             rule="elf2dol",
-            inputs=link_steps[0].partial_output(),
-            implicit=[dtk, config.tools_dir / "fill_padding.py", build_path / "source_compilers.json"],
-            variables={"compilers": build_path / "source_compilers.json"},
+            inputs=main_elf,
+            implicit=dol_implicit,
+            variables={"link_inputs": padding_config} if fill_dol_padding else None,
             order_only="post-link",
         )
 
@@ -1361,7 +1380,7 @@ def generate_build_ninja(
         ###
         # Check hash
         ###
-        n.comment("Check hash")
+        n.comment("Check current binary contents even when the build is up to date.")
         ok_path = build_path / "ok"
         quiet = "-q " if len(link_steps) > 3 else ""
         n.rule(
@@ -1373,7 +1392,7 @@ def generate_build_ninja(
             outputs=ok_path,
             rule="check",
             inputs=config.check_sha_path,
-            implicit=[dtk, *link_outputs],
+            implicit=[dtk, *link_outputs, "always"],
             order_only="post-build",
         )
         n.newline()
@@ -1403,15 +1422,17 @@ def generate_build_ninja(
         # Generate progress report
         ###
         n.comment("Generate progress report")
+        n.variable("report_project", report_project)
         n.rule(
             name="report",
-            command=f"{objdiff} report generate $objdiff_report_args -o $out",
+            command=f'{objdiff} report generate --project "$report_project" $objdiff_report_args -o $out',
             description="REPORT",
         )
+        report_inputs = [objdiff, report_config_path, "all_source", *split_objects]
         n.build(
             outputs=report_path,
             rule="report",
-            implicit=[objdiff, "objdiff.json", "all_source"],
+            implicit=report_inputs,
             order_only="post-build",
         )
 
@@ -1438,7 +1459,7 @@ def generate_build_ninja(
         n.build(
             outputs=report_baseline_path,
             rule="report",
-            implicit=[objdiff, "all_source", "always"],
+            implicit=[*report_inputs, "always"],
             order_only="post-build",
         )
         n.build(
@@ -1540,14 +1561,17 @@ def generate_build_ninja(
     n.comment("Split DOL into relocatable objects")
     n.rule(
         name="split",
-        command=f"{dtk} dol split $in $out_dir",
+        command=f"{dtk} dol split --no-update $in $out_dir",
         description="SPLIT $in",
         depfile="$out_dir/dep",
         deps="gcc",
+        # DTK preserves the modification times of unchanged extracted files.
+        restat=True,
     )
     n.build(
         inputs=config.config_path,
         outputs=build_config_path,
+        implicit_outputs=[*split_objects, *split_scripts],
         rule="split",
         implicit=dtk,
         variables={"out_dir": build_path},
@@ -1564,8 +1588,14 @@ def generate_build_ninja(
         generator=True,
         description=f"RUN {configure_script}",
     )
+    configure_outputs = []
+    if build_config:
+        configure_outputs.append(report_config_path)
+        if fill_dol_padding:
+            configure_outputs.append(padding_config)
     n.build(
         outputs=["build.ninja", "objdiff.json"],
+        implicit_outputs=configure_outputs,
         rule="configure",
         implicit=[
             build_config_path,
@@ -1595,6 +1625,7 @@ def generate_build_ninja(
     with open("build.ninja", "w", encoding="utf-8") as f:
         f.write(out.getvalue())
     out.close()
+    return source_linkage
 
 
 # Generate objdiff.json
@@ -1602,6 +1633,7 @@ def generate_objdiff_config(
     config: ProjectConfig,
     objects: Dict[str, Object],
     build_config: Optional[BuildConfig],
+    source_linkage: Dict[Tuple[int, str], bool],
 ) -> None:
     if build_config is None:
         return
@@ -1683,13 +1715,12 @@ def generate_objdiff_config(
 
     def add_unit(
         build_obj: BuildConfigUnit,
-        module_name: str,
+        module: BuildConfigModule,
         progress_categories: List[str],
-        in_rel: bool = False,
     ) -> None:
         obj_path, obj_name = build_obj["object"], build_obj["name"]
         base_object = Path(obj_name).with_suffix("")
-        name = str(Path(module_name) / base_object).replace(os.sep, "/")
+        name = str(Path(module["name"]) / base_object).replace(os.sep, "/")
         unit_config: Dict[str, Any] = {
             "name": name,
             "target_path": obj_path,
@@ -1702,21 +1733,27 @@ def generate_objdiff_config(
                 "progress_categories": progress_categories,
                 "auto_generated": build_obj["autogenerated"],
             },
-            "symbol_mappings": None,
         }
 
-        # Preserve existing symbol mappings
-        existing_unit = existing_units.get(name)
-        if existing_unit is not None:
-            unit_config["symbol_mappings"] = existing_unit.get("symbol_mappings")
-
-        obj = find_object(objects, obj_name, in_rel)
+        module_id = module["module_id"]
+        obj = find_object(objects, obj_name, in_rel=module_id != 0)
         if obj is None:
             objdiff_config["units"].append(unit_config)
             return
 
-        src_exists = obj.src_path is not None and obj.src_path.exists()
-        if src_exists:
+        category = obj.options["progress_category"]
+        if isinstance(category, list):
+            progress_categories.extend(category)
+        elif category is not None:
+            progress_categories.append(category)
+
+        # Keep assembly in the target totals without awarding C decompilation credit.
+        if obj.src_path is not None and file_is_asm(obj.src_path):
+            objdiff_config["units"].append(unit_config)
+            return
+
+        source_linked = source_linkage.get((module_id, obj_name))
+        if source_linked is not None:
             unit_config["base_path"] = obj.src_obj_path
             unit_config["metadata"]["source_path"] = obj.src_path
 
@@ -1754,23 +1791,17 @@ def generate_objdiff_config(
                 "c_flags": cflags_str,
                 "preset_id": obj.options["scratch_preset_id"],
             }
-            if src_exists:
+            if source_linked is not None:
                 unit_config["scratch"].update(
                     {
                         "ctx_path": obj.ctx_path,
                         "build_ctx": True,
                     }
                 )
-        category_opt: Union[List[str], str] = obj.options["progress_category"]
-        if isinstance(category_opt, list):
-            progress_categories.extend(category_opt)
-        elif category_opt is not None:
-            progress_categories.append(category_opt)
         unit_config["metadata"].update(
             {
-                "complete": obj.completed if src_exists else None,
+                "complete": source_linked,
                 "reverse_fn_order": reverse_fn_order,
-                "progress_categories": progress_categories,
             }
         )
         objdiff_config["units"].append(unit_config)
@@ -1782,7 +1813,7 @@ def generate_objdiff_config(
         # Otherwise it's redundant with the global report measures
         if len(build_config["modules"]) > 0:
             progress_categories.append("dol")
-        add_unit(unit, build_config["name"], progress_categories)
+        add_unit(unit, build_config, progress_categories)
 
     # Add REL units
     for module in build_config["modules"]:
@@ -1792,7 +1823,7 @@ def generate_objdiff_config(
                 progress_categories.append("modules")
             if config.progress_each_module:
                 progress_categories.append(module["name"])
-            add_unit(unit, module["name"], progress_categories, in_rel=True)
+            add_unit(unit, module, progress_categories)
 
     # Add progress categories
     def add_category(id: str, name: str):
@@ -1821,12 +1852,32 @@ def generate_objdiff_config(
         else:
             return d
 
-    # Write objdiff.json
+    def unix_path(input: Any) -> str:
+        return str(input).replace(os.sep, "/") if input else ""
+
+    # Use symbol names from the objects in progress and baseline reports.
+    report_units = []
+    for unit in objdiff_config["units"]:
+        report_unit = {"name": unit["name"], "metadata": unit["metadata"]}
+        for key in ("target_path", "base_path"):
+            if unit[key] is not None:
+                report_unit[key] = Path(unit[key]).absolute()
+        report_units.append(report_unit)
+    report_config = {
+        "units": report_units,
+        "progress_categories": objdiff_config["progress_categories"],
+    }
+    report_project = config.report_project_path()
+    report_project.mkdir(parents=True, exist_ok=True)
+    with (report_project / "objdiff.json").open("w", encoding="utf-8") as w:
+        json.dump(cleandict(report_config), w, indent=2, default=unix_path)
+
+    # Preserve interactive symbol mappings in the workspace configuration.
+    for unit in objdiff_config["units"]:
+        existing_unit = existing_units.get(unit["name"])
+        if existing_unit is not None:
+            unit["symbol_mappings"] = existing_unit.get("symbol_mappings")
     with open("objdiff.json", "w", encoding="utf-8") as w:
-
-        def unix_path(input: Any) -> str:
-            return str(input).replace(os.sep, "/") if input else ""
-
         json.dump(cleandict(objdiff_config), w, indent=2, default=unix_path)
 
 

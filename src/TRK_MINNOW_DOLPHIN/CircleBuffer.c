@@ -34,15 +34,6 @@ void CircleBufferInitialize(CircleBuffer* cb, u8* buf, u32 size)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x40
- */
-void CircleBufferTerminate(CircleBuffer* cb)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x801507FC
  * @note Size: 0x108
  */

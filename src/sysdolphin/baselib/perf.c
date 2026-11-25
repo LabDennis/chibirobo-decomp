@@ -1,13 +1,19 @@
+#include <Dolphin/OS/OSUtil.h>
 #include <global.h>
-#include <dolphin/ostime.h>
+#include <string.h>
 #include <sysdolphin/perf.h>
 
-void memset(void*, int, int);
-
-static s64 start_time;
+static OSTime start_time;
 
 HSD_PerfStat HSD_PerfLastStat    = { 0 };
 HSD_PerfStat HSD_PerfCurrentStat = { 0 };
+
+static inline f32 ElapsedFrames(void)
+{
+    OSTime elapsed = OSGetTime() - start_time;
+
+    return elapsed / (f32)(OS_TIMER_CLOCK / 60);
+}
 
 /**
  * @note Address: N/A
@@ -16,7 +22,7 @@ HSD_PerfStat HSD_PerfCurrentStat = { 0 };
 void HSD_PerfInitStat(void)
 {
     HSD_PerfLastStat = HSD_PerfCurrentStat;
-    memset(&HSD_PerfCurrentStat, 0, sizeof(HSD_PerfStat));
+    memset(&HSD_PerfCurrentStat, 0, sizeof(HSD_PerfCurrentStat));
 }
 
 /**
@@ -34,8 +40,7 @@ void HSD_PerfSetStartTime(void)
  */
 void HSD_PerfSetCPUTime(void)
 {
-    s64 elapsed = OSGetTime() - start_time;
-    HSD_PerfCurrentStat.cpu_time = elapsed / (f32) (*(u32*) 0x800000F8 / 4 / 60);
+    HSD_PerfCurrentStat.cpu_time = ElapsedFrames();
 }
 
 /**
@@ -44,8 +49,7 @@ void HSD_PerfSetCPUTime(void)
  */
 void HSD_PerfSetDrawTime(void)
 {
-    s64 elapsed = OSGetTime() - start_time;
-    HSD_PerfCurrentStat.draw_time = elapsed / (f32) (*(u32*) 0x800000F8 / 4 / 60);
+    HSD_PerfCurrentStat.draw_time = ElapsedFrames();
 }
 
 /**
@@ -54,8 +58,7 @@ void HSD_PerfSetDrawTime(void)
  */
 void HSD_PerfSetTotalTime(void)
 {
-    s64 elapsed = OSGetTime() - start_time;
-    HSD_PerfCurrentStat.total_time = elapsed / (f32) (*(u32*) 0x800000F8 / 4 / 60);
+    HSD_PerfCurrentStat.total_time = ElapsedFrames();
 }
 
 /**

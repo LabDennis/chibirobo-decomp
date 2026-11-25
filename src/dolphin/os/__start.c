@@ -1,6 +1,11 @@
 #include "Dolphin/__start.h"
+#include "PowerPC_EABI_Support/MetroTRK/trkenum.h"
+#include "PowerPC_EABI_Support/Runtime/__mem.h"
 
 #pragma section code_type ".init"
+
+extern void __OSInitBootDebugger(HardwareType hardware);
+extern void __flush_cache(void* address, unsigned int size);
 
 /**
  * @note Address: 0x800051EC
@@ -32,171 +37,95 @@ u8 __get_debug_bba(void)
 	return Debug_BBA;
 }
 
-/**
- * @note Address: 0x80005240
- * @note Size: 0x15C
- */
-WEAK ASM void __start(void)
+enum {
+	BOOT_DEBUG_AMC_DDH = 2,
+	BOOT_DEBUG_GDEV = 3,
+	BOOT_DEBUG_BBA = 4
+};
+
+static void ConfigureBootDebugger(void)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	bl __init_registers
-	bl __init_hardware
-	li r0, -1
-	stwu r1, -8(r1)
-	stw r0, 4(r1)
-	stw r0, 0(r1)
-	bl __init_data
-	li r0, 0
-	lis r6, EXCEPTIONMASK_ADDR@ha
-	addi r6, r6, EXCEPTIONMASK_ADDR@l
-	stw r0, 0(r6)
-	lis r6, BOOTINFO2_ADDR@ha
-	addi r6, r6, BOOTINFO2_ADDR@l
-	lwz r6, 0(r6)
+	BI2Debug* bootInfo = *(BI2Debug* volatile*)BOOTINFO2_ADDR;
+	u32 debugFlag;
 
-_check_TRK:
-	cmplwi r6, 0
-	beq _load_lomem_debug_flag
-	lwz r7, OS_BI2_DEBUGFLAG_OFFSET(r6)
-	b _check_debug_flag
+	if (bootInfo != NULL) {
+		debugFlag = bootInfo->debugFlag;
+	} else if (*(void* volatile*)ARENAHI_ADDR != NULL) {
+		debugFlag = *(vu32*)DEBUGFLAG_ADDR;
+	} else {
+		return;
+	}
 
-_load_lomem_debug_flag:
-	lis r5, ARENAHI_ADDR@ha
-	addi r5, r5, ARENAHI_ADDR@l
-	lwz r5, 0(r5)
-	cmplwi r5, 0
-	beq _goto_main
-	lis r7, DEBUGFLAG_ADDR@ha
-	addi r7, r7, DEBUGFLAG_ADDR@l
-	lwz r7, 0(r7)
-
-_check_debug_flag:
-	li r5, 0
-	cmplwi r7, 2
-	beq _goto_inittrk
-	cmplwi r7, 3
-	li r5, 1
-	beq _goto_inittrk
-	cmplwi r7, 4
-	bne _goto_main
-	li r5, 2
-	bl __set_debug_bba
-	b _goto_main
-
-_goto_inittrk:
-	lis r6, InitMetroTRK@ha
-	addi r6, r6, InitMetroTRK@l
-	mtlr r6
-	blrl
-
-_goto_main:
-	lis r6, BOOTINFO2_ADDR@ha
-	addi r6, r6, BOOTINFO2_ADDR@l
-	lwz r5, 0(r6)
-	cmplwi r5, 0
-	beq+ _no_args
-	lwz r6, 8(r5)
-	cmplwi r6, 0
-	beq+ _no_args
-	add r6, r5, r6
-	lwz r14, 0(r6)
-	cmplwi r14, 0
-	beq _no_args
-	addi r15, r6, 4
-	mtctr r14
-
-_loop:
-	addi r6, r6, 4
-	lwz r7, 0(r6)
-	add r7, r7, r5
-	stw r7, 0(r6)
-	bdnz _loop
-	lis r5, ARENAHI_ADDR@ha
-	addi r5, r5, ARENAHI_ADDR@l
-	rlwinm r7, r15, 0, 0, 0x1a
-	stw r7, 0(r5)
-	b _end_of_parseargs
-
-_no_args:
-	li r14, 0
-	li r15, 0
-
-_end_of_parseargs:
-	bl DBInit
-	bl OSInit
-	lis r4, DVD_DEVICECODE_ADDR@ha
-	addi r4, r4, DVD_DEVICECODE_ADDR@l
-	lhz r3, 0(r4)
-	andi. r5, r3, 0x8000
-	beq _check_pad3
-	andi. r3, r3, 0x7fff
-	cmplwi r3, 1
-	bne _skip_crc
-
-_check_pad3:
-	bl __check_pad3
-
-_skip_crc:
-	bl __get_debug_bba
-	cmplwi r3, 1
-	bne _goto_skip_init_bba
-	bl InitMetroTRK_BBA
-
-_goto_skip_init_bba:
-	bl __init_user
-	mr r3, r14
-	mr r4, r15
-	bl main
-	b exit
-#endif // clang-format on
+	switch (debugFlag) {
+	case BOOT_DEBUG_AMC_DDH:
+		__OSInitBootDebugger(HARDWARE_AMC_DDH);
+		break;
+	case BOOT_DEBUG_GDEV:
+		__OSInitBootDebugger(HARDWARE_GDEV);
+		break;
+	case BOOT_DEBUG_BBA:
+		__set_debug_bba();
+		break;
+	}
 }
 
-/**
- * @note Address: 0x8000539C
- * @note Size: 0x90
- */
-ASM static void __init_registers(void)
+static u32 ReadBootArguments(char*** argv)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	li r0, 0
-	li r3, 0
-	li r4, 0
-	li r5, 0
-	li r6, 0
-	li r7, 0
-	li r8, 0
-	li r9, 0
-	li r10, 0
-	li r11, 0
-	li r12, 0
-	li r14, 0
-	li r15, 0
-	li r16, 0
-	li r17, 0
-	li r18, 0
-	li r19, 0
-	li r20, 0
-	li r21, 0
-	li r22, 0
-	li r23, 0
-	li r24, 0
-	li r25, 0
-	li r26, 0
-	li r27, 0
-	li r28, 0
-	li r29, 0
-	li r30, 0
-	li r31, 0
-	lis r1,  _stack_addr@h
-	ori r1, r1,  _stack_addr@l
-	lis r2, _SDA2_BASE_@h
-	ori r2, r2, _SDA2_BASE_@l
-	lis r13, _SDA_BASE_@h
-	ori r13, r13, _SDA_BASE_@l
-	blr
-#endif // clang-format on
+	BI2Debug* bootInfo = *(BI2Debug* volatile*)BOOTINFO2_ADDR;
+	u32 argOffset;
+	u32* arguments;
+	u32 argc;
+	u32 i;
+
+	*argv = NULL;
+	if (bootInfo == NULL) {
+		return 0;
+	}
+
+	argOffset = bootInfo->argOffset;
+	if (argOffset == 0) {
+		return 0;
+	}
+
+	arguments = (u32*)((u8*)bootInfo + argOffset);
+	argc = *arguments++;
+	if (argc == 0) {
+		return 0;
+	}
+
+	// The boot loader stores each argument as an offset from the BI2 header.
+	for (i = 0; i < argc; i++) {
+		arguments[i] += (u32)bootInfo;
+	}
+
+	*argv = (char**)arguments;
+	*(void* volatile*)ARENAHI_ADDR = (void*)OSRoundDown32B(arguments);
+	return argc;
+}
+
+void __OSStartMain(void)
+{
+	char** argv;
+	u32 argc;
+	u16 deviceCode;
+
+	*(vu32*)EXCEPTIONMASK_ADDR = 0;
+	ConfigureBootDebugger();
+	argc = ReadBootArguments(&argv);
+
+	DBInit();
+	OSInit();
+
+	deviceCode = *(vu16*)DVD_DEVICECODE_ADDR;
+	if ((deviceCode & 0x8000) == 0 || (deviceCode & 0x7fff) == 1) {
+		__check_pad3();
+	}
+	if (__get_debug_bba() == 1) {
+		InitMetroTRK_BBA();
+	}
+
+	__init_user();
+	exit(main((int)argc, argv));
 }
 
 DECL_SECT(".init") extern __rom_copy_info _rom_copy_info[];

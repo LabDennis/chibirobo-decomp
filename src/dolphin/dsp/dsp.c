@@ -12,13 +12,10 @@
 #endif
 
 #if DEBUG
-const char* __DSPVersion = "<< Dolphin SDK - DSP\tdebug build: Apr  5 2004 03:56:49 (0x2301) >>";
+const char* __DSPVersion = "<< Dolphin SDK - DSP\tdebug build: " BUILD_DATE " " BUILD_TIME " (0x2301) >>";
 #else
-const char* __DSPVersion = "<< Dolphin SDK - DSP\trelease build: Apr  5 2004 04:15:32 (0x2301) >>";
+const char* __DSPVersion = "<< Dolphin SDK - DSP\trelease build: " BUILD_DATE " " BUILD_TIME " (0x2301) >>";
 #endif
-
-extern DSPTaskInfo* __DSP_rude_task;
-extern int __DSP_rude_task_pending;
 
 static BOOL __DSP_init_flag;
 
@@ -27,7 +24,7 @@ static BOOL __DSP_init_flag;
  * @note Size: 0x10
  */
 u32 DSPCheckMailToDSP(void) {
-    return (__DSPRegs[0] & (1 << 15)) >> 15;
+    return (__DSPRegs[DSP_MAILBOX_IN_HI] & DSP_MAILBOX_FULL_HI) >> DSP_MAILBOX_FULL_BIT;
 }
 
 /**
@@ -35,7 +32,7 @@ u32 DSPCheckMailToDSP(void) {
  * @note Size: 0x10
  */
 u32 DSPCheckMailFromDSP(void) {
-    return (__DSPRegs[2] & (1 << 15)) >> 15;
+    return (__DSPRegs[DSP_MAILBOX_OUT_HI] & DSP_MAILBOX_FULL_HI) >> DSP_MAILBOX_FULL_BIT;
 }
 
 /**
@@ -43,7 +40,8 @@ u32 DSPCheckMailFromDSP(void) {
  * @note Size: ?
  */
 u32 DSPReadCPUToDSPMbox(void) {
-    return (__DSPRegs[0] << 16) | __DSPRegs[1];
+    u32 high = __DSPRegs[DSP_MAILBOX_IN_HI];
+    return (high << 16) | __DSPRegs[DSP_MAILBOX_IN_LO];
 }
 
 /**
@@ -51,7 +49,9 @@ u32 DSPReadCPUToDSPMbox(void) {
  * @note Size: 0x18
  */
 u32 DSPReadMailFromDSP(void) {
-    return (__DSPRegs[2] << 16) | __DSPRegs[3];
+    /* Reading the low half acknowledges the mail. */
+    u32 high = __DSPRegs[DSP_MAILBOX_OUT_HI];
+    return (high << 16) | __DSPRegs[DSP_MAILBOX_OUT_LO];
 }
 
 /**
@@ -59,8 +59,8 @@ u32 DSPReadMailFromDSP(void) {
  * @note Size: 0x14
  */
 void DSPSendMailToDSP(u32 mail) {
-    __DSPRegs[0] = mail >> 16;
-    __DSPRegs[1] = mail & 0xFFFF;
+    __DSPRegs[DSP_MAILBOX_IN_HI] = mail >> 16;
+    __DSPRegs[DSP_MAILBOX_IN_LO] = mail & 0xFFFF;
 }
 
 /**
@@ -72,9 +72,9 @@ void DSPAssertInt(void) {
     u16 tmp;
 
     old = OSDisableInterrupts();
-    tmp = __DSPRegs[5];
-    tmp = (tmp & ~0xA8) | 2;
-    __DSPRegs[5] = tmp;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    tmp = (tmp & ~DSP_STATUS_INTERRUPTS) | DSP_CONTROL_ASSERT_INT;
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp;
     OSRestoreInterrupts(old);
 }
 
@@ -94,15 +94,15 @@ void DSPInit(void) {
     OSRegisterVersion(__DSPVersion);
 
     old = OSDisableInterrupts();
-    __OSSetInterruptHandler(7, __DSPHandler);
+    __OSSetInterruptHandler(__OS_INTERRUPT_DSP_DSP, __DSPHandler);
     __OSUnmaskInterrupts(OS_INTERRUPTMASK_DSP_DSP);
 
-    tmp = __DSPRegs[5];
-    tmp = (tmp & ~0xA8) | 0x800;
-    __DSPRegs[5] = tmp;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    tmp = (tmp & ~DSP_STATUS_INTERRUPTS) | DSP_CONTROL_INIT;
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp;
 
-    tmp = __DSPRegs[5];
-    __DSPRegs[5] = tmp = tmp & ~0xAC;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp & ~(DSP_STATUS_INTERRUPTS | DSP_CONTROL_HALT);
 
     __DSP_first_task = __DSP_last_task = __DSP_curr_task = __DSP_tmp_task = NULL;
     __DSP_init_flag = 1;
@@ -127,9 +127,9 @@ void DSPReset(void) {
     u16 tmp;
 
     old = OSDisableInterrupts();
-    tmp = __DSPRegs[5];
-    tmp = (tmp & ~0xA8) | 0x800 | 1;
-    __DSPRegs[5] = tmp;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    tmp = (tmp & ~DSP_STATUS_INTERRUPTS) | DSP_CONTROL_INIT | DSP_CONTROL_RESET;
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp;
     __DSP_init_flag = 0;
     OSRestoreInterrupts(old);
 }
@@ -143,9 +143,9 @@ void DSPHalt(void) {
     u16 tmp;
 
     old = OSDisableInterrupts();
-    tmp = __DSPRegs[5];
-    tmp = (tmp & ~0xA8) | 4;
-    __DSPRegs[5] = tmp;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    tmp = (tmp & ~DSP_STATUS_INTERRUPTS) | DSP_CONTROL_HALT;
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp;
     OSRestoreInterrupts(old);
 }
 
@@ -158,9 +158,9 @@ void DSPUnhalt(void) {
     u16 tmp;
 
     old = OSDisableInterrupts();
-    tmp = __DSPRegs[5];
-    tmp = (tmp & ~0xAC);
-    __DSPRegs[5] = tmp;
+    tmp = __DSPRegs[DSP_CONTROL_STATUS];
+    tmp = (tmp & ~(DSP_STATUS_INTERRUPTS | DSP_CONTROL_HALT));
+    __DSPRegs[DSP_CONTROL_STATUS] = tmp;
     OSRestoreInterrupts(old);
 }
 
@@ -169,7 +169,7 @@ void DSPUnhalt(void) {
  * @note Size: ?
  */
 u32 DSPGetDMAStatus(void) {
-    return (__DSPRegs[5] & (1 << 9));
+    return __DSPRegs[DSP_CONTROL_STATUS] & DSP_STATUS_DMA_BUSY;
 }
 
 /**
@@ -184,8 +184,8 @@ DSPTaskInfo* DSPAddTask(DSPTaskInfo* task) {
     old = OSDisableInterrupts();
 
     __DSP_insert_task(task);
-    task->state = 0;
-    task->flags = 1;
+    task->state = DSP_TASK_STATE_NEW;
+    task->flags = DSP_TASK_FLAG_LINKED;
 
     OSRestoreInterrupts(old);
     if (task == __DSP_first_task)
@@ -204,7 +204,7 @@ DSPTaskInfo* DSPCancelTask(DSPTaskInfo* task) {
 
     old = OSDisableInterrupts();
 
-    task->flags |= 2;
+    task->flags |= DSP_TASK_FLAG_CANCEL;
 
     OSRestoreInterrupts(old);
     return task;
@@ -218,7 +218,7 @@ DSPTaskInfo* DSPAssertTask(DSPTaskInfo* task) {
     s32 old;
 
     ASSERTMSGLINE(623, __DSP_init_flag == 1, "DSPAssertTask(): DSP driver not initialized!\n");
-    ASSERTMSGLINE(624, task->flags & 1, "DSPAssertTask(): Specified task not in active task list!\n");
+    ASSERTMSGLINE(624, task->flags & DSP_TASK_FLAG_LINKED, "DSPAssertTask(): Specified task not in active task list!\n");
 
     old = OSDisableInterrupts();
 
@@ -232,7 +232,7 @@ DSPTaskInfo* DSPAssertTask(DSPTaskInfo* task) {
     if (task->priority < __DSP_curr_task->priority) {
         __DSP_rude_task = task;
         __DSP_rude_task_pending = 1;
-        if (__DSP_curr_task->state == 1) {
+        if (__DSP_curr_task->state == DSP_TASK_STATE_RUNNING) {
             DSPAssertInt();
         }
         OSRestoreInterrupts(old);

@@ -16,24 +16,6 @@
 #define SEEK_END (2)
 
 /**
- * @note Address: N/A
- * @note Size: 0x7C
- */
-void fread(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x350
- */
-void __fread(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80155BF0
  * @note Size: 0x7C
  */

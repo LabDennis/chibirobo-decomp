@@ -1,43 +1,26 @@
-#include "Version.h"
+#include "game/relana.h"
+#include "game/relmodule.h"
 #include "game/hsd_jobj.h"
-
-// CGame
-extern "C" u8 lbl_8025C400[];
-#define GAME_AT(off) (lbl_8025C400 + (off))
-#if defined(VERSION_JP)
-#define SOUND() GAME_AT(0xE713C)
-#else
-#define SOUND() GAME_AT(0xE7E24)
-#endif
+#include "game/cgame.h"
+#include <sysdolphin/axdriver.h>
 
 extern "C" {
-s32 HSD_Randi(s32 max);
-void fn_8001E044(void* p, const char* name);
-s32 fn_8001E6C8(void* p, s32 id);
-void fn_8001E904(void* p, s32 id, s32 v);
-void HSD_AudioSFXSetPanByID(s32 id, s32 v);
-s32 fn_8001DF00(void* p, void* q, s32 v);
-void fn_8001E468(void* p, s32 id, s32 v, s32 w);
-void fn_8001E660(void* p, s32 id);
-
-// rel/ana.cpp
-void DrawAnas(void);
-void UpdateAnas(s32 dt);
-void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaRotY(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaJObj(s32 cmd, s32 argc, s32* argv);
-s32 CmdPlantTane(s32 cmd, s32 argc, s32* argv);
-s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetTutiAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdAddAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* argv);
+#include <sysdolphin/random.h>
 }
+
+class AmbientSeq;
+extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt);
 
 // one running sound script, commands are pairs or triples of ints
 class AmbientSeq {
 public:
 	AmbientSeq() { data = NULL; }
+	void Clear()
+	{
+		data = NULL;
+		pos  = 0;
+		wait = 0;
+	}
 
 	s32* data; // _00
 	s32 pos;   // _04
@@ -45,17 +28,39 @@ public:
 };
 
 struct AmbientPlayer {
-	u8 _00;              // _00
+	u8 mPaused;          // _00, nonzero stops the ambient sequences and bird calls
 	AmbientSeq seqs[10]; // _04
-	s32 _7C;             // _7C
-	s32* _80;            // _80
-	s32 _84;             // _84
+	s32 mBirdTimer;      // _7C, frames until the next random bird call, reset to 600-1199
+	s32* mBirdSounds;    // _80, table of bird sfx ids one is picked from at random, NULL for none
+	s32 mBirdSoundCount; // _84, number of ids in mBirdSounds
+
+	void UpdateSeqs(s32 dt)
+	{
+		u32 i;
+		for (i = 0; i < 10; i++) {
+			AmbientSeq* seq = &seqs[i];
+			if (seq->data != NULL) {
+				AmbientSeq_Update(seq, dt);
+			}
+		}
+	}
+
+	void Clear()
+	{
+		u32 i;
+		for (i = 0; i < 10; i++) {
+			seqs[i].Clear();
+		}
+		mPaused         = 0;
+		mBirdSounds     = NULL;
+		mBirdSoundCount = 0;
+	}
 
 	void Start(s32* data)
 	{
-		AmbientSeq* seq = seqs;
 		u32 i;
-		for (i = 0; i < 10; i++, seq++) {
+		for (i = 0; i < 10; i++) {
+			AmbientSeq* seq = &seqs[i];
 			if (seq->data == NULL) {
 				seq->data = data;
 				seq->pos  = 0;
@@ -67,6 +72,7 @@ struct AmbientPlayer {
 };
 
 extern "C" {
+// the script commands: loop(0), play(1, id), wait for it(2, id), wait(3, cs), stop(4, id), random wait(5, lo, hi)
 static s32 ambientTrafficCarLr[]            = { 5, 1000, 2000, 1, 0x60003, 2, 0x60003, 5, 3000, 6000, 0 };
 static s32 ambientTrafficCarRl[]            = { 5, 2000, 3000, 1, 0x60004, 2, 0x60004, 5, 3000, 6000, 0 };
 static s32 ambientTrafficDump[]             = { 5, 3000, 4000, 1, 0x60002, 2, 0x60002, 5, 3000, 6000, 0 };
@@ -88,17 +94,15 @@ static s32 ambientNightCricket[] = { 5, 100, 500, 1, 0x150001, 5, 500, 1500, 4, 
 static s32 ambientNatureBirds1[] = { 0x130003, 0x130004, 0x130005, 0x130006, 0x130007 };
 static s32 ambientNatureBirds2[] = { 0x140003, 0x140004, 0x140005, 0x140006, 0x140007 };
 
-s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv);
+s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args);
 void DrawStage(s32 dt);
 void UpdateStage(s32 dt);
 void InitStage(s32 dt);
 void AmbientSeq_Update(AmbientSeq* seq, s32 dt);
 }
 
-typedef void (*RelSlotFunc)(s32 arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 argc, s32* argv);
-
 extern "C" {
+// the rel's slots (three used) and its script commands
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
 RelCmdFunc _prolog_cmds[]    = {
     CmdSetAmbientSound, CmdAddAna,     CmdSetTutiAna,  CmdFindNearestAna,  CmdPlantTane,
@@ -112,61 +116,61 @@ static AmbientPlayer ambient;
  * @note Address: stage09 .text 0x0
  * @note Size: 0x730
  */
-extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args)
 {
-	switch (argv[0]) {
-	case 0:
-		if (argc >= 2) {
-			if (argv[1] != 0) {
-				void* sound;
-				ambient._00 = 1;
-				sound       = SOUND();
-				if (fn_8001E6C8(sound, 0x140001) != 0) {
-					fn_8001E660(sound, 0x140001);
+	switch (args[0]) {
+	case 0: // pause or unpause the ambience
+		if (count >= 2) {
+			if (args[1] != 0) {
+				XSound* sound;
+				ambient.mPaused = 1;
+				sound           = &gGame.mSound;
+				if (IsGameSoundPlaying(sound, 0x140001) != 0) {
+					StopGameSfx(sound, 0x140001);
 				}
 			} else {
-				ambient._00 = 0;
+				ambient.mPaused = 0;
 			}
 		} else {
-			ambient._00 = 1;
+			ambient.mPaused = 1;
 		}
 		break;
-	case 1:
-		fn_8001E044(SOUND(), "sfx_uraniwa_ambient1.ssm");
+	case 1: // construction work
+		RegisterGameSoundName(&gGame.mSound, "sfx_uraniwa_ambient1.ssm");
 		ambient.Start(ambientConstructionHammer1);
 		ambient.Start(ambientConstructionHammer2);
 		ambient.Start(ambientConstructionNoko);
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds1;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
 		break;
-	case 2:
-		fn_8001E044(SOUND(), "sfx_uraniwa_ambient1.ssm");
+	case 2: // construction work, faster hammering
+		RegisterGameSoundName(&gGame.mSound, "sfx_uraniwa_ambient1.ssm");
 		ambient.Start(ambientConstructionHammer1Fast);
 		ambient.Start(ambientConstructionHammer2Fast);
 		ambient.Start(ambientConstructionNoko);
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds1;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
 		break;
-	case 3:
-		fn_8001E044(SOUND(), "sfx_uraniwa_ambient2.ssm");
+	case 3: // the neighbor's mower
+		RegisterGameSoundName(&gGame.mSound, "sfx_uraniwa_ambient2.ssm");
 		ambient.Start(ambientNeighborMower);
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds2;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds2;
+		ambient.mBirdSoundCount = 5;
 		break;
-	case 4:
-		fn_8001E044(SOUND(), "sfx_uraniwa_ambient3.ssm");
+	case 4: // night
+		RegisterGameSoundName(&gGame.mSound, "sfx_uraniwa_ambient3.ssm");
 		ambient.Start(ambientNightHowling);
 		ambient.Start(ambientNightCricket);
 		ambient.Start(ambientTrafficCarLr);
@@ -204,9 +208,9 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     lwz      r0, 0x4(r5)
     cmpwi    r0, 0x0
     beq      .L_0000009C
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r5, ambient@ha
-    addi     r4, r3, lbl_8025C400@l
+    addi     r4, r3, gGame@l
     li       r0, 0x1
     addis    r31, r4, 0xe
     lis      r3, 0x14
@@ -214,13 +218,13 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     addi     r31, r31, 0x7e24
     addi     r4, r3, 0x1
     mr       r3, r31
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_00000718
     lis      r4, 0x14
     mr       r3, r31
     addi     r4, r4, 0x1
-    bl       fn_8001E660
+    bl       StopGameSfx
     b        .L_00000718
 .L_0000009C:
     lis      r3, ambient@ha
@@ -233,13 +237,13 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     stb      r0, ambient@l(r3)
     b        .L_00000718
 .L_000000BC:
-    lis      r3, lbl_8025C400@ha
-    lis      r4, lbl_11_rodata_0@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    lis      r4, sStage09PathSfxUraniwaAmbient1Ssm@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
-    addi     r4, r4, lbl_11_rodata_0@l
+    addi     r4, r4, sStage09PathSfxUraniwaAmbient1Ssm@l
     addi     r3, r3, 0x7e24
-    bl       fn_8001E044
+    bl       RegisterGameSoundName
     lis      r3, ambient@ha
     li       r0, 0xa
     addi     r3, r3, ambient@l
@@ -368,13 +372,13 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     stw      r0, 0x84(r5)
     b        .L_00000718
 .L_0000028C:
-    lis      r3, lbl_8025C400@ha
-    lis      r4, lbl_11_rodata_0@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    lis      r4, sStage09PathSfxUraniwaAmbient1Ssm@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
-    addi     r4, r4, lbl_11_rodata_0@l
+    addi     r4, r4, sStage09PathSfxUraniwaAmbient1Ssm@l
     addi     r3, r3, 0x7e24
-    bl       fn_8001E044
+    bl       RegisterGameSoundName
     lis      r3, ambient@ha
     li       r0, 0xa
     addi     r3, r3, ambient@l
@@ -503,13 +507,13 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     stw      r0, 0x84(r5)
     b        .L_00000718
 .L_0000045C:
-    lis      r3, lbl_8025C400@ha
-    lis      r4, lbl_11_rodata_1C@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    lis      r4, sStage09PathSfxUraniwaAmbient2Ssm@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
-    addi     r4, r4, lbl_11_rodata_1C@l
+    addi     r4, r4, sStage09PathSfxUraniwaAmbient2Ssm@l
     addi     r3, r3, 0x7e24
-    bl       fn_8001E044
+    bl       RegisterGameSoundName
     lis      r3, ambient@ha
     li       r0, 0xa
     addi     r5, r3, ambient@l
@@ -600,13 +604,13 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
     stw      r0, 0x84(r5)
     b        .L_00000718
 .L_000005AC:
-    lis      r3, lbl_8025C400@ha
-    lis      r4, lbl_11_rodata_38@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    lis      r4, sStage09PathSfxUraniwaAmbient3Ssm@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
-    addi     r4, r4, lbl_11_rodata_38@l
+    addi     r4, r4, sStage09PathSfxUraniwaAmbient3Ssm@l
     addi     r3, r3, 0x7e24
-    bl       fn_8001E044
+    bl       RegisterGameSoundName
     lis      r3, ambient@ha
     li       r0, 0xa
     addi     r3, r3, ambient@l
@@ -731,34 +735,29 @@ extern "C" void DrawStage(s32 dt)
  */
 extern "C" void UpdateStage(s32 dt)
 {
-	void* sound = SOUND();
+	XSound* sound = &gGame.mSound;
 	Vec pos;
-	u32 i;
 
-	if (fn_8001E6C8(sound, 0x12001A) != 0) {
+	// these two sounds always sit on fixed pans
+	if (IsGameSoundPlaying(sound, 0x12001A) != 0) {
 		HSD_AudioSFXSetPanByID(0x12001A, 0);
 	}
-	if (fn_8001E6C8(sound, 0x12001B) != 0) {
+	if (IsGameSoundPlaying(sound, 0x12001B) != 0) {
 		HSD_AudioSFXSetPanByID(0x12001B, 0xFE);
 	}
 	pos.x = 458.0f;
 	pos.y = 0.0f;
-	pos.z = -555.5f;
-	if (fn_8001E6C8(sound, 0x60005) != 0) {
-		fn_8001E468(sound, 0x60005, fn_8001DF00(sound, &pos, 4), 0);
+	pos.z = -555.5f; // 0x60005's volume follows the distance to here
+	if (IsGameSoundPlaying(sound, 0x60005) != 0) {
+		SetGameSfxVolume(sound, 0x60005, GetSoundVolumeAtPosition(sound, &pos, 4), 0);
 	}
-	if (!ambient._00) {
-		for (i = 0; i < 10; i++) {
-			AmbientSeq* seq = &ambient.seqs[i];
-			if (seq->data != NULL) {
-				AmbientSeq_Update(seq, dt);
-			}
-		}
-		if (ambient._80 != NULL) {
-			ambient._7C -= dt;
-			if (ambient._7C <= 0) {
-				fn_8001E904(sound, ambient._80[HSD_Randi(ambient._84)], 0xFF);
-				ambient._7C = HSD_Randi(600) + 600;
+	if (!ambient.mPaused) {
+		ambient.UpdateSeqs(dt);
+		if (ambient.mBirdSounds != NULL) {
+			ambient.mBirdTimer -= dt;
+			if (ambient.mBirdTimer <= 0) {
+				PlayGameSound(sound, ambient.mBirdSounds[HSD_Randi(ambient.mBirdSoundCount)], 0xFF);
+				ambient.mBirdTimer = HSD_Randi(600) + 600;
 			}
 		}
 	}
@@ -769,10 +768,10 @@ extern "C" void UpdateStage(s32 dt)
 /*
     stwu     r1, -0x30(r1)
     mflr     r0
-    lis      r5, lbl_8025C400@ha
+    lis      r5, gGame@ha
     lis      r4, 0x12
     stw      r0, 0x34(r1)
-    addi     r5, r5, lbl_8025C400@l
+    addi     r5, r5, gGame@l
     addi     r4, r4, 0x1a
     stw      r31, 0x2c(r1)
     addis    r31, r5, 0xe
@@ -782,7 +781,7 @@ extern "C" void UpdateStage(s32 dt)
     mr       r3, r31
     stw      r29, 0x24(r1)
     stw      r28, 0x20(r1)
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_000007A8
     lis      r3, 0x12
@@ -793,7 +792,7 @@ extern "C" void UpdateStage(s32 dt)
     lis      r4, 0x12
     mr       r3, r31
     addi     r4, r4, 0x1b
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_000007D0
     lis      r3, 0x12
@@ -816,19 +815,19 @@ extern "C" void UpdateStage(s32 dt)
     stfs     f2, 0x8(r1)
     stfs     f1, 0xc(r1)
     stfs     f0, 0x10(r1)
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_00000840
     mr       r3, r31
     addi     r4, r1, 0x8
     li       r5, 0x4
-    bl       fn_8001DF00
+    bl       GetSoundVolumeAtPosition
     lis      r4, 0x6
     mr       r5, r3
     mr       r3, r31
     li       r6, 0x0
     addi     r4, r4, 0x5
-    bl       fn_8001E468
+    bl       SetGameSfxVolume
 .L_00000840:
     lis      r3, ambient@ha
     addi     r28, r3, ambient@l
@@ -864,7 +863,7 @@ extern "C" void UpdateStage(s32 dt)
     mr       r3, r31
     li       r5, 0xff
     lwzx     r4, r4, r0
-    bl       fn_8001E904
+    bl       PlayGameSound
     li       r3, 0x258
     bl       HSD_Randi
     addi     r0, r3, 0x258
@@ -888,18 +887,7 @@ extern "C" void UpdateStage(s32 dt)
  */
 extern "C" void InitStage(s32 dt)
 {
-	u32 i;
-
-	// NONMATCHING: retail loads the zero before mtctr and keeps it in r4, base in r5, regalloc only
-	for (i = 0; i < 10; i++) {
-		AmbientSeq* seq = &ambient.seqs[i];
-		seq->data       = NULL;
-		seq->pos        = 0;
-		seq->wait       = 0;
-	}
-	ambient._00 = 0;
-	ambient._80 = NULL;
-	ambient._84 = 0;
+	ambient.Clear();
 	InitAnas();
 }
 
@@ -947,7 +935,7 @@ extern "C" void InitStage(s32 dt)
  */
 extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
 {
-	void* sound;
+	XSound* sound;
 	bool cont;
 
 	if (seq->wait > 0) {
@@ -957,32 +945,32 @@ extern "C" void AmbientSeq_Update(AmbientSeq* seq, s32 dt)
 		}
 	}
 	cont  = true;
-	sound = SOUND();
+	sound = &gGame.mSound;
 	while (cont) {
 		s32* cmd = &seq->data[seq->pos];
 		switch (cmd[0]) {
-		case 0:
+		case 0: // back to the top
 			seq->pos  = 0;
 			seq->wait = 0;
 			break;
-		case 1:
-			fn_8001E904(sound, cmd[1], 0xFF);
+		case 1: // play a sound
+			PlayGameSound(sound, cmd[1], 0xFF);
 			seq->pos += 2;
 			break;
-		case 2:
-			if (fn_8001E6C8(sound, cmd[1]) != 0) {
+		case 2: // wait for a sound to finish
+			if (IsGameSoundPlaying(sound, cmd[1]) != 0) {
 				cont = false;
 			} else {
 				seq->pos += 2;
 			}
 			break;
-		case 3:
+		case 3: // wait, in hundredths of a second
 			cont      = false;
 			seq->wait = (60.0f * cmd[1]) / 100.0f;
 			seq->pos += 2;
 			break;
-		case 4:
-			fn_8001E660(sound, cmd[1]);
+		case 4: // stop a sound
+			StopGameSfx(sound, cmd[1]);
 			seq->pos += 2;
 			break;
 		case 5: {

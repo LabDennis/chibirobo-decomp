@@ -2,6 +2,7 @@
 #include "PowerPC_EABI_Support/Runtime/Gecko_ExceptionPPC.h"
 #include "PowerPC_EABI_Support/Runtime/NMWException.h"
 #include "PowerPC_EABI_Support/Runtime/__ppc_eabi_linker.h"
+#include "sdk/msl/c/cstddef"
 
 #define RETURN_ADDRESS 4
 
@@ -33,7 +34,21 @@ typedef struct ThrowContext {
 	CatchInfo* catchinfo;
 } ThrowContext;
 
-typedef ThrowContext* ThrowContextPtr;
+// The register save and restore routines in gecko_exception_context.s use these offsets.
+STATIC_ASSERT(sizeof(GeckoFPRContext) == 0x10);
+STATIC_ASSERT(offsetof(GeckoFPRContext, v) == 0x8);
+STATIC_ASSERT(offsetof(ThrowContext, FPR) == 0);
+STATIC_ASSERT(offsetof(ThrowContext, GPR[13]) == 0x234);
+STATIC_ASSERT(offsetof(ThrowContext, CR) == 0x280);
+STATIC_ASSERT(offsetof(ThrowContext, SP) == 0x284);
+STATIC_ASSERT(offsetof(ThrowContext, throwSP) == 0x28C);
+STATIC_ASSERT(offsetof(ThrowContext, returnaddr) == 0x290);
+STATIC_ASSERT(offsetof(ThrowContext, throwtype) == 0x294);
+STATIC_ASSERT(offsetof(ThrowContext, location) == 0x298);
+STATIC_ASSERT(offsetof(ThrowContext, dtor) == 0x29C);
+STATIC_ASSERT(sizeof(ThrowContext) == 0x2A8);
+
+extern void ExPPC_LongJump(ThrowContext* context, void* newRTOC, void* newPC);
 
 typedef struct MWExceptionInfo {
 	ExceptionTableSmall* exception_record;
@@ -672,104 +687,6 @@ extern void __unexpected(CatchInfo* catchinfo)
 }
 
 /**
- * @note Address: 0x80151C20
- * @note Size: 0x104
- */
-ASM static void ExPPC_LongJump(register ThrowContext* context, register void* newRTOC, register void* newPC)
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	mr r8, newPC
-	mr RTOC, newRTOC
-	lwz	r0, context->CR
-	mtcrf 255, r0
-
-	lmw r13, context->GPR[13]
-
-	la r7, context->FPR[14].v
-	psq_lx fp14, 0, r7, 0, 0
-	lfd fp14, context->FPR[14].d
-
-	la r7, context->FPR[15].v
-	psq_lx fp15, 0, r7, 0, 0
-	lfd fp15, context->FPR[15].d
-
-	la r7, context->FPR[16].v
-	psq_lx fp16, 0, r7, 0, 0
-	lfd fp16, context->FPR[16].d
-
-	la r7, context->FPR[17].v
-	psq_lx fp17, 0, r7, 0, 0
-	lfd fp17, context->FPR[17].d
-
-	la r7, context->FPR[18].v
-	psq_lx fp18, 0, r7, 0, 0
-	lfd fp18, context->FPR[18].d
-
-	la r7, context->FPR[19].v
-	psq_lx fp19, 0, r7, 0, 0
-	lfd fp19, context->FPR[19].d
-
-	la r7, context->FPR[20].v
-	psq_lx fp20, 0, r7, 0, 0
-	lfd fp20, context->FPR[20].d
-
-	la r7, context->FPR[21].v
-	psq_lx fp21, 0, r7, 0, 0
-	lfd fp21, context->FPR[21].d
-
-	la r7, context->FPR[22].v
-	psq_lx fp22, 0, r7, 0, 0
-	lfd fp22, context->FPR[22].d
-
-	la r7, context->FPR[23].v
-	psq_lx fp23, 0, r7, 0, 0
-	lfd fp23, context->FPR[23].d
-
-	la r7, context->FPR[24].v
-	psq_lx fp24, 0, r7, 0, 0
-	lfd fp24, context->FPR[24].d
-
-	la r7, context->FPR[25].v
-	psq_lx fp25, 0, r7, 0, 0
-	lfd fp25, context->FPR[25].d
-
-	la r7, context->FPR[26].v
-	psq_lx fp26, 0, r7, 0, 0
-	lfd fp26, context->FPR[26].d
-
-	la r7, context->FPR[27].v
-	psq_lx fp27, 0, r7, 0, 0
-	lfd fp27, context->FPR[27].d
-
-	la r7, context->FPR[28].v
-	psq_lx fp28, 0, r7, 0, 0
-	lfd fp28, context->FPR[28].d
-
-	la r7, context->FPR[29].v
-	psq_lx fp29, 0, r7, 0, 0
-	lfd fp29, context->FPR[29].d
-
-	la r7, context->FPR[30].v
-	psq_lx fp30, 0, r7, 0, 0
-	lfd fp30, context->FPR[30].d
-
-	la r7, context->FPR[31].v
-	psq_lx fp31, 0, r7, 0, 0
-	lfd fp31, context->FPR[31].d
-
-	mtlr r8
-
-	lwz SP, context->throwSP
-	lwz r3, context->SP
-	lwz r3, 0(r3)
-	stw r3, 0(SP)
-	blr
-#endif // clang-format on
-}
-
-/**
  * @note Address: N/A
  * @note Size: 0x84
  */
@@ -794,7 +711,7 @@ static void ExPPC_HandleUnexpected(ThrowContext* context, MWExceptionInfo* info,
  * @note Address: 0x80151EAC
  * @note Size: 0x410
  */
-static void ExPPC_ThrowHandler(ThrowContext* context)
+void ExPPC_ThrowHandler(ThrowContext* context)
 {
 	ActionIterator iter;
 	MWExceptionInfo info;
@@ -943,113 +860,4 @@ void __end__catch(CatchInfo* catchinfo)
 	if (catchinfo->location && catchinfo->dtor) {
 		DTORCALL_COMPLETE(catchinfo->dtor, catchinfo->location);
 	}
-}
-
-/**
- * @note Address: 0x80151D24
- * @note Size: 0x144
- */
-ASM void __throw(char* throwtype, void* location, void* dtor)
-{
-#ifdef __MWERKS__ // clang-format off
-	ThrowContext throwcontext;
-
-	fralloc
-
-	stmw r13, throwcontext.GPR[13]
-
-	stfd fp14, throwcontext.FPR[14].d
-	la r3, throwcontext.FPR[14].v
-	psq_stx fp14, 0, r3,0,0
-
-	stfd fp15, throwcontext.FPR[15].d
-	la r3, throwcontext.FPR[15].v
-	psq_stx fp15, 0, r3, 0, 0
-
-	stfd fp16, throwcontext.FPR[16].d
-	la r3, throwcontext.FPR[16].v
-	psq_stx fp16, 0, r3, 0, 0
-
-	stfd fp17, throwcontext.FPR[17].d
-	la r3, throwcontext.FPR[17].v
-	psq_stx fp17, 0, r3, 0, 0
-
-	stfd fp18, throwcontext.FPR[18].d
-	la r3, throwcontext.FPR[18].v
-	psq_stx fp18, 0, r3, 0, 0
-
-	stfd fp19, throwcontext.FPR[19].d
-	la r3, throwcontext.FPR[19].v
-	psq_stx fp19, 0, r3, 0, 0
-
-	stfd fp20, throwcontext.FPR[20].d
-	la r3, throwcontext.FPR[20].v
-	psq_stx fp20, 0, r3, 0, 0
-
-	stfd fp21, throwcontext.FPR[21].d
-	la r3, throwcontext.FPR[21].v
-	psq_stx fp21, 0, r3, 0, 0
-
-	stfd fp22, throwcontext.FPR[22].d
-	la r3, throwcontext.FPR[22].v
-	psq_stx fp22, 0, r3, 0, 0
-
-	stfd fp23, throwcontext.FPR[23].d
-	la r3, throwcontext.FPR[23].v
-	psq_stx fp23, 0, r3, 0, 0
-
-	stfd fp24, throwcontext.FPR[24].d
-	la r3, throwcontext.FPR[24].v
-	psq_stx fp24, 0, r3, 0, 0
-
-	stfd fp25, throwcontext.FPR[25].d
-	la r3, throwcontext.FPR[25].v
-	psq_stx fp25, 0, r3, 0, 0
-
-	stfd fp26, throwcontext.FPR[26].d
-	la r3, throwcontext.FPR[26].v
-	psq_stx fp26, 0, r3, 0, 0
-
-	stfd fp27, throwcontext.FPR[27].d
-	la r3, throwcontext.FPR[27].v
-	psq_stx fp27, 0, r3, 0, 0
-
-	stfd fp28, throwcontext.FPR[28].d
-	la r3, throwcontext.FPR[28].v
-	psq_stx fp28, 0, r3, 0, 0
-
-	stfd fp29, throwcontext.FPR[29].d
-	la r3, throwcontext.FPR[29].v
-	psq_stx fp29, 0, r3, 0, 0
-
-	stfd fp30, throwcontext.FPR[30].d
-	la r3, throwcontext.FPR[30].v
-	psq_stx fp30, 0, r3, 0, 0
-
-	stfd fp31, throwcontext.FPR[31].d
-	la r3, throwcontext.FPR[31].v
-	psq_stx fp31, 0, r3, 0, 0
-
-
-	mfcr r3
-	stw	r3, throwcontext.CR;
-
-	lwz r3, 0(sp)
-	lwz r4, RETURN_ADDRESS(r3)
-	stw r3, throwcontext.SP;
-	stw r3, throwcontext.throwSP;
-	stw r4, throwcontext.returnaddr;
-
-	lwz r3,throwtype
-	stw r3, throwcontext.throwtype
-	lwz r3,location
-	stw r3, throwcontext.location
-	lwz r3,dtor
-	stw r3, throwcontext.dtor
-	la r3, throwcontext
-	bl ExPPC_ThrowHandler
-	nop
-	frfree
-	blr
-#endif // clang-format on
 }

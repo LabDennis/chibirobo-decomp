@@ -2,6 +2,7 @@
 #define _DOLPHIN_EXI_H_
 
 #include <dolphin/os.h>
+#include <dolphin/exi_state.h>
 
 #ifdef __cplusplus
 extern "C" {

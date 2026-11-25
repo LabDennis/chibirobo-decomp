@@ -52,7 +52,7 @@ void GXBegin(GXPrimitive type, GXVtxFmt vtxfmt, u16 nverts) {
     __GXinBegin = 1;
 #endif
 
-    if (*(u32*)&__GXData->vNumNot == 0) {  // checks both vNum and bpSentNot
+    if (__GXData->flushFlags == 0) {
         __GXSendFlushPrim();
     }
     GX_WRITE_U8(vtxfmt | type);
@@ -144,16 +144,10 @@ void GXSetCullMode(GXCullMode mode) {
     GXCullMode hwMode;
 
     CHECK_GXBEGIN(557, "GXSetCullMode");
-#if DEBUG
-    switch (mode) {
-    case GX_CULL_FRONT: hwMode = GX_CULL_BACK;  break;
-    case GX_CULL_BACK:  hwMode = GX_CULL_FRONT; break;
-    default:            hwMode = mode;          break;
-    }
-#else
-    hwMode = (mode >> 1) & 1;
-    __rlwimi(hwMode, mode, 1, 30, 30);
-#endif
+    ASSERTMSGLINE(570, (u32)mode <= GX_CULL_ALL, "GX Internal: Register field out of range");
+
+    // The hardware reverses the front and back bits.
+    hwMode = (((u32)mode & 1) << 1) | (((u32)mode >> 1) & 1);
 
     SET_REG_FIELD(570, __GXData->genMode, 2, 14, hwMode);
     __GXData->dirtyState |= 4;
@@ -164,19 +158,14 @@ void GXSetCullMode(GXCullMode mode) {
  * @note Size: ?
  */
 void GXGetCullMode(GXCullMode* mode) {
-#if DEBUG
     GXCullMode hwMode = GET_REG_FIELD(__GXData->genMode, 2, 14);
 
+    // The hardware field reverses the front and back encodings.
     switch (hwMode) {
     case GX_CULL_FRONT: *mode = GX_CULL_BACK;  break;
     case GX_CULL_BACK:  *mode = GX_CULL_FRONT; break;
     default:            *mode = hwMode;        break;
     }
-#else
-    // fake match?
-    GXCullMode hwMode = __GXData->genMode;
-    *mode = ((hwMode >> 0xD) & 0x2) | (((((int)hwMode >> 0xE) & 0x2) >> 0x1));
-#endif
 }
 
 /**

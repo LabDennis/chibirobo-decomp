@@ -5,6 +5,7 @@
 #include <dolphin/mtx/mtxtypes.h>
 #include <dolphin/mtx/vec.h>
 #include <kar/math.h>
+#include <sdk/msl/c/cstddef>
 #include <sysdolphin/cobj.h>
 #include <sysdolphin/displayfunc.h>
 #include <sysdolphin/dobj.h>
@@ -12,33 +13,33 @@
 #include <sysdolphin/identity_mtx.h>
 #include <sysdolphin/jobj.h>
 #include <sysdolphin/lobj_setup.h>
-#include <sysdolphin/mtx_inverse.h>
+#include <sysdolphin/mobj.h>
+#include <sysdolphin/mtx.h>
 #include <sysdolphin/pobj.h>
 #include <sysdolphin/tev.h>
 #include <sysdolphin/video.h>
+#include <math.h>
+#include <string.h>
 
-#define HSD_JOBJ_METHOD(o)           ((HSD_JObjInfo*)((o)->object.parent.class_info))
-#define HSD_ZLIST_NEXT(list, offset) (*(HSD_ZList**)((u8*)(list) + (offset)))
-#define HSD_ZLIST_DEPTH(list)        (*(f32*)((u8*)(list) + 0x2C))
-#define FLT_EPSILON                  1.1920929e-7F
+#define FLT_EPSILON 1.1920929e-7F
+
+enum {
+	JOBJ_OPA = HSD_TRSP_OPA << JOBJ_TRSP_SHIFT,
+	JOBJ_XLU = HSD_TRSP_XLU << JOBJ_TRSP_SHIFT,
+	JOBJ_TEXEDGE = HSD_TRSP_TEXEDGE << JOBJ_TRSP_SHIFT,
+};
 
 typedef struct _HSD_ZList {
 	Mtx pmtx;
 	MtxPtr vmtx;
 	HSD_JObj* jobj;
 	u32 rendermode;
-	struct _HSD_ZList* next_opa;
+	struct _HSD_ZList* next_texedge;
 	struct _HSD_ZList* next_xlu;
 	struct _HSD_ZList* next_all;
 } HSD_ZList;
 
-extern MtxPtr HSD_MtxAlloc(void);
-extern void HSD_MtxFree(MtxPtr mtx);
-extern void memset(void* ptr, s32 value, u32 size);
-extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
-extern void PSMTXRotRad(Mtx m, char axis, f32 rad);
-
-HSD_ObjAllocData zlist_alloc_data;
+static HSD_ObjAllocData zlist_alloc_data;
 
 // .sbss comes out last declaration first, so these run backwards
 static s32 zlist_xlu_nb;
@@ -48,20 +49,11 @@ static HSD_ZList* zlist_texedge_top;
 static HSD_ZList* zlist_top;
 static s32 zsort_sorting;
 static s32 zsort_listing;
-static void (*sptcl_callback)(s32, s32, s32, HSD_JObj*);
+static HSD_JObjParticleCallback sptcl_callback;
 
 static HSD_ZList** zlist_bottom         = &zlist_top;
 static HSD_ZList** zlist_texedge_bottom = &zlist_texedge_top;
 static HSD_ZList** zlist_xlu_bottom     = &zlist_xlu_top;
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline MtxPtr HSD_CObjGetViewingMtxPtrDirect(HSD_CObj* cobj)
-{
-	return cobj->view_mtx;
-}
 
 /**
  * @note Address: 0x801C93E4
@@ -79,32 +71,13 @@ void HSD_ZListInitAllocData(void)
 void HSD_StateInitDirect(u32 vtxfmt, u32 rendermode)
 {
 	HSD_ClearVtxDesc();
-	GXSetVtxAttrFmt(vtxfmt, 9, 1, 4, 0);
-	GXSetVtxAttrFmt(vtxfmt, 0xB, 1, 5, 0);
+	GXSetVtxAttrFmt(vtxfmt, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+	GXSetVtxAttrFmt(vtxfmt, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
 	HSD_StateInitTev();
-	HSD_SetupRenderMode(rendermode | 0x28000000);
-	GXSetVtxDesc(9, 1);
-	GXSetVtxDesc(0xB, 1);
-	GXSetCurrentMtx(0);
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 displayfunc_sqrtf(f32 x)
-{
-	volatile f32 y;
-
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
+	HSD_SetupRenderMode(rendermode | RENDER_ZMODE_ALWAYS | RENDER_NO_ZUPDATE);
+	GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+	GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+	GXSetCurrentMtx(GX_PNMTX0);
 }
 
 /**
@@ -113,7 +86,7 @@ static inline f32 displayfunc_sqrtf(f32 x)
  */
 static inline f32 displayfunc_col_mag(MtxPtr mtx, s32 col)
 {
-	return displayfunc_sqrtf(mtx[0][col] * mtx[0][col] + mtx[1][col] * mtx[1][col] + mtx[2][col] * mtx[2][col]);
+	return dolsqrtf(mtx[0][col] * mtx[0][col] + mtx[1][col] * mtx[1][col] + mtx[2][col] * mtx[2][col]);
 }
 
 /**
@@ -134,14 +107,14 @@ void mkVBillBoardMtx(HSD_JObj* jobj, Mtx src, Mtx dst)
 	ay.y = src[1][1];
 	ay.z = src[2][1];
 
-	PSVECScale(1.0F / (FLT_EPSILON + PSVECMag(&ay)), &ay, &ay_n);
+	PSVECScale(&ay, &ay_n, 1.0F / (FLT_EPSILON + PSVECMag(&ay)));
 
 	sx = displayfunc_col_mag(src, 0);
 	sz = displayfunc_col_mag(src, 2);
 
 	if (jobj->flags & PBILLBOARD) {
 		// az holds the flipped eye direction for a moment
-		PSVECScale(-1.0F / (FLT_EPSILON + PSVECMag(&pos)), &pos, &az);
+		PSVECScale(&pos, &az, -1.0F / (FLT_EPSILON + PSVECMag(&pos)));
 		PSVECCrossProduct(&ay_n, &az, &ax);
 	} else {
 		Vec zOne = { 0.0F, 0.0F, 1.0F };
@@ -193,14 +166,14 @@ void mkHBillBoardMtx(HSD_JObj* jobj, Mtx src, Mtx dst)
 	ax.y = src[1][0];
 	ax.z = src[2][0];
 
-	PSVECScale(1.0F / (FLT_EPSILON + PSVECMag(&ax)), &ax, &ax_n);
+	PSVECScale(&ax, &ax_n, 1.0F / (FLT_EPSILON + PSVECMag(&ax)));
 
 	sy = displayfunc_col_mag(src, 1);
 	sz = displayfunc_col_mag(src, 2);
 
 	// ay starts out as the up vector to cross against
 	if (jobj->flags & PBILLBOARD) {
-		ay.y = FLT_EPSILON + displayfunc_sqrtf(__fmadds(pos.x, pos.x, pos.z * pos.z));
+		ay.y = FLT_EPSILON + dolsqrtf(__fmadds(pos.x, pos.x, pos.z * pos.z));
 		ay.x = -pos.y / ay.y * pos.x;
 		ay.z = -pos.y / ay.y * pos.z;
 		PSVECNormalize(&ay, &ay);
@@ -261,14 +234,14 @@ void mkBillBoardMtx(HSD_JObj* jobj, Mtx src, Mtx dst)
 	pos.z = src[2][3];
 
 	if (jobj->flags & PBILLBOARD) {
-		PSVECScale(-1.0F / (FLT_EPSILON + PSVECMag(&pos)), &pos, &az);
+		PSVECScale(&pos, &az, -1.0F / (FLT_EPSILON + PSVECMag(&pos)));
 	} else {
 		az.x = 0.0F;
 		az.y = 0.0F;
 		az.z = 1.0F;
 	}
 
-	PSVECScale(1.0F / (FLT_EPSILON + sy), &ay, &ay);
+	PSVECScale(&ay, &ay, 1.0F / (FLT_EPSILON + sy));
 
 	PSVECCrossProduct(&ay, &az, &ax);
 	mag = PSVECMag(&ax);
@@ -277,7 +250,7 @@ void mkBillBoardMtx(HSD_JObj* jobj, Mtx src, Mtx dst)
 		PSVECCrossProduct(&az, &ax, &ay);
 		sy /= FLT_EPSILON + PSVECMag(&ay);
 	} else {
-		ay.y = FLT_EPSILON + displayfunc_sqrtf(az.x * az.x + az.z * az.z);
+		ay.y = FLT_EPSILON + dolsqrtf(az.x * az.x + az.z * az.z);
 		ay.x = -az.y / ay.y * az.x;
 		ay.z = -az.y / ay.y * az.z;
 
@@ -333,23 +306,23 @@ void HSD_JObjMakePositionMtx(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx)
 {
 	Mtx sp8;
 
-	if (jobj->flags & 0xE00) {
+	if (jobj->flags & BILLBOARD_MASK) {
 		PSMTXConcat(vmtx, jobj->mtx, sp8);
-		switch (jobj->flags & 0xE00) {
-		case 0x200:
+		switch (jobj->flags & BILLBOARD_MASK) {
+		case BILLBOARD:
 			mkBillBoardMtx(jobj, sp8, pmtx);
 			break;
-		case 0x400:
+		case VBILLBOARD:
 			mkVBillBoardMtx(jobj, sp8, pmtx);
 			break;
-		case 0x600:
+		case HBILLBOARD:
 			mkHBillBoardMtx(jobj, sp8, pmtx);
 			break;
-		case 0x800:
+		case RBILLBOARD:
 			mkRBillBoardMtx(jobj, sp8, pmtx);
 			break;
 		default:
-			HSD_Panic("displayfunc.c", 0x170, "unkown type of billboard.\n");
+			HSD_Panic(__FILE__, 0x170, "unkown type of billboard.\n");
 			break;
 		}
 	} else {
@@ -361,13 +334,11 @@ void HSD_JObjMakePositionMtx(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline HSD_JObj* displayfunc_find_skeleton(HSD_JObj* jobj)
+static inline HSD_JObj* FindSkeleton(HSD_JObj* jobj)
 {
-	if (jobj == NULL) {
-		__assert("displayfunc.c", 0x184, "jobj");
-	}
+	assert_line(0x184, jobj);
 	for (; jobj != NULL; jobj = jobj->parent) {
-		if (jobj->flags & 3) {
+		if (jobj->flags & (SKELETON | SKELETON_ROOT)) {
 			return jobj;
 		}
 	}
@@ -386,10 +357,8 @@ MtxPtr _HSD_mkEnvelopeModelNodeMtx(HSD_JObj* jobj, Mtx dst)
 	if (jobj->flags & SKELETON_ROOT) {
 		return NULL;
 	}
-	x = displayfunc_find_skeleton(jobj);
-	if (x == NULL) {
-		__assert("displayfunc.c", 0x1D4, "x");
-	}
+	x = FindSkeleton(jobj);
+	assert_line(0x1D4, x);
 
 	if (x == jobj) {
 		PSMTXInverse(x->envelopemtx, dst);
@@ -413,9 +382,9 @@ void HSD_JObjDispSub(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx, HSD_TrspMask trsp_mask,
 
 	HSD_JObjSetCurrent(jobj);
 
-	dobj_trsp = trsp_mask << 1;
+	dobj_trsp = trsp_mask << DOBJ_TRSP_SHIFT;
 
-	if (!(rendermode & 0x4000000)) {
+	if (!(rendermode & RENDER_SHADOW)) {
 		if (jobj->flags & SPECULAR) {
 			HSD_LObjSetupSpecularInit(pmtx);
 		}
@@ -423,7 +392,7 @@ void HSD_JObjDispSub(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx, HSD_TrspMask trsp_mask,
 
 	HSD_PObjClearMtxMark(NULL, 0);
 	for (dobj = jobj->u.dobj; dobj; dobj = dobj->next) {
-		if (dobj->flags & 1) {
+		if (dobj->flags & DOBJ_HIDDEN) {
 			continue;
 		}
 
@@ -450,7 +419,7 @@ void HSD_JObjDispDObj(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rend
 		return;
 	}
 
-	mask = jobj->flags & (trsp_mask << 18);
+	mask = jobj->flags & (trsp_mask << JOBJ_TRSP_SHIFT);
 	if (mask == 0) {
 		return;
 	}
@@ -462,20 +431,20 @@ void HSD_JObjDispDObj(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rend
 
 	HSD_JOBJ_METHOD(jobj)->make_pmtx(jobj, vmtx, pmtx);
 
-	if (mask & 0x40000) {
-		HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, 1, rendermode);
+	if (mask & JOBJ_OPA) {
+		HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, HSD_TRSP_OPA, rendermode);
 	}
 
 	if (zsort_listing == 0) {
-		if (mask & 0x100000) {
-			HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, 4, rendermode);
+		if (mask & JOBJ_TEXEDGE) {
+			HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, HSD_TRSP_TEXEDGE, rendermode);
 		}
-		if (mask & 0x80000) {
-			HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, 2, rendermode);
+		if (mask & JOBJ_XLU) {
+			HSD_JOBJ_METHOD(jobj)->disp(jobj, vmtx, pmtx, HSD_TRSP_XLU, rendermode);
 		}
-	} else if (mask & 0x180000) {
+	} else if (mask & (JOBJ_TEXEDGE | JOBJ_XLU)) {
 		entry = HSD_ObjAlloc(&zlist_alloc_data);
-		memset(&entry->vmtx, 0, 0x18);
+		memset((u8*)entry + offsetof(HSD_ZList, vmtx), 0, sizeof(*entry) - offsetof(HSD_ZList, vmtx));
 		PSMTXCopy(pmtx, entry->pmtx);
 		if (vmtx != NULL) {
 			entry->vmtx = HSD_MtxAlloc();
@@ -485,12 +454,12 @@ void HSD_JObjDispDObj(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rend
 		entry->rendermode = rendermode;
 		*zlist_bottom     = entry;
 		zlist_bottom      = &entry->next_all;
-		if (mask & 0x100000) {
+		if (mask & JOBJ_TEXEDGE) {
 			*zlist_texedge_bottom = entry;
-			zlist_texedge_bottom  = &entry->next_opa;
+			zlist_texedge_bottom  = &entry->next_texedge;
 			zlist_texedge_nb++;
 		}
-		if (mask & 0x80000) {
+		if (mask & JOBJ_XLU) {
 			*zlist_xlu_bottom = entry;
 			zlist_xlu_bottom  = &entry->next_xlu;
 			zlist_xlu_nb++;
@@ -498,11 +467,16 @@ void HSD_JObjDispDObj(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rend
 	}
 }
 
+static inline HSD_ZList** zlist_link(HSD_ZList* entry, size_t next_offset)
+{
+	return (HSD_ZList**)((u8*)entry + next_offset);
+}
+
 /**
  * @note Address: 0x801CA498
  * @note Size: 0x16C
  */
-HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, s32 next_offset)
+HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, size_t next_offset)
 {
 	HSD_ZList* left;
 	HSD_ZList* right;
@@ -513,7 +487,7 @@ HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, s32 next_offset)
 
 	if (count <= 1) {
 		if (list != NULL) {
-			HSD_ZLIST_NEXT(list, next_offset) = NULL;
+			*zlist_link(list, next_offset) = NULL;
 		}
 		return list;
 	}
@@ -522,7 +496,7 @@ HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, s32 next_offset)
 	right_count = count - left_count;
 	right       = list;
 	for (i = 0; i < left_count; i++) {
-		right = HSD_ZLIST_NEXT(right, next_offset);
+		right = *zlist_link(right, next_offset);
 	}
 
 	left  = zlist_sort(list, left_count, next_offset);
@@ -531,14 +505,14 @@ HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, s32 next_offset)
 	list = NULL;
 	tail = &list;
 	while (left != NULL && right != NULL) {
-		if (HSD_ZLIST_DEPTH(left) <= HSD_ZLIST_DEPTH(right)) {
+		if (left->pmtx[2][3] <= right->pmtx[2][3]) {
 			*tail = left;
-			left  = HSD_ZLIST_NEXT(left, next_offset);
+			left  = *zlist_link(left, next_offset);
 		} else {
 			*tail = right;
-			right = HSD_ZLIST_NEXT(right, next_offset);
+			right = *zlist_link(right, next_offset);
 		}
-		tail = &HSD_ZLIST_NEXT(*tail, next_offset);
+		tail = zlist_link(*tail, next_offset);
 	}
 	if (left != NULL) {
 		*tail = left;
@@ -555,8 +529,8 @@ HSD_ZList* zlist_sort(HSD_ZList* list, s32 count, s32 next_offset)
 void _HSD_ZListSort(void)
 {
 	if (zsort_sorting != 0) {
-		zlist_texedge_top = zlist_sort(zlist_texedge_top, zlist_texedge_nb, 0x3C);
-		zlist_xlu_top     = zlist_sort(zlist_xlu_top, zlist_xlu_nb, 0x40);
+		zlist_texedge_top = zlist_sort(zlist_texedge_top, zlist_texedge_nb, offsetof(HSD_ZList, next_texedge));
+		zlist_xlu_top     = zlist_sort(zlist_xlu_top, zlist_xlu_nb, offsetof(HSD_ZList, next_xlu));
 	}
 }
 
@@ -575,13 +549,15 @@ void _HSD_ZListDisp(void)
 
 	list = zlist_texedge_top;
 	while (list != NULL) {
-		HSD_JOBJ_METHOD(list->jobj)->disp(list->jobj, (list->vmtx) ? list->vmtx : vmtx, list->pmtx, 4, list->rendermode);
-		list = list->next_opa;
+		HSD_JOBJ_METHOD(list->jobj)->disp(list->jobj, list->vmtx ? list->vmtx : vmtx, list->pmtx,
+		                                 HSD_TRSP_TEXEDGE, list->rendermode);
+		list = list->next_texedge;
 	}
 
 	list = zlist_xlu_top;
 	while (list != NULL) {
-		HSD_JOBJ_METHOD(list->jobj)->disp(list->jobj, (list->vmtx) ? list->vmtx : vmtx, list->pmtx, 2, list->rendermode);
+		HSD_JOBJ_METHOD(list->jobj)->disp(list->jobj, list->vmtx ? list->vmtx : vmtx, list->pmtx,
+		                                 HSD_TRSP_XLU, list->rendermode);
 		list = list->next_xlu;
 	}
 
@@ -646,13 +622,14 @@ void HSD_JObjDisp(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rendermo
 			HSD_SList* sp;
 
 			for (sp = jobj->u.ptcl; sp != NULL; sp = sp->next) {
-				if ((u32)sp->data & 0x80000000) {
-					u32 bank   = (u32)sp->data & 0x3F;
-					u32 offset = ((u32)sp->data >> 6) & 0xFFFFFF;
+				u32 particle = sp->uint_value;
+				if (particle & JOBJ_STATIC_PARTICLE_PENDING) {
+					u32 bank   = particle & JOBJ_STATIC_PARTICLE_BANK_MASK;
+					u32 offset = (particle >> JOBJ_STATIC_PARTICLE_OFFSET_SHIFT) & JOBJ_STATIC_PARTICLE_OFFSET_MASK;
 
 					(*sptcl_callback)(0, bank, offset, jobj);
 				}
-				sp->data = (void*)((u32)sp->data & 0x7FFFFFFF);
+				sp->uint_value &= ~JOBJ_STATIC_PARTICLE_PENDING;
 			}
 		}
 	}
@@ -662,9 +639,9 @@ void HSD_JObjDisp(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rendermo
  * @note Address: 0x801CA874
  * @note Size: 0x8
  */
-void HSD_JObjSetSPtclCallback(void (*func)(s32, s32, s32, HSD_JObj*))
+void HSD_JObjSetSPtclCallback(HSD_JObjParticleCallback callback)
 {
-	sptcl_callback = func;
+	sptcl_callback = callback;
 }
 
 /**

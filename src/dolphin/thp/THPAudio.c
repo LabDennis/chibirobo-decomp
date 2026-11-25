@@ -1,5 +1,8 @@
-#include "THP/THPAudio.h"
+#include "THP/THP.h"
 #include "stl/limits.h"
+
+static s32 __THPAudioGetNewSample(THPAudioDecodeInfo* info);
+static void __THPAudioInitialize(THPAudioDecodeInfo* info, u8* ptr);
 
 /**
  * @note Address: 0x801FD1E4
@@ -15,7 +18,7 @@ u32 THPAudioDecode(s16* audioBuffer, u8* audioFrame, s32 flag)
 	s32 i;
 	s32 step;
 	s32 sample;
-	s64 yn;
+	u64 yn; // Shift the sample bits unsigned and use signed values for clipping.
 
 	if (audioBuffer == NULL || audioFrame == NULL) {
 		return 0;
@@ -45,25 +48,25 @@ u32 THPAudioDecode(s16* audioBuffer, u8* audioFrame, s32 flag)
 			sample = __THPAudioGetNewSample(&decInfo);
 			yn     = header->lCoef[decInfo.predictor][1] * yn2;
 			yn += header->lCoef[decInfo.predictor][0] * yn1;
-			yn += (sample << decInfo.scale) << 11;
+			yn += (s32)((u32)sample << decInfo.scale << 11);
 			yn <<= 5;
 
 			yn += 0x8000;
 
-			if (yn > INT_MAX) {
+			if ((s64)yn > INT_MAX) {
 				yn = INT_MAX;
 			}
 
-			if (yn < INT_MIN) {
+			if ((s64)yn < INT_MIN) {
 				yn = INT_MIN;
 			}
 
-			*decLeftPtr = (s16)(yn >> 16);
+			*decLeftPtr = (s16)((s64)yn >> 16);
 			decLeftPtr += step;
-			*decRightPtr = (s16)(yn >> 16);
+			*decRightPtr = (s16)((s64)yn >> 16);
 			decRightPtr += step;
 			yn2 = yn1;
-			yn1 = (s16)(yn >> 16);
+			yn1 = (s16)((s64)yn >> 16);
 		}
 	} else {
 		__THPAudioInitialize(&decInfo, left);
@@ -75,22 +78,22 @@ u32 THPAudioDecode(s16* audioBuffer, u8* audioFrame, s32 flag)
 			sample = __THPAudioGetNewSample(&decInfo);
 			yn     = header->lCoef[decInfo.predictor][1] * yn2;
 			yn += header->lCoef[decInfo.predictor][0] * yn1;
-			yn += (sample << decInfo.scale) << 11;
+			yn += (s32)((u32)sample << decInfo.scale << 11);
 			yn <<= 5;
 			yn += 0x8000;
 
-			if (yn > INT_MAX) {
+			if ((s64)yn > INT_MAX) {
 				yn = INT_MAX;
 			}
 
-			if (yn < INT_MIN) {
+			if ((s64)yn < INT_MIN) {
 				yn = INT_MIN;
 			}
 
-			*decLeftPtr = (s16)(yn >> 16);
+			*decLeftPtr = (s16)((s64)yn >> 16);
 			decLeftPtr += step;
 			yn2 = yn1;
-			yn1 = (s16)(yn >> 16);
+			yn1 = (s16)((s64)yn >> 16);
 		}
 
 		__THPAudioInitialize(&decInfo, right);
@@ -102,23 +105,23 @@ u32 THPAudioDecode(s16* audioBuffer, u8* audioFrame, s32 flag)
 			sample = __THPAudioGetNewSample(&decInfo);
 			yn     = header->rCoef[decInfo.predictor][1] * yn2;
 			yn += header->rCoef[decInfo.predictor][0] * yn1;
-			yn += (sample << decInfo.scale) << 11;
+			yn += (s32)((u32)sample << decInfo.scale << 11);
 			yn <<= 5;
 
 			yn += 0x8000;
 
-			if (yn > INT_MAX) {
+			if ((s64)yn > INT_MAX) {
 				yn = INT_MAX;
 			}
 
-			if (yn < INT_MIN) {
+			if ((s64)yn < INT_MIN) {
 				yn = INT_MIN;
 			}
 
-			*decRightPtr = (s16)(yn >> 16);
+			*decRightPtr = (s16)((s64)yn >> 16);
 			decRightPtr += step;
 			yn2 = yn1;
-			yn1 = (s16)(yn >> 16);
+			yn1 = (s16)((s64)yn >> 16);
 		}
 	}
 
@@ -141,10 +144,10 @@ static s32 __THPAudioGetNewSample(THPAudioDecodeInfo* info)
 	}
 
 	if (info->offsetNibbles & 0x1) {
-		sample = (s32)((*(info->encodeData) & 0xF) << 28) >> 28;
+		sample = (s32)((*(info->encodeData) & 0xFU) << 28) >> 28;
 		info->encodeData++;
 	} else {
-		sample = (s32)((*(info->encodeData) & 0xF0) << 24) >> 28;
+		sample = (s32)((*(info->encodeData) & 0xF0U) << 24) >> 28;
 	}
 
 	info->offsetNibbles++;

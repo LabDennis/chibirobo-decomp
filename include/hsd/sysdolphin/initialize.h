@@ -27,6 +27,11 @@ typedef enum _HSD_InitParam {
     HSD_INIT_MEMORY_CALLBACKS
 } HSD_InitParam;
 
+enum {
+    HSD_INVALIDATE_VERTEX_CACHE = 1 << 0,
+    HSD_INVALIDATE_TEXTURE_CACHE = 1 << 1,
+};
+
 void HSD_Init(void);
 void HSD_GXSetFifoObj(GXFifoObj* fifo);
 void HSD_DVDInit(void);

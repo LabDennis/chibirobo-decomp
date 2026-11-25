@@ -2,15 +2,6 @@
 #include "PowerPC_EABI_Support/MetroTRK/trk.h"
 
 /**
- * @note Address: N/A
- * @note Size: 0x80
- */
-void TRKWaitForACK(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x8014D48C
  * @note Size: 0x98
  */

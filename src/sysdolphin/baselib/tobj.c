@@ -1,4 +1,5 @@
 #include <global.h>
+#include <string.h>
 #include <dolphin/gx/gx.h>
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
@@ -7,134 +8,22 @@
 #include <sysdolphin/class.h>
 
 #include <sysdolphin/aobj.h>
+#include <sysdolphin/class_alloc.h>
 #include <sysdolphin/class_new.h>
 #include <sysdolphin/cobj.h>
 #include <sysdolphin/gobjproc.h>
 #include <sysdolphin/initialize.h>
+#include <sysdolphin/lobj.h>
 #include <sysdolphin/memory.h>
 #include <sysdolphin/mtx.h>
 #include <sysdolphin/tev_state.h>
 #include <sysdolphin/tev_stage.h>
-
-#define ClampUnit(v) ((v) <= 0.0F ? 0.0F : ((v) >= 1.0F ? 1.0F : (v)))
-
-#define GX_MTX3x4 0
-#define GX_MTX2x4 1
-
-#define GX_TG_MTX3x4 0
-#define GX_TG_MTX2x4 1
-#define GX_TG_BUMP0  2
-#define GX_TG_BUMP1  3
-#define GX_TG_BUMP2  4
-#define GX_TG_BUMP3  5
-#define GX_TG_BUMP4  6
-#define GX_TG_BUMP5  7
-#define GX_TG_BUMP6  8
-#define GX_TG_BUMP7  9
-#define GX_TG_SRTG   10
-
-#define GX_TG_POS       0
-#define GX_TG_NRM       1
-#define GX_TG_TEX0      4
-#define GX_TG_TEXCOORD0 12
-
-#define GX_TEXCOORD0 0
-#define GX_TEXCOORD1 1
-#define GX_TEXCOORD2 2
-#define GX_TEXCOORD3 3
-#define GX_TEXCOORD4 4
-#define GX_TEXCOORD5 5
-#define GX_TEXCOORD6 6
-#define GX_TEXCOORD7 7
-
-#define GX_LEQUAL 3
-
-#define GX_PNMTX0 0
-
-#define GX_CLAMP  0
-#define GX_REPEAT 1
-#define GX_MIRROR 2
-
-#define LOBJ_INFINITE (1 << 0)
-
-#define GX_TEXCOORD_NULL 0xff
-#define GX_COLOR_NULL    0xff
-#define GX_COLOR0A0      4
-
-#define GX_CC_CPREV 0
-#define GX_CC_ZERO  15
-#define GX_CC_ONE   12
-#define GX_CC_HALF  13
-#define GX_CC_TEXC  8
-#define GX_CC_TEXA  9
-#define GX_CC_RASC  10
-
-#define GX_CA_ZERO  7
-#define GX_CA_APREV 0
-#define GX_CA_TEXA  4
-
-#define GX_TEV_ADD    0
-#define GX_TEV_SUB    1
-#define GX_TB_ZERO    0
-#define GX_CS_SCALE_1 0
-#define GX_TEVPREV    0
+#include <sysdolphin/util.h>
 
 #define TEVCONF_MODE 1
 
-#define GX_TF_I4     0x0
-#define GX_TF_I8     0x1
-#define GX_TF_IA4    0x2
-#define GX_TF_IA8    0x3
-#define GX_TF_RGB565 0x4
-#define GX_TF_RGB5A3 0x5
-#define GX_TF_RGBA8  0x6
-#define GX_TF_C4     0x8
-#define GX_TF_C8     0x9
-#define GX_TF_C14X2  0xA
-#define GX_TF_CMPR   0xE
-
-#define GX_LIN_MIP_NEAR 3
-#define GX_LIN_MIP_LIN  5
-
-#define GX_TLUT0    0
-#define GX_BIGTLUT0 0x10
-#define GX_ANISO_1  0
-
-typedef struct _GXTlutObj {
-	u32 unused[3];
-} GXTlutObj;
-
-typedef struct _GXTexObj {
-	u8 pad[0x20];
-} GXTexObj;
-
 #define TOBJ_ASSERT(line, cond, str) ((cond) ? ((void)0) : __assert("tobj.c", line, str))
 
-extern void* hsdAllocMemPiece(u32 size);
-extern void memcpy(void* dst, const void* src, u32 size);
-extern void memset(void* ptr, s32 value, u32 size);
-
-extern HSD_LObj* HSD_LObjGetCurrentByType(u16 flags);
-extern void HSD_LObjGetLightVector(HSD_LObj* lobj, Vec* v);
-extern u32 HSD_LObjGetLightMaskDiffuse(void);
-
-extern void PSMTXTrans(Mtx m, f32 x, f32 y, f32 z);
-
-extern void GXSetTexCoordGen2(u32 dst_coord, u32 func, u32 src_param, u32 mtx, u32 normalize, u32 postmtx);
-
-extern void HSD_StateRegisterTexGen(s32 coord);
-
-extern void GXInitTlutObj(void* tlutobj, void* lut, u32 fmt, u16 n_entries);
-extern void GXLoadTlut(void* tlutobj, u32 tlut_name);
-extern void GXInitTexObjCI(void* texobj, void* image_ptr, u16 width, u16 height, u32 format, u32 wrap_s, u32 wrap_t, u32 mipmap,
-                           u32 tlut_name);
-extern void GXInitTexObj(void* texobj, void* image_ptr, u16 width, u16 height, GXTexFmt format, u32 wrap_s, u32 wrap_t, u32 mipmap);
-extern void GXInitTexObjLOD(void* texobj, u32 min_filter, u32 mag_filter, f32 minLOD, f32 maxLOD, f32 lodbias, u32 bias_clamp,
-                            u32 edgeLODEnable, u32 max_anisotropy); /* GXInitTexObjLOD */
-extern void GXLoadTexObj(void* texobj, u32 mapid);
-
-HSD_TObjTev* HSD_TObjTevAlloc(void);
-HSD_Tlut* HSD_TlutAlloc(void);
 void TObjInfoInit(void);
 
 HSD_TObjInfo hsdTObj = { TObjInfoInit };
@@ -143,40 +32,14 @@ static HSD_TObjInfo* default_class = NULL;
 
 static HSD_TObj* tobj_head;
 
-void HSD_PObjAnimAll(HSD_PObj* pobj);
-void PObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val);
-void HSD_PObjReqAnimAllByFlags(HSD_PObj* pobj, f32 startframe, u32 flags);
-void HSD_PObjAddAnimAll(HSD_PObj* pobj, HSD_ShapeAnim* shapeanim);
-void HSD_PObjRemoveAnimAllByFlags(HSD_PObj* pobj, u32 flags);
-void HSD_PObjClearFlags(HSD_PObj* pobj, u32 flags);
-void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 void TObjAmnesia(HSD_ClassInfo* info);
 void TObjRelease(HSD_Class* o);
 int TObjInit(HSD_Class* o);
-void HSD_ImageDescRemove(HSD_ImageDesc* idesc);
-HSD_ImageDesc* HSD_ImageDescAlloc(void);
-void HSD_TObjRemove(HSD_TObj* tobj);
-HSD_TObj* HSD_TObjAlloc(void);
-HSD_TObj* HSD_TObjGetNext(HSD_TObj* tobj);
-void HSD_TObjRemoveAll(HSD_TObj* tobj);
-u32 HSD_Index2TexMap(u32 index);
-u32 HSD_Index2TexMtx(u32 index);
-void HSD_TObjSetup(HSD_TObj* tobj);
-s32 HSD_TObjAssignResources(HSD_TObj* tobj_top);
 void TObjMakeTExp(HSD_TObj* tobj, u32 lightmap, u32 lightmap_done, HSD_TExp** c, HSD_TExp** a, HSD_TExp** list);
 void MakeColorGenTExp(u32 lightmap, HSD_TObj* tobj, HSD_TExp** c, HSD_TExp** a, HSD_TExp** list, int repeat);
-void HSD_TObjSetupVolatileTev(HSD_TObj* tobj, u32 rendermode);
-void HSD_TObjSetupTextureCoordGen(HSD_TObj* tobj);
 void TObjSetupMtx(HSD_TObj* tobj);
 void MakeTextureMtx(HSD_TObj* tobj);
-HSD_TObj* _HSD_TObjGetCurrentByType(HSD_TObj* from, u32 mapping);
-HSD_TObj* HSD_TObjLoadDesc(HSD_TObjDesc* td);
-int TObjLoad(HSD_TObj* tobj, HSD_TObjDesc* td);
-void HSD_TObjAnimAll(HSD_TObj* tobj);
 void TObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val);
-void HSD_TObjReqAnimAllByFlags(HSD_TObj* tobj, f32 startframe, u32 flags);
-void HSD_TObjAddAnimAll(HSD_TObj* tobj, HSD_TexAnim* texanim);
-void HSD_TObjRemoveAnimAll(HSD_TObj* tobj);
 
 /**
  * @note Address: N/A
@@ -355,7 +218,7 @@ void TObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val)
 		}
 	} break;
 	case HSD_A_T_BLEND:
-		tobj->blending = ClampUnit(val->fv);
+		tobj->blending = HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	case HSD_A_T_ROTX:
 		tobj->rotate.x = val->fv;
@@ -388,66 +251,66 @@ void TObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val)
 		break;
 	case HSD_A_T_KONST_R:
 		if (tobj->tev) {
-			tobj->tev->konst.r = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->konst.r = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_KONST_G:
 		if (tobj->tev) {
-			tobj->tev->konst.g = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->konst.g = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_KONST_B:
 		if (tobj->tev) {
-			tobj->tev->konst.b = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->konst.b = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_KONST_A:
 		if (tobj->tev) {
-			tobj->tev->konst.a = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->konst.a = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV0_R:
 		if (tobj->tev) {
-			tobj->tev->tev0.r = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev0.r = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV0_G:
 		if (tobj->tev) {
-			tobj->tev->tev0.g = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev0.g = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV0_B:
 		if (tobj->tev) {
-			tobj->tev->tev0.b = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev0.b = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV0_A:
 		if (tobj->tev) {
-			tobj->tev->tev0.a = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev0.a = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV1_R:
 		if (tobj->tev) {
-			tobj->tev->tev1.r = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev1.r = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV1_G:
 		if (tobj->tev) {
-			tobj->tev->tev1.g = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev1.g = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV1_B:
 		if (tobj->tev) {
-			tobj->tev->tev1.b = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev1.b = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TEV1_A:
 		if (tobj->tev) {
-			tobj->tev->tev1.a = (u8)(255.0F * ClampUnit(val->fv));
+			tobj->tev->tev1.a = (u8)(255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F));
 		}
 		break;
 	case HSD_A_T_TS_BLEND:
-		tobj->blending = ClampUnit(val->fv);
+		tobj->blending = HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	}
 }
@@ -526,7 +389,7 @@ int TObjLoad(HSD_TObj* tobj, HSD_TObjDesc* td)
 	tobj->tlut_no = (u8)-1;
 	tobj->tev     = HSD_TObjTevLoadDesc(td->tev);
 
-	_HSD_NeedCacheInvalidate(2);
+	_HSD_NeedCacheInvalidate(HSD_INVALIDATE_TEXTURE_CACHE);
 
 	return 0;
 }
@@ -1392,15 +1255,6 @@ s32 HSD_TObjAssignResources(HSD_TObj* tobj_top)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline int DifferentTluts(HSD_Tlut* t0, HSD_Tlut* t1)
-{
-	return (t0->lut != t0->lut) || (t0->n_entries != t1->n_entries);
-}
-
-/**
  * @note Address: 0x801AF00C
  * @note Size: 0x348
  */
@@ -1460,8 +1314,9 @@ void HSD_TObjSetup(HSD_TObj* tobj)
 
 			TOBJ_ASSERT(0x76A, tlut, "tlut");
 
+			// Retail reuses a loaded TLUT when the entry counts match.
 			for (i = 0; i < nb_tluts; i++) {
-				if (!DifferentTluts(tluts[i], tlut)) {
+				if (tluts[i]->n_entries == tlut->n_entries) {
 					break;
 				}
 			}
@@ -1579,19 +1434,6 @@ u32 HSD_Index2TexMap(u32 index)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void TObjRemove(HSD_TObj* tobj)
-{
-	if (tobj == NULL) {
-		return;
-	}
-	HSD_CLASS_METHOD(tobj)->release((HSD_Class*)tobj);
-	HSD_CLASS_METHOD(tobj)->destroy((HSD_Class*)tobj);
-}
-
-/**
  * @note Address: 0x801AEEDC
  * @note Size: 0x74
  */
@@ -1599,7 +1441,7 @@ void HSD_TObjRemoveAll(HSD_TObj* tobj)
 {
 	while (tobj) {
 		HSD_TObj* next = tobj->next;
-		TObjRemove(tobj);
+		hsdDelete(tobj);
 		tobj = next;
 	}
 }

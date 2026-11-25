@@ -3,8 +3,8 @@
 #include "stdio.h"
 
 char* __strerror(int errnum, char* str);
-#define K1 0x80808080
-#define K2 0xFEFEFEFF
+#define BYTE_HIGH_BITS 0x80808080u
+#define ZERO_BYTE_BIAS 0xFEFEFEFFu
 
 #define set_char_map(map, ch) map[(u8)(ch) >> 3] |= (1 << ((ch) & 7))
 #define tst_char_map(map, ch) (map[(u8)(ch) >> 3] & (1 << ((ch) & 7)))
@@ -30,53 +30,59 @@ size_t(strlen)(const char* str)
  */
 char*(strcpy)(char* dst, const char* src)
 {
-	register u8 *destb, *fromb;
-	register u32 w, t, align;
+	u8* destBytes;
+	const u8* sourceBytes;
+	u32* destWords;
+	const u32* sourceWords;
+	u32 word, zeroProbe, align;
 
-	fromb = (u8*)src;
-	destb = (u8*)dst;
+	sourceBytes = (const u8*)src;
+	destBytes = (u8*)dst;
 
-	if ((align = ((int)fromb & 3)) != ((int)destb & 3)) {
+	if ((align = ((int)sourceBytes & 3)) != ((int)destBytes & 3)) {
 		goto bytecopy;
 	}
 
 	if (align) {
-		if ((*destb = *fromb) == 0)
+		if ((*destBytes = *sourceBytes) == 0)
 			return (dst);
 		for (align = 3 - align; align; align--) {
-			if ((*(++destb) = *(++fromb)) == 0)
+			if ((*(++destBytes) = *(++sourceBytes)) == 0)
 				return (dst);
 		}
-		++destb;
-		++fromb;
+		++destBytes;
+		++sourceBytes;
 	}
 
-	w = *((int*)(fromb));
+	// Test for a possible NUL before copying an entire word.
+	sourceWords = (const u32*)sourceBytes;
+	word = *sourceWords;
 
-	t = w + K2;
+	zeroProbe = word + ZERO_BYTE_BIAS;
 
-	t &= K1;
-	if (t)
+	zeroProbe &= BYTE_HIGH_BITS;
+	if (zeroProbe)
 		goto bytecopy;
-	--((int*)(destb));
+	destWords = (u32*)destBytes - 1;
 
 	do {
-		*(++((int*)(destb))) = w;
-		w                    = *(++((int*)(fromb)));
+		*++destWords = word;
+		word = *++sourceWords;
 
-		t = w + K2;
-		t &= K1;
-		if (t)
+		zeroProbe = word + ZERO_BYTE_BIAS;
+		zeroProbe &= BYTE_HIGH_BITS;
+		if (zeroProbe)
 			goto adjust;
 	} while (1);
 
 adjust:
-	++((int*)(destb));
+	destBytes = (u8*)(destWords + 1);
+	sourceBytes = (const u8*)sourceWords;
 bytecopy:
-	if ((*destb = *fromb) == 0)
+	if ((*destBytes = *sourceBytes) == 0)
 		return dst;
 	do {
-		if ((*(++destb) = *(++fromb)) == 0)
+		if ((*(++destBytes) = *(++sourceBytes)) == 0)
 			return dst;
 	} while (1);
 
@@ -125,46 +131,37 @@ char* strcat(char* dst, const char* src)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void strncat(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80158D30
  * @note Size: 0x128
  */
 int strcmp(const char* str1, const char* str2)
 {
-	// bless metrowerks for this implementation
+	const u8* left = (const u8*)str1;
+	const u8* right = (const u8*)str2;
+	const u32* leftWords;
+	const u32* rightWords;
+	u32 align, leftValue, rightValue, zeroProbe;
 
-	register u8* left  = (u8*)str1;
-	register u8* right = (u8*)str2;
-	u32 align, l1, r1, x;
-
-	l1 = *left;
-	r1 = *right;
-	if (l1 - r1) {
-		return (l1 - r1);
+	leftValue = *left;
+	rightValue = *right;
+	if (leftValue - rightValue) {
+		return (leftValue - rightValue);
 	}
 
 	if ((align = ((int)left & 3)) != ((int)right & 3)) {
 		goto bytecopy;
 	}
 	if (align) {
-		if (l1 == 0) {
+		if (leftValue == 0) {
 			return 0;
 		}
 		for (align = 3 - align; align; align--) {
-			l1 = *(++left);
-			r1 = *(++right);
-			if (l1 - r1) {
-				return (l1 - r1);
+			leftValue = *(++left);
+			rightValue = *(++right);
+			if (leftValue - rightValue) {
+				return (leftValue - rightValue);
 			}
-			if (l1 == 0) {
+			if (leftValue == 0) {
 				return 0;
 			}
 		}
@@ -172,41 +169,45 @@ int strcmp(const char* str1, const char* str2)
 		right++;
 	}
 
-	l1 = *(int*)left;
-	r1 = *(int*)right;
-	x  = l1 + K2;
-	if (x & K1) {
+	leftWords = (const u32*)left;
+	rightWords = (const u32*)right;
+	leftValue = *leftWords;
+	rightValue = *rightWords;
+	zeroProbe = leftValue + ZERO_BYTE_BIAS;
+	if (zeroProbe & BYTE_HIGH_BITS) {
 		goto adjust;
 	}
-	while (l1 == r1) {
-		l1 = *(++((int*)(left)));
-		r1 = *(++((int*)(right)));
-		x  = l1 + K2;
-		if (x & K1) {
+	while (leftValue == rightValue) {
+		leftValue = *++leftWords;
+		rightValue = *++rightWords;
+		zeroProbe = leftValue + ZERO_BYTE_BIAS;
+		if (zeroProbe & BYTE_HIGH_BITS) {
 			goto adjust;
 		}
 	}
-	if (l1 > r1)
+	if (leftValue > rightValue)
 		return 1;
 	return -1;
 
 adjust:
-	l1 = *left;
-	r1 = *right;
-	if (l1 - r1) {
-		return (l1 - r1);
+	left = (const u8*)leftWords;
+	right = (const u8*)rightWords;
+	leftValue = *left;
+	rightValue = *right;
+	if (leftValue - rightValue) {
+		return (leftValue - rightValue);
 	}
 bytecopy:
-	if (l1 == 0) {
+	if (leftValue == 0) {
 		return 0;
 	}
 	do {
-		l1 = *(++left);
-		r1 = *(++right);
-		if (l1 - r1) {
-			return (l1 - r1);
+		leftValue = *(++left);
+		rightValue = *(++right);
+		if (leftValue - rightValue) {
+			return (leftValue - rightValue);
 		}
-		if (l1 == 0) {
+		if (leftValue == 0) {
 			return 0;
 		}
 	} while (1);
@@ -251,24 +252,6 @@ char* strchr(const char* str, int chr)
 
 /**
  * @note Address: N/A
- * @note Size: 0x20
- */
-void strcoll(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x80
- */
-void strxfrm(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x48
  */
 char* strrchr(const char* str, int chr)
@@ -286,33 +269,6 @@ char* strrchr(const char* str, int chr)
 		return ((char*)q);
 
 	return (c ? 0 : (char*)p);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD4
- */
-void strpbrk(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD0
- */
-void strspn(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD0
- */
-void strcspn(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -363,15 +319,6 @@ char* strtok(char* str, const char* set)
 	s  = n + 1;
 	*n = 0;
 	return (char*)p;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x68
- */
-void strstr(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**

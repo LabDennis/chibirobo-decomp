@@ -2,11 +2,21 @@
 #define _GAME_FBEFFECT_H
 
 #include "Version.h"
-#include "Dolphin/gx.h"
+#include "game/ctpl.h"
+
+// CFbOutline::Draw's pass bits: bits 0-1 grab the efb (without one the buffer is reused), the rest add a pass
+#define FBOUT_COPY_A8   0x01  // grab into mBuf as alpha
+#define FBOUT_COPY_I8   0x02  // grab into mBuf as intensity
+#define FBOUT_OUTLINE   0x04  // mThick != 0: outline the marked pixels mThick wide; 0: colour every pixel with id > 4
+#define FBOUT_TINT      0x08  // tint the pixels whose alpha matches mColor0's
+#define FBOUT_OUTLINE2  0x10  // mThick2 != 0: second outline in mColor2; 0: fill the id-0 pixels with mColor2, patterned by mPatternTex
+#define FBOUT_OVERLAY   0x20  // blend the whole screen toward buffer intensity * mColor3, at mColor3's alpha
+#define FBOUT_ZOOM_COPY 0x40  // draw the screen shrunk into the middle and grab it
+#define FBOUT_ZOOM_FADE 0x80  // fade the zoomed copy over the screen
+#define FBOUT_GHOSTS    0x100 // ghost copies circling the outline
 
 // frame buffer effects CGame owns, the outline at CGame + 0x4204 and the blur at CGame + 0x4268.
 // class names from RTTI. no base class, both RTTI base lists are empty
-// the vtables and the weak dtors are emitted in CGame's file
 
 class CFbOutline {
 public:
@@ -38,7 +48,30 @@ public:
 	f32 mPatternScaleY;    // _54
 	s32 mFrame;            // _58, 0 to 3
 	f32 mZoom;             // _5C
-	virtual ~CFbOutline(); // _60 vtable
+	// _60 vtable
+
+	virtual ~CFbOutline(); // _08
+
+	void SetLineColor(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 4 };
+		mColor0       = color;
+	}
+	void SetColor2(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 0x80 };
+		mColor2       = color;
+	}
+	void SetColor3(u8 r, u8 g, u8 b, u8 a)
+	{
+		GXColor color = { r, g, b, a };
+		mColor3       = color;
+	}
+	void SetColor4(u8 r, u8 g, u8 b, u8 a)
+	{
+		GXColor color = { r, g, b, a };
+		mColor4       = color;
+	}
 };
 
 STATIC_ASSERT(sizeof(CFbOutline) == 0x64);
@@ -59,17 +92,19 @@ public:
 #endif
 	void DrawTex();
 
-	u16 mWidth;         // _00
-	u16 mHeight;        // _02
-	void* mBuf;         // _04, w*h*2 RGB565
-	GXTexObj mTexObj;   // _08
-	f32 mAlpha;         // _28
-	f32 mTarget;        // _2C
-	f32 mSpeed;         // _30
-	f32 mOffsetX;       // _34
-	f32 mOffsetY;       // _38
-	u8 mValid;          // _3C
-	virtual ~CFbBlur(); // _40 vtable
+	u16 mWidth;       // _00
+	u16 mHeight;      // _02
+	void* mBuf;       // _04, w*h*2 RGB565
+	GXTexObj mTexObj; // _08
+	f32 mAlpha;       // _28
+	f32 mTarget;      // _2C
+	f32 mSpeed;       // _30
+	f32 mOffsetX;     // _34
+	f32 mOffsetY;     // _38
+	u8 mValid;        // _3C
+	// _40 vtable
+
+	virtual ~CFbBlur(); // _08
 };
 
 STATIC_ASSERT(sizeof(CFbBlur) == 0x44);

@@ -31,14 +31,14 @@ typedef struct _HSD_ArchiveExternInfo {
     u32 symbol; /* 0x04 */
 } HSD_ArchiveExternInfo;
 
-typedef struct _HSD_Archive {
+typedef struct HSD_Archive {
     struct _HSD_ArchiveHeader header; /* 0x00 */
     u8* data; /* 0x20 */
     struct _HSD_ArchiveRelocationInfo* reloc_info; /* 0x24 */
     struct _HSD_ArchivePublicInfo* public_info; /* 0x28 */
     struct _HSD_ArchiveExternInfo* extern_info; /* 0x2C */
     char* symbols; /* 0x30 */
-    struct _HSD_Archive* next; /* 0x34 */
+    struct HSD_Archive* next; /* 0x34 */
     char* name; /* 0x38 */
     u32 flags; /* 0x3C */
     void* top_ptr; /* 0x40 */
@@ -46,7 +46,8 @@ typedef struct _HSD_Archive {
 
 s32 HSD_ArchiveParse(HSD_Archive*, u8*, u32);
 void* HSD_ArchiveGetPublicAddress(HSD_Archive*, char*);
-char* HSD_ArchiveGetExtern(HSD_Archive*, s32);
+/* Return the name at index in the archive's public symbol table. */
+char* HSD_ArchiveGetExtern(HSD_Archive* archive, s32 index);
 void HSD_ArchiveLocateExtern(HSD_Archive*, char*, void*);
 void HSD_ArchiveFree(HSD_Archive*);
 

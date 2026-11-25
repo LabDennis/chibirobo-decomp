@@ -1,8 +1,9 @@
+#include "game/relmodule.h"
+#include "game/cgame.h"
+#include "game/xchr.h"
 #include "types.h"
 #include "Version.h"
-#include "dolphin/mtx.h"
 #include "game/ut.h"
-#include "game/cgame.h"
 
 extern "C" {
 #include <sysdolphin/random.h>
@@ -10,71 +11,10 @@ extern "C" {
 
 extern "C" void OSReport(const char* msg, ...);
 
-// partial layout, the vtable sits after a nonvirtual base at 0x34
-struct HoriObjBase {
-	u8 _00[0x34]; // _00
-};
-
-class XObj : public HoriObjBase {
-public:
-	virtual void vf08();                                            // _08
-	virtual void vf0C();                                            // _0C
-	virtual void vf10();                                            // _10
-	virtual void vf14();                                            // _14
-	virtual void vf18();                                            // _18
-	virtual void vf1C();                                            // _1C
-	virtual void vf20();                                            // _20
-	virtual void vf24();                                            // _24
-	virtual void vf28();                                            // _28
-	virtual void vf2C();                                            // _2C
-	virtual void vf30();                                            // _30
-	virtual void vf34();                                            // _34
-	virtual void vf38();                                            // _38
-	virtual void vf3C();                                            // _3C
-	virtual void vf40();                                            // _40
-	virtual void vf44();                                            // _44
-	virtual void vf48();                                            // _48
-	virtual void vf4C();                                            // _4C
-	virtual void vf50();                                            // _50
-	virtual void vf54();                                            // _54
-	virtual void vf58();                                            // _58
-	virtual void vf5C();                                            // _5C
-	virtual void vf60();                                            // _60
-	virtual void vf64();                                            // _64
-	virtual void vf68();                                            // _68
-	virtual void vf6C();                                            // _6C
-	virtual void vf70();                                            // _70
-	virtual void vf74();                                            // _74
-	virtual void vf78();                                            // _78
-	virtual void vf7C();                                            // _7C
-	virtual void vf80(s32, s32, s32, s32, s32, f32, f32, f32, f32); // _80
-
-	s32 GetId() { return _244 != NULL ? *_244 : -1; }
-
-#if defined(VERSION_JP)
-	u8 _38[0x23C - 0x38]; // _38
-#else
-	u8 _38[0x244 - 0x38]; // _38
-#endif
-	s32* _244; // _244, _23C in japan
-};
-
-struct HoriPlayer {
-#if defined(VERSION_JP)
-	u8 _00[0x9C4]; // _00
-#else
-	u8 _00[0x9D4]; // _00
-#endif
-	s32 _9D4; // _9D4, _9C4 in japan
-};
-
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2);
-extern "C" void UpdateStage(void* arg);
-extern "C" void Init(void* arg);
-
-typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, s32* args);
+extern "C" void UpdateStage(s32 arg);
+extern "C" void Init(s32 arg);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { Init, UpdateStage };
@@ -89,20 +29,20 @@ public:
 
 	void Set(XObj* obj, const Func& func)
 	{
-		_00 = obj;
-		if (_00 == NULL) {
+		mObject = obj;
+		if (mObject == NULL) {
 			_08 = 0;
 		}
-		_08 = func;
-		_14 = 0;
+		_08    = func;
+		mState = 0;
 	}
 
 	void Start(XObj* obj) { Set(obj, &RandomAnimCtrl::UpdateRandomAnim); }
 
-	XObj* _00; // _00
-	s32 _04;   // _04
-	Func _08;  // _08
-	s32 _14;   // _14
+	XObj* mObject; // _00, the XObj whose anims are picked at random
+	s32 mTimer;    // _04, frames left on the current anim, 180-359 per pick, counts down each update
+	Func _08;      // _08, member function pointer Start stores (&RandomAnimCtrl::UpdateRandomAnim); nothing in hori calls it
+	s32 mState;    // _14, 0 picks one of three anims at random, 10/20/30 start anim 0/3/4, 11/21/31 wait for mTimer
 };
 
 static RandomAnimCtrl randomAnims[10];
@@ -119,45 +59,45 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
 {
 	f32 rnd = HSD_Randf();
 
-	if (_04 >= 0) {
-		_04--;
+	if (mTimer >= 0) {
+		mTimer--;
 	}
-	switch (_14) {
+	switch (mState) {
 	case 0:
-		_04 = HSD_Randi(180) + 180;
-		if (rnd < 0.333f) {
-			_14 = 10;
+		mTimer = HSD_Randi(180) + 180;
+		if (rnd < 0.333f) { // a third each
+			mState = 10;
 		} else if (rnd < 0.666f) {
-			_14 = 20;
+			mState = 20;
 		} else {
-			_14 = 30;
+			mState = 30;
 		}
 		break;
 	case 10:
-		_00->vf80(0, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
-		_14++;
+		mObject->SetAnim(0, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+		mState++;
 		break;
 	case 11:
-		if (_04 <= 0) {
-			_14 = 0;
+		if (mTimer <= 0) {
+			mState = 0;
 		}
 		break;
 	case 20:
-		_00->vf80(3, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
-		_14++;
+		mObject->SetAnim(3, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+		mState++;
 		break;
 	case 21:
-		if (_04 <= 0) {
-			_14 = 0;
+		if (mTimer <= 0) {
+			mState = 0;
 		}
 		break;
 	case 30:
-		_00->vf80(4, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
-		_14++;
+		mObject->SetAnim(4, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+		mState++;
 		break;
 	case 31:
-		if (_04 <= 0) {
-			_14 = 0;
+		if (mTimer <= 0) {
+			mState = 0;
 		}
 		break;
 	}
@@ -168,19 +108,18 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
  * @note Address: hori .text 0x21C
  * @note Size: 0x50
  */
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 {
-	s32* args = (s32*)arg2;
-	s16 id    = args[0];
-	s32 time  = args[1] * 60 / 100;
-	XSound* unk;
+	s16 pitch = args[0];
+	s32 time  = args[1] * 60 / 100; // centiseconds to frames
+	XSound* sound;
 
 	if (time <= 0) {
 		time = 1;
 	}
-	unk       = &lbl_8025C400._E7E24;
-	unk->_2BA = id;
-	unk->_188 = time;
+	sound                    = &gGame.mSound;
+	sound->mTargetMusicPitch = pitch;
+	sound->mMusicPitchFrames = time;
 	return 0;
 }
 
@@ -188,13 +127,13 @@ extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
  * @note Address: hori .text 0x26C
  * @note Size: 0xBC
  */
-extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2)
+extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, s32* args)
 {
-	s32* ids = (s32*)arg2;
+	s32* ids = args;
 	s32 i;
 
-	for (i = 0; i < count; i++) {
-		randomAnims[randomAnimCount].Start(lbl_8025C400.mObjects[*ids]);
+	for (i = 0; i < count; i++) { // each arg id gets a controller
+		randomAnims[randomAnimCount].Start(gGame.mXObjs.mObjects[*ids]);
 		ids++;
 		randomAnimCount++;
 	}
@@ -205,12 +144,12 @@ extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2)
  * @note Address: hori .text 0x328
  * @note Size: 0xB0
  */
-extern "C" void UpdateStage(void* arg)
+extern "C" void UpdateStage(s32 arg)
 {
-	s32 cur = ((HoriPlayer*)lbl_8025C400.mPlayer)->_9D4;
+	s32 cur = gGame.GetPlayer()->mFloorContacts[0].objectIndex;
 
-	if (prevPlayerObjNo != cur && cur == tuta_objno) {
-		lbl_8025C400.mObjects[tuta_objno]->vf80(1, 1, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+	if (prevPlayerObjNo != cur && cur == tuta_objno) { // stepping onto tuta runs its anim
+		gGame.mXObjs.mObjects[tuta_objno]->SetAnim(1, 1, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 	prevPlayerObjNo = cur;
 }
@@ -219,14 +158,14 @@ extern "C" void UpdateStage(void* arg)
  * @note Address: hori .text 0x3D8
  * @note Size: 0xB8
  */
-extern "C" void Init(void* arg)
+extern "C" void Init(s32 arg)
 {
 	s32 i;
 
 	OSReport("Init\n");
 	prevPlayerObjNo = -1;
-	for (i = 0; i < lbl_8025C400.mObjectCount; i++) {
-		if (lbl_8025C400.mObjects[i]->GetId() == 0x2EC) {
+	for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		if (gGame.mXObjs.mObjects[i]->GetKind() == 0x2EC) { // kind 0x2EC is tuta
 			tuta_objno = i;
 			OSReport("tuta_objno = %d\n", i);
 		}

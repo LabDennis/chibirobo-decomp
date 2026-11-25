@@ -1,6 +1,8 @@
-#include "types.h"
+#include "Dolphin/os.h"
 
-static void* __OSArenaHi = (void*)0x00000000;
+#define ROUND_UP(x, align) (((u32)(x) + (align) - 1) & ~((align) - 1))
+
+static void* __OSArenaHi = NULL;
 static void* __OSArenaLo = (void*)0xffffffff;
 
 /**
@@ -43,8 +45,6 @@ void OSSetArenaLo(void* arena_lo)
  * @note Address: 0x80162CA8
  * @note Size: 0x2C
  */
-#define ROUND_UP(x, align) (((u32)(x) + (align) - 1) & ~((align) - 1))
-
 void* OSAllocFromArenaLo(u32 size, u32 align)
 {
 	void* ptr;
@@ -56,13 +56,4 @@ void* OSAllocFromArenaLo(u32 size, u32 align)
 
 	__OSArenaLo = arenaLo;
 	return ptr;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x20
- */
-void OSAllocFromArenaHi(void)
-{
-	// UNUSED FUNCTION
 }

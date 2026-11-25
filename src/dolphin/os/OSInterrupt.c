@@ -1,10 +1,22 @@
 #include "Dolphin/os.h"
 #include "Dolphin/hw_regs.h"
 
-ASM static void ExternalInterruptHandler(register __OSException exception, register OSContext* context);
+extern void ExternalInterruptHandler(__OSException exception, OSContext* context);
 
-extern void __RAS_OSDisableInterrupts_begin(void);
-extern void __RAS_OSDisableInterrupts_end(void);
+// PI inputs that aggregate interrupts from other controllers.
+#define PI_GROUP_INTERRUPT_MASK (PI_INTRPT_EXI | PI_INTRPT_AI | PI_INTRPT_DSP | PI_INTRPT_MEM)
+
+typedef struct EXIInterruptMasks {
+	OSInterruptMask exi;
+	OSInterruptMask transfer;
+	OSInterruptMask external;
+} EXIInterruptMasks;
+
+static const EXIInterruptMasks EXIInterruptMasksByChannel[] = {
+	{OS_INTERRUPTMASK_EXI_0_EXI, OS_INTERRUPTMASK_EXI_0_TC, OS_INTERRUPTMASK_EXI_0_EXT},
+	{OS_INTERRUPTMASK_EXI_1_EXI, OS_INTERRUPTMASK_EXI_1_TC, OS_INTERRUPTMASK_EXI_1_EXT},
+	{OS_INTERRUPTMASK_EXI_2_EXI, OS_INTERRUPTMASK_EXI_2_TC, 0},
+};
 
 static __OSInterruptHandler* InterruptHandlerTable;
 
@@ -26,61 +38,6 @@ static OSInterruptMask InterruptPrioTable[] = {
 volatile OSTime __OSLastInterruptTime;
 volatile __OSInterrupt __OSLastInterrupt;
 vu32 __OSLastInterruptSrr0;
-
-/**
- * @note Address: 0x80166E50
- * @note Size: 0x14
- */
-ASM BOOL OSDisableInterrupts() {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-entry    __RAS_OSDisableInterrupts_begin
-	mfmsr   r3
-	rlwinm  r4, r3, 0, 17, 15
-	mtmsr   r4
-entry    __RAS_OSDisableInterrupts_end
-	rlwinm  r3, r3, 17, 31, 31
-	blr
-#endif // clang-format on
-}
-
-/**
- * @note Address: 0x80166E64
- * @note Size: 0x14
- */
-ASM BOOL OSEnableInterrupts() {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	mfmsr   r3
-	ori     r4, r3, 0x8000
-	mtmsr   r4
-	rlwinm  r3, r3, 17, 31, 31
-	blr
-#endif // clang-format on
-}
-
-/**
- * @note Address: 0x80166E78
- * @note Size: 0x24
- */
-ASM BOOL OSRestoreInterrupts(register BOOL level) {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	cmpwi   level, 0
-	mfmsr   r4
-	beq     _disable
-	ori     r5, r4, 0x8000
-	b       _restore
-_disable:
-	rlwinm  r5, r4, 0, 17, 15
-_restore:
-	mtmsr   r5
-	rlwinm  r3, r4, 17, 31, 31
-	blr
-#endif // clang-format on
-}
 
 /**
  * @note Address: 0x80166E9C
@@ -117,11 +74,58 @@ void __OSInterruptInit()
 
 	__OSCurrentInterruptMask = 0;
 
-	__PIRegs[PI_INTRPT_MASK] = 0xF0;
+	__PIRegs[PI_INTRPT_MASK] = PI_GROUP_INTERRUPT_MASK;
 
 	__OSMaskInterrupts(OS_INTERRUPTMASK_MEM | OS_INTERRUPTMASK_DSP | OS_INTERRUPTMASK_AI | OS_INTERRUPTMASK_EXI | OS_INTERRUPTMASK_PI);
 
-	__OSSetExceptionHandler(4, ExternalInterruptHandler);
+	__OSSetExceptionHandler(__OS_EXCEPTION_EXTERNAL_INTERRUPT, ExternalInterruptHandler);
+}
+
+static void SetEXIInterruptMask(u32 channel, OSInterruptMask current)
+{
+	const EXIInterruptMasks* masks = &EXIInterruptMasksByChannel[channel];
+	u32 control = EXI_REG(channel, EXI_REG_CPR);
+
+	// Writing zero to each status bit leaves any pending interrupt unacknowledged.
+	control &= ~(EXI_CPR_EXI_INT_ENABLE | EXI_CPR_EXI_INT | EXI_CPR_TC_INT_ENABLE | EXI_CPR_TC_INT);
+	if (channel == 0) {
+		control &= ~EXI_CPR_ROM_DISABLE;
+	}
+	if (!(current & masks->exi)) {
+		control |= EXI_CPR_EXI_INT_ENABLE;
+	}
+	if (!(current & masks->transfer)) {
+		control |= EXI_CPR_TC_INT_ENABLE;
+	}
+	if (masks->external) {
+		control &= ~(EXI_CPR_EXT_INT_ENABLE | EXI_CPR_EXT_INT);
+		if (!(current & masks->external)) {
+			control |= EXI_CPR_EXT_INT_ENABLE;
+		}
+	}
+	EXI_REG(channel, EXI_REG_CPR) = control;
+}
+
+static OSInterruptMask GetEXIInterruptCause(void)
+{
+	OSInterruptMask cause = 0;
+	u32 channel;
+
+	for (channel = 0; channel < ARRAY_SIZE(EXIInterruptMasksByChannel); ++channel) {
+		const EXIInterruptMasks* masks = &EXIInterruptMasksByChannel[channel];
+		u32 status = EXI_REG(channel, EXI_REG_CPR);
+
+		if (status & EXI_CPR_EXI_INT) {
+			cause |= masks->exi;
+		}
+		if (status & EXI_CPR_TC_INT) {
+			cause |= masks->transfer;
+		}
+		if (status & EXI_CPR_EXT_INT) {
+			cause |= masks->external;
+		}
+	}
+	return cause;
 }
 
 /**
@@ -140,19 +144,19 @@ static u32 SetInterruptMask(OSInterruptMask mask, OSInterruptMask current)
 	case __OS_INTERRUPT_MEM_ADDRESS:
 		reg = 0;
 		if (!(current & OS_INTERRUPTMASK_MEM_0)) {
-			reg |= 0x1;
+			reg |= OS_PROTECT0_BIT;
 		}
 		if (!(current & OS_INTERRUPTMASK_MEM_1)) {
-			reg |= 0x2;
+			reg |= OS_PROTECT1_BIT;
 		}
 		if (!(current & OS_INTERRUPTMASK_MEM_2)) {
-			reg |= 0x4;
+			reg |= OS_PROTECT2_BIT;
 		}
 		if (!(current & OS_INTERRUPTMASK_MEM_3)) {
-			reg |= 0x8;
+			reg |= OS_PROTECT3_BIT;
 		}
 		if (!(current & OS_INTERRUPTMASK_MEM_ADDRESS)) {
-			reg |= 0x10;
+			reg |= OS_PROTECT_ADDRERR_BIT;
 		}
 		__MEMRegs[MEM_INTRPT_MASK] = (u16)reg;
 		mask &= ~OS_INTERRUPTMASK_MEM;
@@ -162,15 +166,16 @@ static u32 SetInterruptMask(OSInterruptMask mask, OSInterruptMask current)
 	case __OS_INTERRUPT_DSP_ARAM:
 	case __OS_INTERRUPT_DSP_DSP:
 		reg = __DSPRegs[DSP_CONTROL_STATUS];
-		reg &= ~0x1F8;
+		reg &= ~(DSP_STATUS_INTERRUPTS | DSP_CONTROL_AI_INT_ENABLE |
+		         DSP_CONTROL_ARAM_INT_ENABLE | DSP_CONTROL_DSP_INT_ENABLE);
 		if (!(current & OS_INTERRUPTMASK_DSP_AI)) {
-			reg |= 0x10;
+			reg |= DSP_CONTROL_AI_INT_ENABLE;
 		}
 		if (!(current & OS_INTERRUPTMASK_DSP_ARAM)) {
-			reg |= 0x40;
+			reg |= DSP_CONTROL_ARAM_INT_ENABLE;
 		}
 		if (!(current & OS_INTERRUPTMASK_DSP_DSP)) {
-			reg |= 0x100;
+			reg |= DSP_CONTROL_DSP_INT_ENABLE;
 		}
 		__DSPRegs[DSP_CONTROL_STATUS] = (u16)reg;
 		mask &= ~OS_INTERRUPTMASK_DSP;
@@ -178,9 +183,9 @@ static u32 SetInterruptMask(OSInterruptMask mask, OSInterruptMask current)
 
 	case __OS_INTERRUPT_AI_AI:
 		reg = __AIRegs[AI_CONTROL];
-		reg &= ~0x2C;
+		reg &= ~(AI_CONTROL_STREAM_INT_ENABLE | AI_STATUS_STREAM_INTERRUPT | AI_CONTROL_STREAM_COUNT_RESET);
 		if (!(current & OS_INTERRUPTMASK_AI_AI)) {
-			reg |= 0x4;
+			reg |= AI_CONTROL_STREAM_INT_ENABLE;
 		}
 		__AIRegs[AI_CONTROL] = reg;
 		mask &= ~OS_INTERRUPTMASK_AI;
@@ -189,52 +194,20 @@ static u32 SetInterruptMask(OSInterruptMask mask, OSInterruptMask current)
 	case __OS_INTERRUPT_EXI_0_EXI:
 	case __OS_INTERRUPT_EXI_0_TC:
 	case __OS_INTERRUPT_EXI_0_EXT:
-		reg = __EXIRegs[EXI_CHAN_0_STAT];
-		reg &= ~0x2C0F;
-		if (!(current & OS_INTERRUPTMASK_EXI_0_EXI)) {
-			reg |= 0x1;
-		}
-		if (!(current & OS_INTERRUPTMASK_EXI_0_TC)) {
-			reg |= 0x4;
-		}
-		if (!(current & OS_INTERRUPTMASK_EXI_0_EXT)) {
-			reg |= 0x400;
-		}
-		__EXIRegs[EXI_CHAN_0_STAT] = reg;
+		SetEXIInterruptMask(0, current);
 		mask &= ~OS_INTERRUPTMASK_EXI_0;
 		break;
 
 	case __OS_INTERRUPT_EXI_1_EXI:
 	case __OS_INTERRUPT_EXI_1_TC:
 	case __OS_INTERRUPT_EXI_1_EXT:
-		reg = __EXIRegs[EXI_CHAN_1_STAT];
-		reg &= ~0xC0F;
-
-		if (!(current & OS_INTERRUPTMASK_EXI_1_EXI)) {
-			reg |= 0x1;
-		}
-		if (!(current & OS_INTERRUPTMASK_EXI_1_TC)) {
-			reg |= 0x4;
-		}
-		if (!(current & OS_INTERRUPTMASK_EXI_1_EXT)) {
-			reg |= 0x400;
-		}
-		__EXIRegs[EXI_CHAN_1_STAT] = reg;
+		SetEXIInterruptMask(1, current);
 		mask &= ~OS_INTERRUPTMASK_EXI_1;
 		break;
 
 	case __OS_INTERRUPT_EXI_2_EXI:
 	case __OS_INTERRUPT_EXI_2_TC:
-		reg = __EXIRegs[EXI_CHAN_2_STAT];
-		reg &= ~0xF;
-		if (!(current & OS_INTERRUPTMASK_EXI_2_EXI)) {
-			reg |= 0x1;
-		}
-		if (!(current & OS_INTERRUPTMASK_EXI_2_TC)) {
-			reg |= 0x4;
-		}
-
-		__EXIRegs[EXI_CHAN_2_STAT] = reg;
+		SetEXIInterruptMask(2, current);
 		mask &= ~OS_INTERRUPTMASK_EXI_2;
 		break;
 
@@ -248,37 +221,37 @@ static u32 SetInterruptMask(OSInterruptMask mask, OSInterruptMask current)
 	case __OS_INTERRUPT_PI_PE_TOKEN:
 	case __OS_INTERRUPT_PI_PE_FINISH:
 	case __OS_INTERRUPT_PI_HSP:
-		reg = 0xF0;
+		reg = PI_GROUP_INTERRUPT_MASK;
 
 		if (!(current & OS_INTERRUPTMASK_PI_CP)) {
-			reg |= 0x800;
+			reg |= PI_INTRPT_CP;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_SI)) {
-			reg |= 0x8;
+			reg |= PI_INTRPT_SI;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_DI)) {
-			reg |= 0x4;
+			reg |= PI_INTRPT_DVD;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_RSW)) {
-			reg |= 0x2;
+			reg |= PI_INTRPT_RSW;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_ERROR)) {
-			reg |= 0x1;
+			reg |= PI_INTRPT_ERR;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_VI)) {
-			reg |= 0x100;
+			reg |= PI_INTRPT_VI;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_DEBUG)) {
-			reg |= 0x1000;
+			reg |= PI_INTRPT_DEBUG;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_PE_TOKEN)) {
-			reg |= 0x200;
+			reg |= PI_INTRPT_PE_TOKEN;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_PE_FINISH)) {
-			reg |= 0x400;
+			reg |= PI_INTRPT_PE_FINISH;
 		}
 		if (!(current & OS_INTERRUPTMASK_PI_HSP)) {
-			reg |= 0x2000;
+			reg |= PI_INTRPT_HSP;
 		}
 		__PIRegs[PI_INTRPT_MASK] = reg;
 		mask &= ~OS_INTERRUPTMASK_PI;
@@ -363,56 +336,36 @@ void __OSDispatchInterrupt(__OSException exception, OSContext* context)
 
 	if (intsr & PI_INTRPT_MEM) {
 		reg = __MEMRegs[MEM_INTRPT_SRC];
-		if (reg & 0x1)
+		if (reg & OS_PROTECT0_BIT)
 			cause |= OS_INTERRUPTMASK_MEM_0;
-		if (reg & 0x2)
+		if (reg & OS_PROTECT1_BIT)
 			cause |= OS_INTERRUPTMASK_MEM_1;
-		if (reg & 0x4)
+		if (reg & OS_PROTECT2_BIT)
 			cause |= OS_INTERRUPTMASK_MEM_2;
-		if (reg & 0x8)
+		if (reg & OS_PROTECT3_BIT)
 			cause |= OS_INTERRUPTMASK_MEM_3;
-		if (reg & 0x10)
+		if (reg & OS_PROTECT_ADDRERR_BIT)
 			cause |= OS_INTERRUPTMASK_MEM_ADDRESS;
 	}
 
 	if (intsr & PI_INTRPT_DSP) {
 		reg = __DSPRegs[DSP_CONTROL_STATUS];
-		if (reg & 0x8)
+		if (reg & DSP_STATUS_AI_INTERRUPT)
 			cause |= OS_INTERRUPTMASK_DSP_AI;
-		if (reg & 0x20)
+		if (reg & DSP_STATUS_ARAM_INTERRUPT)
 			cause |= OS_INTERRUPTMASK_DSP_ARAM;
-		if (reg & 0x80)
+		if (reg & DSP_STATUS_DSP_INTERRUPT)
 			cause |= OS_INTERRUPTMASK_DSP_DSP;
 	}
 
 	if (intsr & PI_INTRPT_AI) {
 		reg = __AIRegs[AI_CONTROL];
-		if (reg & 0x8)
+		if (reg & AI_STATUS_STREAM_INTERRUPT)
 			cause |= OS_INTERRUPTMASK_AI_AI;
 	}
 
 	if (intsr & PI_INTRPT_EXI) {
-		reg = __EXIRegs[EXI_CHAN_0_STAT];
-		if (reg & 0x2)
-			cause |= OS_INTERRUPTMASK_EXI_0_EXI;
-		if (reg & 0x8)
-			cause |= OS_INTERRUPTMASK_EXI_0_TC;
-		if (reg & 0x800)
-			cause |= OS_INTERRUPTMASK_EXI_0_EXT;
-
-		reg = __EXIRegs[EXI_CHAN_1_STAT];
-		if (reg & 0x2)
-			cause |= OS_INTERRUPTMASK_EXI_1_EXI;
-		if (reg & 0x8)
-			cause |= OS_INTERRUPTMASK_EXI_1_TC;
-		if (reg & 0x800)
-			cause |= OS_INTERRUPTMASK_EXI_1_EXT;
-
-		reg = __EXIRegs[EXI_CHAN_2_STAT];
-		if (reg & 0x2)
-			cause |= OS_INTERRUPTMASK_EXI_2_EXI;
-		if (reg & 0x8)
-			cause |= OS_INTERRUPTMASK_EXI_2_TC;
+		cause |= GetEXIInterruptCause();
 	}
 
 	if (intsr & PI_INTRPT_HSP)
@@ -462,20 +415,4 @@ void __OSDispatchInterrupt(__OSException exception, OSContext* context)
 	}
 
 	OSLoadContext(context);
-}
-
-/**
- * @note Address: 0x8016766C
- * @note Size: 0x50
- */
-ASM static void ExternalInterruptHandler(register __OSException exception, register OSContext* context)
-{
-#pragma unused(exception)
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	OS_EXCEPTION_SAVE_GPRS(context)
-
-	stwu r1, -8(r1)
-	b __OSDispatchInterrupt
-#endif // clang-format on
 }

@@ -15,24 +15,17 @@
 #include <sysdolphin/tobj.h>
 #include <sysdolphin/wobj.h>
 
+#include <math.h>
 #include <stdarg.h>
+#include <string.h>
 
 typedef void (*Event)(void);
 
-typedef union HSD_AObjAllocData {
-    HSD_ObjAllocData data;
-    u8 pad[0x30];
-} HSD_AObjAllocData;
-
-HSD_AObjAllocData hsdAObj_alloc_data;
-#define AOBJ_ALLOC_DATA (&hsdAObj_alloc_data.data)
+static HSD_ObjAllocData hsdAObj_alloc_data;
 
 s32 AObjEndedCount;
 s32 AObjActiveCount;
 HSD_SList* AObjCallbackList;
-
-f64 fmod(f64 x, f64 y);
-extern void* memset(void* dst, int val, size_t n);
 
 /**
  * @note Address: 0x801BA7C8
@@ -40,7 +33,7 @@ extern void* memset(void* dst, int val, size_t n);
  */
 void HSD_AObjInitAllocData(void)
 {
-    HSD_ObjAllocInit(AOBJ_ALLOC_DATA, sizeof(HSD_AObj), 4);
+    HSD_ObjAllocInit(&hsdAObj_alloc_data, sizeof(HSD_AObj), 4);
 }
 
 /**
@@ -49,7 +42,7 @@ void HSD_AObjInitAllocData(void)
  */
 HSD_ObjAllocData* HSD_AObjGetAllocData(void)
 {
-    return AOBJ_ALLOC_DATA;
+    return &hsdAObj_alloc_data;
 }
 
 /**
@@ -210,11 +203,8 @@ void HSD_AObjInterpretAnim(HSD_AObj* aobj, void* obj,
         HSD_FObjInterpretAnimAll(aobj->fobj, obj, update_func, rate);
     }
 
-    if (!(aobj->flags & AOBJ_LOOP) && (aobj->end_frame <= aobj->curr_frame) &&
-        aobj)
-    {
-        HSD_FObjStopAnimAll(aobj->fobj, obj, update_func, aobj->framerate);
-        aobj->flags |= AOBJ_NO_ANIM;
+    if (!(aobj->flags & AOBJ_LOOP) && aobj->end_frame <= aobj->curr_frame) {
+        HSD_AObjStopAnim(aobj, obj, update_func);
     }
 
     if (aobj->flags & AOBJ_NO_ANIM) {
@@ -233,7 +223,6 @@ HSD_AObj* HSD_AObjLoadDesc(HSD_AObjDesc* aobjdesc)
     HSD_FObjDesc* fobjdesc;
     HSD_Obj* loaded_obj;
     HSD_AObj* aobj;
-    u8 _[4];
     HSD_FObj* fobj;
     u32 id;
 
@@ -297,7 +286,7 @@ void HSD_AObjRemove(HSD_AObj* aobj)
  */
 HSD_AObj* HSD_AObjAlloc(void)
 {
-    HSD_AObj* new = (HSD_AObj*) HSD_ObjAlloc(AOBJ_ALLOC_DATA);
+    HSD_AObj* new = (HSD_AObj*) HSD_ObjAlloc(&hsdAObj_alloc_data);
     assert_line(489, new);
 
     memset(new, 0, sizeof(HSD_AObj));
@@ -316,7 +305,7 @@ void HSD_AObjFree(HSD_AObj* aobj)
         return;
     }
 
-    HSD_ObjFree(AOBJ_ALLOC_DATA, (HSD_ObjAllocLink*) aobj);
+    HSD_ObjFree(&hsdAObj_alloc_data, (HSD_ObjAllocLink*) aobj);
 }
 
 /**

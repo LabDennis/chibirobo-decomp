@@ -64,9 +64,9 @@ static BOOL IsCard(u32 id) {
 void __CARDDisable(BOOL disable) {
     BOOL enabled = OSDisableInterrupts();
 
-    __gUnknown800030E3 &= ~0x80;
+    GameChoice &= ~OS_GAME_CHOICE_NO_MEMORY_CARD;
     if (disable) {
-        __gUnknown800030E3 |= 0x80;
+        GameChoice |= OS_GAME_CHOICE_NO_MEMORY_CARD;
     }
 
     OSRestoreInterrupts(enabled);
@@ -77,7 +77,7 @@ void __CARDDisable(BOOL disable) {
  * @note Size: ?
  */
 int CARDProbe(s32 chan) {
-    if (__gUnknown800030E3 & 0x80) {
+    if (GameChoice & OS_GAME_CHOICE_NO_MEMORY_CARD) {
         return 0;
     } else {
         return EXIProbe(chan);
@@ -98,7 +98,7 @@ s32 CARDProbeEx(s32 chan, s32* memSize, s32* sectorSize) {
     if (chan < 0 || 2 <= chan)
         return CARD_RESULT_FATAL_ERROR;
 
-    if (__gUnknown800030E3 & 0x80) {
+    if (GameChoice & OS_GAME_CHOICE_NO_MEMORY_CARD) {
         return CARD_RESULT_NOCARD;
     }
 
@@ -123,7 +123,7 @@ s32 CARDProbeEx(s32 chan, s32* memSize, s32* sectorSize) {
             result = CARD_RESULT_READY;
         }
     }
-    else if ((EXIGetState(chan) & 8))
+    else if (EXIGetState(chan) & EXI_STATE_ATTACHED)
         result = CARD_RESULT_WRONGDEVICE;
     else if (!EXIGetID(chan, 0, &id))
         result = CARD_RESULT_BUSY;
@@ -333,7 +333,7 @@ s32 CARDMountAsync(s32 chan, void* workArea, CARDCallback detachCallback, CARDCa
     if (chan < 0 || 2 <= chan)
         return CARD_RESULT_FATAL_ERROR;
 
-    if (__gUnknown800030E3 & 0x80) {
+    if (GameChoice & OS_GAME_CHOICE_NO_MEMORY_CARD) {
         return CARD_RESULT_NOCARD;
     }
 
@@ -345,7 +345,7 @@ s32 CARDMountAsync(s32 chan, void* workArea, CARDCallback detachCallback, CARDCa
         return CARD_RESULT_BUSY;
     }
 
-    if (!card->attached && (EXIGetState(chan) & 0x08)) {
+    if (!card->attached && (EXIGetState(chan) & EXI_STATE_ATTACHED)) {
         OSRestoreInterrupts(enabled);
         return CARD_RESULT_WRONGDEVICE;
     }

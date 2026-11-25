@@ -8,7 +8,7 @@
 #include <sysdolphin/forward.h>
 #include <sysdolphin/jobj.h>
 
-/* size: 0xA0 */
+/* size: 0x9C */
 struct HSD_Particle {
     HSD_Particle* next;                     // 0x00
     u32 kind;                               // 0x04
@@ -69,27 +69,25 @@ struct HSD_Particle {
     HSD_psAppSRT* appsrt;                   // 0x90
     f32* userdata;                          // 0x94
     int (*callback)(HSD_Particle* part);    // 0x98
-    u16 pauseCount;                         // 0x9C
-    u16 pad9E;                              // 0x9E
 };
 
+/* size: 0x74 */
 struct HSD_psAppSRT {
-    HSD_psAppSRT* next;   // 0x00
-    HSD_Generator* gp;    // 0x04
-    Vec translate;        // 0x08
-    Vec rot;              // 0x14
-    u32 unk20;            // 0x20
-    Vec scale;            // 0x24
-    Vec unk30;            // 0x30
-    u8 status;            // 0x3C
-    u8 frameNum;          // 0x3D
-    u16 usedCount;        // 0x3E
-    Mtx mmtx;             // 0x40
-    f32 ssx;              // 0x70
-    f32 ssy;              // 0x74
-    void (*freefunc)(HSD_psAppSRT* appsrt); // 0x78
-    u16 idnum;                              // 0x7C
-    s8 xA2;                                 // 0x7E
+    HSD_psAppSRT* next;                     // 0x00
+    HSD_Generator* gp;                      // 0x04
+    Vec translate;                          // 0x08
+    Vec rot;                                // 0x14
+    u32 unk20;                              // 0x20
+    Vec scale;                              // 0x24
+    u8 status;                              // 0x30
+    u8 frameNum;                            // 0x31
+    u16 usedCount;                          // 0x32
+    Mtx mmtx;                               // 0x34
+    f32 ssx;                                // 0x64
+    f32 ssy;                                // 0x68
+    void (*freefunc)(HSD_psAppSRT* appsrt);  // 0x6C
+    u16 idnum;                              // 0x70
+    u8 useCameraRotation;                   // 0x72
 };
 
 /* size: 0xC */
@@ -144,7 +142,7 @@ typedef struct _auxSphere {
     f32 lonRange;
 } auxSphere;
 
-/* size: 0x88 */
+/* size: 0x94 */
 struct HSD_Generator {
     HSD_Generator* next;               // 0x00
     u32 kind;                          // 0x04
@@ -196,7 +194,7 @@ typedef struct HSD_PSTexGroup {
 /* size: 0x8 */
 typedef struct HSD_PSFormGroup {
     u32 num;
-    u8* formTable[1];
+    u32* formTable[1];
 } HSD_PSFormGroup;
 
 /* size: 0x40 */
@@ -221,12 +219,59 @@ typedef struct HSD_PSCmdList {
     u8 cmdList[1];
 } HSD_PSCmdList;
 
-HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, int reserved0, int reserved1, u32 kind, int texGroup, u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav, int life, f32 fric, int palflag, HSD_Generator* gp, int flgInterpret);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum { PS_BANK_COUNT = 64 };
+
+extern HSD_PSTexGroup** psTexGroupArray[PS_BANK_COUNT];
+extern HSD_PSFormGroup** psFormGroupArray[PS_BANK_COUNT];
+extern HSD_JObj* psPointJObj[8];
+/* Optional command index remapping table for each bank. */
+extern const u32* ptclref[PS_BANK_COUNT];
+
+void psInitDataBank(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
+void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
+void psInitParticle(s32 count);
+void psRemoveParticle(void);
+void psKillAllParticle(void);
+void psSetPointJObj(s32 no, HSD_JObj* jobj);
+void psSetPointJObjNodup(HSD_JObj* jobj, s32 no);
+void psSetUserFunc(HSD_Generator* gp, HSD_PSUserFunc* userfunc);
+
+void psInitGenerator(s32 num);
+void psRemoveGenerator(void);
+void psKillGenerator(HSD_Generator* gen);
+void psKillAllGenerator(void);
+void psExecGenerator(u32 mask);
+u16 psGetNewIDNum(void);
+HSD_Generator* psCreateGeneratorID(int linkNo, int bank, int kind);
+HSD_Generator* psCreateJointGenerator(int linkNo, int bank, int kind, HSD_JObj* jobj);
+HSD_Generator* psCreateQueuedJointGenerator(int linkNo, int bank, int kind, HSD_JObj* jobj);
+
+s32 psInitAppSRT(s32 num, s32 size);
+void psRemoveAppSRT(void);
+HSD_psAppSRT* CreateGeneratorAppSRT(HSD_Generator* gp, s32 status);
+s32 psAttachParticleAppSRT(HSD_Particle* pp, HSD_psAppSRT* srt);
+s32 psAttachGeneratorAppSRT(HSD_Generator* gp, HSD_psAppSRT* srt);
+s32 AttachParticleAppSRT(HSD_Particle* pp, HSD_psAppSRT* srt);
+s32 AttachGeneratorAppSRT(HSD_Generator* gp, HSD_psAppSRT* srt);
+s32 psRemoveParticleAppSRT(HSD_Particle* pp);
+s32 psRemoveGeneratorAppSRT(HSD_Generator* gp);
+
+HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, int reserved0, int reserved1, u32 kind, int texGroup,
+                                 u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav, int life,
+                                 f32 fric, int palflag, HSD_Generator* gp, int flgInterpret);
 HSD_Particle* psGenerateParticleID0(HSD_Particle* head, int linkNo, int bank, int id, int flgInterpret);
-HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav, int life, f32 fric, int palflag, HSD_Generator* gp);
-void psKillParticle(void);
+HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, int life,
+                                f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav,
+                                f32 fric, int palflag, HSD_Generator* gp);
 void psDeletePntJObjwithParticle(HSD_Particle* pp);
 void psKillGeneratorChild(HSD_Generator* gp);
-void psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

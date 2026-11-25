@@ -3,6 +3,8 @@
 
 #include "Dolphin/dsp.h"
 #include "Dolphin/os.h"
+#include "Dolphin/OS/OSAlarm.h"
+#include "Dolphin/OS/OSThread.h"
 #include "types.h"
 
 #ifdef __cplusplus
@@ -141,7 +143,7 @@ struct CARDControl {
 	CARDCallback unlockCallback;    // _DC
 	OSAlarm alarm;                  // _E0, for timeout.
 	u32 cid;                        // _108
-	const DVDDiskID* diskID;        // _10C
+	const struct DVDDiskID* diskID;       // _10C
 };
 
 // CARD identification struct (size 0x200).
@@ -210,7 +212,7 @@ typedef enum { BannerColorCI8 = 0x1, BannerPresent = 0x2, IconAnimationPingPong 
 extern CARDControl __CARDBlock[2];
 
 // Other CARD information.
-extern DVDDiskID __CARDDiskNone;
+extern struct DVDDiskID __CARDDiskNone;
 extern u16 __CARDVendorID;
 extern u8 __CARDPermMask;
 
@@ -281,7 +283,7 @@ s32 __CARDReadSegment(s32 channel, CARDCallback callback);
 s32 __CARDWritePage(s32 channel, CARDCallback callback);
 s32 __CARDEraseSector(s32 channel, u32 addr, CARDCallback callback);
 u16 __CARDGetFontEncode();
-void __CARDSetDiskID(const DVDDiskID* diskID);
+void __CARDSetDiskID(const struct DVDDiskID* diskID);
 s32 __CARDGetControlBlock(s32 channel, CARDControl** card);
 s32 __CARDPutControlBlock(CARDControl* card, s32 result);
 s32 __CARDSync(s32 channel);

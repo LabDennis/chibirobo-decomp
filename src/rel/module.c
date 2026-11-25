@@ -1,16 +1,10 @@
-#include "types.h"
+#include "game/relmodule.h"
 #include "dolphin/os.h"
 
 typedef void (*RelCtorFunc)(void);
-typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
 
 extern RelCtorFunc _ctors[];
 extern RelCtorFunc _dtors[];
-
-// defined by each module
-extern RelSlotFunc _prolog_slots[7];
-extern RelCmdFunc _prolog_cmds[];
 
 static inline void RunFuncs(RelCtorFunc* funcs)
 {
@@ -50,7 +44,7 @@ void _epilog(void)
  * @note Address: stage08 .text 0x108
  * @note Size: 0xB8
  */
-s32 _prolog(s32 cmd, void* arg, void* arg2)
+s32 _prolog(s32 cmd, s32 count, s32* args)
 {
 	s32 ret = 0;
 
@@ -58,10 +52,10 @@ s32 _prolog(s32 cmd, void* arg, void* arg2)
 		RunFuncs(_ctors);
 	} else if (cmd < 7) {
 		if (_prolog_slots[cmd] != NULL) {
-			_prolog_slots[cmd](arg);
+			_prolog_slots[cmd](count);
 		}
 	} else if (cmd >= 7) {
-		ret = _prolog_cmds[cmd - 7](cmd, arg, arg2);
+		ret = _prolog_cmds[cmd - 7](cmd, count, args);
 	}
 	return ret;
 }

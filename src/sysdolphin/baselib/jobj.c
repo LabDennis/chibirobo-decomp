@@ -2,41 +2,22 @@
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <kar/math.h>
+#include <math.h>
+#include <string.h>
 #include <sysdolphin/jobj.h>
 
 #include <sysdolphin/aobj.h>
 #include <sysdolphin/class_new.h>
 #include <sysdolphin/cobj.h>
+#include <sysdolphin/displayfunc.h>
 #include <sysdolphin/dobj.h>
 #include <sysdolphin/gobjproc.h>
+#include <sysdolphin/id.h>
 #include <sysdolphin/mobj.h>
-#include <sysdolphin/mtx_inverse.h>
-#include <sysdolphin/mtx_transform.h>
+#include <sysdolphin/mtx.h>
 #include <sysdolphin/pobj.h>
 #include <sysdolphin/robj.h>
 #include <sysdolphin/spline.h>
-#include <sysdolphin/id.h>
-#include <sysdolphin/vec_alloc.h>
-
-void HSD_RObjUpdateAll(HSD_RObj* robj, HSD_JObj* jobj, HSD_ObjUpdateFunc update);
-BOOL HSD_RObjGetGlobalPosition(HSD_RObj* robj, u32 type, Vec* out);
-
-void HSD_JObjDispSub(HSD_JObj* jobj, MtxPtr vmtx, MtxPtr pmtx, HSD_TrspMask trsp_mask, u32 rendermode);
-void HSD_JObjMakePositionMtx(HSD_JObj* jobj, MtxPtr mtx, MtxPtr rmtx);
-void HSD_JObjDisp(HSD_JObj* jobj, MtxPtr vmtx, u32 flags, u32 rendermode);
-
-extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
-extern void PSMTXRotAxisRad(Mtx m, const Vec* axis, f32 rad);
-extern f64 acos(f64 x);
-
-extern MtxPtr HSD_MtxAlloc(void);
-extern void HSD_MtxFree(MtxPtr mtx);
-
-extern BOOL hsdIsDescendantOf(void* info, void* base);
-extern void memcpy(void*, const void*, u32);
-
-#define HSD_JOBJ_INFO(i)   ((HSD_JObjInfo*)(i))
-#define HSD_JOBJ_METHOD(o) HSD_JOBJ_INFO(HSD_CLASS_METHOD(o))
 
 #define assert_report(line, cond, msg) ((cond) ? ((void)0) : (OSReport(msg), __assert(__FILE__, line, #cond)))
 
@@ -48,33 +29,17 @@ extern void memcpy(void*, const void*, u32);
 #define M_PI 3.14159265358979323846
 #endif
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 jobj_sqrtf(f32 x)
-{
-	volatile f32 y;
+#define JOBJ_IK_NORM_EPSILON 1e-10F
+#define JOBJ_IK_MIN_DISTANCE_SQ 1e-8F
 
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
-}
-
-void JObjInfoInit(void);
+static void JObjInfoInit(void);
 HSD_JObjInfo hsdJObj = { JObjInfoInit };
 
 // .sbss comes out last declaration first, so these run backwards
 static HSD_JObj* current_jobj;
 static void (*ptcltgt_callback)(HSD_JObj*, s32);
-static void (*dptcl_callback)(int, int lo, int hi, HSD_JObj* jobj);
 static void (*jsound_callback)(s32);
+static HSD_JObjParticleCallback dptcl_callback;
 static HSD_SList* ufc_callbacks;
 static HSD_ClassInfo* default_class;
 
@@ -101,7 +66,7 @@ void HSD_JObjCheckDepend(HSD_JObj* jobj)
  * @note Address: N/A
  * @note Size: 0xD4
  */
-void JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
+static void JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
 {
 	if (jobj == NULL || joint == NULL) {
 		return;
@@ -141,22 +106,10 @@ void HSD_JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
 }
 
 /**
- * @note Address: 0x801C3C78
- * @note Size: 0x58
- */
-// the body is the inline in jobj.h, its out of line copy lands here
-
-/**
- * @note Address: 0x801C3CD0
- * @note Size: 0x70
- */
-// HSD_JObjSetMtxDirty, the jobj.h inline, its out of line copy lands here
-
-/**
  * @note Address: 0x801C3D40
  * @note Size: 0x344
  */
-void HSD_JObjWalkTree0(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_args)
+static void HSD_JObjWalkTree0(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, void* context)
 {
 	u32 type;
 	HSD_JObj* child;
@@ -167,12 +120,12 @@ void HSD_JObjWalkTree0(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_arg
 	assert_line(0xAD, jobj->parent);
 	type = jobj->parent->child == jobj ? 1 : 2;
 	if (cb != NULL) {
-		cb(jobj, cb_args, type);
+		cb(jobj, context, type);
 	}
 	if (!(jobj->flags & INSTANCE)) {
 		child = jobj->child;
 		while (child != NULL) {
-			HSD_JObjWalkTree0(child, cb, cb_args);
+			HSD_JObjWalkTree0(child, cb, context);
 			child = child->next;
 		}
 	}
@@ -182,7 +135,7 @@ void HSD_JObjWalkTree0(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_arg
  * @note Address: 0x801C4084
  * @note Size: 0x90
  */
-void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_args)
+void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, void* context)
 {
 	HSD_JObj* child;
 
@@ -190,28 +143,15 @@ void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_args
 		return;
 	}
 	if (cb != NULL) {
-		cb(jobj, cb_args, 0);
+		cb(jobj, context, 0);
 	}
 	if (!(jobj->flags & INSTANCE)) {
 		child = jobj->child;
 		while (child != NULL) {
-			HSD_JObjWalkTree0(child, cb, cb_args);
+			HSD_JObjWalkTree0(child, cb, context);
 			child = child->next;
 		}
 	}
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline BOOL has_scl(HSD_JObj* jobj)
-{
-	BOOL result = FALSE;
-	if (jobj != NULL && jobj->scl != NULL) {
-		result = TRUE;
-	}
-	return result;
 }
 
 /**
@@ -220,7 +160,7 @@ static inline BOOL has_scl(HSD_JObj* jobj)
  */
 void HSD_JObjMakeMatrix(HSD_JObj* jobj)
 {
-	Vec* scl;
+	Vec* parentScale;
 
 	HSD_JObjSetupMatrix(jobj->parent);
 	if (jobj->flags & CLASSICAL_SCALE) {
@@ -247,20 +187,16 @@ void HSD_JObjMakeMatrix(HSD_JObj* jobj)
 			*jobj->scl = jobj->scale;
 		}
 	}
+	parentScale = jobj->parent != NULL ? jobj->parent->scl : NULL;
 	if (jobj->flags & USE_QUATERNION) {
-		if (has_scl(jobj->parent)) {
-			scl = jobj->parent->scl;
-		} else {
-			scl = NULL;
-		}
-		HSD_MtxSRTQuat(jobj->mtx, &jobj->scale, &jobj->rotate, &jobj->translate, scl);
+		HSD_MtxSRTQuat(jobj->mtx, &jobj->scale, &jobj->rotate, &jobj->translate, parentScale);
 	} else {
-		if (has_scl(jobj->parent)) {
-			scl = jobj->parent->scl;
-		} else {
-			scl = NULL;
-		}
-		HSD_MtxSRT(jobj->mtx, &jobj->scale, (Vec*)&jobj->rotate, &jobj->translate, scl);
+		Vec euler;
+
+		euler.x = jobj->rotate.x;
+		euler.y = jobj->rotate.y;
+		euler.z = jobj->rotate.z;
+		HSD_MtxSRT(jobj->mtx, &jobj->scale, &euler, &jobj->translate, parentScale);
 	}
 	if (jobj->parent != NULL) {
 		PSMTXConcat(jobj->parent->mtx, jobj->mtx, jobj->mtx);
@@ -391,7 +327,7 @@ void HSD_JObjReqAnim(HSD_JObj* jobj, f32 frame)
  * @note Address: 0x801C4B10
  * @note Size: 0x58
  */
-void JObjSortAnim(HSD_AObj* aobj)
+static void JObjSortAnim(HSD_AObj* aobj)
 {
 	HSD_FObj* fobj;
 	HSD_FObj** fobj_ptr;
@@ -466,7 +402,7 @@ void HSD_JObjAddAnimAll(HSD_JObj* jobj, HSD_AnimJoint* ajoint, HSD_MatAnimJoint*
 	}
 }
 
-typedef void (*ufc_callback)(HSD_JObj*, u32, f32);
+typedef void (*JObjUserFunction)(HSD_JObj* jobj, enum_t channel, f32 value);
 
 /**
  * @note Address: N/A
@@ -592,17 +528,17 @@ static inline void HSD_JObjSetTranslateZ(HSD_JObj* jobj, f32 z)
  * @note Address: 0x801C5084
  * @note Size: 0x944
  */
-void JObjUpdateFunc(void* obj, u32 type, HSD_ObjData* val)
+static void JObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val)
 {
 	HSD_JObj* jobj = obj;
-	ufc_callback cb;
+	u32 channel = type;
 	Vec p;
 	HSD_JObj* jp;
 	HSD_RObj* robj;
 	Mtx mtx;
 
 	if (jobj != NULL) {
-		switch (type) {
+		switch (channel) {
 		case HSD_A_J_PATH:
 			if (val->fv < 0.0) {
 				val->fv = 0.0F;
@@ -676,11 +612,11 @@ void JObjUpdateFunc(void* obj, u32 type, HSD_ObjData* val)
 		case HSD_A_J_SETBYTE7:
 		case HSD_A_J_SETBYTE8:
 		case HSD_A_J_SETBYTE9: {
-			HSD_SList* callback_node = ufc_callbacks;
-			while (callback_node != NULL) {
-				cb = callback_node->data;
-				cb(jobj, type, val->iv);
-				callback_node = callback_node->next;
+			HSD_SList* callback_node;
+
+			for (callback_node = ufc_callbacks; callback_node != NULL; callback_node = callback_node->next) {
+				JObjUserFunction callback = (JObjUserFunction)callback_node->data;
+				callback(jobj, type, val->iv);
 			}
 			break;
 		}
@@ -694,15 +630,15 @@ void JObjUpdateFunc(void* obj, u32 type, HSD_ObjData* val)
 		case HSD_A_J_SETFLOAT7:
 		case HSD_A_J_SETFLOAT8:
 		case HSD_A_J_SETFLOAT9: {
-			HSD_SList* callback_node = ufc_callbacks;
-			while (callback_node != NULL) {
-				cb = callback_node->data;
-				cb(jobj, type, val->fv);
-				callback_node = callback_node->next;
+			HSD_SList* callback_node;
+
+			for (callback_node = ufc_callbacks; callback_node != NULL; callback_node = callback_node->next) {
+				JObjUserFunction callback = (JObjUserFunction)callback_node->data;
+				callback(jobj, type, val->fv);
 			}
 			break;
 		}
-		case 0x28: {
+		case HSD_A_J_TRIGGER_PARTICLE: {
 			s32 iv = val->iv;
 			s32 lo = iv & 0x3F;
 			s32 hi = iv >> 6 & 0xFFFFFF;
@@ -710,52 +646,56 @@ void JObjUpdateFunc(void* obj, u32 type, HSD_ObjData* val)
 				dptcl_callback(0, lo, hi, jobj);
 			}
 		} break;
-		case 0x29:
+		case HSD_A_J_TRIGGER_SOUND:
 			if (jsound_callback != NULL) {
 				jsound_callback(val->iv);
 			}
 			break;
-		case 0x2A:
+		case HSD_A_J_SET_PARTICLE_TARGET:
 			if (ptcltgt_callback != NULL) {
 				ptcltgt_callback(jobj, val->iv);
 			}
 			break;
-		case 0x32:
+		case HSD_A_J_MTX_COL_X:
 			jobj->mtx[0][0] = val->p.x;
 			jobj->mtx[1][0] = val->p.y;
 			jobj->mtx[2][0] = val->p.z;
 			break;
-		case 0x33:
+		case HSD_A_J_MTX_COL_Y:
 			jobj->mtx[0][1] = val->p.x;
 			jobj->mtx[1][1] = val->p.y;
 			jobj->mtx[2][1] = val->p.z;
 			break;
-		case 0x34:
+		case HSD_A_J_MTX_COL_Z:
 			jobj->mtx[0][2] = val->p.x;
 			jobj->mtx[1][2] = val->p.y;
 			jobj->mtx[2][2] = val->p.z;
 			break;
-		case 0x35:
+		case HSD_A_J_MTX_COL_TRANSLATION:
 			jobj->mtx[0][3] = val->p.x;
 			jobj->mtx[1][3] = val->p.y;
 			jobj->mtx[2][3] = val->p.z;
 			break;
-		case 0x36:
-		case 0x37:
-		case 0x38:
-		case 0x39:
+		case HSD_A_J_MTX_TO_SRT:
+		case HSD_A_J_MTX_TO_ROTATION:
+		case HSD_A_J_MTX_TO_TRANSLATION:
+		case HSD_A_J_MTX_TO_SCALE:
 			if (jobj->parent != NULL) {
 				HSD_MtxInverseConcat(jobj->parent->mtx, jobj->mtx, mtx);
 			} else {
 				PSMTXCopy(jobj->mtx, mtx);
 			}
-			if (type == 0x36 || type == 0x38) {
+			if (channel == HSD_A_J_MTX_TO_SRT || channel == HSD_A_J_MTX_TO_TRANSLATION) {
 				HSD_MtxGetTranslate(mtx, &jobj->translate);
 			}
-			if (type == 0x36 || type == 0x37) {
-				HSD_MtxGetRotation(mtx, (Vec*)&jobj->rotate);
+			if (channel == HSD_A_J_MTX_TO_SRT || channel == HSD_A_J_MTX_TO_ROTATION) {
+				Vec euler;
+				HSD_MtxGetRotation(mtx, &euler);
+				jobj->rotate.x = euler.x;
+				jobj->rotate.y = euler.y;
+				jobj->rotate.z = euler.z;
 			}
-			if (type == 0x36 || type == 0x39) {
+			if (channel == HSD_A_J_MTX_TO_SRT || channel == HSD_A_J_MTX_TO_SCALE) {
 				HSD_MtxGetScale(mtx, &jobj->scale);
 			}
 			break;
@@ -783,7 +723,7 @@ void HSD_JObjAnim(HSD_JObj* jobj)
  * @note Address: 0x801C5B2C
  * @note Size: 0x348
  */
-void JObjAnimAll(HSD_JObj* jobj)
+static void JObjAnimAll(HSD_JObj* jobj)
 {
 	HSD_JObj* child;
 
@@ -813,19 +753,10 @@ void HSD_JObjAnimAll(HSD_JObj* jobj)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-inline MtxPtr HSD_CObjGetViewingMtxPtrDirect(HSD_CObj* cobj)
-{
-	return cobj->view_mtx;
-}
-
-/**
  * @note Address: 0x801C5EB0
  * @note Size: 0x130
  */
-void setupInstanceMtx(Mtx vmtx, HSD_JObj* jobj, Mtx mtx)
+static void setupInstanceMtx(Mtx vmtx, HSD_JObj* jobj, Mtx mtx)
 {
 	HSD_CObj* cobj;
 
@@ -847,23 +778,23 @@ void setupInstanceMtx(Mtx vmtx, HSD_JObj* jobj, Mtx mtx)
  * @note Address: 0x801C5FE0
  * @note Size: 0x544
  */
-void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, u32 flags, u32 rendermode)
+void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rendermode)
 {
 	if (jobj != NULL) {
 		if (jobj->flags & INSTANCE) {
 			if (!(jobj->flags & HIDDEN)) {
 				Mtx mtx;
 				setupInstanceMtx(vmtx, jobj, mtx);
-				HSD_JObjDispAll(jobj->child, mtx, flags, rendermode);
+				HSD_JObjDispAll(jobj->child, mtx, trsp_mask, rendermode);
 			}
 		} else {
-			if (jobj->flags & (flags << 18)) {
-				HSD_JObjDisp(jobj, vmtx, flags, rendermode);
+			if (jobj->flags & (trsp_mask << JOBJ_TRSP_SHIFT)) {
+				HSD_JObjDisp(jobj, vmtx, trsp_mask, rendermode);
 			}
-			if (jobj->flags & (flags << 28)) {
+			if (jobj->flags & (trsp_mask << JOBJ_ROOT_TRSP_SHIFT)) {
 				jobj = jobj->child;
 				while (jobj != NULL) {
-					HSD_JObjDispAll(jobj, vmtx, flags, rendermode);
+					HSD_JObjDispAll(jobj, vmtx, trsp_mask, rendermode);
 					jobj = jobj->next;
 				}
 			}
@@ -872,19 +803,15 @@ void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, u32 flags, u32 rendermode)
 }
 
 /**
- * @note Address: 0x801C6524
- * @note Size: 0x8
- */
-// HSD_CObjGetViewingMtxPtrDirect, its out of line copy lands here
-
-/**
  * @note Address: N/A
  * @note Size: 0x58
  */
 void HSD_JObjSetDefaultClass(HSD_ClassInfo* info)
 {
 	if (info != NULL) {
-		assert_line(0x3B2, hsdIsDescendantOf(info, &hsdJObj));
+		if (!hsdIsDescendantOf(info, &hsdJObj.parent.parent)) {
+			__assert(__FILE__, 0x3B2, "hsdIsDescendantOf(info, &hsdJObj)");
+		}
 	}
 	default_class = info;
 }
@@ -922,7 +849,7 @@ static inline HSD_JObj* JObjLoadJointSub(HSD_Joint* joint, HSD_JObj* parent)
  * @note Address: 0x801C659C
  * @note Size: 0x1FC
  */
-s32 JObjLoad(HSD_JObj* jobj, HSD_Joint* joint, HSD_JObj* jobj_2)
+static s32 JObjLoad(HSD_JObj* jobj, HSD_Joint* joint, HSD_JObj* jobj_2)
 {
 	HSD_Joint* childjoint;
 	HSD_JObj* child;
@@ -932,8 +859,7 @@ s32 JObjLoad(HSD_JObj* jobj, HSD_Joint* joint, HSD_JObj* jobj_2)
 	jobj->parent = NULL;
 	jobj->flags |= joint->flags;
 
-	// the spline test is a shift here, not a compare
-	if ((jobj->flags & SPLINE) >> 14) {
+	if (union_type_spline(jobj)) {
 		jobj->u.spline = joint->u.spline;
 	} else if (union_type_ptcl(jobj)) {
 		HSD_SList* slist;
@@ -941,7 +867,7 @@ s32 JObjLoad(HSD_JObj* jobj, HSD_Joint* joint, HSD_JObj* jobj_2)
 		jobj->u.ptcl = joint->u.ptcl;
 		slist        = joint->u.ptcl;
 		while (slist != NULL) {
-			*(u32*)&slist->data |= 0x80000000;
+			slist->uint_value |= JOBJ_STATIC_PARTICLE_PENDING;
 			slist = slist->next;
 		}
 	} else {
@@ -988,36 +914,13 @@ HSD_JObj* HSD_JObjLoadJoint(HSD_Joint* joint)
 	return jobj;
 }
 
-#ifndef BUGFIX
-#pragma push
-#pragma force_active on
-static char unused1[] = "jobj_root";
-static char unused2[] = "jobj_root == NULL";
-#pragma pop
-#endif
-
-/**
- * @note Address: 0x801C6C8C
- * @note Size: 0x4C
- */
-inline void fn_801C6C8C(void* o)
-{
-	// object.h's ref_INC got a NULL check later, the one this file saw didn't have it
-	HSD_OBJ(o)->ref_count++;
-	if (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF) {
-		__assert("object.h", 93, "HSD_OBJ(o)->ref_count != HSD_OBJ_NOREF");
-	}
-}
-
 /**
  * @note Address: 0x801C6C0C
  * @note Size: 0x54
  */
-inline void HSD_JObjRef(HSD_JObj* jobj)
+void HSD_JObjRef(HSD_JObj* jobj)
 {
-	if (jobj != NULL) {
-		fn_801C6C8C(jobj);
-	}
+	ref_INC(jobj);
 }
 
 /**
@@ -1026,8 +929,6 @@ inline void HSD_JObjRef(HSD_JObj* jobj)
  */
 void HSD_JObjResolveRefs(HSD_JObj* jobj, HSD_Joint* joint)
 {
-	u8 _[4];
-
 	if (jobj == NULL || joint == NULL) {
 		return;
 	}
@@ -1050,8 +951,6 @@ void HSD_JObjResolveRefs(HSD_JObj* jobj, HSD_Joint* joint)
  */
 void HSD_JObjResolveRefsAll(HSD_JObj* jobj, HSD_Joint* joint)
 {
-	u8 _[4];
-
 	while (jobj != NULL && joint != NULL) {
 		HSD_JObjResolveRefs(jobj, joint);
 		if (!(jobj->flags & INSTANCE)) {
@@ -1062,77 +961,14 @@ void HSD_JObjResolveRefsAll(HSD_JObj* jobj, HSD_Joint* joint)
 	}
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline BOOL ref_DEC(void* o)
+static BOOL ReleaseIndividualRef(HSD_JObj* jobj)
 {
-	BOOL ret;
-	if ((ret = (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF))) {
-		return ret;
+	if (jobj->object.ref_count_individual == 0) {
+		return TRUE;
 	}
-	return HSD_OBJ(o)->ref_count-- == 0;
+	return --jobj->object.ref_count_individual == 0;
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline s32 iref_CNT(void* o)
-{
-	return HSD_OBJ(o)->ref_count_individual;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline s32 ref_CNT(void* o)
-{
-	if (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF) {
-		return -1;
-	} else {
-		return HSD_OBJ(o)->ref_count;
-	}
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline BOOL iref_DEC(void* o)
-{
-	BOOL ret;
-	if ((ret = (HSD_OBJ(o)->ref_count_individual == 0))) {
-		return ret;
-	}
-	HSD_OBJ(o)->ref_count_individual -= 1;
-	return HSD_OBJ(o)->ref_count_individual == 0;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void hsdDelete(void* object)
-{
-	if (object != NULL) {
-		HSD_CLASS_METHOD(object)->release((HSD_Class*)object);
-		HSD_CLASS_METHOD(object)->destroy((HSD_Class*)object);
-	}
-}
-
-// HSD_JObjRef's out of line copy lands here, after its first user
-
-/**
- * @note Address: 0x801C6C60
- * @note Size: 0x2C
- */
-// HSD_IDGetData, the out of line copy of id.h's inline, emitted for
-// HSD_JObjResolveRefsAll's deepest inlined HSD_JObjResolveRefs
-
-// and fn_801C6C8C
 /**
  * @note Address: 0x801C6CD8
  * @note Size: 0x148
@@ -1140,12 +976,12 @@ static inline void hsdDelete(void* object)
 void HSD_JObjUnref(HSD_JObj* jobj)
 {
 	if (jobj != NULL && ref_DEC(jobj)) {
-		if (iref_CNT(jobj) - 1 < 0) {
+		if (jobj->object.ref_count_individual == 0) {
 			hsdDelete(jobj);
 		} else {
 			iref_INC(jobj);
 			HSD_JOBJ_METHOD(jobj)->release_child(jobj);
-			if (iref_DEC(jobj)) {
+			if (ReleaseIndividualRef(jobj)) {
 				hsdDelete(jobj);
 			}
 		}
@@ -1158,7 +994,7 @@ void HSD_JObjUnref(HSD_JObj* jobj)
  */
 void HSD_JObjUnrefThis(HSD_JObj* jobj)
 {
-	if (jobj != NULL && iref_DEC(jobj) && ref_CNT(jobj) < 0) {
+	if (jobj != NULL && ReleaseIndividualRef(jobj) && jobj->object.ref_count == HSD_OBJ_NOREF) {
 		hsdDelete(jobj);
 	}
 }
@@ -1167,7 +1003,7 @@ void HSD_JObjUnrefThis(HSD_JObj* jobj)
  * @note Address: N/A
  * @note Size: 0x208
  */
-HSD_JObj* HSD_JObjRemoveAll(HSD_JObj* jobj)
+HSD_JObj* HSD_JObjRemove(HSD_JObj* jobj)
 {
 	HSD_JObj* child;
 	HSD_JObj* next;
@@ -1204,7 +1040,7 @@ HSD_JObj* HSD_JObjRemoveAll(HSD_JObj* jobj)
  * @note Address: N/A
  * @note Size: 0x1A8
  */
-void RecalcParentTrspBits(HSD_JObj* jobj)
+void HSD_JObjRemoveAll(HSD_JObj* jobj)
 {
 	HSD_JObj* prev;
 	HSD_JObj* next;
@@ -1235,7 +1071,7 @@ void RecalcParentTrspBits(HSD_JObj* jobj)
  */
 static inline void UpdateParentTrspBits(HSD_JObj* jobj, HSD_JObj* child)
 {
-	u32 flags = (child->flags | (child->flags << 10)) & JOBJ_ROOT_MASK;
+	u32 flags = (child->flags | (child->flags << (JOBJ_ROOT_TRSP_SHIFT - JOBJ_TRSP_SHIFT))) & JOBJ_ROOT_MASK;
 	while (jobj != NULL) {
 		if (!(flags & ~jobj->flags)) {
 			break;
@@ -1258,7 +1094,7 @@ static inline void jobj_recalc_parent_trsp_bits(HSD_JObj* jobj)
 		child = jobj->child;
 		flags = ~JOBJ_ROOT_MASK;
 		while (child != NULL) {
-			flags |= (child->flags | child->flags << 10) & JOBJ_ROOT_MASK;
+			flags |= (child->flags | (child->flags << (JOBJ_ROOT_TRSP_SHIFT - JOBJ_TRSP_SHIFT))) & JOBJ_ROOT_MASK;
 			child = child->next;
 		}
 		if (!(jobj->flags & ~flags)) {
@@ -1592,7 +1428,7 @@ static HSD_JObj* jobj_get_effector_checked(HSD_JObj* eff)
 {
 	eff = jobj_get_effector(eff);
 	assert_line(0x824, eff);
-	if (HSD_RObjGetByType(eff->robj, REFTYPE_JOBJ, 1) != NULL) {
+	if (HSD_RObjGetByType(eff->robj, REFTYPE_JOBJ, ROBJ_JOINT_POSITION) != NULL) {
 		return eff;
 	} else {
 		return NULL;
@@ -1603,7 +1439,7 @@ static HSD_JObj* jobj_get_effector_checked(HSD_JObj* eff)
  * @note Address: 0x801C79E4
  * @note Size: 0x7F0
  */
-void resolveIKJoint1(HSD_JObj* jobj)
+static void resolveIKJoint1(HSD_JObj* jobj)
 {
 	f32 y_len, y_scale;
 	HSD_JObj* eff;
@@ -1616,19 +1452,19 @@ void resolveIKJoint1(HSD_JObj* jobj)
 	Vec root_pos     = { 0.0F, 0.0F, 0.0F };
 	Vec* jobj_scl;
 	HSD_RObj* robj;
-	Vec up_n;
-	Vec eff_pos;
-	Vec fwd;
-	Vec fwd_n;
+	Vec bone_dir;
+	Vec to_effector;
+	Vec unit_normal;
+	Vec unit_bend;
 	Vec dir;
-	Vec sp5C;
-	Vec up;
+	Vec bend;
+	Vec normal;
 	Mtx rotmtx;
 	f32 dist2;
 	f32 bone1_sq, bone2_sq;
 	f32 diff, chord2;
 	f32 y2;
-	f32 x_scale;
+	f32 inv_length;
 
 	jobj_scl = jobj->scl;
 	if (jobj_scl != NULL) {
@@ -1642,13 +1478,13 @@ void resolveIKJoint1(HSD_JObj* jobj)
 		robj = HSD_RObjGetByType(joint2->robj, REFTYPE_IKHINT, 0);
 		assert_line(0x85E, robj);
 		bone2_len = robj->u.ik_hint.bone_length * joint2->scale.x * scl.x;
-		flip      = (robj->flags & 4) ? 1 : 0;
+		flip      = (robj->flags & ROBJ_IK_FLIP) ? 1 : 0;
 		eff       = jobj_get_effector_checked(joint2->child);
 	} else {
 		eff = jobj_get_effector_checked(jobj->child);
 	}
 	if (eff != NULL) {
-		if (HSD_RObjGetByType(jobj->robj, REFTYPE_JOBJ, 3) == NULL && jobj != NULL) {
+		if (HSD_RObjGetByType(jobj->robj, REFTYPE_JOBJ, ROBJ_JOINT_UP) == NULL && jobj != NULL) {
 			if (jobj->robj != NULL) {
 				HSD_RObjUpdateAll(jobj->robj, jobj, HSD_JOBJ_METHOD(jobj)->update);
 				if (HSD_JObjMtxIsDirty(jobj)) {
@@ -1660,31 +1496,31 @@ void resolveIKJoint1(HSD_JObj* jobj)
 		if (jobj->parent != NULL) {
 			HSD_MtxGetTranslate(jobj->parent->mtx, &root_pos);
 		}
-		HSD_RObjGetGlobalPosition(eff->robj, 1, &eff->translate);
-		PSVECSubtract(&eff->translate, &root_pos, &eff_pos);
-		dist2 = PSVECDotProduct(&eff_pos, &eff_pos);
+		HSD_RObjGetGlobalPosition(eff->robj, ROBJ_JOINT_POSITION, &eff->translate);
+		PSVECSubtract(&eff->translate, &root_pos, &to_effector);
+		dist2 = PSVECDotProduct(&to_effector, &to_effector);
 
-		if (dist2 > 1e-8F) {
-			dir = eff_pos;
-			if (HSD_RObjGetGlobalPosition(jobj->robj, 3, &sp5C)) {
-				PSVECSubtract(&sp5C, &root_pos, &sp5C);
+		if (dist2 > JOBJ_IK_MIN_DISTANCE_SQ) {
+			dir = to_effector;
+			if (HSD_RObjGetGlobalPosition(jobj->robj, ROBJ_JOINT_UP, &bend)) {
+				PSVECSubtract(&bend, &root_pos, &bend);
 				if (rot_x != 0.0F) {
 					PSMTXRotAxisRad(rotmtx, &dir, rot_x);
-					PSMTXMultVec(rotmtx, &sp5C, &sp5C);
+					PSMTXMultVec(rotmtx, &bend, &bend);
 				}
-				PSVECCrossProduct(&dir, &sp5C, &up);
-				PSVECCrossProduct(&up, &dir, &sp5C);
+				PSVECCrossProduct(&dir, &bend, &normal);
+				PSVECCrossProduct(&normal, &dir, &bend);
 			} else {
-				up.x = jobj->mtx[0][2];
-				up.y = jobj->mtx[1][2];
-				up.z = jobj->mtx[2][2];
-				PSVECCrossProduct(&up, &dir, &sp5C);
-				PSVECCrossProduct(&dir, &sp5C, &up);
+				normal.x = jobj->mtx[0][2];
+				normal.y = jobj->mtx[1][2];
+				normal.z = jobj->mtx[2][2];
+				PSVECCrossProduct(&normal, &dir, &bend);
+				PSVECCrossProduct(&dir, &bend, &normal);
 			}
-			x_scale = jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&up, &up)));
-			PSVECScale(x_scale, &up, &fwd);
-			x_scale = jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&sp5C, &sp5C)));
-			PSVECScale(x_scale, &sp5C, &fwd_n);
+			inv_length = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&normal, &normal)));
+			PSVECScale(&normal, &unit_normal, inv_length);
+			inv_length = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&bend, &bend)));
+			PSVECScale(&bend, &unit_bend, inv_length);
 			bone1_sq = bone1_len * bone1_len;
 			bone2_sq = bone2_len * bone2_len;
 			diff     = bone1_sq - bone2_sq;
@@ -1692,11 +1528,11 @@ void resolveIKJoint1(HSD_JObj* jobj)
 			if (chord2 < 0.0F) {
 				chord2 = 0.0F;
 			}
-			y2      = (bone1_sq - chord2) / dist2;
-			x_scale = jobj_sqrtf(1.0F / (1e-10F + y2));
-			y_len   = y2 * x_scale;
-			x_scale = jobj_sqrtf(1.0F / (1e-10F + chord2));
-			y_scale = chord2 * x_scale;
+			y2         = (bone1_sq - chord2) / dist2;
+			inv_length = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + y2));
+			y_len      = y2 * inv_length;
+			inv_length = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + chord2));
+			y_scale    = chord2 * inv_length;
 		} else {
 			y_len   = 0.0F;
 			y_scale = bone1_len;
@@ -1705,39 +1541,39 @@ void resolveIKJoint1(HSD_JObj* jobj)
 			y_scale = -y_scale;
 		}
 		if ((bone2_sq - chord2) < dist2) {
-			PSVECScale(y_len, &eff_pos, &up_n);
+			PSVECScale(&to_effector, &bone_dir, y_len);
 		} else {
-			PSVECScale(-y_len, &eff_pos, &up_n);
+			PSVECScale(&to_effector, &bone_dir, -y_len);
 		}
-		PSVECScale(y_scale, &fwd_n, &sp5C);
-		PSVECAdd(&up_n, &sp5C, &up_n);
-		x_scale = jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&up_n, &up_n)));
-		PSVECScale(x_scale, &up_n, &up_n);
-		jobj->mtx[0][0] = up_n.x * scl.x;
-		jobj->mtx[1][0] = up_n.y * scl.x;
-		jobj->mtx[2][0] = up_n.z * scl.x;
-		PSVECCrossProduct(&fwd, &up_n, &sp5C);
-		jobj->mtx[0][1] = sp5C.x * scl.y;
-		jobj->mtx[1][1] = sp5C.y * scl.y;
-		jobj->mtx[2][1] = sp5C.z * scl.y;
-		jobj->mtx[0][2] = fwd.x * scl.z;
-		jobj->mtx[1][2] = fwd.y * scl.z;
-		jobj->mtx[2][2] = fwd.z * scl.z;
+		PSVECScale(&unit_bend, &bend, y_scale);
+		PSVECAdd(&bone_dir, &bend, &bone_dir);
+		inv_length = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&bone_dir, &bone_dir)));
+		PSVECScale(&bone_dir, &bone_dir, inv_length);
+		jobj->mtx[0][0] = bone_dir.x * scl.x;
+		jobj->mtx[1][0] = bone_dir.y * scl.x;
+		jobj->mtx[2][0] = bone_dir.z * scl.x;
+		PSVECCrossProduct(&unit_normal, &bone_dir, &bend);
+		jobj->mtx[0][1] = bend.x * scl.y;
+		jobj->mtx[1][1] = bend.y * scl.y;
+		jobj->mtx[2][1] = bend.z * scl.y;
+		jobj->mtx[0][2] = unit_normal.x * scl.z;
+		jobj->mtx[1][2] = unit_normal.y * scl.z;
+		jobj->mtx[2][2] = unit_normal.z * scl.z;
 		jobj->mtx[0][3] = root_pos.x;
 		jobj->mtx[1][3] = root_pos.y;
 		jobj->mtx[2][3] = root_pos.z;
 	}
 }
 
-const Vec lbl_8020FAB8 = { 1.0F, 1.0F, 1.0F };
+static const Vec sJObjIKUnitScale = { 1.0F, 1.0F, 1.0F };
 
 /**
  * @note Address: 0x801C81D4
  * @note Size: 0x55C
  */
-void resolveIKJoint2(HSD_JObj* jobj)
+static void resolveIKJoint2(HSD_JObj* jobj)
 {
-	Vec scl = lbl_8020FAB8;
+	Vec scl = sJObjIKUnitScale;
 	Vec up;
 	Vec parent_pos;
 	Vec parent_x;
@@ -1773,24 +1609,24 @@ void resolveIKJoint2(HSD_JObj* jobj)
 	parent_x.x   = mtx[0][0];
 	parent_x.y   = mtx[1][0];
 	parent_x.z   = mtx[2][0];
-	x_scale      = jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&parent_x, &parent_x)));
-	PSVECScale(x_scale, &parent_x, &parent_x);
+	x_scale      = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&parent_x, &parent_x)));
+	PSVECScale(&parent_x, &parent_x, x_scale);
 	if (jobj->parent->scl != NULL) {
 		bone_scale = jobj->parent->scl->x;
 	}
 	robj = HSD_RObjGetByType(jobj->parent->robj, REFTYPE_IKHINT, 0);
 	assert_line(0x8FC, robj);
-	PSVECScale(robj->u.ik_hint.bone_length * bone_scale, &parent_x, &parent_x);
+	PSVECScale(&parent_x, &parent_x, robj->u.ik_hint.bone_length * bone_scale);
 	PSVECAdd(&parent_pos, &parent_x, &up);
 	PSVECSubtract(&eff->translate, &up, &parent_x);
-	PSVECScale(jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&parent_x, &parent_x))), &parent_x, &parent_x);
-	limit_lo = HSD_RObjGetByType(jobj->robj, 0x20000000, 5);
-	limit_hi = HSD_RObjGetByType(jobj->robj, 0x20000000, 6);
+	PSVECScale(&parent_x, &parent_x, dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&parent_x, &parent_x))));
+	limit_lo = HSD_RObjGetByType(jobj->robj, REFTYPE_LIMIT, ROBJ_LIMIT_ROT_Z_MIN);
+	limit_hi = HSD_RObjGetByType(jobj->robj, REFTYPE_LIMIT, ROBJ_LIMIT_ROT_Z_MAX);
 	if (limit_lo != NULL || limit_hi != NULL) {
 		limited = 0;
 		robj    = HSD_RObjGetByType(jobj->robj, REFTYPE_IKHINT, 0);
 		assert_line(0x91E, robj);
-		flip        = (robj->flags & 4) ? 1 : 0;
+		flip        = (robj->flags & ROBJ_IK_FLIP) ? 1 : 0;
 		mtx         = jobj->parent->mtx;
 		parent_x2.x = mtx[0][0];
 		parent_x2.y = mtx[1][0];
@@ -1835,8 +1671,8 @@ void resolveIKJoint2(HSD_JObj* jobj)
 	dir.y = mtx[1][2];
 	dir.z = mtx[2][2];
 	PSVECCrossProduct(&dir, &parent_x, &left);
-	x_scale = jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&left, &left)));
-	PSVECScale(x_scale, &left, &left);
+	x_scale = dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&left, &left)));
+	PSVECScale(&left, &left, x_scale);
 	PSVECCrossProduct(&parent_x, &left, &dir);
 	jobj->mtx[0][0] = parent_x.x * scl.x;
 	jobj->mtx[1][0] = parent_x.y * scl.x;
@@ -1887,11 +1723,11 @@ void HSD_JObjSetupMatrixSub(HSD_JObj* jobj)
 					p3.x = parent->mtx[0][0];
 					p3.y = parent->mtx[1][0];
 					p3.z = parent->mtx[2][0];
-					PSVECScale(jobj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&p3, &p3))), &p3, &p3);
+					PSVECScale(&p3, &p3, dolsqrtf(1.0F / (JOBJ_IK_NORM_EPSILON + PSVECDotProduct(&p3, &p3))));
 					if (parent->scl != NULL) {
 						x_scale = parent->scl->x;
 					}
-					PSVECScale(robj->u.ik_hint.bone_length * x_scale, &p3, &p3);
+					PSVECScale(&p3, &p3, robj->u.ik_hint.bone_length * x_scale);
 					PSVECAdd(&p2, &p3, &p1);
 					jobj->mtx[0][3] = p1.x;
 					jobj->mtx[1][3] = p1.y;
@@ -1939,31 +1775,19 @@ void HSD_JObjSetMtxDirtySub(HSD_JObj* jobj)
  * @note Address: 0x801C8CDC
  * @note Size: 0x8
  */
+void HSD_JObjSetDPtclCallback(HSD_JObjParticleCallback callback)
+{
+	dptcl_callback = callback;
+}
+
+/**
+ * @note Address: 0x801C8CE4
+ * @note Size: 0x8
+ */
 void HSD_JObjSetJSoundCallback(void (*callback)(s32))
 {
 	jsound_callback = callback;
 }
-
-/**
- * @note Address: 0x801C8CE4
- * @note Size: 0x8
- */
-void HSD_JObjSetDPtclCallback(DPCtlCallback cb)
-{
-	dptcl_callback = cb;
-}
-
-/**
- * @note Address: 0x801C8CDC
- * @note Size: 0x8
- */
-// fn_801C8CDC
-
-/**
- * @note Address: 0x801C8CE4
- * @note Size: 0x8
- */
-// fn_801C8CE4
 
 /**
  * @note Address: 0x801C8CEC
@@ -1978,7 +1802,7 @@ void HSD_JObjSetPtclTargetCallback(void (*cb)(HSD_JObj*, s32))
  * @note Address: 0x801C8CF4
  * @note Size: 0x64
  */
-int JObjInit(HSD_Class* o)
+static int JObjInit(HSD_Class* o)
 {
 	int status = HSD_OBJECT_PARENT_INFO(&hsdJObj)->init(o);
 	if (status >= 0) {
@@ -1996,7 +1820,7 @@ int JObjInit(HSD_Class* o)
  * @note Address: 0x801C8D58
  * @note Size: 0x4D4
  */
-void JObjReleaseChild(HSD_JObj* jobj)
+static void JObjReleaseChild(HSD_JObj* jobj)
 {
 	HSD_JObj* child;
 
@@ -2005,7 +1829,7 @@ void JObjReleaseChild(HSD_JObj* jobj)
 			HSD_JObjUnref(child);
 		} else {
 			child->parent = NULL;
-			RecalcParentTrspBits(jobj->child);
+			HSD_JObjRemoveAll(jobj->child);
 		}
 		jobj->child = NULL;
 	}
@@ -2032,7 +1856,7 @@ void JObjReleaseChild(HSD_JObj* jobj)
  * @note Address: 0x801C922C
  * @note Size: 0x98
  */
-void JObjRelease(HSD_Class* o)
+static void JObjRelease(HSD_Class* o)
 {
 	HSD_JObj* jobj = (HSD_JObj*)o;
 
@@ -2054,7 +1878,7 @@ void JObjRelease(HSD_Class* o)
  * @note Address: 0x801C92C4
  * @note Size: 0x64
  */
-void JObjAmnesia(HSD_ClassInfo* info)
+static void JObjAmnesia(HSD_ClassInfo* info)
 {
 	if (info == HSD_CLASS_INFO(default_class)) {
 		default_class = NULL;
@@ -2066,28 +1890,11 @@ void JObjAmnesia(HSD_ClassInfo* info)
 	HSD_OBJECT_PARENT_INFO(&hsdJObj)->amnesia(info);
 }
 
-#ifndef BUGFIX
-#pragma push
-#pragma force_active on
-static char unused3[]  = "jobj[%d,%d]";
-static char unused4[]  = "SKELETON_ROOT ";
-static char unused5[]  = "SKELETON ";
-static char unused6[]  = "ENVELOPE_MODEL ";
-static char unused7[]  = "EFFECTOR ";
-static char unused8[]  = "  rot(L): ";
-static char unused9[]  = "  sca(L): ";
-static char unused10[] = "  tra(L): ";
-static char unused11[] = "  rot(G): ";
-static char unused12[] = "  sca(G): ";
-static char unused13[] = "  tra(G): ";
-#pragma pop
-#endif
-
 /**
  * @note Address: 0x801C9328
  * @note Size: 0xBC
  */
-void JObjInfoInit(void)
+static void JObjInfoInit(void)
 {
 	hsdInitClassInfo(HSD_CLASS_INFO(&hsdJObj), HSD_CLASS_INFO(&hsdObj), "sysdolphin_base_library", "hsd_jobj", sizeof(HSD_JObjInfo),
 	                 sizeof(HSD_JObj));

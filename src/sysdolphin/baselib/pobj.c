@@ -1,8 +1,11 @@
 #include <global.h>
 
 #include <dolphin/gx/gx.h>
+#include <dolphin/gx/gxfifo.h>
 #include <dolphin/mtx/mtx.h>
 #include <kar/math.h>
+#include <mem.h>
+#include <sdk/dolphin/gx/GXCommandList.h>
 #include <sysdolphin/pobj.h>
 
 #include <sysdolphin/class_alloc.h>
@@ -13,23 +16,29 @@
 #include <sysdolphin/memory.h>
 #include <sysdolphin/mtx.h>
 #include <sysdolphin/perf.h>
-#include <sysdolphin/shadow.h>
 #include <sysdolphin/tev.h>
-
-extern BOOL hsdIsDescendantOf(void* info, void* base);
-
-extern void memset(void*, int, int);
-extern void memcpy(void*, const void*, int);
-
-extern struct {
-	u8 pad[0xC];
-	s32 unkC;
-} HSD_PerfCurrentStat;
-
-extern s32 HSD_Index2PosNrmMtx(s32 index);
-extern u32 PSMTXInvXpose(Mtx src, Mtx xpose);
+#include <sysdolphin/util.h>
 
 void PObjInfoInit(void);
+
+typedef enum _PObjSetupFlag {
+	SETUP_NONE = 0,
+	SETUP_NORMAL = 1 << 0,
+	SETUP_REFLECTION = 1 << 1,
+	SETUP_HIGHLIGHT = 1 << 2,
+	SETUP_NORMAL_PROJECTION = SETUP_REFLECTION | SETUP_HIGHLIGHT,
+	SETUP_JOINT0 = 1 << 0,
+	SETUP_JOINT1 = 1 << 1,
+} PObjSetupFlag;
+
+enum {
+	DISPLAY_LIST_BLOCK_SIZE = 32,
+};
+
+enum {
+	HSD_MTX_RIGID = 1,
+	HSD_MTX_ENVELOPE = 2,
+};
 
 HSD_PObjInfo hsdPObj = { PObjInfoInit };
 
@@ -37,7 +46,8 @@ static HSD_VtxDescList* prev_vtxdesc;
 static HSD_VtxDescList* prev_vtxdesclist_array;
 static u32 normal_buffer_size;
 static u32 vertex_buffer_size;
-static f32 (*normal_buffer)[3];
+// Shared scratch storage for XYZ normals and nine-component NBT entries.
+static f32* normal_buffer;
 static f32 (*vertex_buffer)[3];
 static HSD_PObjInfo* default_class;
 
@@ -46,10 +56,7 @@ static struct {
 	u32 mark;
 } mtx_mark[2];
 
-#define ASSERT_POBJ(line, cond)          ((cond) ? ((void)0) : __assert("pobj.c", line, #cond))
-#define ASSERT_POBJ_MSG(line, cond, msg) ((cond) ? ((void)0) : __assert("pobj.c", line, msg))
-
-#define GX_WGPIPE ((volatile u8*)0xCC008000)
+#define ASSERT_POBJ_MSG(line, cond, msg) ((cond) ? ((void)0) : __assert(__FILE__, line, msg))
 
 /**
  * @note Address: 0x801AEB88
@@ -218,130 +225,8 @@ void HSD_PObjAnimAll(HSD_PObj* pobj)
 	}
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXPosition3f32(f32 x, f32 y, f32 z)
-{
-	*(volatile f32*)GX_WGPIPE = x;
-	*(volatile f32*)GX_WGPIPE = y;
-	*(volatile f32*)GX_WGPIPE = z;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXNormal3f32(f32 x, f32 y, f32 z)
-{
-	*(volatile f32*)GX_WGPIPE = x;
-	*(volatile f32*)GX_WGPIPE = y;
-	*(volatile f32*)GX_WGPIPE = z;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXMatrixIndex1u8(u8 idx)
-{
-	*(volatile u8*)GX_WGPIPE = idx;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXTexCoord1x8(u8 idx)
-{
-	*(volatile u8*)GX_WGPIPE = idx;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXTexCoord1x16(u16 idx)
-{
-	*(volatile u16*)GX_WGPIPE = idx;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXColor1x8(u8 idx)
-{
-	*(volatile u8*)GX_WGPIPE = idx;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXColor1x16(u16 idx)
-{
-	*(volatile u16*)GX_WGPIPE = idx;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXColor1u16(u16 clr)
-{
-	*(volatile u16*)GX_WGPIPE = clr;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXColor3u8(u8 r, u8 g, u8 b)
-{
-	*(volatile u8*)GX_WGPIPE = r;
-	*(volatile u8*)GX_WGPIPE = g;
-	*(volatile u8*)GX_WGPIPE = b;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXColor4u8(u8 r, u8 g, u8 b, u8 a)
-{
-	*(volatile u8*)GX_WGPIPE = r;
-	*(volatile u8*)GX_WGPIPE = g;
-	*(volatile u8*)GX_WGPIPE = b;
-	*(volatile u8*)GX_WGPIPE = a;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void GXEnd(void)
-{
-}
-
-#define pobj_min(x, y) (x < y ? x : y)
-#define MAX(a, b)      (((a) > (b)) ? (a) : (b))
-
-// the anim functions live in tobj.c for now, pobj's split ends too early
-void PObjUpdateFunc(void* obj, enum_t type, FObjData* val);
-
-extern HSD_ObjAllocData shadow_alloc_data;
-
-#define ASSERT_REF_COUNT(line, cond) ((cond) ? ((void)0) : __assert("object.h", line, "HSD_OBJ(o)->ref_count_individual != 0"))
-
-// the hsd gx headers dont have these
-#define GX_POS_XY        0
-#define GX_TEX_S         0
-#define GX_QUADS         0x80
-#define GX_TRIANGLES     0x90
-#define GX_TRIANGLESTRIP 0x98
-#define GX_TRIANGLEFAN   0xA0
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 s32 PObjLoad(HSD_PObj* pobj, HSD_PObjDesc* desc);
 void PObjAmnesia(HSD_ClassInfo* info);
@@ -351,10 +236,9 @@ void SetupEnvelopeModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode);
 void SetupSharedVtxModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode);
 void drawShapeAnim(HSD_PObj* pobj);
 void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*normal)[3]);
-void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32* dst);
+void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32 dst[9]);
 void get_shape_normal_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32 dst[3]);
 void get_shape_vertex_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32 dst[3]);
-void HSD_PObjRemoveAll(HSD_PObj* pobj);
 
 /**
  * @note Address: N/A
@@ -363,7 +247,7 @@ void HSD_PObjRemoveAll(HSD_PObj* pobj);
 static inline HSD_Envelope* HSD_EnvelopeAlloc(void)
 {
 	HSD_Envelope* envelope = hsdAllocMemPiece(sizeof(HSD_Envelope));
-	ASSERT_POBJ(0x1AE, envelope);
+	assert_line(0x1AE, envelope);
 	memset(envelope, 0, sizeof(HSD_Envelope));
 	return envelope;
 }
@@ -409,7 +293,7 @@ static inline HSD_ShapeSet* ShapeSetAlloc(void)
 {
 	HSD_ShapeSet* shape_set = hsdAllocMemPiece(sizeof(HSD_ShapeSet));
 
-	ASSERT_POBJ(0x1E7, shape_set);
+	assert_line(0x1E7, shape_set);
 	memset(shape_set, 0, sizeof(HSD_ShapeSet));
 	return shape_set;
 }
@@ -469,7 +353,7 @@ s32 PObjLoad(HSD_PObj* pobj, HSD_PObjDesc* desc)
 		HSD_Panic(__FILE__, 0x22F, "pobj: unexected type.\n");
 	}
 
-	_HSD_NeedCacheInvalidate(1);
+	_HSD_NeedCacheInvalidate(HSD_INVALIDATE_VERTEX_CACHE);
 
 	return 0;
 }
@@ -524,7 +408,7 @@ HSD_PObjInfo* HSD_PObjGetCurrent(void)
 void HSD_PObjSetCurrent(HSD_PObjInfo* info)
 {
 	if (info != NULL) {
-		ASSERT_POBJ_MSG(0x28E, hsdIsDescendantOf(info, &hsdPObj), "hsdIsDescendantOf(info, &hsdPObj)");
+		ASSERT_POBJ_MSG(0x28E, hsdIsDescendantOf(&info->parent, &hsdPObj.parent), "hsdIsDescendantOf(info, &hsdPObj)");
 	}
 	default_class = info;
 }
@@ -539,10 +423,7 @@ void HSD_PObjRemoveAll(HSD_PObj* pobj)
 
 	while (pobj != NULL) {
 		next = pobj->next;
-		if (pobj != NULL) {
-			HSD_CLASS_METHOD(pobj)->release((HSD_Class*)pobj);
-			HSD_CLASS_METHOD(pobj)->destroy((HSD_Class*)pobj);
-		}
+		hsdDelete(pobj);
 		pobj = next;
 	}
 }
@@ -554,8 +435,7 @@ void HSD_PObjRemoveAll(HSD_PObj* pobj)
 static inline void HSD_JObjRefThis(HSD_JObj* jobj)
 {
 	if (jobj != NULL) {
-		HSD_OBJ(jobj)->ref_count_individual++;
-		ASSERT_REF_COUNT(0x9E, HSD_OBJ(jobj)->ref_count_individual != 0);
+		iref_INC(jobj);
 	}
 }
 
@@ -576,7 +456,7 @@ static inline void resolveEnvelope(HSD_SList* list, HSD_EnvelopeDesc** edesc_p)
 		while (env != NULL && edesc->joint != NULL) {
 			HSD_JObjUnrefThis(env->jobj);
 			env->jobj = HSD_IDGetDataFromTable(NULL, (u32)edesc->joint, NULL);
-			ASSERT_POBJ(0x2CF, env->jobj);
+			assert_line(0x2CF, env->jobj);
 			HSD_JObjRefThis(env->jobj);
 			env = env->next;
 			edesc++;
@@ -604,7 +484,7 @@ static inline void HSD_PObjResolveRefs(HSD_PObj* pobj, HSD_PObjDesc* pdesc)
 		pobj->u.jobj = NULL;
 		if (pdesc->u.joint != NULL) {
 			pobj->u.jobj = HSD_IDGetDataFromTable(NULL, (u32)pdesc->u.joint, NULL);
-			ASSERT_POBJ(0x2EA, pobj->u.jobj);
+			assert_line(0x2EA, pobj->u.jobj);
 			HSD_JObjRefThis(pobj->u.jobj);
 		}
 		break;
@@ -631,8 +511,8 @@ void HSD_PObjResolveRefsAll(HSD_PObj* pobj, HSD_PObjDesc* pdesc)
  */
 void HSD_PObjCountVertices(HSD_PObj* pobj, u32* vertices, u32* polygons)
 {
-	u32 nv = 0;
-	u32 np = 0;
+	u32 vertex_count = 0;
+	u32 polygon_count = 0;
 
 	for (; pobj != NULL; pobj = pobj->next) {
 		HSD_VtxDescList* desc;
@@ -681,7 +561,7 @@ void HSD_PObjCountVertices(HSD_PObj* pobj, u32* vertices, u32* polygons)
 						goto next_pobj;
 					}
 				}
-			switch (desc->attr) {
+				switch (desc->attr) {
 				case GX_VA_PNMTXIDX:
 					stride++;
 					break;
@@ -723,28 +603,28 @@ void HSD_PObjCountVertices(HSD_PObj* pobj, u32* vertices, u32* polygons)
 		}
 		{
 			s32 offset;
-			s32 length = pobj->n_display << 5;
-			u8* dl     = pobj->display;
-			if (dl != NULL) {
+			s32 length = pobj->n_display * DISPLAY_LIST_BLOCK_SIZE;
+			const u8* display = pobj->display;
+			if (display != NULL) {
 				offset = 0;
 
 				while (offset < length) {
-					s32 primitive = dl[offset++] & GX_OPCODE_MASK;
-					if (primitive != 0) {
-						u32 count = (u16)dl[offset];
-						count     = (count << 8) + dl[offset + 1];
-						nv += count;
+					s32 primitive = display[offset++] & GX_OPCODE_MASK;
+					if (primitive != GX_NOP) {
+						u32 count = (u16)display[offset];
+						count     = (count << 8) + display[offset + 1];
+						vertex_count += count;
 						offset += count * stride + 2;
 						switch (primitive) {
 						case GX_TRIANGLES:
-							np += count / 3;
+							polygon_count += count / 3;
 							break;
 						case GX_TRIANGLESTRIP:
 						case GX_TRIANGLEFAN:
-							np += count - 2;
+							polygon_count += count - 2;
 							break;
 						case GX_QUADS:
-							np += count / 2;
+							polygon_count += count / 2;
 							break;
 						}
 					}
@@ -754,10 +634,10 @@ void HSD_PObjCountVertices(HSD_PObj* pobj, u32* vertices, u32* polygons)
 	next_pobj:;
 	}
 	if (vertices != NULL) {
-		*vertices = nv;
+		*vertices = vertex_count;
 	}
 	if (polygons != NULL) {
-		*polygons = np;
+		*polygons = polygon_count;
 	}
 }
 
@@ -824,7 +704,7 @@ void get_shape_vertex_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f
 			break;
 
 		default:
-			HSD_Panic("pobj.c", 0x474, "unexpected vertex type.\n");
+			HSD_Panic(__FILE__, 0x474, "unexpected vertex type.\n");
 		}
 	}
 }
@@ -877,7 +757,7 @@ void get_shape_normal_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f
 			}
 			break;
 		default:
-			HSD_Panic("pobj.c", 0x4B3, "unexpected normal type.");
+			HSD_Panic(__FILE__, 0x4B3, "unexpected normal type.");
 		}
 	}
 }
@@ -886,7 +766,7 @@ void get_shape_normal_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f
  * @note Address: 0x801AD5B8
  * @note Size: 0x400
  */
-void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32* dst)
+void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32 dst[9])
 {
 	u8* index_array = shape_set->normal_idx_list[shape_id];
 	s32 idx;
@@ -894,7 +774,7 @@ void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32*
 	void* src_base;
 	int type;
 
-	ASSERT_POBJ(0x4C0, shape_set->normal_desc->attr == GX_VA_NBT);
+	assert_line(0x4C0, shape_set->normal_desc->attr == GX_VA_NBT);
 
 	if (shape_set->normal_desc->attr_type == GX_INDEX16) {
 		idx = index_array[arrayidx * 2];
@@ -935,7 +815,7 @@ void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32*
 			}
 			break;
 		default:
-			HSD_Panic("pobj.c", 0x4E8, "unexpected normal type.");
+			HSD_Panic(__FILE__, 0x4E8, "unexpected normal type.");
 		}
 	}
 }
@@ -944,120 +824,121 @@ void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32*
  * @note Address: 0x801AD29C
  * @note Size: 0x31C
  */
+// NONMATCHING: retail assigns the three parameters to different saved registers.
 void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*normal)[3])
 {
-	u8* dl     = pobj->display;
-	s32 length = pobj->n_display << 5;
-	s32 l;
+	s32 vertex_index, attr_index;
+	s32 vertex_count, cursor;
+	s32 offset;
+	s32 length = pobj->n_display * DISPLAY_LIST_BLOCK_SIZE;
+	const u8* display = pobj->display;
 
-	for (l = 0; l + 3 < length;) {
-		s32 n = dl[1] << 8 | dl[2];
-		s32 m = 3;
-		s32 i, j;
+	for (offset = 0; offset + 3 < length; offset += cursor, display += cursor) {
+		vertex_count = display[1] << 8 | display[2];
+		cursor = 3;
 
-		if ((dl[0] & GX_OPCODE_MASK) == GX_NOP) {
+		if ((display[0] & GX_OPCODE_MASK) == GX_NOP) {
 			break;
 		}
-		GXBegin(dl[0] & GX_OPCODE_MASK, dl[0] & GX_VAT_MASK, n);
-		for (i = 0; i < n; i++) {
-			for (j = 0;; j++) {
-				HSD_VtxDescList* desc = &pobj->verts[j];
+		GXBegin(display[0] & GX_OPCODE_MASK, display[0] & GX_VAT_MASK, vertex_count);
+		for (vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
+			for (attr_index = 0;; attr_index++) {
+				HSD_VtxDescList* desc = &pobj->verts[attr_index];
+				u16 idx;
+
 				if (desc->attr == GX_VA_NULL) {
 					break;
-				} else {
-					u16 idx = dl[m++];
-					switch (desc->attr) {
-					case GX_VA_PNMTXIDX:
-					case GX_VA_TEX0MTXIDX:
-					case GX_VA_TEX1MTXIDX:
-					case GX_VA_TEX2MTXIDX:
-					case GX_VA_TEX3MTXIDX:
-					case GX_VA_TEX4MTXIDX:
-					case GX_VA_TEX5MTXIDX:
-					case GX_VA_TEX6MTXIDX:
-					case GX_VA_TEX7MTXIDX:
-						GXMatrixIndex1u8(idx);
-						break;
+				}
+				idx = display[cursor++];
+				switch (desc->attr) {
+				case GX_VA_PNMTXIDX:
+				case GX_VA_TEX0MTXIDX:
+				case GX_VA_TEX1MTXIDX:
+				case GX_VA_TEX2MTXIDX:
+				case GX_VA_TEX3MTXIDX:
+				case GX_VA_TEX4MTXIDX:
+				case GX_VA_TEX5MTXIDX:
+				case GX_VA_TEX6MTXIDX:
+				case GX_VA_TEX7MTXIDX:
+					GXMatrixIndex1u8(idx);
+					break;
 
-					case GX_VA_POS:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-						}
-						GXPosition3f32(vertex[idx][0], vertex[idx][1], vertex[idx][2]);
-						break;
-
-					case GX_VA_NRM:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-						}
-						GXNormal3f32(normal[idx][0], normal[idx][1], normal[idx][2]);
-						break;
-
-					case GX_VA_NBT:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-						}
-						idx *= 3;
-						GXNormal3f32(normal[idx + 0][0], normal[idx + 0][1], normal[idx + 0][2]);
-						GXNormal3f32(normal[idx + 1][0], normal[idx + 1][1], normal[idx + 1][2]);
-						GXNormal3f32(normal[idx + 2][0], normal[idx + 2][1], normal[idx + 2][2]);
-						break;
-
-					case GX_VA_TEX0:
-					case GX_VA_TEX1:
-					case GX_VA_TEX2:
-					case GX_VA_TEX3:
-					case GX_VA_TEX4:
-					case GX_VA_TEX5:
-					case GX_VA_TEX6:
-					case GX_VA_TEX7:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-							GXTexCoord1x16(idx);
-						} else {
-							GXTexCoord1x8(idx);
-						}
-						break;
-
-					case GX_VA_CLR0:
-					case GX_VA_CLR1:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-							GXColor1x16(idx);
-						} else if (desc->attr_type == GX_INDEX8) {
-							GXColor1x8(idx);
-						} else {
-							switch (desc->comp_type) {
-							case GX_RGB565:
-							case GX_RGBA4:
-								GXColor1u16((idx << 8) | dl[m++]);
-								break;
-							case GX_RGB8:
-							case GX_RGBA6:
-								GXColor3u8(idx, dl[m], dl[m + 1]);
-								m += 2;
-								break;
-							case GX_RGBA8:
-							case GX_RGBX8:
-								GXColor4u8(idx, dl[m], dl[m + 1], dl[m + 2]);
-								m += 3;
-								break;
-							}
-						}
-						break;
-					default:
-						if (desc->attr_type == GX_INDEX16) {
-							idx = (idx << 8) | dl[m++];
-						}
-						OSReport("attr(%d) is not supported by sysdolphin\n", desc->attr);
-						break;
+				case GX_VA_POS:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
 					}
+					GXPosition3f32(vertex[idx][0], vertex[idx][1], vertex[idx][2]);
+					break;
+
+				case GX_VA_NRM:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
+					}
+					GXNormal3f32(normal[idx][0], normal[idx][1], normal[idx][2]);
+					break;
+
+				case GX_VA_NBT:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
+					}
+					idx *= 3;
+					GXNormal3f32(normal[idx + 0][0], normal[idx + 0][1], normal[idx + 0][2]);
+					GXNormal3f32(normal[idx + 1][0], normal[idx + 1][1], normal[idx + 1][2]);
+					GXNormal3f32(normal[idx + 2][0], normal[idx + 2][1], normal[idx + 2][2]);
+					break;
+
+				case GX_VA_TEX0:
+				case GX_VA_TEX1:
+				case GX_VA_TEX2:
+				case GX_VA_TEX3:
+				case GX_VA_TEX4:
+				case GX_VA_TEX5:
+				case GX_VA_TEX6:
+				case GX_VA_TEX7:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
+						GXTexCoord1x16(idx);
+					} else {
+						GXTexCoord1x8(idx);
+					}
+					break;
+
+				case GX_VA_CLR0:
+				case GX_VA_CLR1:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
+						GXColor1x16(idx);
+					} else if (desc->attr_type == GX_INDEX8) {
+						GXColor1x8(idx);
+					} else {
+						switch (desc->comp_type) {
+						case GX_RGB565:
+						case GX_RGBA4:
+							GXColor1u16((idx << 8) | display[cursor++]);
+							break;
+						case GX_RGB8:
+						case GX_RGBA6:
+							GXColor3u8(idx, display[cursor], display[cursor + 1]);
+							cursor += 2;
+							break;
+						case GX_RGBA8:
+						case GX_RGBX8:
+							GXColor4u8(idx, display[cursor], display[cursor + 1], display[cursor + 2]);
+							cursor += 3;
+							break;
+						}
+					}
+					break;
+				default:
+					if (desc->attr_type == GX_INDEX16) {
+						idx = (idx << 8) | display[cursor++];
+					}
+					OSReport("attr(%d) is not supported by sysdolphin\n", desc->attr);
+					break;
 				}
 			}
 		}
 		GXEnd();
-		l += m;
-		dl += m;
 	}
 }
 
@@ -1067,29 +948,29 @@ void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*norma
  */
 void drawShapeAnim(HSD_PObj* pobj)
 {
-	// NONMATCHING: register allocation and the averaged NBT loop's index updates
 	HSD_ShapeSet* shape_set = pobj->u.shape_set;
 	f32 blend;
 	s32 shape_id, i;
-	s32 blend_nbt;
+	BOOL blend_nbt;
 
 	if (vertex_buffer_size == 0) {
 		vertex_buffer_size = HSD_DEFAULT_MAX_SHAPE_VERTICES;
 		vertex_buffer      = HSD_Alloc(vertex_buffer_size * sizeof(f32[3]));
 	}
-	ASSERT_POBJ(0x582, vertex_buffer_size >= shape_set->nb_vertex_index);
+	assert_line(0x582, vertex_buffer_size >= shape_set->nb_vertex_index);
 	if (shape_set->normal_desc && normal_buffer_size == 0) {
 		normal_buffer_size = HSD_DEFAULT_MAX_SHAPE_NORMALS;
 		normal_buffer      = HSD_Alloc(normal_buffer_size * sizeof(f32[3]));
 	}
 
+	// The normal descriptor determines whether each entry has three or nine components.
 	if (shape_set->normal_desc) {
 		if (shape_set->normal_desc->attr == GX_VA_NRM) {
-			ASSERT_POBJ(0x58B, normal_buffer_size >= shape_set->nb_normal_index);
-			blend_nbt = 0;
+			assert_line(0x58B, normal_buffer_size >= shape_set->nb_normal_index);
+			blend_nbt = FALSE;
 		} else {
-			ASSERT_POBJ(0x58E, normal_buffer_size >= shape_set->nb_normal_index * 3);
-			blend_nbt = 1;
+			assert_line(0x58E, normal_buffer_size >= shape_set->nb_normal_index * 3);
+			blend_nbt = TRUE;
 		}
 	}
 
@@ -1098,27 +979,28 @@ void drawShapeAnim(HSD_PObj* pobj)
 
 		blend     = shape_set->blend.bl;
 		blend_int = (s32)blend;
-		shape_id  = pobj_min((blend_int < 0 ? 0 : blend_int), shape_set->nb_shape - 1);
-		blend     = pobj_min(MAX(0.0, blend - (f32)shape_id), 1.0f);
+		shape_id  = MIN((blend_int < 0 ? 0 : blend_int), shape_set->nb_shape - 1);
+		blend     = MIN(MAX(0.0, blend - (f32)shape_id), 1.0f);
 		for (i = 0; i < shape_set->nb_vertex_index; i++) {
 			f32 s0[3], s1[3];
 
 			get_shape_vertex_xyz(shape_set, shape_id, i, s0);
-			get_shape_vertex_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
-			vertex_buffer[i][0] = __fmadds(blend, s1[0] - s0[0], s0[0]);
-			vertex_buffer[i][1] = __fmadds(blend, s1[1] - s0[1], s0[1]);
-			vertex_buffer[i][2] = __fmadds(blend, s1[2] - s0[2], s0[2]);
+			get_shape_vertex_xyz(shape_set, MIN(shape_id + 1, shape_set->nb_shape - 1), i, s1);
+			vertex_buffer[i][0] = blend * (s1[0] - s0[0]) + s0[0];
+			vertex_buffer[i][1] = blend * (s1[1] - s0[1]) + s0[1];
+			vertex_buffer[i][2] = blend * (s1[2] - s0[2]) + s0[2];
 		}
-		if (shape_set->nb_normal_index) {
+		if (shape_set->normal_desc) {
 			if (blend_nbt) {
 				for (i = 0; i < shape_set->nb_normal_index; i++) {
 					f32 s0[9], s1[9];
-					s32 j, idx = i * 3;
+					int j;
+					s32 nbt_offset = i * 9;
 
 					get_shape_nbt_xyz(shape_set, shape_id, i, s0);
-					get_shape_nbt_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
+					get_shape_nbt_xyz(shape_set, MIN(shape_id + 1, shape_set->nb_shape - 1), i, s1);
 					for (j = 0; j < 9; j++) {
-						normal_buffer[idx][j] = __fmadds(blend, s1[j] - s0[j], s0[j]);
+						(normal_buffer + nbt_offset)[j] = blend * (s1[j] - s0[j]) + s0[j];
 					}
 				}
 			} else {
@@ -1126,10 +1008,10 @@ void drawShapeAnim(HSD_PObj* pobj)
 					f32 s0[3], s1[3];
 
 					get_shape_normal_xyz(shape_set, shape_id, i, s0);
-					get_shape_normal_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
-					normal_buffer[i][0] = __fmadds(blend, s1[0] - s0[0], s0[0]);
-					normal_buffer[i][1] = __fmadds(blend, s1[1] - s0[1], s0[1]);
-					normal_buffer[i][2] = __fmadds(blend, s1[2] - s0[2], s0[2]);
+					get_shape_normal_xyz(shape_set, MIN(shape_id + 1, shape_set->nb_shape - 1), i, s1);
+					(normal_buffer + i * 3)[0] = blend * (s1[0] - s0[0]) + s0[0];
+					(normal_buffer + i * 3)[1] = blend * (s1[1] - s0[1]) + s0[1];
+					(normal_buffer + i * 3)[2] = blend * (s1[2] - s0[2]) + s0[2];
 				}
 			}
 		}
@@ -1143,49 +1025,49 @@ void drawShapeAnim(HSD_PObj* pobj)
 				f32 s[3];
 
 				get_shape_vertex_xyz(shape_set, j + 1, i, s);
-				vertex_buffer[i][0] = __fmadds(s[0], b, vertex_buffer[i][0]);
-				vertex_buffer[i][1] = __fmadds(s[1], b, vertex_buffer[i][1]);
-				vertex_buffer[i][2] = __fmadds(s[2], b, vertex_buffer[i][2]);
+				vertex_buffer[i][0] += s[0] * b;
+				vertex_buffer[i][1] += s[1] * b;
+				vertex_buffer[i][2] += s[2] * b;
 			}
 		}
-		if (shape_set->nb_normal_index) {
+		if (shape_set->normal_desc) {
 			if (blend_nbt) {
 				for (i = 0; i < shape_set->nb_normal_index; i++) {
-					s32 idx = i * 3;
-					get_shape_nbt_xyz(shape_set, 0, i, normal_buffer[idx]);
+					s32 nbt_offset = i * 9;
+					get_shape_nbt_xyz(shape_set, 0, i, normal_buffer + nbt_offset);
 					for (j = 0; j < shape_set->nb_shape; j++) {
 						f32 b = MAX(0.0, blend_bp[j]);
 						f32 s[9];
 
 						get_shape_nbt_xyz(shape_set, j + 1, i, s);
-						normal_buffer[idx][0] = __fmadds(b, s[0], normal_buffer[idx][0]);
-						normal_buffer[idx][1] = __fmadds(b, s[1], normal_buffer[idx][1]);
-						normal_buffer[idx][2] = __fmadds(b, s[2], normal_buffer[idx][2]);
-						normal_buffer[idx][3] = __fmadds(b, s[3], normal_buffer[idx][3]);
-						normal_buffer[idx][4] = __fmadds(b, s[4], normal_buffer[idx][4]);
-						normal_buffer[idx][5] = __fmadds(b, s[5], normal_buffer[idx][5]);
-						normal_buffer[idx][6] = __fmadds(b, s[6], normal_buffer[idx][6]);
-						normal_buffer[idx][7] = __fmadds(b, s[7], normal_buffer[idx][7]);
-						normal_buffer[idx][8] = __fmadds(b, s[8], normal_buffer[idx][8]);
+						(normal_buffer + nbt_offset)[0] += b * s[0];
+						(normal_buffer + nbt_offset)[1] += b * s[1];
+						(normal_buffer + nbt_offset)[2] += b * s[2];
+						(normal_buffer + nbt_offset)[3] += b * s[3];
+						(normal_buffer + nbt_offset)[4] += b * s[4];
+						(normal_buffer + nbt_offset)[5] += b * s[5];
+						(normal_buffer + nbt_offset)[6] += b * s[6];
+						(normal_buffer + nbt_offset)[7] += b * s[7];
+						(normal_buffer + nbt_offset)[8] += b * s[8];
 					}
 				}
 			} else {
 				for (i = 0; i < shape_set->nb_normal_index; i++) {
-					get_shape_normal_xyz(shape_set, 0, i, normal_buffer[i]);
+					get_shape_normal_xyz(shape_set, 0, i, normal_buffer + i * 3);
 					for (j = 0; j < shape_set->nb_shape; j++) {
 						f32 b = MAX(0.0, blend_bp[j]);
 						f32 s[3];
 
 						get_shape_normal_xyz(shape_set, j + 1, i, s);
-						normal_buffer[i][0] = __fmadds(s[0], b, normal_buffer[i][0]);
-						normal_buffer[i][1] = __fmadds(s[1], b, normal_buffer[i][1]);
-						normal_buffer[i][2] = __fmadds(s[2], b, normal_buffer[i][2]);
+						(normal_buffer + i * 3)[0] += s[0] * b;
+						(normal_buffer + i * 3)[1] += s[1] * b;
+						(normal_buffer + i * 3)[2] += s[2] * b;
 					}
 				}
 			}
 		}
 	}
-	interpretShapeAnimDisplayList(pobj, vertex_buffer, normal_buffer);
+	interpretShapeAnimDisplayList(pobj, vertex_buffer, (f32 (*)[3])normal_buffer);
 }
 
 /**
@@ -1256,44 +1138,41 @@ void SetupSharedVtxModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
 
 	flags |= GetSetupFlags(jobj);
 
-	// always true, the original ors the flag in instead of testing it
-	if (flags | SETUP_JOINT0) {
-		GXSetCurrentMtx(GX_PNMTX0);
-		GXLoadPosMtxImm(pmtx, GX_PNMTX0);
-		HSD_PerfCurrentStat.unkC++;
+	// A cache miss for either joint reloads both position matrices.
+	GXSetCurrentMtx(GX_PNMTX0);
+	GXLoadPosMtxImm(pmtx, GX_PNMTX0);
+	HSD_PerfCurrentStat.nb_mtx_load++;
 
-		if (flags & SETUP_NORMAL) {
-			if (!PSMTXInvXpose(pmtx, n0)) {
-				PSMTXCopy(pmtx, n0);
-			}
-			if (jobj->flags & LIGHTING) {
-				GXLoadNrmMtxImm(n0, GX_PNMTX0);
-				HSD_PerfCurrentStat.unkC++;
-			}
-			if (flags & SETUP_NORMAL_PROJECTION) {
-				GXLoadTexMtxImm(n0, GX_TEXMTX0, GX_MTX3x4);
-				HSD_PerfCurrentStat.unkC++;
-			}
+	if (flags & SETUP_NORMAL) {
+		if (!PSMTXInvXpose(pmtx, n0)) {
+			PSMTXCopy(pmtx, n0);
+		}
+		if (jobj->flags & LIGHTING) {
+			GXLoadNrmMtxImm(n0, GX_PNMTX0);
+			HSD_PerfCurrentStat.nb_mtx_load++;
+		}
+		if (flags & SETUP_NORMAL_PROJECTION) {
+			GXLoadTexMtxImm(n0, GX_TEXMTX0, GX_MTX3x4);
+			HSD_PerfCurrentStat.nb_mtx_load++;
 		}
 	}
-	if (flags | SETUP_JOINT1) {
-		HSD_JObjSetupMatrix(pobj->u.jobj);
-		PSMTXConcat(vmtx, pobj->u.jobj->mtx, m);
-		GXLoadPosMtxImm(m, GX_PNMTX1);
-		HSD_PerfCurrentStat.unkC++;
 
-		if (flags & SETUP_NORMAL) {
-			if (!PSMTXInvXpose(m, n1)) {
-				PSMTXCopy(m, n1);
-			}
-			if (jobj->flags & LIGHTING) {
-				GXLoadNrmMtxImm(n1, GX_PNMTX1);
-				HSD_PerfCurrentStat.unkC++;
-			}
-			if (flags & SETUP_NORMAL_PROJECTION) {
-				GXLoadTexMtxImm(n1, GX_TEXMTX1, GX_MTX3x4);
-				HSD_PerfCurrentStat.unkC++;
-			}
+	HSD_JObjSetupMatrix(pobj->u.jobj);
+	PSMTXConcat(vmtx, pobj->u.jobj->mtx, m);
+	GXLoadPosMtxImm(m, GX_PNMTX1);
+	HSD_PerfCurrentStat.nb_mtx_load++;
+
+	if (flags & SETUP_NORMAL) {
+		if (!PSMTXInvXpose(m, n1)) {
+			PSMTXCopy(m, n1);
+		}
+		if (jobj->flags & LIGHTING) {
+			GXLoadNrmMtxImm(n1, GX_PNMTX1);
+			HSD_PerfCurrentStat.nb_mtx_load++;
+		}
+		if (flags & SETUP_NORMAL_PROJECTION) {
+			GXLoadTexMtxImm(n1, GX_TEXMTX1, GX_MTX3x4);
+			HSD_PerfCurrentStat.nb_mtx_load++;
 		}
 	}
 }
@@ -1323,7 +1202,7 @@ void SetupEnvelopeModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
 		s32 mtx_no             = HSD_Index2PosNrmMtx(MtxIdx);
 		s32 perf               = 0;
 
-		ASSERT_POBJ(0x738, envelope);
+		assert_line(0x738, envelope);
 		if (envelope->weight >= 1.0f) {
 			HSD_JObjSetupMatrix(envelope->jobj);
 			if (right) {
@@ -1338,11 +1217,11 @@ void SetupEnvelopeModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
 			while (envelope != NULL) {
 				HSD_JObj* jp;
 
-				ASSERT_POBJ(0x74C, envelope->jobj);
+				assert_line(0x74C, envelope->jobj);
 				jp = envelope->jobj;
 				HSD_JObjSetupMatrix(jp);
-				ASSERT_POBJ(0x74F, jp->mtx);
-				ASSERT_POBJ(0x750, jp->envelopemtx);
+				assert_line(0x74F, jp->mtx);
+				assert_line(0x750, jp->envelopemtx);
 
 				PSMTXConcat(jp->mtx, jp->envelopemtx, tmp);
 				HSD_MtxScaledAdd(tmp, tmp2, tmp2, envelope->weight);
@@ -1357,7 +1236,7 @@ void SetupEnvelopeModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
 		}
 		PSMTXConcat(vmtx, mtxp, tmp);
 		GXLoadPosMtxImm(tmp, mtx_no);
-		HSD_PerfCurrentStat.unkC++;
+		HSD_PerfCurrentStat.nb_mtx_load++;
 
 		if (flags & SETUP_NORMAL) {
 			if (!PSMTXInvXpose(tmp, tmp2)) {
@@ -1365,11 +1244,11 @@ void SetupEnvelopeModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
 			}
 			if (jobj->flags & LIGHTING) {
 				GXLoadNrmMtxImm(tmp2, mtx_no);
-				HSD_PerfCurrentStat.unkC++;
+				HSD_PerfCurrentStat.nb_mtx_load++;
 			}
 			if (flags & SETUP_NORMAL_PROJECTION) {
 				GXLoadTexMtxImm(tmp2, HSD_Index2TexMtx(MtxIdx), GX_MTX3x4);
-				HSD_PerfCurrentStat.unkC++;
+				HSD_PerfCurrentStat.nb_mtx_load++;
 			}
 		}
 	}
@@ -1391,7 +1270,7 @@ static inline void SetupRigidModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 re
 
 		GXSetCurrentMtx(GX_PNMTX0);
 		GXLoadPosMtxImm(pmtx, GX_PNMTX0);
-		HSD_PerfCurrentStat.unkC++;
+		HSD_PerfCurrentStat.nb_mtx_load++;
 
 		flags = GetSetupFlags(jobj);
 		if (flags & SETUP_NORMAL) {
@@ -1400,11 +1279,11 @@ static inline void SetupRigidModelMtx(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 re
 			}
 			if (jobj->flags & LIGHTING) {
 				GXLoadNrmMtxImm(n, GX_PNMTX0);
-				HSD_PerfCurrentStat.unkC++;
+				HSD_PerfCurrentStat.nb_mtx_load++;
 			}
 			if (flags & SETUP_NORMAL_PROJECTION) {
 				GXLoadTexMtxImm(n, GX_TEXMTX0, GX_MTX3x4);
-				HSD_PerfCurrentStat.unkC++;
+				HSD_PerfCurrentStat.nb_mtx_load++;
 			}
 		}
 	}
@@ -1491,7 +1370,7 @@ static inline void PObjDispSimplePrimitive(HSD_PObj* pobj, u32 rendermode)
 	setupArrayDesc(pobj->verts);
 	setupVtxDesc(pobj);
 
-	GXCallDisplayList(pobj->display, pobj->n_display << 5);
+	GXCallDisplayList(pobj->display, pobj->n_display * DISPLAY_LIST_BLOCK_SIZE);
 }
 
 /**

@@ -20,6 +20,7 @@ extern "C" {
 #include "Dolphin/OS/OSExpansion.h"
 #include "Dolphin/OS/OSFastCast.h"
 #include "Dolphin/OS/OSFont.h"
+#include <sdk/dolphin/os/OSGameChoice.h>
 #include "Dolphin/OS/OSInterrupt.h"
 #include "Dolphin/OS/OSMemory.h"
 #include "Dolphin/OS/OSMessage.h"
@@ -38,9 +39,9 @@ extern void __OSContextInit();
 extern void __OSInterruptInit();
 extern void __OSInitSystemCall();
 extern void __OSModuleInit();
-extern void __OSInitAudioSystem();
-extern void __OSStopAudioSystem();
-extern void __OSInitMemoryProtection();
+extern void __OSInitAudioSystem(void);
+extern void __OSStopAudioSystem(void);
+extern void __OSInitMemoryProtection(void);
 extern void __OSInitAlarm();
 
 void OSInit();
@@ -103,12 +104,11 @@ u32 OSGetEuRgb60Mode();
 void OSSetEuRgb60Mode(u32 on);
 
 // Arena functions.
-extern void* __OSArenaHi;
-
 void* OSGetArenaHi(void);
 void* OSGetArenaLo(void);
 void OSSetArenaHi(void* addr);
 void OSSetArenaLo(void* addr);
+void* OSAllocFromArenaLo(u32 size, u32 align);
 
 // targsupp
 extern u32 TRKAccessFile(u32, u32, u32*, u8*);
@@ -119,14 +119,11 @@ extern u32 TRKPositionFile(u32, u32, u32*, u8*);
 #define OS_SYS_CALL_HANDLER  ((void*)0x80000C00)
 #define OS_HANDLER_SLOT_SIZE (0x100)
 
-void __OSSystemCallVectorStart();
-void __OSSystemCallVectorEnd();
 
 void OSFillFPUContext(OSContext*);
 extern u32 __OSFpscrEnableBits; /** TODO: find a wrapper for this. Symbol is defined in OSError.c. */
 
 u16 __OSWirelessPadFixMode AT_ADDRESS(OS_BASE_CACHED | 0x30E0);
-u8 GameChoice AT_ADDRESS(OS_BASE_CACHED | 0x30E3);
 
 volatile int __OSTVMode AT_ADDRESS(OS_BASE_CACHED | 0xCC);
 

@@ -10,7 +10,7 @@ extern "C" {
 typedef struct DBInterface {
     u32 bPresent;
     u32 exceptionMask;
-    void (*ExceptionDestination)(void);
+    void (*ExceptionDestination)(void); // Physical address of the exception trampoline.
     void* exceptionReturn;
 } DBInterface;
 

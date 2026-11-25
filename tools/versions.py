@@ -1,10 +1,12 @@
-# version list and the configured version, read out of configure.py and build.ninja
+# Version and configuration information from configure.py and build.ninja.
+import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 USA = "GGTE01"
 DISC_EXT = (".ciso", ".iso", ".gcm", ".rvz", ".wbfs", ".wia", ".nfs", ".tgc")
+CONFIGURE_ARGS_PREFIX = "# configure argv: "
 
 
 def _configure_text():
@@ -28,6 +30,21 @@ def configured():
         return None
     m = re.search(r"-DVERSION_(\w+)", ninja.read_text(encoding="utf-8"))
     return m.group(1) if m else None
+
+
+def configured_arguments():
+    try:
+        text = (ROOT / "build.ninja").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    for line in text.splitlines():
+        if line.startswith(CONFIGURE_ARGS_PREFIX):
+            return json.loads(line.removeprefix(CONFIGURE_ARGS_PREFIX))
+
+    # Older manifests only recorded the space-separated Ninja variable.
+    text = re.sub(r" \$\n[ \t]+", " ", text)
+    match = re.search(r"^configure_args =([^\n]*)", text, re.M)
+    return match.group(1).split() if match else None
 
 
 def current():

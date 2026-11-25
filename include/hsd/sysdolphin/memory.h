@@ -3,12 +3,18 @@
 
 #include <dolphin/types.h>
 
+typedef void* (*HSD_MemAllocCallback)(u32 size, u32 align, u32 flags);
+typedef void (*HSD_MemFreeCallback)(void* ptr);
+typedef void (*HSD_MemClearCallback)(void);
+typedef u32 (*HSD_MemGetRemainCallback)(void);
+typedef s32 (*HSD_MemCheckOwnCallback)(void* ptr);
+
 typedef struct _HSD_MemCallbacks {
-    void* (*alloc)(u32 size, u32 align, u32 flags);
-    void (*free)(void* ptr);
-    void (*clear)(void);
-    u32 (*get_remain)(void);
-    s32 (*check_own)(void* ptr);
+    HSD_MemAllocCallback alloc;
+    HSD_MemFreeCallback free;
+    HSD_MemClearCallback clear;
+    HSD_MemGetRemainCallback get_remain;
+    HSD_MemCheckOwnCallback check_own;
 } HSD_MemCallbacks;
 
 void _HSD_MemSetCallbacks(HSD_MemCallbacks* callbacks, u32 size);

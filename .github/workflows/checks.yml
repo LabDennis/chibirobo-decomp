@@ -21,5 +21,5 @@ jobs:
         run: python -m pip install clang-format==18.1.8
       - name: Check source
         run: python tools/check.py --source-only
-      - name: Check treemap
-        run: python -m unittest discover -s tools -p 'test_treemap*.py'
+      - name: Check build tools
+        run: python -m unittest discover -s tools -p 'test_*.py'

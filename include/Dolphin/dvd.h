@@ -142,7 +142,7 @@ s32 DVDConvertPathToEntrynum(char* path);
 // Other disk functions.
 s32 DVDGetTransferredSize(DVDFileInfo* fileInfo);
 DVDDiskID* DVDGetCurrentDiskID();
-BOOL DVDCompareDiskID(DVDDiskID* id1, DVDDiskID* id2);
+BOOL DVDCompareDiskID(const DVDDiskID* id1, const DVDDiskID* id2);
 DVDLowCallback DVDLowClearCallback();
 
 BOOL DVDCancelStreamAsync(DVDCommandBlock* block, DVDCBCallback callback);

@@ -3,10 +3,6 @@
 
 #include "types.h"
 
-extern "C" {
-#include <sysdolphin/controller.h>
-}
-
 // one controller port, class name from RTTI. the dir fields fold both sticks into the
 // dpad bits so menus can read either
 class CPadOne {
@@ -27,31 +23,15 @@ public:
 	f32 mSubStickY;      // _40
 	f32 mAnalogL;        // _44
 	f32 mAnalogR;        // _48
-	u32 mConnected;      // _4C
+	BOOL mConnected;     // _4C
 	// _50 vtable
 
-	virtual ~CPadOne() { }           // _08, its one copy is in game part 1
+	virtual ~CPadOne() { }           // _08
 	virtual void Init(u8 port);      // _0C
 	virtual void Clear();            // _10
 	virtual void Update(s32 frames); // _14
 };
 STATIC_ASSERT(sizeof(CPadOne) == 0x54);
-
-// all four ports plus the HSD pad queue and rumble lists. CGame holds the one instance
-class CPadEx {
-public:
-	HSD_PadData mQueue;               // _00
-	HSD_PadRumbleListData mRumble[4]; // _34
-	CPadOne mPad[4];                  // _B4
-	// _204 vtable
-
-	CPadEx();
-	virtual ~CPadEx() { } // _08
-
-	void Init();
-	void Update(s32 frames);
-};
-STATIC_ASSERT(sizeof(CPadEx) == 0x208);
 
 // a handle on one port of the CPadEx, what the rest of the game keeps
 class CPad {

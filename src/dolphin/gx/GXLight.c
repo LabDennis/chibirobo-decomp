@@ -1,18 +1,22 @@
 #include <sdk_math.h>
 #include <dolphin/gx.h>
+#include <dolphin/gx/GXCommandList.h>
 #include <dolphin/os.h>
 
+#include "PowerPC_EABI_Support/MSL_C/PPC_EABI/math_ppc.h"
 #include "__gx.h"
 
 // GXLightObj private data
 typedef struct {
     u32 reserved[3];
-    u32 Color;
+    GXColor color;
     f32 a[3];
     f32 k[3];
     f32 lpos[3];
     f32 ldir[3];
 } __GXLightObjInt_struct;
+
+STATIC_ASSERT(sizeof(__GXLightObjInt_struct) == sizeof(GXLightObj));
 
 /**
  * @note Address: 0x80188ABC
@@ -288,7 +292,7 @@ void GXInitSpecularDir(GXLightObj* lt_obj, f32 nx, f32 ny, f32 nz) {
 
     mag = (vx * vx) + (vy * vy) + (vz * vz);
     if (mag != 0.0f) {
-        mag = 1.0f / sqrtf(mag);
+        mag = 1.0f / SDKFastSqrt(mag);
     }
     
     obj->ldir[0] = vx * mag;
@@ -329,7 +333,7 @@ void GXInitLightColor(GXLightObj* lt_obj, GXColor color) {
     obj = (__GXLightObjInt_struct*)lt_obj;
     CHECK_GXBEGIN(463, "GXInitLightColor");
 
-    *(u32*)&obj->Color = *(u32*)&color;
+    obj->color = color;
 }
 
 /**
@@ -337,33 +341,27 @@ void GXInitLightColor(GXLightObj* lt_obj, GXColor color) {
  * @note Size: ?
  */
 void GXGetLightColor(const GXLightObj* lt_obj, GXColor* color) {
-    __GXLightObjInt_struct* obj;
+    const __GXLightObjInt_struct* obj;
 
     ASSERTMSGLINE(476, lt_obj != NULL, "Light Object Pointer is null");
-    obj = (__GXLightObjInt_struct*)lt_obj;
+    obj = (const __GXLightObjInt_struct*)lt_obj;
     CHECK_GXBEGIN(477, "GXGetLightColor");
 
-    *(u32*)color = *(u32*)&obj->Color;
+    *color = obj->color;
 }
 
+static void WriteLightWord(u32 addr, u32 value) {
+    GX_WRITE_U32(value);
 #if DEBUG
-#define WRITE_SOME_LIGHT_REG1(val, addr) \
-do {  \
-    u32 xfData = val; \
-    GX_WRITE_U32(val); \
-    VERIF_MTXLIGHT(addr, xfData); \
-} while (0)
-
-#define WRITE_SOME_LIGHT_REG2(val, addr) \
-do {  \
-    f32 xfData = val; \
-    GX_WRITE_F32(val); \
-    VERIF_MTXLIGHT(addr, *(u32 *)&xfData); \
-} while (0)
-#else
-#define WRITE_SOME_LIGHT_REG1(val, addr) GX_WRITE_U32(val)
-#define WRITE_SOME_LIGHT_REG2(val, addr) GX_WRITE_F32(val)
+    VERIF_MTXLIGHT(addr, value);
 #endif
+}
+
+enum {
+    XF_LIGHT_BASE = 0x600,
+    XF_LIGHT_WORDS = 16,
+    XF_LIGHT_COLOR_WORD = 3,
+};
 
 /**
  * @note Address: N/A
@@ -384,49 +382,15 @@ static inline u32 ConvLightID2Num(GXLightID id) {
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void PushLight(const __REGISTER GXLightObj* lt_obj, __REGISTER void* dest) {
-    __REGISTER u32 zero, color;
-    __REGISTER f32 a0_a1, a2_k0, k1_k2;
-    __REGISTER f32 px_py, pz_dx, dy_dz;
-#ifdef __MWERKS__  // clang-format off
-	asm {
-		lwz     color, 12(lt_obj)
-		xor     zero, zero, zero
-		psq_l   a0_a1, 16(lt_obj), 0, 0
-		psq_l   a2_k0, 24(lt_obj), 0, 0
-		psq_l   k1_k2, 32(lt_obj), 0, 0
-		psq_l   px_py, 40(lt_obj), 0, 0
-		psq_l   pz_dx, 48(lt_obj), 0, 0
-		psq_l   dy_dz, 56(lt_obj), 0, 0
-
-		stw     zero,  0(dest)
-		stw     zero,  0(dest)
-		stw     zero,  0(dest)
-		stw     color, 0(dest)
-		psq_st  a0_a1, 0(dest), 0, 0
-		psq_st  a2_k0, 0(dest), 0, 0
-		psq_st  k1_k2, 0(dest), 0, 0
-		psq_st  px_py, 0(dest), 0, 0
-		psq_st  pz_dx, 0(dest), 0, 0
-		psq_st  dy_dz, 0(dest), 0, 0
-	}
-#endif  // clang-format on
-}
-
-/**
  * @note Address: 0x80188D70
  * @note Size: 0x7C
  */
 void GXLoadLightObjImm(const GXLightObj* lt_obj, GXLightID light) {
     u32 addr;
     u32 idx;
-    __GXLightObjInt_struct* obj;
+    u32 wordIndex;
 
     ASSERTMSGLINE(568, lt_obj != NULL, "Light Object Pointer is null");
-    obj = (__GXLightObjInt_struct*)lt_obj;
     CHECK_GXBEGIN(569, "GXLoadLightObjImm");
 
 #if DEBUG
@@ -438,30 +402,24 @@ void GXLoadLightObjImm(const GXLightObj* lt_obj, GXLightID light) {
     ASSERTMSGLINE(575, idx < 8, "GXLoadLightObjImm: Invalid Light Id");
     idx &= 7;
 
-    addr = idx * 0x10 + 0x600;
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(addr | 0xF0000);
+    addr = XF_LIGHT_BASE + idx * XF_LIGHT_WORDS;
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(addr | ((XF_LIGHT_WORDS - 1) << 16));
 
-#if DEBUG
-    WRITE_SOME_LIGHT_REG1(0, addr);
-    WRITE_SOME_LIGHT_REG1(0, addr + 1);
-    WRITE_SOME_LIGHT_REG1(0, addr + 2);
-    WRITE_SOME_LIGHT_REG1(obj->Color, addr + 3);
-    WRITE_SOME_LIGHT_REG2(obj->a[0], addr + 4);
-    WRITE_SOME_LIGHT_REG2(obj->a[1], addr + 5);
-    WRITE_SOME_LIGHT_REG2(obj->a[2], addr + 6);
-    WRITE_SOME_LIGHT_REG2(obj->k[0], addr + 7);
-    WRITE_SOME_LIGHT_REG2(obj->k[1], addr + 8);
-    WRITE_SOME_LIGHT_REG2(obj->k[2], addr + 9);
-    WRITE_SOME_LIGHT_REG2(obj->lpos[0], addr + 10);
-    WRITE_SOME_LIGHT_REG2(obj->lpos[1], addr + 11);
-    WRITE_SOME_LIGHT_REG2(obj->lpos[2], addr + 12);
-    WRITE_SOME_LIGHT_REG2(obj->ldir[0], addr + 13);
-    WRITE_SOME_LIGHT_REG2(obj->ldir[1], addr + 14);
-    WRITE_SOME_LIGHT_REG2(obj->ldir[2], addr + 15);
-#else
-    PushLight(lt_obj, (void*)GXFIFO_ADDR);
+    for (wordIndex = 0; wordIndex < XF_LIGHT_COLOR_WORD; ++wordIndex) {
+        WriteLightWord(addr + wordIndex, 0);
+    }
+    WriteLightWord(addr + XF_LIGHT_COLOR_WORD, lt_obj->dummy[XF_LIGHT_COLOR_WORD]);
+    for (wordIndex = XF_LIGHT_COLOR_WORD + 1; wordIndex < XF_LIGHT_WORDS; ++wordIndex) {
+        u32 word = lt_obj->dummy[wordIndex];
+#if !DEBUG
+        // Unquantized paired-single stores flush subnormals to signed zero.
+        if ((word & 0x7f800000) == 0) {
+            word &= 0x80000000;
+        }
 #endif
+        WriteLightWord(addr + wordIndex, word);
+    }
 
     __GXData->bpSentNot = 1;
 }
@@ -486,12 +444,12 @@ void GXLoadLightObjIndx(u32 lt_obj_indx, GXLightID light) {
     ASSERTMSGLINE(627, idx < 8, "GXLoadLightObjIndx: Invalid Light Id");
     idx &= 7;
 
-    addr = idx * 0x10 + 0x600;
+    addr = XF_LIGHT_BASE + idx * XF_LIGHT_WORDS;
     reg = 0;
     SET_REG_FIELD(632, reg, 12, 0, addr);
-    SET_REG_FIELD(634, reg, 4, 12, 0xF);
+    SET_REG_FIELD(634, reg, 4, 12, XF_LIGHT_WORDS - 1);
     SET_REG_FIELD(634, reg, 16, 16, lt_obj_indx);
-    GX_WRITE_U8(0x38);
+    GX_WRITE_U8(GX_LOAD_INDX_D);
     GX_WRITE_U32(reg);
 #if DEBUG
     __GXShadowIndexState(7, reg);
@@ -499,58 +457,45 @@ void GXLoadLightObjIndx(u32 lt_obj_indx, GXLightID light) {
     __GXData->bpSentNot = 1;
 }
 
-#define GXCOLOR_AS_U32(color) (*((u32*)&(color)))
+static BOOL SetChannelColor(GXChannelID chan, GXColor color, u32* colors, u32 firstReg) {
+    u32 index;
+    u32 reg;
+
+    switch (chan) {
+    case GX_COLOR0:
+    case GX_COLOR1:
+        index = chan - GX_COLOR0;
+        reg = (colors[index] & 0xFFu) | (__GXPackRGBA8(color) & 0xFFFFFF00u);
+        break;
+    case GX_ALPHA0:
+    case GX_ALPHA1:
+        index = chan - GX_ALPHA0;
+        reg = (colors[index] & 0xFFFFFF00u) | color.a;
+        break;
+    case GX_COLOR0A0:
+    case GX_COLOR1A1:
+        index = chan - GX_COLOR0A0;
+        reg = __GXPackRGBA8(color);
+        break;
+    default:
+        return FALSE;
+    }
+
+    GX_WRITE_XF_REG(firstReg + index, reg);
+    __GXData->bpSentNot = 1;
+    colors[index] = reg;
+    return TRUE;
+}
 
 /**
  * @note Address: 0x80188DEC
  * @note Size: 0xE8
  */
 void GXSetChanAmbColor(GXChannelID chan, GXColor amb_color) {
-    u32 reg;
-    u32 rgb;
-    u32 colIdx;
-
     CHECK_GXBEGIN(661, "GXSetChanAmbColor");
-
-    switch (chan) {
-    case GX_COLOR0:
-        reg = __GXData->ambColor[GX_COLOR0];
-        rgb = GXCOLOR_AS_U32(amb_color) >> 8;
-        SET_REG_FIELD(675, reg, 24, 8, rgb);
-        colIdx = 0;
-        break;
-    case GX_COLOR1:
-        reg = __GXData->ambColor[GX_COLOR1];
-        rgb = GXCOLOR_AS_U32(amb_color) >> 8;
-        SET_REG_FIELD(690, reg, 24, 8, rgb);
-        colIdx = 1;
-        break;
-    case GX_ALPHA0:
-        reg = __GXData->ambColor[GX_COLOR0];
-        SET_REG_FIELD(696, reg, 8, 0, amb_color.a);
-        colIdx = 0;
-        break;
-    case GX_ALPHA1:
-        reg = __GXData->ambColor[GX_COLOR1];
-        SET_REG_FIELD(702, reg, 8, 0, amb_color.a);
-        colIdx = 1;
-        break;
-    case GX_COLOR0A0:
-        reg = GXCOLOR_AS_U32(amb_color);
-        colIdx = 0;
-        break;
-    case GX_COLOR1A1:
-        reg = GXCOLOR_AS_U32(amb_color);
-        colIdx = 1;
-        break;
-    default:
+    if (!SetChannelColor(chan, amb_color, __GXData->ambColor, 10)) {
         ASSERTMSGLINE(731, 0, "GXSetChanAmbColor: Invalid Channel Id");
-        return;
     }
-
-    GX_WRITE_XF_REG(colIdx + 10, reg);
-    __GXData->bpSentNot = 1;
-    __GXData->ambColor[colIdx] = reg;
 }
 
 /**
@@ -558,51 +503,10 @@ void GXSetChanAmbColor(GXChannelID chan, GXColor amb_color) {
  * @note Size: 0xE8
  */
 void GXSetChanMatColor(GXChannelID chan, GXColor mat_color) {
-    u32 reg;
-    u32 rgb;
-    u32 colIdx;
-
     CHECK_GXBEGIN(762, "GXSetChanMatColor");
-
-    switch (chan) {
-    case GX_COLOR0:
-        reg = __GXData->matColor[GX_COLOR0];
-        rgb = GXCOLOR_AS_U32(mat_color) >> 8;
-        SET_REG_FIELD(776, reg, 24, 8, rgb);
-        colIdx = 0;
-        break;
-    case GX_COLOR1:
-        reg = __GXData->matColor[GX_COLOR1];
-        rgb = GXCOLOR_AS_U32(mat_color) >> 8;
-        SET_REG_FIELD(791, reg, 24, 8, rgb);
-        colIdx = 1;
-        break;
-    case GX_ALPHA0:
-        reg = __GXData->matColor[GX_COLOR0];
-        SET_REG_FIELD(797, reg, 8, 0, mat_color.a);
-        colIdx = 0;
-        break;
-    case GX_ALPHA1:
-        reg = __GXData->matColor[GX_COLOR1];
-        SET_REG_FIELD(803, reg, 8, 0, mat_color.a);
-        colIdx = 1;
-        break;
-    case GX_COLOR0A0:
-        reg = GXCOLOR_AS_U32(mat_color);
-        colIdx = 0;
-        break;
-    case GX_COLOR1A1:
-        reg = GXCOLOR_AS_U32(mat_color);
-        colIdx = 1;
-        break;
-    default:
+    if (!SetChannelColor(chan, mat_color, __GXData->matColor, 12)) {
         ASSERTMSGLINE(832, 0, "GXSetChanMatColor: Invalid Channel Id");
-        return;
     }
-
-    GX_WRITE_XF_REG(colIdx + 12, reg);
-    __GXData->bpSentNot = 1;
-    __GXData->matColor[colIdx] = reg;
 }
 
 /**
@@ -646,9 +550,9 @@ void GXSetChanCtrl(GXChannelID chan, GXBool enable, GXColorSrc amb_src, GXColorS
     SET_REG_FIELD(908, reg, 1, 0, mat_src);
     SET_REG_FIELD(909, reg, 1, 6, amb_src);
     
-    SET_REG_FIELD(911, reg, 2, 7, (attn_fn == 0) ? 0 : diff_fn);
-    SET_REG_FIELD(912, reg, 1, 9, (attn_fn != 2));
-    SET_REG_FIELD(913, reg, 1, 10, (attn_fn != 0));
+    SET_REG_FIELD(911, reg, 2, 7, (attn_fn == GX_AF_SPEC) ? 0 : diff_fn);
+    SET_REG_FIELD(912, reg, 1, 9, (attn_fn != GX_AF_NONE));
+    SET_REG_FIELD(913, reg, 1, 10, (attn_fn != GX_AF_SPEC));
 
     SET_REG_FIELD(925, reg, 4, 2, light_mask & 0xF);
     SET_REG_FIELD(926, reg, 4, 11, (light_mask >> 4) & 0xF);

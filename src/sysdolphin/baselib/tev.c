@@ -1,37 +1,17 @@
 #include <global.h>
-#include <dolphin/gx/gxtypes.h>
+#include <dolphin/gx/gx.h>
 #include <sysdolphin/tev.h>
 #include <sysdolphin/lobj.h>
 #include <sysdolphin/lobj_setup.h>
 #include <sysdolphin/util.h>
 /* XD GX TEV stage and color-channel state cache. */
 #define HSD_ASSERT(line, cond) ((cond) ? (void)0 : __assert("tev.c", line, #cond))
-#define bool                   s32
 
-/* this file was built against the sdk gx headers, where stage arguments are enums, not u8 */
-void GXSetChanAmbColor(GXChannelID chan, GXColor amb_color);
-void GXSetChanMatColor(GXChannelID chan, GXColor mat_color);
-void GXSetChanCtrl(GXChannelID chan, u8 enable, s32 amb_src, s32 mat_src, u32 light_mask, s32 diff_fn, s32 attn_fn);
-void GXSetNumChans(u8 nChans);
-void GXSetNumTexGens(u8 nTexGens);
-void GXSetNumTevStages(u8 nStages);
-void GXSetTevOrder(s32 stage, s32 coord, s32 map, s32 color);
-void GXSetTevOp(s32 id, s32 mode);
-void GXSetTevColorIn(s32 stage, s32 a, s32 b, s32 c, s32 d);
-void GXSetTevAlphaIn(s32 stage, s32 a, s32 b, s32 c, s32 d);
-void GXSetTevColorOp(s32 stage, s32 op, s32 bias, s32 scale, u8 clamp, s32 out_reg);
-void GXSetTevAlphaOp(s32 stage, s32 op, s32 bias, s32 scale, u8 clamp, s32 out_reg);
-void GXSetTevColorS10(s32 id, GXColorS10 color);
-void GXSetTevKColorSel(s32 stage, s32 sel);
-void GXSetTevKAlphaSel(s32 stage, s32 sel);
-void GXSetTevSwapMode(s32 stage, s32 ras_sel, s32 tex_sel);
-static inline s32 HSD_TevStage2Index(s32);
 s32 HSD_TevStage2Num(s32 stage);
-s32 HSD_Index2TevStage(s32 idx);
 s32 HSD_TexCoordID2Num(s32 id);
 static struct TevReg_t {
-	GXColorS10 a;
-	s32 c;
+	GXColorS10 color;
+	BOOL pending;
 } TevReg[4] = { 0 };
 
 static HSD_Chan prev_ch[4] = {
@@ -73,25 +53,24 @@ HSD_ObjAllocData* HSD_ChanGetAllocData(void)
 	return &ch_alloc_data;
 }
 
-static inline bool CompareRGB(GXColor* c0, GXColor* c1)
+static BOOL UpdateChannelColor(GXChannelID chan, GXColor* cached, const GXColor* color)
 {
-	u32* d0 = (u32*)c0;
-	u32* d1 = (u32*)c1;
-	return ((*d0 ^ *d1) & 0xFFFFFF00) != 0;
-}
+	BOOL rgbOnly = chan == GX_COLOR0 || chan == GX_COLOR1;
+	BOOL updateRGB = rgbOnly || chan == GX_COLOR0A0 || chan == GX_COLOR1A1;
+	BOOL sameRGB = !updateRGB || (cached->r == color->r && cached->g == color->g && cached->b == color->b);
 
-static inline bool CompareRGBA(GXColor* c0, GXColor* c1)
-{
-	u32* d0 = (u32*)c0;
-	u32* d1 = (u32*)c1;
-	return *d0 != *d1;
-}
-
-static inline void CopyRGB(GXColor* dst, GXColor* src)
-{
-	u32* d = (u32*)dst;
-	u32* s = (u32*)src;
-	*d     = (*d & 0xff) | (*s & 0xffffff00);
+	if (sameRGB && (rgbOnly || cached->a == color->a)) {
+		return FALSE;
+	}
+	if (updateRGB) {
+		cached->r = color->r;
+		cached->g = color->g;
+		cached->b = color->b;
+	}
+	if (!rgbOnly) {
+		cached->a = color->a;
+	}
+	return TRUE;
 }
 
 void HSD_SetupChannel(HSD_Chan* ch)
@@ -112,19 +91,7 @@ void HSD_SetupChannel(HSD_Chan* ch)
 			prev_amb_invalid[no] = 0;
 			GXSetChanAmbColor(no + 4, ch->amb_color);
 			prev_ch[no].amb_color = ch->amb_color;
-		} else if (chan == GX_COLOR0A0 || chan == GX_COLOR1A1) {
-			if (CompareRGBA(&ch->amb_color, &prev_ch[no].amb_color)) {
-				prev_ch[no].amb_color = ch->amb_color;
-				goto set_amb;
-			}
-		} else if (chan == GX_COLOR0 || chan == GX_COLOR1) {
-			if (CompareRGB(&ch->amb_color, &prev_ch[no].amb_color)) {
-				CopyRGB(&prev_ch[no].amb_color, &ch->amb_color);
-				goto set_amb;
-			}
-		} else if (ch->amb_color.a != prev_ch[no].amb_color.a) {
-			prev_ch[no].amb_color.a = ch->amb_color.a;
-		set_amb:
+		} else if (UpdateChannelColor(chan, &prev_ch[no].amb_color, &ch->amb_color)) {
 			GXSetChanAmbColor(chan, ch->amb_color);
 		}
 	}
@@ -134,19 +101,7 @@ void HSD_SetupChannel(HSD_Chan* ch)
 			prev_mat_invalid[no] = 0;
 			GXSetChanMatColor(no + 4, ch->mat_color);
 			prev_ch[no].mat_color = ch->mat_color;
-		} else if (chan == GX_COLOR0A0 || chan == GX_COLOR1A1) {
-			if (CompareRGBA(&ch->mat_color, &prev_ch[no].mat_color)) {
-				prev_ch[no].mat_color = ch->mat_color;
-				goto set_mat;
-			}
-		} else if (chan == GX_COLOR0 || chan == GX_COLOR1) {
-			if (CompareRGB(&ch->mat_color, &prev_ch[no].mat_color)) {
-				CopyRGB(&prev_ch[no].mat_color, &ch->mat_color);
-				goto set_mat;
-			}
-		} else if (ch->mat_color.a != prev_ch[no].mat_color.a) {
-			prev_ch[no].mat_color.a = ch->mat_color.a;
-		set_mat:
+		} else if (UpdateChannelColor(chan, &prev_ch[no].mat_color, &ch->mat_color)) {
 			GXSetChanMatColor(chan, ch->mat_color);
 		}
 	}
@@ -290,24 +245,7 @@ void HSD_SetupTevStageAll(HSD_TevDesc* desc)
 			num = temp;
 		}
 
-		GXSetTevOrder(desc->stage, desc->coord, desc->map, desc->color);
-		if (desc->flags == 0) {
-			GXSetTevOp(desc->stage, desc->u.tevconf.clr_op);
-			GXSetTevSwapMode(desc->stage, GX_TEV_SWAP0, GX_TEV_SWAP0);
-			goto stage_done;
-		}
-		GXSetTevColorOp(desc->stage, desc->u.tevconf.clr_op, desc->u.tevconf.clr_bias, desc->u.tevconf.clr_scale, desc->u.tevconf.clr_clamp,
-		                desc->u.tevconf.clr_out_reg);
-		GXSetTevColorIn(desc->stage, desc->u.tevconf.clr_a, desc->u.tevconf.clr_b, desc->u.tevconf.clr_c, desc->u.tevconf.clr_d);
-		GXSetTevAlphaOp(desc->stage, desc->u.tevconf.alpha_op, desc->u.tevconf.alpha_bias, desc->u.tevconf.alpha_scale,
-		                desc->u.tevconf.alpha_clamp, desc->u.tevconf.alpha_out_reg);
-		GXSetTevAlphaIn(desc->stage, desc->u.tevconf.alpha_a, desc->u.tevconf.alpha_b, desc->u.tevconf.alpha_c, desc->u.tevconf.alpha_d);
-
-		GXSetTevSwapMode(desc->stage, desc->u.tevconf.ras_swap, desc->u.tevconf.tex_swap);
-		GXSetTevKColorSel(desc->stage, desc->u.tevconf.kcsel);
-		GXSetTevKAlphaSel(desc->stage, desc->u.tevconf.kasel);
-
-	stage_done:;
+		HSD_SetupTevStage(desc);
 		desc = desc->next;
 	}
 	current_tev = num;
@@ -378,54 +316,6 @@ s32 HSD_Index2TevStage(s32 idx)
 	}
 }
 
-#ifdef MUST_MATCH
-#pragma push
-#pragma force_active on
-#endif
-static inline s32 HSD_TevStage2Index(s32 stage)
-{
-	switch (stage) {
-	case 0:
-		return 0;
-	case 1:
-		return 1;
-	case 2:
-		return 2;
-	case 3:
-		return 3;
-	case 4:
-		return 4;
-	case 5:
-		return 5;
-	case 6:
-		return 6;
-	case 7:
-		return 7;
-	case 8:
-		return 8;
-	case 9:
-		return 9;
-	case 10:
-		return 10;
-	case 11:
-		return 11;
-	case 12:
-		return 12;
-	case 13:
-		return 13;
-	case 14:
-		return 14;
-	case 15:
-		return 15;
-	default:
-		HSD_ASSERT(762, 0);
-		return 0;
-	}
-}
-#ifdef MUST_MATCH
-#pragma pop
-#endif
-
 s32 HSD_TevStage2Num(s32 stage)
 {
 	switch (stage) {
@@ -467,31 +357,15 @@ s32 HSD_TevStage2Num(s32 stage)
 	}
 }
 
-/* the switch has to sit in an inline for the color copy to happen before it */
-static inline s32 TevRegIdx2ID(u32 i)
-{
-	switch (i) {
-	case 0:
-		return 1;
-	case 1:
-		return 2;
-	case 2:
-		return 3;
-	case 3:
-		return 0;
-	default:
-		return 1;
-	}
-}
-
 void HSD_SetTevRegAll(void)
 {
+	static const GXTevRegID registerIds[] = { GX_TEVREG0, GX_TEVREG1, GX_TEVREG2, GX_TEVPREV };
 	u32 i;
-	for (i = 0; i < 4; i++) {
-		if (TevReg[i].c != 0) {
-			GXColorS10 color = TevReg[i].a;
-			GXSetTevColorS10(TevRegIdx2ID(i), color);
-			TevReg[i].c = 0;
+
+	for (i = 0; i < ARRAY_SIZE(TevReg); i++) {
+		if (TevReg[i].pending) {
+			GXSetTevColorS10(registerIds[i], TevReg[i].color);
+			TevReg[i].pending = FALSE;
 		}
 	}
 }
@@ -549,7 +423,7 @@ void _HSD_StateInvalidateTevRegister(void)
 {
 	s32 i;
 	for (i = 0; i < 4; i++) {
-		TevReg[i].c = 0;
+		TevReg[i].pending = FALSE;
 	}
 }
 

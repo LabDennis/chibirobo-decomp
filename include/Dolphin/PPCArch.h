@@ -13,6 +13,7 @@ extern "C" {
 #define HID0_DCE          0x4000
 #define HID2              0x398
 #define HID2_LCE_BIT      3
+#define HID2_LCE          0x10000000
 #define MSR_ME            0x1000
 #define LC_BASE_PREFIX    (0xE000)
 #define LC_BASE           (LC_BASE_PREFIX << 16)
@@ -27,8 +28,14 @@ extern "C" {
 
 #define LCGetBase() ((void*)LC_BASE)
 
-#define MSR_IR 0x00000020 // instruction relocate
-#define MSR_DR 0x00000010 // data relocate
+#define MSR_EE  0x00008000 // External interrupt enable
+#define MSR_EE_BIT 16      // PowerPC bit number, counted from the MSB
+#define MSR_FP  0x00002000 // Floating-point available
+#define MSR_FE0 0x00000800 // Floating-point exception mode bit 0
+#define MSR_FE1 0x00000100 // Floating-point exception mode bit 1
+#define MSR_IR  0x00000020 // Instruction relocate
+#define MSR_DR  0x00000010 // Data relocate
+#define MSR_RI  0x00000002 // Recoverable interrupt
 
 #define HID2_DCHERR 0x00800000 // ERROR: dcbz_l cache hit
 #define HID2_DNCERR 0x00400000 // ERROR: DMA access to normal cache
@@ -45,6 +52,7 @@ extern "C" {
 
 #define SRR1_DMA_BIT  0x00200000
 #define SRR1_L2DP_BIT 0x00100000
+#define SRR1_PROG_FPE 0x00100000 // Floating-point cause of a program exception
 
 #define FPSCR_FX     0x80000000 // Exception summary
 #define FPSCR_FEX    0x40000000 // Enabled exception summary
@@ -70,11 +78,10 @@ extern "C" {
 #define FPSCR_ZE     0x00000010 // Zero divide exception enable
 #define FPSCR_XE     0x00000008 // Inexact exception enable
 #define FPSCR_NI     0x00000004 // Non-IEEE mode
+#define FPSCR_ENABLE (FPSCR_VE | FPSCR_OE | FPSCR_UE | FPSCR_ZE | FPSCR_XE)
 
 u32 PPCMfmsr();
 void PPCMtmsr(u32 newMSR);
-// u32 PPCOrMsr(u32 value);
-void PPCOrMsr();
 u32 PPCMfhid0();
 void PPCMthid0(u32 newHID0);
 u32 PPCMfl2cr();
@@ -88,7 +95,6 @@ u32 PPCMfhid2();
 void PPCMthid2(u32 newhid2);
 u32 PPCMfwpar();
 void PPCMtwpar(u32 newwpar);
-void PPCEnableSpeculation();
 void PPCDisableSpeculation();
 void PPCSetFpIEEEMode();
 void PPCSetFpNonIEEEMode();

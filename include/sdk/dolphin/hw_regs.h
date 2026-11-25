@@ -2,9 +2,13 @@
 #define _DOLPHIN_HW_REGS_H_
 
 #include <dolphin/types.h>
+#include <sdk/dolphin/dsp_regs.h>
+#include <sdk/dolphin/exi_regs.h>
+
+#define VI_REGISTER_COUNT (59)
 
 #ifdef __MWERKS__
-volatile u16 __VIRegs[59]     AT_ADDRESS(0xCC002000);
+volatile u16 __VIRegs[VI_REGISTER_COUNT] AT_ADDRESS(0xCC002000);
 volatile u32 __PIRegs[12]     AT_ADDRESS(0xCC003000);
 volatile u16 __MEMRegs[64]    AT_ADDRESS(0xCC004000);
 volatile u16 __DSPRegs[]      AT_ADDRESS(0xCC005000);
@@ -66,6 +70,11 @@ volatile u32 __AIRegs[8]      AT_ADDRESS(0xCC006C00);
 #define VI_DISP_INT_3  (30) // display interrupt 3L
 #define VI_DISP_INT_3U (31) // display interrupt 3U
 
+#define VI_LATCH_0_VERT  (32)
+#define VI_LATCH_0_HORIZ (33)
+#define VI_LATCH_1_VERT  (34)
+#define VI_LATCH_1_HORIZ (35)
+
 #define VI_HSW (36) // horizontal scaling width
 #define VI_HSR (37) // horizontal scaling register
 
@@ -87,30 +96,8 @@ volatile u32 __AIRegs[8]      AT_ADDRESS(0xCC006C00);
 #define VI_CLOCK_SEL (54) // clock select
 #define VI_DTV_STAT  (55) // DTV status
 
-#define VI_WIDTH (56)
-
-// offsets for __DSPRegs[i]
-#define DSP_MAILBOX_IN_HI  (0)
-#define DSP_MAILBOX_IN_LO  (1)
-#define DSP_MAILBOX_OUT_HI (2)
-#define DSP_MAILBOX_OUT_LO (3)
-#define DSP_CONTROL_STATUS (5)
-
-#define DSP_ARAM_SIZE        (9)
-#define DSP_ARAM_MODE        (11)
-#define DSP_ARAM_REFRESH     (13)
-#define DSP_ARAM_DMA_MM_HI   (16) // Main mem address
-#define DSP_ARAM_DMA_MM_LO   (17)
-#define DSP_ARAM_DMA_ARAM_HI (18) // ARAM address
-#define DSP_ARAM_DMA_ARAM_LO (19)
-#define DSP_ARAM_DMA_SIZE_HI (20) // DMA buffer size
-#define DSP_ARAM_DMA_SIZE_LO (21)
-
-#define DSP_DMA_START_HI    (24) // DMA start address
-#define DSP_DMA_START_LO    (25)
-#define DSP_DMA_CONTROL_LEN (27)
-#define DSP_DMA_BYTES_LEFT  (29)
-
-#define DSP_DMA_START_FLAG (0x8000) // set to start DSP
+#define VI_WIDTH               (56)
+#define VI_BORDER_BLANK_END    (57)
+#define VI_BORDER_BLANK_START (58)
 
 #endif

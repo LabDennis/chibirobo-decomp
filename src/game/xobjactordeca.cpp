@@ -1,0 +1,439 @@
+#include "game/xobjactor.h"
+#include "game/xchr.h"
+#include "game/gmath.h"
+
+extern "C" {
+void ApproachHudValue(f32* value, f32* target, f32 step);
+}
+
+/**
+ * @note Address: 0x8012F428
+ * @note Size: 0x24
+ */
+void XObjActorDeca::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x8012F44C
+ * @note Size: 0x58
+ */
+void XObjActorDeca::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x8012F4A4
+ * @note Size: 0x8C
+ */
+XObjActorDeca::~XObjActorDeca()
+{
+}
+
+/**
+ * @note Address: 0x8012F530
+ * @note Size: 0xA4
+ */
+HSD_JObj* XObjActorDeca::GetHeadJoint()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return FindJointByPath(mJObj, path, 3);
+}
+
+/**
+ * @note Address: 0x8012F5D4
+ * @note Size: 0x54
+ */
+CVec XObjActorDeca::GetHeadWorldPosition()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return GetEventJointWorldPosition(this, 3, path);
+}
+
+/**
+ * @note Address: 0x8012F628
+ * @note Size: 0x318
+ */
+Vec XObjActorDeca::GetCameraTarget()
+{
+	if (mJointFlags.mFlags & 4) { // joint flag 4 aims the camera at joint {0,3}, half a unit below it
+		CJObj jobj;
+		s32 path[2] = { 0, 3 };
+		jobj.Attach(FindJointByPath(mJObj, path, 2));
+		Vec pos;
+		pos = GetJointPosition(jobj.mJObj);
+		Vec target;
+		target = pos;
+		target.y -= 0.5f;
+		return target;
+	}
+	return XObjActor::GetCameraTarget();
+}
+
+/**
+ * @note Address: 0x8012F940
+ * @note Size: 0x8B8
+ */
+// NONMATCHING: regalloc
+s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
+{
+	XObjChr* player = gGame.GetPlayer();
+	CJObj jobj;
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1: // where to look
+		switch (command[1]) {
+		case 0: // nowhere
+			ResetActorLook(this, DEG2RAD * 5.0f);
+			break;
+		case 1: // at the player
+			SetActorLookTarget(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5.0f);
+			break;
+		case 2: // at another object
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3: // at an angle
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		mCmd[2] = command[2];
+		mCmd[3] = command[3];
+		mCmd[4] = command[4];
+		mCmd[5] = command[5];
+		mCmd[6] = command[6];
+		mCmd[7] = command[7];
+		mCmd[8] = command[8];
+		mCmd[9] = command[9];
+		if (mCmd[1] == 0xD0) { // a 0xD0 command's object id resolves here
+			mCmd[19] = (s32)FindObj(mCmd[2]);
+		}
+		switch (mCmd[0]) {
+		case 2: // joint flag 1 hides the joints
+			switch (mCmd[1]) {
+			case 0:
+				mJointFlags.mFlags |= 1;
+				break;
+			case 1:
+				mJointFlags.mFlags &= ~1;
+				break;
+			}
+			mCmd[0] = 0;
+			break;
+		case 3: // swings the yaw target
+			PlayGameSound(&gGame.mSound, 0x50014, 0xFF);
+			switch (mCmd[1]) {
+			case 0:
+				mJointFlags.mFlags |= 2;
+				mJointYawTarget = PI;
+				break;
+			case 1:
+				mJointFlags.mFlags |= 2;
+				mJointYawTarget = 0.0f;
+				break;
+			}
+			mCmd[0] = 0;
+			break;
+		case 4: // pick an object up
+			mAttachedId = mCmd[1];
+			mState      = &XObjActorDeca::StatePickUp;
+			ResetMovementStep();
+			mCmd[0] = 0;
+			break;
+		case 5: // let it go
+			mAttachedId = -1;
+			if (mAttached != NULL) {
+				mAttached->Release();
+			}
+			mCmd[0] = 0;
+			break;
+		case 6: // the scanline hud on or off
+			if (mCmd[1] == 1) {
+				InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, 1, 1);
+			} else {
+				InfoScrn_ApplyScanlineHudCommand(&gGame.mInfoScrn, 0, 1);
+			}
+			mCmd[0] = 0;
+			break;
+		case 7: // carry the player on the mount joint
+			switch (mCmd[1]) {
+			case 1:
+				mActorStatus.mFlags |= 0x100;
+				player->LockControl();
+				break;
+			default: { // or set him down
+
+				mActorStatus.mFlags &= ~0x100;
+				s32 path[5] = { 0, 6, 0, 0, 1 };
+				jobj.Attach(FindJointByPath(mJObj, path, 5));
+				Vec position;
+				position = GetJointPosition(jobj.mJObj);
+				CVec target(position);
+				target.y = 0.0f;
+				player->SetPos(target, 0);
+				player->RestoreControl();
+				HSD_JObjClearMtxFlags(player->mJObj);
+				break;
+			}
+			}
+			mCmd[0] = 0;
+			break;
+		case 8: // joint flag 4 (the camera target)
+			switch (mCmd[1]) {
+			case 1:
+				mJointFlags.mFlags |= 4;
+				break;
+			default:
+				mJointFlags.mFlags &= ~4;
+				break;
+			}
+			mCmd[0] = 0;
+			break;
+		case 9: // set the carried object's anim
+			if (mAttached != NULL) {
+				mAttached->SetAnim(mCmd[1], FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			}
+			mCmd[0] = 0;
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x801301F8
+ * @note Size: 0x6EC
+ */
+// picks up the object _A4C names, then holds it
+// NONMATCHING: regalloc
+void XObjActorDeca::StatePickUp(u32 frames)
+{
+	switch (mKindStep) {
+	case 0: {
+		XObjActorTao* tao = ((XObjActorTao*)gGame.mXObjs.mPools[14].mObjects);
+		if ((tao->mStatus.mFlags & 1) && !tao->IsFree()) { // waits until tao is free
+			return;
+		}
+		bool busy = false;
+		for (s32 i = 0; i < 15; i++) {
+			XObjActorToy* toy = (XObjActorToy*)gGame.mXObjs.mPools[10].Get(i);
+			if (toy->GetKind() == 0x159) {
+				if (!(toy->mStatus.mFlags & 1)) {
+					break;
+				}
+				if (!toy->IsFree()) { // a busy kind-0x159 toy delays the pickup
+					busy = true;
+					break;
+				}
+			}
+		}
+		if (busy) {
+			return;
+		}
+		XObjActorPapa* papa = ((XObjActorPapa*)gGame.mXObjs.mPools[13].mObjects);
+		if ((papa->mStatus.mFlags & 1) && !papa->IsFree()) { // and until papa is free
+			return;
+		}
+		if (mAttached != NULL) {
+			mAttached->Release();
+		}
+		if (mAttachedId >= 0) {
+			mAttached = ReadObj(mAttachedId);
+		} else {
+			mAttached = NULL;
+		}
+		mActorStatus.mFlags |= 0x2000; // flag 0x2000 marks the pickup
+		mKindStep++;
+	}
+	case 1:
+		if (mAttached != NULL) {
+			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
+				return; // waits on the object's flag
+			}
+			gGame.mStatus.mFlags |= 0x1000;
+		}
+		mKindStep++;
+	case 2:
+		if (mAttachedId >= 0 && mAttached != NULL) { // pins the object to the hand joint
+			mAttached->SetScale(1.0f, 1.0f, 1.0f, 0);
+			CJObj jobj;
+			s32 path[2] = { 0, 5 };
+			jobj.Attach(FindJointByPath(mJObj, path, 2));
+			mAttached->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			Mtx m;
+			Mtx transMtx;
+			Mtx hand;
+			PSMTXCopy(HSD_JObjGetMtxPtr(jobj.mJObj), m);
+			PSMTXTrans(transMtx, 0.0f, -3.0f, -4.0f); // held three units down and four out
+			PSMTXConcat(m, transMtx, hand);
+			HSD_JObj* joint = mAttached->mJObj;
+			MtxPtr mp       = hand;
+			HSD_JObjCopyMtx(joint, mp);
+
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+			if (mStatus.mFlags & 0x10000) { // the object shares deca's flag
+				mAttached->mStatus.mFlags |= 0x10000ULL;
+			} else {
+				mAttached->mStatus.mFlags &= ~0x10000ULL;
+			}
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		mActorStatus.mFlags &= ~0x2000;
+		mState = &XObjActorDeca::StateHold;
+		ResetMovementStep();
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x801308E4
+ * @note Size: 0x434
+ */
+// keeps what it carries in its hand
+void XObjActorDeca::StateHold(u32 frames)
+{
+	if (mAttachedId >= 0 && mAttached != NULL) {
+		mAttached->SetScale(1.0f, 1.0f, 1.0f, 0);
+		CJObj jobj;
+		s32 path[2] = { 0, 5 };
+		jobj.Attach(FindJointByPath(mJObj, path, 2));
+		Mtx m;
+		Mtx transMtx;
+		Mtx hand;
+		PSMTXCopy(jobj.GetMtx(), m);
+		PSMTXTrans(transMtx, 0.0f, -3.0f, -4.0f);
+		PSMTXConcat(m, transMtx, hand);
+		HSD_JObj* joint = mAttached->mJObj;
+		MtxPtr mp       = hand;
+		HSD_JObjCopyMtx(joint, mp);
+		if (mStatus.mFlags & 0x10000) {
+			mAttached->mStatus.mFlags |= 0x10000ULL;
+		} else {
+			mAttached->mStatus.mFlags &= ~0x10000ULL;
+		}
+		mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
+	}
+}
+
+/**
+ * @note Address: 0x80130D18
+ * @note Size: 0xD98
+ */
+void XObjActorDeca::UpdateAfterAnim(u32 frames)
+{
+	XObjActor::UpdateAfterAnim(frames);
+	CJObj joint;
+	XObjChr* player = gGame.GetPlayer();
+	if (mJointFlags.mFlags & 1) { // joint flag 1 hides the joints
+		s32 first[3] = { 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, first, 3));
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
+		s32 second[4] = { 0, 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, second, 4));
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
+	} else {
+		s32 first[3] = { 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, first, 3));
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
+		s32 second[4] = { 0, 0, 0, 0 };
+		joint.Attach(FindJointByPath(mJObj, second, 4));
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
+	}
+	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f); // eases toward the yaw target
+	s32 head[5] = { 0, 1, 0, 0, 0 };
+	joint.Attach(FindJointByPath(mJObj, head, 5));
+	joint.SetRotationY(mJointYaw, 0);
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) { // the player rides the mount joint
+
+		s32 mount[2] = { 0, 3 };
+		joint.Attach(FindJointByPath(mJObj, mount, 2));
+		Mtx scaling, rotation, translation, result, matrix;
+		PSMTXCopy(joint.GetMtx(), matrix);
+		Vec scale;
+		HSD_MtxGetScale(matrix, &scale);
+		scale.x = GetStagePlacementScale(player).x / scale.x; // cancels the joint's scale
+
+		scale.y = GetStagePlacementScale(player).y / scale.y;
+		scale.z = GetStagePlacementScale(player).z / scale.z;
+		PSMTXScale(scaling, scale.x, scale.y, scale.z);
+		PSMTXConcat(matrix, scaling, result);
+		PSMTXRotRad(rotation, 'y', 0.0f);
+		PSMTXConcat(result, rotation, result);
+		PSMTXTrans(translation, 4.5f, -2.3f, 0.0f); // the riding offset
+
+		PSMTXConcat(result, translation, result);
+		HSD_JObj* root   = player->mJObj;
+		MtxPtr matrixPtr = result;
+		HSD_JObjCopyMtx(root, matrixPtr);
+	}
+}
+
+/**
+ * @note Address: 0x80131AB0
+ * @note Size: 0x20
+ */
+void XObjActorDeca::UpdateAnim(u32 frames)
+{
+	CXObjIntp::UpdateAnim(frames);
+}
+
+/**
+ * @note Address: 0x80131AD0
+ * @note Size: 0x20
+ */
+void XObjActorDeca::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
+}
+
+/**
+ * @note Address: 0x80131AF0
+ * @note Size: 0x1C
+ */
+void XObjActorDeca::ProcessPendingEvents(u32 frames)
+{
+	if (mActorStatus.Check(2)) {
+		mActorStatus.mFlags &= ~2;
+	}
+}
+
+/**
+ * @note Address: 0x80131B0C
+ * @note Size: 0xDC
+ */
+void XObjActorDeca::ResetActorState()
+{
+	mActorStatus.mFlags = 0;
+	mJointFlags.mFlags  = 0;
+	_C98.mFlags         = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
+	_C88                = 0.0f;
+	_C8C                = 0;
+	mJointYaw           = PI; // the joint starts yawed around
+	mJointYawTarget     = PI;
+	mState              = &XObjActorDeca::StateHold;
+	ResetMovementStep();
+	for (u32 i = 0; i < 20; i++) {
+		mCmd[i] = 0;
+	}
+}

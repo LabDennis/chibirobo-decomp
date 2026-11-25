@@ -1,13 +1,12 @@
 #include <dolphin/dolphin.h>
 #include <dolphin/ax.h>
-#include "sdk_math.h"
+#include <cstring>
+#include "PowerPC_EABI_Support/MSL_C/PPC_EABI/math_ppc.h"
 
 #include "__ax.h"
+#include "global.h"
 
-// these come right after AX.c's data in retail since AXAlloc, AXAux, AXCL,
-// AXOut and AXSPB have none, the compressor table and dsp image after them
-// are AXComp.c's and DSPCode.c's, linked after this unit
-static u32 __AXSrcCycles[5] = {
+static const u32 __AXSrcCycles[5] = {
     0x00000DF8,
     0x00000F78,
     0x000014B8,
@@ -15,7 +14,7 @@ static u32 __AXSrcCycles[5] = {
     0x000019F8
 };
 
-static u32 __AXMainMixCycles[16] = {
+static const u32 __AXMainMixCycles[16] = {
     0x00000000, 0x000002F8, 0x000002F8,
 	0x000005BE, 0x000002F8, 0x000005F0,
 	0x000005F0, 0x000008B6, 0x00000000,
@@ -24,7 +23,7 @@ static u32 __AXMainMixCycles[16] = {
 	0x00000E97
 };
 
-static u32 __AXAuxMixCycles[32] = {
+static const u32 __AXAuxMixCycles[32] = {
     0x00000000, 0x000002F8, 0x000002F8,
 	0x000005BE, 0x00000000, 0x000004F1,
 	0x000004F1, 0x000009A6, 0x000002F8,
@@ -38,9 +37,24 @@ static u32 __AXAuxMixCycles[32] = {
 	0x000009E2, 0x00000E97
 };
 
-static AXPB __AXPB[AX_MAX_VOICES] ATTRIBUTE_ALIGN(32);
-static AXPBITDBUFFER __AXITD[AX_MAX_VOICES] ATTRIBUTE_ALIGN(32);
-static AXPBU __AXUpdates[AX_MAX_VOICES] ATTRIBUTE_ALIGN(32);
+/* The DSP sync prefix includes the first seven reserved halfwords. */
+#define AX_PB_SYNC_BYTES 0xD0
+#define AX_FRAME_BASE_DSP_CYCLES 43536U
+
+STATIC_ASSERT(sizeof(AXAddressPair) == 4);
+STATIC_ASSERT(sizeof(AXPBADDR) == 0x10);
+STATIC_ASSERT(offsetof(AXPBADDR, loopAddress) == 4);
+STATIC_ASSERT(offsetof(AXPBADDR, endAddress) == 8);
+STATIC_ASSERT(offsetof(AXPBADDR, currentAddress) == 12);
+STATIC_ASSERT(offsetof(AXPB, addr) == 0x6E);
+STATIC_ASSERT(sizeof(AXPB) == 0xF4);
+STATIC_ASSERT(offsetof(AXVPB, updateData) == 0x34);
+STATIC_ASSERT(offsetof(AXVPB, pb) == 0x138);
+STATIC_ASSERT(sizeof(AXVPB) == 0x22C);
+
+static AXPB __AXPB[AX_MAX_VOICES] ATTRIBUTE_ALIGN(AX_DSP_BUFFER_ALIGNMENT);
+static AXPBITDBUFFER __AXITD[AX_MAX_VOICES] ATTRIBUTE_ALIGN(AX_DSP_BUFFER_ALIGNMENT);
+static AXPBU __AXUpdates[AX_MAX_VOICES] ATTRIBUTE_ALIGN(AX_DSP_BUFFER_ALIGNMENT);
 static AXVPB __AXVPB[AX_MAX_VOICES];
 
 static u32 __AXMaxDspCycles;
@@ -53,6 +67,25 @@ static u32 __AXNumVoices;
  */
 u32 __AXGetNumVoices(void) {
     return __AXNumVoices;
+}
+
+/* The PB prefix and update entries are copied between separate, word-aligned buffers. */
+static inline void CopyWords(void* dst, const void* src, u32 wordCount) {
+    u32* dstWords = dst;
+    const u32* srcWords = src;
+
+    while (wordCount != 0) {
+        *dstWords++ = *srcWords++;
+        wordCount--;
+    }
+}
+
+static inline void ClearITDBuffer(AXPBITDBUFFER* buffer) {
+    u32 i;
+
+    for (i = 0; i < ARRAY_SIZEU(buffer->data); i++) {
+        buffer->data[i] = 0;
+    }
 }
 
 /**
@@ -73,77 +106,15 @@ void __AXServiceVPB(AXVPB* pvpb) {
     if (sync == 0) {
         ppbUser->state = ppbDsp->state;
         ppbUser->ve.currentVolume = ppbDsp->ve.currentVolume;
-        ppbUser->addr.currentAddressHi = ppbDsp->addr.currentAddressHi;
-        ppbUser->addr.currentAddressLo = ppbDsp->addr.currentAddressLo;
+        ppbUser->addr.currentAddress.hi = ppbDsp->addr.currentAddress.hi;
+        ppbUser->addr.currentAddress.lo = ppbDsp->addr.currentAddress.lo;
         return;
     }
     if (sync & AX_SYNC_FLAG_COPYALL) {
-        // copy the whole PB struct. (size: 0xF4)
-        u32* src;
-        u32* dst;
-        src = (void*)ppbUser;
-        dst = (void*)ppbDsp;
-
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        CopyWords(ppbDsp, ppbUser, AX_PB_SYNC_BYTES / sizeof(u32));
 
         if (pvpb->updateCounter != 0) {
-            u32 count;
-            src = (void*)&__AXUpdates[pvpb->index];
-            dst = (void*)pvpb->updateData;
-            for (count = pvpb->updateCounter; count; count--) {
-                *(dst) = *(src); dst+=1; src+=1;
-            }
+            CopyWords(pvpb->updateData, __AXUpdates[pvpb->index].data, pvpb->updateCounter);
         }
         return;
     }
@@ -168,129 +139,44 @@ void __AXServiceVPB(AXVPB* pvpb) {
     }
 
     if (sync & AX_SYNC_FLAG_COPYAXPBMIX) {
-        // copy AXPBMIX.
-        u16* src;
-        u16* dst;
-        src = (void*)&ppbUser->mix;
-        dst = (void*)&ppbDsp->mix;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        ppbDsp->mix = ppbUser->mix;
     }
 
     if (sync & AX_SYNC_FLAG_COPYTSHIFT) {
         ppbDsp->itd.targetShiftL = ppbUser->itd.targetShiftL;
         ppbDsp->itd.targetShiftR = ppbUser->itd.targetShiftR;
     } else if (sync & AX_SYNC_FLAG_COPYITD) {
-        // copy ITD struct.
-        u16* src;
-        u16* dst;
-        u32* dst_;
-        src = (void*)&ppbUser->itd;
-        dst = (void*)&ppbDsp->itd;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); src+=1;
-
-        dst; // fixes reg alloc
-        dst_ = pvpb->itdBuffer;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0; dst_+=1;
-        *(dst_) = 0;
+        ppbDsp->itd = ppbUser->itd;
+        ClearITDBuffer(pvpb->itdBuffer);
     }
 
     if (sync & AX_SYNC_FLAG_COPYUPDATE) {
-        // copy UPDATE struct.
-        u16* src;
-        u16* dst;
-        dst = (void*)&ppbDsp->update;
-        src = (void*)&ppbUser->update;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        u32 i;
 
-        if (pvpb->updateCounter) {
-            u32* src_;
-            u32* dst_;
-            u32 count;
+        /* The update buffer address is set when the voice is initialized. */
+        for (i = 0; i < ARRAY_SIZEU(ppbDsp->update.updNum); i++) {
+            ppbDsp->update.updNum[i] = ppbUser->update.updNum[i];
+        }
 
-            dst_ = (void*)&__AXUpdates[pvpb->index];
-            src_ = (void*)&pvpb->updateData;
-
-            for (count = pvpb->updateCounter; count; count--) {
-                *(dst_) = *(src_); dst_+=1; src_+=1;
-            }
+        if (pvpb->updateCounter != 0) {
+            CopyWords(__AXUpdates[pvpb->index].data, pvpb->updateData, pvpb->updateCounter);
         }
     }
 
     if (sync & AX_SYNC_FLAG_COPYDPOP) {
-        // copy DPOP struct.
-        u16* src;
-        u16* dst;
-        dst = (void*)&ppbDsp->dpop;
-        src = (void*)&ppbUser->dpop;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        ppbDsp->dpop = ppbUser->dpop;
     }
 
     if (sync & AX_SYNC_FLAG_SWAPVOL) {
         ppbUser->ve.currentVolume = ppbDsp->ve.currentVolume;
         ppbDsp->ve.currentDelta = ppbUser->ve.currentDelta;
-    } else if (sync & AX_SYNC_FLAG_COPYVOL) {
+    } else if (sync & AX_SYNC_USER_VE) {
         ppbDsp->ve.currentVolume = ppbUser->ve.currentVolume;
         ppbDsp->ve.currentDelta = ppbUser->ve.currentDelta;
     }
 
     if (sync & AX_SYNC_FLAG_COPYFIR) {
-        // copy FIR struct.
-        u16* src;
-        u16* dst;
-        dst = (void*)&ppbDsp->fir;
-        src = (void*)&ppbUser->fir;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        ppbDsp->fir = ppbUser->fir;
     }
 
     if (sync & (AX_SYNC_FLAG_COPYLOOP | AX_SYNC_FLAG_COPYLOOPADDR | AX_SYNC_FLAG_COPYENDADDR | AX_SYNC_FLAG_COPYCURADDR)) {
@@ -298,95 +184,46 @@ void __AXServiceVPB(AXVPB* pvpb) {
             ppbDsp->addr.loopFlag = ppbUser->addr.loopFlag;
         }
         if (sync & AX_SYNC_FLAG_COPYLOOPADDR) {
-            *(u32*)&ppbDsp->addr.loopAddressHi = *(u32*)&ppbUser->addr.loopAddressHi;
+            ppbDsp->addr.loopAddress = ppbUser->addr.loopAddress;
         }
         if (sync & AX_SYNC_FLAG_COPYENDADDR) {
-            *(u32*)&ppbDsp->addr.endAddressHi = *(u32*)&ppbUser->addr.endAddressHi;
+            ppbDsp->addr.endAddress = ppbUser->addr.endAddress;
         }
         if (sync & AX_SYNC_FLAG_COPYCURADDR) {
-            *(u32*)&ppbDsp->addr.currentAddressHi = *(u32*)&ppbUser->addr.currentAddressHi;
+            ppbDsp->addr.currentAddress = ppbUser->addr.currentAddress;
         } else {
-            *(u32*)&ppbUser->addr.currentAddressHi = *(u32*)&ppbDsp->addr.currentAddressHi;
+            ppbUser->addr.currentAddress = ppbDsp->addr.currentAddress;
         }
     } else if (sync & AX_SYNC_FLAG_COPYADDR) {
-        // copy ADDR struct.
-        u32* src;
-        u32* dst;
-        dst = (void*)&ppbDsp->addr;
-        src = (void*)&ppbUser->addr;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); 
+        ppbDsp->addr = ppbUser->addr;
     } else {
-        ppbUser->addr.currentAddressHi = ppbDsp->addr.currentAddressHi;
-        ppbUser->addr.currentAddressLo = ppbDsp->addr.currentAddressLo;
+        ppbUser->addr.currentAddress.hi = ppbDsp->addr.currentAddress.hi;
+        ppbUser->addr.currentAddress.lo = ppbDsp->addr.currentAddress.lo;
     }
 
     if (sync & AX_SYNC_FLAG_COPYADPCM) {
-        // copy ADPCM struct.
-        u32* src;
-        u32* dst;
-        dst = (void*)&ppbDsp->adpcm;
-        src = (void*)&ppbUser->adpcm;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
+        ppbDsp->adpcm = ppbUser->adpcm;
     }
 
     if (sync & AX_SYNC_FLAG_COPYRATIO) {
         ppbDsp->src.ratioHi = ppbUser->src.ratioHi;
         ppbDsp->src.ratioLo = ppbUser->src.ratioLo;
     } else if (sync & AX_SYNC_FLAG_COPYSRC) {
-        // copy SRC struct.
-        u16* src;
-        u16* dst;
-        dst = (void*)&ppbDsp->src;
-        src = (void*)&ppbUser->src;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
+        ppbDsp->src = ppbUser->src;
     }
 
     if (sync & AX_SYNC_FLAG_COPYADPCMLOOP) {
-        // copy ADPCMLOOP struct.
-        u16* src;
-        u16* dst;
-        dst = (void*)&ppbDsp->adpcmLoop;
-        src = (void*)&ppbUser->adpcmLoop;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+        ppbDsp->adpcmLoop = ppbUser->adpcmLoop;
     }
 
-    if (sync & 0x400000) {
+    if (sync & AX_SYNC_FLAG_COPYLPFCOEFS) {
         ppbDsp->lpf.a0 = ppbUser->lpf.a0;
         ppbDsp->lpf.b0 = ppbUser->lpf.b0;
         return;
     }
 
-    if (sync & 0x200000) {
-        // copy AXPBLPF struct
-        u16* src;
-        u16* dst;
-
-        dst = (void*)&ppbDsp->lpf;
-        src = (void*)&ppbUser->lpf;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
+    if (sync & AX_SYNC_FLAG_COPYLPF) {
+        ppbDsp->lpf = ppbUser->lpf;
     }
 }
 
@@ -411,7 +248,7 @@ void __AXDumpVPB(AXVPB* pvpb) {
  * @note Address: 0x8017955C
  * @note Size: 0x278
  */
-void __AXSyncPBs(u32 lessDlpfycles) {
+void __AXSyncPBs(u32 lessDspCycles) {
     u32 cycles;
     u32 i;
     AXVPB* pvpb;
@@ -419,9 +256,9 @@ void __AXSyncPBs(u32 lessDlpfycles) {
     __AXNumVoices = 0;
     DCInvalidateRange(__AXPB, sizeof(__AXPB));
     DCInvalidateRange(__AXITD, sizeof(__AXITD));
-    cycles = (__AXGetCommandListCycles() + 0x10000) - 0x55F0 + lessDlpfycles;
+    cycles = AX_FRAME_BASE_DSP_CYCLES + __AXGetCommandListCycles() + lessDspCycles;
 
-    for (i = 31; i; i--) {
+    for (i = AX_PRIORITY_STACKS - 1; i != AX_FREE_VOICE_PRIORITY; i--) {
         for (pvpb = __AXGetStackHead(i); pvpb; pvpb = pvpb->next) {
             if (pvpb->depop != 0) {
                 __AXDepopVoice(&__AXPB[pvpb->index]);
@@ -454,7 +291,7 @@ void __AXSyncPBs(u32 lessDlpfycles) {
     }
 
     __AXRecDspCycles = cycles;
-    for (pvpb = __AXGetStackHead(0); pvpb; pvpb = pvpb->next) {
+    for (pvpb = __AXGetStackHead(AX_FREE_VOICE_PRIORITY); pvpb; pvpb = pvpb->next) {
         if (pvpb->depop != 0) {
             __AXDepopVoice(&__AXPB[pvpb->index]);
         }
@@ -484,7 +321,7 @@ AXPB* __AXGetPBs(void) {
 void __AXSetPBDefault(AXVPB* p) {
     p->pb.state = 0;
     p->pb.itd.flag = 0;
-    p->sync = 0x2000A4;
+    p->sync = AX_SYNC_FLAG_COPYLPF | AX_SYNC_FLAG_COPYUPDATE | AX_SYNC_FLAG_COPYITD | AX_SYNC_FLAG_COPYSTATE;
     p->updateMS = p->updateCounter = 0;
     p->updateWrite = p->updateData;
     p->pb.update.updNum[0] = p->pb.update.updNum[1] = p->pb.update.updNum[2] = p->pb.update.updNum[3] = p->pb.update.updNum[4] = 0;
@@ -501,7 +338,6 @@ void __AXVPBInit(void) {
     AXPBITDBUFFER* ppbi;
     AXPBU* ppbu;
     AXVPB* pvpb;
-    u32* p;
 
 #if DEBUG
     OSReport("Initializing AXVPB code module\n");
@@ -509,18 +345,14 @@ void __AXVPBInit(void) {
     __AXMaxDspCycles = OS_BUS_CLOCK / 400;
     __AXRecDspCycles = 0;
 
-#define BUFFER_MEMSET(buffer, size)    \
-    {                                  \
-        p = (u32*)&buffer;             \
-        for (i = size; i != 0; i--) {  \
-            *p = 0;                    \
-            p++;                       \
-        }                              \
-    }
+    // The DSP buffers are aligned at their bases.
+    ASSERTLINE(913, OFFSET(__AXPB, AX_DSP_BUFFER_ALIGNMENT) == 0);
+    ASSERTLINE(914, OFFSET(__AXITD, AX_DSP_BUFFER_ALIGNMENT) == 0);
+    ASSERTLINE(915, OFFSET(__AXUpdates, AX_DSP_BUFFER_ALIGNMENT) == 0);
 
-    BUFFER_MEMSET(__AXPB, 0xF40);
-    BUFFER_MEMSET(__AXITD, 0x400);
-    BUFFER_MEMSET(__AXVPB, 0x22C0);
+    memset(__AXPB, 0, sizeof(__AXPB));
+    memset(__AXITD, 0, sizeof(__AXITD));
+    memset(__AXVPB, 0, sizeof(__AXVPB));
 
     for (i = 0; i < AX_MAX_VOICES; i++) {
         ppb = &__AXPB[i];
@@ -528,38 +360,34 @@ void __AXVPBInit(void) {
         ppbu = &__AXUpdates[i];
         pvpb = &__AXVPB[i];
 
-        ASSERTLINE(913, (u32)ppb ^ 0x1F);
-        ASSERTLINE(914, (u32)ppbi ^ 0x1F);
-        ASSERTLINE(915, (u32)ppbu ^ 0x1F);
-
         pvpb->index = i;
         pvpb->updateWrite = pvpb->updateData;
         pvpb->itdBuffer = ppbi;
         __AXSetPBDefault(pvpb);
 
-        if (i == 0x3F) {
+        if (i == AX_MAX_VOICES - 1) {
             pvpb->pb.nextHi = pvpb->pb.nextLo = ppb->nextHi = ppb->nextLo = 0;
         } else {
-            pvpb->pb.nextHi = (u16)(  (u32)((char*)ppb + sizeof(AXPB)) >> 16 );
-            pvpb->pb.nextLo = (u16)(  (u32)((char*)ppb + sizeof(AXPB)) );
-            ppb->nextHi = (u16)(  (u32)((char*)ppb + sizeof(AXPB)) >> 16 );
-            ppb->nextLo = (u16)(  (u32)((char*)ppb + sizeof(AXPB)) );
+            pvpb->pb.nextHi = (u16)((u32)(ppb + 1) >> 16);
+            pvpb->pb.nextLo = (u16)(u32)(ppb + 1);
+            ppb->nextHi = (u16)((u32)(ppb + 1) >> 16);
+            ppb->nextLo = (u16)(u32)(ppb + 1);
         }
 
-        pvpb->pb.currHi = (u16)(((u32)ppb) >> 16);
-        pvpb->pb.currLo = (u16)((u32)ppb);
-        ppb->currHi = (u16)(((u32)ppb) >> 16);
-        ppb->currLo = (u16)((u32)ppb);
-        pvpb->pb.itd.bufferHi = (u16)(((u32)ppbi) >> 16);
-        pvpb->pb.itd.bufferLo = (u16)((u32)ppbi);
-        ppb->itd.bufferHi = (u16)(((u32)ppbi) >> 16);
-        ppb->itd.bufferLo = (u16)((u32)ppbi);
-        pvpb->pb.update.dataHi = (u16)(((u32)ppbu) >> 16);
-        pvpb->pb.update.dataLo = (u16)((u32)ppbu);
-        ppb->update.dataHi = (u16)(((u32)ppbu) >> 16);
-        ppb->update.dataLo = (u16)((u32)ppbu);
+        pvpb->pb.currHi = (u16)((u32)ppb >> 16);
+        pvpb->pb.currLo = (u16)(u32)ppb;
+        ppb->currHi = (u16)((u32)ppb >> 16);
+        ppb->currLo = (u16)(u32)ppb;
+        pvpb->pb.itd.bufferHi = (u16)((u32)ppbi >> 16);
+        pvpb->pb.itd.bufferLo = (u16)(u32)ppbi;
+        ppb->itd.bufferHi = (u16)((u32)ppbi >> 16);
+        ppb->itd.bufferLo = (u16)(u32)ppbi;
+        pvpb->pb.update.dataHi = (u16)((u32)ppbu >> 16);
+        pvpb->pb.update.dataLo = (u16)(u32)ppbu;
+        ppb->update.dataHi = (u16)((u32)ppbu >> 16);
+        ppb->update.dataLo = (u16)(u32)ppbu;
 
-        pvpb->priority = 1;
+        pvpb->priority = AX_FREE_VOICE_PRIORITY + 1;
         __AXPushFreeStack(pvpb);
     }
 
@@ -643,6 +471,24 @@ void AXSetVoiceType(AXVPB* p, u16 type) {
     OSRestoreInterrupts(old);
 }
 
+/* DSP mixer control bits and the corresponding volume ramps. */
+enum {
+    AX_MIX_MAIN_L         = 0x0001,
+    AX_MIX_MAIN_R         = 0x0002,
+    AX_MIX_MAIN_S         = 0x0004,
+    AX_MIX_MAIN_RAMP      = 0x0008,
+    AX_MIX_AUX_A_L        = 0x0010,
+    AX_MIX_AUX_A_R        = 0x0020,
+    AX_MIX_AUX_A_LR_RAMP  = 0x0040,
+    AX_MIX_AUX_A_S        = 0x0080,
+    AX_MIX_AUX_A_S_RAMP   = 0x0100,
+    AX_MIX_AUX_B_L        = 0x0200,
+    AX_MIX_AUX_B_R        = 0x0400,
+    AX_MIX_AUX_B_LR_RAMP  = 0x0800,
+    AX_MIX_AUX_B_S        = 0x1000,
+    AX_MIX_AUX_B_S_RAMP   = 0x2000,
+};
+
 /**
  * @note Address: 0x80179B4C
  * @note Size: 0x254
@@ -651,32 +497,42 @@ void AXSetVoiceMix(AXVPB* p, AXPBMIX* mix) {
     BOOL old;
     u16 mixerCtrl;
     u16* dst;
-    u16* src;
-    
-    src = (u16*)mix;
+    const u16* src;
+
+    src = (const u16*)mix;
     dst = (u16*)&p->pb.mix;
     mixerCtrl = 0;
 
     old = OSDisableInterrupts();
 
-    if ((*dst++ = *src++)) mixerCtrl |= 0x1;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x9;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x2;
-    if ((*dst++ = *src++)) mixerCtrl |= 0xA;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x10;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x50;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x20;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x60;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x200;
-    if ((*dst++ = *src++)) mixerCtrl |= 0xA00;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x400;
-    if ((*dst++ = *src++)) mixerCtrl |= 0xC00;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x1000;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x3000;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x4;
-    if ((*dst++ = *src++)) mixerCtrl |= 0xC;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x80;
-    if ((*dst++ = *src++)) mixerCtrl |= 0x180;
+#define COPY_MIX_VOLUME(bits) \
+    do { \
+        if ((*dst++ = *src++) != 0) { \
+            mixerCtrl |= (bits); \
+        } \
+    } while (0)
+
+    /* AXPBMIX stores each volume beside its ramp delta. */
+    COPY_MIX_VOLUME(AX_MIX_MAIN_L);
+    COPY_MIX_VOLUME(AX_MIX_MAIN_L | AX_MIX_MAIN_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_MAIN_R);
+    COPY_MIX_VOLUME(AX_MIX_MAIN_R | AX_MIX_MAIN_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_L);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_L | AX_MIX_AUX_A_LR_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_R);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_R | AX_MIX_AUX_A_LR_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_L);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_L | AX_MIX_AUX_B_LR_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_R);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_R | AX_MIX_AUX_B_LR_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_S);
+    COPY_MIX_VOLUME(AX_MIX_AUX_B_S | AX_MIX_AUX_B_S_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_MAIN_S);
+    COPY_MIX_VOLUME(AX_MIX_MAIN_S | AX_MIX_MAIN_RAMP);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_S);
+    COPY_MIX_VOLUME(AX_MIX_AUX_A_S | AX_MIX_AUX_A_S_RAMP);
+
+#undef COPY_MIX_VOLUME
 
     p->pb.mixerCtrl = mixerCtrl;
     p->sync |= (AX_SYNC_FLAG_COPYAXPBMIX | AX_SYNC_FLAG_COPYMXRCTRL);
@@ -722,7 +578,7 @@ void AXSetVoiceUpdateIncrement(AXVPB* p) {
     old = OSDisableInterrupts();
     p->updateMS++;
     p->sync |= AX_SYNC_FLAG_COPYUPDATE;
-    ASSERTMSGLINE(1191, p->updateMS <= 4, "PB updates cannot exceed 5ms\n");
+    ASSERTMSGLINE(1191, p->updateMS < ARRAY_SIZEU(p->pb.update.updNum), "PB updates cannot exceed 5ms\n");
     OSRestoreInterrupts(old);
 }
 
@@ -734,11 +590,13 @@ void AXSetVoiceUpdateWrite(AXVPB* p, u16 param, u16 data) {
     BOOL old;
 
     old = OSDisableInterrupts();
-    p->updateCounter+=2;
-    ASSERTMSGLINE(1205, p->updateCounter <= 128, "PB update block exceeded 128 words\n");
+    p->updateCounter += 2;
+    ASSERTMSGLINE(1205, p->updateCounter <= ARRAY_SIZEU(p->updateData), "PB update block exceeded 128 words\n");
 
-    *(p->updateWrite) = param; p->updateWrite+=1;
-    *(p->updateWrite) = data; p->updateWrite+=1;
+    *p->updateWrite = param;
+    p->updateWrite++;
+    *p->updateWrite = data;
+    p->updateWrite++;
     p->sync |= AX_SYNC_FLAG_COPYUPDATE;
     OSRestoreInterrupts(old);
 }
@@ -748,25 +606,9 @@ void AXSetVoiceUpdateWrite(AXVPB* p, u16 param, u16 data) {
  * @note Size: ?
  */
 void AXSetVoiceDpop(AXVPB* p, AXPBDPOP* dpop) {
-    BOOL old;
-    u16* dst;
-    u16* src;
+    BOOL old = OSDisableInterrupts();
 
-    dst = (void*)&p->pb.dpop;
-    src = (void*)dpop;
-
-    old = OSDisableInterrupts();
-    {
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-    }
+    p->pb.dpop = *dpop;
     p->sync |= AX_SYNC_FLAG_COPYDPOP;
     OSRestoreInterrupts(old);
 }
@@ -781,7 +623,7 @@ void AXSetVoiceVe(AXVPB* p, AXPBVE* ve) {
     old = OSDisableInterrupts();
     p->pb.ve.currentVolume = ve->currentVolume;
     p->pb.ve.currentDelta = ve->currentDelta;
-    p->sync |= AX_SYNC_FLAG_COPYVOL;
+    p->sync |= AX_SYNC_USER_VE;
     OSRestoreInterrupts(old);
 }
 
@@ -813,57 +655,37 @@ void AXSetVoiceFir(AXVPB* p, AXPBFIR* fir) {
     OSRestoreInterrupts(old);
 }
 
+#define AX_PB_FORMAT_ADPCM 0x00
+#define AX_PB_FORMAT_PCM16 0x0A
+#define AX_PB_FORMAT_PCM8  0x19
+
+#define AX_PCM16_GAIN 0x0800U
+#define AX_PCM8_GAIN  0x0100U
+
 /**
  * @note Address: 0x80179F04
  * @note Size: 0x110
  */
 void AXSetVoiceAddr(AXVPB* p, AXPBADDR* addr) {
     BOOL old;
-    u32* dst;
-    u32* src;
-
-    dst = (void*)&p->pb.addr;
-    src = (void*)addr;
+    static const AXPBADPCM pcm16State = { { { 0 } }, AX_PCM16_GAIN };
+    static const AXPBADPCM pcm8State = { { { 0 } }, AX_PCM8_GAIN };
 
     old = OSDisableInterrupts();
-    {
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src);
-    }
+    p->pb.addr = *addr;
 
-    switch(addr->format) {
-    case 0:
-        ASSERTMSGLINE(1335, (addr->loopAddressLo & 0xF) > 1, "*** loop address on ADPCM frame header! ***\n");
-        ASSERTMSGLINE(1340, (addr->endAddressLo & 0xF) > 1, "*** end address on ADPCM frame header! ***\n");
-        ASSERTMSGLINE(1345, (addr->currentAddressLo & 0xF) > 1, "*** current address on ADPCM frame header! ***\n");
+    /* The PCM decoder state follows the address block in the DSP layout. */
+    switch (addr->format) {
+    case AX_PB_FORMAT_ADPCM:
+        ASSERTMSGLINE(1335, (addr->loopAddress.lo & 0xF) > 1, "*** loop address on ADPCM frame header! ***\n");
+        ASSERTMSGLINE(1340, (addr->endAddress.lo & 0xF) > 1, "*** end address on ADPCM frame header! ***\n");
+        ASSERTMSGLINE(1345, (addr->currentAddress.lo & 0xF) > 1, "*** current address on ADPCM frame header! ***\n");
         break;
-    case 10:
-        dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0x08000000; dst+=1;
-        *(dst) = 0; dst+=1;
+    case AX_PB_FORMAT_PCM16:
+        p->pb.adpcm = pcm16State;
         break;
-    case 25:
-        dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0; dst+=1;
-        *(dst) = 0x01000000; dst+=1;
-        *(dst) = 0; dst+=1;
+    case AX_PB_FORMAT_PCM8:
+        p->pb.adpcm = pcm8State;
         break;
     default:
         ASSERTMSGLINE(1389, 0, "unknown addr->formaqt in PB\n");
@@ -896,8 +718,8 @@ void AXSetVoiceLoopAddr(AXVPB* p, u32 addr) {
     BOOL old;
 
     old = OSDisableInterrupts();
-    p->pb.addr.loopAddressHi = (addr >> 0x10);
-    p->pb.addr.loopAddressLo = (addr);
+    p->pb.addr.loopAddress.hi = (addr >> 0x10);
+    p->pb.addr.loopAddress.lo = (addr);
     p->sync |= AX_SYNC_FLAG_COPYLOOPADDR;
     OSRestoreInterrupts(old);
 }
@@ -910,8 +732,8 @@ void AXSetVoiceEndAddr(AXVPB* p, u32 addr) {
     BOOL old;
 
     old = OSDisableInterrupts();
-    p->pb.addr.endAddressHi = (addr >> 0x10);
-    p->pb.addr.endAddressLo = (addr);
+    p->pb.addr.endAddress.hi = (addr >> 0x10);
+    p->pb.addr.endAddress.lo = (addr);
     p->sync |= AX_SYNC_FLAG_COPYENDADDR;
     OSRestoreInterrupts(old);
 }
@@ -924,8 +746,8 @@ void AXSetVoiceCurrentAddr(AXVPB* p, u32 addr) {
     BOOL old;
 
     old = OSDisableInterrupts();
-    p->pb.addr.currentAddressHi = (addr >> 0x10);
-    p->pb.addr.currentAddressLo = (addr);
+    p->pb.addr.currentAddress.hi = (addr >> 0x10);
+    p->pb.addr.currentAddress.lo = (addr);
     p->sync |= AX_SYNC_FLAG_COPYCURADDR;
     OSRestoreInterrupts(old);
 }
@@ -935,27 +757,9 @@ void AXSetVoiceCurrentAddr(AXVPB* p, u32 addr) {
  * @note Size: 0xA4
  */
 void AXSetVoiceAdpcm(AXVPB* p, AXPBADPCM* adpcm) {
-    BOOL old;
-    u32* dst;
-    u32* src;
+    BOOL old = OSDisableInterrupts();
 
-    dst = (void*)&p->pb.adpcm;
-    src = (void*)adpcm;
-
-    old = OSDisableInterrupts();
-
-    {
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-    }
+    p->pb.adpcm = *adpcm;
     p->sync |= AX_SYNC_FLAG_COPYADPCM;
     OSRestoreInterrupts(old);
 }
@@ -965,24 +769,10 @@ void AXSetVoiceAdpcm(AXVPB* p, AXPBADPCM* adpcm) {
  * @note Size: 0x98
  */
 void AXSetVoiceSrc(AXVPB* p, AXPBSRC* src_) {
-    BOOL old;
-    u16* dst;
-    u16* src;
+    BOOL old = OSDisableInterrupts();
 
-    dst = (void*)&p->pb.src;
-    src = (void*)src_;
-
-    old = OSDisableInterrupts();
-    {
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-    }
-    p->sync &= ~(AX_SYNC_FLAG_COPYRATIO);
+    p->pb.src = *src_;
+    p->sync &= ~AX_SYNC_FLAG_COPYRATIO;
     p->sync |= AX_SYNC_FLAG_COPYSRC;
     OSRestoreInterrupts(old);
 }
@@ -1011,18 +801,9 @@ void AXSetVoiceSrcRatio(AXVPB* p, float ratio) {
  * @note Size: 0x6C
  */
 void AXSetVoiceAdpcmLoop(AXVPB* p, AXPBADPCMLOOP* adpcmloop) {
-    BOOL old;
-    u16* dst;
-    u16* src;
+    BOOL old = OSDisableInterrupts();
 
-    dst = (void*)&p->pb.adpcmLoop;
-    src = (void*)adpcmloop;
-    old = OSDisableInterrupts();
-    {
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-        *(dst) = *(src); dst+=1; src+=1;
-    }
+    p->pb.adpcmLoop = *adpcmloop;
     p->sync |= AX_SYNC_FLAG_COPYADPCMLOOP;
     OSRestoreInterrupts(old);
 }
@@ -1032,20 +813,10 @@ void AXSetVoiceAdpcmLoop(AXVPB* p, AXPBADPCMLOOP* adpcmloop) {
  * @note Size: ?
  */
 void AXSetVoiceLpf(AXVPB* p, AXPBLPF* lpf) {
-    BOOL old;
-    u16* dst;
-    u16* src;
+    BOOL old = OSDisableInterrupts();
 
-    dst = (u16*)&p->pb.lpf;
-    src = (u16*)lpf;
-
-    old = OSDisableInterrupts();
-
-    *dst = *src; dst++; src++;
-    *dst = *src; dst++; src++;
-    *dst = *src; dst++; src++;
-    *dst = *src; dst++; src++;
-    p->sync |= 0x200000;
+    p->pb.lpf = *lpf;
+    p->sync |= AX_SYNC_FLAG_COPYLPF;
 
     OSRestoreInterrupts(old);
 }
@@ -1060,9 +831,25 @@ void AXSetVoiceLpfCoefs(AXVPB* p, u16 a0, u16 b0) {
 
     p->pb.lpf.a0 = a0;
     p->pb.lpf.b0 = b0;
-    p->sync |= 0x400000;
+    p->sync |= AX_SYNC_FLAG_COPYLPFCOEFS;
 
     OSRestoreInterrupts(old);
+}
+
+static inline float AXLPFSqrt(float x)
+{
+    static const double half = 0.5;
+    static const double three = 3.0;
+
+    if (x > 0.0f) {
+        double estimate = __frsqrte((double)x);
+        estimate = half * estimate * (three - estimate * estimate * x);
+        estimate = half * estimate * (three - estimate * estimate * x);
+        estimate = half * estimate * (three - estimate * estimate * x);
+        estimate = half * estimate * (three - estimate * estimate * x);
+        return (float)(x * estimate);
+    }
+    return x;
 }
 
 #define PI 3.14159265358979323846f
@@ -1077,8 +864,8 @@ void AXGetLpfCoefs(u16 freq, u16* a0, u16* b0) {
 
     ASSERTMSGLINE(1616, freq <= 16000, "freq is out of range");
 
-    cc = 2.0f - cos(((PI * 2) * (f32)freq) / 32000.0f);
-    bb = sqrt((cc * cc) - 1.0f) - cc;
+    cc = 2.0f - cosf(((PI * 2) * (f32)freq) / 32000.0f);
+    bb = AXLPFSqrt((cc * cc) - 1.0f) - cc;
 
     *b0 = 32768.0f * -bb;
     *a0 = 0x7FFF - *b0;

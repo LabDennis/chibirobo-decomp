@@ -1,7 +1,6 @@
 #include "PowerPC_EABI_Support/MetroTRK/trk.h"
 #include "Dolphin/print.h"
 static BOOL IsTRKConnected;
-static u32 g_CurrentSequence;
 
 /**
  * @note Address: 0x8014CCB8
@@ -43,15 +42,6 @@ void SetTRKConnected(int isConnected)
 
 /**
  * @note Address: N/A
- * @note Size: 0x98
- */
-void TRKMessageIntoReply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x64
  */
 DSError TRKSendACK(MessageBuffer* buffer)
@@ -77,24 +67,6 @@ DSError TRKStandardACK(MessageBuffer* buffer, MessageCommandID commandID, DSRepl
 	reply.replyError.b = replyError;
 	TRKWriteUARTN(&reply, sizeof(CommandReply));
 	return DS_NoError;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-void TRKDoError(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x54
- */
-void TRKDoUnsupported(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -160,15 +132,6 @@ DSError TRKDoVersions(MessageBuffer*)
 DSError TRKDoSupportMask(MessageBuffer*)
 {
 	return DS_NoError;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-void TRKDoCPUType(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**

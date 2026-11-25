@@ -324,15 +324,6 @@ u32 strtoul(const char* str, char** end, int base)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0xB4
- */
-void strtoull(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @brief STRing TO Long. Converts any numbers (of base `base`) at start of input string `str` to s32 and returns.
  * Any remaining string part goes in `end`.
  *
@@ -366,28 +357,10 @@ s32 strtol(const char* str, char** end, int base)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x124
- */
-void strtoll(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80158F70
  * @note Size: 0xC0
  */
 int atoi(const char* str)
 {
 	return strtol(str, NULL, 10);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xC0
- */
-void atol(void)
-{
-	// UNUSED FUNCTION
 }

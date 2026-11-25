@@ -1,3 +1,4 @@
+#include "game/relmodule.h"
 #include "types.h"
 #include "game/gmath.h"
 #include <stdlib.h>
@@ -7,27 +8,25 @@
 class Laser {
 public:
 	f32 _00[20][2]; // _00
-	f32 _A0;        // _A0
-	f32 _A4;        // _A4
-	u32 _A8;        // _A8
+	f32 _A0; // _A0, 6 * sin of the random angle the ctor picks, the x part of a length-6 step; only the ctor writes it, ahk's update and
+	         // draw slots are empty
+	f32 _A4; // _A4, 6 * cos of the same random angle, the other part of the length-6 step; written by the ctor only, never read
+	u32 _A8; // _A8, colour packed as 0xRRGGBB00, three random 0x40-0xFF channels with a zero low byte; written by the ctor only, never read
 
 	Laser();
 	virtual ~Laser(); // _08
 };
 STATIC_ASSERT(sizeof(Laser) == 0xB0);
 
-extern "C" s32 fn_1_264(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, void* arg2);
-extern "C" void fn_1_2BC(void* arg);
-extern "C" void DrawStageHud(void* arg);
-extern "C" void UpdateStage(void* arg);
-
-typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, s32* args);
+extern "C" void AhkNoOpSlot5(s32 arg);
+extern "C" void DrawStageHud(s32 arg);
+extern "C" void UpdateStage(s32 arg);
 
 extern "C" {
-RelSlotFunc _prolog_slots[7] = { 0, UpdateStage, 0, 0, DrawStageHud, fn_1_2BC };
-RelCmdFunc _prolog_cmds[]    = { (RelCmdFunc)CmdPrintArgs, fn_1_264 };
+RelSlotFunc _prolog_slots[7] = { 0, UpdateStage, 0, 0, DrawStageHud, AhkNoOpSlot5 };
+RelCmdFunc _prolog_cmds[]    = { (RelCmdFunc)CmdPrintArgs, CmdNop };
 }
 
 /**
@@ -61,7 +60,7 @@ Laser::Laser()
  * @note Address: ahk .text 0x264
  * @note Size: 0x8
  */
-extern "C" s32 fn_1_264(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -70,12 +69,8 @@ extern "C" s32 fn_1_264(s32 cmd, void* arg, void* arg2)
  * @note Address: ahk .text 0x26C
  * @note Size: 0x50
  */
-extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, void* arg2)
+extern "C" s32 CmdPrintArgs(s32, s32, s32*)
 {
-	int i;
-
-	// body compiled out, the empty loop is still there
-	for (i = 0; i < count; i++) { }
 	return 0;
 }
 
@@ -83,7 +78,7 @@ extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, void* arg2)
  * @note Address: ahk .text 0x2BC
  * @note Size: 0x4
  */
-extern "C" void fn_1_2BC(void* arg)
+extern "C" void AhkNoOpSlot5(s32 arg)
 {
 }
 
@@ -91,7 +86,7 @@ extern "C" void fn_1_2BC(void* arg)
  * @note Address: ahk .text 0x2C0
  * @note Size: 0x4
  */
-extern "C" void DrawStageHud(void* arg)
+extern "C" void DrawStageHud(s32 arg)
 {
 }
 
@@ -99,7 +94,7 @@ extern "C" void DrawStageHud(void* arg)
  * @note Address: ahk .text 0x2C4
  * @note Size: 0x4
  */
-extern "C" void UpdateStage(void* arg)
+extern "C" void UpdateStage(s32 arg)
 {
 }
 

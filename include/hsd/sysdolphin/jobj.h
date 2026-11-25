@@ -8,6 +8,7 @@
 #include <sysdolphin/list.h>
 
 #include <sysdolphin/aobj.h>
+#include <sysdolphin/forward.h>
 
 #define HSD_A_J_ROTX 1
 #define HSD_A_J_ROTY 2
@@ -44,6 +45,19 @@
 #define HSD_A_J_SETFLOAT8 38
 #define HSD_A_J_SETFLOAT9 39
 
+#define HSD_A_J_TRIGGER_PARTICLE 40
+#define HSD_A_J_TRIGGER_SOUND 41
+#define HSD_A_J_SET_PARTICLE_TARGET 42
+
+#define HSD_A_J_MTX_COL_X 50
+#define HSD_A_J_MTX_COL_Y 51
+#define HSD_A_J_MTX_COL_Z 52
+#define HSD_A_J_MTX_COL_TRANSLATION 53
+#define HSD_A_J_MTX_TO_SRT 54
+#define HSD_A_J_MTX_TO_ROTATION 55
+#define HSD_A_J_MTX_TO_TRANSLATION 56
+#define HSD_A_J_MTX_TO_SCALE 57
+
 #define SKELETON (1 << 0)
 #define SKELETON_ROOT (1 << 1)
 #define ENVELOPE_MODEL (1 << 2)
@@ -53,12 +67,18 @@
 #define MTX_DIRTY (1 << 6)
 #define LIGHTING (1 << 7)
 #define TEXGEN (1 << 8)
+#define BILLBOARD (1 << 9)
+#define VBILLBOARD (2 << 9)
+#define HBILLBOARD (3 << 9)
+#define RBILLBOARD (4 << 9)
+#define BILLBOARD_MASK (7 << 9)
 #define INSTANCE (1 << 12)
 #define PBILLBOARD (1 << 13)
 #define SPLINE (1 << 14)
 #define FLIP_IK (1 << 15)
 #define SPECULAR (1 << 16)
 #define USE_QUATERNION (1 << 17)
+#define JOBJ_TRSP_SHIFT 18
 #define NULL_OBJ (0 << 21)
 #define JOINT1 (1 << 21)
 #define JOINT2 (2 << 21)
@@ -66,13 +86,14 @@
 #define USER_DEF_MTX (1 << 23)
 #define MTX_INDEP_PARENT (1 << 24)
 #define MTX_INDEP_SRT (1 << 25)
-#define ROOT_OPA (1 << 28)
-#define ROOT_XLU (1 << 29)
-#define ROOT_TEXEDGE (1 << 30)
+#define JOBJ_ROOT_TRSP_SHIFT 28
+#define ROOT_OPA (1 << JOBJ_ROOT_TRSP_SHIFT)
+#define ROOT_XLU (2 << JOBJ_ROOT_TRSP_SHIFT)
+#define ROOT_TEXEDGE (4 << JOBJ_ROOT_TRSP_SHIFT)
 
 #define JOBJ_INSTANCE(o) ((o->flags & INSTANCE) == 0)
 #define JOBJ_USE_QUATERNION(o) ((o->flags & USE_QUATERNION))
-#define union_type_dobj(o) ((o->flags & 0x4020) ? FALSE : TRUE)
+#define union_type_dobj(o) (((o)->flags & (PTCL | SPLINE)) ? FALSE : TRUE)
 #define union_type_ptcl(o) ((o->flags & PTCL) != 0)
 #define union_type_spline(o) ((o->flags & SPLINE) != 0)
 
@@ -81,8 +102,18 @@
 
 typedef u32 HSD_TrspMask;
 
-typedef void (*HSD_JObjWalkTreeCallback)(struct _HSD_JObj* jobj, f32** cb_args, s32 type);
-typedef void (*DPCtlCallback)(int, int lo, int hi, struct _HSD_JObj* jobj);
+#define HSD_TRSP_OPA     (1 << 0)
+#define HSD_TRSP_XLU     (1 << 1)
+#define HSD_TRSP_TEXEDGE (1 << 2)
+
+/* Static particle entries pack a bank and offset with a pending trigger bit. */
+#define JOBJ_STATIC_PARTICLE_BANK_MASK 0x3FU
+#define JOBJ_STATIC_PARTICLE_OFFSET_SHIFT 6
+#define JOBJ_STATIC_PARTICLE_OFFSET_MASK 0xFFFFFFU
+#define JOBJ_STATIC_PARTICLE_PENDING 0x80000000U
+
+typedef void (*HSD_JObjWalkTreeCallback)(struct _HSD_JObj* jobj, void* context, s32 type);
+typedef HSD_Generator* (*HSD_JObjParticleCallback)(int link_no, int bank, int kind, struct _HSD_JObj* jobj);
 
 typedef struct _HSD_JObj {
     HSD_Obj object;
@@ -130,8 +161,11 @@ typedef struct _HSD_JObjInfo {
     void (*make_pmtx)(HSD_JObj* jobj, Mtx mtx, Mtx rmtx);
     void (*disp)(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx, HSD_TrspMask trsp_mask, u32 rendermode);
     void (*release_child)(HSD_JObj* jobj);
-    void (*update)();
+    HSD_ObjUpdateFunc update;
 } HSD_JObjInfo;
+
+#define HSD_JOBJ_INFO(i)   ((HSD_JObjInfo*)(i))
+#define HSD_JOBJ_METHOD(o) HSD_JOBJ_INFO(HSD_CLASS_METHOD(o))
 
 extern HSD_JObjInfo hsdJObj;
 
@@ -166,8 +200,17 @@ void HSD_JObjAddAnimAll(HSD_JObj* jobj, HSD_AnimJoint* ajoint,
                         HSD_ShapeAnimJoint* shapeanimjoint);
 void HSD_JObjMakeMatrix(HSD_JObj* jobj);
 void HSD_JObjUnrefThis(HSD_JObj* jobj);
-void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, u32 flags, u32 rendermode);
-void RecalcParentTrspBits(HSD_JObj* jobj);
+void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rendermode);
+HSD_JObj* HSD_JObjRemove(HSD_JObj* jobj);
+void HSD_JObjRemoveAll(HSD_JObj* jobj);
+void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, void* context);
+void HSD_JObjModifyFlags(HSD_JObj* jobj, u32 flags, u32 mask);
+void HSD_JObjReqAnim(HSD_JObj* jobj, f32 frame);
+void HSD_JObjAddAnim(HSD_JObj* jobj, HSD_AnimJoint* an_joint, HSD_MatAnimJoint* mat_joint, HSD_ShapeAnimJoint* sh_joint);
+void HSD_JObjSetSPtclCallback(HSD_JObjParticleCallback callback);
+void HSD_JObjSetDPtclCallback(HSD_JObjParticleCallback callback);
+void HSD_JObjSetJSoundCallback(void (*callback)(s32));
+void HSD_JObjSetPtclTargetCallback(void (*callback)(HSD_JObj*, s32));
 
 inline struct _HSD_RObj* HSD_JObjGetRObj(HSD_JObj* jobj)
 {
@@ -178,7 +221,7 @@ inline struct _HSD_RObj* HSD_JObjGetRObj(HSD_JObj* jobj)
 inline BOOL HSD_JObjMtxIsDirty(HSD_JObj* jobj)
 {
     assert_line(605, jobj);
-    return !(jobj->flags & 0x800000) && (jobj->flags & 0x40);
+    return !(jobj->flags & USER_DEF_MTX) && (jobj->flags & MTX_DIRTY);
 }
 
 inline void HSD_JObjSetupMatrix(HSD_JObj* jobj)

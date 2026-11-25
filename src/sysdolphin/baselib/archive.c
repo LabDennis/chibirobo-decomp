@@ -1,18 +1,13 @@
 #include <sysdolphin/archive.h>
 #include <sysdolphin/memory.h>
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline void Locate(HSD_Archive* archive)
+static inline void RelocateArchive(HSD_Archive* archive)
 {
-    int i;
-    u32* ptr;
+    u32 i;
 
     for (i = 0; i < archive->header.nb_reloc; i++) {
-        ptr = (u32*)(archive->data + archive->reloc_info[i].offset);
-        *ptr += (u32)archive->data;
+        u32* address = (u32*)(archive->data + archive->reloc_info[i].offset);
+        *address += (u32)archive->data;
     }
 }
 
@@ -29,7 +24,7 @@ s32 HSD_ArchiveParse(HSD_Archive* archive, u8* src, u32 file_size)
     }
 
     memset(archive, 0, sizeof(HSD_Archive));
-    archive->flags |= 1;
+    archive->flags |= HSD_ARCHIVE_DONT_FREE;
     memcpy(archive, src, sizeof(HSD_ArchiveHeader));
 
     if (archive->header.file_size != file_size) {
@@ -38,28 +33,28 @@ s32 HSD_ArchiveParse(HSD_Archive* archive, u8* src, u32 file_size)
     }
 
     offset = sizeof(HSD_ArchiveHeader);
-    if (archive->header.data_size != 0) { // Body Size
-        archive->data = src + 0x20;
-        offset = archive->header.data_size + 0x20;
+    if (archive->header.data_size != 0) {
+        archive->data = src + offset;
+        offset += archive->header.data_size;
     }
-    if (archive->header.nb_reloc != 0) { // Relocation Size
-        archive->reloc_info = (HSD_ArchiveRelocationInfo*)((s32)src + offset);
-        offset = offset + archive->header.nb_reloc * 4;
+    if (archive->header.nb_reloc != 0) {
+        archive->reloc_info = (HSD_ArchiveRelocationInfo*)(src + offset);
+        offset += archive->header.nb_reloc * sizeof(*archive->reloc_info);
     }
-    if (archive->header.nb_public != 0) { // Root Size
-        archive->public_info = (HSD_ArchivePublicInfo*)((s32)src + offset);
-        offset = offset + archive->header.nb_public * 8;
+    if (archive->header.nb_public != 0) {
+        archive->public_info = (HSD_ArchivePublicInfo*)(src + offset);
+        offset += archive->header.nb_public * sizeof(*archive->public_info);
     }
-    if (archive->header.nb_extern != 0) { // XRef Size
-        archive->extern_info = (HSD_ArchiveExternInfo*)((s32)src + offset);
-        offset = offset + archive->header.nb_extern * 8;
+    if (archive->header.nb_extern != 0) {
+        archive->extern_info = (HSD_ArchiveExternInfo*)(src + offset);
+        offset += archive->header.nb_extern * sizeof(*archive->extern_info);
     }
-    if (offset < archive->header.file_size) { // File Size
-        archive->symbols = (char*)((s32)src + offset);
+    if (offset < archive->header.file_size) {
+        archive->symbols = (char*)(src + offset);
     }
 
-    archive->top_ptr = (void*)src;
-    Locate(archive);
+    archive->top_ptr = src;
+    RelocateArchive(archive);
 
     return 0;
 }
@@ -68,26 +63,26 @@ s32 HSD_ArchiveParse(HSD_Archive* archive, u8* src, u32 file_size)
  * @note Address: 0x801D44CC
  * @note Size: 0x38
  */
-char* HSD_ArchiveGetExtern(HSD_Archive* archive, s32 offset)
+char* HSD_ArchiveGetExtern(HSD_Archive* archive, s32 index)
 {
-    // named after the same slot in other builds, but this one reads the
-    // public table, so it gives back the name of public symbol number offset
-    if (offset < 0 || archive->header.nb_public <= offset) {
+    if (index < 0 || archive->header.nb_public <= index) {
         return NULL;
     }
-    return archive->symbols + archive->public_info[offset].symbol;
+    return archive->symbols + archive->public_info[index].symbol;
 }
 
 /**
  * @note Address: 0x801D4504
  * @note Size: 0xA4
  */
-void* HSD_ArchiveGetPublicAddress(HSD_Archive* archive, char* symbols) {
-    int i;
+void* HSD_ArchiveGetPublicAddress(HSD_Archive* archive, char* name)
+{
+    u32 i;
 
     for (i = 0; i < archive->header.nb_public; i++) {
-        if (strcmp(archive->symbols + archive->public_info[i].symbol, symbols) == 0) // If both strings are equal, we've found the node
-            return archive->data + archive->public_info[i].offset;;
+        if (strcmp(archive->symbols + archive->public_info[i].symbol, name) == 0) {
+            return archive->data + archive->public_info[i].offset;
+        }
     }
 
     return NULL;
@@ -97,28 +92,24 @@ void* HSD_ArchiveGetPublicAddress(HSD_Archive* archive, char* symbols) {
  * @note Address: N/A
  * @note Size: ?
  */
-void HSD_ArchiveLocateExtern(HSD_Archive* archive, char* symbols, void* addr)
+void HSD_ArchiveLocateExtern(HSD_Archive* archive, char* name, void* addr)
 {
-    u32 next;
     u32 offset;
-    int i;
+    u32 i;
 
     offset = -1;
     for (i = 0; i < archive->header.nb_extern; i++) {
-        if (strcmp(symbols, archive->symbols + archive->extern_info[i].symbol) == 0) {
+        if (strcmp(name, archive->symbols + archive->extern_info[i].symbol) == 0) {
             offset = archive->extern_info[i].offset;
             break;
         }
     }
 
-    if (offset == -1) {
-        return;
-    }
-
     while (offset != -1 && offset < archive->header.data_size) {
-        next = *(u32*)((u32)archive->data + offset);
-        *(u32*)((u32)archive->data + offset) = (u32)addr;
-        offset = next;
+        u32* reference = (u32*)(archive->data + offset);
+
+        offset = *reference;
+        *reference = (u32)addr;
     }
 }
 

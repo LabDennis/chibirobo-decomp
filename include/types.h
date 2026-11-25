@@ -92,13 +92,11 @@ typedef u16 wchar_t;
 #define AT_ADDRESS(addr)     : (addr)
 #define WEAK                 __declspec(weak)
 #define DECL_SECT(name)      __declspec(section name)
-#define ASM                  asm
 #define ATTRIBUTE_ALIGN(num) __attribute__((aligned(num)))
 #else
 #define AT_ADDRESS(addr)
 #define WEAK
 #define DECL_SECT(name)
-#define ASM
 #define ATTRIBUTE_ALIGN(num)
 #endif
 

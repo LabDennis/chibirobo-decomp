@@ -2,16 +2,12 @@
 #define _GAME_CTPL_H
 
 #ifdef _MTXTYPES_h_
-// built with the HSD headers, which have no texture objects, so the sdk types the class needs are here
 #include <dolphin/gx/gxtypes.h>
 typedef u8 GXBool;
-typedef struct _GXTexObj {
-	u8 pad[0x20]; // _00
-} GXTexObj;
-typedef struct _GXTlutObj {
-	u8 padding[0xC]; // _00
-} GXTlutObj;
-typedef enum _GXTexMtxType { GX_MTX3x4 = 0, GX_MTX2x4 = 1 } GXTexMtxType;
+extern "C" {
+u16 GXGetTexObjWidth(const GXTexObj* obj);
+u16 GXGetTexObjHeight(const GXTexObj* obj);
+}
 #else
 #include "Dolphin/gx.h"
 #endif
@@ -34,6 +30,7 @@ public:
 	Mtx mMtx[4];          // _3C, the last is the first times the third times the second, loaded as the texture matrix
 	// _FC vtable
 
+	CTexObj() { }
 	virtual ~CTexObj() { } // _08 (weak)
 
 	CTexObj& Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap);
@@ -42,11 +39,16 @@ public:
 	u32 SetChar(const char* str);
 	void Draw(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
 	void DrawLit(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
-
-	// inlined:
 	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 };
 typedef char CTexObj_size_check[sizeof(CTexObj) == 0x100 ? 1 : -1];
+
+// HUD and status textures start two entries earlier in the Japanese palette.
+#if defined(VERSION_JP)
+const int StatusTextureOffset = 2;
+#else
+const int StatusTextureOffset = 0;
+#endif
 
 // a .tpl file, bound once it's read in
 class CTpl : public CFile {

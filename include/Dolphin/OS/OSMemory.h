@@ -8,6 +8,8 @@
 extern "C" {
 #endif // ifdef __cplusplus
 
+u32 OSGetPhysicalMemSize(void);
+
 ////////// PROTECT INFO //////////
 // Protect function.
 void OSProtectRange(u32 channel, void* addr, u32 numBytes, u32 control);
@@ -24,7 +26,7 @@ void OSProtectRange(u32 channel, void* addr, u32 numBytes, u32 control);
 #define OS_PROTECT_CONTROL_WRITE 0x02 // Can write.
 #define OS_PROTECT_CONTROL_RDWR  (OS_PROTECT_CONTROL_READ | OS_PROTECT_CONTROL_WRITE)
 
-// DSISR bits for mem error handler.
+// Memory Interface interrupt bits, also passed to the protection error handler.
 #define OS_PROTECT0_BIT        0x00000001 // Channel 0.
 #define OS_PROTECT1_BIT        0x00000002 // Channel 1.
 #define OS_PROTECT2_BIT        0x00000004 // Channel 2.

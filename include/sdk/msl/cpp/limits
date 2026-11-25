@@ -93,11 +93,6 @@ public:
         static const unsigned long long x = 0x7ff7ffffffffffffULL;
         return *reinterpret_cast<const double*>(&x);
     }
-    //TODO: this function is almost certainly fake, but for some reason the constant shows up twice in debug .rodata
-	inline static double signaling_NaN_2() {
-        static const unsigned long long x = 0x7ff7ffffffffffffULL;
-        return *reinterpret_cast<const double*>(&x);
-    }
 };
 #endif
 

@@ -1,11 +1,33 @@
 #include <global.h>
 #include <sysdolphin/fobj.h>
-#include <sysdolphin/fobj_alloc.h>
+#include <sysdolphin/spline.h>
 
-f32 splGetHelmite(f32, f32, f32, f32, f32, f32);
-void memset(void*, int, int);
+#include <string.h>
 
-HSD_ObjAllocData fobj_alloc_data;
+enum {
+	FOBJ_STOPPED = 0,
+	FOBJ_INTERPOLATE = 4,
+	FOBJ_RESUME = 5,
+	FOBJ_END = 6,
+};
+
+enum {
+	FOBJ_STATE_MASK = 0x0F,
+	FOBJ_CONTROL_MASK = 0xF0,
+	FOBJ_LINEAR_SLOPE_DIRTY = 0x20,
+	FOBJ_KEY_PENDING = 0x40,
+	FOBJ_KEY_READY = 0x80,
+};
+
+enum {
+	FOBJ_OPCODE_MASK = 0x0F,
+	FOBJ_FRACTION_BITS_MASK = 0x1F,
+	FOBJ_FRACTION_TYPE_MASK = 0xE0,
+	FOBJ_CONTINUATION_BIT = 0x80,
+	FOBJ_CONTINUATION_MASK = 0x7F,
+};
+
+static HSD_ObjAllocData fobj_alloc_data;
 
 /**
  * @note Address: 0x801C1DD0
@@ -49,7 +71,7 @@ void HSD_FObjRemoveAll(HSD_FObj* fobj)
 static inline u32 HSD_FObjSetState(HSD_FObj* fobj, u32 state)
 {
 	if (fobj) {
-		fobj->flags = (fobj->flags & 0xF0) | (state & 0xF);
+		fobj->flags = (fobj->flags & FOBJ_CONTROL_MASK) | (state & FOBJ_STATE_MASK);
 	}
 	return state;
 }
@@ -60,7 +82,7 @@ static inline u32 HSD_FObjSetState(HSD_FObj* fobj, u32 state)
  */
 static inline u32 HSD_FObjGetState(HSD_FObj* fobj)
 {
-	return fobj == NULL ? 0 : fobj->flags & 0xF;
+	return fobj == NULL ? FOBJ_STOPPED : fobj->flags & FOBJ_STATE_MASK;
 }
 
 /**
@@ -75,16 +97,16 @@ static inline void HSD_FObjReqAnim(HSD_FObj* fobj, f32 startframe)
 
 	fobj->ad       = fobj->ad_head;
 	fobj->time     = (f32)fobj->startframe + startframe;
-	fobj->op       = 0;
-	fobj->op_intrp = 0;
-	fobj->flags &= ~0x40;
+	fobj->op       = HSD_A_OP_NONE;
+	fobj->op_intrp = HSD_A_OP_NONE;
+	fobj->flags &= ~FOBJ_KEY_PENDING;
 	fobj->nb_pack = 0;
 	fobj->fterm   = 0;
 	fobj->p0      = 0.f;
 	fobj->p1      = 0.f;
 	fobj->d0      = 0.f;
 	fobj->d1      = 0.f;
-	HSD_FObjSetState(fobj, 1);
+	HSD_FObjSetState(fobj, FOBJ_LOAD_DATA0);
 }
 
 /**
@@ -126,7 +148,7 @@ static inline void HSD_FObjStopAnim(HSD_FObj* fobj, void* obj, HSD_ObjUpdateFunc
 	}
 
 	FObj_FlushKeyData(fobj, obj, obj_update, rate);
-	HSD_FObjSetState(fobj, 0);
+	HSD_FObjSetState(fobj, FOBJ_STOPPED);
 }
 
 /**
@@ -148,21 +170,21 @@ static inline f32 parseFloat(u8** pos, u8 frac)
 {
 	union {
 		f32 f;
-		u32 d;
+		u32 bits;
 	} u;
 	f32 numer;
 	s32 denom;
 
 	if (frac == HSD_A_FRAC_FLOAT) {
-		u.d = (s32)((*pos)++)[0];
-		u.d |= ((*pos)++)[0] << 8;
-		u.d |= ((*pos)++)[0] << 16;
-		u.d |= ((*pos)++)[0] << 24;
+		u.bits = *(*pos)++;
+		u.bits |= (u32)*(*pos)++ << 8;
+		u.bits |= (u32)*(*pos)++ << 16;
+		u.bits |= (u32)*(*pos)++ << 24;
 		return u.f;
 	}
 
-	denom = (1 << (frac & 0x1F));
-	switch (frac & 0xE0) {
+	denom = (s32)(1u << (frac & FOBJ_FRACTION_BITS_MASK));
+	switch (frac & FOBJ_FRACTION_TYPE_MASK) {
 	case HSD_A_FRAC_S8:
 		numer = (s8)(*pos)[0];
 		*pos += 1;
@@ -172,7 +194,7 @@ static inline f32 parseFloat(u8** pos, u8 frac)
 		*pos += 1;
 		break;
 	case HSD_A_FRAC_S16:
-		numer = ((s8)(*pos)[1] << 8) | (*pos)[0];
+		numer = (s32)(((u32)(s8)(*pos)[1] << 8) | (*pos)[0]);
 		*pos += 2;
 		break;
 	case HSD_A_FRAC_U16:
@@ -189,9 +211,9 @@ static inline f32 parseFloat(u8** pos, u8 frac)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline u8 parseOpCode(u8** curr_parse)
+static inline u8 parseOpCode(const u8* pos)
 {
-	return (**curr_parse) & 0xF;
+	return *pos & FOBJ_OPCODE_MASK;
 }
 
 /**
@@ -204,17 +226,18 @@ static inline u32 parsePackInfo(u8** adp)
 	u32 nb_pack;
 	s32 shift;
 
+	// The first byte carries the opcode and the low three bits of the biased count.
 	d       = *(*adp)++;
 	nb_pack = ((d >> 4) & 7) + 1;
 	shift   = 3;
-	if (!(d & 0x80)) {
+	if (!(d & FOBJ_CONTINUATION_BIT)) {
 		return nb_pack;
 	}
 	do {
 		d = *(*adp)++;
-		nb_pack += (d & 0x7F) << shift;
+		nb_pack += (u32)(d & FOBJ_CONTINUATION_MASK) << shift;
 		shift += 7;
-	} while (d & 0x80);
+	} while (d & FOBJ_CONTINUATION_BIT);
 	return nb_pack;
 }
 
@@ -224,10 +247,10 @@ static inline u32 parsePackInfo(u8** adp)
  */
 static inline void FObjLaunchKeyData(HSD_FObj* fobj)
 {
-	if ((fobj->flags & 0x40) != 0) {
+	if ((fobj->flags & FOBJ_KEY_PENDING) != 0) {
 		fobj->op_intrp = fobj->op;
-		fobj->flags &= ~0x40;
-		fobj->flags |= 0x80;
+		fobj->flags &= ~FOBJ_KEY_PENDING;
+		fobj->flags |= FOBJ_KEY_READY;
 		fobj->p0 = fobj->p1;
 	}
 }
@@ -236,17 +259,17 @@ static inline void FObjLaunchKeyData(HSD_FObj* fobj)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline s32 parseWait(u8** adp)
+static inline u32 parseWait(u8** adp)
 {
 	u8 d;
-	s32 wait  = 0;
+	u32 wait  = 0;
 	s32 shift = 0;
 
 	do {
 		d = *(*adp)++;
-		wait |= (d & 0x7f) << shift;
+		wait |= (u32)(d & FOBJ_CONTINUATION_MASK) << shift;
 		shift += 7;
-	} while (d & 0x80);
+	} while (d & FOBJ_CONTINUATION_BIT);
 
 	return wait;
 }
@@ -261,51 +284,33 @@ static u32 FObjLoadWait(HSD_FObj* fobj)
 	assert_line(0x16C, st == FOBJ_LOAD_WAIT);
 
 	if ((unsigned)(fobj->ad - fobj->ad_head) >= fobj->length) {
-		return 6;
-	} else {
-		fobj->fterm = parseWait(&fobj->ad);
-		fobj->flags |= 0x20;
-		return HSD_FObjSetState(fobj, 2);
+		return FOBJ_END;
 	}
+
+	fobj->fterm = parseWait(&fobj->ad);
+	fobj->flags |= FOBJ_LINEAR_SLOPE_DIRTY;
+	return HSD_FObjSetState(fobj, FOBJ_LOAD_DATA);
 }
 
 /**
  * @note Address: N/A
  * @note Size: ?
  */
-static inline u32 FObjAnimCON(HSD_FObj* fobj)
+static inline u32 FObjLoadValue(HSD_FObj* fobj, u32 line)
 {
 	u32 st = HSD_FObjGetState(fobj);
-	assert_line(0x17F, st == FOBJ_LOAD_DATA0 || st == FOBJ_LOAD_DATA);
+	assert_line(line, st == FOBJ_LOAD_DATA0 || st == FOBJ_LOAD_DATA);
 
 	fobj->p0 = fobj->p1;
 	fobj->p1 = parseFloat(&fobj->ad, fobj->frac_value);
-	if (fobj->op_intrp != 5) {
+	if (fobj->op_intrp != HSD_A_OP_SLP) {
 		fobj->d0 = fobj->d1;
 		fobj->d1 = 0.0F;
 	}
 
-	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? 3 : 4);
+	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? FOBJ_LOAD_WAIT : FOBJ_INTERPOLATE);
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline u32 FObjAnimLinear(HSD_FObj* fobj)
-{
-	u32 st = HSD_FObjGetState(fobj);
-	assert_line(0x193, st == FOBJ_LOAD_DATA0 || st == FOBJ_LOAD_DATA);
-
-	fobj->p0 = fobj->p1;
-	fobj->p1 = parseFloat(&fobj->ad, fobj->frac_value);
-	if (fobj->op_intrp != 5) {
-		fobj->d0 = fobj->d1;
-		fobj->d1 = 0.0F;
-	}
-
-	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? 3 : 4);
-}
 
 /**
  * @note Address: N/A
@@ -321,7 +326,7 @@ static inline u32 FObjAnimSPL0(HSD_FObj* fobj)
 	fobj->p1 = parseFloat(&fobj->ad, fobj->frac_value);
 	fobj->d1 = 0.0F;
 
-	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? 3 : 4);
+	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? FOBJ_LOAD_WAIT : FOBJ_INTERPOLATE);
 }
 
 /**
@@ -338,7 +343,7 @@ static inline u32 FObjAnimSPL(HSD_FObj* fobj)
 	fobj->d0 = fobj->d1;
 	fobj->d1 = parseFloat(&fobj->ad, fobj->frac_slope);
 
-	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? 3 : 4);
+	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? FOBJ_LOAD_WAIT : FOBJ_INTERPOLATE);
 }
 
 /**
@@ -367,9 +372,9 @@ static inline u32 FObjAnimKey(HSD_FObj* fobj)
 
 	FObjLaunchKeyData(fobj);
 	fobj->p1 = parseFloat(&fobj->ad, fobj->frac_value);
-	fobj->flags |= 0x40;
+	fobj->flags |= FOBJ_KEY_PENDING;
 
-	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? 3 : 4);
+	return HSD_FObjSetState(fobj, st == FOBJ_LOAD_DATA0 ? FOBJ_LOAD_WAIT : FOBJ_INTERPOLATE);
 }
 
 /**
@@ -379,38 +384,38 @@ static inline u32 FObjAnimKey(HSD_FObj* fobj)
 u32 FObjLoadData(HSD_FObj* fobj)
 {
 	if ((unsigned)(fobj->ad - fobj->ad_head) >= fobj->length) {
-		return 6;
-	} else {
-		fobj->op_intrp = fobj->op;
-		if (fobj->nb_pack == 0) {
-			fobj->op      = parseOpCode(&fobj->ad);
-			fobj->nb_pack = parsePackInfo(&fobj->ad);
-		}
+		return FOBJ_END;
+	}
 
-		fobj->nb_pack -= 1;
+	fobj->op_intrp = fobj->op;
+	if (fobj->nb_pack == 0) {
+		fobj->op      = parseOpCode(fobj->ad);
+		fobj->nb_pack = parsePackInfo(&fobj->ad);
+	}
 
-		switch (fobj->op) {
-		case HSD_A_OP_CON:
-			return FObjAnimCON(fobj);
+	fobj->nb_pack -= 1;
 
-		case HSD_A_OP_LIN:
-			return FObjAnimLinear(fobj);
+	switch (fobj->op) {
+	case HSD_A_OP_CON:
+		return FObjLoadValue(fobj, 0x17F);
 
-		case HSD_A_OP_SPL0:
-			return FObjAnimSPL0(fobj);
+	case HSD_A_OP_LIN:
+		return FObjLoadValue(fobj, 0x193);
 
-		case HSD_A_OP_SPL:
-			return FObjAnimSPL(fobj);
+	case HSD_A_OP_SPL0:
+		return FObjAnimSPL0(fobj);
 
-		case HSD_A_OP_SLP:
-			return FObjAnimSLP(fobj);
+	case HSD_A_OP_SPL:
+		return FObjAnimSPL(fobj);
 
-		case HSD_A_OP_KEY:
-			return FObjAnimKey(fobj);
+	case HSD_A_OP_SLP:
+		return FObjAnimSLP(fobj);
 
-		default:
-			return 0;
-		}
+	case HSD_A_OP_KEY:
+		return FObjAnimKey(fobj);
+
+	default:
+		return FOBJ_STOPPED;
 	}
 }
 
@@ -425,7 +430,6 @@ static f32 FObjInterpolateSpline(HSD_FObj* fobj)
  */
 static inline void FObjUpdateAnim(HSD_FObj* fobj, void* obj, HSD_ObjUpdateFunc obj_update)
 {
-	f32 phi_f0;
 	HSD_ObjData fobjdata;
 
 	if (obj_update == NULL) {
@@ -433,24 +437,19 @@ static inline void FObjUpdateAnim(HSD_FObj* fobj, void* obj, HSD_ObjUpdateFunc o
 	}
 	switch (fobj->op_intrp) {
 	case HSD_A_OP_KEY:
-		if (fobj->flags & 0x80) {
+		if (fobj->flags & FOBJ_KEY_READY) {
 			fobjdata.fv = fobj->p0;
-			fobj->flags &= 0xFFFFFF7F;
+			fobj->flags &= ~FOBJ_KEY_READY;
 		} else {
 			return;
 		}
 		break;
 	case HSD_A_OP_CON:
-		if (fobj->time >= fobj->fterm) {
-			phi_f0 = fobj->p1;
-		} else {
-			phi_f0 = fobj->p0;
-		}
-		fobjdata.fv = phi_f0;
+		fobjdata.fv = fobj->time >= fobj->fterm ? fobj->p1 : fobj->p0;
 		break;
 	case HSD_A_OP_LIN:
-		if (fobj->flags & 0x20) {
-			fobj->flags = fobj->flags & 0xFFFFFFDF;
+		if (fobj->flags & FOBJ_LINEAR_SLOPE_DIRTY) {
+			fobj->flags &= ~FOBJ_LINEAR_SLOPE_DIRTY;
 			if (fobj->fterm != 0) {
 				fobj->d0 = (fobj->p1 - fobj->p0) / fobj->fterm;
 			} else {
@@ -485,46 +484,52 @@ void HSD_FObjInterpretAnim(HSD_FObj* fobj, void* obj, HSD_ObjUpdateFunc obj_upda
 	u32 state;
 
 	fterm = 0.0F;
-	state = fobj != NULL ? HSD_FObjGetState(fobj) : 0;
-	if (state != 0 && !(fobj->time += rate, (fobj->time < 0.0))) {
-		for (;;) {
-			switch (state) {
-			case 6: {
-				fobj->time += fterm;
-				FObjLaunchKeyData(fobj);
+	state = fobj != NULL ? HSD_FObjGetState(fobj) : FOBJ_STOPPED;
+	if (state == FOBJ_STOPPED) {
+		return;
+	}
+	fobj->time += rate;
+	if (fobj->time < 0.0) {
+		return;
+	}
+
+	for (;;) {
+		switch (state) {
+		case FOBJ_END: {
+			fobj->time += fterm;
+			FObjLaunchKeyData(fobj);
+			FObjUpdateAnim(fobj, obj, obj_update);
+			return;
+		}
+		case FOBJ_LOAD_DATA0:
+		case FOBJ_LOAD_DATA: {
+			state = FObjLoadData(fobj);
+			break;
+		}
+		case FOBJ_LOAD_WAIT: {
+			if ((fobj->flags & FOBJ_KEY_READY) != 0) {
 				FObjUpdateAnim(fobj, obj, obj_update);
-				return;
 			}
-			case 1:
-			case 2: {
-				state = FObjLoadData(fobj);
+			state = FObjLoadWait(fobj);
+			break;
+		}
+		case FOBJ_INTERPOLATE: {
+			if (fobj->fterm <= fobj->time) {
+				fterm = fobj->fterm;
+				fobj->time -= fobj->fterm;
+				HSD_FObjSetState(fobj, state = FOBJ_LOAD_WAIT);
 				break;
 			}
-			case 3: {
-				if ((fobj->flags & 0x80) != 0) {
-					FObjUpdateAnim(fobj, obj, obj_update);
-				}
-				state = FObjLoadWait(fobj);
-				break;
-			}
-			case 4: {
-				if (fobj->fterm <= fobj->time) {
-					fterm = fobj->fterm;
-					fobj->time -= fobj->fterm;
-					HSD_FObjSetState(fobj, state = 3);
-					break;
-				}
-				FObjUpdateAnim(fobj, obj, obj_update);
-				HSD_FObjSetState(fobj, 5);
-				return;
-			}
-			case 5: {
-				HSD_FObjSetState(fobj, state = 4);
-				break;
-			}
-			case 0:
-				return;
-			}
+			FObjUpdateAnim(fobj, obj, obj_update);
+			HSD_FObjSetState(fobj, FOBJ_RESUME);
+			return;
+		}
+		case FOBJ_RESUME: {
+			HSD_FObjSetState(fobj, state = FOBJ_INTERPOLATE);
+			break;
+		}
+		case FOBJ_STOPPED:
+			return;
 		}
 	}
 }
@@ -591,7 +596,16 @@ void HSD_FObjFree(HSD_FObj* fobj)
 u16 HSD_FObjGetFlags(HSD_FObj* fobj)
 {
 	if (fobj != NULL) {
-		return *(u16*)&fobj->length;
+		return fobj->length >> 16;
 	}
 	return 0;
+}
+
+/**
+ * @note Address: N/A
+ * @note Size: 0xC
+ */
+HSD_ObjAllocData* HSD_FObjGetAllocData(void)
+{
+	return &fobj_alloc_data;
 }

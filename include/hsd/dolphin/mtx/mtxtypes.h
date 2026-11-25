@@ -3,7 +3,7 @@
 
 #include "dolphin/types.h"
 
-typedef struct
+typedef struct Vec
 {
     f32 x, y, z;
 } Vec;

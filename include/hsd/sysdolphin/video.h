@@ -4,11 +4,10 @@
 #include <global.h>
 
 #include <dolphin/gx/gxtypes.h>
+#include <Dolphin/vi.h>
 #include <sysdolphin/forward.h>
 
 #define HSD_VI_XFB_MAX 3
-
-#define VI_DISPLAY_PIX_SZ 2
 
 typedef struct _HSD_VIStatus {
     GXRenderModeObj rmode;
@@ -30,19 +29,66 @@ typedef enum _HSD_RenderPass {
     HSD_RP_NUM
 } HSD_RenderPass;
 
-typedef void (*HSD_VIRetraceCallback)(u32);
+typedef VIRetraceCallback HSD_VIRetraceCallback;
 typedef void (*HSD_VIGXDrawDoneCallback)(int);
 
-void VIInit(void);
-void VIConfigure(GXRenderModeObj* rmode);
-void VISetBlack(bool black);
-void VIFlush(void);
-void VISetNextFrameBuffer(void* fb);
-void VIWaitForRetrace(void);
-void VISetPreRetraceCallback(HSD_VIRetraceCallback cb);
-void VISetPostRetraceCallback(HSD_VIRetraceCallback cb);
-u32 VIGetNextField(void);
-u32 VIGetTvFormat(void);
+typedef enum _HSD_VIXFBDrawDispStatus {
+    HSD_VI_XFB_NONE,
+    HSD_VI_XFB_NOUSE,
+    HSD_VI_XFB_FREE,
+    HSD_VI_XFB_DRAWING,
+    HSD_VI_XFB_WAITDONE,
+    HSD_VI_XFB_DRAWDONE,
+    HSD_VI_XFB_NEXT,
+    HSD_VI_XFB_DISPLAY,
+    HSD_VI_XFB_COPYEFB,
+    HSD_VI_XFB_TERMINATE
+} HSD_VIXFBDrawDispStatus;
+
+typedef enum _HSD_VIEFBDrawDispStatus {
+    HSD_VI_EFB_FREE,
+    HSD_VI_EFB_DRAWDONE,
+    HSD_VI_EFB_TERMINATE
+} HSD_VIEFBDrawDispStatus;
+
+typedef struct _HSD_VICurrent {
+    HSD_VIStatus vi;
+    u8 chg_flag;
+} HSD_VICurrent;
+
+typedef struct _HSD_VIXFB {
+    void* buffer;
+    HSD_VIXFBDrawDispStatus status;
+    HSD_VICurrent vi_all;
+} HSD_VIXFB;
+
+typedef struct _HSD_VIInfo {
+    HSD_VICurrent current;
+    HSD_VIXFB xfb[HSD_VI_XFB_MAX];
+
+    struct {
+        HSD_VIEFBDrawDispStatus status;
+        HSD_VICurrent vi_all;
+    } efb;
+
+    s32 nb_xfb;
+
+    HSD_VIRetraceCallback pre_cb;
+    HSD_VIRetraceCallback post_cb;
+
+    struct {
+        volatile s32 waiting;
+        s32 arg;
+        HSD_VIGXDrawDoneCallback cb;
+    } drawdone;
+
+    struct {
+        s32 frame_period;
+        s32 frame_renew;
+    } perf;
+} HSD_VIInfo;
+
+extern HSD_VIInfo HSD_VIData;
 
 HSD_VIRetraceCallback HSD_VISetUserPreRetraceCallback(HSD_VIRetraceCallback cb);
 HSD_VIRetraceCallback HSD_VISetUserPostRetraceCallback(HSD_VIRetraceCallback cb);

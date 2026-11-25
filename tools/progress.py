@@ -38,6 +38,7 @@ def update(wanted):
         raise ValueError("no discs in orig/")
     if versions.USA not in wanted:
         raise ValueError("the readme numbers come from usa, add --version GGTE01")
+    checked_source_hash = source_hash()
     results = check_versions.check(wanted, all_source=True)
     if set(results) != set(wanted) or not all(results.values()):
         raise ValueError("build failed, data.json left alone")
@@ -55,7 +56,9 @@ def update(wanted):
             "generated": int(report.stat().st_mtime),
             "units": units,
         })
-    payload = {"schema": 1, "source_hash": source_hash(),
+    if source_hash() != checked_source_hash:
+        raise ValueError("source changed during verification, data.json left alone")
+    payload = {"schema": 1, "source_hash": checked_source_hash,
                "default": versions.default_version() if versions.default_version() in wanted else wanted[0],
                "groups": treemap.GROUP_ORDER, "versions": data}
     SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)

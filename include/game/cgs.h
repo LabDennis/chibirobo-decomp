@@ -1,21 +1,20 @@
 #ifndef _GAME_CGS_H
 #define _GAME_CGS_H
 
+#include "Version.h"
+
 #include "game/hsd_cobj.h"
 #include "game/cprimitive.h"
 #include "game/cfont.h"
 extern "C" {
+#include <dolphin/gx/gx.h>
 #include <sysdolphin/tev.h>
 #include <sysdolphin/mobj.h>
 #include <sysdolphin/texp.h>
-
-// hsd's gx headers don't have these two, the tev stage setup needs them
-void GXSetNumTexGens(u8 nTexGens);
-void GXSetTexCoordGen2(u32 dst_coord, u32 func, u32 src_param, u32 mtx, u8 normalize, u32 pt_texmtx);
 }
 
 // the game's graphics state. class names are RTTI, layout from the constructor at
-// 0x8001B9B8. CBase derives from it, so every CGs call is on the game object lbl_8025C400.
+// 0x8001B9B8. CBase derives from it, so every CGs call is on the game object gGame.
 // the wii version splits the screen and channel parts out into cgs_scrn.cpp and cgs_chan.cpp
 
 class CCamera;
@@ -25,12 +24,23 @@ class CLight;
 
 class CGsScreen : public GXRenderModeObj {
 public:
+	CGsScreen() { mMode = -1; }
+
 	s32 mMode; // _3C, index into the mode table, -1 before the first set
+#if defined(VERSION_PAL)
+	f32 mHeightScale; // _40, europe only, scales by the xfb height
+	                  // _44 vtable
+#else
 	// _40 vtable
+#endif
 
 	virtual ~CGsScreen() { } // _08
 };
-typedef char CGsScreen_size_check[sizeof(CGsScreen) == 0x44 ? 1 : -1];
+#if defined(VERSION_PAL)
+STATIC_ASSERT(sizeof(CGsScreen) == 0x48);
+#else
+STATIC_ASSERT(sizeof(CGsScreen) == 0x44);
+#endif
 
 // CGsRenderMode::Init args
 struct GsBlendMode {
@@ -113,7 +123,7 @@ public:
 		}
 	}
 };
-typedef char CGsRenderMode_size_check[sizeof(CGsRenderMode) == 0x34 ? 1 : -1];
+STATIC_ASSERT(sizeof(CGsRenderMode) == 0x34);
 
 // CGsTevStage::Init args, in GXSetTevColorIn/GXSetTevColorOp order
 struct GsTevOrder {
@@ -179,7 +189,8 @@ public:
 		if (force || mTexGenDirty) {
 			HSD_StateInvalidate(HSD_STATE_TEV_REGISTER);
 			HSD_StateInvalidate(HSD_STATE_TEX_COORD_GEN);
-			GXSetTexCoordGen2(mTexCoord, mTexGenFunc, mTexGenSrc, mTexMtx, GX_FALSE, GX_PTIDENTITY);
+			GXSetTexCoordGen2(static_cast<GXTexCoordID>(mTexCoord), static_cast<GXTexGenType>(mTexGenFunc),
+			                  static_cast<GXTexGenSrc>(mTexGenSrc), mTexMtx, GX_FALSE, GX_PTIDENTITY);
 		}
 	}
 	void SetOrder(s32 coord, s32 map, s32 color)
@@ -211,7 +222,7 @@ public:
 		mTexGenDirty = TRUE;
 	}
 };
-typedef char CGsTevStage_size_check[sizeof(CGsTevStage) == 0x98 ? 1 : -1];
+STATIC_ASSERT(sizeof(CGsTevStage) == 0x98);
 
 // channel setup args, in HSD_Chan's order
 struct GsChanCtrl {
@@ -238,12 +249,12 @@ public:
 		}
 	}
 };
-typedef char CGsChannel_size_check[sizeof(CGsChannel) == 0x38 ? 1 : -1];
+STATIC_ASSERT(sizeof(CGsChannel) == 0x38);
 
 class CGs {
 public:
-	CGsScreen mScreen;             // _00
-	CCamera* mCamera;              // _44, made current by fn_8019997C
+	CGsScreen mScreen;             // _00, everything after it is 4 later in europe
+	CCamera* mCamera;              // _44, made current by BeginGsCamera
 	CLight* mLight;                // _48
 	CGsRenderMode mRenderMode;     // _4C
 	CGsTevStage mTevStages[2];     // _80
@@ -251,7 +262,7 @@ public:
 	CGsRenderMode* mCurRenderMode; // _290, mRenderMode unless someone set their own
 	CGsTevStage* mCurTevStage;     // _294
 	CGsChannel* mCurChannel;       // _298
-	BOOL _29C;                     // _29C, compared signed
+	BOOL mBillboardEnabled;        // _29C, compared signed
 	CFont mFont;                   // _2A0
 	CTexObj mTex;                  // _3E0
 	CSprite mSprite;               // _4E0
@@ -267,14 +278,103 @@ public:
 	CSphere mSphere;               // _1368
 	CCylinder mCylinder;           // _14D0
 	CTorus mTorus;                 // _1638
-	s32 _17A0;                     // _17A0, 5 after Init
-	s32 _17A4;                     // _17A4, Init's argument
-	f32 _17A8;                     // _17A8
-	f32 _17AC;                     // _17AC
-	// _17B0 vtable
+	s32 mRotOrder;                 // _17A0, 5 after Init
+#if defined(VERSION_JP)
+	// _17A4 vtable, japan has no sjis switch or glyph widths
+#else
+	s32 mUseShiftJis;          // _17A4, Init's argument
+	f32 mShiftJisWidthScale;   // _17A8
+	f32 mSingleByteWidthScale; // _17AC
+	                           // _17B0 vtable, _17B4 in europe
+#endif
 
-	virtual ~CGs(); // _08
+	CGs();
+	virtual ~CGs() { } // _08
+
+#if !defined(VERSION_JP)
+	Vec mTextRot; // _17B4, _17B8 in europe, the text rotation, cleared by the light setup
+#endif
 };
-typedef char CGs_size_check[sizeof(CGs) == 0x17B4 ? 1 : -1];
+#if defined(VERSION_JP)
+STATIC_ASSERT(sizeof(CGs) == 0x17A8);
+#elif defined(VERSION_PAL)
+STATIC_ASSERT(sizeof(CGs) == 0x17C4);
+#else
+STATIC_ASSERT(sizeof(CGs) == 0x17C0);
+#endif
+
+// game/cgame.h, the game base holds a CGs first
+class CBase;
+
+extern "C" {
+// text, plain and printf style
+void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h);
+void DrawGsStrokeTextFormat(CGs* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...);
+void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height);
+void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
+void DrawGsProportionalTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
+// text widths
+f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size);
+f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size);
+
+// shapes, sprites and vertex lists
+void SetGsFixedGlyphWidthScale(CGs* gs, f32 width);
+void DrawGsCylinderWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 sides);
+void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
+void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor);
+void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
+void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
+void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
+                        f32 ry, f32 rz);
+void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
+void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
+void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
+                      f32 x3, f32 y3, f32 z3, u32 color3);
+void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx, u16 count);
+void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32* color, u16 count);
+void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count);
+void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count);
+void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count);
+void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1);
+
+// sets the lighting channel mode and color
+s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba);
+void EndGsCamera(CGs* gs);
+MtxPtr BeginGsCamera(CBase* gs);
+void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);
+void ConfigureGsChannel(CGs* gs, CGsChannel* ch, s32 chan, GsChanCtrl ctrl, GXColor amb, GXColor mat);
+void ConfigureGsTevStage(CGs* gs, CGsTevStage* stage, u32 id, GsTevOrder order, GsTevOp colorOp, GsTevIn colorIn, GsTevOp alphaOp,
+                         GsTevIn alphaIn);
+void ConfigureGsRenderMode(CGs* gs, CGsRenderMode* mode, u8 colorUpdate, u8 alphaUpdate, GsBlendMode blend, GsAlphaCompare compare,
+                           GsDstAlpha dstAlpha, GsZMode zmode, u8 beforeTex, u8 dither, s32 cull, GsLineWidth line, GsLineWidth point);
+#if defined(VERSION_JP)
+void InitializeGsRenderDefaultsJP(CGs* gs);
+#else
+void InitializeGsRenderDefaults(CGs* gs, s32 arg);
+#endif
+void SetGsScreenModeAndRenderDefaults(CGs* gs, s32 mode, u16 hor, u16 ver, s32 arg);
+
+// the channel, tev stage, render mode and screen setters
+void ApplyGsChannel(CGsChannel* chan, BOOL force);
+void ApplyGsTevStage(CGsTevStage* stage, BOOL force);
+void SetGsTevMode(CGsTevStage* stage, s32 mode);
+void SetGsTevOrder(CGsTevStage* stage, s32 coord, s32 map, s32 color);
+void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTevOrder order, GsTevOp colorOp, GsTevIn colorIn, GsTevOp alphaOp,
+                                    GsTevIn alphaIn);
+void ApplyGsRenderMode(CGsRenderMode* mode, BOOL force);
+void SetGsLineWidth(CGsRenderMode* mode, u8 width, s32 texOffs);
+void SetGsCullMode(CGsRenderMode* mode, s32 cull);
+void SetGsDepthCompareBeforeTexture(CGsRenderMode* mode, u8 beforeTex);
+void SetGsDestinationAlpha(CGsRenderMode* mode, u8 enable, u8 value);
+void SetGsDepthMode(CGsRenderMode* mode, u8 enable, s32 func, u8 update);
+void SetGsAlphaCompare(CGsRenderMode* mode, s32 comp0, s32 ref0, s32 op, s32 comp1, s32 ref1);
+void SetGsBlendMode(CGsRenderMode* mode, s32 type, s32 src, s32 dst, s32 op);
+void SetGsAlphaUpdate(CGsRenderMode* mode, u8 enable);
+void SetGsColorUpdate(CGsRenderMode* mode, u8 enable);
+void InitializeGsRenderModeDescriptor(CGsRenderMode* mode, u8 colorUpdate, u8 alphaUpdate, GsBlendMode blend, GsAlphaCompare compare,
+                                      GsDstAlpha dstAlpha, GsZMode zmode, u8 beforeTex, u8 dither, s32 cull, GsLineWidth line,
+                                      GsLineWidth point);
+void ConfigureGsScreenMode(CGsScreen* screen, s32 mode, u16 hor, u16 ver);
+}
 
 #endif

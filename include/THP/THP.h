@@ -1,12 +1,8 @@
 #ifndef THP_H
 #define THP_H
 
-#include "Dolphin/os.h"
 #include "types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <sdk/dolphin/thp_api.h>
 
 typedef u8 THPSample;
 typedef s16 THPCoeff;
@@ -47,7 +43,7 @@ typedef struct _THPFileInfo {
 	u8* dLC[3];
 } THPFileInfo;
 
-typedef struct {
+typedef struct THPAudioRecordHeader {
 	u32 offsetNextChannel;
 	u32 sampleSize;
 	s16 lCoef[8][2];
@@ -58,7 +54,7 @@ typedef struct {
 	s16 rYn2;
 } THPAudioRecordHeader;
 
-typedef struct {
+typedef struct THPAudioDecodeInfo {
 	u8* encodeData;
 	u32 offsetNibbles;
 	u8 predictor;
@@ -67,40 +63,4 @@ typedef struct {
 	s16 yn2;
 } THPAudioDecodeInfo;
 
-s32 __THPAudioGetNewSample(THPAudioDecodeInfo*);
-void __THPAudioInitialize(THPAudioDecodeInfo*, u8*);
-
-static void __THPSetupBuffers(void);
-static u8 __THPReadFrameHeader(void);
-static u8 __THPReadScaneHeader(void);
-static u8 __THPReadQuantizationTable(void);
-static u8 __THPReadHuffmanTableSpecification(void);
-static void __THPHuffGenerateSizeTable(void);
-static void __THPHuffGenerateCodeTable(void);
-static void __THPHuffGenerateDecoderTables(u8 tabIndex);
-static void __THPRestartDefinition(void);
-static void __THPPrepBitStream(void);
-static void __THPDecompressYUV(void*, void*, void*);
-static void __THPGQRRestore(void);
-static void __THPDecompressiMCURow512x448(void);
-static void __THPDecompressiMCURow640x480(void);
-static void __THPDecompressiMCURowNxN(void);
-static void __THPInverseDCTNoYPos(THPCoeff*, u32);
-static void __THPHuffDecodeDCTCompY(THPFileInfo*, THPCoeff*);
-static void __THPHuffDecodeDCTCompU(THPFileInfo*, THPCoeff*);
-static void __THPHuffDecodeDCTCompV(THPFileInfo*, THPCoeff*);
-
-static const u8 __THPJpegNaturalOrder[80]
-    = { 0,  1,  8,  16, 9,  2,  3,  10, 17, 24, 32, 25, 18, 11, 4,  5,  12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,
-	    6,  7,  14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31,
-	    39, 46, 53, 60, 61, 54, 47, 55, 62, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63 };
-
-static const f64 __THPAANScaleFactor[8] = {
-	1.0f, 1.387039845f, 1.306562965f, 1.175875602f, 1.0f, 0.785694958f, 0.541196100f, 0.275899379f,
-};
-
-#ifdef __cplusplus
-}
 #endif
-
-#endif // THP_H

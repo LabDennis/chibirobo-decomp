@@ -165,7 +165,7 @@ const DATA = /*__DATA__*/null;
 // byte buckets for the bars, most done first. colors walk the same ramp as the map
 const BUCKET = {
   linked: { label: "linked", color: "var(--linked)", tip: "in units that link from our source" },
-  matched: { label: "matched", color: "var(--r2)", tip: "in functions that match exactly, unit not linked yet" },
+  matched: { label: "matched", color: "var(--r2)", tip: "matched by objdiff in units awaiting source linkage" },
   fuzzy: { label: "fuzzy", color: "var(--r1)", tip: "close but not exact, weighted by match %" },
   named: { label: "named", color: "var(--r0)", tip: "in named units, nothing matched yet" },
   auto: { label: "unnamed", color: "var(--unnamed)", tip: "in auto split chunks nobody has mapped" },
@@ -279,7 +279,7 @@ function renderHeader() {
   document.getElementById("units-fact").innerHTML =
     `<b>${fmt(linkedN)}</b> of ${fmt(us.length)} link from source <span class="meta">${pct(linkedN, us.length)}</span>`;
   document.getElementById("fns-fact").innerHTML =
-    `<b>${fmt(fnM)}</b> of ${fmt(total(us, "fns"))} match, <b>${fmt(fnN)}</b> of ${fmt(fnAll)} have names`;
+    `<b>${fmt(fnM)}</b> of ${fmt(total(us, "fns"))} match in objdiff, <b>${fmt(fnN)}</b> of ${fmt(fnAll)} have names`;
   document.getElementById("code-size").textContent = size(code);
   document.getElementById("data-size").textContent = size(data);
   bars("code-bar", "code-stats", bc, code, ["linked", "matched", "fuzzy", "named", "auto"]);
@@ -347,7 +347,7 @@ function render() {
 function unitState(u) {
   if (u.status === "auto") return "Not split into a source file yet";
   if (u.status === "linked") return "Linked";
-  if (u.code && u.matched_code >= u.code) return "Fully matched, not linked yet";
+  if (u.code && u.matched_code >= u.code) return "All code matches in objdiff";
   if (!u.fuzzy) return "Not started";
   return `${fnPct(u.fuzzy)} match`;
 }
@@ -362,7 +362,7 @@ function renderUnit(u) {
   const rel = isRel(u) ? `, ${esc(u.module)}.rel` : "";
   head.innerHTML =
     `<h2><button class="linkish" id="back">Units</button> <span class="crumb">/</span> ${esc(u.name)}</h2>` +
-    `<div class="meta">${esc(unitState(u))}. ${fmt(done)} of ${fmt(fns.length)} functions match, ${size(u.code)} code, ${esc(u.group)}${rel}</div>`;
+    `<div class="meta">${esc(unitState(u))}. ${fmt(done)} of ${fmt(fns.length)} functions match in objdiff, ${size(u.code)} code, ${esc(u.group)}${rel}</div>`;
   document.getElementById("back").onclick = closeUnit;
 
   const map = document.getElementById("map");
@@ -417,7 +417,7 @@ function unitCard(u) {
     const text = u.sections.find(s => s[0] === ".text");
     if (text) rows.push(["Address", `${addrOf(u, text[1])} to ${addrOf(u, text[1] + text[2])}`]);
   } else {
-    if (u.fns) rows.push(["Functions", `${fmt(u.fns_matched)} of ${fmt(u.fns)} match`]);
+    if (u.fns) rows.push(["Functions", `${fmt(u.fns_matched)} of ${fmt(u.fns)} match in objdiff`]);
     if (fns) rows.push(["Names", `${fmt(u.fn_named)} of ${fmt(fns)} named`]);
   }
   rows.push(["Library", esc(u.group) + (isRel(u) ? `, ${esc(u.module)}.rel` : "")]);
@@ -431,7 +431,7 @@ function unitCard(u) {
 }
 
 function fnCard(f) {
-  const state = f.p >= 100 ? "Matched" : f.p ? `${fnPct(f.p)} match` : "Not started";
+  const state = f.p >= 100 ? "Matched in objdiff" : f.p ? `${fnPct(f.p)} match` : "Not started";
   return `<div class="t">${esc(f.name)}</div>` +
     `<div class="bar">${f.p ? `<div style="width:${f.p}%;background:${f.color}"></div>` : ""}</div>` +
     `<div class="st"><b>${state}</b><span class="meta">${size(f.sz)}</span></div>` +

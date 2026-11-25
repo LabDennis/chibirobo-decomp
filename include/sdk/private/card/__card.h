@@ -21,7 +21,7 @@ s32 __CARDSeek(CARDFileInfo* fileInfo, s32 length, s32 offset, CARDControl** pca
 
 // CARDRdwr
 s32 __CARDRead(s32 chan, u32 addr, s32 length, void* dst, CARDCallback callback);
-s32 __CARDWrite(s32 chan, u32 addr, s32 length, void* dst, CARDCallback callback);
+s32 __CARDWrite(s32 chan, u32 addr, s32 length, void* src, CARDCallback callback);
 
 // CARDRaw
 s32 __CARDRawReadAsync(s32 chan, void* buf, s32 length, s32 offset, CARDCallback callback);

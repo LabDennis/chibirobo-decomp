@@ -11,14 +11,6 @@
 
 extern int tolower(int c);
 
-typedef struct ARCHeader {
-	u32 magic;      // _00
-	s32 fstStart;   // _04
-	s32 fstSize;    // _08
-	s32 fileStart;  // _0C
-	s32 reserve[4]; // _10
-} ARCHeader;
-
 typedef struct FSTEntry {
 	u32 isDirAndStringOff; // _00
 	u32 parentOrPosition;  // _04
@@ -104,7 +96,6 @@ s32 ARCConvertPathToEntrynum(ARCHandle* handle, const char* pathPtr)
 	u32 length;
 	u32 dirLookAt;
 	u32 i;
-	const char* origPathPtr = pathPtr; // never read, the dvd version prints it on bad 8.3 names
 	FSTEntry* FSTEntries;
 
 	dirLookAt  = handle->currDir;

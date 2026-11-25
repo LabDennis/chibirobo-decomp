@@ -99,6 +99,27 @@ inline f128 fabsl(f128 x)
 };
 #endif // ifdef __cplusplus
 
+/* MSL's inline square root returns the library NaN for invalid inputs. */
+static inline f32 msl_sqrtf(f32 x)
+{
+	static const f64 _half  = 0.5;
+	static const f64 _three = 3.0;
+
+	if (x > 0.0F) {
+		f64 dx    = x;
+		f64 guess = __frsqrte(dx);
+		guess     = _half * guess * (_three - guess * guess * dx);
+		guess     = _half * guess * (_three - guess * guess * dx);
+		guess     = _half * guess * (_three - guess * guess * dx);
+		return (f32)(dx * guess);
+	} else if (x < 0.0) {
+		return NAN;
+	} else if (__fpclassifyf(x) == FP_NAN) {
+		return NAN;
+	}
+	return x;
+}
+
 static inline f32 dolsqrtf(f32 x)
 {
 	static const f64 _half  = .5;

@@ -1216,24 +1216,6 @@ static void* __StringWrite(void* pCtrl, const char* pBuffer, size_t char_num)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0xE8
- */
-void printf(const char* format, ...)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xE0
- */
-int fprintf(FILE* file, const char* format, ...)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x801569E0
  * @note Size: 0x98
  */
@@ -1249,15 +1231,6 @@ int vprintf(const char* pFormat, va_list arg)
 	ret = __pformatter(&__FileWrite, (void*)stdout, pFormat, arg);
 	__end_critical_region(files_access);
 	return ret;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8C
- */
-void vfprintf(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**

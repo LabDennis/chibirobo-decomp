@@ -65,6 +65,11 @@ then publishes the interactive page and README badges to
 source, config, or tools change on the default branch, and can also be run from
 the Actions tab. Failed builds leave the last published page in place.
 
+Progress and baseline reports use objdiff with relocation target values checked
+and exclude local symbol mappings.
+Linked progress uses code bytes from units built from source. The workflow
+verifies each build against retail hashes before publishing.
+
 The runner needs `CHIBIROBO_ORIG` set to its local `orig/` folder. Only the
 progress report goes to GitHub; the discs stay on the runner. In the repo’s
 Pages settings, the publishing source should be **GitHub Actions**.
@@ -72,6 +77,15 @@ Pages settings, the publishing source should be **GitHub Actions**.
 ## Diffing
 
 Once the first build succeeds, open [objdiff](https://github.com/encounter/objdiff/releases), set its project directory to your clone and select a unit. objdiff reads the generated `objdiff.json` and rebuilds automatically when source, header or config files change.
+
+Write reconstructed routines in C or C++. Assembly can be kept in comments as a
+reference.
+
+Ninja reads the checked-in split and symbol files without rewriting them. To regenerate them deliberately, run DTK directly for the version you are editing.
+
+```sh
+build/tools/dtk dol split config/GGTE01/config.yml build/GGTE01
+```
 
 Before opening a pull request, compile all source:
 

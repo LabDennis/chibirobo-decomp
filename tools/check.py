@@ -54,7 +54,11 @@ def source_files():
 
 def check_build():
     print("== build")
-    results = check_versions.check(all_source=True)
+    try:
+        results = check_versions.check(all_source=True)
+    except (OSError, ValueError) as error:
+        print(error)
+        return False
     return bool(results) and all(results.values())
 
 

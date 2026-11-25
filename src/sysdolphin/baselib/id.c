@@ -3,6 +3,8 @@
 
 #include <dolphin/types.h>
 
+#include <string.h>
+
 HSD_ObjAllocData hsd_iddata;
 HSD_IDTable default_table;
 
@@ -16,34 +18,35 @@ void HSD_IDInitAllocData(void)
 }
 
 /**
+ * @note Address: N/A
+ * @note Size: 0xC
+ */
+HSD_ObjAllocData* HSD_IDGetAllocData(void)
+{
+    return &hsd_iddata;
+}
+
+/**
  * @note Address: 0x801D2CB8
  * @note Size: 0x30
  */
 void HSD_IDSetup(void)
 {
-    memset(&default_table, 0, sizeof(HSD_IDTable));
+    memset(&default_table, 0, sizeof(default_table));
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline u32 hash(u32 id)
+static inline u32 IDHash(u32 id)
 {
-    return id % 0x65;
+    return id % ARRAY_SIZE(default_table.table);
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline IDEntry* IDEntryAlloc()
+static inline IDEntry* IDEntryAlloc(void)
 {
     IDEntry* entry;
 
     entry = HSD_ObjAlloc(&hsd_iddata);
     assert_line(67, entry);
-    memset(entry, 0, sizeof(IDEntry));
+    memset(entry, 0, sizeof(*entry));
 
     return entry;
 }
@@ -60,10 +63,11 @@ void HSD_IDInsertToTable(HSD_IDTable* table, u32 id, void* data)
         table = &default_table;
     }
 
-    entry = table->table[hash(id)];
+    entry = table->table[IDHash(id)];
     while (entry != NULL) {
-        if (entry->id == id)
+        if (entry->id == id) {
             break;
+        }
         entry = entry->next;
     }
 
@@ -74,16 +78,13 @@ void HSD_IDInsertToTable(HSD_IDTable* table, u32 id, void* data)
         entry = IDEntryAlloc();
         entry->id = id;
         entry->data = data;
-        entry->next = table->table[hash(id)];
-        table->table[hash(id)] = entry;
+        entry->next = table->table[IDHash(id)];
+        table->table[IDHash(id)] = entry;
     }
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline void IDEntryFree(IDEntry* entry) {
+static inline void IDEntryFree(IDEntry* entry)
+{
     HSD_ObjFree(&hsd_iddata, entry);
 }
 
@@ -91,7 +92,8 @@ inline void IDEntryFree(IDEntry* entry) {
  * @note Address: 0x801D2DD4
  * @note Size: 0xAC
  */
-void HSD_IDRemoveByIDFromTable(HSD_IDTable* table, u32 id) {
+void HSD_IDRemoveByIDFromTable(HSD_IDTable* table, u32 id)
+{
     IDEntry* entry;
     IDEntry* prev;
 
@@ -100,12 +102,12 @@ void HSD_IDRemoveByIDFromTable(HSD_IDTable* table, u32 id) {
     }
 
     prev = NULL;
-    for (entry = table->table[hash(id)]; entry != NULL; entry = entry->next) {
+    for (entry = table->table[IDHash(id)]; entry != NULL; entry = entry->next) {
         if (entry->id == id) {
             if (prev != NULL) {
                 prev->next = entry->next;
             } else {
-                table->table[hash(id)] = entry->next;
+                table->table[IDHash(id)] = entry->next;
             }
             IDEntryFree(entry);
             return;
@@ -126,7 +128,7 @@ void* HSD_IDGetDataFromTable(HSD_IDTable* table, u32 id, s32* success)
         table = &default_table;
     }
 
-    entry = table->table[hash(id)];
+    entry = table->table[IDHash(id)];
     while (entry != NULL) {
         if (entry->id == id) {
             if (success != NULL) {
@@ -149,5 +151,5 @@ void* HSD_IDGetDataFromTable(HSD_IDTable* table, u32 id, s32* success)
  */
 void _HSD_IDForgetMemory(void)
 {
-    memset(&default_table, 0, sizeof(HSD_IDTable));
+    HSD_IDSetup();
 }

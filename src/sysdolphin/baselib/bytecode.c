@@ -1,5 +1,8 @@
 #include <global.h>
 #include <math.h>
+#include <string.h>
+#include <sysdolphin/bytecode.h>
+#include <sysdolphin/gobjproc.h>
 #include <sysdolphin/list.h>
 #include <sysdolphin/random.h>
 
@@ -8,29 +11,75 @@
 
 #define HSD_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("bytecode.c", line, #cond))
 
-typedef union {
-	void* p;
-	int i;
-	f32 f;
-} ByteCodeVal;
+enum {
+	BC_NOP = 0x00,
+	BC_RETURN = 0x01,
+	BC_PUSH_ARGUMENT = 0x02,
+	BC_JUMP_IF_TRUE = 0x03,
+	BC_JUMP = 0x04,
+	BC_DROP = 0x05,
+	BC_PUSH_LITERAL = 0x06,
+	BC_FLOAT_TO_INT = 0x07,
+	BC_INT_TO_FLOAT = 0x08,
+	BC_NEGATE_FLOAT = 0x09,
+	BC_NEGATE_INT = 0x0A,
+	BC_RANDOM_BIT = 0x0B,
+	BC_RANDOM_FLOAT = 0x0C,
+	BC_SIN = 0x0D,
+	BC_COS = 0x0E,
+	BC_TAN = 0x0F,
+	BC_ASIN = 0x10,
+	BC_ACOS = 0x11,
+	BC_ATAN = 0x12,
+	BC_LOG = 0x13,
+	BC_EXP = 0x14,
+	BC_ABS_FLOAT = 0x15,
+	BC_SQRT = 0x16,
+	BC_ADD_FLOAT = 0x17,
+	BC_SUB_FLOAT = 0x18,
+	BC_MUL_FLOAT = 0x19,
+	BC_DIV_FLOAT = 0x1A,
+	BC_MOD_FLOAT = 0x1B,
+	BC_ADD_INT = 0x1C,
+	BC_SUB_INT = 0x1D,
+	BC_MUL_INT = 0x1E,
+	BC_DIV_INT = 0x1F,
+	BC_MOD_INT = 0x20,
+	BC_POW = 0x21,
+	BC_MIN_FLOAT = 0x22,
+	BC_MAX_FLOAT = 0x23,
+	BC_MIN_INT = 0x24,
+	BC_MAX_INT = 0x25,
+	BC_ATAN2 = 0x26,
+	BC_RANDOM_INT_RANGE = 0x27,
+	BC_ABS_INT = 0x28,
+	BC_LESS_INT = 0x29,
+	BC_GREATER_INT = 0x2A,
+	BC_LESS_EQUAL_INT = 0x2B,
+	BC_GREATER_EQUAL_INT = 0x2C,
+	BC_EQUAL_INT = 0x2D,
+	BC_NOT_EQUAL_INT = 0x2E,
+	BC_LOGICAL_AND = 0x2F,
+	BC_LOGICAL_OR = 0x30,
+	BC_LOGICAL_NOT = 0x31,
+	BC_LOGICAL_XOR = 0x32,
+	BC_LESS_FLOAT = 0x33,
+	BC_GREATER_FLOAT = 0x34,
+	BC_LESS_EQUAL_FLOAT = 0x35,
+	BC_GREATER_EQUAL_FLOAT = 0x36,
+	BC_EQUAL_FLOAT = 0x37,
+	BC_NOT_EQUAL_FLOAT = 0x38,
+	BC_BITWISE_AND = 0x39,
+	BC_BITWISE_OR = 0x3A,
+	BC_BITWISE_XOR = 0x3B,
+	BC_COPY_STACK_VALUE = 0x3C,
+	BC_UNIMPLEMENTED = 0xFF,
+};
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 bytecode_sqrtf(f32 x)
+static inline void RequireBinaryOperands(HSD_SList* stack, u32 line)
 {
-	volatile f32 y;
-
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
+	HSD_ASSERT(line, stack);
+	HSD_ASSERT(line, stack->next);
 }
 
 /**
@@ -53,48 +102,51 @@ f32 HSD_ByteCodeEval(u8* bytecode, f32* args, s32 nb_args)
 {
 	HSD_SList* stack;
 	int i;
-	unsigned char last_command;
-	int operand_count;
+	u8 opcode;
+	int operand_bytes;
 	unsigned int operand;
 	HSD_SList* list;
-	float fv, f0, f1;
-	int d0, d1;
+	float top_float, next_float;
+	int next_int, top_int;
 
-	stack         = 0;
-	operand_count = 0;
+	stack = NULL;
+	operand_bytes = 0;
 
-	if (bytecode == 0) {
+	if (bytecode == NULL) {
 		return 0.0F;
 	}
 
 	for (;;) {
-		if (operand_count > 0) {
-			operand_count--;
-			operand = ((operand << 8) & ~0xffU) | (*bytecode & 0xffU);
-			bytecode++;
+		if (operand_bytes > 0) {
+			operand_bytes--;
+			operand = (operand << 8) | *bytecode++;
 
-			if (operand_count != 0) {
+			if (operand_bytes != 0) {
 				continue;
 			}
 
-			switch (last_command) {
-			case 2:
+			switch (opcode) {
+			case BC_PUSH_ARGUMENT: {
+				u32 word;
 				HSD_ASSERT(281, operand < nb_args);
-				stack = HSD_SListPrepend(stack, (void*)((ByteCodeVal*)&args[operand])->i);
+				// Copy the bit pattern without converting the value.
+				memcpy(&word, &args[operand], sizeof(word));
+				stack = HSD_SListPrepend(stack, (void*)word);
 				break;
-			case 5:
+			}
+			case BC_DROP:
 				for (i = 0; i < operand; i++) {
 					stack = HSD_SListRemove(stack);
 				}
 				break;
-			case 0x3C: {
+			case BC_COPY_STACK_VALUE: {
 				list = stack;
 				i    = 0;
-				while (list != 0 && i < operand) {
+				while (list != NULL && i < operand) {
 					list = list->next;
 					i++;
 				}
-				if (list == 0) {
+				if (list == NULL) {
 					OSReport("specified stack doesn't exist (%d).\n", operand);
 					HSD_Panic("bytecode.c", 299, "");
 				} else {
@@ -102,20 +154,20 @@ f32 HSD_ByteCodeEval(u8* bytecode, f32* args, s32 nb_args)
 				}
 				break;
 			}
-			case 3:
+			case BC_JUMP_IF_TRUE:
 				HSD_ASSERT(307, stack);
-				if ((int)stack->data != 0) {
+				if (stack->int_value != 0) {
 					bytecode += operand;
 				}
 				stack = HSD_SListRemove(stack);
 				break;
-			case 4:
+			case BC_JUMP:
 				bytecode += operand;
 				break;
-			case 6:
+			case BC_PUSH_LITERAL:
 				stack = HSD_SListPrepend(stack, (void*)operand);
 				break;
-			case 0xFF:
+			case BC_UNIMPLEMENTED:
 				HSD_Panic("bytecode.c", 323, "not yet implemented.\n");
 				/* fallthrough */
 			default:
@@ -125,420 +177,347 @@ f32 HSD_ByteCodeEval(u8* bytecode, f32* args, s32 nb_args)
 			continue;
 		}
 
-		last_command = *bytecode++;
-		switch (last_command) {
-		case 0:
+		opcode = *bytecode++;
+		switch (opcode) {
+		case BC_NOP:
 			break;
-		case 1:
+		case BC_RETURN:
 			HSD_ASSERT(339, stack);
-			f0 = ((ByteCodeVal*)&stack->data)->f;
-			while (stack != 0) {
+			top_float = stack->float_value;
+			while (stack != NULL) {
 				stack = HSD_SListRemove(stack);
 			}
-			return f0;
-		case 5:
-		case 0x3C:
-		case 0xFF:
-			operand_count = 1;
+			return top_float;
+		case BC_DROP:
+		case BC_COPY_STACK_VALUE:
+		case BC_UNIMPLEMENTED:
+			operand_bytes = 1;
 			operand       = 0;
 			break;
-		case 2:
-		case 3:
-		case 4:
-			operand_count = 2;
+		case BC_PUSH_ARGUMENT:
+		case BC_JUMP_IF_TRUE:
+		case BC_JUMP:
+			operand_bytes = 2;
 			operand       = 0;
 			break;
-		case 6:
-			operand_count = 4;
+		case BC_PUSH_LITERAL:
+			operand_bytes = 4;
 			operand       = 0;
 			break;
-		case 7:
+		case BC_FLOAT_TO_INT:
 			HSD_ASSERT(376, stack);
 			{
-				((ByteCodeVal*)&stack->data)->i = (int)((ByteCodeVal*)&stack->data)->f;
+				stack->int_value = (int)stack->float_value;
 			}
 			break;
-		case 8:
+		case BC_INT_TO_FLOAT:
 			HSD_ASSERT(381, stack);
-			{
-				fv          = (float)((ByteCodeVal*)&stack->data)->i;
-				stack->data = *(void**)&fv;
-			}
+			stack->float_value = (float)stack->int_value;
 			break;
-		case 9:
+		case BC_NEGATE_FLOAT:
 			HSD_ASSERT(387, stack);
-			fv          = -(((ByteCodeVal*)&stack->data)->f);
-			stack->data = *(void**)&fv;
+			stack->float_value = -stack->float_value;
 			break;
-		case 0x0A:
+		case BC_NEGATE_INT:
 			HSD_ASSERT(393, stack);
-			((ByteCodeVal*)&stack->data)->i = -((ByteCodeVal*)&stack->data)->i;
+			stack->int_value = -stack->int_value;
 			break;
-		case 0x0B:
+		case BC_RANDOM_BIT:
 			HSD_ASSERT(399, stack);
-			((ByteCodeVal*)&stack->data)->i = HSD_Randi(2);
+			stack->int_value = HSD_Randi(2);
 			break;
-		case 0x0C:
+		case BC_RANDOM_FLOAT:
 			HSD_ASSERT(405, stack);
-			fv          = HSD_Randf();
-			stack->data = *(void**)&fv;
+			stack->float_value = HSD_Randf();
 			break;
-		case 0x0D:
+		case BC_SIN:
 			HSD_ASSERT(411, stack);
-			fv          = (float)sin((float)(DEG_TO_RAD * (double)((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)sin((float)(DEG_TO_RAD * (double)stack->float_value));
 			break;
-		case 0x0E:
+		case BC_COS:
 			HSD_ASSERT(417, stack);
-			fv          = (float)cos((float)(DEG_TO_RAD * (double)((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)cos((float)(DEG_TO_RAD * (double)stack->float_value));
 			break;
-		case 0x0F:
+		case BC_TAN:
 			HSD_ASSERT(423, stack);
-			fv          = (float)tan((float)(DEG_TO_RAD * (double)((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)tan((float)(DEG_TO_RAD * (double)stack->float_value));
 			break;
-		case 0x10:
+		case BC_ASIN:
 			HSD_ASSERT(429, stack);
-			fv          = (float)(RAD_TO_DEG * (float)asin(((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)(RAD_TO_DEG * (float)asin(stack->float_value));
 			break;
-		case 0x11:
+		case BC_ACOS:
 			HSD_ASSERT(435, stack);
-			fv          = (float)(RAD_TO_DEG * (float)acos(((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)(RAD_TO_DEG * (float)acos(stack->float_value));
 			break;
-		case 0x12:
+		case BC_ATAN:
 			HSD_ASSERT(441, stack);
-			fv          = (float)(RAD_TO_DEG * (float)atan(((ByteCodeVal*)&stack->data)->f));
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)(RAD_TO_DEG * (float)atan(stack->float_value));
 			break;
-		case 0x13:
+		case BC_LOG:
 			HSD_ASSERT(447, stack);
-			fv          = (float)log(((ByteCodeVal*)&stack->data)->f);
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)log(stack->float_value);
 			break;
-		case 0x14:
+		case BC_EXP:
 			HSD_ASSERT(453, stack);
-			fv          = (float)exp(((ByteCodeVal*)&stack->data)->f);
-			stack->data = *(void**)&fv;
+			stack->float_value = (float)exp(stack->float_value);
 			break;
-		case 0x15:
+		case BC_ABS_FLOAT:
 			HSD_ASSERT(459, stack);
-			if (((ByteCodeVal*)&stack->data)->f < 0.0F) {
-				fv          = -(((ByteCodeVal*)&stack->data)->f);
-				stack->data = *(void**)&fv;
+			if (stack->float_value < 0.0F) {
+				stack->float_value = -stack->float_value;
 			}
 			break;
-		case 0x28:
+		case BC_ABS_INT:
 			HSD_ASSERT(467, stack);
 			{
-				d0 = ((ByteCodeVal*)&stack->data)->i;
-				if (d0 < 0) {
-					((ByteCodeVal*)&stack->data)->i = -d0;
+				next_int = stack->int_value;
+				if (next_int < 0) {
+					stack->int_value = -next_int;
 				}
 			}
 			break;
-		case 0x16:
+		case BC_SQRT:
 			HSD_ASSERT(474, stack);
-			fv          = bytecode_sqrtf(((ByteCodeVal*)&stack->data)->f);
-			stack->data = *(void**)&fv;
+			stack->float_value = dolsqrtf(stack->float_value);
 			break;
-		case 0x31:
+		case BC_LOGICAL_NOT:
 			HSD_ASSERT(480, stack);
-			stack->data = (void*)!(int)stack->data;
+			stack->int_value = !stack->int_value;
 			break;
-		case 0x17:
-			HSD_ASSERT(501, stack);
-			HSD_ASSERT(501, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			fv          = ((ByteCodeVal*)&stack->data)->f + f0;
-			stack->data = *(void**)&fv;
-			break;
-		case 0x18:
-			HSD_ASSERT(507, stack);
-			HSD_ASSERT(507, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			fv          = ((ByteCodeVal*)&stack->data)->f - f0;
-			stack->data = *(void**)&fv;
-			break;
-		case 0x19:
-			HSD_ASSERT(513, stack);
-			HSD_ASSERT(513, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			fv          = ((ByteCodeVal*)&stack->data)->f * f0;
-			stack->data = *(void**)&fv;
-			break;
-		case 0x1A:
-			HSD_ASSERT(519, stack);
-			HSD_ASSERT(519, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			fv          = ((ByteCodeVal*)&stack->data)->f / f0;
-			stack->data = *(void**)&fv;
-			break;
-		case 0x1B:
-			HSD_ASSERT(525, stack);
-			HSD_ASSERT(525, stack->next);
-			f0    = ((ByteCodeVal*)&stack->data)->f;
+		case BC_ADD_FLOAT:
+			RequireBinaryOperands(stack, 501);
+			top_float = stack->float_value;
 			stack = HSD_SListRemove(stack);
-			f1 =
-#ifdef MUST_MATCH
-			    f1 =
-#endif
-			        ((ByteCodeVal*)&stack->data)->f;
-			fv          = (float)fmod(f1, f0);
-			stack->data = *(void**)&fv;
+			stack->float_value = stack->float_value + top_float;
 			break;
-		case 0x1C:
-			HSD_ASSERT(531, stack);
-			HSD_ASSERT(531, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i + d1);
-			break;
-		case 0x1D:
-			HSD_ASSERT(536, stack);
-			HSD_ASSERT(536, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i - d1);
-			break;
-		case 0x1E:
-			HSD_ASSERT(541, stack);
-			HSD_ASSERT(541, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i * d1);
-			break;
-		case 0x1F:
-			HSD_ASSERT(546, stack);
-			HSD_ASSERT(546, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i / d1);
-			break;
-		case 0x20:
-			HSD_ASSERT(551, stack);
-			HSD_ASSERT(551, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			d0                              = ((ByteCodeVal*)&stack->data)->i;
-			((ByteCodeVal*)&stack->data)->i = (d0 % d1);
-			break;
-		case 0x21:
-			HSD_ASSERT(556, stack);
-			HSD_ASSERT(556, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			fv          = (float)pow(((ByteCodeVal*)&stack->data)->f, f0);
-			stack->data = *(void**)&fv;
-			break;
-		case 0x22:
-			HSD_ASSERT(562, stack);
-			HSD_ASSERT(562, stack->next);
-			f0    = ((ByteCodeVal*)&stack->data)->f;
+		case BC_SUB_FLOAT:
+			RequireBinaryOperands(stack, 507);
+			top_float = stack->float_value;
 			stack = HSD_SListRemove(stack);
-			if (((ByteCodeVal*)&stack->data)->f > f0) {
-				stack->data = *(void**)&f0;
+			stack->float_value = stack->float_value - top_float;
+			break;
+		case BC_MUL_FLOAT:
+			RequireBinaryOperands(stack, 513);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			stack->float_value = stack->float_value * top_float;
+			break;
+		case BC_DIV_FLOAT:
+			RequireBinaryOperands(stack, 519);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			stack->float_value = stack->float_value / top_float;
+			break;
+		case BC_MOD_FLOAT:
+			RequireBinaryOperands(stack, 525);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			next_float = stack->float_value;
+			stack->float_value = (float)fmod(next_float, top_float);
+			break;
+		case BC_ADD_INT:
+			RequireBinaryOperands(stack, 531);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value + top_int);
+			break;
+		case BC_SUB_INT:
+			RequireBinaryOperands(stack, 536);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value - top_int);
+			break;
+		case BC_MUL_INT:
+			RequireBinaryOperands(stack, 541);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value * top_int);
+			break;
+		case BC_DIV_INT:
+			RequireBinaryOperands(stack, 546);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value / top_int);
+			break;
+		case BC_MOD_INT:
+			RequireBinaryOperands(stack, 551);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			next_int = stack->int_value;
+			stack->int_value = (next_int % top_int);
+			break;
+		case BC_POW:
+			RequireBinaryOperands(stack, 556);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			stack->float_value = (float)pow(stack->float_value, top_float);
+			break;
+		case BC_MIN_FLOAT:
+			RequireBinaryOperands(stack, 562);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			if (stack->float_value > top_float) {
+				stack->float_value = top_float;
 			}
 			break;
-		case 0x23:
-			HSD_ASSERT(569, stack);
-			HSD_ASSERT(569, stack->next);
-			f0    = ((ByteCodeVal*)&stack->data)->f;
+		case BC_MAX_FLOAT:
+			RequireBinaryOperands(stack, 569);
+			top_float = stack->float_value;
 			stack = HSD_SListRemove(stack);
-			if (((ByteCodeVal*)&stack->data)->f < f0) {
-				stack->data = *(void**)&f0;
+			if (stack->float_value < top_float) {
+				stack->float_value = top_float;
 			}
 			break;
-		case 0x24:
-			HSD_ASSERT(576, stack);
-			HSD_ASSERT(576, stack->next);
-			d1    = ((ByteCodeVal*)&stack->data)->i;
+		case BC_MIN_INT:
+			RequireBinaryOperands(stack, 576);
+			top_int = stack->int_value;
 			stack = HSD_SListRemove(stack);
-			if (((ByteCodeVal*)&stack->data)->i > d1) {
-				((ByteCodeVal*)&stack->data)->i = d1;
+			if (stack->int_value > top_int) {
+				stack->int_value = top_int;
 			}
 			break;
-		case 0x25:
-			HSD_ASSERT(583, stack);
-			HSD_ASSERT(583, stack->next);
-			d1    = ((ByteCodeVal*)&stack->data)->i;
+		case BC_MAX_INT:
+			RequireBinaryOperands(stack, 583);
+			top_int = stack->int_value;
 			stack = HSD_SListRemove(stack);
-			if (((ByteCodeVal*)&stack->data)->i < d1) {
-				((ByteCodeVal*)&stack->data)->i = d1;
+			if (stack->int_value < top_int) {
+				stack->int_value = top_int;
 			}
 			break;
-		case 0x26: {
-			HSD_ASSERT(590, stack);
-			HSD_ASSERT(590, stack->next);
-			f0          = ((ByteCodeVal*)&stack->data)->f;
-			stack       = HSD_SListRemove(stack);
-			f1          = ((ByteCodeVal*)&stack->data)->f;
-			fv          = (float)(RAD_TO_DEG * bytecode_atan2f(f1, f0));
-			stack->data = *(void**)&fv;
+		case BC_ATAN2: {
+			RequireBinaryOperands(stack, 590);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			next_float = stack->float_value;
+			stack->float_value = (float)(RAD_TO_DEG * bytecode_atan2f(next_float, top_float));
 			break;
 		}
-		case 0x33:
-			HSD_ASSERT(596, stack);
-			HSD_ASSERT(596, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			f1                              = ((ByteCodeVal*)&stack->data)->f;
-			((ByteCodeVal*)&stack->data)->i = (f1 < f0);
-			break;
-		case 0x34:
-			HSD_ASSERT(601, stack);
-			HSD_ASSERT(601, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			f1                              = ((ByteCodeVal*)&stack->data)->f;
-			((ByteCodeVal*)&stack->data)->i = (f1 > f0);
-			break;
-		case 0x35:
-			HSD_ASSERT(606, stack);
-			HSD_ASSERT(606, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->f <= f0);
-			break;
-		case 0x36:
-			HSD_ASSERT(611, stack);
-			HSD_ASSERT(611, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			f1                              = ((ByteCodeVal*)&stack->data)->f;
-			((ByteCodeVal*)&stack->data)->i = (f1 >= f0);
-			break;
-		case 0x37:
-			HSD_ASSERT(616, stack);
-			HSD_ASSERT(616, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			f1                              = ((ByteCodeVal*)&stack->data)->f;
-			((ByteCodeVal*)&stack->data)->i = (f1 == f0);
-			break;
-		case 0x38:
-			HSD_ASSERT(621, stack);
-			HSD_ASSERT(621, stack->next);
-			f0                              = ((ByteCodeVal*)&stack->data)->f;
-			stack                           = HSD_SListRemove(stack);
-			f1                              = ((ByteCodeVal*)&stack->data)->f;
-			((ByteCodeVal*)&stack->data)->i = (f1 != f0);
-			break;
-		case 0x29:
-			HSD_ASSERT(626, stack);
-			HSD_ASSERT(626, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i < d1);
-			break;
-		case 0x2A:
-			HSD_ASSERT(631, stack);
-			HSD_ASSERT(631, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i > d1);
-			break;
-		case 0x2B:
-			HSD_ASSERT(636, stack);
-			HSD_ASSERT(636, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i <= d1);
-			break;
-		case 0x2C:
-			HSD_ASSERT(641, stack);
-			HSD_ASSERT(641, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i >= d1);
-			break;
-		case 0x2D:
-			HSD_ASSERT(646, stack);
-			HSD_ASSERT(646, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i == d1);
-			break;
-		case 0x2E:
-			HSD_ASSERT(651, stack);
-			HSD_ASSERT(651, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			((ByteCodeVal*)&stack->data)->i = (((ByteCodeVal*)&stack->data)->i != d1);
-			break;
-		case 0x2F:
-			HSD_ASSERT(656, stack);
-			HSD_ASSERT(656, stack->next);
-			d1    = ((ByteCodeVal*)&stack->data)->i;
+		case BC_LESS_FLOAT:
+			RequireBinaryOperands(stack, 596);
+			top_float = stack->float_value;
 			stack = HSD_SListRemove(stack);
-			d0    = ((ByteCodeVal*)&stack->data)->i;
-			{
-				int val = 0;
-				if (d0 != 0 && d1 != 0) {
-					val = 1;
-				}
-				((ByteCodeVal*)&stack->data)->i = val;
-			}
+			next_float = stack->float_value;
+			stack->int_value = (next_float < top_float);
 			break;
-		case 0x30:
-			HSD_ASSERT(661, stack);
-			HSD_ASSERT(661, stack->next);
-			d1    = ((ByteCodeVal*)&stack->data)->i;
+		case BC_GREATER_FLOAT:
+			RequireBinaryOperands(stack, 601);
+			top_float = stack->float_value;
 			stack = HSD_SListRemove(stack);
-			d0    = ((ByteCodeVal*)&stack->data)->i;
-			{
-				int val = 0;
-				if (d0 != 0 || d1 != 0) {
-					val = 1;
-				}
-				((ByteCodeVal*)&stack->data)->i = val;
-			}
+			next_float = stack->float_value;
+			stack->int_value = (next_float > top_float);
 			break;
-		case 0x32:
-			HSD_ASSERT(666, stack);
-			HSD_ASSERT(666, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			d0                              = ((ByteCodeVal*)&stack->data)->i;
-			((ByteCodeVal*)&stack->data)->i = (d0 == 0 && d1 != 0) || (d0 != 0 && d1 == 0);
+		case BC_LESS_EQUAL_FLOAT:
+			RequireBinaryOperands(stack, 606);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->float_value <= top_float);
 			break;
-		case 0x39:
-			HSD_ASSERT(671, stack);
-			HSD_ASSERT(671, stack->next);
-			d1          = ((ByteCodeVal*)&stack->data)->i;
-			stack       = HSD_SListRemove(stack);
-			stack->data = (void*)(((ByteCodeVal*)&stack->data)->i & d1);
+		case BC_GREATER_EQUAL_FLOAT:
+			RequireBinaryOperands(stack, 611);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			next_float = stack->float_value;
+			stack->int_value = (next_float >= top_float);
 			break;
-		case 0x3A:
-			HSD_ASSERT(676, stack);
-			HSD_ASSERT(676, stack->next);
-			d1          = ((ByteCodeVal*)&stack->data)->i;
-			stack       = HSD_SListRemove(stack);
-			stack->data = (void*)(((ByteCodeVal*)&stack->data)->i | d1);
+		case BC_EQUAL_FLOAT:
+			RequireBinaryOperands(stack, 616);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			next_float = stack->float_value;
+			stack->int_value = (next_float == top_float);
 			break;
-		case 0x3B:
-			HSD_ASSERT(681, stack);
-			HSD_ASSERT(681, stack->next);
-			d1          = ((ByteCodeVal*)&stack->data)->i;
-			stack       = HSD_SListRemove(stack);
-			stack->data = (void*)(((ByteCodeVal*)&stack->data)->i ^ d1);
+		case BC_NOT_EQUAL_FLOAT:
+			RequireBinaryOperands(stack, 621);
+			top_float = stack->float_value;
+			stack = HSD_SListRemove(stack);
+			next_float = stack->float_value;
+			stack->int_value = (next_float != top_float);
 			break;
-		case 0x27:
-			HSD_ASSERT(687, stack);
-			HSD_ASSERT(687, stack->next);
-			d1                              = ((ByteCodeVal*)&stack->data)->i;
-			stack                           = HSD_SListRemove(stack);
-			d0                              = ((ByteCodeVal*)&stack->data)->i;
-			((ByteCodeVal*)&stack->data)->i = (d0 + HSD_Randi((d1 - d0) + 1));
+		case BC_LESS_INT:
+			RequireBinaryOperands(stack, 626);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value < top_int);
+			break;
+		case BC_GREATER_INT:
+			RequireBinaryOperands(stack, 631);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value > top_int);
+			break;
+		case BC_LESS_EQUAL_INT:
+			RequireBinaryOperands(stack, 636);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value <= top_int);
+			break;
+		case BC_GREATER_EQUAL_INT:
+			RequireBinaryOperands(stack, 641);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value >= top_int);
+			break;
+		case BC_EQUAL_INT:
+			RequireBinaryOperands(stack, 646);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value == top_int);
+			break;
+		case BC_NOT_EQUAL_INT:
+			RequireBinaryOperands(stack, 651);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = (stack->int_value != top_int);
+			break;
+		case BC_LOGICAL_AND:
+			RequireBinaryOperands(stack, 656);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			next_int = stack->int_value;
+			stack->int_value = next_int && top_int;
+			break;
+		case BC_LOGICAL_OR:
+			RequireBinaryOperands(stack, 661);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			next_int = stack->int_value;
+			stack->int_value = next_int || top_int;
+			break;
+		case BC_LOGICAL_XOR:
+			RequireBinaryOperands(stack, 666);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			next_int = stack->int_value;
+			stack->int_value = (next_int == 0 && top_int != 0) || (next_int != 0 && top_int == 0);
+			break;
+		case BC_BITWISE_AND:
+			RequireBinaryOperands(stack, 671);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = stack->int_value & top_int;
+			break;
+		case BC_BITWISE_OR:
+			RequireBinaryOperands(stack, 676);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = stack->int_value | top_int;
+			break;
+		case BC_BITWISE_XOR:
+			RequireBinaryOperands(stack, 681);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			stack->int_value = stack->int_value ^ top_int;
+			break;
+		case BC_RANDOM_INT_RANGE:
+			RequireBinaryOperands(stack, 687);
+			top_int = stack->int_value;
+			stack = HSD_SListRemove(stack);
+			next_int = stack->int_value;
+			stack->int_value = (next_int + HSD_Randi((top_int - next_int) + 1));
 			break;
 		default:
-			OSReport("unexpected opcode 0x%x.\n", last_command);
+			OSReport("unexpected opcode 0x%x.\n", opcode);
 			HSD_Panic("bytecode.c", 693, "");
 			break;
 		}

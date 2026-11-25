@@ -5,5 +5,6 @@
 
 void HSD_SetupTevStage(HSD_TevDesc* desc);
 void HSD_SetupTevStageAll(HSD_TevDesc* desc);
+s32 HSD_Index2TevStage(s32 idx);
 
 #endif

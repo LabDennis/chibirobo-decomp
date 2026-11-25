@@ -1,7 +1,9 @@
 #include <dolphin/mtx/mtx.h>
 #include <sysdolphin/wobj.h>
+#include <sysdolphin/class_new.h>
 #include <sysdolphin/jobj.h>
 #include <sysdolphin/robj.h>
+#include <sysdolphin/spline.h>
 
 void WObjInfoInit(void);
 
@@ -10,42 +12,6 @@ HSD_WObjInfo hsdWObj = { { { { WObjInfoInit } } } };
 static HSD_WObjInfo* WObjCurrentInfo = NULL;
 
 #define assert_line_named(line, cond, condstr) ((cond) ? ((void)0) : __assert("wobj.c", line, condstr))
-// asserts from the jobj.h inlines carry that header's name
-#define assert_line_jobjh(line, cond) ((cond) ? ((void)0) : __assert("jobj.h", line, "jobj"))
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void wobj_JObjSetupMatrix(HSD_JObj* jobj)
-{
-    BOOL dirty;
-
-    if (jobj == NULL) {
-        return;
-    }
-    assert_line_jobjh(0x25d, jobj);
-    dirty = FALSE;
-    if (!(jobj->flags & 0x800000) && (jobj->flags & 0x40)) {
-        dirty = TRUE;
-    }
-    if (dirty) {
-        HSD_JObjSetupMatrixSub(jobj);
-    }
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void HSD_WObjRemoveAnim(HSD_WObj* wobj)
-{
-    if (wobj != NULL) {
-        HSD_AObjRemove(wobj->aobj);
-        wobj->aobj = NULL;
-        HSD_RObjRemoveAnimAll(wobj->robj);
-    }
-}
 
 /**
  * @note Address: 0x801D2F08
@@ -78,7 +44,7 @@ void HSD_WObjAddAnim(HSD_WObj* wobj, HSD_WObjAnim* anim)
  * @note Address: 0x801D2FBC
  * @note Size: 0x144
  */
-void WObjUpdateFunc(void* obj, u32 type, f32* fval)
+void WObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val)
 {
     HSD_WObj* wobj;
     Vec p;
@@ -87,12 +53,12 @@ void WObjUpdateFunc(void* obj, u32 type, f32* fval)
     wobj = obj;
     if (wobj != NULL) {
         switch (type) {
-        case 4:
-            if (*fval < 0.0) {
-                *fval = 0.0f;
+        case HSD_A_J_PATH:
+            if (val->fv < 0.0) {
+                val->fv = 0.0f;
             }
-            if (1.0 < *fval) {
-                *fval = 1.0f;
+            if (1.0 < val->fv) {
+                val->fv = 1.0f;
             }
 
             assert_line_named(152, wobj->aobj, "wobj->aobj");
@@ -100,27 +66,25 @@ void WObjUpdateFunc(void* obj, u32 type, f32* fval)
             assert_line_named(154, jp, "jp");
             assert_line_named(155, jp->u.spline, "jp->u.spline");
 
-            splArcLengthPoint(&p, jp->u.spline, *fval);
+            splArcLengthPoint(&p, jp->u.spline, val->fv);
             HSD_WObjSetPosition(wobj, &p);
-            wobj->flags |= 1;
+            wobj->flags |= WOBJ_POS_LOCAL;
             break;
 
-        case 5:
-            HSD_WObjSetPositionX(wobj, *fval);
+        case HSD_A_J_TRAX:
+            HSD_WObjSetPositionX(wobj, val->fv);
             break;
 
-        case 6:
-            HSD_WObjSetPositionY(wobj, *fval);
+        case HSD_A_J_TRAY:
+            HSD_WObjSetPositionY(wobj, val->fv);
             break;
 
-        case 7:
-            HSD_WObjSetPositionZ(wobj, *fval);
+        case HSD_A_J_TRAZ:
+            HSD_WObjSetPositionZ(wobj, val->fv);
             break;
         }
     }
 }
-
-void HSD_RObjAnimAll();
 
 /**
  * @note Address: 0x801D3100
@@ -129,8 +93,7 @@ void HSD_RObjAnimAll();
 void HSD_WObjInterpretAnim(HSD_WObj* wobj)
 {
     if (wobj != NULL) {
-        HSD_AObjInterpretAnim(wobj->aobj, wobj,
-                              (HSD_ObjUpdateFunc) HSD_WOBJ_METHOD(wobj)->update);
+        HSD_AObjInterpretAnim(wobj->aobj, wobj, HSD_WOBJ_METHOD(wobj)->update);
         HSD_RObjAnimAll(wobj->robj);
     }
 }
@@ -168,8 +131,6 @@ void HSD_WObjInit(HSD_WObj* wobj, HSD_WObjDesc* desc)
     HSD_RObjResolveRefsAll(wobj->robj, desc->robjdesc);
 }
 
-void* hsdNew();
-
 /**
  * @note Address: 0x801D3224
  * @note Size: 0x98
@@ -202,8 +163,20 @@ void HSD_WObjSetPosition(HSD_WObj* wobj, Vec* pos)
     }
 
     wobj->pos = *pos;
-    wobj->flags |= 0x2;
-    wobj->flags &= 0xFFFFFFFE;
+    wobj->flags |= WOBJ_POS_DIRTY;
+    wobj->flags &= ~WOBJ_POS_LOCAL;
+}
+
+static inline void WObjSetupPosition(HSD_WObj* wobj)
+{
+    if ((wobj->flags & WOBJ_POS_LOCAL) != 0) {
+        if (wobj->aobj != NULL && wobj->aobj->hsd_obj != NULL) {
+            HSD_JObj* joint = (HSD_JObj*)wobj->aobj->hsd_obj;
+            HSD_JObjSetupMatrix(joint);
+            PSMTXMultVec(joint->mtx, &wobj->pos, &wobj->pos);
+        }
+        wobj->flags &= ~WOBJ_POS_LOCAL;
+    }
 }
 
 /**
@@ -212,19 +185,10 @@ void HSD_WObjSetPosition(HSD_WObj* wobj, Vec* pos)
  */
 void HSD_WObjSetPositionX(HSD_WObj* wobj, f32 val)
 {
-    HSD_JObj* jp;
-
     if (wobj != NULL) {
-        if ((wobj->flags & 1) != 0) {
-            if (wobj->aobj != NULL && wobj->aobj->hsd_obj != NULL) {
-                jp = (HSD_JObj*) wobj->aobj->hsd_obj;
-                wobj_JObjSetupMatrix((HSD_JObj*) wobj->aobj->hsd_obj);
-                PSMTXMultVec(jp->mtx, &wobj->pos, &wobj->pos);
-            }
-            wobj->flags &= 0xFFFFFFFE;
-        }
+        WObjSetupPosition(wobj);
         wobj->pos.x = val;
-        wobj->flags |= 0x2;
+        wobj->flags |= WOBJ_POS_DIRTY;
     }
 }
 
@@ -234,19 +198,10 @@ void HSD_WObjSetPositionX(HSD_WObj* wobj, f32 val)
  */
 void HSD_WObjSetPositionY(HSD_WObj* wobj, f32 val)
 {
-    HSD_JObj* jp;
-
     if (wobj != NULL) {
-        if ((wobj->flags & 1) != 0) {
-            if (wobj->aobj != NULL && wobj->aobj->hsd_obj != NULL) {
-                jp = (HSD_JObj*) wobj->aobj->hsd_obj;
-                wobj_JObjSetupMatrix((HSD_JObj*) wobj->aobj->hsd_obj);
-                PSMTXMultVec(jp->mtx, &wobj->pos, &wobj->pos);
-            }
-            wobj->flags &= 0xFFFFFFFE;
-        }
+        WObjSetupPosition(wobj);
         wobj->pos.y = val;
-        wobj->flags |= 0x2;
+        wobj->flags |= WOBJ_POS_DIRTY;
     }
 }
 
@@ -256,19 +211,10 @@ void HSD_WObjSetPositionY(HSD_WObj* wobj, f32 val)
  */
 void HSD_WObjSetPositionZ(HSD_WObj* wobj, f32 val)
 {
-    HSD_JObj* jp;
-
     if (wobj != NULL) {
-        if ((wobj->flags & 1) != 0) {
-            if (wobj->aobj != NULL && wobj->aobj->hsd_obj != NULL) {
-                jp = (HSD_JObj*) wobj->aobj->hsd_obj;
-                wobj_JObjSetupMatrix((HSD_JObj*) wobj->aobj->hsd_obj);
-                PSMTXMultVec(jp->mtx, &wobj->pos, &wobj->pos);
-            }
-            wobj->flags &= 0xFFFFFFFE;
-        }
+        WObjSetupPosition(wobj);
         wobj->pos.z = val;
-        wobj->flags |= 0x2;
+        wobj->flags |= WOBJ_POS_DIRTY;
     }
 }
 
@@ -278,32 +224,18 @@ void HSD_WObjSetPositionZ(HSD_WObj* wobj, f32 val)
  */
 void HSD_WObjGetPosition(HSD_WObj* wobj, Vec* vec)
 {
-    HSD_JObj* jp;
-
     if (wobj == NULL || vec == NULL) {
         return;
     }
-    if ((wobj->flags & 1) != 0) {
-        if (wobj->aobj != NULL && wobj->aobj->hsd_obj != NULL) {
-            jp = (HSD_JObj*)wobj->aobj->hsd_obj;
-            wobj_JObjSetupMatrix((HSD_JObj*)wobj->aobj->hsd_obj);
-            PSMTXMultVec(jp->mtx, &wobj->pos, &wobj->pos);
-        }
-        wobj->flags &= 0xFFFFFFFE;
-    }
+    WObjSetupPosition(wobj);
     *vec = wobj->pos;
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
 void HSD_WObjSetDefaultClass(HSD_WObjInfo* info)
 {
-    // stripped from the game, its assert string is still in .data.
-    // the line is a guess, nothing left says what it was
-    if (info) {
-        assert_line_named(221, hsdIsDescendantOf(HSD_CLASS_INFO(info), HSD_CLASS_INFO(&hsdWObj)), "hsdIsDescendantOf(info, &hsdWObj)");
+    if (info != NULL) {
+        assert_line_named(__LINE__, hsdIsDescendantOf(HSD_CLASS_INFO(info), HSD_CLASS_INFO(&hsdWObj)),
+                          "hsdIsDescendantOf(info, &hsdWObj)");
     }
     WObjCurrentInfo = info;
 }

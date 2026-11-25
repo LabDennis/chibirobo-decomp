@@ -1,13 +1,17 @@
 #ifndef _psinterpret_h_
 #define _psinterpret_h_
 
-#include <dolphin/types.h>
+#include <sysdolphin/particle.h>
 
-#include <sysdolphin/forward.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-u16 kar_psinterpret__near_80430270(void);
-void kar_psinterpret__near_80430394(s16 linkNo);
-void kar_psinterpret__near_8043051c(void);
-void kar_psinterpret__near_8043070c(HSD_Generator* gen);
+HSD_Particle* psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev);
+void psInterpretParticles(u32 flags);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

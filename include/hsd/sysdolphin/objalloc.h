@@ -4,13 +4,6 @@
 #include <global.h>
 #include <dolphin/types.h>
 
-typedef struct _objheap {
-	u32 top;
-	u32 curr;
-	u32 size;
-	u32 remain;
-} objheap;
-
 typedef struct _HSD_ObjAllocLink {
 	struct _HSD_ObjAllocLink* next;
 } HSD_ObjAllocLink;

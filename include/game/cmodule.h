@@ -1,18 +1,26 @@
 #ifndef _GAME_CMODULE_H
 #define _GAME_CMODULE_H
 
+#include "game/relmodule.h"
 #include "Dolphin/os.h"
+#include "Dolphin/OS/OSModule.h"
 #include "game/cfile.h"
 
 // one rel module, read with its own file and linked in place. class name and the
 // OSModuleHeader base are from RTTI. Stage holds one at +0x1AC and emits its vtable and dtor
 
 // what a module's _prolog takes, a negative cmd runs its static constructors
-typedef s32 (*CModuleProlog)(s32 cmd, void* arg, void* arg2);
+typedef RelCmdFunc CModuleProlog;
 typedef void (*CModuleEpilog)(void);
 
 class CModule : public OSModuleHeader {
 public:
+	CModule()
+	    : mModule(NULL)
+	    , mBss(NULL)
+	{
+	}
+
 	// _00 OSModuleHeader
 	CFileA mFile;            // _4C
 	OSModuleHeader* mModule; // _138, the linked module, null when none is in

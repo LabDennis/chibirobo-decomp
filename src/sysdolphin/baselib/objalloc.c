@@ -3,7 +3,16 @@
 #include <sysdolphin/objalloc.h>
 #include <sysdolphin/util.h>
 
-static objheap obj_heap = { 0, 0, -1, -1 };
+typedef struct HSD_ObjHeap {
+	u8* top;
+	u8* current;
+	u32 size;
+	u32 remain;
+} HSD_ObjHeap;
+
+#define ROUND_UP_OBJECT_ALIGNMENT(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
+
+static HSD_ObjHeap obj_heap = { NULL, NULL, -1, -1 };
 
 static HSD_ObjAllocData* alloc_datas;
 
@@ -13,23 +22,23 @@ static HSD_ObjAllocData* alloc_datas;
  */
 void HSD_ObjSetHeap(u32 size, void* ptr)
 {
-	obj_heap.curr   = (u32)ptr;
-	obj_heap.top    = (u32)ptr;
-	obj_heap.remain = size;
-	obj_heap.size   = size;
+	obj_heap.current = ptr;
+	obj_heap.top     = ptr;
+	obj_heap.remain  = size;
+	obj_heap.size    = size;
 }
 
 /**
  * @note Address: 0x801D06A0
  * @note Size: 0x30
  */
-void fn_801D06A0(u32* size, void** top)
+void GetObjectHeapBounds(u32* size, void** top)
 {
 	if (size != NULL) {
 		*size = obj_heap.size;
 	}
 	if (top != NULL) {
-		*top = (void*)obj_heap.top;
+		*top = obj_heap.top;
 	}
 }
 
@@ -37,7 +46,7 @@ void fn_801D06A0(u32* size, void** top)
  * @note Address: 0x801D06D0
  * @note Size: 0x34
  */
-u32 fn_801D06D0(void)
+u32 GetObjectPoolCapacityBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;
@@ -52,9 +61,9 @@ u32 fn_801D06D0(void)
  * @note Address: 0x801D0704
  * @note Size: 0x38
  */
-u32 fn_801D0704(void)
+u32 GetObjectHeapRemainingBytes(void)
 {
-	if (obj_heap.top != 0) {
+	if (obj_heap.top != NULL) {
 		return obj_heap.remain;
 	}
 	return _HSD_MemGetRemain();
@@ -64,7 +73,7 @@ u32 fn_801D0704(void)
  * @note Address: 0x801D073C
  * @note Size: 0x2C
  */
-u32 fn_801D073C(void)
+u32 GetObjectPoolUsedBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;
@@ -79,7 +88,7 @@ u32 fn_801D073C(void)
  * @note Address: 0x801D0768
  * @note Size: 0x2C
  */
-u32 fn_801D0768(void)
+u32 GetObjectPoolFreeBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;
@@ -106,9 +115,9 @@ s32 HSD_ObjAllocAddFree(HSD_ObjAllocData* data, u32 num)
 	assert_line(0xEE, data);
 
 	total_size = data->size * num;
-	if (obj_heap.top != 0) {
-		heap_end = (u8*)obj_heap.top + obj_heap.size;
-		obj      = (u8*)((obj_heap.curr + (data->align - 1)) & ~(data->align - 1));
+	if (obj_heap.top != NULL) {
+		heap_end = obj_heap.top + obj_heap.size;
+		obj      = (u8*)ROUND_UP_OBJECT_ALIGNMENT((u32)obj_heap.current, data->align);
 		if (obj > heap_end) {
 			return 0;
 		}
@@ -123,9 +132,9 @@ s32 HSD_ObjAllocAddFree(HSD_ObjAllocData* data, u32 num)
 			return 0;
 		}
 
-		end             = obj + total_size;
-		obj_heap.curr   = (u32)end;
-		obj_heap.remain = heap_end - end;
+		end              = obj + total_size;
+		obj_heap.current = end;
+		obj_heap.remain  = heap_end - end;
 	} else {
 		obj = _HSD_MemAlloc(total_size, data->align, 1);
 		if (obj == NULL) {
@@ -135,7 +144,7 @@ s32 HSD_ObjAllocAddFree(HSD_ObjAllocData* data, u32 num)
 
 	{
 		HSD_ObjAllocLink* link;
-		for (i = 0; (unsigned)i < num - 1; i++) {
+		for (i = 0; (u32)i < num - 1; i++) {
 			link       = (HSD_ObjAllocLink*)(obj + data->size * i);
 			link->next = (HSD_ObjAllocLink*)(obj + data->size * (i + 1));
 		}
@@ -163,21 +172,13 @@ void* HSD_ObjAlloc(HSD_ObjAllocData* data)
 
 	if (data->heap_limit_flag) {
 		if (data->heap_limit_num == -1) {
-			if (obj_heap.top != 0) {
-				remain = obj_heap.remain;
-			} else {
-				remain = _HSD_MemGetRemain();
-			}
+			remain = GetObjectHeapRemainingBytes();
 
 			if (remain <= data->heap_limit_size) {
 				data->heap_limit_num = data->used + data->free;
 			}
 		} else {
-			if (obj_heap.top != 0) {
-				remain = obj_heap.remain;
-			} else {
-				remain = _HSD_MemGetRemain();
-			}
+			remain = GetObjectHeapRemainingBytes();
 
 			if (remain > data->heap_limit_size) {
 				data->heap_limit_num = -1;
@@ -219,7 +220,7 @@ void HSD_ObjFree(HSD_ObjAllocData* data, void* obj)
 	data->used--;
 }
 
-static inline void removeAll(HSD_ObjAllocData* data)
+static inline void UnlinkObjectPool(HSD_ObjAllocData* data)
 {
 	HSD_ObjAllocData** cur = &alloc_datas;
 	while (*cur != NULL) {
@@ -241,7 +242,7 @@ void HSD_ObjAllocInit(HSD_ObjAllocData* data, u32 size, u32 align)
 
 	assert_line(0x182, data);
 	if (data != NULL) {
-		removeAll(data);
+		UnlinkObjectPool(data);
 	} else {
 		alloc_datas = NULL;
 	}
@@ -255,7 +256,7 @@ void HSD_ObjAllocInit(HSD_ObjAllocData* data, u32 size, u32 align)
 	assert_line(0x18E, HSD_GetNbBits(align) == 1);
 
 	data->align  = align;
-	aligned_size = (size + (data->align - 1)) & ~(data->align - 1);
+	aligned_size = ROUND_UP_OBJECT_ALIGNMENT(size, data->align);
 	data->size   = aligned_size;
 	data->next   = alloc_datas;
 	alloc_datas  = data;

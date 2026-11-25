@@ -3,75 +3,40 @@
 
 #include "__os.h"
 
-// These macros are copied from OSThread.c. Or ARE they the same
-// macros? They dont seem to be in the SDK headers.
-#define ENQUEUE_INFO(info, queue)                            \
-    do {                                                     \
-        OSResetFunctionInfo* __prev = (queue)->tail; \
-        if (__prev == 0) {                                   \
-            (queue)->head = (info);                          \
-        } else {                                             \
-            __prev->next = (info);                           \
-        }                                                    \
-        (info)->prev = __prev;                               \
-        (info)->next = 0;                                    \
-        (queue)->tail = (info);                              \
-    } while(0);
-
-#define DEQUEUE_INFO(info, queue)                           \
-    do {                                                    \
-        OSResetFunctionInfo* __next = (info)->next; \
-        OSResetFunctionInfo* __prev = (info)->prev; \
-        if (__next == 0) {                                  \
-            (queue)->tail = __prev;                         \
-        } else {                                            \
-            __next->prev = __prev;                          \
-        }                                                   \
-        if (__prev == 0) {                                  \
-            (queue)->head = __next;                         \
-        } else {                                            \
-            __prev->next = __next;                          \
-        }                                                   \
-    } while(0);
-
-#define ENQUEUE_INFO_PRIO(info, queue)               \
-    do {                                             \
-        OSResetFunctionInfo* __prev;         \
-        OSResetFunctionInfo* __next;         \
-        for(__next = (queue)->head; __next           \
-          && (__next->priority <= (info)->priority); \
-                __next = __next->next) ;             \
-                                                     \
-        if (__next == 0) {                           \
-            ENQUEUE_INFO(info, queue);               \
-        } else {                                     \
-            (info)->next = __next;                   \
-            __prev = __next->prev;                   \
-            __next->prev = (info);                   \
-            (info)->prev = __prev;                   \
-            if (__prev == 0) {                       \
-                (queue)->head = (info);              \
-            } else {                                 \
-                __prev->next = (info);               \
-            }                                        \
-        }                                            \
-    } while(0);
+extern void __OSResetHardware(u32 resetCode);
 
 static OSResetFunctionQueue ResetFunctionQueue;
 static u32 bootThisDol;
-
-// prototypes
-static int CallResetFunctions(int final);
-static void Reset(u32 resetCode);
 
 /**
  * @note Address: 0x80168690
  * @note Size: 0x84
  */
 void OSRegisterResetFunction(OSResetFunctionInfo* info) {
+    OSResetFunctionInfo* next = ResetFunctionQueue.head;
+    OSResetFunctionInfo* prev;
+
     ASSERTLINE(208, info->func);
 
-    ENQUEUE_INFO_PRIO(info, &ResetFunctionQueue);
+    // Equal-priority callbacks run in registration order.
+    while (next && next->priority <= info->priority) {
+        next = next->next;
+    }
+
+    prev = next ? next->prev : ResetFunctionQueue.tail;
+    info->prev = prev;
+    info->next = next;
+
+    if (prev) {
+        prev->next = info;
+    } else {
+        ResetFunctionQueue.head = info;
+    }
+    if (next) {
+        next->prev = info;
+    } else {
+        ResetFunctionQueue.tail = info;
+    }
 }
 
 /**
@@ -79,7 +44,16 @@ void OSRegisterResetFunction(OSResetFunctionInfo* info) {
  * @note Size: ?
  */
 void OSUnregisterResetFunction(OSResetFunctionInfo* info) {
-    DEQUEUE_INFO(info, &ResetFunctionQueue);
+    if (info->prev) {
+        info->prev->next = info->next;
+    } else {
+        ResetFunctionQueue.head = info->next;
+    }
+    if (info->next) {
+        info->next->prev = info->prev;
+    } else {
+        ResetFunctionQueue.tail = info->prev;
+    }
 }
 
 /**
@@ -88,73 +62,23 @@ void OSUnregisterResetFunction(OSResetFunctionInfo* info) {
  */
 int __OSCallResetFunctions(BOOL final) {
     OSResetFunctionInfo* info;
-    int err;
-    u32 priority;
+    BOOL callbacksReady = TRUE;
+    u32 priority = 0;
 
-    priority = 0;
-    err = 0;
-
-    for (info = ResetFunctionQueue.head; info != 0;) {
-        if (err != 0 && priority != info->priority)
+    // Finish the current priority group even when a callback needs another pass.
+    for (info = ResetFunctionQueue.head; info != NULL; info = info->next) {
+        if (!callbacksReady && priority != info->priority) {
             break;
-        err |= !info->func(final);
+        }
+        if (!info->func(final)) {
+            callbacksReady = FALSE;
+        }
         priority = info->priority;
-        info = info->next;
     }
 
-    err |= !__OSSyncSram();
-    if (err) {
-        return 0;
-    }
-    return 1;
+    // SRAM synchronization still runs when a reset callback needs another pass.
+    return __OSSyncSram() && callbacksReady;
 }
-
-#ifdef __GEKKO__
-/**
- * @note Address: 0x801687BC
- * @note Size: 0x70
- */
-static asm void Reset(u32 resetCode) {
-    nofralloc
-    b L_000001BC
-L_000001A0:
-    mfspr r8, HID0
-    ori r8, r8, 0x8
-    mtspr HID0, r8
-    isync
-    sync
-    nop
-    b L_000001C0
-L_000001BC:
-    b L_000001DC
-L_000001C0:
-    mftb r5, 268
-L_000001C4:
-    mftb r6, 268
-    subf r7, r5, r6
-    cmplwi r7, 0x1124
-    blt L_000001C4
-    nop
-    b L_000001E0
-L_000001DC:
-    b L_000001FC
-L_000001E0:
-    lis r8, 0xcc00
-    ori r8, r8, 0x3000
-    li r4, 0x3
-    stw r4, 0x24(r8)
-    stw r3, 0x24(r8)
-    nop
-    b L_00000200
-L_000001FC:
-    b L_00000208
-L_00000200:
-    nop
-    b L_00000200
-L_00000208:
-    b L_000001A0
-}
-#endif
 
 /**
  * @note Address: 0x8016882C
@@ -166,13 +90,8 @@ static void KillThreads(void) {
 
     for (thread = __OSActiveThreadQueue.head; thread; thread = next) {
         next = thread->linkActive.next;
-        switch (thread->state) {
-        case 1:
-        case 4:
+        if (thread->state == OS_THREAD_STATE_READY || thread->state == OS_THREAD_STATE_WAITING) {
             OSCancelThread(thread);
-            continue;
-        default:
-            continue;
         }
     }
 }
@@ -185,7 +104,7 @@ void __OSDoHotReset(u32 resetCode) {
     OSDisableInterrupts();
     __VIRegs[1] = 0;
     ICFlashInvalidate();
-    Reset(resetCode * 8);
+    __OSResetHardware(resetCode * 8);
 }
 
 /**
@@ -222,21 +141,21 @@ void __OSShutdownDevices(BOOL doRecal) {
  * @note Address: 0x801688DC
  * @note Size: 0x200
  */
-void OSResetSystem(BOOL reset, u32 resetCode, BOOL forceMenu) {
+void OSResetSystem(int reset, u32 resetCode, BOOL forceMenu) {
     OSSram* sram;
 
     OSDisableScheduler();
 
-    if (reset == TRUE && forceMenu) {
+    if (reset == OS_RESET_HOTRESET && forceMenu) {
         sram = __OSLockSram();
         sram->flags |= 0x40;
-        __OSUnlockSram(1);
+        __OSUnlockSram(TRUE);
 
         resetCode = 0;
     }
 
     if (reset == OS_RESET_SHUTDOWN ||
-        (reset == OS_RESET_RESTART && (bootThisDol || resetCode + 0x3fff0000 == 0)))
+        (reset == OS_RESET_RESTART && (bootThisDol || resetCode == 0xC0010000)))
     {
         __OSShutdownDevices(FALSE);
     } else {

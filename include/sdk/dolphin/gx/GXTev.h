@@ -1,8 +1,9 @@
 #ifndef _DOLPHIN_GX_GXTEV_H_
 #define _DOLPHIN_GX_GXTEV_H_
 
-#include <dolphin/gx/GXEnum.h>
-#include <dolphin/gx/GXStruct.h>
+#include <sdk/dolphin/gx/GXRenderTypes.h>
+#include <sdk/dolphin/gx/GXTevTypes.h>
+#include <sdk/dolphin/gx/GXTextureTypes.h>
 
 #ifdef __cplusplus
 extern "C" {

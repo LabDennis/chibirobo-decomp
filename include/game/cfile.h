@@ -13,8 +13,8 @@ class CFile : public DVDFileInfo {
 public:
 	CFile()
 	{
-		mEntrynum = -1;
 		mArchive  = NULL;
+		mEntrynum = -1;
 		mBuffer   = NULL;
 		mResult   = 0;
 		mState    = 1;
@@ -30,7 +30,7 @@ public:
 	CFileArchive* mArchive; // _D4
 	ARCFileInfo mArcInfo;   // _D8
 	s32 mState;             // _E4, ReadEx step
-	// _E8 vtable
+	                        // _E8 vtable
 
 	virtual ~CFile() { }                                                          // _08 (weak)
 	virtual void* Alloc(u32 size);                                                // _0C
@@ -44,9 +44,8 @@ public:
 	s32 ConvertPathToEntrynum(const char* path);
 	s32 CloseHandle(); // in ctpl.cpp
 
-	// inlined:
 	s32 Open();
-	s32 StartRead(BOOL fromAram);
+	void StartRead(BOOL fromAram);
 };
 // size checks by hand, STATIC_ASSERT lives in types.h
 typedef char CFile_size_check[sizeof(CFile) == 0xEC ? 1 : -1];
@@ -74,7 +73,7 @@ typedef char CFileArchive_size_check[sizeof(CFileArchive) == 0x108 ? 1 : -1];
 // a text file read a line at a time
 class CFileText : public CFile {
 public:
-	virtual ~CFileText() { } // _08 (weak)
+	virtual ~CFileText();
 
 	BOOL GetLine(char* line);
 

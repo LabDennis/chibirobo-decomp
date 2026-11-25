@@ -1,6 +1,8 @@
 #ifndef _GAME_EVT_H
 #define _GAME_EVT_H
 
+#include "types.h"
+
 // event script bytecode, the stuff in qp.bin's bin/stageNN.bin that CEvt runs
 
 // command opcodes. the spellings are the game's own, evtCmdTable pairs each opcode
@@ -198,5 +200,230 @@ enum EvtSyscall {
 	SYSCALL_CHK_OBJSTAT = -28,  // obj, bit
 	SYSCALL_STGFUNC     = -100, // first arg plus 7 picks the stage rel function
 };
+
+// where CEvt is in its script, name from RTTI
+class CEvtData {
+public:
+	CEvtData()
+	{
+		mScript  = NULL;
+		mContext = 0;
+	}
+
+	u8* mScript;  // _00, read pointer
+	u32 mContext; // _04, the object the script runs for (the event's owner, else the caller's or queued context); object id -1 resolves to
+	              // it
+	// _08 vtable
+
+	virtual ~CEvtData() { } // _08
+};
+STATIC_ASSERT(sizeof(CEvtData) == 0xC);
+
+// a word stack, CEvt has three. name from RTTI
+class CStack {
+public:
+	CStack()
+	{
+		mBuf   = NULL;
+		mSize  = 0;
+		mCount = 0;
+	}
+
+	s32* mBuf;  // _00
+	s32 mCount; // _04
+	s32 mSize;  // _08
+	// _0C vtable
+
+	virtual ~CStack() { } // _08
+};
+STATIC_ASSERT(sizeof(CStack) == 0x10);
+
+extern "C" void AllocateWordBuffer(CStack* stack, s32 capacity);
+
+class CCameraMemento;
+class CMsg;
+
+// the script runner. PUSHBP and POPBP park mValues's count on mFrames
+class CEvt {
+public:
+	u32 mOwner;                     // _00, ABORT only resumes a parked script while this is zero
+	CEvtData mData;                 // _04
+	s32 mSelectResult;              // _10, SELECT result
+	s32 mResult2;                   // _14
+	s32 mWaitTimer;                 // _18
+	s32 mYesNoActive;               // _1C
+	s32 mMenuActive;                // _20
+	CStack mCalls;                  // _24, return addresses
+	CStack mFrames;                 // _34
+	CStack mValues;                 // _44
+	CMsg* mMsg;                     // _54, the message window the script talks through
+	s32 mMsgState;                  // _58
+	s16 mUseValue;                  // _5C
+	s16 mHitValue;                  // _5E
+	CCameraMemento* mCameraMemento; // _60, private saved camera
+	// _64 vtable
+
+	virtual ~CEvt() { } // _08
+
+	// the command handlers, evtCmdTable names the opcodes of each
+	s32 _cmd_ABORT(u8 command, s32 step);
+	s32 _cmd_RETURN(u8 command, s32 step);
+	s32 _cmd_GOTO(u8 command, s32 step);
+	s32 _cmd_SET(u8 command, s32 step);
+	s32 _cmd_IF(u8 command, s32 step);
+	s32 _cmd_RUN(u8 command, s32 step);
+	s32 _cmd_LIB(u8 command, s32 step);
+	s32 _cmd_PUSHBP(u8 command, s32 step);
+	s32 _cmd_POPBP(u8 command, s32 step);
+	s32 _cmd_SETSP(u8 command, s32 step);
+	s32 _cmd_ANIM(u8 command, s32 step);
+	s32 _cmd_ANIM2(u8 command, s32 step);
+	s32 _cmd_ATTACH(u8 command, s32 step);
+	s32 _cmd_BORN(u8 command, s32 step);
+	s32 _cmd_CALL(u8 command, s32 step);
+	s32 _cmd_CAMERA(u8 command, s32 step);
+	s32 _cmd_WAIT(u8 command, s32 step);
+	s32 _cmd_COLOR(u8 command, s32 step);
+	s32 _cmd_DIR(u8 command, s32 step);
+	s32 _cmd_DISP(u8 command, s32 step);
+	s32 _cmd_KILL(u8 command, s32 step);
+	s32 _cmd_LIGHT(u8 command, s32 step);
+	s32 _cmd_MENU(u8 command, s32 step);
+	s32 _cmd_MOVE(u8 command, s32 step);
+	s32 _cmd_MOVETO(u8 command, s32 step);
+	s32 _cmd_MOVIE(u8 command, s32 step);
+	s32 _cmd_MSG(u8 command, s32 step);
+	s32 _cmd_POS(u8 command, s32 step);
+	s32 _cmd_PRINTF(u8 command, s32 step);
+	s32 _cmd_PTCL(u8 command, s32 step);
+	s32 _cmd_READ(u8 command, s32 step);
+	s32 _cmd_SCALE(u8 command, s32 step);
+	s32 _cmd_SCRN(u8 command, s32 step);
+	s32 _cmd_SFX(u8 command, s32 step);
+	s32 _cmd_TIMER(u8 command, s32 step);
+	s32 _cmd_WARP(u8 command, s32 step);
+	s32 _cmd_WIN(u8 command, s32 step);
+};
+STATIC_ASSERT(sizeof(CEvt) == 0x68);
+
+// the event globals, class names from RTTI. the evt tu's __sinit builds one of each
+
+// script flags, 0x1000 one bit flags. the dust, coin and item objects keep one each
+class CEvtFlags {
+public:
+	enum { FlagCount = 0x1000 };
+	u32 mFlags[FlagCount / 32]; // _00
+	// _200 vtable
+
+	CEvtFlags() { }
+	virtual ~CEvtFlags() { } // _08
+
+	void Set(s32 index, bool enabled)
+	{
+		if ((u32)index >= FlagCount) {
+			return;
+		}
+		const u32 bit = 1u << (index & 31);
+		u32& word     = mFlags[index >> 5];
+		if (enabled) {
+			word |= bit;
+		} else {
+			word &= ~bit;
+		}
+	}
+
+	bool Test(s32 index) const { return (u32)index < FlagCount && (mFlags[index >> 5] & (1u << (index & 31))) != 0; }
+
+	void SetAll(bool enabled)
+	{
+		for (u32 i = 0; i < ARRAY_SIZE(mFlags); ++i) {
+			mFlags[i] = enabled ? ~0u : 0;
+		}
+	}
+};
+STATIC_ASSERT(sizeof(CEvtFlags) == 0x204);
+
+// script variables
+class CEvtVars {
+public:
+	s32 mVars[0x800]; // _00
+	// _2000 vtable
+
+	virtual ~CEvtVars() { } // _08
+};
+STATIC_ASSERT(sizeof(CEvtVars) == 0x2004);
+
+// a ring of parked scripts, a null script is a free slot
+class CEvtQueue {
+public:
+	s32 mRead;         // _00
+	u8* mScript[0x80]; // _04
+	// _204 vtable
+
+	virtual ~CEvtQueue() { } // _08
+};
+
+// the same with each script's context and two arguments
+class CEvtQueueEx : public CEvtQueue {
+public:
+	u32 mContext[0x80];  // _208
+	s16 mUseValue[0x80]; // _408
+	s16 mHitValue[0x80]; // _508
+
+	virtual ~CEvtQueueEx() { } // _08
+};
+STATIC_ASSERT(sizeof(CEvtQueueEx) == 0x608);
+
+// TIMER's countdowns, a script starts when one runs out
+class CEvtTimer {
+public:
+	s32 mFrames[10]; // _00, 0 is a free slot
+	s32 mValue[10];  // _28, the script
+	// _50 vtable
+
+	virtual ~CEvtTimer() { } // _08
+};
+STATIC_ASSERT(sizeof(CEvtTimer) == 0x54);
+
+class CJObj;
+class CVec;
+class XObj;
+
+extern "C" {
+// script flags, one bit each, and script variables. both go in the save file
+extern CEvtFlags gEventFlags;
+extern CEvtVars gEventVars;
+// the camera states scripts save and load
+extern CCameraMemento gEventCameraMementos[];
+
+// world position of the joint a path leads to, path holds a sibling count per level
+CVec GetEventJointWorldPosition(CJObj* obj, s32 depth, s32* path);
+CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
+// start a script on evt, or park it in the queue while another one runs
+void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue);
+void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
+void InitializeEventScriptContext(CEvt* evt, CMsg* msg, XObj* owner);
+// runs the script on for step frames
+void CEvt_Update(CEvt* evt, s32 step);
+// the object an event refers to by id, -1 is the one running the script
+XObj* ResolveEventObjectId(const CEvtData* context, s16 id);
+}
+
+struct EvtBeatLatch {
+	s32 mPending; // _00
+	s32 mBeat;    // _04
+
+	EvtBeatLatch() { mPending = 0; }
+};
+
+extern "C" EvtBeatLatch gEventBeatLatch;
+struct EvtCmdEntry {
+	u8 command;                                 // _00
+	u8 _01;                                     // _01, a per-command constant in evtCmdTable (3 for most, also 0, 1, 7, 11), never read
+	const char* name;                           // _04
+	s32 (CEvt::*handler)(u8 command, s32 step); // _08
+};
+STATIC_ASSERT(sizeof(EvtCmdEntry) == 0x14);
+extern "C" EvtCmdEntry evtCmdTable[];
 
 #endif

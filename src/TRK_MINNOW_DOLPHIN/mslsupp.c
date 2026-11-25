@@ -1,6 +1,6 @@
+#include "Dolphin/os.h"
 #include "PowerPC_EABI_Support/MetroTRK/trk.h"
 
-// forward declares
 DSIOResult __read_file(u32 handle, u8* buffer, size_t* count, void* ref_con);
 DSIOResult __write_file(u32 handle, u8* buffer, size_t* count, void* ref_con);
 DSIOResult __close_file(u32 handle, u8* buffer, size_t* count, void* ref_con);
@@ -59,28 +59,19 @@ DSIOResult __write_file(u32 handle, u8* buffer, size_t* count, void* ref_con)
 
 /**
  * @note Address: N/A
- * @note Size: 0x17C
- */
-void __open_file(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x84
  */
 DSIOResult __close_file(u32 handle, u8* buffer, size_t* count, void* ref_con)
 {
-	u32 r0;
+	u32 result;
 
-	if (GetTRKConnected() == DS_NoError) {
+	if (!GetTRKConnected()) {
 		return DS_IOError;
 	}
 
-	r0 = TRKCloseFile(DSMSG_CloseFile, handle);
+	result = TRKCloseFile(DSMSG_CloseFile, handle);
 
-	switch ((u8)r0) {
+	switch ((u8)result) {
 	case DS_IONoError:
 		return DS_IONoError;
 	case DS_IOEOF:
@@ -88,24 +79,6 @@ DSIOResult __close_file(u32 handle, u8* buffer, size_t* count, void* ref_con)
 	}
 
 	return DS_IOError;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xDC
- */
-void __position_file(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xE0
- */
-void convertFileMode(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -115,17 +88,17 @@ void convertFileMode(void)
 DSIOResult __access_file(u32 handle, u8* buffer, size_t* count, void* ref_con, MessageCommandID cmd)
 {
 	size_t countTemp;
-	u32 r0;
+	u32 result;
 
-	if (GetTRKConnected() == DS_NoError) {
+	if (!GetTRKConnected()) {
 		return DS_IOError;
 	}
 
 	countTemp = *count;
-	r0        = TRKAccessFile(cmd, handle, &countTemp, buffer);
+	result    = TRKAccessFile(cmd, handle, &countTemp, buffer);
 	*count    = countTemp;
 
-	switch ((u8)r0) {
+	switch ((u8)result) {
 	case DS_IONoError:
 		return DS_IONoError;
 	case DS_IOEOF:
@@ -133,13 +106,4 @@ DSIOResult __access_file(u32 handle, u8* buffer, size_t* count, void* ref_con, M
 	}
 
 	return DS_IOError;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x1D0
- */
-void __open_temp_file(void)
-{
-	// UNUSED FUNCTION
 }

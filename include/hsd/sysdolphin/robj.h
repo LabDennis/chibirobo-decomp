@@ -9,12 +9,35 @@
 #include <sysdolphin/jobj.h>
 #include <sysdolphin/robj_alloc.h>
 
-#define TYPE_MASK        0x70000000
 #define REFTYPE_EXP      0x0
 #define REFTYPE_JOBJ     0x10000000
 #define REFTYPE_LIMIT    0x20000000
 #define REFTYPE_BYTECODE 0x30000000
 #define REFTYPE_IKHINT   0x40000000
+
+#define ROBJ_IK_FLIP 0x4U
+
+enum HSD_RObjJointSubtype {
+	ROBJ_JOINT_POSITION = 1,
+	ROBJ_JOINT_DIRECTION = 2,
+	ROBJ_JOINT_UP = 3,
+	ROBJ_JOINT_ORIENTATION = 4,
+};
+
+enum HSD_RObjLimitSubtype {
+	ROBJ_LIMIT_ROT_X_MIN = 1,
+	ROBJ_LIMIT_ROT_X_MAX = 2,
+	ROBJ_LIMIT_ROT_Y_MIN = 3,
+	ROBJ_LIMIT_ROT_Y_MAX = 4,
+	ROBJ_LIMIT_ROT_Z_MIN = 5,
+	ROBJ_LIMIT_ROT_Z_MAX = 6,
+	ROBJ_LIMIT_TRANS_X_MIN = 7,
+	ROBJ_LIMIT_TRANS_X_MAX = 8,
+	ROBJ_LIMIT_TRANS_Y_MIN = 9,
+	ROBJ_LIMIT_TRANS_Y_MAX = 10,
+	ROBJ_LIMIT_TRANS_Z_MIN = 11,
+	ROBJ_LIMIT_TRANS_Z_MAX = 12,
+};
 
 typedef struct _HSD_Rvalue {
 	struct _HSD_Rvalue* next;
@@ -24,7 +47,7 @@ typedef struct _HSD_Rvalue {
 
 typedef struct _HSD_RvalueList {
 	u32 flags;                   // _00
-	struct _HSD_JObjDesc* joint; // _04
+	HSD_Joint* joint; // _04
 } HSD_RvalueList;
 
 typedef struct _HSD_IKHint {
@@ -77,7 +100,7 @@ typedef struct _HSD_RObjDesc {
 		struct _HSD_ExpDesc* exp;
 		struct _HSD_ByteCodeExpDesc* bcexp;
 		struct _HSD_IKHintDesc* ik_hint;
-		struct _HSD_JObjDesc* joint;
+		HSD_Joint* joint;
 		f32 limit;
 	} u;
 } HSD_RObjDesc;
@@ -89,6 +112,7 @@ typedef struct _HSD_RObjAnimJoint {
 
 void HSD_RObjSetFlags(HSD_RObj* robj, u32 flags);
 HSD_RObj* HSD_RObjAlloc(void);
+/* Pass zero as the subtype to find the first enabled reference of this type. */
 HSD_RObj* HSD_RObjGetByType(HSD_RObj* robj, u32 type, u32 subtype);
 void HSD_RObjAnimAll(HSD_RObj* robj);
 void HSD_RObjRemoveAnimAllByFlags(HSD_RObj* robj, u32 flags);
@@ -99,7 +123,9 @@ void HSD_RObjRemove(HSD_RObj* robj);
 void HSD_RObjRemoveAll(HSD_RObj* robj);
 HSD_RObj* HSD_RObjLoadDesc(HSD_RObjDesc*);
 void HSD_RObjResolveRefsAll(HSD_RObj* robj, HSD_RObjDesc* desc);
-void HSD_RObjSetConstraintObj(HSD_RObj* robj, void* o);
+/* Returns the number of matching references averaged into position. */
+int HSD_RObjGetGlobalPosition(HSD_RObj* robj, int subtype, Vec* position);
+void HSD_RObjUpdateAll(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func);
 
 inline void HSD_RObjRemoveAnimAll(HSD_RObj* robj)
 {

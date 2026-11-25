@@ -1,7 +1,9 @@
 import copy
 import json
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from unittest.mock import patch
 
 import progress
@@ -39,6 +41,22 @@ def embedded_data(page):
 
 
 class RenderTests(unittest.TestCase):
+    def test_near_match_stays_below_100_in_function_map(self):
+        source = payload()
+        unit = treemap.unit_from_report({
+            "name": "main/near_match",
+            "measures": {"total_code": "8", "total_functions": 2, "matched_functions": 1},
+            "functions": [
+                {"name": "near", "size": "4", "fuzzy_match_percent": 99.997},
+                {"name": "exact", "size": "4", "fuzzy_match_percent": 100},
+            ],
+        })
+        source["versions"][1]["units"].append(unit)
+        rendered = embedded_data(treemap.render_page(source))["versions"][1]["units"][-1]
+        near, exact = rendered["funcs"]
+        self.assertLess(near[3], 100)
+        self.assertNotEqual(near[4], exact[4])
+
     def test_readme_rectangles_match_embedded_usa_map(self):
         source = payload()
         page = treemap.render_page(copy.deepcopy(source))
@@ -110,6 +128,35 @@ class RenderTests(unittest.TestCase):
         stamp = after["stamp"]
         treemap.render_page(after)
         self.assertEqual(after["stamp"], stamp)
+
+
+class ProgressUpdateTests(unittest.TestCase):
+    def test_update_preserves_snapshot_if_source_changes_during_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "configure.py"
+            source.write_text("# before\n", encoding="utf-8")
+            snapshot = root / "progress" / "data.json"
+            snapshot.parent.mkdir()
+            snapshot.write_text("previous snapshot", encoding="utf-8")
+            report = root / "build" / "GGTE01" / "report.json"
+            report.parent.mkdir(parents=True)
+            report.write_text('{"units":[]}', encoding="utf-8")
+
+            def build(versions, all_source):
+                self.assertTrue(all_source)
+                source.write_text("# after\n", encoding="utf-8")
+                return {version: True for version in versions}
+
+            with (
+                patch.object(progress, "ROOT", root),
+                patch.object(progress, "SNAPSHOT", snapshot),
+                patch.object(progress.check_versions, "check", side_effect=build),
+                self.assertRaisesRegex(ValueError, "source changed during verification"),
+            ):
+                progress.update(["GGTE01"])
+
+            self.assertEqual(snapshot.read_text(encoding="utf-8"), "previous snapshot")
 
 
 if __name__ == "__main__":

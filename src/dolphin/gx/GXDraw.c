@@ -3,6 +3,7 @@
 #include <dolphin/gx.h>
 #include <dolphin/os.h>
 
+#include "PowerPC_EABI_Support/MSL_C/PPC_EABI/math_ppc.h"
 #include "__gx.h"
 
 static GXVtxDescList vcd[27];
@@ -63,7 +64,7 @@ static void vcross(f32 u[3], f32 v[3], f32 n[3]) {
  * @note Size: ?
  */
 static void normalize(f32 v[3]) {
-    f32 d = sqrtf((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
+    f32 d = SDKFastSqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
 
     ASSERTMSGLINE(137, d != 0.0f, "normalize: zero length vector");
     v[0] /= d;

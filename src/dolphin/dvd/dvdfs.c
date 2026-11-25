@@ -20,10 +20,6 @@ u32 __DVDLongFileNameFlag = 0;
 
 static void cbForReadAsync(s32 result, DVDCommandBlock* block);
 static void cbForReadSync(s32 result, DVDCommandBlock* block);
-static void cbForSeekAsync(s32 result, DVDCommandBlock* block);
-static void cbForSeekSync(s32 result, DVDCommandBlock* block);
-static void cbForPrepareStreamAsync(s32 result, DVDCommandBlock* block);
-static void cbForPrepareStreamSync(s32 result, DVDCommandBlock* block);
 
 #ifndef offsetof
 #define offsetof(type, memb) ((u32) & ((type*)0)->memb)
@@ -429,60 +425,6 @@ static void cbForReadSync(s32 result, DVDCommandBlock* block)
 
 /**
  * @note Address: N/A
- * @note Size: 0x98
- */
-BOOL DVDSeekAsyncPrio(DVDFileInfo* fileInfo, s32 offset, DVDCallback callback, s32 prio)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x30
- */
-static void cbForSeekAsync(s32 result, DVDCommandBlock* block)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xAC
- */
-s32 DVDSeekPrio(DVDFileInfo* fileInfo, s32 offset, s32 prio)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x24
- */
-static void cbForSeekSync(s32 result, DVDCommandBlock* block)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x20
- */
-s32 DVDGetFileInfoStatus(DVDFileInfo* fileInfo)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x68
- */
-BOOL DVDFastOpenDir(s32 entrynum, DVDDir* dir)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0xC0
  */
 BOOL DVDOpenDir(char* dirName, DVDDir* dir)
@@ -552,49 +494,4 @@ void DVDRewindDir(DVDDir* dir)
 void* DVDGetFSTLocation()
 {
 	return BootInfo->FSTLocation;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xEC
- */
-BOOL DVDPrepareStreamAsync(DVDFileInfo* fileInfo, u32 length, u32 offset, DVDCallback callback)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x30
- */
-static void cbForPrepareStreamAsync(s32 result, DVDCommandBlock* block)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x144
- */
-void DVDPrepareStream()
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x24
- */
-static void cbForPrepareStreamSync(s32 result, DVDCommandBlock* block)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x6C
- */
-s32 DVDGetTransferredSize(DVDFileInfo* fileinfo)
-{
-	// UNUSED FUNCTION
 }

@@ -86,13 +86,12 @@ InputIt find_if(InputIt first, InputIt last, UnaryPredicate p) {
 	return first;
 }
 
-// fakematch: val should be a const reference, but that breaks JMessage::TResource::toMessageIndex_messageID
-template<class ForwardIterator, class T>
-inline ForwardIterator find(ForwardIterator first, ForwardIterator last, T& val) {
-    while (first != last && !(*first == val)) {
+template<class InputIt, class T>
+inline InputIt find(InputIt first, InputIt last, const T& val) {
+	while (first != last && !(*first == val)) {
 		++first;
 	}
-    return first;
+	return first;
 }
 
 /*
@@ -159,9 +158,8 @@ inline T* copy(const T* first, const T* last, T* result) {
 #endif
 
 template<class InputIt, class OutputIt>
-inline OutputIt copy(InputIt first, InputIt last,
-              OutputIt d_first) {
-    for (; first < last; ++first, ++d_first) {
+inline OutputIt copy(InputIt first, InputIt last, OutputIt d_first) {
+    for (; first != last; ++first, ++d_first) {
         *d_first = *first;
     }
     return d_first;

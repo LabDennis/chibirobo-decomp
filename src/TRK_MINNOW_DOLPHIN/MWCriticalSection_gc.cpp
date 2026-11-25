@@ -30,12 +30,4 @@ void MWExitCriticalSection(uint* section)
 	OSRestoreInterrupts(*section);
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x4
- */
-void MWTerminateCriticalSection()
-{
-	// UNUSED FUNCTION
-}
 };

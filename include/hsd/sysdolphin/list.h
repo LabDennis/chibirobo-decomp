@@ -5,7 +5,13 @@
 
 typedef struct _HSD_SList {
     struct _HSD_SList* next;
-    void* data;
+    /* Numeric expressions and particle commands use this payload as a word. */
+    union {
+        void* data;
+        f32 float_value;
+        s32 int_value;
+        u32 uint_value;
+    };
 } HSD_SList;
 
 typedef struct _HSD_DList {

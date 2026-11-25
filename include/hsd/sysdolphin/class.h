@@ -37,28 +37,26 @@ typedef struct _HSD_ClassInfo {
     void (*amnesia)(struct _HSD_ClassInfo* c);
 } HSD_ClassInfo;
 
-typedef struct _HSD_FreeList {
-    struct _HSD_FreeList* next;
-} HSD_FreeList;
-
-typedef struct _HSD_MemoryEntry {
-    u32 size;
-    u32 nb_alloc;
-    u32 nb_free;
-    struct _HSD_FreeList* free_list;
-    struct _HSD_MemoryEntry* next;
-} HSD_MemoryEntry;
+static inline void hsdDelete(void* object)
+{
+    HSD_Class* instance = (HSD_Class*)object;
+    if (instance != NULL) {
+        instance->class_info->release(instance);
+        instance->class_info->destroy(instance);
+    }
+}
 
 extern HSD_ClassInfo hsdClass;
 
-void _hsdClassInfoInit();
+void _hsdClassInfoInit(void);
 void hsdInitClassInfo(HSD_ClassInfo* class_info, HSD_ClassInfo* parent_info,
                       char* base_class_library, char* type,
                       s32 info_size, s32 class_size);
+BOOL hsdIsDescendantOf(HSD_ClassInfo* info, HSD_ClassInfo* class_info);
 BOOL hsdObjIsDescendantOf(HSD_Class* cls, HSD_ClassInfo* class_info);
 BOOL hsdChangeClass(HSD_Class* object, HSD_ClassInfo* class_info);
 HSD_ClassInfo* hsdSearchClassInfo(char* class_name);
 void hsdForgetClassLibrary(char* name);
-void hsdFreeMemPiece(void*, s32);
+void hsdFreeMemPiece(void* block, s32 size);
 
 #endif

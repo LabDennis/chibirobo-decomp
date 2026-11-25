@@ -6,7 +6,7 @@
 #define HSD_OBJ_NOREF 0xFFFF
 
 #define HSD_OBJECT_INFO(o) (o.parent.parent)
-#define HSD_OBJECT_METHOD(o) (o->parent.parent.class_info)
+#define HSD_OBJECT_METHOD(o) ((o)->parent.parent.class_info)
 #define HSD_OBJECT_PARENT_INFO(o) ((o)->parent.parent.head.parent)
 #define HSD_OBJ(o) ((HSD_Obj*) (o))
 
@@ -64,6 +64,16 @@ inline void ref_INC(void* o)
         HSD_OBJ(o)->ref_count++;
         assert_line(93, HSD_OBJ(o)->ref_count != HSD_OBJ_NOREF);
     }
+}
+
+// A count of zero represents one ordinary reference. Releasing it sets HSD_OBJ_NOREF.
+static inline BOOL ref_DEC(void* object)
+{
+    BOOL unreferenced = HSD_OBJ(object)->ref_count == HSD_OBJ_NOREF;
+    if (unreferenced) {
+        return unreferenced;
+    }
+    return HSD_OBJ(object)->ref_count-- == 0;
 }
 
 inline void iref_INC(void* o)

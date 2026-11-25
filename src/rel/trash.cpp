@@ -1,174 +1,45 @@
+#include "game/reltrash.h"
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
+#include "game/xchr.h"
+#include "game/xobjflags.h"
 
 extern "C" double sin(double x);
 extern "C" double cos(double x);
 extern "C" double atan2(double y, double x);
 extern "C" f32 PSVECDistance(Vec* a, Vec* b);
 
-extern "C" s32 fn_8001E6C8(void* obj, s32 id);
-extern "C" void fn_8001E904(void* obj, s32 id, s32 arg);
-
-// todo: copied inline, clean up
-inline f32 HSD_AObjGetCurrentFrame(HSD_AObj* aobj)
+// first aobj on the jobj or below it
+static inline HSD_AObj* FindAnim(HSD_JObj* jobj)
 {
-	((aobj) ? ((void)0) : __assert("aobj.h", 149, "aobj"));
-	return aobj->curr_frame;
+	if (jobj != NULL) {
+		HSD_AObj* aobj = FindJointAnimationInTree(jobj);
+		if (aobj != NULL) {
+			return aobj;
+		}
+		aobj = FindMaterialOrTextureAnimationInJointTree(jobj);
+		if (aobj != NULL) {
+			return aobj;
+		}
+		aobj = FindPolygonAnimationInJointTree(jobj);
+		if (aobj != NULL) {
+			return aobj;
+		}
+	}
+	return NULL;
 }
 
-// frame of the first aobj on the jobj or below it
 static inline f32 GetAnimFrame(HSD_JObj* jobj)
 {
-	HSD_AObj* aobj;
-
-	if (jobj == NULL) {
-		aobj = NULL;
-	} else if ((aobj = fn_801908F8(jobj)) != NULL) {
-	} else if ((aobj = fn_801905D4(jobj)) != NULL) {
-	} else if ((aobj = fn_801902C4(jobj)) != NULL) {
-	} else {
-		aobj = NULL;
-	}
+	HSD_AObj* aobj = FindAnim(jobj);
 	if (aobj != NULL) {
 		return HSD_AObjGetCurrentFrame(aobj);
 	}
 	return 0.0f;
 }
-
-struct XObj;
-
-struct UnkKindData {
-	u8 _00[0x14]; // _00
-	s16 _14;      // _14
-};
-
-struct XObj {
-	HSD_JObj* jobj; // _00
-	u8 _04[0x30];   // _04
-	// _34 vtable
-	virtual void vf08(); // _08
-	virtual void vf0C(); // _0C
-	virtual void vf10(); // _10
-	virtual void vf14(); // _14
-	virtual void vf18(); // _18
-	virtual void vf1C(); // _1C
-	virtual void vf20(); // _20
-	virtual void vf24(); // _24
-	virtual void vf28(); // _28
-	virtual void vf2C(); // _2C
-	virtual void vf30(); // _30
-	virtual void vf34(); // _34
-	virtual void vf38(); // _38
-	virtual void vf3C(); // _3C
-	virtual void vf40(); // _40
-	virtual void vf44(); // _44
-	virtual void vf48(); // _48
-	virtual void vf4C(); // _4C
-	virtual void vf50(); // _50
-	virtual void vf54(); // _54
-	virtual void vf58(); // _58
-	virtual void vf5C(); // _5C
-	virtual void vf60(); // _60
-	virtual void vf64(); // _64
-	virtual void vf68(); // _68
-	virtual void vf6C(); // _6C
-	virtual void vf70(); // _70
-	virtual void vf74(); // _74
-
-	virtual void vf78(Vec* pos, f32 arg); // _78
-
-	virtual void vf7C(); // _7C
-
-	virtual void vf80(s32 arg, s32 arg2, s32 arg3, s32 arg4, s32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9); // _80
-
-	virtual void vf84();  // _84
-	virtual void vf88();  // _88
-	virtual void vf8C();  // _8C
-	virtual void vf90();  // _90
-	virtual void vf94();  // _94
-	virtual void vf98();  // _98
-	virtual void vf9C();  // _9C
-	virtual void vfA0();  // _A0
-	virtual void vfA4();  // _A4
-	virtual void vfA8();  // _A8
-	virtual void vfAC();  // _AC
-	virtual void vfB0();  // _B0
-	virtual void vfB4();  // _B4
-	virtual void vfB8();  // _B8
-	virtual void vfBC();  // _BC
-	virtual void vfC0();  // _C0
-	virtual void vfC4();  // _C4
-	virtual void vfC8();  // _C8
-	virtual void vfCC();  // _CC
-	virtual void vfD0();  // _D0
-	virtual void vfD4();  // _D4
-	virtual void vfD8();  // _D8
-	virtual void vfDC();  // _DC
-	virtual void vfE0();  // _E0
-	virtual void vfE4();  // _E4
-	virtual void vfE8();  // _E8
-	virtual void vfEC();  // _EC
-	virtual void vfF0();  // _F0
-	virtual void vfF4();  // _F4
-	virtual void vfF8();  // _F8
-	virtual void vfFC();  // _FC
-	virtual void vf100(); // _100
-	virtual void vf104(); // _104
-	virtual void vf108(); // _108
-	virtual void vf10C(); // _10C
-	virtual void vf110(); // _110
-	virtual void vf114(); // _114
-	virtual void vf118(); // _118
-	virtual void vf11C(); // _11C
-	virtual void vf120(); // _120
-	virtual void vf124(); // _124
-	virtual void vf128(); // _128
-	virtual void vf12C(); // _12C
-	virtual void vf130(); // _130
-	virtual void vf134(); // _134
-	virtual void vf138(); // _138
-	virtual void vf13C(); // _13C
-	virtual void vf140(); // _140
-	virtual void vf144(); // _144
-	virtual u32 vf148();  // _148
-#if defined(VERSION_JP)
-	u8 _38[0xC0 - 0x38]; // _38
-#else
-	u8 _38[0xC8 - 0x38]; // _38
-#endif
-	Vec _C8;           // _C8 in Japan _C0
-	u8 _D4[0x28];      // _D4 in Japan _CC
-	f32 _FC;           // _FC in Japan _F4
-	u8 _100[0xC];      // _100 in Japan _F8
-	f32 _10C;          // _10C in Japan _104
-	u8 _110[0x118];    // _110 in Japan _108
-	u64 _228;          // _228 in Japan _220
-	u8 _230[0x8];      // _230 in Japan _228
-	s32* _238;         // _238 in Japan _230
-	u8 _23C[0x4];      // _23C in Japan _234
-	UnkKindData* _240; // _240 in Japan _238
-#if defined(VERSION_JP)
-	u8 _244[0x970 - 0x23C]; // _244 in Japan _23C
-#else
-	u8 _244[0x980 - 0x244]; // _244
-#endif
-	u32* _980;     // _980 in Japan _970
-	u8 _984[0x50]; // _984 in Japan _974
-	s32 _9D4;      // _9D4 in Japan _9C4
-	u8 _9D8[0x70]; // _9D8 in Japan _9C8
-	s32 _A48;      // _A48 in Japan _A38
-	u8 _A4C[0x18]; // _A4C in Japan _A3C
-	XObj* _A64;    // _A64 in Japan _A54
-};
-
-#if defined(VERSION_JP)
-typedef char TrashXObjViewSizeCheck[sizeof(XObj) == 0xA58 ? 1 : -1];
-#else
-typedef char TrashXObjViewSizeCheck[sizeof(XObj) == 0xA68 ? 1 : -1];
-#endif
 
 static XObj* trashTarget;
 static s32 trashStackNum;
@@ -179,28 +50,21 @@ static Vec trashPos;
 static Vec trashDest;
 static Vec trashStep;
 static f32 trashArc;
+// 0 while it runs, 2 the arc finished over the box and the piece was released, 3 it hit the box low and fell beside it, 4 cancelled on B
 static s32 trashResult;
 static u8 trashActive;
 static s32 trashboxIndex;
-
-extern "C" void DrawTrashStack(void* arg);
-extern "C" void UpdateTrash(u32 frames);
-extern "C" void InitTrash(void* arg);
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2);
 
 /**
  * @note Address: stage04 .text 0x183C
  * @note Size: 0x5B8
  */
-extern "C" void DrawTrashStack(void* arg)
+extern "C" void DrawTrashStack(void)
 {
+	// NONMATCHING: regalloc
 	XObj* actor;
 	HSD_JObj* jobj;
-	Vec pos;
+	f32 a;
 	f32 angle;
 	f32 x;
 	f32 y;
@@ -212,17 +76,17 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 	actor = trashObj;
-	if (actor == NULL || !(actor->_228 & 1)) {
+	if (actor == NULL || !(actor->mStatus.mFlags & 1)) {
 		return;
 	}
 	if (!trashActive) {
 		return;
 	}
 
-	count = trashStackNum;
-	pos   = actor->_C8;
-	angle = 1.0471976f + actor->_FC;
-	jobj  = actor->jobj;
+	count   = trashStackNum;
+	Vec pos = actor->mMoveTranslate;
+	angle   = THIRD_PI + actor->mMoveRotate.y;
+	jobj    = actor->mJObj;
 	if (count < 0) {
 		count = 0;
 	}
@@ -232,15 +96,15 @@ extern "C" void DrawTrashStack(void* arg)
 
 	for (i = 1; i < count; i++) {
 		int step = i - 1;
-		if (step % 4 == 0) {
+		if (step % 4 == 0) { // every fourth piece sits on the axis
 			x = 0.0f;
 			z = x;
-			y = 2.0f * step * 0.25f + 2.0f;
+			y = 2.0f * step / 4.0f + 2.0f;
 		} else {
-			f32 a = DEG2RAD * (step % 4 * 120) + angle;
-			x     = 2.0f * (f32)sin(a);
-			y     = 2.0f * (i - 1) * 0.25f + 1.0f;
-			z     = 2.0f * (f32)cos(a);
+			a = DEG2RAD * (step % 4 * 120) + angle; // the other three at 120 degrees
+			x = 2.0f * (f32)sin(a);
+			y = 2.0f * (i - 1) / 4.0f + 1.0f; // half a unit higher each step
+			z = 2.0f * (f32)cos(a);
 		}
 		HSD_JObjSetTranslateX(jobj, x * trashStackScale + pos.x);
 		HSD_JObjSetTranslateY(jobj, y * trashStackScale + pos.y);
@@ -337,9 +201,9 @@ extern "C" void DrawTrashStack(void* arg)
     bne      .L_000019C0
     xoris    r3, r4, 0x8000
     lis      r0, 0x4330
-    lis      r4, lbl_7_rodata_198@ha
+    lis      r4, sTrashSignedConversionBias@ha
     stw      r3, 0x1c(r1)
-    addi     r3, r4, lbl_7_rodata_198@l
+    addi     r3, r4, sTrashSignedConversionBias@l
     lis      r5, lbl_7_rodata_168@ha
     stw      r0, 0x18(r1)
     lis      r4, lbl_7_rodata_174@ha
@@ -358,9 +222,9 @@ extern "C" void DrawTrashStack(void* arg)
     mulli    r4, r0, 0x78
     lis      r0, 0x4330
     stw      r0, 0x18(r1)
-    lis      r3, lbl_7_rodata_198@ha
+    lis      r3, sTrashSignedConversionBias@ha
     lis      r5, lbl_7_rodata_17C@ha
-    lfd      f1, lbl_7_rodata_198@l(r3)
+    lfd      f1, sTrashSignedConversionBias@l(r3)
     xoris    r0, r4, 0x8000
     lfs      f2, lbl_7_rodata_17C@l(r5)
     stw      r0, 0x1c(r1)
@@ -373,20 +237,20 @@ extern "C" void DrawTrashStack(void* arg)
     lis      r0, 0x4330
     xoris    r3, r3, 0x8000
     lis      r5, lbl_7_rodata_174@ha
-    lis      r4, lbl_7_rodata_198@ha
+    lis      r4, sTrashSignedConversionBias@ha
     stw      r3, 0x24(r1)
-    addi     r3, r4, lbl_7_rodata_198@l
+    addi     r3, r4, sTrashSignedConversionBias@l
     frsp     f5, f1
     stw      r0, 0x20(r1)
     lis      r4, lbl_7_rodata_178@ha
     lfd      f2, 0x0(r3)
-    lis      r3, lbl_7_rodata_180@ha
+    lis      r3, sTrashScalePercent@ha
     lfd      f0, 0x20(r1)
     lfs      f4, lbl_7_rodata_174@l(r5)
     fmr      f1, f27
     fsubs    f3, f0, f2
     lfs      f2, lbl_7_rodata_178@l(r4)
-    lfs      f0, lbl_7_rodata_180@l(r3)
+    lfs      f0, sTrashScalePercent@l(r3)
     fmuls    f27, f4, f5
     fmuls    f3, f4, f3
     fmadds   f26, f3, f2, f0
@@ -658,106 +522,97 @@ extern "C" void DrawTrashStack(void* arg)
  */
 extern "C" void UpdateTrash(u32 frames)
 {
-	XObj* robot;
+	// NONMATCHING: regalloc
+	Vec impactPos;
+	XObjChr* robot;
 
-	if (trashTarget == NULL || !trashActive) {
-		return;
-	}
-
-	CPad pad(0);
-	robot = lbl_8025C400.mPlayer;
-	switch (trashState) {
-	case 0:
-		trashObj = robot->_A64;
-		if (pad.mStatus->_04 & 0x100) {
-			robot->vf80(9, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
-			trashState++;
-		} else if (pad.mStatus->_14 & 0x200) {
-			trashState  = 99;
-			trashResult = 4;
-		}
-		break;
-	case 1:
-		if (robot->_FC == robot->_10C) {
-			robot->_A48 = 6;
-			trashTarget->_228 |= 0x10000000000ULL;
-			trashState++;
-		}
-		break;
-	case 2:
-		if (GetAnimFrame(robot->jobj) >= 15.0f) {
-			robot->_A64 = NULL;
-			trashObj->_228 &= ~0x400000000000000ULL;
-			trashDest.x = trashTarget->_C8.x;
-			trashDest.y = trashTarget->_C8.y;
-			trashDest.z = trashTarget->_C8.z;
-			trashDest.y = trashTarget->_C8.y + 30.0f;
-			trashPos.x  = trashObj->_C8.x;
-			trashPos.y  = trashObj->_C8.y;
-			trashPos.z  = trashObj->_C8.z;
-			trashArc    = 0.0f;
-			trashState++;
-			trashStep.x = (trashDest.x - trashPos.x) / 36.0f;
-			trashStep.y = (trashDest.y - trashPos.y) / 36.0f;
-			trashStep.z = (trashDest.z - trashPos.z) / 36.0f;
-		}
-		break;
-	case 3: {
-		if (GetAnimFrame(robot->jobj) >= 30.0f && GetAnimFrame(robot->jobj) < 33.0f) {
-			void* obj = &lbl_8025C400._E7E24;
-			if (!fn_8001E6C8(obj, 0x1B9)) {
-				fn_8001E904(obj, 0x1B9, 0xFF);
+	if (trashTarget != NULL && trashActive) {
+		CPad pad(0);
+		robot = gGame.GetPlayer();
+		switch (trashState) {
+		case 0:
+			trashObj = robot->mLift.mTarget; // the lifted object is the one to throw
+			if (pad.mPad->mButton & 0x100) { // A throws
+				robot->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				trashState++;
+			} else if (pad.mPad->mTrigger & 0x200) { // B cancels
+				trashResult = 4;
+				trashState  = 99;
 			}
-		}
-		trashArc += 0.08726646f * frames;
-		if ((f32)sin(trashArc) < 0.0f) {
-			XObj* held  = trashObj;
-			trashResult = 2;
-			if ((held->_240 != NULL ? (held->_240 != NULL ? held->_240->_14 : 0) : -1) == 8) {
-				u32 bit = held->vf148();
-				held->_980[bit >> 5] |= 1 << (bit & 31);
+			break;
+		case 1:
+			// wait for the robot's turn
+			if (robot->mMoveRotate.y == robot->mMoveRotate.mTarget.y) {
+				robot->mLift.mState = 6;
+				trashTarget->mStatus.mFlags |= 0x10000000000ULL;
+				trashState++;
 			}
-			trashObj->vf54();
-			trashObj   = NULL;
-			trashState = 99;
-		} else {
-			Vec pos;
-			pos.x = trashObj->_C8.x;
-			pos.y = trashObj->_C8.y;
-			pos.z = trashObj->_C8.z;
-			pos.y = trashTarget->_C8.y;
-			if (PSVECDistance(&trashTarget->_C8, &pos) < 15.0f && trashObj->_C8.y < 30.0f) {
-				trashState = 10;
+			break;
+		case 2:
+			if (15.0f <= GetAnimFrame(robot->mJObj)) { // the toss anim's release frame
+				robot->mLift.mTarget = NULL;
+				trashObj->mStatus.mFlags &= ~0x400000000000000ULL; // no longer carried
+				trashDest = trashTarget->mMoveTranslate;
+				trashDest.y += 30.0f; // aim above the box
+				trashPos    = trashObj->mMoveTranslate;
+				trashStep.x = (trashDest.x - trashPos.x) / 36.0f; // 36 frames of flight
+				trashArc    = 0.0f;
+				trashState++;
+				trashStep.y = (trashDest.y - trashPos.y) / 36.0f;
+				trashStep.z = (trashDest.z - trashPos.z) / 36.0f;
+			}
+			break;
+		case 3: {
+			if (30.0f <= GetAnimFrame(robot->mJObj) && GetAnimFrame(robot->mJObj) < 33.0f) {
+				// the toss sound's window
+				XSound* obj = &gGame.mSound;
+				if (!IsGameSoundPlaying(obj, 0x1B9)) {
+					PlayGameSound(obj, 0x1B9, 0xFF);
+				}
+			}
+			trashArc += DEG2RAD * 5 * frames;
+			if ((f32)sin(trashArc) < 0.0f) { // the arc is over (half a turn, 36 frames): release the piece
+				trashResult = 2;
+				if (trashObj->GetCategory() == 8) {
+					static_cast<XObjFlags*>(trashObj)->SetFlag();
+				}
+				trashObj->Release();
+				trashObj   = NULL;
+				trashState = 99;
 			} else {
-				trashPos.x += trashStep.x * frames;
-				trashPos.y += trashStep.y * frames;
-				trashPos.z += trashStep.z * frames;
-				pos.x = trashPos.x;
-				pos.y = trashPos.y;
-				pos.z = trashPos.z;
-				pos.y += 10.0f * (f32)sin(trashArc);
-				trashObj->vf78(&pos, 10.0f);
+				Vec pos = trashObj->mMoveTranslate;
+				pos.y   = trashTarget->mMoveTranslate.y;
+				if (PSVECDistance(&trashTarget->mMoveTranslate, &pos) < 15.0f && trashObj->mMoveTranslate.y < 30.0f) {
+					trashState = 10; // it hit the box low: bounce it off
+				} else {
+					trashPos.x += trashStep.x * frames;
+					trashPos.y += trashStep.y * frames;
+					trashPos.z += trashStep.z * frames;
+					pos.x = trashPos.x;
+					pos.y = trashPos.y;
+					pos.z = trashPos.z;
+					pos.y += 10.0f * (f32)sin(trashArc); // the arc's height
+					trashObj->SetMoveDir(&pos, 10.0f);
+				}
 			}
+			break;
 		}
-		break;
-	}
-	case 10: {
-		Vec pos;
-		f32 angle;
-		trashResult = 3;
-		pos.x       = trashObj->_C8.x;
-		pos.y       = trashObj->_C8.y;
-		pos.z       = trashObj->_C8.z;
-		angle       = atan2(pos.x - trashTarget->_C8.x, pos.z - trashTarget->_C8.z);
-		pos.x += 2.0f * (f32)sin(angle);
-		pos.y = 0.0f;
-		pos.z += 2.0f * (f32)cos(angle);
-		trashObj->vf78(&pos, 1.0f);
-		trashState = 99;
-		break;
-	}
-	case 99:
-		break;
+		case 10: {
+			f32 angle;
+			trashResult = 3;
+			// push it 2 units further out from the box, down to the ground
+			impactPos = trashObj->mMoveTranslate;
+			angle     = atan2(impactPos.x - trashTarget->mMoveTranslate.x, impactPos.z - trashTarget->mMoveTranslate.z);
+			impactPos.x += 2.0f * (f32)sin(angle);
+			impactPos.y = 0.0f;
+			impactPos.z += 2.0f * (f32)cos(angle);
+			trashObj->SetMoveDir(&impactPos, 1.0f);
+			trashState = 99;
+			break;
+		}
+		case 99:
+			break;
+		}
 	}
 }
 // UpdateTrash
@@ -783,10 +638,10 @@ extern "C" void UpdateTrash(u32 frames)
     li       r4, 0x0
     bl       __ct__4CPadFUc
     lis      r3, trashState@ha
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     addi     r5, r3, trashState@l
     lwz      r0, 0x0(r5)
-    addi     r3, r4, lbl_8025C400@l
+    addi     r3, r4, gGame@l
     addis    r3, r3, 0x1
     cmpwi    r0, 0x3
     lwz      r31, -0x6944(r3)
@@ -816,11 +671,11 @@ extern "C" void UpdateTrash(u32 frames)
     lis      r4, lbl_7_rodata_168@ha
     lwz      r12, 0x34(r31)
     lfs      f1, lbl_7_rodata_168@l(r4)
-    lis      r5, lbl_7_rodata_180@ha
+    lis      r5, sTrashScalePercent@ha
     lwz      r12, 0x80(r12)
     lis      r4, lbl_7_rodata_1A0@ha
     fmr      f3, f1
-    lfs      f2, lbl_7_rodata_180@l(r5)
+    lfs      f2, sTrashScalePercent@l(r5)
     lfs      f4, lbl_7_rodata_1A0@l(r4)
     mr       r3, r31
     li       r4, 0x9
@@ -867,21 +722,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r30, 0x0
     beq      .L_00001FC8
     mr       r3, r30
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_00001F98
     mr       r30, r3
     b        .L_00001FCC
 .L_00001F98:
     mr       r3, r30
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00001FB0
     mr       r30, r3
     b        .L_00001FCC
 .L_00001FB0:
     mr       r3, r30
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00001FC8
     mr       r30, r3
@@ -892,9 +747,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r30, 0x0
     beq      .L_00001FF8
     bne      .L_00001FF0
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -975,21 +830,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002158
     mr       r3, r29
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_00002128
     mr       r29, r3
     b        .L_0000215C
 .L_00002128:
     mr       r3, r29
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00002140
     mr       r29, r3
     b        .L_0000215C
 .L_00002140:
     mr       r3, r29
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00002158
     mr       r29, r3
@@ -1000,9 +855,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002188
     bne      .L_00002180
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -1022,21 +877,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_000021F8
     mr       r3, r29
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_000021C8
     mr       r29, r3
     b        .L_000021FC
 .L_000021C8:
     mr       r3, r29
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_000021E0
     mr       r29, r3
     b        .L_000021FC
 .L_000021E0:
     mr       r3, r29
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_000021F8
     mr       r29, r3
@@ -1047,9 +902,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002228
     bne      .L_00002220
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -1064,19 +919,19 @@ extern "C" void UpdateTrash(u32 frames)
     lfs      f0, lbl_7_rodata_1C0@l(r3)
     fcmpo    cr0, f1, f0
     bge      .L_00002274
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x1b9
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r29, r3, 0xe
     addi     r29, r29, 0x7e24
     mr       r3, r29
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_00002274
     mr       r3, r29
     li       r4, 0x1b9
     li       r5, 0xff
-    bl       fn_8001E904
+    bl       PlayGameSound
 .L_00002274:
     lis      r0, 0x4330
     lis      r3, lbl_7_rodata_1C8@ha
@@ -1275,9 +1130,9 @@ extern "C" void UpdateTrash(u32 frames)
     lis      r3, trashObj@ha
     lfs      f0, 0x24(r1)
     addi     r4, r3, trashObj@l
-    lis      r3, lbl_7_rodata_180@ha
+    lis      r3, sTrashScalePercent@ha
     fmadds   f0, f1, f2, f0
-    addi     r5, r3, lbl_7_rodata_180@l
+    addi     r5, r3, sTrashScalePercent@l
     lwz      r3, 0x0(r4)
     addi     r4, r1, 0x1c
     lfs      f1, 0x0(r5)
@@ -1315,10 +1170,10 @@ extern "C" void UpdateTrash(u32 frames)
  * @note Address: stage04 .text 0x261C
  * @note Size: 0xCC
  */
-extern "C" void InitTrash(void* arg)
+extern "C" void InitTrash(void)
 {
 	XObj* actor;
-	CGame* game = &lbl_8025C400;
+	CGame* game = &gGame;
 	s32 count;
 	s32 i;
 
@@ -1326,53 +1181,44 @@ extern "C" void InitTrash(void* arg)
 	trashObj      = NULL;
 	trashboxIndex = -1;
 	trashActive   = 0;
-	count         = game->mObjectCount;
+	count         = game->mXObjs.mObjectCount;
 	for (i = 0; trashboxIndex < 0 && i < count; i++) {
-		actor = game->mObjects[i];
-		if (actor->_228 & 1) {
-			if (*actor->_238 == 0x12D) {
+		actor = game->mXObjs.mObjects[i];
+		if (actor->mStatus.mFlags & 1) { // live objects only
+			// the trashbox's object ids
+			if (actor->mCoord.mPlacement->mObjectId == 0x12D) {
 				trashboxIndex = i;
 			}
-			if (*actor->_238 == 0x477) {
+			if (actor->mCoord.mPlacement->mObjectId == 0x477) {
 				trashboxIndex = i;
 			}
 		}
 	}
 }
 
-// needed as an inline for the stack layout of the two CVec copies
-static inline s32 IsNearXZ(const Vec& p, const Vec& q)
-{
-	CVec a(p);
-	CVec b(q);
-	b.y = 0.0f;
-	a.y = 0.0f;
-	if (11.5f < PSVECDistance(&a, &b)) {
-		return 0;
-	}
-	return 1;
-}
-
 /**
  * @note Address: stage04 .text 0x26E8
  * @note Size: 0x100
  */
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 {
 	CGame* game;
-	XObj* robot;
+	XObjChr* robot;
 	XObj* box;
 
 	if (trashboxIndex < 0) {
 		return 0;
 	}
-	game  = &lbl_8025C400;
-	robot = game->mPlayer;
-	if (trashboxIndex != robot->_9D4) {
+	game  = &gGame;
+	robot = game->GetPlayer();
+	if (trashboxIndex != robot->mFloorContacts[0].objectIndex) { // the box must be the contacted object
 		return 0;
 	}
-	box = game->mObjects[trashboxIndex];
-	return IsNearXZ(robot->_C8, box->_C8);
+	box = game->mXObjs.mObjects[trashboxIndex];
+	CVec from(robot->mMoveTranslate);
+	CVec to(box->mMoveTranslate);
+	from.y = to.y = 0.0f;
+	return PSVECDistance(&from, &to) > 11.5f ? 0 : 1;
 }
 // CmdIsNearTrashbox
 /*
@@ -1386,8 +1232,8 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
     li       r3, 0x0
     b        .L_000027D8
 .L_0000270C:
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r4, r3, 0x1
     lwz      r7, -0x6944(r4)
     lwz      r0, 0x9d4(r7)
@@ -1450,15 +1296,15 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x27E8
  * @note Size: 0x9C
  */
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 {
-	XObj* robot = lbl_8025C400.mPlayer;
+	XObjChr* robot = gGame.GetPlayer();
 
-	if (robot->_A64 != NULL) {
-		robot->_A48 = 6;
+	if (robot->mLift.mTarget != NULL) {
+		robot->mLift.mState = 6;
 	}
-	if (trashObj != NULL && (trashObj->_228 & 1)) {
-		trashObj->vf54();
+	if (trashObj != NULL && (trashObj->mStatus.mFlags & 1)) {
+		trashObj->Release();
 		trashObj = NULL;
 	}
 	return 0;
@@ -1468,7 +1314,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x2884
  * @note Size: 0x2C
  */
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
 {
 	if (trashTarget != NULL) {
 		trashObj    = NULL;
@@ -1481,7 +1327,7 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28B0
  * @note Size: 0x10
  */
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
 {
 	return trashResult;
 }
@@ -1490,13 +1336,13 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28C0
  * @note Size: 0xA8
  */
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 {
-	CGame* game     = &lbl_8025C400;
-	f32 scale       = arg2[2] / 100.0f;
-	s32 idx         = arg2[0];
-	s32 num         = arg2[1];
-	trashTarget     = game->mObjects[idx];
+	CGame* game     = &gGame;
+	f32 scale       = args[2] / 100.0f; // percent
+	s32 idx         = args[0];          // the trashbox's object index
+	s32 num         = args[1];          // pieces in the stack
+	trashTarget     = game->mXObjs.mObjects[idx];
 	trashStackNum   = num;
 	trashStackScale = scale;
 	if (trashTarget != NULL) {

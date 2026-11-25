@@ -67,10 +67,8 @@ extern void GXInvalidateTexAll();
 extern GXTexRegionCallback GXSetTexRegionCallback(GXTexRegionCallback func);
 extern GXTlutRegionCallback GXSetTlutRegionCallback(GXTlutRegionCallback func);
 
-// Unknown arg functions.
-// TODO: work these out.
-extern void __SetSURegs();
-extern void __GXSetSUTexRegs();
+extern void __SetSURegs(u32 texMap, u32 texCoord);
+extern void __GXSetSUTexRegs(void);
 extern void __GXSetTmemConfig(u32 config);
 
 // Unused/inlined in P2.
@@ -79,7 +77,7 @@ extern void GXInitTexObjWrapMode(GXTexObj* obj, GXTexWrapMode sWrap, GXTexWrapMo
 extern void GXInitTexObjTlut(GXTexObj* obj, u32 tlutName);
 // TODO: finish filling these out for reference purposes.
 
-extern void __GetImageTileCount(GXTexFmt format, u16 width, u16 height, u32* a, u32* b, u32* c);
+extern void __GetImageTileCount(GXTexFmt format, u16 width, u16 height, u32* rowTiles, u32* colTiles, u32* componentTiles);
 
 ////////////////////////////////////////////
 

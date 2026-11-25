@@ -3,15 +3,20 @@
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <sysdolphin/mtx.h>
+#include <sysdolphin/identity_mtx.h>
 
 #define HSD_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("mtx.c", line, #cond))
 
 #define EPSILON 1e-10F
+#define HALF_PI 1.5707963267948966F
+#define MIN_NORMAL_FLOAT 1.17549435e-38F
+#define SCALE_RECIPROCAL_EPSILON 1.1920929e-07F
 
-#define FLT_EPSILON 1.1920929e-07F
-
-// not in our vec.h yet
-void PSVECScale(Vec* src, Vec* dst, f32 scale);
+Mtx HSD_identityMtx = {
+	{ 1.0F, 0.0F, 0.0F, 0.0F },
+	{ 0.0F, 1.0F, 0.0F, 0.0F },
+	{ 0.0F, 0.0F, 1.0F, 0.0F },
+};
 
 static HSD_ObjAllocData mtx_alloc_data;
 static HSD_ObjAllocData vec_alloc_data;
@@ -20,57 +25,37 @@ static HSD_ObjAllocData vec_alloc_data;
  * @note Address: N/A
  * @note Size: ?
  */
-static inline float mtx_sqrtf(float value)
-{
-	volatile float y;
-	if (value > 0.0f) {
-		double guess = __frsqrte((double)value);
-		guess        = 0.5 * guess * (3.0 - guess * guess * value);
-		guess        = 0.5 * guess * (3.0 - guess * guess * value);
-		guess        = 0.5 * guess * (3.0 - guess * guess * value);
-		y            = (float)(value * guess);
-		return y;
-	}
-	return value;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
 static inline float mtx_safe_recip(float value)
 {
 	if (value >= 0.0F)
-		return 1.0F / (FLT_EPSILON + value);
+		return 1.0F / (SCALE_RECIPROCAL_EPSILON + value);
 	else
-		return 1.0F / (value - FLT_EPSILON);
+		return 1.0F / (value - SCALE_RECIPROCAL_EPSILON);
 }
 
 /**
  * @note Address: N/A
  * @note Size: ?
  */
-static inline float calcVal(float x, float y)
+static inline float mtx_atan2f(float y, float x)
 {
 	if (x == 0.0F) {
-		if (y >= 0) {
-			return 1.5707963267948966F;
-		} else {
-			return -1.5707963267948966F;
+		if (y >= 0.0F) {
+			return HALF_PI;
 		}
-	} else {
-		return (float)atan2(y, x);
+		return -HALF_PI;
 	}
+	return (float)atan2(y, x);
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline float HSD_CalcDeterminantMatrix3x4(Mtx m)
+static inline void mtx_concat_row(float out[4], Mtx src, float x, float y, float z, float translation)
 {
-	return m[0][0] * m[1][1] * m[2][2] + m[0][1] * m[1][2] * m[2][0] + m[0][2] * m[1][0] * m[2][1] - m[2][0] * m[1][1] * m[0][2]
-	     - m[1][0] * m[0][1] * m[2][2] - m[0][0] * m[2][1] * m[1][2];
+	int column;
+
+	for (column = 0; column < 3; column++) {
+		out[column] = x * src[0][column] + y * src[1][column] + z * src[2][column];
+	}
+	out[3] = x * src[0][3] + y * src[1][3] + z * src[2][3] + translation;
 }
 
 /**
@@ -81,69 +66,47 @@ BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
 {
 	Mtx m;
 	float det;
-	float temp1;
-	float temp2;
-	float temp3;
-	float temp4;
-	float temp5;
-	float temp6;
-	float temp7;
-	float temp8;
-	float temp9;
-	float temp10;
-	float temp11;
-	float temp12;
+	float inverse00, inverse01;
+	float inverse10, inverse11;
+	float inverse20, inverse21;
+	float inverse02, inverse12, inverse22;
+	float inverse03, inverse13, inverse23;
 
-	det = HSD_CalcDeterminantMatrix3x4(inv);
+	det = inv[0][0] * inv[1][1] * inv[2][2] + inv[0][1] * inv[1][2] * inv[2][0] + inv[0][2] * inv[1][0] * inv[2][1]
+	    - inv[2][0] * inv[1][1] * inv[0][2] - inv[1][0] * inv[0][1] * inv[2][2] - inv[0][0] * inv[2][1] * inv[1][2];
 
 	if (det == 0.0F) {
-		return 0;
-	} else {
-		det    = 1.0f / det;
-		temp1  = ((inv[1][1] * inv[2][2]) - (inv[2][1] * inv[1][2])) * det;
-		temp2  = (-((inv[0][1] * inv[2][2]) - (inv[2][1] * inv[0][2]))) * det;
-		temp3  = (-((inv[1][0] * inv[2][2]) - (inv[2][0] * inv[1][2]))) * det;
-		temp6  = (-((inv[0][0] * inv[2][1]) - (inv[2][0] * inv[0][1]))) * det;
-		temp7  = ((inv[0][1] * inv[1][2]) - (inv[1][1] * inv[0][2])) * det;
-		temp4  = ((inv[0][0] * inv[2][2]) - (inv[2][0] * inv[0][2])) * det;
-		temp8  = (-((inv[0][0] * inv[1][2]) - (inv[1][0] * inv[0][2]))) * det;
-		temp5  = ((inv[1][0] * inv[2][1]) - (inv[2][0] * inv[1][1])) * det;
-		temp9  = ((inv[0][0] * inv[1][1]) - (inv[1][0] * inv[0][1])) * det;
-		temp10 = -((temp7 * inv[2][3]) - (((-temp1) * inv[0][3]) - (temp2 * inv[1][3])));
-		temp11 = -((temp8 * inv[2][3]) - (((-temp3) * inv[0][3]) - (temp4 * inv[1][3])));
-		temp12 = -((temp9 * inv[2][3]) - (((-temp5) * inv[0][3]) - (temp6 * inv[1][3])));
-
-		if (inv == dest || src == dest) {
-			m[0][0] = temp7 * src[2][0] + (temp1 * src[0][0] + temp2 * src[1][0]);
-			m[0][1] = temp7 * src[2][1] + (temp1 * src[0][1] + temp2 * src[1][1]);
-			m[0][2] = temp7 * src[2][2] + (temp1 * src[0][2] + temp2 * src[1][2]);
-			m[0][3] = temp7 * src[2][3] + (temp1 * src[0][3] + temp2 * src[1][3]) + temp10;
-			m[1][0] = temp8 * src[2][0] + (temp3 * src[0][0] + temp4 * src[1][0]);
-			m[1][1] = temp8 * src[2][1] + (temp3 * src[0][1] + temp4 * src[1][1]);
-			m[1][2] = temp8 * src[2][2] + (temp3 * src[0][2] + temp4 * src[1][2]);
-			m[1][3] = temp8 * src[2][3] + (temp3 * src[0][3] + temp4 * src[1][3]) + temp11;
-			m[2][0] = temp9 * src[2][0] + (temp5 * src[0][0] + temp6 * src[1][0]);
-			m[2][1] = temp9 * src[2][1] + (temp5 * src[0][1] + temp6 * src[1][1]);
-			m[2][2] = temp9 * src[2][2] + (temp5 * src[0][2] + temp6 * src[1][2]);
-			m[2][3] = temp9 * src[2][3] + (temp5 * src[0][3] + temp6 * src[1][3]) + temp12;
-
-			PSMTXCopy(m, dest);
-		} else {
-			dest[0][0] = temp7 * src[2][0] + (temp1 * src[0][0] + temp2 * src[1][0]);
-			dest[0][1] = temp7 * src[2][1] + (temp1 * src[0][1] + temp2 * src[1][1]);
-			dest[0][2] = temp7 * src[2][2] + (temp1 * src[0][2] + temp2 * src[1][2]);
-			dest[0][3] = temp7 * src[2][3] + (temp1 * src[0][3] + temp2 * src[1][3]) + temp10;
-			dest[1][0] = temp8 * src[2][0] + (temp3 * src[0][0] + temp4 * src[1][0]);
-			dest[1][1] = temp8 * src[2][1] + (temp3 * src[0][1] + temp4 * src[1][1]);
-			dest[1][2] = temp8 * src[2][2] + (temp3 * src[0][2] + temp4 * src[1][2]);
-			dest[1][3] = temp8 * src[2][3] + (temp3 * src[0][3] + temp4 * src[1][3]) + temp11;
-			dest[2][0] = temp9 * src[2][0] + (temp5 * src[0][0] + temp6 * src[1][0]);
-			dest[2][1] = temp9 * src[2][1] + (temp5 * src[0][1] + temp6 * src[1][1]);
-			dest[2][2] = temp9 * src[2][2] + (temp5 * src[0][2] + temp6 * src[1][2]);
-			dest[2][3] = temp9 * src[2][3] + (temp5 * src[0][3] + temp6 * src[1][3]) + temp12;
-		}
+		return FALSE;
 	}
-	return 1;
+
+	det = 1.0F / det;
+
+	inverse00 = ((inv[1][1] * inv[2][2]) - (inv[2][1] * inv[1][2])) * det;
+	inverse01 = (-((inv[0][1] * inv[2][2]) - (inv[2][1] * inv[0][2]))) * det;
+	inverse02 = ((inv[0][1] * inv[1][2]) - (inv[1][1] * inv[0][2])) * det;
+	inverse10 = (-((inv[1][0] * inv[2][2]) - (inv[2][0] * inv[1][2]))) * det;
+	inverse11 = ((inv[0][0] * inv[2][2]) - (inv[2][0] * inv[0][2])) * det;
+	inverse12 = (-((inv[0][0] * inv[1][2]) - (inv[1][0] * inv[0][2]))) * det;
+	inverse20 = ((inv[1][0] * inv[2][1]) - (inv[2][0] * inv[1][1])) * det;
+	inverse21 = (-((inv[0][0] * inv[2][1]) - (inv[2][0] * inv[0][1]))) * det;
+	inverse22 = ((inv[0][0] * inv[1][1]) - (inv[1][0] * inv[0][1])) * det;
+
+	inverse03 = -inverse00 * inv[0][3] - inverse01 * inv[1][3] - inverse02 * inv[2][3];
+	inverse13 = -inverse10 * inv[0][3] - inverse11 * inv[1][3] - inverse12 * inv[2][3];
+	inverse23 = -inverse20 * inv[0][3] - inverse21 * inv[1][3] - inverse22 * inv[2][3];
+
+	if (inv == dest || src == dest) {
+		// keep the input intact while calculating an in-place result
+		mtx_concat_row(m[0], src, inverse00, inverse01, inverse02, inverse03);
+		mtx_concat_row(m[1], src, inverse10, inverse11, inverse12, inverse13);
+		mtx_concat_row(m[2], src, inverse20, inverse21, inverse22, inverse23);
+		PSMTXCopy(m, dest);
+	} else {
+		mtx_concat_row(dest[0], src, inverse00, inverse01, inverse02, inverse03);
+		mtx_concat_row(dest[1], src, inverse10, inverse11, inverse12, inverse13);
+		mtx_concat_row(dest[2], src, inverse20, inverse21, inverse22, inverse23);
+	}
+	return TRUE;
 }
 
 /**
@@ -152,50 +115,55 @@ BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
  */
 void HSD_MtxGetRotation(Mtx m, Vec* vec)
 {
-	float length0;
-	float length1;
-	float length2;
-	float testVal_1;
-	float val_01;
+	float x_length;
+	float y_length;
+	float z_length;
+	float sin_y;
+	float angle_y;
 
-	length0 = mtx_sqrtf(m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0]);
-	if (!(length0 < 1.17549435e-38F)) {
-		length1 = mtx_sqrtf(m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1]);
-		if (!(length1 < 1.17549435e-38F)) {
-			length2 = mtx_sqrtf(m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2]);
-			if (!(length2 < 1.17549435e-38F)) {
-				testVal_1 = -m[2][0];
-				testVal_1 /= length0;
-
-				if (testVal_1 >= 1.0f) {
-					val_01 = 1.5707963267948966F;
-				} else if (testVal_1 <= -1) {
-					val_01 = -1.5707963267948966F;
-				} else {
-					val_01 = (float)asin(testVal_1);
-				}
-
-				vec->y = val_01;
-
-				if ((float)cos(vec->y) >= 1.17549435e-38F) {
-					float testVal_2_pre = m[2][2] / length2;
-					float testVal_3_pre = m[2][1] / length1;
-
-					vec->x = calcVal(testVal_2_pre, testVal_3_pre);
-					vec->z = calcVal(m[0][0], m[1][0]);
-					return;
-				}
-
-				vec->x = calcVal(m[1][1], m[0][1]);
-				vec->z = 0;
-				return;
-			}
-		}
+	x_length = dolsqrtf(m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0]);
+	if (x_length < MIN_NORMAL_FLOAT) {
+		goto degenerate;
+	}
+	y_length = dolsqrtf(m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1]);
+	if (y_length < MIN_NORMAL_FLOAT) {
+		goto degenerate;
+	}
+	z_length = dolsqrtf(m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2]);
+	if (z_length < MIN_NORMAL_FLOAT) {
+		goto degenerate;
 	}
 
-	vec->x = 0;
-	vec->y = 0;
-	vec->z = 0;
+	sin_y = -m[2][0];
+	sin_y /= x_length;
+
+	if (sin_y >= 1.0F) {
+		angle_y = HALF_PI;
+	} else if (sin_y <= -1.0F) {
+		angle_y = -HALF_PI;
+	} else {
+		angle_y = (float)asin(sin_y);
+	}
+
+	vec->y = angle_y;
+
+	if ((float)cos(vec->y) >= MIN_NORMAL_FLOAT) {
+		float z_axis_z = m[2][2] / z_length;
+		float y_axis_z = m[2][1] / y_length;
+
+		vec->x = mtx_atan2f(y_axis_z, z_axis_z);
+		vec->z = mtx_atan2f(m[1][0], m[0][0]);
+		return;
+	}
+
+	vec->x = mtx_atan2f(m[0][1], m[1][1]);
+	vec->z = 0.0F;
+	return;
+
+degenerate:
+	vec->x = 0.0F;
+	vec->y = 0.0F;
+	vec->z = 0.0F;
 }
 
 /**
@@ -324,7 +292,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
 	x.z    = m[2][0];
 	square = PSVECSquareMag(&x);
 	if (square > EPSILON) {
-		inverse_length = mtx_sqrtf(1.0F / square);
+		inverse_length = dolsqrtf(1.0F / square);
 		out->x         = 1.0F / inverse_length;
 		PSVECScale(&x, &x, inverse_length);
 		y.x = m[0][1];
@@ -334,7 +302,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
 		PSVECSubtract(&y, &projection, &y);
 		square = PSVECSquareMag(&y);
 		if (square > EPSILON) {
-			inverse_length = mtx_sqrtf(1.0F / square);
+			inverse_length = dolsqrtf(1.0F / square);
 			out->y         = 1.0F / inverse_length;
 			PSVECScale(&y, &y, inverse_length);
 			z.x = m[0][2];
@@ -346,7 +314,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
 			PSVECSubtract(&z, &projection, &z);
 			square = PSVECSquareMag(&z);
 			if (square > EPSILON) {
-				out->z = mtx_sqrtf(square);
+				out->z = dolsqrtf(square);
 				PSVECCrossProduct(&y, &z, &projection);
 				if (PSVECDotProduct(&x, &projection) < 0.0) {
 					sign = -1.0;
@@ -366,7 +334,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
 			PSVECSubtract(&z, &projection, &z);
 			square = PSVECSquareMag(&z);
 			if (square > EPSILON)
-				out->z = mtx_sqrtf(square);
+				out->z = dolsqrtf(square);
 			else
 				out->z = 0.0F;
 		}
@@ -377,7 +345,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
 		y.z    = m[2][1];
 		square = PSVECSquareMag(&y);
 		if (square > EPSILON) {
-			inverse_length = mtx_sqrtf(1.0F / square);
+			inverse_length = dolsqrtf(1.0F / square);
 			out->y         = 1.0F / inverse_length;
 			PSVECScale(&y, &y, inverse_length);
 			z.x = m[0][2];
@@ -400,7 +368,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out)
  * @note Address: 0x801CFBF4
  * @note Size: 0x13C
  */
-void HSD_MkRotationMtx(Mtx arg0, Vec* arg1)
+void HSD_MkRotationMtx(Mtx out, Vec* rotation)
 {
 	float sinX;
 	float cosX;
@@ -408,85 +376,86 @@ void HSD_MkRotationMtx(Mtx arg0, Vec* arg1)
 	float cosY;
 	float sinZ;
 	float cosZ;
-	float temp1;
-	float temp2;
+	float sinXsinY;
+	float cosXsinY;
 
-	sinX = (float)sin(arg1->x);
-	cosX = (float)cos(arg1->x);
-	sinY = (float)sin(arg1->y);
-	cosY = (float)cos(arg1->y);
-	sinZ = (float)sin(arg1->z);
-	cosZ = (float)cos(arg1->z);
+	sinX = (float)sin(rotation->x);
+	cosX = (float)cos(rotation->x);
+	sinY = (float)sin(rotation->y);
+	cosY = (float)cos(rotation->y);
+	sinZ = (float)sin(rotation->z);
+	cosZ = (float)cos(rotation->z);
 
-	temp1      = sinX * sinY;
-	arg0[0][0] = cosY * cosZ;
-	arg0[1][0] = cosY * sinZ;
-	arg0[2][0] = -sinY;
-	temp2      = cosX * sinY;
-	arg0[0][1] = (cosZ * temp1) - (cosX * sinZ);
-	arg0[1][1] = (sinZ * temp1) + (cosX * cosZ);
-	arg0[2][1] = sinX * cosY;
-	arg0[0][2] = (cosZ * temp2) + (sinX * sinZ);
-	arg0[1][2] = (sinZ * temp2) - (sinX * cosZ);
-	arg0[2][2] = cosX * cosY;
-	arg0[0][3] = 0;
-	arg0[1][3] = 0;
-	arg0[2][3] = 0;
+	sinXsinY      = sinX * sinY;
+	out[0][0] = cosY * cosZ;
+	out[1][0] = cosY * sinZ;
+	out[2][0] = -sinY;
+	cosXsinY      = cosX * sinY;
+	out[0][1] = (cosZ * sinXsinY) - (cosX * sinZ);
+	out[1][1] = (sinZ * sinXsinY) + (cosX * cosZ);
+	out[2][1] = sinX * cosY;
+	out[0][2] = (cosZ * cosXsinY) + (sinX * sinZ);
+	out[1][2] = (sinZ * cosXsinY) - (sinX * cosZ);
+	out[2][2] = cosX * cosY;
+	out[0][3] = 0;
+	out[1][3] = 0;
+	out[2][3] = 0;
 }
 
 /**
  * @note Address: 0x801CFD30
  * @note Size: 0x2D8
  */
-void HSD_MtxSRT(Mtx m, Vec* vec1, Vec* vec2, Vec* vec3, Vec* vec4)
+void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation, Vec* parent_scale)
 {
-	float sinX, cosX, sinY, cosY, sinZ, cosZ;
-	float vec1x_2;
-	float vec1y_2;
-	float vec1z_2;
-	float vec1x_1;
-	float vec1y_1;
-	float vec1z_1;
-	float vec1x;
-	float vec1y;
-	float vec1z;
+	Vec sine, cosine;
+	float scale_x;
+	float scale_y_on_x;
+	float scale_z_on_x;
+	float scale_x_on_y;
+	float scale_y;
+	float scale_z_on_y;
+	float scale_x_on_z;
+	float scale_y_on_z;
+	float scale_z;
 
-	sinX = (float)sin(vec2->x);
-	cosX = (float)cos(vec2->x);
-	sinY = (float)sin(vec2->y);
-	cosY = (float)cos(vec2->y);
-	sinZ = (float)sin(vec2->z);
-	cosZ = (float)cos(vec2->z);
+	sine.x = (float)sin(rotation->x);
+	cosine.x = (float)cos(rotation->x);
+	sine.y = (float)sin(rotation->y);
+	cosine.y = (float)cos(rotation->y);
+	sine.z = (float)sin(rotation->z);
+	cosine.z = (float)cos(rotation->z);
 
-	vec1x_2 = vec1x_1 = vec1x = vec1->x;
-	vec1y_2 = vec1y_1 = vec1y = vec1->y;
-	vec1z_2 = vec1z_1 = vec1z = vec1->z;
+	scale_x = scale_x_on_y = scale_x_on_z = scale->x;
+	scale_y_on_x = scale_y = scale_y_on_z = scale->y;
+	scale_z_on_x = scale_z_on_y = scale_z = scale->z;
 
-	if (vec4 != 0) {
-		float temp1 = (vec4->x >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->x) : 1.0F / (vec4->x - FLT_EPSILON));
-		float temp2 = (vec4->y >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->y) : 1.0F / (vec4->y - FLT_EPSILON));
-		float temp3 = (vec4->z >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->z) : 1.0F / (vec4->z - FLT_EPSILON));
+	if (parent_scale != NULL) {
+		float inverse_x = mtx_safe_recip(parent_scale->x);
+		float inverse_y = mtx_safe_recip(parent_scale->y);
+		float inverse_z = mtx_safe_recip(parent_scale->z);
 
-		vec1y_2 *= vec4->y * temp1;
-		vec1z_2 *= vec4->z * temp1;
-		vec1x_1 *= vec4->x * temp2;
-		vec1z_1 *= vec4->z * temp2;
-		vec1x *= vec4->x * temp3;
-		vec1y *= vec4->y * temp3;
+		// compensate each off-diagonal term for the ratio of parent scales
+		scale_y_on_x *= parent_scale->y * inverse_x;
+		scale_z_on_x *= parent_scale->z * inverse_x;
+		scale_x_on_y *= parent_scale->x * inverse_y;
+		scale_z_on_y *= parent_scale->z * inverse_y;
+		scale_x_on_z *= parent_scale->x * inverse_z;
+		scale_y_on_z *= parent_scale->y * inverse_z;
 	}
 
-	m[0][0] = cosZ * (vec1x_2 * cosY);
-	m[1][0] = sinZ * (vec1x_1 * cosY);
-	m[2][0] = -vec1x * sinY;
-	m[0][1] = vec1y_2 * ((cosZ * (sinX * sinY)) - (cosX * sinZ));
-	m[1][1] = vec1y_1 * ((sinZ * (sinX * sinY)) + (cosX * cosZ));
-	m[2][1] = cosY * (vec1y * sinX);
-	m[0][2] = vec1z_2 * ((cosZ * (cosX * sinY)) + (sinX * sinZ));
-	m[1][2] = vec1z_1 * ((sinZ * (cosX * sinY)) - (sinX * cosZ));
-	m[2][2] = cosY * (vec1z * cosX);
-	m[0][3] = vec3->x;
-	m[1][3] = vec3->y;
-	m[2][3] = vec3->z;
+	m[0][0] = cosine.z * (scale_x * cosine.y);
+	m[1][0] = sine.z * (scale_x_on_y * cosine.y);
+	m[2][0] = -scale_x_on_z * sine.y;
+	m[0][1] = scale_y_on_x * ((cosine.z * (sine.x * sine.y)) - (cosine.x * sine.z));
+	m[1][1] = scale_y * ((sine.z * (sine.x * sine.y)) + (cosine.x * cosine.z));
+	m[2][1] = cosine.y * (scale_y_on_z * sine.x);
+	m[0][2] = scale_z_on_x * ((cosine.z * (cosine.x * sine.y)) + (sine.x * sine.z));
+	m[1][2] = scale_z_on_y * ((sine.z * (cosine.x * sine.y)) - (sine.x * cosine.z));
+	m[2][2] = cosine.y * (scale_z * cosine.x);
+	m[0][3] = translation->x;
+	m[1][3] = translation->y;
+	m[2][3] = translation->z;
 }
 
 /**
@@ -519,26 +488,15 @@ void HSD_MtxSRTQuat(Mtx m, Vec* scale, Quaternion* rotation, Vec* translation, V
  * @note Address: 0x801D01B4
  * @note Size: 0xC4
  */
-void HSD_MtxScaledAdd(Mtx arg0, Mtx arg1, Mtx arg2, float arg3)
+void HSD_MtxScaledAdd(Mtx scaled, Mtx addend, Mtx out, float scale)
 {
-	float* arr0 = (&arg0[0][0]);
-	float* arr1 = (&arg1[0][0]);
-	float* arr2 = (&arg2[0][0]);
+	int row, column;
 
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
-	*arr2++ = *arr1++ + (arg3 * *arr0++);
+	for (row = 0; row < 3; row++) {
+		for (column = 0; column < 4; column++) {
+			out[row][column] = addend[row][column] + scale * scaled[row][column];
+		}
+	}
 }
 
 /**
@@ -592,10 +550,10 @@ Vec* HSD_VecAlloc(void)
  * @note Address: 0x801D03A4
  * @note Size: 0x34
  */
-void HSD_VecFree(Vec* arg0)
+void HSD_VecFree(Vec* vec)
 {
-	if (arg0 != 0) {
-		HSD_ObjFree(&vec_alloc_data, arg0);
+	if (vec != NULL) {
+		HSD_ObjFree(&vec_alloc_data, vec);
 	}
 }
 
@@ -616,10 +574,10 @@ void* HSD_MtxAlloc(void)
  * @note Address: 0x801D0424
  * @note Size: 0x34
  */
-void HSD_MtxFree(void* arg0)
+void HSD_MtxFree(void* mtx)
 {
-	if (arg0 != 0) {
-		HSD_ObjFree(&mtx_alloc_data, arg0);
+	if (mtx != NULL) {
+		HSD_ObjFree(&mtx_alloc_data, mtx);
 	}
 }
 

@@ -16,7 +16,7 @@ public:
 	u8 mWorkArea[CARD_WORKAREA_SIZE]; // _20, for CARDMount
 	// _A020 vtable
 
-	virtual ~CCard(); // _08
+	virtual ~CCard() { } // _08
 
 	const char* GetResultString(s32 result);
 	s32 SetStatus(CARDStat* stat);
@@ -34,7 +34,7 @@ public:
 	void Unmount();
 	s32 UnmountEx();
 	s32 Mount(s32 chan, CARDCallback detachCallback);
-	void Probe(s32 chan, s32* memSize, s32* sectorSize);
+	s32 Probe(s32 chan, s32* memSize, s32* sectorSize);
 	s32 ProbeEx(s32 chan, s32* memSize, s32* sectorSize);
 	void Init();
 };

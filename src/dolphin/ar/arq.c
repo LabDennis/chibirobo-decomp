@@ -16,16 +16,13 @@ static volatile BOOL __ARQ_init_flag = FALSE;
 
 void __ARQPopTaskQueueHi(void);
 void __ARQServiceQueueLo(void);
-void __ARQCallbackHack(void);
 void __ARQInterruptServiceRoutine(void);
-void __ARQInitTempQueue(void);
-void __ARQPushTempQueue(ARQRequest* task);
 
 /**
  * @note Address: N/A
  * @note Size: 0x70
  */
-void __ARQPopTaskQueueHi()
+void __ARQPopTaskQueueHi(void)
 {
 	if (__ARQRequestQueueHi) {
 		if (__ARQRequestQueueHi->type == ARQ_TYPE_MRAM_TO_ARAM) {
@@ -46,7 +43,7 @@ void __ARQPopTaskQueueHi()
  * @note Address: 0x80176BB4
  * @note Size: 0x100
  */
-void __ARQServiceQueueLo()
+void __ARQServiceQueueLo(void)
 {
 
 	if ((__ARQRequestPendingLo == nullptr) && (__ARQRequestQueueLo)) {
@@ -84,7 +81,7 @@ void __ARQServiceQueueLo()
  * @note Address: 0x80176CB4
  * @note Size: 0x4
  */
-void __ARQCallbackHack()
+static void __ARQCallbackHack(u32 pointerToARQRequest)
 {
 }
 
@@ -92,7 +89,7 @@ void __ARQCallbackHack()
  * @note Address: 0x80176CB8
  * @note Size: 0xCC
  */
-void __ARQInterruptServiceRoutine()
+void __ARQInterruptServiceRoutine(void)
 {
 	if (__ARQCallbackHi) {
 		(*__ARQCallbackHi)((u32)__ARQRequestPendingHi);
@@ -116,7 +113,7 @@ void __ARQInterruptServiceRoutine()
  * @note Address: 0x80176D84
  * @note Size: 0x70
  */
-void ARQInit()
+void ARQInit(void)
 {
 	if (__ARQ_init_flag == TRUE) {
 		return;
@@ -153,7 +150,7 @@ void ARQPostRequest(ARQRequest* task, u32 owner, u32 type, u32 priority, u32 sou
 	if (callback) {
 		task->callback = callback;
 	} else {
-		task->callback = (ARQCallback)&__ARQCallbackHack;
+		task->callback = __ARQCallbackHack;
 	}
 
 	enabled = OSDisableInterrupts();

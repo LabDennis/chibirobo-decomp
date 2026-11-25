@@ -5,23 +5,23 @@
  * @note Address: 0x8016C3F4
  * @note Size: 0x9C
  */
-void C_MTXFrustum(Mtx44 m, f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5, f32 arg6)
+void C_MTXFrustum(Mtx44 m, f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far)
 {
-	f32 tmp = 1.0f / (arg4 - arg3);
-	m[0][0] = (2 * arg5) * tmp;
+	f32 tmp = 1.0f / (right - left);
+	m[0][0] = (2 * near) * tmp;
 	m[0][1] = 0.0f;
-	m[0][2] = (arg4 + arg3) * tmp;
+	m[0][2] = (right + left) * tmp;
 	m[0][3] = 0.0f;
-	tmp     = 1.0f / (arg1 - arg2);
+	tmp     = 1.0f / (top - bottom);
 	m[1][0] = 0.0f;
-	m[1][1] = (2 * arg5) * tmp;
-	m[1][2] = (arg1 + arg2) * tmp;
+	m[1][1] = (2 * near) * tmp;
+	m[1][2] = (top + bottom) * tmp;
 	m[1][3] = 0.0f;
 	m[2][0] = 0.0f;
 	m[2][1] = 0.0f;
-	tmp     = 1.0f / (arg6 - arg5);
-	m[2][2] = -(arg5)*tmp;
-	m[2][3] = -(arg6 * arg5) * tmp;
+	tmp     = 1.0f / (far - near);
+	m[2][2] = -near * tmp;
+	m[2][3] = -(far * near) * tmp;
 	m[3][0] = 0.0f;
 	m[3][1] = 0.0f;
 	m[3][2] = -1.0f;
@@ -85,237 +85,37 @@ void C_MTXOrtho(Mtx44 m, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)
 	m[3][3] = 1.0f;
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Identity(void)
+static inline f32 PairedStoreValue(f32 value)
 {
-	// UNUSED FUNCTION
-}
+	union {
+		f32 value;
+		u32 bits;
+	} word;
 
-/**
- * @note Address: N/A
- * @note Size: 0x34
- */
-void PSMTX44Identity(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8C
- */
-void C_MTX44Copy(void)
-{
-	// UNUSED FUNCTION
+	// Unquantized paired-single stores flush subnormals to signed zero.
+	word.value = value;
+	if ((word.bits & 0x7f800000u) == 0) {
+		word.bits &= 0x80000000u;
+	}
+	return word.value;
 }
 
 /**
  * @note Address: N/A
  * @note Size: 0x44
  */
-ASM void PSMTX44Copy(register Mtx44 src, register Mtx44 dest)
+void PSMTX44Copy(const Mtx44 src, Mtx44 dst)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc;
-	psq_l fp1, 0(src), 0, 0;
-	psq_st fp1, 0(dest), 0, 0;
-	psq_l fp1, 8(src), 0, 0;
-	psq_st fp1, 8(dest), 0, 0;
-	psq_l fp1, 0x10(src), 0, 0;
-	psq_st fp1, 0x10(dest), 0, 0;
-	psq_l fp1, 0x18(src), 0, 0;
-	psq_st fp1, 0x18(dest), 0, 0;
-	psq_l fp1, 0x20(src), 0, 0;
-	psq_st fp1, 0x20(dest), 0, 0;
-	psq_l fp1, 0x28(src), 0, 0;
-	psq_st fp1, 0x28(dest), 0, 0;
-	psq_l fp1, 0x30(src), 0, 0;
-	psq_st fp1, 0x30(dest), 0, 0;
-	psq_l fp1, 0x38(src), 0, 0;
-	psq_st fp1, 0x38(dest), 0, 0;
-	blr;
-#endif // clang-format on
-}
+	u32 row;
+	u32 column;
 
-/**
- * @note Address: N/A
- * @note Size: 0x450
- */
-void C_MTX44Concat(void)
-{
-	// UNUSED FUNCTION
-}
+	for (row = 0; row < 4; row++) {
+		for (column = 0; column < 4; column += 2) {
+			f32 first = PairedStoreValue(src[row][column]);
+			f32 second = PairedStoreValue(src[row][column + 1]);
 
-/**
- * @note Address: N/A
- * @note Size: 0x104
- */
-void PSMTX44Concat(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xC4
- */
-void C_MTX44Transpose(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x64
- */
-void PSMTX44Transpose(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x3F0
- */
-void C_MTX44Inverse(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Trans(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x3C
- */
-void PSMTX44Trans(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x98
- */
-void C_MTX44TransApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x5C
- */
-void PSMTX44TransApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Scale(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x34
- */
-void PSMTX44Scale(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xB4
- */
-void C_MTX44ScaleApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x68
- */
-void PSMTX44ScaleApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void C_MTX44RotRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void PSMTX44RotRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x11C
- */
-void C_MTX44RotTrig(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD4
- */
-void PSMTX44RotTrig(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x12C
- */
-void C_MTX44RotAxisRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xBC
- */
-void __PSMTX44RotAxisRadInternal(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void PSMTX44RotAxisRad(void)
-{
-	// UNUSED FUNCTION
+			dst[row][column] = first;
+			dst[row][column + 1] = second;
+		}
+	}
 }

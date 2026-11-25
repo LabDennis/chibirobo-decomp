@@ -3,20 +3,9 @@
 
 #include "game/ctpl.h"
 #ifdef _MTXTYPES_h_
-// built with the HSD headers, which don't have the primitive types or these two
-typedef enum _GXPrimitive {
-	GX_POINTS        = 0xB8,
-	GX_LINES         = 0xA8,
-	GX_LINESTRIP     = 0xB0,
-	GX_TRIANGLES     = 0x90,
-	GX_TRIANGLESTRIP = 0x98,
-	GX_TRIANGLEFAN   = 0xa0,
-	GX_QUADS         = 0x80,
-} GXPrimitive;
 typedef MtxPtr MtxP;
 extern "C" {
-void PSMTXRotRad(Mtx mtx, char axis, f32 angle);
-void PSMTXTrans(Mtx mtx, f32 xT, f32 yT, f32 zT);
+#include <dolphin/mtx/mtx.h>
 }
 #else
 #include "Dolphin/gx.h"
@@ -82,7 +71,7 @@ typedef char CPrimitive_size_check[sizeof(CPrimitive) == 0x168 ? 1 : -1];
 
 class CLine : public CPrimitive {
 public:
-	u32 _168; // _168
+	u32 _168; // _168, no access in the source (CTriangle's _168 is unnamed too)
 
 	virtual ~CLine() { } // _08
 
@@ -95,7 +84,7 @@ typedef char CLine_size_check[sizeof(CLine) == 0x16C ? 1 : -1];
 // lit draws give the whole list the normal of its first three points
 class CTriangle : public CPrimitive {
 public:
-	u32 _168; // _168
+	u32 _168; // _168, never read or written; cgsctor.cpp only sets the vtable, the Draw overloads don't touch it
 
 	virtual ~CTriangle() { } // _08
 
@@ -111,8 +100,8 @@ typedef char CTriangle_size_check[sizeof(CTriangle) == 0x16C ? 1 : -1];
 // a unit circle fan, the size comes from the scale
 class CCircle : public CPrimitive {
 public:
-	u32 _168;    // _168
-	u32 _16C;    // _16C
+	u32 _168;    // _168, never read or written; cgsctor.cpp only sets the vtable, the Draw/DrawLit overloads don't touch it
+	u32 _16C;    // _16C, no access in the source
 	Vec mCenter; // _170
 	// _17C
 
@@ -127,10 +116,10 @@ typedef char CCircle_size_check[sizeof(CCircle) == 0x17C ? 1 : -1];
 // a two by two quad with a color per corner
 class CTile : public CPrimitive {
 public:
-	u32 _168;    // _168
-	u32 _16C;    // _16C
-	u32 _170;    // _170
-	u32 _174;    // _174
+	u32 mColor0; // _168
+	u32 mColor1; // _16C
+	u32 mColor2; // _170
+	u32 mColor3; // _174
 	Vec mCenter; // _178
 
 	virtual ~CTile() { }                                                                       // _08
@@ -145,10 +134,10 @@ typedef char CTile_size_check[sizeof(CTile) == 0x184 ? 1 : -1];
 class CSprite : public CPrimitive {
 public:
 	CTexObj* mTex; // _168
-	u32 _16C;      // _16C
-	u32 _170;      // _170
-	u32 _174;      // _174
-	u32 _178;      // _178
+	u32 mColor0;   // _16C
+	u32 mColor1;   // _170
+	u32 mColor2;   // _174
+	u32 mColor3;   // _178
 	Vec mCenter;   // _17C
 
 	virtual ~CSprite() { }                                                                     // _08

@@ -1,109 +1,132 @@
 #ifndef _DOLPHIN_OSTHREAD_H_
 #define _DOLPHIN_OSTHREAD_H_
 
-#include <dolphin/os/OSContext.h>
+#include <sdk/dolphin/os/OSContext.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef s32 OSPriority;
+#define OS_THREAD_SPECIFIC_MAX 2
+#define OS_THREAD_STACK_MAGIC 0xDEADBABE
 
+// Forward declarations.
 typedef struct OSThread OSThread;
-typedef struct OSMutex OSMutex;
 typedef struct OSThreadQueue OSThreadQueue;
-typedef struct OSMutexQueue OSMutexQueue;
 typedef struct OSThreadLink OSThreadLink;
+typedef struct OSMutex OSMutex;
+typedef struct OSMutexQueue OSMutexQueue;
 typedef struct OSMutexLink OSMutexLink;
 
+// Useful typedef for priority calls - 0 (high) to 31 (low).
+typedef s32 OSPriority;
+
+// Idle function type.
+typedef void (*OSIdleFunction)(void* param);
+
+// Start function.
+typedef void* (*OSThreadStartFunction)(void*);
+
+// Thread switching function.
+typedef void (*OSSwitchThreadCallback)(OSThread* from, OSThread* to);
+
+// Queues and links for threads.
 struct OSThreadQueue {
-    OSThread* head;
-    OSThread* tail;
+	OSThread* head; // _00
+	OSThread* tail; // _04
 };
 
 struct OSThreadLink {
-    OSThread* next;
-    OSThread* prev;
+	OSThread* next; // _00
+	OSThread* prev; // _04
 };
 
+// Queues and links for mutexes.
 struct OSMutexQueue {
-    OSMutex* head;
-    OSMutex* tail;
+	OSMutex* head; // _00
+	OSMutex* tail; // _04
 };
 
 struct OSMutexLink {
-    OSMutex* next;
-    OSMutex* prev;
+	OSMutex* next; // _00
+	OSMutex* prev; // _04
 };
 
+// Struct for managing threads.
 struct OSThread {
-    /* 0x000 */ OSContext context;   
-    /* 0x2C8 */ u16 state;     
-    /* 0x2CA */ u16 attr;      
-    /* 0x2CC */ s32 suspend;   
-    /* 0x2D0 */ OSPriority priority;  
-    /* 0x2D4 */ OSPriority base;
-    /* 0x2D8 */ void* val;                          
-    /* 0x2DC */ OSThreadQueue* queue;     
-    /* 0x2E0 */ OSThreadLink link;                    
-    /* 0x2E8 */ OSThreadQueue queueJoin;              
-    /* 0x2F0 */ OSMutex* mutex;     
-    /* 0x2F4 */ OSMutexQueue queueMutex;              
-    /* 0x2FC */ OSThreadLink linkActive;             
-    /* 0x304 */ u8* stackBase; 
-    /* 0x308 */ u32* stackEnd;  
-    /* 0x30C */ s32 error;
-    /* 0x310 */ void* specific[2];
+	OSContext context;       // _000
+	u16 state;               // _2C8, see OS_THREAD_STATE enum.
+	u16 attr;                // _2CA, 1 = detached.
+	s32 suspend;             // _2CC, if > 0, suspend.
+	OSPriority priority;     // _2D0, effective scheduling prio.
+	OSPriority base;         // _2D4, base scheduling prio.
+	void* val;               // _2D8, exit value.
+	OSThreadQueue* queue;    // _2DC, owner queue.
+	OSThreadLink link;       // _2E0
+	OSThreadQueue queueJoin; // _2E8, threads waiting for termination.
+	OSMutex* mutex;          // _2F0
+	OSMutexQueue queueMutex; // _2F4, owned mutexes.
+	OSThreadLink linkActive; // _2FC, list of active threads
+	u8* stackBase;           // _304, stack high addr.
+	u32* stackEnd;           // _308, stack low addr (last word).
+	s32 error;               // _30C
+	void* specific[OS_THREAD_SPECIFIC_MAX]; // _310
 };
 
+// Thread states.
 enum OS_THREAD_STATE {
-    OS_THREAD_STATE_READY = 1,
-    OS_THREAD_STATE_RUNNING = 2,
-    OS_THREAD_STATE_WAITING = 4,
-    OS_THREAD_STATE_MORIBUND = 8,
+	OS_THREAD_STATE_NULL     = 0,
+	OS_THREAD_STATE_READY    = 1,
+	OS_THREAD_STATE_RUNNING  = 2,
+	OS_THREAD_STATE_WAITING  = 4,
+	OS_THREAD_STATE_MORIBUND = 8, // set for death.
 };
 
-#define OS_PRIORITY_MIN 0  // highest
-#define OS_PRIORITY_MAX 31 // lowest
-#define OS_PRIORITY_IDLE OS_PRIORITY_MAX
+// Thread attributes.
+#define OS_THREAD_ATTR_DETACH 0x1U
 
-#define OS_THREAD_SPECIFIC_MAX 2
+// Thread priority.
+#define OS_PRIORITY_MIN  (0)               // highest prio
+#define OS_PRIORITY_MAX  (31)              // lowest prio
+#define OS_PRIORITY_IDLE (OS_PRIORITY_MAX) // idle = lowest prio
 
-#define OS_THREAD_ATTR_DETACH 0x0001u
+#define IsSuspended(suspend) ((suspend) > 0)
 
-#define OS_THREAD_STACK_MAGIC 0xDEADBABE
-
-typedef void (*OSSwitchThreadCallback)(OSThread*, OSThread*);
-typedef void (*OSIdleFunction)(void*);
-
+// Basic thread functions.
 void OSInitThreadQueue(OSThreadQueue* queue);
+OSThread* OSGetCurrentThread(void);
+BOOL OSIsThreadTerminated(OSThread* thread);
+
+// Scheduler functions.
+s32 OSDisableScheduler(void);
+s32 OSEnableScheduler(void);
+
+// Thread manip functions.
+void OSYieldThread(void);
+BOOL OSCreateThread(OSThread* thread, OSThreadStartFunction func, void* param, void* stack, u32 stackSize, OSPriority priority, u16 attr);
+void OSExitThread(void* val);
+void OSCancelThread(OSThread* thread);
+void OSDetachThread(OSThread* thread);
+s32 OSResumeThread(OSThread* thread);
+s32 OSSuspendThread(OSThread* thread);
 void OSSleepThread(OSThreadQueue* queue);
 void OSWakeupThread(OSThreadQueue* queue);
-s32 OSSuspendThread(OSThread* thread);
-s32 OSResumeThread(OSThread* thread);
-OSThread* OSGetCurrentThread(void);
-s32 OSEnableScheduler(void);
-s32 OSDisableScheduler(void);
-void OSCancelThread(OSThread* thread);
+
 void OSClearStack(u8 val);
+
+// Priority functions.
+OSPriority OSGetThreadPriority(OSThread* thread);
+
 BOOL OSIsThreadSuspended(OSThread* thread);
-BOOL OSIsThreadTerminated(OSThread* thread);
-void OSYieldThread(void);
-int OSCreateThread(OSThread* thread, void* (*func)(void*), void* param, void* stack, u32 stackSize, OSPriority priority, u16 attr);
-void OSExitThread(void* val);
-int OSJoinThread(OSThread* thread, void* val);
-void OSDetachThread(OSThread* thread);
-int OSSetThreadPriority(OSThread* thread, OSPriority priority);
-s32 OSGetThreadPriority(OSThread* thread);
-OSThread* OSSetIdleFunction(OSIdleFunction idleFunction, void* param, void* stack, u32 stackSize);
+BOOL OSJoinThread(OSThread* thread, void** val);
+BOOL OSSetThreadPriority(OSThread* thread, OSPriority prio);
+OSThread* OSSetIdleFunction(OSIdleFunction idleFunc, void* param, void* stack, u32 stackSize);
 OSThread* OSGetIdleFunction(void);
 s32 OSCheckActiveThreads(void);
+
 void OSSetThreadSpecific(s32 index, void* ptr);
 void* OSGetThreadSpecific(s32 index);
-
 OSSwitchThreadCallback OSSetSwitchThreadCallback(OSSwitchThreadCallback callback);
-
-#define IsSuspended(suspend) (suspend > 0)
 
 #ifdef __cplusplus
 }

@@ -7,12 +7,7 @@
 #include <sysdolphin/shadow.h>
 #include <sysdolphin/tobj.h>
 
-typedef struct _HSD_MemCallbackData {
-    HSD_MemCallbacks callbacks;
-    u32 unused;
-} HSD_MemCallbackData;
-
-HSD_MemCallbackData HSD_MemCallbackState;
+static HSD_MemCallbacks HSD_MemCallbackState;
 
 /**
  * @note Address: 0x801D41F8
@@ -23,7 +18,7 @@ void _HSD_MemSetCallbacks(HSD_MemCallbacks* callbacks, u32 size)
     if (size != sizeof(HSD_MemCallbacks)) {
         __assert("memory.c", 0x14, "size == sizeof(__mem_cb)");
     }
-    HSD_MemCallbackState.callbacks = *callbacks;
+    HSD_MemCallbackState = *callbacks;
 }
 
 /**
@@ -32,7 +27,7 @@ void _HSD_MemSetCallbacks(HSD_MemCallbacks* callbacks, u32 size)
  */
 void* _HSD_MemAlloc(u32 size, u32 align, u32 flags)
 {
-    return HSD_MemCallbackState.callbacks.alloc(size, align, flags);
+    return HSD_MemCallbackState.alloc(size, align, flags);
 }
 
 /**
@@ -41,7 +36,7 @@ void* _HSD_MemAlloc(u32 size, u32 align, u32 flags)
  */
 u32 _HSD_MemGetRemain(void)
 {
-    return HSD_MemCallbackState.callbacks.get_remain();
+    return HSD_MemCallbackState.get_remain();
 }
 
 /**
@@ -50,7 +45,7 @@ u32 _HSD_MemGetRemain(void)
  */
 void _HSD_MemClear(void)
 {
-    HSD_MemCallbackState.callbacks.clear();
+    HSD_MemCallbackState.clear();
 }
 
 /**
@@ -59,18 +54,16 @@ void _HSD_MemClear(void)
  */
 s32 _HSD_MemCheckOwn(void* ptr)
 {
-    return HSD_MemCallbackState.callbacks.check_own(ptr);
+    return HSD_MemCallbackState.check_own(ptr);
 }
 
-#pragma push
-#pragma dont_inline on
 /**
  * @note Address: 0x801D42F8
  * @note Size: 0x30
  */
 void HSD_Free(void* ptr)
 {
-    HSD_MemCallbackState.callbacks.free(ptr);
+    HSD_MemCallbackState.free(ptr);
 }
 
 /**
@@ -79,6 +72,5 @@ void HSD_Free(void* ptr)
  */
 void* HSD_Alloc(u32 size)
 {
-    return HSD_MemCallbackState.callbacks.alloc(size, 0x20, 0);
+    return HSD_MemCallbackState.alloc(size, 0x20, 0);
 }
-#pragma pop

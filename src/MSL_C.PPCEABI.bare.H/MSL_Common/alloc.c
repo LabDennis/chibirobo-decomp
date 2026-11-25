@@ -82,7 +82,6 @@ typedef struct mem_pool_obj {
 } mem_pool_obj;
 
 mem_pool_obj __malloc_pool;
-static int initialized = 0;
 
 static SubBlock* SubBlock_merge_prev(SubBlock*, SubBlock**);
 static void SubBlock_merge_next(SubBlock*, SubBlock**);
@@ -121,24 +120,6 @@ static const u32 fix_pool_sizes[] = { 4, 12, 20, 36, 52, 68 };
 
 /**
  * @note Address: N/A
- * @note Size: 0x238
- */
-void Block_construct(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x1E4
- */
-void Block_subBlock(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x1F0
  */
 void Block_link(Block* ths, SubBlock* sb)
@@ -162,42 +143,6 @@ void Block_link(Block* ths, SubBlock* sb)
 	}
 	if (ths->max_size < SubBlock_size(*st))
 		ths->max_size = SubBlock_size(*st);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x74
- */
-void Block_unlink(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x284
- */
-void Block_report(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x50
- */
-void SubBlock_construct(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xE0
- */
-void SubBlock_split(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -267,24 +212,6 @@ static void SubBlock_merge_next(SubBlock* pBlock, SubBlock** pStart)
 
 /**
  * @note Address: N/A
- * @note Size: 0x88
- */
-void SubBlock_report(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x44
- */
-void link(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x4C
  */
 static Block* __unlink(__mem_pool_obj* pool_obj, Block* bp)
@@ -309,33 +236,6 @@ static Block* __unlink(__mem_pool_obj* pool_obj, Block* bp)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0xB4
- */
-void link_new_block(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xDC
- */
-void allocate_from_var_pools(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD8
- */
-void soft_allocate_from_var_pools(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x801534BC
  * @note Size: 0x294
  */
@@ -351,15 +251,6 @@ static void deallocate_from_var_pools(__mem_pool_obj* pool_obj, void* ptr)
 		__unlink(pool_obj, bp);
 		__sys_free(bp);
 	}
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x128
- */
-void FixBlock_construct(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -385,15 +276,6 @@ static __mem_pool* get_malloc_pool(void)
 	}
 
 	return &protopool;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x2D0
- */
-void allocate_from_fixed_pools(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -458,42 +340,6 @@ void deallocate_from_fixed_pools(__mem_pool_obj* pool_obj, void* ptr, u32 size)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0xB4
- */
-void __report_on_pool_heap(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xE4
- */
-void __report_on_heap(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x24
- */
-void __msize(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x54
- */
-void __pool_alloc(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x8015330C
  * @note Size: 0x58
  */
@@ -517,33 +363,6 @@ void __pool_free(__mem_pool* pool, void* ptr)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x7B4
- */
-void __pool_realloc(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void __pool_alloc_clear(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x7C
- */
-void malloc(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x8015329C
  * @note Size: 0x70
  */
@@ -552,40 +371,4 @@ void free(void* ptr)
 	__begin_critical_region(malloc_pool_access);
 	__pool_free(get_malloc_pool(), ptr);
 	__end_critical_region(malloc_pool_access);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8C
- */
-void realloc(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x88
- */
-void calloc(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x64
- */
-void __pool_free_all(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x90
- */
-void __malloc_free_all(void)
-{
-	// UNUSED FUNCTION
 }

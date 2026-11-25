@@ -9,19 +9,16 @@ extern "C" {
 // HSD particle wrapper. Class names from RTTI, Read from a halt string. CGame owns the
 // CParticle at +0x9114 and emits both classes' vtables and RTTI.
 
-extern "C" {
-void psKillGenerator(HSD_Generator* gen);
-void psKillAllGenerator(void);
-}
-
 // one generator the game keeps track of, by the id it was made from
 class CGenerator {
 public:
+	CGenerator();
+
 	s32 mId;             // _00
 	HSD_Generator* mGen; // _04
 	// _08 vtable
 
-	virtual ~CGenerator(); // _08
+	virtual ~CGenerator() { } // _08
 
 	void Kill()
 	{

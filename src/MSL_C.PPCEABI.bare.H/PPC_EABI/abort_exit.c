@@ -34,24 +34,6 @@ void abort(void)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void atexit(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x6C
- */
-void __atexit(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80153110
  * @note Size: 0xF0
  */
@@ -85,13 +67,4 @@ void exit(int status)
 		__console_exit = NULL;
 	}
 	_ExitProcess();
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8C
- */
-void __exit(void)
-{
-	// UNUSED FUNCTION
 }

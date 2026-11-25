@@ -1,25 +1,37 @@
 #include <global.h>
 
 #include <dolphin/os.h>
+#include <sysdolphin/controller.h>
 #include <sysdolphin/rumble.h>
 
-extern void PADControlMotor(int chan, int command);
-
-struct RumbleInfo {
-	u16 max_list;                     // _00
-	u8 unk2;                          // _02
-	HSD_PadRumbleListData* listdatap; // _04
+enum {
+	RUMBLE_STATE_STOP_HARD = 0,
+	RUMBLE_STATE_STOP = 1,
+	RUMBLE_STATE_ON = 2,
 };
 
-// the pad library's state lives in controller.c, rumble only touches the tail
-struct PadLibData {
-	u8 _00[0x2C];           // _00
-	RumbleInfo rumble_info; // _2C
+enum {
+	RUMBLE_OP_END = 0,
+	RUMBLE_OP_ON = 1,
+	RUMBLE_OP_STOP = 2,
+	RUMBLE_OP_STOP_HARD = 3,
+	RUMBLE_OP_LOOP_START = 4,
+	RUMBLE_OP_LOOP_END = 5,
 };
 
-extern PadLibData HSD_PadLibData;
+enum {
+	RUMBLE_REPEAT = -1,
+	RUMBLE_PLAY_ONCE = -2,
+};
 
-HSD_RumbleData lbl_8064C778[4];
+// A big-endian command word packs a three-bit opcode and a thirteen-bit operand.
+enum {
+	RUMBLE_OPCODE_BYTE_SHIFT = 5,
+	RUMBLE_OPCODE_MASK = 7,
+	RUMBLE_OPERAND_MASK = 0x1FFF,
+};
+
+HSD_RumbleData gPadRumbleStates[PAD_MAX_CONTROLLERS];
 
 static HSD_RumbleData default_rumble = { 0 };
 
@@ -30,9 +42,9 @@ static HSD_RumbleData default_rumble = { 0 };
 void HSD_PadRumbleOn(u8 no)
 {
 	bool intrEnabled  = OSDisableInterrupts();
-	HSD_RumbleData* r = &lbl_8064C778[no];
+	HSD_RumbleData* r = &gPadRumbleStates[no];
 
-	r->direct_status = 2;
+	r->direct_status = RUMBLE_STATE_ON;
 	OSRestoreInterrupts(intrEnabled);
 }
 
@@ -43,24 +55,24 @@ void HSD_PadRumbleOn(u8 no)
 void HSD_PadRumbleOffN(u8 no)
 {
 	bool intrEnabled  = OSDisableInterrupts();
-	HSD_RumbleData* r = &lbl_8064C778[no];
+	HSD_RumbleData* r = &gPadRumbleStates[no];
 
-	r->direct_status = 0;
+	r->direct_status = RUMBLE_STATE_STOP_HARD;
 	OSRestoreInterrupts(intrEnabled);
 }
 
-static inline void HSD_PadRumbleFree(HSD_RumbleData* a, HSD_PadRumbleListData* b)
+static inline void HSD_PadRumbleFree(HSD_RumbleData* port, HSD_PadRumbleListData* entry)
 {
-	RumbleInfo* info             = &HSD_PadLibData.rumble_info;
-	HSD_PadRumbleListData** prev = &a->listdatap;
+	RumbleInfo* info            = &HSD_PadLibData.rumble_info;
+	HSD_PadRumbleListData** prev = &port->listdatap;
 
-	while ((*prev) != b) {
+	while (*prev != entry) {
 		prev = &(*prev)->next;
 	}
-	*prev = b->next;
-	a->nb_list--;
-	b->next         = info->listdatap;
-	info->listdatap = b;
+	*prev = entry->next;
+	port->nb_list--;
+	entry->next     = info->listdatap;
+	info->listdatap = entry;
 }
 
 /**
@@ -69,7 +81,7 @@ static inline void HSD_PadRumbleFree(HSD_RumbleData* a, HSD_PadRumbleListData* b
  */
 void HSD_PadRumbleRemove(u8 no)
 {
-	HSD_RumbleData* r          = &lbl_8064C778[no];
+	HSD_RumbleData* r          = &gPadRumbleStates[no];
 	bool intrEnabled           = OSDisableInterrupts();
 	HSD_PadRumbleListData* cur = r->listdatap;
 
@@ -89,7 +101,7 @@ void HSD_PadRumbleRemoveAll(void)
 {
 	int i;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < PAD_MAX_CONTROLLERS; i++) {
 		HSD_PadRumbleRemove(i);
 	}
 }
@@ -97,7 +109,7 @@ void HSD_PadRumbleRemoveAll(void)
 static inline void HSD_PadRumblePause(u8 no, int status)
 {
 	bool intrEnabled           = OSDisableInterrupts();
-	HSD_PadRumbleListData* cur = lbl_8064C778[no].listdatap;
+	HSD_PadRumbleListData* cur = gPadRumbleStates[no].listdatap;
 
 	while (cur != NULL) {
 		HSD_PadRumbleListData* next = cur->next;
@@ -116,7 +128,7 @@ void HSD_PadRumblePauseAll(void)
 {
 	int i;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < PAD_MAX_CONTROLLERS; i++) {
 		HSD_PadRumblePause(i, 1);
 	}
 }
@@ -125,11 +137,11 @@ void HSD_PadRumblePauseAll(void)
  * @note Address: 0x801CDC34
  * @note Size: 0x80
  */
-void fn_801CDC34(void)
+void HSD_PadRumbleActiveAll(void)
 {
 	int i;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < PAD_MAX_CONTROLLERS; i++) {
 		HSD_PadRumblePause(i, 0);
 	}
 }
@@ -152,7 +164,7 @@ static inline void HSD_PadRumbleInsert(HSD_PadRumbleListData** prev, HSD_PadRumb
 int HSD_PadRumbleAdd(u8 no, int id, int frame, int pri, void* listp)
 {
 	RumbleInfo* info            = &HSD_PadLibData.rumble_info;
-	HSD_RumbleData* r           = &lbl_8064C778[no];
+	HSD_RumbleData* r           = &gPadRumbleStates[no];
 	int result                  = 0;
 	bool intrEnabled            = OSDisableInterrupts();
 	HSD_PadRumbleListData* data = info->listdatap;
@@ -162,7 +174,7 @@ int HSD_PadRumbleAdd(u8 no, int id, int frame, int pri, void* listp)
 		data->id         = id;
 		data->pause      = 0;
 		data->pri        = pri;
-		data->status     = 0;
+		data->status     = RUMBLE_STATE_STOP_HARD;
 		data->loop_count = 0;
 		data->wait       = 0;
 		data->frame      = frame;
@@ -177,56 +189,57 @@ int HSD_PadRumbleAdd(u8 no, int id, int frame, int pri, void* listp)
 	return result;
 }
 
+static inline void HSD_PadRumbleSetTimedState(HSD_PadRumbleListData* entry, u8 motor_state)
+{
+	entry->status = motor_state;
+	entry->wait = *entry->listp & RUMBLE_OPERAND_MASK;
+	entry->listp++;
+}
+
 /**
  * @note Address: 0x801CDDAC
  * @note Size: 0x190
  */
-int HSD_PadRumbleInterpret1(HSD_PadRumbleListData* a, u8* b)
+int HSD_PadRumbleInterpret1(HSD_PadRumbleListData* entry, u8* motor_state)
 {
-	if (a->pause == 1) {
+	if (entry->pause == 1) {
 		return 0;
 	}
-	while (a->wait == 0) {
-		switch ((*(u8*)a->listp >> 5) & 7) {
-		case 0:
-			if (a->frame == -2) {
+	while (entry->wait == 0) {
+		switch ((*(const u8*)entry->listp >> RUMBLE_OPCODE_BYTE_SHIFT) & RUMBLE_OPCODE_MASK) {
+		case RUMBLE_OP_END:
+			if (entry->frame == RUMBLE_PLAY_ONCE) {
 				return 1;
 			}
-			a->listp = a->headp;
+			entry->listp = entry->headp;
 			break;
-		case 1:
-			a->status = 2;
-			a->wait   = *a->listp & 0x1FFF;
-			a->listp++;
+		case RUMBLE_OP_ON:
+			HSD_PadRumbleSetTimedState(entry, RUMBLE_STATE_ON);
 			break;
-		case 2:
-			a->status = 1;
-			a->wait   = *a->listp & 0x1FFF;
-			a->listp++;
+		case RUMBLE_OP_STOP:
+			HSD_PadRumbleSetTimedState(entry, RUMBLE_STATE_STOP);
 			break;
-		case 3:
-			a->status = 0;
-			a->wait   = *a->listp & 0x1FFF;
-			a->listp++;
+		case RUMBLE_OP_STOP_HARD:
+			HSD_PadRumbleSetTimedState(entry, RUMBLE_STATE_STOP_HARD);
 			break;
-		case 4:
-			a->loop_count = *a->listp & 0x1FFF;
-			a->listp++;
-			a->stack = a->listp;
+		case RUMBLE_OP_LOOP_START:
+			entry->loop_count = *entry->listp & RUMBLE_OPERAND_MASK;
+			entry->listp++;
+			entry->stack = entry->listp;
 			break;
-		case 5:
-			if (--a->loop_count != 0) {
-				a->listp = a->stack;
+		case RUMBLE_OP_LOOP_END:
+			if (--entry->loop_count != 0) {
+				entry->listp = entry->stack;
 			} else {
-				a->listp++;
+				entry->listp++;
 			}
 			break;
 		}
 	}
-	*b = a->status;
-	a->wait--;
-	if (a->frame != -1 && a->frame != -2) {
-		if (--a->frame == 0) {
+	*motor_state = entry->status;
+	entry->wait--;
+	if (entry->frame != RUMBLE_REPEAT && entry->frame != RUMBLE_PLAY_ONCE) {
+		if (--entry->frame == 0) {
 			return 1;
 		}
 	}
@@ -239,35 +252,35 @@ int HSD_PadRumbleInterpret1(HSD_PadRumbleListData* a, u8* b)
  */
 void HSD_PadRumbleInterpret(void)
 {
-	HSD_RumbleData* r30 = lbl_8064C778;
-	HSD_PadRumbleListData* r29;
-	HSD_PadRumbleListData* r28;
+	HSD_RumbleData* port = gPadRumbleStates;
+	HSD_PadRumbleListData* entry;
+	HSD_PadRumbleListData* next;
 	int i;
 
-	for (i = 0; i < 4; i++, r30++) {
-		r30->status = r30->direct_status;
-		r29         = r30->listdatap;
-		while (r29 != NULL) {
-			r28 = r29->next;
+	for (i = 0; i < PAD_MAX_CONTROLLERS; i++, port++) {
+		port->status = port->direct_status;
+		entry        = port->listdatap;
+		while (entry != NULL) {
+			next = entry->next;
 
-			if (HSD_PadRumbleInterpret1(r29, &r30->status) != 0) {
-				HSD_PadRumbleFree(r30, r29);
+			if (HSD_PadRumbleInterpret1(entry, &port->status) != 0) {
+				HSD_PadRumbleFree(port, entry);
 			}
-			r29 = r28;
+			entry = next;
 		}
-		if (r30->status != r30->last_status) {
-			switch (r30->status) {
-			case 0:
-				PADControlMotor(i, 2);
+		if (port->status != port->last_status) {
+			switch (port->status) {
+			case RUMBLE_STATE_STOP_HARD:
+				PADControlMotor(i, PAD_MOTOR_STOP_HARD);
 				break;
-			case 1:
-				PADControlMotor(i, 0);
+			case RUMBLE_STATE_STOP:
+				PADControlMotor(i, PAD_MOTOR_STOP);
 				break;
-			case 2:
-				PADControlMotor(i, 1);
+			case RUMBLE_STATE_ON:
+				PADControlMotor(i, PAD_MOTOR_RUMBLE);
 				break;
 			}
-			r30->last_status = r30->status;
+			port->last_status = port->status;
 		}
 	}
 }
@@ -276,20 +289,20 @@ void HSD_PadRumbleInterpret(void)
  * @note Address: 0x801CE064
  * @note Size: 0x1D4
  */
-void HSD_PadRumbleInit(u16 a, HSD_PadRumbleListData* b)
+void HSD_PadRumbleInit(u16 count, HSD_PadRumbleListData* entries)
 {
 	RumbleInfo* info = &HSD_PadLibData.rumble_info;
 	int i;
 
-	info->max_list  = a;
-	info->listdatap = b;
-	if (a != 0) {
-		for (i = 0; i < a - 1; i++) {
+	info->max_list  = count;
+	info->listdatap = entries;
+	if (count != 0) {
+		for (i = 0; i < count - 1; i++) {
 			info->listdatap[i].next = &info->listdatap[i + 1];
 		}
 		info->listdatap[i].next = NULL;
 	}
-	for (i = 0; i < 4; i++) {
-		lbl_8064C778[i] = default_rumble;
+	for (i = 0; i < PAD_MAX_CONTROLLERS; i++) {
+		gPadRumbleStates[i] = default_rumble;
 	}
 }

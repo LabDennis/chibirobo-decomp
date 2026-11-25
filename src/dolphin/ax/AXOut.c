@@ -1,11 +1,18 @@
 #include <dolphin/dolphin.h>
-#include <dolphin/dsp.h>
 #include <dolphin/ax.h>
 
 #include "__ax.h"
+#include "__dsp.h"
 
-static s16 __AXOutBuffer[3][320];
-static s32 __AXOutSBuffer[160];
+#define AX_DSP_MAIL_COMMAND_LIST 0xBABE0000U
+
+#define AX_OUTPUT_CHANNEL_COUNT       2
+#define AX_OUTPUT_BUFFER_COUNT        3
+#define AX_OUTPUT_DOUBLE_BUFFER_COUNT 2
+#define AX_OUTPUT_MODE_TRIPLE_BUFFER  1
+
+static s16 __AXOutBuffer[AX_OUTPUT_BUFFER_COUNT][AX_OUTPUT_CHANNEL_COUNT * AX_SAMPLES_PER_FRAME];
+static s32 __AXOutSBuffer[AX_SAMPLES_PER_FRAME];
 static u16 __AXDramImage[8192];
 static DSPTaskInfo __AXDSPTask;
 AXPROFILE __AXLocalProfile;
@@ -14,7 +21,7 @@ volatile static u32 __AXOutFrame;
 volatile static u32 __AXAiDmaFrame;
 volatile static u32 __AXOutDspReady;
 volatile static OSTime __AXOsTime;
-static void (*__AXUserFrameCallback)();
+static AXCallback __AXUserFrameCallback;
 volatile static int __AXDSPInitFlag;
 static int __AXDSPDoneFlag;
 
@@ -32,22 +39,19 @@ static void __AXDSPDoneCallback(void* task);
  * @note Size: 0x1B8
  */
 void __AXOutNewFrame(u32 lessDspCycles) {
-    u32 cl;
+    u32 commandListAddress;
     AXPROFILE* profile;
-    u8* src;
+    const u8* src;
     u8* dest;
     u32 i;
 
     __AXLocalProfile.axFrameStart = OSGetTime();
     __AXSyncPBs(lessDspCycles);
     __AXPrintStudio();
-    cl = __AXGetCommandListAddress();
+    commandListAddress = __AXGetCommandListAddress();
 
-    DSPSendMailToDSP(0xBABE0180);
-    do {} while (DSPCheckMailToDSP() != 0);
-
-    DSPSendMailToDSP(cl);
-    do {} while (DSPCheckMailToDSP() != 0);
+    __DSPSendMailAndWait(AX_DSP_MAIL_COMMAND_LIST | AX_COMMAND_LIST_WORDS);
+    __DSPSendMailAndWait(commandListAddress);
 
     __AXServiceCallbackStack();
     __AXLocalProfile.auxProcessingStart = OSGetTime();
@@ -63,26 +67,24 @@ void __AXOutNewFrame(u32 lessDspCycles) {
     __AXNextFrame(__AXOutSBuffer, &__AXOutBuffer[__AXOutFrame][0]);
     __AXOutFrame += 1;
 
-    if (__AXOutputBufferMode == 1) {
-        __AXOutFrame %= 3;
+    if (__AXOutputBufferMode == AX_OUTPUT_MODE_TRIPLE_BUFFER) {
+        __AXOutFrame %= AX_OUTPUT_BUFFER_COUNT;
     } else {
-        __AXOutFrame &= 1;
-        AIInitDMA((u32)&__AXOutBuffer[__AXOutFrame][0], 0x280);
+        __AXOutFrame %= AX_OUTPUT_DOUBLE_BUFFER_COUNT;
+        AIInitDMA((u32)&__AXOutBuffer[__AXOutFrame][0], sizeof(__AXOutBuffer[0]));
     }
 
     __AXLocalProfile.axFrameEnd = OSGetTime();
     __AXLocalProfile.axNumVoices = __AXGetNumVoices();
-    profile = (void*)__AXGetCurrentProfile();
+    profile = __AXGetCurrentProfile();
 
     if (profile) {
-        i = 56;
+        i = sizeof(__AXLocalProfile);
         dest = (u8*)profile;
-        src = (u8*)&__AXLocalProfile;
+        src = (const u8*)&__AXLocalProfile;
 
         while (i != 0) {
-            *dest = *src;
-            dest++;
-            src++;
+            *dest++ = *src++;
             i--;
         }
     }
@@ -105,10 +107,10 @@ void __AXOutAiCallback(void) {
         DSPAssertTask(&__AXDSPTask);
     }
 
-    if (__AXOutputBufferMode == 1) {
-        AIInitDMA((u32)__AXOutBuffer[__AXAiDmaFrame], 0x280);
+    if (__AXOutputBufferMode == AX_OUTPUT_MODE_TRIPLE_BUFFER) {
+        AIInitDMA((u32)__AXOutBuffer[__AXAiDmaFrame], sizeof(__AXOutBuffer[0]));
         __AXAiDmaFrame++;
-        __AXAiDmaFrame %= 3;
+        __AXAiDmaFrame %= AX_OUTPUT_BUFFER_COUNT;
     }
 }
 
@@ -157,15 +159,15 @@ static void __AXDSPDoneCallback(void* task) {
     OSWakeupThread(&__AXOutThreadQueue);
 }
 
-#define BUFFER_MEMSET(buffer, size)    \
-    {                                  \
-        u32* p = (u32*)&buffer;        \
-        int i;                         \
-        for (i = 0; i < size; i++) {   \
-            *p = 0;                    \
-            p++;                       \
-        }                              \
-    }
+#define CLEAR_OUTPUT_BUFFER(buffer)                                    \
+    do {                                                               \
+        u32* words = (void*)(buffer);                                  \
+        int i;                                                         \
+        for (i = 0; i < (int)(sizeof(buffer) / sizeof(*words)); i++) { \
+            *words = 0;                                                \
+            words++;                                                   \
+        }                                                              \
+    } while (0)
 
 /**
  * @note Address: 0x80178438
@@ -215,25 +217,25 @@ void __AXOutInit(u32 outputBufferMode) {
     __AXAiDmaFrame = 0;
     __AXDebugSteppingMode = 0;
 
-    BUFFER_MEMSET(__AXOutBuffer, 0x1E0);
+    CLEAR_OUTPUT_BUFFER(__AXOutBuffer);
     DCFlushRange(__AXOutBuffer, sizeof(__AXOutBuffer));
 
-    BUFFER_MEMSET(__AXOutSBuffer, 0xA0);
+    CLEAR_OUTPUT_BUFFER(__AXOutSBuffer);
     DCFlushRange(__AXOutSBuffer, sizeof(__AXOutSBuffer));
 
     __AXOutInitDSP();
     AIRegisterDMACallback(__AXOutAiCallback);
 
-    if (__AXOutputBufferMode == 1) {
-        __AXNextFrame(__AXOutSBuffer, &__AXOutBuffer[2][0]);
+    if (__AXOutputBufferMode == AX_OUTPUT_MODE_TRIPLE_BUFFER) {
+        __AXNextFrame(__AXOutSBuffer, &__AXOutBuffer[AX_OUTPUT_BUFFER_COUNT - 1][0]);
     } else {
-        __AXNextFrame(__AXOutSBuffer, &__AXOutBuffer[1][0]);
+        __AXNextFrame(__AXOutSBuffer, &__AXOutBuffer[AX_OUTPUT_DOUBLE_BUFFER_COUNT - 1][0]);
     }
 
     __AXOutDspReady = 1;
     __AXUserFrameCallback = NULL;
 
-    if (__AXOutputBufferMode == 1) {
+    if (__AXOutputBufferMode == AX_OUTPUT_MODE_TRIPLE_BUFFER) {
         AIInitDMA((u32)&__AXOutBuffer[__AXAiDmaFrame][0], sizeof(__AXOutBuffer[0]));
         __AXAiDmaFrame++;
         __AXAiDmaFrame &= 1;
@@ -243,6 +245,8 @@ void __AXOutInit(u32 outputBufferMode) {
 
     AIStartDMA();
 }
+
+#undef CLEAR_OUTPUT_BUFFER
 
 /**
  * @note Address: 0x801788A4

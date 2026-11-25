@@ -18,11 +18,11 @@ static u32 __AXCheckStacks(void) {
     AXVPB* voice;
 
     voices = 0;
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < AX_PRIORITY_STACKS; i++) {
         voice = __AXStackHead[i];
-        while (voice != 0) {
+        while (voice != NULL) {
             voices++;
-            if (voices > 64) {
+            if (voices > AX_MAX_VOICES) {
                 return 0;
             }
 
@@ -50,11 +50,11 @@ void __AXServiceCallbackStack(void) {
     AXVPB* p;
 
     for (p = __AXPopCallbackStack(); p; p = __AXPopCallbackStack()) {
-        if (p->priority != 0) {
+        if (p->priority != AX_FREE_VOICE_PRIORITY) {
             if (p->callback) {
                 p->callback(p);
             }
-    
+
             __AXRemoveFromStack(p);
             __AXPushFreeStack(p);
         }
@@ -70,7 +70,7 @@ void __AXInitVoiceStacks(void) {
 
     __AXCallbackStack = NULL;
     for (i = 0; i < AX_PRIORITY_STACKS; i++) {
-        __AXStackHead[i] = __AXStackTail[i] = 0;
+        __AXStackHead[i] = __AXStackTail[i] = NULL;
     }
 }
 
@@ -102,9 +102,9 @@ void __AXAllocQuit(void) {
  */
 void __AXPushFreeStack(AXVPB* p) {
     ASSERTLINE(168, p->priority);
-    p->next = __AXStackHead[0];
-    __AXStackHead[0] = p;
-    p->priority = 0;
+    p->next = __AXStackHead[AX_FREE_VOICE_PRIORITY];
+    __AXStackHead[AX_FREE_VOICE_PRIORITY] = p;
+    p->priority = AX_FREE_VOICE_PRIORITY;
 }
 
 /**
@@ -114,9 +114,9 @@ void __AXPushFreeStack(AXVPB* p) {
 AXVPB* __AXPopFreeStack(void) {
     AXVPB* p;
 
-    p = (void*)(u32)&__AXStackHead[0]->next;
+    p = __AXStackHead[AX_FREE_VOICE_PRIORITY];
     if (p) {
-        __AXStackHead[0] = p->next;
+        __AXStackHead[AX_FREE_VOICE_PRIORITY] = p->next;
     }
     return p;
 }
@@ -137,7 +137,7 @@ void __AXPushCallbackStack(AXVPB* p) {
 AXVPB* __AXPopCallbackStack(void) {
     AXVPB* p;
 
-    p = (void*)(u32)&__AXCallbackStack[0];
+    p = __AXCallbackStack;
     if (p) {
         __AXCallbackStack = p->next1;
     }
@@ -159,19 +159,19 @@ void __AXRemoveFromStack(AXVPB* p) {
     head = __AXStackHead[i];
     tail = __AXStackTail[i];
     if (head == tail) {
-        __AXStackHead[i] = __AXStackTail[i] = 0;
+        __AXStackHead[i] = __AXStackTail[i] = NULL;
         return;
     }
 
     if (p == head) {
         __AXStackHead[i] = p->next;
-        __AXStackHead[i]->prev = 0;
+        __AXStackHead[i]->prev = NULL;
         return;
     }
 
     if (p == tail) {
         __AXStackTail[i] = p->prev;
-        __AXStackTail[i]->next = 0;
+        __AXStackTail[i]->next = NULL;
         return;
     }
 
@@ -190,7 +190,7 @@ void __AXPushStackHead(AXVPB* p, u32 priority) {
     ASSERTLINE(262, priority < AX_PRIORITY_STACKS);
 
     p->next = __AXStackHead[priority];
-    p->prev = 0;
+    p->prev = NULL;
 
     if (p->next) {
         __AXStackHead[priority]->prev = p;
@@ -217,11 +217,11 @@ AXVPB* __AXPopStackFromBottom(u32 priority) {
     if (__AXStackHead[priority]) {
         if (__AXStackHead[priority] == __AXStackTail[priority]) {
             p = __AXStackHead[priority];
-            __AXStackHead[priority] = __AXStackTail[priority] = 0;
+            __AXStackHead[priority] = __AXStackTail[priority] = NULL;
         } else if (__AXStackTail[priority]) {
             p = __AXStackTail[priority];
             __AXStackTail[priority] = p->prev;
-            __AXStackTail[priority]->next = 0;
+            __AXStackTail[priority]->next = NULL;
         }
     }
 
@@ -234,9 +234,9 @@ AXVPB* __AXPopStackFromBottom(u32 priority) {
  */
 void AXFreeVoice(AXVPB* p) {
     BOOL old;
-    
+
     ASSERTLINE(322, p);
-    ASSERTMSGLINE(326, p->priority != 0, "Calling AXFreeVoice() for voice that is already free\n");
+    ASSERTMSGLINE(326, p->priority != AX_FREE_VOICE_PRIORITY, "Calling AXFreeVoice() for voice that is already free\n");
 
     old = OSDisableInterrupts();
     __AXRemoveFromStack(p);
@@ -264,14 +264,14 @@ AXVPB* AXAcquireVoice(u32 priority, void (*callback)(void*), u32 userContext) {
 
     old = OSDisableInterrupts();
     p = __AXPopFreeStack();
-    if (p == 0) {
-        for (i = 1; i < priority; i++) {
+    if (p == NULL) {
+        for (i = AX_FREE_VOICE_PRIORITY + 1; i < priority; i++) {
             p = __AXPopStackFromBottom(i);
             if (p) {
                 if (p->pb.state == 1) {
                     p->depop = 1;
                 }
-                if (p->callback != 0) {
+                if (p->callback != NULL) {
                     p->callback(p);
                 }
                 break;
@@ -299,7 +299,7 @@ void AXSetVoicePriority(AXVPB* p, u32 priority) {
     BOOL old;
 
     ASSERTLINE(424, p);
-    ASSERTMSGLINE(428, p->priority != 0, "Calling AXSetVoicePriority() for voice that is already free\n");
+    ASSERTMSGLINE(428, p->priority != AX_FREE_VOICE_PRIORITY, "Calling AXSetVoicePriority() for voice that is already free\n");
     ASSERTMSGLINE(433, priority, "Do not set voice priority to 0, use AXFreeVoice() to free voice\n");
     ASSERTLINE(435, priority < AX_PRIORITY_STACKS);
 

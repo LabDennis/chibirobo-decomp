@@ -1,14 +1,22 @@
 #include <sysdolphin/shadow.h>
 
+#include <dolphin/gx/gx.h>
+#include <dolphin/gx/gxfifo.h>
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <sysdolphin/cobj.h>
 #include <sysdolphin/constants.h>
 #include <sysdolphin/identity_mtx.h>
 #include <sysdolphin/list.h>
+#include <sysdolphin/memory.h>
 #include <sysdolphin/mobj.h>
+#include <sysdolphin/perf.h>
+#include <sysdolphin/pobj.h>
+#include <sysdolphin/tev.h>
 #include <sysdolphin/tobj.h>
 #include <sysdolphin/vec_orthogonal.h>
+#include <float.h>
+#include <string.h>
 
 /**
  * @note Address: N/A
@@ -18,18 +26,15 @@ extern inline f64 fabs(f64 x)
 	return __fabs(x);
 }
 
-void* HSD_Alloc(s32);
-s32 GXGetTexBufferSize(u16, u16, s32, s32, s32);
-
 static void makeMatrix(HSD_Shadow* shadow);
 
-/* msl's float.h data, flt_min and flt_epsilon */
-extern f32 __float_min[];
-extern f32 __float_epsilon[];
+static const char shadow_assert_file[] = "shadow.c";
+static const char viewing_rect_position_assert[] = "position";
 
-#define ASSERT_NAMED(line, cond) ((cond) ? ((void)0) : __assert("shadow.c", line, #cond))
+#define ASSERT_NAMED_MSG(line, cond, msg) ((cond) ? ((void)0) : __assert(shadow_assert_file, line, msg))
+#define ASSERT_NAMED(line, cond) ASSERT_NAMED_MSG(line, cond, #cond)
 
-void* memset(void* dst, s32 val, u32 n);
+enum { SHADOW_DEFAULT_SIZE = 256 };
 
 HSD_ObjAllocData shadow_alloc_data;
 
@@ -38,24 +43,15 @@ static inline HSD_ObjAllocData* HSD_ShadowGetAllocData(void)
 	return &shadow_alloc_data;
 }
 
-static inline bool ref_DEC(void* o)
-{
-	bool ret;
-	if ((ret = (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF))) {
-		return ret;
-	}
-	return HSD_OBJ(o)->ref_count-- == 0;
-}
-
 static inline HSD_TObj* makeShadowTObj(void)
 {
 	HSD_TObj* tobj;
 
 	tobj            = HSD_TObjAlloc();
-	tobj->src       = 0;
-	tobj->wrap_s    = 0;
-	tobj->wrap_t    = 0;
-	tobj->flags     = 0x540103;
+	tobj->src       = GX_TG_POS;
+	tobj->wrap_s    = GX_CLAMP;
+	tobj->wrap_t    = GX_CLAMP;
+	tobj->flags     = TEX_COORD_SHADOW | TEX_LIGHTMAP_SHADOW | TEX_COLORMAP_MODULATE | TEX_ALPHAMAP_PASS;
 	tobj->imagedesc = HSD_ImageDescAlloc();
 	return tobj;
 }
@@ -88,14 +84,12 @@ HSD_Shadow* HSD_ShadowAlloc(void)
 	shadow->transT    = 0.5F;
 	shadow->intensity = 0;
 
-	// yes format really gets stored twice
-	shadow->texture->imagedesc->format = 1;
-	shadow->texture->imagedesc->format = 1;
-	shadow->texture->imagedesc->width  = 256;
-	shadow->texture->imagedesc->height = 256;
+	shadow->texture->imagedesc->format = GX_TF_I8;
+	shadow->texture->imagedesc->width  = SHADOW_DEFAULT_SIZE;
+	shadow->texture->imagedesc->height = SHADOW_DEFAULT_SIZE;
 
-	HSD_CObjSetViewportfx4(shadow->camera, 0.0F, 256.0F, 0.0F, 256.0F);
-	HSD_CObjSetScissorx4(shadow->camera, 0, 256, 0, 256);
+	HSD_CObjSetViewportfx4(shadow->camera, 0.0F, SHADOW_DEFAULT_SIZE, 0.0F, SHADOW_DEFAULT_SIZE);
+	HSD_CObjSetScissorx4(shadow->camera, 0, SHADOW_DEFAULT_SIZE, 0, SHADOW_DEFAULT_SIZE);
 
 	return shadow;
 }
@@ -113,9 +107,8 @@ void HSD_ShadowRemove(HSD_Shadow* shadow)
 		return;
 	}
 	if ((cobj = shadow->camera) != NULL) {
-		if (ref_DEC(cobj) && cobj != NULL) {
-			HSD_CLASS_METHOD(cobj)->release((HSD_Class*)cobj);
-			HSD_CLASS_METHOD(cobj)->destroy((HSD_Class*)cobj);
+		if (ref_DEC(cobj)) {
+			hsdDelete(cobj);
 		}
 	}
 	HSD_ShadowDeleteObject(shadow, NULL);
@@ -142,7 +135,7 @@ void HSD_ShadowInit(HSD_Shadow* shadow)
 	ASSERT_NAMED(0x104, shadow);
 	imagedesc = shadow->texture->imagedesc;
 	GXSetTexCopySrc(0, 0, imagedesc->width, imagedesc->height);
-	GXSetTexCopyDst(imagedesc->width, imagedesc->height, 0x28, 0); /* GX_CTF_G8 */
+	GXSetTexCopyDst(imagedesc->width, imagedesc->height, GX_CTF_R8, GX_FALSE);
 }
 
 /**
@@ -163,7 +156,7 @@ void HSD_ShadowSetSize(HSD_Shadow* shadow, u16 width, u16 height)
 		if (imgdesc->img_ptr != NULL) {
 			HSD_Free(imgdesc->img_ptr);
 		}
-		size = GXGetTexBufferSize(width, height, 1, 0, 0); /* GX_TF_I8 */
+		size = GXGetTexBufferSize(width, height, GX_TF_I8, GX_FALSE, 0);
 		ASSERT_NAMED(0x140, size > 0);
 
 		imgdesc->img_ptr = HSD_Alloc(size);
@@ -174,54 +167,34 @@ void HSD_ShadowSetSize(HSD_Shadow* shadow, u16 width, u16 height)
 	}
 }
 
-typedef struct _HSD_Chan {
-	struct _HSD_Chan* next;
-	u32 chan;
-	u32 flags;
-	GXColor amb_color;
-	GXColor mat_color;
-	u8 enable;
-	u32 amb_src;
-	u32 mat_src;
-	u32 light_mask;
-	u32 diff_fn;
-	u32 attn_fn;
-	struct _HSD_AObj* aobj;
-} HSD_Chan;
-
 HSD_Chan channel = {
 	NULL,             // next
-	4,                // chan
+	GX_COLOR0A0,      // chan
 	0,                // flags
 	{ 0 },            // amb_color
 	{ 0, 0, 0, 255 }, // mat_color
 	FALSE,            // enable
-	0,                // amb_src
-	0,                // mat_src
-	0,                // light_mask
-	2,                // diff_fn
-	2,                // attn_fn
+	GX_SRC_REG,       // amb_src
+	GX_SRC_REG,       // mat_src
+	GX_LIGHT_NULL,    // light_mask
+	GX_DF_CLAMP,      // diff_fn
+	GX_AF_NONE,       // attn_fn
 };
 
-extern struct {
-	u8 x0_pad[0xC];
-	s32 unkC;
-} HSD_PerfCurrentStat;
-
-struct {
-	u32 unused[29];
-} tevstage = {
-	0, 1, 0, 0xFF, 0xFF, 4, 0, 15, 15, 15, 10, 0, 0, 0x1000000, 0, 0, 7, 7, 7, 5, 0, 0, 0x1000000,
+HSD_TevDesc tevstage = {
+	NULL, 1, 0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0,
+	{ {
+		GX_TEV_ADD, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC,
+		GX_CS_SCALE_1, GX_TB_ZERO, GX_ENABLE, GX_TEVPREV,
+		GX_TEV_ADD, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA,
+		GX_CS_SCALE_1, GX_TB_ZERO, GX_ENABLE, GX_TEVPREV,
+	} },
 };
 
 HSD_PEDesc pedesc = {
-	9, 0, 0, 0, 0, 4, 5, 15, 7, 7, 0, 7,
+	HSD_PE_COLOR_UPDATE | HSD_PE_Z_COMP_BEFORE_TEX, 0, 0, 0, GX_BM_NONE,
+	GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET, GX_ALWAYS, GX_ALWAYS, GX_AOP_AND, GX_ALWAYS,
 };
-
-f32 HSD_CObjGetEyeDistance();
-void HSD_JObjDispAll(HSD_JObj* jobj, Mtx vmtx, u32 flags, u32 rendermode);
-void C_MTXOrtho(void*, f32, f32, f32, f32, f32, f32);
-void GXSetViewport(f32, f32, f32, f32, f32, f32);
 
 /**
  * @note Address: 0x801AB6BC
@@ -229,12 +202,11 @@ void GXSetViewport(f32, f32, f32, f32, f32, f32);
  */
 void HSD_ShadowStartRender(HSD_Shadow* shadow)
 {
-	Mtx44 sp8;
-	HSD_Chan* chan;
+	Mtx44 projection;
 	HSD_CObj* camera;
-	u8 temp_r0;
+	u8 intensity;
 	HSD_ImageDesc* imgdesc;
-	HSD_SList* var_r26;
+	HSD_SList* objects;
 
 	ASSERT_NAMED(0x189, shadow);
 	ASSERT_NAMED(0x18A, shadow->camera);
@@ -252,34 +224,33 @@ void HSD_ShadowStartRender(HSD_Shadow* shadow)
 		channel.mat_color.g = 0xFF;
 		channel.mat_color.b = 0xFF;
 		HSD_SetupChannelAll(&channel);
-		C_MTXOrtho(&sp8, 1.0F, 0.0F, 0.0F, 1.0F, -1.0F, 1.0F);
-		GXSetProjection(&sp8, 1);
+		C_MTXOrtho(projection, 1.0F, 0.0F, 0.0F, 1.0F, -1.0F, 1.0F);
+		GXSetProjection(projection, GX_ORTHOGRAPHIC);
 		GXSetViewport(0.0F, 0.0F, imgdesc->width, imgdesc->height, 0.0F, 1.0F);
 		GXSetScissor(0, 0, imgdesc->width, imgdesc->height);
-		GXLoadPosMtxImm(&HSD_identityMtx, 0);
-		GXSetCurrentMtx(0, HSD_PerfCurrentStat.unkC++, &HSD_PerfCurrentStat);
+		GXLoadPosMtxImm(HSD_identityMtx, GX_PNMTX0);
+		HSD_PerfCurrentStat.nb_mtx_load++;
+		GXSetCurrentMtx(GX_PNMTX0);
 		HSD_ClearVtxDesc();
-		GXSetVtxDesc(9, 1);
-		GXSetVtxAttrFmt(0, 9, 0, 0, 0);
-		HSD_StateSetCullMode(2);
-		GXBegin(0x80, 0, 4);
-		*(s8*)0xCC008000    = 0;
-		*(s8*)0xCC008000    = 1;
-		*(s8*)0xCC008000    = 1;
-		*(s8*)0xCC008000    = 1;
-		*(s8*)0xCC008000    = 1;
-		*(s8*)0xCC008000    = 0;
-		*(s8*)0xCC008000    = 0;
-		*(s8*)0xCC008000    = 0;
-		temp_r0             = shadow->intensity;
-		channel.mat_color.r = temp_r0;
-		channel.mat_color.g = temp_r0;
-		channel.mat_color.b = temp_r0;
+		GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_U8, 0);
+		HSD_StateSetCullMode(GX_CULL_BACK);
+		GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+		GXPosition2u8(0, 1);
+		GXPosition2u8(1, 1);
+		GXPosition2u8(1, 0);
+		GXPosition2u8(0, 0);
+		GXEnd();
+
+		intensity           = shadow->intensity;
+		channel.mat_color.r = intensity;
+		channel.mat_color.g = intensity;
+		channel.mat_color.b = intensity;
 		HSD_SetupChannelAll(&channel);
-		if (HSD_CObjGetEyeDistance(camera) >= __float_epsilon[0] && HSD_CObjSetCurrent(camera)) {
+		if (HSD_CObjGetEyeDistance(camera) >= FLT_EPSILON && HSD_CObjSetCurrent(camera)) {
 			GXSetScissor(2, 2, imgdesc->width - 4, imgdesc->height - 4);
-			for (var_r26 = shadow->objects; var_r26 != NULL; var_r26 = var_r26->next) {
-				HSD_JObjDispAll(var_r26->data, 0, 5, 0x04000000);
+			for (objects = shadow->objects; objects != NULL; objects = objects->next) {
+				HSD_JObjDispAll(objects->data, NULL, 5, RENDER_SHADOW);
 			}
 			HSD_CObjEndCurrent();
 		}
@@ -298,7 +269,7 @@ void HSD_ShadowEndRender(HSD_Shadow* shadow)
 	if (imgdesc->img_ptr == NULL) {
 		HSD_ShadowSetSize(shadow, imgdesc->width, imgdesc->height);
 	}
-	GXCopyTex(imgdesc->img_ptr, 1);
+	GXCopyTex(imgdesc->img_ptr, GX_TRUE);
 	GXPixModeSync();
 	GXInvalidateTexAll();
 	makeMatrix(shadow);
@@ -328,8 +299,6 @@ void HSD_ShadowSetActive(HSD_Shadow* shadow, s32 active)
 	}
 }
 
-HSD_SList* HSD_SListPrepend();
-
 /**
  * @note Address: 0x801AB1B4
  * @note Size: 0xAC
@@ -347,12 +316,7 @@ void HSD_ShadowAddObject(HSD_Shadow* shadow, HSD_Obj* obj)
 		}
 	}
 	shadow->objects = HSD_SListPrepend(shadow->objects, obj);
-	if (obj != NULL) {
-		obj->ref_count += 1;
-		if (obj->ref_count == (u16)-1) {
-			__assert("object.h", 0x5D, "HSD_OBJ(o)->ref_count != HSD_OBJ_NOREF");
-		}
-	}
+	ref_INC(obj);
 }
 
 /**
@@ -365,14 +329,14 @@ void HSD_ShadowDeleteObject(HSD_Shadow* shadow, struct _HSD_JObj* jobj)
 		return;
 	}
 	if (jobj != NULL) {
-		HSD_SList* list = (HSD_SList*)shadow;
-		while (list->next != NULL) {
-			if (list->next->data == jobj) {
+		HSD_SList** link = &shadow->objects;
+		while (*link != NULL) {
+			if ((*link)->data == jobj) {
 				HSD_JObjUnref(jobj);
-				list->next = HSD_SListRemove(list->next);
+				*link = HSD_SListRemove(*link);
 				break;
 			}
-			list = list->next;
+			link = &(*link)->next;
 		}
 	} else {
 		while (shadow->objects != NULL) {
@@ -381,10 +345,6 @@ void HSD_ShadowDeleteObject(HSD_Shadow* shadow, struct _HSD_JObj* jobj)
 		}
 	}
 }
-
-void C_MTXLightPerspective(Mtx, f32, f32, f32, f32, f32, f32);
-void C_MTXLightFrustum(Mtx, f32, f32, f32, f32, f32, f32, f32, f32, f32);
-void C_MTXLightOrtho(Mtx, f32, f32, f32, f32, f32, f32, f32, f32);
 
 Mtx ShadowProjectionFallbackMtx = {
 	{ 0.0F, 0.0F, 0.0F, 0.0F },
@@ -400,7 +360,7 @@ static void makeMatrix(HSD_Shadow* shadow)
 {
 	Mtx Mprj;
 
-	if (HSD_CObjGetEyeDistance(shadow->camera) < __float_epsilon[0]) {
+	if (HSD_CObjGetEyeDistance(shadow->camera) < FLT_EPSILON) {
 		PSMTXCopy(ShadowProjectionFallbackMtx, shadow->texture->mtx);
 		return;
 	}
@@ -445,7 +405,7 @@ void HSD_ShadowSetViewingRect(HSD_Shadow* shadow, f32 top, f32 bottom, f32 left,
 
 	camera   = shadow->camera;
 	distance = HSD_CObjGetEyeDistance(camera);
-	if (distance < __float_epsilon[0]) {
+	if (distance < FLT_EPSILON) {
 		return;
 	}
 
@@ -463,7 +423,7 @@ void HSD_ShadowSetViewingRect(HSD_Shadow* shadow, f32 top, f32 bottom, f32 left,
 		} else {
 			height = fabs(right);
 		}
-		HSD_CObjSetAspect(camera, height / (width + __float_epsilon[0]));
+		HSD_CObjSetAspect(camera, height / (width + FLT_EPSILON));
 		HSD_CObjSetFov(camera, (f32)atan2(width, distance) * 57.29578F);
 	} break;
 
@@ -473,8 +433,8 @@ void HSD_ShadowSetViewingRect(HSD_Shadow* shadow, f32 top, f32 bottom, f32 left,
 
 	case PROJ_FRUSTRUM: {
 		f32 scale = HSD_CObjGetNear(camera) / distance;
-		if (scale < __float_epsilon[0]) {
-			scale = __float_epsilon[0];
+		if (scale < FLT_EPSILON) {
+			scale = FLT_EPSILON;
 		}
 		HSD_CObjSetFrustum(camera, scale * top, scale * bottom, scale * left, scale * right);
 	} break;
@@ -483,8 +443,6 @@ void HSD_ShadowSetViewingRect(HSD_Shadow* shadow, f32 top, f32 bottom, f32 left,
 		ASSERT_NAMED(0x39E, 0);
 	}
 }
-
-extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
 
 /**
  * @note Address: N/A
@@ -495,7 +453,7 @@ static inline BOOL TryNormalizeChecked(Vec* src, Vec* dst)
 	if (src == NULL || dst == NULL) {
 		return ~0;
 	}
-	if (__fabs(src->x) <= __float_min[0] && __fabs(src->y) <= __float_min[0] && __fabs(src->z) <= __float_min[0]) {
+	if (__fabs(src->x) <= MSL_FLT_MIN && __fabs(src->y) <= MSL_FLT_MIN && __fabs(src->z) <= MSL_FLT_MIN) {
 		return ~0;
 	}
 	PSVECNormalize(src, dst);
@@ -542,18 +500,6 @@ s32 HSD_ViewingRectCheck(HSD_ViewingRect* rect)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-// stripped from the game, only its assert string is left in .rodata, between
-// HSD_ViewingRectAddRect's strings and the rest. the name is the 2005 game's
-// decomp's guess and the body is unknown past the assert
-void HSD_ViewingRectScale(HSD_ViewingRect* rect, f32 a)
-{
-	ASSERT_NAMED(0x3E8, a > 0.0F);
-}
-
-/**
  * @note Address: 0x801AAABC
  * @note Size: 0x210
  */
@@ -563,7 +509,7 @@ void HSD_ViewingRectAddRect(HSD_ViewingRect* rect, Vec* position, f32 top, f32 b
 	Vec o2p, e2p;
 
 	ASSERT_NAMED(0x401, rect);
-	ASSERT_NAMED(0x402, position);
+	ASSERT_NAMED_MSG(0x402, position, viewing_rect_position_assert);
 
 	if (rect->invalid) {
 		return;
@@ -578,7 +524,7 @@ void HSD_ViewingRectAddRect(HSD_ViewingRect* rect, Vec* position, f32 top, f32 b
 			return;
 		}
 		scale = rect->distance / dot;
-		PSVECScale(scale, &o2p, &o2p);
+		PSVECScale(&o2p, &o2p, scale);
 		PSVECSubtract(&o2p, &rect->eye_v, &e2p);
 		x = PSVECDotProduct(&rect->right_v, &e2p);
 		y = PSVECDotProduct(&rect->up_v, &e2p);
@@ -589,7 +535,7 @@ void HSD_ViewingRectAddRect(HSD_ViewingRect* rect, Vec* position, f32 top, f32 b
 		right *= scale;
 	} else {
 		Vec tmp;
-		PSVECScale(dot, &rect->eye_vn, &tmp);
+		PSVECScale(&rect->eye_vn, &tmp, dot);
 		PSVECSubtract(&o2p, &tmp, &e2p);
 		x = PSVECDotProduct(&rect->right_v, &e2p);
 		y = PSVECDotProduct(&rect->up_v, &e2p);

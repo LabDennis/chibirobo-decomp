@@ -93,9 +93,6 @@ void* __memcpy(void*, const void*, int);
 // floating-point constants
 static const float INF = 2000000000.0f;
 
-// hack to make strings with no references compile properly
-#define DEAD_STRING(s) OSReport(s)
-
 #define READU32_BE(ptr, offset) \
     (((u32)ptr[offset] << 24) | ((u32)ptr[offset + 1] << 16) | ((u32)ptr[offset + 2] << 8) | (u32)ptr[offset + 3]);
 
@@ -107,42 +104,10 @@ static const float INF = 2000000000.0f;
 #endif
 #endif
 
-// Hack to trick the compiler into not inlining functions that use this macro.
-#define FORCE_DONT_INLINE \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; \
-    (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0; (void*)0;
-
 #ifdef __MWERKS__
 #define SJIS(character, value) character
 #else
 #define SJIS(character, value) ((u32)value)
-#endif
-
-#ifdef __MWERKS__
-#define ASM asm
-#else
-#define ASM
-#endif
-
-// potential fakematch?
-#if PLATFORM_SHIELD
-    #define UNSET_FLAG(var, flag, type) (var) &= (type)~(flag)
-#else
-    #define UNSET_FLAG(var, flag, type) (var) &= ~(flag)
 #endif
 
 // Macro for multi-character literals that exceed 4 bytes (e.g. 'ari_os').
@@ -166,29 +131,11 @@ static const float INF = 2000000000.0f;
 #endif
 #endif
 
-// potential fakematch?
-#if DEBUG
-#define FABSF fabsf
-#else
-#define FABSF std::fabsf
-#endif
-
 #ifndef __MWERKS__
 #if __cplusplus
 #include <cmath>
 using std::isnan;
 #endif
-#endif
-
-// Comparing a non-volatile reference type to NULL is tautological
-// and triggers a warning on modern compilers, but in some cases is
-// required to match the original assembly.
-#if defined(__MWERKS__) || defined(DECOMPCTX)
-#define IS_REF_NULL(r) (&(r) == NULL)
-#define IS_REF_NONNULL(r) (&(r) != NULL)
-#else
-#define IS_REF_NULL(r) (0)
-#define IS_REF_NONNULL(r) (1)
 #endif
 
 #endif

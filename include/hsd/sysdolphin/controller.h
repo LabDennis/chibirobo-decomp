@@ -3,7 +3,7 @@
 
 #include <dolphin/types.h>
 
-#include <dolphin/pad.h>
+#include <Dolphin/pad.h>
 #include <sysdolphin/forward.h>
 #include <sysdolphin/rumble.h>
 
@@ -51,7 +51,7 @@ struct HSD_PadStatus {
 	f32 nml_analogA;   // _38
 	f32 nml_analogB;   // _3C
 	u8 cross_dir;      // _40
-	u8 _41;            // _41, set when PADRead reported the port connected
+	u8 connected;      // _41, set when PADRead reported the port connected
 	s8 err;            // _42
 };
 
@@ -89,16 +89,14 @@ struct PadLibData {
 	u8 cross_dir;                            // _29
 	u8 reset_switch_status;                  // _2A
 	u8 reset_switch;                         // _2B
-	u16 rumble_max_list;                     // _2C
-	u8 rumble_unk2E;                         // _2E
-	HSD_PadRumbleListData* rumble_listdatap; // _30
+	RumbleInfo rumble_info;                  // _2C
 };
 
 extern PadLibData HSD_PadLibData;
 extern HSD_PadStatus HSD_PadMasterStatus[4];
 extern HSD_PadStatus HSD_PadCopyStatus[4];
 
-void fn_801CC0A0(u8 qtype);
+void SetPadQueueType(u8 qtype);
 s32 HSD_PadGetResetSwitch(void);
 void HSD_PadRenewRawStatus(void);
 void HSD_PadRenewMasterStatus(void);

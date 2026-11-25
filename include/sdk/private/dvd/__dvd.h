@@ -9,6 +9,8 @@ extern "C" {
 #endif
 
 // DVD
+#define DVD_BOOT_BLOCK_OFFSET 0x420
+
 DVDCommandChecker __DVDSetOptionalCommandChecker(DVDCommandChecker func);
 void __DVDSetImmCommand(u32 command);
 void __DVDSetDmaCommand(u32 command);

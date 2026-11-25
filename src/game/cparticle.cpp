@@ -1,28 +1,11 @@
 #include "game/cparticle.h"
+#include <sysdolphin/psdisp.h>
+#include <sysdolphin/psinterpret.h>
 #include <stdio.h>
 
 extern "C" {
 #include <dolphin/os.h>
 void OSReport(const char* msg, ...);
-HSD_Generator* psCreateGeneratorID(int linkNo, int bank, int kind);
-HSD_Generator* fn_801E4380(int linkNo, int bank, int kind, HSD_JObj* jobj);
-HSD_Generator* fn_801E4C58(int linkNo, int bank, int kind, HSD_JObj* jobj);
-HSD_psAppSRT* fn_801E56F8(HSD_Generator* gen, s32 status);
-void _psDispParticlesSub(s32 bankMask, s32 kind);
-void psInterpretParticles(u32 flags);
-void psExecGenerator(u32 mask);
-void psInitDataBank(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
-void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
-void psInitParticle(s32 count);
-void psRemoveParticle(void);
-s32 psInitGenerator(s32 num);
-void psRemoveGenerator(void);
-s32 psInitAppSRT(s32 num, s32 size);
-void psRemoveAppSRT(void);
-void psSetPointJObjNodup(HSD_JObj* jobj, s32 no);
-void HSD_JObjSetSPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
-void HSD_JObjSetJSoundCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
-void HSD_JObjSetPtclTargetCallback(void (*func)(HSD_JObj*, s32));
 }
 
 // the ptcl file version this code reads
@@ -77,26 +60,26 @@ HSD_Generator* CParticle::Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep)
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
 		if (mGenerators[i].mGen == NULL) {
-			s32 linkNo = (code >> 16) & 0xFF;
+			s32 linkNo = (code >> 16) & 0xFF; // the code packs link number and effect id
 #if defined(VERSION_JP)
 			s32 no   = code & 0xFFFF;
 			s32 bank = GetBank();
 			s32 id   = no + GetIdBase();
 #else
 			s32 id = code & 0xFFFF;
-			if (id < GetIdBase()) {
+			if (id < GetIdBase()) { // a relative id gets the base added
 				id += GetIdBase();
 			}
 			s32 bank = GetBank();
 #endif
 			mGenerators[i].mId = id;
-			if (type == 0) {
-				mGenerators[i].mGen = fn_801E4380(linkNo, bank, id, jobj);
+			if (type == 0) { // 0 plain, else queued
+				mGenerators[i].mGen = psCreateJointGenerator(linkNo, bank, id, jobj);
 			} else {
-				mGenerators[i].mGen = fn_801E4C58(linkNo, bank, id, jobj);
+				mGenerators[i].mGen = psCreateQueuedJointGenerator(linkNo, bank, id, jobj);
 			}
 			gen = mGenerators[i].mGen;
-			if (gen != NULL && !keep && gen->genLife != 0) {
+			if (gen != NULL && !keep && gen->genLife != 0) { // unkept: the slot forgets it
 				mGenerators[i].mId  = -1;
 				mGenerators[i].mGen = NULL;
 			}
@@ -115,14 +98,14 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
 		if (mGenerators[i].mGen == NULL) {
-			s32 linkNo = (code >> 16) & 0xFF;
+			s32 linkNo = (code >> 16) & 0xFF; // the code packs link number and effect id
 #if defined(VERSION_JP)
 			s32 no   = code & 0xFFFF;
 			s32 bank = GetBank();
 			s32 id   = no + GetIdBase();
 #else
 			s32 id = code & 0xFFFF;
-			if (id < GetIdBase()) {
+			if (id < GetIdBase()) { // a relative id gets the base added
 				id += GetIdBase();
 			}
 			s32 bank = GetBank();
@@ -130,7 +113,7 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
 			mGenerators[i].mId  = id;
 			mGenerators[i].mGen = psCreateGeneratorID(linkNo, bank, id);
 			if (mGenerators[i].mGen != NULL) {
-				HSD_psAppSRT* srt = fn_801E56F8(mGenerators[i].mGen, status);
+				HSD_psAppSRT* srt = CreateGeneratorAppSRT(mGenerators[i].mGen, status);
 				if (srt != NULL) {
 					srt->scale     = scale;
 					srt->translate = translate;
@@ -154,7 +137,7 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
  */
 void CParticle::Draw(s32 mask)
 {
-	for (u32 i = 0; i < 3; i++) {
+	for (u32 i = 0; i < 3; i++) { // the three particle kinds
 		_psDispParticlesSub(mask, i);
 	}
 }
@@ -177,7 +160,7 @@ void CParticle::Update(u32 frames)
  */
 BOOL CParticle::Read(const char* name)
 {
-	const char* exts[CPARTICLE_FILE_NUM] = { "ptl", "txg", "ref", "txf" };
+	const char* exts[CPARTICLE_FILE_NUM] = { "ptl", "txg", "ref", "txf" }; // the four banks, one file per call
 	void** banks[CPARTICLE_FILE_NUM]     = { (void**)&mCmdBank, (void**)&mTexBank, &mRef, (void**)&mFormBank };
 	char path[64];
 
@@ -219,9 +202,9 @@ void CParticle::Init()
 	}
 	psInitParticle(800);
 	psInitGenerator(100);
-	psInitAppSRT(100, 0x74); // this revision's HSD_psAppSRT is 0x74 bytes, our particle.h has a later layout
-	HSD_JObjSetSPtclCallback(fn_801E4C58);
-	HSD_JObjSetJSoundCallback(fn_801E4380);
+	psInitAppSRT(100, sizeof(HSD_psAppSRT));
+	HSD_JObjSetSPtclCallback(psCreateQueuedJointGenerator);
+	HSD_JObjSetDPtclCallback(psCreateJointGenerator);
 	HSD_JObjSetPtclTargetCallback(psSetPointJObjNodup);
 	if (mReadStep > 0) {
 		psInitDataBankLoad(GetBank(), mCmdBank, mTexBank, mRef, mFormBank);

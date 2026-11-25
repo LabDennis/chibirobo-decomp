@@ -3,18 +3,8 @@
 
 static int fragmentID = -2;
 
-/**
- * @note Address: 0x80151BA4
- * @note Size: 0x8
- */
-ASM static char* GetR2()
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	mr r3, r2
-	blr
-#endif // clang-format on
-}
+extern char* GetR2();
+
 extern "C" {
 /**
  * @note Address: 0x80151BE0
@@ -22,7 +12,7 @@ extern "C" {
  */
 void __init_cpp_exceptions()
 {
-	if ((s32)fragmentID == -2) {
+	if (fragmentID == -2) {
 		char* R2   = GetR2();
 		fragmentID = __register_fragment(_eti_init_info, R2);
 	}
@@ -34,7 +24,7 @@ void __init_cpp_exceptions()
  */
 void __fini_cpp_exceptions()
 {
-	if ((s32)fragmentID != -2) {
+	if (fragmentID != -2) {
 		__unregister_fragment(fragmentID);
 		fragmentID = -2;
 	}

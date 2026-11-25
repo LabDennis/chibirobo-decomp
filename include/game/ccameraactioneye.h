@@ -12,11 +12,12 @@ public:
 	CObjVec mLook;  // _40, x up and down, y around, z the fov offset
 	CVec mOverride; // _70, a non zero part replaces the target the stick gives
 
-	virtual void Update(u32 step);           // _10
-	virtual void vf14();                     // _14
-	virtual void Init() { }                  // _1C
-	virtual u32 Get_38() { return 0x20019; } // _54
+	virtual void Update(u32 step); // _10
+	virtual void Reset();          // _14
+	virtual void Init();           // _1C
+	virtual u32 GetCameraFlags();  // _54
+	virtual ~CCameraActionEye() { }
 };
-typedef char CCameraActionEye_size_check[sizeof(CCameraActionEye) == 0x80 ? 1 : -1];
+STATIC_ASSERT(sizeof(CCameraActionEye) == 0x80);
 
 #endif

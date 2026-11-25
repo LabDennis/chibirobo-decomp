@@ -3,90 +3,41 @@
 
 #include "__gx.h"
 
-static struct {
-    u32 rid : 8;
-    u32 dest : 2;
-    u32 shift : 2;
-    u32 clamp : 1;
-    u32 sub : 1;
-    u32 bias : 2;
-    u32 sela : 4;
-    u32 selb : 4;
-    u32 selc : 4;
-    u32 seld : 4;
-} TEVCOpTableST0[5] = {
-    {192, 0, 0, 1, 0, 0, 15, 8, 10, 15},   // modulate
-    {192, 0, 0, 1, 0, 0, 10, 8, 9, 15},    // decal
-    {192, 0, 0, 1, 0, 0, 10, 12, 8, 15},   // blend
-    {192, 0, 0, 1, 0, 0, 15, 15, 15, 8},   // replace
-    {192, 0, 0, 1, 0, 0, 15, 15, 15, 10},  // passclr
+// Color and alpha combiner words for ADD, zero bias, scale 1, and clamped output.
+#define TEV_COLOR_PRESET(a, b, c, d) (0xC0080000u | ((a) << 12) | ((b) << 8) | ((c) << 4) | (d))
+#define TEV_ALPHA_PRESET(a, b, c, d) (0xC1080000u | ((a) << 13) | ((b) << 10) | ((c) << 7) | ((d) << 4))
+
+static u32 TEVCOpTableST0[] = {
+    TEV_COLOR_PRESET(GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO),  // GX_MODULATE
+    TEV_COLOR_PRESET(GX_CC_RASC, GX_CC_TEXC, GX_CC_TEXA, GX_CC_ZERO),  // GX_DECAL
+    TEV_COLOR_PRESET(GX_CC_RASC, GX_CC_ONE,  GX_CC_TEXC, GX_CC_ZERO),  // GX_BLEND
+    TEV_COLOR_PRESET(GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC),  // GX_REPLACE
+    TEV_COLOR_PRESET(GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC),  // GX_PASSCLR
 };
 
-static struct {
-    u32 rid : 8;
-    u32 dest : 2;
-    u32 shift : 2;
-    u32 clamp : 1;
-    u32 sub : 1;
-    u32 bias : 2;
-    u32 sela : 4;
-    u32 selb : 4;
-    u32 selc : 4;
-    u32 seld : 4;
-} TEVCOpTableST1[5] = {
-    {192, 0, 0, 1, 0, 0, 15, 8, 0, 15},   // modulate
-    {192, 0, 0, 1, 0, 0, 0, 8, 9, 15},    // decal
-    {192, 0, 0, 1, 0, 0, 0, 12, 8, 15},   // blend
-    {192, 0, 0, 1, 0, 0, 15, 15, 15, 8},  // replace
-    {192, 0, 0, 1, 0, 0, 15, 15, 15, 0},  // passclr
+static u32 TEVCOpTableST1[] = {
+    TEV_COLOR_PRESET(GX_CC_ZERO,  GX_CC_TEXC, GX_CC_CPREV, GX_CC_ZERO),
+    TEV_COLOR_PRESET(GX_CC_CPREV, GX_CC_TEXC, GX_CC_TEXA,  GX_CC_ZERO),
+    TEV_COLOR_PRESET(GX_CC_CPREV, GX_CC_ONE,  GX_CC_TEXC,  GX_CC_ZERO),
+    TEV_COLOR_PRESET(GX_CC_ZERO,  GX_CC_ZERO, GX_CC_ZERO,  GX_CC_TEXC),
+    TEV_COLOR_PRESET(GX_CC_ZERO,  GX_CC_ZERO, GX_CC_ZERO,  GX_CC_CPREV),
 };
 
-static struct {
-    u32 rid : 8;
-    u32 dest : 2;
-    u32 shift : 2;
-    u32 clamp : 1;
-    u32 sub : 1;
-    u32 bias : 2;
-    u32 sela : 3;
-    u32 selb : 3;
-    u32 selc : 3;
-    u32 seld : 3;
-    u32 swap : 2;
-    u32 mode : 2;
-} TEVAOpTableST0[5] = {
-    {193, 0, 0, 1, 0, 0, 7, 4, 5, 7, 0, 0},  // modulate
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 5, 0, 0},  // decal
-    {193, 0, 0, 1, 0, 0, 7, 4, 5, 7, 0, 0},  // blend
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 4, 0, 0},  // replace
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 5, 0, 0},  // passclr
+static u32 TEVAOpTableST0[] = {
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA, GX_CA_ZERO),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA, GX_CA_ZERO),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_TEXA),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_RASA),
 };
 
-static struct {
-    u32 rid : 8;
-    u32 dest : 2;
-    u32 shift : 2;
-    u32 clamp : 1;
-    u32 sub : 1;
-    u32 bias : 2;
-    u32 sela : 3;
-    u32 selb : 3;
-    u32 selc : 3;
-    u32 seld : 3;
-    u32 swap : 2;
-    u32 mode : 2;
-} TEVAOpTableST1[5] = {
-    {193, 0, 0, 1, 0, 0, 7, 4, 0, 7, 0, 0},  // modulate
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 0, 0, 0},  // decal
-    {193, 0, 0, 1, 0, 0, 7, 4, 0, 7, 0, 0},  // blend
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 4, 0, 0},  // replace
-    {193, 0, 0, 1, 0, 0, 7, 7, 7, 0, 0, 0},  // passclr
+static u32 TEVAOpTableST1[] = {
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_TEXA, GX_CA_APREV, GX_CA_ZERO),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO,  GX_CA_APREV),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_TEXA, GX_CA_APREV, GX_CA_ZERO),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO,  GX_CA_TEXA),
+    TEV_ALPHA_PRESET(GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO,  GX_CA_APREV),
 };
-
-#define SOME_SET_REG_MACRO(reg, size, shift, val)                                                   \
-	do {                                                                                            \
-		(reg) = (u32)__rlwimi((u32)(reg), (val), (shift), (32 - (shift) - (size)), (31 - (shift))); \
-	} while (0);
 
 /**
  * @note Address: 0x8018A324
@@ -102,11 +53,11 @@ void GXSetTevOp(GXTevStageID id, GXTevMode mode) {
     ASSERTMSGLINE(422, mode <= GX_PASSCLR, "GXSetTevOp: Invalid Tev Mode");
 
     if (id == GX_TEVSTAGE0) {
-        ctmp = (u32*)TEVCOpTableST0 + mode;
-        atmp = (u32*)TEVAOpTableST0 + mode;
+        ctmp = &TEVCOpTableST0[mode];
+        atmp = &TEVAOpTableST0[mode];
     } else {
-        ctmp = (u32*)TEVCOpTableST1 + mode;
-        atmp = (u32*)TEVAOpTableST1 + mode;
+        ctmp = &TEVCOpTableST1[mode];
+        atmp = &TEVAOpTableST1[mode];
     }
 
     tevReg = __GXData->tevc[id];
@@ -231,20 +182,18 @@ void GXSetTevAlphaOp(GXTevStageID stage, GXTevOp op, GXTevBias bias, GXTevScale 
  * @note Size: 0x60
  */
 void GXSetTevColor(GXTevRegID id, GXColor color) {
-    u32 rgba;
     u32 regRA;
     u32 regBG;
 
     CHECK_GXBEGIN(740, "GXSetTevColor");
-    rgba = *(u32*)&color;
 
     regRA = (0xE0 + id * 2) << 24;
-    SET_REG_FIELD(745, regRA, 8, 0, rgba >> 24);
-    SET_REG_FIELD(746, regRA, 8, 12, rgba & 0xFF);
+    SET_REG_FIELD(745, regRA, 8, 0, color.r);
+    SET_REG_FIELD(746, regRA, 8, 12, color.a);
 
     regBG = (0xE1 + id * 2) << 24;
-    SET_REG_FIELD(749, regBG, 8, 0, (rgba >> 8) & 0xFF);
-    SET_REG_FIELD(750, regBG, 8, 12, (rgba >> 16) & 0xFF);
+    SET_REG_FIELD(749, regBG, 8, 0, color.b);
+    SET_REG_FIELD(750, regBG, 8, 12, color.g);
 
     GX_WRITE_RAS_REG(regRA);
     GX_WRITE_RAS_REG(regBG);
@@ -259,8 +208,6 @@ void GXSetTevColor(GXTevRegID id, GXColor color) {
  * @note Size: 0x64
  */
 void GXSetTevColorS10(GXTevRegID id, GXColorS10 color) {
-    u32 sRG;
-    u32 sBA;
     u32 regRA;
     u32 regBG;
 
@@ -270,16 +217,14 @@ void GXSetTevColorS10(GXTevRegID id, GXColorS10 color) {
     ASSERTMSGLINE(780, color.a >= -1024 && color.a < 1024, "GXSetTevColorS10: Color not in range -1024 to +1023");
 
     CHECK_GXBEGIN(782, "GXSetTevColorS10");
-    sRG = *(u32*)&color;
-    sBA = *((u32*)&color + 1);
 
     regRA = (0xE0 + id * 2) << 24;
-    SET_REG_FIELD(789, regRA, 11,  0, (sRG >> 16) & 0x7FF);
-    SET_REG_FIELD(790, regRA, 11, 12, sBA & 0x7FF);
+    SET_REG_FIELD(789, regRA, 11, 0, (u32)color.r & 0x7FF);
+    SET_REG_FIELD(790, regRA, 11, 12, (u32)color.a & 0x7FF);
 
     regBG = (0xE1 + id * 2) << 24;
-    SET_REG_FIELD(793, regBG, 11, 0, (sBA >> 16) & 0x7FF);
-    SET_REG_FIELD(794, regBG, 11, 12, sRG & 0x7FF);
+    SET_REG_FIELD(793, regBG, 11, 0, (u32)color.b & 0x7FF);
+    SET_REG_FIELD(794, regBG, 11, 12, (u32)color.g & 0x7FF);
 
     GX_WRITE_RAS_REG(regRA);
     GX_WRITE_RAS_REG(regBG);
@@ -294,21 +239,19 @@ void GXSetTevColorS10(GXTevRegID id, GXColorS10 color) {
  * @note Size: 0x64
  */
 void GXSetTevKColor(GXTevKColorID id, GXColor color) {
-    u32 rgba;
     u32 regRA;
     u32 regBG;
 
     CHECK_GXBEGIN(833, "GXSetTevKColor");
-    rgba = *(u32*)&color;
 
     regRA = (0xE0 + id * 2) << 24;
-    SET_REG_FIELD(838, regRA, 8, 0, rgba >> 24);
-    SET_REG_FIELD(839, regRA, 8, 12, rgba & 0xFF);
+    SET_REG_FIELD(838, regRA, 8, 0, color.r);
+    SET_REG_FIELD(839, regRA, 8, 12, color.a);
     SET_REG_FIELD(839, regRA, 4, 20, 8);
 
     regBG = (0xE1 + id * 2) << 24;
-    SET_REG_FIELD(843, regBG, 8, 0, (rgba >> 8) & 0xFF);
-    SET_REG_FIELD(844, regBG, 8, 12, (rgba >> 16) & 0xFF);
+    SET_REG_FIELD(843, regBG, 8, 0, color.b);
+    SET_REG_FIELD(844, regBG, 8, 12, color.g);
     SET_REG_FIELD(845, regBG, 4, 20, 8);
 
     GX_WRITE_RAS_REG(regRA);
@@ -383,25 +326,19 @@ void GXSetTevSwapMode(GXTevStageID stage, GXTevSwapSel ras_sel, GXTevSwapSel tex
  */
 void GXSetTevSwapModeTable(GXTevSwapSel table, GXTevColorChan red, GXTevColorChan green, GXTevColorChan blue, GXTevColorChan alpha) {
     u32* Kreg;
-#if !DEBUG
-    // not a real variable, but needed to match release
-    int index = table * 2;
-#endif
+    int index;
 
     CHECK_GXBEGIN(978, "GXSetTevSwapModeTable");
     ASSERTMSGLINE(979, table < GX_MAX_TEVSWAP, "GXSetTevSwapModeTable: Invalid Swap Selection Index");
 
-#if DEBUG
-    Kreg = &__GXData->tevKsel[table * 2];
-#else
+    index = table * 2;
     Kreg = &__GXData->tevKsel[index];
-#endif
     SET_REG_FIELD(982, *Kreg, 2, 0, red);
     SET_REG_FIELD(983, *Kreg, 2, 2, green);
 
     GX_WRITE_RAS_REG(*Kreg);
 
-    Kreg = &__GXData->tevKsel[table * 2 + 1];
+    Kreg = &__GXData->tevKsel[index + 1];
     SET_REG_FIELD(987, *Kreg, 2, 0, blue);
     SET_REG_FIELD(988, *Kreg, 2, 2, alpha);
 
@@ -486,7 +423,8 @@ void GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXCha
     u32* ptref;
     u32 tmap;
     u32 tcoord;
-    static int c2r[] = { 0, 1, 0, 1, 0, 1, 7, 5, 6 };
+    // Raster color selector for each GXChannelID through GX_ALPHA_BUMPN.
+    static int colorToRaster[] = { 0, 1, 0, 1, 0, 1, 7, 5, 6 };
 
     CHECK_GXBEGIN(1131, "GXSetTevOrder");
     ASSERTMSGLINE(1132, stage < GX_MAX_TEVSTAGE, "GXSetTevOrder: Invalid Tev Stage Index");
@@ -511,12 +449,12 @@ void GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXCha
     if (stage & 1) {
         SET_REG_FIELD(1158, *ptref, 3, 12, tmap);
         SET_REG_FIELD(1159, *ptref, 3, 15, tcoord);
-        SET_REG_FIELD(1161, *ptref, 3, 19, (color == GX_COLOR_NULL) ? 7 : c2r[color]);
+        SET_REG_FIELD(1161, *ptref, 3, 19, (color == GX_COLOR_NULL) ? 7 : colorToRaster[color]);
         SET_REG_FIELD(1163, *ptref, 1, 18, (map != GX_TEXMAP_NULL && !(map & GX_TEX_DISABLE)));
     } else {
         SET_REG_FIELD(1166, *ptref, 3, 0, tmap);
         SET_REG_FIELD(1167, *ptref, 3, 3, tcoord);
-        SET_REG_FIELD(1169, *ptref, 3, 7, (color == GX_COLOR_NULL) ? 7 : c2r[color]);
+        SET_REG_FIELD(1169, *ptref, 3, 7, (color == GX_COLOR_NULL) ? 7 : colorToRaster[color]);
         SET_REG_FIELD(1171, *ptref, 1, 6, (map != GX_TEXMAP_NULL && !(map & GX_TEX_DISABLE)));
     }
 

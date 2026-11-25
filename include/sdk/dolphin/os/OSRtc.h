@@ -54,12 +54,12 @@ typedef struct OSSramEx {
 #define SRAM_SIZE (sizeof(OSSram) + sizeof(OSSramEx))
 
 typedef struct SramControl {
-    u8 sram[SRAM_SIZE];  // dummy for OSSram + OSSramEx
+    u8 sram[SRAM_SIZE];
     u32 offset;
     BOOL enabled;
     BOOL locked;
     int sync;
-    void (*callback)();
+    void (*callback)(void);
 } SramControl;
 
 u32 OSGetSoundMode(void);

@@ -2,6 +2,7 @@
 #define _THP_THPVIDEODECODE_H
 
 #include "Dolphin/os.h"
+#include <sdk/dolphin/thp_api.h>
 #include "THP/THPRead.h"
 #include "types.h"
 
@@ -12,7 +13,6 @@ static void VideoDecode(THPReadBuffer*);
 #ifdef __cplusplus
 extern "C" {
 #endif // ifdef __cplusplus
-s32 THPVideoDecode(void* file, void* tileY, void* tileU, void* tileV, void* work);
 BOOL CreateVideoDecodeThread(OSPriority priority, void* task);
 void VideoDecodeThreadStart();
 void VideoDecodeThreadCancel();

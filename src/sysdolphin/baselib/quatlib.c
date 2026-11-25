@@ -3,21 +3,6 @@
 
 #define M_PI_2 1.5707963267948966
 
-// float wrappers over the double math, like msl's c++ inlines. calling sin directly
-// puts sp in the wrong register in QuatSlerp
-static inline f32 qsinf(f32 x)
-{
-	return sin(x);
-}
-static inline f32 qcosf(f32 x)
-{
-	return cos(x);
-}
-static inline f32 qacosf(f32 x)
-{
-	return acos(x);
-}
-
 /**
  * @note Address: N/A
  * @note Size: 0x144
@@ -35,8 +20,8 @@ s32 QuatSetUp(Vec* axis, Quaternion* q, f32 angle)
 	}
 	inv_len    = 1.0F / len;
 	half_angle = 0.5F * angle;
-	q->w       = qcosf(half_angle);
-	s          = qsinf(half_angle);
+	q->w       = (f32)cos(half_angle);
+	s          = (f32)sin(half_angle);
 	q->x       = s * (inv_len * axis->x);
 	q->y       = s * (inv_len * axis->y);
 	q->z       = s * (inv_len * axis->z);
@@ -59,12 +44,12 @@ s32 EulerToQuat(Vec* euler, Quaternion* q)
 	f32 cc;
 	f32 ss;
 
-	cx = qcosf(0.5F * euler->x);
-	cy = qcosf(0.5F * euler->y);
-	cz = qcosf(0.5F * euler->z);
-	sx = qsinf(0.5F * euler->x);
-	sy = qsinf(0.5F * euler->y);
-	sz = qsinf(0.5F * euler->z);
+	cx = (f32)cos((f32)(0.5F * euler->x));
+	cy = (f32)cos((f32)(0.5F * euler->y));
+	cz = (f32)cos((f32)(0.5F * euler->z));
+	sx = (f32)sin((f32)(0.5F * euler->x));
+	sy = (f32)sin((f32)(0.5F * euler->y));
+	sz = (f32)sin((f32)(0.5F * euler->z));
 
 	ss   = sy * sz;
 	cc   = cy * cz;
@@ -93,10 +78,10 @@ s32 QuatSlerp(Quaternion* p, Quaternion* q, Quaternion* out, f32 t)
 
 	if ((1.0F + cosom) > 1e-10F) {
 		if ((1.0F - cosom) > 1e-10F) {
-			theta = qacosf(cosom);
-			sinom = qsinf(theta);
-			sp    = (f32)qsinf((1.0F - t) * theta) / sinom;
-			sq    = (f32)qsinf(t * theta) / sinom;
+			theta = (f32)acos(cosom);
+			sinom = (f32)sin(theta);
+			sp    = (f32)sin((f32)((1.0F - t) * theta)) / sinom;
+			sq    = (f32)sin((f32)(t * theta)) / sinom;
 		} else {
 			sq = t;
 			sp = (f32)(1.0 - (f64)t);
@@ -112,8 +97,8 @@ s32 QuatSlerp(Quaternion* p, Quaternion* q, Quaternion* out, f32 t)
 		out->w = p->z;
 
 		if (t < 0.5F) {
-			sp     = qsinf((f32)(M_PI_2 * (1.0F - (2.0F * t))));
-			sq     = qsinf((f32)(M_PI_2 * (2.0F * t)));
+			sp     = (f32)sin((f32)(M_PI_2 * (1.0F - (2.0F * t))));
+			sq     = (f32)sin((f32)(M_PI_2 * (2.0F * t)));
 			out->x = sp * p->x + sq * q->x;
 			out->y = sp * p->y + sq * q->y;
 			out->z = sp * p->z + sq * q->z;
@@ -121,8 +106,8 @@ s32 QuatSlerp(Quaternion* p, Quaternion* q, Quaternion* out, f32 t)
 		} else {
 			t -= 0.5F;
 			t2     = 2.0F * t;
-			sp     = qsinf((f32)(M_PI_2 * (1.0F - t2)));
-			sq     = qsinf((f32)(M_PI_2 * t2));
+			sp     = (f32)sin((f32)(M_PI_2 * (1.0F - t2)));
+			sq     = (f32)sin((f32)(M_PI_2 * t2));
 			out->x = sp * p->x + sq * q->x;
 			out->y = sp * p->y + sq * q->y;
 			out->z = sp * p->z + sq * q->z;

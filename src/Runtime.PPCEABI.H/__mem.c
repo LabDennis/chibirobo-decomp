@@ -20,59 +20,59 @@ void* memcpy(void* dst, const void* src, size_t n)
 
 void __fill_mem(void* dst, int val, u32 n)
 {
-	u32 v = (u8)val;
-	u32 i;
-
-	((u8*)dst) = ((u8*)dst) - 1;
+	u8* bytes = (u8*)dst - 1;
+	u32* words;
+	u32 pattern = (u8)val;
+	u32 count;
 
 	if (n >= 32) {
-		i = (~(u32)dst) & 3;
+		// Align the next byte address so that word stores are safe.
+		count = (~(u32)bytes) & 3;
 
-		if (i) {
-			n -= i;
+		if (count) {
+			n -= count;
 
 			do
-				*++(((u8*)dst)) = v;
-			while (--i);
+				*++bytes = pattern;
+			while (--count);
 		}
 
-		if (v)
-			v |= v << 24 | v << 16 | v << 8;
+		if (pattern)
+			pattern |= pattern << 24 | pattern << 16 | pattern << 8;
 
-		((u32*)dst) = ((u32*)(((u8*)dst) + 1)) - 1;
+		words = (u32*)(bytes + 1) - 1;
 
-		i = n >> 5;
+		// Write eight words per iteration for large fills.
+		count = n >> 5;
 
-		if (i)
+		if (count)
 			do {
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-				*++(((u32*)dst)) = v;
-			} while (--i);
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+				*++words = pattern;
+			} while (--count);
 
-		i = (n & 31) >> 2;
+		count = (n & 31) >> 2;
 
-		if (i)
+		if (count)
 			do
-				*++(((u32*)dst)) = v;
-			while (--i);
+				*++words = pattern;
+			while (--count);
 
-		((u8*)dst) = ((u8*)(((u32*)dst) + 1)) - 1;
+		bytes = (u8*)(words + 1) - 1;
 
 		n &= 3;
 	}
 
 	if (n)
 		do
-			*++(((u8*)dst)) = v;
+			*++bytes = pattern;
 		while (--n);
-
-	return;
 }
 
 void* memset(void* dst, int val, size_t n)

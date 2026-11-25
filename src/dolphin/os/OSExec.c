@@ -8,78 +8,62 @@ extern volatile u32 BOOT_REGION_START AT_ADDRESS(0x812FDFF0);
 extern volatile u32 BOOT_REGION_END AT_ADDRESS(0x812FDFEC);
 extern volatile u8 g_unk_800030E2 AT_ADDRESS(0x800030E2);
 
+extern void __OSRunExecutable(void* entryPoint);
+
 static int Prepared;
+
+enum {
+    EXEC_ARG_BLOCK_SIZE = 0x2000,
+    EXEC_ARGV_ALIGNMENT = 0x1000,
+    EXEC_ARGV_LIMIT = 0x400,
+    EXEC_ARG_LIST_FIELD = 8,
+    EXEC_ARG_HEADER_SIZE = EXEC_ARG_LIST_FIELD + sizeof(u32),
+};
 
 /**
  * @note Address: 0x801645AC
  * @note Size: 0x188
  */
-static int PackArgs(void* addr, s32 argc, char** argv) {
-    s32 numArgs;
-    char* bootInfo2;
-    char* ptr;
-    char** list;
-    u32 i;
+static void PackArgs(void* addr, s32 argc, const char* const* argv) {
+    char* bootInfo2 = addr;
+    u32 stringOffset = EXEC_ARG_BLOCK_SIZE;
+    u32 listOffset;
+    u32 listSize;
+    u32 minimumStringOffset;
+    u32* list;
+    s32 i;
 
-    bootInfo2 = (char*)addr;
-    memset(bootInfo2, 0, 0x2000);
-
-    if (argc == 0) {
-        *(u32*)(bootInfo2 + 8) = 0;
-    } else {
-        numArgs = argc;
-        ptr = bootInfo2 + 0x2000;
-        while (--argc >= 0) {
-            ptr -= strlen(argv[argc]) + 1;
-            strcpy(ptr, argv[argc]);
-            argv[argc] = (char*)(ptr - bootInfo2);
-        }
-
-        ptr = bootInfo2 + ((ptr - bootInfo2) & ~0x3);
-        ptr -= ((numArgs + 1) * 4);
-        list = (char**)ptr;
-
-        for (i = 0; i < numArgs + 1; i++) {
-            list[i] = argv[i];
-        }
-
-        ptr -= 4;
-        *(u32*)ptr = numArgs;
-
-        ASSERTMSGLINE(LINE(129, 138, 140), ptr - bootInfo2 >= 0x1000U, "OSExec: Argument list is too long");
-
-        *(u32*)(bootInfo2 + 8) = (ptr - bootInfo2);
+    memset(bootInfo2, 0, EXEC_ARG_BLOCK_SIZE);
+    if (argc <= 0 || (u32)argc > (EXEC_ARG_BLOCK_SIZE - EXEC_ARG_HEADER_SIZE) / sizeof(*list) - 2) {
+        return;
     }
 
-    return 1;
+    listSize = (argc + 2) * sizeof(*list);
+    minimumStringOffset = EXEC_ARG_HEADER_SIZE + listSize;
+
+    // The strings occupy the end of the BI2 block, after argc and argv's offsets.
+    for (i = 0; i < argc; i++) {
+        size_t length = strlen(argv[i]) + 1;
+        if (length > stringOffset - minimumStringOffset) {
+            return;
+        }
+        stringOffset -= length;
+    }
+
+    listOffset = (stringOffset & ~3u) - listSize;
+    ASSERTMSGLINE(LINE(129, 138, 140), listOffset >= 0x1000U, "OSExec: Argument list is too long");
+    *(u32*)(bootInfo2 + EXEC_ARG_LIST_FIELD) = listOffset;
+
+    list = (u32*)(bootInfo2 + listOffset);
+    *list++ = argc;
+    for (i = 0; i < argc; i++) {
+        size_t length = strlen(argv[i]) + 1;
+        list[i] = stringOffset;
+        memcpy(bootInfo2 + stringOffset, argv[i], length);
+        stringOffset += length;
+    }
+    list[argc] = 0;
 }
-
-#ifdef __GEKKO__
-/**
- * @note Address: 0x80164734
- * @note Size: 0x3C
- */
-static asm void Run(__REGISTER void* entryPoint) {
-    nofralloc
-
-    mflr r0
-    stw r0, 4(r1)
-    stwu r1, -0x18(r1)
-    stw r31, 0x14(r1)
-    mr r31, entryPoint
-    bl ICFlashInvalidate
-    sync
-    isync 
-    mtlr r31
-    blr
-
-    lwz r0, 0x1c(r1)
-    lwz r31, 0x14(r1)
-    addi r1, r1, 0x18
-    mtlr r0
-    blr
-}
-#endif
 
 /**
  * @note Address: N/A
@@ -92,7 +76,7 @@ static void StartDol(const OSExecParams* params, void* entry) {
     __PIRegs[9] = 7;
 
     OSDisableInterrupts();
-    Run(entry);
+    __OSRunExecutable(entry);
 }
 
 /**
@@ -287,7 +271,7 @@ static BOOL IsNewApploader(AppLoaderStruct* header) {
  * @note Address: 0x801648EC
  * @note Size: 0x484
  */
-void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd, BOOL argsUseDefault, s32 argc, char** argv) {
+void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd, BOOL argsUseDefault, s32 argc, const char* const* argv) {
     OSExecParams* params;
     void* dolEntry;
     AppLoaderStruct* header;
@@ -305,7 +289,7 @@ void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* 
     params->argsUseDefault = argsUseDefault;
 
     if (!argsUseDefault) {
-        params->argsAddr = OSAllocFromArenaLo(0x2000, 1);
+        params->argsAddr = OSAllocFromArenaLo(EXEC_ARG_BLOCK_SIZE, 1);
         PackArgs(params->argsAddr, argc, argv);
     }
 
@@ -355,7 +339,7 @@ void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* 
         ICInvalidateRange((void*)0x81300000, OSRoundUp32B(header->rebootSize));
         OSDisableInterrupts();
         ICFlashInvalidate();
-        Run((void*)0x81300000);
+        __OSRunExecutable((void*)0x81300000);
     }
 }
 
@@ -366,7 +350,7 @@ void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* 
 void __OSBootDol(u32 doloffset, u32 restartCode, const char** argv) {
     char doloffInString[20];
     s32 argvlen;
-    char** argvToPass;
+    const char** argvToPass;
     s32 i;
     void* saveStart;
     void* saveEnd;
@@ -386,7 +370,7 @@ void __OSBootDol(u32 doloffset, u32 restartCode, const char** argv) {
     *argvToPass = doloffInString;
 
     for (i = 1; i < argvlen; i++) {
-        argvToPass[i] = (char*)argv[i - 1];
+        argvToPass[i] = argv[i - 1];
     }
 
     __OSBootDolSimple(-1, restartCode, saveStart, saveEnd, FALSE, argvlen, argvToPass);
@@ -434,11 +418,23 @@ void OSExecv(const char* dolfile, const char** argv) {
  */
 void OSExecl(const char* dolfile, const char* arg0, ...) {
     va_list vl;
-    char* ptr;
-    s32 i;
-    char** argv;
+    const char* arg;
+    u32 argc = 0;
+    const char** argv;
+    const char** next;
 
     ASSERTMSGLINE(LINE(759, 765, 767), dolfile != 0, "OSExecl(): null pointer was specified for the dol file name.");
+
+    // The SDK limit is exclusive and includes the terminating null.
+    va_start(vl, arg0);
+    for (arg = arg0; arg != NULL && argc < EXEC_ARGV_LIMIT - 2; arg = va_arg(vl, const char*)) {
+        ++argc;
+    }
+    va_end(vl);
+    ASSERTMSGLINE(LINE(787, 793, 794), arg == NULL, "OSExecl(): Arguments too long");
+    if (arg != NULL) {
+        return;
+    }
 
     OSDisableScheduler();
     __OSShutdownDevices(FALSE);
@@ -446,29 +442,13 @@ void OSExecl(const char* dolfile, const char* arg0, ...) {
     OSSetArenaLo((void*)0x81280000);
     OSSetArenaHi((void*)0x812F0000);
 
-    argv = OSAllocFromArenaLo(4, 0x1000);
+    argv = OSAllocFromArenaLo((argc + 1) * sizeof(*argv), EXEC_ARGV_ALIGNMENT);
     va_start(vl, arg0);
-#if SDK_REVISION < 2
-    *argv = (char*)arg0;
-
-    i = 1;
-    do {
-        ptr = va_arg(vl, char*);
-        argv[i++] = ptr;
-    } while (ptr != 0);
-#else
-    i = 0;
-    ptr = (char*)arg0;
-    goto setarg;
-
-    do {
-        ptr = va_arg(vl, char*);
-setarg:
-        argv[i++] = ptr;
-    } while (ptr != 0);
-#endif
+    for (next = argv, arg = arg0; arg != NULL; arg = va_arg(vl, const char*)) {
+        *next++ = arg;
+    }
     va_end(vl);
-    ASSERTMSGLINE(LINE(787, 793, 794), i < 0x400U, "OSExecl(): Arguments too long");
+    *next = NULL;
 
     ExecCommon(dolfile, argv);
 }

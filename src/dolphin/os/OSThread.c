@@ -1,6 +1,71 @@
 #include "Dolphin/os.h"
 #include "Dolphin/hw_regs.h"
 
+// Add link to queue at tail.
+#define AddTail(queue, thread, link)    \
+	do {                                \
+		OSThread* prev;                 \
+                                        \
+		prev = (queue)->tail;           \
+		if (prev == nullptr)            \
+			(queue)->head = (thread);   \
+		else                            \
+			prev->link.next = (thread); \
+		(thread)->link.prev = prev;     \
+		(thread)->link.next = nullptr;  \
+		(queue)->tail       = (thread); \
+	} while (0)
+
+// Add link to queue in priority order.
+#define AddPrio(queue, thread)                                                                           \
+	do {                                                                                                 \
+		OSThread *prev, *next;                                                                           \
+                                                                                                         \
+		for (next = (queue)->head; next && next->priority <= (thread)->priority; next = next->link.next) \
+			;                                                                                            \
+		if (next == nullptr)                                                                             \
+			AddTail(queue, thread, link);                                                                \
+		else {                                                                                           \
+			(thread)->link.next = next;                                                                  \
+			prev                = next->link.prev;                                                       \
+			next->link.prev     = (thread);                                                              \
+			(thread)->link.prev = prev;                                                                  \
+			if (prev == nullptr)                                                                         \
+				(queue)->head = (thread);                                                                \
+			else                                                                                         \
+				prev->link.next = (thread);                                                              \
+		}                                                                                                \
+	} while (0)
+
+// Remove link from queue.
+#define RemoveItem(queue, thread, link) \
+	do {                                \
+		OSThread *next, *prev;          \
+		next = (thread)->link.next;     \
+		prev = (thread)->link.prev;     \
+		if (next == nullptr)            \
+			(queue)->tail = prev;       \
+		else                            \
+			next->link.prev = prev;     \
+		if (prev == nullptr)            \
+			(queue)->head = next;       \
+		else                            \
+			prev->link.next = next;     \
+	} while (0)
+
+// Remove head link from queue.
+#define RemoveHead(queue, thread)          \
+	do {                                   \
+		OSThread* headNext;                \
+		(thread) = (queue)->head;          \
+		headNext   = (thread)->link.next;  \
+		if (headNext == nullptr)           \
+			(queue)->tail = nullptr;       \
+		else                               \
+			headNext->link.prev = nullptr; \
+		(queue)->head = headNext;          \
+	} while (0)
+
 static vu32 RunQueueBits;
 static volatile BOOL RunQueueHint;
 static vs32 Reschedule;
@@ -12,8 +77,6 @@ static OSContext IdleContext;
 static void DefaultSwitchThreadCallback(OSThread* from, OSThread* to);
 static OSSwitchThreadCallback SwitchThreadCallback = DefaultSwitchThreadCallback;
 
-// Fabricated helper inlines.
-// Initialise mutex queue (mutex equiv. to OSInitThreadQueue below).
 static inline void InitMutexQueue(OSMutexQueue* queue)
 {
 	queue->head = queue->tail = NULL;
@@ -156,7 +219,6 @@ static void SetRun(OSThread* thread)
 	RunQueueHint = TRUE;
 }
 
-#pragma dont_inline on
 /**
  * @note Address: 0x8016A05C
  * @note Size: 0x68
@@ -170,7 +232,6 @@ static void UnsetRun(OSThread* thread)
 		RunQueueBits &= ~(1u << (OS_PRIORITY_MAX - thread->priority));
 	thread->queue = nullptr;
 }
-#pragma dont_inline reset
 
 /**
  * @note Address: 0x8016A0C4
@@ -208,7 +269,7 @@ static OSThread* SetEffectivePriority(OSThread* thread, OSPriority priority)
 	case OS_THREAD_STATE_WAITING:
 		RemoveItem(thread->queue, thread, link);
 		thread->priority = priority;
-		AddPrio(thread->queue, thread, link);
+		AddPrio(thread->queue, thread);
 		if (thread->mutex) {
 			return thread->mutex->thread;
 		}
@@ -317,7 +378,7 @@ static OSThread* SelectThread(BOOL yield)
 
 	priority = __cntlzw(RunQueueBits);
 	queue    = &RunQueue[priority];
-	RemoveHead(queue, nextThread, link);
+	RemoveHead(queue, nextThread);
 	if (queue->head == 0) {
 		RunQueueBits &= ~(1u << (OS_PRIORITY_MAX - priority));
 	}
@@ -360,15 +421,15 @@ void OSYieldThread()
 BOOL OSCreateThread(OSThread* thread, OSThreadStartFunction func, void* param, void* stack, u32 stackSize, OSPriority priority, u16 attr)
 {
 	BOOL enable;
-	u32 stackThing;
+	u32* alignedStackTop;
 	int i;
-	u32 tmp[2]; // DUMB compiler smfh.
 
 	if (priority < OS_PRIORITY_MIN || priority > OS_PRIORITY_MAX) {
 		return FALSE;
 	}
 
-	stackThing       = ((u32)stack & 0xFFFFFFF8); // ??
+	alignedStackTop = (u32*)ALIGN_PREV((u32)stack, 8);
+
 	thread->state    = OS_THREAD_STATE_READY;
 	thread->attr     = attr & OS_THREAD_ATTR_DETACH;
 	thread->base     = priority;
@@ -378,15 +439,16 @@ BOOL OSCreateThread(OSThread* thread, OSThreadStartFunction func, void* param, v
 	thread->mutex    = nullptr;
 	OSInitThreadQueue(&thread->queueJoin);
 	InitMutexQueue(&thread->queueMutex);
-	*(u32*)(stackThing - 8) = 0;
-	*(u32*)(stackThing - 4) = 0;
+	// Clear the initial frame's backchain and saved LR slot.
+	alignedStackTop[-2] = 0;
+	alignedStackTop[-1] = 0;
 
-	OSInitContext(&thread->context, (u32)func, (u32)(stackThing - 8));
+	OSInitContext(&thread->context, (u32)func, (u32)(alignedStackTop - 2));
 
 	thread->context.lr     = (u32)&OSExitThread;
 	thread->context.gpr[3] = (u32)param;
 	thread->stackBase      = stack;
-	thread->stackEnd       = (u32*)((u32)stack - stackSize);
+	thread->stackEnd       = (u32*)((u8*)stack - stackSize);
 	*(thread->stackEnd)    = OS_THREAD_STACK_MAGIC;
 	thread->error          = 0;
 	thread->specific[0]    = nullptr;
@@ -394,14 +456,16 @@ BOOL OSCreateThread(OSThread* thread, OSThreadStartFunction func, void* param, v
 
 	enable = OSDisableInterrupts();
 
-	if (__OSErrorTable[16] != nullptr) {
-		thread->context.srr1 |= 0x900; // ??
+	if (__OSErrorTable[OS_ERROR_FPE] != NULL) {
+		const u64 initialFPR = ~0ULL;
+
+		thread->context.srr1 |= MSR_FE0 | MSR_FE1;
 		thread->context.state |= OS_CONTEXT_STATE_FPSAVED;
-		thread->context.fpscr = (__OSFpscrEnableBits & 0xF8) | 0x4; // ??
+		thread->context.fpscr = (__OSFpscrEnableBits & FPSCR_ENABLE) | FPSCR_NI;
 
 		for (i = 0; i < 32; i++) {
-			*(u64*)&thread->context.fpr[i] = -1; // ???????
-			*(u64*)&thread->context.psf[i] = -1; // ???????
+			*(u64*)&thread->context.fpr[i] = initialFPR;
+			*(u64*)&thread->context.psf[i] = initialFPR;
 		}
 	}
 
@@ -532,7 +596,7 @@ s32 OSResumeThread(OSThread* thread)
 		case OS_THREAD_STATE_WAITING:
 			RemoveItem(thread->queue, thread, link);
 			thread->priority = __OSGetEffectivePriority(thread);
-			AddPrio(thread->queue, thread, link);
+			AddPrio(thread->queue, thread);
 			if (thread->mutex) {
 				UpdatePriority(thread->mutex->thread);
 			}
@@ -594,7 +658,7 @@ void OSSleepThread(OSThreadQueue* threadQueue)
 
 	currentThread->state = OS_THREAD_STATE_WAITING;
 	currentThread->queue = threadQueue;
-	AddPrio(threadQueue, currentThread, link);
+	AddPrio(threadQueue, currentThread);
 	RunQueueHint = TRUE;
 	__OSReschedule();
 	OSRestoreInterrupts(enabled);
@@ -611,7 +675,7 @@ void OSWakeupThread(OSThreadQueue* threadQueue)
 
 	enabled = OSDisableInterrupts();
 	while (threadQueue->head) {
-		RemoveHead(threadQueue, thread, link);
+		RemoveHead(threadQueue, thread);
 		thread->state = OS_THREAD_STATE_READY;
 		if (!(0 < thread->suspend)) {
 			SetRun(thread);
@@ -636,13 +700,13 @@ OSPriority OSGetThreadPriority(OSThread* thread)
  */
 void OSClearStack(u8 val)
 {
-	register u32 sp;
-	register u32* p;
-	register u32 pattern;
+	u32* stackPointer;
+	u32* p;
+	u32 pattern;
 
-	pattern = ((u32)val << 24) | ((u32)val << 16) | ((u32)val << 8) | (u32)val;
-	sp      = OSGetStackPointer();
-	for (p = __OSCurrentThread->stackEnd + 1; p < (u32*)sp; ++p) {
+	pattern      = ((u32)val << 24) | ((u32)val << 16) | ((u32)val << 8) | (u32)val;
+	stackPointer = (u32*)OSGetStackPointer();
+	for (p = __OSCurrentThread->stackEnd + 1; p < stackPointer; ++p) {
 		*p = pattern;
 	}
 }

@@ -1,10 +1,11 @@
 #include <sysdolphin/dobj.h>
+#include <sysdolphin/class_new.h>
 #include <sysdolphin/gobjproc.h>
+
+extern const char gDObjBlendModeReport[];
 
 HSD_DObj* DObjCurrent;
 HSD_DObjInfo* DObjDefaultClass;
-#define current_dobj DObjCurrent
-#define default_class DObjDefaultClass
 
 void DObjInfoInit(void);
 
@@ -16,8 +17,7 @@ HSD_DObjInfo hsdDObj = { DObjInfoInit };
  */
 void HSD_DObjSetCurrent(HSD_DObj* dobj)
 {
-    current_dobj = dobj;
-    return;
+    DObjCurrent = dobj;
 }
 
 /**
@@ -185,9 +185,6 @@ void HSD_DObjAnimAll(HSD_DObj* dobj)
     }
 }
 
-HSD_PObj* HSD_PObjLoadDesc(HSD_PObjDesc* desc);
-HSD_MObj* HSD_MObjLoadDesc(HSD_MObjDesc* desc);
-
 /**
  * @note Address: 0x801B7BE4
  * @note Size: 0x110
@@ -199,18 +196,18 @@ int DObjLoad(HSD_DObj* dobj, HSD_DObjDesc* desc)
     dobj->pobj = HSD_PObjLoadDesc(desc->pobjdesc);
 
     if (dobj->mobj != NULL) {
-        switch (dobj->mobj->rendermode & 0x60000000) {
+        switch (dobj->mobj->rendermode & (RENDER_XLU | RENDER_NO_ZUPDATE)) {
             case 0:
-                HSD_DObjModifyFlags(dobj, 2, 0xE);
+                HSD_DObjModifyFlags(dobj, DOBJ_OPA, DOBJ_TRSP_MASK);
                 break;
-            case 0x40000000:
-                HSD_DObjModifyFlags(dobj, 8, 0xE);
+            case RENDER_XLU:
+                HSD_DObjModifyFlags(dobj, DOBJ_TEXEDGE, DOBJ_TRSP_MASK);
                 break;
-            case 0x60000000:
-                HSD_DObjModifyFlags(dobj, 4, 0xE);
+            case RENDER_XLU | RENDER_NO_ZUPDATE:
+                HSD_DObjModifyFlags(dobj, DOBJ_XLU, DOBJ_TRSP_MASK);
                 break;
             default:
-                OSReport("mobj has unexpected blending flags (0x%x).", dobj->mobj->rendermode);
+                OSReport(gDObjBlendModeReport, dobj->mobj->rendermode);
                 HSD_Panic(__FILE__, 319, "");
         }
     }
@@ -223,12 +220,11 @@ int DObjLoad(HSD_DObj* dobj, HSD_DObjDesc* desc)
  */
 void HSD_DObjSetDefaultClass(HSD_DObjInfo* info)
 {
-    if (info != NULL)
-        assert_line(0x155, hsdIsDescendantOf(info, &hsdDObj));
-    default_class = info;
+    if (info != NULL && !hsdIsDescendantOf(&info->parent, &hsdDObj.parent)) {
+        __assert(__FILE__, 0x155, "hsdIsDescendantOf(info, &hsdDObj)");
+    }
+    DObjDefaultClass = info;
 }
-
-void* hsdNew();
 
 /**
  * @note Address: 0x801B7CF4
@@ -237,32 +233,21 @@ void* hsdNew();
 HSD_DObj* HSD_DObjLoadDesc(HSD_DObjDesc* desc)
 {
     HSD_DObj* dobj;
+    HSD_ClassInfo* info;
 
-    if (desc == NULL)
+    if (desc == NULL) {
         return NULL;
+    }
 
-    if (desc->class_name == NULL || hsdSearchClassInfo(desc->class_name) == NULL) {
+    if (desc->class_name == NULL || (info = hsdSearchClassInfo(desc->class_name)) == NULL) {
         dobj = HSD_DObjAlloc();
     } else {
-        dobj = HSD_DOBJ(hsdNew());
+        dobj = hsdNew(info);
         assert_line(0x181, dobj);
     }
     HSD_DOBJ_METHOD(dobj)->load(dobj, desc);
 
     return dobj;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void hsdDelete(void* object)
-{
-    if (object == NULL)
-        return;
-
-    HSD_CLASS_METHOD(object)->release((HSD_Class*) object);
-    HSD_CLASS_METHOD(object)->destroy((HSD_Class*) object);
 }
 
 /**
@@ -294,7 +279,7 @@ void HSD_DObjRemoveAll(HSD_DObj* dobj)
  */
 HSD_DObj* HSD_DObjAlloc(void)
 {
-    HSD_DObj* dobj = hsdNew((HSD_ClassInfo*) (default_class ? default_class : &hsdDObj));
+    HSD_DObj* dobj = hsdNew((HSD_ClassInfo*) (DObjDefaultClass ? DObjDefaultClass : &hsdDObj));
     assert_line(0x214, dobj);
     return dobj;
 }
@@ -320,8 +305,6 @@ void HSD_DObjResolveRefsAll(HSD_DObj* dobj, HSD_DObjDesc* desc)
         HSD_DObjResolveRefs(dobj, desc);
     }
 }
-
-void HSD_PObjCountVertices(HSD_PObj* pobj, u32* a, u32* b);
 
 /**
  * @note Address: 0x801B7EC8
@@ -356,13 +339,13 @@ void HSD_DObjDisp(HSD_DObj* dobj, Mtx vmtx, Mtx pmtx, u32 rendermode)
     HSD_PObj* p;
 
     HSD_MObjSetCurrent(dobj->mobj);
-    if ((rendermode & 0x4000000) == 0) {
+    if ((rendermode & RENDER_SHADOW) == 0) {
         HSD_MOBJ_METHOD(dobj->mobj)->setup(dobj->mobj, rendermode);
     }
     for (p = dobj->pobj; p != NULL; p = p->next) {
         HSD_POBJ_METHOD(p)->disp(p, vmtx, pmtx, rendermode);
     }
-    if ((rendermode & 0x4000000) == 0) {
+    if ((rendermode & RENDER_SHADOW) == 0) {
         HSD_MOBJ_METHOD(dobj->mobj)->unset(dobj->mobj, rendermode);
     }
     HSD_MObjSetCurrent(NULL);
@@ -389,31 +372,8 @@ void DObjRelease(HSD_Class* o)
  */
 void DObjAmnesia(HSD_ClassInfo* info)
 {
-    if (info == HSD_CLASS_INFO(default_class)) {
-        default_class = NULL;
+    if (info == HSD_CLASS_INFO(DObjDefaultClass)) {
+        DObjDefaultClass = NULL;
     }
     HSD_PARENT_INFO(&hsdDObj)->amnesia(info);
-}
-
-#pragma push
-#pragma force_active on
-static char unused1[] = "can not find specified pobj in link.\n";
-static char unused2[] = "can not find specified pobj in link.";
-static char unused3[] = "dobj->mobj == mobj";
-#pragma pop
-
-/**
- * @note Address: 0x801B80B4
- * @note Size: 0x80
- */
-void DObjInfoInit(void)
-{
-    hsdInitClassInfo(HSD_CLASS_INFO(&hsdDObj), &hsdClass,
-        "sysdolphin_base_library", "hsd_dobj",
-        sizeof(HSD_DObjInfo), sizeof(HSD_DObj));
-
-    HSD_CLASS_INFO(&hsdDObj)->release = DObjRelease;
-    HSD_CLASS_INFO(&hsdDObj)->amnesia = DObjAmnesia;
-    hsdDObj.disp = HSD_DObjDisp;
-    hsdDObj.load = DObjLoad;
 }

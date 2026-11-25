@@ -32,7 +32,7 @@ void __OSUnhandledException(__OSException exception, OSContext* context, u32 dsi
 // OSExec
 void __OSGetExecParams(OSExecParams* params);
 void __OSSetExecParams(const OSExecParams* params, OSExecParams* addr);
-void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd, BOOL argsUseDefault, s32 argc, char** argv);
+void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd, BOOL argsUseDefault, s32 argc, const char* const* argv);
 void __OSBootDol(u32 doloffset, u32 restartCode, const char** argv);
 
 // OSInterrupt
@@ -79,13 +79,11 @@ int __OSUnlockSramEx(BOOL commit);
 int __OSSyncSram(void);
 int __OSCheckSram(void);
 int __OSReadROM(void* buffer, s32 length, s32 offset);
-int __OSReadROMAsync(void* buffer, s32 length, s32 offset, void (*callback)());
+int __OSReadROMAsync(void* buffer, s32 length, s32 offset, void (*callback)(void));
 u8 __OSGetBootMode(void);
 void __OSSetBootMode(u8 ntd);
 
 // OSSync
-extern void __OSSystemCallVectorStart();
-extern void __OSSystemCallVectorEnd();
 
 void __OSInitSystemCall(void);
 
@@ -97,13 +95,14 @@ void __OSReschedule(void);
 
 // OSTime
 void __OSSetTime(OSTime time);
+void __OSWriteTimeBase(OSTime time);
 OSTime __OSGetSystemTime();
-void __OSSetTick(__REGISTER OSTick newTicks);
+void __OSSetTick(OSTick newTicks);
 OSTime __OSTimeToSystemTime(OSTime time);
 
 // ppc_eabi_init
-__declspec(section ".init") asm void __init_hardware(void);
-__declspec(section ".init") asm void __flush_cache(void* address, unsigned int size);
+void __init_hardware(void);
+void __flush_cache(void* address, unsigned int size);
 void __init_user(void);
 void _ExitProcess(void);
 
@@ -115,7 +114,6 @@ __declspec(section ".init") void __start(void);
 __declspec(section ".init") extern void __start(void);
 __declspec(section ".init") void __copy_rom_section(void* dst, const void* src, u32 size);
 __declspec(section ".init") void __init_bss_section(void* dst, u32 size);
-__declspec(section ".init") extern void __init_registers(void);
 __declspec(section ".init") extern void __init_data(void);
 
 // time.dolphin

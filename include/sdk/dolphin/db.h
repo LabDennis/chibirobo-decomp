@@ -11,7 +11,7 @@ extern "C" {
 #define OS_DBINTERFACE_ADDR 0x00000040
 
 BOOL DBIsDebuggerPresent(void);
-void DBPrintf(char* str, ...);
+void DBPrintf(const char* format, ...);
 s32 DBQueryData(void);
 u32 DBRead(u8*, u32);
 

@@ -3,7 +3,7 @@
 
 #include "__os.h"
 
-typedef char* (*ParseStringCallback)(u16, char*, OSFontHeader**, int*);
+typedef const char* (*ParseStringCallback)(u16, const char*, OSFontHeader**, int*);
 
 static OSFontHeader* FontDataAnsi;
 static OSFontHeader* FontDataSjis;
@@ -12,8 +12,8 @@ static ParseStringCallback ParseString;
 static u16 FontEncode = 0xFFFF;
 
 // prototypes
-static char* ParseStringS(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode);
-static char* ParseStringW(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode);
+static const char* ParseStringS(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode);
+static const char* ParseStringW(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode);
 
 static u16 HankakuToCode[]
     = { 0x20C, 0x20D, 0x20E, 0x20F, 0x210, 0x211, 0x212, 0x213,
@@ -269,64 +269,64 @@ static int GetFontCode(u16 encode, u16 code) {
  * @note Address: 0x80165D10
  * @note Size: 0x174
  */
-static void Decode(u8* s, u8* d) {
+static void Decode(const u8* source, u8* destination) {
     int i;
-    int j;
-    int k;
-    int p;
-    int q;
-    int r7;  // huh? DWARF info says these 2 variables might be register names and not actual names.
-    int r25;
-    int cnt;
-    int os;
-    unsigned int flag;
-    unsigned int code;
+    int link;
+    int copyOffset;
+    int maskOffset;
+    int outputOffset;
+    int linkOffset;
+    int chunkOffset;
+    int copyLength;
+    int decodedSize;
+    u32 maskBitsRemaining;
+    u32 mask;
 
-    os  = *(int*)(s + 0x4);
-    r7  = *(int*)(s + 0x8);
-    r25 = *(int*)(s + 0xC);
+    decodedSize = *(const int*)(source + 0x4);
+    linkOffset  = *(const int*)(source + 0x8);
+    chunkOffset = *(const int*)(source + 0xC);
 
-    q    = 0;
-    flag = 0;
-    p    = 16;
+    outputOffset = 0;
+    maskBitsRemaining = 0;
+    maskOffset = 16;
 
     do {
         // Get next mask
-        if (flag == 0) {
-            code = *(u32*)(s + p);
-            p += sizeof(u32);
-            flag = sizeof(u32) * 8;
+        if (maskBitsRemaining == 0) {
+            mask = *(const u32*)(source + maskOffset);
+            maskOffset += sizeof(u32);
+            maskBitsRemaining = sizeof(u32) * 8;
         }
 
-        // Non-linked chunk
-        if (code & 0x80000000) {
-            d[q++] = s[r25++];
+        // Literal byte
+        if (mask & 0x80000000) {
+            destination[outputOffset++] = source[chunkOffset++];
         }
-        // Linked chunk
+        // Back-reference
         else {
             // Read offset from link table
-            j = s[r7] << 8 | s[r7 + 1];
-            r7 += sizeof(u16);
+            link = source[linkOffset] << 8 | source[linkOffset + 1];
+            linkOffset += sizeof(u16);
 
-            // Apply offset
-            k = q - (j & 0x0FFF);
-            cnt    = j >> 12;
-            if (cnt == 0) {
-                cnt = s[r25++] + 0x12;
+            // The link stores a distance one smaller than the actual copy distance.
+            copyOffset = outputOffset - (link & 0x0FFF);
+            copyLength = link >> 12;
+            if (copyLength == 0) {
+                copyLength = source[chunkOffset++] + 0x12;
             } else {
-                cnt += 2;
+                copyLength += 2;
             }
 
             // Copy chunk
-            for (i = 0; i < cnt; i++, q++, k++) {
-                d[q] = d[k - 1];
+            for (i = 0; i < copyLength; i++, outputOffset++, copyOffset++) {
+                destination[outputOffset] = destination[copyOffset - 1];
             }
         }
 
         // Prepare next mask bit
-        code <<= 1;
-        flag--;
-    } while (q < os);
+        mask <<= 1;
+        maskBitsRemaining--;
+    } while (outputOffset < decodedSize);
 }
 
 /**
@@ -363,7 +363,7 @@ u16 OSGetFontEncode(void) {
         FontEncode = OS_FONT_ENCODE_ANSI;
     }
 
-    ParseString = (ParseStringCallback)ParseStringS;
+    ParseString = ParseStringS;
     return FontEncode;
 }
 
@@ -380,7 +380,7 @@ u16 OSSetFontEncode(u16 encode) {
     if (encode <= OS_FONT_ENCODE_MAX) {
         FontEncode = encode;
         if (encode >= 3 && encode <= OS_FONT_ENCODE_MAX) {
-            ParseString = (ParseStringCallback)ParseStringW;
+            ParseString = ParseStringW;
         }
     }
 
@@ -402,7 +402,7 @@ static void ReadROM(void* buf, int length, int offset) {
         }
 
         offset += len;
-        (u8*)buf += len;
+        buf = (u8*)buf + len;
     }
 }
 
@@ -412,9 +412,6 @@ static void ReadROM(void* buf, int length, int offset) {
  */
 static u32 ReadFont(void* img, u16 encode, void* fontData) {
     u32 size;
-#if !DEBUG
-    u32 padding[1];
-#endif
 
     if (encode == OS_FONT_ENCODE_SJIS) {
         ReadROM(img, OS_FONT_ROM_SIZE_SJIS, 0x1AFF00);
@@ -433,6 +430,7 @@ static u32 ReadFont(void* img, u16 encode, void* fontData) {
         int fontCode;
         u8* imageSrc;
         int sheet;
+        u32 sheetOffset;
         int numChars;
         int row;
         int column;
@@ -450,7 +448,8 @@ static u32 ReadFont(void* img, u16 encode, void* fontData) {
         column *= font->cellWidth;
 
         imageSrc = (u8*)font + font->sheetImage;
-        imageSrc += ((sheet * font->sheetSize) >> 1);
+        sheetOffset = (sheet * font->sheetSize) >> 1;
+        imageSrc += sheetOffset;
 
         for (y = 4; y < 8; y++) {
             x = 0;
@@ -507,7 +506,7 @@ u32 OSLoadFont(OSFontHeader* fontData, void* tmp) {
  * @note Address: 0x8016634C
  * @note Size: 0x13C
  */
-static char* ParseStringS(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode) {
+static const char* ParseStringS(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode) {
     OSFontHeader* font;
     u16 code = 0;
 
@@ -536,61 +535,52 @@ static char* ParseStringS(u16 encode, const char* string, OSFontHeader** pfont, 
     *pfont = font;
     *pfontCode = GetFontCode(encode, code);
 
-    return (char*)string;
+    return string;
 }
 
 /**
  * @note Address: N/A
  * @note Size: ?
  */
-static char* ParseStringW(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode) {
+static const char* ParseStringW(u16 encode, const char* string, OSFontHeader** pfont, int* pfontCode) {
     OSFontHeader* font;
     u16 code = 0;
     u32 utf32 = 0;
 
     switch (encode) {
     case OS_FONT_ENCODE_ANSI:
-        font = FontDataAnsi;
-        code = *string;
-        if (code != 0) {
-            string++;
-        }
-        break;
     case OS_FONT_ENCODE_SJIS:
-        font = FontDataSjis;
-        code = *string;
-        if (code == 0) {
-            break;
-        }
-        string++;
-
-        if (IsSjisLeadByte(code) && IsSjisTrailByte(*string)) {
-            code = (code << 8 | *string++);
-        }
-        break;
+        return ParseStringS(encode, string, pfont, pfontCode);
     case 3:
-        string = OSUTF8to32(string, &utf32);
+        if (*string != '\0') {
+            string = OSUTF8to32(string, &utf32);
+        }
         break;
-    case 4:
-        string = (const char*)OSUTF16to32((u16*)string, &utf32);
+    case 4: {
+        const u16* utf16 = (const u16*)string;
+        if (*utf16 != 0) {
+            string = (const char*)OSUTF16to32(utf16, &utf32);
+        }
         break;
+    }
     case 5:
-        utf32 = *(u32*)string;
+        utf32 = *(const u32*)string;
         if (utf32 != 0) {
-            string += 4;
+            string += sizeof(utf32);
         }
         break;
     }
 
+    // Like the narrow parser, a terminator selects glyph zero without advancing.
+    font = FontDataAnsi;
+    encode = OS_FONT_ENCODE_ANSI;
     if (utf32 != 0) {
-        encode = 0;
-        font = FontDataAnsi;
         code = OSUTF32toANSI(utf32);
 
         if (code == 0 || (FixedPitch != 0 && utf32 <= 0x7F)) {
             code = OSUTF32toSJIS(utf32);
             if (code != 0) {
-                encode = 1;
+                encode = OS_FONT_ENCODE_SJIS;
                 font = FontDataSjis;
             }
         }
@@ -599,7 +589,7 @@ static char* ParseStringW(u16 encode, const char* string, OSFontHeader** pfont, 
     *pfont = font;
     *pfontCode = GetFontCode(encode, code);
 
-    return (char*)string;
+    return string;
 }
 
 /**
@@ -624,7 +614,7 @@ char* OSGetFontTexel(const char* string, void* image, s32 pos, s32 stride, s32* 
     u8* imageSrc;
 
     encode = OSGetFontEncode();
-    string = ParseString(encode, (char*)string, &font, &fontCode);
+    string = ParseString(encode, string, &font, &fontCode);
     colorIndex = &font->c0;
     ASSERTLINE(828, font->sheetFormat == GX_TF_I4);
     
@@ -776,9 +766,9 @@ char* OSGetFontTexture(const char* string, void** image, s32* x, s32* y, s32* wi
     int column;
 
     encode = OSGetFontEncode();
-    string = ParseString(encode, (char*)string, &font, &fontCode);
+    string = ParseString(encode, string, &font, &fontCode);
     sheet = fontCode / (font->sheetColumn * font->sheetRow);
-    ((u32*)image)[0] = (u32)font + font->sheetImage + (font->sheetSize * sheet);
+    *image = (u8*)font + font->sheetImage + font->sheetSize * sheet;
     numChars = fontCode - (sheet * (font->sheetColumn * font->sheetRow)); 
     row = numChars / font->sheetColumn;
     column = numChars - (row * font->sheetColumn);
@@ -803,7 +793,7 @@ char* OSGetFontWidth(const char* string, s32* width) {
     int fontCode;
 
     encode = OSGetFontEncode();
-    string = ParseString(encode, (char*)string, &font, &fontCode);
+    string = ParseString(encode, string, &font, &fontCode);
     
     if (width != 0) {
         *width = ((u8*)font + font->widthTable)[fontCode];

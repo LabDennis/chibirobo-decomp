@@ -1,4 +1,8 @@
-#include <sysdolphin/class.h>
+#include <Dolphin/OS/OSUtil.h>
+#include <sysdolphin/class_new.h>
+#include <sysdolphin/hash.h>
+#include <sysdolphin/memory.h>
+#include <string.h>
 
 HSD_ClassInfo hsdClass = { _hsdClassInfoInit };
 
@@ -19,15 +23,15 @@ void hsdInitClassInfo(HSD_ClassInfo* class_info, HSD_ClassInfo* parent_info,
     class_info->head.parent = parent_info;
     class_info->head.child = NULL;
     class_info->head.next = NULL;
-    class_info->head.nb_exist = (u32) NULL;
-    class_info->head.nb_peak = (u32) NULL;
+    class_info->head.nb_exist = 0;
+    class_info->head.nb_peak = 0;
     if (parent_info != NULL) {
         if ((parent_info->head.flags & 1) == 0) {
             parent_info->head.info_init();
         }
         assert_line(95, class_info->head.obj_size >= parent_info->head.obj_size);
         assert_line(96, class_info->head.info_size >= parent_info->head.info_size);
-        memcpy(&class_info->alloc, &parent_info->alloc, parent_info->head.info_size - 0x28);
+        memcpy(&class_info->alloc, &parent_info->alloc, parent_info->head.info_size - sizeof(HSD_ClassInfoHead));
         class_info->head.next = parent_info->head.child;
         parent_info->head.child = class_info;
     }
@@ -45,22 +49,31 @@ void OSReport_PrintSpaces(s32 count) {
     }
 }
 
-void* _HSD_MemAlloc();                     /* extern */
+typedef struct _HSD_FreeList {
+    struct _HSD_FreeList* next;
+} HSD_FreeList;
 
-u32 ClassInfoHash[2];
+typedef struct _HSD_MemoryEntry {
+    u32 size;
+    u32 nb_alloc;
+    u32 nb_free;
+    struct _HSD_FreeList* free_list;
+    struct _HSD_MemoryEntry* next;
+} HSD_MemoryEntry;
+
+enum {
+    INITIAL_MEMORY_ENTRY_COUNT = 32,
+    MEMORY_ENTRY_SIZE_STEP = 32,
+};
+
+static HSD_Hash* ClassInfoHash;
 s32 ClassMemoryEntryCount;
 HSD_MemoryEntry** ClassMemoryEntries;
 
-#define OSRoundDown32B(x) (((u32)(x)) & ~(32 - 1))
-#define OSRoundUp32B(x)   (((u32)(x) + 32 - 1) & ~(32 - 1))
-
-#pragma push
-#pragma force_active on
-char unused1[] = "entry %d <null>\n";
-char unused2[] = "entry %d - %d <null>\n";
-char unused3[] = "entry %d(%d)";
-char unused4[] = "  nb_alloc %d nb_free %d\n";
-#pragma pop
+static inline s32 MemoryEntryIndex(s32 size)
+{
+    return (size + MEMORY_ENTRY_SIZE_STEP - 1) / MEMORY_ENTRY_SIZE_STEP - 1;
+}
 
 /**
  * @note Address: 0x801D5D1C
@@ -72,42 +85,43 @@ HSD_MemoryEntry* GetMemoryEntry(s32 idx)
 
     if (idx >= ClassMemoryEntryCount) {
         if (ClassMemoryEntryCount == 0) {
-            s32 new_nb;
-            for (new_nb = 32; idx >= new_nb;) {
-                new_nb *= 2;
+            s32 new_count;
+            new_count = INITIAL_MEMORY_ENTRY_COUNT;
+            while (idx >= new_count) {
+                new_count *= 2;
             }
-            ClassMemoryEntries = _HSD_MemAlloc(new_nb * 4, 4, 1);
+            ClassMemoryEntries = _HSD_MemAlloc(new_count * sizeof(*ClassMemoryEntries), 4, 1);
             if (ClassMemoryEntries == NULL) {
                 return NULL;
             }
-            memset(ClassMemoryEntries, 0, new_nb * 4);
-            ClassMemoryEntryCount = new_nb;
+            memset(ClassMemoryEntries, 0, new_count * sizeof(*ClassMemoryEntries));
+            ClassMemoryEntryCount = new_count;
         } else {
-            s32 new_nb;
-            HSD_FreeList* old_list;
+            s32 new_count;
+            HSD_MemoryEntry** old_list;
             HSD_MemoryEntry** new_list;
-            s32 old_nb;
+            s32 old_size;
 
-            new_nb = ClassMemoryEntryCount * 2;
-            while (idx >= new_nb) {
-                new_nb *= 2;
+            new_count = ClassMemoryEntryCount * 2;
+            while (idx >= new_count) {
+                new_count *= 2;
             }
 
-            new_list = _HSD_MemAlloc(new_nb * 4, 4, 1);
+            new_list = _HSD_MemAlloc(new_count * sizeof(*new_list), 4, 1);
             if (new_list == NULL) {
                 return NULL;
             }
 
-            memcpy(new_list, ClassMemoryEntries, 4 * ClassMemoryEntryCount);
-            memset(&new_list[ClassMemoryEntryCount], 0, (new_nb - ClassMemoryEntryCount) * 4);
+            memcpy(new_list, ClassMemoryEntries, ClassMemoryEntryCount * sizeof(*new_list));
+            memset(&new_list[ClassMemoryEntryCount], 0, (new_count - ClassMemoryEntryCount) * sizeof(*new_list));
 
-            old_list = (HSD_FreeList*) ClassMemoryEntries;
-            old_nb = OSRoundDown32B(ClassMemoryEntryCount * 4);
+            old_list = ClassMemoryEntries;
+            old_size = OSRoundDown32B(ClassMemoryEntryCount * sizeof(*old_list));
             ClassMemoryEntries = new_list;
-            ClassMemoryEntryCount = new_nb;
+            ClassMemoryEntryCount = new_count;
 
-            hsdFreeMemPiece(old_list, old_nb);
-            ClassMemoryEntries[OSRoundUp32B(old_nb)/32 - 1]->nb_alloc += 1;
+            hsdFreeMemPiece(old_list, old_size);
+            ClassMemoryEntries[OSRoundUp32B(old_size) / MEMORY_ENTRY_SIZE_STEP - 1]->nb_alloc += 1;
         }
     }
     {
@@ -115,12 +129,12 @@ HSD_MemoryEntry* GetMemoryEntry(s32 idx)
         BOOL found;
         HSD_MemoryEntry* entry;
         if (ClassMemoryEntries[idx] == NULL) {
-            entry = _HSD_MemAlloc(0x14, 4, 1);
+            entry = _HSD_MemAlloc(sizeof(*entry), 4, 1);
             if (entry == NULL) {
                 return NULL;
             }
-            memset(entry, 0, 0x14);
-            entry->size = (idx + 1) * 32;
+            memset(entry, 0, sizeof(*entry));
+            entry->size = (idx + 1) * MEMORY_ENTRY_SIZE_STEP;
             ClassMemoryEntries[idx] = entry;
 
             found = FALSE;
@@ -140,11 +154,20 @@ HSD_MemoryEntry* GetMemoryEntry(s32 idx)
                         break;
                     }
                 }
-
             }
         }
     }
     return ClassMemoryEntries[idx];
+}
+
+static inline void PushFreeBlock(HSD_MemoryEntry* entry, HSD_FreeList* block, BOOL new_block)
+{
+    block->next = entry->free_list;
+    entry->free_list = block;
+    if (new_block) {
+        entry->nb_alloc += 1;
+    }
+    entry->nb_free += 1;
 }
 
 /**
@@ -153,84 +176,74 @@ HSD_MemoryEntry* GetMemoryEntry(s32 idx)
  */
 void* hsdAllocMemPiece(s32 size)
 {
-    HSD_FreeList* temp_r3_2;
-    HSD_FreeList* temp_r4;
-    HSD_FreeList* temp_r4_2;
-    HSD_FreeList* temp_r5;
-    HSD_MemoryEntry* temp_r3_3;
-    HSD_MemoryEntry* temp_r3_4;
-    HSD_MemoryEntry* var_r28;
-    HSD_MemoryEntry* var_r30;
-    s32 temp_r28;
-    s32 temp_r29;
-    void* temp_r3;
+    HSD_MemoryEntry* entry;
+    HSD_MemoryEntry* larger_entry;
+    HSD_MemoryEntry* remainder_entry;
+    HSD_FreeList* block;
+    s32 entry_index;
+    s32 remainder_index;
+    void* allocation;
 
-    temp_r29 = (size + 31) / 32 - 1;
-    temp_r3_3 = GetMemoryEntry((size + 31) / 32 - 1);
-    if (temp_r3_3 == NULL) {
+    entry_index = MemoryEntryIndex(size);
+    entry = GetMemoryEntry(entry_index);
+    if (entry == NULL) {
         return NULL;
     }
-    temp_r3_2 = temp_r3_3->free_list;
-    if (temp_r3_2 != NULL) {
-        temp_r3_3->free_list = temp_r3_2->next;
-        temp_r3_3->nb_free -= 1;
-        return temp_r3_2;
+    block = entry->free_list;
+    if (block != NULL) {
+        entry->free_list = block->next;
+        entry->nb_free -= 1;
+        return block;
     }
-    var_r28 = temp_r3_3->next;
-    while (var_r28 != NULL) {
-        if (var_r28->free_list != NULL) {
-            temp_r3_4 = GetMemoryEntry((s32) (var_r28->size - temp_r3_3->size + 31) / 32 - 1);
-            if (temp_r3_4 == NULL) {
+    larger_entry = entry->next;
+    while (larger_entry != NULL) {
+        if (larger_entry->free_list != NULL) {
+            HSD_FreeList* larger_block;
+            HSD_FreeList* split_block;
+            HSD_MemoryEntry* split_entry = GetMemoryEntry(MemoryEntryIndex((s32) (larger_entry->size - entry->size)));
+            if (split_entry == NULL) {
                 return NULL;
             }
-            temp_r5 = var_r28->free_list;
-            var_r28->free_list = var_r28->free_list->next;
-            var_r28->nb_free -= 1;
-            var_r28->nb_alloc -= 1;
-            temp_r4_2 = (void*) ((char*) temp_r5 + temp_r3_3->size);
-            temp_r4_2->next = temp_r3_4->free_list;
-            temp_r3_4->free_list = temp_r4_2;
-            temp_r3_4->nb_alloc += 1;
-            temp_r3_4->nb_free += 1;
-            temp_r3_3->nb_alloc += 1;
-            return temp_r5;
+            larger_block = larger_entry->free_list;
+            larger_entry->free_list = larger_block->next;
+            larger_entry->nb_free -= 1;
+            larger_entry->nb_alloc -= 1;
+            split_block = (HSD_FreeList*) ((u8*) larger_block + entry->size);
+            PushFreeBlock(split_entry, split_block, TRUE);
+            entry->nb_alloc += 1;
+            return larger_block;
         }
-        var_r28 = var_r28->next;
+        larger_entry = larger_entry->next;
     }
-    temp_r28 = (ClassMemoryEntryCount - temp_r29) - 2;
-    if (temp_r28 >= 0) {
-        var_r30 = GetMemoryEntry(temp_r28);
-        if (var_r30 == NULL) {
+    remainder_index = (ClassMemoryEntryCount - entry_index) - 2;
+    if (remainder_index >= 0) {
+        remainder_entry = GetMemoryEntry(remainder_index);
+        if (remainder_entry == NULL) {
             return NULL;
         }
     }
-    temp_r3 = _HSD_MemAlloc(ClassMemoryEntryCount * 32, 4, 1);
-    if (temp_r3 == NULL) {
+    allocation = _HSD_MemAlloc(ClassMemoryEntryCount * MEMORY_ENTRY_SIZE_STEP, 4, 1);
+    if (allocation == NULL) {
         return NULL;
     }
-    if (temp_r28 >= 0) {
-        temp_r4 = (void*) ((char*) temp_r3 + temp_r3_3->size);
-        temp_r4->next = var_r30->free_list;
-        var_r30->free_list = temp_r4;
-        var_r30->nb_alloc += 1;
-        var_r30->nb_free += 1;
+    if (remainder_index >= 0) {
+        HSD_FreeList* remainder = (HSD_FreeList*) ((u8*) allocation + entry->size);
+        PushFreeBlock(remainder_entry, remainder, TRUE);
     }
-    temp_r3_3->nb_alloc += 1;
-    return temp_r3;
+    entry->nb_alloc += 1;
+    return allocation;
 }
 
 /**
  * @note Address: 0x801D6148
  * @note Size: 0x58
  */
-void hsdFreeMemPiece(void* v, s32 i)
+void hsdFreeMemPiece(void* block, s32 size)
 {
-    HSD_FreeList* list = v;
+    HSD_FreeList* list = block;
     if (list != NULL) {
-        HSD_MemoryEntry* entry = GetMemoryEntry((i + 31) / 32 - 1);
-        list->next = entry->free_list;
-        entry->free_list = list;
-        entry->nb_free += 1;
+        HSD_MemoryEntry* entry = GetMemoryEntry(MemoryEntryIndex(size));
+        PushFreeBlock(entry, list, FALSE);
     }
 }
 
@@ -254,7 +267,7 @@ HSD_Class* _hsdClassAlloc(HSD_ClassInfo* info)
  * @note Address: 0x801D61F8
  * @note Size: 0x8
  */
-int _hsdClassInit(HSD_Class*)
+int _hsdClassInit(HSD_Class* object)
 {
     return 0;
 }
@@ -263,7 +276,7 @@ int _hsdClassInit(HSD_Class*)
  * @note Address: 0x801D6200
  * @note Size: 0x4
  */
-void _hsdClassRelease()
+void _hsdClassRelease(HSD_Class* object)
 {
 }
 
@@ -273,19 +286,10 @@ void _hsdClassRelease()
  */
 void _hsdClassDestroy(HSD_Class* c)
 {
-    HSD_ClassInfo* info;
-    HSD_MemoryEntry* entry;
-    s32 obj_size;
+    HSD_ClassInfo* info = c->class_info;
 
-    info = c->class_info;
     info->head.nb_exist -= 1;
-    obj_size = info->head.obj_size;
-    if (c != NULL) {
-        entry = GetMemoryEntry((obj_size + 31) / 32 - 1);
-        c->class_info = (HSD_ClassInfo*) entry->free_list;
-        entry->free_list = (HSD_FreeList*) c;
-        entry->nb_free += 1;
-    }
+    hsdFreeMemPiece(c, info->head.obj_size);
 }
 
 /**
@@ -298,12 +302,10 @@ void _hsdClassAmnesia(HSD_ClassInfo* info)
     info->head.nb_peak = 0;
     if (info == &hsdClass) {
         ClassMemoryEntryCount = 0;
-        ClassMemoryEntries = 0;
-        ClassInfoHash[0] = 0;
+        ClassMemoryEntries = NULL;
+        ClassInfoHash = NULL;
     }
 }
-
-void _hsdClassRelease(HSD_Class* c);
 
 /**
  * @note Address: 0x801D629C
@@ -314,8 +316,8 @@ void _hsdClassInfoInit(void)
     hsdClass.head.flags = 1;
     hsdClass.head.library_name = "sysdolphin_base_library";
     hsdClass.head.class_name = "hsd_class";
-    hsdClass.head.obj_size = 4;
-    hsdClass.head.info_size = 0x3C;
+    hsdClass.head.obj_size = sizeof(HSD_Class);
+    hsdClass.head.info_size = sizeof(HSD_ClassInfo);
     hsdClass.head.parent = NULL;
     hsdClass.head.child = NULL;
     hsdClass.head.next = NULL;
@@ -369,7 +371,7 @@ BOOL hsdChangeClass(HSD_Class* object, HSD_ClassInfo* class_info)
     assert_line(587, class_info);
 
     info1 = object->class_info;
-    info2 = class_info = class_info;
+    info2 = class_info;
     if (!(class_info->head.flags & 1)) {
         class_info->head.info_init();
     }
@@ -400,23 +402,22 @@ BOOL hsdChangeClass(HSD_Class* object, HSD_ClassInfo* class_info)
  */
 BOOL hsdIsDescendantOf(HSD_ClassInfo* info, HSD_ClassInfo* class_info)
 {
-    HSD_ClassInfo* var_r31;
+    HSD_ClassInfo* ancestor;
 
     if (info == NULL || class_info == NULL) {
         return FALSE;
     }
-    var_r31 = info = info;
-    if (!(info->head.flags & 1)) {
-        var_r31->head.info_init();
+    ancestor = info;
+    if (!(ancestor->head.flags & 1)) {
+        ancestor->head.info_init();
     }
     if (!(class_info->head.flags & 1)) {
         class_info->head.info_init();
     }
-    while (var_r31 != NULL) {
-        if (var_r31 == class_info) {
+    for (; ancestor != NULL; ancestor = ancestor->head.parent) {
+        if (ancestor == class_info) {
             return TRUE;
         }
-        var_r31 = var_r31->head.parent;
     }
     return FALSE;
 }
@@ -427,20 +428,20 @@ BOOL hsdIsDescendantOf(HSD_ClassInfo* info, HSD_ClassInfo* class_info)
  */
 BOOL hsdObjIsDescendantOf(HSD_Class* cls, HSD_ClassInfo* class_info)
 {
-    HSD_ClassInfo* var_r31;
+    HSD_ClassInfo* ancestor;
 
     if (cls == NULL || class_info == NULL) {
         return FALSE;
     }
-    var_r31 = cls->class_info;
+    ancestor = cls->class_info;
     if (!(class_info->head.flags & 1)) {
         class_info->head.info_init();
     }
-    while (var_r31 != NULL) {
-        if (var_r31 == class_info) {
+    while (ancestor != NULL) {
+        if (ancestor == class_info) {
             return TRUE;
         }
-        var_r31 = var_r31->head.parent;
+        ancestor = ancestor->head.parent;
     }
     return FALSE;
 }
@@ -504,30 +505,24 @@ void hsdForgetClassLibrary(char* name)
         return;
     }
     if (strcmp(name, hsdClass.head.library_name) == 0) {
-        ClassInfoHash[0] = 0;
+        ClassInfoHash = NULL;
         ForgetClassLibraryReal(&hsdClass);
     } else {
         ForgetClassLibraryChild(name, &hsdClass);
     }
 }
 
-HSD_ClassInfo* HSD_HashSearch();
 /**
  * @note Address: 0x801D64A0
  * @note Size: 0x40
  */
-HSD_ClassInfo* hsdSearchClassInfo(char* arg0)
+HSD_ClassInfo* hsdSearchClassInfo(char* class_name)
 {
-    if (ClassInfoHash[0] != 0) {
-        return HSD_HashSearch(ClassInfoHash[0], arg0, 0);
+    if (ClassInfoHash != NULL) {
+        return HSD_HashSearch(ClassInfoHash, class_name, NULL);
     }
     return NULL;
 }
-
-#pragma push
-#pragma force_active on
-char unused5[] = "info_hash";
-#pragma pop
 
 /**
  * @note Address: N/A

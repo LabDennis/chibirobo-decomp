@@ -1,5 +1,6 @@
 #include <global.h>
 
+#include <Dolphin/OS/OSUtil.h>
 #include <dolphin/dvd.h>
 #include <dolphin/gx/gx.h>
 #include <dolphin/os.h>
@@ -24,53 +25,40 @@
 
 #include <stdarg.h>
 
-#define OSRoundDown32B(x) (((u32)(x)) & ~(32 - 1))
-#define OSRoundUp32B(x)   (((u32)(x) + 32 - 1) & ~(32 - 1))
-
 extern void _HSD_AObjForgetMemory(void);
-
-// only the current status is read here, the full struct lives in video.c
-typedef struct _HSD_VICurrent {
-	HSD_VIStatus vi;
-	u8 chg_flag;
-} HSD_VICurrent;
-
-extern struct _HSD_VIInfo {
-	HSD_VICurrent current;
-} HSD_VIData;
 
 extern GXRenderModeObj GXNtsc480IntDf;
 
 #define assert_line_objalloc(line, cond) ((cond) ? (void)0 : __assert("objalloc.h", line, "data"))
 
-#define assert_line_memcb(line)      ((lbl_8065BA38 == 0) ? (void)0 : __assert("initialize.c", line, "!iparam_memory_callbacks"))
+#define assert_line_memcb(line)      ((useCustomMemoryCallbacks == 0) ? (void)0 : __assert("initialize.c", line, "!iparam_memory_callbacks"))
 #define assert_line_addr(line, cond) ((cond) ? (void)0 : __assert("initialize.c", line, "addr"))
 
 #define assert_line_pixfmt(line, cond) ((cond) ? (void)0 : __assert("initialize.c", line, "pix_fmt != GX_PF_RGB565_Z16"))
 
 
-HSD_MemReport lbl_8064AF0C;
-void* lbl_8064AF00[HSD_VI_XFB_MAX];
+HSD_MemReport gHsdMemoryReport;
+void* hsdFrameBuffers[HSD_VI_XFB_MAX];
 
-volatile OSHeapHandle lbl_8065AF18 = -1;
-GXRenderModeObj* lbl_8065AF1C      = &GXNtsc480IntDf;
-s32 lbl_8065AF20                   = GX_ZC_MID;
-u32 lbl_8065AF24                   = 0x40000;
-s32 lbl_8065AF28                   = 2;
-GXColor lbl_8065AF2C               = { 0 };
+volatile OSHeapHandle hsdHeap = -1;
+GXRenderModeObj* initRenderMode = &GXNtsc480IntDf;
+s32 antialiasDepthFormat = GX_ZC_MID;
+u32 initFifoSize = 0x40000;
+s32 initFrameBufferCount = 2;
+GXColor defaultLightColor = { 0 };
 
-s32 lbl_8065BA44;
-s32 lbl_8065BA40;
-s32 lbl_8065BA3C;
-s32 lbl_8065BA38;
-s32 lbl_8065BA34;
-s32 lbl_8065BA30;
-s32 lbl_8065BA2C;
-void* lbl_8065BA28;
-void* lbl_8065BA24;
-void* lbl_8065BA20;
-void* lbl_8065BA1C;
-void* lbl_8065BA18;
+HSD_RenderPass currentRenderPass;
+s32 pendingCacheInvalidations;
+BOOL initParameterWarningIssued;
+BOOL useCustomMemoryCallbacks;
+s32 initHeapMaxSize;
+BOOL hsdInitialized;
+s32 defaultPixelFormat;
+GXFifoObj* hsdFifo;
+void* nextHeapEnd;
+void* nextHeapStart;
+void* heapEnd;
+void* heapStart;
 
 void* _HSD_MemAllocDefaultCB(u32 size, u32 align, u32 flags);
 void _HSD_MemFreeDefaultCB(void* ptr);
@@ -83,7 +71,7 @@ s32 _HSD_MemCheckOwnDefaultCB(void* ptr);
  */
 static void* GetFrameBuffer(s32 index)
 {
-	return lbl_8064AF00[index];
+	return hsdFrameBuffers[index];
 }
 
 /**
@@ -96,13 +84,13 @@ void HSD_Init(void)
 	void* fifo;
 
 	DVDInit();
-	HSD_AllocateXFB(lbl_8065AF28, lbl_8065AF1C);
-	fifo                = HSD_AllocateFIFO(lbl_8065AF24);
-	lbl_8065BA28        = GXInit(fifo, lbl_8065AF24);
-	lbl_8064AF0C.gxfifo = lbl_8065AF24;
+	HSD_AllocateXFB(initFrameBufferCount, initRenderMode);
+	fifo = HSD_AllocateFIFO(initFifoSize);
+	hsdFifo = GXInit(fifo, initFifoSize);
+	gHsdMemoryReport.gxfifo = initFifoSize;
 	HSD_OSInit();
 
-	vi_status.rmode        = *lbl_8065AF1C;
+	vi_status.rmode        = *initRenderMode;
 	vi_status.black        = GX_TRUE;
 	vi_status.vf           = GX_TRUE;
 	vi_status.gamma        = GX_GM_1_0;
@@ -118,7 +106,7 @@ void HSD_Init(void)
 	HSD_IDSetup();
 	VIWaitForRetrace();
 	HSD_ObjInit();
-	lbl_8065BA30 = TRUE;
+	hsdInitialized = TRUE;
 }
 
 /**
@@ -143,17 +131,17 @@ void** HSD_AllocateXFB(s32 nbuffer, GXRenderModeObj* rmode)
 	}
 
 	fb_size          = (((rmode->fbWidth + 15) & 0xFFF0) * rmode->xfbHeight) << 1;
-	lbl_8064AF0C.xfb = fb_size * nbuffer;
+	gHsdMemoryReport.xfb = fb_size * nbuffer;
 
 	for (i = 0; i < nbuffer; i++) {
-		if ((lbl_8064AF00[i] = OSAllocFromArenaLo(fb_size, 0x20)) == NULL) {
+		if ((hsdFrameBuffers[i] = OSAllocFromArenaLo(fb_size, 0x20)) == NULL) {
 			HSD_Panic("initialize.c", 0xF0, "No memory space remains for XFB.\n");
 		}
 	}
 	for (i = nbuffer; i < HSD_VI_XFB_MAX; i++) {
-		lbl_8064AF00[i] = NULL;
+		hsdFrameBuffers[i] = NULL;
 	}
-	return lbl_8064AF00;
+	return hsdFrameBuffers;
 }
 
 /**
@@ -181,7 +169,7 @@ void HSD_GXInit(void)
 	GXInitLightPos(&lightobj, 1.0F, 0.0F, 0.0F);
 	GXInitLightDir(&lightobj, 1.0F, 0.0F, 0.0F);
 	GXInitLightAttn(&lightobj, 1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F);
-	GXInitLightColor(&lightobj, lbl_8065AF2C);
+	GXInitLightColor(&lightobj, defaultLightColor);
 
 	for (i = 0; i < 8; i++) {
 		GXLoadLightObjImm(&lightobj, HSD_Index2LightID(i));
@@ -200,10 +188,11 @@ void HSD_OSInit(void)
 	u32 old_arena_lo = (u32)OSGetArenaLo();
 	u32 old_arena_hi = (u32)OSGetArenaHi();
 
-	lbl_8064AF0C.total  = OSGetPhysicalMemSize();
-	lbl_8064AF0C.system = lbl_8064AF0C.total - (u32)OSGetArenaHi() + (u32)OSGetArenaLo() - lbl_8064AF0C.xfb - lbl_8064AF0C.gxfifo;
+	gHsdMemoryReport.total  = OSGetPhysicalMemSize();
+	gHsdMemoryReport.system = gHsdMemoryReport.total - (u32)OSGetArenaHi() + (u32)OSGetArenaLo()
+	                         - gHsdMemoryReport.xfb - gHsdMemoryReport.gxfifo;
 
-	if (!lbl_8065BA38) {
+	if (!useCustomMemoryCallbacks) {
 		HSD_MemCallbacks cb;
 		cb.alloc      = _HSD_MemAllocDefaultCB;
 		cb.free       = _HSD_MemFreeDefaultCB;
@@ -212,32 +201,32 @@ void HSD_OSInit(void)
 		cb.check_own  = _HSD_MemCheckOwnDefaultCB;
 		_HSD_MemSetCallbacks(&cb, sizeof(cb));
 
-		if (lbl_8065BA20 != NULL && lbl_8065BA24 != NULL) {
-			lbl_8065BA18 = lbl_8065BA20;
-			lbl_8065BA1C = lbl_8065BA24;
-			lbl_8065BA20 = NULL;
-			lbl_8065BA24 = NULL;
-			OSSetCurrentHeap(lbl_8065AF18 = OSCreateHeap(lbl_8065BA18, lbl_8065BA1C));
-			lbl_8064AF0C.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
-			HSD_ObjSetHeap(lbl_8064AF0C.heap, NULL);
+		if (nextHeapStart != NULL && nextHeapEnd != NULL) {
+			heapStart = nextHeapStart;
+			heapEnd = nextHeapEnd;
+			nextHeapStart = NULL;
+			nextHeapEnd = NULL;
+			OSSetCurrentHeap(hsdHeap = OSCreateHeap(heapStart, heapEnd));
+			gHsdMemoryReport.heap = (u32)heapEnd - (u32)heapStart;
+			HSD_ObjSetHeap(gHsdMemoryReport.heap, NULL);
 		} else {
 			new_arena_lo = OSRoundUp32B((u32)OSGetArenaLo());
 			new_arena_hi = (u32)OSGetArenaHi();
-			lbl_8065BA18 = (void*)new_arena_lo;
-			if (lbl_8065BA34 > 0) {
-				u32 want     = new_arena_lo + lbl_8065BA34;
-				lbl_8065BA1C = (void*)want;
+			heapStart = (void*)new_arena_lo;
+			if (initHeapMaxSize > 0) {
+				u32 want     = new_arena_lo + initHeapMaxSize;
+				heapEnd = (void*)want;
 				if (want > new_arena_hi) {
-					lbl_8065BA1C = (void*)new_arena_hi;
+					heapEnd = (void*)new_arena_hi;
 				}
-				lbl_8065BA1C = (void*)OSRoundDown32B(lbl_8065BA1C);
+				heapEnd = (void*)OSRoundDown32B(heapEnd);
 			} else {
-				lbl_8065BA1C = (void*)OSRoundDown32B(new_arena_hi);
+				heapEnd = (void*)OSRoundDown32B(new_arena_hi);
 			}
-			OSSetCurrentHeap(lbl_8065AF18 = OSCreateHeap(lbl_8065BA18, lbl_8065BA1C));
-			lbl_8064AF0C.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
-			HSD_ObjSetHeap(lbl_8064AF0C.heap, NULL);
-			OSSetArenaLo(lbl_8065BA1C);
+			OSSetCurrentHeap(hsdHeap = OSCreateHeap(heapStart, heapEnd));
+			gHsdMemoryReport.heap = (u32)heapEnd - (u32)heapStart;
+			HSD_ObjSetHeap(gHsdMemoryReport.heap, NULL);
+			OSSetArenaLo(heapEnd);
 		}
 	}
 }
@@ -282,14 +271,14 @@ u32 _HSD_MemGetRemainDefaultCB(void)
  */
 void _HSD_MemClearDefaultCB(void)
 {
-	OSDestroyHeap(lbl_8065AF18);
-	if (lbl_8065BA20 != NULL && lbl_8065BA24 != NULL) {
-		lbl_8065BA18 = lbl_8065BA20;
-		lbl_8065BA1C = lbl_8065BA24;
-		lbl_8065BA20 = NULL;
-		lbl_8065BA24 = NULL;
+	OSDestroyHeap(hsdHeap);
+	if (nextHeapStart != NULL && nextHeapEnd != NULL) {
+		heapStart = nextHeapStart;
+		heapEnd = nextHeapEnd;
+		nextHeapStart = NULL;
+		nextHeapEnd = NULL;
 	}
-	OSSetCurrentHeap(lbl_8065AF18 = OSCreateHeap(lbl_8065BA18, lbl_8065BA1C));
+	OSSetCurrentHeap(hsdHeap = OSCreateHeap(heapStart, heapEnd));
 }
 
 /**
@@ -299,8 +288,8 @@ void _HSD_MemClearDefaultCB(void)
 s32 _HSD_MemCheckOwnDefaultCB(void* ptr)
 {
 	s32 within = 0;
-	if ((u32)lbl_8065BA18 <= (u32)ptr) {
-		if ((u32)ptr < (u32)lbl_8065BA1C) {
+	if ((u32)heapStart <= (u32)ptr) {
+		if ((u32)ptr < (u32)heapEnd) {
 			within = 1;
 		}
 	}
@@ -314,7 +303,7 @@ s32 _HSD_MemCheckOwnDefaultCB(void* ptr)
 OSHeapHandle HSD_GetHeap(void)
 {
 	assert_line_memcb(0x1B5);
-	return lbl_8065AF18;
+	return hsdHeap;
 }
 
 /**
@@ -323,7 +312,7 @@ OSHeapHandle HSD_GetHeap(void)
  */
 void HSD_SetHeap(OSHeapHandle handle)
 {
-	lbl_8065AF18 = handle;
+	hsdHeap = handle;
 }
 
 /**
@@ -337,8 +326,8 @@ void HSD_SetNextArena(void* lo, void* hi)
 	if ((lo == NULL && hi != NULL) || (lo != NULL && hi == NULL)) {
 		OSReport("missing argument.\n");
 	} else {
-		lbl_8065BA20 = lo;
-		lbl_8065BA24 = hi;
+		nextHeapStart = lo;
+		nextHeapEnd = hi;
 	}
 }
 
@@ -350,10 +339,10 @@ void HSD_GetNextArena(void** lo, void** hi)
 {
 	assert_line_memcb(0x205);
 	if (lo != NULL) {
-		*lo = lbl_8065BA18;
+		*lo = heapStart;
 	}
 	if (hi != NULL) {
-		*hi = lbl_8065BA1C;
+		*hi = heapEnd;
 	}
 }
 
@@ -380,7 +369,7 @@ void HSD_ClearHeap(void)
 	}
 	HSD_ObjInit();
 	_HSD_MemClear();
-	lbl_8064AF0C.heap = _HSD_MemGetRemain();
+	gHsdMemoryReport.heap = _HSD_MemGetRemain();
 }
 
 /**
@@ -389,7 +378,7 @@ void HSD_ClearHeap(void)
  */
 HSD_RenderPass HSD_GetCurrentRenderPass(void)
 {
-	return lbl_8065BA44;
+	return currentRenderPass;
 }
 
 /**
@@ -400,22 +389,22 @@ void HSD_StartRender(HSD_RenderPass pass)
 {
 	GXRenderModeObj* rmode = &HSD_VIData.current.vi.rmode;
 
-	lbl_8065BA44 = pass;
+	currentRenderPass = pass;
 	if (rmode->aa) {
-		GXSetPixelFmt(GX_PF_RGB565_Z16, lbl_8065AF20);
+		GXSetPixelFmt(GX_PF_RGB565_Z16, antialiasDepthFormat);
 	} else {
-		GXSetPixelFmt(lbl_8065BA2C, GX_ZC_LINEAR);
+		GXSetPixelFmt(defaultPixelFormat, GX_ZC_LINEAR);
 	}
 	GXSetFieldMode(rmode->field_rendering, rmode->xfbHeight < rmode->viHeight);
 
-	if (lbl_8065BA40 != 0) {
-		if (lbl_8065BA40 & 1) {
+	if (pendingCacheInvalidations != 0) {
+		if (pendingCacheInvalidations & HSD_INVALIDATE_VERTEX_CACHE) {
 			GXInvalidateVtxCache();
 		}
-		if (lbl_8065BA40 & 2) {
+		if (pendingCacheInvalidations & HSD_INVALIDATE_TEXTURE_CACHE) {
 			GXInvalidateTexAll();
 		}
-		lbl_8065BA40 = 0;
+		pendingCacheInvalidations = 0;
 	}
 }
 
@@ -423,7 +412,7 @@ void HSD_StartRender(HSD_RenderPass pass)
  * @note Address: 0x801CAFC0
  * @note Size: 0x4
  */
-void fn_801CAFC0(void)
+void HSD_EndRender(void)
 {
 }
 
@@ -433,7 +422,7 @@ void fn_801CAFC0(void)
  */
 void _HSD_NeedCacheInvalidate(u32 flags)
 {
-	lbl_8065BA40 |= flags;
+	pendingCacheInvalidations |= flags;
 }
 
 /**
@@ -443,8 +432,8 @@ void _HSD_NeedCacheInvalidate(u32 flags)
 void HSD_SetPixelFormat(s32 pix_fmt, s32 z_fmt)
 {
 	assert_line_pixfmt(0x2ED, pix_fmt != GX_PF_RGB565_Z16);
-	lbl_8065BA2C = pix_fmt;
-	lbl_8065AF20 = z_fmt;
+	defaultPixelFormat = pix_fmt;
+	antialiasDepthFormat = z_fmt;
 }
 
 /**
@@ -528,10 +517,10 @@ bool HSD_SetInitParameter(HSD_InitParam param, ...)
 	va_list ap;
 	bool ok = FALSE;
 
-	if (lbl_8065BA30) {
-		if (!lbl_8065BA3C) {
+	if (hsdInitialized) {
+		if (!initParameterWarningIssued) {
 			OSReport("init parameter should be set before invoking HSD_Init().\n");
-			lbl_8065BA3C = TRUE;
+			initParameterWarningIssued = TRUE;
 		}
 		return FALSE;
 	}
@@ -541,59 +530,59 @@ bool HSD_SetInitParameter(HSD_InitParam param, ...)
 	case HSD_INIT_FIFO_SIZE: {
 		u32 fifo_size = va_arg(ap, u32);
 		if (fifo_size > 0) {
-			lbl_8065AF24 = fifo_size;
-			ok           = TRUE;
+			initFifoSize = fifo_size;
+			ok = TRUE;
 		}
 	} break;
 
 	case HSD_INIT_XFB_MAX_NUM: {
 		u32 xfb_max_num = va_arg(ap, u32);
 		if (xfb_max_num > 0) {
-			lbl_8065AF28 = xfb_max_num;
-			ok           = TRUE;
+			initFrameBufferCount = xfb_max_num;
+			ok = TRUE;
 		}
 	} break;
 
 	case HSD_INIT_HEAP_MAX_SIZE: {
 		u32 heap_max_size = va_arg(ap, u32);
 		if (heap_max_size < OSGetPhysicalMemSize()) {
-			lbl_8065BA34 = heap_max_size;
-			ok           = TRUE;
+			initHeapMaxSize = heap_max_size;
+			ok = TRUE;
 		}
 	} break;
 
 	case HSD_INIT_NEXT_ARENA: {
-		void* lo     = va_arg(ap, void*);
-		void* hi     = va_arg(ap, void*);
-		lbl_8065BA20 = lo;
-		lbl_8065BA24 = hi;
-		ok           = TRUE;
+		void* lo = va_arg(ap, void*);
+		void* hi = va_arg(ap, void*);
+		nextHeapStart = lo;
+		nextHeapEnd = hi;
+		ok = TRUE;
 	} break;
 
 	case HSD_INIT_MEMORY_CALLBACKS: {
 		HSD_MemCallbacks cb;
-		u32 v;
-		cb.alloc      = va_arg(ap, void*);
-		cb.free       = va_arg(ap, void*);
-		cb.clear      = va_arg(ap, void*);
-		cb.get_remain = va_arg(ap, void*);
-		cb.check_own  = va_arg(ap, void*);
-		v             = va_arg(ap, u32);
-		if (v != 0) {
+		u32 terminator;
+		cb.alloc      = va_arg(ap, HSD_MemAllocCallback);
+		cb.free       = va_arg(ap, HSD_MemFreeCallback);
+		cb.clear      = va_arg(ap, HSD_MemClearCallback);
+		cb.get_remain = va_arg(ap, HSD_MemGetRemainCallback);
+		cb.check_own  = va_arg(ap, HSD_MemCheckOwnCallback);
+		terminator    = va_arg(ap, u32);
+		if (terminator != 0) {
 			OSReport("ERROR in HSD_SetInitParameter():\n");
 			OSReport("  HSD_INIT_MEMORY_CALLBACKS was given invalid arguments.\n");
 		} else {
 			_HSD_MemSetCallbacks(&cb, sizeof(cb));
-			lbl_8065BA38 = 1;
-			ok           = TRUE;
+			useCustomMemoryCallbacks = TRUE;
+			ok = TRUE;
 		}
 	} break;
 
 	case HSD_INIT_RENDER_MODE_OBJ: {
 		GXRenderModeObj* rmode = va_arg(ap, GXRenderModeObj*);
 		if (rmode != NULL) {
-			lbl_8065AF1C = rmode;
-			ok           = TRUE;
+			initRenderMode = rmode;
+			ok = TRUE;
 		}
 	} break;
 

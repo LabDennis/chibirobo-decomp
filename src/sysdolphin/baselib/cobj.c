@@ -3,74 +3,36 @@
 #include <dolphin/gx/gx.h>
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
+#include <float.h>
 #include <kar/gr/grcoll.h>
-#include <kar/math.h>
+#include <math.h>
 #include <sysdolphin/class_new.h>
 #include <sysdolphin/constants.h>
 #include <sysdolphin/displayfunc.h>
-#include <sysdolphin/fobj_alloc.h>
 #include <sysdolphin/gobjproc.h>
 #include <sysdolphin/initialize.h>
+#include <sysdolphin/mtx.h>
 #include <sysdolphin/objalloc.h>
 #include <sysdolphin/video.h>
 #include <sysdolphin/zlist.h>
 
-#define FLT_MIN         1.17549435e-38F
-#define GX_PERSPECTIVE  0
-#define GX_ORTHOGRAPHIC 1
 #define DegToRad(x)     ((x) * 0.017453292F)
-#define COBJ_MTX_DIRTY  0x40000000
-#define COBJ_INV_DIRTY  0x80000000
-
-// only the current render mode is read here, the full struct lives in video.c
-typedef struct _HSD_VICurrent {
-	HSD_VIStatus vi;
-	u8 chg_flag;
-} HSD_VICurrent;
-
-extern struct _HSD_VIInfo {
-	HSD_VICurrent current;
-} HSD_VIData;
 
 static inline GXRenderModeObj* HSD_VIGetRenderMode(void)
 {
 	return &HSD_VIData.current.vi.rmode;
 }
 
-s32 lbl_8065AE98 = 640; /* reference width */
-s32 lbl_8065AE9C = 480; /* reference height */
+s32 sReferenceWidth = 640;
+s32 sReferenceHeight = 480;
 
 #define ASSERT_COBJ(line) ((cobj) ? ((void)0) : __assert("cobj.c", line, "cobj"))
 
-extern f64 atan2(f64 y, f64 x);
-
-// the msl math.h fabs, an inline over the intrinsic that calls the library fabs once inlining runs too deep
+/* Use the MSL inline form, with the library function available as a fallback. */
+#undef fabs
 extern inline f64 fabs(f64 x)
 {
 	return __fabs(x);
-}
-extern MtxPtr HSD_MtxAlloc(void);
-extern void HSD_MtxFree(MtxPtr mtx);
-extern void C_MTXPerspective(Mtx44 mtx, f32 fov, f32 aspect, f32 near, f32 far);
-extern void C_MTXFrustum(Mtx44 mtx, f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far);
-extern void C_MTXOrtho(Mtx44 mtx, f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far);
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 cobj_sqrtf(f32 x)
-{
-	volatile f32 y;
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		guess     = 0.5 * guess * (3.0 - guess * guess * x);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
 }
 
 static f64 CObjGetHalfFov(HSD_CObj* cobj)
@@ -78,8 +40,8 @@ static f64 CObjGetHalfFov(HSD_CObj* cobj)
 	return 0.5 * cobj->projection_param.perspective.fov;
 }
 
-static HSD_CObj* lbl_8065B9DC;     /* current */
-static HSD_CObjInfo* lbl_8065B9D8; /* default_class */
+static HSD_CObj* sCurrentCameraObject;
+static HSD_CObjInfo* sDefaultCameraClass;
 
 int CObjLoad(HSD_CObj* cobj, HSD_CObjDesc* desc);
 int CObjInit(HSD_Class* obj);
@@ -87,7 +49,6 @@ void CObjRelease(HSD_Class* obj);
 void CObjAmnesia(HSD_ClassInfo* info);
 void CObjInfoInit(void);
 void CObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val);
-extern Vec lbl_80259EA0; /* default up vector */
 
 HSD_CObjInfo hsdCObj = { CObjInfoInit };
 
@@ -103,8 +64,8 @@ void HSD_CObjSetReferenceSize(s32 ref_width, s32 ref_height)
 	if (ref_height <= 0) {
 		__assert("cobj.c", 0x30, "ref_height > 0");
 	}
-	lbl_8065AE98 = ref_width;
-	lbl_8065AE9C = ref_height;
+	sReferenceWidth = ref_width;
+	sReferenceHeight = ref_height;
 }
 
 /**
@@ -288,8 +249,8 @@ static BOOL setupNormalCamera(HSD_CObj* cobj)
 	f32 height;
 	GXRenderModeObj* rmode = HSD_VIGetRenderMode();
 
-	x_scale = rmode->fbWidth / (f64)lbl_8065AE98;
-	y_scale = rmode->efbHeight / (f64)lbl_8065AE9C;
+	x_scale = rmode->fbWidth / (f64)sReferenceWidth;
+	y_scale = rmode->efbHeight / (f64)sReferenceHeight;
 
 	left   = cobj->viewport_left * x_scale;
 	right  = cobj->viewport_right * x_scale;
@@ -475,7 +436,7 @@ void HSD_CObjSetupViewingMtx(HSD_CObj* cobj)
 	Vec up;
 	Vec interest;
 
-	if ((cobj->flags & 2) == 0 && HSD_CObjMtxIsDirty(cobj)) {
+	if ((cobj->flags & COBJ_FIXED_VIEW_MTX) == 0 && HSD_CObjMtxIsDirty(cobj)) {
 		HSD_CObjGetEyePosition(cobj, &eye);
 		if (HSD_CObjGetUpVector(cobj, &up) == 0) {
 			up.x = 0.0F;
@@ -484,8 +445,8 @@ void HSD_CObjSetupViewingMtx(HSD_CObj* cobj)
 		}
 		HSD_CObjGetInterest(cobj, &interest);
 		C_MTXLookAt(cobj->view_mtx, &eye, &up, &interest);
-		cobj->eye_position->flags &= ~2;
-		cobj->interest->flags &= ~2;
+		cobj->eye_position->flags &= ~WOBJ_POS_DIRTY;
+		cobj->interest->flags &= ~WOBJ_POS_DIRTY;
 		HSD_CObjClearFlags(cobj, COBJ_MTX_DIRTY);
 		HSD_CObjSetFlags(cobj, COBJ_INV_DIRTY);
 	}
@@ -506,7 +467,7 @@ BOOL HSD_CObjSetCurrent(HSD_CObj* cobj)
 
 	render_pass = HSD_GetCurrentRenderPass();
 	_HSD_ZListClear();
-	lbl_8065B9DC = cobj;
+	sCurrentCameraObject = cobj;
 
 	switch (render_pass) {
 	case HSD_RP_OFFSCREEN:
@@ -646,8 +607,8 @@ f32 HSD_CObjGetEyeDistance(HSD_CObj* cobj)
 	return PSVECMag(&eye);
 }
 
-static Vec lbl_80259E50 = { 0.0F, 0.0F, 0.0F };
-static Vec lbl_80259E5C = { 0.0F, 1.0F, 0.0F };
+static Vec sRollViewOrigin = { 0.0F, 0.0F, 0.0F };
+static Vec sRollViewUp = { 0.0F, 1.0F, 0.0F };
 
 /**
  * @note Address: 0x801C0498
@@ -670,7 +631,7 @@ f32 upvec2roll(HSD_CObj* cobj, Vec* up)
 	if (dot < FLT_MIN) {
 		return 0.0F;
 	}
-	C_MTXLookAt(mtx, &lbl_80259E50, &lbl_80259E5C, &eye);
+	C_MTXLookAt(mtx, &sRollViewOrigin, &sRollViewUp, &eye);
 	PSMTXMultVecSR(mtx, up, &v);
 	x = -v.x;
 	y = v.y;
@@ -695,11 +656,11 @@ s32 roll2upvec(HSD_CObj* cobj, Vec* up, f32 roll)
 		return FALSE;
 	}
 	if (1.0 - (f32)fabs(eye.y) < 0.0001) {
-		v0.x = cobj_sqrtf(eye.y * eye.y + eye.z * eye.z);
+		v0.x = dolsqrtf(eye.y * eye.y + eye.z * eye.z);
 		v0.y = eye.y * (-eye.x / v0.x);
 		v0.z = eye.z * (-eye.x / v0.x);
 	} else {
-		v0.y = cobj_sqrtf(eye.x * eye.x + eye.z * eye.z);
+		v0.y = dolsqrtf(eye.x * eye.x + eye.z * eye.z);
 		v0.x = eye.x * (-eye.y / v0.y);
 		v0.z = eye.z * (-eye.y / v0.y);
 	}
@@ -709,8 +670,6 @@ s32 roll2upvec(HSD_CObj* cobj, Vec* up, f32 roll)
 	return TRUE;
 }
 
-#pragma push
-#pragma dont_inline on
 /**
  * @note Address: 0x801C0964
  * @note Size: 0x68
@@ -720,13 +679,12 @@ s32 HSD_CObjGetUpVector(HSD_CObj* cobj, Vec* up)
 	if (cobj == NULL || up == NULL) {
 		return FALSE;
 	}
-	if (cobj->flags & 1) {
+	if (cobj->flags & COBJ_USE_UP_VECTOR) {
 		*up = cobj->u.up;
 		return TRUE;
 	}
 	return roll2upvec(cobj, up, cobj->u.roll);
 }
-#pragma pop
 
 /**
  * @note Address: 0x801C09CC
@@ -739,7 +697,7 @@ void HSD_CObjSetUpVector(HSD_CObj* cobj, Vec* up)
 	if (!cobj || !up) {
 		return;
 	}
-	if (cobj->flags & 1) {
+	if (cobj->flags & COBJ_USE_UP_VECTOR) {
 		if (vec_normalize_check(up, &normalized) != 0) {
 			OSReport("illegal up vector.");
 			__assert("cobj.c", 0x3D0, "0");
@@ -752,8 +710,6 @@ void HSD_CObjSetUpVector(HSD_CObj* cobj, Vec* up)
 		HSD_CObjSetRoll(cobj, upvec2roll(cobj, up));
 	}
 }
-
-static char lbl_dead_805300XX_hsdIsDescendantOf[] = "hsdIsDescendantOf(info, &hsdCObj)";
 
 /**
  * @note Address: N/A
@@ -789,8 +745,8 @@ void HSD_CObjSetMtxDirty(HSD_CObj* cobj)
  */
 BOOL HSD_CObjMtxIsDirty(HSD_CObj* cobj)
 {
-	return (cobj->flags & COBJ_MTX_DIRTY) || (cobj->eye_position != NULL && (cobj->eye_position->flags & 2))
-	    || (cobj->interest != NULL && (cobj->interest->flags & 2));
+	return (cobj->flags & COBJ_MTX_DIRTY) || (cobj->eye_position != NULL && (cobj->eye_position->flags & WOBJ_POS_DIRTY))
+	    || (cobj->interest != NULL && (cobj->interest->flags & WOBJ_POS_DIRTY));
 }
 
 /**
@@ -809,17 +765,15 @@ void HSD_CObjGetViewingMtx(HSD_CObj* cobj, Mtx mtx)
 MtxPtr HSD_CObjGetInvViewingMtxPtrDirect(HSD_CObj* cobj)
 {
 	if (cobj->flags & COBJ_INV_DIRTY) {
-		if (cobj->proj_mtx == NULL) {
-			cobj->proj_mtx = HSD_MtxAlloc();
+		if (cobj->inv_view_mtx == NULL) {
+			cobj->inv_view_mtx = HSD_MtxAlloc();
 		}
-		PSMTXInverse(cobj->view_mtx, cobj->proj_mtx);
+		PSMTXInverse(cobj->view_mtx, cobj->inv_view_mtx);
 		HSD_CObjClearFlags(cobj, COBJ_INV_DIRTY);
 	}
-	return cobj->proj_mtx;
+	return cobj->inv_view_mtx;
 }
 
-#pragma push
-#pragma dont_inline on
 /**
  * @note Address: 0x801C0DBC
  * @note Size: 0x30
@@ -829,20 +783,19 @@ MtxPtr HSD_CObjGetViewingMtxPtr(HSD_CObj* cobj)
 	HSD_CObjSetupViewingMtx(cobj);
 	return cobj->view_mtx;
 }
-#pragma pop
 
 /**
  * @note Address: 0x801C0DEC
  * @note Size: 0x218
  */
-f32 fn_801C0DEC(HSD_CObj* cobj)
+f32 GetCameraRoll(HSD_CObj* cobj)
 {
 	Vec up;
 
 	if (cobj == NULL) {
 		return 0.0F;
 	}
-	if (cobj->flags & 1) {
+	if (cobj->flags & COBJ_USE_UP_VECTOR) {
 		if (HSD_CObjGetUpVector(cobj, &up) == 0) {
 			return 0.0F;
 		}
@@ -862,7 +815,7 @@ void HSD_CObjSetRoll(HSD_CObj* cobj, f32 roll)
 	if (cobj == NULL) {
 		return;
 	}
-	if (cobj->flags & 1) {
+	if (cobj->flags & COBJ_USE_UP_VECTOR) {
 		roll2upvec(cobj, &up, roll);
 		HSD_CObjSetUpVector(cobj, &up);
 	} else {
@@ -1260,7 +1213,7 @@ void HSD_CObjClearFlags(HSD_CObj* cobj, u32 flags)
  */
 HSD_CObj* HSD_CObjGetCurrent(void)
 {
-	return lbl_8065B9DC;
+	return sCurrentCameraObject;
 }
 
 /**
@@ -1271,7 +1224,7 @@ HSD_CObj* HSD_CObjAlloc(void)
 {
 	HSD_CObj* cobj;
 
-	cobj = hsdNew((HSD_ClassInfo*)(lbl_8065B9D8 != NULL ? lbl_8065B9D8 : &hsdCObj));
+	cobj = hsdNew((HSD_ClassInfo*)(sDefaultCameraClass != NULL ? sDefaultCameraClass : &hsdCObj));
 	ASSERT_COBJ(0x790);
 	return cobj;
 }
@@ -1288,6 +1241,8 @@ static inline void CObjResetFlags(HSD_CObj* cobj, u32 flags)
 	cobj->flags = (cobj->flags & (COBJ_MTX_DIRTY | COBJ_INV_DIRTY)) | (flags & ~(COBJ_MTX_DIRTY | COBJ_INV_DIRTY));
 }
 
+static Vec sDefaultUpVector = { 0.0F, 1.0F, 0.0F };
+
 /**
  * @note Address: 0x801C17C8
  * @note Size: 0x22C
@@ -1302,11 +1257,11 @@ int CObjLoad(HSD_CObj* cobj, HSD_CObjDesc* desc)
 	HSD_WObjInit(cobj->interest, desc->interest_desc);
 	HSD_CObjSetNear(cobj, desc->near);
 	HSD_CObjSetFar(cobj, desc->far);
-	if (desc->flags & 1) {
+	if (desc->flags & COBJ_USE_UP_VECTOR) {
 		if (desc->vector != NULL) {
 			HSD_CObjSetUpVector(cobj, desc->vector);
 		} else {
-			HSD_CObjSetUpVector(cobj, &lbl_80259EA0);
+			HSD_CObjSetUpVector(cobj, &sDefaultUpVector);
 		}
 	} else {
 		HSD_CObjSetRoll(cobj, desc->roll);
@@ -1389,19 +1344,6 @@ int CObjInit(HSD_Class* obj)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline bool ref_DEC(void* o)
-{
-	bool ret;
-	if ((ret = (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF))) {
-		return ret;
-	}
-	return HSD_OBJ(o)->ref_count-- == 0;
-}
-
-/**
  * @note Address: 0x801C1B60
  * @note Size: 0x184
  */
@@ -1415,20 +1357,18 @@ void CObjRelease(HSD_Class* obj)
 	HSD_AObjRemove(cobj->aobj);
 	eye_position = HSD_CObjGetEyePositionWObj(cobj);
 	if (eye_position != NULL) {
-		if (ref_DEC(eye_position) && eye_position != NULL) {
-			HSD_CLASS_METHOD(eye_position)->release((HSD_Class*)eye_position);
-			HSD_CLASS_METHOD(eye_position)->destroy((HSD_Class*)eye_position);
+		if (ref_DEC(eye_position)) {
+			hsdDelete(eye_position);
 		}
 	}
 	interest = HSD_CObjGetInterestWObj(cobj);
 	if (interest != NULL) {
-		if (ref_DEC(interest) && interest != NULL) {
-			HSD_CLASS_METHOD(interest)->release((HSD_Class*)interest);
-			HSD_CLASS_METHOD(interest)->destroy((HSD_Class*)interest);
+		if (ref_DEC(interest)) {
+			hsdDelete(interest);
 		}
 	}
-	if (cobj->proj_mtx != NULL) {
-		HSD_MtxFree(cobj->proj_mtx);
+	if (cobj->inv_view_mtx != NULL) {
+		HSD_MtxFree(cobj->inv_view_mtx);
 	}
 	HSD_OBJECT_PARENT_INFO(&hsdCObj)->release(obj);
 }
@@ -1439,16 +1379,14 @@ void CObjRelease(HSD_Class* obj)
  */
 void CObjAmnesia(HSD_ClassInfo* info)
 {
-	if (info == HSD_CLASS_INFO(lbl_8065B9D8)) {
-		lbl_8065B9D8 = NULL;
+	if (info == HSD_CLASS_INFO(sDefaultCameraClass)) {
+		sDefaultCameraClass = NULL;
 	}
 	if (info == HSD_CLASS_INFO(&hsdCObj)) {
-		lbl_8065B9DC = NULL;
+		sCurrentCameraObject = NULL;
 	}
 	HSD_OBJECT_PARENT_INFO(&hsdCObj)->amnesia(info);
 }
-
-Vec lbl_80259EA0 = { 0.0F, 1.0F, 0.0F };
 
 /**
  * @note Address: 0x801C1D44
@@ -1462,13 +1400,4 @@ void CObjInfoInit(void)
 	HSD_CLASS_INFO(&hsdCObj)->amnesia = CObjAmnesia;
 	hsdCObj.load                      = CObjLoad;
 	hsdCObj.update                    = CObjUpdateFunc;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xC
- */
-HSD_ObjAllocData* HSD_FObjGetAllocData(void)
-{
-	return &fobj_alloc_data;
 }

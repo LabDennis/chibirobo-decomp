@@ -1,0 +1,188 @@
+#include "game/xchr.h"
+#include "game/cgame.h"
+#include "game/stagedata.h"
+
+extern "C" {
+CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path);
+void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* path, f32 x, f32 y, f32 z);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
+}
+
+static inline void SamplePlayerPose(XObjChr* player, s32 anim)
+{
+	player->SetAnim(anim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	if (anim == 0x13) { // sampled at the anim's last frame
+		HSD_AObj* jointAnim = GetAObj(player->mJObj);
+		f32 end             = jointAnim != NULL ? HSD_AObjGetEndFrame(jointAnim) : 0.0f;
+		player->SetAnim(anim, TRUE, NULL, NULL, NULL, end, 1.0f, 1.0f, 10.0f);
+	}
+	player->UpdateAnim(0);
+}
+
+static inline void SampleRootOffset(XObjChr* player, s32 anim, CVec& offset)
+{
+	SamplePlayerPose(player, anim);
+	s32 root[] = { 0 }; // the root joint
+	offset.Set(GetPlayerJointLocalTranslationByPath(player, 1, root));
+	SetObjectJointTranslationByPath(player, 1, root, 0.0f, 0.0f, 0.0f);
+}
+
+static inline BOOL LoadPlayerModel(XObj& model, s32 id)
+{
+	return model.LoadFromPlacement(CoordInfo(GetSpawnData(id)));
+}
+
+static void SetHeadAttachmentParent(XObjChr* player, XObjAttachment& attachment)
+{
+	s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+	attachment.SetParent(FindJointByPath(player->mJObj, path, ARRAY_SIZE(path)), TRUE);
+}
+
+/**
+ * @note Address: 0x800B97FC
+ * @note Size: 0x1584
+ */
+BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
+{
+	u32 status  = (u32)mStatus.mFlags;
+	u32 flags[] = { status & 0x800000, status & 0x200000, status & 0x40, status & 0x20000, status & 0x400000 };
+	// Each ready model falls through to the next load. A pending one resumes at the same step.
+	switch (mLoadStep) {
+	case 0: {
+		if (!XObj::LoadFromPlacement(info))
+			break;
+		CJObj::SetRotationY(0.0f, TRUE);
+		SamplePlayerPose(this, 8);
+		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		SampleRootOffset(this, 0x13, mHang.mTargetOffset);
+		SampleRootOffset(this, 0x8A, mRope.mTargetOffset);
+		SamplePlayerPose(this, 0x36);
+		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
+		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
+		mTumble.mFade.mActive = FALSE;
+		mTumble.mFade.mAmount = 0.0f;
+		CJObj::SetRotationY(mMoveRotate.y, TRUE);
+		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		mIdleLoops = 3;
+		{
+			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+			s32 branch3Child0[] = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+			struct JointPath {
+				s32 depth;
+				s32* nodes;
+			};
+			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
+			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
+				XObjChrIdleJoint& idle = mIdleJoints[i];
+				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
+				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
+				idle.mLastAdHead       = NULL;
+			}
+			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
+			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
+			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, ARRAY_SIZE(attachment), attachment);
+			if (!mSuits.mJoints[0]) {
+				s32 suit[]        = { 0, 1, 0, 0 };
+				mSuits.mJoints[0] = FindJointByPath(mJObj, suit, 4);
+			}
+		}
+		mStatus.mFlags |= 0x0000200000000000ULL;
+		++mLoadStep;
+	}
+	case 1: // the plug
+		if (!LoadPlayerModel(mPlug, 15))
+			break;
+		++mLoadStep;
+	case 2: { // the copter
+
+		if (!LoadPlayerModel(mCopterObj, 17))
+			break;
+		SetHeadAttachmentParent(this, mCopterObj);
+		++mLoadStep;
+	}
+	case 3: { // the popper
+
+		if (!LoadPlayerModel(mPopperObj, 18))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 3 };
+		mPopperObj.SetParent(FindJointByPath(mJObj, path, ARRAY_SIZE(path)), TRUE);
+		++mLoadStep;
+	}
+	case 4: { // the radar
+
+		if (!LoadPlayerModel(mRadarObj, 19))
+			break;
+		SetHeadAttachmentParent(this, mRadarObj);
+		++mLoadStep;
+	}
+	case 5: {
+
+#if defined(VERSION_JP)
+		const s32 modelId = 20;
+#else
+		const s32 modelId = 44;
+#endif
+		if (!LoadPlayerModel(mOXObj, modelId))
+			break;
+		SetHeadAttachmentParent(this, mOXObj);
+		++mLoadStep;
+	}
+	case 6:
+#if !defined(VERSION_JP)
+		switch (mOXMenu.mLoadStep) {
+		case 0:
+			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
+				break;
+			if (mOXMenu.mMark[0].mObj.mJObj) // the circle (O) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 1:
+			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
+				break;
+			if (mOXMenu.mMark[1].mObj.mJObj) // the cross (X) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 2:
+			++mOXMenu.mLoadStep;
+		}
+		if ((s32)mOXMenu.mLoadStep <= 1)
+			break;
+#endif
+		++mLoadStep;
+	case 7:
+		++mLoadStep;
+	case 8:
+		++mLoadStep;
+	case 9:
+		ApplyMaterialPresets(flags);
+		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded())
+			EnableLighting(GetEnvData()[9] / 100.0f);
+		++mLoadStep;
+	case 10: {
+		CTpl& tpl = gGame.mTpl;
+		for (u32 i = 0; i < ARRAY_SIZE(mTex); ++i) {
+			TPLPalette* palette = static_cast<TPLPalette*>(tpl.mBuffer);
+			mTex[i]             = tpl.mTex.Init(&palette->descriptorArray[122 - StatusTextureOffset + i], 0);
+		}
+		++mLoadStep;
+	}
+	case 11:
+		++mLoadStep;
+	case 12:
+		if (GetAttachment() == AttachmentCopter)
+			ShowIdlePlayerCopter(&mCopterObj);
+		else if (GetAttachment() == AttachmentPopper)
+			mPopper.mState = 3;
+		else if (GetAttachment() == AttachmentRadar)
+			ShowIdlePlayerRadar(&mRadarObj);
+		++mLoadStep;
+	}
+	if (mLoadStep > 12) {
+		mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}

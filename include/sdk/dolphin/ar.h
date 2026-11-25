@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 typedef void (*ARQCallback)(u32 pointerToARQRequest);
+typedef void (*ARCallback)(void);
 
 struct ARQRequest {
     /* 0x00 */ struct ARQRequest *next;
@@ -39,7 +40,7 @@ typedef struct ARQRequest ARQRequest;
 #define ARQ_PRIORITY_HIGH 1
 
 // AR
-ARQCallback ARRegisterDMACallback(ARQCallback callback);
+ARCallback ARRegisterDMACallback(ARCallback callback);
 u32 ARGetDMAStatus(void);
 void ARStartDMA(u32 type, u32 mainmem_addr, u32 aram_addr, u32 length);
 u32 ARAlloc(u32 length);

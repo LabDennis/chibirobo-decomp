@@ -3,6 +3,8 @@
 
 #include "types.h"
 #include "Dolphin/OS/OSUtil.h"
+#include <sdk/dolphin/dsp_regs.h>
+#include <sdk/dolphin/exi_regs.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,7 +97,7 @@ vu32 __PIRegs[12] AT_ADDRESS(0xCC003000);
 #define PI_INTRPT_RSW       (0x2)     // reset switch
 #define PI_INTRPT_DVD       (0x4)     // DVD/DI interrupt
 #define PI_INTRPT_SI        (0x8)     // serial/controller interrupt
-#define PI_INTRPT_EXI       (0x10)    // external mem interrupt
+#define PI_INTRPT_EXI       (0x10)    // external interface interrupt
 #define PI_INTRPT_AI        (0x20)    // audio streaming interrupt
 #define PI_INTRPT_DSP       (0x40)    // digital signal proc interrupt
 #define PI_INTRPT_MEM       (0x80)    // memory interface interrupt
@@ -111,46 +113,25 @@ vu32 __PIRegs[12] AT_ADDRESS(0xCC003000);
 vu16 __MEMRegs[64] AT_ADDRESS(0xCC004000);
 
 // offsets for __MEMRegs[i]
-#define MEM_PROT_1    (0) // protected region 1
-#define MEM_PROT_2    (2) // protected region 1
-#define MEM_PROT_3    (4) // protected region 1
-#define MEM_PROT_4    (6) // protected region 1
-#define MEM_PROT_TYPE (8) // protection type
+#define MEM_PROT_START(channel) (2 * (channel))
+#define MEM_PROT_END(channel)   (MEM_PROT_START(channel) + 1)
+#define MEM_PROT_TYPE           (8) // protection type
+#define MEM_PROT_ACCESS_BITS    (2)
+#define MEM_PROT_ADDR_SHIFT     (10)
 
 #define MEM_INTRPT_MASK    (14) // interrupt mask
 #define MEM_INTRPT_SRC     (15) // interrupt cause
 #define MEM_INTRPT_FLAG    (16) // set when interrupt happens
 #define MEM_INTRPT_ADDR_LO (17) // address that caused interrupt
 #define MEM_INTRPT_ADDR_HI (18) // address that caused interrupt
+#define MEM_INTRPT_ADDR_HI_MASK (0x03FF)
 
 #define MEM_UNK_FLAG (20) // unknown memory flag, set in __OSInitMemoryProtection
 
 // Digital Signal Processor registers (for audio mixing).
 vu16 __DSPRegs[32] AT_ADDRESS(0xCC005000);
-
-// offsets for __DSPRegs[i]
-#define DSP_MAILBOX_IN_HI  (0)
-#define DSP_MAILBOX_IN_LO  (1)
-#define DSP_MAILBOX_OUT_HI (2)
-#define DSP_MAILBOX_OUT_LO (3)
-#define DSP_CONTROL_STATUS (5)
-
-#define DSP_ARAM_SIZE        (9)
-#define DSP_ARAM_MODE        (11)
-#define DSP_ARAM_REFRESH     (13)
-#define DSP_ARAM_DMA_MM_HI   (16) // Main mem address
-#define DSP_ARAM_DMA_MM_LO   (17)
-#define DSP_ARAM_DMA_ARAM_HI (18) // ARAM address
-#define DSP_ARAM_DMA_ARAM_LO (19)
-#define DSP_ARAM_DMA_SIZE_HI (20) // DMA buffer size
-#define DSP_ARAM_DMA_SIZE_LO (21)
-
-#define DSP_DMA_START_HI    (24) // DMA start address
-#define DSP_DMA_START_LO    (25)
-#define DSP_DMA_CONTROL_LEN (27)
-#define DSP_DMA_BYTES_LEFT  (29)
-
-#define DSP_DMA_START_FLAG (0x8000) // set to start DSP
+// The ARAM bootstrap writes pairs of these halfword registers as words.
+extern vu32 __DSPRegs32[16] AT_ADDRESS(0xCC005000);
 
 // DVD Interface registers.
 vu32 __DIRegs[16] AT_ADDRESS(0xCC006000);
@@ -198,26 +179,6 @@ vu32 __SIRegs[64] AT_ADDRESS(0xCC006400);
 // Expansion/External Interface registers.
 vu32 __EXIRegs[16] AT_ADDRESS(0xCC006800);
 
-// offsets for __EXIRegs[i]
-// Channel 0
-#define EXI_CHAN_0_STAT     (0) // parameters/status
-#define EXI_CHAN_0_DMA_ADDR (1) // DMA start address
-#define EXI_CHAN_0_LEN      (2) // DMA transfer length
-#define EXI_CHAN_0_CONTROL  (3) // control register
-#define EXI_CHAN_0_IMM      (4) // immediate data
-// Channel 1
-#define EXI_CHAN_1_STAT     (5) // parameters/status
-#define EXI_CHAN_1_DMA_ADDR (6) // DMA start address
-#define EXI_CHAN_1_LEN      (7) // DMA transfer length
-#define EXI_CHAN_1_CONTROL  (8) // control register
-#define EXI_CHAN_1_IMM      (9) // immediate data
-// Channel 2
-#define EXI_CHAN_2_STAT     (10) // parameters/status
-#define EXI_CHAN_2_DMA_ADDR (11) // DMA start address
-#define EXI_CHAN_2_LEN      (12) // DMA transfer length
-#define EXI_CHAN_2_CONTROL  (13) // control register
-#define EXI_CHAN_2_IMM      (14) // immediate data
-
 // Audio Streaming Interface registers.
 vu32 __AIRegs[8] AT_ADDRESS(0xCC006C00);
 
@@ -227,12 +188,12 @@ vu32 __AIRegs[8] AT_ADDRESS(0xCC006C00);
 #define AI_SAMPLE_COUNTER (2) // number of stereo samples output
 #define AI_INTRPT_TIMING  (3) // interrupt timing
 
-#define AI_CONTROL_PLAY_STATE          (0x1)
-#define AI_CONTROL_STREAM_SAMPLE_RATE  (0x2)
-#define AI_CONTROL_DSP_SAMPLE_COUNT    (0x4)
-#define AI_CONTROL_UNKNOWN8            (0x8)
-#define AI_CONTROL_STREAM_SAMPLE_COUNT (0x20)
-#define AI_CONTROL_DSP_SAMPLE_RATE     (0x40)
+#define AI_CONTROL_PLAY_STATE         (0x1)
+#define AI_CONTROL_STREAM_SAMPLE_RATE (0x2)
+#define AI_CONTROL_STREAM_INT_ENABLE  (0x4)
+#define AI_STATUS_STREAM_INTERRUPT    (0x8) // Write 1 to acknowledge.
+#define AI_CONTROL_STREAM_COUNT_RESET (0x20)
+#define AI_CONTROL_DSP_SAMPLE_RATE    (0x40)
 
 //////////////////////////////////
 

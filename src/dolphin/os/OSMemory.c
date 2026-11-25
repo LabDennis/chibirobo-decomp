@@ -1,7 +1,18 @@
 #include "Dolphin/os.h"
 #include "Dolphin/hw_regs.h"
 
-// forward declarations.
+#define OS_SIMULATED_MEM_SIZE_ADDR 0xF0
+#define MEM_SIZE_24MB 0x01800000
+#define MEM_SIZE_48MB 0x03000000
+
+#define MEM_PROT_CHANNEL_COUNT (OS_PROTECT_CHAN3 + 1)
+#define MEM_PROT_BLOCK_SIZE (1u << MEM_PROT_ADDR_SHIFT)
+#define MEM_PROT_ALL_RW ((1u << (MEM_PROT_ACCESS_BITS * MEM_PROT_CHANNEL_COUNT)) - 1)
+
+extern void Config24MB(void);
+extern void Config48MB(void);
+extern void RealMode(void (*entry)(void));
+
 static BOOL OnReset(BOOL final);
 
 // Local reset function information.
@@ -15,18 +26,25 @@ static OSResetFunctionInfo ResetFunctionInfo = { OnReset, OS_RESET_PRIO_MEM };
  * @note Address: 0x801682AC
  * @note Size: 0xC
  */
-u32 OSGetPhysicalMemSize()
+u32 OSGetPhysicalMemSize(void)
 {
-	return *(u32*)(OSPhysicalToCached(0x28));
+	const OSBootInfo* bootInfo = OSPhysicalToCached(0);
+	return bootInfo->memorySize;
 }
 
 /**
  * @note Address: N/A
  * @note Size: 0xC
  */
-static u32 OSGetConsoleSimulatedMemSize()
+static u32 OSGetConsoleSimulatedMemSize(void)
 {
-	return *(u32*)(OSPhysicalToCached(0xF0));
+	return *(const u32*)OSPhysicalToCached(OS_SIMULATED_MEM_SIZE_ADDR);
+}
+
+static inline void ResetMemoryProtection(void)
+{
+	__MEMRegs[MEM_PROT_TYPE] = MEM_PROT_ALL_RW;
+	__OSMaskInterrupts(OS_INTERRUPTMASK_MEM_RESET);
 }
 
 /**
@@ -36,8 +54,7 @@ static u32 OSGetConsoleSimulatedMemSize()
 static BOOL OnReset(BOOL final)
 {
 	if (final != FALSE) {
-		__MEMRegs[MEM_PROT_TYPE] = 0xFF;
-		__OSMaskInterrupts(OS_INTERRUPTMASK_MEM_RESET);
+		ResetMemoryProtection();
 	}
 	return TRUE;
 }
@@ -48,11 +65,12 @@ static BOOL OnReset(BOOL final)
  */
 static void MEMIntrruptHandler(__OSInterrupt interrupt, OSContext* context)
 {
-	u32 addr;
+	// Read the fault address and cause before acknowledging the interrupt.
+	u32 addr = ((u32)__MEMRegs[MEM_INTRPT_ADDR_HI] & MEM_INTRPT_ADDR_HI_MASK) << 16;
 	u32 cause;
 
-	cause                      = __MEMRegs[MEM_INTRPT_SRC];
-	addr                       = (((u32)__MEMRegs[MEM_INTRPT_ADDR_HI] & 0x3ff) << 16) | __MEMRegs[MEM_INTRPT_ADDR_LO];
+	addr |= __MEMRegs[MEM_INTRPT_ADDR_LO];
+	cause = __MEMRegs[MEM_INTRPT_SRC];
 	__MEMRegs[MEM_INTRPT_FLAG] = 0;
 
 	if (__OSErrorTable[OS_ERROR_PROTECTION]) {
@@ -72,177 +90,52 @@ void OSProtectRange(u32 channel, void* addr, u32 numBytes, u32 control)
 	BOOL enabled;
 	u32 start;
 	u32 end;
+	OSInterruptMask interruptMask;
 	u16 reg;
-	if (channel >= 4) {
+	if (channel >= MEM_PROT_CHANNEL_COUNT) {
 		return;
 	}
 
 	control &= OS_PROTECT_CONTROL_RDWR;
 
 	end   = (u32)addr + numBytes;
-	start = TRUNC(addr, 1u << 10);
-	end   = ROUND(end, 1u << 10);
+	start = TRUNC(addr, MEM_PROT_BLOCK_SIZE);
+	end   = ROUND(end, MEM_PROT_BLOCK_SIZE);
 
 	DCFlushRange((void*)start, end - start);
 
-	enabled = OSDisableInterrupts();
+	enabled       = OSDisableInterrupts();
+	interruptMask = OS_INTERRUPTMASK(__OS_INTERRUPT_MEM_0 + channel);
 
-	__OSMaskInterrupts(OS_INTERRUPTMASK(__OS_INTERRUPT_MEM_0 + channel));
+	__OSMaskInterrupts(interruptMask);
 
-	__MEMRegs[0 + 2 * channel] = (u16)(start >> 10);
-	__MEMRegs[1 + 2 * channel] = (u16)(end >> 10);
+	__MEMRegs[MEM_PROT_START(channel)] = (u16)(start >> MEM_PROT_ADDR_SHIFT);
+	__MEMRegs[MEM_PROT_END(channel)]   = (u16)(end >> MEM_PROT_ADDR_SHIFT);
 
 	reg = __MEMRegs[MEM_PROT_TYPE];
-	reg &= ~(OS_PROTECT_CONTROL_RDWR << 2 * channel);
-	reg |= control << 2 * channel;
+	reg &= ~(OS_PROTECT_CONTROL_RDWR << (MEM_PROT_ACCESS_BITS * channel));
+	reg |= control << (MEM_PROT_ACCESS_BITS * channel);
 	__MEMRegs[MEM_PROT_TYPE] = reg;
 
 	if (control != OS_PROTECT_CONTROL_RDWR) {
-		__OSUnmaskInterrupts(OS_INTERRUPTMASK(__OS_INTERRUPT_MEM_0 + channel));
+		__OSUnmaskInterrupts(interruptMask);
 	}
 
 	OSRestoreInterrupts(enabled);
 }
 
 /**
- * @note Address: 0x80168360
- * @note Size: 0x80
- */
-ASM static void Config24MB()
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	addi    r7,r0,0
-
-	addis   r4,r0,0x00000002@ha
-	addi    r4,r4,0x00000002@l
-	addis   r3,r0,0x800001ff@ha
-	addi    r3,r3,0x800001ff@l
-
-	addis   r6,r0,0x01000002@ha
-	addi    r6,r6,0x01000002@l
-	addis   r5,r0,0x810000ff@ha
-	addi    r5,r5,0x810000ff@l
-
-	isync
-
-	mtspr   dbat0u,r7
-	mtspr   dbat0l,r4
-	mtspr   dbat0u,r3
-	isync
-
-	mtspr   ibat0u,r7
-	mtspr   ibat0l,r4
-	mtspr   ibat0u,r3
-	isync
-
-	mtspr   dbat2u,r7
-	mtspr   dbat2l,r6
-	mtspr   dbat2u,r5
-	isync
-
-	mtspr   ibat2u,r7
-	mtspr   ibat2l,r6
-	mtspr   ibat2u,r5
-	isync
-
-	mfmsr   r3
-	ori     r3, r3, 0x30
-	mtsrr1  r3
-
-	mflr    r3
-	mtsrr0  r3
-	rfi
-#endif // clang-format on
-}
-
-/**
- * @note Address: 0x801683E0
- * @note Size: 0x80
- */
-ASM static void Config48MB()
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	addi    r7,r0,0x0000
-
-	addis   r4,r0,0x00000002@ha
-	addi    r4,r4,0x00000002@l
-	addis   r3,r0,0x800003ff@ha
-	addi    r3,r3,0x800003ff@l
-
-	addis   r6,r0,0x02000002@ha
-	addi    r6,r6,0x02000002@l
-	addis   r5,r0,0x820001ff@ha
-	addi    r5,r5,0x820001ff@l
-
-	isync
-
-	mtspr   dbat0u,r7
-	mtspr   dbat0l,r4
-	mtspr   dbat0u,r3
-	isync
-
-	mtspr   ibat0u,r7
-	mtspr   ibat0l,r4
-	mtspr   ibat0u,r3
-	isync
-
-	mtspr   dbat2u,r7
-	mtspr   dbat2l,r6
-	mtspr   dbat2u,r5
-	isync
-
-	mtspr   ibat2u,r7
-	mtspr   ibat2l,r6
-	mtspr   ibat2u,r5
-	isync
-
-	mfmsr   r3
-	ori     r3, r3, 0x30
-	mtsrr1  r3
-
-	mflr    r3
-	mtsrr0  r3
-	rfi
-#endif // clang-format on
-}
-
-/**
- * @note Address: 0x80168460
- * @note Size: 0x18
- */
-ASM static void RealMode(register u32 addr)
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-	clrlwi r3, r3, 2
-	mtsrr0 r3
-	mfmsr r3
-	rlwinm r3, r3, 0, 28, 25
-	mtsrr1 r3
-	rfi
-#endif // clang-format on
-}
-
-/**
  * @note Address: 0x80168478
  * @note Size: 0x118
  */
-void __OSInitMemoryProtection()
+void __OSInitMemoryProtection(void)
 {
-	u32 padding[8];
 	u32 simulatedSize;
-	BOOL enabled;
-	simulatedSize = OSGetConsoleSimulatedMemSize();
-	enabled       = OSDisableInterrupts();
+	u32 bootSimulatedSize = OSGetConsoleSimulatedMemSize();
+	BOOL enabled = OSDisableInterrupts();
 
 	__MEMRegs[MEM_INTRPT_FLAG] = 0;
-	__MEMRegs[MEM_PROT_TYPE]   = 0xFF;
-
-	__OSMaskInterrupts(OS_INTERRUPTMASK_MEM_0 | OS_INTERRUPTMASK_MEM_1 | OS_INTERRUPTMASK_MEM_2 | OS_INTERRUPTMASK_MEM_3);
+	ResetMemoryProtection();
 	__OSSetInterruptHandler(__OS_INTERRUPT_MEM_0, MEMIntrruptHandler);
 	__OSSetInterruptHandler(__OS_INTERRUPT_MEM_1, MEMIntrruptHandler);
 	__OSSetInterruptHandler(__OS_INTERRUPT_MEM_2, MEMIntrruptHandler);
@@ -250,15 +143,16 @@ void __OSInitMemoryProtection()
 	__OSSetInterruptHandler(__OS_INTERRUPT_MEM_ADDRESS, MEMIntrruptHandler);
 	OSRegisterResetFunction(&ResetFunctionInfo);
 
-	if (OSGetConsoleSimulatedMemSize() < OSGetPhysicalMemSize() && OSGetConsoleSimulatedMemSize() == 0x1800000) {
-		DCInvalidateRange((void*)0x81800000, 0x1800000);
+	simulatedSize = OSGetConsoleSimulatedMemSize();
+	if (simulatedSize < OSGetPhysicalMemSize() && simulatedSize == MEM_SIZE_24MB) {
+		DCInvalidateRange(OSPhysicalToCached(MEM_SIZE_24MB), MEM_SIZE_24MB);
 		__MEMRegs[MEM_UNK_FLAG] = 2;
 	}
 
-	if (simulatedSize <= 0x1800000) {
-		RealMode((u32)&Config24MB);
-	} else if (simulatedSize <= 0x3000000) {
-		RealMode((u32)&Config48MB);
+	if (bootSimulatedSize <= MEM_SIZE_24MB) {
+		RealMode(Config24MB);
+	} else if (bootSimulatedSize <= MEM_SIZE_48MB) {
+		RealMode(Config48MB);
 	}
 
 	__OSUnmaskInterrupts(OS_INTERRUPTMASK_MEM_ADDRESS);

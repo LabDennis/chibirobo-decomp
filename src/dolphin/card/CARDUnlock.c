@@ -44,11 +44,8 @@ int CARDRand()
 /**
  * @note Address: N/A
  * @note Size: 0x8
- * Fun fact: making the argument of this a u32 instead of uint
- * makes the inlined versions of this not match (:
- * LOVE this compiler.
  */
-void CARDSrand(uint seed)
+static void CARDSrand(unsigned int seed)
 {
 	next = seed;
 }
@@ -105,13 +102,13 @@ u32 bitrev(u32 data)
 	for (i = 0; i < 32; i++) {
 		if (i > 15) {
 			if (i == 31) {
-				wk |= (((data & (0x01 << 31)) >> 31) & 0x01);
+				wk |= (((data & (1u << 31)) >> 31) & 0x01);
 			} else {
-				wk |= ((data & (0x01 << i)) >> j);
+				wk |= ((data & (1u << i)) >> j);
 				j += 2;
 			}
 		} else {
-			wk |= ((data & (0x01 << i)) << (31 - i - k));
+			wk |= ((data & (1u << i)) << (31 - i - k));
 			k++;
 		}
 	}

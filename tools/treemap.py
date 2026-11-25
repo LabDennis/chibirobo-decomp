@@ -99,7 +99,7 @@ def unit_from_report(u: Dict[str, Any]) -> Dict[str, Any]:
     for f in u.get("functions", []):
         fm = f.get("metadata", {})
         addr = num(fm.get("virtual_address")) or num(f.get("address"))
-        pct = 0.0 if auto else round(float(f.get("fuzzy_match_percent", 0) or 0), 2)
+        pct = 0.0 if auto else float(f.get("fuzzy_match_percent", 0) or 0)
         funcs.append([fm.get("demangled_name") or f["name"], addr, num(f.get("size")), pct])
 
     return {

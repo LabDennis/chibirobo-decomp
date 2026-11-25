@@ -3,71 +3,22 @@
 
 #include "__os.h"
 
-// End of each month in standard year
-static int YearDays[MONTH_MAX] = {0,   31,  59,  90,  120, 151,
-                                  181, 212, 243, 273, 304, 334};
-// End of each month in leap year
-static int LeapYearDays[MONTH_MAX] = {0,   31,  60,  91,  121, 152,
-                                      182, 213, 244, 274, 305, 335};
-
-#ifdef __GEKKO__
-/**
- * @note Address: 0x8016B070
- * @note Size: 0x18
- */
-asm OSTime OSGetTime(void) {
-jump:
-    nofralloc
-
-    mftbu r3
-    mftb r4
-
-    // Check for possible carry from TBL to TBU
-    mftbu r5
-    cmpw r3, r5
-    bne jump
-
-    blr
-}
-
-/**
- * @note Address: 0x8016B088
- * @note Size: 0x8
- */
-asm OSTick OSGetTick(void){
-    nofralloc
-
-    mftb r3
-    blr
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-asm static void __SetTime(OSTime time) {
-    nofralloc
-    li r5, 0
-    mttbl r5
-    mttbu r3
-    mttbl r4
-    blr
-}
-#endif
+// Number of days before each month in a common year.
+static const u16 MonthStartDays[MONTH_MAX] = {
+    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+};
 
 /**
  * @note Address: N/A
  * @note Size: ?
  */
 void __OSSetTime(OSTime time) {
-    BOOL enabled;
-    OSTime * timeAdjustAddr;
+    BOOL enabled = OSDisableInterrupts();
+    OSTime oldTime = OSGetTime();
 
-    timeAdjustAddr = __OSSystemTime;
-    enabled = OSDisableInterrupts();
-
-    *timeAdjustAddr += OSGetTime() - time;
-    __SetTime(time);
+    // Changing the hardware timebase must preserve the adjusted system time.
+    *__OSSystemTime += oldTime - time;
+    __OSWriteTimeBase(time);
     EXIProbeReset();
     OSRestoreInterrupts(enabled);
 }
@@ -77,14 +28,9 @@ void __OSSetTime(OSTime time) {
  * @note Size: 0x64
  */
 OSTime __OSGetSystemTime() {
-    BOOL enabled;
-    OSTime* timeAdjustAddr;
-    OSTime result;
-
-    timeAdjustAddr = __OSSystemTime;
-    enabled = OSDisableInterrupts();
-
-    result = OSGetTime() + *timeAdjustAddr;
+    BOOL enabled = OSDisableInterrupts();
+    OSTime ticks = OSGetTime();
+    OSTime result = ticks + *__OSSystemTime;
     OSRestoreInterrupts(enabled);
     return result;
 }
@@ -94,27 +40,11 @@ OSTime __OSGetSystemTime() {
  * @note Size: 0x58
  */
 OSTime __OSTimeToSystemTime(OSTime time) {
-    BOOL enabled;
-    OSTime* timeAdjustAddr = __OSSystemTime;
-    OSTime result;
-
-    enabled = OSDisableInterrupts();
-    result = *timeAdjustAddr + time;
+    BOOL enabled = OSDisableInterrupts();
+    OSTime result = time + *__OSSystemTime;
     OSRestoreInterrupts(enabled);
     return result;
 }
-
-#ifdef __GEKKO__
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-asm void __OSSetTick(__REGISTER OSTick newTicks) {
-    nofralloc
-    mttbl newTicks
-    blr
-}
-#endif
 
 /**
  * @note Address: N/A
@@ -128,10 +58,9 @@ static int IsLeapYear(int year) {
  * @note Address: N/A
  * @note Size: ?
  */
-static int GetYearDays(int year, int mon) {
-    int* md = (IsLeapYear(year)) ? LeapYearDays : YearDays;
-
-    return md[mon];
+static int GetMonthStartDay(int month, BOOL leapYear) {
+    // Leap day moves March and all later months one day forward.
+    return MonthStartDays[month] + (leapYear && month >= 2);
 }
 
 /**
@@ -153,29 +82,32 @@ static int GetLeapDays(int year) {
  */
 static void GetDates(int days, OSCalendarTime* td) {
     int year;
-    int n;
+    int yearStart;
     int month;
-    int * md;
+    BOOL leapYear;
 
     ASSERTLINE(311, 0 <= days);
 
     td->wday = (days + 6) % WEEK_DAY_MAX;
 
-    for (year = days / YEAR_DAY_MAX;
-         days < (n = year * YEAR_DAY_MAX + GetLeapDays(year)); year--) {
-        ;
+    for (year = days / YEAR_DAY_MAX; ; --year) {
+        yearStart = year * YEAR_DAY_MAX + GetLeapDays(year);
+        if (yearStart <= days) {
+            break;
+        }
     }
 
-    days -= n;
+    days -= yearStart;
     td->year = year;
     td->yday = days;
 
-    md = IsLeapYear(year) ? LeapYearDays : YearDays;
-    for (month = MONTH_MAX; days < md[--month];) {
-        ;
+    leapYear = IsLeapYear(year);
+    month = MONTH_MAX - 1;
+    while (days < GetMonthStartDay(month, leapYear)) {
+        --month;
     }
     td->mon = month;
-    td->mday = days - md[month] + 1;
+    td->mday = days - GetMonthStartDay(month, leapYear) + 1;
 }
 
 /**
@@ -241,11 +173,11 @@ OSTime OSCalendarTimeToTicks(OSCalendarTime* td) {
     year = td->year + ov_mon;
 
     secs = (OSTime)SECS_IN_YEAR * year +
-           (OSTime)SECS_IN_DAY * (GetLeapDays(year) + GetYearDays(year, mon) + td->mday - 1) +
+           (OSTime)SECS_IN_DAY * (GetLeapDays(year) + GetMonthStartDay(mon, IsLeapYear(year)) + td->mday - 1) +
            (OSTime)SECS_IN_HOUR * td->hour +
            (OSTime)SECS_IN_MIN * td->min +
            td->sec -
-           (OSTime)0xEB1E1BF80ULL;
+           (OSTime)BIAS * SECS_IN_DAY;
 
     return OS_SEC_TO_TICKS(secs) + OS_MSEC_TO_TICKS((OSTime)td->msec) +
            OS_USEC_TO_TICKS((OSTime)td->usec);

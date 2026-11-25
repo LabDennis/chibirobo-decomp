@@ -1,0 +1,250 @@
+#include "game/video.h"
+#include "game/gmath.h"
+#include "game/stg.h"
+#include "game/xobjread.h"
+#include "game/cgameutil.h"
+#include "game/xchr.h"
+#include <hsd/sysdolphin/devcom.h>
+
+extern "C" {
+void UpdateStageMicrophone(u32 frames);
+void SetMusicPlaybackPaused(XSound* sound, BOOL pause);
+void CMsg_Update(CMsg* msg, u32 frames);
+void UpdateOpenMenus(MenuEx* menu, u32 frames);
+void UpdateHudTransitionsAndIndicators(InfoScrn* info, u32 frames);
+}
+
+// Retail checks the queue head as a signed word. Cached RAM addresses have
+// the sign bit set, so an ordinary pending request does not block the reset.
+static bool IsDeviceQueueBlockingReset(s32 priority)
+{
+	return reinterpret_cast<s32>(HSD_DevComIsBusy(priority)) > 0;
+}
+
+/**
+ * @note Address: 0x8000FACC
+ * @note Size: 0x1204
+ */
+// CGame::Update: the base's disc and reset checks, the reset itself, then everything that
+// runs each frame. while the disc can't be read only the sound is paused
+void CGame::Update(u32 frames)
+{
+	s32 i;
+	BaseUpdate(this, frames);
+	PollMemoryCardWorker(&mMemcard.mCard);
+	if (mReset && !mMemcard.mCard.mBusy && !IsDeviceQueueBlockingReset(1) && !IsDeviceQueueBlockingReset(2)) {
+		if (!mDiskOk) {
+			mResetHold = 0;
+			mReset     = FALSE;
+			HSD_PadReset();
+			Reset(1);
+		} else if (mLoadStep != 0x17 && mLoadStep != 0x1A && !HasPendingObjectReads()) {
+			mResetHold = 0;
+			mReset     = FALSE;
+			HSD_PadReset();
+			if (!mDiskOk) {
+				Reset(1);
+			} else if (mLoadStep <= 0x13) { // early in the load a reset restarts the system (OSResetSystem code 0)
+				Reset(0);
+			} else { // later it goes back to stage 10000
+				ChangeGameStage(this, 10000, FALSE);
+			}
+		}
+	}
+
+	if (IsDiscError()) { // flag 8: the music paused while the disc can't be read
+		if (!(mStatus.mFlags & 8)) {
+			mStatus.mFlags |= 8;
+			PauseGameMusic(&gGame.mSound, 0xFFFF0000, 0);
+		}
+		return;
+	}
+	if (mStatus.mFlags & 8) {
+		mStatus.mFlags &= ~8;
+		ResumeGameSfx(&gGame.mSound, 0xFFFF0000);
+	}
+	UpdateStageMicrophone(frames);
+	if (mStatus.mFlags & 0x1000) { // flag 0x1000 queues a draw-list rebuild
+		mStatus.mFlags &= ~0x1000;
+		BuildObjectDrawList(this);
+	}
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2) && !(mStatus.mFlags & 0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL
+	    && (mPad.mPad[0].mTrigger & PAD_BUTTON_START) && !(mPad.mPad[0].mButton & PAD_BUTTON_B)
+#if !defined(VERSION_JP)
+	    && mMenu.mMenus[1] != NULL
+#endif
+	) {
+		mMenu.mMenus[1]->Open();
+		mMenu.mActive = TRUE;
+	}
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2)) {
+		for (i = 0; i < mDrawLists[0].mCount; i++) {
+			XObj* obj = mDrawLists[0].mObjects[i];
+			if (obj->mStatus.mFlags & 1) {
+				if (obj->mMoveTranslate.y != obj->mLastPos.y) {
+					obj->mStatus.mFlags |= 0x10000000000000; // the flag marks an object whose height changed
+				}
+				obj->mLastPos = obj->mMoveTranslate;
+				obj->UpdateObject(frames);
+			}
+		}
+	}
+	if (IsRunning() && !(mStatus.mFlags & 2)) {
+#if defined(VERSION_PAL)
+		mPlayTime += frames * (60.0f / FRAME_RATE);
+#else
+		mPlayTime += frames;
+#endif
+		if (mPlayTime >= 21600000) { // caps the play time at a hundred hours of frames
+			mPlayTime = 21599999;
+		}
+	}
+	if (mStatus.mFlags & 0x2000000000000) { // flag 0x2000000000000 arms the stage timer
+		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenu.mActive && !(mStatus.mFlags & 0xC00) && mTimeState.mDuration > 0.0f) {
+			if (!mTimeState.mRunning) {
+				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * FRAME_RATE)) + mTimeState.mTime;
+				if (mTimeState.mTime >= 1.0f) { // a full timer runs down
+					mTimeState.mRunning = TRUE;
+				}
+			}
+			if (mTimeState.mRunning == TRUE) { // then waits for an idle player
+				bool idle       = false;
+				XObjChr* player = GetPlayer();
+				if ((player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0 && player->mJump.mState == 0
+				    && player->mLadder.mState == 0 && player->mRope.mState == 0 && player->mPush.mState == 0
+				    && player->mTumble.mState == 0) {
+					idle = true;
+				}
+				if (idle) {
+					mTimeState.mRunning = FALSE;
+					u8* script          = GetStageTimerExpiredScript();
+					if (script != NULL) {
+						StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
+					}
+				}
+			}
+		}
+	}
+	if (!(mStatus.mFlags & 2)) {
+		CEvt_Update(&mEvt, frames);
+		for (i = 0; i < 2; i++) {
+			CMsg_Update(&mCMsgs[i], frames);
+		}
+	}
+	if (IsRunning()) {
+		CallStageModule(1, frames, NULL);
+	}
+	if (IsRunning() || (mStatus.mFlags & 0x20)) {
+		mParticle.Update(frames);
+	}
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x200000000000) && !mMenu.mActive) {
+		mMotionControlCamera.Update(frames);
+	}
+	UpdateGameSound(&mSound, frames);
+	if (!(mStatus.mFlags & 2)) {
+		UpdateScreenFade(&mFade, frames);
+		mWipeCircle.Update(frames);
+		mWipeTex.Update(frames);
+		mWipeCustom.Update(frames);
+		mWipeTile0.Update(frames);
+		mWipeTile1.Update(frames);
+		if (mStatus.mFlags & 1) {
+			mRoboeyes.Update(frames);
+			UpdateScreenShake(&mQuake, frames);
+			mOutline.Update(frames);
+			mScrnTex.mAngle = fmod(DEG2RAD * 6.0f * frames + mScrnTex.mAngle, TWO_PI); // six degrees a frame
+			mOutline.mThick = 0.0f;
+			u8 lineAlpha    = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f; // pulses the outline alpha
+
+			mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
+			mOutline.mColor0.a = lineAlpha;
+			UpdateScreenFade(&mScrnTex.mColor, frames);
+			mOutline.SetColor2(mScrnTex.mColor.mColor.r, mScrnTex.mColor.mColor.g, mScrnTex.mColor.mColor.b);
+			UpdateScreenFade(&mColor0.mColor, frames);
+			mOutline.SetColor3(mColor0.mColor.mColor.r, mColor0.mColor.mColor.g, mColor0.mColor.mColor.b, mColor0.mColor.mColor.a);
+			mBlur.Update(frames);
+		}
+	} else if (mMotionControlCamera.IsAction(4)) {
+		UpdateScreenFade(&mFade, frames);
+		mWipeCircle.Update(frames);
+		mWipeTex.Update(frames);
+		mWipeCustom.Update(frames);
+		mWipeTile0.Update(frames);
+		mWipeTile1.Update(frames);
+	}
+	UpdateScreenFade(&mColor1.mColor, frames);
+	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
+	if (mOutlineWidthControl > 0) { // the c-stick sets the outline width
+		if (mPad.mPad[0].mSubStickY > 0.0f) {
+			if ((mOutlineWidth -= 0.01f * frames) < 0.04f) {
+				mOutlineWidth = 0.04f;
+			}
+		} else if (mPad.mPad[0].mSubStickY < 0.0f) {
+			if ((mOutlineWidth += 0.01f * frames) > 0.5f) {
+				mOutlineWidth = 0.5f;
+			}
+		}
+		mOutline.mZoom = sin(PI * mOutlineWidth / 2.0f); // a half-sine over the width
+	}
+	UpdateBootLogos(&mLogo, frames);
+	UpdateTitleScreen(&mTitle, frames);
+	UpdateOpenMenus(&mMenu, frames);
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2)) {
+		UpdateHudTransitionsAndIndicators(&mInfoScrn, frames);
+		mSubwin.Update(frames);
+		for (i = 0; i < 5; i++) {
+			if (!IsMirrorOff(&gFramebufferMirrors[i])) {
+				gFramebufferMirrors[i].FbMirror::Update(frames);
+			}
+		}
+	}
+	if (!(mStatus.mFlags & 2) && mStageName.mActive > 0) {
+		for (i = 0; i < mStageName.mCount; i++) {
+			if (mStageName.mChars[i].mWait > 0.0f) {
+				if (mStageName.mChars[i].mScale < 1.0f) {
+					if ((mStageName.mChars[i].mScale += (1.0f / (0.3f * FRAME_RATE)) * frames) > 1.0f) {
+						mStageName.mChars[i].mScale = 1.0f;
+					}
+				} else if (mStatus.mFlags & 1) {
+					if ((mStageName.mChars[i].mWait -= frames) < 0.0f) {
+						mStageName.mChars[i].mWait = 0.0f;
+					}
+				}
+			} else if (mStageName.mChars[i].mScale > 0.0f) {
+				if ((mStageName.mChars[i].mScale -= (1.0f / (0.3f * FRAME_RATE)) * frames) < 0.0f) {
+					mStageName.mChars[i].mScale = 0.0f;
+				}
+			}
+		}
+		s32 moving = 0;
+		f32 bob    = DEG2RAD * 5.0f * frames; // bobs five degrees a frame
+		f32 tilt   = DEG2RAD * 3.0f * frames; // tilts three
+		for (i = 0; i < mStageName.mCount; i++) {
+			if (0.0f != mStageName.mChars[i].mScale) {
+				moving++;
+				mStageName.mChars[i].mBob += bob;
+				mStageName.mChars[i].mTilt += tilt;
+			}
+		}
+		if (moving == 0) {
+			mStageName.mActive = FALSE;
+		}
+	}
+	if (mStatus.mFlags & 2) { // flag 2 suspends: flag 4 marks the pause done once
+		if (!(mStatus.mFlags & 4)) {
+			mStatus.mFlags |= 4;
+			SetMusicPlaybackPaused(&gGame.mSound, TRUE);
+			CPadEx* pad = &mPad;
+			for (i = 0; i < 4; i++) {
+				if (pad->mPad[i].mConnected) {
+					HSD_PadRumbleOffN(pad->mPad[i].mPort);
+				}
+			}
+			HSD_PadRumblePauseAll();
+		}
+	} else if (mStatus.mFlags & 4) { // and resumes both on the way back
+		mStatus.mFlags &= ~4;
+		SetMusicPlaybackPaused(&gGame.mSound, FALSE);
+		HSD_PadRumbleActiveAll();
+	}
+}

@@ -18,15 +18,6 @@ DSError TRKInitializeEventQueue()
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x24
- */
-void TRKCopyEvent(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x8014AD10
  * @note Size: 0xB4
  */

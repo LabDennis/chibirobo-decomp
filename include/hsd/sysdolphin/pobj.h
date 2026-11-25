@@ -24,79 +24,26 @@
 
 #define POBJ_HIDE (1 << 11)
 
-#define pobj_type(o) (o->flags & 0x3000)
+#define POBJ_TYPE_MASK (3 << 12)
+#define pobj_type(o) ((o)->flags & POBJ_TYPE_MASK)
 
 #define POBJ_CULLFRONT (1 << 14)
 #define POBJ_CULLBACK (1 << 15)
 
 #define SHAPESET_AVERAGE 1
-#define SHAPESET_ADDITIVE 1 << 1
-
-#define GX_NOP 0
-#define GX_VAT_MASK 0x7
-#define GX_OPCODE_MASK 0xF8
-
-#define GX_DIRECT 1
-#define GX_INDEX8 2
-#define GX_INDEX16 3
-
-#define GX_U8 0
-#define GX_S8 1
-#define GX_U16 2
-#define GX_S16 3
-#define GX_F32 4
-
-#define GX_POS_XYZ 1
-#define GX_NRM_XYZ 0
-
-#define GX_RGB565 0
-#define GX_RGB8 1
-#define GX_RGBX8 2
-#define GX_RGBA4 3
-#define GX_RGBA6 4
-#define GX_RGBA8 5
-
-#define GX_VTXFMT0 0
-
-#define GX_PNMTX0 0
-#define GX_PNMTX1 3
-
-#define GX_MTX3x4 0
-
-#define GX_CULL_NONE 0
-#define GX_CULL_FRONT 1
-#define GX_CULL_BACK 2
-
-#define HSD_MTX_RIGID 1
-#define HSD_MTX_ENVELOPE 2
-
-typedef enum _PObjSetupFlag {
-    SETUP_NORMAL = 1,
-    SETUP_REFLECTION = 2,
-    SETUP_HIGHLIGHT = 4,
-    SETUP_NORMAL_PROJECTION = 6,
-    SETUP_JOINT0 = 1,
-    SETUP_JOINT1 = 2,
-    SETUP_NONE = 0
-} PObjSetupFlag;
-
-typedef struct _unk_struct_pobj {
-    u32 data[8];
-    struct _HSD_AObj* aobj; // 0x20
-};
+#define SHAPESET_ADDITIVE (1 << 1)
 
 typedef struct _HSD_PObj {
     HSD_Class parent; // 0x00
     struct _HSD_PObj* next; // 0x04
     struct _HSD_VtxDescList* verts; // 0x08
     u16 flags; // 0x0C
-    u16 n_display; // 0x0E
-    u8* display; // 0x10, u8 primitive, u8 vtxcnt, u16* indices
+    u16 n_display; // Display list length in 32-byte blocks
+    u8* display;
     union {
         struct _HSD_JObj* jobj;
         struct _HSD_ShapeSet* shape_set;
         struct _HSD_SList* envelope_list;
-        struct _unk_struct_pobj* x14_unk;
     } u; // 0x14
     struct _HSD_AObj* aobj; // 0x18
 } HSD_PObj;
@@ -109,7 +56,7 @@ typedef struct _HSD_PObjDesc {
     u16 n_display;
     u8* display;
     union {
-        struct _HSD_JObjDesc* joint;
+        HSD_Joint* joint;
         struct _HSD_ShapeSetDesc* shape_set;
         struct _HSD_EnvelopeDesc** envelope_p;
     } u;
@@ -132,7 +79,7 @@ typedef struct _HSD_Envelope {
 } HSD_Envelope;
 
 typedef struct _HSD_EnvelopeDesc {
-    struct _HSD_JObjDesc* joint;
+    HSD_Joint* joint;
     f32 weight;
 } HSD_EnvelopeDesc;
 
@@ -187,6 +134,8 @@ typedef struct _HSD_PObjInfo {
 
 extern HSD_PObjInfo hsdPObj;
 
+void HSD_PObjClearFlags(HSD_PObj* pobj, u32 flags);
+void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 void HSD_PObjRemoveAnimAllByFlags(HSD_PObj* pobj, u32 flags);
 void HSD_PObjAddAnimAll(HSD_PObj* pobj, HSD_ShapeAnim* shapeanim);
 void HSD_PObjReqAnimAllByFlags(HSD_PObj* pobj, f32 startframe, u32 flags);
@@ -197,6 +146,7 @@ void HSD_PObjSetCurrent(HSD_PObjInfo* info);
 HSD_PObjInfo* HSD_PObjGetCurrent(void);
 HSD_PObj* HSD_PObjAlloc(void);
 void HSD_PObjResolveRefsAll(HSD_PObj* pobj, HSD_PObjDesc* pdesc);
+void HSD_PObjCountVertices(HSD_PObj* pobj, u32* vertices, u32* polygons);
 void HSD_ClearVtxDesc(void);
 void HSD_PObjClearMtxMark(void* obj, u32 mark);
 void HSD_PObjDisp(HSD_PObj* pobj, Mtx vmtx, Mtx pmtx, u32 rendermode);

@@ -4,8 +4,10 @@
 #include "Dolphin/PPCArch.h"
 #include "Dolphin/hw_regs.h"
 
-// All enable
-#define FPSCR_ENABLE 0xF8
+// Clear the exception status and fraction-inexact flags when setting or handling a trap.
+#define FPSCR_EXCEPTION_STATUS                                                                      \
+	(FPSCR_FX | FPSCR_OX | FPSCR_UX | FPSCR_ZX | FPSCR_XX | FPSCR_VXSNAN | FPSCR_VXISI | FPSCR_VXIDI\
+	 | FPSCR_VXZDZ | FPSCR_VXIMZ | FPSCR_VXVC | FPSCR_FI | FPSCR_VXSOFT | FPSCR_VXSQRT | FPSCR_VXCVI)
 
 OSErrorHandler __OSErrorTable[OS_ERROR_MAX];
 u32 __OSFpscrEnableBits = FPSCR_ENABLE;
@@ -79,38 +81,39 @@ OSErrorHandler OSSetErrorHandler(OSError error, OSErrorHandler handler)
 		OSThread* thread;
 
 		msr = PPCMfmsr();
-		PPCMtmsr(msr | 0x2000); // Enable FPU
+		PPCMtmsr(msr | MSR_FP); // Enable FPU
 		fpscr = PPCMffpscr();
 		if (handler) {
 			for (thread = __OSActiveThreadQueue.head; thread; thread = thread->linkActive.next) {
-				thread->context.srr1 |= 0x900;
+				thread->context.srr1 |= (MSR_FE0 | MSR_FE1);
 				if ((thread->context.state & OS_CONTEXT_STATE_FPSAVED) == 0) {
 					int i;
+					const u64 initialFPR = ~0ULL;
 
-					// Initialize FPU context too so that FPSCR can be changed per thread
+					// Fill the saved register slots with the all-ones NaN bit pattern.
 					thread->context.state |= OS_CONTEXT_STATE_FPSAVED;
 					for (i = 0; i < 32; ++i) {
-						*(u64*)&thread->context.fpr[i] = (u64)0xffffffffffffffffLL;
-						*(u64*)&thread->context.psf[i] = (u64)0xffffffffffffffffLL;
+						*(u64*)&thread->context.fpr[i] = initialFPR;
+						*(u64*)&thread->context.psf[i] = initialFPR;
 					}
-					thread->context.fpscr = 4;
+					thread->context.fpscr = FPSCR_NI;
 				}
 				thread->context.fpscr |= __OSFpscrEnableBits & FPSCR_ENABLE;
-				thread->context.fpscr &= 0x6005F8FF; // idk what this value represents, but it matches
+				thread->context.fpscr &= ~FPSCR_EXCEPTION_STATUS;
 			}
 			fpscr |= __OSFpscrEnableBits & FPSCR_ENABLE;
-			msr |= 0x900;
+			msr |= (MSR_FE0 | MSR_FE1);
 		} else {
 			for (thread = __OSActiveThreadQueue.head; thread; thread = thread->linkActive.next) {
-				thread->context.srr1 &= ~(0x900);
+				thread->context.srr1 &= ~(MSR_FE0 | MSR_FE1);
 				thread->context.fpscr &= ~FPSCR_ENABLE;
-				thread->context.fpscr &= 0x6005F8FF;
+				thread->context.fpscr &= ~FPSCR_EXCEPTION_STATUS;
 			}
 			fpscr &= ~FPSCR_ENABLE;
-			msr &= ~0x900;
+			msr &= ~(MSR_FE0 | MSR_FE1);
 		}
 
-		fpscr &= 0x6005F8FF; // mismatch on this line
+		fpscr &= ~FPSCR_EXCEPTION_STATUS;
 
 		PPCMtfpscr(fpscr);
 		PPCMtmsr(msr); // Restore FPU
@@ -130,26 +133,25 @@ void __OSUnhandledException(__OSException exception, OSContext* context, u32 dsi
 
 	now = OSGetTime();
 
-	if (!(context->srr1 & 2)) {
+	if (!(context->srr1 & MSR_RI)) {
 		OSReport("Non-recoverable Exception %d", exception);
 
 	} else {
-		if (exception == __OS_EXCEPTION_PROGRAM && (context->srr1 & (0x80000000 >> 11)) && __OSErrorTable[OS_ERROR_FPE] != 0) {
+		if (exception == __OS_EXCEPTION_PROGRAM && (context->srr1 & SRR1_PROG_FPE) && __OSErrorTable[OS_ERROR_FPE] != 0) {
 			u32 fpscr;
 			u32 msr;
 
 			exception = OS_ERROR_FPE;
 
 			msr = PPCMfmsr();
-			PPCMtmsr(msr | 0x2000);
+			PPCMtmsr(msr | MSR_FP);
 
 			if (__OSFPUContext) {
 				OSSaveFPUContext((OSContext*)__OSFPUContext);
 			}
 
 			fpscr = PPCMffpscr();
-			fpscr &= ~(FPSCR_VXVC | FPSCR_VXIMZ | FPSCR_VXZDZ | FPSCR_VXIDI | FPSCR_VXISI | FPSCR_VXSNAN | FPSCR_VXSOFT | FPSCR_VXSQRT
-			           | FPSCR_VXCVI | FPSCR_XX | FPSCR_ZX | FPSCR_UX | FPSCR_OX | FPSCR_FX | FPSCR_FI);
+			fpscr &= ~FPSCR_EXCEPTION_STATUS;
 			PPCMtfpscr(fpscr);
 
 			PPCMtmsr(msr);
@@ -157,15 +159,14 @@ void __OSUnhandledException(__OSException exception, OSContext* context, u32 dsi
 			if (__OSFPUContext == context) {
 				OSDisableScheduler();
 				__OSErrorTable[exception](exception, context, dsisr, dar);
-				context->srr1 &= ~0x2000;
+				context->srr1 &= ~MSR_FP;
 				__OSFPUContext = nullptr;
 
-				context->fpscr &= ~(FPSCR_VXVC | FPSCR_VXIMZ | FPSCR_VXZDZ | FPSCR_VXIDI | FPSCR_VXISI | FPSCR_VXSNAN | FPSCR_VXSOFT
-				                    | FPSCR_VXSQRT | FPSCR_VXCVI | FPSCR_XX | FPSCR_ZX | FPSCR_UX | FPSCR_OX | FPSCR_FX | FPSCR_FI);
+				context->fpscr &= ~FPSCR_EXCEPTION_STATUS;
 				OSEnableScheduler();
 				__OSReschedule();
 			} else {
-				context->srr1 &= ~0x2000;
+				context->srr1 &= ~MSR_FP;
 				__OSFPUContext = nullptr;
 			}
 

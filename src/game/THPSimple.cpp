@@ -231,13 +231,13 @@ s32 THPSimpleOpenWait(void)
 	u32 i;
 
 	switch (LoadStep) {
-	case 1:
+	case 1: // the header first
 		LoadStep++;
 		ReadDone = 0;
 		DVDReadAsyncPrio(&SimpleControl.fileInfo, WorkBuffer, 0x40, 0, ReadCallback, 2);
 		return 0;
 
-	case 2:
+	case 2: // then the component info
 		if (!ReadDone) {
 			return 0;
 		}
@@ -248,7 +248,7 @@ s32 THPSimpleOpenWait(void)
 			return -1;
 		}
 
-		if (SimpleControl.header.version != 0x11000) {
+		if (SimpleControl.header.version != 0x11000) { // thp version 1.1
 			DVDClose(&SimpleControl.fileInfo);
 			return -1;
 		}
@@ -268,11 +268,11 @@ s32 THPSimpleOpenWait(void)
 		SimpleControl.audioExist = 0;
 		for (i = 0; i < SimpleControl.compInfo.numComponents; i++) {
 			switch (SimpleControl.compInfo.frameComp[i]) {
-			case 0:
+			case 0: // the video component
 				memcpy(&SimpleControl.videoInfo, WorkBuffer + offset, sizeof(THPVideoInfo));
 				offset += sizeof(THPVideoInfo);
 				break;
-			case 1:
+			case 1: // the audio component
 				memcpy(&SimpleControl.audioInfo, WorkBuffer + offset, sizeof(THPAudioInfo));
 				SimpleControl.audioExist = 1;
 				offset += sizeof(THPAudioInfo);
@@ -296,7 +296,7 @@ s32 THPSimpleOpenWait(void)
 		SimpleControl.audioState             = FALSE;
 		SimpleControl.loop                   = 0;
 		SimpleControl.open                   = TRUE;
-		SimpleControl.curVolume              = 127.0f;
+		SimpleControl.curVolume              = 127.0f; // full volume
 		SimpleControl.targetVolume           = SimpleControl.curVolume;
 		SimpleControl.rampCount              = 0;
 		LoadStep                             = 0;
@@ -406,7 +406,7 @@ static inline void ReadFrameAsync(void)
 {
 	if (!SimpleControl.dvdError && SimpleControl.preFetchState == TRUE) {
 		if (SimpleControl.totalReadFrame > SimpleControl.header.numFrames - 1) {
-			if (SimpleControl.loop != 1) {
+			if (SimpleControl.loop != 1) { // no loop: stop at the last frame
 				return;
 			}
 			SimpleControl.totalReadFrame = 0;
@@ -438,6 +438,7 @@ static void __THPSimpleDVDCallback(s32 result, DVDFileInfo* fileInfo)
 		SimpleControl.totalReadFrame++;
 		SimpleControl.readBuffer[SimpleControl.readIndex].isValid = TRUE;
 		SimpleControl.curOffset += SimpleControl.readSize;
+		// each frame starts with the size of the next
 		SimpleControl.readSize  = *(u32*)SimpleControl.readBuffer[SimpleControl.readIndex].ptr;
 		SimpleControl.readIndex = SimpleControl.readIndex + 1 >= READ_BUFFER_NUM ? 0 : SimpleControl.readIndex + 1;
 		if (!SimpleControl.readBuffer[SimpleControl.readIndex].isValid) {
@@ -459,7 +460,7 @@ s32 THPSimplePreLoad(s32 loop)
 
 		if (!loop) {
 			if (SimpleControl.header.numFrames < READ_BUFFER_NUM) {
-				readNum = SimpleControl.header.numFrames;
+				readNum = SimpleControl.header.numFrames; // a short movie preloads whole
 			}
 		}
 
@@ -610,12 +611,13 @@ s32 THPSimpleDecode(s32 audioTrack)
 	u32 *compSizePtr, sample;
 
 	if (SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].isValid) {
+		// a frame: an 8-byte header, per-component sizes, then the components
 		compSizePtr = (u32*)(SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].ptr + 8);
 		ptr         = SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].ptr + SimpleControl.compInfo.numComponents * 4 + 8;
 
 		if (SimpleControl.audioExist) {
 			if (audioTrack < 0 || audioTrack >= SimpleControl.audioInfo.sndNumTracks) {
-				return 4;
+				return 4; // bad track
 			}
 
 			if (SimpleControl.audioBuffer[SimpleControl.audioDecodeIndex].validSample == 0) {
@@ -623,7 +625,7 @@ s32 THPSimpleDecode(s32 audioTrack)
 					switch (SimpleControl.compInfo.frameComp[i]) {
 					case 0:
 						if (VideoDecode(ptr) == FALSE) {
-							return 1;
+							return 1; // video decode failed
 						}
 						break;
 
@@ -649,7 +651,7 @@ s32 THPSimpleDecode(s32 audioTrack)
 					compSizePtr++;
 				}
 			} else {
-				return 3;
+				return 3; // the audio queue is full
 			}
 		} else {
 			for (i = 0; i < SimpleControl.compInfo.numComponents; i++) {
@@ -672,7 +674,7 @@ s32 THPSimpleDecode(s32 audioTrack)
 		return 0;
 	}
 
-	return 2;
+	return 2; // nothing to decode
 }
 
 /**
@@ -751,7 +753,7 @@ static void MixAudio(s16* destination, s16* source, u32 sample)
 
 					thpsrc = SimpleControl.audioBuffer[SimpleControl.audioOutputIndex].curPtr;
 					for (i = 0; i < sampleNum; i++) {
-						if (SimpleControl.rampCount) {
+						if (SimpleControl.rampCount) { // the ramp eases the volume to its target
 							SimpleControl.rampCount--;
 							SimpleControl.curVolume += SimpleControl.deltaVolume;
 						} else {
@@ -760,6 +762,7 @@ static void MixAudio(s16* destination, s16* source, u32 sample)
 
 						attenuation = VolumeTable[(s32)SimpleControl.curVolume];
 
+						// the thp is attenuated in 15-bit fixed point, mixed, and clamped to s16
 						mix = (*libsrc) + ((attenuation * (*thpsrc)) >> 15);
 						if (mix < -32768) {
 							mix = -32768;
@@ -935,7 +938,7 @@ u32 THPSimpleGetTotalFrame(void)
 static void THPAudioMixCallback(void)
 {
 	if (AudioSystem == 0) {
-		SoundBufferIndex ^= 1;
+		SoundBufferIndex ^= 1; // ping-pong between the two dma buffers
 		AIInitDMA((u32)SoundBuffer[SoundBufferIndex], BYTES_PER_AUDIO_FRAME);
 		{
 			BOOL old = OSEnableInterrupts();

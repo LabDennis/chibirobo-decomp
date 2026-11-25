@@ -2,6 +2,7 @@
 #define _GAME_CMOTIONCONTROLCAMERA_H
 
 #include "game/ccameraaction.h"
+#include "game/ccameraactioneye.h"
 
 // the game's camera and the actions that drive it. class names are RTTI, layouts are from
 // CGame's ctor at 0x80019480 and the action ctor at 0x80019E5C
@@ -23,7 +24,7 @@ enum {
 	CAMACTION_NUM,
 };
 
-// what the camera's flags say an action drives, from its Get_38
+// what the camera's flags say an action drives, from its GetCameraFlags
 enum {
 	CAMFLAG_EYE      = 0x1,
 	CAMFLAG_INTEREST = 0x2,
@@ -36,11 +37,11 @@ enum {
 class CCameraActions {
 public:
 	CCameraActionDefault mDefault;                 // _00
-	u8 mArea[0x2D4 - 0x40];                        // _40, CCameraActionArea
+	CCameraActionArea mArea;                       // _40
 	CCameraActionChase mChase;                     // _2D4
 	CCameraActionEvt mEvt;                         // _344
 	CCameraActionScroll2 mScroll2;                 // _828
-	u8 mEye[0x80];                                 // _8D4, CCameraActionEye, untyped to keep cobj.h's .rodata out
+	CCameraActionEye mEye;                         // _8D4
 	CCameraActionAnim mAnim;                       // _954
 	CCameraActionMap mMap;                         // _99C
 	CCameraActionLadr mLadr;                       // _1B88
@@ -49,16 +50,19 @@ public:
 	CInterfaceCameraAction* mTable[CAMACTION_NUM]; // _1E40
 	// _1E70 vtable
 
+	CCameraActions();
 	virtual ~CCameraActions(); // _08
 
 	void Init();
 };
+STATIC_ASSERT(sizeof(CCameraActions) == 0x1E74);
 
 // what CreateMemento saves of the camera, the class name is RTTI
 class CCameraMemento {
 public:
+	CCameraMemento() { }
 	// _00 vtable
-	virtual ~CCameraMemento() { } // _08
+	virtual ~CCameraMemento(); // _08
 
 	CVec mEye;                       // _04
 	CVec mInterest;                  // _14
@@ -89,39 +93,7 @@ public:
 	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
 	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
 };
-typedef char CCameraMemento_size_check[sizeof(CCameraMemento) == 0x40 ? 1 : -1];
-
-// steps a vector a fixed part of the way to its target each frame
-struct CamFollow {
-	CVec mTarget; // _00
-	CVec mValue;  // _10
-	CVec mStep;   // _20
-	BOOL mDone;   // _30
-	f32 mDivide;  // _34, how many steps it takes, the action's vf58
-
-	void Follow(const Vec& target, const Vec& value)
-	{
-		mTarget.x = target.x;
-		mTarget.y = target.y;
-		mTarget.z = target.z;
-		mValue.x  = value.x;
-		mValue.y  = value.y;
-		mValue.z  = value.z;
-		mStep     = (mTarget - mValue) / mDivide;
-
-		f32 step = PSVECMag(&mStep);
-		f32 dist = PSVECDistance(&mTarget, &mValue);
-		if (dist <= step || dist < 0.05f) {
-			mValue.x = mTarget.x;
-			mValue.y = mTarget.y;
-			mValue.z = mTarget.z;
-			mDone    = TRUE;
-		} else {
-			Vec step = mStep;
-			PSVECAdd(&mValue, &step, &mValue);
-		}
-	}
-};
+STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xE5D38
 class CMotionControlCamera {
@@ -132,20 +104,24 @@ public:
 	CVec mAngle;                           // _1B4
 	f32 mDistance;                         // _1C4
 	f32 mFov;                              // _1C8
-	s32 mMode;                             // _1CC, the action's vf50, 1 eases eye and interest in
+	s32 mMode;                             // _1CC, the action's GetMode, 1 eases eye and interest in
 	CInterfaceCameraAction* mAction;       // _1D0
 	CInterfaceCameraAction* mPrevAction;   // _1D4
 	CInterfaceCameraAction* mPushedAction; // _1D8
-	s32 _1DC;                              // _1DC
-	s32 _1E0;                              // _1E0
-	CStatus mFlags;                        // _1E4, the action's Get_38, see CAMFLAG
-	s32 mInterestMode;                     // _1EC, the action's vf5C, 2 and 3 follow the interest in
+	s32 _1DC;                              // _1DC, written -1 in Init, never read
+	s32 _1E0;                              // _1E0, written -1 in Init, never read
+	CStatus mFlags;                        // _1E4, the action's GetCameraFlags, see CAMFLAG
+	s32 mInterestMode;                     // _1EC, the action's GetInterestMode, 2 and 3 follow the interest in
 	s32 mEyeMode;                          // _1F0, 2 and 3 follow the eye in
 	// _1F4 vtable
 
 	virtual ~CMotionControlCamera(); // _08
 
-	CamFollow mFollow;       // _1F8
+	CVec mFollowTarget;      // _1F8, Follow steps mFollowValue towards it
+	CVec mFollowValue;       // _208
+	CVec mFollowStep;        // _218
+	BOOL mFollowDone;        // _228
+	f32 mFollowDivide;       // _22C, how many steps it takes, the action's GetFollowDivisor
 	CCameraMemento mMemento; // _230
 	u8 _270[0x274 - 0x270];  // _270
 
@@ -192,6 +168,30 @@ public:
 	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
 	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
 
+	// steps mFollowValue a fixed part of the way to the target
+	void Follow(const Vec& target, const Vec& value)
+	{
+		mFollowTarget.x = target.x;
+		mFollowTarget.y = target.y;
+		mFollowTarget.z = target.z;
+		mFollowValue.x  = value.x;
+		mFollowValue.y  = value.y;
+		mFollowValue.z  = value.z;
+		mFollowStep     = (mFollowTarget - mFollowValue) / mFollowDivide;
+
+		f32 step = PSVECMag(&mFollowStep);
+		f32 dist = PSVECDistance(&mFollowTarget, &mFollowValue);
+		if (dist <= step || dist < 0.05f) {
+			mFollowValue.x = mFollowTarget.x;
+			mFollowValue.y = mFollowTarget.y;
+			mFollowValue.z = mFollowTarget.z;
+			mFollowDone    = TRUE;
+		} else {
+			Vec step = mFollowStep;
+			PSVECAdd(&mFollowValue, &step, &mFollowValue);
+		}
+	}
+
 	// takes over what the new action drives
 	void ReadAction()
 	{
@@ -208,10 +208,10 @@ public:
 				mFlags.mFlags |= 0x40000;
 			} else {
 				mFlags.mFlags = 0;
-				mMode         = mAction->vf50();
-				mFlags.mFlags |= mAction->Get_38();
-				mFollow.mDivide = mAction->vf58();
-				mInterestMode   = mAction->vf5C();
+				mMode         = mAction->GetMode();
+				mFlags.mFlags |= mAction->GetCameraFlags();
+				mFollowDivide = mAction->GetFollowDivisor();
+				mInterestMode = mAction->GetInterestMode();
 			}
 		}
 	}
@@ -221,12 +221,12 @@ public:
 	{
 		if (mAction != NULL) {
 			if (mAction == GetAction(CAMACTION_CHASE) || mAction == GetAction(CAMACTION_10)) {
-				mAction->vf14();
+				mAction->Reset();
 			} else if (mAction == GetAction(CAMACTION_EVT) || mAction == GetAction(CAMACTION_AREA) || mAction == GetAction(CAMACTION_MAP)
 			           || mAction == GetAction(CAMACTION_RESET) || mAction == GetAction(CAMACTION_ANIM)) {
 				mAction->SetCamera(&mCamera);
 			} else {
-				mAction->vf14();
+				mAction->Reset();
 			}
 		}
 	}
@@ -254,8 +254,8 @@ public:
 	}
 
 	static CInterfaceCameraAction* GetAction(s32 type);
-	bool IsCurrent(s32 type) const { return GetAction(type) == mAction; }
+	BOOL IsCurrent(s32 type) const { return mAction == GetAction(type) ? TRUE : FALSE; }
 };
-typedef char CMotionControlCamera_size_check[sizeof(CMotionControlCamera) == 0x274 ? 1 : -1];
+STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x274);
 
 #endif

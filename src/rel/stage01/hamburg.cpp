@@ -1,105 +1,22 @@
+#include "game/relana.h"
+#include "game/relmodule.h"
 #include "Version.h"
 #include "game/hsd_jobj.h"
+#include "game/xchr.h"
 #include "game/ut.h"
 #include "game/cparticle.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
+#include "game/placement.h"
+#include "game/animframe.h"
 
 extern "C" {
-f32 PSVECDistance(const Vec* a, const Vec* b);
+#include <sysdolphin/random.h>
+
 double atan2(double y, double x);
 double cos(double x);
 double sin(double x);
 }
-
-struct Stage01Actor;
-
-struct Stage01ActorKind {
-	s32 _00; // _00
-	s32 _04; // _04
-	s32 _08; // _08
-	s32 _0C; // _0C
-};
-
-struct Stage01KindRef {
-	Vec GetSize() const;
-
-	Stage01ActorKind* mKind; // _00
-};
-
-// non-virtual base, so the vtable pointer ends up at _34
-struct Stage01ActorBase {
-	HSD_JObj* _00;      // _00
-	u8 _04[0x34 - 0x4]; // _04
-};
-
-struct Stage01ActorVirt : public Stage01ActorBase {
-	virtual void vf_08();                                                              // _08
-	virtual void vf_0C();                                                              // _0C
-	virtual void vf_10(f32 y, s32 arg);                                                // _10
-	virtual void vf_14();                                                              // _14
-	virtual void vf_18();                                                              // _18
-	virtual void vf_1C();                                                              // _1C
-	virtual void vf_20();                                                              // _20
-	virtual void vf_24();                                                              // _24
-	virtual void vf_28();                                                              // _28
-	virtual void vf_2C(f32 rot, s32 arg);                                              // _2C
-	virtual void vf_30();                                                              // _30
-	virtual void vf_34();                                                              // _34
-	virtual void vf_38();                                                              // _38
-	virtual void vf_3C();                                                              // _3C
-	virtual void vf_40();                                                              // _40
-	virtual void vf_44();                                                              // _44
-	virtual void vf_48();                                                              // _48
-	virtual void vf_4C();                                                              // _4C
-	virtual void vf_50();                                                              // _50
-	virtual void vf_54();                                                              // _54
-	virtual void vf_58();                                                              // _58
-	virtual void vf_5C();                                                              // _5C
-	virtual void vf_60();                                                              // _60
-	virtual void vf_64();                                                              // _64
-	virtual void vf_68(s32 arg, f32 x, f32 y, f32 z);                                  // _68
-	virtual void vf_6C();                                                              // _6C
-	virtual void vf_70();                                                              // _70
-	virtual void vf_74();                                                              // _74
-	virtual void vf_78(Vec* pos, f32 f);                                               // _78
-	virtual void vf_7C();                                                              // _7C
-	virtual void vf_80(s32 a, s32 b, s32 c, s32 d, s32 e, f32 f, f32 g, f32 h, f32 i); // _80
-	                                                                                   // _34 vtable
-};
-
-struct Stage01Actor : public Stage01ActorVirt {
-	Stage01KindRef& GetKindRef();
-	Vec* GetPos();
-
-#if defined(VERSION_JP)
-	u8 _38[0xC0 - 0x38]; // _38
-#else
-	u8 _38[0xC8 - 0x38]; // _38
-#endif
-	Vec _C8;                // _C8 (JP: _C0)
-	u8 _D4[0x4];            // _D4 (JP: _CC)
-	Vec _D8;                // _D8 (JP: _D0)
-	u8 _E4[0xFC - 0xE4];    // _E4 (JP: _DC)
-	f32 _FC;                // _FC (JP: _F4)
-	u8 _100[0x158 - 0x100]; // _100 (JP: _F8)
-	s32 _158;               // _158 (JP: _150)
-	u8 _15C[0x228 - 0x15C]; // _15C (JP: _154)
-	u64 _228;               // _228 (JP: _220)
-	u8 _230[0x238 - 0x230]; // _230 (JP: _228)
-	Stage01KindRef _238;    // _238 (JP: _230)
-	u8 _23C[0x258 - 0x23C]; // _23C (JP: _234)
-	s32 _258;               // _258 (JP: _250)
-#if defined(VERSION_JP)
-	u8 _254[0xA34 - 0x254]; // _254
-#else
-	u8 _25C[0xA44 - 0x25C]; // _25C
-#endif
-	u8 _A44[0x4];           // _A44 (JP: _A34)
-	s32 _A48;               // _A48 (JP: _A38)
-	u8 _A4C[0xA64 - 0xA4C]; // _A4C (JP: _A3C)
-	Stage01Actor* _A64;     // _A64 (JP: _A54)
-};
 
 struct HamDish;
 
@@ -112,7 +29,7 @@ struct HamObj {
 	void StateFlip();
 
 	Vec* GetPos();
-	Stage01Actor* GetActor();
+	XObj* GetActor();
 	f32 GetStackHeight();
 
 	void SetState(StateFunc func)
@@ -121,78 +38,66 @@ struct HamObj {
 		mStateTime = 0;
 	}
 
-	void StartSlide(f32 speed, f32 f, f32 angle)
+	void StartSlide(f32 distance, f32 speed, f32 angle)
 	{
 		if (mState != &HamObj::StateFlip) {
-			_18 = angle;
-			_1C = speed;
-			_20 = f;
+			mMoveAngle     = angle;
+			mSlideDistance = distance;
+			mMoveSpeed     = speed;
 			SetState(&HamObj::StateSlide);
 		}
 	}
 
 	void SetRot(f32 rot)
 	{
-		_10 = rot;
-		mActor->vf_2C(_10, 0);
+		mRotZ = rot;
+		mActor->SetRotationZ(mRotZ, 0);
 	}
 
-	HamObj* _00;          // _00
-	Stage01Actor* mActor; // _04
-	s32 _08;              // _08
-	s32 _0C;              // _0C
-	f32 _10;              // _10
-	f32 _14;              // _14
-	f32 _18;              // _18
-	f32 _1C;              // _1C
-	f32 _20;              // _20
-	s32 _24;              // _24
-	s32 _28[2];           // _28
-	s32 _30;              // _30
-	HamDish* _34;         // _34
-	u8 _38;               // _38
-	HSD_Generator* _3C;   // _3C
-	StateFunc mState;     // _40
-	s32 mStateTime;       // _4C
+	HamObj* mAbove;     // _00, the HamObj stacked on this one, NULL for none
+	XObj* mActor;       // _04
+	s32 mId;            // _08, script object id, the actor is gGame.GetObject(id); -1 when the slot is free
+	s32 mType;          // _0C, 1 hamburger (kind 0x1F9), 2 kind 0x263, 3 kind 0x264, 0 other; only 1 cooks and plays the yaki sound
+	f32 mRotZ;          // _10, z rotation, PI upside down; SetRot sets it and StateFlip turns the actor toward it
+	f32 mFlipFrames;    // _14, frames left in the flip, set from the flip command
+	f32 mMoveAngle;     // _18, yaw on the XZ plane the object slides or is put down along
+	f32 mSlideDistance; // _1C, how far a slide goes, added along mMoveAngle to the move target (StartSlide's 'distance' parameter)
+	f32 mMoveSpeed;     // _20, speed handed to SetMoveDir (vf_78) for slides and put-downs
+	s32 mSide;          // _24, which side is cooking, 0 or 1, indexes mYakiTime; StateFlip toggles it
+	s32 mYakiTime[2];   // _28, cook time per side, /600 + 1 is the doneness level; 9999 for kinds 0x263/0x264
+	s32 mStackLevel;    // _30, how many objects it sits on (on a dish: the count already there); GetStackHeight adds 2 per level
+	HamDish* mDish;     // _34, the HamDish it was put on, NULL for none
+	u8 mSpawned; // _38, set by HamObj_Respawn, cleared once the actor is no longer drawn; while set it cooks, is slid back onto the gas
+	             // plate and kept above y 77.5
+	HSD_Generator* mYakiEffect; // _3C, particle 0x78 on joint path {0}, created while cooking, killed when put on a dish or at exit
+	StateFunc mState;           // _40
+	s32 mStateTime;             // _4C
 };
 
 struct HamDish {
-	Stage01Actor* _00; // _00
-	s32 _04;           // _04
-	HamObj* _08[4];    // _08
+	XObj* mActor;     // _00, object for the dish, NULL when the slot is free
+	s32 mId;          // _04, script object id of the dish, -1 when free
+	HamObj* mObjs[4]; // _08, the HamObjs put on the dish, filled in order, NULL past the last
 };
 
-#define STAGE01_PLAYER    ((Stage01Actor*)lbl_8025C400.mPlayer)
-#define STAGE01_ACTORS    ((Stage01Actor**)lbl_8025C400.mObjects)
-#define STAGE01_OBJ_5D080 (&lbl_8025C400._5D080)
-#define STAGE01_PARTICLE  ((CParticle*)lbl_8025C400._9114)
-#define STAGE01_OBJ_8F38  ((void*)lbl_8025C400._8F38)
-#define STAGE01_SOUND     ((void*)&lbl_8025C400._E7E24)
+static inline void AddToHamDish(HamDish* group, HamObj* slot)
+{
+	s32 i;
+	for (i = 0; i < ARRAY_SIZE(group->mObjs); i++) {
+		if (group->mObjs[i] == NULL) {
+			group->mObjs[i] = slot;
+			break;
+		}
+	}
+}
+
+#define STAGE01_EVT_DATA (&gGame.mEvt.mData)
+#define STAGE01_PARTICLE (&gGame.mParticle)
+#define STAGE01_SOUND    (&gGame.mSound)
 
 extern "C" {
-s32 fn_8001DF00(void* obj, Vec* pos, s32 arg);
-void fn_8001E1A4(void* obj, s32 id, s32 time);
-void fn_8001E468(void* obj, s32 id, s32 arg, s32 arg2);
-void fn_8001E660(void* obj, s32 id);
-s32 fn_8001E6C8(void* obj, s32 id);
-void fn_8001E904(void* obj, s32 id, s32 arg);
-void fn_80068B48(void* obj);
-void fn_80068B70(void* obj);
-Stage01Actor* fn_8007F570(void* obj, s16 id);
-s32 fn_800D4FE8(void* obj);
-void psKillAllParticle(void);
-
-// ana.cpp
-void DrawAnas(void);
-void UpdateAnas(u32 arg);
-void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
-s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
-s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
-s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
-s32 CmdAddAna(s32 cmd, s32 count, s32* args);
+void AllowIdleHudCounters(InfoScrn* screen);
+void SuppressIdleHudCounters(InfoScrn* screen);
 
 s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args);
 s32 CmdCheckYakiResult(s32 cmd, s32 count, s32* args);
@@ -214,29 +119,29 @@ s32 CmdRegisterHamObjs(s32 cmd, s32 count, s32* args);
 s32 CmdRegisterHamDishes(s32 cmd, s32 count, s32* args);
 s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args);
 s32 CmdInitHamburg(s32 cmd, s32 count, s32* args);
-s32 fn_4_5E0(s32 cmd, s32 count, s32* args);
-s32 fn_4_5E8(s32 cmd, s32 count, s32* args);
-s32 fn_4_5F0(s32 cmd, s32 count, s32* args);
-s32 fn_4_5F8(s32 cmd, s32 count, s32* args);
-s32 fn_4_600(s32 cmd, s32 count, s32* args);
-s32 fn_4_608(s32 cmd, s32 count, s32* args);
-void DrawStage(u32 arg);
-void DrawStageHud(u32 arg);
-void UpdateStage(u32 arg);
-void InitStage(u32 arg);
+s32 CmdHamburgNoOpSlot5(s32 cmd, s32 count, s32* args);
+s32 CmdHamburgNoOpSlot4(s32 cmd, s32 count, s32* args);
+s32 CmdHamburgNoOpSlot3(s32 cmd, s32 count, s32* args);
+s32 CmdHamburgNoOpSlot2(s32 cmd, s32 count, s32* args);
+s32 CmdHamburgNoOpSlot1(s32 cmd, s32 count, s32* args);
+s32 CmdHamburgNoOpSlot0(s32 cmd, s32 count, s32* args);
+void DrawStage(s32 arg);
+void DrawStageHud(s32 arg);
+void UpdateStage(s32 arg);
+void InitStage(s32 arg);
 s32 CheckYakiResult(void);
 void AddTempActor(s32 id);
 void ClearTempActors(void);
 HamDish* FindHamDish(s32 id);
 HamDish* RegisterHamDish(s32 id);
 s32 CountHamDishObjs(HamDish* group);
-void SetYakiRates(u8* data);
+void SetYakiRates(const u8* data);
 s32 PutHeldHamObjOnDish(s32 id);
 bool HamObj_CheckSlideHit(HamObj* slot);
 void UpdateHamPickupFlags(void);
 HamObj* FindFreeHamObj(void);
 HamObj* FindFacingHamburg(void);
-HamObj* FindHamObjByActor(Stage01Actor* actor);
+HamObj* FindHamObjByActor(XObj* actor);
 HamObj* FindHamObj(s32 id);
 HamObj* RegisterHamObj(s32 id);
 void ExitHamburg(void);
@@ -250,25 +155,21 @@ void GetStackHeight(HamObj* slot);
 void HamObj_SetRot(HamObj* slot, f32 angle);
 void HamObj_StartPutDown(HamObj* slot);
 void HamObj_Respawn(HamObj* slot);
-void HamObj_StartSlide(HamObj* slot, f32 a, f32 b, f32 angle);
-void HamObj_StartFlip(HamObj* slot, u32 time);
+void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle);
+void HamObj_StartFlip(HamObj* slot, u32 frames);
 void HamObj_Update(HamObj* slot, u32 step);
 void HamObj_LowerStack(HamObj* slot);
-s32 HSD_Randi(s32 max);
 }
-
-typedef void (*RelSlotFunc)(u32 arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage, NULL, DrawStageHud, NULL, NULL };
 RelCmdFunc _prolog_cmds[]    = {
-    fn_4_608,
-    fn_4_600,
-    fn_4_5F8,
-    fn_4_5F0,
-    fn_4_5E8,
-    fn_4_5E0,
+    CmdHamburgNoOpSlot0,
+    CmdHamburgNoOpSlot1,
+    CmdHamburgNoOpSlot2,
+    CmdHamburgNoOpSlot3,
+    CmdHamburgNoOpSlot4,
+    CmdHamburgNoOpSlot5,
     CmdInitHamburg,
     CmdGetHamObjKind,
     CmdRegisterHamDishes,
@@ -299,76 +200,51 @@ RelCmdFunc _prolog_cmds[]    = {
 };
 }
 
-// zero vec, only used to seed GetSize
-static Vec lbl_4_bss_0;
-static f32 yakiRates[6];
-static u32 yakiLoopLevel;
+static f32 yakiRates[6];  // cook-speed multiplier per doneness level, [0] unused
+static u32 yakiLoopLevel; // 0 none, 1 something cooks, 2 a side is well done
 static u8 playerOffGasPlate;
 static u8 yakiSoundPlayed;
 static HamObj hamObjs[9];
-static Stage01Actor* gasPlate;
+static XObj* gasPlate;
 static HamDish hamDishes[4];
-static Stage01Actor* tempActors[4];
-static CStatus yakiResultFlags;
-static u8 putDownActive;
+static XObj* tempActors[4];
+static CStatus yakiResultFlags; // bits of the results already reported once
+static u8 putDownActive;        // a put-down runs: pickup flags stay off
 
-// todo: cleanup
-static inline HSD_JObj* FindChild(HSD_JObj* jobj, s32 index)
-{
-	if (jobj == NULL) {
-		return NULL;
-	}
-	jobj = jobj == NULL ? NULL : jobj->child;
-	for (; index > 0; index--) {
-		jobj = jobj == NULL ? NULL : jobj->next;
-		if (jobj == NULL) {
-			return NULL;
-		}
-	}
-	return jobj;
-}
-
-static inline bool IsActive(Stage01Actor* actor)
+static inline bool IsActive(XObj* actor)
 {
 	if (actor == NULL) {
 		return false;
 	}
-	if (!(actor->_228 & 0x10000)) {
+	if (!(actor->mStatus.mFlags & 0x10000)) {
 		return false;
 	}
 	return true;
 }
 
-static inline bool IsHeld(Stage01Actor* actor)
+static inline bool IsHeld(XObj* actor)
 {
-	Stage01Actor* player = STAGE01_PLAYER;
-	bool held            = false;
-	if (player->_A48 != 0 && player->_A64 == actor) {
+	XObjChr* player = gGame.GetPlayer();
+	bool held       = false;
+	if (player->mLift.mState != 0 && player->mLift.mTarget == actor) {
 		held = true;
 	}
 	return held;
 }
 
-static inline bool IsOnGasPlate(Stage01Actor* actor)
+static inline bool IsOnGasPlate(XObj* actor)
 {
-	f32 x = actor->_C8.x;
-	f32 z = actor->_C8.z;
+	f32 x = actor->mMoveTranslate.x;
+	f32 z = actor->mMoveTranslate.z;
 	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		return false;
 	}
 	return true;
 }
 
-// todo: copied inline, clean up
-inline f32 HSD_AObjGetCurrFrame(HSD_AObj* aobj)
-{
-	((aobj) ? ((void)0) : __assert("aobj.h", 149, "aobj"));
-	return aobj->curr_frame;
-}
-
 static inline bool IsOnTopOf(HamObj* slot, HamObj* base)
 {
-	return slot->_00 != NULL ? base->_08 == slot->_00->_08 : false;
+	return slot->mAbove != NULL ? base->mId == slot->mAbove->mId : false;
 }
 
 static inline bool IsSamePos(const Vec& a, Vec b)
@@ -376,15 +252,15 @@ static inline bool IsSamePos(const Vec& a, Vec b)
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-static inline HamObj* FindHamObjByActorInline(Stage01Actor* actor)
+static inline HamObj* FindHamObjByActorInline(XObj* actor)
 {
 	s32 i;
 	if (actor == NULL) {
 		return NULL;
 	}
 	for (i = 0; i < 9; i++) {
-		Stage01Actor* current = hamObjs[i].mActor;
-		if (current != NULL && current->_258 == actor->_258) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
 			return &hamObjs[i];
 		}
 	}
@@ -393,66 +269,40 @@ static inline HamObj* FindHamObjByActorInline(Stage01Actor* actor)
 
 static inline bool IsLeavingGasPlate(HamObj* slot)
 {
-	f32 x = slot->mActor->_C8.x;
-	f32 z = slot->mActor->_C8.z;
-	if ((62.6f < z && 0.0f < (f32)cos(slot->_18)) || (z < 21.4f && (f32)cos(slot->_18) < 0.0f)
-	    || (-239.0f < x && 0.0f < (f32)sin(slot->_18)) || (x < -289.0f && (f32)sin(slot->_18) < 0.0f)) {
+	f32 x = slot->mActor->mMoveTranslate.x;
+	f32 z = slot->mActor->mMoveTranslate.z;
+	if ((62.6f < z && 0.0f < (f32)cos(slot->mMoveAngle)) || (z < 21.4f && (f32)cos(slot->mMoveAngle) < 0.0f)
+	    || (-239.0f < x && 0.0f < (f32)sin(slot->mMoveAngle)) || (x < -289.0f && (f32)sin(slot->mMoveAngle) < 0.0f)) {
 		return true;
 	}
 	return false;
 }
 
-// first aobj on the joint, whichever kind
-static inline HSD_AObj* GetAObj(HSD_JObj* jobj)
-{
-	HSD_AObj* aobj;
-	if (jobj == NULL) {
-		return NULL;
-	}
-	if ((aobj = fn_801908F8(jobj)) != NULL) {
-		return aobj;
-	}
-	if ((aobj = fn_801905D4(jobj)) != NULL) {
-		return aobj;
-	}
-	if ((aobj = fn_801902C4(jobj)) != NULL) {
-		return aobj;
-	}
-	return NULL;
-}
-
+/**
+ * @note Address: stage01 .text 0x3768
+ * @note Size: 0xC
+ */
 inline Vec* HamObj::GetPos()
 {
-	return mActor->GetPos();
+	return &mActor->mMoveTranslate;
 }
 
-inline Vec Stage01KindRef::GetSize() const
-{
-	Vec size = lbl_4_bss_0;
-	size.x   = mKind->_04 / 100.0f;
-	size.y   = mKind->_08 / 100.0f;
-	size.z   = mKind->_0C / 100.0f;
-	return size;
-}
-
-inline Stage01KindRef& Stage01Actor::GetKindRef()
-{
-	return _238;
-}
-
-inline Stage01Actor* HamObj::GetActor()
+/**
+ * @note Address: stage01 .text 0x3838
+ * @note Size: 0x8
+ */
+inline XObj* HamObj::GetActor()
 {
 	return mActor;
 }
 
-inline Vec* Stage01Actor::GetPos()
-{
-	return &_C8;
-}
-
+/**
+ * @note Address: stage01 .text 0x3848
+ * @note Size: 0xF0
+ */
 inline f32 HamObj::GetStackHeight()
 {
-	return GetActor()->GetKindRef().GetSize().y + 2.0f * _30;
+	return PlacementPosition(GetActor()->mCoord).y + 2.0f * mStackLevel;
 }
 
 // yaw on the XZ plane
@@ -468,9 +318,9 @@ static inline HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
 
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		HamObj* other = &hamObjs[i];
-		if (IsActive(other->mActor) && id != other->_08 && level == other->_30 && other->_34 == NULL && !IsHeld(other->mActor)) {
-			pos.y    = other->mActor->_C8.y;
-			f32 dist = PSVECDistance(&other->mActor->_C8, &pos);
+		if (IsActive(other->mActor) && id != other->mId && level == other->mStackLevel && other->mDish == NULL && !IsHeld(other->mActor)) {
+			pos.y    = other->mActor->mMoveTranslate.y;
+			f32 dist = PSVECDistance(&other->mActor->mMoveTranslate, &pos);
 			if (dist < maxDist) {
 				best    = other;
 				maxDist = dist;
@@ -486,10 +336,10 @@ static inline HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
  */
 extern "C" s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args)
 {
-	Stage01Actor* actor = STAGE01_ACTORS[args[1]];
-	Vec pos             = actor->_C8;
-	s32 id              = args[0];
-	fn_8001E904(STAGE01_SOUND, id, fn_8001DF00(STAGE01_SOUND, &pos, 0));
+	XObj* actor = gGame.GetObject(args[1]);
+	Vec pos     = actor->mMoveTranslate;
+	s32 id      = args[0];
+	PlayGameSound(STAGE01_SOUND, id, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 0));
 	return 0;
 }
 
@@ -518,7 +368,7 @@ extern "C" s32 CmdPlayYakiSound(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdSetYakiRates(s32 cmd, s32 count, s32* args)
 {
-	SetYakiRates((u8*)args[0]);
+	SetYakiRates(reinterpret_cast<const u8*>(args[0]));
 	return 0;
 }
 
@@ -551,9 +401,9 @@ extern "C" s32 CmdExitHamburg(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdGetHeldHamObjId(s32 cmd, s32 count, s32* args)
 {
-	HamObj* slot = FindHamObjByActor(STAGE01_PLAYER->_A64);
+	HamObj* slot = FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
 	if (slot != NULL) {
-		return slot->_08;
+		return slot->mId;
 	}
 	return -1;
 }
@@ -566,7 +416,7 @@ extern "C" s32 CmdGetYakiTime(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
 	if (slot != NULL) {
-		return slot->_28[args[1]];
+		return slot->mYakiTime[args[1]];
 	}
 	return -1;
 }
@@ -593,7 +443,7 @@ extern "C" s32 CmdPutDownHamObj(s32 cmd, s32 count, s32* args)
 	}
 
 	ClearTempActors();
-	for (i = 1; i < count; i++) {
+	for (i = 1; i < count; i++) { // the remaining args are actors drawn during the put-down
 		AddTempActor(args[i]);
 	}
 	HamObj_StartPutDown(slot);
@@ -622,7 +472,7 @@ extern "C" s32 CmdGetFreeHamObjId(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindFreeHamObj();
 	if (slot != NULL) {
-		return slot->_08;
+		return slot->mId;
 	}
 	return -1;
 }
@@ -652,7 +502,9 @@ extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
 		return 0;
 	}
 
-	f32 angle = atan2(slot->mActor->_C8.x - STAGE01_PLAYER->_C8.x, slot->mActor->_C8.z - STAGE01_PLAYER->_C8.z);
+	// slide it away from the player
+	f32 angle = atan2(slot->mActor->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x,
+	                  slot->mActor->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z);
 	HamObj_StartSlide(slot, args[1], 0.2f, angle);
 	return 1;
 }
@@ -678,7 +530,7 @@ extern "C" s32 CmdGetFacingHamburgId(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindFacingHamburg();
 	if (slot != NULL) {
-		return slot->_08;
+		return slot->mId;
 	}
 	return -1;
 }
@@ -717,7 +569,7 @@ extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
 	if (slot != NULL) {
-		return slot->mActor->_238.mKind->_00;
+		return slot->mActor->mCoord.mPlacement->mObjectId;
 	}
 	return -1;
 }
@@ -736,7 +588,7 @@ extern "C" s32 CmdInitHamburg(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x5E0
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_5E0(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot5(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -745,7 +597,7 @@ extern "C" s32 fn_4_5E0(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x5E8
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_5E8(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot4(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -754,7 +606,7 @@ extern "C" s32 fn_4_5E8(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x5F0
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_5F0(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot3(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -763,7 +615,7 @@ extern "C" s32 fn_4_5F0(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x5F8
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_5F8(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot2(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -772,7 +624,7 @@ extern "C" s32 fn_4_5F8(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x600
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_600(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot1(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -781,7 +633,7 @@ extern "C" s32 fn_4_600(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x608
  * @note Size: 0x8
  */
-extern "C" s32 fn_4_608(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdHamburgNoOpSlot0(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -790,7 +642,7 @@ extern "C" s32 fn_4_608(s32 cmd, s32 count, s32* args)
  * @note Address: stage01 .text 0x610
  * @note Size: 0x20
  */
-extern "C" void DrawStage(u32 arg)
+extern "C" void DrawStage(s32 arg)
 {
 	DrawAnas();
 }
@@ -799,7 +651,7 @@ extern "C" void DrawStage(u32 arg)
  * @note Address: stage01 .text 0x630
  * @note Size: 0x4
  */
-extern "C" void DrawStageHud(u32 arg)
+extern "C" void DrawStageHud(s32 arg)
 {
 }
 
@@ -807,37 +659,38 @@ extern "C" void DrawStageHud(u32 arg)
  * @note Address: stage01 .text 0x634
  * @note Size: 0x218
  */
-extern "C" void UpdateStage(u32 arg)
+extern "C" void UpdateStage(s32 arg)
 {
 	Vec pos;
 
 	UpdateHamObjs(arg);
 	UpdateAnas(arg);
 
+	// keep the running stage sounds' volume at their two emitter positions
 	pos.x = -92.52f;
 	pos.y = 75.87f;
 	pos.z = -165.98f;
-	if (fn_8001E6C8(STAGE01_SOUND, 0x40016)) {
-		fn_8001E468(STAGE01_SOUND, 0x40016, fn_8001DF00(STAGE01_SOUND, &pos, 3), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x40016)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x40016, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 3), 0);
 	}
-	if (fn_8001E6C8(STAGE01_SOUND, 0x40017)) {
-		fn_8001E468(STAGE01_SOUND, 0x40017, fn_8001DF00(STAGE01_SOUND, &pos, 3), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x40017)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x40017, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 3), 0);
 	}
-	if (fn_8001E6C8(STAGE01_SOUND, 0x40018)) {
-		fn_8001E468(STAGE01_SOUND, 0x40018, fn_8001DF00(STAGE01_SOUND, &pos, 3), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x40018)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x40018, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 3), 0);
 	}
-	if (fn_8001E6C8(STAGE01_SOUND, 0x40019)) {
-		fn_8001E468(STAGE01_SOUND, 0x40019, fn_8001DF00(STAGE01_SOUND, &pos, 3), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x40019)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x40019, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 3), 0);
 	}
 
 	pos.x = -281.1f;
 	pos.y = 76.14f;
 	pos.z = 110.23f;
-	if (fn_8001E6C8(STAGE01_SOUND, 0x4000E)) {
-		fn_8001E468(STAGE01_SOUND, 0x4000E, fn_8001DF00(STAGE01_SOUND, &pos, 2), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x4000E)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x4000E, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 2), 0);
 	}
-	if (fn_8001E6C8(STAGE01_SOUND, 0x40010)) {
-		fn_8001E468(STAGE01_SOUND, 0x40010, fn_8001DF00(STAGE01_SOUND, &pos, 2), 0);
+	if (IsGameSoundPlaying(STAGE01_SOUND, 0x40010)) {
+		SetGameSfxVolume(STAGE01_SOUND, 0x40010, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 2), 0);
 	}
 }
 
@@ -845,7 +698,7 @@ extern "C" void UpdateStage(u32 arg)
  * @note Address: stage01 .text 0x84C
  * @note Size: 0x24
  */
-extern "C" void InitStage(u32 arg)
+extern "C" void InitStage(s32 arg)
 {
 	ResetYakiRates();
 	InitAnas();
@@ -857,26 +710,29 @@ extern "C" void InitStage(u32 arg)
  */
 extern "C" s32 CheckYakiResult(void)
 {
-	s32 i;
+	u32 i;
 	s32 result;
-	Stage01Actor* player;
+	XObjChr* player;
 	HamObj* slot;
 
-	if (*STAGE01_OBJ_5D080 != NULL) {
+	if (gGame.mEvt.mData.mScript != NULL) {
 		return 0;
 	}
 
-	player = STAGE01_PLAYER;
-	if (player->_C8.x < -295.0f || -225.0 < player->_C8.x || player->_C8.z < 10.0f || 74.0f < player->_C8.z) {
+	player = gGame.GetPlayer();
+	// the player is away from the plate
+	if (player->mMoveTranslate.x < -295.0f || -225.0 < player->mMoveTranslate.x || player->mMoveTranslate.z < 10.0f
+	    || 74.0f < player->mMoveTranslate.z) {
 		return 9;
 	}
 
+	// a hamburger done on both sides (doneness 3+) reports 1, once
 	result = 0;
 	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
-		slot = hamObjs;
-		for (i = 0; i < 9 && result == 0; i++, slot++) {
-			if (IsActive(slot->mActor) && slot->mActor->_238.mKind->_00 == 0x1F9 && slot->_28[0] / 600 + 1 >= 3
-			    && slot->_28[1] / 600 + 1 >= 3) {
+		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
+			slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
+			    && slot->mYakiTime[1] / 600 + 1 >= 3) {
 				result = 1;
 			}
 		}
@@ -885,11 +741,12 @@ extern "C" s32 CheckYakiResult(void)
 		}
 	}
 
+	// a burnt hamburger side (doneness 5) reports 2, once
 	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
-		slot = hamObjs;
-		for (i = 0; i < 9 && result == 0; i++, slot++) {
-			if (IsActive(slot->mActor) && slot->mActor->_238.mKind->_00 == 0x1F9
-			    && (slot->_28[0] / 600 + 1 >= 5 || slot->_28[1] / 600 + 1 >= 5)) {
+		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
+			slot = &hamObjs[i];
+			if (IsActive(slot->mActor) && slot->mActor->mCoord.mPlacement->mObjectId == 0x1F9
+			    && (slot->mYakiTime[0] / 600 + 1 >= 5 || slot->mYakiTime[1] / 600 + 1 >= 5)) {
 				result = 2;
 			}
 		}
@@ -902,8 +759,8 @@ extern "C" s32 CheckYakiResult(void)
 
 // CheckYakiResult
 /*
-    lis      r3, lbl_8025C400@ha
-    addi     r4, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r4, r3, gGame@l
     addis    r3, r4, 0x6
     lwz      r0, -0x2f80(r3)
     cmplwi   r0, 0x0
@@ -912,23 +769,23 @@ extern "C" s32 CheckYakiResult(void)
     blr
 .L_00000890:
     addis    r4, r4, 0x1
-    lis      r3, lbl_4_rodata_58@ha
+    lis      r3, sHamResultMinX@ha
     lwz      r4, -0x6944(r4)
-    lfs      f0, lbl_4_rodata_58@l(r3)
+    lfs      f0, sHamResultMinX@l(r3)
     lfs      f1, 0xc8(r4)
     fcmpo    cr0, f1, f0
     blt      .L_000008E0
-    lis      r3, lbl_4_rodata_60@ha
-    lfd      f0, lbl_4_rodata_60@l(r3)
+    lis      r3, sHamResultMaxX@ha
+    lfd      f0, sHamResultMaxX@l(r3)
     fcmpo    cr0, f0, f1
     blt      .L_000008E0
-    lis      r3, lbl_4_rodata_68@ha
+    lis      r3, sHamResultMinZ@ha
     lfs      f1, 0xd0(r4)
-    lfs      f0, lbl_4_rodata_68@l(r3)
+    lfs      f0, sHamResultMinZ@l(r3)
     fcmpo    cr0, f1, f0
     blt      .L_000008E0
-    lis      r3, lbl_4_rodata_6C@ha
-    lfs      f0, lbl_4_rodata_6C@l(r3)
+    lis      r3, sHamResultMaxZ@ha
+    lfs      f0, sHamResultMaxZ@l(r3)
     fcmpo    cr0, f0, f1
     bge      .L_000008E8
 .L_000008E0:
@@ -1090,16 +947,16 @@ extern "C" s32 CheckYakiResult(void)
 extern "C" void AddTempActor(s32 id)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		if (tempActors[i] == NULL) {
-			Stage01Actor* actor;
-			if (*STAGE01_OBJ_5D080 != NULL) {
-				actor = fn_8007F570(STAGE01_OBJ_5D080, id);
+			XObj* actor;
+			if (gGame.mEvt.mData.mScript != NULL) {
+				actor = ResolveEventObjectId(STAGE01_EVT_DATA, id);
 			} else {
 				actor = NULL;
 			}
 			tempActors[i] = actor;
-			tempActors[i]->_228 |= 0x10000;
+			tempActors[i]->mStatus.mFlags |= 0x10000; // draw it; only valid while a script runs
 			return;
 		}
 	}
@@ -1112,9 +969,9 @@ extern "C" void AddTempActor(s32 id)
 extern "C" void ClearTempActors(void)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		if (tempActors[i] != NULL) {
-			tempActors[i]->_228 &= ~0x10000ULL;
+			tempActors[i]->mStatus.mFlags &= ~0x10000ULL; // stop drawing it
 			tempActors[i] = NULL;
 		}
 	}
@@ -1127,8 +984,8 @@ extern "C" void ClearTempActors(void)
 extern "C" HamDish* FindHamDish(s32 id)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
-		if (hamDishes[i]._00 != NULL && id == hamDishes[i]._04) {
+	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
+		if (hamDishes[i].mActor != NULL && id == hamDishes[i].mId) {
 			return &hamDishes[i];
 		}
 	}
@@ -1147,15 +1004,15 @@ extern "C" HamDish* RegisterHamDish(s32 id)
 		return group;
 	}
 
-	for (i = 0; i < 4; i++) {
-		if (hamDishes[i]._00 == NULL) {
-			group         = &hamDishes[i];
-			group->_04    = id;
-			group->_00    = STAGE01_ACTORS[id];
-			group->_08[0] = NULL;
-			group->_08[1] = NULL;
-			group->_08[2] = NULL;
-			group->_08[3] = NULL;
+	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
+		if (hamDishes[i].mActor == NULL) {
+			group           = &hamDishes[i];
+			group->mId      = id;
+			group->mActor   = gGame.GetObject(id);
+			group->mObjs[0] = NULL;
+			group->mObjs[1] = NULL;
+			group->mObjs[2] = NULL;
+			group->mObjs[3] = NULL;
 			return group;
 		}
 	}
@@ -1169,23 +1026,25 @@ extern "C" HamDish* RegisterHamDish(s32 id)
 extern "C" s32 CountHamDishObjs(HamDish* group)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
-		if (group->_08[i] == NULL) {
+	for (i = 0; i < ARRAY_SIZE(group->mObjs); i++) {
+		if (group->mObjs[i] == NULL) {
 			return i;
 		}
 	}
-	return 4;
+	return ARRAY_SIZE(group->mObjs);
 }
 
 /**
  * @note Address: stage01 .text 0xDD8
  * @note Size: 0x180
  */
-extern "C" void SetYakiRates(u8* data)
+extern "C" void SetYakiRates(const u8* data)
 {
 	s32 i;
 	for (i = 0; i < 5; i++) {
-		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000) / 100.0f;
+		// a little-endian s32 per doneness level, /100; slot 0 keeps the reset 1.0
+		const u32 rate = data[0] + (static_cast<u32>(data[1]) << 8) + (static_cast<u32>(data[2]) << 16) + (static_cast<u32>(data[3]) << 24);
+		yakiRates[i + 1] = static_cast<s32>(rate) / 100.0f;
 		data += 4;
 	}
 }
@@ -1196,49 +1055,44 @@ extern "C" void SetYakiRates(u8* data)
  */
 extern "C" s32 PutHeldHamObjOnDish(s32 id)
 {
-	s32 i;
-	Stage01Actor* player = STAGE01_PLAYER;
+	// NONMATCHING: regalloc
+	XObjChr* player = gGame.GetPlayer();
 	HamObj* slot;
 	HamDish* group;
 
-	if (fn_800D4FE8(player->_A44)) {
+	if (IsLiftTargetPlug(&player->mLift)) {
 		return -1;
 	}
 
-	slot = FindHamObjByActorInline(player->_A64);
+	slot = FindHamObjByActorInline(player->mLift.mTarget);
 	if (slot == NULL) {
 		return -1;
 	}
 
-	group     = FindHamDish(id);
-	slot->_34 = group;
-	for (i = 0; i < 4; i++) {
-		if (group->_08[i] == NULL) {
-			group->_08[i] = slot;
-			break;
-		}
-	}
+	group       = FindHamDish(id);
+	slot->mDish = group;
+	AddToHamDish(group, slot);
 
-	if (player->_A48 == 4) {
-		player->_A48 = 6;
+	if (player->mLift.mState == 4) {
+		player->mLift.mState = 6; // play the put-down animation
 	}
-	return slot->_08;
+	return slot->mId;
 }
 
 // PutHeldHamObjOnDish
 /*
     stwu     r1, -0x10(r1)
     mflr     r0
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     stw      r0, 0x14(r1)
     stw      r31, 0xc(r1)
     stw      r30, 0x8(r1)
     mr       r30, r3
-    addi     r3, r4, lbl_8025C400@l
+    addi     r3, r4, gGame@l
     addis    r3, r3, 0x1
     lwz      r31, -0x6944(r3)
     addi     r3, r31, 0xa44
-    bl       fn_800D4FE8
+    bl       IsLiftTargetPlug
     cmpwi    r3, 0x0
     beq      .L_00000F98
     li       r3, -0x1
@@ -1342,26 +1196,28 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
  */
 extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 {
-	HamObj* best = FindStackBase(slot->mActor->_C8, slot->_08, slot->_30, 10.0f);
+	// NONMATCHING: regalloc
+	HamObj* best = FindStackBase(slot->mActor->mMoveTranslate, slot->mId, slot->mStackLevel, 10.0f);
 
 	if (best != NULL) {
-		f32 angle = AngleFrom(&slot->mActor->_C8, &best->mActor->_C8);
-		f32 c     = cos(angle - slot->_18);
+		f32 angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
+		// inside a ~58-degree cone of the slide direction it gets pushed (the literal is 45 radians)
+		f32 c = cos(angle - slot->mMoveAngle);
 		if ((f32)cos(45.0) < c) {
-			f32 speed;
-			angle = AngleFrom(&slot->mActor->_C8, &best->mActor->_C8);
-			speed = slot->_1C * 0.5f;
-			if (10.0f < speed) {
-				speed = 10.0f;
+			f32 distance;
+			angle    = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
+			distance = slot->mSlideDistance * 0.5f; // it takes half the slide distance, up to 10
+			if (10.0f < distance) {
+				distance = 10.0f;
 			}
-			best->StartSlide(speed, slot->_20, angle);
+			best->StartSlide(distance, slot->mMoveSpeed, angle);
 			if (IsOnGasPlate(slot->mActor)) {
 				return true;
 			}
 		}
 	}
 
-	if (IsLeavingGasPlate(slot)) {
+	if (IsLeavingGasPlate(slot)) { // sliding off the plate ends the move
 		return true;
 	}
 	return false;
@@ -1380,13 +1236,13 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
     psq_st   f29, 0x48(r1), 0, qr0
     stmw     r25, 0x24(r1)
     mr       r25, r3
-    lis      r3, lbl_4_rodata_68@ha
+    lis      r3, sHamResultMinZ@ha
     lwz      r7, 0x4(r25)
-    addi     r5, r3, lbl_4_rodata_68@l
-    lis      r3, lbl_8025C400@ha
+    addi     r5, r3, sHamResultMinZ@l
+    lis      r3, gGame@ha
     lis      r4, hamObjs@ha
     lwz      r6, 0xc8(r7)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     lwz      r0, 0xcc(r7)
     li       r28, 0x0
     lfs      f31, 0x0(r5)
@@ -1473,9 +1329,9 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
     lfs      f0, 0x18(r25)
     fsubs    f1, f1, f0
     bl       cos
-    lis      r3, lbl_4_rodata_98@ha
+    lis      r3, sHamSlideHitAngle@ha
     frsp     f30, f1
-    lfd      f1, lbl_4_rodata_98@l(r3)
+    lfd      f1, sHamSlideHitAngle@l(r3)
     bl       cos
     frsp     f0, f1
     fcmpo    cr0, f0, f30
@@ -1489,27 +1345,27 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
     fsubs    f1, f3, f1
     fsubs    f2, f2, f0
     bl       atan2
-    lis      r4, lbl_4_rodata_A0@ha
-    lis      r3, lbl_4_rodata_68@ha
+    lis      r4, sHamSlideHalf@ha
+    lis      r3, sHamResultMinZ@ha
     lfs      f3, 0x1c(r25)
     frsp     f30, f1
-    lfs      f2, lbl_4_rodata_A0@l(r4)
-    lfs      f0, lbl_4_rodata_68@l(r3)
+    lfs      f2, sHamSlideHalf@l(r4)
+    lfs      f0, sHamResultMinZ@l(r3)
     fmuls    f29, f3, f2
     fcmpo    cr0, f0, f29
     bge      .L_000012BC
     fmr      f29, f0
 .L_000012BC:
-    lis      r3, lbl_4_data_AC@ha
+    lis      r3, sHamFlipComparison@ha
     lfs      f31, 0x20(r25)
-    addi     r4, r3, lbl_4_data_AC@l
+    addi     r4, r3, sHamFlipComparison@l
     addi     r3, r28, 0x40
     bl       __ptmf_cmpr
     cmpwi    r3, 0x0
     beq      .L_0000130C
     stfs     f30, 0x18(r28)
-    lis      r3, lbl_4_data_B8@ha
-    addi     r5, r3, lbl_4_data_B8@l
+    lis      r3, sHamSlideState@ha
+    addi     r5, r3, sHamSlideState@l
     li       r0, 0x0
     stfs     f29, 0x1c(r28)
     stfs     f31, 0x20(r28)
@@ -1522,22 +1378,22 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
     stw      r0, 0x4c(r28)
 .L_0000130C:
     lwz      r4, 0x4(r25)
-    lis      r3, lbl_4_rodata_80@ha
-    lfs      f0, lbl_4_rodata_80@l(r3)
+    lis      r3, sHamGasPlateMinX@ha
+    lfs      f0, sHamGasPlateMinX@l(r3)
     lfs      f2, 0xc8(r4)
     lfs      f1, 0xd0(r4)
     fcmpo    cr0, f2, f0
     blt      .L_00001358
-    lis      r3, lbl_4_rodata_84@ha
-    lfs      f0, lbl_4_rodata_84@l(r3)
+    lis      r3, sHamGasPlateMaxX@ha
+    lfs      f0, sHamGasPlateMaxX@l(r3)
     fcmpo    cr0, f0, f2
     blt      .L_00001358
-    lis      r3, lbl_4_rodata_88@ha
-    lfs      f0, lbl_4_rodata_88@l(r3)
+    lis      r3, sHamGasPlateMinZ@ha
+    lfs      f0, sHamGasPlateMinZ@l(r3)
     fcmpo    cr0, f1, f0
     blt      .L_00001358
-    lis      r3, lbl_4_rodata_8C@ha
-    lfs      f0, lbl_4_rodata_8C@l(r3)
+    lis      r3, sHamGasPlateMaxZ@ha
+    lfs      f0, sHamGasPlateMaxZ@l(r3)
     fcmpo    cr0, f0, f1
     bge      .L_00001360
 .L_00001358:
@@ -1552,53 +1408,53 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
     b        .L_00001450
 .L_00001374:
     lwz      r4, 0x4(r25)
-    lis      r3, lbl_4_rodata_8C@ha
-    lfs      f0, lbl_4_rodata_8C@l(r3)
+    lis      r3, sHamGasPlateMaxZ@ha
+    lfs      f0, sHamGasPlateMaxZ@l(r3)
     lfs      f31, 0xd0(r4)
     lfs      f30, 0xc8(r4)
     fcmpo    cr0, f0, f31
     bge      .L_000013AC
     lfs      f1, 0x18(r25)
     bl       cos
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     frsp     f1, f1
-    lfs      f0, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamZero@l(r3)
     fcmpo    cr0, f0, f1
     blt      .L_00001430
 .L_000013AC:
-    lis      r3, lbl_4_rodata_88@ha
-    lfs      f0, lbl_4_rodata_88@l(r3)
+    lis      r3, sHamGasPlateMinZ@ha
+    lfs      f0, sHamGasPlateMinZ@l(r3)
     fcmpo    cr0, f31, f0
     bge      .L_000013D8
     lfs      f1, 0x18(r25)
     bl       cos
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     frsp     f1, f1
-    lfs      f0, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamZero@l(r3)
     fcmpo    cr0, f1, f0
     blt      .L_00001430
 .L_000013D8:
-    lis      r3, lbl_4_rodata_84@ha
-    lfs      f0, lbl_4_rodata_84@l(r3)
+    lis      r3, sHamGasPlateMaxX@ha
+    lfs      f0, sHamGasPlateMaxX@l(r3)
     fcmpo    cr0, f0, f30
     bge      .L_00001404
     lfs      f1, 0x18(r25)
     bl       sin
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     frsp     f1, f1
-    lfs      f0, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamZero@l(r3)
     fcmpo    cr0, f0, f1
     blt      .L_00001430
 .L_00001404:
-    lis      r3, lbl_4_rodata_80@ha
-    lfs      f0, lbl_4_rodata_80@l(r3)
+    lis      r3, sHamGasPlateMinX@ha
+    lfs      f0, sHamGasPlateMinX@l(r3)
     fcmpo    cr0, f30, f0
     bge      .L_00001438
     lfs      f1, 0x18(r25)
     bl       sin
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     frsp     f1, f1
-    lfs      f0, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamZero@l(r3)
     fcmpo    cr0, f1, f0
     bge      .L_00001438
 .L_00001430:
@@ -1633,6 +1489,10 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
  */
 extern "C" void UpdateHamPickupFlags(void)
 {
+	// NONMATCHING: regalloc — retail keeps two zeroed locals (best and the inner
+	// loop counter) in adjacent callee-saved slots so the inner counter is formed
+	// by copying the pointer slot instead of a fresh li; the built code uses
+	// independent li forms and different callee registers throughout
 	u32 i;
 	u32 j;
 
@@ -1642,20 +1502,21 @@ extern "C" void UpdateHamPickupFlags(void)
 		if (!IsActive(slot->mActor)) {
 			continue;
 		}
-		if (slot->_34 != NULL) {
-			slot->mActor->_228 &= ~0x100000000ULL;
-			slot->mActor->_228 &= ~0x10000000000ULL;
+		if (slot->mDish != NULL) {
+			slot->mActor->mStatus.mFlags &= ~0x100000000ULL; // on a dish it can't be picked up
+			slot->mActor->mStatus.mFlags &= ~0x10000000000ULL;
 		} else {
-			Vec pos      = slot->mActor->_C8;
+			Vec pos      = slot->mActor->mMoveTranslate;
 			HamObj* best = NULL;
-			s32 id       = slot->_08;
-			s32 level    = slot->_30 + 1;
+			s32 id       = slot->mId;
+			s32 level    = slot->mStackLevel + 1;
 			f32 bestDist = 7.0f;
 			for (j = 0; j < ARRAY_SIZE(hamObjs); j++) {
 				HamObj* other = &hamObjs[j];
-				if (IsActive(other->mActor) && id != other->_08 && level == other->_30 && other->_34 == NULL && !IsHeld(other->mActor)) {
-					pos.y    = other->mActor->_C8.y;
-					f32 dist = PSVECDistance(&other->mActor->_C8, &pos);
+				if (IsActive(other->mActor) && id != other->mId && level == other->mStackLevel && other->mDish == NULL
+				    && !IsHeld(other->mActor)) {
+					pos.y    = other->mActor->mMoveTranslate.y;
+					f32 dist = PSVECDistance(&other->mActor->mMoveTranslate, &pos);
 					if (dist < bestDist) {
 						best     = other;
 						bestDist = dist;
@@ -1663,7 +1524,7 @@ extern "C" void UpdateHamPickupFlags(void)
 				}
 			}
 			if (best == NULL) {
-				slot->mActor->_228 |= 0x100000000ULL;
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL; // nothing sits on it: it can be picked up
 			}
 		}
 	}
@@ -1679,11 +1540,11 @@ extern "C" void UpdateHamPickupFlags(void)
     psq_st   f31, 0x48(r1), 0, qr0
     stmw     r23, 0x1c(r1)
     lis      r4, hamObjs@ha
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     addi     r24, r4, hamObjs@l
     lis      r5, putDownActive@ha
     li       r0, 0x0
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     stb      r0, putDownActive@l(r5)
     mr       r26, r24
     addis    r25, r3, 0x1
@@ -1733,7 +1594,7 @@ extern "C" void UpdateHamPickupFlags(void)
     b        .L_0000167C
 .L_00001558:
     lwz      r5, 0xc8(r3)
-    lis      r4, lbl_4_rodata_A4@ha
+    lis      r4, sHamPickupSearchRadius@ha
     lwz      r0, 0xcc(r3)
     li       r30, 0x0
     lwz      r6, 0x30(r26)
@@ -1743,7 +1604,7 @@ extern "C" void UpdateHamPickupFlags(void)
     lwz      r28, 0x8(r26)
     addi     r29, r6, 0x1
     stw      r0, 0xc(r1)
-    lfs      f31, lbl_4_rodata_A4@l(r4)
+    lfs      f31, sHamPickupSearchRadius@l(r4)
     lwz      r0, 0xd0(r3)
     stw      r0, 0x10(r1)
 .L_00001590:
@@ -1882,7 +1743,7 @@ extern "C" void UpdateHamPickupFlags(void)
 extern "C" HamObj* FindFreeHamObj(void)
 {
 	s32 i;
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		if (!IsActive(hamObjs[i].mActor)) {
 			return &hamObjs[i];
 		}
@@ -1896,20 +1757,24 @@ extern "C" HamObj* FindFreeHamObj(void)
  */
 extern "C" HamObj* FindFacingHamburg(void)
 {
+	f32 dist;
+	f32 c;
 	HamObj* best = NULL;
 	f32 bestDist = 0.0f;
 	u32 i;
 
-	for (i = 0; i < 9; i++) {
-		HamObj* slot        = &hamObjs[i];
-		Stage01Actor* actor = slot->mActor;
-		if (IsActive(actor) && (actor->_228 & 0x100000000ULL) && slot->_30 <= 0 && actor->_238.mKind->_00 == 0x1F9) {
-			f32 dist  = PSVECDistance(&STAGE01_PLAYER->_C8, &actor->_C8);
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
+		HamObj* slot = &hamObjs[i];
+		XObj* actor  = slot->mActor;
+		if (IsActive(actor) && (actor->mStatus.mFlags & 0x100000000ULL) && slot->mStackLevel <= 0
+		    && actor->mCoord.mPlacement->mObjectId == 0x1F9) {
+			dist      = PSVECDistance(&gGame.GetPlayer()->mMoveTranslate, &actor->mMoveTranslate);
 			Vec* pos  = slot->GetPos();
-			Vec* ppos = &STAGE01_PLAYER->_C8;
+			Vec* ppos = &gGame.GetPlayer()->mMoveTranslate;
+			// the nearest pickable hamburger in a 45-degree cone within 15 units
 			f32 angle = atan2(pos->x - ppos->x, pos->z - ppos->z);
-			f32 c     = cos(angle - STAGE01_PLAYER->_FC);
-			if ((f32)cos(0.7853982f) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
+			c         = cos(angle - gGame.GetPlayer()->mMoveRotate.y);
+			if ((f32)cos(HALF_PI * 0.5f) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
 				best     = slot;
 				bestDist = dist;
 			}
@@ -1933,13 +1798,13 @@ extern "C" HamObj* FindFacingHamburg(void)
     stw      r30, 0x18(r1)
     stw      r29, 0x14(r1)
     stw      r28, 0x10(r1)
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     lis      r4, hamObjs@ha
-    addi     r5, r3, lbl_4_rodata_90@l
+    addi     r5, r3, sHamZero@l
     li       r29, 0x0
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lfs      f29, 0x0(r5)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addi     r31, r4, hamObjs@l
     li       r28, 0x0
     addis    r30, r3, 0x1
@@ -2002,15 +1867,15 @@ extern "C" HamObj* FindFacingHamburg(void)
     lfs      f0, 0xfc(r3)
     fsubs    f1, f1, f0
     bl       cos
-    lis      r3, lbl_4_rodata_A8@ha
+    lis      r3, sHamFacingHalfAngle@ha
     frsp     f30, f1
-    lfd      f1, lbl_4_rodata_A8@l(r3)
+    lfd      f1, sHamFacingHalfAngle@l(r3)
     bl       cos
     frsp     f0, f1
     fcmpo    cr0, f0, f30
     bge      .L_00001968
-    lis      r3, lbl_4_rodata_B0@ha
-    lfs      f0, lbl_4_rodata_B0@l(r3)
+    lis      r3, sHamFacingDistance@ha
+    lfs      f0, sHamFacingDistance@l(r3)
     fcmpo    cr0, f31, f0
     bge      .L_00001968
     cmplwi   r29, 0x0
@@ -2046,9 +1911,19 @@ extern "C" HamObj* FindFacingHamburg(void)
  * @note Address: stage01 .text 0x19B4
  * @note Size: 0x68
  */
-extern "C" HamObj* FindHamObjByActor(Stage01Actor* actor)
+extern "C" HamObj* FindHamObjByActor(XObj* actor)
 {
-	return FindHamObjByActorInline(actor);
+	s32 i;
+	if (actor == NULL) {
+		return NULL;
+	}
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
+			return &hamObjs[i];
+		}
+	}
+	return NULL;
 }
 
 // FindHamObjByActor
@@ -2090,12 +1965,13 @@ extern "C" HamObj* FindHamObjByActor(Stage01Actor* actor)
  */
 extern "C" HamObj* FindHamObj(s32 id)
 {
+	// NONMATCHING: regalloc
 	s32 i;
 	if (id < 0) {
-		return FindHamObjByActorInline(STAGE01_PLAYER->_A64);
+		return FindHamObjByActorInline(gGame.GetPlayer()->mLift.mTarget); // -1 asks for the held object
 	}
-	for (i = 0; i < 9; i++) {
-		if (hamObjs[i].mActor != NULL && id == hamObjs[i]._08) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
+		if (hamObjs[i].mActor != NULL && id == hamObjs[i].mId) {
 			return &hamObjs[i];
 		}
 	}
@@ -2106,8 +1982,8 @@ extern "C" HamObj* FindHamObj(s32 id)
 /*
     cmpwi    r3, 0x0
     bge      .L_00001AA0
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0x1
     lwz      r3, -0x6944(r3)
     lwz      r4, 0xa64(r3)
@@ -2172,43 +2048,46 @@ extern "C" HamObj* FindHamObj(s32 id)
  */
 extern "C" HamObj* RegisterHamObj(s32 id)
 {
+	// NONMATCHING: regalloc — retail forms the mActor field address once and
+	// reloads the pointer through it for both flag updates; the built code uses
+	// the field offset form and different callee registers
 	s32 i;
 	HamObj* slot = FindHamObj(id);
 	if (slot != NULL) {
 		return slot;
 	}
 
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		if (hamObjs[i].mActor == NULL) {
 			slot         = &hamObjs[i];
-			slot->_08    = id;
-			slot->mActor = STAGE01_ACTORS[id];
-			slot->_24    = 0;
-			slot->_34    = NULL;
-			slot->_00    = NULL;
-			switch (slot->mActor->_238.mKind->_00) {
+			slot->mId    = id;
+			slot->mActor = gGame.GetObject(id);
+			slot->mSide  = 0;
+			slot->mDish  = NULL;
+			slot->mAbove = NULL;
+			switch (slot->mActor->mCoord.mPlacement->mObjectId) {
 			case 0x1F9:
-				slot->_28[1] = 0;
-				slot->_28[0] = 0;
-				slot->_0C    = 1;
+				slot->mYakiTime[1] = 0;
+				slot->mYakiTime[0] = 0;
+				slot->mType        = 1;
 				break;
 			case 0x263:
-				slot->_28[1] = 9999;
-				slot->_28[0] = 9999;
-				slot->_0C    = 2;
+				slot->mYakiTime[1] = 9999;
+				slot->mYakiTime[0] = 9999;
+				slot->mType        = 2;
 				break;
 			case 0x264:
-				slot->_28[1] = 9999;
-				slot->_28[0] = 9999;
-				slot->_0C    = 3;
+				slot->mYakiTime[1] = 9999;
+				slot->mYakiTime[0] = 9999;
+				slot->mType        = 3;
 				break;
 			default:
-				hamObjs[i]._0C = 0;
+				hamObjs[i].mType = 0;
 				break;
 			}
 			if (slot->mActor != NULL) {
-				slot->mActor->_228 |= 0x100000000ULL;
-				slot->mActor->_228 |= 0x10000000000ULL;
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL; // the ham-game flags
+				slot->mActor->mStatus.mFlags |= 0x10000000000ULL;
 			}
 			return slot;
 		}
@@ -2220,8 +2099,8 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 /*
     cmpwi    r3, 0x0
     bge      .L_00001B78
-    lis      r4, lbl_8025C400@ha
-    addi     r4, r4, lbl_8025C400@l
+    lis      r4, gGame@ha
+    addi     r4, r4, gGame@l
     addis    r4, r4, 0x1
     lwz      r4, -0x6944(r4)
     lwz      r5, 0xa64(r4)
@@ -2292,9 +2171,9 @@ extern "C" HamObj* RegisterHamObj(s32 id)
     lwz      r0, 0x4(r4)
     cmplwi   r0, 0x0
     bne      .L_00001CF4
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     lis      r6, hamObjs@ha
-    addi     r4, r4, lbl_8025C400@l
+    addi     r4, r4, gGame@l
     slwi     r0, r3, 2
     addis    r5, r4, 0x1
     addi     r6, r6, hamObjs@l
@@ -2379,25 +2258,25 @@ extern "C" void ExitHamburg(void)
 	s32 i;
 
 	if (gasPlate != NULL) {
-		gasPlate->_228 |= 0x200000000ULL;
+		gasPlate->mStatus.mFlags |= 0x200000000ULL;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		HamObj* slot = &hamObjs[i];
-		if (slot->_3C != 0) {
-			STAGE01_PARTICLE->Kill(slot->_3C);
+		if (slot->mYakiEffect != 0) {
+			STAGE01_PARTICLE->Kill(slot->mYakiEffect);
 		}
-		slot->_08    = -1;
-		slot->mActor = NULL;
-		slot->mState = NULL;
-		slot->_3C    = 0;
+		slot->mId         = -1;
+		slot->mActor      = NULL;
+		slot->mState      = NULL;
+		slot->mYakiEffect = 0;
 	}
 	gasPlate = NULL;
 
 	psKillAllParticle();
-	fn_8001E660(STAGE01_SOUND, 0x4001C);
-	fn_8001E660(STAGE01_SOUND, 0x4001D);
-	fn_80068B48(STAGE01_OBJ_8F38);
+	StopGameSfx(STAGE01_SOUND, 0x4001C);
+	StopGameSfx(STAGE01_SOUND, 0x4001D);
+	AllowIdleHudCounters(&gGame.mInfoScrn);
 }
 
 /**
@@ -2406,40 +2285,43 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
+	// NONMATCHING: regalloc/scheduling — the unrolled hamDishes init, the
+	// zero/one constant slots and the gasPlate scan setup are interleaved
+	// differently and land in different callee registers
 	s32 i;
 	s32 count;
 
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
-		hamObjs[i]._08    = -1;
-		hamObjs[i].mActor = NULL;
-		hamObjs[i].mState = NULL;
-		hamObjs[i]._3C    = 0;
+		hamObjs[i].mId         = -1;
+		hamObjs[i].mActor      = NULL;
+		hamObjs[i].mState      = NULL;
+		hamObjs[i].mYakiEffect = 0;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
-		hamDishes[i]._04 = -1;
-		hamDishes[i]._00 = NULL;
+		hamDishes[i].mId    = -1;
+		hamDishes[i].mActor = NULL;
 	}
 
-	CGame* game = &lbl_8025C400;
-	count       = game->mObjectCount;
+	CGame* game = &gGame;
+	count       = game->mXObjs.mObjectCount;
 	gasPlate    = NULL;
 	for (i = 0; gasPlate == NULL && i < count; i++) {
-		Stage01Actor* actor = (Stage01Actor*)game->mObjects[i];
-		if ((actor->_228 & 1) && actor->_238.mKind->_00 == 0x200) {
+		XObj* actor = game->GetObject(i);
+		if ((actor->mStatus.mFlags & 1) && actor->mCoord.mPlacement->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
 		}
 	}
 	if (gasPlate != NULL) {
-		gasPlate->_228 &= ~0x200000000ULL;
+		gasPlate->mStatus.mFlags &= ~0x200000000ULL;
 	}
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		tempActors[i] = NULL;
 	}
 	yakiResultFlags.mFlags = 0;
 	putDownActive          = 0;
-	fn_80068B70(STAGE01_OBJ_8F38);
+	SuppressIdleHudCounters(&gGame.mInfoScrn);
 }
 
 // InitHamburg
@@ -2481,9 +2363,9 @@ extern "C" void InitHamburg(void)
     stw      r0, 0xdc(r7)
     addi     r7, r7, 0xf0
     bdnz     .L_00001E50
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r4, hamDishes@ha
-    addi     r8, r3, lbl_8025C400@l
+    addi     r8, r3, gGame@l
     li       r10, 0x0
     addi     r4, r4, hamDishes@l
     lis      r3, gasPlate@ha
@@ -2543,10 +2425,10 @@ extern "C" void InitHamburg(void)
     li       r0, 0x0
     lis      r6, tempActors@ha
     stwu     r0, tempActors@l(r6)
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r5, yakiResultFlags@ha
     lis      r4, putDownActive@ha
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     stw      r0, 0x4(r6)
     addis    r3, r3, 0x1
     stw      r0, 0x8(r6)
@@ -2554,7 +2436,7 @@ extern "C" void InitHamburg(void)
     stw      r0, 0xc(r6)
     stw      r0, yakiResultFlags@l(r5)
     stb      r0, putDownActive@l(r4)
-    bl       fn_80068B70
+    bl       SuppressIdleHudCounters
     lwz      r0, 0x24(r1)
     mtlr     r0
     addi     r1, r1, 0x20
@@ -2573,9 +2455,9 @@ extern "C" void UpdateHamObjs(u32 arg)
 		return;
 	}
 
-	Stage01Actor* player = STAGE01_PLAYER;
-	f32 x                = player->_C8.x;
-	f32 z                = player->_C8.z;
+	XObjChr* player = gGame.GetPlayer();
+	f32 x           = player->mMoveTranslate.x;
+	f32 z           = player->mMoveTranslate.z;
 	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		playerOffGasPlate = 1;
 	} else {
@@ -2589,20 +2471,21 @@ extern "C" void UpdateHamObjs(u32 arg)
 		}
 	}
 
+	// the cooking loop: one sound while something cooks, another once a side is well done
 	switch (yakiLoopLevel) {
 	case 1:
-		fn_8001E660(STAGE01_SOUND, 0x4001D);
-		fn_8001E904(STAGE01_SOUND, 0x4001C, 0xFF);
-		fn_8001E468(STAGE01_SOUND, 0x4001C, 0xFF, 0);
+		StopGameSfx(STAGE01_SOUND, 0x4001D);
+		PlayGameSound(STAGE01_SOUND, 0x4001C, 0xFF);
+		SetGameSfxVolume(STAGE01_SOUND, 0x4001C, 0xFF, 0);
 		break;
 	case 2:
-		fn_8001E660(STAGE01_SOUND, 0x4001C);
-		fn_8001E904(STAGE01_SOUND, 0x4001D, 0xFF);
-		fn_8001E468(STAGE01_SOUND, 0x4001D, 0xFF, 0);
+		StopGameSfx(STAGE01_SOUND, 0x4001C);
+		PlayGameSound(STAGE01_SOUND, 0x4001D, 0xFF);
+		SetGameSfxVolume(STAGE01_SOUND, 0x4001D, 0xFF, 0);
 		break;
 	default:
-		fn_8001E1A4(STAGE01_SOUND, 0x4001C, 600);
-		fn_8001E1A4(STAGE01_SOUND, 0x4001D, 600);
+		FadeOutGameSfx(STAGE01_SOUND, 0x4001C, 600);
+		FadeOutGameSfx(STAGE01_SOUND, 0x4001D, 600);
 		break;
 	}
 }
@@ -2625,7 +2508,7 @@ extern "C" void ResetYakiRates(void)
  */
 extern "C" void PlayYakiSound(void)
 {
-	fn_8001E904(STAGE01_SOUND, 0x4001B, 0xFF);
+	PlayGameSound(STAGE01_SOUND, 0x4001B, 0xFF);
 	yakiSoundPlayed = 1;
 }
 
@@ -2635,9 +2518,9 @@ extern "C" void PlayYakiSound(void)
  */
 void HamObj::StateStackLand()
 {
-	f32 dist = PSVECDistance(&mActor->_C8, &mActor->_D8);
+	f32 dist = PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTranslate.mTarget);
 	if (HamObj_CheckSlideHit(this)) {
-		mActor->vf_78(&mActor->_C8, 0.0f);
+		mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 		SetState(NULL);
 	} else if (dist <= 0.001f) {
 		SetState(NULL);
@@ -2650,58 +2533,57 @@ void HamObj::StateStackLand()
  */
 void HamObj::StatePutDown()
 {
-	Stage01Actor* player = STAGE01_PLAYER;
-	Vec pos;
+	// NONMATCHING: regalloc
+	XObjChr* player = gGame.GetPlayer();
 	s32 level;
 
 	switch (mStateTime) {
 	case 0: {
-		if (player->_A48 != 6 || player->_158 != 9) {
+		// wait until the player's put-down anim passes frame 15
+		if (player->mLift.mState != 6 || player->mAnimId != 9) {
 			break;
 		}
-		HSD_AObj* aobj = GetAObj(player->_00);
-		f32 frame      = aobj != NULL ? HSD_AObjGetCurrFrame(aobj) : 0.0f;
-		if (frame < 15.0f) {
+		if (GetAnimFrame(player->mJObj) < 15.0f) {
 			break;
 		}
 
 		if (IsHeld(mActor)) {
-			STAGE01_PLAYER->_A64 = NULL;
+			gGame.GetPlayer()->mLift.mTarget = NULL; // the player lets go
 		}
-		mActor->_228 &= ~0x400000000000000ULL;
-		_18 = player->_FC;
-		_20 = 2.0f;
-		pos = mActor->_C8;
-		pos.x += 5.0f * (f32)sin(_18);
-		pos.z += 5.0f * (f32)cos(_18);
+		mActor->mStatus.mFlags &= ~0x400000000000000ULL; // drop the carried flag
+		mMoveAngle = player->mMoveRotate.y;
+		mMoveSpeed = 2.0f;
+		Vec pos    = mActor->mMoveTranslate; // aim 5 units ahead in the player's facing
+		pos.x += 5.0f * (f32)sin(mMoveAngle);
+		pos.z += 5.0f * (f32)cos(mMoveAngle);
 
-		if (_34 != NULL) {
-			fn_8001E904(STAGE01_SOUND, 0x4001E, 0xFF);
-			pos.x = _34->_00->_C8.x;
-			pos.y = _34->_00->_C8.y;
-			pos.z = _34->_00->_C8.z;
-			_30   = CountHamDishObjs(_34);
-			pos.y = mActor->_238.GetSize().y + 2.0f * _30;
-			mActor->vf_78(&pos, _20);
+		if (mDish != NULL) {
+			PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
+			pos.x       = mDish->mActor->mMoveTranslate.x;
+			pos.y       = mDish->mActor->mMoveTranslate.y;
+			pos.z       = mDish->mActor->mMoveTranslate.z;
+			mStackLevel = CountHamDishObjs(mDish);
+			pos.y       = GetStackHeight();
+			mActor->SetMoveDir(&pos, mMoveSpeed);
 			SetState(NULL);
-			STAGE01_PARTICLE->Kill(_3C);
-			_3C = 0;
+			STAGE01_PARTICLE->Kill(mYakiEffect);
+			mYakiEffect = 0;
 			UpdateHamPickupFlags();
 			break;
 		}
 
-		if (_0C == 1) {
+		if (mType == 1) {
 			PlayYakiSound();
 		}
 
-		for (level = 4; level >= 0; level--) {
-			HamObj* base = FindStackBase(pos, _08, level, 5.0f);
+		for (level = 4; level >= 0; level--) { // land on the tallest stack in reach
+			HamObj* base = FindStackBase(pos, mId, level, 5.0f);
 			if (base != NULL) {
-				pos.y     = base->mActor->_C8.y;
-				base->_00 = this;
-				_30       = base->_30 + 1;
-				pos.y     = mActor->_238.GetSize().y + 2.0f * _30;
-				mActor->vf_78(&pos, _20);
+				pos.y        = base->mActor->mMoveTranslate.y;
+				base->mAbove = this;
+				mStackLevel  = base->mStackLevel + 1;
+				pos.y        = GetStackHeight();
+				mActor->SetMoveDir(&pos, mMoveSpeed);
 				SetState(&HamObj::StateStackLand);
 				UpdateHamPickupFlags();
 				return;
@@ -2709,22 +2591,22 @@ void HamObj::StatePutDown()
 		}
 
 		UpdateHamPickupFlags();
-		_30   = 0;
-		pos.y = mActor->_238.GetSize().y + 2.0f * _30;
-		mActor->vf_78(&pos, _20);
+		mStackLevel = 0;
+		pos.y       = GetStackHeight();
+		mActor->SetMoveDir(&pos, mMoveSpeed);
 		mStateTime++;
 		break;
 	}
-	case 1:
-		if (PSVECDistance(&mActor->_C8, &mActor->_D8) <= 0.001f) {
+	case 1: // arrived: on the gas plate it slides on, off it the put-down ends
+		if (PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTranslate.mTarget) <= 0.001f) {
 			UpdateHamPickupFlags();
 			if (IsOnGasPlate(mActor)) {
-				pos   = mActor->_C8;
-				pos.y = mActor->_238.GetSize().y;
-				mActor->vf_78(&pos, 10.0f);
-				StartSlide(5.0f, 0.2f, _18);
+				Vec pos = mActor->mMoveTranslate;
+				pos.y   = PlacementPosition(mActor->mCoord).y;
+				mActor->SetMoveDir(&pos, 10.0f);
+				StartSlide(5.0f, 0.2f, mMoveAngle);
 			} else {
-				_30 = 1;
+				mStackLevel = 1;
 				SetState(NULL);
 			}
 		}
@@ -2741,9 +2623,9 @@ void HamObj::StatePutDown()
     psq_st   f31, 0xe8(r1), 0, qr0
     stmw     r23, 0xbc(r1)
     mr       r30, r3
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lwz      r0, 0x4c(r30)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r31, r3, 0x1
     cmpwi    r0, 0x1
     lwz      r25, -0x6944(r31)
@@ -2763,21 +2645,21 @@ void HamObj::StatePutDown()
     cmplwi   r23, 0x0
     beq      .L_00002404
     mr       r3, r23
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_000023D4
     mr       r23, r3
     b        .L_00002408
 .L_000023D4:
     mr       r3, r23
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_000023EC
     mr       r23, r3
     b        .L_00002408
 .L_000023EC:
     mr       r3, r23
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00002404
     mr       r23, r3
@@ -2788,21 +2670,21 @@ void HamObj::StatePutDown()
     cmplwi   r23, 0x0
     beq      .L_00002434
     bne      .L_0000242C
-    lis      r3, lbl_4_rodata_BC@ha
-    lis      r5, lbl_4_rodata_C4@ha
-    addi     r3, r3, lbl_4_rodata_BC@l
+    lis      r3, sStage01PathAobjH@ha
+    lis      r5, sHamAnimCondition@ha
+    addi     r3, r3, sStage01PathAobjH@l
     li       r4, 0x95
-    addi     r5, r5, lbl_4_rodata_C4@l
+    addi     r5, r5, sHamAnimCondition@l
     bl       __assert
 .L_0000242C:
     lfs      f1, 0x4(r23)
     b        .L_0000243C
 .L_00002434:
-    lis      r3, lbl_4_rodata_90@ha
-    lfs      f1, lbl_4_rodata_90@l(r3)
+    lis      r3, sHamZero@ha
+    lfs      f1, sHamZero@l(r3)
 .L_0000243C:
-    lis      r3, lbl_4_rodata_B0@ha
-    lfs      f0, lbl_4_rodata_B0@l(r3)
+    lis      r3, sHamFacingDistance@ha
+    lfs      f0, sHamFacingDistance@l(r3)
     fcmpo    cr0, f1, f0
     blt      .L_00002CF8
     lwz      r0, 0xa48(r25)
@@ -2823,13 +2705,13 @@ void HamObj::StatePutDown()
 .L_00002484:
     lwz      r7, 0x4(r30)
     lis      r4, 0xfc00
-    lis      r3, lbl_4_rodata_CC@ha
+    lis      r3, sHamStackLevelHeight@ha
     li       r0, -0x1
     lwz      r6, 0x22c(r7)
     subi     r4, r4, 0x1
     lwz      r5, 0x228(r7)
     and      r0, r6, r0
-    lfs      f0, lbl_4_rodata_CC@l(r3)
+    lfs      f0, sHamStackLevelHeight@l(r3)
     stw      r0, 0x22c(r7)
     and      r0, r5, r4
     stw      r0, 0x228(r7)
@@ -2845,31 +2727,31 @@ void HamObj::StatePutDown()
     stw      r0, 0x88(r1)
     lfs      f1, 0x18(r30)
     bl       sin
-    lis      r3, lbl_4_rodata_D0@ha
+    lis      r3, sHamReturnSlideSpeed@ha
     frsp     f2, f1
     lfs      f0, 0x80(r1)
-    lfs      f1, lbl_4_rodata_D0@l(r3)
+    lfs      f1, sHamReturnSlideSpeed@l(r3)
     fmadds   f0, f1, f2, f0
     stfs     f0, 0x80(r1)
     lfs      f1, 0x18(r30)
     bl       cos
-    lis      r3, lbl_4_rodata_D0@ha
+    lis      r3, sHamReturnSlideSpeed@ha
     frsp     f2, f1
     lfs      f0, 0x88(r1)
-    lfs      f1, lbl_4_rodata_D0@l(r3)
+    lfs      f1, sHamReturnSlideSpeed@l(r3)
     fmadds   f0, f1, f2, f0
     stfs     f0, 0x88(r1)
     lwz      r0, 0x34(r30)
     cmplwi   r0, 0x0
     beq      .L_00002714
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r4, 0x4
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     li       r5, 0xff
     addis    r3, r3, 0xe
     addi     r4, r4, 0x1e
     addi     r3, r3, 0x7e24
-    bl       fn_8001E904
+    bl       PlayGameSound
     lwz      r4, 0x34(r30)
     lwz      r3, 0x0(r4)
     lfs      f0, 0xc8(r3)
@@ -2906,18 +2788,18 @@ void HamObj::StatePutDown()
 .L_000025BC:
     stw      r0, 0x30(r30)
     lis      r8, 0x4330
-    lis      r4, lbl_4_rodata_70@ha
-    lis      r5, lbl_4_rodata_78@ha
+    lis      r4, sHamRatePercent@ha
+    lis      r5, sHamRateSignedBias@ha
     lwz      r3, 0x4(r30)
-    addi     r7, r4, lbl_4_rodata_70@l
-    lis      r4, lbl_4_bss_0@ha
-    addi     r10, r5, lbl_4_rodata_78@l
+    addi     r7, r4, sHamRatePercent@l
+    lis      r4, sHamPlacementPosition@ha
+    addi     r10, r5, sHamRateSignedBias@l
     lwz      r9, 0x238(r3)
-    addi     r12, r4, lbl_4_bss_0@l
-    lis      r4, lbl_4_rodata_CC@ha
+    addi     r12, r4, sHamPlacementPosition@l
+    lis      r4, sHamStackLevelHeight@ha
     lfd      f5, 0x0(r10)
     lwz      r0, 0x8(r9)
-    addi     r5, r4, lbl_4_rodata_CC@l
+    addi     r5, r4, sHamStackLevelHeight@l
     lfs      f3, 0x0(r7)
     xoris    r4, r0, 0x8000
     lwz      r11, 0x4(r12)
@@ -2971,11 +2853,11 @@ void HamObj::StatePutDown()
     mtctr    r12
     bctrl
     lis      r4, __ptmf_null@ha
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     addi     r6, r4, __ptmf_null@l
     li       r0, 0x0
     lwz      r5, 0x0(r6)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     lwz      r4, 0x4(r6)
     addis    r3, r3, 0x1
     subi     r3, r3, 0x6eec
@@ -2994,21 +2876,21 @@ void HamObj::StatePutDown()
     lwz      r0, 0xc(r30)
     cmpwi    r0, 0x1
     bne      .L_0000274C
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r4, 0x4
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     li       r5, 0xff
     addis    r3, r3, 0xe
     addi     r4, r4, 0x1b
     addi     r3, r3, 0x7e24
-    bl       fn_8001E904
+    bl       PlayGameSound
     lis      r3, yakiSoundPlayed@ha
     li       r0, 0x1
     stb      r0, yakiSoundPlayed@l(r3)
 .L_0000274C:
-    lis      r4, lbl_4_rodata_D0@ha
+    lis      r4, sHamReturnSlideSpeed@ha
     lis      r3, hamObjs@ha
-    addi     r28, r4, lbl_4_rodata_D0@l
+    addi     r28, r4, sHamReturnSlideSpeed@l
     li       r23, 0x4
     addi     r29, r3, hamObjs@l
 .L_00002760:
@@ -3086,19 +2968,19 @@ void HamObj::StatePutDown()
     beq      .L_000029B4
     lwz      r5, 0x4(r25)
     lis      r7, 0x4330
-    lis      r6, lbl_4_bss_0@ha
-    lis      r4, lbl_4_rodata_78@ha
+    lis      r6, sHamPlacementPosition@ha
+    lis      r4, sHamRateSignedBias@ha
     lfs      f0, 0xcc(r5)
-    addi     r5, r4, lbl_4_rodata_78@l
-    lis      r3, lbl_4_rodata_70@ha
+    addi     r5, r4, sHamRateSignedBias@l
+    lis      r3, sHamRatePercent@ha
     lfd      f5, 0x0(r5)
     stfs     f0, 0x84(r1)
-    addi     r4, r3, lbl_4_rodata_70@l
-    lis      r3, lbl_4_rodata_CC@ha
+    addi     r4, r3, sHamRatePercent@l
+    lis      r3, sHamStackLevelHeight@ha
     lfs      f4, 0x0(r4)
     stw      r30, 0x0(r25)
-    addi     r11, r6, lbl_4_bss_0@l
-    lfs      f2, lbl_4_rodata_CC@l(r3)
+    addi     r11, r6, sHamPlacementPosition@l
+    lfs      f2, sHamStackLevelHeight@l(r3)
     addi     r4, r1, 0x80
     lwz      r5, 0x30(r25)
     stw      r7, 0xa8(r1)
@@ -3155,9 +3037,9 @@ void HamObj::StatePutDown()
     lwz      r12, 0x78(r12)
     mtctr    r12
     bctrl
-    lis      r3, lbl_4_data_D0@ha
+    lis      r3, sHamStackLandState@ha
     li       r0, 0x0
-    addi     r5, r3, lbl_4_data_D0@l
+    addi     r5, r3, sHamStackLandState@l
     lwz      r4, 0x0(r5)
     lwz      r3, 0x4(r5)
     stw      r4, 0x40(r30)
@@ -3174,19 +3056,19 @@ void HamObj::StatePutDown()
     li       r0, 0x0
     lis      r8, 0x4330
     stw      r0, 0x30(r30)
-    lis      r3, lbl_4_rodata_78@ha
-    addi     r10, r3, lbl_4_rodata_78@l
-    lis      r4, lbl_4_rodata_70@ha
+    lis      r3, sHamRateSignedBias@ha
+    addi     r10, r3, sHamRateSignedBias@l
+    lis      r4, sHamRatePercent@ha
     lwz      r3, 0x4(r30)
-    addi     r7, r4, lbl_4_rodata_70@l
-    lis      r4, lbl_4_bss_0@ha
+    addi     r7, r4, sHamRatePercent@l
+    lis      r4, sHamPlacementPosition@ha
     lwz      r0, 0x30(r30)
     lwz      r12, 0x238(r3)
-    addi     r23, r4, lbl_4_bss_0@l
+    addi     r23, r4, sHamPlacementPosition@l
     lfs      f4, 0x0(r7)
-    lis      r4, lbl_4_rodata_CC@ha
+    lis      r4, sHamStackLevelHeight@ha
     lwz      r9, 0x4(r12)
-    addi     r5, r4, lbl_4_rodata_CC@l
+    addi     r5, r4, sHamStackLevelHeight@l
     lwz      r6, 0x8(r12)
     xoris    r0, r0, 0x8000
     xoris    r9, r9, 0x8000
@@ -3247,29 +3129,29 @@ void HamObj::StatePutDown()
     addi     r3, r4, 0xc8
     addi     r4, r4, 0xd8
     bl       PSVECDistance
-    lis      r3, lbl_4_rodata_B8@ha
-    lfs      f0, lbl_4_rodata_B8@l(r3)
+    lis      r3, sHamLandingTolerance@ha
+    lfs      f0, sHamLandingTolerance@l(r3)
     fcmpo    cr0, f1, f0
     cror     eq, lt, eq
     bne      .L_00002CF8
     bl       UpdateHamPickupFlags
     lwz      r10, 0x4(r30)
-    lis      r3, lbl_4_rodata_80@ha
-    lfs      f0, lbl_4_rodata_80@l(r3)
+    lis      r3, sHamGasPlateMinX@ha
+    lfs      f0, sHamGasPlateMinX@l(r3)
     lfs      f2, 0xc8(r10)
     lfs      f1, 0xd0(r10)
     fcmpo    cr0, f2, f0
     blt      .L_00002B50
-    lis      r3, lbl_4_rodata_84@ha
-    lfs      f0, lbl_4_rodata_84@l(r3)
+    lis      r3, sHamGasPlateMaxX@ha
+    lfs      f0, sHamGasPlateMaxX@l(r3)
     fcmpo    cr0, f0, f2
     blt      .L_00002B50
-    lis      r3, lbl_4_rodata_88@ha
-    lfs      f0, lbl_4_rodata_88@l(r3)
+    lis      r3, sHamGasPlateMinZ@ha
+    lfs      f0, sHamGasPlateMinZ@l(r3)
     fcmpo    cr0, f1, f0
     blt      .L_00002B50
-    lis      r3, lbl_4_rodata_8C@ha
-    lfs      f0, lbl_4_rodata_8C@l(r3)
+    lis      r3, sHamGasPlateMaxZ@ha
+    lfs      f0, sHamGasPlateMaxZ@l(r3)
     fcmpo    cr0, f0, f1
     bge      .L_00002B58
 .L_00002B50:
@@ -3283,18 +3165,18 @@ void HamObj::StatePutDown()
     lwz      r4, 0xc8(r10)
     lis      r8, 0x4330
     lwz      r0, 0xcc(r10)
-    lis      r3, lbl_4_rodata_78@ha
-    addi     r6, r3, lbl_4_rodata_78@l
+    lis      r3, sHamRateSignedBias@ha
+    addi     r6, r3, sHamRateSignedBias@l
     stw      r8, 0xa0(r1)
-    lis      r3, lbl_4_rodata_70@ha
+    lis      r3, sHamRatePercent@ha
     lfd      f5, 0x0(r6)
     stw      r4, 0x74(r1)
-    addi     r7, r3, lbl_4_rodata_70@l
-    lis      r3, lbl_4_rodata_68@ha
-    lis      r4, lbl_4_bss_0@ha
+    addi     r7, r3, sHamRatePercent@l
+    lis      r3, sHamResultMinZ@ha
+    lis      r4, sHamPlacementPosition@ha
     stw      r0, 0x78(r1)
-    addi     r9, r4, lbl_4_bss_0@l
-    addi     r5, r3, lbl_4_rodata_68@l
+    addi     r9, r4, sHamPlacementPosition@l
+    addi     r5, r3, sHamResultMinZ@l
     lwz      r11, 0x4(r9)
     lwz      r0, 0xd0(r10)
     addi     r4, r1, 0x74
@@ -3343,21 +3225,21 @@ void HamObj::StatePutDown()
     stw      r0, 0x64(r1)
     mtctr    r12
     bctrl
-    lis      r3, lbl_4_data_AC@ha
+    lis      r3, sHamFlipComparison@ha
     lfs      f31, 0x18(r30)
-    addi     r4, r3, lbl_4_data_AC@l
+    addi     r4, r3, sHamFlipComparison@l
     addi     r3, r30, 0x40
     bl       __ptmf_cmpr
     cmpwi    r3, 0x0
     beq      .L_00002CF8
-    lis      r3, lbl_4_rodata_D0@ha
-    lis      r4, lbl_4_rodata_D4@ha
-    addi     r5, r3, lbl_4_rodata_D0@l
+    lis      r3, sHamReturnSlideSpeed@ha
+    lis      r4, sHamReturnSlideStep@ha
+    addi     r5, r3, sHamReturnSlideSpeed@l
     stfs     f31, 0x18(r30)
     lfs      f1, 0x0(r5)
-    lis      r3, lbl_4_data_B8@ha
-    lfs      f0, lbl_4_rodata_D4@l(r4)
-    addi     r5, r3, lbl_4_data_B8@l
+    lis      r3, sHamSlideState@ha
+    lfs      f0, sHamReturnSlideStep@l(r4)
+    addi     r5, r3, sHamSlideState@l
     stfs     f1, 0x1c(r30)
     li       r0, 0x0
     stfs     f0, 0x20(r30)
@@ -3402,15 +3284,15 @@ void HamObj::StateSlide()
 
 	switch (mStateTime) {
 	case 0:
-		pos.x = mActor->_C8.x;
-		pos.y = mActor->_C8.y;
-		pos.z = mActor->_C8.z;
-		pos.x += _1C * (f32)sin(_18);
-		pos.y = mActor->_238.GetSize().y;
-		pos.z += _1C * (f32)cos(_18);
-		mActor->vf_78(&pos, _20);
+		pos.x = mActor->mMoveTranslate.x;
+		pos.y = mActor->mMoveTranslate.y;
+		pos.z = mActor->mMoveTranslate.z;
+		pos.x += mSlideDistance * (f32)sin(mMoveAngle);
+		pos.y = PlacementPosition(mActor->mCoord).y;
+		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
+		mActor->SetMoveDir(&pos, mMoveSpeed);
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->_C8, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
 		}
 		if (mStateTime == 0) {
@@ -3419,14 +3301,14 @@ void HamObj::StateSlide()
 		break;
 	case 1:
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->_C8, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
-		} else if (IsSamePos(mActor->_C8, mActor->_D8)) {
+		} else if (IsSamePos(mActor->mMoveTranslate, mActor->mMoveTranslate.mTarget)) {
 			SetState(NULL);
 		}
-		if (_00 != NULL && 8.0f < PSVECDistance(&mActor->_C8, &_00->mActor->_C8)) {
-			HamObj_LowerStack(_00);
-			_00 = NULL;
+		if (mAbove != NULL && 8.0f < PSVECDistance(&mActor->mMoveTranslate, &mAbove->mActor->mMoveTranslate)) {
+			HamObj_LowerStack(mAbove); // it slid out from under its stack: drop what sits on it one level
+			mAbove = NULL;
 		}
 		break;
 	}
@@ -3439,32 +3321,32 @@ void HamObj::StateSlide()
 void HamObj::StateFlip()
 {
 	switch (mStateTime) {
-	case 0:
-		if (0.0f < (f32)cos(HSD_JObjGetRotationZ(mActor->_00))) {
-			_10 = PI;
+	case 0: // flip to the opposite side: upside-down aims for 0, upright for PI
+		if (0.0f < (f32)cos(HSD_JObjGetRotationZ(mActor->mJObj))) {
+			mRotZ = PI;
 		} else {
-			_10 = 0.0f;
+			mRotZ = 0.0f;
 		}
 		mStateTime++;
 		break;
-	case 1:
-		_14 -= 1.0f;
-		if (0.0f < _14) {
-			f32 rot = HSD_JObjGetRotationZ(mActor->_00);
-			mActor->vf_2C(rot + (_10 - rot) / _14, 0);
+	case 1: // ease the rotation over the flip frames, then settle the new side
+		mFlipFrames -= 1.0f;
+		if (0.0f < mFlipFrames) {
+			f32 rot = HSD_JObjGetRotationZ(mActor->mJObj);
+			mActor->SetRotationZ(rot + (mRotZ - rot) / mFlipFrames, 0);
 		} else {
 			s32 level;
 			PlayYakiSound();
-			level = _28[_24] / 600;
+			level = mYakiTime[mSide] / 600;
 			if (level >= 5) {
-				level = 4;
+				level = 4; // the doneness anim stops at 4
 			}
-			mActor->vf_80(level, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
-			_24 = 1 - _24;
+			mActor->SetAnim(level, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			mSide = 1 - mSide; // the other side now faces the plate
 			SetState(NULL);
 		}
 		break;
-	default:
+	case 2:
 		break;
 	}
 }
@@ -3490,22 +3372,22 @@ void HamObj::StateFlip()
     lwz      r30, 0x0(r3)
     cmplwi   r30, 0x0
     bne      .L_00003080
-    lis      r3, lbl_4_rodata_DC@ha
-    lis      r5, lbl_4_rodata_E4@ha
-    addi     r3, r3, lbl_4_rodata_DC@l
+    lis      r3, sHamJointHeader@ha
+    lis      r5, sHamJointCondition@ha
+    addi     r3, r3, sHamJointHeader@l
     li       r4, 0x308
-    addi     r5, r5, lbl_4_rodata_E4@l
+    addi     r5, r5, sHamJointCondition@l
     bl       __assert
 .L_00003080:
     lfs      f1, 0x24(r30)
     bl       cos
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r3, sHamZero@ha
     frsp     f1, f1
-    lfs      f0, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamZero@l(r3)
     fcmpo    cr0, f0, f1
     bge      .L_000030AC
-    lis      r3, lbl_4_rodata_EC@ha
-    lfs      f0, lbl_4_rodata_EC@l(r3)
+    lis      r3, sHamHalfTurn@ha
+    lfs      f0, sHamHalfTurn@l(r3)
     stfs     f0, 0x10(r31)
     b        .L_000030B0
 .L_000030AC:
@@ -3516,11 +3398,11 @@ void HamObj::StateFlip()
     stw      r0, 0x4c(r31)
     b        .L_00003224
 .L_000030C0:
-    lis      r4, lbl_4_rodata_B4@ha
-    lis      r3, lbl_4_rodata_90@ha
+    lis      r4, sHamDefaultRate@ha
+    lis      r3, sHamZero@ha
     lfs      f2, 0x14(r31)
-    lfs      f0, lbl_4_rodata_B4@l(r4)
-    lfs      f1, lbl_4_rodata_90@l(r3)
+    lfs      f0, sHamDefaultRate@l(r4)
+    lfs      f1, sHamZero@l(r3)
     fsubs    f0, f2, f0
     stfs     f0, 0x14(r31)
     lfs      f0, 0x14(r31)
@@ -3530,11 +3412,11 @@ void HamObj::StateFlip()
     lwz      r30, 0x0(r3)
     cmplwi   r30, 0x0
     bne      .L_00003110
-    lis      r3, lbl_4_rodata_DC@ha
-    lis      r5, lbl_4_rodata_E4@ha
-    addi     r3, r3, lbl_4_rodata_DC@l
+    lis      r3, sHamJointHeader@ha
+    lis      r5, sHamJointCondition@ha
+    addi     r3, r3, sHamJointHeader@l
     li       r4, 0x308
-    addi     r5, r5, lbl_4_rodata_E4@l
+    addi     r5, r5, sHamJointCondition@l
     bl       __assert
 .L_00003110:
     lfs      f2, 0x24(r30)
@@ -3551,14 +3433,14 @@ void HamObj::StateFlip()
     bctrl
     b        .L_00003224
 .L_00003144:
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lis      r4, 0x4
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     li       r5, 0xff
     addis    r3, r3, 0xe
     addi     r4, r4, 0x1b
     addi     r3, r3, 0x7e24
-    bl       fn_8001E904
+    bl       PlayGameSound
     lis      r4, yakiSoundPlayed@ha
     li       r0, 0x1
     stb      r0, yakiSoundPlayed@l(r4)
@@ -3577,15 +3459,15 @@ void HamObj::StateFlip()
     li       r4, 0x4
 .L_000031A4:
     lwz      r3, 0x4(r31)
-    lis      r5, lbl_4_rodata_90@ha
-    addi     r7, r5, lbl_4_rodata_90@l
-    lis      r6, lbl_4_rodata_B4@ha
+    lis      r5, sHamZero@ha
+    addi     r7, r5, sHamZero@l
+    lis      r6, sHamDefaultRate@ha
     lwz      r12, 0x34(r3)
-    lis      r5, lbl_4_rodata_68@ha
+    lis      r5, sHamResultMinZ@ha
     lfs      f1, 0x0(r7)
-    addi     r7, r6, lbl_4_rodata_B4@l
+    addi     r7, r6, sHamDefaultRate@l
     lwz      r12, 0x80(r12)
-    addi     r6, r5, lbl_4_rodata_68@l
+    addi     r6, r5, sHamResultMinZ@l
     fmr      f3, f1
     lfs      f2, 0x0(r7)
     lfs      f4, 0x0(r6)
@@ -3623,46 +3505,17 @@ void HamObj::StateFlip()
  */
 extern "C" void HamObj_LowerStack(HamObj* slot)
 {
-	if (slot->_30 > 0) {
-		slot->_30--;
+	// drop a stacked object, and what sits on it, one level
+	if (slot->mStackLevel > 0) {
+		slot->mStackLevel--;
 		Vec pos = *slot->GetPos();
 		pos.y   = slot->GetStackHeight();
-		slot->GetActor()->vf_78(&pos, 0.1f);
-		if (slot->_00 != NULL) {
-			HamObj_LowerStack(slot->_00);
+		slot->GetActor()->SetMoveDir(&pos, 0.1f);
+		if (slot->mAbove != NULL) {
+			HamObj_LowerStack(slot->mAbove);
 		}
 	}
 }
-
-/**
- * @note Address: stage01 .text 0x3768
- * @note Size: 0xC
- */
-
-/**
- * @note Address: stage01 .text 0x3774
- * @note Size: 0xBC
- */
-
-/**
- * @note Address: stage01 .text 0x3830
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3838
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3840
- * @note Size: 0x8
- */
-
-/**
- * @note Address: stage01 .text 0x3848
- * @note Size: 0xF0
- */
 
 /**
  * @note Address: stage01 .text 0x3938
@@ -3680,22 +3533,22 @@ extern "C" void HamObj_SetRot(HamObj* slot, f32 rot)
 extern "C" void HamObj_StartPutDown(HamObj* slot)
 {
 	s32 i;
-	Stage01Actor* player = STAGE01_PLAYER;
+	XObjChr* player = gGame.GetPlayer();
 
 	if (IsHeld(slot->mActor)) {
 		HamObj* other;
-		putDownActive = 1;
-		for (i = 0, other = hamObjs; i < 9; i++, other++) {
+		putDownActive = 1; // while it runs, no pickup flags
+		for (i = 0, other = hamObjs; i < ARRAY_SIZE(hamObjs); i++, other++) {
 			if (IsActive(other->mActor)) {
-				other->mActor->_228 &= ~0x100000000ULL;
+				other->mActor->mStatus.mFlags &= ~0x100000000ULL;
 				if (IsOnTopOf(other, slot)) {
-					other->_00 = NULL;
+					other->mAbove = NULL; // it was stacked under the held object
 				}
 			}
 		}
 		slot->SetState(&HamObj::StatePutDown);
-	} else if (player->_A48 == 4) {
-		player->_A48 = 6;
+	} else if (player->mLift.mState == 4) {
+		player->mLift.mState = 6; // play the put-down animation
 	}
 }
 
@@ -3706,48 +3559,50 @@ extern "C" void HamObj_StartPutDown(HamObj* slot)
 extern "C" void HamObj_Respawn(HamObj* slot)
 {
 	if (putDownActive) {
-		slot->mActor->_228 &= ~0x100000000ULL;
+		slot->mActor->mStatus.mFlags &= ~0x100000000ULL; // a put-down is running: it can't be picked
 	}
 
-	if (slot->_0C == 1) {
-		slot->_24    = 0;
-		slot->_28[1] = 0;
-		slot->_28[0] = 0;
+	if (slot->mType == 1) { // a hamburger respawns raw and sizzles; anything else just lands
+		slot->mSide        = 0;
+		slot->mYakiTime[1] = 0;
+		slot->mYakiTime[0] = 0;
 		PlayYakiSound();
 	} else {
-		fn_8001E904(STAGE01_SOUND, 0x4001E, 0xFF);
+		PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
 	}
 
-	slot->mActor->vf_68(0, -231.8f, 77.5f, 50.0f);
-	slot->mActor->vf_80(0, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+	// put it back at the spawn point upright, at anim 0 (raw)
+	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f, 0);
+	slot->mActor->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	slot->SetRot(0.0f);
 
-	f32 speed;
+	f32 distance;
+	// toss it back in a random 240-300-degree direction
 	f32 angle = DEG2RAD * (HSD_Randi(60) + 240);
-	speed     = 30.0f + HSD_Randi(15);
-	slot->StartSlide(speed, 0.5f, angle);
-	slot->_38 = 1;
-	slot->_30 = 0;
-	slot->_00 = NULL;
+	distance  = 30.0f + HSD_Randi(15);
+	slot->StartSlide(distance, 0.5f, angle);
+	slot->mSpawned    = 1;
+	slot->mStackLevel = 0;
+	slot->mAbove      = NULL;
 }
 
 /**
  * @note Address: stage01 .text 0x3D30
  * @note Size: 0x98
  */
-extern "C" void HamObj_StartSlide(HamObj* slot, f32 speed, f32 f, f32 angle)
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle)
 {
-	slot->StartSlide(speed, f, angle);
+	slot->StartSlide(distance, speed, angle);
 }
 
 /**
  * @note Address: stage01 .text 0x3DC8
  * @note Size: 0xA8
  */
-extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
+extern "C" void HamObj_StartFlip(HamObj* slot, u32 frames)
 {
-	slot->_14 = time;
-	slot->_18 = atan2(slot->mActor->_C8.x - STAGE01_PLAYER->_C8.x, slot->mActor->_C8.z - STAGE01_PLAYER->_C8.z);
+	slot->mFlipFrames = frames;
+	slot->mMoveAngle  = AngleFrom(&gGame.GetPlayer()->mMoveTranslate, &slot->mActor->mMoveTranslate);
 	slot->SetState(&HamObj::StateFlip);
 }
 
@@ -3755,13 +3610,13 @@ extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
 /*
     stwu     r1, -0x20(r1)
     mflr     r0
-    lis      r5, lbl_4_rodata_108@ha
+    lis      r5, sHamFlipTimeUnsignedBias@ha
     stw      r0, 0x24(r1)
     lis      r0, 0x4330
-    lfd      f1, lbl_4_rodata_108@l(r5)
+    lfd      f1, sHamFlipTimeUnsignedBias@l(r5)
     stw      r4, 0xc(r1)
-    lis      r4, lbl_8025C400@ha
-    addi     r4, r4, lbl_8025C400@l
+    lis      r4, gGame@ha
+    addi     r4, r4, gGame@l
     stw      r0, 0x8(r1)
     lfd      f0, 0x8(r1)
     stw      r31, 0x1c(r1)
@@ -3779,8 +3634,8 @@ extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
     fsubs    f2, f2, f0
     bl       atan2
     frsp     f0, f1
-    lis      r3, lbl_4_data_A0@ha
-    addi     r5, r3, lbl_4_data_A0@l
+    lis      r3, sHamFlipState@ha
+    addi     r5, r3, sHamFlipState@l
     li       r0, 0x0
     stfs     f0, 0x18(r31)
     lwz      r4, 0x0(r5)
@@ -3804,21 +3659,22 @@ extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
 extern "C" void HamObj_Update(HamObj* slot, u32 step)
 {
 	if (!IsActive(slot->mActor)) {
-		slot->_38 = 0;
+		slot->mSpawned = 0;
 	}
 
-	if (slot->_0C == 1 && slot->_38 && slot->_30 == 0 && !IsHeld(slot->mActor)) {
-		s32 oldLevel = slot->_28[slot->_24] / 600 + 1;
+	// only an unstacked spawned hamburger that isn't carried cooks
+	if (slot->mType == 1 && slot->mSpawned && slot->mStackLevel == 0 && !IsHeld(slot->mActor)) {
+		s32 oldLevel = slot->mYakiTime[slot->mSide] / 600 + 1;
 		f32 rate;
 		if (oldLevel < 1 || oldLevel >= ARRAY_SIZE(yakiRates)) {
 			rate = 1.0f;
 		} else {
 			rate = yakiRates[oldLevel];
 		}
-		slot->_28[slot->_24] += step * rate;
+		slot->mYakiTime[slot->mSide] += step * rate; // cook at the script's rate for the current doneness
 
-		s32 level = slot->_28[slot->_24] / 600 + 1;
-		if (oldLevel > 5) {
+		s32 level = slot->mYakiTime[slot->mSide] / 600 + 1;
+		if (oldLevel > 5) { // doneness tops out at 5 (burnt)
 			oldLevel = 5;
 		}
 		if (level > 5) {
@@ -3827,24 +3683,24 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 
 		Vec scale;
 		Vec pos;
-		pos.x = slot->mActor->_C8.x;
-		pos.y = slot->mActor->_C8.y;
-		pos.z = slot->mActor->_C8.z;
+		pos.x = slot->mActor->mMoveTranslate.x;
+		pos.y = slot->mActor->mMoveTranslate.y;
+		pos.z = slot->mActor->mMoveTranslate.z;
 		pos.y += 2.5f;
 		scale.x = scale.y = scale.z = 1.0f;
 
-		if (level < 4 && oldLevel < level) {
+		if (level < 4 && oldLevel < level) { // crossing into a new doneness puffs once
 			static const Vec rot = { 0.0f, 0.0f, 0.0f };
 			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, rot, 1);
 		}
-		if (level == 4) {
-			if (slot->_28[slot->_24] % 180 == 0) {
+		if (level == 4) { // well done: re-puff every 180 units of cook time
+			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
 				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
 			}
-		} else if (level >= 5) {
-			if (slot->_28[slot->_24] % 120 == 0) {
+		} else if (level >= 5) { // burnt: every 120 units of cook time
+			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
 				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
@@ -3855,39 +3711,43 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 			yakiLoopLevel = 1;
 		}
 		if (level >= 4) {
-			yakiLoopLevel = 2;
+			yakiLoopLevel = 2; // a side at doneness 4+ switches the cooking loop
 		}
 
-		if (slot->_3C == 0) {
-			static const s32 path[] = { 0 };
-			HSD_JObj* jobj          = FindChild(slot->mActor->_00, path[0]);
-			slot->_3C               = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
+		if (slot->mYakiEffect == 0) { // start the cooking particles on joint 0 once
+			s32 path[]        = { 0 };
+			HSD_JObj* jobj    = GetJointByPath(slot->mActor->mJObj, path, 1);
+			slot->mYakiEffect = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
 		}
 	}
 
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
-	} else if (slot->_38 && slot->_34 == NULL) {
-		f32 angle = atan2(-263.9f - slot->mActor->_C8.x, 42.0f - slot->mActor->_C8.z);
-		if (!IsOnGasPlate(slot->mActor)) {
+	} else if (slot->mSpawned && slot->mDish == NULL) {
+		// slides go toward the plate centre (-263.9, 42.0)
+		f32 angle = atan2(-263.9f - slot->mActor->mMoveTranslate.x, 42.0f - slot->mActor->mMoveTranslate.z);
+		if (!IsOnGasPlate(slot->mActor)) { // off the plate: slide back onto it
 			slot->StartSlide(5.0f, 0.2f, angle);
-			slot->_30 = 0;
-		} else if (slot->_30 == 0 && playerOffGasPlate) {
-			if (PSVECDistance(&STAGE01_PLAYER->_C8, &slot->mActor->_C8) < 8.0f) {
+			slot->mStackLevel = 0;
+		} else if (slot->mStackLevel == 0 && playerOffGasPlate) {
+			// a player standing off the plate nudges it when closer than 8
+			if (PSVECDistance(&gGame.GetPlayer()->mMoveTranslate, &slot->mActor->mMoveTranslate) < 8.0f) {
 				slot->StartSlide(5.0f, 0.2f, angle);
 			}
-		} else if (slot->mActor->_238.GetSize().y + 2.0f * slot->_30 < slot->mActor->_C8.y) {
-			slot->StartSlide(0.0f, 0.5f, angle);
+		} else if (PlacementPosition(slot->mActor->mCoord).y + 2.0f * slot->mStackLevel < slot->mActor->mMoveTranslate.y) {
+			slot->StartSlide(0.0f, 0.5f, angle); // still in the air above its stack height: settle down
 		}
 
-		if (!putDownActive && !(slot->mActor->_228 & 0x100000000ULL) && (slot->_00 == NULL || slot->_30 == slot->_00->_30)) {
-			slot->mActor->_228 |= 0x100000000ULL;
+		// restore the pickup flag once it is uncovered again
+		if (!putDownActive && !(slot->mActor->mStatus.mFlags & 0x100000000ULL)
+		    && (slot->mAbove == NULL || (slot->mAbove != NULL && slot->mStackLevel == slot->mAbove->mStackLevel))) {
+			slot->mActor->mStatus.mFlags |= 0x100000000ULL;
 		}
 	}
 
-	if (slot->_38 && slot->mActor->_C8.y < 77.5f) {
-		slot->mActor->vf_10(78.0f, 0);
-		slot->mActor->vf_2C(slot->_10, 0);
+	if (slot->mSpawned && slot->mActor->mMoveTranslate.y < 77.5f) { // keep spawned objects on the plate
+		slot->mActor->SetTranslateY(78.0f, 0);
+		slot->mActor->SetRotationZ(slot->mRotZ, 0);
 	}
 }
 
@@ -3936,9 +3796,9 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     lwz      r0, 0x30(r30)
     cmpwi    r0, 0x0
     bne      .L_000042C8
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lwz      r6, 0x4(r30)
-    addi     r5, r3, lbl_8025C400@l
+    addi     r5, r3, gGame@l
     li       r3, 0x0
     addis    r5, r5, 0x1
     lwz      r5, -0x6944(r5)
@@ -3968,8 +3828,8 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     cmplwi   r0, 0x6
     blt      .L_00003F90
 .L_00003F84:
-    lis      r3, lbl_4_rodata_B4@ha
-    lfs      f3, lbl_4_rodata_B4@l(r3)
+    lis      r3, sHamDefaultRate@ha
+    lfs      f3, sHamDefaultRate@l(r3)
     b        .L_00003FA0
 .L_00003F90:
     lis      r3, yakiRates@ha
@@ -3980,17 +3840,17 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     lis      r7, 0x4330
     lwz      r3, 0x28(r9)
     stw      r4, 0x64(r1)
-    lis      r8, lbl_4_rodata_108@ha
+    lis      r8, sHamFlipTimeUnsignedBias@ha
     xoris    r5, r3, 0x8000
-    lis      r6, lbl_4_rodata_78@ha
+    lis      r6, sHamRateSignedBias@ha
     stw      r7, 0x60(r1)
     lis      r3, 0x1b4f
-    lfd      f2, lbl_4_rodata_108@l(r8)
+    lfd      f2, sHamFlipTimeUnsignedBias@l(r8)
     subi     r4, r3, 0x7e4b
     lfd      f0, 0x60(r1)
     cmpwi    r0, 0x5
     stw      r5, 0x6c(r1)
-    lfd      f1, lbl_4_rodata_78@l(r6)
+    lfd      f1, sHamRateSignedBias@l(r6)
     fsubs    f2, f0, f2
     stw      r7, 0x68(r1)
     lfd      f0, 0x68(r1)
@@ -4017,14 +3877,14 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     li       r31, 0x5
 .L_00004034:
     lwz      r5, 0x4(r30)
-    lis      r3, lbl_4_rodata_110@ha
-    addi     r4, r3, lbl_4_rodata_110@l
+    lis      r3, sHamEffectHeight@ha
+    addi     r4, r3, sHamEffectHeight@l
     cmpwi    r31, 0x4
     lfs      f0, 0xc8(r5)
-    lis      r3, lbl_4_rodata_B4@ha
+    lis      r3, sHamDefaultRate@ha
     lfs      f1, 0x0(r4)
     stfs     f0, 0x44(r1)
-    lfs      f0, lbl_4_rodata_B4@l(r3)
+    lfs      f0, sHamDefaultRate@l(r3)
     lfs      f2, 0xcc(r5)
     stfs     f2, 0x48(r1)
     fadds    f1, f2, f1
@@ -4037,12 +3897,12 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     bge      .L_000040D4
     cmpw     r0, r31
     bge      .L_000040D4
-    lis      r4, lbl_4_rodata_30@ha
-    lis      r3, lbl_8025C400@ha
-    addi     r7, r4, lbl_4_rodata_30@l
+    lis      r4, sHamCookLevelRotation@ha
+    lis      r3, gGame@ha
+    addi     r7, r4, sHamCookLevelRotation@l
     addi     r6, r1, 0x44
     lwz      r4, 0x0(r7)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     lwz      r5, 0x4(r7)
     addis    r3, r3, 0x1
     lwz      r0, 0x8(r7)
@@ -4073,15 +3933,15 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     mulli    r0, r0, 0xb4
     subf.    r0, r0, r4
     bne      .L_00004208
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x3b
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r29, r3, 0x1
     subi     r29, r29, 0x6eec
     mr       r3, r29
     bl       fn_801A8A10
-    lis      r4, lbl_4_rodata_3C@ha
-    lwzu     r5, lbl_4_rodata_3C@l(r4)
+    lis      r4, sHamOvercookRotation@ha
+    lwzu     r5, sHamOvercookRotation@l(r4)
     mr       r3, r29
     addi     r6, r1, 0x44
     lwz      r10, 0x4(r4)
@@ -4113,15 +3973,15 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     mulli    r0, r0, 0x78
     subf.    r0, r0, r4
     bne      .L_00004208
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x3b
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r29, r3, 0x1
     subi     r29, r29, 0x6eec
     mr       r3, r29
     bl       fn_801A8A10
-    lis      r4, lbl_4_rodata_48@ha
-    lwzu     r5, lbl_4_rodata_48@l(r4)
+    lis      r4, sHamBurnRotation@ha
+    lwzu     r5, sHamBurnRotation@l(r4)
     mr       r3, r29
     addi     r6, r1, 0x44
     lwz      r10, 0x4(r4)
@@ -4153,8 +4013,8 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     cmplwi   r0, 0x0
     bne      .L_000042C8
     lwz      r3, 0x4(r30)
-    lis      r4, lbl_4_rodata_54@ha
-    lwz      r0, lbl_4_rodata_54@l(r4)
+    lis      r4, sHamCookingJoint@ha
+    lwz      r0, sHamCookingJoint@l(r4)
     lwz      r6, 0x0(r3)
     cmplwi   r6, 0x0
     bne      .L_00004260
@@ -4185,9 +4045,9 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 .L_000042A0:
     bdnz     .L_0000427C
 .L_000042A4:
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x78
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     li       r5, 0x0
     addis    r3, r3, 0x1
     li       r7, 0x1
@@ -4212,33 +4072,33 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     cmplwi   r0, 0x0
     bne      .L_0000465C
     lwz      r5, 0x4(r30)
-    lis      r4, lbl_4_rodata_114@ha
-    lis      r3, lbl_4_rodata_118@ha
-    lfs      f3, lbl_4_rodata_114@l(r4)
+    lis      r4, sHamGasPlateCenterX@ha
+    lis      r3, sHamGasPlateCenterZ@ha
+    lfs      f3, sHamGasPlateCenterX@l(r4)
     lfs      f1, 0xc8(r5)
-    lfs      f2, lbl_4_rodata_118@l(r3)
+    lfs      f2, sHamGasPlateCenterZ@l(r3)
     lfs      f0, 0xd0(r5)
     fsubs    f1, f3, f1
     fsubs    f2, f2, f0
     bl       atan2
     lwz      r3, 0x4(r30)
-    lis      r4, lbl_4_rodata_80@ha
+    lis      r4, sHamGasPlateMinX@ha
     frsp     f31, f1
-    lfs      f0, lbl_4_rodata_80@l(r4)
+    lfs      f0, sHamGasPlateMinX@l(r4)
     lfs      f2, 0xc8(r3)
     lfs      f1, 0xd0(r3)
     fcmpo    cr0, f2, f0
     blt      .L_0000437C
-    lis      r4, lbl_4_rodata_84@ha
-    lfs      f0, lbl_4_rodata_84@l(r4)
+    lis      r4, sHamGasPlateMaxX@ha
+    lfs      f0, sHamGasPlateMaxX@l(r4)
     fcmpo    cr0, f0, f2
     blt      .L_0000437C
-    lis      r4, lbl_4_rodata_88@ha
-    lfs      f0, lbl_4_rodata_88@l(r4)
+    lis      r4, sHamGasPlateMinZ@ha
+    lfs      f0, sHamGasPlateMinZ@l(r4)
     fcmpo    cr0, f1, f0
     blt      .L_0000437C
-    lis      r4, lbl_4_rodata_8C@ha
-    lfs      f0, lbl_4_rodata_8C@l(r4)
+    lis      r4, sHamGasPlateMaxZ@ha
+    lfs      f0, sHamGasPlateMaxZ@l(r4)
     fcmpo    cr0, f0, f1
     bge      .L_00004384
 .L_0000437C:
@@ -4249,20 +4109,20 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 .L_00004388:
     clrlwi.  r0, r0, 24
     bne      .L_000043FC
-    lis      r4, lbl_4_data_AC@ha
+    lis      r4, sHamFlipComparison@ha
     addi     r3, r30, 0x40
-    addi     r4, r4, lbl_4_data_AC@l
+    addi     r4, r4, sHamFlipComparison@l
     bl       __ptmf_cmpr
     cmpwi    r3, 0x0
     beq      .L_000043F0
-    lis      r3, lbl_4_rodata_D0@ha
-    lis      r4, lbl_4_rodata_D4@ha
-    addi     r5, r3, lbl_4_rodata_D0@l
+    lis      r3, sHamReturnSlideSpeed@ha
+    lis      r4, sHamReturnSlideStep@ha
+    addi     r5, r3, sHamReturnSlideSpeed@l
     stfs     f31, 0x18(r30)
     lfs      f1, 0x0(r5)
-    lis      r3, lbl_4_data_B8@ha
-    lfs      f0, lbl_4_rodata_D4@l(r4)
-    addi     r5, r3, lbl_4_data_B8@l
+    lis      r3, sHamSlideState@ha
+    lfs      f0, sHamReturnSlideStep@l(r4)
+    addi     r5, r3, sHamSlideState@l
     stfs     f1, 0x1c(r30)
     li       r0, 0x0
     stfs     f0, 0x20(r30)
@@ -4285,31 +4145,31 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     lbz      r0, playerOffGasPlate@l(r4)
     cmplwi   r0, 0x0
     beq      .L_000044A8
-    lis      r5, lbl_8025C400@ha
+    lis      r5, gGame@ha
     addi     r4, r3, 0xc8
-    addi     r3, r5, lbl_8025C400@l
+    addi     r3, r5, gGame@l
     addis    r3, r3, 0x1
     lwz      r3, -0x6944(r3)
     addi     r3, r3, 0xc8
     bl       PSVECDistance
-    lis      r3, lbl_4_rodata_D8@ha
-    lfs      f0, lbl_4_rodata_D8@l(r3)
+    lis      r3, sHamStackDetachDistance@ha
+    lfs      f0, sHamStackDetachDistance@l(r3)
     fcmpo    cr0, f1, f0
     bge      .L_000045F4
-    lis      r4, lbl_4_data_AC@ha
+    lis      r4, sHamFlipComparison@ha
     addi     r3, r30, 0x40
-    addi     r4, r4, lbl_4_data_AC@l
+    addi     r4, r4, sHamFlipComparison@l
     bl       __ptmf_cmpr
     cmpwi    r3, 0x0
     beq      .L_000045F4
-    lis      r3, lbl_4_rodata_D0@ha
-    lis      r4, lbl_4_rodata_D4@ha
-    addi     r5, r3, lbl_4_rodata_D0@l
+    lis      r3, sHamReturnSlideSpeed@ha
+    lis      r4, sHamReturnSlideStep@ha
+    addi     r5, r3, sHamReturnSlideSpeed@l
     stfs     f31, 0x18(r30)
     lfs      f1, 0x0(r5)
-    lis      r3, lbl_4_data_B8@ha
-    lfs      f0, lbl_4_rodata_D4@l(r4)
-    addi     r5, r3, lbl_4_data_B8@l
+    lis      r3, sHamSlideState@ha
+    lfs      f0, sHamReturnSlideStep@l(r4)
+    addi     r5, r3, sHamSlideState@l
     stfs     f1, 0x1c(r30)
     li       r0, 0x0
     stfs     f0, 0x20(r30)
@@ -4324,22 +4184,22 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 .L_000044A8:
     lwz      r8, 0x238(r3)
     lis      r7, 0x4330
-    lis      r4, lbl_4_rodata_70@ha
-    lis      r5, lbl_4_rodata_78@ha
+    lis      r4, sHamRatePercent@ha
+    lis      r5, sHamRateSignedBias@ha
     lwz      r0, 0x8(r8)
-    addi     r6, r4, lbl_4_rodata_70@l
-    addi     r9, r5, lbl_4_rodata_78@l
+    addi     r6, r4, sHamRatePercent@l
+    addi     r9, r5, sHamRateSignedBias@l
     lwz      r5, 0x4(r8)
     xoris    r4, r0, 0x8000
     lwz      r0, 0xc(r8)
     stw      r4, 0x6c(r1)
     xoris    r8, r5, 0x8000
     xoris    r5, r0, 0x8000
-    lis      r4, lbl_4_bss_0@ha
+    lis      r4, sHamPlacementPosition@ha
     stw      r7, 0x68(r1)
-    addi     r10, r4, lbl_4_bss_0@l
+    addi     r10, r4, sHamPlacementPosition@l
     lfd      f5, 0x0(r9)
-    lis      r4, lbl_4_rodata_CC@ha
+    lis      r4, sHamStackLevelHeight@ha
     lfd      f0, 0x68(r1)
     stw      r8, 0x74(r1)
     lfs      f4, 0x0(r6)
@@ -4366,7 +4226,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     stw      r0, 0x7c(r1)
     fdivs    f4, f1, f4
     stw      r3, 0x18(r1)
-    lfs      f3, lbl_4_rodata_CC@l(r4)
+    lfs      f3, sHamStackLevelHeight@l(r4)
     stfs     f2, 0x8(r1)
     lfs      f1, 0x18(r1)
     stw      r7, 0x78(r1)
@@ -4381,20 +4241,20 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     fcmpo    cr0, f1, f0
     stw      r0, 0x1c(r1)
     bge      .L_000045F4
-    lis      r4, lbl_4_data_AC@ha
+    lis      r4, sHamFlipComparison@ha
     addi     r3, r30, 0x40
-    addi     r4, r4, lbl_4_data_AC@l
+    addi     r4, r4, sHamFlipComparison@l
     bl       __ptmf_cmpr
     cmpwi    r3, 0x0
     beq      .L_000045F4
-    lis      r3, lbl_4_rodata_90@ha
-    lis      r4, lbl_4_rodata_A0@ha
-    addi     r5, r3, lbl_4_rodata_90@l
+    lis      r3, sHamZero@ha
+    lis      r4, sHamSlideHalf@ha
+    addi     r5, r3, sHamZero@l
     stfs     f31, 0x18(r30)
     lfs      f1, 0x0(r5)
-    lis      r3, lbl_4_data_B8@ha
-    lfs      f0, lbl_4_rodata_A0@l(r4)
-    addi     r5, r3, lbl_4_data_B8@l
+    lis      r3, sHamSlideState@ha
+    lfs      f0, sHamSlideHalf@l(r4)
+    addi     r5, r3, sHamSlideState@l
     stfs     f1, 0x1c(r30)
     li       r0, 0x0
     stfs     f0, 0x20(r30)
@@ -4438,14 +4298,14 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
     cmplwi   r0, 0x0
     beq      .L_000046B8
     lwz      r3, 0x4(r30)
-    lis      r4, lbl_4_rodata_F8@ha
-    lfs      f0, lbl_4_rodata_F8@l(r4)
+    lis      r4, sHamRespawnY@ha
+    lfs      f0, sHamRespawnY@l(r4)
     lfs      f1, 0xcc(r3)
     fcmpo    cr0, f1, f0
     bge      .L_000046B8
     lwz      r12, 0x34(r3)
-    lis      r4, lbl_4_rodata_11C@ha
-    lfs      f1, lbl_4_rodata_11C@l(r4)
+    lis      r4, sHamResetHeight@ha
+    lfs      f1, sHamResetHeight@l(r4)
     li       r4, 0x0
     lwz      r12, 0x10(r12)
     mtctr    r12

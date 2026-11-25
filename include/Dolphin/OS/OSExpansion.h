@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "Dolphin/OS/OSContext.h"
+#include <sdk/dolphin/exi_state.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,15 +75,6 @@ void __OSEnableBarnacle(s32 chan, u32 dev);
 // Read/write.
 #define EXI_READ  0
 #define EXI_WRITE 1
-
-// EXI status.
-#define EXI_STATE_IDLE     0x00
-#define EXI_STATE_DMA      0x01
-#define EXI_STATE_IMM      0x02
-#define EXI_STATE_BUSY     (EXI_STATE_DMA | EXI_STATE_IMM)
-#define EXI_STATE_SELECTED 0x04
-#define EXI_STATE_ATTACHED 0x08
-#define EXI_STATE_LOCKED   0x10
 
 //////////////////////////////////
 

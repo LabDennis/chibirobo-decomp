@@ -2,42 +2,24 @@
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <kar/math.h>
+#include <math.h>
+#include <string.h>
+#include <sysdolphin/bytecode.h>
 #include <sysdolphin/gobjproc.h>
 #include <sysdolphin/id.h>
 #include <sysdolphin/memory.h>
 #include <sysdolphin/util.h>
 #include <sysdolphin/mtx.h>
 
+#define ROBJ_ENABLED      0x80000000U
+#define ROBJ_TYPE_MASK    0x70000000U
+#define ROBJ_SUBTYPE_MASK 0x0FFFFFFFU
+
 static HSD_ObjAllocData hsdRObj_alloc_data;
 static HSD_ObjAllocData hsdRvalueObj_alloc_data;
 
 #define assert_line_named(line, cond, condstr) ((cond) ? ((void)0) : __assert("robj.c", line, condstr))
 #define assert_line_jobjh(line, cond)          ((cond) ? ((void)0) : __assert("jobj.h", line, "jobj"))
-
-extern void memset(void*, int, int);
-
-extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline void robj_JObjSetupMatrix(HSD_JObj* jobj)
-{
-	BOOL dirty;
-
-	if (jobj == NULL) {
-		return;
-	}
-	assert_line_jobjh(0x25d, jobj);
-	dirty = FALSE;
-	if (!(jobj->flags & 0x800000) && (jobj->flags & 0x40)) {
-		dirty = TRUE;
-	}
-	if (dirty) {
-		HSD_JObjSetupMatrixSub(jobj);
-	}
-}
 
 /**
  * @note Address: N/A
@@ -46,7 +28,7 @@ static inline void robj_JObjSetupMatrix(HSD_JObj* jobj)
 static inline MtxPtr robj_JObjGetMtxPtr(HSD_JObj* jobj)
 {
 	assert_line_jobjh(0x47c, jobj);
-	robj_JObjSetupMatrix(jobj);
+	HSD_JObjSetupMatrix(jobj);
 	return jobj->mtx;
 }
 
@@ -54,25 +36,6 @@ void expEvaluate(HSD_Exp* exp, u32 type, void* obj, HSD_ObjUpdateFunc update_fun
 void HSD_RvalueRemoveAll(HSD_Rvalue* rvalue);
 void HSD_RvalueResolveRefsAll(HSD_Rvalue* rvalue, HSD_RvalueList* list);
 void HSD_RObjFree(HSD_RObj* robj);
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 robj_sqrtf(f32 x)
-{
-	volatile f32 y;
-
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
-}
 
 /**
  * @note Address: 0x801D0C80
@@ -113,13 +76,9 @@ void HSD_RObjSetFlags(HSD_RObj* robj, u32 flags)
 	}
 }
 
-/**
- * @note Address: 0x801D0CC4
- * @note Size: 0x58
- */
-HSD_RObj* HSD_RObjGetByType(HSD_RObj* robj, u32 type, u32 subtype)
+static inline HSD_RObj* RObjFindEnabled(HSD_RObj* robj, u32 type, u32 subtype)
 {
-	BOOL has_type;
+	BOOL enabled;
 	HSD_RObj* curr;
 
 	if (robj == NULL) {
@@ -127,20 +86,30 @@ HSD_RObj* HSD_RObjGetByType(HSD_RObj* robj, u32 type, u32 subtype)
 	}
 
 	for (curr = robj; curr != NULL; curr = curr->next) {
-		if (curr->flags & 0x80000000) {
-			has_type = TRUE;
+		if (curr->flags & ROBJ_ENABLED) {
+			enabled = TRUE;
 		} else {
-			has_type = FALSE;
+			enabled = FALSE;
 		}
 
-		if (has_type) {
-			if ((curr->flags & TYPE_MASK) == type && (!subtype || subtype == (curr->flags & 0xFFFFFFF))) {
+		if (enabled) {
+			if ((curr->flags & ROBJ_TYPE_MASK) == type
+			    && (subtype == 0 || subtype == (curr->flags & ROBJ_SUBTYPE_MASK))) {
 				return curr;
 			}
 		}
 	}
 
 	return NULL;
+}
+
+/**
+ * @note Address: 0x801D0CC4
+ * @note Size: 0x58
+ */
+HSD_RObj* HSD_RObjGetByType(HSD_RObj* robj, u32 type, u32 subtype)
+{
+	return RObjFindEnabled(robj, type, subtype);
 }
 
 /**
@@ -161,10 +130,10 @@ void RObjAnimUpdateFlags(void* obj, s32 type, FObjData* val)
 
 	robj = (HSD_RObj*)obj;
 	if (val->fv >= 0.5) {
-		robj->flags = robj->flags | 0x80000000;
+		robj->flags = robj->flags | ROBJ_ENABLED;
 		return;
 	}
-	robj->flags = robj->flags & 0x7fffffff;
+	robj->flags = robj->flags & ~ROBJ_ENABLED;
 }
 
 /**
@@ -307,7 +276,7 @@ void HSD_RObjAddAnimAll(HSD_RObj* robj, HSD_RObjAnimJoint* anim)
  */
 static inline BOOL RObjIsRefType(HSD_RObj* robj, u32 type)
 {
-	if ((robj->flags & TYPE_MASK) == type) {
+	if ((robj->flags & ROBJ_TYPE_MASK) == type) {
 		return TRUE;
 	}
 	return FALSE;
@@ -322,41 +291,41 @@ static u32 HSD_RObjGetConstraintType(HSD_RObj* robj)
 	if (robj == NULL) {
 		return 0;
 	}
-	return robj->flags & 0xFFFFFFF;
+	return robj->flags & ROBJ_SUBTYPE_MASK;
 }
 
 /**
  * @note Address: 0x801D0FCC
  * @note Size: 0x1B4
  */
-int HSD_RObjGetGlobalPosition(HSD_RObj* robj, int type, Vec* p)
+int HSD_RObjGetGlobalPosition(HSD_RObj* robj, int subtype, Vec* position)
 {
-	Vec v = { 0.0F, 0.0F, 0.0F };
-	HSD_RObj* rp;
-	int n = 0;
+	Vec sum = { 0.0F, 0.0F, 0.0F };
+	HSD_RObj* ref;
+	int count = 0;
 
 	if (robj == NULL) {
 		return 0;
 	}
-	for (rp = robj; rp != NULL; rp = rp->next) {
-		if (RObjIsRefType(rp, REFTYPE_JOBJ)) {
-			if ((rp->flags & 0x80000000) != 0 && (u32)type == HSD_RObjGetConstraintType(rp)) {
-				assert_line_named(0x1F2, rp->u.jobj, "rp->u.jobj");
-				robj_JObjSetupMatrix(rp->u.jobj);
-				n += 1;
-				v.x += rp->u.jobj->mtx[0][3];
-				v.y += rp->u.jobj->mtx[1][3];
-				v.z += rp->u.jobj->mtx[2][3];
+	for (ref = robj; ref != NULL; ref = ref->next) {
+		if (RObjIsRefType(ref, REFTYPE_JOBJ)) {
+			if ((ref->flags & ROBJ_ENABLED) != 0 && (u32)subtype == HSD_RObjGetConstraintType(ref)) {
+				assert_line_named(0x1F2, ref->u.jobj, "rp->u.jobj");
+				HSD_JObjSetupMatrix(ref->u.jobj);
+				count += 1;
+				sum.x += ref->u.jobj->mtx[0][3];
+				sum.y += ref->u.jobj->mtx[1][3];
+				sum.z += ref->u.jobj->mtx[2][3];
 			}
 		}
 	}
-	if (n != 0) {
-		f32 f = 1.0F / (f32)n;
-		p->x  = f * v.x;
-		p->y  = f * v.y;
-		p->z  = f * v.z;
+	if (count != 0) {
+		f32 weight  = 1.0F / (f32)count;
+		position->x = weight * sum.x;
+		position->y = weight * sum.y;
+		position->z = weight * sum.z;
 	}
-	return n;
+	return count;
 }
 
 /**
@@ -366,29 +335,29 @@ int HSD_RObjGetGlobalPosition(HSD_RObj* robj, int type, Vec* p)
 static void set_dirup_matrix(Vec* dir_ptr, Vec* uv_ptr, Vec* scale_ptr, void* obj, HSD_ObjUpdateFunc update_func)
 {
 	Vec z_vec;
-	Vec v;
+	HSD_ObjData value;
 	f32 kz;
 	f32 kdir;
 
 	PSVECCrossProduct(dir_ptr, uv_ptr, &z_vec);
-	kdir = robj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(dir_ptr, dir_ptr)));
-	PSVECScale(kdir, dir_ptr, dir_ptr);
-	kz = robj_sqrtf(1.0F / (1e-10F + PSVECDotProduct(&z_vec, &z_vec)));
-	PSVECScale(kz, &z_vec, &z_vec);
+	kdir = dolsqrtf(1.0F / (1e-10F + PSVECDotProduct(dir_ptr, dir_ptr)));
+	PSVECScale(dir_ptr, dir_ptr, kdir);
+	kz = dolsqrtf(1.0F / (1e-10F + PSVECDotProduct(&z_vec, &z_vec)));
+	PSVECScale(&z_vec, &z_vec, kz);
 	PSVECCrossProduct(&z_vec, dir_ptr, uv_ptr);
-	v.x = dir_ptr->x * scale_ptr->x;
-	v.y = dir_ptr->y * scale_ptr->x;
-	v.z = dir_ptr->z * scale_ptr->x;
-	update_func(obj, 0x32, (HSD_ObjData*)&v);
-	v.x = uv_ptr->x * scale_ptr->y;
-	v.y = uv_ptr->y * scale_ptr->y;
-	v.z = uv_ptr->z * scale_ptr->y;
-	update_func(obj, 0x33, (HSD_ObjData*)&v);
-	v.x = z_vec.x * scale_ptr->z;
-	v.y = z_vec.y * scale_ptr->z;
-	v.z = z_vec.z * scale_ptr->z;
-	update_func(obj, 0x34, (HSD_ObjData*)&v);
-	update_func(obj, 0x37, NULL);
+	value.p.x = dir_ptr->x * scale_ptr->x;
+	value.p.y = dir_ptr->y * scale_ptr->x;
+	value.p.z = dir_ptr->z * scale_ptr->x;
+	update_func(obj, HSD_A_J_MTX_COL_X, &value);
+	value.p.x = uv_ptr->x * scale_ptr->y;
+	value.p.y = uv_ptr->y * scale_ptr->y;
+	value.p.z = uv_ptr->z * scale_ptr->y;
+	update_func(obj, HSD_A_J_MTX_COL_Y, &value);
+	value.p.x = z_vec.x * scale_ptr->z;
+	value.p.y = z_vec.y * scale_ptr->z;
+	value.p.z = z_vec.z * scale_ptr->z;
+	update_func(obj, HSD_A_J_MTX_COL_Z, &value);
+	update_func(obj, HSD_A_J_MTX_TO_ROTATION, NULL);
 }
 
 /**
@@ -403,12 +372,12 @@ void resolveCnsDirUp(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 	Vec dir;
 	f32 k;
 
-	if (HSD_RObjGetGlobalPosition(robj, 2, &this_pos) != 0) {
+	if (HSD_RObjGetGlobalPosition(robj, ROBJ_JOINT_DIRECTION, &this_pos) != 0) {
 		dir.x = ((HSD_JObj*)obj)->mtx[0][3];
 		dir.y = ((HSD_JObj*)obj)->mtx[1][3];
 		dir.z = ((HSD_JObj*)obj)->mtx[2][3];
 		PSVECSubtract(&this_pos, &dir, &this_pos);
-		if (HSD_RObjGetGlobalPosition(robj, 3, &up) != 0) {
+		if (HSD_RObjGetGlobalPosition(robj, ROBJ_JOINT_UP, &up) != 0) {
 			PSVECSubtract(&up, &dir, &up);
 		} else {
 			k = 1.0F - PSVECDotProduct(&this_pos, &up);
@@ -430,39 +399,9 @@ void resolveCnsDirUp(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline HSD_RObj* inlined_HSD_RObjGetByType(HSD_RObj* robj, u32 type, u32 subtype)
-{
-	BOOL has_type;
-	HSD_RObj* curr;
-
-	if (robj == NULL) {
-		return NULL;
-	}
-
-	for (curr = robj; curr != NULL; curr = curr->next) {
-		if (curr->flags & 0x80000000) {
-			has_type = TRUE;
-		} else {
-			has_type = FALSE;
-		}
-
-		if (has_type) {
-			if ((curr->flags & TYPE_MASK) == type && (!subtype || subtype == (curr->flags & 0xFFFFFFF))) {
-				return curr;
-			}
-		}
-	}
-
-	return NULL;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
 static inline f32 HSD_MtxColMagFloat(MtxPtr mtx, int col)
 {
-	return robj_sqrtf((mtx[0][col] * mtx[0][col]) + (mtx[1][col] * mtx[1][col]) + (mtx[2][col] * mtx[2][col]));
+	return dolsqrtf((mtx[0][col] * mtx[0][col]) + (mtx[1][col] * mtx[1][col]) + (mtx[2][col] * mtx[2][col]));
 }
 
 /**
@@ -476,7 +415,9 @@ static inline void HSD_MtxColVec(MtxPtr mtx, int col, Vec* vec)
 	vec->z = mtx[2][col];
 }
 
-static s32 RObjOrientationUpdateKinds[3] = { 0x32, 0x33, 0x34 };
+static enum_t RObjOrientationUpdateKinds[3] = {
+	HSD_A_J_MTX_COL_X, HSD_A_J_MTX_COL_Y, HSD_A_J_MTX_COL_Z,
+};
 
 /**
  * @note Address: N/A
@@ -486,14 +427,14 @@ static inline void resolveCnsOrientation(HSD_RObj* robj, void* obj, HSD_ObjUpdat
 {
 	Mtx mtx0;
 	f32 sval;
-	Vec v;
+	HSD_ObjData value;
 	HSD_JObj* jobj;
 	HSD_RObj* found;
 	int i;
 
 	assert_line_named(0x276, obj, "obj");
 
-	found = inlined_HSD_RObjGetByType(robj, REFTYPE_JOBJ, 4);
+	found = RObjFindEnabled(robj, REFTYPE_JOBJ, ROBJ_JOINT_ORIENTATION);
 	if (found == NULL) {
 		return;
 	}
@@ -502,18 +443,18 @@ static inline void resolveCnsOrientation(HSD_RObj* robj, void* obj, HSD_ObjUpdat
 	jobj = obj;
 
 	for (i = 0; i < 3; i++) {
-		HSD_MtxColVec(mtx0, i, &v);
-		sval = PSVECMag(&v);
+		HSD_MtxColVec(mtx0, i, &value.p);
+		sval = PSVECMag(&value.p);
 		if (sval > 1e-10F) {
 			sval = 1.0F / sval;
 		}
 		sval *= HSD_MtxColMagFloat(jobj->mtx, i);
-		v.x *= sval;
-		v.y *= sval;
-		v.z *= sval;
-		update_func(obj, RObjOrientationUpdateKinds[i], (HSD_ObjData*)&v);
+		value.p.x *= sval;
+		value.p.y *= sval;
+		value.p.z *= sval;
+		update_func(obj, RObjOrientationUpdateKinds[i], &value);
 	}
-	update_func(obj, 0x37, NULL);
+	update_func(obj, HSD_A_J_MTX_TO_ROTATION, NULL);
 }
 
 /**
@@ -539,76 +480,76 @@ void resolveLimits(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 	if (rp != NULL) {
 		for (rp = robj; rp != NULL; rp = rp->next) {
 			if (RObjIsRefType(rp, REFTYPE_LIMIT)) {
-				switch (rp->flags & 0xFFFFFFF) {
+				switch (rp->flags & ROBJ_SUBTYPE_MASK) {
 				default:
 					continue;
-				case 1:
+				case ROBJ_LIMIT_ROT_X_MIN:
 					if (jobj->rotate.x < rp->u.limit) {
 						jobj->rotate.x = rp->u.limit;
 					}
 					break;
 
-				case 2:
+				case ROBJ_LIMIT_ROT_X_MAX:
 					if (jobj->rotate.x > rp->u.limit) {
 						jobj->rotate.x = rp->u.limit;
 					}
 					break;
 
-				case 3:
+				case ROBJ_LIMIT_ROT_Y_MIN:
 					if (jobj->rotate.y < rp->u.limit) {
 						jobj->rotate.y = rp->u.limit;
 					}
 					break;
 
-				case 4:
+				case ROBJ_LIMIT_ROT_Y_MAX:
 					if (jobj->rotate.y > rp->u.limit) {
 						jobj->rotate.y = rp->u.limit;
 					}
 					break;
 
-				case 5:
+				case ROBJ_LIMIT_ROT_Z_MIN:
 					if (jobj->rotate.z < rp->u.limit) {
 						jobj->rotate.z = rp->u.limit;
 					}
 					break;
 
-				case 6:
+				case ROBJ_LIMIT_ROT_Z_MAX:
 					if (jobj->rotate.z > rp->u.limit) {
 						jobj->rotate.z = rp->u.limit;
 					}
 					break;
 
-				case 7:
+				case ROBJ_LIMIT_TRANS_X_MIN:
 					if (jobj->translate.x < rp->u.limit) {
 						jobj->translate.x = rp->u.limit;
 					}
 					break;
 
-				case 8:
+				case ROBJ_LIMIT_TRANS_X_MAX:
 					if (jobj->translate.x > rp->u.limit) {
 						jobj->translate.x = rp->u.limit;
 					}
 					break;
 
-				case 9:
+				case ROBJ_LIMIT_TRANS_Y_MIN:
 					if (jobj->translate.y < rp->u.limit) {
 						jobj->translate.y = rp->u.limit;
 					}
 					break;
 
-				case 10:
+				case ROBJ_LIMIT_TRANS_Y_MAX:
 					if (jobj->translate.y > rp->u.limit) {
 						jobj->translate.y = rp->u.limit;
 					}
 					break;
 
-				case 11:
+				case ROBJ_LIMIT_TRANS_Z_MIN:
 					if (jobj->translate.z < rp->u.limit) {
 						jobj->translate.z = rp->u.limit;
 					}
 					break;
 
-				case 12:
+				case ROBJ_LIMIT_TRANS_Z_MAX:
 					if (jobj->translate.z > rp->u.limit) {
 						jobj->translate.z = rp->u.limit;
 					}
@@ -624,27 +565,23 @@ void resolveLimits(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 }
 
 /**
- * @note Address: 0x801D1970
- * @note Size: 0x484
- */
-/**
  * @note Address: N/A
  * @note Size: ?
  */
-// the position constraint as its own inline like resolveCnsDirUp and
-// resolveCnsOrientation, the name is ours. written straight into
-// HSD_RObjUpdateAll its vec and the inlined HSD_RObjGetGlobalPosition's v
-// take the wrong stack slots
 static inline void resolveCnsPosition(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 {
-	Vec vec;
+	HSD_ObjData value;
 
-	if (HSD_RObjGetGlobalPosition(robj, 1, &vec) != 0) {
-		update_func(obj, 0x35, (HSD_ObjData*)&vec);
-		update_func(obj, 0x38, NULL);
+	if (HSD_RObjGetGlobalPosition(robj, ROBJ_JOINT_POSITION, &value.p) != 0) {
+		update_func(obj, HSD_A_J_MTX_COL_TRANSLATION, &value);
+		update_func(obj, HSD_A_J_MTX_TO_TRANSLATION, NULL);
 	}
 }
 
+/**
+ * @note Address: 0x801D1970
+ * @note Size: 0x484
+ */
 void HSD_RObjUpdateAll(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 {
 	HSD_RObj* rp;
@@ -656,8 +593,8 @@ void HSD_RObjUpdateAll(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 		resolveLimits(robj, obj, update_func);
 
 		for (rp = robj; rp != NULL; rp = rp->next) {
-			if (RObjIsRefType(rp, REFTYPE_EXP) && (rp->flags & 0x80000000) != 0) {
-				expEvaluate(&rp->u.exp, rp->flags & 0xFFFFFFF, obj, update_func);
+			if (RObjIsRefType(rp, REFTYPE_EXP) && (rp->flags & ROBJ_ENABLED) != 0) {
+				expEvaluate(&rp->u.exp, rp->flags & ROBJ_SUBTYPE_MASK, obj, update_func);
 			}
 		}
 	}
@@ -670,7 +607,7 @@ void HSD_RObjUpdateAll(HSD_RObj* robj, void* obj, HSD_ObjUpdateFunc update_func)
 static inline void HSD_RObjResolveRefs(HSD_RObj* robj, HSD_RObjDesc* desc)
 {
 	if (robj != NULL && desc != NULL) {
-		switch (robj->flags & TYPE_MASK) {
+		switch (robj->flags & ROBJ_TYPE_MASK) {
 		case REFTYPE_JOBJ:
 			HSD_JObjUnrefThis(robj->u.jobj);
 			robj->u.jobj = HSD_IDGetData((u32)desc->u.joint, NULL);
@@ -712,17 +649,17 @@ HSD_RObj* HSD_RObjLoadDesc(HSD_RObjDesc* robjdesc)
 		robj        = HSD_RObjAlloc();
 		robj->next  = HSD_RObjLoadDesc(robjdesc->next);
 		robj->flags = robjdesc->flags;
-		switch (robj->flags & TYPE_MASK) {
+		switch (robj->flags & ROBJ_TYPE_MASK) {
 		case REFTYPE_JOBJ:
 			break;
 		case REFTYPE_LIMIT:
-			switch (robj->flags & 0xFFFFFFF) {
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
+			switch (robj->flags & ROBJ_SUBTYPE_MASK) {
+			case ROBJ_LIMIT_ROT_X_MIN:
+			case ROBJ_LIMIT_ROT_X_MAX:
+			case ROBJ_LIMIT_ROT_Y_MIN:
+			case ROBJ_LIMIT_ROT_Y_MAX:
+			case ROBJ_LIMIT_ROT_Z_MIN:
+			case ROBJ_LIMIT_ROT_Z_MAX:
 				robj->u.limit = 0.017453292F * robjdesc->u.limit;
 				break;
 			default:
@@ -735,7 +672,7 @@ HSD_RObj* HSD_RObjLoadDesc(HSD_RObjDesc* robjdesc)
 			break;
 		case REFTYPE_BYTECODE:
 			bcexpLoadDesc(&robj->u.exp, robjdesc->u.bcexp);
-			robj->flags &= ~TYPE_MASK;
+			robj->flags &= ~ROBJ_TYPE_MASK;
 			break;
 		case REFTYPE_IKHINT:
 			robj->u.ik_hint.bone_length = robjdesc->u.ik_hint->bone_length;
@@ -750,11 +687,6 @@ HSD_RObj* HSD_RObjLoadDesc(HSD_RObjDesc* robjdesc)
 	return NULL;
 }
 
-#pragma push
-#pragma force_active on
-static char HSD_RObj_80406F14[] = "(ptr && nitems) || !ptr";
-#pragma pop
-
 /**
  * @note Address: N/A
  * @note Size: 0x74
@@ -762,7 +694,7 @@ static char HSD_RObj_80406F14[] = "(ptr && nitems) || !ptr";
 void HSD_RObjRemove(HSD_RObj* robj)
 {
 	if (robj != NULL) {
-		switch (robj->flags & TYPE_MASK) {
+		switch (robj->flags & ROBJ_TYPE_MASK) {
 		case REFTYPE_JOBJ:
 			HSD_JObjUnrefThis(robj->u.jobj);
 			break;
@@ -813,8 +745,6 @@ void HSD_RObjFree(HSD_RObj* robj)
 static u32 arg_buf_size;
 static f32* arg_buf;
 
-extern f32 HSD_ByteCodeEval(u8* bytecode, f32* argv, s32 nb_args);
-
 /**
  * @note Address: 0x801D24A0
  * @note Size: 0x49C
@@ -823,7 +753,7 @@ void expEvaluate(HSD_Exp* exp, u32 type, void* obj, HSD_ObjUpdateFunc update_fun
 {
 	HSD_Rvalue* rvalue;
 	Vec scale;
-	Quaternion rotate; /* only xyz get written, the slot is quaternion sized like jobj's rotate */
+	Vec rotation;
 	f32* cur_arg;
 	int cur_bit;
 	HSD_ObjData sp1C;
@@ -852,7 +782,7 @@ void expEvaluate(HSD_Exp* exp, u32 type, void* obj, HSD_ObjUpdateFunc update_fun
 	for (rvalue = exp->rvalue; rvalue != NULL; rvalue = rvalue->next) {
 		HSD_JObj* jobj = rvalue->jobj;
 		assert_line_named(0x424, jobj, "jobj");
-		robj_JObjSetupMatrix(rvalue->jobj);
+		HSD_JObjSetupMatrix(rvalue->jobj);
 		for (cur_bit = 1; cur_bit && cur_bit <= rvalue->flags; cur_bit <<= 1) {
 			switch (rvalue->flags & cur_bit) {
 			case 0x1:
@@ -888,16 +818,16 @@ void expEvaluate(HSD_Exp* exp, u32 type, void* obj, HSD_ObjUpdateFunc update_fun
 			case 0x800:
 				break;
 			case 0x10000:
-				HSD_MtxGetRotation(jobj->mtx, (Vec*)&rotate);
-				*cur_arg++ = 57.29578F * rotate.x;
+				HSD_MtxGetRotation(jobj->mtx, &rotation);
+				*cur_arg++ = 57.29578F * rotation.x;
 				break;
 			case 0x20000:
-				HSD_MtxGetRotation(jobj->mtx, (Vec*)&rotate);
-				*cur_arg++ = 57.29578F * rotate.y;
+				HSD_MtxGetRotation(jobj->mtx, &rotation);
+				*cur_arg++ = 57.29578F * rotation.y;
 				break;
 			case 0x40000:
-				HSD_MtxGetRotation(jobj->mtx, (Vec*)&rotate);
-				*cur_arg++ = 57.29578F * rotate.z;
+				HSD_MtxGetRotation(jobj->mtx, &rotation);
+				*cur_arg++ = 57.29578F * rotation.z;
 				break;
 			case 0x100000:
 				*cur_arg++ = jobj->mtx[0][3];
@@ -1073,32 +1003,6 @@ void HSD_RvalueResolveRefsAll(HSD_Rvalue* rvalue, HSD_RvalueList* list)
 
 /**
  * @note Address: N/A
- * @note Size: 0xCC
- */
-void HSD_RObjSetConstraintObj(HSD_RObj* robj, void* o)
-{
-	if (robj != NULL) {
-		if (robj->u.jobj != NULL) {
-			HSD_JObjUnrefThis(robj->u.jobj);
-			robj->u.jobj = NULL;
-		}
-
-		if (hsdObjIsDescendantOf((HSD_Class*)&((HSD_JObj*)o)->object, (HSD_ClassInfo*)&hsdJObj)) {
-			robj->u.jobj = o;
-			if (o != NULL) {
-				iref_INC(o);
-			}
-		} else {
-			// stripped from the game, its line number is a guess. the
-			// assert form would leave a "0" string behind and retail has none
-			OSReport("constraint only support jobj target.\n");
-			HSD_Panic("robj.c", 0x51D, "");
-		}
-	}
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x38
  */
 void _HSD_RObjForgetMemory(void)
@@ -1107,13 +1011,4 @@ void _HSD_RObjForgetMemory(void)
 		arg_buf      = 0;
 		arg_buf_size = 0;
 	}
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xC
- */
-HSD_ObjAllocData* HSD_IDGetAllocData(void)
-{
-	return &hsd_iddata;
 }

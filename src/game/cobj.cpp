@@ -1,25 +1,24 @@
 #include "game/cobj.h"
+
+#include "game/cjobjset.h"
 #include "game/gmath.h"
 #include "game/hsd_dobj.h"
 extern "C" {
 #include <sysdolphin/class.h>
 #include <sysdolphin/dobj.h>
+#include <sysdolphin/mobj.h>
 #include <sysdolphin/pobj.h>
 #include <sysdolphin/texp.h>
 #include <dolphin/mtx/vec.h>
 #include <dolphin/os.h>
 }
+#include <hsd/sysdolphin/devcom.h>
 #include <math.h>
+#include "game/xobj.h"
 
 extern "C" {
 void OSReport(const char* msg, ...);
 u32 ARGetSize(void);
-s32 HSD_DevComRequest(s32 file, u32 src, void* dest, u32 size, s32 type, s32 pri, void (*callback)(s32, s32*), s32* args);
-void HSD_MObjSetDefaultClass(HSD_MObjInfo* info);
-void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_args);
-void fn_800D40EC(CXObj* obj);
-void HSD_PObjClearFlags(HSD_PObj* pobj, u32 flags);
-void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 }
 
 // report, then panic with the function name. the line goes in by hand like the asserts
@@ -30,9 +29,9 @@ void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 // the same with a formatted message
 #define HALTF(line, ...)        \
 	OSReport("\n!!!HALT!!!\n"); \
-	OSPanic(__FILE__, line, "%s%s", fn_801911B4(__VA_ARGS__), __FUNCTION__)
+	OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer(__VA_ARGS__), __FUNCTION__)
 
-// a material with two extra colors added on top of its tev result
+// a material whose tev result is multiplied by one color and has another added, see XCObjMakeTExp
 struct XCObj {
 	HSD_MObj parent; // _00
 	u32* mColors;    // _20
@@ -41,29 +40,7 @@ struct XCObj {
 
 void XCObjInfoInit();
 HSD_TExp* XCObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list);
-void XCObjSetColors(HSD_JObj* jobj, u32* colors, s32);
-HSD_MObjInfo xCObj = { XCObjInfoInit };
-
-static void ReadDone(s32, s32* state);
-
-// todo: cleanup
-// first anim object on the jobj, whichever kind it is
-static inline HSD_AObj* GetAObj(HSD_JObj* jobj)
-{
-	HSD_AObj* aobj;
-	if (jobj != NULL) {
-		if ((aobj = fn_801908F8(jobj)) != NULL) {
-			return aobj;
-		}
-		if ((aobj = fn_801905D4(jobj)) != NULL) {
-			return aobj;
-		}
-		if ((aobj = fn_801902C4(jobj)) != NULL) {
-			return aobj;
-		}
-	}
-	return NULL;
-}
+HSD_MObjInfo xCObj = { { { XCObjInfoInit } } };
 
 // todo: cleanup
 static inline void ReleaseJObj(CJObj* obj)
@@ -106,43 +83,6 @@ inline HSD_JObj* CJArchive::LoadJObj()
 			jobj = NULL;
 		}
 		return jobj;
-	}
-	return NULL;
-}
-
-// todo: cleanup
-// anim ids past 1000 wrap around
-inline HSD_AnimJoint* CJArchive::GetAnimJointRoot(s32 id)
-{
-	if (id >= 0) {
-		s32 i = id % 1000;
-		if (i < mNum[0]) {
-			return mAnimJoint != NULL ? mAnimJoint[i] : NULL;
-		}
-	}
-	return NULL;
-}
-
-// todo: cleanup
-inline HSD_MatAnimJoint* CJArchive::GetMatAnimJointRoot(s32 id)
-{
-	if (id >= 0) {
-		s32 i = id % 1000;
-		if (i < mNum[0]) {
-			return mMatAnimJoint != NULL ? mMatAnimJoint[i] : NULL;
-		}
-	}
-	return NULL;
-}
-
-// todo: cleanup
-inline HSD_ShapeAnimJoint* CJArchive::GetShapeAnimJointRoot(s32 id)
-{
-	if (id >= 0) {
-		s32 i = id % 1000;
-		if (i < mNum[0]) {
-			return mShapeAnimJoint != NULL ? mShapeAnimJoint[i] : NULL;
-		}
 	}
 	return NULL;
 }
@@ -221,9 +161,9 @@ void CJArchive::Clear()
  * @note Size: 0x10
  */
 // the DevCom callback, moves ReadCheck on to parsing
-static void ReadDone(s32, s32* state)
+void ObjectArchiveReadDone(int, void* context, void*, BOOL)
 {
-	(*state)++;
+	++*static_cast<s32*>(context);
 }
 
 /**
@@ -240,11 +180,13 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
 	if (mState != 0) {
 		return FALSE;
 	}
+	// the archive is already in memory, nothing to read
 	if (mArchive->mFile.mBuffer != NULL) {
 		return TRUE;
 	}
 
 	s32 result;
+	// 4: read the copy kept in aram at aramAddr instead of the file on disc
 	if (flags & 4) {
 		result = aramAddr != 0 ? mArchive->mFile.ReadAsync(path, aramAddr, size, TRUE) : mArchive->mFile.ReadAsync(path, 0, 0, FALSE);
 	} else {
@@ -254,350 +196,83 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
 		mState++;
 	} else {
 		mResult = result;
+		// 0x100: give up and return FALSE instead of halting
 		if (mFlags & 0x100) {
 			if (mArchive->mRefCount <= 0) {
 				mArchive->mFile.Close();
 			}
 			return FALSE;
 		}
+#if defined(VERSION_JP)
+		HALTF(273, "%s(%d)\n", path, result);
+#else
 		HALTF(285, "%s(%d)\n", path, result);
+#endif
 	}
 	return TRUE;
 }
 // CJArchive::ReadAsync(CObjArchive*, const char*, unsigned long, unsigned long, unsigned long)
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    li       r0, 0x0
-    stw      r31, 0x1c(r1)
-    mr       r31, r5
-    stw      r30, 0x18(r1)
-    mr       r30, r3
-    stw      r29, 0x14(r1)
-    stw      r4, 0x0(r3)
-    stw      r6, 0x8(r3)
-    stw      r0, 0xc(r3)
-    stw      r7, 0x10(r3)
-    stw      r8, 0x14(r3)
-    lwz      r0, 0x4(r3)
-    cmpwi    r0, 0x0
-    beq      .L_801A41A8
-    li       r3, 0x0
-    b        .L_801A42EC
-.L_801A41A8:
-    lwz      r3, 0x0(r30)
-    lwz      r0, 0x110(r3)
-    cmplwi   r0, 0x0
-    beq      .L_801A41C0
-    li       r3, 0x1
-    b        .L_801A42EC
-.L_801A41C0:
-    rlwinm.  r0, r6, 0, 29, 29
-    beq      .L_801A4224
-    cmplwi   r7, 0x0
-    beq      .L_801A41F8
-    addi     r3, r3, 0x44
-    mr       r4, r31
-    lwz      r12, 0xe8(r3)
-    mr       r5, r7
-    mr       r6, r8
-    li       r7, 0x1
-    lwz      r12, 0x14(r12)
-    mtctr    r12
-    bctrl
-    b        .L_801A421C
-.L_801A41F8:
-    addi     r3, r3, 0x44
-    mr       r4, r31
-    lwz      r12, 0xe8(r3)
-    li       r5, 0x0
-    li       r6, 0x0
-    li       r7, 0x0
-    lwz      r12, 0x14(r12)
-    mtctr    r12
-    bctrl
-.L_801A421C:
-    mr       r29, r3
-    b        .L_801A424C
-.L_801A4224:
-    addi     r3, r3, 0x44
-    mr       r4, r31
-    lwz      r12, 0xe8(r3)
-    li       r5, 0x0
-    li       r6, 0x0
-    li       r7, 0x0
-    lwz      r12, 0x14(r12)
-    mtctr    r12
-    bctrl
-    mr       r29, r3
-.L_801A424C:
-    cmpwi    r29, 0x0
-    blt      .L_801A4264
-    lwz      r3, 0x4(r30)
-    addi     r0, r3, 0x1
-    stw      r0, 0x4(r30)
-    b        .L_801A42E8
-.L_801A4264:
-    stw      r29, 0xc(r30)
-    lwz      r0, 0x8(r30)
-    rlwinm.  r0, r0, 0, 23, 23
-    beq      .L_801A42A0
-    lwz      r3, 0x0(r30)
-    lwz      r0, 0x130(r3)
-    cmpwi    r0, 0x0
-    bgt      .L_801A4298
-    addi     r3, r3, 0x44
-    lwz      r12, 0xe8(r3)
-    lwz      r12, 0x20(r12)
-    mtctr    r12
-    bctrl
-.L_801A4298:
-    li       r3, 0x0
-    b        .L_801A42EC
-.L_801A42A0:
-    lis      r3, lbl_8020F094@ha
-    addi     r3, r3, lbl_8020F094@l
-    crclr    cr1eq
-    bl       OSReport
-    mr       r4, r31
-    mr       r5, r29
-    li       r3, lbl_8065F750@sda21
-    crclr    cr1eq
-    bl       fn_801911B4
-    lis      r7, lbl_8020F0A4@ha
-    lis      r5, lbl_80258800@ha
-    mr       r6, r3
-    li       r4, 0x11d
-    addi     r3, r7, lbl_8020F0A4@l
-    addi     r7, r5, lbl_80258800@l
-    li       r5, lbl_8065F738@sda21
-    crclr    cr1eq
-    bl       OSPanic
-.L_801A42E8:
-    li       r3, 0x1
-.L_801A42EC:
-    lwz      r0, 0x24(r1)
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
 /**
  * @note Address: 0x801A3F18
  * @note Size: 0x244
  */
 BOOL CJArchive::ReadCheck()
 {
+	s32 result;
 	switch (mState) {
 	case 1: {
 		CObjArchive* archive = mArchive;
-		s32 result           = archive->mFile.GetResult();
+		result               = archive->mFile.GetResult();
 		if (result == 0) {
 			archive->mFile.CloseHandle();
 		}
 		if (result == 0) {
 			mState++;
-		} else {
-			if (result < 0) {
-				mResult = result;
-				if (mFlags & 0x100) {
-					if (mArchive->mRefCount <= 0) {
-						mArchive->mFile.Close();
-					}
-					mState = 0;
-				} else {
-					HALTF(307, "%s(%d)\n", mArchive->mFile.mPath, result);
+		} else if (result < 0) {
+			mResult = result;
+			if (mFlags & 0x100) {
+				if (mArchive->mRefCount <= 0) {
+					mArchive->mFile.Close();
 				}
+				mState = 0;
+				break;
+			} else {
+#if defined(VERSION_JP)
+				HALTF(295, "%s(%d)\n", mArchive->mFile.mPath, result);
+#else
+				HALTF(307, "%s(%d)\n", mArchive->mFile.mPath, result);
+#endif
 			}
+		} else {
+			// still reading
 			break;
 		}
 	}
+	// read in: with flag 2, copy it out to aram at mAramAddr if it fits
 	case 2:
 		if (mFlags & 2) {
 			u32 size = ((mArchive->mFile.mSize + 31) & ~31);
 			if (mAramAddr + size < ARGetSize()) {
-				HSD_DevComRequest(0, (u32)mArchive->mFile.mBuffer, (void*)mAramAddr, ((mArchive->mFile.mSize + 31) & ~31), 0xB, 1, ReadDone,
-				                  &mState);
-				while (mState == 2) { }
+				HSD_DevComRequest(0, (u32)mArchive->mFile.mBuffer, mAramAddr, ((mArchive->mFile.mSize + 31) & ~31), HSD_DEVCOM_MRAM_TO_ARAM,
+				                  1, ObjectArchiveReadDone, &mState);
+				// ObjectArchiveReadDone moves mState on to 3 once the copy is done
+				while (*(volatile s32*)&mState == 2) { }
 			} else {
 				mState++;
 			}
 		} else {
 			mState++;
 		}
-	case 3:
-		mArchive->Parse();
+	case 3: {
+		CObjArchive* archive = mArchive;
+		archive->Parse();
 		mState = 0;
 		break;
+	}
 	}
 	return mState == 0;
 }
 // CJArchive::ReadCheck()
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    stw      r30, 0x18(r1)
-    mr       r30, r3
-    lis      r3, lbl_8020F030@ha
-    stw      r29, 0x14(r1)
-    addi     r31, r3, lbl_8020F030@l
-    stw      r28, 0x10(r1)
-    lwz      r0, 0x4(r30)
-    cmpwi    r0, 0x2
-    beq      .L_801A4030
-    bge      .L_801A3F5C
-    cmpwi    r0, 0x1
-    bge      .L_801A3F68
-    b        .L_801A4130
-.L_801A3F5C:
-    cmpwi    r0, 0x4
-    bge      .L_801A4130
-    b        .L_801A40BC
-.L_801A3F68:
-    lwz      r28, 0x0(r30)
-    addi     r3, r28, 0x44
-    lwz      r12, 0x12c(r28)
-    lwz      r12, 0x18(r12)
-    mtctr    r12
-    bctrl
-    mr.      r29, r3
-    bne      .L_801A3F90
-    addi     r3, r28, 0x44
-    bl       CloseHandle__5CFileFv
-.L_801A3F90:
-    cmpwi    r29, 0x0
-    bne      .L_801A3FA8
-    lwz      r3, 0x4(r30)
-    addi     r0, r3, 0x1
-    stw      r0, 0x4(r30)
-    b        .L_801A4030
-.L_801A3FA8:
-    bge      .L_801A4130
-    stw      r29, 0xc(r30)
-    lwz      r0, 0x8(r30)
-    rlwinm.  r0, r0, 0, 23, 23
-    beq      .L_801A3FEC
-    lwz      r3, 0x0(r30)
-    lwz      r0, 0x130(r3)
-    cmpwi    r0, 0x0
-    bgt      .L_801A3FE0
-    addi     r3, r3, 0x44
-    lwz      r12, 0xe8(r3)
-    lwz      r12, 0x20(r12)
-    mtctr    r12
-    bctrl
-.L_801A3FE0:
-    li       r0, 0x0
-    stw      r0, 0x4(r30)
-    b        .L_801A4130
-.L_801A3FEC:
-    addi     r3, r31, 0x64
-    crclr    cr1eq
-    bl       OSReport
-    lwz      r4, 0x0(r30)
-    mr       r5, r29
-    li       r3, lbl_8065F750@sda21
-    addi     r4, r4, 0x80
-    crclr    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8025880C@ha
-    mr       r6, r3
-    addi     r7, r4, lbl_8025880C@l
-    addi     r3, r31, 0x74
-    li       r4, 0x133
-    li       r5, lbl_8065F738@sda21
-    crclr    cr1eq
-    bl       OSPanic
-.L_801A4030:
-    lwz      r0, 0x8(r30)
-    rlwinm.  r0, r0, 0, 30, 30
-    beq      .L_801A40B0
-    lwz      r3, 0x0(r30)
-    lwz      r3, 0x10c(r3)
-    addi     r0, r3, 0x1f
-    clrrwi   r28, r0, 5
-    bl       ARGetSize
-    lwz      r5, 0x10(r30)
-    add      r0, r5, r28
-    cmplw    r0, r3
-    bge      .L_801A40A0
-    lwz      r4, 0x0(r30)
-    lis      r3, ReadDone__FlPl@ha
-    addi     r9, r3, ReadDone__FlPl@l
-    addi     r10, r30, 0x4
-    lwz      r3, 0x10c(r4)
-    li       r7, 0xb
-    lwz      r4, 0x110(r4)
-    li       r8, 0x1
-    addi     r0, r3, 0x1f
-    li       r3, 0x0
-    clrrwi   r6, r0, 5
-    bl       HSD_DevComRequest
-.L_801A4090:
-    lwz      r0, 0x4(r30)
-    cmpwi    r0, 0x2
-    beq      .L_801A4090
-    b        .L_801A40BC
-.L_801A40A0:
-    lwz      r3, 0x4(r30)
-    addi     r0, r3, 0x1
-    stw      r0, 0x4(r30)
-    b        .L_801A40BC
-.L_801A40B0:
-    lwz      r3, 0x4(r30)
-    addi     r0, r3, 0x1
-    stw      r0, 0x4(r30)
-.L_801A40BC:
-    lwz      r28, 0x0(r30)
-    lwz      r4, 0x110(r28)
-    mr       r3, r28
-    lwz      r5, 0x10c(r28)
-    bl       HSD_ArchiveParse
-    cmpwi    r3, 0x0
-    bge      .L_801A4128
-    addi     r3, r31, 0x64
-    crclr    cr1eq
-    bl       OSReport
-    addi     r3, r31, 0x90
-    addi     r5, r28, 0x80
-    li       r4, lbl_8065ADB0@sda21
-    crclr    cr1eq
-    bl       fn_801911B4
-    mr       r6, r3
-    addi     r3, r31, 0x74
-    li       r4, 0x33
-    li       r5, lbl_8065F738@sda21
-    li       r7, lbl_8065ADB0@sda21
-    crclr    cr1eq
-    bl       OSPanic
-    addi     r3, r28, 0x44
-    lwz      r12, 0x12c(r28)
-    lwz      r12, 0x20(r12)
-    mtctr    r12
-    bctrl
-.L_801A4128:
-    li       r0, 0x0
-    stw      r0, 0x4(r30)
-.L_801A4130:
-    lwz      r0, 0x4(r30)
-    lwz      r31, 0x1c(r1)
-    cntlzw   r0, r0
-    lwz      r30, 0x18(r1)
-    extrwi   r3, r0, 8, 19
-    lwz      r0, 0x24(r1)
-    lwz      r29, 0x14(r1)
-    lwz      r28, 0x10(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
 /**
  * @note Address: 0x801A3E14
  * @note Size: 0x104
@@ -643,6 +318,7 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 	scene           = GetScene(sceneIndex);
 	mShapeAnimJoint = scene != NULL ? scene->mModels[model]->mShapeAnimJoint : NULL;
 
+	// mNum[0] is the anim count, taken from the first of the three lists the model has
 	if (mAnimJoint != NULL) {
 		for (mNum[0] = 0;; mNum[0]++) {
 			if (mAnimJoint[mNum[0]] == NULL) {
@@ -666,10 +342,10 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 	}
 
 	scene    = GetScene(sceneIndex);
-	mDesc[0] = scene != NULL ? scene->_04 : NULL;
-	if (mDesc[0] != NULL && mDesc[0]->_04 != NULL) {
+	mDesc[0] = scene != NULL ? scene->mCamera : NULL;
+	if (mDesc[0] != NULL && mDesc[0]->mAnimations != NULL) {
 		for (mNum[1] = 0;; mNum[1]++) {
-			if (mDesc[0]->_04[mNum[1]] == NULL) {
+			if (mDesc[0]->mAnimations[mNum[1]] == NULL) {
 				break;
 			}
 		}
@@ -679,13 +355,13 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 
 	for (int i = 0; i < 8; i++) {
 		scene        = GetScene(sceneIndex);
-		mDesc[i + 1] = scene != NULL ? scene->_08[i] : NULL;
+		mDesc[i + 1] = scene != NULL ? scene->mLights[i] : NULL;
 		if (mDesc[i + 1] == NULL) {
 			break;
 		}
-		if (mDesc[i + 1]->_04 != NULL) {
+		if (mDesc[i + 1]->mAnimations != NULL) {
 			for (mNum[i + 2] = 0;; mNum[i + 2]++) {
-				if (mDesc[i + 1]->_04[mNum[i + 2]] == NULL) {
+				if (mDesc[i + 1]->mAnimations[mNum[i + 2]] == NULL) {
 					break;
 				}
 			}
@@ -697,10 +373,10 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 #if !defined(VERSION_JP)
 	scene    = GetScene(sceneIndex);
 	mDesc[9] = scene != NULL ? scene->_0C : NULL;
-	if (mDesc[9] != NULL && mDesc[9]->_04 != NULL) {
+	if (mDesc[9] != NULL && mDesc[9]->mAnimations != NULL) {
 		// checks the last list but counts the first one, retail's like that
 		for (mNum[10] = 0;; mNum[10]++) {
-			if (mDesc[0]->_04[mNum[10]] == NULL) {
+			if (mDesc[0]->mAnimations[mNum[10]] == NULL) {
 				break;
 			}
 		}
@@ -710,273 +386,11 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 #endif
 }
 // CJArchive::SetupScene(long, long)
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stmw     r26, 0x8(r1)
-    mr       r27, r5
-    mr       r28, r4
-    mr       r31, r3
-    mr       r4, r27
-    lwz      r29, 0x0(r3)
-    mr       r3, r29
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r29
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3AD8
-    lwz      r3, 0x0(r3)
-    slwi     r0, r28, 2
-    lwzx     r3, r3, r0
-    lwz      r0, 0x0(r3)
-    b        .L_801A3ADC
-.L_801A3AD8:
-    li       r0, 0x0
-.L_801A3ADC:
-    stw      r0, 0x18(r31)
-    mr       r4, r27
-    lwz      r29, 0x0(r31)
-    mr       r3, r29
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r29
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3B18
-    lwz      r3, 0x0(r3)
-    slwi     r0, r28, 2
-    lwzx     r3, r3, r0
-    lwz      r0, 0x4(r3)
-    b        .L_801A3B1C
-.L_801A3B18:
-    li       r0, 0x0
-.L_801A3B1C:
-    stw      r0, 0x1c(r31)
-    mr       r4, r27
-    lwz      r29, 0x0(r31)
-    mr       r3, r29
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r29
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3B58
-    lwz      r3, 0x0(r3)
-    slwi     r0, r28, 2
-    lwzx     r3, r3, r0
-    lwz      r0, 0x8(r3)
-    b        .L_801A3B5C
-.L_801A3B58:
-    li       r0, 0x0
-.L_801A3B5C:
-    stw      r0, 0x20(r31)
-    mr       r4, r27
-    lwz      r29, 0x0(r31)
-    mr       r3, r29
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r29
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3B98
-    lwz      r3, 0x0(r3)
-    slwi     r0, r28, 2
-    lwzx     r3, r3, r0
-    lwz      r0, 0xc(r3)
-    b        .L_801A3B9C
-.L_801A3B98:
-    li       r0, 0x0
-.L_801A3B9C:
-    stw      r0, 0x24(r31)
-    lwz      r0, 0x1c(r31)
-    cmplwi   r0, 0x0
-    beq      .L_801A3BD8
-    li       r0, 0x0
-    stw      r0, 0x50(r31)
-.L_801A3BB4:
-    lwz      r3, 0x50(r31)
-    lwz      r4, 0x1c(r31)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3C50
-    addi     r0, r3, 0x1
-    stw      r0, 0x50(r31)
-    b        .L_801A3BB4
-.L_801A3BD8:
-    lwz      r0, 0x20(r31)
-    cmplwi   r0, 0x0
-    beq      .L_801A3C10
-    li       r0, 0x0
-    stw      r0, 0x50(r31)
-.L_801A3BEC:
-    lwz      r3, 0x50(r31)
-    lwz      r4, 0x20(r31)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3C50
-    addi     r0, r3, 0x1
-    stw      r0, 0x50(r31)
-    b        .L_801A3BEC
-.L_801A3C10:
-    lwz      r0, 0x24(r31)
-    cmplwi   r0, 0x0
-    beq      .L_801A3C48
-    li       r0, 0x0
-    stw      r0, 0x50(r31)
-.L_801A3C24:
-    lwz      r3, 0x50(r31)
-    lwz      r4, 0x24(r31)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3C50
-    addi     r0, r3, 0x1
-    stw      r0, 0x50(r31)
-    b        .L_801A3C24
-.L_801A3C48:
-    li       r0, 0x0
-    stw      r0, 0x50(r31)
-.L_801A3C50:
-    lwz      r28, 0x0(r31)
-    mr       r4, r27
-    mr       r3, r28
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r28
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3C7C
-    lwz      r0, 0x4(r3)
-    b        .L_801A3C80
-.L_801A3C7C:
-    li       r0, 0x0
-.L_801A3C80:
-    stw      r0, 0x28(r31)
-    lwz      r3, 0x28(r31)
-    cmplwi   r3, 0x0
-    beq      .L_801A3CCC
-    lwz      r0, 0x4(r3)
-    cmplwi   r0, 0x0
-    beq      .L_801A3CCC
-    li       r0, 0x0
-    stw      r0, 0x54(r31)
-.L_801A3CA4:
-    lwz      r4, 0x28(r31)
-    lwz      r3, 0x54(r31)
-    lwz      r4, 0x4(r4)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3CD4
-    addi     r0, r3, 0x1
-    stw      r0, 0x54(r31)
-    b        .L_801A3CA4
-.L_801A3CCC:
-    li       r0, 0x0
-    stw      r0, 0x54(r31)
-.L_801A3CD4:
-    mr       r29, r31
-    li       r28, 0x0
-    li       r30, 0x0
-.L_801A3CE0:
-    lwz      r26, 0x0(r31)
-    mr       r4, r27
-    mr       r3, r26
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r26
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3D10
-    lwz      r3, 0x8(r3)
-    lwzx     r0, r3, r30
-    b        .L_801A3D14
-.L_801A3D10:
-    li       r0, 0x0
-.L_801A3D14:
-    stw      r0, 0x2c(r29)
-    lwz      r3, 0x2c(r29)
-    cmplwi   r3, 0x0
-    beq      .L_801A3D7C
-    lwz      r0, 0x4(r3)
-    cmplwi   r0, 0x0
-    beq      .L_801A3D60
-    li       r0, 0x0
-    stw      r0, 0x58(r29)
-.L_801A3D38:
-    lwz      r4, 0x2c(r29)
-    lwz      r3, 0x58(r29)
-    lwz      r4, 0x4(r4)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3D68
-    addi     r0, r3, 0x1
-    stw      r0, 0x58(r29)
-    b        .L_801A3D38
-.L_801A3D60:
-    li       r0, 0x0
-    stw      r0, 0x58(r29)
-.L_801A3D68:
-    addi     r28, r28, 0x1
-    addi     r29, r29, 0x4
-    cmpwi    r28, 0x8
-    addi     r30, r30, 0x4
-    blt      .L_801A3CE0
-.L_801A3D7C:
-    lwz      r26, 0x0(r31)
-    mr       r4, r27
-    mr       r3, r26
-    bl       HSD_ArchiveGetExtern
-    mr       r4, r3
-    mr       r3, r26
-    bl       HSD_ArchiveGetPublicAddress
-    cmplwi   r3, 0x0
-    beq      .L_801A3DA8
-    lwz      r0, 0xc(r3)
-    b        .L_801A3DAC
-.L_801A3DA8:
-    li       r0, 0x0
-.L_801A3DAC:
-    stw      r0, 0x4c(r31)
-    lwz      r3, 0x4c(r31)
-    cmplwi   r3, 0x0
-    beq      .L_801A3DF8
-    lwz      r0, 0x4(r3)
-    cmplwi   r0, 0x0
-    beq      .L_801A3DF8
-    li       r0, 0x0
-    stw      r0, 0x78(r31)
-.L_801A3DD0:
-    lwz      r4, 0x28(r31)
-    lwz      r3, 0x78(r31)
-    lwz      r4, 0x4(r4)
-    slwi     r0, r3, 2
-    lwzx     r0, r4, r0
-    cmplwi   r0, 0x0
-    beq      .L_801A3E00
-    addi     r0, r3, 0x1
-    stw      r0, 0x78(r31)
-    b        .L_801A3DD0
-.L_801A3DF8:
-    li       r0, 0x0
-    stw      r0, 0x78(r31)
-.L_801A3E00:
-    lmw      r26, 0x8(r1)
-    lwz      r0, 0x24(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
 /**
  * @note Address: 0x801A39D0
  * @note Size: 0xB4
  */
+// goes depth levels down from anim id's root, skipping path[i] siblings on level i
 HSD_AnimJoint* CJArchive::GetAnimJoint(s32 id, s32 depth, const s32* path)
 {
 	HSD_AnimJoint* joint;
@@ -1046,241 +460,78 @@ HSD_ShapeAnimJoint* CJArchive::GetShapeAnimJoint(s32 id, s32 depth, const s32* p
  * @note Address: 0x801A37E8
  * @note Size: 0x80
  */
-extern "C" void JObjSetMObjFlags(HSD_JObj* jobj, u32 flags)
+// this and the next three are HSD_JObjWalkTree callbacks, the flags come in as the walk's argument
+extern "C" void JObjSetMObjFlags(HSD_JObj* jobj, void* flags, s32)
 {
+	u32 mask       = (u32)flags;
 	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
 	while (dobj != NULL) {
 		HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
 		if (mobj != NULL) {
-			HSD_MObjSetFlags(mobj, flags);
+			HSD_MObjSetFlags(mobj, mask);
 		}
 		dobj = HSD_DObjGetNext(dobj);
 	}
 }
 // JObjSetMObjFlags
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    stw      r0, 0x14(r1)
-    stw      r31, 0xc(r1)
-    mr       r31, r4
-    stw      r30, 0x8(r1)
-    bl       HSD_JObjGetDObj
-    mr       r30, r3
-    b        .L_801A3848
-.L_801A380C:
-    cmplwi   r30, 0x0
-    beq      .L_801A381C
-    lwz      r3, 0x8(r30)
-    b        .L_801A3820
-.L_801A381C:
-    li       r3, 0x0
-.L_801A3820:
-    cmplwi   r3, 0x0
-    beq      .L_801A3830
-    mr       r4, r31
-    bl       HSD_MObjSetFlags
-.L_801A3830:
-    cmplwi   r30, 0x0
-    beq      .L_801A3840
-    lwz      r0, 0x4(r30)
-    b        .L_801A3844
-.L_801A3840:
-    li       r0, 0x0
-.L_801A3844:
-    mr       r30, r0
-.L_801A3848:
-    cmplwi   r30, 0x0
-    bne      .L_801A380C
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    lwz      r30, 0x8(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
 /**
  * @note Address: 0x801A3768
  * @note Size: 0x80
  */
-extern "C" void JObjClearMObjFlags(HSD_JObj* jobj, u32 flags)
+extern "C" void JObjClearMObjFlags(HSD_JObj* jobj, void* flags, s32)
 {
+	u32 mask       = (u32)flags;
 	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
 	while (dobj != NULL) {
 		HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
 		if (mobj != NULL) {
-			HSD_MObjClearFlags(mobj, flags);
+			HSD_MObjClearFlags(mobj, mask);
 		}
 		dobj = HSD_DObjGetNext(dobj);
 	}
 }
 // JObjClearMObjFlags
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    stw      r0, 0x14(r1)
-    stw      r31, 0xc(r1)
-    mr       r31, r4
-    stw      r30, 0x8(r1)
-    bl       HSD_JObjGetDObj
-    mr       r30, r3
-    b        .L_801A37C8
-.L_801A378C:
-    cmplwi   r30, 0x0
-    beq      .L_801A379C
-    lwz      r3, 0x8(r30)
-    b        .L_801A37A0
-.L_801A379C:
-    li       r3, 0x0
-.L_801A37A0:
-    cmplwi   r3, 0x0
-    beq      .L_801A37B0
-    mr       r4, r31
-    bl       HSD_MObjClearFlags
-.L_801A37B0:
-    cmplwi   r30, 0x0
-    beq      .L_801A37C0
-    lwz      r0, 0x4(r30)
-    b        .L_801A37C4
-.L_801A37C0:
-    li       r0, 0x0
-.L_801A37C4:
-    mr       r30, r0
-.L_801A37C8:
-    cmplwi   r30, 0x0
-    bne      .L_801A378C
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    lwz      r30, 0x8(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
 /**
  * @note Address: 0x801A36E8
  * @note Size: 0x80
  */
-extern "C" void JObjSetPObjFlags(HSD_JObj* jobj, u32 flags)
+extern "C" void JObjSetPObjFlags(HSD_JObj* jobj, void* flags, s32)
 {
+	u32 mask       = (u32)flags;
 	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
 	while (dobj != NULL) {
 		HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
 		if (pobj != NULL) {
-			HSD_PObjSetFlags(pobj, flags);
+			HSD_PObjSetFlags(pobj, mask);
 		}
 		dobj = HSD_DObjGetNext(dobj);
 	}
 }
 // JObjSetPObjFlags
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    stw      r0, 0x14(r1)
-    stw      r31, 0xc(r1)
-    mr       r31, r4
-    stw      r30, 0x8(r1)
-    bl       HSD_JObjGetDObj
-    mr       r30, r3
-    b        .L_801A3748
-.L_801A370C:
-    cmplwi   r30, 0x0
-    beq      .L_801A371C
-    lwz      r3, 0xc(r30)
-    b        .L_801A3720
-.L_801A371C:
-    li       r3, 0x0
-.L_801A3720:
-    cmplwi   r3, 0x0
-    beq      .L_801A3730
-    mr       r4, r31
-    bl       HSD_PObjSetFlags
-.L_801A3730:
-    cmplwi   r30, 0x0
-    beq      .L_801A3740
-    lwz      r0, 0x4(r30)
-    b        .L_801A3744
-.L_801A3740:
-    li       r0, 0x0
-.L_801A3744:
-    mr       r30, r0
-.L_801A3748:
-    cmplwi   r30, 0x0
-    bne      .L_801A370C
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    lwz      r30, 0x8(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
 /**
  * @note Address: 0x801A3668
  * @note Size: 0x80
  */
-extern "C" void JObjClearPObjFlags(HSD_JObj* jobj, u32 flags)
+extern "C" void JObjClearPObjFlags(HSD_JObj* jobj, void* flags, s32)
 {
+	u32 mask       = (u32)flags;
 	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
 	while (dobj != NULL) {
 		HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
 		if (pobj != NULL) {
-			HSD_PObjClearFlags(pobj, flags);
+			HSD_PObjClearFlags(pobj, mask);
 		}
 		dobj = HSD_DObjGetNext(dobj);
 	}
 }
 // JObjClearPObjFlags
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    stw      r0, 0x14(r1)
-    stw      r31, 0xc(r1)
-    mr       r31, r4
-    stw      r30, 0x8(r1)
-    bl       HSD_JObjGetDObj
-    mr       r30, r3
-    b        .L_801A36C8
-.L_801A368C:
-    cmplwi   r30, 0x0
-    beq      .L_801A369C
-    lwz      r3, 0xc(r30)
-    b        .L_801A36A0
-.L_801A369C:
-    li       r3, 0x0
-.L_801A36A0:
-    cmplwi   r3, 0x0
-    beq      .L_801A36B0
-    mr       r4, r31
-    bl       HSD_PObjClearFlags
-.L_801A36B0:
-    cmplwi   r30, 0x0
-    beq      .L_801A36C0
-    lwz      r0, 0x4(r30)
-    b        .L_801A36C4
-.L_801A36C0:
-    li       r0, 0x0
-.L_801A36C4:
-    mr       r30, r0
-.L_801A36C8:
-    cmplwi   r30, 0x0
-    bne      .L_801A368C
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    lwz      r30, 0x8(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
 /**
  * @note Address: 0x801A346C
  * @note Size: 0x1FC
  */
-bool CObjVec::Step(u32 frames)
+u8 CObjVec::Step(u32 frames)
 {
-	bool moving = IsMoving();
+	u8 moving = IsMoving();
 
 	if (x < mTarget.x) {
 		if ((x += mSpeed.x * frames) > mTarget.x) {
@@ -1312,146 +563,6 @@ bool CObjVec::Step(u32 frames)
 	return moving;
 }
 // CObjVec::Step(unsigned long)
-/*
-    stwu     r1, -0x10(r1)
-    li       r0, 0x0
-    lfs      f3, 0x0(r3)
-    lfs      f2, 0x10(r3)
-    fcmpu    cr0, f3, f2
-    beq      .L_801A3494
-    lfs      f1, lbl_8065F71C@sda21(r0)
-    lfs      f0, 0x20(r3)
-    fcmpu    cr0, f1, f0
-    bne      .L_801A34D4
-.L_801A3494:
-    lfs      f1, 0x4(r3)
-    lfs      f0, 0x14(r3)
-    fcmpu    cr0, f1, f0
-    beq      .L_801A34B4
-    lfs      f1, lbl_8065F71C@sda21(r0)
-    lfs      f0, 0x24(r3)
-    fcmpu    cr0, f1, f0
-    bne      .L_801A34D4
-.L_801A34B4:
-    lfs      f1, 0x8(r3)
-    lfs      f0, 0x18(r3)
-    fcmpu    cr0, f1, f0
-    beq      .L_801A34D8
-    lfs      f1, lbl_8065F71C@sda21(r0)
-    lfs      f0, 0x28(r3)
-    fcmpu    cr0, f1, f0
-    beq      .L_801A34D8
-.L_801A34D4:
-    li       r0, 0x1
-.L_801A34D8:
-    fcmpo    cr0, f3, f2
-    clrlwi   r5, r0, 24
-    bge      .L_801A3520
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f2, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f3, 0x20(r3)
-    lfd      f1, 0x8(r1)
-    lfs      f0, 0x0(r3)
-    fsubs    f1, f1, f2
-    fmadds   f0, f3, f1, f0
-    stfs     f0, 0x0(r3)
-    lfs      f1, 0x10(r3)
-    fcmpo    cr0, f0, f1
-    ble      .L_801A355C
-    stfs     f1, 0x0(r3)
-    b        .L_801A355C
-.L_801A3520:
-    ble      .L_801A355C
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f2, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f3, 0x20(r3)
-    lfd      f1, 0x8(r1)
-    lfs      f0, 0x0(r3)
-    fsubs    f1, f1, f2
-    fnmsubs  f0, f3, f1, f0
-    stfs     f0, 0x0(r3)
-    lfs      f1, 0x10(r3)
-    fcmpo    cr0, f0, f1
-    bge      .L_801A355C
-    stfs     f1, 0x0(r3)
-.L_801A355C:
-    lfs      f3, 0x4(r3)
-    lfs      f0, 0x14(r3)
-    fcmpo    cr0, f3, f0
-    bge      .L_801A35A4
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x24(r3)
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fmadds   f0, f2, f0, f3
-    stfs     f0, 0x4(r3)
-    lfs      f1, 0x14(r3)
-    fcmpo    cr0, f0, f1
-    ble      .L_801A35DC
-    stfs     f1, 0x4(r3)
-    b        .L_801A35DC
-.L_801A35A4:
-    ble      .L_801A35DC
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x24(r3)
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fnmsubs  f0, f2, f0, f3
-    stfs     f0, 0x4(r3)
-    lfs      f1, 0x14(r3)
-    fcmpo    cr0, f0, f1
-    bge      .L_801A35DC
-    stfs     f1, 0x4(r3)
-.L_801A35DC:
-    lfs      f3, 0x8(r3)
-    lfs      f0, 0x18(r3)
-    fcmpo    cr0, f3, f0
-    bge      .L_801A3624
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x28(r3)
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fmadds   f0, f2, f0, f3
-    stfs     f0, 0x8(r3)
-    lfs      f1, 0x18(r3)
-    fcmpo    cr0, f0, f1
-    ble      .L_801A365C
-    stfs     f1, 0x8(r3)
-    b        .L_801A365C
-.L_801A3624:
-    ble      .L_801A365C
-    lis      r0, 0x4330
-    stw      r4, 0xc(r1)
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x28(r3)
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fnmsubs  f0, f2, f0, f3
-    stfs     f0, 0x8(r3)
-    lfs      f1, 0x18(r3)
-    fcmpo    cr0, f0, f1
-    bge      .L_801A365C
-    stfs     f1, 0x8(r3)
-.L_801A365C:
-    mr       r3, r5
-    addi     r1, r1, 0x10
-    blr
-*/
-
 /**
  * @note Address: 0x801A3414
  * @note Size: 0x58
@@ -1467,16 +578,17 @@ void XCObjInfoInit()
  * @note Address: 0x801A326C
  * @note Size: 0x1A8
  */
-// the parent's tev, then the second color added and the first added on top
+// the parent's tev times the second color, then the first color added on top
 HSD_TExp* XCObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list)
 {
 	HSD_TExp* tev1;
 	HSD_TExp* tev0;
-	HSD_TExp* cnst1;
+	HSD_TExp* exp;
 	HSD_TExp* cnst0;
 	u32* colors;
-	HSD_TExp* exp = hsdMObj.make_texp(mobj, tobj_top, list);
-	colors        = ((XCObj*)mobj)->mColors;
+	HSD_TExp* cnst1;
+	exp    = hsdMObj.make_texp(mobj, tobj_top, list);
+	colors = ((XCObj*)mobj)->mColors;
 	if (colors == NULL) {
 		return exp;
 	}
@@ -1502,8 +614,9 @@ HSD_TExp* XCObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list)
  */
 // HSD_JObjWalkTree callback, points every x_cobj material under the jobj at the
 // colors
-void XCObjSetColors(HSD_JObj* jobj, u32* colors, s32)
+void XCObjSetColors(HSD_JObj* jobj, void* context, s32)
 {
+	u32* colors    = static_cast<u32*>(context);
 	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
 	while (dobj != NULL) {
 		XCObj* mobj = (XCObj*)(dobj != NULL ? dobj->mobj : NULL);
@@ -1565,19 +678,19 @@ void CXObj::Init(u32 id)
 	mAnimId                  = -1;
 	mLastAnimRate            = 0.0f;
 	mAnimRate                = 0.0f;
-	mColors[0]               = 0;
-	mColors[1]               = 0xFFFFFF00;
+	mColors[0]               = 0;          // nothing added
+	mColors[1]               = 0xFFFFFF00; // and times white, so the materials start untinted
 }
 
 /**
  * @note Address: 0x801A306C
  * @note Size: 0x88
  */
-BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b, u32 c)
+BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 flags, u32 aramAddr, u32 aramSize)
 {
-	if (mArchive.ReadAsync(archive, path, flags, b, c)) {
+	if (mArchive.ReadAsync(archive, path, flags, aramAddr, aramSize)) {
 		mLoadState++;
-		mModel     = a;
+		mModel     = model;
 		mLoadFlags = flags;
 		return TRUE;
 	}
@@ -1588,98 +701,13 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 a, u32 flags, 
  * @note Address: 0x801A2F38
  * @note Size: 0x134
  */
+// Retail calls both Attach and the base ReadCheck out of line.
 void CXObj::Attach(HSD_JObj* jobj)
 {
 	CJObj::Attach(jobj);
-	fn_800D40EC(this);
+	SyncMoveFromJoint(this);
 }
 // CXObj::Attach(_HSD_JObj*)
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    stw      r30, 0x18(r1)
-    stw      r29, 0x14(r1)
-    mr       r29, r3
-    stw      r4, 0x0(r3)
-    lwz      r31, 0x0(r3)
-    cmplwi   r31, 0x0
-    bne      .L_801A2F74
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x3e4
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A2F74:
-    addic.   r30, r29, 0x4
-    bne      .L_801A2F90
-    lis      r4, lbl_8020F088@ha
-    li       r3, lbl_8065F6F8@sda21
-    addi     r5, r4, lbl_8020F088@l
-    li       r4, 0x3e5
-    bl       __assert
-.L_801A2F90:
-    lfs      f0, 0x38(r31)
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x3c(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x40(r31)
-    stfs     f0, 0x8(r30)
-    lwz      r31, 0x0(r29)
-    cmplwi   r31, 0x0
-    bne      .L_801A2FC4
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2dd
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A2FC4:
-    addic.   r30, r29, 0x14
-    bne      .L_801A2FDC
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2de
-    li       r5, lbl_8065F710@sda21
-    bl       __assert
-.L_801A2FDC:
-    lfs      f0, 0x1c(r31)
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x20(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x24(r31)
-    stfs     f0, 0x8(r30)
-    lfs      f0, 0x28(r31)
-    stfs     f0, 0xc(r30)
-    lwz      r31, 0x0(r29)
-    cmplwi   r31, 0x0
-    bne      .L_801A3018
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x351
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A3018:
-    addic.   r30, r29, 0x24
-    bne      .L_801A3030
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x352
-    li       r5, lbl_8065F708@sda21
-    bl       __assert
-.L_801A3030:
-    lfs      f0, 0x2c(r31)
-    mr       r3, r29
-    stfs     f0, 0x0(r30)
-    lfs      f0, 0x30(r31)
-    stfs     f0, 0x4(r30)
-    lfs      f0, 0x34(r31)
-    stfs     f0, 0x8(r30)
-    bl       fn_800D40EC
-    lwz      r0, 0x24(r1)
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
 /**
  * @note Address: 0x801A2D68
  * @note Size: 0x1D0
@@ -1688,12 +716,13 @@ BOOL CXObj::ReadCheck()
 {
 	if (mLoadState == 1 && mArchive.ReadCheck()) {
 		mArchive.SetupScene(mModel, 0);
+		// load the materials as x_cobj, so XCObjSetColors can tint them
 		HSD_MObjInfo* mobjClass = HSD_MObjGetDefaultClass();
 		HSD_MObjSetDefaultClass(&xCObj);
 		Attach(mArchive.LoadJObj());
 		HSD_MObjSetDefaultClass(mobjClass);
 		if (mJObj != NULL) {
-			HSD_JObjWalkTree(mJObj, (HSD_JObjWalkTreeCallback)XCObjSetColors, (f32**)mColors);
+			HSD_JObjWalkTree(mJObj, XCObjSetColors, mColors);
 		}
 		HSD_JObjGetScale(mJObj, &mMoveScale);
 		ClearQueue();
@@ -1702,133 +731,6 @@ BOOL CXObj::ReadCheck()
 	return mLoadState == 0;
 }
 // CXObj::ReadCheck()
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    mr       r31, r3
-    stw      r30, 0x18(r1)
-    stw      r29, 0x14(r1)
-    lwz      r0, 0x3c(r3)
-    cmpwi    r0, 0x1
-    bne      .L_801A2F10
-    addi     r3, r31, 0x48
-    lwz      r12, 0xc4(r31)
-    lwz      r12, 0x14(r12)
-    mtctr    r12
-    bctrl
-    cmpwi    r3, 0x0
-    beq      .L_801A2F10
-    lwz      r4, 0x40(r31)
-    addi     r3, r31, 0x48
-    li       r5, 0x0
-    bl       SetupScene__9CJArchiveFll
-    bl       HSD_MObjGetDefaultClass
-    lis      r4, xCObj@ha
-    mr       r29, r3
-    addi     r0, r4, xCObj@l
-    mr       r3, r0
-    bl       HSD_MObjSetDefaultClass
-    lwz      r30, 0x48(r31)
-    cmplwi   r30, 0x0
-    beq      .L_801A2E0C
-    lwz      r3, 0x60(r31)
-    cmplwi   r3, 0x0
-    beq      .L_801A2E00
-    bl       HSD_JObjLoadJoint
-    lwz      r4, 0x130(r30)
-    addi     r0, r4, 0x1
-    stw      r0, 0x130(r30)
-    b        .L_801A2E04
-.L_801A2E00:
-    li       r3, 0x0
-.L_801A2E04:
-    mr       r4, r3
-    b        .L_801A2E10
-.L_801A2E0C:
-    li       r4, 0x0
-.L_801A2E10:
-    mr       r3, r31
-    bl       Attach__5CXObjFP9_HSD_JObj
-    mr       r3, r29
-    bl       HSD_MObjSetDefaultClass
-    lwz      r3, 0x0(r31)
-    cmplwi   r3, 0x0
-    beq      .L_801A2E3C
-    lis      r4, XCObjSetColors__FP9_HSD_JObjPUll@ha
-    addi     r5, r31, 0x164
-    addi     r4, r4, XCObjSetColors__FP9_HSD_JObjPUll@l
-    bl       HSD_JObjWalkTree
-.L_801A2E3C:
-    lwz      r30, 0x0(r31)
-    cmplwi   r30, 0x0
-    bne      .L_801A2E58
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x351
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A2E58:
-    addic.   r0, r31, 0x128
-    bne      .L_801A2E70
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x352
-    li       r5, lbl_8065F708@sda21
-    bl       __assert
-.L_801A2E70:
-    lfs      f1, 0x2c(r30)
-    li       r0, 0x0
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    stfs     f1, 0x128(r31)
-    lfs      f1, 0x30(r30)
-    stfs     f1, 0x12c(r31)
-    lfs      f1, 0x34(r30)
-    stfs     f1, 0x130(r31)
-    stw      r0, 0x16c(r31)
-    stw      r0, 0x170(r31)
-    stw      r0, 0x174(r31)
-    stfs     f0, 0x178(r31)
-    stw      r0, 0x17c(r31)
-    stw      r0, 0x180(r31)
-    stfs     f0, 0x184(r31)
-    stw      r0, 0x188(r31)
-    stw      r0, 0x18c(r31)
-    stfs     f0, 0x190(r31)
-    stw      r0, 0x194(r31)
-    stw      r0, 0x198(r31)
-    stfs     f0, 0x19c(r31)
-    stw      r0, 0x1a0(r31)
-    stw      r0, 0x1a4(r31)
-    stfs     f0, 0x1a8(r31)
-    stw      r0, 0x1ac(r31)
-    stw      r0, 0x1b0(r31)
-    stfs     f0, 0x1b4(r31)
-    stw      r0, 0x1b8(r31)
-    stw      r0, 0x1bc(r31)
-    stfs     f0, 0x1c0(r31)
-    stw      r0, 0x1c4(r31)
-    stw      r0, 0x1c8(r31)
-    stfs     f0, 0x1cc(r31)
-    stw      r0, 0x1d0(r31)
-    stw      r0, 0x1d4(r31)
-    stfs     f0, 0x1d8(r31)
-    stw      r0, 0x1dc(r31)
-    stw      r0, 0x1e0(r31)
-    stfs     f0, 0x1e4(r31)
-    stw      r0, 0x3c(r31)
-.L_801A2F10:
-    lwz      r0, 0x3c(r31)
-    lwz      r31, 0x1c(r1)
-    cntlzw   r0, r0
-    lwz      r30, 0x18(r1)
-    extrwi   r3, r0, 8, 19
-    lwz      r0, 0x24(r1)
-    lwz      r29, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
 /**
  * @note Address: 0x801A2D04
  * @note Size: 0x64
@@ -1889,6 +791,7 @@ BOOL CXObj::StepScale(u32 frames)
  * @note Address: 0x801A211C
  * @note Size: 0x188
  */
+// dir is the point to move to, not a direction; speed is the distance per frame
 void CXObj::SetMoveDir(const Vec* dir, f32 speed)
 {
 	mMoveTranslate.mTarget.x = dir->x;
@@ -1896,9 +799,10 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
 	mMoveTranslate.mTarget.z = dir->z;
 	CVec d(mMoveTranslate - *dir);
 	if (PSVECMag(&d) > 0.0f) {
-		d.x = Abs(d.x);
-		d.y = Abs(d.y);
-		d.z = Abs(d.z);
+		d.x = ABS(d.x);
+		d.y = ABS(d.y);
+		d.z = ABS(d.z);
+		// each axis gets its share of the distance, so all three arrive on the same frame
 		PSVECNormalize(&d, &d);
 		mMoveTranslate.mSpeed.Set(d * speed);
 		if (mMoveTranslate.mSpeed.x > 0.0f && mMoveTranslate.mSpeed.x < 0.001f) {
@@ -1910,112 +814,6 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
 	}
 }
 // CXObj::SetMoveDir(const Vec*, float)
-/*
-    stwu     r1, -0x60(r1)
-    mflr     r0
-    stw      r0, 0x64(r1)
-    stfd     f31, 0x50(r1)
-    psq_st   f31, 0x58(r1), 0, qr0
-    stw      r31, 0x4c(r1)
-    lfs      f0, 0x0(r4)
-    mr       r31, r3
-    lfs      f2, 0x4(r4)
-    fmr      f31, f1
-    stfs     f0, 0xd8(r3)
-    addi     r3, r1, 0x18
-    lfs      f0, 0x8(r4)
-    addi     r5, r1, 0x28
-    stfs     f2, 0xdc(r31)
-    lwz      r7, 0x0(r4)
-    stfs     f0, 0xe0(r31)
-    lwz      r6, 0x4(r4)
-    lwz      r0, 0x8(r4)
-    addi     r4, r31, 0xc8
-    stw      r7, 0x28(r1)
-    stw      r6, 0x2c(r1)
-    stw      r0, 0x30(r1)
-    bl       __mi__4CVecCF3Vec
-    lwz      r6, 0x18(r1)
-    lis      r3, __vt__4CVec@ha
-    addi     r0, r3, __vt__4CVec@l
-    lwz      r5, 0x1c(r1)
-    lwz      r4, 0x20(r1)
-    addi     r3, r1, 0x34
-    stw      r6, 0x34(r1)
-    stw      r5, 0x38(r1)
-    stw      r4, 0x3c(r1)
-    stw      r0, 0x40(r1)
-    stw      r0, 0x24(r1)
-    bl       PSVECMag
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    fcmpo    cr0, f1, f0
-    ble      .L_801A227C
-    lfs      f1, 0x34(r1)
-    fcmpo    cr0, f1, f0
-    bge      .L_801A21C8
-    fneg     f1, f1
-.L_801A21C8:
-    lfs      f2, 0x38(r1)
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    stfs     f1, 0x34(r1)
-    fcmpo    cr0, f2, f0
-    bge      .L_801A21E0
-    fneg     f2, f2
-.L_801A21E0:
-    lfs      f1, 0x3c(r1)
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    stfs     f2, 0x38(r1)
-    fcmpo    cr0, f1, f0
-    bge      .L_801A21F8
-    fneg     f1, f1
-.L_801A21F8:
-    addi     r3, r1, 0x34
-    stfs     f1, 0x3c(r1)
-    mr       r4, r3
-    bl       PSVECNormalize
-    fmr      f1, f31
-    addi     r3, r1, 0x8
-    addi     r4, r1, 0x34
-    bl       __ml__4CVecCFf
-    lfs      f3, 0x10(r1)
-    lis      r3, __vt__4CVec@ha
-    lfs      f2, 0xc(r1)
-    addi     r0, r3, __vt__4CVec@l
-    lfs      f1, 0x8(r1)
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    stfs     f1, 0xe8(r31)
-    stfs     f2, 0xec(r31)
-    stfs     f3, 0xf0(r31)
-    stw      r0, 0x14(r1)
-    lfs      f1, 0xe8(r31)
-    fcmpo    cr0, f1, f0
-    ble      .L_801A225C
-    lfs      f0, lbl_8065F724@sda21(r0)
-    fcmpo    cr0, f1, f0
-    bge      .L_801A225C
-    stfs     f0, 0xe8(r31)
-.L_801A225C:
-    lfs      f1, 0xf0(r31)
-    lfs      f0, lbl_8065F71C@sda21(r0)
-    fcmpo    cr0, f1, f0
-    ble      .L_801A227C
-    lfs      f0, lbl_8065F724@sda21(r0)
-    fcmpo    cr0, f1, f0
-    bge      .L_801A227C
-    stfs     f0, 0xf0(r31)
-.L_801A227C:
-    lis      r3, __vt__4CVec@ha
-    addi     r0, r3, __vt__4CVec@l
-    stw      r0, 0x40(r1)
-    psq_l    f31, 0x58(r1), 0, qr0
-    lwz      r0, 0x64(r1)
-    lfd      f31, 0x50(r1)
-    lwz      r31, 0x4c(r1)
-    mtlr     r0
-    addi     r1, r1, 0x60
-    blr
-*/
-
 /**
  * @note Address: 0x801A2030
  * @note Size: 0xEC
@@ -2042,6 +840,7 @@ void CXObj::SetRotateY(f32 target, f32 speed)
 	if (diff >= TWO_PI) {
 		diff -= TWO_PI;
 	}
+	// go the short way round
 	if (diff > PI) {
 		if (tgt < cur) {
 			mMoveRotate.mTarget.y = TWO_PI + tgt;
@@ -2067,6 +866,7 @@ void CXObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* sh
 			HSD_JObjAddAnimAll(mJObj, (HSD_AnimJoint*)joint, (HSD_MatAnimJoint*)mat, (HSD_ShapeAnimJoint*)shape);
 			HSD_JObjReqAnimAll(mJObj, frame);
 		}
+		// a new anim always takes the rate too
 		force = TRUE;
 	}
 	if (rate != mAnimRate || force) {
@@ -2111,6 +911,7 @@ void CXObj::UpdateAnim(u32 speed)
 			if (mQueue[i].mJObj == NULL) {
 				break;
 			}
+			// rates go on before the anim step: 0x200 the joint's own anim, 0x400 every anim in its subtree
 			if (mQueue[i].mType == 0x200) {
 				if (mQueue[i].mJObj->aobj != NULL) {
 					HSD_AObjSetRate(mQueue[i].mJObj->aobj, mQueue[i].mValue * speed);
@@ -2127,6 +928,7 @@ void CXObj::UpdateAnim(u32 speed)
 			if (mQueue[i].mJObj == NULL) {
 				break;
 			}
+			// values go on after it, over what the anim set; the rate entries are only cleared
 			HSD_JObj* jobj = mQueue[i].mJObj;
 			if (mQueue[i].mType != 0) {
 				switch (mQueue[i].mType) {
@@ -2166,500 +968,6 @@ void CXObj::UpdateAnim(u32 speed)
 	}
 }
 // CXObj::UpdateAnim(unsigned long)
-/*
-    stwu     r1, -0x30(r1)
-    mflr     r0
-    stw      r0, 0x34(r1)
-    stfd     f31, 0x20(r1)
-    psq_st   f31, 0x28(r1), 0, qr0
-    stw      r31, 0x1c(r1)
-    stw      r30, 0x18(r1)
-    stw      r29, 0x14(r1)
-    stw      r28, 0x10(r1)
-    mr       r31, r4
-    lis      r0, 0x4330
-    stw      r31, 0xc(r1)
-    mr       r28, r3
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x15c(r3)
-    lfd      f0, 0x8(r1)
-    lfs      f3, 0x160(r3)
-    fsubs    f0, f0, f1
-    fmuls    f0, f2, f0
-    fcmpu    cr0, f3, f0
-    beq      .L_801A179C
-    stfs     f0, 0x160(r28)
-    lfs      f31, 0x160(r28)
-    lwz      r3, 0x0(r28)
-    bl       HSD_JObjGetFlags
-    rlwinm.  r0, r3, 0, 19, 19
-    beq      .L_801A1778
-    lwz      r3, 0x0(r28)
-    lwz      r3, 0x10(r3)
-    b        .L_801A177C
-.L_801A1778:
-    lwz      r3, 0x0(r28)
-.L_801A177C:
-    fmr      f1, f31
-    lis      r4, HSD_AObjSetRate@ha
-    addi     r6, r4, HSD_AObjSetRate@l
-    li       r5, 0x5a0
-    li       r4, 0x6
-    li       r7, 0x1
-    crset    cr1eq
-    bl       HSD_ForeachAnim
-.L_801A179C:
-    lwz      r0, 0x16c(r28)
-    cmpwi    r0, 0x0
-    beq      .L_801A1850
-    li       r30, 0x0
-    mr       r29, r28
-.L_801A17B0:
-    lwz      r3, 0x170(r29)
-    cmplwi   r3, 0x0
-    beq      .L_801A1850
-    lwz      r0, 0x174(r29)
-    cmplwi   r0, 0x200
-    bne      .L_801A17FC
-    lwz      r3, 0x7c(r3)
-    cmplwi   r3, 0x0
-    beq      .L_801A1840
-    lis      r0, 0x4330
-    stw      r31, 0xc(r1)
-    lfd      f1, lbl_8065F730@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f2, 0x178(r29)
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fmuls    f1, f2, f0
-    bl       HSD_AObjSetRate
-    b        .L_801A1840
-.L_801A17FC:
-    cmplwi   r0, 0x400
-    bne      .L_801A1840
-    lis      r0, 0x4330
-    lis      r4, HSD_AObjSetRate@ha
-    stw      r31, 0xc(r1)
-    addi     r6, r4, HSD_AObjSetRate@l
-    lfd      f1, lbl_8065F730@sda21(r0)
-    li       r4, 0x6
-    stw      r0, 0x8(r1)
-    li       r5, 0x5a0
-    lfs      f2, 0x178(r29)
-    li       r7, 0x1
-    lfd      f0, 0x8(r1)
-    fsubs    f0, f0, f1
-    fmuls    f1, f2, f0
-    crset    cr1eq
-    bl       HSD_ForeachAnim
-.L_801A1840:
-    addi     r30, r30, 0x1
-    addi     r29, r29, 0xc
-    cmpwi    r30, 0xa
-    blt      .L_801A17B0
-.L_801A1850:
-    lwz      r3, 0x0(r28)
-    bl       HSD_JObjAnimAll
-    lwz      r0, 0x16c(r28)
-    cmpwi    r0, 0x0
-    beq      .L_801A1DA8
-    li       r29, 0x0
-    mr       r31, r28
-.L_801A186C:
-    lwz      r30, 0x170(r31)
-    cmplwi   r30, 0x0
-    beq      .L_801A1DA0
-    lwz      r0, 0x174(r31)
-    cmplwi   r0, 0x0
-    beq      .L_801A1D90
-    cmpwi    r0, 0x10
-    beq      .L_801A1AD0
-    bge      .L_801A18C0
-    cmpwi    r0, 0x4
-    beq      .L_801A19E0
-    bge      .L_801A18B4
-    cmpwi    r0, 0x2
-    beq      .L_801A1968
-    bge      .L_801A1D84
-    cmpwi    r0, 0x1
-    bge      .L_801A18F0
-    b        .L_801A1D84
-.L_801A18B4:
-    cmpwi    r0, 0x8
-    beq      .L_801A1A58
-    b        .L_801A1D84
-.L_801A18C0:
-    cmpwi    r0, 0x80
-    beq      .L_801A1C58
-    bge      .L_801A18E4
-    cmpwi    r0, 0x40
-    beq      .L_801A1BC0
-    bge      .L_801A1D84
-    cmpwi    r0, 0x20
-    beq      .L_801A1B48
-    b        .L_801A1D84
-.L_801A18E4:
-    cmpwi    r0, 0x100
-    beq      .L_801A1CF0
-    b        .L_801A1D84
-.L_801A18F0:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A190C
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x3b8
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A190C:
-    stfs     f31, 0x38(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1938
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1938:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1954
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1954
-    li       r3, 0x1
-.L_801A1954:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1968:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1984
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x3c6
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1984:
-    stfs     f31, 0x3c(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A19B0
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A19B0:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A19CC
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A19CC
-    li       r3, 0x1
-.L_801A19CC:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A19E0:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A19FC
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x3d4
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A19FC:
-    stfs     f31, 0x40(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1A28
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1A28:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1A44
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1A44
-    li       r3, 0x1
-.L_801A1A44:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1A58:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1A74
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x325
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1A74:
-    stfs     f31, 0x2c(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1AA0
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1AA0:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1ABC
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1ABC
-    li       r3, 0x1
-.L_801A1ABC:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1AD0:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1AEC
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x333
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1AEC:
-    stfs     f31, 0x30(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1B18
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1B18:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1B34
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1B34
-    li       r3, 0x1
-.L_801A1B34:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1B48:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1B64
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x341
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1B64:
-    stfs     f31, 0x34(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1B90
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1B90:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1BAC
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1BAC
-    li       r3, 0x1
-.L_801A1BAC:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1BC0:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1BDC
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2a4
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1BDC:
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 14, 14
-    beq      .L_801A1BFC
-    lis      r4, lbl_8020F060@ha
-    li       r3, lbl_8065F6F8@sda21
-    addi     r5, r4, lbl_8020F060@l
-    li       r4, 0x2a5
-    bl       __assert
-.L_801A1BFC:
-    stfs     f31, 0x1c(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1C28
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1C28:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1C44
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1C44
-    li       r3, 0x1
-.L_801A1C44:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1C58:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1C74
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2b8
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1C74:
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 14, 14
-    beq      .L_801A1C94
-    lis      r4, lbl_8020F060@ha
-    li       r3, lbl_8065F6F8@sda21
-    addi     r5, r4, lbl_8020F060@l
-    li       r4, 0x2b9
-    bl       __assert
-.L_801A1C94:
-    stfs     f31, 0x20(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1CC0
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1CC0:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1CDC
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1CDC
-    li       r3, 0x1
-.L_801A1CDC:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-    b        .L_801A1D84
-.L_801A1CF0:
-    cmplwi   r30, 0x0
-    lfs      f31, 0x178(r31)
-    bne      .L_801A1D0C
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x2cc
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1D0C:
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 14, 14
-    beq      .L_801A1D2C
-    lis      r4, lbl_8020F060@ha
-    li       r3, lbl_8065F6F8@sda21
-    addi     r5, r4, lbl_8020F060@l
-    li       r4, 0x2cd
-    bl       __assert
-.L_801A1D2C:
-    stfs     f31, 0x24(r30)
-    lwz      r0, 0x14(r30)
-    rlwinm.  r0, r0, 0, 6, 6
-    bne      .L_801A1D84
-    cmplwi   r30, 0x0
-    beq      .L_801A1D84
-    bne      .L_801A1D58
-    li       r3, lbl_8065F6F8@sda21
-    li       r4, 0x25d
-    li       r5, lbl_8065F700@sda21
-    bl       __assert
-.L_801A1D58:
-    lwz      r4, 0x14(r30)
-    li       r3, 0x0
-    rlwinm.  r0, r4, 0, 8, 8
-    bne      .L_801A1D74
-    rlwinm.  r0, r4, 0, 25, 25
-    beq      .L_801A1D74
-    li       r3, 0x1
-.L_801A1D74:
-    clrlwi.  r0, r3, 24
-    bne      .L_801A1D84
-    mr       r3, r30
-    bl       HSD_JObjSetMtxDirtySub
-.L_801A1D84:
-    li       r0, 0x0
-    stw      r0, 0x170(r31)
-    stw      r0, 0x174(r31)
-.L_801A1D90:
-    addi     r29, r29, 0x1
-    addi     r31, r31, 0xc
-    cmpwi    r29, 0xa
-    blt      .L_801A186C
-.L_801A1DA0:
-    li       r0, 0x0
-    stw      r0, 0x16c(r28)
-.L_801A1DA8:
-    psq_l    f31, 0x28(r1), 0, qr0
-    lwz      r0, 0x34(r1)
-    lfd      f31, 0x20(r1)
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    lwz      r28, 0x10(r1)
-    mtlr     r0
-    addi     r1, r1, 0x30
-    blr
-*/
-
 /**
  * @note Address: 0x801A16B0
  * @note Size: 0x4C
@@ -2681,11 +989,11 @@ void CXObj::Push(HSD_JObj* jobj, u32 type, f32 value)
  * @note Address: 0x801A163C
  * @note Size: 0x74
  */
-BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b, u32 c)
+BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 model, u32 flags, u32 aramAddr, u32 aramSize)
 {
 	switch (mLoadState) {
 	case 0:
-		ReadAsync(archive, path, a, flags, b, c);
+		ReadAsync(archive, path, model, flags, aramAddr, aramSize);
 		break;
 	case 1:
 		ReadCheck();
@@ -2700,9 +1008,13 @@ BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b
  */
 BOOL CXObjIntp::ReadCheck()
 {
+	// 0x10000: load a second copy of the model to blend anims from
 	if (mLoadState == 1 && CXObj::ReadCheck() && (mLoadFlags & 0x10000)) {
 		mIntp.Attach(mArchive.LoadJObj());
-		fn_8018FD80(mIntp.mJObj);
+#if defined(VERSION_JP)
+		RemoveJointTreeDisplayObjects(mIntp.mJObj);
+#endif
+		ConvertJointTreeRotationToQuaternion(mIntp.mJObj);
 		mBlend = 1.0f;
 	}
 	return mLoadState == 0;
@@ -2717,6 +1029,7 @@ void CXObjIntp::Release()
 {
 	if (mIntp.mJObj != NULL) {
 		ReleaseJObj(&mIntp);
+		// drop the archive reference mIntp's LoadJObj took, CJArchive::Release drops the model's
 		if (mArchive.mArchive != NULL && mArchive.mArchive->mRefCount > 0) {
 			mArchive.mArchive->mRefCount--;
 		}
@@ -2771,8 +1084,9 @@ void CXObjIntp::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void
 {
 	if ((force || id != mAnimId) && mIntp.mJObj != NULL) {
 		if (blend < 1.0f) {
-			fn_8018F658(mJObj, mIntp.mJObj);
-			fn_8018FD80(mIntp.mJObj);
+			// keep the pose the model has now in mIntp, UpdateAnim blends from it
+			CopyJointPoseTree(mJObj, mIntp.mJObj);
+			ConvertJointTreeRotationToQuaternion(mIntp.mJObj);
 		} else if (mBlend < 1.0f) {
 			ApplyTransform();
 		}
@@ -2795,12 +1109,13 @@ void CXObjIntp::UpdateAnim(u32 speed)
 		}
 		CXObj::UpdateAnim(speed);
 		if (mBlend < 1.0f) {
-			f32 t  = mBlend + (1.0f / mBlendRate) * speed;
-			mBlend = t;
-			if (t >= 1.0f || GetAObj(mJObj)->flags & AOBJ_NO_ANIM) {
+			// mBlendRate is the blend's length in frames
+			f32 blend = mBlend + (1.0f / mBlendRate) * speed;
+			mBlend    = blend;
+			if (blend >= 1.0f || GetAObj(mJObj)->flags & AOBJ_NO_ANIM) {
 				mBlend = 1.0f;
 			} else {
-				fn_8018EEC8(mIntp.mJObj->child, mJObj->child, mJObj->child, mBlend);
+				BlendJointTreePoses(mIntp.mJObj->child, mJObj->child, mJObj->child, mBlend);
 			}
 		}
 	} else {
@@ -2814,7 +1129,7 @@ void CXObjIntp::UpdateAnim(u32 speed)
  */
 void CXObjIntp::ApplyTransform()
 {
-	fn_8018F9B4(mArchive.mJoint, mJObj);
+	RestoreJointTreePose(mArchive.mJoint, mJObj);
 	mTranslate.Set(mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 	HSD_JObjSetTranslate(mJObj, &mTranslate);
 	mScale.Set(mMoveScale.x, mMoveScale.y, mMoveScale.z);
@@ -2840,6 +1155,7 @@ void CJointRot::Init(CXObj* obj, s32 depth, s32* path, char axis)
 			mJoint = mObj->FindJoint(depth, path);
 		}
 	}
+	// stored as CXObj's queue type for a rotation about that axis, see UpdateAnim
 	switch (axis) {
 	case 'x':
 	case 'X':
@@ -2915,6 +1231,7 @@ bool CJointRot::Update(u32 frames)
 			}
 		}
 	} else {
+		// there: mode 2 stops, other positive modes turn negative and keep pushing the angle
 		if (mMode > 0) {
 			if (mMode == 2) {
 				mMode = 0;

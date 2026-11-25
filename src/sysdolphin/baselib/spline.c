@@ -1,4 +1,5 @@
 #include <sysdolphin/spline.h>
+#include <math.h>
 
 #define ABS(x) ((x) < 0.0F ? -(x) : (x))
 
@@ -129,22 +130,6 @@ void splGetSplinePoint(Vec* p, HSD_Spline* spline, f32 u)
 	}
 }
 
-// msl style sqrtf, the target inlines the frsqrte loop
-static inline f32 spl_sqrtf(f32 x)
-{
-	volatile f32 y;
-
-	if (x > 0.0F) {
-		f64 guess = __frsqrte((f64)x);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		guess     = 0.5 * guess * __fnmsub(x, guess * guess, 3.0);
-		y         = (f32)(x * guess);
-		return y;
-	}
-	return x;
-}
-
 static f32 spl_ArcLengthPolySqrt(const f32 coeffs[5], f32 t)
 {
 	f32 t2     = t * t;
@@ -156,7 +141,7 @@ static f32 spl_ArcLengthPolySqrt(const f32 coeffs[5], f32 t)
 		result = 0.0F;
 	}
 
-	return spl_sqrtf(result);
+	return dolsqrtf(result);
 }
 
 /**

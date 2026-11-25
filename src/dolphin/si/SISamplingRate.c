@@ -1,21 +1,25 @@
 #include "types.h"
 #include "Dolphin/OS.h"
 #include "Dolphin/vi.h"
+#include "Dolphin/hw_regs.h"
+#include "Dolphin/si.h"
 
-extern u32 SISetXY(int x, int y);
-
-struct tvformat {
-	u16 mTvShort;
-	u8 mTvByte;
-};
-
-u16 _viRegList : 0xCC00206C;
+typedef struct SIPollTiming {
+	u16 x;
+	u8 y;
+} SIPollTiming;
 
 static u32 SamplingRate;
-static struct tvformat XYNTSC[12] = { 0x00F6, 0x02, 0x000E, 0x13, 0x001E, 0x09, 0x002C, 0x06, 0x0034, 0x05, 0x0041, 0x04,
-	                                  0x0057, 0x03, 0x0057, 0x03, 0x0057, 0x03, 0x0083, 0x02, 0x0083, 0x02, 0x0083, 0x02 };
-static struct tvformat XYPAL[12]  = { 0x0128, 0x02, 0x000F, 0x15, 0x001D, 0x0B, 0x002D, 0x07, 0x0034, 0x06, 0x003F, 0x05,
-	                                  0x004E, 0x04, 0x0068, 0x03, 0x0068, 0x03, 0x0068, 0x03, 0x0068, 0x03, 0x009C, 0x02 };
+static SIPollTiming XYNTSC[12] = {
+	{ 0x00F6, 0x02 }, { 0x000E, 0x13 }, { 0x001E, 0x09 }, { 0x002C, 0x06 },
+	{ 0x0034, 0x05 }, { 0x0041, 0x04 }, { 0x0057, 0x03 }, { 0x0057, 0x03 },
+	{ 0x0057, 0x03 }, { 0x0083, 0x02 }, { 0x0083, 0x02 }, { 0x0083, 0x02 },
+};
+static SIPollTiming XYPAL[12] = {
+	{ 0x0128, 0x02 }, { 0x000F, 0x15 }, { 0x001D, 0x0B }, { 0x002D, 0x07 },
+	{ 0x0034, 0x06 }, { 0x003F, 0x05 }, { 0x004E, 0x04 }, { 0x0068, 0x03 },
+	{ 0x0068, 0x03 }, { 0x0068, 0x03 }, { 0x0068, 0x03 }, { 0x009C, 0x02 },
+};
 
 /**
  * @brief Sets the controller port sampling rate in milliseconds.
@@ -31,9 +35,8 @@ static struct tvformat XYPAL[12]  = { 0x0128, 0x02, 0x000F, 0x15, 0x001D, 0x0B, 
 void SISetSamplingRate(u32 msec)
 {
 	BOOL interruptState;
-	u16 viRegList;
-	int xScale;
-	struct tvformat* format; // r4
+	u32 xScale;
+	const SIPollTiming* format;
 
 	if (msec > 11) {
 		msec = 11;
@@ -58,14 +61,13 @@ void SISetSamplingRate(u32 msec)
 		break;
 	}
 
-	viRegList = (_viRegList);
-	if ((viRegList & 1) != 0) {
+	if ((__VIRegs[VI_CLOCK_SEL] & 1) != 0) {
 		xScale = 2;
 	} else {
 		xScale = 1;
 	}
 
-	SISetXY(xScale * format[msec].mTvShort, format[msec].mTvByte);
+	SISetXY(xScale * format[msec].x, format[msec].y);
 	OSRestoreInterrupts(interruptState);
 }
 

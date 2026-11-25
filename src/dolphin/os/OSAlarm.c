@@ -12,8 +12,8 @@ typedef struct {
 // prototypes
 static void SetTimer(OSAlarm * alarm);
 static void InsertAlarm(OSAlarm* alarm, OSTime fire, OSAlarmHandler handler);
-static void DecrementerExceptionCallback(__REGISTER __OSException exception, __REGISTER OSContext* context);
-static void DecrementerExceptionHandler(__OSException exception, OSContext* context);
+void DecrementerExceptionCallback(__OSException exception, OSContext* context);
+extern void DecrementerExceptionHandler(__OSException exception, OSContext* context);
 static BOOL OnReset(BOOL final);
 
 static OSResetFunctionInfo ResetFunctionInfo = {OnReset, 0xFFFFFFFF, NULL, NULL};
@@ -61,9 +61,9 @@ static void SetTimer(OSAlarm* alarm) {
  * @note Size: 0x58
  */
 void OSInitAlarm(void) {
-    if (__OSGetExceptionHandler(8) != DecrementerExceptionHandler) {
+    if (__OSGetExceptionHandler(__OS_EXCEPTION_DECREMENTER) != DecrementerExceptionHandler) {
         AlarmQueue.head = AlarmQueue.tail = NULL;
-        __OSSetExceptionHandler(8, DecrementerExceptionHandler);
+        __OSSetExceptionHandler(__OS_EXCEPTION_DECREMENTER, DecrementerExceptionHandler);
         OSRegisterResetFunction(&ResetFunctionInfo);
     }
 }
@@ -218,8 +218,8 @@ void OSCancelAlarm(OSAlarm* alarm) {
  * @note Address: 0x801622D4
  * @note Size: 0x230
  */
-static void DecrementerExceptionCallback(__REGISTER __OSException exception,
-                                         __REGISTER OSContext* context) {
+void DecrementerExceptionCallback(__OSException exception, OSContext* context) {
+#pragma unused(exception)
     OSAlarm* alarm;
     OSAlarm* next;
     OSAlarmHandler handler;
@@ -268,20 +268,6 @@ static void DecrementerExceptionCallback(__REGISTER __OSException exception,
     __OSReschedule();
     OSLoadContext(context);
 }
-
-#ifdef __GEKKO__
-/**
- * @note Address: 0x80162504
- * @note Size: 0x50
- */
-static asm void DecrementerExceptionHandler(__REGISTER __OSException exception,
-                                            __REGISTER OSContext* context) {
-    nofralloc 
-    OS_EXCEPTION_SAVE_GPRS(context)
-    stwu r1, -8(r1)
-    b DecrementerExceptionCallback
-}
-#endif
 
 /**
  * @note Address: N/A

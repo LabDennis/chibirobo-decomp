@@ -2,12 +2,13 @@
 #include "Dolphin/hw_regs.h"
 #include "Dolphin/os.h"
 
+extern void __AICallOnStack(AIDCallback callback, u8* stack);
+
 char* __AIVersion = "<< Dolphin SDK - AI\trelease build: Apr  5 2004 04:15:02 (0x2301) >>";
 
 static AISCallback __AIS_Callback = NULL;
 static AIDCallback __AID_Callback = NULL;
 static u8* __CallbackStack;
-static u8* __OldStack;
 static vs32 __AI_init_flag = FALSE;
 static vs32 __AID_Active   = FALSE;
 
@@ -20,7 +21,6 @@ static OSTime buffer;
 static void __AI_set_stream_sample_rate(u32 rate);
 static void __AISHandler(s16 interrupt, OSContext* context);
 static void __AIDHandler(s16 interrupt, OSContext* context);
-static void __AICallbackStackSwitch(register AIDCallback cb);
 static void __AI_SRC_INIT(void);
 
 /**
@@ -49,20 +49,12 @@ void AIInitDMA(u32 address, u32 length)
 
 	previousInterruptState = OSDisableInterrupts();
 
-	__DSPRegs[DSP_DMA_START_HI]    = (u16)((__DSPRegs[DSP_DMA_START_HI] & ~0x3FF) | (address >> 16));
-	__DSPRegs[DSP_DMA_START_LO]    = (u16)((__DSPRegs[DSP_DMA_START_LO] & ~0xFFE0) | (address & 0xFFFF));
-	__DSPRegs[DSP_DMA_CONTROL_LEN] = (u16)((__DSPRegs[DSP_DMA_CONTROL_LEN] & ~0x7FFF) | ((length >> 5) & 0xFFFF));
+	__DSPRegs[DSP_DMA_START_HI] = (__DSPRegs[DSP_DMA_START_HI] & ~DSP_DMA_HI_FIELD_MASK) | (u16)(address >> 16);
+	__DSPRegs[DSP_DMA_START_LO] = (__DSPRegs[DSP_DMA_START_LO] & ~DSP_DMA_LO_FIELD_MASK) | (u16)address;
+	__DSPRegs[DSP_DMA_CONTROL_LEN] = (__DSPRegs[DSP_DMA_CONTROL_LEN] & ~DSP_DMA_LENGTH_MASK)
+	    | (u16)(length >> DSP_DMA_BLOCK_SHIFT);
 
 	OSRestoreInterrupts(previousInterruptState);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x10
- */
-BOOL AIGetDMAEnableFlag(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -84,42 +76,15 @@ void AIStopDMA(void)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x10
- */
-u32 AIGetDMABytesLeft(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x801747F0
  * @note Size: 0x1C
  */
 u32 AIGetDMAStartAddr(void)
 {
-	const u32 startAddressHigh = (__DSPRegs[DSP_DMA_START_HI] & 0x03FF) << 16;
-	const u32 startAddressLow  = __DSPRegs[DSP_DMA_START_LO] & 0xFFE0;
+	const u32 startAddressHigh = (__DSPRegs[DSP_DMA_START_HI] & DSP_DMA_HI_FIELD_MASK) << 16;
+	const u32 startAddressLow  = __DSPRegs[DSP_DMA_START_LO] & DSP_DMA_LO_FIELD_MASK;
 
 	return startAddressHigh | startAddressLow;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x10
- */
-u32 AIGetDMALength(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-BOOL AICheckInit(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -142,20 +107,11 @@ AISCallback AIRegisterStreamCallback(AISCallback newCallback)
 
 /**
  * @note Address: N/A
- * @note Size: 0x10
- */
-u32 AIGetStreamSampleCount(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
  * @note Size: 0x18
  */
 void AIResetStreamSampleCount(void)
 {
-	__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_COUNT) | AI_CONTROL_STREAM_SAMPLE_COUNT;
+	__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_COUNT_RESET) | AI_CONTROL_STREAM_COUNT_RESET;
 }
 
 /**
@@ -166,15 +122,6 @@ void AIResetStreamSampleCount(void)
 void AISetStreamTrigger(u32 trigger)
 {
 	__AIRegs[AI_INTRPT_TIMING] = trigger;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x10
- */
-u32 AIGetStreamTrigger(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -205,8 +152,8 @@ void AISetStreamPlayState(u32 playState)
 		previousInterruptState = OSDisableInterrupts();
 		__AI_SRC_INIT();
 
-		// Set the stream and state bits in the control register
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_COUNT) | AI_CONTROL_STREAM_SAMPLE_COUNT;
+		// Reset the stream counter and start playback
+		AIResetStreamSampleCount();
 		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_PLAY_STATE) | AI_CONTROL_PLAY_STATE;
 
 		// Restore the previous interrupt state
@@ -264,8 +211,8 @@ void AISetDSPSampleRate(u32 rate)
 		previousInterruptState = OSDisableInterrupts();
 		__AI_SRC_INIT();
 
-		// Set the stream sample count, stream sample rate, and play state bits in the control register
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_COUNT) | AI_CONTROL_STREAM_SAMPLE_COUNT;
+		// Reset the stream counter and restore the sample rate and play state
+		AIResetStreamSampleCount();
 		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_RATE) | (streamSampleRate * 2);
 		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_PLAY_STATE) | playState;
 
@@ -288,24 +235,6 @@ void AISetDSPSampleRate(u32 rate)
 u32 AIGetDSPSampleRate(void)
 {
 	return ((__AIRegs[AI_CONTROL] >> 6) & 1) ^ 1;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x28
- */
-void AISetStreamSampleRate(u32 rate)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x20
- */
-void __AI_DEBUG_set_stream_sample_rate(void)
-{
-	// UNUSED FUNCTION
 }
 
 /**
@@ -344,8 +273,8 @@ static void __AI_set_stream_sample_rate(u32 rate)
 	// Restore the DSP sample rate bit in the control register
 	__AIRegs[AI_CONTROL] |= dspSampleRateState;
 
-	// Set the stream sample count and stream sample rate bits in the control register
-	__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_COUNT) | AI_CONTROL_STREAM_SAMPLE_COUNT;
+	// Reset the stream counter and set the new sample rate
+	AIResetStreamSampleCount();
 	__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_RATE) | (rate * 2);
 
 	// Restore the previous interrupt state
@@ -437,9 +366,9 @@ void AIInit(u8* stack)
 	__CallbackStack = stack;
 
 	// Set interrupt handlers and unmask interrupts
-	__OSSetInterruptHandler(5, __AIDHandler);
+	__OSSetInterruptHandler(__OS_INTERRUPT_DSP_AI, __AIDHandler);
 	__OSUnmaskInterrupts(OS_INTERRUPTMASK_DSP_AI);
-	__OSSetInterruptHandler(8, __AISHandler);
+	__OSSetInterruptHandler(__OS_INTERRUPT_AI_AI, __AISHandler);
 	__OSUnmaskInterrupts(OS_INTERRUPTMASK_AI);
 
 	// Set AI initialisation flag to TRUE
@@ -462,7 +391,7 @@ void AIReset(void)
 static void __AISHandler(s16 interrupt, OSContext* context)
 {
 	OSContext tmpContext;
-	__AIRegs[AI_CONTROL] |= 8;
+	__AIRegs[AI_CONTROL] |= AI_STATUS_STREAM_INTERRUPT;
 	OSClearContext(&tmpContext);
 	OSSetCurrentContext(&tmpContext);
 	if (__AIS_Callback != NULL) {
@@ -479,14 +408,14 @@ static void __AISHandler(s16 interrupt, OSContext* context)
 static void __AIDHandler(s16 interrupt, OSContext* context)
 {
 	OSContext tempContext;
-	u32 temp     = __DSPRegs[5];
-	__DSPRegs[5] = (temp & ~0xA0) | 8;
+	u32 status = __DSPRegs[DSP_CONTROL_STATUS];
+	__DSPRegs[DSP_CONTROL_STATUS] = (status & ~(DSP_STATUS_DSP_INTERRUPT | DSP_STATUS_ARAM_INTERRUPT)) | DSP_STATUS_AI_INTERRUPT;
 	OSClearContext(&tempContext);
 	OSSetCurrentContext(&tempContext);
 	if (__AID_Callback && !__AID_Active) {
 		__AID_Active = TRUE;
 		if (__CallbackStack) {
-			__AICallbackStackSwitch(__AID_Callback);
+			__AICallOnStack(__AID_Callback, __CallbackStack);
 		} else {
 			__AID_Callback();
 		}
@@ -499,113 +428,62 @@ static void __AIDHandler(s16 interrupt, OSContext* context)
 }
 
 /**
- * @note Address: 0x80174DC4
- * @note Size: 0x58
- */
-ASM static void __AICallbackStackSwitch(register AIDCallback cb)
-{
-#ifdef __MWERKS__ // clang-format off
-	// Allocate stack frame
-	fralloc
-
-	// Store current stack
-	lis r5, __OldStack@ha
-	addi r5, r5, __OldStack@l
-	stw r1, 0(r5)
-
-	// Load stack for callback
-	lis r5, __CallbackStack@ha
-	addi r5, r5, __CallbackStack@l
-	lwz r1,0(r5)
-
-	// Move stack down 8 bytes
-	subi r1, r1, 8
-	// Call callback
-	mtlr cb
-	blrl
-
-	// Restore old stack
-	lis r5, __OldStack @ha
-	addi r5, r5, __OldStack@l
-	lwz r1,0(r5)
-
-	// Free stack frame
-	frfree
-
-	blr
-#endif // clang-format on
-}
-
-/**
  * @note Address: 0x80174E1C
  * @note Size: 0x1E4
  */
 static void __AI_SRC_INIT(void)
 {
-	OSTime rising_32khz = 0;
-	OSTime rising_48khz = 0;
-	OSTime diff         = 0;
-	OSTime t1           = 0;
-	OSTime temp         = 0;
-	u32 temp0           = 0;
-	u32 temp1           = 0;
-	u32 done            = 0;
-	u32 volume          = 0;
-	u32 Init_Cnt        = 0;
-	u32 walking         = 0;
+	OSTime rising48kHz = 0;
+	u32 calibrated = 0;
+	OSTime wait = 0;
+	OSTime deadline;
 
-	walking  = 0;
-	Init_Cnt = 0;
-	temp     = 0;
+	while (!calibrated) {
+		OSTime rising32kHz;
+		OSTime elapsed;
+		u32 sampleCount32kHz;
+		u32 sampleCount48kHz;
+		OSTime lower32kHzBound;
 
-	while (!done) {
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~0x20) | 0x20;
-		__AIRegs[AI_CONTROL] &= ~2;
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~1) | 1;
+		AIResetStreamSampleCount();
+		__AIRegs[AI_CONTROL] &= ~AI_CONTROL_STREAM_SAMPLE_RATE;
+		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_PLAY_STATE) | AI_CONTROL_PLAY_STATE;
 
-		temp0 = __AIRegs[AI_SAMPLE_COUNTER];
+		sampleCount32kHz = __AIRegs[AI_SAMPLE_COUNTER];
 
-		while (temp0 == __AIRegs[AI_SAMPLE_COUNTER])
+		while (sampleCount32kHz == __AIRegs[AI_SAMPLE_COUNTER])
 			;
-		rising_32khz = OSGetTime();
+		rising32kHz = OSGetTime();
 
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~2) | 2;
-		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~1) | 1;
+		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_STREAM_SAMPLE_RATE) | AI_CONTROL_STREAM_SAMPLE_RATE;
+		__AIRegs[AI_CONTROL] = (__AIRegs[AI_CONTROL] & ~AI_CONTROL_PLAY_STATE) | AI_CONTROL_PLAY_STATE;
 
-		temp1 = __AIRegs[AI_SAMPLE_COUNTER];
-		while (temp1 == __AIRegs[AI_SAMPLE_COUNTER])
+		sampleCount48kHz = __AIRegs[AI_SAMPLE_COUNTER];
+		while (sampleCount48kHz == __AIRegs[AI_SAMPLE_COUNTER])
 			;
 
-		rising_48khz = OSGetTime();
+		rising48kHz = OSGetTime();
 
-		diff = rising_48khz - rising_32khz;
-		__AIRegs[AI_CONTROL] &= ~2;
-		__AIRegs[AI_CONTROL] &= ~1;
+		elapsed = rising48kHz - rising32kHz;
+		__AIRegs[AI_CONTROL] &= ~AI_CONTROL_STREAM_SAMPLE_RATE;
+		__AIRegs[AI_CONTROL] &= ~AI_CONTROL_PLAY_STATE;
 
-		if (diff < (bound_32KHz - buffer)) {
-			temp = min_wait;
-			done = 1;
-			++Init_Cnt;
-		} else if (diff >= (bound_32KHz + buffer) && diff < (bound_48KHz - buffer)) {
-			temp = max_wait;
-			done = 1;
-			++Init_Cnt;
+		lower32kHzBound = bound_32KHz - buffer;
+		if (elapsed < lower32kHzBound) {
+			wait = min_wait;
+			calibrated = 1;
 		} else {
-			done    = 0;
-			walking = 1;
-			++Init_Cnt;
+			OSTime upper32kHzBound = bound_32KHz + buffer;
+			if (elapsed >= upper32kHzBound && elapsed < (bound_48KHz - buffer)) {
+				wait = max_wait;
+				calibrated = 1;
+			} else {
+				calibrated = 0;
+			}
 		}
 	}
 
-	while ((rising_48khz + temp) > OSGetTime())
+	deadline = rising48kHz + wait;
+	while (deadline > OSGetTime())
 		;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x8
- */
-void __ai_src_get_time(void)
-{
-	// UNUSED FUNCTION
 }

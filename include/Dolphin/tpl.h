@@ -3,9 +3,7 @@
 
 #include "types.h"
 #ifdef _MTXTYPES_h_
-// built with the HSD headers, which don't have the tlut formats
 #include <dolphin/gx/gxtypes.h>
-typedef enum _GXTlutFmt { GX_TL_IA8, GX_TL_RGB565, GX_TL_RGB5A3, GX_MAX_TLUTFMT } GXTlutFmt;
 #else
 #include "Dolphin/gx.h"
 #endif

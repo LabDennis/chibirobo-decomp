@@ -1,6 +1,9 @@
 #include <global.h>
+#include <dolphin/gx/gx.h>
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
+#include <float.h>
+#include <math.h>
 #include <sysdolphin/class_new.h>
 #include <sysdolphin/constants.h>
 #include <sysdolphin/lobj.h>
@@ -9,87 +12,32 @@
 #include <sysdolphin/list.h>
 #include <sysdolphin/cobj.h>
 #include <sysdolphin/gobjproc.h>
+#include <sysdolphin/util.h>
 
-/**
- * @note Address: N/A
- */
-extern inline f64 fabs(f64 x)
-{
-	return __fabs(x);
-}
+#define MIN_LIGHT_ATTENUATION_REFERENCE 1.1920929e-07F
+#define INFINITE_LIGHT_DISTANCE 1048576.0F
 
-#undef MAX_GXLIGHT
-#define MAX_GXLIGHT 9
+enum {
+	GX_LIGHT_COUNT = 8,
+	AMBIENT_LIGHT_INDEX = GX_LIGHT_COUNT,
+	ACTIVE_LIGHT_SLOTS = GX_LIGHT_COUNT + 1,
+};
 
-typedef u32 GXLightID;
-#define GX_LIGHT0     0x001
-#define GX_LIGHT1     0x002
-#define GX_LIGHT2     0x004
-#define GX_LIGHT3     0x008
-#define GX_LIGHT4     0x010
-#define GX_LIGHT5     0x020
-#define GX_LIGHT6     0x040
-#define GX_LIGHT7     0x080
-#define GX_MAX_LIGHT  0x100
-#define GX_LIGHT_NULL 0
-
-void GXInitLightColor(GXLightObj*, GXColor);
-void GXInitLightPos(GXLightObj*, f32, f32, f32);
-void GXInitLightDir(GXLightObj*, f32, f32, f32);
-void GXInitLightAttn(GXLightObj*, f32, f32, f32, f32, f32, f32);
-void GXInitLightDistAttn(GXLightObj*, f32, f32, s32);
-void GXInitLightSpot(GXLightObj*, f32, s32);
-void GXLoadLightObjImm(GXLightObj*, GXLightID);
-
-void MTXMultVec(Mtx, Vec*, Vec*);
-
-BOOL hsdIsDescendantOf(HSD_ClassInfo*, HSD_ClassInfo*);
-
-void LObjInfoInit(void);
+static void LObjInfoInit(void);
 HSD_LObjInfo hsdLObj = { LObjInfoInit };
 
 static HSD_LObjInfo* default_class = NULL;
 
-static HSD_SList* current_lights;
-static HSD_LObj* active_lights[MAX_GXLIGHT];
+static HSD_SList* current_lights = NULL;
+static HSD_LObj* active_lights[ACTIVE_LIGHT_SLOTS];
 static s32 nb_active_lights = 0;
 
-static s32 lightmask_diffuse;
-static s32 lightmask_specular;
-static s32 lightmask_attnfunc;
-static s32 lightmask_alpha;
+static s32 lightmask_diffuse  = 0;
+static s32 lightmask_specular = 0;
+static s32 lightmask_attnfunc = 0;
+static s32 lightmask_alpha    = 0;
 
-HSD_WObj* HSD_LObjGetPositionWObj(HSD_LObj*);
-HSD_WObj* HSD_LObjGetInterestWObj(HSD_LObj*);
 void HSD_LObjDeleteCurrent(HSD_LObj*);
-
-HSD_SList* HSD_SListPrepend(HSD_SList* prev, void* data);
-
-// hsd has this as an inline returning u32, the header's macro compares signed
-#undef HSD_LObjGetType
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline u32 HSD_LObjGetType(HSD_LObj* lobj)
-{
-	return lobj->flags & LOBJ_TYPE_MASK;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline f32 HSD_ClampFloat(f32 val, f32 min, f32 max)
-{
-	if (val <= min) {
-		return min;
-	} else if (val >= max) {
-		return max;
-	}
-	return val;
-}
 
 /**
  * @note Address: N/A
@@ -176,10 +124,10 @@ s32 HSD_LObjGetNbActive(void)
  * @note Address: 0x801BD080
  * @note Size: 0x48
  */
-HSD_LObj* HSD_LObjGetActiveByID(GXLightID id)
+HSD_LObj* HSD_LObjGetActiveByID(u32 id)
 {
 	s32 idx = HSD_LightID2Index(id);
-	if (idx >= 0 && idx < MAX_GXLIGHT) {
+	if (idx >= 0 && idx < ACTIVE_LIGHT_SLOTS) {
 		return active_lights[idx];
 	}
 	return NULL;
@@ -191,7 +139,7 @@ HSD_LObj* HSD_LObjGetActiveByID(GXLightID id)
  */
 HSD_LObj* HSD_LObjGetActiveByIndex(s32 idx)
 {
-	if (idx >= 0 && idx < MAX_GXLIGHT - 1) {
+	if (idx >= 0 && idx < GX_LIGHT_COUNT) {
 		return active_lights[idx];
 	}
 	return NULL;
@@ -201,8 +149,10 @@ HSD_LObj* HSD_LObjGetActiveByIndex(s32 idx)
  * @note Address: 0x801BD0F4
  * @note Size: 0x24C
  */
-void LObjUpdateFunc(HSD_LObj* lobj, s32 type, FObjData* val)
+static void LObjUpdateFunc(void* obj, enum_t type, FObjData* val)
 {
+	HSD_LObj* lobj = obj;
+
 	if (lobj == NULL) {
 		return;
 	}
@@ -219,7 +169,7 @@ void LObjUpdateFunc(HSD_LObj* lobj, s32 type, FObjData* val)
 		if (lobj->flags & LOBJ_RAW_PARAM) {
 			lobj->u.attn.a0 = val->fv;
 		} else {
-			lobj->u.spot.cutoff = val->fv;
+			lobj->u.params.cutoff = val->fv;
 		}
 		break;
 	case HSD_A_L_A1:
@@ -227,7 +177,7 @@ void LObjUpdateFunc(HSD_LObj* lobj, s32 type, FObjData* val)
 		if (lobj->flags & LOBJ_RAW_PARAM) {
 			lobj->u.attn.a1 = val->fv;
 		} else {
-			lobj->u.spot.ref_dist = val->fv;
+			lobj->u.params.ref_dist = val->fv;
 		}
 		break;
 	case HSD_A_L_A2:
@@ -235,7 +185,7 @@ void LObjUpdateFunc(HSD_LObj* lobj, s32 type, FObjData* val)
 		if (lobj->flags & LOBJ_RAW_PARAM) {
 			lobj->u.attn.a2 = val->fv;
 		} else {
-			lobj->u.spot.ref_br = val->fv;
+			lobj->u.params.ref_br = val->fv;
 		}
 		break;
 	case HSD_A_L_K0:
@@ -254,16 +204,16 @@ void LObjUpdateFunc(HSD_LObj* lobj, s32 type, FObjData* val)
 		}
 		break;
 	case HSD_A_L_LITC_R:
-		lobj->color.r = 255.0F * (val->fv <= 0.0F ? 0.0F : val->fv >= 1.0F ? 1.0F : val->fv);
+		lobj->color.r = 255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	case HSD_A_L_LITC_G:
-		lobj->color.g = 255.0F * (val->fv <= 0.0F ? 0.0F : val->fv >= 1.0F ? 1.0F : val->fv);
+		lobj->color.g = 255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	case HSD_A_L_LITC_B:
-		lobj->color.b = 255.0F * (val->fv <= 0.0F ? 0.0F : val->fv >= 1.0F ? 1.0F : val->fv);
+		lobj->color.b = 255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	case HSD_A_L_LITC_A:
-		lobj->color.a = 255.0F * (val->fv <= 0.0F ? 0.0F : val->fv >= 1.0F ? 1.0F : val->fv);
+		lobj->color.a = 255.0F * HSD_ClampFloat(val->fv, 0.0F, 1.0F);
 		break;
 	}
 }
@@ -334,13 +284,13 @@ void HSD_LObjReqAnimAll(HSD_LObj* lobj, f32 startframe)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline BOOL TryNormalize(Vec* src, Vec* dst)
+static inline s32 NormalizeLightDirection(Vec* src, Vec* dst)
 {
 	if (!src || !dst) {
-		return ~0;
+		return -1;
 	}
-	if (fabs(src->x) <= 1.17549435e-38F && fabs(src->y) <= 1.17549435e-38F && fabs(src->z) <= 1.17549435e-38F) {
-		return ~0;
+	if (fabs(src->x) <= FLT_MIN && fabs(src->y) <= FLT_MIN && fabs(src->z) <= FLT_MIN) {
+		return -1;
 	}
 	PSVECNormalize(src, dst);
 	return 0;
@@ -361,12 +311,10 @@ void HSD_LObjGetLightVector(HSD_LObj* lobj, Vec* v)
 	HSD_LObjGetPosition(lobj, &position);
 	HSD_LObjGetInterest(lobj, &interest);
 	PSVECSubtract(&interest, &position, v);
-	if (TryNormalize(v, v)) {
-		f32 a = 0.0F;
-		f32 b = 1.0F;
-		v->x  = a;
-		v->y  = a;
-		v->z  = b;
+	if (NormalizeLightDirection(v, v) != 0) {
+		v->x = 0.0F;
+		v->y = 0.0F;
+		v->z = 1.0F;
 	}
 }
 
@@ -376,8 +324,6 @@ void HSD_LObjGetLightVector(HSD_LObj* lobj, Vec* v)
  */
 void HSD_LObjSetup(HSD_LObj* lobj, GXColor* color, f32 shininess)
 {
-	f32 k0 = shininess;
-
 	if (lobj->flags & LOBJ_HIDDEN || HSD_LObjGetType(lobj) == LOBJ_AMBIENT) {
 		return;
 	}
@@ -394,6 +340,8 @@ void HSD_LObjSetup(HSD_LObj* lobj, GXColor* color, f32 shininess)
 	}
 	if (lobj->spec_id != GX_LIGHT_NULL) {
 		if (lobj->shininess != shininess) {
+			f32 k0 = shininess;
+
 			k0 *= 0.5F;
 			lobj->shininess = shininess;
 			GXInitLightAttn(&lobj->spec_lightobj, 0.0F, 0.0F, 1.0F, k0, 0.0F, 1.0F - k0);
@@ -421,7 +369,7 @@ void HSD_LObjSetupSpecularInit(Mtx pmtx)
 	jpos.y = pmtx[1][3];
 	jpos.z = pmtx[2][3];
 
-	if (TryNormalize(&jpos, &cdir)) {
+	if (NormalizeLightDirection(&jpos, &cdir) != 0) {
 		cdir.x = 0.0F;
 		cdir.y = 0.0F;
 		cdir.z = -1.0F;
@@ -440,7 +388,7 @@ void HSD_LObjSetupSpecularInit(Mtx pmtx)
 		case LOBJ_POINT:
 		case LOBJ_SPOT:
 			PSVECSubtract(&jpos, &lobj->lvec, &ldir);
-			if (!TryNormalize(&ldir, &ldir)) {
+			if (NormalizeLightDirection(&ldir, &ldir) == 0) {
 				PSVECAdd(&ldir, &cdir, &half);
 				break;
 			}
@@ -457,7 +405,7 @@ void HSD_LObjSetupSpecularInit(Mtx pmtx)
 			assert_line(634, 0);
 		}
 
-		if (TryNormalize(&half, &half)) {
+		if (NormalizeLightDirection(&half, &half) != 0) {
 			half.x = 0.0F;
 			half.y = 0.0F;
 			half.z = 1.0F;
@@ -478,7 +426,7 @@ static inline void LObjSetActive(HSD_LObj* lobj)
 	s32 idx;
 
 	if (HSD_LObjGetType(lobj) == LOBJ_AMBIENT) {
-		idx = MAX_GXLIGHT - 1;
+		idx = AMBIENT_LIGHT_INDEX;
 		if (active_lights[idx]) {
 			return;
 		}
@@ -498,9 +446,9 @@ static inline void setup_infinite_lightobj(HSD_LObj* lobj, MtxPtr vmtx)
 	Vec lpos;
 
 	HSD_LObjGetPosition(lobj, &lpos);
-	lpos.x *= 1048576.0F;
-	lpos.y *= 1048576.0F;
-	lpos.z *= 1048576.0F;
+	lpos.x *= INFINITE_LIGHT_DISTANCE;
+	lpos.y *= INFINITE_LIGHT_DISTANCE;
+	lpos.z *= INFINITE_LIGHT_DISTANCE;
 	PSMTXMultVec(vmtx, &lpos, &lpos);
 	if (lobj->flags & LOBJ_DIFFUSE) {
 		GXInitLightPos(&lobj->lightobj, lpos.x, lpos.y, lpos.z);
@@ -508,6 +456,13 @@ static inline void setup_infinite_lightobj(HSD_LObj* lobj, MtxPtr vmtx)
 	}
 	if (lobj->flags & LOBJ_SPECULAR) {
 		GXInitLightPos(&lobj->spec_lightobj, lpos.x, lpos.y, lpos.z);
+	}
+}
+
+static inline void clampAttenuationReference(f32* value)
+{
+	if (*value < MIN_LIGHT_ATTENUATION_REFERENCE) {
+		*value = MIN_LIGHT_ATTENUATION_REFERENCE;
 	}
 }
 
@@ -528,18 +483,14 @@ static inline void setup_point_lightobj(HSD_LObj* lobj, Mtx mtx)
 	if (lobj->flags & LOBJ_RAW_PARAM) {
 		GXInitLightAttn(&lobj->lightobj, 1.0F, 0.0F, 0.0F, lobj->u.attn.k0, lobj->u.attn.k1, lobj->u.attn.k2);
 	} else {
-		f32 ref_br    = lobj->u.point.ref_br;
-		f32 ref_dist  = lobj->u.point.ref_dist;
-		s32 dist_func = lobj->u.point.dist_func;
+		f32 ref_br = lobj->u.params.ref_br;
+		f32 ref_dist = lobj->u.params.ref_dist;
+		GXDistAttnFn dist_func = lobj->u.params.dist_func;
 
-		if (ref_dist < 1.1920929e-07F) {
-			ref_dist = 1.1920929e-07F;
-		}
-		if (ref_br < 1.1920929e-07F) {
-			ref_br = 1.1920929e-07F;
-		}
+		clampAttenuationReference(&ref_dist);
+		clampAttenuationReference(&ref_br);
 		GXInitLightDistAttn(&lobj->lightobj, ref_dist, ref_br, dist_func);
-		GXInitLightSpot(&lobj->lightobj, 0.0F, 0);
+		GXInitLightSpot(&lobj->lightobj, 0.0F, GX_SP_OFF);
 		GXInitLightDistAttn(&lobj->spec_lightobj, ref_dist, ref_br, dist_func);
 	}
 }
@@ -565,18 +516,14 @@ static inline void setup_spot_lightobj(HSD_LObj* lobj, Mtx mtx)
 		GXInitLightAttn(&lobj->lightobj, lobj->u.attn.a0, lobj->u.attn.a1, lobj->u.attn.a2, lobj->u.attn.k0, lobj->u.attn.k1,
 		                lobj->u.attn.k2);
 	} else {
-		f32 ref_br    = lobj->u.spot.ref_br;
-		f32 ref_dist  = lobj->u.spot.ref_dist;
-		f32 cutoff    = lobj->u.spot.cutoff;
-		s32 spot_func = lobj->u.spot.spot_func;
-		s32 dist_func = lobj->u.spot.dist_func;
+		f32 ref_br = lobj->u.params.ref_br;
+		f32 ref_dist = lobj->u.params.ref_dist;
+		f32 cutoff = lobj->u.params.cutoff;
+		GXSpotFn spot_func = lobj->u.params.spot_func;
+		GXDistAttnFn dist_func = lobj->u.params.dist_func;
 
-		if (ref_dist < 1.1920929e-07F) {
-			ref_dist = 1.1920929e-07F;
-		}
-		if (ref_br < 1.1920929e-07F) {
-			ref_br = 1.1920929e-07F;
-		}
+		clampAttenuationReference(&ref_dist);
+		clampAttenuationReference(&ref_br);
 		GXInitLightDistAttn(&lobj->lightobj, ref_dist, ref_br, dist_func);
 		GXInitLightDistAttn(&lobj->spec_lightobj, ref_dist, ref_br, dist_func);
 		GXInitLightSpot(&lobj->lightobj, cutoff, spot_func);
@@ -648,36 +595,37 @@ static void setup_spec_lightobj(HSD_LObj* lobj, Mtx mtx, s32 spec_id)
 	}
 }
 
+static inline void LObjClearActive(void)
+{
+	int i;
+
+	for (i = 0; i < ACTIVE_LIGHT_SLOTS; i++) {
+		active_lights[i] = NULL;
+	}
+}
+
 /**
  * @note Address: 0x801BD8F8
  * @note Size: 0xBBC
  */
 void HSD_LObjSetupInit(HSD_CObj* cobj)
 {
-	MtxPtr vmtx;
-	s32 i, num, idx;
+	MtxPtr view_mtx;
+	s32 light_index, active_count, next_light_index;
 	HSD_SList* list;
 
 	lightmask_diffuse = GX_LIGHT_NULL;
-	list              = current_lights;
-	vmtx              = cobj->view_mtx;
+	list = current_lights;
+	view_mtx = cobj->view_mtx;
 
-	active_lights[0]   = NULL;
-	active_lights[1]   = NULL;
-	active_lights[2]   = NULL;
-	active_lights[3]   = NULL;
-	active_lights[4]   = NULL;
-	active_lights[5]   = NULL;
-	active_lights[6]   = NULL;
-	active_lights[7]   = NULL;
-	active_lights[8]   = NULL;
+	LObjClearActive();
 	lightmask_specular = GX_LIGHT_NULL;
 	lightmask_attnfunc = GX_LIGHT_NULL;
-	lightmask_alpha    = GX_LIGHT_NULL;
-	nb_active_lights   = 0;
-	idx                = 0;
+	lightmask_alpha = GX_LIGHT_NULL;
+	nb_active_lights = 0;
+	next_light_index = 0;
 
-	for (; idx < MAX_GXLIGHT - 1 && list; list = list->next) {
+	for (; next_light_index < GX_LIGHT_COUNT && list; list = list->next) {
 		HSD_LObj* lobj = list->data;
 		u32 flags;
 		u32 type;
@@ -701,19 +649,19 @@ void HSD_LObjSetupInit(HSD_CObj* cobj)
 		}
 
 		LObjSetActive(lobj);
-		idx = HSD_LObjGetNbActive();
+		next_light_index = HSD_LObjGetNbActive();
 
 		lobj->spec_id = GX_LIGHT_NULL;
 
 		switch (type) {
 		case LOBJ_INFINITE:
-			setup_infinite_lightobj(lobj, vmtx);
+			setup_infinite_lightobj(lobj, view_mtx);
 			break;
 		case LOBJ_POINT:
-			setup_point_lightobj(lobj, vmtx);
+			setup_point_lightobj(lobj, view_mtx);
 			break;
 		case LOBJ_SPOT:
-			setup_spot_lightobj(lobj, vmtx);
+			setup_spot_lightobj(lobj, view_mtx);
 			break;
 		case LOBJ_AMBIENT:
 			continue;
@@ -722,11 +670,11 @@ void HSD_LObjSetupInit(HSD_CObj* cobj)
 		if (ref_type & (LOBJ_DIFFUSE | LOBJ_ALPHA)) {
 			setup_diffuse_lightobj(lobj);
 		} else if (ref_type & LOBJ_SPECULAR) {
-			setup_spec_lightobj(lobj, vmtx, lobj->id);
+			setup_spec_lightobj(lobj, view_mtx, lobj->id);
 		}
 	}
 
-	if (!HSD_LObjGetActiveByID(GX_MAX_LIGHT)) {
+	if (!HSD_LObjGetActiveByID(HSD_LIGHT_AMBIENT)) {
 		for (; list; list = list->next) {
 			HSD_LObj* lobj = list->data;
 			u32 flags;
@@ -749,9 +697,9 @@ void HSD_LObjSetupInit(HSD_CObj* cobj)
 		}
 	}
 
-	num = HSD_LObjGetNbActive();
-	for (i = 0; idx < MAX_GXLIGHT - 1 && i < num; i++) {
-		HSD_LObj* lobj = HSD_LObjGetActiveByIndex(i);
+	active_count = HSD_LObjGetNbActive();
+	for (light_index = 0; next_light_index < GX_LIGHT_COUNT && light_index < active_count; light_index++) {
+		HSD_LObj* lobj = HSD_LObjGetActiveByIndex(light_index);
 
 		if (lobj == NULL) {
 			continue;
@@ -762,14 +710,14 @@ void HSD_LObjSetupInit(HSD_CObj* cobj)
 		if (!(lobj->flags & (LOBJ_DIFFUSE | LOBJ_ALPHA))) {
 			continue;
 		}
-		setup_spec_lightobj(lobj, vmtx, HSD_Index2LightID(idx++));
+		setup_spec_lightobj(lobj, view_mtx, HSD_Index2LightID(next_light_index++));
 	}
 
-	for (i = 0; i < num; i++) {
+	for (light_index = 0; light_index < active_count; light_index++) {
 		HSD_LObj* lobj;
 		GXColor color;
 
-		if (!(lobj = HSD_LObjGetActiveByIndex(i))) {
+		if (!(lobj = HSD_LObjGetActiveByIndex(light_index))) {
 			continue;
 		}
 		color = lobj->color;
@@ -809,29 +757,10 @@ void HSD_LObjAddCurrent(HSD_LObj* lobj)
  * @note Address: N/A
  * @note Size: ?
  */
-static inline bool ref_DEC(void* o)
-{
-	bool ret;
-	if ((ret = (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF))) {
-		return ret;
-	}
-	return HSD_OBJ(o)->ref_count-- == 0;
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
 static inline void HSD_WObjUnref(HSD_WObj* wobj)
 {
-	if (wobj == NULL) {
-		return;
-	}
-	if (ref_DEC(wobj)) {
-		if (wobj != NULL) {
-			HSD_OBJECT_METHOD(wobj)->release((HSD_Class*)wobj);
-			HSD_OBJECT_METHOD(wobj)->destroy((HSD_Class*)wobj);
-		}
+	if (wobj != NULL && ref_DEC(wobj)) {
+		hsdDelete(wobj);
 	}
 }
 
@@ -842,10 +771,7 @@ static inline void HSD_WObjUnref(HSD_WObj* wobj)
 static inline void HSD_LObjUnrefThis(HSD_LObj* lobj)
 {
 	if (lobj != NULL && ref_DEC(lobj)) {
-		if (lobj != NULL) {
-			HSD_OBJECT_METHOD(lobj)->release((HSD_Class*)lobj);
-			HSD_OBJECT_METHOD(lobj)->destroy((HSD_Class*)lobj);
-		}
+		hsdDelete(lobj);
 	}
 }
 
@@ -860,7 +786,7 @@ void HSD_LObjDeleteCurrent(HSD_LObj* lobj)
 		for (p = &current_lights; *p != NULL; p = &(*p)->next) {
 			if ((*p)->data == lobj) {
 				s32 i;
-				for (i = 0; i < MAX_GXLIGHT; i++) {
+				for (i = 0; i < ACTIVE_LIGHT_SLOTS; i++) {
 					if (lobj == active_lights[i]) {
 						active_lights[i] = NULL;
 					}
@@ -879,10 +805,7 @@ void HSD_LObjDeleteCurrent(HSD_LObj* lobj)
  */
 static inline void LObjRemoveAll(void)
 {
-	int i;
-	for (i = 0; i < MAX_GXLIGHT; i++) {
-		active_lights[i] = NULL;
-	}
+	LObjClearActive();
 	nb_active_lights = 0;
 	while (current_lights != NULL) {
 		HSD_LObj* lp = current_lights->data;
@@ -931,7 +854,7 @@ HSD_LObj* HSD_LObjGetCurrentByType(u16 flags)
 	HSD_SList* cur = current_lights;
 	while (cur != NULL) {
 		HSD_LObj* lobj = cur->data;
-		if (type == (lobj->flags & LOBJ_TYPE_MASK)) {
+		if (type == HSD_LObjGetType(lobj)) {
 			return lobj;
 		}
 		cur = cur->next;
@@ -943,7 +866,7 @@ HSD_LObj* HSD_LObjGetCurrentByType(u16 flags)
  * @note Address: 0x801BE828
  * @note Size: 0xEC
  */
-s32 HSD_LightID2Index(GXLightID id)
+s32 HSD_LightID2Index(u32 id)
 {
 	s32 idx;
 
@@ -972,8 +895,8 @@ s32 HSD_LightID2Index(GXLightID id)
 	case GX_LIGHT7:
 		idx = 7;
 		break;
-	case GX_MAX_LIGHT:
-		idx = 8;
+	case HSD_LIGHT_AMBIENT:
+		idx = AMBIENT_LIGHT_INDEX;
 		break;
 	default:
 		assert_line(1192, 0);
@@ -1004,8 +927,8 @@ s32 HSD_Index2LightID(s32 index)
 		return GX_LIGHT6;
 	case 7:
 		return GX_LIGHT7;
-	case 8:
-		return GX_MAX_LIGHT;
+	case AMBIENT_LIGHT_INDEX:
+		return HSD_LIGHT_AMBIENT;
 	default:
 		return GX_LIGHT_NULL;
 	}
@@ -1051,11 +974,11 @@ void HSD_LObjGetColor(HSD_LObj* lobj, GXColor* color)
  * @note Address: 0x801BE99C
  * @note Size: 0x14
  */
-void HSD_LObjSetSpot(HSD_LObj* lobj, f32 cutoff, s32 point_func)
+void HSD_LObjSetSpot(HSD_LObj* lobj, f32 cutoff, GXSpotFn spot_func)
 {
 	if (lobj != NULL) {
-		lobj->u.point.cutoff     = cutoff;
-		lobj->u.point.point_func = point_func;
+		lobj->u.params.cutoff = cutoff;
+		lobj->u.params.spot_func = spot_func;
 	}
 }
 
@@ -1063,12 +986,12 @@ void HSD_LObjSetSpot(HSD_LObj* lobj, f32 cutoff, s32 point_func)
  * @note Address: 0x801BE9B0
  * @note Size: 0x18
  */
-void HSD_LObjSetDistAttn(HSD_LObj* lobj, f32 ref_dist, f32 ref_br, s32 dist_func)
+void HSD_LObjSetDistAttn(HSD_LObj* lobj, f32 ref_dist, f32 ref_br, GXDistAttnFn dist_func)
 {
 	if (lobj != NULL) {
-		lobj->u.point.ref_dist  = ref_dist;
-		lobj->u.point.ref_br    = ref_br;
-		lobj->u.point.dist_func = dist_func;
+		lobj->u.params.ref_dist = ref_dist;
+		lobj->u.params.ref_br = ref_br;
+		lobj->u.params.dist_func = dist_func;
 	}
 }
 
@@ -1214,11 +1137,6 @@ static inline void HSD_LObjSetAttn(HSD_LObj* lobj, f32 a0, f32 a1, f32 a2, f32 k
 	HSD_LObjSetAttnK(lobj, k0, k1, k2);
 }
 
-#pragma push
-#pragma force_active on
-static char unused[] = "hsdIsDescendantOf(info, &hsdLObj)";
-#pragma pop
-
 /**
  * @note Address: N/A
  * @note Size: ?
@@ -1232,8 +1150,6 @@ HSD_LObjInfo* HSD_LObjGetDefaultClass(void)
  * @note Address: N/A
  * @note Size: ?
  */
-// stripped from the game, inlined into HSD_LObjLoadDesc. its "new" string
-// sits before LObjLoad's "" in .sdata
 HSD_LObj* HSD_LObjAlloc(void)
 {
 	HSD_LObj* new = hsdNew(HSD_CLASS_INFO(HSD_LObjGetDefaultClass()));
@@ -1245,7 +1161,7 @@ HSD_LObj* HSD_LObjAlloc(void)
  * @note Address: 0x801BEB88
  * @note Size: 0x414
  */
-int LObjLoad(HSD_LObj* lobj, HSD_LightDesc* ldesc)
+static int LObjLoad(HSD_LObj* lobj, HSD_LightDesc* ldesc)
 {
 	HSD_LObjSetColor(lobj, ldesc->color);
 	HSD_LObjSetFlags(lobj, ldesc->flags);
@@ -1301,7 +1217,7 @@ HSD_LObj* HSD_LObjLoadDesc(HSD_LightDesc* ldesc)
 			*p = hsdNew(info);
 			assert_line(1666, *p);
 		}
-		HSD_LOBJ_INFO(HSD_CLASS_METHOD(*p))->load(*p, ldesc);
+		HSD_LOBJ_METHOD(*p)->load(*p, ldesc);
 		p = &(*p)->next;
 	}
 	*p = NULL;
@@ -1351,7 +1267,7 @@ void HSD_LObjAddAnimAll(HSD_LObj* lobj, HSD_LightAnim* lanim)
  * @note Address: 0x801BF120
  * @note Size: 0x164
  */
-void LObjRelease(HSD_Class* o)
+static void LObjRelease(HSD_Class* o)
 {
 	HSD_LObj* lobj = HSD_LOBJ(o);
 
@@ -1366,7 +1282,7 @@ void LObjRelease(HSD_Class* o)
  * @note Address: 0x801BF284
  * @note Size: 0x60
  */
-void LObjAmnesia(HSD_ClassInfo* info)
+static void LObjAmnesia(HSD_ClassInfo* info)
 {
 	if (info == HSD_CLASS_INFO(default_class)) {
 		default_class = NULL;
@@ -1381,11 +1297,11 @@ void LObjAmnesia(HSD_ClassInfo* info)
  * @note Address: 0x801BF2E4
  * @note Size: 0x80
  */
-void LObjInfoInit(void)
+static void LObjInfoInit(void)
 {
 	hsdInitClassInfo(HSD_CLASS_INFO(&hsdLObj), &hsdObj, "sysdolphin_base_library", "hsd_lobj", sizeof(HSD_LObjInfo), sizeof(HSD_LObj));
 	HSD_CLASS_INFO(&hsdLObj)->release = LObjRelease;
 	HSD_CLASS_INFO(&hsdLObj)->amnesia = LObjAmnesia;
-	HSD_LOBJ_INFO(&hsdLObj)->load     = LObjLoad;
-	HSD_LOBJ_INFO(&hsdLObj)->update   = (void (*)())LObjUpdateFunc;
+	hsdLObj.load                     = LObjLoad;
+	hsdLObj.update                   = LObjUpdateFunc;
 }

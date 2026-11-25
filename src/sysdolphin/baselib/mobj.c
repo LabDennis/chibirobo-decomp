@@ -1,7 +1,8 @@
 #include <sysdolphin/mobj.h>
+#include <sysdolphin/class_alloc.h>
 #include <sysdolphin/class_new.h>
+#include <sysdolphin/tev.h>
 
-void* hsdAllocMemPiece();
 void OSReport(const char* msg, ...);
 
 void MObjInfoInit();
@@ -26,7 +27,7 @@ void HSD_MObjSetCurrent(HSD_MObj* mobj)
  * @note Address: 0x801B8E5C
  * @note Size: 0x18
  */
-u32 fn_801B8E5C(HSD_MObj* mobj)
+u32 GetMaterialRenderModeFlags(HSD_MObj* mobj)
 {
 	// the flags getter, no name evidence for this revision
 	if (mobj != NULL) {
@@ -124,7 +125,7 @@ inline f32 HSD_ClampFloat(f32 val, f32 min, f32 max)
  * @note Address: 0x801B8FD0
  * @note Size: 0x49C
  */
-void MObjUpdateFunc(void* obj, u32 type, FObjData* val)
+void MObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val)
 {
 	HSD_MObj* mobj = obj;
 
@@ -230,7 +231,7 @@ int MObjLoad(HSD_MObj* mobj, HSD_MObjDesc* desc)
 void HSD_MObjSetDefaultClass(HSD_MObjInfo* info)
 {
 	if (info != NULL) {
-		if (!hsdIsDescendantOf(info, &hsdMObj))
+		if (!hsdIsDescendantOf(&info->parent, &hsdMObj.parent))
 			__assert(__FILE__, 0x14E, "hsdIsDescendantOf(info, &hsdMObj)");
 	}
 	default_class = info;
@@ -456,14 +457,33 @@ HSD_TExp* MObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list)
 	return ext;
 }
 
+/* Return the shadow link so the caller can restore the material's texture chain. */
+static inline HSD_TObj** PrepareRenderTextures(HSD_TObj** textures, u32 rendermode)
+{
+	HSD_TObj** shadow_tail = NULL;
+
+	if (rendermode & RENDER_SHADOW && tobj_shadows != NULL) {
+		shadow_tail = textures;
+		while (*shadow_tail != NULL) {
+			shadow_tail = &(*shadow_tail)->next;
+		}
+		*shadow_tail = tobj_shadows;
+	}
+	if (rendermode & RENDER_TOON && tobj_toon != NULL && tobj_toon->imagedesc != NULL) {
+		tobj_toon->next = *textures;
+		*textures = tobj_toon;
+	}
+	return shadow_tail;
+}
+
 /**
  * @note Address: 0x801BA030
  * @note Size: 0x120
  */
 void HSD_MObjCompileTev(HSD_MObj* mobj)
 {
-	HSD_TObj* sp8;
-	HSD_TObj** var_r31 = NULL;
+	HSD_TObj* textures;
+	HSD_TObj** shadow_tail;
 	HSD_TExp* texp;
 
 	if (mobj == NULL) {
@@ -477,23 +497,13 @@ void HSD_MObjCompileTev(HSD_MObj* mobj)
 		HSD_TExpFreeList(mobj->texp, HSD_TE_ALL, 1);
 		mobj->texp = NULL;
 	}
-	sp8 = mobj->tobj;
-	if (mobj->rendermode & RENDER_SHADOW && tobj_shadows != NULL) {
-		var_r31 = &sp8;
-		while (*var_r31 != NULL) {
-			var_r31 = &(*var_r31)->next;
-		}
-		*var_r31 = tobj_shadows;
-	}
-	if (mobj->rendermode & RENDER_TOON && tobj_toon != NULL && tobj_toon->imagedesc != NULL) {
-		tobj_toon->next = sp8;
-		sp8             = tobj_toon;
-	}
-	HSD_TObjAssignResources(sp8);
-	texp = HSD_MOBJ_METHOD(mobj)->make_texp(mobj, sp8, &mobj->texp);
+	textures = mobj->tobj;
+	shadow_tail = PrepareRenderTextures(&textures, mobj->rendermode);
+	HSD_TObjAssignResources(textures);
+	texp = HSD_MOBJ_METHOD(mobj)->make_texp(mobj, textures, &mobj->texp);
 	HSD_TExpCompile(texp, &mobj->tevdesc, &mobj->texp);
-	if (var_r31 != NULL) {
-		*var_r31 = NULL;
+	if (shadow_tail != NULL) {
+		*shadow_tail = NULL;
 	}
 }
 
@@ -516,40 +526,23 @@ void MObjSetupTev(HSD_MObj* mobj, HSD_TObj* tobj, u32 rendermode)
  */
 void HSD_MObjSetup(HSD_MObj* mobj, u32 rendermode)
 {
-	HSD_TObj* tobj;
-	GXColor sp10;
-	GXColor spC;
-	GXColor sp8;
-	HSD_TObj** tail;
+	HSD_TObj* textures;
+	HSD_TObj** shadow_tail;
 
 	HSD_StateInitTev();
 	rendermode = mobj->rendermode;
-	sp8        = mobj->mat->specular;
-	spC        = mobj->mat->diffuse;
-	sp10       = mobj->mat->ambient;
-	HSD_SetMaterialColor(&sp10, &spC, &sp8, mobj->mat, mobj->mat->alpha);
+	HSD_SetMaterialColor(mobj->mat->ambient, mobj->mat->diffuse, mobj->mat->specular, mobj->mat->alpha);
 	if (rendermode & RENDER_SPECULAR) {
-		HSD_SetMaterialShininess(mobj->mat, mobj->mat->shininess);
+		HSD_SetMaterialShininess(mobj->mat->shininess);
 	}
-	tail = NULL;
-	tobj = mobj->tobj;
-	if (rendermode & RENDER_SHADOW && tobj_shadows != NULL) {
-		tail = &tobj;
-		while (*tail != NULL) {
-			tail = &(*tail)->next;
-		}
-		*tail = tobj_shadows;
-	}
-	if (rendermode & RENDER_TOON && tobj_toon != NULL && tobj_toon->imagedesc != NULL) {
-		tobj_toon->next = tobj;
-		tobj            = tobj_toon;
-	}
-	HSD_TObjSetup(tobj);
-	HSD_TObjSetupTextureCoordGen(tobj);
-	HSD_MOBJ_METHOD(mobj)->setup_tev(mobj, tobj, rendermode);
+	textures = mobj->tobj;
+	shadow_tail = PrepareRenderTextures(&textures, rendermode);
+	HSD_TObjSetup(textures);
+	HSD_TObjSetupTextureCoordGen(textures);
+	HSD_MOBJ_METHOD(mobj)->setup_tev(mobj, textures, rendermode);
 	HSD_SetupRenderModeWithCustomPE(rendermode, mobj->pe);
-	if (tail != NULL) {
-		*tail = NULL;
+	if (shadow_tail != NULL) {
+		*shadow_tail = NULL;
 	}
 }
 
@@ -603,7 +596,7 @@ void SetToonTObj(HSD_ImageDesc* imagedesc)
  * @note Address: 0x801BA3AC
  * @note Size: 0x30
  */
-void fn_801BA3AC(HSD_MObj* mobj, u8 r, u8 g, u8 b)
+void SetMaterialAmbientColor(HSD_MObj* mobj, u8 r, u8 g, u8 b)
 {
 	// sets the ambient color, no name evidence
 	if (mobj == NULL || mobj->mat == NULL) {
@@ -658,10 +651,7 @@ HSD_TObj* HSD_MObjGetTObj(HSD_MObj* mobj)
  */
 void HSD_MObjRemove(HSD_MObj* mobj)
 {
-	if (mobj != NULL) {
-		HSD_CLASS_METHOD(mobj)->release((HSD_Class*)mobj);
-		HSD_CLASS_METHOD(mobj)->destroy((HSD_Class*)mobj);
-	}
+	hsdDelete(mobj);
 }
 
 /**
@@ -670,13 +660,10 @@ void HSD_MObjRemove(HSD_MObj* mobj)
  */
 HSD_MObj* HSD_MObjAlloc(void)
 {
-	HSD_MObj* temp_r3;
+	HSD_MObj* mobj = hsdNew((HSD_ClassInfo*)HSD_MObjGetDefaultClass());
 
-	temp_r3 = hsdNew((HSD_ClassInfo*)HSD_MObjGetDefaultClass());
-	if (temp_r3 == NULL) {
-		__assert(__FILE__, 0x44A, "mobj");
-	}
-	return temp_r3;
+	assert_line(0x44A, mobj);
+	return mobj;
 }
 
 /**

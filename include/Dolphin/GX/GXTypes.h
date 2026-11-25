@@ -35,13 +35,12 @@ typedef struct _GXColorS10 {
 ////////////////////////////////////////////
 
 ///////////////// TEXTURES /////////////////
-// NB: these are all generic structs. Members aren't
-// referenced directly, they only exist for size.
+// Public GX objects reserve word-aligned storage for the internal types.
 
 // Generic struct for texture objects.
 typedef struct _GXTexObj {
-	u8 pad[0x20]; // _00
-} GXTexObj;       // size 0x20
+	u32 dummy[8];
+} GXTexObj;
 
 // Internal struct for texture objects.
 typedef struct _GXTexObjPriv {
@@ -59,44 +58,44 @@ typedef struct _GXTexObjPriv {
 
 // Generic struct for texture memory storage.
 typedef struct _GXTexRegion {
-	u8 padding[0x10]; // _00
+	u32 dummy[4];
 } GXTexRegion;
 
 typedef struct _GXTexRegionPriv {
-	u32 unk0;      // _00
-	u32 unk4;      // _04
-	u32 unk8;      // _08
-	u8 unkC;       // _0C
-	u8 unkD;       // _0D
-	u8 padding[2]; // _0E
+	u32 image1;        // _00
+	u32 image2;        // _04
+	u32 unk8;          // _08
+	GXBool is32bMipMap; // _0C
+	GXBool isCached;   // _0D
+	u8 padding[2];     // _0E
 } GXTexRegionPriv;
 
 // Generic struct for texture look-up table objects.
 typedef struct _GXTlutObj {
-	u8 padding[0xc]; // _00
+	u32 dummy[3];
 } GXTlutObj;
 
 typedef struct _GXTlutObjPriv {
-	u32 unk0;        // _00
-	u32 unk4;        // _04
-	u16 numEntries;  // _08
-	u8 padding[0x2]; // _0A
+	u32 texTlut;        // _00
+	u32 loadTlutSource; // _04
+	u16 numEntries;    // _08
+	u8 padding[2];      // _0A
 } GXTlutObjPriv;
 
 // Generic struct for texture look-up table memory storage.
 typedef struct _GXTlutRegion {
-	u8 padding[0x10]; // _00
+	u32 dummy[4];
 } GXTlutRegion;
 
 typedef struct _GXTlutRegionPriv {
-	u32 unk0;              // _00
-	GXTlutObjPriv tlutObj; // _04
+	u32 loadTlutDestination; // _00
+	GXTlutObjPriv tlutObj;   // _04
 } GXTlutRegionPriv;
 
 // Generic struct for light information.
 typedef struct _GXLightObj {
-	u8 padding[0x40]; // _00
-} GXLightObj;         // size 0x40
+	u32 dummy[16];
+} GXLightObj;
 
 typedef struct __GXLightObjPriv {
 	u32 reserved[3]; // _00

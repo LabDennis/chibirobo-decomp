@@ -82,6 +82,16 @@ typedef struct _HSD_Material {
     f32 shininess;
 } HSD_Material;
 
+enum {
+    HSD_PE_COLOR_UPDATE = 1 << 0,
+    HSD_PE_ALPHA_UPDATE = 1 << 1,
+    HSD_PE_DST_ALPHA_ENABLE = 1 << 2,
+    HSD_PE_Z_COMP_BEFORE_TEX = 1 << 3,
+    HSD_PE_Z_TEST = 1 << 4,
+    HSD_PE_Z_UPDATE = 1 << 5,
+    HSD_PE_DITHER = 1 << 6,
+};
+
 typedef struct _HSD_PEDesc {
     u8 flags;
     u8 ref0;
@@ -140,7 +150,7 @@ typedef struct _HSD_MObjInfo {
     int (*load)(HSD_MObj* mobj, HSD_MObjDesc* desc);
     HSD_TExp* (*make_texp)(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list);
     void (*setup_tev)(HSD_MObj* mobj, HSD_TObj* tobj, u32 rendermode);
-    void (*update)();
+    HSD_ObjUpdateFunc update;
     void (*unset)(HSD_MObj* mobj, u32 rendermode);
 } HSD_MObjInfo;
 
@@ -158,7 +168,7 @@ void HSD_MObjAddAnim(HSD_MObj* mobj, HSD_MatAnim* matanim);
 void HSD_MObjReqAnimByFlags(HSD_MObj* mobj, f32 startframe, u32 flags);
 void HSD_MObjReqAnim(HSD_MObj *mobj, f32 startframe);
 
-void MObjUpdateFunc(void* obj, u32 type, FObjData* val);
+void MObjUpdateFunc(void* obj, enum_t type, HSD_ObjData* val);
 
 void HSD_MObjAnim(HSD_MObj* mobj);
 HSD_TObj* HSD_MObjGetTObj(HSD_MObj* mobj);
@@ -169,10 +179,19 @@ void kar_fl_indirectload__803f9fa4(HSD_MObjInfo* info);
 
 HSD_MObj* HSD_MObjLoadDesc(HSD_MObjDesc* mobjdesc);
 HSD_MObjInfo* HSD_MObjGetDefaultClass(void);
+void HSD_MObjSetDefaultClass(HSD_MObjInfo* info);
 
-HSD_MObj* HSD_MObjAlloc();
-HSD_Material* HSD_MaterialAlloc();
+HSD_MObj* HSD_MObjAlloc(void);
+void HSD_MObjRemove(HSD_MObj* mobj);
+HSD_Material* HSD_MaterialAlloc(void);
+
+void HSD_MObjAddShadowTexture(HSD_TObj* tobj);
+void HSD_MObjDeleteShadowTexture(HSD_TObj* tobj);
 
 void HSD_MObjCompileTev(HSD_MObj *mobj);
+u32 GetMaterialRenderModeFlags(HSD_MObj* mobj);
+void SetMaterialAmbientColor(HSD_MObj* mobj, u8 r, u8 g, u8 b);
+void HSD_MObjSetDiffuseColor(HSD_MObj* mobj, u8 r, u8 g, u8 b);
+void HSD_MObjSetAlpha(HSD_MObj* mobj, f32 alpha);
 
 #endif

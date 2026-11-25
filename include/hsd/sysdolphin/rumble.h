@@ -19,6 +19,11 @@ struct HSD_PadRumbleListData {
 	u16* headp;
 };
 
+struct RumbleInfo {
+	u16 max_list;                    // _00
+	HSD_PadRumbleListData* listdatap; // _04
+};
+
 struct HSD_RumbleData {
 	u8 last_status;
 	u8 status;
@@ -26,6 +31,8 @@ struct HSD_RumbleData {
 	u16 nb_list;
 	HSD_PadRumbleListData* listdatap;
 };
+
+extern HSD_RumbleData gPadRumbleStates[4];
 
 struct RumbleCommand {
 	u16 op;

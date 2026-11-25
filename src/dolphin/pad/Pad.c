@@ -352,7 +352,7 @@ BOOL PADRecalibrate(u32 mask)
 	EnabledBits &= ~mask;
 	BarrelBits &= ~mask;
 
-	if (!(GameChoice & 0x40)) {
+	if (!(GameChoice & OS_GAME_CHOICE_NO_PAD_RECAL)) {
 		RecalibrateBits |= mask;
 	}
 
@@ -554,7 +554,7 @@ void PADControlMotor(s32 chan, u32 command)
 		if (Spec < PAD_SPEC_2 && command == PAD_MOTOR_STOP_HARD) {
 			command = PAD_MOTOR_STOP;
 		}
-		if (GameChoice & 0x20) {
+		if (GameChoice & OS_GAME_CHOICE_NO_PAD_MOTOR) {
 			command = PAD_MOTOR_STOP;
 		}
 
@@ -911,10 +911,10 @@ BOOL __PADDisableRecalibration(BOOL disable)
 	BOOL prev;
 
 	enabled = OSDisableInterrupts();
-	prev    = (GameChoice & 0x40) ? TRUE : FALSE;
-	GameChoice &= ~0x40;
+	prev    = (GameChoice & OS_GAME_CHOICE_NO_PAD_RECAL) ? TRUE : FALSE;
+	GameChoice &= ~OS_GAME_CHOICE_NO_PAD_RECAL;
 	if (disable) {
-		GameChoice |= 0x40;
+		GameChoice |= OS_GAME_CHOICE_NO_PAD_RECAL;
 	}
 	OSRestoreInterrupts(enabled);
 	return prev;

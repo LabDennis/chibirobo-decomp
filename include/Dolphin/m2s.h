@@ -7,6 +7,11 @@
 extern "C" {
 #endif
 
+enum {
+	M2S_MODE_PRERECORD = 1 << 0,
+	M2S_MODE_KEEP_MIC_RUNNING = 1 << 1,
+};
+
 void M2SInit(void);
 BOOL M2SSetBuffer(s16* buffer);
 BOOL M2SSetActiveChannel(s32 chan);

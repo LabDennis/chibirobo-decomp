@@ -505,60 +505,57 @@ void __GXPEInit(void) {
  */
 u32 GXCompressZ16(u32 z24, GXZFmt16 zfmt) {
     u32 z16;
-    u32 z24n;
+    u32 alignedDepth;
+    u32 invertedDepth;
     s32 exp;
     s32 shift;
-#if DEBUG
-#define temp exp
-#else
-    s32 temp;
-    u8 unused[4];
-#endif
+    s32 leadingOnes;
 
-    z24n = ~(z24 << 8);
-    temp = __cntlzw(z24n);
+    alignedDepth = z24 << 8;
+    invertedDepth = ~alignedDepth;
+    leadingOnes = __cntlzw(invertedDepth);
     switch (zfmt) {
     case GX_ZC_LINEAR:
         z16 = (z24 >> 8) & 0xFFFF;
         break;
     case GX_ZC_NEAR:
-        if (temp > 3) {
+        if (leadingOnes > 3) {
             exp = 3;
         } else {
-            exp = temp;
+            exp = leadingOnes;
         }
         if (exp == 3) {
             shift = 7;
         } else {
             shift = 9 - exp;
         }
-        z16 = ((z24 >> shift) & 0x3FFF & ~0xFFFFC000) | (exp << 14);
+        z16 = ((z24 >> shift) & 0x3FFF) | (exp << 14);
         break;
     case GX_ZC_MID:
-        if (temp > 7) {
+        if (leadingOnes > 7) {
             exp = 7;
         } else {
-            exp = temp;
+            exp = leadingOnes;
         }
         if (exp == 7) {
             shift = 4;
         } else {
             shift = 10 - exp;
         }
-        z16 = ((z24 >> shift) & 0x1FFF & ~0xFFFFE000) | (exp << 13);
+        z16 = ((z24 >> shift) & 0x1FFF) | (exp << 13);
         break;
     case GX_ZC_FAR:
-        if (temp > 12) {
+        if (leadingOnes > 12) {
             exp = 12;
         } else {
-            exp = temp;
+            exp = leadingOnes;
         }
         if (exp == 12) {
             shift = 0;
         } else {
             shift = 11 - exp;
         }
-        z16 = ((z24 >> shift) & 0xFFF & ~0xFFFFF000) | (exp << 12);
+        z16 = ((z24 >> shift) & 0xFFF) | (exp << 12);
         break;
     default:
         OSPanic(__FILE__, 1004, "GXCompressZ16: Invalid Z format\n");
@@ -573,11 +570,9 @@ u32 GXCompressZ16(u32 z24, GXZFmt16 zfmt) {
  */
 u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt) {
     u32 z24;
-    u32 cb1;
+    u32 prefix;
     s32 exp;
     s32 shift;
-
-    cb1; cb1; cb1; z16; z16; z16;  // needed to match
 
     switch (zfmt) {
     case GX_ZC_LINEAR:
@@ -590,8 +585,8 @@ u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt) {
         } else {
             shift = 9 - exp;
         }
-        cb1 = -1 << (24 - exp);
-        z24 = (cb1 | ((z16 & 0x3FFF) << shift)) & 0xFFFFFF;
+        prefix = ~0U << (24 - exp);
+        z24 = (prefix | ((z16 & 0x3FFF) << shift)) & 0xFFFFFF;
         break;
     case GX_ZC_MID:
         exp = (z16 >> 13) & 7;
@@ -600,8 +595,8 @@ u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt) {
         } else {
             shift = 10 - exp;
         }
-        cb1 = -1 << (24 - exp);
-        z24 = (cb1 | ((z16 & 0x1FFF) << shift)) & 0xFFFFFF;
+        prefix = ~0U << (24 - exp);
+        z24 = (prefix | ((z16 & 0x1FFF) << shift)) & 0xFFFFFF;
         break;
     case GX_ZC_FAR:
         exp = (z16 >> 12) & 0xF;
@@ -610,8 +605,8 @@ u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt) {
         } else {
             shift = 11 - exp;
         }
-        cb1 = -1 << (24 - exp);
-        z24 = (cb1 | ((z16 & 0xFFF) << shift)) & 0xFFFFFF;
+        prefix = ~0U << (24 - exp);
+        z24 = (prefix | ((z16 & 0xFFF) << shift)) & 0xFFFFFF;
         break;
     default:
         OSPanic(__FILE__, 1054, "GXDecompressZ16: Invalid Z format\n");

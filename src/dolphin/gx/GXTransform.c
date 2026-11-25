@@ -4,6 +4,23 @@
 
 #include "__gx.h"
 
+static inline f32 PairedFloat(f32 value) {
+#if !DEBUG
+    union {
+        f32 value;
+        u32 bits;
+    } word;
+
+    // Unquantized paired-single stores flush subnormals to signed zero.
+    word.value = value;
+    if ((word.bits & 0x7f800000u) == 0) {
+        word.bits &= 0x80000000u;
+    }
+    value = word.value;
+#endif
+    return value;
+}
+
 /**
  * @note Address: 0x8018C14C
  * @note Size: 0x174
@@ -40,58 +57,15 @@ void GXProject(f32 x, f32 y, f32 z, const Mtx mtx, const f32* pm, const f32* vp,
  * @note Address: N/A
  * @note Size: ?
  */
-static void WriteProjPS(const __REGISTER f32 proj[6], __REGISTER volatile void* dest) {
-    __REGISTER f32 p01, p23, p45;
-
-#ifdef __MWERKS__
-    asm {
-        psq_l  p01,  0(proj), 0, 0
-        psq_l  p23,  8(proj), 0, 0
-        psq_l  p45, 16(proj), 0, 0
-        psq_st p01,  0(dest), 0, 0
-        psq_st p23,  0(dest), 0, 0
-        psq_st p45,  0(dest), 0, 0
-    }
-#endif
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static void Copy6Floats(const __REGISTER f32 src[6], __REGISTER volatile f32* dest) {
-    __REGISTER f32 ps01, ps23, ps45;
-
-    asm {
-        psq_l  ps01,  0(src), 0, 0
-        psq_l  ps23,  8(src), 0, 0
-        psq_l  ps45, 16(src), 0, 0
-        psq_st ps01,  0(dest), 0, 0
-        psq_st ps23,  8(dest), 0, 0
-        psq_st ps45, 16(dest), 0, 0
-    }
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
 void __GXSetProjection(void) {
-    u32 reg = 0x00061020;
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(reg);
-#if DEBUG
-    GX_WRITE_XF_REG_F(32, __GXData->projMtx[0]);
-    GX_WRITE_XF_REG_F(33, __GXData->projMtx[1]);
-    GX_WRITE_XF_REG_F(34, __GXData->projMtx[2]);
-    GX_WRITE_XF_REG_F(35, __GXData->projMtx[3]);
-    GX_WRITE_XF_REG_F(36, __GXData->projMtx[4]);
-    GX_WRITE_XF_REG_F(37, __GXData->projMtx[5]);
+    u32 i;
+
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(0x00061020);
+    for (i = 0; i < ARRAY_SIZEU(__GXData->projMtx); i++) {
+        GX_WRITE_XF_REG_F(32 + i, PairedFloat(__GXData->projMtx[i]));
+    }
     GX_WRITE_XF_REG_2(38, __GXData->projType);
-#else
-    WriteProjPS(__GXData->projMtx, (volatile void*)GXFIFO_ADDR);
-    GX_WRITE_U32(__GXData->projType);
-#endif
 }
 
 /**
@@ -123,189 +97,73 @@ void GXSetProjection(const Mtx44 mtx, GXProjectionType type) {
  * @note Size: 0x8C
  */
 void GXSetProjectionv(const f32* ptr) {
+    u32 i;
+
     CHECK_GXBEGIN(339, "GXSetProjectionv");
 
     __GXData->projType = ptr[0] == 0.0f ? GX_PERSPECTIVE : GX_ORTHOGRAPHIC;
-
-#if DEBUG
-    __GXData->projMtx[0] = ptr[1];
-    __GXData->projMtx[1] = ptr[2];
-    __GXData->projMtx[2] = ptr[3];
-    __GXData->projMtx[3] = ptr[4];
-    __GXData->projMtx[4] = ptr[5];
-    __GXData->projMtx[5] = ptr[6];
-#else
-    Copy6Floats(&ptr[1], __GXData->projMtx);
-#endif
+    for (i = 0; i < ARRAY_SIZEU(__GXData->projMtx); i++) {
+        __GXData->projMtx[i] = PairedFloat(ptr[i + 1]);
+    }
 
     __GXSetProjection();
     __GXData->bpSentNot = 1;
 }
-
-#define qr0 0
 
 /**
  * @note Address: 0x8018C3F0
  * @note Size: 0x48
  */
 void GXGetProjectionv(f32* ptr) {
+    u32 i;
+
     ASSERTMSGLINE(370, ptr, "GXGet*: invalid null pointer");
 
-    ptr[0] = (u32)__GXData->projType != GX_PERSPECTIVE ? 1.0f : 0.0f;
+    ptr[0] = __GXData->projType != GX_PERSPECTIVE ? 1.0f : 0.0f;
+    for (i = 0; i < ARRAY_SIZEU(__GXData->projMtx); i++) {
+        ptr[i + 1] = PairedFloat(__GXData->projMtx[i]);
+    }
+}
 
+static inline void WriteMatrixWord(u32 address, f32 value) {
+    GX_WRITE_F32(value);
 #if DEBUG
-    ptr[1] = __GXData->projMtx[0];
-    ptr[2] = __GXData->projMtx[1];
-    ptr[3] = __GXData->projMtx[2];
-    ptr[4] = __GXData->projMtx[3];
-    ptr[5] = __GXData->projMtx[4];
-    ptr[6] = __GXData->projMtx[5];
-#else
-    Copy6Floats(__GXData->projMtx, &ptr[1]);
+    {
+        union {
+            f32 value;
+            u32 bits;
+        } word;
+        word.value = value;
+        VERIF_MTXLIGHT(address, word.bits);
+    }
 #endif
 }
 
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static void WriteMTXPS4x3(const __REGISTER f32 mtx[3][4], __REGISTER volatile f32* dest) {
-    __REGISTER f32 a00_a01;
-    __REGISTER f32 a02_a03;
-    __REGISTER f32 a10_a11;
-    __REGISTER f32 a12_a13;
-    __REGISTER f32 a20_a21;
-    __REGISTER f32 a22_a23;
+/* Emit the values of a paired store in XF word order. */
+static inline void WritePairedMatrixWords(u32 address, const f32* values, u32 count) {
+    u32 i;
 
-    asm {
-        psq_l a00_a01, 0x00(mtx), 0, qr0
-        psq_l a02_a03, 0x08(mtx), 0, qr0
-        psq_l a10_a11, 0x10(mtx), 0, qr0
-        psq_l a12_a13, 0x18(mtx), 0, qr0
-        psq_l a20_a21, 0x20(mtx), 0, qr0
-        psq_l a22_a23, 0x28(mtx), 0, qr0
-        psq_st a00_a01, 0(dest), 0, qr0
-        psq_st a02_a03, 0(dest), 0, qr0
-        psq_st a10_a11, 0(dest), 0, qr0
-        psq_st a12_a13, 0(dest), 0, qr0
-        psq_st a20_a21, 0(dest), 0, qr0
-        psq_st a22_a23, 0(dest), 0, qr0
+    for (i = 0; i < count; i++) {
+        WriteMatrixWord(address + i, PairedFloat(values[i]));
     }
 }
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static void WriteMTXPS3x3from3x4(__REGISTER f32 mtx[3][4], __REGISTER volatile f32* dest) {
-    __REGISTER f32 a00_a01;
-    __REGISTER f32 a02_a03;
-    __REGISTER f32 a10_a11;
-    __REGISTER f32 a12_a13;
-    __REGISTER f32 a20_a21;
-    __REGISTER f32 a22_a23;
-
-    asm {
-        psq_l  a00_a01, 0x00(mtx), 0, qr0
-        lfs    a02_a03, 0x08(mtx)
-        psq_l  a10_a11, 0x10(mtx), 0, qr0
-        lfs    a12_a13, 0x18(mtx)
-        psq_l  a20_a21, 0x20(mtx), 0, qr0
-        lfs    a22_a23, 0x28(mtx)
-        psq_st a00_a01, 0(dest), 0, qr0
-        stfs   a02_a03, 0(dest)
-        psq_st a10_a11, 0(dest), 0, qr0
-        stfs   a12_a13, 0(dest)
-        psq_st a20_a21, 0(dest), 0, qr0
-        stfs   a22_a23, 0(dest)
-    }
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static void WriteMTXPS3x3(__REGISTER f32 mtx[3][3], __REGISTER volatile f32* dest) {
-    __REGISTER f32 a00_a01;
-    __REGISTER f32 a02_a10;
-    __REGISTER f32 a11_a12;
-    __REGISTER f32 a20_a21;
-    __REGISTER f32 a22_nnn;
-
-    asm {
-        psq_l a00_a01, 0x00(mtx), 0, qr0
-        psq_l a02_a10, 0x08(mtx), 0, qr0
-        psq_l a11_a12, 0x10(mtx), 0, qr0
-        psq_l a20_a21, 0x18(mtx), 0, qr0
-        lfs   a22_nnn, 0x20(mtx)
-        psq_st a00_a01, 0(dest), 0, qr0
-        psq_st a02_a10, 0(dest), 0, qr0
-        psq_st a11_a12, 0(dest), 0, qr0
-        psq_st a20_a21, 0(dest), 0, qr0
-        stfs   a22_nnn, 0(dest)
-    }
-}
-
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-static void WriteMTXPS4x2(const __REGISTER f32 mtx[2][4], __REGISTER volatile f32* dest) {
-    __REGISTER f32 a00_a01;
-    __REGISTER f32 a02_a03;
-    __REGISTER f32 a10_a11;
-    __REGISTER f32 a12_a13;
-
-    asm {
-        psq_l a00_a01, 0x00(mtx), 0, qr0
-        psq_l a02_a03, 0x08(mtx), 0, qr0
-        psq_l a10_a11, 0x10(mtx), 0, qr0
-        psq_l a12_a13, 0x18(mtx), 0, qr0
-        psq_st a00_a01, 0(dest), 0, qr0
-        psq_st a02_a03, 0(dest), 0, qr0
-        psq_st a10_a11, 0(dest), 0, qr0
-        psq_st a12_a13, 0(dest), 0, qr0
-    }
-}
-
-#define GX_WRITE_MTX_ELEM(addr, value) \
-do { \
-    f32 xfData = (value); \
-    GX_WRITE_F32(value); \
-    VERIF_MTXLIGHT((addr), *(u32 *)&xfData); \
-} while (0)
 
 /**
  * @note Address: 0x8018C438
  * @note Size: 0x50
  */
 void GXLoadPosMtxImm(const Mtx mtx, u32 id) {
-    u32 reg;
-    u32 addr;
+    u32 address;
+    u32 row;
 
     CHECK_GXBEGIN(507, "GXLoadPosMtxImm");
 
-    addr = id * 4;
-    reg = addr | 0xB0000;
-
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(reg);
-#if DEBUG
-    GX_WRITE_MTX_ELEM(addr + 0, mtx[0][0]);
-    GX_WRITE_MTX_ELEM(addr + 1, mtx[0][1]);
-    GX_WRITE_MTX_ELEM(addr + 2, mtx[0][2]);
-    GX_WRITE_MTX_ELEM(addr + 3, mtx[0][3]);
-    GX_WRITE_MTX_ELEM(addr + 4, mtx[1][0]);
-    GX_WRITE_MTX_ELEM(addr + 5, mtx[1][1]);
-    GX_WRITE_MTX_ELEM(addr + 6, mtx[1][2]);
-    GX_WRITE_MTX_ELEM(addr + 7, mtx[1][3]);
-    GX_WRITE_MTX_ELEM(addr + 8, mtx[2][0]);
-    GX_WRITE_MTX_ELEM(addr + 9, mtx[2][1]);
-    GX_WRITE_MTX_ELEM(addr + 10, mtx[2][2]);
-    GX_WRITE_MTX_ELEM(addr + 11, mtx[2][3]);
-#else
-    WriteMTXPS4x3(mtx, &GXWGFifo.f32);
-#endif
+    address = id * 4;
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(address | 0xB0000);
+    for (row = 0; row < 3; row++) {
+        WritePairedMatrixWords(address + row * 4, mtx[row], 4);
+    }
 }
 
 /**
@@ -334,29 +192,19 @@ void GXLoadPosMtxIndx(u16 mtx_indx, u32 id) {
  * @note Size: 0x50
  */
 void GXLoadNrmMtxImm(const Mtx mtx, u32 id) {
-    u32 reg;
-    u32 addr;
+    u32 address;
+    u32 row;
 
     CHECK_GXBEGIN(588, "GXLoadNrmMtxImm");
 
-    addr = id * 3 + 0x400;
-    reg = addr | 0x80000;
-
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(reg);
-#if DEBUG
-    GX_WRITE_MTX_ELEM(addr + 0, mtx[0][0]);
-    GX_WRITE_MTX_ELEM(addr + 1, mtx[0][1]);
-    GX_WRITE_MTX_ELEM(addr + 2, mtx[0][2]);
-    GX_WRITE_MTX_ELEM(addr + 3, mtx[1][0]);
-    GX_WRITE_MTX_ELEM(addr + 4, mtx[1][1]);
-    GX_WRITE_MTX_ELEM(addr + 5, mtx[1][2]);
-    GX_WRITE_MTX_ELEM(addr + 6, mtx[2][0]);
-    GX_WRITE_MTX_ELEM(addr + 7, mtx[2][1]);
-    GX_WRITE_MTX_ELEM(addr + 8, mtx[2][2]);
-#else
-    WriteMTXPS3x3from3x4((void*)mtx, &GXWGFifo.f32);
-#endif
+    address = id * 3 + 0x400;
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(address | 0x80000);
+    for (row = 0; row < 3; row++) {
+        // Normal matrices skip the fourth column and store the third column as a scalar.
+        WritePairedMatrixWords(address + row * 3, mtx[row], 2);
+        WriteMatrixWord(address + row * 3 + 2, mtx[row][2]);
+    }
 }
 
 /**
@@ -364,29 +212,19 @@ void GXLoadNrmMtxImm(const Mtx mtx, u32 id) {
  * @note Size: ?
  */
 void GXLoadNrmMtxImm3x3(const f32 mtx[3][3], u32 id) {
-    u32 reg;
-    u32 addr;
+    u32 address;
+    u32 row;
 
-    CHECK_GXBEGIN(633, "GXLoadNrmMtxImm3x3");
+    CHECK_GXBEGIN(633, "GXLoadNrmMtxImm");
 
-    addr = id * 3 + 0x400;
-    reg = addr | 0x80000;
-
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(reg);
-#if DEBUG
-    GX_WRITE_MTX_ELEM(addr + 0, mtx[0][0]);
-    GX_WRITE_MTX_ELEM(addr + 1, mtx[0][1]);
-    GX_WRITE_MTX_ELEM(addr + 2, mtx[0][2]);
-    GX_WRITE_MTX_ELEM(addr + 3, mtx[1][0]);
-    GX_WRITE_MTX_ELEM(addr + 4, mtx[1][1]);
-    GX_WRITE_MTX_ELEM(addr + 5, mtx[1][2]);
-    GX_WRITE_MTX_ELEM(addr + 6, mtx[2][0]);
-    GX_WRITE_MTX_ELEM(addr + 7, mtx[2][1]);
-    GX_WRITE_MTX_ELEM(addr + 8, mtx[2][2]);
-#else
-    WriteMTXPS3x3((void*)mtx, &GXWGFifo.f32);
-#endif
+    address = id * 3 + 0x400;
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(address | 0x80000);
+    for (row = 0; row < 3; row++) {
+        // The packed matrix pairs the first eight elements across rows.
+        WritePairedMatrixWords(address + row * 3, mtx[row], row == 2 ? 2 : 3);
+    }
+    WriteMatrixWord(address + 8, mtx[2][2]);
 }
 
 /**
@@ -425,45 +263,27 @@ void GXSetCurrentMtx(u32 id) {
  * @note Size: 0xB4
  */
 void GXLoadTexMtxImm(const f32 mtx[][4], u32 id, GXTexMtxType type) {
-    u32 reg;
-    u32 addr;
+    u32 address;
     u32 count;
+    u32 rows;
+    u32 row;
 
     CHECK_GXBEGIN(741, "GXLoadTexMtxImm");
 
     if (id >= GX_PTTEXMTX0) {
-        addr = (id - GX_PTTEXMTX0) * 4 + 0x500;
+        address = (id - GX_PTTEXMTX0) * 4 + 0x500;
         ASSERTMSGLINE(751, type == GX_MTX3x4, "GXLoadTexMtx: Invalid matrix type");
     } else {
-        addr = id * 4;
+        address = id * 4;
     }
     count = (type == GX_MTX2x4) ? 8 : 12;
-    reg = addr | ((count - 1) << 16);
+    rows = (type == GX_MTX3x4) ? 3 : 2;
 
-    GX_WRITE_U8(0x10);
-    GX_WRITE_U32(reg);
-#if DEBUG
-    GX_WRITE_MTX_ELEM(addr + 0, mtx[0][0]);
-    GX_WRITE_MTX_ELEM(addr + 1, mtx[0][1]);
-    GX_WRITE_MTX_ELEM(addr + 2, mtx[0][2]);
-    GX_WRITE_MTX_ELEM(addr + 3, mtx[0][3]);
-    GX_WRITE_MTX_ELEM(addr + 4, mtx[1][0]);
-    GX_WRITE_MTX_ELEM(addr + 5, mtx[1][1]);
-    GX_WRITE_MTX_ELEM(addr + 6, mtx[1][2]);
-    GX_WRITE_MTX_ELEM(addr + 7, mtx[1][3]);
-    if (type == GX_MTX3x4) {
-        GX_WRITE_MTX_ELEM(addr + 8, mtx[2][0]);
-        GX_WRITE_MTX_ELEM(addr + 9, mtx[2][1]);
-        GX_WRITE_MTX_ELEM(addr + 10, mtx[2][2]);
-        GX_WRITE_MTX_ELEM(addr + 11, mtx[2][3]);
+    GX_WRITE_U8(GX_LOAD_XF_REG);
+    GX_WRITE_U32(address | ((count - 1) << 16));
+    for (row = 0; row < rows; row++) {
+        WritePairedMatrixWords(address + row * 4, mtx[row], 4);
     }
-#else
-    if (type == GX_MTX3x4) {
-        WriteMTXPS4x3(mtx, &GXWGFifo.f32);
-    } else {
-        WriteMTXPS4x2(mtx, &GXWGFifo.f32);
-    }
-#endif
 }
 
 /**
@@ -570,16 +390,12 @@ void GXSetViewport(f32 left, f32 top, f32 wd, f32 ht, f32 nearz, f32 farz) {
 void GXGetViewportv(f32* vp) {
     ASSERTMSGLINE(968, vp, "GXGet*: invalid null pointer");
 
-#if DEBUG
-    vp[0] = __GXData->vpLeft;
-    vp[1] = __GXData->vpTop;
-    vp[2] = __GXData->vpWd;
-    vp[3] = __GXData->vpHt;
-    vp[4] = __GXData->vpNearz;
-    vp[5] = __GXData->vpFarz;
-#else
-    Copy6Floats(&__GXData->vpLeft, vp);
-#endif
+    vp[0] = PairedFloat(__GXData->vpLeft);
+    vp[1] = PairedFloat(__GXData->vpTop);
+    vp[2] = PairedFloat(__GXData->vpWd);
+    vp[3] = PairedFloat(__GXData->vpHt);
+    vp[4] = PairedFloat(__GXData->vpNearz);
+    vp[5] = PairedFloat(__GXData->vpFarz);
 }
 
 #define GX_WRITE_XF_REG_F_(addr, value) \
@@ -716,10 +532,10 @@ void GXSetClipMode(GXClipMode mode) {
  */
 void __GXSetMatrixIndex(GXAttr matIdxAttr) {
     if (matIdxAttr < GX_VA_TEX4MTXIDX) {
-        GX_WRITE_SOME_REG4(8, 0x30, __GXData->matIdxA, -12);
+        GX_WRITE_CP_REG(GX_CP_REG_MTXIDXA, __GXData->matIdxA);
         GX_WRITE_XF_REG(24, __GXData->matIdxA);
     } else {
-        GX_WRITE_SOME_REG4(8, 0x40, __GXData->matIdxB, -12);
+        GX_WRITE_CP_REG(GX_CP_REG_MTXIDXB, __GXData->matIdxB);
         GX_WRITE_XF_REG(25, __GXData->matIdxB);
     }
     __GXData->bpSentNot = 1;

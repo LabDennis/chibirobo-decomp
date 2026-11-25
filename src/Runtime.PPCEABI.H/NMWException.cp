@@ -269,21 +269,3 @@ extern void __destroy_new_array(void* block, ConstructorDestructor dtor)
 		::operator delete[]((char*)block - ARRAY_HEADER_SIZE);
 	}
 }
-
-/**
- * @note Address: N/A
- * @note Size: 0x80
- */
-void __destroy_new_array2(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xBC
- */
-void __destroy_new_array3(void)
-{
-	// UNUSED FUNCTION
-}

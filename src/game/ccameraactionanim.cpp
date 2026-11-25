@@ -17,7 +17,7 @@ void CCameraActionAnim::Init()
  */
 void CCameraActionAnim::SetObj(XObjCamera* obj)
 {
-	if (obj->mFlags & 1) {
+	if (obj->mStatus.mFlags & 1) {
 		mObj    = obj;
 		mCamera = &obj->mCamera;
 	} else {

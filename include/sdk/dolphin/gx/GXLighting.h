@@ -3,6 +3,7 @@
 
 #include <dolphin/gx/GXEnum.h>
 #include <dolphin/gx/GXStruct.h>
+#include <sdk/dolphin/gx/GXChannel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,10 +21,6 @@ void GXInitSpecularDirHA(GXLightObj* lt_obj, f32 nx, f32 ny, f32 nz, f32 hx, f32
 void GXInitLightColor(GXLightObj* lt_obj, GXColor color);
 void GXLoadLightObjImm(const GXLightObj* lt_obj, GXLightID light);
 void GXLoadLightObjIndx(u32 lt_obj_indx, GXLightID light);
-void GXSetChanAmbColor(GXChannelID chan, GXColor amb_color);
-void GXSetChanMatColor(GXChannelID chan, GXColor mat_color);
-void GXSetNumChans(u8 nChans);
-void GXSetChanCtrl(GXChannelID chan, GXBool enable, GXColorSrc amb_src, GXColorSrc mat_src, u32 light_mask, GXDiffuseFn diff_fn, GXAttnFn attn_fn);
 
 #ifdef __cplusplus
 }

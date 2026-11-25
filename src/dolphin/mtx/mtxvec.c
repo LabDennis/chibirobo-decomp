@@ -1,197 +1,114 @@
 #include "Dolphin/mtx.h"
+#include "math.h"
 
-/**
- * @note Address: N/A
- * @note Size: 0x94
- */
-void C_MTXMultVec(void)
+static f32 FlushSubnormal(f32 value)
 {
-	// UNUSED FUNCTION
+	union {
+		f32 value;
+		u32 bits;
+	} result;
+
+	result.value = value;
+	if ((result.bits & 0x7F800000u) == 0) {
+		result.bits &= 0x80000000u;
+	}
+	return result.value;
+}
+
+static void StoreTransformedVector(Vec* out, const Vec* result)
+{
+	// The paired floating-point stores flush subnormal results to signed zero.
+	out->x = FlushSubnormal(result->x);
+	out->y = FlushSubnormal(result->y);
+	out->z = FlushSubnormal(result->z);
+}
+
+static inline f32 TransformPointRow(const f32 row[4], const Vec* in)
+{
+	f32 xz = __fmadds(row[2], in->z, row[0] * in->x);
+	f32 yw = __fmadds(row[3], 1.0f, row[1] * in->y);
+	return xz + yw;
 }
 
 /**
  * @note Address: 0x8016C2C0
  * @note Size: 0x54
  */
-ASM void PSMTXMultVec(const register Mtx m, const register Vec* in, register Vec* out)
+void PSMTXMultVec(const Mtx m, const Vec* in, Vec* out)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc;
-	psq_l fp0, 0(in), 0, 0;
-	psq_l fp2, 0(m), 0, 0;
-	psq_l fp1, 8(in), 1, 0;
-	ps_mul fp4, fp2, fp0;
-	psq_l fp3, 8(m), 0, 0;
-	ps_madd fp5, fp3, fp1, fp4;
-	psq_l fp8, 16(m), 0, 0;
-	ps_sum0 fp6, fp5, fp6, fp5;
-	psq_l fp9, 24(m), 0, 0;
-	ps_mul fp10, fp8, fp0;
-	psq_st fp6, 0(out), 1, 0;
-	ps_madd fp11, fp9, fp1, fp10;
-	psq_l fp2, 32(m), 0, 0;
-	ps_sum0 fp12, fp11, fp12, fp11;
-	psq_l fp3, 40(m), 0, 0;
-	ps_mul fp4, fp2, fp0;
-	psq_st fp12, 4(out), 1, 0;
-	ps_madd fp5, fp3, fp1, fp4;
-	ps_sum0 fp6, fp5, fp6, fp5;
-	psq_st fp6, 8(out), 1, 0;
-	blr;
-#endif // clang-format on
+	Vec result;
+	result.x = TransformPointRow(m[0], in);
+	result.y = TransformPointRow(m[1], in);
+	result.z = TransformPointRow(m[2], in);
+	StoreTransformedVector(out, &result);
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x204
- */
-void C_MTXMultVecArray(void)
+static inline f32 TransformPointArrayRow(const f32 row[4], const Vec* in)
 {
-	// UNUSED FUNCTION
+	f32 value = __fmadds(row[0], in->x, row[3]);
+	value     = __fmadds(row[1], in->y, value);
+	return __fmadds(row[2], in->z, value);
 }
 
 /**
  * @note Address: 0x8016C314
  * @note Size: 0x8C
  */
-ASM void PSMTXMultVecArray(const register Mtx m, const register Vec* srcBase, register Vec* dstBase, register u32 count)
+void PSMTXMultVecArray(const Mtx m, const Vec* in, Vec* out, u32 count)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc;
-		psq_l       fp13, 0(r3), 0, 0
-		psq_l       fp12, 16(r3), 0, 0
-		subi        r6, r6, 0x1
-		psq_l       fp11, 8(r3), 0, 0
-		ps_merge00  fp0, fp13, fp12
-		subi        r5, r5, 0x4
-		psq_l       fp10, 24(r3), 0, 0
-		ps_merge11  fp1, fp13, fp12
-		mtctr       r6
-		psq_l       fp4, 32(r3), 0, 0
-		ps_merge00  fp2, fp11, fp10
-		psq_l       fp5, 40(r3), 0, 0
-		ps_merge11  fp3, fp11, fp10
-		psq_l       fp6, 0(r4), 0, 0
-		psq_lu      fp7, 8(r4), 1, 0
-		ps_madds0   fp8, fp0, fp6, fp3
-		ps_mul      fp9, fp4, fp6
-		ps_madds1   fp8, fp1, fp6, fp8
-		ps_madd     fp10, fp5, fp7, fp9
-	lbl_a0:
-		psq_lu      fp6, 4(r4), 0, 0
-		ps_madds0   fp12, fp2, fp7, fp8
-		psq_lu      fp7, 8(r4), 1, 0
-		ps_sum0     fp13, fp10, fp9, fp10
-		ps_madds0   fp8, fp0, fp6, fp3
-		ps_mul      fp9, fp4, fp6
-		psq_stu     fp12, 4(r5), 0, 0
-		ps_madds1   fp8, fp1, fp6, fp8
-		psq_stu     fp13, 8(r5), 1, 0
-		ps_madd     fp10, fp5, fp7, fp9
-		bdnz        lbl_a0
-		ps_madds0   fp12, fp2, fp7, fp8
-		ps_sum0     fp13, fp10, fp9, fp10
-		psq_stu     fp12, 4(r5), 0, 0
-		psq_stu     fp13, 8(r5), 1, 0
-		blr
-#endif // clang-format on
+	u32 i;
+
+	// The first two rows accumulate from the translation term. The last row sums two pairs.
+	for (i = 0; i < count; ++i) {
+		Vec result;
+		result.x = TransformPointArrayRow(m[0], &in[i]);
+		result.y = TransformPointArrayRow(m[1], &in[i]);
+		result.z = TransformPointRow(m[2], &in[i]);
+		StoreTransformedVector(&out[i], &result);
+	}
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x7C
- */
-void C_MTXMultVecSR(void)
+static inline f32 TransformDirectionRow(const f32 row[4], const Vec* in)
 {
-	// UNUSED FUNCTION
+	f32 xy = row[0] * in->x + row[1] * in->y;
+	return __fmadds(row[2], in->z, xy);
 }
 
 /**
  * @note Address: 0x8016C3A0
  * @note Size: 0x54
  */
-ASM void PSMTXMultVecSR(const register Mtx mtx, const register Vec* in, register Vec* out)
+void PSMTXMultVecSR(const Mtx m, const Vec* in, Vec* out)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc;
-	psq_l fp0, 0(mtx), 0, 0;
-	psq_l fp6, 0(in), 0, 0;
-	psq_l fp2, 0x10(mtx), 0, 0;
-	ps_mul fp8, fp0, fp6;
-	psq_l fp4, 0x20(mtx), 0, 0;
-	ps_mul fp10, fp2, fp6;
-	psq_l fp7, 8(in), 1, 0;
-	ps_mul fp12, fp4, fp6;
-	psq_l fp3, 0x18(mtx), 0, 0;
-	ps_sum0 fp8, fp8, fp8, fp8;
-	psq_l fp5, 0x28(mtx), 0, 0;
-	ps_sum0 fp10, fp10, fp10, fp10;
-	psq_l fp1, 8(mtx), 0, 0;
-	ps_sum0 fp12, fp12, fp12, fp12;
-	ps_madd fp9, fp1, fp7, fp8;
-	psq_st fp9, 0(out), 1, 0;
-	ps_madd fp11, fp3, fp7, fp10;
-	psq_st fp11, 4(out), 1, 0;
-	ps_madd fp13, fp5, fp7, fp12;
-	psq_st fp13, 8(out), 1, 0;
-	blr;
-#endif // clang-format on
+	Vec result;
+	result.x = TransformDirectionRow(m[0], in);
+	result.y = TransformDirectionRow(m[1], in);
+	result.z = TransformDirectionRow(m[2], in);
+	StoreTransformedVector(out, &result);
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x1BC
- */
-void C_MTXMultVecArraySR(void)
+static inline f32 TransformDirectionArrayRow(const f32 row[4], const Vec* in)
 {
-	// UNUSED FUNCTION
+	f32 xy = __fmadds(row[1], in->y, row[0] * in->x);
+	return __fmadds(row[2], in->z, xy);
 }
 
 /**
  * @note Address: N/A
  * @note Size: 0x88
  */
-ASM void PSMTXMultVecArraySR(const register Mtx mtx, register f32* in, register f32* out, register f32* count)
+void PSMTXMultVecArraySR(const Mtx m, const Vec* in, Vec* out, u32 count)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc;
-	psq_l fp13, 0(mtx), 0, 0;
-	psq_l fp12, 0x10(mtx), 0, 0;
-	subi count, count, 1;
-	psq_l fp11, 8(mtx), 1, 0;
-	ps_merge00 fp0, fp13, fp12;
-	subi out, out, 4;
-	psq_l fp10, 0x18(mtx), 1, 0;
-	ps_merge11 fp1, fp13, fp12;
-	mtctr count;
+	u32 i;
 
-	psq_l fp3, 0x20(mtx), 0, 0;
-	ps_merge00 fp2, fp11, fp10;
-	psq_l fp4, 0x28(mtx), 1, 0;
-	psq_l fp6, 0(in), 0, 0;
-	psq_lu fp7, 8(in), 1, 0;
-	ps_muls0 fp8, fp0, fp6;
-	ps_mul fp9, fp3, fp6;
-	ps_madds1 fp8, fp1, fp6, fp8;
-	ps_madd fp10, fp4, fp7, fp9;
-
-loop:
-	psq_lu fp6, 4(in), 0, 0;
-	ps_madds0 fp12, fp2, fp7, fp8;
-	psq_lu fp7, 8(in), 1, 0;
-	ps_sum0 fp13, fp10, fp9, fp9;
-	ps_muls0 fp8, fp0, fp6;
-	ps_mul fp9, fp3, fp6;
-	psq_stu fp12, 4(out), 0, 0;
-	ps_madds1 fp8, fp1, fp6, fp8;
-	psq_stu fp13, 8(out), 1, 0;
-	ps_madd fp10, fp4, fp7, fp9;
-	bdnz + loop;
-
-	ps_madds0 fp12, fp2, fp7, fp8;
-	ps_sum0 fp13, fp10, fp9, fp9;
-	psq_stu fp12, 4(out), 0, 0;
-	psq_stu fp13, 8(out), 1, 0;
-	blr;
-#endif // clang-format on
+	for (i = 0; i < count; ++i) {
+		const Vec* src = &in[i];
+		// The last row combines the X and Z products before adding Y.
+		f32 xz         = __fmadds(m[2][2], src->z, m[2][0] * src->x);
+		Vec result;
+		result.x = TransformDirectionArrayRow(m[0], src);
+		result.y = TransformDirectionArrayRow(m[1], src);
+		result.z = xz + m[2][1] * src->y;
+		StoreTransformedVector(&out[i], &result);
+	}
 }

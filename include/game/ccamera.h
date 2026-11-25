@@ -10,7 +10,16 @@
 
 extern "C" {
 // takes the roll back out of the cobj when it isn't using an up vector
-f32 fn_801C0DEC(HSD_CObj* cobj);
+f32 GetCameraRoll(HSD_CObj* cobj);
+}
+
+class CCamera;
+
+extern "C" {
+// sets the camera up for a render mode, cbasesetup.cpp
+CCamera* InitGamePerspectiveCamera(CCamera* camera, GXRenderModeObj* mode);
+// the same for CBase's second camera
+CCamera* InitGameOrthoCamera(CCamera* camera, GXRenderModeObj* mode);
 }
 
 class CCamera : public HSD_CObj {
@@ -45,23 +54,19 @@ public:
 	{
 		HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
 	}
-	virtual void Anim();                                                                                                           // _28
-	virtual void SetViewport(f32 x, f32 y, GXRenderModeObj* rmode);                                                                // _2C
-	virtual void SetViewport(f32 left, f32 right, f32 top, f32 bottom) { HSD_CObjSetViewportfx4(this, left, right, top, bottom); } // _30
-	virtual void SetViewport(HSD_RectF32* viewport) { HSD_CObjSetViewportf(this, viewport); }                                      // _34
+	virtual void Anim();                                                                      // _28
+	virtual void SetViewport(f32 x, f32 y, GXRenderModeObj* rmode);                           // _2C
+	virtual void SetViewport(f32 left, f32 right, f32 top, f32 bottom);                       // _30
+	virtual void SetViewport(HSD_RectF32* viewport) { HSD_CObjSetViewportf(this, viewport); } // _34
 #if !defined(VERSION_JP)
 	// japan doesn't have this one yet, so its slots after it are 4 lower
 	virtual void SetViewport(HSD_RectS16* viewport) { HSD_CObjSetViewport(this, viewport); } // _38
 #endif
-	virtual void SetScissor(GXRenderModeObj* rmode);                                                                            // _3C
-	virtual void SetScissor(s32 left, u16 right, s32 top, u16 bottom) { HSD_CObjSetScissorx4(this, left, right, top, bottom); } // _40
-	virtual void SetScissor(Scissor* scissor) { HSD_CObjSetScissor(this, scissor); }                                            // _44
-	virtual void SetFov(f32 fov)                                                                                                // _48
-	{
-		mFov = fov;
-		HSD_CObjSetFov(this, fov);
-	}
-	virtual void SetFrustum(f32 top, f32 bottom, f32 left, f32 right) // _4C
+	virtual void SetScissor(GXRenderModeObj* rmode);                                 // _3C
+	virtual void SetScissor(s32 left, u16 right, s32 top, u16 bottom);               // _40
+	virtual void SetScissor(Scissor* scissor) { HSD_CObjSetScissor(this, scissor); } // _44
+	virtual void SetFov(f32 fov);                                                    // _48
+	virtual void SetFrustum(f32 top, f32 bottom, f32 left, f32 right)                // _4C
 	{
 		HSD_CObjSetTop(this, top);
 		HSD_CObjSetBottom(this, bottom);
@@ -84,13 +89,8 @@ public:
 		mEye.y = y;
 		mEye.z = z;
 	}
-	virtual void SetInterest(f32 x, f32 y, f32 z) // _5C
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-	}
-	virtual void SetAngle(f32 x, f32 y, f32 z) // _60
+	virtual void SetInterest(f32 x, f32 y, f32 z); // _5C
+	virtual void SetAngle(f32 x, f32 y, f32 z)     // _60
 	{
 		mAngle.x = x;
 		mAngle.y = y;
@@ -102,15 +102,15 @@ public:
 		mUp.y = y;
 		mUp.z = z;
 	}
-	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _68
-	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _6C
-	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _70
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _74
-	virtual void SetUp(const Vec& up) { SetUp(up.x, up.y, up.z); }                                     // _78
-	virtual void SetAngleY(f32 y) { mAngle.y = y; }                                                    // _7C
-	virtual void SetAngleX(f32 x) { mAngle.x = x; }                                                    // _80
-	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _84
-	virtual void SetScale(f32 x, f32 y, f32 z)                                                         // _88
+	virtual void SetDistance(f32 distance);                              // _68
+	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); } // _6C
+	virtual void SetInterest(const Vec& interest);                       // _70
+	virtual void SetAngle(const Vec& angle);                             // _74
+	virtual void SetUp(const Vec& up) { SetUp(up.x, up.y, up.z); }       // _78
+	virtual void SetAngleY(f32 y);                                       // _7C
+	virtual void SetAngleX(f32 x);                                       // _80
+	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                      // _84
+	virtual void SetScale(f32 x, f32 y, f32 z)                           // _88
 	{
 		mScale.x = x;
 		mScale.y = y;

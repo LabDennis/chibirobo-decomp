@@ -13,7 +13,7 @@ extern "C" {
  */
 void CCameraActionEvt::Init()
 {
-	mEyeInterps[0]      = &mEyeLinear;
+	mEyeInterps[0]      = &mEyeLinear; // slot 0 linear, 1 ease-in-out, 2 ease-out
 	mEyeInterps[1]      = &mEyeEaseInOut;
 	mEyeInterps[2]      = &mEyeEaseOut;
 	mInterestInterps[0] = &mInterestLinear;
@@ -42,7 +42,7 @@ void CCameraActionEvt::SetCamera(CCamera* camera)
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
 	SetAngle(camera->mAngle);
-	_38 = 0;
+	mCameraFlags = 0;
 	mAxes.mFlags &= ~7;
 	mTarget         = NULL;
 	mEyeInterp      = NULL;
@@ -71,7 +71,7 @@ void CCameraActionEvt::Update(u32 step)
 		} else {
 			mInterestInterp = NULL;
 		}
-	} else if (mTarget != NULL) {
+	} else if (mTarget != NULL) { // no interp: keep tracking the target
 		SetInterest(mTarget->GetCameraTarget());
 	}
 	if (mDistanceInterp != NULL) {
@@ -103,7 +103,7 @@ void CCameraActionEvt::Update(u32 step)
  */
 void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
 {
-	if (mode == 3 || time <= 0.0f) {
+	if (mode == 3 || time <= 0.0f) { // mode 3 or no time means snap
 		mEyeInterp = NULL;
 		SetEye(eye);
 		return;
@@ -121,20 +121,14 @@ void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
 void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 {
 	if (target == NULL) {
+#if !defined(VERSION_PAL)
 		OSReport("SetInterest_Interp( unknown data )\n");
+#endif
 		return;
 	}
 	mTarget      = target;
 	Vec interest = mTarget->GetCameraTarget();
-	if (mode == 3 || time <= 0.0f) {
-		mInterestInterp = NULL;
-		SetInterest(interest);
-		return;
-	}
-	mInterestInterp = mInterestInterps[mode];
-	if (mInterestInterp != NULL) {
-		mInterestInterp->Start(mInterest, interest, time);
-	}
+	SetInterest_Interp(mode, interest, time);
 }
 
 /**
@@ -171,31 +165,15 @@ void CCameraActionEvt::SetFov_Interp(s32 mode, f32 fov, f32 time)
 	}
 }
 
-// todo: cleanup
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline void TurnShortWay(f32& to, f32& from)
+static inline void TurnShortWay(f32& to, f32& from)
 {
-	f32 f = WrapAngle(from);
-	f32 t = WrapAngle(to);
-	from  = f;
-	to    = t;
-	if (t != f) {
-		f32 diff = t - f;
-		if (diff < 0.0f) {
-			diff = -diff;
-		}
-		if (diff >= TWO_PI) {
-			diff -= TWO_PI;
-		}
-		if (diff > PI) {
-			if (t < f) {
-				to = TWO_PI + t;
-			} else {
-				to = t - TWO_PI;
-			}
+	from = WrapAngle(from);
+	to   = WrapAngle(to);
+	if (Abs(to - from) > PI) {
+		if (to < from) {
+			to += TWO_PI;
+		} else {
+			to -= TWO_PI;
 		}
 	}
 }
@@ -210,15 +188,14 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 	CVec from;
 
 	if (type == 1) {
-		_38 = 0x20012;
+		mCameraFlags = 0x20012;
 	} else if (type == 2) {
-		_38 = 0x20011;
+		mCameraFlags = 0x20011;
 	}
-	if (relative) {
+	if (relative) { // relative angles add to the current ones
 		dest = mAngle;
 		PSVECAdd(&dest, (Vec*)&angle, &dest);
-	}
-	if (!relative) {
+	} else {
 		dest = CVec(angle);
 	}
 
@@ -232,8 +209,8 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 		to.y = dest.y;
 	}
 	if (mAxes.mFlags & 4) {
-		to.z = dest.z;
-		_38  = 0x40010;
+		to.z         = dest.z;
+		mCameraFlags = 0x40010;
 	}
 
 	from = mAngle;

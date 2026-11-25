@@ -111,5 +111,5 @@ CCamera* CShadow::StartRender()
 void CShadow::EndRender()
 {
 	HSD_ShadowEndRender(mShadow);
-	fn_801CAFC0();
+	HSD_EndRender();
 }

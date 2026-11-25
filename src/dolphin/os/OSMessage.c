@@ -1,7 +1,5 @@
 #include "Dolphin/os.h"
 
-// TODO: this matches, but breaks JKRAramStream with types etc, need to fix both together
-
 /**
  * @note Address: 0x801680A8
  * @note Size: 0x60
@@ -17,97 +15,98 @@ void OSInitMessageQueue(OSMessageQueue* queue, OSMessage* msgArray, s32 msgCount
 }
 
 /**
- * When (`flags` & 1), then this function blocks execution of the current
- * thread if `queue` is full, until such a time that it is no longer full.
- * When not (`flags` & 1), this function returns `false` immediately if
- * `queue` is full. This function returns `true` when the message is
- * successfully queued.
+ * Appends a message. OS_MESSAGE_BLOCK waits for space in a full queue.
+ *
  * @note Address: 0x80168108
  * @note Size: 0xC8
  */
-BOOL OSSendMessage(OSMessageQueue* queue, void* msg, s32 flags)
+BOOL OSSendMessage(OSMessageQueue* queue, OSMessage msg, s32 flags)
 {
-	int mesgId;
-	u32 interrupt;
+	s32 index;
+	BOOL enabled;
 
-	interrupt = OSDisableInterrupts();
+	enabled = OSDisableInterrupts();
 
 	while (queue->msgCount <= queue->usedCount) {
-		if (!(flags & OS_MSG_PERSISTENT)) {
-			OSRestoreInterrupts(interrupt);
+		if (!(flags & OS_MESSAGE_BLOCK)) {
+			OSRestoreInterrupts(enabled);
 			return FALSE;
 		}
 
 		OSSleepThread(&queue->queueSend);
 	}
 
-	mesgId                  = (queue->firstIndex + queue->usedCount) % queue->msgCount;
-	queue->msgArray[mesgId] = msg;
+	index                  = (queue->firstIndex + queue->usedCount) % queue->msgCount;
+	queue->msgArray[index] = msg;
 	queue->usedCount++;
 
 	OSWakeupThread(&queue->queueReceive);
-	OSRestoreInterrupts(interrupt);
+	OSRestoreInterrupts(enabled);
 	return TRUE;
 }
 
 /**
+ * Removes the first message. A null msgPtr discards it.
+ *
  * @note Address: 0x801681D0
  * @note Size: 0xDC
  */
-BOOL OSReceiveMessage(OSMessageQueue* queue, void** buffer, s32 flags)
+BOOL OSReceiveMessage(OSMessageQueue* queue, OSMessage* msgPtr, s32 flags)
 {
-	u32 interrupt;
+	BOOL enabled;
 
-	interrupt = OSDisableInterrupts();
+	enabled = OSDisableInterrupts();
 
 	while (queue->usedCount == 0) {
-		if (!(flags & OS_MSG_PERSISTENT)) {
-			OSRestoreInterrupts(interrupt);
+		if (!(flags & OS_MESSAGE_BLOCK)) {
+			OSRestoreInterrupts(enabled);
 			return FALSE;
 		}
 
 		OSSleepThread(&queue->queueReceive);
 	}
 
-	if (buffer) {
-		buffer[0] = queue->msgArray[queue->firstIndex];
+	if (msgPtr) {
+		*msgPtr = queue->msgArray[queue->firstIndex];
 	}
 
 	queue->firstIndex = (queue->firstIndex + 1) % queue->msgCount;
 	queue->usedCount--;
 
 	OSWakeupThread(&queue->queueSend);
-	OSRestoreInterrupts(interrupt);
+	OSRestoreInterrupts(enabled);
 	return TRUE;
 }
 
 /**
+ * Prepends a message. OS_MESSAGE_BLOCK waits for space in a full queue.
+ *
  * @note Address: N/A
  * @note Size: 0xD4
  */
-BOOL OSJamMessage(OSMessageQueue* queue, void* msg, s32 flags)
+BOOL OSJamMessage(OSMessageQueue* queue, OSMessage msg, s32 flags)
 {
-	s32 lastMesg;
-	u32 interrupt;
+	s32 index;
+	BOOL enabled;
 
-	interrupt = OSDisableInterrupts();
+	enabled = OSDisableInterrupts();
 
 	while (queue->msgCount <= queue->usedCount) {
-		if (!(flags & OS_MSG_PERSISTENT)) {
-			OSRestoreInterrupts(interrupt);
+		if (!(flags & OS_MESSAGE_BLOCK)) {
+			OSRestoreInterrupts(enabled);
 			return FALSE;
 		}
 
 		OSSleepThread(&queue->queueSend);
 	}
 
-	// Find last position in queue
-	lastMesg                           = (queue->firstIndex + queue->msgCount - 1) % queue->msgCount;
-	queue->firstIndex                  = lastMesg;
+	// Move the head backwards by one slot.
+	index                             = (queue->firstIndex + queue->msgCount - 1) % queue->msgCount;
+	queue->firstIndex                 = index;
 	queue->msgArray[queue->firstIndex] = msg;
 	queue->usedCount++;
 
 	OSWakeupThread(&queue->queueReceive);
-	OSRestoreInterrupts(interrupt);
+	OSRestoreInterrupts(enabled);
 	return TRUE;
 }

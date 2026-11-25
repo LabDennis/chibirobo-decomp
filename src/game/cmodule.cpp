@@ -81,7 +81,7 @@ BOOL CModule::Load(const char* path)
 		mBss    = bss;
 
 		if (mModule != NULL) {
-			((CModuleProlog)mModule->prolog)(-1, NULL, NULL);
+			((CModuleProlog)mModule->prolog)(-1, 0, NULL);
 		}
 		return TRUE;
 	}

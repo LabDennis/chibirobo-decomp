@@ -8,15 +8,6 @@
 #include <sysdolphin/lobj_setup.h>
 #include <sysdolphin/util.h>
 
-/* gx enums the hsd headers don't carry */
-#define GX_DF_NONE    0
-#define GX_DF_CLAMP   2
-#define GX_AF_SPEC    0
-#define GX_AF_SPOT    1
-#define GX_AF_NONE    2
-#define GX_LIGHT_NULL 0x100
-#define GX_PASSCLR    4
-
 /**
  * @note Address: N/A
  */
@@ -107,10 +98,10 @@ void HSD_SetupChannelMode(u32 rendermode)
 		static HSD_Chan ch_a       = { NULL, GX_ALPHA0, 0, { 0 }, { 0 }, 1, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_CLAMP, GX_AF_SPOT, NULL };
 		static HSD_Chan ch_vtx_a   = { NULL, GX_ALPHA0, 0, { 0 }, { 0 }, 0, GX_SRC_REG, GX_SRC_VTX, 0, GX_DF_CLAMP, GX_AF_SPOT, NULL };
 		static GXColor dark_matter = { 0, 0, 0, 255 };
-		HSD_LObj* ambient          = HSD_LObjGetActiveByID(GX_LIGHT_NULL);
+		HSD_LObj* ambient          = HSD_LObjGetActiveByID(HSD_LIGHT_AMBIENT);
 		u8 amb_alpha;
 
-		if (ambient != NULL && (ambient->flags & 4)) {
+		if (ambient != NULL && (ambient->flags & LOBJ_DIFFUSE)) {
 			HSD_MulColor(&matstate.ambient, &ambient->color, &ch.amb_color);
 		} else {
 			ch.amb_color = dark_matter;
@@ -127,7 +118,7 @@ void HSD_SetupChannelMode(u32 rendermode)
 			ch_a.chan = GX_ALPHA0;
 		}
 		ch_a.light_mask = HSD_LObjGetLightMaskAlpha();
-		if (ambient != NULL && (ambient->flags & 0x10)) {
+		if (ambient != NULL && (ambient->flags & LOBJ_ALPHA)) {
 			amb_alpha = ambient->color.a;
 		} else {
 			amb_alpha = 0;
@@ -175,31 +166,31 @@ void HSD_SetupPEMode(u32 rendermode, HSD_PEDesc* pe)
 	u8 z_update;
 
 	if (pe != NULL) {
-		HSD_StateSetColorUpdate(pe->flags & 1);
-		HSD_StateSetAlphaUpdate(pe->flags & 2);
-		HSD_StateSetDstAlpha(pe->flags & 4, pe->dst_alpha);
+		HSD_StateSetColorUpdate(pe->flags & HSD_PE_COLOR_UPDATE);
+		HSD_StateSetAlphaUpdate(pe->flags & HSD_PE_ALPHA_UPDATE);
+		HSD_StateSetDstAlpha(pe->flags & HSD_PE_DST_ALPHA_ENABLE, pe->dst_alpha);
 		HSD_StateSetBlendMode(pe->type, pe->src_factor, pe->dst_factor, pe->logic_op);
-		HSD_StateSetZMode(pe->flags & 0x10, pe->z_comp, pe->flags & 0x20);
-		HSD_StateSetZCompLoc(pe->flags & 8);
+		HSD_StateSetZMode(pe->flags & HSD_PE_Z_TEST, pe->z_comp, pe->flags & HSD_PE_Z_UPDATE);
+		HSD_StateSetZCompLoc(pe->flags & HSD_PE_Z_COMP_BEFORE_TEX);
 		HSD_StateSetAlphaCompare(pe->alpha_comp0, pe->ref0, pe->alpha_op, pe->alpha_comp1, pe->ref1);
-		HSD_StateSetDither(pe->flags & 0x40);
+		HSD_StateSetDither(pe->flags & HSD_PE_DITHER);
 		return;
 	}
 
-	HSD_StateSetColorUpdate(1);
-	HSD_StateSetAlphaUpdate(0);
-	HSD_StateSetDstAlpha(0, 0);
-	HSD_StateSetBlendMode((rendermode & 0x40000000) ? 1 : 0, 4, 5, 0xF);
-	z_update = (rendermode & 0x20000000) ? GX_FALSE : GX_TRUE;
-	HSD_StateSetZMode(1, (rendermode & 0x08000000) ? 7 : 3, z_update);
-	if (!(rendermode & 0x20000000) && (rendermode & 0x40000000)) {
-		HSD_StateSetZCompLoc(0);
-		HSD_StateSetAlphaCompare(4, 0, 0, 4, 0);
+	HSD_StateSetColorUpdate(GX_TRUE);
+	HSD_StateSetAlphaUpdate(GX_FALSE);
+	HSD_StateSetDstAlpha(GX_FALSE, 0);
+	HSD_StateSetBlendMode((rendermode & RENDER_XLU) ? GX_BM_BLEND : GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	z_update = (rendermode & RENDER_NO_ZUPDATE) ? GX_FALSE : GX_TRUE;
+	HSD_StateSetZMode(GX_TRUE, (rendermode & RENDER_ZMODE_ALWAYS) ? GX_ALWAYS : GX_LEQUAL, z_update);
+	if (!(rendermode & RENDER_NO_ZUPDATE) && (rendermode & RENDER_XLU)) {
+		HSD_StateSetZCompLoc(GX_FALSE);
+		HSD_StateSetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_GREATER, 0);
 	} else {
-		HSD_StateSetZCompLoc(1);
-		HSD_StateSetAlphaCompare(7, 0, 0, 7, 0);
+		HSD_StateSetZCompLoc(GX_TRUE);
+		HSD_StateSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
 	}
-	HSD_StateSetDither(1);
+	HSD_StateSetDither(GX_TRUE);
 }
 
 /**
@@ -224,16 +215,6 @@ void HSD_SetupRenderModeWithCustomPE(u32 rendermode, HSD_PEDesc* pe)
 	HSD_StateSetNumTevStages();
 	HSD_StateSetNumTexGens();
 	HSD_SetupChannelMode(rendermode);
-}
-
-static inline f32 HSD_ClampFloat(f32 val, f32 min, f32 max)
-{
-	if (val <= min) {
-		return min;
-	} else if (val >= max) {
-		return max;
-	}
-	return val;
 }
 
 /**

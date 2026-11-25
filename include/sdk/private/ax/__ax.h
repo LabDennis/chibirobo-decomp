@@ -7,6 +7,12 @@
 extern "C" {
 #endif
 
+#define AX_SAMPLES_PER_FRAME 160
+#define AX_DSP_BUFFER_ALIGNMENT 32
+
+// Priority zero is the free-voice stack. Active voices use priorities 1 through 31.
+#define AX_FREE_VOICE_PRIORITY 0
+
 // AXAlloc
 AXVPB* __AXGetStackHead(u32 priority);
 void __AXServiceCallbackStack(void);
@@ -37,6 +43,9 @@ void __AXGetAuxBForDPL2(u32* p);
 void __AXGetAuxBOutputDPL2(u32* p);
 
 // AXCL
+#define AX_COMMAND_LIST_WORDS 384
+#define AX_CL_MODE_DPL2       2
+
 extern u32 __AXClMode;
 
 // AXComp
@@ -45,7 +54,7 @@ extern u16 __AXCompressorTable[3360];
 u32 __AXGetCommandListCycles(void);
 u32 __AXGetCommandListAddress(void);
 void __AXWriteToCommandList(u16 data);
-void __AXNextFrame(void* sbuffer, void* buffer);
+void __AXNextFrame(s32* surroundBuffer, s16* outputBuffer);
 void __AXClInit(void);
 void __AXClQuit(void);
 
@@ -61,7 +70,6 @@ AXPROFILE* __AXGetCurrentProfile(void);
 
 // AXSPB
 u32 __AXGetStudio(void);
-void __AXDepopFade(s32* hostSum, s32* dspVolume, s16* dspDelta);
 void __AXPrintStudio(void);
 void __AXSPBInit(void);
 void __AXSPBQuit(void);

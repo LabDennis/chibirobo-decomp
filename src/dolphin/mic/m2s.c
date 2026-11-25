@@ -7,8 +7,10 @@
 #define M2S_CHANNEL_COUNT             2
 #define M2S_BUFFER_SAMPLES            128
 #define M2S_CALIBRATION_SAMPLES       44
-#define M2S_CALIBRATION_HISTORY_BYTES (M2S_CALIBRATION_SAMPLES * sizeof(s16))
 #define M2S_RESERVED_RING_SAMPLES     1152
+
+/* The history is stored as 32-bit entries. Copies and resets cover only 88 bytes. */
+#define M2S_CALIBRATION_HISTORY_BYTES (M2S_CALIBRATION_SAMPLES * sizeof(s16))
 
 typedef struct M2SControlBlock {
 	BOOL is_attached;
@@ -131,7 +133,7 @@ BOOL M2SSetMode(s32 mode)
 	if (!__init) {
 		return FALSE;
 	}
-	if ((mode & ~3) != 0) {
+	if ((mode & ~(M2S_MODE_PRERECORD | M2S_MODE_KEEP_MIC_RUNNING)) != 0) {
 		return FALSE;
 	}
 
@@ -266,7 +268,7 @@ void M2SStart(void)
 		return;
 	}
 
-	if ((__M2SMode & 1) == 0) {
+	if ((__M2SMode & M2S_MODE_PRERECORD) == 0) {
 		if (MICStart(__M2SChannel) != MIC_RESULT_READY) {
 			OSRestoreInterrupts(enabled);
 			return;
@@ -330,7 +332,7 @@ void M2SStop(void)
 		return;
 	}
 
-	if ((__M2SMode & 2) == 0) {
+	if ((__M2SMode & M2S_MODE_KEEP_MIC_RUNNING) == 0) {
 		if (MICStop(__M2SChannel) != MIC_RESULT_READY) {
 			return;
 		}
@@ -454,7 +456,7 @@ static void __M2SCalibration(s16* buffer, s32 samples)
 
 	if (cb->shifts > 0) {
 		for (i = 0; i < samples; i++) {
-			buffer[i] <<= cb->shifts;
+			buffer[i] = (s16)((u32)buffer[i] << cb->shifts);
 		}
 	} else if (cb->shifts < 0) {
 		for (i = 0; i < samples; i++) {
@@ -491,5 +493,3 @@ static void __M2SCalibration(s16* buffer, s32 samples)
 		__M2STmpPtr = history_index;
 	}
 }
-
-#pragma force_active reset

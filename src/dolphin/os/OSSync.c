@@ -1,40 +1,20 @@
 #include "Dolphin/os.h"
 
-/**
- * @note Address: 0x80169DAC
- * @note Size: 0x0
- */
-ASM static void SystemCallVector()
-{
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	entry __OSSystemCallVectorStart
-	mfspr r9, DBSR
-	ori r10, r9, 8
-	mtspr DBSR, r10
-	isync
-	sync
-	mtspr DBSR, r9
-	rfi
-
-	entry __OSSystemCallVectorEnd
-	nop
-#endif // clang-format on
-}
+extern const u8 __OSSystemCallVectorStart[];
+extern const u8 __OSSystemCallVectorEnd[];
 
 /**
  * @note Address: 0x80169DCC
  * @note Size: 0x64
  */
-void __OSInitSystemCall()
+void __OSInitSystemCall(void)
 {
 	void* handler = OS_SYS_CALL_HANDLER;
-	memcpy(handler, __OSSystemCallVectorStart, (u32)__OSSystemCallVectorEnd - (u32)__OSSystemCallVectorStart);
+	// These linker labels delimit the machine-code template.
+	size_t vectorSize = (u32)__OSSystemCallVectorEnd - (u32)__OSSystemCallVectorStart;
+	memcpy(handler, __OSSystemCallVectorStart, vectorSize);
 
 	DCFlushRangeNoSync(handler, OS_HANDLER_SLOT_SIZE);
-#ifdef __MWERKS__ // clang-format off
-	asm { sync }
-#endif // clang-format on
+	__sync();
 	ICInvalidateRange(handler, OS_HANDLER_SLOT_SIZE);
 }

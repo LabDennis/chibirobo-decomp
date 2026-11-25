@@ -29,6 +29,6 @@ struct HSD_Hash {
     u32 table_size;
 };
 
-HSD_HashClassInfo* HSD_HashSearch(HSD_Hash* hash, void* key, int* success);
+void* HSD_HashSearch(HSD_Hash* hash, void* key, int* success);
 
 #endif

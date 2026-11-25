@@ -2,55 +2,31 @@
 #include "string.h"
 #include "Dolphin/dvd.h"
 
-/**
- * @note Address: N/A
- * @note Size: 0x38
- */
-void strnlen(void)
-{
-	// UNUSED FUNCTION
-}
+#define DVD_DISK_ID_WILDCARD 0xFF
 
 /**
  * @note Address: 0x80170774
  * @note Size: 0xF8
  */
-BOOL DVDCompareDiskID(DVDDiskID* discID1, DVDDiskID* discID2)
+BOOL DVDCompareDiskID(const DVDDiskID* id1, const DVDDiskID* id2)
 {
-	u8 temp_r0;
-	u8 temp_r3;
-
-	if ((discID1->gameName[0] != 0) && (discID2->gameName[0] != 0) && (strncmp(discID1->gameName, discID2->gameName, 4) != 0)) {
+	if (id1->gameName[0] != 0 && id2->gameName[0] != 0
+	    && strncmp(id1->gameName, id2->gameName, sizeof(id1->gameName)) != 0) {
 		return FALSE;
 	}
-	if ((discID1->company[0] == 0) || (discID2->company[0] == 0) || (strncmp(discID1->company, discID2->company, 2) != 0)) {
+	if (id1->company[0] == 0 || id2->company[0] == 0
+	    || strncmp(id1->company, id2->company, sizeof(id1->company)) != 0) {
 		return FALSE;
 	}
 
-	temp_r3 = discID1->diskNumber;
-	temp_r0 = temp_r3;
-	if (temp_r3 != 0xFF) {
-		temp_r0 = discID2->diskNumber;
-		if ((temp_r0 != 0xFF) && (temp_r3 != temp_r0)) {
-			return FALSE;
-		}
+	if (id1->diskNumber != DVD_DISK_ID_WILDCARD && id2->diskNumber != DVD_DISK_ID_WILDCARD
+	    && id1->diskNumber != id2->diskNumber) {
+		return FALSE;
 	}
-	temp_r3 = discID1->gameVersion;
-	temp_r0 = temp_r3;
-	if (temp_r3 != 0xFF) {
-		temp_r0 = discID2->gameVersion;
-		if ((temp_r0 != 0xFF) && (temp_r3 != temp_r0)) {
-			return FALSE;
-		}
+
+	if (id1->gameVersion != DVD_DISK_ID_WILDCARD && id2->gameVersion != DVD_DISK_ID_WILDCARD
+	    && id1->gameVersion != id2->gameVersion) {
+		return FALSE;
 	}
 	return TRUE;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x80
- */
-void DVDGenerateDiskID(void)
-{
-	// UNUSED FUNCTION
 }

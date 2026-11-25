@@ -67,15 +67,18 @@ typedef struct _AXPBFIR {
     /* 0x04 */ u16 coefsLo;
 } AXPBFIR;
 
+/* DSP addresses occupy two consecutive parameter halfwords. */
+typedef struct _AXAddressPair {
+    u16 hi;
+    u16 lo;
+} AXAddressPair;
+
 typedef struct _AXPBADDR {
     /* 0x00 */ u16 loopFlag;
     /* 0x02 */ u16 format;
-    /* 0x04 */ u16 loopAddressHi;
-    /* 0x06 */ u16 loopAddressLo;
-    /* 0x08 */ u16 endAddressHi;
-    /* 0x0A */ u16 endAddressLo;
-    /* 0x0C */ u16 currentAddressHi;
-    /* 0x0E */ u16 currentAddressLo;
+    /* 0x04 */ AXAddressPair loopAddress;
+    /* 0x08 */ AXAddressPair endAddress;
+    /* 0x0C */ AXAddressPair currentAddress;
 } AXPBADDR;
 
 typedef struct _AXPBADPCM {
@@ -131,9 +134,9 @@ typedef struct _AXPB {
 } AXPB;
 
 typedef struct _AXVPB {
-    /* 0x000 */ void* next;
-    /* 0x004 */ void* prev;
-    /* 0x008 */ void* next1;
+    /* 0x000 */ struct _AXVPB* next;
+    /* 0x004 */ struct _AXVPB* prev;
+    /* 0x008 */ struct _AXVPB* next1; // Pending callback list link.
     /* 0x00C */ u32 priority;
     /* 0x010 */ void (*callback)(void*);
     /* 0x014 */ u32 userContext;
@@ -145,7 +148,7 @@ typedef struct _AXVPB {
     /* 0x02C */ u32 updateTotal;
     /* 0x030 */ u16* updateWrite;
     /* 0x034 */ u16 updateData[128];
-    /* 0x134 */ void* itdBuffer;
+    /* 0x134 */ struct _AXPBITDBUFFER* itdBuffer;
     /* 0x138 */ AXPB pb;
 } AXVPB;
 
@@ -198,18 +201,17 @@ typedef struct _AXPROFILE {
 } AXPROFILE;
 
 typedef struct AX_AUX_DATA {
-    /* 0x00 */ s32* l;
-    /* 0x00 */ s32* r;
-    /* 0x00 */ s32* s;
+    s32* left;
+    s32* right;
+    s32* surround;
 } AX_AUX_DATA;
 
 typedef struct AX_AUX_DATA_DPL2 {
-    /* 0x00 */ s32* l;
-    /* 0x00 */ s32* r;
-    /* 0x00 */ s32* ls;
-    /* 0x00 */ s32* rs;
+    AX_AUX_DATA channels; // The surround channel carries left surround in DPL2.
+    s32* rightSurround;
 } AX_AUX_DATA_DPL2;
 
+typedef void (*AXAuxCallback)(void* data, void* context);
 typedef void (*AXCallback)();
 
 #define AX_DSP_SLAVE_LENGTH 0xF80
@@ -222,7 +224,7 @@ typedef void (*AXCallback)();
 #define AX_SRC_TYPE_4TAP_16K 4
 
 // sync flags
-#define AX_SYNC_FLAG_COPYALL       (1 << 31)
+#define AX_SYNC_FLAG_COPYALL       (1u << 31)
 #define AX_SYNC_FLAG_UNK1          (1 << 30) // reserved, unused?
 #define AX_SYNC_FLAG_UNK2          (1 << 29) // reserved, unused?
 #define AX_SYNC_FLAG_UNK3          (1 << 28) // reserved, unused?
@@ -231,8 +233,8 @@ typedef void (*AXCallback)();
 #define AX_SYNC_FLAG_UNK6          (1 << 25) // reserved, unused?
 #define AX_SYNC_FLAG_UNK7          (1 << 24) // reserved, unused?
 #define AX_SYNC_FLAG_UNK8          (1 << 23) // reserved, unused?
-#define AX_SYNC_FLAG_UNK9          (1 << 22) // reserved, unused?
-#define AX_SYNC_FLAG_UNK10         (1 << 21) // reserved, unused?
+#define AX_SYNC_FLAG_COPYLPFCOEFS  (1 << 22)
+#define AX_SYNC_FLAG_COPYLPF       (1 << 21)
 #define AX_SYNC_FLAG_COPYADPCMLOOP (1 << 20)
 #define AX_SYNC_FLAG_COPYRATIO     (1 << 19)
 #define AX_SYNC_FLAG_COPYSRC       (1 << 18)
@@ -244,7 +246,7 @@ typedef void (*AXCallback)();
 #define AX_SYNC_FLAG_COPYADDR      (1 << 12)
 #define AX_SYNC_FLAG_COPYFIR       (1 << 11)
 #define AX_SYNC_FLAG_SWAPVOL       (1 << 10)
-#define AX_SYNC_FLAG_COPYVOL       (1 << 9)
+#define AX_SYNC_USER_VE            (1 << 9)
 #define AX_SYNC_FLAG_COPYDPOP      (1 << 8)
 #define AX_SYNC_FLAG_COPYUPDATE    (1 << 7)
 #define AX_SYNC_FLAG_COPYTSHIFT    (1 << 6)
@@ -268,8 +270,8 @@ AXVPB* AXAcquireVoice(u32 priority, void (*callback)(void *), u32 userContext);
 void AXSetVoicePriority(AXVPB* p, u32 priority);
 
 // AXAux
-void AXRegisterAuxACallback(void (*callback)(void*, void*), void* context);
-void AXRegisterAuxBCallback(void (*callback)(void*, void*), void* context);
+void AXRegisterAuxACallback(AXAuxCallback callback, void* context);
+void AXRegisterAuxBCallback(AXAuxCallback callback, void* context);
 
 // AXCL
 void AXSetMode(u32 mode);

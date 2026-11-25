@@ -21,5 +21,6 @@ HSD_ObjAllocData* HSD_RenderGetAllocData(void);
 HSD_ObjAllocData* HSD_TevRegGetAllocData(void);
 HSD_ObjAllocData* HSD_ChanGetAllocData(void);
 u32 HSD_StateAssignTev(void);
+void HSD_StateRegisterTexGen(s32 coord);
 
 #endif

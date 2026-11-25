@@ -588,15 +588,6 @@ exit:
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x84
- */
-void __FileRead(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80158A34
  * @note Size: 0x90
  */
@@ -631,42 +622,6 @@ int __StringRead(void* pPtr, int ch, int act)
 	}
 
 	return 0;
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xF0
- */
-void fscanf(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x90
- */
-void vscanf(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xE0
- */
-void scanf(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x98
- */
-void vfscanf(void)
-{
-	// UNUSED FUNCTION
 }
 
 inline int isspace_string(const char* s)

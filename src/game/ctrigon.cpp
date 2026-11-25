@@ -5,6 +5,7 @@
 #include "game/hsd_dobj.h"
 #include "game/ut.h"
 extern "C" {
+#include <sdk/dolphin/gx/GXCommandList.h>
 #include <sysdolphin/mobj.h>
 #include <sysdolphin/pobj.h>
 #include <dolphin/mtx/vec.h>
@@ -14,26 +15,13 @@ extern "C" {
 #include <stdlib.h>
 
 extern "C" {
-void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
-void C_VECCrossProduct(Vec* a, Vec* b, Vec* axb);
-void HSD_JObjWalkTree(HSD_JObj* jobj, HSD_JObjWalkTreeCallback cb, f32** cb_args);
 void HSD_DObjCountVertices(HSD_DObj* dobj, u32* verts, u32* polys);
 void HSD_JObjCountVertices(HSD_JObj* jobj, u32* verts, u32* polys);
 }
 
-// GXPrimitive, the hsd headers don't have it, pobj.c defines its own too
-#define GX_QUADS         0x80
-#define GX_TRIANGLES     0x90
-#define GX_TRIANGLESTRIP 0x98
-#define GX_TRIANGLEFAN   0xA0
-#define GX_LINES         0xA8
-#define GX_LINESTRIP     0xB0
-#define GX_POINTS        0xB8
-
 // returns the POS array entry the index at dl points at
 typedef void* (*TrigonGetIdxFunc)(void* base, u8* dl);
 
-// the file runs backwards, these are defined further down
 static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* clr);
 static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx);
 extern "C" {
@@ -52,7 +40,7 @@ static void* TrigonGetIdxS8U8(void* base, u8* dl);
 static void* TrigonGetIdxS8U16(void* base, u8* dl);
 static void* TrigonGetIdxU8U8(void* base, u8* dl);
 static void* TrigonGetIdxU8U16(void* base, u8* dl);
-static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type);
+static void CollectTrigons(HSD_JObj* jobj, void* context, s32 type);
 static int CompareTrigonDist(const void* a, const void* b);
 }
 
@@ -65,7 +53,7 @@ void HSD_JObjCountVertices(HSD_JObj* jobj, u32* verts, u32* polys)
 	u32 totalVerts = 0;
 	u32 totalPolys = 0;
 	if (jobj != NULL) {
-		if (jobj->flags & INSTANCE) {
+		if (jobj->flags & INSTANCE) { // instanced joints share the child's tree
 			HSD_JObjCountVertices(jobj->child, &totalVerts, &totalPolys);
 		} else {
 			if (union_type_dobj(jobj)) {
@@ -93,8 +81,8 @@ void HSD_JObjCountVertices(HSD_JObj* jobj, u32* verts, u32* polys)
  */
 static int CompareTrigonDist(const void* a, const void* b)
 {
-	const TRIGON_INFO* ta = (const TRIGON_INFO*)a;
-	const TRIGON_INFO* tb = (const TRIGON_INFO*)b;
+	const TRIGON_INFO* ta = static_cast<const TRIGON_INFO*>(a);
+	const TRIGON_INFO* tb = static_cast<const TRIGON_INFO*>(b);
 	if (ta->mDist > tb->mDist) {
 		return 1;
 	}
@@ -119,16 +107,16 @@ TRIGON_INFO* CTrigon::Create(HSD_JObj* jobj)
 	// first pass into a buffer big enough for every polygon, just to count the floor ones
 	mTri = (TRIGON_INFO*)mm::Alloc((mNumMax * sizeof(TRIGON_INFO) + 31) & ~31, "(Tri)");
 	mNum = 0;
-	HSD_JObjWalkTree(jobj, CollectTrigons, (f32**)this);
+	HSD_JObjWalkTree(jobj, CollectTrigons, this);
 	mm::Free(mTri, 1);
 	mTri = NULL;
 
 	// then again into one that fits
 	u32 size = mNum * sizeof(TRIGON_INFO);
-	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, fn_801911B4("(tri:%4d * %2d)", mNum, sizeof(TRIGON_INFO)));
+	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, FormatToStaticBuffer("(tri:%4d * %2d)", mNum, sizeof(TRIGON_INFO)));
 	if (mTri != NULL) {
 		mNum = 0;
-		HSD_JObjWalkTree(jobj, CollectTrigons, (f32**)this);
+		HSD_JObjWalkTree(jobj, CollectTrigons, this);
 	}
 	qsort(mTri, mNum, sizeof(TRIGON_INFO), CompareTrigonDist);
 
@@ -177,9 +165,9 @@ void CTrigon::Release()
  * @note Address: 0x801A5B2C
  * @note Size: 0x28C
  */
-static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
+static void CollectTrigons(HSD_JObj* jobj, void* context, s32 type)
 {
-	CTrigon* trigon  = (CTrigon*)args;
+	CTrigon* trigon  = static_cast<CTrigon*>(context);
 	TRIGON_INFO* tri = trigon->mTri;
 
 	HSD_JObjSetupMatrix(jobj);
@@ -198,7 +186,8 @@ static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
 		if (mobj == NULL || mobj->mat == NULL) {
 			continue;
 		}
-		u32 color = *(u32*)&mobj->mat->diffuse >> 8;
+		const GXColor& diffuse = mobj->mat->diffuse;
+		const u32 color        = (u32(diffuse.r) << 16) | (u32(diffuse.g) << 8) | diffuse.b;
 		for (HSD_PObj* pobj = HSD_DObjGetPObj(dobj); pobj != NULL; pobj = HSD_PObjGetNext(pobj)) {
 			u32 n          = ParsePObj(pobj, &tri[trigon->mNum], mtx);
 			TRIGON_INFO* t = &tri[trigon->mNum];
@@ -206,6 +195,7 @@ static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
 				Vec v[3];
 				Vec center;
 				t->mGetVtx(t, v);
+				// the sort key is the centroid's distance from the origin
 				center.x  = (v[0].x + v[1].x + v[2].x) / 3.0f;
 				center.y  = (v[0].y + v[1].y + v[2].y) / 3.0f;
 				center.z  = (v[0].z + v[1].z + v[2].z) / 3.0f;
@@ -219,18 +209,9 @@ static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
 }
 
 /**
- * @note Address: 0x801A5AE4
- * @note Size: 0x48
- */
-// _trigonChecker's deleting dtor, the inline virtual from the class. lands weak after
-// ParsePObj since weak copies come out in reverse order of first use
-
-/**
  * @note Address: 0x801A57C0
  * @note Size: 0x324
  */
-// too big to inline, so it ends up weak after ParsePObj. one statement less and
-// ParsePObj swallows all six calls
 inline bool _trigonChecker::Check()
 {
 	Vec v[3];
@@ -246,7 +227,7 @@ inline bool _trigonChecker::Check()
 	// degenerate triangles never count
 	if (PSVECMag(&cross) > FLT_EPSILON) {
 		CVec normal;
-		fn_8018EE60(&v[0], &v[1], &v[2], &normal);
+		CalcTriangleNormal(&v[0], &v[1], &v[2], &normal);
 
 		// slope against the horizontal, keep anything that faces up
 		f32 xz    = sqrtf(normal.x * normal.x + normal.z * normal.z);
@@ -328,20 +309,26 @@ static inline TrigonGetVtxFunc GetVtxFunc(int compType)
 	return NULL;
 }
 
+// GX display lists store multibyte fields in big-endian byte order.
+static u16 ReadDisplayListU16(const u8* data)
+{
+	return (data[0] << 8) | data[1];
+}
+
 /**
  * @note Address: 0x801A50B8
  * @note Size: 0x708
  */
 static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 {
-	// NONMATCHING: regalloc, retail picks the accessor in r3 and moves it to r25 after, and loads display a few lines later
-	int posSize             = 0;
-	int stride              = GetVtxSize(pobj->verts, &posSize, NULL, NULL, NULL);
-	int compType            = pobj->verts->comp_type;
-	void* vtx               = pobj->verts->vertex;
-	u8 frac                 = pobj->verts->frac;
-	TrigonGetIdxFunc getIdx = GetIdxFunc(compType, posSize);
-	TrigonGetVtxFunc getVtx = GetVtxFunc(compType);
+	HSD_VtxDescList* vertexDesc = pobj->verts;
+	int posSize                 = 0;
+	int stride                  = GetVtxSize(vertexDesc, &posSize, NULL, NULL, NULL);
+	int compType                = vertexDesc->comp_type;
+	void* vtx                   = vertexDesc->vertex;
+	u8 frac                     = vertexDesc->frac;
+	TrigonGetIdxFunc getIdx     = GetIdxFunc(compType, posSize);
+	TrigonGetVtxFunc getVtx     = GetVtxFunc(compType);
 
 	u8* dl  = pobj->display;
 	u8* end = dl + (pobj->n_display << 5);
@@ -350,30 +337,30 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 	int i;
 
 	while (dl < end) {
-		u8 cmd = dl[0];
-		int n  = dl[1] << 8 | dl[2];
+		u8 cmd = dl[0]; // the display list opcode
+		int n  = ReadDisplayListU16(dl + 1);
 		dl += 3;
 
 		switch (cmd & GX_OPCODE_MASK) {
-		case GX_NOP:
+		case GX_NOP: // a nop ends the list
 			return num;
-		case GX_POINTS:
+		case GX_DRAW_POINTS:
 			dl += stride * n;
 			break;
-		case GX_LINES:
+		case GX_DRAW_LINES:
 			dl += stride * n;
 			break;
-		case GX_LINESTRIP:
+		case GX_DRAW_LINE_STRIP:
 			dl += stride * n;
 			break;
-		case GX_TRIANGLES:
+		case GX_DRAW_TRIANGLES:
 			for (i = 0; i < n / 3; i++) {
 				SET_TRIGON(getIdx(vtx, dl), getIdx(vtx, dl + stride), getIdx(vtx, dl + stride * 2));
 				ADD_TRIGON();
 				dl += stride * 3;
 			}
 			break;
-		case GX_TRIANGLESTRIP:
+		case GX_DRAW_TRIANGLE_STRIP:
 			// every other triangle of a strip winds backwards
 			for (i = 2; i < n; i++) {
 				if (i & 1) {
@@ -386,8 +373,8 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 			}
 			dl += stride * 2;
 			break;
-		case GX_TRIANGLEFAN: {
-			void* first = getIdx(vtx, dl);
+		case GX_DRAW_TRIANGLE_FAN: {
+			void* first = getIdx(vtx, dl); // the fan's hub vertex
 			for (i = 2; i < n; i++) {
 				SET_TRIGON(first, getIdx(vtx, dl + stride), getIdx(vtx, dl + stride * 2));
 				ADD_TRIGON();
@@ -396,7 +383,7 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 			dl += stride * 2;
 			break;
 		}
-		case GX_QUADS:
+		case GX_DRAW_QUADS: // each quad becomes two triangles
 			for (i = 0; i < n / 4; i++) {
 				SET_TRIGON(getIdx(vtx, dl), getIdx(vtx, dl + stride), getIdx(vtx, dl + stride * 2));
 				ADD_TRIGON();
@@ -409,504 +396,6 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 	}
 	return num;
 }
-/*
-    stwu     r1, -0x80(r1)
-    mflr     r0
-    li       r6, 0x0
-    li       r7, 0x0
-    stw      r0, 0x84(r1)
-    li       r0, 0x0
-    stmw     r16, 0x40(r1)
-    mr       r26, r3
-    mr       r31, r4
-    mr       r28, r5
-    lwz      r3, 0x8(r3)
-    addi     r4, r1, 0x8
-    li       r5, 0x0
-    stw      r0, 0x8(r1)
-    bl       GetVtxSize__FP16_HSD_VtxDescListPiPiPiPi
-    lwz      r5, 0x8(r26)
-    mr       r29, r3
-    lwz      r4, 0x8(r1)
-    lwz      r0, 0xc(r5)
-    lwz      r30, 0x14(r5)
-    cmpwi    r0, 0x2
-    lbz      r27, 0x10(r5)
-    beq      .L_801A5170
-    bge      .L_801A5128
-    cmpwi    r0, 0x0
-    beq      .L_801A5138
-    bge      .L_801A5154
-    b        .L_801A51C4
-.L_801A5128:
-    cmpwi    r0, 0x4
-    beq      .L_801A51A8
-    bge      .L_801A51C4
-    b        .L_801A518C
-.L_801A5138:
-    cmpwi    r4, 0x2
-    lis      r3, TrigonGetIdxU8U8@ha
-    addi     r3, r3, TrigonGetIdxU8U8@l
-    bne      .L_801A51C8
-    lis      r3, TrigonGetIdxU8U16@ha
-    addi     r3, r3, TrigonGetIdxU8U16@l
-    b        .L_801A51C8
-.L_801A5154:
-    cmpwi    r4, 0x2
-    lis      r3, TrigonGetIdxS8U8@ha
-    addi     r3, r3, TrigonGetIdxS8U8@l
-    bne      .L_801A51C8
-    lis      r3, TrigonGetIdxS8U16@ha
-    addi     r3, r3, TrigonGetIdxS8U16@l
-    b        .L_801A51C8
-.L_801A5170:
-    cmpwi    r4, 0x2
-    lis      r3, TrigonGetIdxU16U8@ha
-    addi     r3, r3, TrigonGetIdxU16U8@l
-    bne      .L_801A51C8
-    lis      r3, TrigonGetIdxU16U16@ha
-    addi     r3, r3, TrigonGetIdxU16U16@l
-    b        .L_801A51C8
-.L_801A518C:
-    cmpwi    r4, 0x2
-    lis      r3, TrigonGetIdxS16U8@ha
-    addi     r3, r3, TrigonGetIdxS16U8@l
-    bne      .L_801A51C8
-    lis      r3, TrigonGetIdxS16U16@ha
-    addi     r3, r3, TrigonGetIdxS16U16@l
-    b        .L_801A51C8
-.L_801A51A8:
-    cmpwi    r4, 0x2
-    lis      r3, TrigonGetIdxF32U8@ha
-    addi     r3, r3, TrigonGetIdxF32U8@l
-    bne      .L_801A51C8
-    lis      r3, TrigonGetIdxF32U16@ha
-    addi     r3, r3, TrigonGetIdxF32U16@l
-    b        .L_801A51C8
-.L_801A51C4:
-    li       r3, 0x0
-.L_801A51C8:
-    cmpwi    r0, 0x2
-    mr       r25, r3
-    beq      .L_801A5210
-    bge      .L_801A51E8
-    cmpwi    r0, 0x0
-    beq      .L_801A51F8
-    bge      .L_801A5204
-    b        .L_801A5234
-.L_801A51E8:
-    cmpwi    r0, 0x4
-    beq      .L_801A5228
-    bge      .L_801A5234
-    b        .L_801A521C
-.L_801A51F8:
-    lis      r3, TrigonGetVtxU8@ha
-    addi     r24, r3, TrigonGetVtxU8@l
-    b        .L_801A5238
-.L_801A5204:
-    lis      r3, TrigonGetVtxS8@ha
-    addi     r24, r3, TrigonGetVtxS8@l
-    b        .L_801A5238
-.L_801A5210:
-    lis      r3, TrigonGetVtxU16@ha
-    addi     r24, r3, TrigonGetVtxU16@l
-    b        .L_801A5238
-.L_801A521C:
-    lis      r3, TrigonGetVtxS16@ha
-    addi     r24, r3, TrigonGetVtxS16@l
-    b        .L_801A5238
-.L_801A5228:
-    lis      r3, TrigonGetVtxF32@ha
-    addi     r24, r3, TrigonGetVtxF32@l
-    b        .L_801A5238
-.L_801A5234:
-    li       r24, 0x0
-.L_801A5238:
-    lhz      r0, 0xe(r26)
-    lis      r4, __vt__14_trigonChecker@ha
-    li       r3, 0x0
-    lwz      r18, 0x10(r26)
-    addi     r4, r4, __vt__14_trigonChecker@l
-    slwi     r0, r0, 5
-    mulli    r22, r29, 0x3
-    stw      r4, 0x2c(r1)
-    add      r17, r18, r0
-    stw      r3, 0x30(r1)
-    slwi     r23, r29, 1
-    slwi     r21, r29, 2
-    stw      r3, 0x34(r1)
-    li       r19, 0x0
-    b        .L_801A5794
-.L_801A5274:
-    lbz      r0, 0x0(r18)
-    lbz      r3, 0x1(r18)
-    rlwinm   r4, r0, 0, 24, 28
-    lbz      r20, 0x2(r18)
-    cmpwi    r4, 0xa0
-    rlwimi   r20, r3, 8, 16, 23
-    addi     r18, r18, 0x3
-    beq      .L_801A5530
-    bge      .L_801A52C8
-    cmpwi    r4, 0x90
-    beq      .L_801A5324
-    bge      .L_801A52BC
-    cmpwi    r4, 0x80
-    beq      .L_801A5608
-    bge      .L_801A5794
-    cmpwi    r4, 0x0
-    beq      .L_801A52EC
-    b        .L_801A5794
-.L_801A52BC:
-    cmpwi    r4, 0x98
-    beq      .L_801A5408
-    b        .L_801A5794
-.L_801A52C8:
-    cmpwi    r4, 0xb0
-    beq      .L_801A5318
-    bge      .L_801A52E0
-    cmpwi    r4, 0xa8
-    beq      .L_801A530C
-    b        .L_801A5794
-.L_801A52E0:
-    cmpwi    r4, 0xb8
-    beq      .L_801A5300
-    b        .L_801A5794
-.L_801A52EC:
-    lis      r4, __vt__14_trigonChecker@ha
-    mr       r3, r19
-    addi     r0, r4, __vt__14_trigonChecker@l
-    stw      r0, 0x2c(r1)
-    b        .L_801A57AC
-.L_801A5300:
-    mullw    r0, r29, r20
-    add      r18, r18, r0
-    b        .L_801A5794
-.L_801A530C:
-    mullw    r0, r29, r20
-    add      r18, r18, r0
-    b        .L_801A5794
-.L_801A5318:
-    mullw    r0, r29, r20
-    add      r18, r18, r0
-    b        .L_801A5794
-.L_801A5324:
-    lis      r3, 0x5555
-    li       r16, 0x0
-    addi     r0, r3, 0x5556
-    mulhw    r3, r0, r20
-    srwi     r0, r3, 31
-    add      r26, r3, r0
-    b        .L_801A53FC
-.L_801A5340:
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0xc(r1)
-    mr       r3, r30
-    add      r4, r18, r29
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    add      r4, r18, r23
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-    addi     r3, r1, 0xc
-    stw      r28, 0x20(r1)
-    sth      r27, 0x24(r1)
-    stw      r24, 0x18(r1)
-    bl       Check__14_trigonCheckerFv
-    clrlwi.  r0, r3, 24
-    beq      .L_801A53F4
-    lwz      r3, 0xc(r1)
-    addi     r19, r19, 0x1
-    lwz      r0, 0x10(r1)
-    stw      r3, 0x0(r31)
-    stw      r0, 0x4(r31)
-    lwz      r0, 0x14(r1)
-    stw      r0, 0x8(r31)
-    lwz      r0, 0x18(r1)
-    stw      r0, 0xc(r31)
-    lfs      f0, 0x1c(r1)
-    stfs     f0, 0x10(r31)
-    lwz      r0, 0x20(r1)
-    stw      r0, 0x14(r31)
-    lhz      r0, 0x24(r1)
-    sth      r0, 0x18(r31)
-    lhz      r0, 0x26(r1)
-    sth      r0, 0x1a(r31)
-    lwz      r0, 0x28(r1)
-    stw      r0, 0x1c(r31)
-    addi     r31, r31, 0x20
-.L_801A53F4:
-    add      r18, r18, r22
-    addi     r16, r16, 0x1
-.L_801A53FC:
-    cmpw     r16, r26
-    blt      .L_801A5340
-    b        .L_801A5794
-.L_801A5408:
-    li       r16, 0x2
-    b        .L_801A5520
-.L_801A5410:
-    clrlwi.  r0, r16, 31
-    beq      .L_801A5464
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0xc(r1)
-    mr       r3, r30
-    add      r4, r18, r23
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    add      r4, r18, r29
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-    b        .L_801A54AC
-.L_801A5464:
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0xc(r1)
-    mr       r3, r30
-    add      r4, r18, r29
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    add      r4, r18, r23
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-.L_801A54AC:
-    stw      r28, 0x20(r1)
-    addi     r3, r1, 0xc
-    sth      r27, 0x24(r1)
-    stw      r24, 0x18(r1)
-    bl       Check__14_trigonCheckerFv
-    clrlwi.  r0, r3, 24
-    beq      .L_801A5518
-    lwz      r3, 0xc(r1)
-    addi     r19, r19, 0x1
-    lwz      r0, 0x10(r1)
-    stw      r3, 0x0(r31)
-    stw      r0, 0x4(r31)
-    lwz      r0, 0x14(r1)
-    stw      r0, 0x8(r31)
-    lwz      r0, 0x18(r1)
-    stw      r0, 0xc(r31)
-    lfs      f0, 0x1c(r1)
-    stfs     f0, 0x10(r31)
-    lwz      r0, 0x20(r1)
-    stw      r0, 0x14(r31)
-    lhz      r0, 0x24(r1)
-    sth      r0, 0x18(r31)
-    lhz      r0, 0x26(r1)
-    sth      r0, 0x1a(r31)
-    lwz      r0, 0x28(r1)
-    stw      r0, 0x1c(r31)
-    addi     r31, r31, 0x20
-.L_801A5518:
-    add      r18, r18, r29
-    addi     r16, r16, 0x1
-.L_801A5520:
-    cmpw     r16, r20
-    blt      .L_801A5410
-    add      r18, r18, r23
-    b        .L_801A5794
-.L_801A5530:
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r26, r3
-    li       r16, 0x2
-    b        .L_801A55F8
-.L_801A5550:
-    mr       r12, r25
-    mr       r3, r30
-    stw      r26, 0xc(r1)
-    add      r4, r18, r29
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    add      r4, r18, r23
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-    addi     r3, r1, 0xc
-    stw      r28, 0x20(r1)
-    sth      r27, 0x24(r1)
-    stw      r24, 0x18(r1)
-    bl       Check__14_trigonCheckerFv
-    clrlwi.  r0, r3, 24
-    beq      .L_801A55F0
-    lwz      r3, 0xc(r1)
-    addi     r19, r19, 0x1
-    lwz      r0, 0x10(r1)
-    stw      r3, 0x0(r31)
-    stw      r0, 0x4(r31)
-    lwz      r0, 0x14(r1)
-    stw      r0, 0x8(r31)
-    lwz      r0, 0x18(r1)
-    stw      r0, 0xc(r31)
-    lfs      f0, 0x1c(r1)
-    stfs     f0, 0x10(r31)
-    lwz      r0, 0x20(r1)
-    stw      r0, 0x14(r31)
-    lhz      r0, 0x24(r1)
-    sth      r0, 0x18(r31)
-    lhz      r0, 0x26(r1)
-    sth      r0, 0x1a(r31)
-    lwz      r0, 0x28(r1)
-    stw      r0, 0x1c(r31)
-    addi     r31, r31, 0x20
-.L_801A55F0:
-    add      r18, r18, r29
-    addi     r16, r16, 0x1
-.L_801A55F8:
-    cmpw     r16, r20
-    blt      .L_801A5550
-    add      r18, r18, r23
-    b        .L_801A5794
-.L_801A5608:
-    srawi    r0, r20, 2
-    li       r16, 0x0
-    addze    r26, r0
-    b        .L_801A578C
-.L_801A5618:
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0xc(r1)
-    mr       r3, r30
-    add      r4, r18, r29
-    mtctr    r12
-    bctrl
-    add      r20, r18, r23
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    mr       r4, r20
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-    addi     r3, r1, 0xc
-    stw      r28, 0x20(r1)
-    sth      r27, 0x24(r1)
-    stw      r24, 0x18(r1)
-    bl       Check__14_trigonCheckerFv
-    clrlwi.  r0, r3, 24
-    beq      .L_801A56D0
-    lwz      r3, 0xc(r1)
-    addi     r19, r19, 0x1
-    lwz      r0, 0x10(r1)
-    stw      r3, 0x0(r31)
-    stw      r0, 0x4(r31)
-    lwz      r0, 0x14(r1)
-    stw      r0, 0x8(r31)
-    lwz      r0, 0x18(r1)
-    stw      r0, 0xc(r31)
-    lfs      f0, 0x1c(r1)
-    stfs     f0, 0x10(r31)
-    lwz      r0, 0x20(r1)
-    stw      r0, 0x14(r31)
-    lhz      r0, 0x24(r1)
-    sth      r0, 0x18(r31)
-    lhz      r0, 0x26(r1)
-    sth      r0, 0x1a(r31)
-    lwz      r0, 0x28(r1)
-    stw      r0, 0x1c(r31)
-    addi     r31, r31, 0x20
-.L_801A56D0:
-    mr       r12, r25
-    mr       r3, r30
-    mr       r4, r18
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0xc(r1)
-    mr       r3, r30
-    mr       r4, r20
-    mtctr    r12
-    bctrl
-    mr       r12, r25
-    stw      r3, 0x10(r1)
-    mr       r3, r30
-    add      r4, r18, r22
-    mtctr    r12
-    bctrl
-    stw      r3, 0x14(r1)
-    addi     r3, r1, 0xc
-    stw      r28, 0x20(r1)
-    sth      r27, 0x24(r1)
-    stw      r24, 0x18(r1)
-    bl       Check__14_trigonCheckerFv
-    clrlwi.  r0, r3, 24
-    beq      .L_801A5784
-    lwz      r3, 0xc(r1)
-    addi     r19, r19, 0x1
-    lwz      r0, 0x10(r1)
-    stw      r3, 0x0(r31)
-    stw      r0, 0x4(r31)
-    lwz      r0, 0x14(r1)
-    stw      r0, 0x8(r31)
-    lwz      r0, 0x18(r1)
-    stw      r0, 0xc(r31)
-    lfs      f0, 0x1c(r1)
-    stfs     f0, 0x10(r31)
-    lwz      r0, 0x20(r1)
-    stw      r0, 0x14(r31)
-    lhz      r0, 0x24(r1)
-    sth      r0, 0x18(r31)
-    lhz      r0, 0x26(r1)
-    sth      r0, 0x1a(r31)
-    lwz      r0, 0x28(r1)
-    stw      r0, 0x1c(r31)
-    addi     r31, r31, 0x20
-.L_801A5784:
-    add      r18, r18, r21
-    addi     r16, r16, 0x1
-.L_801A578C:
-    cmpw     r16, r26
-    blt      .L_801A5618
-.L_801A5794:
-    cmplw    r18, r17
-    blt      .L_801A5274
-    lis      r4, __vt__14_trigonChecker@ha
-    mr       r3, r19
-    addi     r0, r4, __vt__14_trigonChecker@l
-    stw      r0, 0x2c(r1)
-.L_801A57AC:
-    lmw      r16, 0x40(r1)
-    lwz      r0, 0x84(r1)
-    mtlr     r0
-    addi     r1, r1, 0x80
-    blr
-*/
-
 /**
  * @note Address: 0x801A4F28
  * @note Size: 0x190
@@ -922,7 +411,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 
 	for (; desc != NULL && (attr = desc->attr) != GX_VA_NULL; desc++) {
 		switch (attr) {
-		case GX_VA_PNMTXIDX:
+		case GX_VA_PNMTXIDX: // matrix indices take a byte
 		case GX_VA_TEX0MTXIDX:
 		case GX_VA_TEX1MTXIDX:
 		case GX_VA_TEX2MTXIDX:
@@ -933,7 +422,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 		case GX_VA_TEX7MTXIDX:
 			size += 1;
 			break;
-		case GX_VA_POS:
+		case GX_VA_POS: // the index's own size, not the attribute's
 			if (desc->attr_type == GX_INDEX16) {
 				posSize = 2;
 				size += 2;
@@ -968,7 +457,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 				size += 1;
 			}
 			break;
-		case GX_VA_CLR0:
+		case GX_VA_CLR0: // indexed, or a direct color's format size
 		case GX_VA_CLR1:
 			if (desc->attr_type == GX_INDEX16) {
 				clrSize = 2;
@@ -1020,7 +509,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
  */
 static void* TrigonGetIdxU8U16(void* base, u8* dl)
 {
-	return (u8*)base + *(u16*)dl * 3;
+	return static_cast<u8*>(base) + ReadDisplayListU16(dl) * 3;
 }
 
 /**
@@ -1029,7 +518,7 @@ static void* TrigonGetIdxU8U16(void* base, u8* dl)
  */
 static void* TrigonGetIdxU8U8(void* base, u8* dl)
 {
-	return (u8*)base + *(u8*)dl * 3;
+	return static_cast<u8*>(base) + *dl * 3;
 }
 
 /**
@@ -1038,7 +527,7 @@ static void* TrigonGetIdxU8U8(void* base, u8* dl)
  */
 static void* TrigonGetIdxS8U16(void* base, u8* dl)
 {
-	return (s8*)base + *(u16*)dl * 3;
+	return static_cast<s8*>(base) + ReadDisplayListU16(dl) * 3;
 }
 
 /**
@@ -1047,7 +536,7 @@ static void* TrigonGetIdxS8U16(void* base, u8* dl)
  */
 static void* TrigonGetIdxS8U8(void* base, u8* dl)
 {
-	return (s8*)base + *(u8*)dl * 3;
+	return static_cast<s8*>(base) + *dl * 3;
 }
 
 /**
@@ -1056,7 +545,7 @@ static void* TrigonGetIdxS8U8(void* base, u8* dl)
  */
 static void* TrigonGetIdxU16U16(void* base, u8* dl)
 {
-	return (u16*)base + *(u16*)dl * 3;
+	return static_cast<u16*>(base) + ReadDisplayListU16(dl) * 3;
 }
 
 /**
@@ -1065,7 +554,7 @@ static void* TrigonGetIdxU16U16(void* base, u8* dl)
  */
 static void* TrigonGetIdxU16U8(void* base, u8* dl)
 {
-	return (u16*)base + *(u8*)dl * 3;
+	return static_cast<u16*>(base) + *dl * 3;
 }
 
 /**
@@ -1074,7 +563,7 @@ static void* TrigonGetIdxU16U8(void* base, u8* dl)
  */
 static void* TrigonGetIdxS16U16(void* base, u8* dl)
 {
-	return (s16*)base + *(u16*)dl * 3;
+	return static_cast<s16*>(base) + ReadDisplayListU16(dl) * 3;
 }
 
 /**
@@ -1083,7 +572,7 @@ static void* TrigonGetIdxS16U16(void* base, u8* dl)
  */
 static void* TrigonGetIdxS16U8(void* base, u8* dl)
 {
-	return (s16*)base + *(u8*)dl * 3;
+	return static_cast<s16*>(base) + *dl * 3;
 }
 
 /**
@@ -1092,7 +581,7 @@ static void* TrigonGetIdxS16U8(void* base, u8* dl)
  */
 static void* TrigonGetIdxF32U16(void* base, u8* dl)
 {
-	return (f32*)base + *(u16*)dl * 3;
+	return static_cast<f32*>(base) + ReadDisplayListU16(dl) * 3;
 }
 
 /**
@@ -1101,7 +590,7 @@ static void* TrigonGetIdxF32U16(void* base, u8* dl)
  */
 static void* TrigonGetIdxF32U8(void* base, u8* dl)
 {
-	return (f32*)base + *(u8*)dl * 3;
+	return static_cast<f32*>(base) + *dl * 3;
 }
 
 /**
@@ -1113,6 +602,7 @@ static void TrigonGetVtxU8(const TRIGON_INFO* tri, Vec* out)
 	int i;
 	int scale = 1 << tri->mFrac;
 
+	// frac is the fixed point's fraction bits
 	for (i = 0; i < 3; i++) {
 		out[i].x = (f32)((u8*)tri->mVtx[i])[0] / (f32)scale;
 		out[i].y = (f32)((u8*)tri->mVtx[i])[1] / (f32)scale;
@@ -1208,7 +698,6 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 {
 	Vec* corner2;
 	Vec* corner1;
-	// NONMATCHING: the initial joint-pointer load is scheduled too late.
 	if (mJObj->flags & HIDDEN) {
 		return -1;
 	}
@@ -1244,7 +733,8 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 		if ((u32)k < num) {
 			t = &list[k];
 			t->mGetVtx(t, v);
-			if (t->mColor != 0 && fn_8018EC6C(pos, &v[0], corner1, corner2)) {
+			// triangles whose material rgb is black don't count
+			if (t->mColor != 0 && IsPointInsideTriangleXZ(pos, &v[0], corner1, corner2)) {
 				found = k;
 				break;
 			}
@@ -1253,7 +743,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 		if (k >= 0) {
 			t = &list[k];
 			t->mGetVtx(t, v);
-			if (t->mColor != 0 && fn_8018EC6C(pos, &v[0], corner1, corner2)) {
+			if (t->mColor != 0 && IsPointInsideTriangleXZ(pos, &v[0], corner1, corner2)) {
 				found = k;
 				break;
 			}
@@ -1265,7 +755,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 	if (found >= 0) {
 		if (floorY != NULL) {
 			CVec hit;
-			fn_8018E8A4(&v[0], corner1, corner2, pos, &hit);
+			IntersectVerticalLineWithTrianglePlane(&v[0], corner1, corner2, pos, &hit);
 			*floorY = hit.y;
 		}
 		if (tri != NULL) {
@@ -1275,143 +765,12 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 #else
 	if (found >= 0 && floorY != NULL) {
 		CVec hit;
-		fn_8018E8A4(&v[0], corner1, corner2, pos, &hit);
+		IntersectVerticalLineWithTrianglePlane(&v[0], corner1, corner2, pos, &hit);
 		*floorY = hit.y;
 	}
 #endif
 	return found;
 }
-
-/*
-    stwu     r1, -0x70(r1)
-    mflr     r0
-    lwz      r6, 0x14(r3)
-    stw      r0, 0x74(r1)
-    stmw     r20, 0x40(r1)
-    mr       r22, r4
-    mr       r23, r5
-    lwz      r0, 0x14(r6)
-    rlwinm.  r0, r0, 0, 27, 27
-    beq      .L_801A4458
-    li       r3, -0x1
-    b        .L_801A45E4
-.L_801A4458:
-    lwz      r28, 0x0(r3)
-    li       r29, -0x1
-    lwz      r27, 0x4(r3)
-    cmplwi   r28, 0x0
-    beq      .L_801A4474
-    cmplwi   r27, 0x0
-    bne      .L_801A447C
-.L_801A4474:
-    li       r3, -0x1
-    b        .L_801A45E4
-.L_801A447C:
-    mr       r20, r27
-    mr       r3, r22
-    li       r26, 0x0
-    bl       PSVECMag
-    b        .L_801A44BC
-.L_801A4490:
-    srwi     r0, r20, 31
-    add      r3, r0, r20
-    srawi    r0, r3, 1
-    add      r0, r26, r0
-    srawi    r20, r3, 1
-    slwi     r3, r0, 5
-    addi     r0, r3, 0x10
-    lfsx     f0, r28, r0
-    fcmpo    cr0, f1, f0
-    ble      .L_801A44BC
-    add      r26, r26, r20
-.L_801A44BC:
-    cmpwi    r20, 0x0
-    bgt      .L_801A4490
-    addi     r31, r1, 0x30
-    addi     r30, r1, 0x24
-    li       r25, 0x0
-    li       r24, 0x0
-    b        .L_801A4590
-.L_801A44D8:
-    add      r21, r26, r25
-    cmplw    r21, r27
-    bge      .L_801A4530
-    slwi     r0, r21, 5
-    addi     r4, r1, 0x18
-    add      r20, r28, r0
-    lwz      r12, 0xc(r20)
-    mr       r3, r20
-    mtctr    r12
-    bctrl
-    lwz      r0, 0x1c(r20)
-    cmplwi   r0, 0x0
-    beq      .L_801A4530
-    mr       r3, r22
-    mr       r5, r30
-    mr       r6, r31
-    addi     r4, r1, 0x18
-    bl       fn_8018EC6C
-    cmpwi    r3, 0x0
-    beq      .L_801A4530
-    mr       r29, r21
-    b        .L_801A4598
-.L_801A4530:
-    subf     r3, r25, r26
-    subic.   r21, r3, 0x1
-    blt      .L_801A4588
-    slwi     r0, r21, 5
-    addi     r4, r1, 0x18
-    add      r20, r28, r0
-    lwz      r12, 0xc(r20)
-    mr       r3, r20
-    mtctr    r12
-    bctrl
-    lwz      r0, 0x1c(r20)
-    cmplwi   r0, 0x0
-    beq      .L_801A4588
-    mr       r3, r22
-    mr       r5, r30
-    mr       r6, r31
-    addi     r4, r1, 0x18
-    bl       fn_8018EC6C
-    cmpwi    r3, 0x0
-    beq      .L_801A4588
-    mr       r29, r21
-    b        .L_801A4598
-.L_801A4588:
-    addi     r25, r25, 0x1
-    addi     r24, r24, 0x1
-.L_801A4590:
-    cmplw    r24, r27
-    blt      .L_801A44D8
-.L_801A4598:
-    cmpwi    r29, 0x0
-    blt      .L_801A45E0
-    cmplwi   r23, 0x0
-    beq      .L_801A45E0
-    lis      r3, __vt__4CVec@ha
-    mr       r4, r30
-    addi     r0, r3, __vt__4CVec@l
-    mr       r5, r31
-    stw      r0, 0x14(r1)
-    mr       r6, r22
-    addi     r3, r1, 0x18
-    addi     r7, r1, 0x8
-    bl       fn_8018E8A4
-    lfs      f0, 0xc(r1)
-    lis      r3, __vt__4CVec@ha
-    addi     r0, r3, __vt__4CVec@l
-    stfs     f0, 0x0(r23)
-    stw      r0, 0x14(r1)
-.L_801A45E0:
-    mr       r3, r29
-.L_801A45E4:
-    lmw      r20, 0x40(r1)
-    lwz      r0, 0x74(r1)
-    mtlr     r0
-    addi     r1, r1, 0x70
-    blr
-*/
 
 /**
  * @note Address: 0x801A43B8
