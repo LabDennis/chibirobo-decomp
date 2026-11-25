@@ -1056,8 +1056,15 @@ extern "C" void StopSceneCameraAnm(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1) {
-		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
-		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+		BOOL hasAnimation = FALSE;
+		BOOL hasEntries   = FALSE;
+		if (camera->mObject.m_pScnMdl != NULL && camera->mObject.m_resFile.HasResAnmScn()) {
+			hasAnimation = TRUE;
+		}
+		if (hasAnimation && camera->mObject.m_resFile.GetResAnmScnNumEntries() != 0) {
+			hasEntries = TRUE;
+		}
+		if (hasEntries) {
 			camera->ReleaseModelWork();
 			game->GetPerspectiveCamera()->Init(1.0f, 80000.0f, 30.0f, gScreenWidthScale, &gGame.mGs.mScreen);
 		}
@@ -1076,13 +1083,12 @@ extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 {
 	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) == 1) {
-		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
-		BOOL hasAnimation        = FALSE;
-		BOOL hasEntries          = FALSE;
-		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn()) {
+		BOOL hasAnimation = FALSE;
+		BOOL hasEntries   = FALSE;
+		if (camera->mObject.m_pScnMdl != NULL && camera->mObject.m_resFile.HasResAnmScn()) {
 			hasAnimation = TRUE;
 		}
-		if (hasAnimation && file->GetResAnmScnNumEntries() != 0) {
+		if (hasAnimation && camera->mObject.m_resFile.GetResAnmScnNumEntries() != 0) {
 			hasEntries = TRUE;
 		}
 		if (hasEntries) {
