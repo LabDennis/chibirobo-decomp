@@ -152,9 +152,10 @@ void CMotionControlCamera::fn_80167728()
 	_240          = -1;
 }
 
-// NONMATCHING: retail's Update is 0x16CC, ours 0x16C0. The behavior and direct call list match;
-// the residue is deferred-inline selection (one extra ReadAction expansion) and register/frame
-// allocation throughout the body.
+// NONMATCHING: retail's Update is 0x16CC, ours 0x16BC. The behavior matches; the call list has one
+// extra ReadAction expansion (deferred-inline selection). Retail converts the wipe's 640 and 320 from
+// integers at run time and swaps the chase camera through gGame rather than this; neither source form
+// is recovered. The rest is register/frame allocation throughout the body.
 /**
  * @note Address: 0x8016778C
  * @note Size: 0x16CC
@@ -174,7 +175,7 @@ void CMotionControlCamera::Update(u32 step)
 					PushAction(room);
 					room->HideObjs();
 					CColor color(0, 0, 0, 0xFF);
-					room->mWipe.StartTransition(color.r, color.g, color.b, 0, 0xFF, color.g, color.b, 640.0f, gPointerScreenHeight / 2,
+					room->mWipe.StartTransition(color.r, color.g, color.b, 0, color.r, color.g, color.b, 640 / 2, gPointerScreenHeight / 2,
 					                            640.0f / gScreenWidthScale, gRingScreenHeight / gScreenWidthScale,
 					                            (640.0f - 20.0f) / gScreenWidthScale, (gRingScreenHeight - 60.0f) / gScreenWidthScale, 0.0f,
 					                            0xFF, FALSE);
@@ -202,8 +203,7 @@ void CMotionControlCamera::Update(u32 step)
 		return;
 	}
 
-	if (gGame.GetStatusFlags(0x80000000) && (gWiiPointer.mTrigger & 0x2000000000010000ULL)
-	    && (gWiiPointer.mDirButton & 0x2000000000020ULL)) {
+	if (gGame.GetStatusFlags(0x80000000) && (gWiiPointer.mTrigger & 0x20000000010000ULL) && (gWiiPointer.mButton & 0x2000000000020ULL)) {
 		if (!IsCurrent(CAMACTION_CHASE)) {
 			ChangeAction(CAMACTION_CHASE);
 		} else {
@@ -253,7 +253,7 @@ void CMotionControlCamera::Update(u32 step)
 			memmove(&gMapCameraActions[1], &gMapCameraActions[0], sizeof(gMapCameraActions[0]));
 			memmove(&gMapCameraActions[0], mAction, sizeof(gMapCameraActions[0]));
 			if (fpclassify(mAction->mEye.x) == FP_NAN || fpclassify(mAction->mEye.y) == FP_NAN || fpclassify(mAction->mEye.z) == FP_NAN) {
-				OSPanic(__FILE__, 249, "%s%s", FormatToStaticBuffer("CMotionControlCamera ... \n"), __FUNCTION__);
+				OSPanic(__FILE__, 300, FormatToStaticBuffer("CMotionControlCamera ... \n"));
 			}
 		}
 		ReadAction();
