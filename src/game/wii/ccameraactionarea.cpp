@@ -191,7 +191,9 @@ void CCameraActionArea::SetCamera(CCamera* camera)
  * @note Address: 0x801546F4
  * @note Size: 0xEB8
  */
-// NONMATCHING: reconstructed against the Wii disassembly; register allocation and some pointer-state stores differ
+// NONMATCHING: Wii calls, pad bits, field offsets and vector state are checked. Retail has the
+// CPad construction, transformed-eye copy, CVec direction and pointer snapshots. Its 0x1B0 frame
+// still exceeds ours by 0x70, mainly from the two scalar pointer clamps and repeat-state scheduling.
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.GetStatusFlags(0xC00)) {
@@ -200,6 +202,7 @@ void CCameraActionArea::Update(u32 step)
 		mPadControlEnabled = TRUE;
 	}
 	if (mTarget != NULL && mTarget->HasModel()) {
+		CPad pad(0);
 		Mtx mtx;
 		PSMTXCopy(mTarget->GetWorldMtx(), mtx);
 		CVec flatEye(mEye);
@@ -207,6 +210,7 @@ void CCameraActionArea::Update(u32 step)
 		f32 distance = PSVECDistance(&flatEye, mTarget->GetPos());
 		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
 		PSMTXMultVec(mtx, &localEye, &localEye);
+		CVec transformedEye(localEye);
 		CVec pos = *mTarget->GetPos();
 	}
 
@@ -242,20 +246,22 @@ void CCameraActionArea::Update(u32 step)
 	Vec input = { 0.0f, 0.0f, 0.0f };
 	if (gWiiPointer.mPointerValid) {
 		Vec pointer;
-		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
-		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
-		pointer.z = gWiiPointer.mPointer.z;
-		input     = fn_8016AA78(pointer, (f32*)sDebugParams);
-		_2D4      = input;
+		pointer.x   = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
+		pointer.y   = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
+		pointer.z   = gWiiPointer.mPointer.z;
+		Vec clamped = fn_8016AA78(pointer, (f32*)sDebugParams);
+		input       = clamped;
+		_2D4        = input;
 	} else if (!(gGame._41B0 & 8)) {
-		input = _2D4;
+		Vec previous = _2D4;
+		input        = previous;
 	}
 
-	f32 direction = 0.0f;
+	CVec direction(0.0f, 0.0f, 0.0f);
 	if ((gWiiPointer.mButton & 2) && padControl) {
-		direction = 1.0f;
+		direction.y = 1.0f;
 	} else if ((gWiiPointer.mButton & 1) && padControl) {
-		direction = -1.0f;
+		direction.y = -1.0f;
 	}
 	if (_2D0) {
 		if (gWiiPointer.mPointerValid) {
@@ -270,7 +276,7 @@ void CCameraActionArea::Update(u32 step)
 		}
 	} else {
 		_2F8 = 0;
-		_2C4 = direction;
+		_2C4 = direction.y;
 	}
 
 	if (_2C4 > 0.0f) {
