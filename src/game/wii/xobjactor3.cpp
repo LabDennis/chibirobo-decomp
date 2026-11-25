@@ -1406,15 +1406,14 @@ extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 {
 	XObj* holder = gGame.mXObjs.mPools[19].Get(0);
 	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->mKindStep == 1) {
-		f32 x             = actor->mOrbitDistance * (f32)sin(actor->mOrbitAngle + holder->GetRotY());
-		f32 y             = actor->mOrbitHeight;
-		f32 z             = actor->mOrbitDistance * (f32)cos(actor->mOrbitAngle + holder->GetRotY());
+		Vec offset        = { actor->mOrbitDistance * (f32)sin(actor->mOrbitAngle + holder->GetRotY()), actor->mOrbitHeight,
+			                  actor->mOrbitDistance * (f32)cos(actor->mOrbitAngle + holder->GetRotY()) };
 		actor->mKindStep  = 2;
 		actor->mKindTimer = 6.0f;
 		actor->ClearBaseMtx();
-		actor->mMoveTranslate.x = x + holder->GetPosX();
-		actor->mMoveTranslate.y = 10.0f + (8.0f + y);
-		actor->mMoveTranslate.z = z + holder->GetPosZ();
+		actor->mMoveTranslate.x = offset.x + holder->GetPosX();
+		actor->mMoveTranslate.y = 10.0f + (8.0f + offset.y);
+		actor->mMoveTranslate.z = offset.z + holder->GetPosZ();
 		actor->SetPos(actor->mMoveTranslate);
 		const CVec* holderPos = holder->GetPos();
 		actor->mHeading       = (f32)atan2(holderPos->x - actor->mMoveTranslate.x, holderPos->z - actor->mMoveTranslate.z) + PI;
