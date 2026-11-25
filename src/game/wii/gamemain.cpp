@@ -141,14 +141,15 @@ void OnPowerButton()
  * @note Address: 0x80019540
  * @note Size: 0x39C
  */
-// NONMATCHING: retail keeps the text's top in a fifth callee-saved float and stores mTextFont before
-// the table copy; one more spelling of the locals not found
+// NONMATCHING: mTextFont now precedes the table copy as in retail. The remaining difference is
+// a 0x30 larger frame and four rather than five callee-saved floats (96.82%)
 // the drive's message for the status DVDGetDriveStatus reports, centred on a dark box
 void CBase::DrawDiscError()
 {
 	if (IsDiscError()) {
-		f32 width  = gPointerScreenWidth;
-		f32 height = gPointerScreenHeight;
+		f32 width           = gPointerScreenWidth;
+		f32 height          = gPointerScreenHeight;
+		gGame.mGs.mTextFont = 1;
 		// the drive statuses that have a message, and the interface text each shows
 		struct {
 			s32 status;
@@ -156,8 +157,7 @@ void CBase::DrawDiscError()
 		} texts[6] = {
 			{ 5, 0x55 }, { 4, 0x56 }, { 6, 0x57 }, { 11, 0x58 }, { 1, 0x59 }, { 0, -1 },
 		};
-		gGame.mGs.mTextFont = 1;
-		const char* text    = NULL;
+		const char* text = NULL;
 		for (s32 i = 0; texts[i].text >= 0; i++) {
 			if (texts[i].status == mDvdStatus) {
 				text = GetLocalizedInterfaceText(texts[i].text);
