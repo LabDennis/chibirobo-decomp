@@ -2038,8 +2038,4 @@ void XObj2D::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl m
 	}
 }
 
-CustomShadow::~CustomShadow()
-{
-}
-
 #endif

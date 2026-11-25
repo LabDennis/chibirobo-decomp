@@ -3094,7 +3094,7 @@ public:
 	CustomShadow();
 	void Draw(Vec pos, Vec scale, u32 alpha); // 0x800C7130
 
-	virtual ~CustomShadow(); // _A68 vtable
+	virtual ~CustomShadow() { } // _A68 vtable
 };
 STATIC_ASSERT(sizeof(CustomShadow) == 0xA6C);
 
