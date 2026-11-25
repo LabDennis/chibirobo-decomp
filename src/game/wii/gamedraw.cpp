@@ -1099,7 +1099,7 @@ extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
  */
 void CGame::ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* camera)
 {
-	CCamera* cam = camera != NULL ? (CCamera*)camera : &gGame.mMotionControlCamera;
+	CCamera* cam = camera != NULL ? (CCamera*)camera : &gGame.mMotionControlCamera.mCamera;
 	f32 sx;
 	Vec screen;
 	GXProject(pos->x, pos->y, pos->z, cam->mViewMtx, &cam->mIsOrtho, cam->mViewport, &sx, &screen.y, &screen.z);

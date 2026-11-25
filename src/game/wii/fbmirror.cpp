@@ -195,9 +195,9 @@ void FbMirror::Update(u32 frames)
 		mtx[2][2] = normal.z;
 
 		CMotionControlCamera* main = &gGame.mMotionControlCamera;
-		eye.x                      = main->mView.mEye.x;
-		eye.y                      = main->mView.mEye.y;
-		eye.z                      = main->mView.mEye.z;
+		eye.x                      = main->mCamera.mView.mEye.x;
+		eye.y                      = main->mCamera.mView.mEye.y;
+		eye.z                      = main->mCamera.mView.mEye.z;
 		pos.x                      = mtx[0][3];
 		pos.y                      = mtx[1][3];
 		pos.z                      = mtx[2][3];
@@ -246,7 +246,7 @@ MtxP CMirrorObj::vfA0(nw4r::g3d::ResNode node)
  */
 CCamera* CGame::GetCamera()
 {
-	return &mMotionControlCamera;
+	return &mMotionControlCamera.mCamera;
 }
 
 /**

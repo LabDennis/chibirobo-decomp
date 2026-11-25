@@ -141,7 +141,7 @@ void CCameraActionArea::PreviousUpdate()
 		gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
 		SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP], gCameraAreaState.mZoomLevel, 15.0f);
 		RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP]);
-		f32 dy = gGame.mMotionControlCamera.mView.mInterest.y - mTarget->GetCameraTarget().y;
+		f32 dy = gGame.mMotionControlCamera.mCamera.mView.mInterest.y - mTarget->GetCameraTarget().y;
 		if (0.0f != dy) {
 			StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[CAMACTION_MAP], dy, 0.0f, 8.0f);
 		}

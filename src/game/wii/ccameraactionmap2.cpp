@@ -1382,8 +1382,8 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
 		Vec offset;
 		CalcMapCameraTargetOffsetPosition(map, offset);
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
-		CVec eye                     = camera->mView.mEye;
-		CVec interest                = camera->mView.mInterest;
+		CVec eye                     = camera->mCamera.mView.mEye;
+		CVec interest                = camera->mCamera.mView.mInterest;
 		f32 angle                    = HALF_PI + (f32)atan2(interest.x - eye.x, interest.z - eye.z);
 		f32 distance                 = map->mTargetRestDistance;
 		result.x                     = offset.x + distance * (f32)cos(angle);

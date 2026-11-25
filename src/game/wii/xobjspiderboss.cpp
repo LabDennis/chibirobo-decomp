@@ -834,7 +834,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32 frames)
 			} else {
 				player->SetAnim(0x160, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			}
-			heading = gGame.mMotionControlCamera.mView.mAngle.y + 2.0f * (PI * player->_1C9C4[0]);
+			heading = gGame.mMotionControlCamera.mCamera.mView.mAngle.y + 2.0f * (PI * player->_1C9C4[0]);
 		} else if (radius < 2.0f)
 			player->SetAnim(0xE6, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		else

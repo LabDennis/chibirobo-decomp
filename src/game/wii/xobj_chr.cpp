@@ -1512,7 +1512,7 @@ void XObjChr::UpdateObject(u32 frames)
 			chr->mStick[0] = 0.95f * chr->_1C9B8[2];
 			chr->mStick[2] = 2.0f * (PI * chr->_1C9C4[0]);
 		} else {
-			f32 angle      = WrapAngle(chr->mMoveRotate.y - gGame.mMotionControlCamera.mView.mAngle.y);
+			f32 angle      = WrapAngle(chr->mMoveRotate.y - gGame.mMotionControlCamera.mCamera.mView.mAngle.y);
 			chr->_1C9C4[0] = angle / TWO_PI;
 		}
 		if (chr->_1C9B8[2] >= 1.0f) {
@@ -1568,7 +1568,7 @@ void XObjChr::UpdateObject(u32 frames)
 		}
 		if (chr->mPreviousContactObject >= 0) {
 			chr->mStick[2] = WrapAngle((f32)atan2(chr->mEdgePos.x - chr->mMoveTranslate.x, chr->mEdgePos.z - chr->mMoveTranslate.z))
-			               - gGame.mMotionControlCamera.mView.mAngle.y;
+			               - gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 			chr->mStick[0] = 0.8f;
 		}
 	} else {
@@ -1622,7 +1622,7 @@ void XObjChr::UpdateObject(u32 frames)
 			}
 		} else if (hangState == 5) {
 			f32 yaw   = chr->mMoveRotate.y;
-			f32 angle = WrapAngle((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw);
+			f32 angle = WrapAngle((chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y) - yaw);
 			if (angle >= 30 * DEG2RAD && angle < 150 * DEG2RAD) {
 				direction                 = TWO_PI + WrapAngle(HALF_PI + yaw);
 				chr->mHang.mMoveDirection = -1;
@@ -1638,7 +1638,7 @@ void XObjChr::UpdateObject(u32 frames)
 			}
 		} else if (chr->mCopter.mState == 3) {
 			chr->mCopter.mMoveDirection = 1;
-			direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 			while (direction < 0.0f)
 				direction += TWO_PI;
 			while (direction >= TWO_PI)
@@ -1649,7 +1649,7 @@ void XObjChr::UpdateObject(u32 frames)
 				speed     = 0;
 			} else {
 				chr->mCopter.mMoveDirection = 1;
-				direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				direction                   = chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 				while (direction < 0.0f)
 					direction += TWO_PI;
 				while (direction >= TWO_PI)
@@ -1657,7 +1657,7 @@ void XObjChr::UpdateObject(u32 frames)
 				speed *= 0.75f;
 			}
 		} else if (chr->mPopper.mState == 3 || chr->mPopper.mState == 4) {
-			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 			while (direction < 0.0f)
 				direction += TWO_PI;
 			while (direction >= TWO_PI)
@@ -1668,7 +1668,7 @@ void XObjChr::UpdateObject(u32 frames)
 				direction = NAN;
 				speed     = 0;
 			} else {
-				direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+				direction = chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 				while (direction < 0.0f)
 					direction += TWO_PI;
 				while (direction >= TWO_PI)
@@ -1704,7 +1704,7 @@ void XObjChr::UpdateObject(u32 frames)
 			direction = NAN;
 		} else if (chr->mPush.mState == 2) {
 			f32 yaw      = chr->mMoveRotate.y;
-			f32 relative = WrapAngle(HALF_PI + ((chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y) - yaw));
+			f32 relative = WrapAngle(HALF_PI + ((chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y) - yaw));
 			if (relative >= 0 && relative < PI) {
 				chr->mPush.mMoveDirection = 1;
 			} else {
@@ -1721,7 +1721,7 @@ void XObjChr::UpdateObject(u32 frames)
 			else
 				speed = 1.5f;
 		} else {
-			direction = chr->mStick[2] + gGame.mMotionControlCamera.mView.mAngle.y;
+			direction = chr->mStick[2] + gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 			while (direction < 0.0f)
 				direction += TWO_PI;
 			while (direction >= TWO_PI)
@@ -6347,7 +6347,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				chr->mHeadAimRecord.mSnap[0] = chr->mHeadAimRecord.mSnap[1] = 1;
 				chr->mHeadAimRecord.m_0C                                    = NULL;
 				chr->mHeadAimRecord.mTarget.x                               = NAN;
-				chr->mHeadAimRecord.m_20                                    = &gGame.mMotionControlCamera;
+				chr->mHeadAimRecord.m_20                                    = &gGame.mMotionControlCamera.mCamera;
 				chr->mHeadAimRecord.m_24                                    = NAN;
 				chr->mHeadAimRecord.m_28                                    = NAN;
 				break;
@@ -7243,11 +7243,11 @@ void XObjChr::DrawWithView(Mtx view)
 	if (gGame.GetStatusFlags(0x100)) {
 		Mtx rotation;
 		Mtx combined;
-		PSMTXRotRad(rotation, 'x', -gGame.mMotionControlCamera.mView.mAngle.x);
+		PSMTXRotRad(rotation, 'x', -gGame.mMotionControlCamera.mCamera.mView.mAngle.x);
 		if (view != NULL) {
 			PSMTXConcat(rotation, view, combined);
 		} else {
-			PSMTXConcat(rotation, gGame.mMotionControlCamera.mViewMtx, combined);
+			PSMTXConcat(rotation, gGame.mMotionControlCamera.mCamera.mViewMtx, combined);
 		}
 		((XObj*)chr->mPopperObj)->DrawWithView(combined);
 	} else {

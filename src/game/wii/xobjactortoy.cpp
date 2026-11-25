@@ -1722,7 +1722,7 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 				}
 			}
 			if (toy->_21F0 == 0.0f && toy->_21F8 >= 0) {
-				toy->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, DEG2RAD * 6.0f);
+				toy->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mView.mAngle.y, DEG2RAD * 6.0f);
 				toy->SetAnim(toy->_21F8, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 				if (toy->_2200 != NULL && !toy->_2200->IsFinished()) {
 					RetireEffect(&toy->_2200->handle, TRUE);

@@ -1042,7 +1042,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, WiiPlayerState* owner, 
 					pitch = act->mOwner->mEyeAim.x - 0.02617994f;
 					yaw   = act->mOwner->mEyeAim.y - 0.02617994f;
 				} else if (gWiiPointer.mPointerValid) {
-					CCamera* cam = &gGame.mMotionControlCamera;
+					CCamera* cam = &gGame.mMotionControlCamera.mCamera;
 					if (gGame.mStage == 0xB) {
 						// no world ray here: the side of the projected position the pointer is on decides
 						Vec pos0 = *act->mOwner->GetPos();

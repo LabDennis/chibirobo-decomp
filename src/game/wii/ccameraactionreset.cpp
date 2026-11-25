@@ -104,7 +104,7 @@ void CCameraActionReset::PreviousUpdate()
 		} else {
 			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState.mZoomLevel, 15.0f);
 			RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
-			f32 dy = gGame.mMotionControlCamera.mView.mInterest.y - ((WiiPlayerState*)mTarget)->GetCameraTarget().y;
+			f32 dy = gGame.mMotionControlCamera.mCamera.mView.mInterest.y - ((WiiPlayerState*)mTarget)->GetCameraTarget().y;
 			if (0.0f != dy) {
 				StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[7], dy, 0.0f, 8.0f);
 			}
@@ -130,8 +130,8 @@ void CCameraActionReset::PreviousUpdate()
 		if (ClassifyFloatBits(eye.x) == FP_NAN || ClassifyFloatBits(eye.y) == FP_NAN
 		    || ClassifyFloatBits(eye.z) == FP_NAN) { // a NaN eye is fatal
 
-			CVec cameraEye      = gGame.mMotionControlCamera.mView.mEye;
-			CVec cameraInterest = gGame.mMotionControlCamera.mView.mInterest;
+			CVec cameraEye      = gGame.mMotionControlCamera.mCamera.mView.mEye;
+			CVec cameraInterest = gGame.mMotionControlCamera.mCamera.mView.mInterest;
 			OSPanic(__FILE__, 157,
 			        FormatToStaticBuffer("CCameraActionReset ...\nEye(%f, %f, %f)\nInt(%f, %f, %f)\n", cameraEye.x, cameraEye.y,
 			                             cameraEye.z, cameraInterest.x, cameraInterest.y, cameraInterest.z));

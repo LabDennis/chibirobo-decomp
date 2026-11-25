@@ -392,9 +392,9 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 	Vec half = offset;
 	half.y *= .5f;
 	f32 x, y, centerX, centerY;
-	ProjectPoint(camera, origin + half, &centerX, &centerY);
+	ProjectPoint(camera.mCamera, origin + half, &centerX, &centerY);
 	if (display.mAmount < 0) {
-		ProjectPoint(camera, origin + offset, &x, &y);
+		ProjectPoint(camera.mCamera, origin + offset, &x, &y);
 		y -= 19.8f * row;
 	}
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
@@ -459,7 +459,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	}
 	if (display.mState && ptcl->mType != 1) {
-		ProjectPoint(camera, origin + offset, &x, &y);
+		ProjectPoint(camera.mCamera, origin + offset, &x, &y);
 		y -= 19.8f * row;
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		CTexObj& texture = gGame.mTpl.mTex;
