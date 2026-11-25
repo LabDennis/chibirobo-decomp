@@ -276,8 +276,8 @@ BOOL XObjScnCam::LoadFromPlacement(const CoordInfo& info)
 void XObjScnCam::Release()
 {
 	if (mScene != NULL) {
-		gGame.mMotionControlCamera.vf2C();
-		gGame.mMotionControlCamera.vf68();
+		gGame.mMotionControlCamera.mCamera.vf2C();
+		gGame.mMotionControlCamera.mCamera.vf68();
 		ClearAnim();
 		((nw4r::g3d::ScnRoot*)mScene)->Destroy();
 		mScene = NULL;
@@ -361,8 +361,8 @@ void XObjScnCam::ReleaseModelWork()
 		((nw4r::g3d::ScnRoot*)mScene)->RemoveAnmScn();
 		mObject.ReleaseWork();
 	}
-	gGame.mMotionControlCamera.vf2C();
-	gGame.mMotionControlCamera.vf68();
+	gGame.mMotionControlCamera.mCamera.vf2C();
+	gGame.mMotionControlCamera.mCamera.vf68();
 }
 
 /**

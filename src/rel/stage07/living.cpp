@@ -23,7 +23,7 @@ extern "C" s32 Stage07_Update(void* arg)
 		for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
 			actor = gGame.mXObjs.mObjects[i];
 			if ((actor->mStatus.mFlags & 1) && (actor->mStatus.mFlags & 0x10000) && actor->mCoord.mPlacement->mObjectId == 0xD0) {
-				PSVECDistance(&gGame.mMotionControlCamera.mView.mInterest, actor->GetPos());
+				PSVECDistance(&gGame.mMotionControlCamera.mCamera.mView.mInterest, actor->GetPos());
 				SetWiiSfxVolume(&gGame.mSound, 0x3CB, GetSoundVolumeAtPosition(&gGame.mSound, actor->GetPos(), 1), 0.0f);
 			}
 		}

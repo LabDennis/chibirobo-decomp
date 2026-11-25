@@ -358,13 +358,13 @@ STATIC_ASSERT(sizeof(StageName) == 0x23C);
 class CInterfaceCameraAction;
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xD7620.
-// NONMATCHING: retail's constructor also stores the derived vtable at _258; the inheritance form that
-// places it there is not recovered.
-// The member layout is the GameCube class's shifted by 0x64: there the camera was a member at
-// _00 of size 0x194 and the derived fields started at _194, here CCamera is the base subobject
-// of size 0x1F8 and they start at _1F8. Offsets verified in retail Init at 0x80167638.
-class CMotionControlCamera : public CCamera {
+// The member layout is the GameCube class's shifted by 0x64: the camera member is size 0x1F8
+// here and the motion fields start at _1F8. Offsets verified in retail Init at 0x80167638.
+// CMotionControlCamera's own vtable sits at _258, behind mEyeMode; its RTTI at 0x805A0900
+// has no base-class link, while the CCamera member keeps CCamera's vtable at _00.
+class CMotionControlCamera {
 public:
+	CCamera mCamera;                       // _00
 	CVec mEye;                             // _1F8, what the action wants this frame
 	CVec mInterest;                        // _208
 	CVec mAngle;                           // _218
@@ -379,7 +379,10 @@ public:
 	CStatus32 mFlags;                      // _248, the action's GetCameraFlags, see CAMFLAG in cmotioncontrolcamera.h
 	s32 mInterestMode;                     // _250, the action's GetInterestMode, 2 and 3 follow the interest in
 	s32 mEyeMode;                          // _254, 2 and 3 follow the eye in
-	u8 _258[0x25C - 0x258];
+	// _258 vtable
+
+	virtual ~CMotionControlCamera() { } // _08
+
 	CVec mFollowTarget;      // _25C, Follow steps mFollowValue towards it
 	CVec mFollowValue;       // _26C
 	CVec mFollowStep;        // _27C
@@ -445,7 +448,7 @@ public:
 				mAction->Reset();
 			} else if (mAction == GetAction(CAMACTION_EVT) || mAction == GetAction(CAMACTION_AREA) || mAction == GetAction(CAMACTION_MAP)
 			           || mAction == GetAction(CAMACTION_RESET) || mAction == GetAction(CAMACTION_ANIM)) {
-				mAction->SetCamera(this);
+				mAction->SetCamera(&mCamera);
 			} else {
 				mAction->Reset();
 			}
@@ -457,19 +460,19 @@ public:
 	{
 		if (mAction != NULL) {
 			if (mFlags.mFlags & CAMFLAG_EYE) {
-				SetEye(mAction->mEye);
+				mCamera.SetEye(mAction->mEye);
 			}
 			if (mFlags.mFlags & CAMFLAG_INTEREST) {
-				SetInterest(mAction->mInterest);
+				mCamera.SetInterest(mAction->mInterest);
 			}
 			if (mFlags.mFlags & CAMFLAG_DISTANCE) {
-				SetDistance(mAction->mDistance);
+				mCamera.SetDistance(mAction->mDistance);
 			}
 			if (mFlags.mFlags & CAMFLAG_FOV) {
-				SetFov(mAction->mFov);
+				mCamera.SetFov(mAction->mFov);
 			}
 			if (mFlags.mFlags & CAMFLAG_ANGLE) {
-				SetAngle(mAction->mAngle);
+				mCamera.SetAngle(mAction->mAngle);
 			}
 		}
 	}

@@ -1651,7 +1651,7 @@ void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight)
 	act->mStickAway = FALSE;
 	if (act->mState == 4) {
 		f32 stick = -(f32)atan2(pad->mStick.x, pad->mStick.y);
-		f32 angle = WrapAngle(stick + gGame.mMotionControlCamera.mView.mAngle.y - act->mOwner->mMoveRotate.y);
+		f32 angle = WrapAngle(stick + gGame.mMotionControlCamera.mCamera.mView.mAngle.y - act->mOwner->mMoveRotate.y);
 		if (!(angle < 30 * DEG2RAD) && !(angle > 330 * DEG2RAD)) {
 			act->mStickAway = TRUE;
 		}

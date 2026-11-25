@@ -845,7 +845,7 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = (XObj*)game->mXObjs.mObjects[i];
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
-				if (!game->GetStatusFlags(0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(camera)) {
+				if (!game->GetStatusFlags(0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(&camera->mCamera)) {
 					obj->mStatus.mFlags |= 0x1000000000000ULL; // out of depth: mirror-only
 				} else {
 					obj->mStatus.mFlags &= ~0x1000000000000ULL;

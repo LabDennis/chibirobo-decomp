@@ -482,11 +482,11 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	if (manager->mSlot.mHeader.mStatusFlags & 1) {
 		CMotionControlCamera* camera       = &gGame.mMotionControlCamera;
 		manager->mSlot.mData.mCameraAction = camera->GetActionType();
-		CopyVec(manager->mSlot.mData.mCameraEye, camera->mView.mEye);
-		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mView.mInterest);
-		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mView.mAngle);
-		manager->mSlot.mData.mCameraDistance = camera->mView.mDistance;
-		manager->mSlot.mData.mCameraFov      = camera->CCamera::mFov;
+		CopyVec(manager->mSlot.mData.mCameraEye, camera->mCamera.mView.mEye);
+		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mCamera.mView.mInterest);
+		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mCamera.mView.mAngle);
+		manager->mSlot.mData.mCameraDistance = camera->mCamera.mView.mDistance;
+		manager->mSlot.mData.mCameraFov      = camera->mCamera.mFov;
 	}
 	manager->mSlot.mData.mSquirterLiquid = gGame.GetPlayer()->mSquirterContent;
 	manager->mSlot.mData.mItemTint       = gGame.GetPlayer()->mItemTintWord;
@@ -610,11 +610,11 @@ extern "C" void RestoreSavedPlayerAndCamera(CSaveFile* manager)
 	CMotionControlCamera* motion = &gGame.mMotionControlCamera;
 	if (manager->mSlot.mData.mCameraAction >= 0 && manager->mSlot.mData.mCameraAction < CAMACTION_NUM) {
 		motion->ChangeAction(manager->mSlot.mData.mCameraAction);
-		motion->SetEye(manager->mSlot.mData.mCameraEye);
-		motion->SetInterest(manager->mSlot.mData.mCameraInterest);
-		motion->SetAngle(manager->mSlot.mData.mCameraAngle);
-		motion->SetDistance(manager->mSlot.mData.mCameraDistance);
-		motion->SetFov(manager->mSlot.mData.mCameraFov);
+		motion->mCamera.SetEye(manager->mSlot.mData.mCameraEye);
+		motion->mCamera.SetInterest(manager->mSlot.mData.mCameraInterest);
+		motion->mCamera.SetAngle(manager->mSlot.mData.mCameraAngle);
+		motion->mCamera.SetDistance(manager->mSlot.mData.mCameraDistance);
+		motion->mCamera.SetFov(manager->mSlot.mData.mCameraFov);
 		CCameraMemento memento;
 		memento.SetEye(manager->mSlot.mData.mCameraEye);
 		memento.SetInterest(manager->mSlot.mData.mCameraInterest);
