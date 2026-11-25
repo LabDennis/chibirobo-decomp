@@ -291,13 +291,12 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
 
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
-	Vec up = { 0.0f, -1.0f, 0.0f };
-	Vec edge, rel, n;
-
 	f32 ex = a->x - b->x;
 	f32 rx = b->x - pos->x;
 	f32 rz = b->z - pos->z;
 	f32 ez = a->z - b->z;
+	Vec up = { 0.0f, -1.0f, 0.0f };
+	Vec edge, rel, n;
 
 	edge.y = 0.0f;
 	rel.y  = 0.0f;
@@ -341,13 +340,12 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 
 BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
 {
-	Vec up = { 0.0f, -1.0f, 0.0f };
-	Vec edge, rel, n;
-
 	f32 ex = a->x - b->x;
 	f32 ez = a->z - b->z;
 	f32 rx = b->x - pos->x;
 	f32 rz = b->z - pos->z;
+	Vec up = { 0.0f, -1.0f, 0.0f };
+	Vec edge, rel, n;
 
 	edge.y = 0.0f;
 	rel.y  = 0.0f;
@@ -409,8 +407,10 @@ extern "C" int IntersectVerticalLineWithTrianglePlane(Vec* pos, Vec* a, Vec* b, 
 	Vec normal;
 	CalcTriangleNormal(a, b, c, &normal);
 
-	Vec top    = { pos->x, 1.0f, pos->z };
-	Vec bottom = { pos->x, -1.0f, pos->z };
+	f32 x      = pos->x;
+	f32 z      = pos->z;
+	Vec top    = { x, 1.0f, z };
+	Vec bottom = { x, -1.0f, z };
 	return IntersectLineWithPlane(&top, &bottom, a, &normal, out);
 }
 

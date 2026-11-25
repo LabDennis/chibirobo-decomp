@@ -764,10 +764,9 @@ extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 // pointer can also hover a mark. the marks orbit a base point that is the chr's
 // projected neck joint, or a fixed bottom-center spot while the 0x100 status is up;
 // the stick moves the selection only where gGame.mMenuControls gives it to the pad
-// NONMATCHING (~83%): register/scheduling/pool wall like the rest of the unit —
-// the projected-point locals and the marker math reschedule, float refs land on
-// local @labels instead of the unit's named sdata2 globals, and retail's arg for
-// ProjectOffsetToScreen is a second stack vec; semantics decoded and verified
+// NONMATCHING: the projection locals now occupy retail's stack slots; retail copies arg as
+// words (lwz/stw), ours as floats (lfs/stfs); marker math and the float-register/constant-pool
+// schedule still differ.
 /**
  * @note Address: 0x800EF58C
  * @note Size: 0x804
@@ -787,10 +786,11 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 				sx = gPointerScreenWidth / 2;
 				sy = gScreenSafeBottom;
 			} else {
-				CVec joint = menu->mChr->GetJointWorldPos("neck");
+				Vec arg;
 				Vec pos    = { 0.0f, 0.0f, 0.0f };
+				CVec joint = menu->mChr->GetJointWorldPos("neck");
 				pos.y      = joint.y - menu->mChr->GetPos()->y;
-				Vec arg    = pos;
+				arg        = pos;
 				menu->mChr->ProjectOffsetToScreen(&arg, &sx, &sy, NULL, NULL);
 			}
 			for (s32 i = 0; i < 2; i++) {

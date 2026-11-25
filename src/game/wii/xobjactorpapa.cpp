@@ -150,7 +150,11 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 				if (mCmd[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;
 					mHeldObjects[0] = obj;
-					mHideKinds.mFlags |= 4;
+					switch (mCmd[1]) {
+					case 0x1D3:
+						mHideKinds.mFlags |= 4;
+						break;
+					}
 				}
 			}
 			break;
@@ -160,7 +164,11 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 				if (mCmd[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;
 					mHeldObjects[0] = obj;
-					mHideKinds.mFlags |= 8;
+					switch (mCmd[1]) {
+					case 0x375:
+						mHideKinds.mFlags |= 8;
+						break;
+					}
 				}
 			}
 			break;

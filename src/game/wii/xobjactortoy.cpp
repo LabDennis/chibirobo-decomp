@@ -1592,7 +1592,11 @@ extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
 				if (object->mCmd[1] == obj->GetKind()) {
 					object->mHeldObjects[0] = obj;
 					obj->mStatus.mFlags |= 0x10000ULL;
-					object->mHideKinds.mFlags |= 0x40;
+					switch (object->mCmd[1]) {
+					case 0x341:
+						object->mHideKinds.mFlags |= 0x40;
+						break;
+					}
 				}
 			}
 			break;

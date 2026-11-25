@@ -1422,8 +1422,11 @@ extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 	}
 }
 
+// NONMATCHING: retail also emits an unused mOrbitHeight comparison before reading the boss position;
+// the remaining differences are that comparison, zero-vector store spelling and literal scheduling.
 void XObjActor3::Kind12(u32 frames)
 {
+	gGame.GetPlayer()->GetPos(); // retail discards the player position before dispatching the state
 	switch (mKindStep) {
 	case 0:
 		if (!(mActorFlags.mFlags & 4)) {
@@ -1439,7 +1442,9 @@ void XObjActor3::Kind12(u32 frames)
 	case 1: {
 		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			mHeading = atan2(boss->GetPos()->x - mMoveTranslate.x, boss->GetPos()->z - mMoveTranslate.z);
+			Vec offset          = { 0.0f, 0.0f, 0.0f };
+			const CVec* bossPos = boss->GetPos();
+			mHeading            = atan2(bossPos->x - mMoveTranslate.x, bossPos->z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f);
 			nw4r::g3d::ResNode joint = boss->FindResNode("obj26");
 			Mtx scaleMtx, translation, result, mount;
@@ -1451,7 +1456,7 @@ void XObjActor3::Kind12(u32 frames)
 			scale.z = GetStagePlacementScale(this).z / scale.z;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mount, scaleMtx, result);
-			PSMTXTrans(translation, 0.0f, 0.0f, 0.0f);
+			PSMTXTrans(translation, offset.x, offset.y, offset.z);
 			PSMTXConcat(result, translation, result);
 			SetBaseMtx(result);
 			if (boss->mBlinkTimer) {
@@ -1466,8 +1471,8 @@ void XObjActor3::Kind12(u32 frames)
 	}
 	case 2: {
 		SetColor(1, 0, 0, 0, 0.0f);
-		f32 end = GetAnimEndFrame();
-		if (end - frames <= GetAnimFrame()) {
+		f32 current = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= current) {
 			mStatus.mFlags &= ~0x10000ULL;
 			mActorFlags.mFlags |= 4;
 			PlayWiiSoundEffect(&gGame.mSound, 0x477, 1.0f, 0.0f);
@@ -1520,16 +1525,22 @@ extern "C" void fn_8013D0C8(void)
 	}
 }
 
+// NONMATCHING: retail has an unused mOrbitHeight comparison; the build also keeps gGame in
+// an extra callee-saved register and schedules the zero-offset additions differently.
 extern "C" void LaunchSpiderBossCenterPart(XObjActor3* obj)
 {
-	XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
+	XObjSpiderBoss* holder = GetSpiderBoss();
 	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
+		Vec offset;
+		offset.x        = 0.0f;
+		offset.y        = 0.0f;
+		offset.z        = 0.0f;
 		obj->mKindStep  = 2;
 		obj->mKindTimer = 6.0f;
 		obj->ClearBaseMtx();
-		obj->mMoveTranslate.x = holder->GetPosX();
-		obj->mMoveTranslate.y = 18.0f;
-		obj->mMoveTranslate.z = holder->GetPosZ();
+		obj->mMoveTranslate.x = offset.x + holder->GetPosX();
+		obj->mMoveTranslate.y = 10.0f + (8.0f + offset.y);
+		obj->mMoveTranslate.z = offset.z + holder->GetPosZ();
 		obj->SetPos(obj->mMoveTranslate);
 		const CVec* holderPos = holder->GetPos();
 		obj->mHeading         = (f32)atan2(holderPos->x - obj->mMoveTranslate.x, holderPos->z - obj->mMoveTranslate.z) + PI;
@@ -1702,10 +1713,13 @@ static inline void ResetBossAttachment(XObjActor3* obj)
 	SetSpiderBossAttachmentAnim(obj, 0);
 }
 
+// NONMATCHING: the case-2 heading rounding and x/y stores schedule differently around sin;
+// the shared position, joint return buffers, calls and animation-frame order match.
 void XObjActor3::Kind16(u32 frames)
 {
 	Vec playerPos = *gGame.GetPlayer()->GetPos();
-	XObj* boss    = (XObj*)gGame.mXObjs.mPools[19].mObjects;
+	Vec pos;
+	XObj* boss = (XObj*)gGame.mXObjs.mPools[19].mObjects;
 	if (mActorFlags.Check(0x10)) {
 		return;
 	}
@@ -1716,13 +1730,13 @@ void XObjActor3::Kind16(u32 frames)
 		SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 		break;
 	case 1: {
-		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
 		mMoveTranslate.Set(pos);
 		mHeading = boss->GetRotY();
 		break;
 	}
 	case 2: {
-		Vec pos          = boss->GetJointPos(boss->FindResNode("cyl3"));
+		pos              = boss->GetJointPos(boss->FindResNode("cyl3"));
 		mHeading         = boss->GetRotY();
 		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
 		mMoveTranslate.y = pos.y;
@@ -1730,11 +1744,11 @@ void XObjActor3::Kind16(u32 frames)
 		break;
 	}
 	case 4: {
-		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
 		mMoveTranslate.Set(pos);
-		mHeading = boss->GetRotY();
-		f32 end  = GetAnimEndFrame();
-		if (end - frames <= GetAnimFrame()) {
+		mHeading    = boss->GetRotY();
+		f32 current = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= current) {
 			ResetBossAttachment(this);
 			Release();
 		}

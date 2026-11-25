@@ -65,7 +65,7 @@ BOOL CEffectSystem::Load(const char* name, s32 idx)
 	return TRUE;
 }
 
-// NONMATCHING: case fallthrough and CFile::mBuffer offset scheduling (82.38%)
+// NONMATCHING: the case 2/3 resource accesses now match; case 1's file-pointer form and register allocation differ
 BOOL CEffectSystem::UpdateLoad(s32 idx)
 {
 	char path[0x80];
@@ -86,23 +86,23 @@ BOOL CEffectSystem::UpdateLoad(s32 idx)
 		res->mState++;
 	}
 	case 2: {
-		sprintf(path, "%s.breft", res->mName);
-		if (!res->mFiles[1].ReadEx(path, 0, 0)) {
+		sprintf(path, "%s.breft", mResources[idx].mName);
+		if (!mResources[idx].mFiles[1].ReadEx(path, 0, 0)) {
 			break;
 		}
 		nw4r::ef::Resource* efRes = nw4r::ef::Resource::GetInstance();
-		res->mTexProj             = efRes->AddTexture(static_cast<u8*>(res->mFiles[1].mBuffer));
-		DCFlushRange(res->mFiles[1].mBuffer, res->mFiles[1].mSize);
-		res->mState++;
+		mResources[idx].mTexProj  = efRes->AddTexture(static_cast<u8*>(mResources[idx].mFiles[1].mBuffer));
+		DCFlushRange(mResources[idx].mFiles[1].mBuffer, mResources[idx].mFiles[1].mSize);
+		mResources[idx].mState++;
 	}
 	case 3: {
 		nw4r::ef::Resource* efRes = nw4r::ef::Resource::GetInstance();
 		efRes->RelocateCommand();
 		GXInvalidateVtxCache();
 		GXInvalidateTexAll();
-		res->mNumEmitter = efRes->NumEmitter(NULL);
-		sNumEmitter[idx] = res->mNumEmitter;
-		res->mState++;
+		mResources[idx].mNumEmitter = efRes->NumEmitter(NULL);
+		sNumEmitter[idx]            = mResources[idx].mNumEmitter;
+		mResources[idx].mState++;
 		break;
 	}
 	}
@@ -295,7 +295,7 @@ bool EffectSortFunc(const nw4r::ef::Effect* op1, const nw4r::ef::Effect* op2)
 	return !res;
 }
 
-// NONMATCHING: HandleBase in-place construction vs temporary copy assignment (92.30%)
+// NONMATCHING: placement-new's null check and the later ResEmitter/Desc stack-slot order differ
 BOOL CreateEffectInstance(EffectInstance* inst, u32 emitterIdx, u32 groupID)
 {
 	nw4r::ef::EffectSystem* sys = nw4r::ef::EffectSystem::GetInstance();
@@ -306,13 +306,14 @@ BOOL CreateEffectInstance(EffectInstance* inst, u32 emitterIdx, u32 groupID)
 	nw4r::ef::ResEmitter resEmitter = res->GetEmitterIndexOf(emitterIdx, NULL);
 	nw4r::ef::Effect* effect        = sys->CreateEffect(resEmitter.ptr(), groupID, 0);
 	if (effect != NULL) {
-		inst->handle            = nw4r::ef::HandleBase(effect);
+		new (&inst->handle) nw4r::ef::HandleBase(effect);
 		inst->_08               = groupID;
-		Vec zero                = { 0.0f, 0.0f, 0.0f };
-		inst->pos               = zero;
-		inst->rot               = zero;
-		Vec one                 = { 1.0f, 1.0f, 1.0f };
-		inst->scale             = one;
+		Vec pos                 = { 0.0f, 0.0f, 0.0f };
+		inst->pos               = pos;
+		Vec rot                 = { 0.0f, 0.0f, 0.0f };
+		inst->rot               = rot;
+		Vec scale               = { 1.0f, 1.0f, 1.0f };
+		inst->scale             = scale;
 		inst->mtx               = NULL;
 		nw4r::ef::ResEmitter re = res->GetEmitterIndexOf(emitterIdx, NULL);
 		if (re.IsValid()) {

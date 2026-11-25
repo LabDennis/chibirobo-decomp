@@ -122,7 +122,11 @@ void XObjActorMama::ProcessPendingEvents(u32 frames)
 				if (mCmd[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
 					obj->mStatus.mFlags |= 0x10000ULL;
-					mHideKinds.mFlags |= 1;
+					switch (mCmd[1]) {
+					case 0x40:
+						mHideKinds.mFlags |= 1;
+						break;
+					}
 				}
 			}
 			break;

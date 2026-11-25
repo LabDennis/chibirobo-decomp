@@ -428,20 +428,12 @@ void CMsgData::Measure()
 // LoadMessageCursorObject, but the Wii keeps a second cursor (spawn 0x2C, the num input cursor)
 extern "C" s32 LoadFontCursors(CMsgFont* font)
 {
-	s32 loaded = 0;
 	if ((font->mCursor[0].mStatus & 1) != 1 && font->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(13)))) {
-		loaded = 1;
-	}
-	if (loaded) {
 		font->mCursor[0].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[0].mStatus |= 0x800;
 		return 0;
 	}
-	loaded = 0;
 	if ((font->mCursor[1].mStatus & 1) != 1 && font->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x2C)))) {
-		loaded = 1;
-	}
-	if (loaded) {
 		font->mCursor[1].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[1].mStatus |= 0x800;
 		return 1;
@@ -550,6 +542,8 @@ extern "C" void ResetMessageState(CMsgFont* font)
 // the GameCube's non-japanese shape: the proportional flag is _04_04, mPrevSize is NAN until
 // the first glyph and the icon strip comes from gGame.mTpl. the Wii's CTexObj keeps its four
 // matrices in mTexMtx.mMtx; the icon scale lands in mMtx[2] where the GameCube used mMtx[1]
+// NONMATCHING: the icon cell divisions and random scale/angle ranges now have retail's lifetimes;
+// the glyph x/y expression and several float-register assignments still differ.
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->mBits._04_04, font->mSize);
@@ -569,10 +563,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		if (index >= columns) {
 			index = columns - 1;
 		}
-		f32 cellWidth = 1.0f / columns;
-		PSMTXScale(icon.mTexMtx.mMtx[2], cellWidth, 1.0f, 1.0f);
+		PSMTXScale(icon.mTexMtx.mMtx[2], 1.0f / columns, 1.0f, 1.0f);
 		icon.mTexMtx.mDirty = true;
-		PSMTXTrans(icon.mTexMtx.mMtx[0], cellWidth * index, 0.0f, 0.0f);
+		PSMTXTrans(icon.mTexMtx.mMtx[0], (1.0f / columns) * index, 0.0f, 0.0f);
 		icon.mTexMtx.mDirty = true;
 		textureWidth        = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / columns;
 		width               = textureWidth * (font->mSize / 22.0f);
@@ -588,10 +581,12 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		sy = font->mGlyphScaleY;
 	} else {
 		// a negative MSG_CODE_SCALE: each glyph gets |x| plus a random part of the gap up to |y|
-		f32 min   = fabs(100.0f * font->mGlyphScaleX);
-		f32 max   = fabs(100.0f * font->mGlyphScaleY);
-		f32 extra = fmod((f32)rand(), max - min);
-		sx = sy = fabs(font->mGlyphScaleX) + extra / 100.0f;
+		f32 base  = __fabsf(font->mGlyphScaleX);
+		f32 min   = __fabsf(100.0f * font->mGlyphScaleX);
+		f32 max   = __fabsf(100.0f * font->mGlyphScaleY);
+		f32 range = max - min;
+		f32 extra = fmod((f32)rand(), range);
+		sx = sy = base + extra / 100.0f;
 	}
 	f32 scaleX = (font->mSize * 0.5f) * sx;
 	f32 scaleY = (-font->mSize * 0.5f) * sy;
@@ -599,9 +594,10 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 angle = font->mGlyphAngle;
 	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
 	if (!(angle >= 0.0f)) {
-		f32 range = fabs(2.0f * angle);
-		f32 delta = fmod((f32)rand(), RAD2DEG * range);
-		angle     = DEG2RAD * delta + font->mGlyphAngle;
+		f32 range   = __fabsf(2.0f * angle);
+		f32 degrees = RAD2DEG * range;
+		f32 delta   = fmod((f32)rand(), degrees);
+		angle       = DEG2RAD * delta + font->mGlyphAngle;
 	}
 	font->mGlyphs[font->mCharCount].mSprite.SetRot(0.0f, 0.0f, angle);
 	font->mGlyphs[font->mCharCount].mColor  = font->mGlyphColor;
