@@ -887,8 +887,10 @@ void XObj::ClearAnim()
 // 0x800AF51C, the material pass LoadFromPlacement runs while the placement flag is set: every
 // material gains a final TEV stage multiplying the previous colour by the rendered shadow
 // texture, unless its "sdw" user-data item's first value is -1
-// NONMATCHING: the flow and ordered call set now match, including all 34 assertions;
-// register allocation and scheduling through the copied-resource fallbacks still differ
+// NONMATCHING: the flow is the retail's (copied-resource fallbacks, the "sdw" item lookup,
+// the stage append and its trailing asserts) but the reconstruction is provisional — the
+// ResUserDataItem field names are modelled from the retail offsets and the report/assert
+// strings are the plausible expressions, so codegen is expected to differ
 extern "C" void fn_800AF51C(XObj* obj)
 {
 	if (obj->mObject.m_pScnMdl == NULL) {
@@ -943,7 +945,7 @@ extern "C" void fn_800AF51C(XObj* obj)
 		if (userData.IsValid()) {
 			ResDic dic           = userData.GetResDic();
 			ResUserDataItem item = ResUserDataItem(dic["sdw"]);
-			if (item.IsValid() && item.GetS32(0) == -1) {
+			if (item.IsValid() && item.ref().numData != 0 && item.GetS32(0) == -1) {
 				continue;
 			}
 		}
