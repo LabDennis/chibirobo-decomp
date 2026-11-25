@@ -213,22 +213,6 @@ XObjOX::XObjOX()
 {
 }
 
-XObjChrBase::XObjChrBase()
-{
-}
-
-XObjDress::XObjDress()
-{
-	u32* p = _9AC;
-	do {
-		*p++ = 0;
-	} while (p < _9AC + 7);
-}
-
-XObjDressOpt::XObjDressOpt()
-{
-}
-
 // retail 0x800C0E98, last emission of the unit: XObjChr's mPad member builds it
 // (CPadOne base, the motion reset fields), its deleting dtor is in xpaddtor.cpp
 XPad::XPad()
