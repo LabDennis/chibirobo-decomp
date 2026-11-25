@@ -28,19 +28,12 @@ XObjMapListA::~XObjMapListA()
 }
 
 XObjMapListB::XObjMapListB()
-    : mItems(NULL)
-    , mUsed(0)
-    , mCap(0)
 {
 }
 
-// NONMATCHING: two dead beq's like ~XObjMapListA
+// NONMATCHING: retail has two dead beq's here like ~XObjMapListA (91 %)
 XObjMapListB::~XObjMapListB()
 {
-	if (mItems != NULL) {
-		mUsed -= mUsed;
-		delete mItems;
-	}
 }
 
 // the two record arrays unwind through __destroy_arr, list B first

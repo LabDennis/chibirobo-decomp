@@ -9,8 +9,10 @@ extern "C" char* strncat(char* dst, const char* src, size_t n);
 namespace std {
 using ::memcmp;
 using ::memcpy;
+using ::memmove;
 using ::memset;
 using ::strcmp;
+using ::strcpy;
 using ::strlen;
 using ::strncat;
 using ::strncmp;

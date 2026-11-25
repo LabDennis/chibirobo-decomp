@@ -1,9 +1,28 @@
 #ifndef MSL_CPP_TYPEINFO_H
 #define MSL_CPP_TYPEINFO_H
 
+#include <rvl_msl/cstring>
+#include <rvl_msl/cstddef>
 #include <exception>
 
 namespace std{
+    class type_info {
+    public:
+        ~type_info();
+        bool operator==(const type_info& rhs) const { return strcmp(m_Name, rhs.m_Name) == 0; }
+        bool before(const type_info& rhs) const throw();
+        size_t hash_code() const throw() { return m_HashCode; }
+        const char* name() const throw() { return m_Name; }
+
+    private:
+        type_info();
+        type_info(const type_info&);
+        type_info& operator=(const type_info&);
+
+        const char* m_Name;
+        size_t m_HashCode;
+    };
+
     class bad_cast : public exception {
     public:
         virtual ~bad_cast(){}
