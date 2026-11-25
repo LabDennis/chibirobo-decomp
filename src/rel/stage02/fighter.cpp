@@ -604,15 +604,17 @@ extern "C" void DrawShots(void)
 	}
 }
 
-// NONMATCHING: global-address and aim-copy stack layout differs; the update and all three draw calls match.
+// NONMATCHING: global-address base registers differ; the aim copy, update and all three draw calls match.
 extern "C" void DrawFighterHud(void)
 {
 	if (fighterWork.mBody == NULL) {
 		return;
 	}
-	matoList.mAimPos.x = fighterWork.mAim.mPos.x;
-	matoList.mAimPos.y = fighterWork.mAim.mPos.y;
-	matoList.mAimPos.z = fighterWork.mAim.mPos.z;
+	Vec aim;
+	aim.x            = fighterWork.mAim.mPos.x;
+	aim.y            = fighterWork.mAim.mPos.y;
+	aim.z            = fighterWork.mAim.mPos.z;
+	matoList.mAimPos = aim;
 	for (s32 i = 0; i < matoList.mCount; i++) {
 		matoList.mMatos[i].Update();
 	}
