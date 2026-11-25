@@ -424,10 +424,12 @@ extern "C" void UpdateHamObjs(u32 arg)
 	if (gasPlate == NULL) {
 		return;
 	}
-	if (IsOnGasPlate((XObj*)gGame.GetPlayer())) {
-		playerOffGasPlate = 0;
-	} else {
+	f32 x = ((XObj*)gGame.GetPlayer())->GetPos()->x;
+	f32 z = ((XObj*)gGame.GetPlayer())->GetPos()->z;
+	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		playerOffGasPlate = 1;
+	} else {
+		playerOffGasPlate = 0;
 	}
 	yakiLoopLevel = 0;
 	for (s32 i = 0; i < 9; i++) {
