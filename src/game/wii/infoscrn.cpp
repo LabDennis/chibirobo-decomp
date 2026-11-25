@@ -949,8 +949,6 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		step = 1;
 	Approach(&h->mBatteryValue, &h->mBatteryTarget, step);
 	h->mBatteryGauge = h->mBatteryValue;
-	u32 digitAlpha   = (u32)(opacity * fade);
-	u32 gray         = 0x50505000 | digitAlpha;
 	f32 gap          = 7.6f * scale;
 	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	for (int i = 0; i < 4; ++i) {
@@ -1040,6 +1038,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			f32 digitW = digitScale * GXGetTexObjWidth(&tex);
 			f32 digitH = digitScale * GXGetTexObjHeight(&tex) / 10.f;
 			f32 rest   = .1f * (10 - frame);
+			u32 gray   = 0x50505000 | (u32)(opacity * fade);
 			DrawBatteryQuad(tex, gray, BatteryDigitX(i, offset, digitW + gap), y + fill * digitH * .5f, digitW, digitH * rest);
 
 			if (i == 0) {
@@ -1050,6 +1049,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			HudTexture(tex, 127);
 			f32 w = digitScale * GXGetTexObjWidth(&tex), ht = digitScale * GXGetTexObjHeight(&tex);
 			SetBatterySlice(tex, fill, rest);
+			u32 digitAlpha = (u32)(opacity * fade);
 			u32 emptyColor = 0x5176ff00 | digitAlpha;
 			DrawBatteryOverlay(tex, emptyColor, i, offset, y, w, ht, gap, fill, rest);
 		}

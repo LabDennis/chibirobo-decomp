@@ -194,7 +194,11 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 // NONMATCHING: reconstructed against the Wii disassembly; register allocation and some pointer-state stores differ
 void CCameraActionArea::Update(u32 step)
 {
-	mPadControlEnabled = gGame.GetStatusFlags(0xC00) ? FALSE : TRUE;
+	if (gGame.GetStatusFlags(0xC00)) {
+		mPadControlEnabled = FALSE;
+	} else {
+		mPadControlEnabled = TRUE;
+	}
 	if (mTarget != NULL && mTarget->HasModel()) {
 		Mtx mtx;
 		PSMTXCopy(mTarget->GetWorldMtx(), mtx);

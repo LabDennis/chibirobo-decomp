@@ -536,7 +536,7 @@ static inline void ResetMapCameraInterpolation(CCameraActionMap* map)
 
 // NONMATCHING: the logic matches throughout; retail inlines GetOutwardPerpendicularToEdge (0x800D57E4,
 // defined in xobj_chr.cpp's unit), which the source calls; what remains is scheduling and register
-// allocation (retail's frame is 0x160 larger and assigns the loop variables to different registers) (85,1 %)
+// allocation (retail's frame is 0x50 larger and assigns the loop variables to different registers) (89,1 %)
 /**
  * @note Address: 0x80159D70
  * @note Size: 0x308C

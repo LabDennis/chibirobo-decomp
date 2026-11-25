@@ -2,6 +2,7 @@
 #define GAME_WII_CGAME_H
 
 #include "Dolphin/mtx.h"
+#include "JSystem/JMath/Inline.h"
 #include "game/attachmentvalues.h"
 #include "game/wii/cpad.h"
 #include "game/wii/ceffect.h"
@@ -432,7 +433,7 @@ public:
 			mFollowDone    = TRUE;
 		} else {
 			Vec step = mFollowStep;
-			PSVECAdd(&mFollowValue, &step, &mFollowValue);
+			JMathInlineVEC::PSVECAdd(&mFollowValue, &step, &mFollowValue);
 		}
 	}
 
@@ -1788,7 +1789,7 @@ public:
 	virtual MtxP vfA0(nw4r::g3d::ResNode node); // _A0
 
 	u8 _04[0xE8];
-	u32 mMdl;                     // _EC, the model's nw4r ResMdl handle
+	nw4r::g3d::ResMdl mMdl;       // _EC, the model's nw4r ResMdl handle
 	nw4r::g3d::ScnMdlSimple* mF0; // _F0, the model the node matrices live in
 	u8 _F4[0x150 - 0xF4];
 	u64 mStatus; // _150, the object's status flags

@@ -243,9 +243,9 @@ extern "C" s32 fn_800C85D4(XObjMapSortRec* a, XObjMapSortRec* b)
 
 // NONMATCHING: retail keeps this out-of-line with a full frame and an extab
 // entry, and fn_800C7F70 reaches it through bl; our build sibling-calls the
-// stub (b) and inlines the wrapper into its only caller. the frame implies an
-// exception-region construct in the original that the surviving instructions
-// do not show
+// stub (b) and inlines the wrapper into its only caller. A throw() specification adds
+// __unexpected paths retail lacks, and returning the stub's result still sibling-calls it.
+// The frame implies an exception-region construct that the surviving instructions do not show
 // 0x800C9B84, the map's stage-mode check: an out-of-line wrapper over
 // stage_data's always-false stub, so the rebuild and the list reset agree
 /**
@@ -646,11 +646,9 @@ extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortR
 	}
 }
 
-// NONMATCHING: same instruction count and sequence; the residue is register
-// and stack-slot allocation — retail keeps each probe's tri pointer in a
-// callee-saved register across the calls (we rematerialize it), gives the
-// grid loop's Vec locals lower frame slots than the hint probe's, saves one
-// GPR fewer and holds the found flag in an argument register
+// NONMATCHING: the on-demand triangle addressing matches retail, which keeps the initial hit in a
+// found flag before the sort-grid stage. The remaining difference is register and Vec-slot allocation:
+// retail assigns the grid loop registers differently and uses the hint probe's Vec slots below the grid's
 // 0x800C98E0, the Wii's out-of-line FindMapFloor: fills hit with the floor
 // triangle under pos — first trying the start triangle itself, then the
 // record list of the sort-grid cell the point falls in, then the trigon's
@@ -664,50 +662,48 @@ extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit*
 {
 	BOOL found = FALSE;
 	if (start >= 0 && start < map->mTrigon.mNum) {
-		TRIGON_INFO* tri = &map->mTrigon.mTri[start];
 		Vec v[3];
 		Vec at;
-		tri->mGetVtx(tri, v);
+		map->mTrigon.mTri[start].mGetVtx(&map->mTrigon.mTri[start], v);
 		if (IsPointInsideTriangleXZ((Vec*)pos, &v[0], &v[1], &v[2])) {
 			IntersectVerticalLineWithTrianglePlane((Vec*)pos, &v[0], &v[1], &v[2], &at);
 			hit->mTriangle = start;
-			hit->mTrigon   = tri->mCell;
+			hit->mTrigon   = map->mTrigon.mTri[start].mCell;
 			hit->mHeight   = at.y;
 			found          = TRUE;
 		}
 	}
-	if (!found) {
-		if (map->mSortValid != 0) {
-			s32 cellX = (pos->x - map->mSortMin.x) / map->mSortCellX;
-			s32 cellZ = (pos->z - map->mSortMin.z) / map->mSortCellZ;
-			if (cellX >= 0 && cellX < 10.0f && cellZ >= 0 && cellZ < 10.0f) {
-				f32 limit          = pos->y + 7.5f;
-				XObjMapListB* cell = &map->mListB[cellX][cellZ];
-				for (u32 i = 0; i < cell->mUsed; i++) {
-					s32 index        = ((XObjMapSortRec*)cell->mItems)[i].mTri;
-					TRIGON_INFO* tri = &map->mTrigon.mTri[index];
-					Vec v[3];
-					Vec at;
-					tri->mGetVtx(tri, v);
-					if (IsPointInsideTriangleXZ((Vec*)pos, &v[0], &v[1], &v[2])) {
-						IntersectVerticalLineWithTrianglePlane((Vec*)pos, &v[0], &v[1], &v[2], &at);
-						if (limit >= at.y) {
-							hit->mTriangle = index;
-							hit->mTrigon   = tri->mCell;
-							hit->mHeight   = at.y;
-							return TRUE;
-						}
+	if (found) {
+		return TRUE;
+	}
+	if (map->mSortValid != 0) {
+		s32 cellX = (pos->x - map->mSortMin.x) / map->mSortCellX;
+		s32 cellZ = (pos->z - map->mSortMin.z) / map->mSortCellZ;
+		if (cellX >= 0 && cellX < 10.0f && cellZ >= 0 && cellZ < 10.0f) {
+			f32 limit          = pos->y + 7.5f;
+			XObjMapListB* cell = &map->mListB[cellX][cellZ];
+			for (u32 i = 0; i < cell->mUsed; i++) {
+				s32 index = ((XObjMapSortRec*)cell->mItems)[i].mTri;
+				Vec v[3];
+				Vec at;
+				map->mTrigon.mTri[index].mGetVtx(&map->mTrigon.mTri[index], v);
+				if (IsPointInsideTriangleXZ((Vec*)pos, &v[0], &v[1], &v[2])) {
+					IntersectVerticalLineWithTrianglePlane((Vec*)pos, &v[0], &v[1], &v[2], &at);
+					if (limit >= at.y) {
+						hit->mTriangle = index;
+						hit->mTrigon   = map->mTrigon.mTri[index].mCell;
+						hit->mHeight   = at.y;
+						return TRUE;
 					}
 				}
 			}
 		}
-		hit->mTriangle = map->mTrigon.Check((Vec*)pos, -1, &hit->mHeight);
-		if (hit->mTriangle >= 0) {
-			hit->mTrigon = map->mTrigon.mTri[hit->mTriangle].mCell;
-			return TRUE;
-		}
-		hit->mTrigon = -1;
-		return FALSE;
 	}
-	return TRUE;
+	hit->mTriangle = map->mTrigon.Check((Vec*)pos, -1, &hit->mHeight);
+	if (hit->mTriangle >= 0) {
+		hit->mTrigon = map->mTrigon.mTri[hit->mTriangle].mCell;
+		return TRUE;
+	}
+	hit->mTrigon = -1;
+	return FALSE;
 }

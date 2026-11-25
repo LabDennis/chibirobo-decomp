@@ -1,3 +1,4 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/wii/xobjleticker.h" // first: its AnimSfx needs the real nw4r::math
 #include "game/wii/xobj.h"
 #include "game/wii/cgame.h"
@@ -1313,8 +1314,7 @@ void XObjLeticker::ExecCallbackB(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::Re
 
 extern "C" {
 
-// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf where our math.h inlines it,
-// and copies the CVec with float loads where ours copies words
+// NONMATCHING: the CVec copy and register allocation still differ; the MSL __fpclassifyf call now matches
 /**
  * @note Address: 0x8011D34C
  * @note Size: 0x3A0

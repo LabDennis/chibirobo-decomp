@@ -1794,6 +1794,8 @@ void fn_800FCD1C(XActLift* act)
  * @note Address: 0x800FCB14
  * @note Size: 0xB8
  */
+// NONMATCHING: five return-type/lifetime forms tried; retail loads the placement and CVec vtable
+// before the prologue, while this build schedules them after it; the six conversions otherwise match
 CVec GetStagePlacementScale(const XObj* obj)
 {
 	return CVec(GetPlacementScale(obj->mCoord.mPlacement));

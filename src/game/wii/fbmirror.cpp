@@ -12,23 +12,6 @@ extern s32 gScreenSafeRight;
 static const char* sMirrorNodeName = "mirror";
 static const char* sMirrorMatName  = "mirror_mat";
 
-// the nw4r resource lookups SetMirror runs through and the assertion printer behind
-// g3d_resmat_ac.h's checks; only the addresses are retail's, the signatures are ours
-extern "C" {
-void* fn_8025CFC8(void* mdl);                   // the model's resource data
-void* fn_8025D564(void* mdl, const char* name); // ResMdl named material lookup
-void* fn_8027E5CC(void* out, void* model, void* mat);
-void* fn_8027E3D4(void* search, s32 index);
-s32 fn_8025F66C(void* anms, s32 index);       // has anm
-GXTexObj* fn_8025F638(void* anms, s32 index); // the nth 0x20-byte anm record
-}
-
-namespace nw4r {
-namespace db {
-void Panic(const char* file, int line, const char* fmt, ...);
-}
-} // namespace nw4r
-
 /**
  * @note Address: 0x80019BF4
  * @note Size: 0xC8
@@ -138,9 +121,9 @@ void FbMirror::Reset()
  */
 // NONMATCHING: binds the model's "mirror" node and the "mirror_mat" ResAnmTexPat, copies the
 // anm in at _130 and patches our texobj over its head so it samples the mirror's copy. The
-// GXTexObj replacement is a typed assignment like retail. Retail's frame is 0x50 - real nw4r
-// ResMat/iterator locals - so its CreateFbTexture call stays a call; ours is small enough that
-// ipa inlines it. The other nw4r calls still go through externed addresses.
+// GXTexObj replacement and the resource lookups use the real nw4r types. Retail's
+// CreateFbTexture call stays a call; ours is inlined by IPA even with the definition moved
+// behind the caller. The remaining differences are that call and the string-pool labels.
 void FbMirror::SetMirror(CMirrorObj* obj)
 {
 	mJoint   = obj;
@@ -149,27 +132,18 @@ void FbMirror::SetMirror(CMirrorObj* obj)
 		return;
 	}
 	CreateFbTexture(&mTexture, 0x100, 0x100, GX_TF_RGB565, FALSE, NULL, "(mirror)");
-	void* mat = fn_8025D564(&mJoint->mMdl, sMirrorMatName);
-	if (mat == NULL) {
+	nw4r::g3d::ResMat mat = mJoint->mMdl.GetResMat(sMirrorMatName);
+	if (!mat.IsValid()) {
 		return;
 	}
-	if (mat == NULL) { // ResMat::ref's validity check
-		nw4r::db::Panic("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
+	nw4r::g3d::ScnMdl::CopiedMatAccess access((nw4r::g3d::ScnMdl*)mJoint->mF0, mat.GetID());
+	nw4r::g3d::ResTexObj texObj;
+	texObj = access.GetResTexObj(false);
+	if (!texObj.IsValid()) {
+		texObj = mat.GetResTexObj();
 	}
-	void* search;
-	fn_8027E5CC(&search, mJoint->mF0, *(void**)((u8*)mat + 0xC));
-	void* scn = fn_8027E3D4(&search, 0);
-	if (scn == NULL) {
-		if (mat == NULL) { // ResMat::ref's validity check
-			nw4r::db::Panic("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
-		}
-		scn = (u8*)mat + 0x40;
-		if (((u32)scn & 3) != 0) {
-			nw4r::db::Panic("g3d_resmat_ac.h", 0x28, "NW4R:Failed assertion !((u32)p & 0x3)");
-		}
-	}
-	if (fn_8025F66C(&scn, 0)) {
-		GXTexObj* anm = fn_8025F638(&scn, 0);
+	if (texObj.IsValidTexObj(GX_TEXMAP0)) {
+		GXTexObj* anm = texObj.GetTexObj(GX_TEXMAP0);
 		mJointAnm     = anm;
 		memcpy(&mJointAnmCopy, anm, sizeof(GXTexObj));
 		*mJointAnm = mTexture.mTex;

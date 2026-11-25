@@ -22,6 +22,7 @@
 #include "game/attachmentvalues.h"
 #include "game/cmdline.h"
 #include "game/cscrn.h"
+#include "game/cvec.h"
 #include "game/fbtexeff.h"
 #include "game/stagedata.h"
 #include "game/evt.h"
@@ -1919,11 +1920,8 @@ f32 CObj::GetAnimFrame()
  * @note Address: 0x80024A10
  * @note Size: 0x6C
  */
-// NONMATCHING: the subtract is nw4r::math::VEC3Sub, the paired-single inline, as in retail; retail
-// subtracts in a stack copy and copies that out, we build the result in the return slot
 CVec CVec::operator-(Vec other) const
 {
 	CVec result = *this;
-	nw4r::math::VEC3Sub((nw4r::math::VEC3*)&result, (nw4r::math::VEC3*)&result, (nw4r::math::VEC3*)&other);
-	return result;
+	return result -= other;
 }

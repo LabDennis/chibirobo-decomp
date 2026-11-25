@@ -4,6 +4,7 @@
 // CGs layer; HandleCopterActionInput reads the remote's B button through gWiiPointer
 // where the GameCube read the pad trigger, and plays the descent animation on the
 // copter object at _B580.
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "arithmetic.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cgame.h"
@@ -1476,7 +1477,7 @@ extern "C" XObj* FindNearestRadarTarget(XActRadar* act)
 	for (int i = 0; i < gGame.mXObjs.mObjectCount; i++) {
 		obj = gGame.mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0x4000000000000000ULL)
-		    && (obj->mStatus.mFlags & 0x80000) && obj != (XObj*)act->mOwner && obj->GetKind() < 10000) {
+		    && (obj->mStatus.mFlags & 0x80000) && (XObj*)act->mOwner != obj && obj->GetKind() < 10000) {
 			f32 dist;
 			if (nearest == NULL) {
 				dist = PSVECDistance(&pos, obj->GetPos());
@@ -1486,7 +1487,7 @@ extern "C" XObj* FindNearestRadarTarget(XActRadar* act)
 					dist = NAN;
 				}
 			}
-			if (fpclassify(dist) != FP_NAN) {
+			if (__fpclassifyf(dist) != FP_NAN) {
 				nearest     = obj;
 				nearestDist = dist;
 			}

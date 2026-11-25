@@ -754,14 +754,14 @@ void DrawArmyShot(XObjArmySlot* shot)
 	if (!shot->mActive) {
 		return;
 	}
-	CGs* gs = &gGame.mGs;
 	if (gArmyShotModel == NULL) { // no model: a green blob
-		gs->mBillboardEnabled = TRUE;
-		Vec pos               = shot->mPos;
-		gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+		gGame.mGs.mBillboardEnabled = TRUE;
+		Vec pos                     = shot->mPos;
+		f32 radius                  = 3.0f;
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 		Vec rot = { 0.0f, 0.0f, 0.0f };
-		DrawGsCircle(gs, 16, 0x64FF64C8, 0xFF, pos.x, pos.y, pos.z, 3.0f, 3.0f, rot.x, rot.y, rot.z);
-		gs->mBillboardEnabled = FALSE;
+		DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0xFF, pos.x, pos.y, pos.z, radius, radius, rot.x, rot.y, rot.z);
+		gGame.mGs.mBillboardEnabled = FALSE;
 	} else { // the model joins the scene list, draws and leaves it again
 		WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 		gArmyShotModel->SetTranslateX(shot->mPos.x);
