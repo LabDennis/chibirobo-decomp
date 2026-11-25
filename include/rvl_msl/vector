@@ -1,0 +1,190 @@
+#ifndef MSL_VECTOR_H
+#define MSL_VECTOR_H
+
+#include <algorithm>
+#include <cstddef>
+#include <memory>
+#include <stdexcept>
+#include <msl/compressed_pair.h>
+
+namespace std {
+
+template <typename T, typename Allocator>
+class __vec_deleter {
+protected:
+	typedef typename Metrowerks::compressed_pair<size_t, Allocator>::second_param allocator_param;
+
+public:
+	typedef T value_type;
+	typedef Allocator allocator_type;
+	typedef size_t size_type;
+	typedef ptrdiff_t difference_type;
+	typedef value_type& reference;
+	typedef const value_type& const_reference;
+	typedef T* iterator;
+	typedef const T* const_iterator;
+
+	__vec_deleter()
+	    : m_Ptr(NULL)
+	    , m_Count(0)
+	    , m_Capacity(0)
+	{
+	}
+	explicit __vec_deleter(allocator_param alloc)
+	    : m_Ptr(NULL)
+	    , m_Count(0)
+	    , m_Capacity(0, alloc)
+	{
+	}
+
+	~__vec_deleter()
+	{
+		if (m_Ptr) {
+			clear();
+			m_Capacity.second().deallocate(m_Ptr, m_Capacity.first());
+		}
+	}
+
+	void clear()
+	{
+		size_type n = m_Count;
+		m_Count -= n;
+
+		T* end = m_Ptr + n;
+		for (; n != 0; n--) {
+			end--;
+			end->~T();
+		}
+	}
+
+	size_type max_size() const { return 0xFFFFFFFF / sizeof(T); }
+
+	size_type grow_by(size_type n)
+	{
+		size_type capacity = m_Capacity.first();
+		if (max_size() - capacity < n) {
+			throw std::length_error("vector length error");
+		}
+
+		if (capacity < max_size() / 3) {
+			return capacity + std::max((capacity + 1) * 3 / 5, n);
+		} else if (capacity < max_size() * 2 / 3) {
+			return capacity + std::max((capacity + 1) / 2, n);
+		} else {
+			return max_size();
+		}
+	}
+
+protected:
+	T* m_Ptr;
+	size_t m_Count;
+	Metrowerks::compressed_pair<size_t, Allocator> m_Capacity;
+};
+
+template <typename T, typename Allocator, int I>
+class __vec_constructor : protected __vec_deleter<T, Allocator> {
+	typedef __vec_deleter<T, Allocator> _Base;
+
+public:
+	typedef typename _Base::value_type value_type;
+	typedef typename _Base::allocator_type allocator_type;
+	typedef typename _Base::size_type size_type;
+	typedef typename _Base::difference_type difference_type;
+	typedef typename _Base::reference reference;
+	typedef typename _Base::const_reference const_reference;
+	typedef typename Allocator::pointer pointer;
+	typedef typename Allocator::const_pointer const_pointer;
+	typedef typename _Base::iterator iterator;
+	typedef typename _Base::const_iterator const_iterator;
+
+	__vec_constructor() { }
+	~__vec_constructor() { }
+
+	void clear() { _Base::clear(); }
+
+	iterator existing_insert(iterator pos, const_reference value)
+	{
+		const T* valuePtr = &value;
+		T* end            = this->m_Ptr + this->m_Count;
+
+		if (pos <= valuePtr && valuePtr < end) {
+			valuePtr++;
+		}
+
+		this->m_Count++;
+		size_type moveSize = end - pos;
+		std::memmove(end + 1 - moveSize, pos, moveSize * sizeof(T));
+		*pos = *valuePtr;
+		return pos;
+	}
+
+	void push_back(const_reference value)
+	{
+		if (this->m_Count < this->m_Capacity.first()) {
+			this->m_Capacity.second().construct(&this->m_Ptr[this->m_Count], value);
+			this->m_Count++;
+		} else {
+			this->grow_by(1);
+			allocator_type allocCopy = this->m_Capacity.second();
+			__vec_constructor<T, Allocator, 1> tmp;
+			size_type newSize = this->grow_by((this->m_Count + 1) - this->m_Capacity.first());
+			if (newSize > this->max_size()) {
+				throw std::length_error("vector length error");
+			}
+			tmp.m_Ptr              = allocCopy.allocate(newSize);
+			tmp.m_Capacity.first() = newSize;
+			allocCopy.construct(tmp.m_Ptr + this->m_Count, value);
+			tmp.m_Count++;
+
+			T* src = this->m_Ptr + this->m_Count;
+			T* dst = tmp.m_Ptr + this->m_Count;
+			while (src > this->m_Ptr) {
+				src--;
+				dst--;
+				allocCopy.construct(dst, *src);
+			}
+
+			this->clear();
+			std::swap(this->m_Ptr, tmp.m_Ptr);
+			std::swap(this->m_Capacity.first(), tmp.m_Capacity.first());
+			std::swap(this->m_Count, tmp.m_Count);
+		}
+	}
+};
+
+template <typename T, typename Allocator = allocator<T> >
+class vector : private __vec_constructor<T, Allocator, 1> {
+	typedef __vec_constructor<T, Allocator, 1> _Base;
+
+public:
+	typedef typename _Base::value_type value_type;
+	typedef typename _Base::allocator_type allocator_type;
+	typedef typename _Base::size_type size_type;
+	typedef typename _Base::difference_type difference_type;
+	typedef typename _Base::reference reference;
+	typedef typename _Base::const_reference const_reference;
+	typedef typename _Base::pointer pointer;
+	typedef typename _Base::const_pointer const_pointer;
+	typedef typename _Base::iterator iterator;
+	typedef typename _Base::const_iterator const_iterator;
+
+	vector() { }
+
+	iterator begin() { return this->m_Ptr; }
+	const_iterator begin() const { return this->m_Ptr; }
+	iterator end() { return this->m_Ptr + this->m_Count; }
+	const_iterator end() const { return this->m_Ptr + this->m_Count; }
+
+	pointer data() { return this->m_Ptr; }
+	const_pointer data() const { return this->m_Ptr; }
+
+	size_type size() const { return this->m_Count; }
+	size_type capacity() const { return this->m_Capacity.first(); }
+
+	void push_back(const_reference value) { _Base::push_back(value); }
+	void clear() { _Base::clear(); }
+};
+
+} // namespace std
+
+#endif

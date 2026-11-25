@@ -96,7 +96,7 @@ extern "C" void fn_800C807C(XObjMap* map)
 	if (map->mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				map->mListB[i][k].mUsed = map->mListB[i][k].mUsed - map->mListB[i][k].mUsed;
+				map->mListB[i][k].clear();
 			}
 		}
 	}
@@ -129,7 +129,7 @@ void XObjMap::Release()
 	if (mSortValid != 0) {
 		for (s32 i = 0; i < 10.0f; i++) {
 			for (s32 k = 0; k < 10.0f; k++) {
-				mListB[i][k].mUsed = mListB[i][k].mUsed - mListB[i][k].mUsed;
+				mListB[i][k].clear();
 			}
 		}
 	}
@@ -223,22 +223,15 @@ extern "C" void fn_800C83DC(nw4r::g3d::ScnProc* proc, bool opa)
 	}
 }
 
-// a {triangle run, height} pair the sort lists keep per grid cell
-struct XObjMapSortRec {
-	u32 mTri; // _00
-	f32 mY;   // _04
-};
-STATIC_ASSERT(sizeof(XObjMapSortRec) == 8);
-
 // 0x800C85D4, the grid build's record order: entries sort by height,
 // highest first
 /**
  * @note Address: 0x800C85D4
  * @note Size: 0x18
  */
-extern "C" s32 fn_800C85D4(XObjMapSortRec* a, XObjMapSortRec* b)
+extern "C" s32 fn_800C85D4(const XObjMapSortRec& a, const XObjMapSortRec& b)
 {
-	return a->mY > b->mY;
+	return a.mY > b.mY;
 }
 
 // NONMATCHING: retail keeps this out-of-line with a full frame and an extab
@@ -257,24 +250,14 @@ extern "C" void fn_800C9B84(XObjMap* map)
 	fn_800929EC();
 }
 
-typedef s32 (*XObjMapSortCmp)(XObjMapSortRec*, XObjMapSortRec*);
-
-extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortRec** c, XObjMapSortCmp* cmp);
-extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp);
-extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp);
-
 // the game's own heap ops the cell grow calls (gamemain.cpp/delete.cpp)
 void* operator new(u32 size) throw();
 void operator delete(void* ptr) throw();
 
-// NONMATCHING: the grow path's three length_error throws are not rebuilt —
-// retail constructs a std::length_error whose message sits in a shared_ptr
-// rep (vtables lbl_80303FA0/lbl_80303FC8/lbl_80303FE4, deleter fn_800C9C7C,
-// exception type lbl_802DA4B4+0x5A), and rvl_msl has no <stdexcept>/<memory>
-// in the repo to spell that with; it also stages the move through a temp
-// vector whose unwind bookkeeping the straightforward code below drops. the
-// cell math, the six-point overlap test, the append, the growth policy and
-// the sort call follow retail
+// NONMATCHING: the real MSL vector push_back and all three length_error throws are present,
+// including the temporary vector's unwind lifetime. The rest is frame/register allocation and
+// the shared_ptr array cleanup on allocation failure; the sort instantiations also keep different
+// iterator stack homes and register allocation.
 // 0x800C85EC, the sort-grid build fn_800C7F70 runs once the trigon is big
 // enough: every trigon triangle goes on the record list of each 10x10 cell
 // it overlaps — a triangle counts when one of its corners or edge midpoints
@@ -306,343 +289,12 @@ extern "C" void fn_800C85EC(XObjMap* map)
 				        && (v[1].z + v[2].z) * 0.5f >= cellZ && (v[1].z + v[2].z) * 0.5f < cellZ + map->mSortCellZ)
 				    || ((v[2].x + v[0].x) * 0.5f >= cellX && (v[2].x + v[0].x) * 0.5f < cellX + map->mSortCellX
 				        && (v[2].z + v[0].z) * 0.5f >= cellZ && (v[2].z + v[0].z) * 0.5f < cellZ + map->mSortCellZ)) {
-					XObjMapSortRec rec    = { t, v[0].y + v[1].y + v[2].y };
-					XObjMapSortRec* items = (XObjMapSortRec*)cell->mItems;
-					if (cell->mUsed < cell->mCap) {
-						cell->mUsed++;
-						items[cell->mUsed - 1] = rec;
-					} else {
-						// grow: retail bounds-checks against a 0x1FFFFFFF-entry
-						// max_size and throws std::length_error on both
-						// failures; the capacity steps and the backwards move
-						// are kept, the throws are not (see NONMATCHING)
-						u32 need = (u32)(cell->mUsed + 1 - cell->mCap);
-						u32 newcap;
-						if ((u32)cell->mCap >= 0xAAAAAAA) {
-							newcap = (u32)cell->mCap >= 0x15555554
-							           ? 0x1FFFFFFF
-							           : (u32)cell->mCap + ((u32)(cell->mCap + 1) / 2 > need ? (u32)(cell->mCap + 1) / 2 : need);
-						} else {
-							u32 grow = ((u32)(cell->mCap + 1) * 3) / 5;
-							newcap   = (u32)cell->mCap + (grow > need ? grow : need);
-						}
-						XObjMapSortRec* nb = (XObjMapSortRec*)::operator new(newcap * sizeof(XObjMapSortRec));
-						nb[cell->mUsed]    = rec;
-						u32* dst           = (u32*)nb + cell->mUsed * 2;
-						u32* src           = (u32*)items + cell->mUsed * 2;
-						while (src > (u32*)items) {
-							*--dst = *--src;
-						}
-						cell->mItems = (u32*)nb;
-						cell->mUsed++;
-						cell->mCap = newcap;
-						if (items != NULL) {
-							::operator delete(items);
-						}
-					}
+					XObjMapSortRec rec = { t, v[0].y + v[1].y + v[2].y };
+					cell->push_back(rec);
 				}
 			}
-			XObjMapSortRec* first = (XObjMapSortRec*)cell->mItems;
-			XObjMapSortRec* last  = first + cell->mUsed;
-			fn_800C8E00(&first, &last, fn_800C85D4);
+			std::sort(cell->begin(), cell->end(), fn_800C85D4);
 		}
-	}
-}
-
-// the record introsort the grid build runs once over each finished cell list:
-// the MSL algorithm's sort, but the caller's iterator slots and the comparator
-// arrive by pointer, so the loop re-reads *pfirst/*plast and the partition tail
-// writes back where the next pass should resume. retail emits the algorithm
-// twice — this public entry hands its smaller partition to the loop worker
-// fn_800C92A8 below, which recurses to itself; each instantiation keeps its
-// own shuffle counter in .sdata
-/**
- * @note Address: 0x800C8E00
- * @note Size: 0x4A8
- */
-extern "C" void fn_800C8E00(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp)
-{
-	static int shuffle = -4;
-
-	while (TRUE) {
-		XObjMapSortRec* first = *pfirst;
-		XObjMapSortRec* last  = *plast;
-		s32 len               = last - first;
-		if (len <= 1) {
-			return;
-		}
-		if (len <= 20) {
-			if (first != last) {
-				for (XObjMapSortRec* j = last - 1; first != j; first++) {
-					XObjMapSortRec* it = first;
-					for (XObjMapSortRec* i = first + 1; i != last; i++) {
-						if ((*cmp)(i, it) != 0) {
-							it = i;
-						}
-					}
-					if (it != first) {
-						XObjMapSortRec t = *it;
-						*it              = *first;
-						*first           = t;
-					}
-				}
-			}
-			return;
-		}
-
-		XObjMapSortRec* m = first + (len / 4 + shuffle % 5);
-		if (++shuffle >= 5) {
-			shuffle = -4;
-		}
-		XObjMapSortRec* i1 = first + (len * 3 / 4 + shuffle % 5);
-		if (++shuffle >= 5) {
-			shuffle = -4;
-		}
-		XObjMapSortRec* j = last - 1;
-		fn_800C9750(&m, &i1, &j, &cmp);
-
-		m  = first;
-		i1 = j;
-		while ((*cmp)(m, j) != 0) {
-			m++;
-		}
-		do {
-			i1--;
-			if (m == i1) {
-				break;
-			}
-		} while ((*cmp)(i1, j) == 0);
-
-		if (m < i1) {
-			XObjMapSortRec t = *m;
-			*m               = *i1;
-			*i1              = t;
-			m++;
-			while (TRUE) {
-				while ((*cmp)(m, j) != 0) {
-					m++;
-				}
-				while ((*cmp)(--i1, j) == 0) { }
-				if (m < i1) {
-					XObjMapSortRec t = *m;
-					*m               = *i1;
-					*i1              = t;
-					m++;
-				} else {
-					break;
-				}
-			}
-		}
-
-		if (m == first) {
-			XObjMapSortRec t = *m;
-			*m               = *j;
-			*j               = t;
-			m++;
-
-			i1 = last;
-			if ((*cmp)(first, --i1) == 0) {
-				while (m != last && (*cmp)(first, m) == 0) {
-					m++;
-				}
-				if (m < i1) {
-					XObjMapSortRec t = *m;
-					*m               = *i1;
-					*i1              = t;
-				}
-			}
-			if (m < i1) {
-				while (TRUE) {
-					while ((*cmp)(first, m) == 0) {
-						m++;
-					}
-					while ((*cmp)(first, --i1) != 0) { }
-					if (m < i1) {
-						XObjMapSortRec t = *m;
-						*m               = *i1;
-						*i1              = t;
-						m++;
-					} else {
-						break;
-					}
-				}
-			}
-			*pfirst = m;
-		} else if (m - first < last - m) {
-			XObjMapSortRec* nf = first;
-			fn_800C92A8(&nf, &m, cmp);
-			*pfirst = m;
-		} else {
-			XObjMapSortRec* nl = last;
-			fn_800C92A8(&m, &nl, cmp);
-			*plast = m;
-		}
-	}
-}
-
-// NONMATCHING: same algorithm as the public entry but its partition recursion
-// stays inside itself; the residue is register and frame allocation — retail
-// lays the locals out differently between the two instantiations
-// 0x800C92A8, the sort's loop worker: same MSL introsort, recursing to itself
-/**
- * @note Address: 0x800C92A8
- * @note Size: 0x4A8
- */
-extern "C" void fn_800C92A8(XObjMapSortRec** pfirst, XObjMapSortRec** plast, XObjMapSortCmp cmp)
-{
-	static int shuffle = -4;
-
-	while (TRUE) {
-		XObjMapSortRec* first = *pfirst;
-		XObjMapSortRec* last  = *plast;
-		s32 len               = last - first;
-		if (len <= 1) {
-			return;
-		}
-		if (len <= 20) {
-			if (first != last) {
-				for (XObjMapSortRec* j = last - 1; first != j; first++) {
-					XObjMapSortRec* it = first;
-					for (XObjMapSortRec* i = first + 1; i != last; i++) {
-						if ((*cmp)(i, it) != 0) {
-							it = i;
-						}
-					}
-					if (it != first) {
-						XObjMapSortRec t = *it;
-						*it              = *first;
-						*first           = t;
-					}
-				}
-			}
-			return;
-		}
-
-		XObjMapSortRec* m = first + (len / 4 + shuffle % 5);
-		if (++shuffle >= 5) {
-			shuffle = -4;
-		}
-		XObjMapSortRec* i1 = first + (len * 3 / 4 + shuffle % 5);
-		if (++shuffle >= 5) {
-			shuffle = -4;
-		}
-		XObjMapSortRec* j = last - 1;
-		fn_800C9750(&m, &i1, &j, &cmp);
-
-		m  = first;
-		i1 = j;
-		while ((*cmp)(m, j) != 0) {
-			m++;
-		}
-		do {
-			i1--;
-			if (m == i1) {
-				break;
-			}
-		} while ((*cmp)(i1, j) == 0);
-
-		if (m < i1) {
-			XObjMapSortRec t = *m;
-			*m               = *i1;
-			*i1              = t;
-			m++;
-			while (TRUE) {
-				while ((*cmp)(m, j) != 0) {
-					m++;
-				}
-				while ((*cmp)(--i1, j) == 0) { }
-				if (m < i1) {
-					XObjMapSortRec t = *m;
-					*m               = *i1;
-					*i1              = t;
-					m++;
-				} else {
-					break;
-				}
-			}
-		}
-
-		if (m == first) {
-			XObjMapSortRec t = *m;
-			*m               = *j;
-			*j               = t;
-			m++;
-
-			i1 = last;
-			if ((*cmp)(first, --i1) == 0) {
-				while (m != last && (*cmp)(first, m) == 0) {
-					m++;
-				}
-				if (m < i1) {
-					XObjMapSortRec t = *m;
-					*m               = *i1;
-					*i1              = t;
-				}
-			}
-			if (m < i1) {
-				while (TRUE) {
-					while ((*cmp)(first, m) == 0) {
-						m++;
-					}
-					while ((*cmp)(first, --i1) != 0) { }
-					if (m < i1) {
-						XObjMapSortRec t = *m;
-						*m               = *i1;
-						*i1              = t;
-						m++;
-					} else {
-						break;
-					}
-				}
-			}
-			*pfirst = m;
-		} else if (m - first < last - m) {
-			XObjMapSortRec* nf = first;
-			fn_800C92A8(&nf, &m, cmp);
-			*pfirst = m;
-		} else {
-			XObjMapSortRec* nl = last;
-			fn_800C92A8(&m, &nl, cmp);
-			*plast = m;
-		}
-	}
-}
-
-// NONMATCHING: same instruction list; retail saves the four arguments into
-// r27-r30 in order and keeps the second record pointer for the final stores,
-// our build reorders the saved registers and reloads it once
-// 0x800C9750, the sort3 the grid build runs over a record's neighborhood:
-// orders the three entries it is pointed at through the same comparator
-/**
- * @note Address: 0x800C9750
- * @note Size: 0x1A8
- */
-extern "C" void fn_800C9750(XObjMapSortRec** a, XObjMapSortRec** b, XObjMapSortRec** c, XObjMapSortCmp* cmp)
-{
-	BOOL ca = (*cmp)(*c, *a) == 0;
-	BOOL bc = (*cmp)(*b, *c) == 0;
-	if (ca && bc) {
-		return;
-	}
-	if (!ca && !bc) {
-		XObjMapSortRec t = **a;
-		**a              = **b;
-		**b              = t;
-		return;
-	}
-	if ((*cmp)(*b, *a) != 0) {
-		XObjMapSortRec t = **a;
-		**a              = **b;
-		**b              = t;
-	}
-	if (ca) {
-		XObjMapSortRec t = **b;
-		**b              = **c;
-		**c              = t;
-	} else {
-		XObjMapSortRec t = **a;
-		**a              = **c;
-		**c              = t;
 	}
 }
 
@@ -682,8 +334,8 @@ extern "C" BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit*
 		if (cellX >= 0 && cellX < 10.0f && cellZ >= 0 && cellZ < 10.0f) {
 			f32 limit          = pos->y + 7.5f;
 			XObjMapListB* cell = &map->mListB[cellX][cellZ];
-			for (u32 i = 0; i < cell->mUsed; i++) {
-				s32 index = ((XObjMapSortRec*)cell->mItems)[i].mTri;
+			for (u32 i = 0; i < cell->size(); i++) {
+				s32 index = cell->data()[i].mTri;
 				Vec v[3];
 				Vec at;
 				map->mTrigon.mTri[index].mGetVtx(&map->mTrigon.mTri[index], v);

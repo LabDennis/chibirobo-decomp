@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include <stdlib.h>
+#include <vector>
 
 // first: AnimSfx brings nw4r's math types, which the fallback below must not redefine
 #include "game/wii/animsfx.h"
@@ -1545,10 +1546,8 @@ public:
 };
 STATIC_ASSERT(sizeof(CJArchive) == 0x148);
 
-// element of XObjMap's two 100-entry record lists: 0xC bytes. the ctor
-// (0x800BEB4C/0x800BEBDC) zeroes all three words, the dtor
-// (0x800BEB60/0x800BEBF0) frees the buffer at _00 and clears _04 as a
-// self-subtract. the pointee type is not recovered yet
+// element of XObjMap's two 100-entry record lists: 0xC bytes. The list-B
+// ctor/dtor at 0x800BEBDC/0x800BEBF0 wrap the MSL vector of sort records.
 class XObjMapListA {
 	friend class XObjMap;
 
@@ -1562,16 +1561,18 @@ public:
 };
 STATIC_ASSERT(sizeof(XObjMapListA) == 0xC);
 
-class XObjMapListB {
+struct XObjMapSortRec {
+	u32 mTri; // _00
+	f32 mY;   // _04
+};
+STATIC_ASSERT(sizeof(XObjMapSortRec) == 8);
+
+class XObjMapListB : public std::vector<XObjMapSortRec> {
 	friend class XObjMap;
 
 public:
 	XObjMapListB();
 	~XObjMapListB();
-
-	u32* mItems; // _00
-	s32 mUsed;   // _04
-	s32 mCap;    // _08
 };
 STATIC_ASSERT(sizeof(XObjMapListB) == 0xC);
 
