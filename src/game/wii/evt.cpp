@@ -18,6 +18,7 @@
 #include "game/evtqueue.h"
 #include "game/coordinfo.h"
 #include "game/stagedata.h"
+#include "arithmetic.h"
 #include "game/inventory.h"
 #include "game/attachmentvalues.h"
 #include "game/savedata.h"
@@ -3086,7 +3087,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		case 5: {
 			f32 x  = pad->mStick.x;
 			f32 y  = pad->mStick.y;
-			result = 100.0f * nw4r::math::FSqrt(x * x + y * y);
+			result = 100.0f * FSqrt(x * x + y * y);
 			break;
 		}
 		case 6: {
