@@ -256,23 +256,10 @@ game/wii/obja.cpp:
 game/wii/evt.cpp:
 	.text start:0x8009453C end:0x800A1938
 
-game/wii/xobjctor.cpp:
-	extab start:0x8000B2E4 end:0x8000B7B4
-	extabindex start:0x80013BB0 end:0x80013DFC
-	.text start:0x800C13B0 end:0x800C5424
-
-game/wii/xobjs.cpp:
-	extab start:0x8000B7B4 end:0x8000B884
-	extabindex start:0x80013DFC end:0x80013ED4
-	.text start:0x800C5424 end:0x800C6408
-
-game/wii/xaction.cpp:
-	.text start:0x800C6428 end:0x800C6584
-
 game/wii/xobj_camera.cpp:
 	extab start:0x8000B89C end:0x8000B954
 	extabindex start:0x80013EF8 end:0x80013FA0
-	.text start:0x800C6584 end:0x800C7DC0
+	.text start:0x800C659C end:0x800C7DC0
 
 game/wii/xobj_map.cpp:
 	extab start:0x8000B954 end:0x8000BAC0
@@ -1438,18 +1425,6 @@ game/wii/fbmirror.cpp:
 game/wii/gamedraw.cpp:
 	.text start:0x80024AE8 end:0x8002CFB8
 
-game/atcmenudtor.cpp:
-	.text start:0x800C0F98 end:0x800C1018
-
-game/drsmenudtor.cpp:
-	.text start:0x800C1018 end:0x800C1058
-
-game/xchrmenu.cpp:
-	.text start:0x800C1058 end:0x800C1308
-
-game/oxmenudtor.cpp:
-	.text start:0x800C1308 end:0x800C13B0
-
 game/cpaddtor.cpp:
 	.text start:0x800365D8 end:0x80036618
 
@@ -1458,13 +1433,6 @@ game/wii/gamedtor.cpp:
 
 game/cpadexdtor.cpp:
 	.text start:0x80030A54 end:0x80030AC0
-
-game/gamecpadone.cpp:
-	.text start:0x800C0EF0 end:0x800C0F30
-
-game/xpaddtor.cpp:
-	.text start:0x800C0F30 end:0x800C0F98
-	.data start:0x803030AC end:0x803030D4
 
 game/gamefbsubwinfade.cpp:
 	.text start:0x8001A704 end:0x8001A958
@@ -1481,9 +1449,6 @@ game/gameinit.cpp:
 game/wii/gameupdate.cpp:
 	.text start:0x8001C2D8 end:0x80024AE8
 
-game/ctrigondtor.cpp:
-	.text start:0x800BEB0C end:0x800BEB4C
-
 game/wii/cjanim.cpp:
 	extab start:0x8000A864 end:0x8000AC50
 	extabindex start:0x80013598 end:0x800138BC
@@ -1491,11 +1456,12 @@ game/wii/cjanim.cpp:
 	.sdata2 start:0x805A44D0 end:0x805A4DF0
 
 game/wii/xobj_ut.cpp:
-	.text start:0x800BD6B4 end:0x800BEB0C
+	extab start:0x8000AC50 end:0x8000B89C
+	extabindex start:0x800138BC end:0x80013EF8
+	.text start:0x800BD6B4 end:0x800C659C
+	.ctors start:0x802C45AC end:0x802C45B0
 	.rodata start:0x802DA21C end:0x802DA320
-
-game/wii/xobjmember.cpp:
-	.text start:0x800BEB4C end:0x800C0EF0
+	.bss start:0x80457720 end:0x80457E90
 
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4

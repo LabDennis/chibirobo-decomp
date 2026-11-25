@@ -1356,18 +1356,6 @@ if wii:
                 # StartMapCameraAreaHeightInterpolation's two calls; no other function of the unit changes with or without it
                 Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
-                # classes keep inline/base dtors and the units define the out-of-line destructors
-                Object(Matching, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Matching, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Matching, "game/oxmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # XObjChrMenu's dtor and the OXMenu/OXMenuMark ctors; the mark ctor
-                # inlines the unrecovered Wii XObj ctor, so the unit stays NonMatching
-                Object(NonMatching, "game/xchrmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(NonMatching, "game/gamecpadone.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # XPad's dtor and the XObjChrMenu ctor (player members _18BE8/_19EE4); the
-                # GameCube's hand-spelled weak copies live in obja_chr.cpp like the menu dtors
-                Object(NonMatching, "game/xpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/cpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # ~CGame and the weak destructors of CGame's and CBase's members the compiler emits behind
@@ -1380,7 +1368,6 @@ if wii:
                 # _18 SetFov/_70 CalcEye — mCamera embedded at FbSubwin+0x148
                 Object(Matching, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the XObj core methods, 0x800AC07C-0x800B1558 (wii_units.md Nr. 45):
                 # init/reset, the draw dispatch virtuals, the screen-list queue pair and
                 # ClearAnim are written; load, release, update, the material helpers and
@@ -1392,34 +1379,17 @@ if wii:
                 # xobjfloor.cpp's floor helpers - the stepper, callbacks and __sinit
                 # still come from the retail asm
                 Object(NonMatching, "game/wii/cjanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the pool unit: InitializeObjectPools matches; the XObj/Light/Map
-                # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
-                # -i include/rvl_msl: game/wii/xobjflags.h's AnimSfx member pulls the nw4r sound
-                # headers, which want the Wii MSL
+                # retail xobj_ut.cpp, 0x800BD6B4-0x800C659C: object pools, member and pool-subclass
+                # ctors/dtors (includes xobjmember.cpp and xobjctor.cpp), stage spawn, reader threads,
+                # and XAction base
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the member-class ctor/dtor block behind the XObj ctors,
-                # 0x800BEB4C-0x800C0EF0 (wii_units.md Nr. 49): XObjMapListA/B,
-                # ~XObjMap, XObjChr's ctor and the weak emissions it references
-                # -i include/rvl_msl like the other xobj units
-                Object(NonMatching, "game/wii/xobjmember.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the pool-subclass ctor/dtor run, 0x800C13B0-0x800C5424 (the first half of
-                # wii_units.md Nr. 56): XObjChr/Actor3/Sound/Coin/Item, the XObjActor children,
-                # spiders, dust, hbox, scncam, leticker, army and free
-                # -i include/rvl_msl for the AnimSfx members like the other xobj units
-                Object(NonMatching, "game/wii/xobjctor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the second half of retail's xobj_ut.cpp: pool walks, stage spawn, reader threads,
-                # 0x800C5424-0x800C6408 (wii_units.md Nr. 56);
-                # -i include/rvl_msl like the first half, for XObjFlags from game/wii/xobjflags.h
-                Object(NonMatching, "game/wii/xobjs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 # -inline noauto: retail calls EvalCmp (0x80097324) where auto-inlining expands it into _cmd_IF
                 # -i include/rvl_msl: the nw4r::ef handles of the event effects
                 Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
-                # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
-                Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the scene camera file, 0x800C6584-0x800C7DC0 (wii_units.md Nr. 58): the CCamera
+                # the scene camera file, 0x800C659C-0x800C7DC0 (wii_units.md Nr. 58): the CCamera
                 # virtuals defined here, XObjScnCam's overrides, XObjLight's and XObjMap's
-                # ResetObjectState and the CustomShadow pair; the thunks and the big decodes
+                # ResetObjectState and the CustomShadow pair; the big decodes
                 # (fn_800C66C8, fn_800C6CF0, fn_800C7764) still come from the retail asm
                 # -i include/rvl_msl like the other xobj units
                 Object(NonMatching, "game/wii/xobj_camera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
