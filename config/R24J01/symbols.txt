@@ -5013,6 +5013,7 @@ SetListener__8CSound3DFfPC3Vec = .text:0x802B5F44; // type:function
 SetVolumePanPitch__8CSound3DFfff = .text:0x802B6004; // type:function
 __sinit_\ctpl_cpp = .text:0x802B6064; // type:function scope:local
 __dt__12CustomShadowFv = .text:0x800BD66C; // type:function size:0x40
+@4@__dt__4XObjFv = .text:0x800BD6AC; // type:function size:0x8 scope:weak
 __ct__7XObjChrFv = .text:0x800BECE8; // type:function size:0x1E4
 __ct__Q27XObjChr8CPtclSetFv = .text:0x800C13B0; // type:function
 __ct__10CPtclDust3Fv = .text:0x800C1414; // type:function
