@@ -193,7 +193,8 @@ void CCameraActionArea::SetCamera(CCamera* camera)
  */
 // NONMATCHING: Wii calls, pad bits, field offsets and vector state are checked. Retail has the
 // CPad construction, transformed-eye copy, CVec direction and pointer snapshots. Its 0x1B0 frame
-// still exceeds ours by 0x70, mainly from the two scalar pointer clamps and repeat-state scheduling.
+// still exceeds ours by 0x70, mainly from the pointer input copies and repeat-state scheduling.
+// Retail also rounds y and z with frsp before the _2D4 store (0x80154AF0); the source of that is unknown.
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.GetStatusFlags(0xC00)) {
@@ -243,18 +244,16 @@ void CCameraActionArea::Update(u32 step)
 		_2D4     = zero;
 	}
 
-	Vec input = { 0.0f, 0.0f, 0.0f };
+	CVec input(0.0f, 0.0f, 0.0f);
 	if (gWiiPointer.mPointerValid) {
 		Vec pointer;
-		pointer.x   = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
-		pointer.y   = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
-		pointer.z   = gWiiPointer.mPointer.z;
-		Vec clamped = fn_8016AA78(pointer, (f32*)sDebugParams);
-		input       = clamped;
-		_2D4        = input;
+		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
+		pointer.y = 2.0f * (gWiiPointer.mPointer.y / gPointerScreenHeight) - 1.0f;
+		pointer.z = gWiiPointer.mPointer.z;
+		input     = fn_8016AA78(pointer, (f32*)sDebugParams);
+		_2D4      = input;
 	} else if (!(gGame._41B0 & 8)) {
-		Vec previous = _2D4;
-		input        = previous;
+		input = _2D4;
 	}
 
 	CVec direction(0.0f, 0.0f, 0.0f);
