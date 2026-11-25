@@ -408,26 +408,22 @@ void ResetPopperShot(XActPopperShot* shot)
  * @note Address: 0x80108790
  * @note Size: 0x43C
  */
-// NONMATCHING: 68.27% - the semantics match retail field-for-field (same ids, same TRS
-// {0,0,0}/{0,0,0}/{1,1,1} effect writes, same mReady=2/PlayWiiSoundEffect/mReady=1,
-// same actor detail_StartSound + SetVolume, same trailing impact-detection call). The
-// residue is stack-frame codegen: retail keeps a bytewise Vec stack copy of pos
-// (stw-bit-copy + lfs/frsp reload into mPos) plus two separate TRS triples for the
-// two effect calls - frame 0xC0 with f28-f31 + r28-r31 saved; this source compiles to
-// a 0x70 frame with shared temporaries. Tested: explicit CVec(pos) temp and
-// per-call-site Vec triples, both scored lower.
+// NONMATCHING: the position copy, effect TRS values and handle lifetimes now follow retail;
+// the remaining differences are the first position-copy schedule, kind/sfx register allocation
+// and a 0x10 frame-size residue.
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
                      f32 strength)
 {
 	shot->mActive    = TRUE;
 	shot->mHitTarget = NULL;
-	shot->mPos       = pos;
-	shot->mYaw       = yaw;
-	shot->mPitch     = pitch;
-	shot->mSpeed     = speed;
-	shot->mDistance  = 0.0f;
-	shot->mRange     = range;
-	shot->_28        = power;
+	Vec position     = pos;
+	shot->mPos.Set(position);
+	shot->mYaw      = yaw;
+	shot->mPitch    = pitch;
+	shot->mSpeed    = speed;
+	shot->mDistance = 0.0f;
+	shot->mRange    = range;
+	shot->_28       = power;
 	for (int i = 0; i < 10; i++) {
 		shot->mHistory[i].x = shot->mPos.x;
 		shot->mHistory[i].y = shot->mPos.y;
@@ -446,23 +442,29 @@ void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* targe
 	} else {
 		shot->mHomingTarget = NULL;
 	}
-	Vec zero   = { 0.0f, 0.0f, 0.0f };
-	Vec unit   = { 1.0f, 1.0f, 1.0f };
-	shot->mGen = fn_800A11A4(gGame.mEvtPtcl.mEffects, kind == 1 ? 0x4E : 0x4F, 1);
-	if (shot->mGen != NULL) {
-		shot->mGen->pos   = zero;
-		shot->mGen->rot   = zero;
-		shot->mGen->scale = unit;
-		UpdateEffectMtx(shot->mGen);
+	Vec effectScale     = { 1.0f, 1.0f, 1.0f };
+	Vec effectRot       = { 0.0f, 0.0f, 0.0f };
+	Vec effectPos       = { 0.0f, 0.0f, 0.0f };
+	EffectInstance* gen = fn_800A11A4(gGame.mEvtPtcl.mEffects, kind == 1 ? 0x4E : 0x4F, 1);
+	if (gen != NULL) {
+		gen->pos   = effectPos;
+		gen->rot   = effectRot;
+		gen->scale = effectScale;
+		UpdateEffectMtx(gen);
 	}
+	shot->mGen = gen;
 	if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-		shot->mChargeGen = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x50, 1);
-		if (shot->mChargeGen != NULL) {
-			shot->mChargeGen->pos   = zero;
-			shot->mChargeGen->rot   = zero;
-			shot->mChargeGen->scale = unit;
-			UpdateEffectMtx(shot->mChargeGen);
+		Vec chargeScale           = { 1.0f, 1.0f, 1.0f };
+		Vec chargeRot             = { 0.0f, 0.0f, 0.0f };
+		Vec chargePos             = { 0.0f, 0.0f, 0.0f };
+		EffectInstance* chargeGen = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x50, 1);
+		if (chargeGen != NULL) {
+			chargeGen->pos   = chargePos;
+			chargeGen->rot   = chargeRot;
+			chargeGen->scale = chargeScale;
+			UpdateEffectMtx(chargeGen);
 		}
+		shot->mChargeGen = chargeGen;
 	}
 	f32 full             = (s32)GetPlayerActionParameter(31) / 100.0f;
 	s32 sfx              = strength >= full ? (kind == 1 ? 0x200 : 0x203) : (kind == 1 ? 0x78 : 0x202);
@@ -758,8 +760,8 @@ void ResetPopperCharge(XActPopperCharge* charge)
 // the full-charge glow and its loop sound appear at 1.0, and both actors follow the
 // muzzle while their fades step. The GameCube folded this into
 // UpdatePlayerPopperAction's tail; on the Wii it's a function of its own
-// NONMATCHING: same control flow and calls as retail, but the inlined helper set and
-// the register schedule still diverge (effect-handle reads and the sfx-start block)
+// NONMATCHING: the full-charge effect now has retail's three TRS temporaries and handle
+// lifetime; the matrix-position copy, effect-handle reads and sfx-start register schedule differ.
 /**
  * @note Address: 0x8010A114
  * @note Size: 0x4B0
@@ -795,13 +797,14 @@ void UpdatePopperCharge(XActPopperCharge* charge, u32 frames)
 						UpdateEffectMtx(inst);
 					}
 				} else {
-					inst = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x5C, 1);
+					Vec scale = { 1.0f, 1.0f, 1.0f };
+					Vec rot   = { 0.0f, 0.0f, 0.0f };
+					Vec pos   = { 0.0f, 0.0f, 0.0f };
+					inst      = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x5C, 1);
 					if (inst != NULL) {
-						Vec zero    = { 0.0f, 0.0f, 0.0f };
-						Vec unit    = { 1.0f, 1.0f, 1.0f };
-						inst->pos   = zero;
-						inst->rot   = zero;
-						inst->scale = unit;
+						inst->pos   = pos;
+						inst->rot   = rot;
+						inst->scale = scale;
 						UpdateEffectMtx(inst);
 					}
 				}
