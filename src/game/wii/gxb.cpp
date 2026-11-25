@@ -222,14 +222,15 @@ extern "C" void StartScreenShake(CScrnQuake* quake, f64 x0, f64 y0, f64 z0, f64 
  * @note Address: 0x8003D020
  * @note Size: 0x70
  */
+// NONMATCHING: retail copies the stack CVec into the sret slot; the Wii unit's build applies
+// NRVO here (same source as the GameCube unit, which matches)
 CVec CVec::operator/(f32 divisor) const
 {
 	CVec result = *this;
 	result.x /= divisor;
 	result.y /= divisor;
 	result.z /= divisor;
-	CVec out(result);
-	return out;
+	return result;
 }
 
 /**
@@ -1374,13 +1375,15 @@ f32 CObj::GetNodeRotateZ(nw4r::g3d::ResNode node)
  * @note Address: 0x80043518
  * @note Size: 0xB8
  */
-// NONMATCHING: only the ResNode::ref assertion strings' positions in the unit's string pool remain
+// NONMATCHING: retail builds the vec in a temporary of its own (z first) and copy-constructs the
+// result from it; this build constructs the result in place, 0x1C bytes shorter. The source form
+// that keeps the temporary is not found (a named local, a const local and an inline operator ruled out);
+// the GameCube unit matches with this source, so the Wii unit's build applies NRVO where retail does not
 CVec NW_Obj::GetNodeRotate(nw4r::g3d::ResNode node) const
 {
 	const nw4r::g3d::ResNodeData& data = node.ref();
 	CVec rotate(DEG2RAD * data.mRotate.x, DEG2RAD * data.mRotate.y, DEG2RAD * data.mRotate.z);
-	CVec result(rotate);
-	return result;
+	return rotate;
 }
 
 /**

@@ -85,6 +85,8 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 	PSMTXConcat(result, scale, result);
 }
 
+// NONMATCHING: retail builds the result in a stack CVec and copies it to the sret slot;
+// the Wii unit's build applies NRVO into the sret object (same source as the GameCube unit, which matches)
 // CVec::operator* per component
 CVec CVec::operator*(Vec other) const
 {
@@ -92,8 +94,7 @@ CVec CVec::operator*(Vec other) const
 	result.x *= other.x;
 	result.y *= other.y;
 	result.z *= other.z;
-	CVec out(result);
-	return out;
+	return result;
 }
 
 extern "C" CVec ReflectVectorAboutNormal(const Vec* source, const Vec* normal)
