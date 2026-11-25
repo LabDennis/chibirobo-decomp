@@ -707,14 +707,6 @@ void CScrnRoboeyes::ResetLensState(f32 width, f32 height)
 	mLensState                   = 0;
 }
 
-// moves a position by an offset passed by value. Retail's add is nw4r::math::VEC3Add, its three
-// work registers show; nw4r/math.h does not compile under the game's include path (<cstdarg>),
-// so the paired-single PSVECAdd the other Wii files use stands in and the two Updates differ in
-// those registers
-static inline void Move(CVec& pos, Vec offset)
-{
-	JMathInlineVEC::PSVECAdd(&pos, &offset, &pos);
-}
 // the item an object stands for, as the GameCube XObj::GetItem
 static inline s32 GetItem(const WiiTitleObject* object)
 {
