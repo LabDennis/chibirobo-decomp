@@ -10229,3 +10229,5 @@ SetYakiRates = .text:0x8016D0CC; // type:function size:0x168
 __sinit_\trash_cpp = .text:0x8016D058; // type:function size:0x58 scope:local
 __sinit_\ana_cpp = .text:0x8016C008; // type:function size:0xD4 scope:local
 GetAnaJObj = .text:0x8016BE50; // type:function size:0x1B8
+__arraydtor$14156 = .text:0x80153AE0; // type:function size:0x1C scope:local
+gCameraAreaEntries$14155 = .bss:0x804630B8; // type:object size:0x1C000
