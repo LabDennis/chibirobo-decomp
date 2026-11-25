@@ -229,11 +229,12 @@ static inline bool HelpTextIsJapanese()
 	return gGame.mLanguage == 0;
 }
 
-static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, u32 ink)
+static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, f32 fade)
 {
-	DrawGsLineSegment(&gGame.mGs, NULL, x1, y0, 0, ink, x2, y1, 0, ink);
-	DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, 0xffffff00, x1, y1, 0, ink);
-	DrawGsLineSegment(&gGame.mGs, NULL, x2, y0, 0, ink, x3, y1, 0, 0xffffff00);
+	u32 ink = 0xffffff00 | (u32)(255.f * fade);
+	DrawGsLineSegment(&gGame.mGs, NULL, x1, y0, 0, ink, x2, y1, 0, 0xffffff00 | (u32)(255.f * fade));
+	DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, 0xffffff00, x1, y1, 0, 0xffffff00 | (u32)(255.f * fade));
+	DrawGsLineSegment(&gGame.mGs, NULL, x2, y0, 0, 0xffffff00 | (u32)(255.f * fade), x3, y1, 0, 0xffffff00);
 }
 
 static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rotZ = 0, f32 rotY = 0)
@@ -241,11 +242,12 @@ static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, 
 	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, y, z, w, h, 0, rotY, rotZ);
 }
 
-// NONMATCHING: ~80 %: the three .bss scratch arrays are folded into the
+// NONMATCHING: ~85 % after five attempts: the three .bss scratch arrays are folded into the
 // gPointParticlePool base register in retail (pool + 0x3F38/0x3F58/0x3F78) which no
 // source spelling produces, and the icon/label loops' register allocation and
-// scheduling run long; also open: retail reads mLastPointedItem for the cursor slot
-// and gWiiPointer inside the icon loop — their exact expressions are not recovered yet
+// scheduling run long. One icon color is still converted per corner instead of once;
+// retail also reads mLastPointedItem for the cursor slot and gWiiPointer inside the
+// icon loop — their exact expressions are not recovered yet
 /**
  * @note Address: 0x800EAA88
  * @note Size: 0x2040
@@ -373,9 +375,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band, 4);
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 4, 4);
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 8, 4);
-		u32 ink = 0xffffff00 | (u32)(255.f * fade);
-		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 - half, y1 - half, ink);
-		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 + half, y1 + half, ink);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 - half, y1 - half, fade);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 + half, y1 + half, fade);
 	}
 	CTexObj background = RingTexture(menu, -1);
 	for (s32 i = 0; i < count; ++i) {
@@ -444,8 +445,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 glow = fade * (.2f * std::sinf(PI * menu->mPhase) + .2f);
 			if (glow < 0)
 				glow = 0;
-			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
-			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
+			DrawGsQuad(&gGame.mGs, 0xffffff00 | (u32)(255.f * glow), 0xffffff00 | (u32)(255.f * glow), 0xffffff00 | (u32)(255.f * glow),
+			           0xffffff00 | (u32)(255.f * glow), x, y, 0, width * size, height * size, 0, 0, 0);
 			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		}
@@ -528,17 +529,18 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
 			f32 rotation  = -(DEG2RAD * (10.f * spin));
 
-			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation,
-			             -zero);
+			u32 tileColor = 0xffffff00 | (u32)(255.f * highlight);
+			DrawRingQuad(gGame.mGs, tile, tileColor, cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
 			f32 glyphSize  = tileSize * (.8f * scale);
 			f32 glyphWidth = (width / 24.0f) * glyphSize;
 			f32 padding    = glyphSize - glyphWidth;
 
+			u32 outlineColor = (u32)(255.f * highlight);
 			for (s32 j = 0; j < 4; ++j)
-				DrawRingQuad(gGame.mGs, glyph, (u32)(255.f * highlight), padding / 2.0f + (cx + gEquipmentOutlineX[j]),
+				DrawRingQuad(gGame.mGs, glyph, outlineColor, padding / 2.0f + (cx + gEquipmentOutlineX[j]),
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
-			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize,
-			             rotation, -zero);
+			u32 glyphColor = 0xfffffb00 | (u32)(255.f * highlight);
+			DrawRingQuad(gGame.mGs, glyph, glyphColor, padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
 		}
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	}
