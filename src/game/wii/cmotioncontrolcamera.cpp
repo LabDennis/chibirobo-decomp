@@ -64,18 +64,77 @@ inline CInterfaceCameraAction* CMotionControlCamera::GetAction(s32 type)
  */
 inline bool PlayerCanLook()
 {
-	bool result = false;
-	bool busy   = false;
-	if (!(PLAYER->mLift.mState != 7 && PLAYER->mLift.mState != 8 && PLAYER->mLift.mState != 9 && PLAYER->mLift.mState != 11
-	      && PLAYER->mLift.mState != 12 && PLAYER->mLift.mState != 13 && PLAYER->mLift.mState != 14 && PLAYER->mLift.mState != 15
-	      && PLAYER->mLift.mState != 16 && PLAYER->mLift.mState != 17 && PLAYER->mLift.mState != 18 && PLAYER->mLift.mState != 19)) {
-		busy = true;
+	WiiPlayerState* player = PLAYER;
+	s32 state              = player->mLift.mState;
+	bool hangIdle          = false;
+	bool jumpIdle          = false;
+	bool ladderIdle        = false;
+	bool ropeIdle          = false;
+	bool pushIdle          = false;
+	bool tumbleIdle        = false;
+	bool busy7Or8          = true;
+	bool busy9             = true;
+	bool busy11            = true;
+	bool busy12            = true;
+	bool busy13            = true;
+	bool busy14            = true;
+	bool busy15            = true;
+	bool busy16            = true;
+	bool busy17            = true;
+	bool busy18            = true;
+	bool busy19            = true;
+	if (state != 7 && state != 8) {
+		busy7Or8 = false;
 	}
-	if (!busy && PLAYER->mHang.mState == 0 && PLAYER->mJump.mState == 0 && PLAYER->mLadder.mState == 0 && PLAYER->mRope.mState == 0
-	    && PLAYER->mPush.mState == 0 && PLAYER->mTumble.mState == 0) {
-		result = true;
+	if (!busy7Or8 && state != 9) {
+		busy9 = false;
 	}
-	return result;
+	if (!busy9 && state != 11) {
+		busy11 = false;
+	}
+	if (!busy11 && state != 12) {
+		busy12 = false;
+	}
+	if (!busy12 && state != 13) {
+		busy13 = false;
+	}
+	if (!busy13 && state != 14) {
+		busy14 = false;
+	}
+	if (!busy14 && state != 15) {
+		busy15 = false;
+	}
+	if (!busy15 && state != 16) {
+		busy16 = false;
+	}
+	if (!busy16 && state != 17) {
+		busy17 = false;
+	}
+	if (!busy17 && state != 18) {
+		busy18 = false;
+	}
+	if (!busy18 && state != 19) {
+		busy19 = false;
+	}
+	if (!busy19 && player->mHang.mState == 0) {
+		hangIdle = true;
+	}
+	if (hangIdle && player->mJump.mState == 0) {
+		jumpIdle = true;
+	}
+	if (jumpIdle && player->mLadder.mState == 0) {
+		ladderIdle = true;
+	}
+	if (ladderIdle && player->mRope.mState == 0) {
+		ropeIdle = true;
+	}
+	if (ropeIdle && player->mPush.mState == 0) {
+		pushIdle = true;
+	}
+	if (pushIdle && player->mTumble.mState == 0) {
+		tumbleIdle = true;
+	}
+	return tumbleIdle;
 }
 
 /**
@@ -152,10 +211,10 @@ void CMotionControlCamera::fn_80167728()
 	_240          = -1;
 }
 
-// NONMATCHING: retail's Update is 0x16CC, ours 0x16C4. The behavior matches; the call list has one
+// NONMATCHING: PlayerCanLook has retail's cumulative busy/idle temporaries. The call list has one
 // extra ReadAction expansion (deferred-inline selection). Retail converts the wipe's 640 and 320 from
-// integers at run time; their source form is not recovered. The rest is register/frame allocation
-// throughout the body.
+// integers at run time; their source form is not recovered. The remaining difference is register and
+// inline-schedule allocation throughout the body.
 /**
  * @note Address: 0x8016778C
  * @note Size: 0x16CC
