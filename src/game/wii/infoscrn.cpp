@@ -971,7 +971,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			h->mDigitRoll[i]    = 0;
 			h->mDigitRolling[i] = 1;
 		}
-		if (!gGame.GetStatusFlags(0x200000000000ULL))
+		if (!gGame.GetStatusFlags(0x20000000000ULL))
 			h->mDigitRoll[i] += .08f;
 		if (h->mDigitRoll[i] > 1) {
 			h->mDigitRoll[i]    = 1;
