@@ -1429,7 +1429,8 @@ PlayerTurnState gPlayerTurnState;
 
 // NONMATCHING: the one-time pose calibration (the hang offset is read at anim 0x13's end frame), regular frame, turning, auto-approach,
 // attachments, events and effects are present; retail inlines ClosePlayerEquipmentRings, and
-// aggregate/register allocation still differs
+// aggregate/register allocation still differs. Named, explicit-copy and two SetTargetOffset forms did not reproduce
+// the three calibrated action offsets' CVec conversion/copy homes.
 void XObjChr::UpdateObject(u32 frames)
 {
 	static bool sPoseInitPending = true; // the name is ours
