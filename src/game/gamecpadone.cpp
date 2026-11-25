@@ -1,13 +1,4 @@
 #include "Version.h"
-#if defined(VERSION_R24J01)
-#include "game/wii/cpad.h"
-
-// the weak dtor copy the GameCube file spells out by hand; on Wii the emitted body
-// is the minimal one (retail 0x800C0EF0, no member/vtable work)
-CPadOne::~CPadOne()
-{
-}
-#else
 #include "game/cpad.h"
 
 void operator delete(void* object);
@@ -28,4 +19,3 @@ extern "C" CPadOne* __dt__7CPadOneFv(CPadOne* pad, s32 flags)
 	}
 	return pad;
 }
-#endif

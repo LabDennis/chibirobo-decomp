@@ -4365,5 +4365,8 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
 	return gPCDialogueByLanguage[gGame.mLanguage][index];
 }
 
+// NONMATCHING: retail emits Globals' weak members first (__RTTI__7Globals at .sdata +8, __vt__7Globals at
+// .data 0x153C8, __dt__7GlobalsFv first in the dtor run) and takes CoordInfo's dtor and vtable from outside;
+// ours emits Globals last and CoordInfo's here, so .sdata and extab differ. The data itself is retail's.
 Stage gStageResources;
 Globals gGlobalScriptResources;
