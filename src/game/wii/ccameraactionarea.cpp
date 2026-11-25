@@ -191,7 +191,10 @@ void CCameraActionArea::SetCamera(CCamera* camera)
  * @note Address: 0x801546F4
  * @note Size: 0xEB8
  */
-// NONMATCHING: reconstructed against the Wii disassembly; register allocation and some pointer-state stores differ
+// NONMATCHING: Wii calls, pad bits, field offsets and vector state are checked. Retail has the
+// CPad construction, transformed-eye copy, CVec direction and pointer snapshots. Its 0x1B0 frame
+// still exceeds ours by 0x70, mainly from the pointer input copies and repeat-state scheduling.
+// Retail also rounds y and z with frsp before the _2D4 store (0x80154AF0); the source of that is unknown.
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.GetStatusFlags(0xC00)) {
@@ -200,6 +203,7 @@ void CCameraActionArea::Update(u32 step)
 		mPadControlEnabled = TRUE;
 	}
 	if (mTarget != NULL && mTarget->HasModel()) {
+		CPad pad(0);
 		Mtx mtx;
 		PSMTXCopy(mTarget->GetWorldMtx(), mtx);
 		CVec flatEye(mEye);
@@ -207,6 +211,7 @@ void CCameraActionArea::Update(u32 step)
 		f32 distance = PSVECDistance(&flatEye, mTarget->GetPos());
 		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
 		PSMTXMultVec(mtx, &localEye, &localEye);
+		CVec transformedEye(localEye);
 		CVec pos = *mTarget->GetPos();
 	}
 
@@ -239,7 +244,7 @@ void CCameraActionArea::Update(u32 step)
 		_2D4     = zero;
 	}
 
-	Vec input = { 0.0f, 0.0f, 0.0f };
+	CVec input(0.0f, 0.0f, 0.0f);
 	if (gWiiPointer.mPointerValid) {
 		Vec pointer;
 		pointer.x = 2.0f * (gWiiPointer.mPointer.x / gPointerScreenWidth) - 1.0f;
@@ -251,11 +256,11 @@ void CCameraActionArea::Update(u32 step)
 		input = _2D4;
 	}
 
-	f32 direction = 0.0f;
+	CVec direction(0.0f, 0.0f, 0.0f);
 	if ((gWiiPointer.mButton & 2) && padControl) {
-		direction = 1.0f;
+		direction.y = 1.0f;
 	} else if ((gWiiPointer.mButton & 1) && padControl) {
-		direction = -1.0f;
+		direction.y = -1.0f;
 	}
 	if (_2D0) {
 		if (gWiiPointer.mPointerValid) {
@@ -270,7 +275,7 @@ void CCameraActionArea::Update(u32 step)
 		}
 	} else {
 		_2F8 = 0;
-		_2C4 = direction;
+		_2C4 = direction.y;
 	}
 
 	if (_2C4 > 0.0f) {
@@ -617,8 +622,8 @@ extern "C" void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const
 }
 
 // the active area's entries nearest the view's bearing at or below it ([0]) and the one before that ([1])
-// NONMATCHING: retail guards the loop with a zero-count test and hoists the wrap constants behind it,
-// which the GameCube build of the same loop does not do either (89.9 %)
+// NONMATCHING: the zero-count guard matches. This build schedules the loop counter's li after the wrap
+// constants, retail before the group address; the remaining symbol differences are the incomplete literal pool.
 extern "C" void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices)
 {
 	f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
@@ -626,12 +631,14 @@ extern "C" void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s3
 	s32 index;
 	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 	CamAreaEntry* entry = slot->mEntries;
-	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
-		f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
-		f32 turn   = WrapAngle(yaw - facing);
-		if (turn <= best) {
-			best  = turn;
-			index = i;
+	if (slot->mEntryCount > 0) {
+		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
+			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
+			f32 turn   = WrapAngle(yaw - facing);
+			if (turn <= best) {
+				best  = turn;
+				index = i;
+			}
 		}
 	}
 	s32 prev = index - 1;

@@ -924,8 +924,8 @@ public:
 	BOOL mDragging;           // _A8, the drag button is held
 	f32 mDragDamping;         // _AC
 	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
-	CVec mDragStart;          // _C0, the pointer position the drag started at
-	CVec mDragLast;           // _D0, the pointer position the last update saw
+	CVec mDragLast;           // _C0, the pointer position the last update saw
+	CVec mDragStart;          // _D0, the pointer position the drag started at
 	CTexObj mEdgeTex;         // _E0, the global TPL's image 264 that the edge quads draw
 	ScrollEdgeQuad mQuads[4]; // _1E4
 	CScrnWipeTile mWipe;      // _284, its vptr lands at _2B4, behind CScrnColor's color data

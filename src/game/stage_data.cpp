@@ -1,20 +1,8 @@
 #include "Version.h"
-#if defined(VERSION_R24J01)
-#include "Dolphin/GX/GXFrameBuffer.h"
-#include "game/wii/cgame.h"
-#include "game/cfile.h"
-extern "C" {
-char* FormatToStaticBuffer(const char* format, ...);
-s32 _prolog(s32 function, s32 count, s32* args);
-}
-// the game's own aligned array new: MEMAllocFromExpHeapEx on the MEM2 game heap
-void* operator new[](size_t size, int align);
-#else
 #include "game/cgame.h"
 #include "game/ut.h"
 #include "Dolphin/GX/GXTypes.h"
 #include <stdio.h>
-#endif
 #include "game/stage.h"
 #include "game/globals.h"
 #include <string.h>
@@ -37,7 +25,6 @@ struct StageFileHeader {
 };
 STATIC_ASSERT(sizeof(StageFileHeader) == 0x34);
 
-#if !defined(VERSION_R24J01)
 extern "C" {
 // HSD_VIInfo, its header needs the hsd include path
 extern u8 HSD_VIData[];
@@ -3426,167 +3413,6 @@ extern "C" XObjSource* GetObjectSources()
 	return gObjectSources;
 }
 
-#else
-// the Wii's table also names each stage's sound bank and the bank's first sound id
-StageDesc stageTable[] = {
-	{ "stage00", "stage00", NULL, -1, 0, 5 },
-	{ "stage01", "stage01", "sfx_kitchen.ssm", 0x245, 1, 5 },
-	{ "stage02", "stage02", "sfx_stage02.ssm", 0x22d, 2, 5 },
-	{ "stage03", "stage03", "sfx_souko.ssm", 0x24d, 3, 5 },
-	{ "stage04", "stage04", "sfx_jennyroom.ssm", 0x23e, 4, 5 },
-	{ "stage05", "stage05", "sfx_stage05.ssm", 0x252, 5, 4 },
-	{ "stage06", "stage06", "sfx_papamama.ssm", 0x237, 6, 5 },
-	{ "stage07", "stage07", "sfx_stage07.ssm", 0x233, 7, 5 },
-	{ "stage08", "stage08", NULL, -1, 8, 5 },
-	{ "stage09", "stage09", "sfx_uraniwa.ssm", 0x249, 9, 5 },
-	{ "stage10", "stage10", NULL, -1, 10, 1 },
-	{ "stage11", "stage11", "sfx_pipe.ssm", 0x259, 11, 5 },
-	{ "stage12", "stage12", NULL, -1, 12, 5 },
-	{ "stage13", "stage13", "sfx_manual.ssm", -1, 13, 5 },
-	{ "stage14", "stage14", "sfx_stage07.ssm", -1, 14, 5 },
-	{ "stage15", "stage15", NULL, -1, 15, 5 },
-	{ "stage16", "stage16", "sfx_ufo.ssm", 0x25f, 16, 5 },
-	{ "stage17", "stage17", NULL, -1, 17, 5 },
-	{ "stage18", "stage18", "sfx_ufo.ssm", 0x237, 18, 5 },
-	{ "stage19", "stage19", "sfx_stage07.ssm", -1, 19, 5 },
-	{ "stage20", "stage20", NULL, -1, 20, 5 },
-	{ "stage21", "stage21", NULL, -1, 21, 5 },
-	{ "stage22", "stage22", "sfx_martial.ssm", -1, 22, 5 },
-	{ "stage23", "stage23", NULL, -1, 23, 5 },
-	{ "stage24", "stage24", NULL, -1, 24, 5 },
-	{ "stage25", "stage25", NULL, -1, 25, 5 },
-	{ "stage26", "stage26", NULL, -1, 26, 5 },
-	{ "stage27", "stage27", NULL, -1, 27, 5 },
-	{ "stage28", "stage07", NULL, -1, 28, 5 },
-	{ "stage29", "stage07", NULL, -1, 29, 5 },
-	{ NULL, NULL, NULL, -1, -1, 0 },
-	{ "shun", "shun", NULL, -1, -1, 5 },
-	{ "hori", "hori", "sfx_manual.ssm", -1, -1, 5 },
-	{ "ahk", "ahk", NULL, -1, -1, 5 },
-	{ "junko", "junko", NULL, -1, -1, 5 },
-	{ "sayoko", "sayoko", NULL, -1, -1, 5 },
-	{ "mory", "mory", NULL, -1, -1, 5 },
-	{ "ryosuke", "ryosuke", NULL, -1, -1, 5 },
-	{ "takanabe", "takanabe", NULL, -1, -1, 5 },
-	{ "mariko", "mariko", NULL, -1, -1, 5 },
-	{ NULL, NULL, NULL, 0, 0, 0 },
-};
-
-// the Wii keeps the object, spawn and placement tables in its own data; their
-// accessors are the same as the GameCube file's
-extern StagePlacement gStageObjectPlacements[];
-extern StagePlacement spawnTable[];
-extern UnkObjData objTable[];
-extern UnkObjData objTableEx[];
-
-// placement fixup lists: id -1 ends each table
-struct PlacementChain {
-	u8 _00[8];
-	u32 mId;
-	u8 _0C[4];
-	s32* mChain;
-	s32 mIndex;
-};
-
-extern PlacementChain lbl_802F0138[];
-extern PlacementChain lbl_802FDB30[];
-
-/**
- * @note Address: 0x80092EC8
- * @note Size: 0xBC
- */
-extern "C" void fn_80092EC8(void)
-{
-	PlacementChain* entry = lbl_802F0138;
-	for (;;) {
-		if (entry->mId == -1)
-			break;
-		entry->mIndex = 0;
-		if (entry->mChain != NULL)
-			while (entry->mChain[entry->mIndex] != 0)
-				entry->mIndex++;
-		entry++;
-	}
-	entry = lbl_802FDB30;
-	for (;;) {
-		if (entry->mId == -1)
-			break;
-		entry->mIndex = 0;
-		if (entry->mChain != NULL)
-			while (entry->mChain[entry->mIndex] != 0)
-				entry->mIndex++;
-		entry++;
-	}
-}
-
-/**
- * @note Address: 0x80092F84
- * @note Size: 0x3C
- */
-extern "C" UnkObjData* GetObjData(const CoordInfo* info)
-{
-	s32 index = info->mPlacement->mObjectId;
-	if (index >= 10000)
-		return &objTableEx[index - 10000];
-	return &objTable[index];
-}
-
-/**
- * @note Address: 0x80092FC0
- * @note Size: 0x14
- */
-extern "C" StagePlacement* GetSpawnData(s32 index)
-{
-	return &spawnTable[index];
-}
-
-/**
- * @note Address: 0x80092FD4
- * @note Size: 0x14
- */
-extern "C" StagePlacement* GetStageObjectPlacementByIndex(s32 index)
-{
-	return &gStageObjectPlacements[index];
-}
-
-extern s32 gItemIconTextureIndices[];
-
-/**
- * @note Address: 0x80092FE8
- * @note Size: 0x24
- */
-extern "C" s32 GetItemIconTextureIndex(s32 index)
-{
-	if (index < 0)
-		return -1;
-	return gItemIconTextureIndices[index];
-}
-
-// the object archives are ResourceFile slots from a shared pool, claimed as objects spawn
-ResourceFile* gObjResourceFiles;
-s32 gObjResourceFileCount;
-
-/**
- * @note Address: 0x8009300C
- * @note Size: 0x12C
- */
-void AttrInfo::Init(CoordInfo* info)
-{
-	UnkObjData* objData       = GetObjData(info);
-	StagePlacement* placement = info->mPlacement;
-	ResourceFile* files       = gObjResourceFiles;
-	mObjData                  = objData;
-	mPlacement                = placement;
-	if (files == NULL)
-		gObjResourceFiles = new (4) ResourceFile[0x530];
-	if ((mObjData ? mObjData->mSource : NULL) == NULL)
-		return;
-	if ((mObjData ? mObjData->mSource : NULL) ? mObjData->mSource->mArchive : NULL)
-		return;
-	(mObjData ? mObjData->mSource : NULL)->mArchive = &gObjResourceFiles[gObjResourceFileCount++];
-}
-#endif
-
 /**
  * @note Address: 0x8006EE24
  * @note Size: 0x514
@@ -3601,9 +3427,6 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mDataPath,
 		       FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], stageTable[index].fileName));
 #endif
-#if defined(VERSION_R24J01)
-		stage->mModulePath[0] = 0;
-#else
 #if defined(VERSION_PAL)
 		// europe's table has the module's name apart from the data file's
 		StageDesc* desc = &stageTable[index];
@@ -3613,7 +3436,6 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
 			stage->mModulePath[0] = 0; // an empty path skips the module load below
-#endif
 		++stage->mState;
 	}
 	// fall through, every step that's done moves on in the same frame
@@ -3668,29 +3490,11 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 	case 3:
 		++stage->mState;
 	case 4: // the stage's sound bank
-#if defined(VERSION_R24J01)
-		if (stageTable[index].soundBank) {
-			LoadWiiSoundBankByName(&gGame.mSound, stageTable[index].soundBank);
-			++stage->mState;
-		} else {
-			stage->mState += 2;
-		}
-		break;
-	case 5:
-		// The Wii sound system clears this flag when the bank finishes loading.
-		if (!gGame.mSound.mLoadPending)
-			++stage->mState;
-#else
 		if (LoadGameSoundBank(&gGame.mSound, index))
 			++stage->mState;
-#endif
 		break;
 	}
-#if defined(VERSION_R24J01)
-	return stage->mState > 5;
-#else
 	return stage->mState > 4;
-#endif
 }
 
 /**
@@ -3699,22 +3503,10 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
  */
 extern "C" s32 CallStageModule(s32 function, s32 count, s32* args)
 {
-#if defined(VERSION_R24J01)
-	return _prolog(function, count, args);
-#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		return gStageResources.CallModule(function, count, args);
 	return -1;
-#endif
 }
-
-#if defined(VERSION_R24J01)
-// Three Wii callers query this switch. The retail implementation always returns zero.
-extern "C" s32 fn_800929EC()
-{
-	return 0;
-}
-#endif
 
 /**
  * @note Address: 0x8006F390
@@ -3859,14 +3651,8 @@ extern "C" BOOL IsStageDataLoaded()
 extern "C" void ApplyStageClearColor()
 {
 	// the environment record's first word is the VI background colour
-#if defined(VERSION_R24J01)
-	// the by-value GXColor argument materializes as byte copies from the unaligned
-	// record; GC/3.0a5.2 emits the same lbz/stb sequence retail has at 0x80092858
-	GXSetCopyClear(*(GXColor*)gStageResources.mEnvironment.mData, 0xFFFFFF);
-#else
 	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
 	*(GXColor*)(HSD_VIData + 0x48) = color; // current.vi.bg_color
-#endif
 	gStageResources.mModule.Print();
 }
 
@@ -3876,12 +3662,8 @@ extern "C" void ApplyStageClearColor()
  */
 extern "C" void UnloadStageDataAndModule()
 {
-#if defined(VERSION_R24J01)
-	_prolog(6, 0, NULL);
-#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		gStageResources.CallModule(6, 0, NULL); // slot 6 runs only before the module unloads
-#endif
 	gStageResources.mModule.Unload();
 	CFile* file = &gStageResources.mDataFile;
 	file->Close();
@@ -3994,18 +3776,3 @@ extern "C" s32 GetStageNum()
 {
 	return StageCount();
 }
-
-#if defined(VERSION_R24J01)
-extern "C" const char* GetStageNameOrFileName(s32 index)
-{
-	const char* name = GetStageName(index);
-	if (name == NULL)
-		name = GetStageFileName(index);
-	return name;
-}
-
-extern "C" s32 GetStageFirstSoundId(s32 index)
-{
-	return stageTable[StageIndex(index)].firstSoundId;
-}
-#endif

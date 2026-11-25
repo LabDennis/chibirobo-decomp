@@ -5501,13 +5501,15 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 	}
 }
 
-// NONMATCHING: the packed CColor construction and register lifetimes differ; colors, blending and the frame call match
+// NONMATCHING: all three CColors and the final Set are present; retail reevaluates each packed color expression
+// when Set assigns a changed component and keeps the old components in registers. Colors and frame arguments match.
 extern "C" void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 fileAlpha, f32, f32)
 {
 	if (index < 0) {
 		return;
 	}
 	CTexObj frameTexture;
+	CColor color;
 	u32 whiteColor = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	CColor white;
 	white.Set((s32)(whiteColor >> 24), (s32)((whiteColor >> 16) & 0xFF), (s32)((whiteColor >> 8) & 0xFF), (s32)(whiteColor & 0xFF));
@@ -5531,7 +5533,7 @@ extern "C" void fn_8007D734(s32 index, u8 selected, u8 newest, f32 x, f32 y, f32
 	} else {
 		border = (u32)(255.0f * alpha) | 0xFFFFFF00;
 	}
-	CColor color(fn_8016A96C(&fill.r, &white.r, fileAlpha));
+	color.Set(fn_8016A96C(&fill.r, &white.r, fileAlpha));
 	DrawTexturedWindowFrame(*(u32*)&color.r, border, x, y - height / 2.0f, width - 56.0f, height, alpha, 1.0f, 1.0f);
 }
 
@@ -8116,6 +8118,7 @@ void MenuStatus::State2(u32)
 		mPanes[49].mEnabled = FALSE;
 		mPanes[50].mEnabled = FALSE;
 		if (count > 4) {
+			CountMenuItems();
 			mPanes[49].mEnabled = sStatusItemTable.mPage > 0;
 			mPanes[50].mEnabled = sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1;
 		}

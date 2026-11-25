@@ -18,6 +18,7 @@
 #include "game/evtqueue.h"
 #include "game/coordinfo.h"
 #include "game/stagedata.h"
+#include "arithmetic.h"
 #include "game/inventory.h"
 #include "game/attachmentvalues.h"
 #include "game/savedata.h"
@@ -2443,7 +2444,8 @@ static inline void ResumeAllSounds(XSound* sound, f32 fade)
  * @note Address: 0x8009F3B8
  * @note Size: 0x428
  */
-// NONMATCHING: retail tests the id against 0xF7 unsigned (cmplwi)
+// NONMATCHING: the unsigned 0xF7 test matches; the remaining differences are this unit's incomplete
+// string/literal pools and the final OSPanic's argument setup schedule.
 s32 CEvt::_cmd_SFX(u8, s32)
 {
 	s32 sfx  = CEvt_Evaluate(this);
@@ -2459,7 +2461,7 @@ s32 CEvt::_cmd_SFX(u8, s32)
 		break;
 	case EVT_SFX_PLAY: {
 		s32 state;
-		if (sfx == 0xF7) {
+		if (sfx == 0xF7U) {
 			state                              = 3;
 			gGame.mSound.mArchivePlayer.mReady = state;
 		} else {
@@ -3086,7 +3088,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		case 5: {
 			f32 x  = pad->mStick.x;
 			f32 y  = pad->mStick.y;
-			result = 100.0f * nw4r::math::FSqrt(x * x + y * y);
+			result = 100.0f * FSqrt(x * x + y * y);
 			break;
 		}
 		case 6: {

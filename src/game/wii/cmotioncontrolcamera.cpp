@@ -154,8 +154,9 @@ void CMotionControlCamera::fn_80167728()
 
 // NONMATCHING: retail's Update is 0x16CC, ours 0x16C4. The behavior matches; the call list has one
 // extra ReadAction expansion (deferred-inline selection). Retail converts the wipe's 640 and 320 from
-// integers at run time; their source form is not recovered. The rest is register/frame allocation
-// throughout the body.
+// integers at run time; their source form is not recovered. Retail's PlayerCanLook keeps one bool
+// temporary per lift-state test (0x80168418); a plain `||` chain does not produce them and named
+// per-test bools would copy compiler temporaries. The rest is register/frame allocation throughout the body.
 /**
  * @note Address: 0x8016778C
  * @note Size: 0x16CC

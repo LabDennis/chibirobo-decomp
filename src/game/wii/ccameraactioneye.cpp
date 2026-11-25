@@ -145,7 +145,8 @@ void CCameraActionEye::Reset()
  */
 // NONMATCHING: the direct call targets match; retail uses a 0x160 frame and saves r21, ours 0x130 and r27.
 // PlayerCanLook still loses retail's materialized bool temporaries; BOOL types and direct busy initialization
-// were flat or worse. The remaining control flow, constants and pad words are checked.
+// were flat or worse, and a plain bool `busy = state == 7 || ...` chain scores 67.6. Spelling each flag out
+// as a named bool reaches 88 but copies compiler temporaries. Control flow, constants and pad words are checked.
 void CCameraActionEye::Update(u32 step)
 {
 	CPad pad(0);
@@ -388,6 +389,7 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 				}
 			}
 		}
+		return 0.7853982f * sPrev + 0.05235988f;
 	} else {
 		f32 pointerY = gWiiPointer.mPointer.y;
 		if (pointerY < bandLow) {
@@ -399,8 +401,8 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 			mVec10C.y += d;
 			sPrev = fn_8016A81C(sPrev + -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2])), -1.0f, 1.0f);
 		}
+		return 0.7853982f * sPrev + 0.05235988f;
 	}
-	return 0.7853982f * sPrev + 0.05235988f;
 }
 
 /**
