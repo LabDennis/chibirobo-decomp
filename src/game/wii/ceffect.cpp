@@ -295,7 +295,7 @@ bool EffectSortFunc(const nw4r::ef::Effect* op1, const nw4r::ef::Effect* op2)
 	return !res;
 }
 
-// NONMATCHING: HandleBase in-place construction vs temporary copy assignment (92.30%)
+// NONMATCHING: placement-new's null check and the later ResEmitter/Desc stack-slot order differ
 BOOL CreateEffectInstance(EffectInstance* inst, u32 emitterIdx, u32 groupID)
 {
 	nw4r::ef::EffectSystem* sys = nw4r::ef::EffectSystem::GetInstance();
@@ -306,13 +306,14 @@ BOOL CreateEffectInstance(EffectInstance* inst, u32 emitterIdx, u32 groupID)
 	nw4r::ef::ResEmitter resEmitter = res->GetEmitterIndexOf(emitterIdx, NULL);
 	nw4r::ef::Effect* effect        = sys->CreateEffect(resEmitter.ptr(), groupID, 0);
 	if (effect != NULL) {
-		inst->handle            = nw4r::ef::HandleBase(effect);
+		new (&inst->handle) nw4r::ef::HandleBase(effect);
 		inst->_08               = groupID;
-		Vec zero                = { 0.0f, 0.0f, 0.0f };
-		inst->pos               = zero;
-		inst->rot               = zero;
-		Vec one                 = { 1.0f, 1.0f, 1.0f };
-		inst->scale             = one;
+		Vec pos                 = { 0.0f, 0.0f, 0.0f };
+		inst->pos               = pos;
+		Vec rot                 = { 0.0f, 0.0f, 0.0f };
+		inst->rot               = rot;
+		Vec scale               = { 1.0f, 1.0f, 1.0f };
+		inst->scale             = scale;
 		inst->mtx               = NULL;
 		nw4r::ef::ResEmitter re = res->GetEmitterIndexOf(emitterIdx, NULL);
 		if (re.IsValid()) {
