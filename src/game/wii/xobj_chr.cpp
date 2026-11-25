@@ -1428,9 +1428,9 @@ s32 GetSelectedFloorIndex(const XObj* object)
 PlayerTurnState gPlayerTurnState;
 
 // NONMATCHING: the one-time pose calibration (the hang offset is read at anim 0x13's end frame), regular frame, turning, auto-approach,
-// attachments, events and effects are present; retail inlines ClosePlayerEquipmentRings, and
-// aggregate/register allocation still differs. Named, explicit-copy and two SetTargetOffset forms did not reproduce
-// the three calibrated action offsets' CVec conversion/copy homes.
+// attachments, events and effects are present; retail open-codes the result-0 ClosePlayerEquipmentRings
+// sequence here; aggregate/register allocation still differs. Named, explicit-copy and
+// two SetTargetOffset forms did not reproduce the three calibrated action offsets' CVec conversion/copy homes.
 void XObjChr::UpdateObject(u32 frames)
 {
 	static bool sPoseInitPending = true; // the name is ours
@@ -1469,8 +1469,14 @@ void XObjChr::UpdateObject(u32 frames)
 		*pad = gWiiPads[0];
 	else
 		pad->Clear();
-	if (chr->mMenu.IsOpening() && chr->mTumble.mState)
-		ClosePlayerEquipmentRings(&chr->mMenu, 0);
+	if (chr->mMenu.IsOpening() && chr->mTumble.mState) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		if (chr->mMenu.mAtc.mMenuType != 3) {
+			chr->mMenu.mSel = chr->mMenu.mPrevSel;
+		}
+		chr->mMenu.mAtc.Select(0);
+		chr->mMenu.mDrs.Select(0);
+	}
 	chr->mStick[1] = chr->mStick[0];
 	chr->mStick[3] = chr->mStick[2];
 	chr->mStick[0] = gGame.IsRunning() && !gGame.mEvt.mData.mScript ? GetControlStickMagnitude(pad) : 0.0f;
