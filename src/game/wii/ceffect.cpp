@@ -65,7 +65,7 @@ BOOL CEffectSystem::Load(const char* name, s32 idx)
 	return TRUE;
 }
 
-// NONMATCHING: case fallthrough and CFile::mBuffer offset scheduling (82.38%)
+// NONMATCHING: the case 2/3 resource accesses now match; case 1's file-pointer form and register allocation differ
 BOOL CEffectSystem::UpdateLoad(s32 idx)
 {
 	char path[0x80];
@@ -86,23 +86,23 @@ BOOL CEffectSystem::UpdateLoad(s32 idx)
 		res->mState++;
 	}
 	case 2: {
-		sprintf(path, "%s.breft", res->mName);
-		if (!res->mFiles[1].ReadEx(path, 0, 0)) {
+		sprintf(path, "%s.breft", mResources[idx].mName);
+		if (!mResources[idx].mFiles[1].ReadEx(path, 0, 0)) {
 			break;
 		}
 		nw4r::ef::Resource* efRes = nw4r::ef::Resource::GetInstance();
-		res->mTexProj             = efRes->AddTexture(static_cast<u8*>(res->mFiles[1].mBuffer));
-		DCFlushRange(res->mFiles[1].mBuffer, res->mFiles[1].mSize);
-		res->mState++;
+		mResources[idx].mTexProj  = efRes->AddTexture(static_cast<u8*>(mResources[idx].mFiles[1].mBuffer));
+		DCFlushRange(mResources[idx].mFiles[1].mBuffer, mResources[idx].mFiles[1].mSize);
+		mResources[idx].mState++;
 	}
 	case 3: {
 		nw4r::ef::Resource* efRes = nw4r::ef::Resource::GetInstance();
 		efRes->RelocateCommand();
 		GXInvalidateVtxCache();
 		GXInvalidateTexAll();
-		res->mNumEmitter = efRes->NumEmitter(NULL);
-		sNumEmitter[idx] = res->mNumEmitter;
-		res->mState++;
+		mResources[idx].mNumEmitter = efRes->NumEmitter(NULL);
+		sNumEmitter[idx]            = mResources[idx].mNumEmitter;
+		mResources[idx].mState++;
 		break;
 	}
 	}
