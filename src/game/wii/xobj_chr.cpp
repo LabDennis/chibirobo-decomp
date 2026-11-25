@@ -1785,11 +1785,11 @@ void XObjChr::UpdateObject(u32 frames)
 	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift)) {
 		const Vec& rgb1 = chr->mAnmQueue.mColorStep[0].mValue;
 		u32 color1      = ((u32)rgb1.x << 24) | ((u32)rgb1.y << 16) | ((u32)rgb1.z << 8);
-		chr->mLift.mTarget->mColor1.Set((color1 >> 24) & 0xFF, (color1 >> 16) & 0xFF, (color1 >> 8) & 0xFF, 0);
+		chr->mLift.mTarget->mColor1.Set((color1 >> 24) & 0xFF, (color1 >> 16) & 0xFF, (color1 >> 8) & 0xFF, (s32)(color1 & 0xFF));
 		chr->mLift.mTarget->mColorsChanged = TRUE;
 		const Vec& rgb0                    = chr->mAnmQueue.mColorStep[1].mValue;
 		u32 color0                         = ((u32)rgb0.x << 24) | ((u32)rgb0.y << 16) | ((u32)rgb0.z << 8);
-		chr->mLift.mTarget->mColor0.Set((color0 >> 24) & 0xFF, (color0 >> 16) & 0xFF, (color0 >> 8) & 0xFF, 0);
+		chr->mLift.mTarget->mColor0.Set((color0 >> 24) & 0xFF, (color0 >> 16) & 0xFF, (color0 >> 8) & 0xFF, (s32)(color0 & 0xFF));
 		chr->mLift.mTarget->mColorsChanged = TRUE;
 	}
 	if (__fpclassifyf(chr->mWalkHeading) != FP_NAN) {
