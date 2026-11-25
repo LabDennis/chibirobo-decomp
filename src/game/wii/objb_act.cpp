@@ -1794,6 +1794,8 @@ void fn_800FCD1C(XActLift* act)
  * @note Address: 0x800FCB14
  * @note Size: 0xB8
  */
+// NONMATCHING: five return-type/lifetime forms tried; retail loads the placement and CVec vtable
+// before the prologue, while this build schedules them after it; the six conversions otherwise match
 CVec GetStagePlacementScale(const XObj* obj)
 {
 	return CVec(GetPlacementScale(obj->mCoord.mPlacement));
@@ -3399,6 +3401,8 @@ void UpdateHeldObject(XActLift* act, u32 frames)
  * @note Address: 0x800FCBCC
  * @note Size: 0x150
  */
+// NONMATCHING: five type/order forms tried; the named pool keeps all 14 callers out of line.
+// Only the pre-prologue pool-load schedule and the joint-name pool label still differ
 Vec GetLiftTargetContactOffset(const XActLift* act, XObj* target)
 {
 	// a plug (24) is held by its end joint
