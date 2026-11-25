@@ -805,44 +805,44 @@ static void CheckQuads(CCameraActionScroll2* camera, u32 step, BOOL dragging, Ve
 	const s32 sEdgeOrder0[4] = { 3, 2, 0, 1 };
 	const s32 sEdgeOrder1[4] = { 1, 0, 3, 2 };
 	const s32 sEdgeOrder2[4] = { 0, 1, 2, 3 };
-	if (!dragging) {
+	if (dragging) {
+		CVec dir;
+		dir.x = camera->mOffset.x;
+		dir.y = camera->mOffset.y;
+		dir.z = camera->mOffset.z;
+		PSVECNormalize(&dir, &dir);
+		const s32* order;
+		if (dir.z == 0.0f && dir.x < 0.0f) {
+			order = sEdgeOrder0;
+		} else if (dir.x == 0.0f && dir.z < 0.0f) {
+			order = sEdgeOrder1;
+		} else if (dir.x == 0.0f && dir.z > 0.0f) {
+			order = sEdgeOrder2;
+		} else {
+			order = sEdgeOrder0;
+		}
+		for (s32 i = 0; i < 4; i++) {
+			camera->mQuads[i].mActive = TRUE;
+			camera->mQuads[i].mUnk24  = TRUE;
+		}
+		CVec center = camera->mCenter;
+		if (center.x <= camera->mMinX + 0.5f) {
+			camera->mQuads[order[0]].mUnk24 = FALSE;
+		}
+		if (center.x >= camera->mMaxX - 0.5f) {
+			camera->mQuads[order[1]].mUnk24 = FALSE;
+		}
+		if (center.z <= camera->mMinZ + 0.5f) {
+			camera->mQuads[order[2]].mUnk24 = FALSE;
+		}
+		if (center.z >= camera->mMaxZ - 0.5f) {
+			camera->mQuads[order[3]].mUnk24 = FALSE;
+		}
+	} else {
 		for (s32 i = 0; i < 4; i++) {
 			camera->mQuads[i].mActive = TRUE;
 			camera->mQuads[i].mUnk24  = FALSE;
 		}
-		return;
-	}
-	CVec dir;
-	dir.x = camera->mOffset.x;
-	dir.y = camera->mOffset.y;
-	dir.z = camera->mOffset.z;
-	PSVECNormalize(&dir, &dir);
-	const s32* order;
-	if (dir.z == 0.0f && dir.x < 0.0f) {
-		order = sEdgeOrder0;
-	} else if (dir.x == 0.0f && dir.z < 0.0f) {
-		order = sEdgeOrder1;
-	} else if (dir.x == 0.0f && dir.z > 0.0f) {
-		order = sEdgeOrder2;
-	} else {
-		order = sEdgeOrder0;
-	}
-	for (s32 i = 0; i < 4; i++) {
-		camera->mQuads[i].mActive = TRUE;
-		camera->mQuads[i].mUnk24  = TRUE;
-	}
-	CVec center = camera->mCenter;
-	if (center.x <= camera->mMinX + 0.5f) {
-		camera->mQuads[order[0]].mUnk24 = FALSE;
-	}
-	if (center.x >= camera->mMaxX - 0.5f) {
-		camera->mQuads[order[1]].mUnk24 = FALSE;
-	}
-	if (center.z <= camera->mMinZ + 0.5f) {
-		camera->mQuads[order[2]].mUnk24 = FALSE;
-	}
-	if (center.z >= camera->mMaxZ - 0.5f) {
-		camera->mQuads[order[3]].mUnk24 = FALSE;
 	}
 }
 
