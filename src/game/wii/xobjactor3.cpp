@@ -1707,10 +1707,13 @@ static inline void ResetBossAttachment(XObjActor3* obj)
 	SetSpiderBossAttachmentAnim(obj, 0);
 }
 
+// NONMATCHING: the case-2 heading rounding and x/y stores schedule differently around sin;
+// the shared position, joint return buffers, calls and animation-frame order match.
 void XObjActor3::Kind16(u32 frames)
 {
 	Vec playerPos = *gGame.GetPlayer()->GetPos();
-	XObj* boss    = (XObj*)gGame.mXObjs.mPools[19].mObjects;
+	Vec pos;
+	XObj* boss = (XObj*)gGame.mXObjs.mPools[19].mObjects;
 	if (mActorFlags.Check(0x10)) {
 		return;
 	}
@@ -1721,13 +1724,13 @@ void XObjActor3::Kind16(u32 frames)
 		SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 		break;
 	case 1: {
-		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
 		mMoveTranslate.Set(pos);
 		mHeading = boss->GetRotY();
 		break;
 	}
 	case 2: {
-		Vec pos          = boss->GetJointPos(boss->FindResNode("cyl3"));
+		pos              = boss->GetJointPos(boss->FindResNode("cyl3"));
 		mHeading         = boss->GetRotY();
 		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
 		mMoveTranslate.y = pos.y;
@@ -1735,11 +1738,11 @@ void XObjActor3::Kind16(u32 frames)
 		break;
 	}
 	case 4: {
-		Vec pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
+		pos = boss->GetJointPos(boss->FindResNode("obj24_3"));
 		mMoveTranslate.Set(pos);
-		mHeading = boss->GetRotY();
-		f32 end  = GetAnimEndFrame();
-		if (end - frames <= GetAnimFrame()) {
+		mHeading    = boss->GetRotY();
+		f32 current = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= current) {
 			ResetBossAttachment(this);
 			Release();
 		}
