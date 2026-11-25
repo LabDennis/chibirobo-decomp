@@ -257,8 +257,8 @@ void CCameraActionScroll2::Reset()
 	mDragVec.x   = 0.0f;
 	mDragVec.y   = 0.0f;
 	mDragVec.z   = 0.0f;
-	mDragStart.Set(0.0f, 0.0f, 0.0f);
 	mDragLast.Set(0.0f, 0.0f, 0.0f);
+	mDragStart.Set(0.0f, 0.0f, 0.0f);
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[264], 0);
 	mEdgeTex = gGame.mTpl.mTex;
 	PSMTXTrans(mEdgeTex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
@@ -323,10 +323,10 @@ void CCameraActionScroll2::Update(u32 step)
 			}
 		}
 		if (pressed) {
-			Vec dragStart = gWiiPointer.mPointer;
-			mDragStart.Set(dragStart);
 			Vec dragLast = gWiiPointer.mPointer;
 			mDragLast.Set(dragLast);
+			Vec dragStart = gWiiPointer.mPointer;
+			mDragStart.Set(dragStart);
 			sDragImpulse.x = 0.0f;
 			sDragImpulse.y = 0.0f;
 			sDragImpulse.z = 0.0f;
@@ -338,10 +338,10 @@ void CCameraActionScroll2::Update(u32 step)
 		if (mDragging) {
 			mDragDamping   = sDragDampingHeld;
 			dragging       = TRUE;
-			sDragImpulse.z = gWiiPointer.mPointer.x - mDragLast.x;
-			sDragImpulseW  = gWiiPointer.mPointer.y - mDragLast.y;
-			f32 moveX      = (gWiiPointer.mPointer.x - mDragStart.x) * sDragScaleX * -1.0f;
-			f32 moveY      = (gWiiPointer.mPointer.y - mDragLast.y) * sDragScaleY * -1.0f;
+			sDragImpulse.z = gWiiPointer.mPointer.x - mDragStart.x;
+			sDragImpulseW  = gWiiPointer.mPointer.y - mDragStart.y;
+			f32 moveX      = (gWiiPointer.mPointer.x - mDragLast.x) * sDragScaleX * -1.0f;
+			f32 moveY      = (gWiiPointer.mPointer.y - mDragLast.y) * sDragScaleY;
 			mDragVec.x += moveX;
 			mDragVec.y += moveY;
 			Vec dragLast = gWiiPointer.mPointer;
