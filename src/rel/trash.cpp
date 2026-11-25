@@ -210,7 +210,7 @@ extern "C" void DrawTrashStack(void)
 extern "C" void ExitTrash(void)
 {
 	for (s32 i = 0; i < 10; i++) {
-		if (trashObjs[i].mStatus.mFlags & 1) {
+		if ((trashObjs[i].mStatus.mFlags & 1) == 1) {
 			trashObjs[i].Release();
 		}
 	}
