@@ -69,9 +69,8 @@ extern "C" CVec fn_800C6608(u32, XObj* obj)
 extern "C" CVec fn_800C6CEC(XObjScnCamInitRec* rec, XObj* obj);
 
 // NONMATCHING: the aim-angle helper the trackers below share: *outA gets the yaw from
-// head to the tracked target, *outB the pitch; both are clamped to the record's
-// m_30/m_2C ranges. The pitch calls and branch shape follow retail; the CVec temporary
-// layout and FPR/GPR allocation still differ
+// head to the tracked target, *outB the pitch. Target selection, fallback angles, wrapping
+// and clamping match retail; the CVec temporary layout and FPR scheduling still differ.
 extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* outA, f32* outB)
 {
 	if (rec->m_0C != NULL) {
@@ -95,26 +94,40 @@ extern "C" void fn_800C66C8(XObjScnCamInitRec* rec, Vec* head, Vec* rot, f32* ou
 		f32 pitch = atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy));
 		*outB     = dy < 0.0f ? pitch - HALF_PI : HALF_PI - pitch;
 	} else if (rec->m_20 != NULL) {
-		CVec* eye = &rec->m_20->mView.mEye;
-		*outA     = (f32)atan2(eye->x - head->x, eye->z - head->z) - rot->y;
-		CVec at   = *eye;
+		*outA     = (f32)atan2(rec->m_20->mView.mEye.x - head->x, rec->m_20->mView.mEye.z - head->z) - rot->y;
+		CVec at   = rec->m_20->mView.mEye;
 		f32 dz    = at.z - head->z;
 		f32 dx    = at.x - head->x;
 		f32 dy    = at.y - head->y;
 		f32 pitch = atan2(FSqrt(dz * dz + dx * dx), FSqrt(dy * dy));
 		*outB     = dy < 0.0f ? pitch - HALF_PI : HALF_PI - pitch;
+	} else {
+		*outA = __fpclassifyf(rec->m_28) != FP_NAN ? rec->m_28 : 0.0f;
+		*outB = __fpclassifyf(rec->m_24) != FP_NAN ? rec->m_24 : 0.0f;
 	}
-	if (*outA > rec->m_30) {
-		*outA = rec->m_30;
+	if (rec->m_30 > 0.0f) {
+		f32 angle = WrapAngle(*outA);
+		if (angle > PI) {
+			angle -= TWO_PI;
+		}
+		if (angle > rec->m_30) {
+			angle = rec->m_30;
+		} else if (angle < -rec->m_30) {
+			angle = -rec->m_30;
+		}
+		*outA = angle;
 	}
-	if (*outA < -rec->m_30) {
-		*outA = -rec->m_30;
-	}
-	if (*outB > rec->m_2C) {
-		*outB = rec->m_2C;
-	}
-	if (*outB < -rec->m_2C) {
-		*outB = -rec->m_2C;
+	if (rec->m_2C > 0.0f) {
+		f32 angle = WrapAngle(*outB);
+		if (angle > PI) {
+			angle -= TWO_PI;
+		}
+		if (angle > rec->m_2C) {
+			angle = rec->m_2C;
+		} else if (angle < -rec->m_2C) {
+			angle = -rec->m_2C;
+		}
+		*outB = angle;
 	}
 }
 
