@@ -135,11 +135,11 @@ public:
 	virtual ~IScnObjCallback() { } // _08
 	// the library's order: CALC_WORLD, CALC_MAT, CALC_VIEW, DRAW_OPA, DRAW_XLU.
 	// the timing is ScnObj's Timing enum, which needs the library's header
-	virtual void ExecCallback_CALC_WORLD(int timing, ScnObj* obj, u32 param, void* info); // _0C
-	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info);   // _10
-	virtual void _unk_014();
-	virtual void _unk_018();
-	virtual void _unk_01C();
+	virtual void ExecCallback_CALC_WORLD(int timing, ScnObj* obj, u32 param, void* info) { } // _0C
+	virtual void ExecCallback_CALC_MAT(int timing, ScnObj* obj, u32 param, void* info) { }   // _10
+	virtual void _unk_014() { }
+	virtual void _unk_018() { }
+	virtual void _unk_01C() { }
 };
 
 // a node (bone) of a model resource, as far as the game reads it
@@ -1504,8 +1504,8 @@ STATIC_ASSERT(sizeof(NW_Obj) == 0x5C);
 
 class NW_Anm : public NW_Obj {
 public:
-	virtual ~NW_Anm() { }                                // _08
-	virtual BOOL IsLoaded() { return mFile.IsLoaded(); } // _0C
+	virtual ~NW_Anm() { }    // _08
+	virtual BOOL IsLoaded(); // _0C
 
 	CFile mFile; // _5C, the archive read the extra animation file comes through
 };

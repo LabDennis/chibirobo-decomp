@@ -31,6 +31,11 @@ extern "C" {
 CThread gMovieUpdateThread;
 }
 
+BOOL NW_Anm::IsLoaded()
+{
+	return mFile.IsLoaded();
+}
+
 // The weak virtuals of this unit that are written in their classes, and so are emitted by the file
 // that constructs gGame (CThread::Create, 0x800331D4, among them):
 //   0x80033058 CFile::IsLoaded                          include/game/cfile.h
@@ -40,15 +45,6 @@ CThread gMovieUpdateThread;
 //   0x800331B0 nw4r::snd::DvdSoundArchive::detail_GetWaveDataFileAddress
 //   0x800331B8 nw4r::snd::DvdSoundArchive::detail_GetFileAddress
 //
-// NONMATCHING: four more are not written, because include/game/wii/xobj.h and title.h model their
-// classes with another shape:
-//   0x800331C0 the second virtual of NW_Obj, `return mData != NULL;` with mData at _00. NW_Obj is
-//              0x5C bytes with its vtable at _58.
-//   0x80033044 the override NW_Anm has for it, `return mFile.IsLoaded();`. NW_Anm is the 0x148 bytes
-//              xobj.h calls CJArchive: NW_Obj and the CFile at _5C.
-//   0x800332D4, 0x800332D0 the second and third virtual of nw4r::g3d::IScnObjCallback, both empty.
-//              Its vtable (0x802E6A10) has six slots, not the 75 of xobj.h.
-
 // 0x80033084 sits among the weak virtuals above, so retail wrote it in the class. It stays out of line
 // until the in-class form is tried now that this file holds gGame (csound.h reaches other units).
 BOOL CSoundFxReverbHiDpl2::Setup(const nw4r::snd::detail::FxReverbHiParam& param)

@@ -10231,3 +10231,6 @@ __sinit_\ana_cpp = .text:0x8016C008; // type:function size:0xD4 scope:local
 GetAnaJObj = .text:0x8016BE50; // type:function size:0x1B8
 __arraydtor$14156 = .text:0x80153AE0; // type:function size:0x1C scope:local
 gCameraAreaEntries$14155 = .bss:0x804630B8; // type:object size:0x1C000
+IsLoaded__6NW_AnmFv = .text:0x80033044; // type:function size:0x14
+ExecCallback_CALC_WORLD__Q34nw4r3g3d15IScnObjCallbackFiPQ34nw4r3g3d6ScnObjUlPv = .text:0x800332D4; // type:function size:0x4
+ExecCallback_CALC_MAT__Q34nw4r3g3d15IScnObjCallbackFiPQ34nw4r3g3d6ScnObjUlPv = .text:0x800332D0; // type:function size:0x4
