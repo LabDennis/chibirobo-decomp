@@ -408,7 +408,9 @@ void ResetPopperShot(XActPopperShot* shot)
  * @note Address: 0x80108790
  * @note Size: 0x43C
  */
-// NONMATCHING: the position copy, effect TRS values and handle lifetimes now follow retail;
+// NONMATCHING: the position copy, effect TRS values and handle lifetimes now follow retail, but
+// retail fills each triple scale, rot, pos before fn_800A11A4 (likely an inline create helper
+// taking pos/rot/scale arguments, not recovered);
 // the remaining differences are the first position-copy schedule, kind/sfx register allocation
 // and a 0x10 frame-size residue.
 void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
@@ -442,9 +444,9 @@ void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* targe
 	} else {
 		shot->mHomingTarget = NULL;
 	}
-	Vec effectScale     = { 1.0f, 1.0f, 1.0f };
-	Vec effectRot       = { 0.0f, 0.0f, 0.0f };
 	Vec effectPos       = { 0.0f, 0.0f, 0.0f };
+	Vec effectRot       = { 0.0f, 0.0f, 0.0f };
+	Vec effectScale     = { 1.0f, 1.0f, 1.0f };
 	EffectInstance* gen = fn_800A11A4(gGame.mEvtPtcl.mEffects, kind == 1 ? 0x4E : 0x4F, 1);
 	if (gen != NULL) {
 		gen->pos   = effectPos;
@@ -454,9 +456,9 @@ void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* targe
 	}
 	shot->mGen = gen;
 	if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-		Vec chargeScale           = { 1.0f, 1.0f, 1.0f };
-		Vec chargeRot             = { 0.0f, 0.0f, 0.0f };
 		Vec chargePos             = { 0.0f, 0.0f, 0.0f };
+		Vec chargeRot             = { 0.0f, 0.0f, 0.0f };
+		Vec chargeScale           = { 1.0f, 1.0f, 1.0f };
 		EffectInstance* chargeGen = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x50, 1);
 		if (chargeGen != NULL) {
 			chargeGen->pos   = chargePos;
@@ -761,7 +763,8 @@ void ResetPopperCharge(XActPopperCharge* charge)
 // muzzle while their fades step. The GameCube folded this into
 // UpdatePlayerPopperAction's tail; on the Wii it's a function of its own
 // NONMATCHING: the full-charge effect now has retail's three TRS temporaries and handle
-// lifetime; the matrix-position copy, effect-handle reads and sfx-start register schedule differ.
+// lifetime (retail fills them scale, rot, pos: likely an unrecovered inline create helper);
+// the matrix-position copy, effect-handle reads and sfx-start register schedule differ.
 /**
  * @note Address: 0x8010A114
  * @note Size: 0x4B0
@@ -797,9 +800,9 @@ void UpdatePopperCharge(XActPopperCharge* charge, u32 frames)
 						UpdateEffectMtx(inst);
 					}
 				} else {
-					Vec scale = { 1.0f, 1.0f, 1.0f };
-					Vec rot   = { 0.0f, 0.0f, 0.0f };
 					Vec pos   = { 0.0f, 0.0f, 0.0f };
+					Vec rot   = { 0.0f, 0.0f, 0.0f };
+					Vec scale = { 1.0f, 1.0f, 1.0f };
 					inst      = fn_800A11A4(gGame.mEvtPtcl.mEffects, 0x5C, 1);
 					if (inst != NULL) {
 						inst->pos   = pos;
