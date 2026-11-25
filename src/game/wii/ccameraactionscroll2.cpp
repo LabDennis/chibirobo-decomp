@@ -271,7 +271,9 @@ void CCameraActionScroll2::Reset()
  * @note Address: 0x801628DC
  * @note Size: 0x888
  */
-// NONMATCHING: regalloc/scheduling; the drag math matches retail structurally
+// NONMATCHING: drag state, vector snapshots, call slots and math are checked against retail.
+// The remaining 0x230-vs-0x1F0 frame difference changes paired-single scheduling around the pan;
+// the CVec eye form scores higher than a plain Vec, but retail's exact eye lifetime is still open.
 void CCameraActionScroll2::Update(u32 step)
 {
 	mWipe.Update(step);
@@ -305,7 +307,8 @@ void CCameraActionScroll2::Update(u32 step)
 	}
 
 	CVec unused(0.0f, 0.0f, 0.0f);
-	BOOL pressed = FALSE;
+	BOOL pressed  = FALSE;
+	BOOL dragging = FALSE;
 	if (gWiiPointer.mPointerValid) {
 		BOOL released = FALSE;
 		if (gWiiPointer.mButton & 0x10) {
@@ -320,12 +323,10 @@ void CCameraActionScroll2::Update(u32 step)
 			}
 		}
 		if (pressed) {
-			mDragStart.x   = gWiiPointer.mPointer.x;
-			mDragStart.y   = gWiiPointer.mPointer.y;
-			mDragStart.z   = gWiiPointer.mPointer.z;
-			mDragLast.x    = gWiiPointer.mPointer.x;
-			mDragLast.y    = gWiiPointer.mPointer.y;
-			mDragLast.z    = gWiiPointer.mPointer.z;
+			Vec dragStart = gWiiPointer.mPointer;
+			mDragStart.Set(dragStart);
+			Vec dragLast = gWiiPointer.mPointer;
+			mDragLast.Set(dragLast);
 			sDragImpulse.x = 0.0f;
 			sDragImpulse.y = 0.0f;
 			sDragImpulse.z = 0.0f;
@@ -336,13 +337,15 @@ void CCameraActionScroll2::Update(u32 step)
 		}
 		if (mDragging) {
 			mDragDamping   = sDragDampingHeld;
-			sDragImpulse.x = gWiiPointer.mPointer.x - mDragLast.x;
-			sDragImpulse.y = gWiiPointer.mPointer.y - mDragLast.y;
-			mDragVec.x += (gWiiPointer.mPointer.x - mDragStart.x) * sDragScaleX * -1.0f;
-			mDragVec.y += (gWiiPointer.mPointer.y - mDragLast.y) * sDragScaleY * -1.0f;
-			mDragLast.x = gWiiPointer.mPointer.x;
-			mDragLast.y = gWiiPointer.mPointer.y;
-			mDragLast.z = gWiiPointer.mPointer.z;
+			dragging       = TRUE;
+			sDragImpulse.z = gWiiPointer.mPointer.x - mDragLast.x;
+			sDragImpulseW  = gWiiPointer.mPointer.y - mDragLast.y;
+			f32 moveX      = (gWiiPointer.mPointer.x - mDragStart.x) * sDragScaleX * -1.0f;
+			f32 moveY      = (gWiiPointer.mPointer.y - mDragLast.y) * sDragScaleY * -1.0f;
+			mDragVec.x += moveX;
+			mDragVec.y += moveY;
+			Vec dragLast = gWiiPointer.mPointer;
+			mDragLast.Set(dragLast);
 		}
 	} else {
 		mDragging = FALSE;
@@ -357,7 +360,7 @@ void CCameraActionScroll2::Update(u32 step)
 	if (mDragVec.y != 0.0f) {
 		dragY = mDragVec.y;
 	}
-	CheckQuads(this, step, gWiiPointer.mPointerValid && mDragging, &unused);
+	CheckQuads(this, step, dragging, &unused);
 	if (dragX != 0.0f || dragY != 0.0f) {
 		CVec eye(mEye);
 		CVec toCenter(mCenter);
@@ -387,9 +390,8 @@ void CCameraActionScroll2::Update(u32 step)
 		} else {
 			next.y = 0.0f;
 		}
-		mCenterPtr->x = next.x;
-		mCenterPtr->y = next.y;
-		mCenterPtr->z = next.z;
+		Vec nextCenter = next;
+		*mCenterPtr    = nextCenter;
 	}
 
 	{
@@ -409,7 +411,8 @@ void CCameraActionScroll2::Update(u32 step)
 		mCenterPtr->z = center.z;
 	}
 
-	SetInterest(*mCenterPtr);
+	Vec interest = *mCenterPtr;
+	SetInterest(interest);
 	SetEye(mOffset.x + mCenterPtr->x, mOffset.y + mCenterPtr->y, mOffset.z + mCenterPtr->z);
 
 	if (mTurned) {
