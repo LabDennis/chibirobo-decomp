@@ -1422,8 +1422,11 @@ extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 	}
 }
 
+// NONMATCHING: retail also emits an unused mOrbitHeight comparison before reading the boss position;
+// the remaining differences are that comparison, zero-vector store spelling and literal scheduling.
 void XObjActor3::Kind12(u32 frames)
 {
+	gGame.GetPlayer()->GetPos(); // retail discards the player position before dispatching the state
 	switch (mKindStep) {
 	case 0:
 		if (!(mActorFlags.mFlags & 4)) {
@@ -1439,7 +1442,9 @@ void XObjActor3::Kind12(u32 frames)
 	case 1: {
 		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			mHeading = atan2(boss->GetPos()->x - mMoveTranslate.x, boss->GetPos()->z - mMoveTranslate.z);
+			Vec offset          = { 0.0f, 0.0f, 0.0f };
+			const CVec* bossPos = boss->GetPos();
+			mHeading            = atan2(bossPos->x - mMoveTranslate.x, bossPos->z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f);
 			nw4r::g3d::ResNode joint = boss->FindResNode("obj26");
 			Mtx scaleMtx, translation, result, mount;
@@ -1451,7 +1456,7 @@ void XObjActor3::Kind12(u32 frames)
 			scale.z = GetStagePlacementScale(this).z / scale.z;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mount, scaleMtx, result);
-			PSMTXTrans(translation, 0.0f, 0.0f, 0.0f);
+			PSMTXTrans(translation, offset.x, offset.y, offset.z);
 			PSMTXConcat(result, translation, result);
 			SetBaseMtx(result);
 			if (boss->mBlinkTimer) {
@@ -1466,8 +1471,8 @@ void XObjActor3::Kind12(u32 frames)
 	}
 	case 2: {
 		SetColor(1, 0, 0, 0, 0.0f);
-		f32 end = GetAnimEndFrame();
-		if (end - frames <= GetAnimFrame()) {
+		f32 current = GetAnimFrame();
+		if (GetAnimEndFrame() - frames <= current) {
 			mStatus.mFlags &= ~0x10000ULL;
 			mActorFlags.mFlags |= 4;
 			PlayWiiSoundEffect(&gGame.mSound, 0x477, 1.0f, 0.0f);
