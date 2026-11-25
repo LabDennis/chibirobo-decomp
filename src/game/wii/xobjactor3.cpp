@@ -1525,16 +1525,22 @@ extern "C" void fn_8013D0C8(void)
 	}
 }
 
+// NONMATCHING: retail has an unused mOrbitHeight comparison; the build also keeps gGame in
+// an extra callee-saved register and schedules the zero-offset additions differently.
 extern "C" void LaunchSpiderBossCenterPart(XObjActor3* obj)
 {
-	XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
+	XObjSpiderBoss* holder = GetSpiderBoss();
 	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
+		Vec offset;
+		offset.x        = 0.0f;
+		offset.y        = 0.0f;
+		offset.z        = 0.0f;
 		obj->mKindStep  = 2;
 		obj->mKindTimer = 6.0f;
 		obj->ClearBaseMtx();
-		obj->mMoveTranslate.x = holder->GetPosX();
-		obj->mMoveTranslate.y = 18.0f;
-		obj->mMoveTranslate.z = holder->GetPosZ();
+		obj->mMoveTranslate.x = offset.x + holder->GetPosX();
+		obj->mMoveTranslate.y = 18.0f + offset.y;
+		obj->mMoveTranslate.z = offset.z + holder->GetPosZ();
 		obj->SetPos(obj->mMoveTranslate);
 		const CVec* holderPos = holder->GetPos();
 		obj->mHeading         = (f32)atan2(holderPos->x - obj->mMoveTranslate.x, holderPos->z - obj->mMoveTranslate.z) + PI;
