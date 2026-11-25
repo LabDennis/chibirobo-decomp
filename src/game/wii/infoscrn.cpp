@@ -887,8 +887,9 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
  * @note Size: 0x2990
  */
 // NONMATCHING: the Wii texture, anchor, depth and glow differences are ported, and digit colors
-// are converted in their branches as in retail. Retail still has a dead mBatteryValue == max compare
-// in the digit-change block; the remaining diff is register and stack scheduling in the unrolled loops.
+// are converted in their branches as in retail. Retail still has one more float-to-uint conversion
+// in the empty-digit path and a dead mBatteryValue == max compare in the digit-change block; the
+// remaining diff is register and stack scheduling in the unrolled digit loops.
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
 	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
@@ -1023,7 +1024,6 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 				h->mBatteryEmptyStep = 9;
 			h->mBatteryEmptyTimer = 0;
 		}
-		u32 gray = 0x50505000 | (u32)(opacity * fade);
 		for (int i = 0; i < 4; ++i) {
 			f32 digitScale = scale, offset = largeX;
 			if (i == 0) {
@@ -1038,6 +1038,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			f32 digitW = digitScale * GXGetTexObjWidth(&tex);
 			f32 digitH = digitScale * GXGetTexObjHeight(&tex) / 10.f;
 			f32 rest   = .1f * (10 - frame);
+			u32 gray   = 0x50505000 | (u32)(opacity * fade);
 			DrawBatteryQuad(tex, gray, BatteryDigitX(i, offset, digitW + gap), y + fill * digitH * .5f, digitW, digitH * rest);
 
 			if (i == 0) {
