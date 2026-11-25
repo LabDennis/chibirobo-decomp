@@ -2,9 +2,10 @@
 // GameCube file has as inline helpers are functions of the base class here: they take the view
 // matrix and load it themselves, and nothing invalidates an HSD state.
 //
-// NONMATCHING: the nine CLine and CTriangle vertex loops are the GameCube file's wall: retail reads
-// x and y before it writes x and reads z after. Splitting GXPosition2f32 plus GX_WRITE_F32 recovers
-// that shape in all nine loops; their x/y argument order and remaining register schedules stay open.
+// NONMATCHING: the nine CLine and CTriangle vertex loops (62-75 %) are the GameCube file's wall: retail
+// reads x and y before it writes x and reads z after (lfs x; lfs y; stfs x; lfs z; stfs y; stfs z), ours
+// reads z, y, x and then writes all three. Writing to GXWGFifo directly gives the write order but no
+// read running ahead. Everything else in the file matches.
 
 #include "game/cprimitive.h"
 #include "game/ut.h"
@@ -179,8 +180,7 @@ void CLine::Draw(Mtx view, Vec* pos, u32 color, u16 count)
 	SetVtxPosClr(view, NULL);
 	GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXColor1u32(color);
 	}
 }
@@ -190,8 +190,7 @@ void CLine::Draw(Mtx view, Vec* pos, u32* color, u16 count)
 	SetVtxPosClr(view, NULL);
 	GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXColor1u32(color[i]);
 	}
 }
@@ -202,8 +201,7 @@ void CLine::Draw(Mtx view, PrimVertex* vtx, u16 count)
 	GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
 		PrimVertex* v = vtx + i;
-		GXPosition2f32(v->pos.x, v->pos.y);
-		GX_WRITE_F32(v->pos.z);
+		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
 		GXColor1u32(v->color);
 	}
 }
@@ -213,8 +211,7 @@ void CTriangle::Draw(Mtx view, Vec* pos, u32 color, u16 count, GXPrimitive type)
 	SetVtxPosClr(view, NULL);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXColor1u32(color);
 	}
 }
@@ -227,8 +224,7 @@ void CTriangle::DrawLit(Mtx view, Vec* pos, u32 color, u16 count, GXPrimitive ty
 	CalcNormal(pos, count, &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXNormal3f32(normal.x, normal.y, normal.z);
 		GXColor1u32(color);
 	}
@@ -239,8 +235,7 @@ void CTriangle::Draw(Mtx view, Vec* pos, u32* color, u16 count, GXPrimitive type
 	SetVtxPosClr(view, NULL);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXColor1u32(color[i]);
 	}
 }
@@ -253,8 +248,7 @@ void CTriangle::DrawLit(Mtx view, Vec* pos, u32* color, u16 count, GXPrimitive t
 	CalcNormal(pos, count, &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(pos[i].x, pos[i].y);
-		GX_WRITE_F32(pos[i].z);
+		GXPosition3f32(pos[i].x, pos[i].y, pos[i].z);
 		GXNormal3f32(normal.x, normal.y, normal.z);
 		GXColor1u32(color[i]);
 	}
@@ -266,8 +260,7 @@ void CTriangle::Draw(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
 		PrimVertex* v = vtx + i;
-		GXPosition2f32(v->pos.x, v->pos.y);
-		GX_WRITE_F32(v->pos.z);
+		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
 		GXColor1u32(v->color);
 	}
 }
@@ -280,8 +273,7 @@ void CTriangle::DrawLit(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 	CalcNormal(vtx, count, &normal);
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition2f32(vtx[i].pos.x, vtx[i].pos.y);
-		GX_WRITE_F32(vtx[i].pos.z);
+		GXPosition3f32(vtx[i].pos.x, vtx[i].pos.y, vtx[i].pos.z);
 		GXNormal3f32(normal.x, normal.y, normal.z);
 		GXColor1u32(vtx[i].color);
 	}
