@@ -446,6 +446,7 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 				}
 			}
 		}
+		return 0.7853982f * sPrev + 0.05235988f;
 	} else {
 		f32 pointerY = gWiiPointer.mPointer.y;
 		if (pointerY < bandLow) {
@@ -457,8 +458,8 @@ f32 CCameraActionEye::TrackPointer(u32 step, f32 low, f32 high)
 			mVec10C.y += d;
 			sPrev = fn_8016A81C(sPrev + -d / (0.5f * (gPointerScreenHeight - gPointerScreenHeight * sEyePointerLimits[2])), -1.0f, 1.0f);
 		}
+		return 0.7853982f * sPrev + 0.05235988f;
 	}
-	return 0.7853982f * sPrev + 0.05235988f;
 }
 
 /**
