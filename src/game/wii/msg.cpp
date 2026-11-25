@@ -428,24 +428,20 @@ void CMsgData::Measure()
 // LoadMessageCursorObject, but the Wii keeps a second cursor (spawn 0x2C, the num input cursor)
 extern "C" s32 LoadFontCursors(CMsgFont* font)
 {
-	s32 firstLoaded  = 0;
-	s32 secondLoaded = 0;
-	if ((font->mCursor[0].mStatus & 1) != 1) {
-		if (font->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(13)))) {
-			firstLoaded = 1;
-		}
+	s32 loaded = 0;
+	if ((font->mCursor[0].mStatus & 1) != 1 && font->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(13)))) {
+		loaded = 1;
 	}
-	if (firstLoaded) {
+	if (loaded) {
 		font->mCursor[0].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[0].mStatus |= 0x800;
 		return 0;
 	}
-	if ((font->mCursor[1].mStatus & 1) != 1) {
-		if (font->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x2C)))) {
-			secondLoaded = 1;
-		}
+	loaded = 0;
+	if ((font->mCursor[1].mStatus & 1) != 1 && font->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x2C)))) {
+		loaded = 1;
 	}
-	if (secondLoaded) {
+	if (loaded) {
 		font->mCursor[1].SetScale(3.0f, 3.0f, 3.0f);
 		font->mCursor[1].mStatus |= 0x800;
 		return 1;
