@@ -76,8 +76,9 @@ static inline f32 FramesToClock(f32 frames)
 	if (frames >= (f32)TIMER_MAX) {
 		hundredths = 99;
 	}
+	s32 secs    = ((s32)seconds % 60) * 100;
 	f32 minutes = seconds / 60.0f;
-	return hundredths + (6000.0f * (s32)minutes + ((s32)seconds % 60) * 100);
+	return hundredths + (6000.0f * (s32)minutes + secs);
 }
 
 // how many items chibi robo can carry, by the upgrade he holds
