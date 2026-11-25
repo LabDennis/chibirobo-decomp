@@ -2,6 +2,7 @@
 #define GAME_WII_CGAME_H
 
 #include "Dolphin/mtx.h"
+#include "JSystem/JMath/Inline.h"
 #include "game/attachmentvalues.h"
 #include "game/wii/cpad.h"
 #include "game/wii/ceffect.h"
@@ -432,7 +433,7 @@ public:
 			mFollowDone    = TRUE;
 		} else {
 			Vec step = mFollowStep;
-			PSVECAdd(&mFollowValue, &step, &mFollowValue);
+			JMathInlineVEC::PSVECAdd(&mFollowValue, &step, &mFollowValue);
 		}
 	}
 
