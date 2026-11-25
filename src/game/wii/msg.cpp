@@ -18,6 +18,7 @@
 // byte, the u32 CMsgFont::mFlags bitfield word and the pointer-driven CMsg__cmd_QUESTION
 // path are Wii-specific and verified against retail.
 
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "nw4r/math/math_types.h"
 #include "game/wii/msg.h"
 #include "game/cfont.h"
@@ -68,8 +69,6 @@ void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedInde
 void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                      // fn_800EF58C
 extern s32 gRefreshRate;
 }
-
-extern "C" s32 ClassifyFloatBits(f32 value); // the Wii MSL's out-of-line __fpclassifyf
 
 // the GameCube's FindObj: object commands only resolve while an event script runs. The Wii's
 // ResolveEventObjectId (0x8009453C) reads the same two leading words as the GameCube CEvtData
@@ -560,7 +559,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->mBits._04_04, font->mSize);
 	// half the size change since the previous glyph; mPrevSize is NAN until the first one (CMsgFont_Init)
 	f32 spacing;
-	if (ClassifyFloatBits(font->mPrevSize) == FP_NAN) {
+	if (__fpclassifyf(font->mPrevSize) == FP_NAN) {
 		spacing = 0.0f;
 	} else {
 		spacing = (font->mSize - font->mPrevSize) * 0.5f;
