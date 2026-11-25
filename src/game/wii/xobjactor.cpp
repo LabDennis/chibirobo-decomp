@@ -569,8 +569,12 @@ void XObjActor::ResumeSounds(f32 fade)
 {
 	for (s32 i = 0; i < 2; ++i) {
 		CSoundHandle* handle = mSfxActors[i].GetHandle();
-		if (handle != NULL && mSfxActors[i].mActor != NULL && mSfxActors[i].mActor->mHandle.IsPause()) {
-			mSfxActors[i].mActor->mHandle.nw4r::snd::SoundHandle::Pause(false, (s32)(gRefreshRate * fade));
+		CSound3DActor* actor = mSfxActors[i].mActor;
+		if (handle != NULL && actor != NULL) {
+			s32 fadeFrames = (s32)(gRefreshRate * fade);
+			if (actor->mHandle.IsPause()) {
+				actor->mHandle.nw4r::snd::SoundHandle::Pause(false, fadeFrames);
+			}
 		}
 	}
 	mSfx.Resume(fade);
@@ -580,8 +584,12 @@ void XObjActor::PauseSounds(f32 fade)
 {
 	for (s32 i = 0; i < 2; ++i) {
 		CSoundHandle* handle = mSfxActors[i].GetHandle();
-		if (handle != NULL && mSfxActors[i].mActor != NULL && !mSfxActors[i].mActor->mHandle.IsPause()) {
-			mSfxActors[i].mActor->mHandle.nw4r::snd::SoundHandle::Pause(true, (s32)(gRefreshRate * fade));
+		CSound3DActor* actor = mSfxActors[i].mActor;
+		if (handle != NULL && actor != NULL) {
+			s32 fadeFrames = (s32)(gRefreshRate * fade);
+			if (!actor->mHandle.IsPause()) {
+				actor->mHandle.nw4r::snd::SoundHandle::Pause(true, fadeFrames);
+			}
 		}
 	}
 	mSfx.Pause(fade);

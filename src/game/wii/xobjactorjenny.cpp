@@ -248,8 +248,8 @@ void XObjActorJenny::UpdateObject(u32 frames)
 				actor->mHandle.SetVolume(1.0f, 0);
 			}
 		}
-	} else if (mSfxActors[0].GetHandle() != NULL && mSfxActors[0].mActor != NULL) {
-		mSfxActors[0].mActor->mHandle.Stop((s32)(gRefreshRate * 0.0f));
+	} else if (mSfxActors[0].GetHandle() != NULL) {
+		mSfxActors[0].Stop(0.0f);
 	}
 }
 
