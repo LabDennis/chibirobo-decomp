@@ -608,41 +608,49 @@ void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCam
 		*z = screenZ;
 }
 
-// NONMATCHING: retail keeps the four projected points in a Vec screen[4] (index 3
-// down to 0 in the calls' order: 3*pi/2, pi/2, pi, heading) and each raw screen x in
-// an f32 sx[4], then writes screen[i].x = sx[i] * mScale. Whether the source used
-// arrays or four named vectors is not recoverable yet.
+// NONMATCHING: retail keeps four world points ahead of the projected Vec screen[4] and raw f32 sx[4].
+// Their stack slots now match, as do all calls and constants. Retail also uses a shared Vec argument
+// temporary and f26; its source form is unresolved, leaving a 0x20 frame difference and regalloc (70.30%).
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
 	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera;
 	f32 heading     = camera->mView.mAngle.y;
 	f32* projection = &camera->mIsOrtho;
 	f32* viewport   = camera->mViewport;
+	Vec points[4];
 	Vec screen[4];
 	f32 sx[4];
 	// three points on the circle and one raised by the height give its screen extent
-	f32 angle  = (PI + HALF_PI) + heading;
-	f32 sine   = (f32)sin(angle);
-	f32 cosine = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[3], &screen[3].y, &screen[3].z);
+	f32 angle   = (PI + HALF_PI) + heading;
+	f32 sine    = (f32)sin(angle);
+	f32 cosine  = (f32)cos(angle);
+	points[3].x = radius * sine + mMoveTranslate.x;
+	points[3].y = mMoveTranslate.y;
+	points[3].z = radius * cosine + mMoveTranslate.z;
+	GXProject(points[3].x, points[3].y, points[3].z, camera->mViewMtx, projection, viewport, &sx[3], &screen[3].y, &screen[3].z);
 	screen[3].x = sx[3] * camera->mScale;
 	angle       = HALF_PI + heading;
 	sine        = (f32)sin(angle);
 	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[2], &screen[2].y, &screen[2].z);
+	points[2].x = radius * sine + mMoveTranslate.x;
+	points[2].y = mMoveTranslate.y;
+	points[2].z = radius * cosine + mMoveTranslate.z;
+	GXProject(points[2].x, points[2].y, points[2].z, camera->mViewMtx, projection, viewport, &sx[2], &screen[2].y, &screen[2].z);
 	screen[2].x = sx[2] * camera->mScale;
 	angle       = PI + heading;
 	sine        = (f32)sin(angle);
 	cosine      = (f32)cos(angle);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, camera->mViewMtx, projection,
-	          viewport, &sx[1], &screen[1].y, &screen[1].z);
+	points[1].x = radius * sine + mMoveTranslate.x;
+	points[1].y = mMoveTranslate.y;
+	points[1].z = radius * cosine + mMoveTranslate.z;
+	GXProject(points[1].x, points[1].y, points[1].z, camera->mViewMtx, projection, viewport, &sx[1], &screen[1].y, &screen[1].z);
 	screen[1].x = sx[1] * camera->mScale;
 	sine        = (f32)sin(heading);
 	cosine      = (f32)cos(heading);
-	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, camera->mViewMtx,
-	          projection, viewport, &sx[0], &screen[0].y, &screen[0].z);
+	points[0].x = radius * sine + mMoveTranslate.x;
+	points[0].y = mMoveTranslate.y + objectHeight;
+	points[0].z = radius * cosine + mMoveTranslate.z;
+	GXProject(points[0].x, points[0].y, points[0].z, camera->mViewMtx, projection, viewport, &sx[0], &screen[0].y, &screen[0].z);
 	screen[0].x = sx[0] * camera->mScale;
 	if (screen[3].x >= gScreenLeft && screen[2].x < gScreenRight && screen[1].y >= gScreenTop && screen[0].y < gScreenBottom
 	    && screen[0].z > 0.0f && screen[0].z < 1.0f) {
