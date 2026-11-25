@@ -38,8 +38,9 @@ XObjActor3::~XObjActor3()
 {
 }
 
-// NONMATCHING: retail expands CJArchive's ctor inline (__vt__5CFile stores, -1 at _93C,
-// 1 at _960) where MWCC calls __ct__9CJArchiveFv
+// NONMATCHING: CJArchive's ctor expands inline as in retail (__vt__5CFile stores, -1 at _93C,
+// 1 at _960). Retail also stores __vt__4XObj while the base is built, which ours drops, and
+// saves from r20 where ours saves from r21.
 XObjSound::XObjSound()
 {
 }
@@ -87,11 +88,11 @@ XObjActorToy::XObjActorToy()
 
 // NONMATCHING: layout and member set are recovered (0xD78: CStatus32@0x9C0,
 // CVec@0xAC4, CObjVec@0xAF0, AnimSfx@0xB20, AnimSfxActor[2]@0xB7C,
-// XObjJointPart[8]@0xBAC), but retail expands __ct__4XObjFv, __ct__9CJArchiveFv
-// and __ct__7CObjVecFv inline while MWCC calls them here. Giving CJArchive an
-// in-class definition would drop its weak out-of-line copy, whose only retail
-// caller is the not-yet-reconstructed __ct__7XObjChrFv. The mParts element loop
-// also schedules differently (peeled/bdnz vs cmplw/blt).
+// XObjJointPart[8]@0xBAC), and XObj's, CJArchive's and CObjVec's ctors expand
+// inline as in retail. Left: retail stores __vt__4XObj while the base is built,
+// which ours drops; it saves from r23 where ours saves from r17; and it calls
+// __construct_array twice where ours calls it once and builds mParts in its own
+// bdnz loop.
 XObjActor::XObjActor()
 {
 }
