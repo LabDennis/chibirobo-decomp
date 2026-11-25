@@ -1014,13 +1014,13 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
  * @note Address: 0x8002B1F4
  * @note Size: 0xF4
  */
-// NONMATCHING: retail rounds the frame through a double before it adds the rate
+// NONMATCHING: the scene-resource pointer and several loads use different registers
 // the scene animation is at its last frame, or will be within this step
 bool CObj::IsAnmScnEnd()
 {
-	f32 frame = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->GetFrame() : 0.0f;
+	f64 frame = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->GetFrame() : 0.0f;
 	f32 end   = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->mRes.GetNumFrame() - 1 : 0.0f;
-	return frame + mAnimRate[1] >= end;
+	return (f32)frame + mAnimRate[1] >= end;
 }
 
 /**
