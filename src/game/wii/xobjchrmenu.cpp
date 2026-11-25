@@ -764,8 +764,9 @@ extern "C" void ConfirmOXMenuSelection(WiiOXMenu* menu, s32 result)
 // pointer can also hover a mark. the marks orbit a base point that is the chr's
 // projected neck joint, or a fixed bottom-center spot while the 0x100 status is up;
 // the stick moves the selection only where gGame.mMenuControls gives it to the pad
-// NONMATCHING: the projection locals now occupy retail's stack slots; the argument copy,
-// marker math and float-register/constant-pool schedule still differ.
+// NONMATCHING: the projection locals now occupy retail's stack slots; retail copies arg as
+// words (lwz/stw), ours as floats (lfs/stfs); marker math and the float-register/constant-pool
+// schedule still differ.
 /**
  * @note Address: 0x800EF58C
  * @note Size: 0x804
