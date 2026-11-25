@@ -1916,7 +1916,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 		}
 		case EVT_ATOM_CAM:
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-				CCamera* camera = &gGame.mMotionControlCamera;
+				CCamera* camera = &gGame.mMotionControlCamera.mCamera;
 				direction       = RAD2DEG * CEvt_Angle(*obj->GetPos(), camera->mView.mEye);
 			} else {
 				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @CAM, ...): obj(%d) killed!", id, id));
@@ -3093,7 +3093,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		}
 		case 6: {
 			f32 stickAngle = (f32)atan2(pad->mStick.x, pad->mStick.y);
-			f32 cameraYaw  = gGame.mMotionControlCamera.mView.mAngle.y;
+			f32 cameraYaw  = gGame.mMotionControlCamera.mCamera.mView.mAngle.y;
 			f32 playerYaw  = gGame.GetPlayer()->mMoveRotate.y;
 			result         = RAD2DEG * WrapAngle(-stickAngle + cameraYaw - playerYaw);
 			break;

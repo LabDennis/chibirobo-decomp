@@ -1,5 +1,5 @@
 // Wii port of game/cmotioncontrolcamera.cpp. Same class and action table as the GameCube
-// build: the camera is the base subobject here so every derived field sits 0x64 higher, the
+// build: the camera member is larger here so every motion field sits 0x64 higher, the
 // status flags are reached through the CBase vtable, and the remote's buttons come out of
 // gWiiPointer's flag words instead of an HSD pad. The room camera and the pointer look are
 // reworked for the remote.
@@ -109,7 +109,7 @@ void CCameraActions::Init()
  */
 void CMotionControlCamera::InitCamera()
 {
-	InitMotionControlCameraDefaults(this);
+	InitMotionControlCameraDefaults(&mCamera);
 	((CInterfaceCameraAction*)lbl_8045DD54)->Init();
 }
 
@@ -119,10 +119,10 @@ void CMotionControlCamera::InitCamera()
  */
 void CMotionControlCamera::Init()
 {
-	InitMotionControlCameraDefaults(this);
-	mEye.Set(mView.mEye.x, mView.mEye.y, mView.mEye.z);
-	mInterest.Set(mView.mInterest.x, mView.mInterest.y, mView.mInterest.z);
-	mAngle.Set(mView.mAngle.x, mView.mAngle.y, mView.mAngle.z);
+	InitMotionControlCameraDefaults(&mCamera);
+	mEye.Set(mCamera.mView.mEye.x, mCamera.mView.mEye.y, mCamera.mView.mEye.z);
+	mInterest.Set(mCamera.mView.mInterest.x, mCamera.mView.mInterest.y, mCamera.mView.mInterest.z);
+	mAngle.Set(mCamera.mView.mAngle.x, mCamera.mView.mAngle.y, mCamera.mView.mAngle.z);
 	mMode         = 0;
 	mAction       = NULL;
 	mPrevAction   = NULL;
@@ -275,32 +275,32 @@ void CMotionControlCamera::Update(u32 step)
 	// work out whatever the action didn't drive from what it did
 	u32 flags = mFlags.mFlags;
 	if ((flags & CAMFLAG_EYE) && (flags & CAMFLAG_INTEREST)) {
-		CalcAngle();
-		CalcDistance();
-		mAction->SetAngle(mView.mAngle);
-		mAction->SetDistance(mView.mDistance);
+		mCamera.CalcAngle();
+		mCamera.CalcDistance();
+		mAction->SetAngle(mCamera.mView.mAngle);
+		mAction->SetDistance(mCamera.mView.mDistance);
 	} else if ((flags & 0x20000) && (flags & CAMFLAG_INTEREST)) {
-		CalcEye();
-		mAction->SetEye(mView.mEye);
+		mCamera.CalcEye();
+		mAction->SetEye(mCamera.mView.mEye);
 	} else if ((flags & 0x20000) && (flags & CAMFLAG_EYE)) {
-		CalcInterest();
+		mCamera.CalcInterest();
 	} else if ((flags & 0x10000) && (flags & CAMFLAG_EYE)) {
-		CalcInterest();
+		mCamera.CalcInterest();
 	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST)) {
-		CalcEye();
+		mCamera.CalcEye();
 	} else if ((flags & 0x80000) && (flags & CAMFLAG_DISTANCE)) {
-		CalcEye();
-		mAction->SetEye(mView.mEye);
+		mCamera.CalcEye();
+		mAction->SetEye(mCamera.mView.mEye);
 	} else if ((flags & CAMFLAG_EYE) || (flags & CAMFLAG_INTEREST)) {
-		CalcAngle();
-		CalcDistance();
+		mCamera.CalcAngle();
+		mCamera.CalcDistance();
 	} else if ((flags & 0x10000) && (flags & CAMFLAG_INTEREST) && (flags & CAMFLAG_DISTANCE)) {
 		// can't get here, the interest bit was already ruled out a branch ago
-		CalcEye();
+		mCamera.CalcEye();
 	}
 	// 0x40000 comes with CAMFLAG_ANGLE (anim, evt, reset), CalcUp rolls the up vector by the angle's z
 	if (mFlags.mFlags & 0x40000) {
-		CalcUp();
+		mCamera.CalcUp();
 	}
 }
 
@@ -313,30 +313,30 @@ void CMotionControlCamera::Interpolate(u32 step)
 	switch (mMode) {
 	case 0:
 		if (mFlags.mFlags & CAMFLAG_DISTANCE) {
-			SetDistance(mDistance);
+			mCamera.SetDistance(mDistance);
 		}
 		if (mFlags.mFlags & CAMFLAG_FOV) {
-			SetFov(mFov);
+			mCamera.SetFov(mFov);
 		}
 		if (mFlags.mFlags & CAMFLAG_ANGLE) {
-			SetAngle(mAngle);
+			mCamera.SetAngle(mAngle);
 		}
 		break;
 	case 1: {
 		CObjVec vec;
 		if (mFlags.mFlags & CAMFLAG_EYE) {
-			vec.Reset(mView.mEye);
+			vec.Reset(mCamera.mView.mEye);
 			vec.SetTarget(mEye);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
 			vec.Step(step);
-			SetEye(vec.mValue);
+			mCamera.SetEye(vec.mValue);
 		}
 		if (mFlags.mFlags & CAMFLAG_INTEREST) {
-			vec.Reset(mView.mInterest);
+			vec.Reset(mCamera.mView.mInterest);
 			vec.SetTarget(mInterest);
 			vec.mSpeed = CVec(1.0f, 1.0f, 1.0f);
 			vec.Step(step);
-			SetInterest(vec.mValue);
+			mCamera.SetInterest(vec.mValue);
 		}
 		break;
 	}
@@ -345,19 +345,19 @@ void CMotionControlCamera::Interpolate(u32 step)
 	if (mFlags.mFlags & CAMFLAG_INTEREST) {
 		switch (mInterestMode) {
 		case 0:
-			SetInterest(mInterest);
+			mCamera.SetInterest(mInterest);
 			break;
 		case 2:
-			Follow(mInterest, mView.mInterest);
-			SetInterest(mFollowValue);
+			Follow(mInterest, mCamera.mView.mInterest);
+			mCamera.SetInterest(mFollowValue);
 			break;
 		case 3: {
 			// take the target's height at once, ease in only across x and z
-			Vec interest = mView.mInterest;
+			Vec interest = mCamera.mView.mInterest;
 			interest.y   = mInterest.y;
-			SetInterest(interest);
-			Follow(mInterest, mView.mInterest);
-			SetInterest(mFollowValue);
+			mCamera.SetInterest(interest);
+			Follow(mInterest, mCamera.mView.mInterest);
+			mCamera.SetInterest(mFollowValue);
 			break;
 		}
 		}
@@ -367,14 +367,14 @@ void CMotionControlCamera::Interpolate(u32 step)
 		// Init and ReadAction only ever set mEyeMode to 0, so only case 0 runs
 		switch (mEyeMode) {
 		case 0:
-			SetEye(mEye);
+			mCamera.SetEye(mEye);
 			break;
 		case 1:
 			break;
 		case 2:
 		case 3:
-			Follow(mEye, mView.mEye);
-			SetEye(mFollowValue);
+			Follow(mEye, mCamera.mView.mEye);
+			mCamera.SetEye(mFollowValue);
 			break;
 		}
 	}
@@ -516,7 +516,7 @@ void CMotionControlCamera::UpdateTarget(XObj* obj)
 	if (mAction != NULL && obj == mAction->GetTarget() && (mFlags.mFlags & CAMFLAG_INTEREST)) {
 		// obj is the Wii player; its unreconstructed base class keeps the focus point
 		// accessor at vtable +0x1B0, the GameCube's XObj::GetCameraTarget
-		SetInterest(((WiiPlayerState*)obj)->GetCameraTarget());
+		mCamera.SetInterest(((WiiPlayerState*)obj)->GetCameraTarget());
 		mAction->SetInterest(((WiiPlayerState*)obj)->GetCameraTarget());
 	}
 }
@@ -596,11 +596,11 @@ void CMotionControlCamera::EndEye()
 CCameraMemento* CMotionControlCamera::CreateMemento(CCameraMemento* memento)
 {
 	CCameraMemento* saved = (memento != NULL) ? memento : &mMemento;
-	saved->SetEye(mView.mEye);
-	saved->SetInterest(mView.mInterest);
-	saved->SetAngle(mView.mAngle);
-	saved->mDistance = mView.mDistance;
-	saved->mFov      = CCamera::mFov; // the live fov at _08, not the action's target at _22C
+	saved->SetEye(mCamera.mView.mEye);
+	saved->SetInterest(mCamera.mView.mInterest);
+	saved->SetAngle(mCamera.mView.mAngle);
+	saved->mDistance = mCamera.mView.mDistance;
+	saved->mFov      = mCamera.mFov; // the live fov at _08, not the action's target at _22C
 	saved->mAction   = mAction;
 	return saved;
 }
@@ -614,11 +614,11 @@ BOOL CMotionControlCamera::SetMemento(const CCameraMemento* memento)
 	if (memento == NULL) {
 		return FALSE;
 	}
-	SetEye(memento->mEye);
-	SetInterest(memento->mInterest);
-	SetAngle(memento->mAngle);
-	SetFov(memento->mFov);
-	SetDistance(memento->mDistance);
+	mCamera.SetEye(memento->mEye);
+	mCamera.SetInterest(memento->mInterest);
+	mCamera.SetAngle(memento->mAngle);
+	mCamera.SetFov(memento->mFov);
+	mCamera.SetDistance(memento->mDistance);
 	if (memento->mAction != NULL) {
 		mPrevAction = mAction;
 		mAction     = memento->mAction;
@@ -637,7 +637,7 @@ extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
 {
 	f32 baseFov = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
 	if (baseFov) {
-		return camera->CCamera::mFov / baseFov;
+		return camera->mCamera.mFov / baseFov;
 	}
 	return 1.0f;
 }

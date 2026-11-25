@@ -257,7 +257,7 @@ extern "C" void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, WiiPlayer
 	} break;
 	case 12:
 		act->mSavedYaw = act->mOwner->mMoveRotate.y;
-		act->mOwner->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, 12.0f * DEG2RAD);
+		act->mOwner->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mView.mAngle.y, 12.0f * DEG2RAD);
 		PlayTumbleAnimation(act->mOwner, 0x5D, 0.0f);
 		act->mState = 14;
 		break;

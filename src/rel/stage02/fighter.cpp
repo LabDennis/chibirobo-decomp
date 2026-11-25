@@ -619,7 +619,7 @@ extern "C" void DrawFighterHud(void)
 		matoList.mMatos[i].Update();
 	}
 	DrawScoreHud(matoList.mScore, matoList.mTimeLeft, 100.0f * matoList.mProgress);
-	FighterAim_Draw(&fighterWork.mAim, &gGame.mMotionControlCamera, fighterWork.mBodyMtx);
+	FighterAim_Draw(&fighterWork.mAim, &gGame.mMotionControlCamera.mCamera, fighterWork.mBodyMtx);
 	FighterPanels_Draw(&panels);
 }
 

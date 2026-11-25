@@ -494,7 +494,7 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
 	if (menu->mAtc.mOpen > 0) {
 		// he turns to face the camera, except in first person
 		if (gGame.GetStatusFlags(0x100) == 0) {
-			gGame.GetPlayer()->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, DEG2RAD * 8.0f);
+			gGame.GetPlayer()->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mView.mAngle.y, DEG2RAD * 8.0f);
 		}
 		if (gGame.mEvt.mData.mScript == NULL && gWiiPointer.Check(2)) {
 			result = -1;
@@ -775,7 +775,7 @@ extern "C" void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad)
 {
 	if (menu->mStarted > 0) {
 		if (!gGame.GetStatusFlags(0x100)) {
-			menu->mChr->SetRotateY(PI + gGame.mMotionControlCamera.mView.mAngle.y, DEG2RAD * 8.0f);
+			menu->mChr->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mView.mAngle.y, DEG2RAD * 8.0f);
 		}
 		s32 lastPointed = menu->_10;
 		menu->_10       = -1;

@@ -933,7 +933,7 @@ static s32 sMessageGroup14SoundIds[2] = { 0x109, 0x10A };
 // how loud a sound at pos is, 0 to 1
 extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind)
 {
-	f32 dist   = PSVECDistance(&gGame.mMotionControlCamera.mView.mInterest, pos);
+	f32 dist   = PSVECDistance(&gGame.mMotionControlCamera.mCamera.mView.mInterest, pos);
 	f32* range = gSoundFalloffRanges[kind];
 	u8 volume;
 

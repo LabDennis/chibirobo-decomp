@@ -595,7 +595,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 // first; ours scales in place
 void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCamera* camera)
 {
-	camera       = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	camera       = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
 	Vec position = mMoveTranslate + *offset;
 	f32 screenZ, screenY, screenX;
 	GXProject(position.x, position.y, position.z, camera->mViewMtx, &camera->mIsOrtho, camera->mViewport, &screenX, &screenY, &screenZ);
@@ -613,7 +613,7 @@ void XObj::ProjectOffsetToScreen(const Vec* offset, f32* x, f32* y, f32* z, CCam
 // temporary and f26; its source form is unresolved, leaving a 0x20 frame difference and regalloc (70.30%).
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
-	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera;
+	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
 	f32 heading     = camera->mView.mAngle.y;
 	f32* projection = &camera->mIsOrtho;
 	f32* viewport   = camera->mViewport;
@@ -699,7 +699,7 @@ extern "C" void fn_800B4988(XObj* object)
 	if (object->mFloors == NULL || !(object->mStatus.mFlags & 0x100) || !object->mScreenBoundsValid)
 		return;
 
-	CCamera camera        = gGame.mMotionControlCamera;
+	CCamera camera        = gGame.mMotionControlCamera.mCamera;
 	object->_6DC          = object->_6D8;
 	object->_6D8          = 0;
 	object->mScreenBottom = NAN;
