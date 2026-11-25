@@ -362,7 +362,7 @@ void XObjScnCam::ReleaseModelWork()
 extern "C" void fn_800C7764(XObjScnCam* self, CCamera* camera)
 {
 	BOOL active = FALSE;
-	if (((self->mStatus.mFlags & 0x1ULL) ^ 1) && self->mScene != NULL && self->mScene->_2888 != NULL) {
+	if ((self->mStatus.mFlags & 0x1ULL) && self->mScene != NULL && self->mScene->_2888 != NULL) {
 		active = TRUE;
 	}
 	if (!active) {
