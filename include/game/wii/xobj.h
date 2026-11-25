@@ -828,6 +828,7 @@ public:
 		const ResMatData& r = ref();
 		return r.name != 0 ? (const char*)&r + r.name : NULL;
 	}
+	u32 GetID() const { return ref().id; }
 	ResGenMode GetResGenMode() { return ResGenMode(&ref().genMode); }
 	ResMatDLData* GetResMatDLData()
 	{
@@ -853,6 +854,7 @@ public:
 	ResNode GetResNode(const char* name) const; // 0x8025CFC8
 	ResNode GetResNode(u32 index) const;        // 0x8025D05C
 	u32 GetResNodeNumEntries() const;           // 0x8025D104
+	ResMat GetResMat(const char* name) const;
 	ResMat GetResMat(int idx) const;
 	ResMat GetResMat(u32 idx) const;
 	u32 GetResMatNumEntries() const;
