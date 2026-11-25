@@ -604,7 +604,8 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-// NONMATCHING (Wii only): MWCC inlines LoadCameraAreaTables into this wrapper; Wii retail keeps the call.
+// NONMATCHING (Wii only): MWCC inlines LoadCameraAreaTables into this wrapper, even with the definition
+// moved behind it; Wii retail keeps the call.
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 #if defined(VERSION_R24J01)

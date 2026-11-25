@@ -143,7 +143,9 @@ void CCameraActionEye::Reset()
  * @note Address: 0x80164E00
  * @note Size: 0x118C
  */
-// NONMATCHING: the call set and control flow match; retail uses a 0x160 frame and saves r21, ours 0x110 and r27
+// NONMATCHING: the direct call targets match; retail uses a 0x160 frame and saves r21, ours 0x130 and r27.
+// PlayerCanLook still loses retail's materialized bool temporaries; BOOL types and direct busy initialization
+// were flat or worse. The remaining control flow, constants and pad words are checked.
 void CCameraActionEye::Update(u32 step)
 {
 	CPad pad(0);

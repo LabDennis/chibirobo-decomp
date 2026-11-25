@@ -243,9 +243,9 @@ extern "C" s32 fn_800C85D4(XObjMapSortRec* a, XObjMapSortRec* b)
 
 // NONMATCHING: retail keeps this out-of-line with a full frame and an extab
 // entry, and fn_800C7F70 reaches it through bl; our build sibling-calls the
-// stub (b) and inlines the wrapper into its only caller. the frame implies an
-// exception-region construct in the original that the surviving instructions
-// do not show
+// stub (b) and inlines the wrapper into its only caller. A throw() specification adds
+// __unexpected paths retail lacks, and returning the stub's result still sibling-calls it.
+// The frame implies an exception-region construct that the surviving instructions do not show
 // 0x800C9B84, the map's stage-mode check: an out-of-line wrapper over
 // stage_data's always-false stub, so the rebuild and the list reset agree
 /**
