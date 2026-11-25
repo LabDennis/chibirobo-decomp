@@ -623,8 +623,8 @@ extern "C" void SelectActiveAreaCameraEntryFacing(CCameraActionArea* area, const
 }
 
 // the active area's entries nearest the view's bearing at or below it ([0]) and the one before that ([1])
-// NONMATCHING: retail guards the loop with a zero-count test and hoists the wrap constants behind it,
-// which the GameCube build of the same loop does not do either (89.9 %)
+// NONMATCHING: the zero-count guard matches. This build schedules the loop counter's li after the wrap
+// constants, retail before the group address; the remaining symbol differences are the incomplete literal pool.
 extern "C" void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s32* indices)
 {
 	f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
@@ -632,12 +632,14 @@ extern "C" void FindActiveAreaCameraEntriesByBearing(CCameraActionArea* area, s3
 	s32 index;
 	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
 	CamAreaEntry* entry = slot->mEntries;
-	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
-		f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
-		f32 turn   = WrapAngle(yaw - facing);
-		if (turn <= best) {
-			best  = turn;
-			index = i;
+	if (slot->mEntryCount > 0) {
+		for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
+			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
+			f32 turn   = WrapAngle(yaw - facing);
+			if (turn <= best) {
+				best  = turn;
+				index = i;
+			}
 		}
 	}
 	s32 prev = index - 1;
