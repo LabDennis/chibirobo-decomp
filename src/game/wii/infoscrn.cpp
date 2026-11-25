@@ -1406,6 +1406,8 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
  * @note Address: 0x8008D5D8
  * @note Size: 0x65C
  */
+// NONMATCHING: the Vec/CVec return buffers shift the texture and TLUT homes by eight bytes;
+// the repeated frame tests, switch arms, float frame count, draw calls and values match.
 extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 {
 	if (!gGame.GetStatusFlags(0x100)) {
@@ -1437,29 +1439,45 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
 			                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
-			tex        = gGame.mTpl.mTex;
-			u16 th     = GXGetTexObjHeight(&tex);
-			u16 tw     = GXGetTexObjWidth(&tex);
-			s32 frames = tw / th;
-			s32 frame  = scrn->mFrameCount % 32;
+			tex            = gGame.mTpl.mTex;
+			u16 th         = GXGetTexObjHeight(&tex);
+			u16 tw         = GXGetTexObjWidth(&tex);
+			s32 frames     = tw / th;
+			f32 frameCount = frames;
 			s32 idx;
 			switch (scrn->mObjectGaugeParam) {
 			case 0:
-				idx = frame < 8 ? 1 : 0;
+				if (scrn->mFrameCount % 32 < 8) {
+					idx = 1;
+				} else {
+					idx = 0;
+				}
 				break;
 			case 1:
-				idx = frame < 8 ? 2 : 3;
+				if (scrn->mFrameCount % 32 < 8) {
+					idx = 2;
+				} else {
+					idx = 3;
+				}
 				break;
 			case 2:
-				idx = frame < 8 ? 1 : 4;
+				if (scrn->mFrameCount % 32 < 8) {
+					idx = 1;
+				} else {
+					idx = 4;
+				}
 				break;
 			case 3:
-				idx = scrn->mFrameCount % 14 < 10 ? 1 : 7;
+				if (scrn->mFrameCount % 14 < 10) {
+					idx = 1;
+				} else {
+					idx = 7;
+				}
 				break;
 			}
-			PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / (f32)frames), 0.0f, 0.0f);
+			PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / frameCount), 0.0f, 0.0f);
 			tex.mTexMtx.mDirty = TRUE;
-			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
+			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / frameCount, 1.0f, 1.0f);
 			tex.mTexMtx.mDirty = TRUE;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
 			                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, y - 4.0f, 0.0f, w, h, 0.0f, 0.0f,
