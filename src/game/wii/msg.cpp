@@ -1877,10 +1877,10 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
 		break;
 	}
 	case 16:
-		msg->mFont.mBits.mLayout = ReadMsgU8(msg);
+		msg->mFont.mBits._04_04 = ReadMsgU8(msg);
 		break;
 	case 19:
-		msg->mFont.mBits.mCenter = ReadMsgU8(msg);
+		msg->mFont.mBits.mFitLine = ReadMsgU8(msg);
 		break;
 	case 18: {
 		u32 a              = ReadMsgU8(msg);

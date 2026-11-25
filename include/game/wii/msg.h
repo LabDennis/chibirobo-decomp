@@ -91,11 +91,8 @@ public:
 			u32 mFadeOut : 1; // _04.2
 			u32 mBlink : 1;   // _04.3
 			u32 mFitLine : 1; // _04.4
-			u32 _04_04 : 1;   // _04.5
-			u32 _04_03 : 22;  // _04.6
-			u32 mCenter : 1;  // _04.28, MSG_CODE_CENTER
-			u32 mLayout : 1;  // _04.29, MSG_CODE_LAYOUT
-			u32 _04_30 : 2;   // _04.30
+			u32 _04_04 : 1;   // _04.5, MSG_CODE_LAYOUT
+			u32 _04_03 : 26;  // _04.6
 		} mBits;
 	};
 	MsgFrame mFrame;           // _08
