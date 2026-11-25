@@ -1461,7 +1461,10 @@ game/wii/xobj_ut.cpp:
 	.text start:0x800BD6B4 end:0x800C659C
 	.ctors start:0x802C45AC end:0x802C45B0
 	.rodata start:0x802DA21C end:0x802DA320
+	.data start:0x80302A38 end:0x80303780
 	.bss start:0x80457720 end:0x80457E90
+	.sdata start:0x805A0F90 end:0x805A1078
+	.sdata2 start:0x805A4E08 end:0x805A4E40
 
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4
