@@ -34,7 +34,7 @@ Vec fn_8016AA78(Vec in, f32* limits);
 }
 
 // the first person eye of the player object, xobj_chr.cpp
-Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* player);
+extern "C" Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* player);
 
 // the pointer's screen resolution, cpadact.cpp
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
