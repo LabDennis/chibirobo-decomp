@@ -53,76 +53,18 @@ extern "C" WiiCameraPoint fn_8016A844(const EyeCurve* curve, f32 t);
 inline bool PlayerCanLook()
 {
 	WiiPlayerState* player = EYE_PLAYER;
-	s32 state              = player->mLift.mState;
-	bool hangIdle          = false;
-	bool jumpIdle          = false;
-	bool ladderIdle        = false;
-	bool ropeIdle          = false;
-	bool pushIdle          = false;
-	bool tumbleIdle        = false;
-	bool busy7Or8          = true;
-	bool busy9             = true;
-	bool busy11            = true;
-	bool busy12            = true;
-	bool busy13            = true;
-	bool busy14            = true;
-	bool busy15            = true;
-	bool busy16            = true;
-	bool busy17            = true;
-	bool busy18            = true;
-	bool busy19            = true;
-	if (state != 7 && state != 8) {
-		busy7Or8 = false;
+	bool result            = false;
+	bool busy              = false;
+	if (!(player->mLift.mState != 7 && player->mLift.mState != 8 && player->mLift.mState != 9 && player->mLift.mState != 11
+	      && player->mLift.mState != 12 && player->mLift.mState != 13 && player->mLift.mState != 14 && player->mLift.mState != 15
+	      && player->mLift.mState != 16 && player->mLift.mState != 17 && player->mLift.mState != 18 && player->mLift.mState != 19)) {
+		busy = true;
 	}
-	if (!busy7Or8 && state != 9) {
-		busy9 = false;
+	if (!busy && player->mHang.mState == 0 && player->mJump.mState == 0 && player->mLadder.mState == 0 && player->mRope.mState == 0
+	    && player->mPush.mState == 0 && player->mTumble.mState == 0) {
+		result = true;
 	}
-	if (!busy9 && state != 11) {
-		busy11 = false;
-	}
-	if (!busy11 && state != 12) {
-		busy12 = false;
-	}
-	if (!busy12 && state != 13) {
-		busy13 = false;
-	}
-	if (!busy13 && state != 14) {
-		busy14 = false;
-	}
-	if (!busy14 && state != 15) {
-		busy15 = false;
-	}
-	if (!busy15 && state != 16) {
-		busy16 = false;
-	}
-	if (!busy16 && state != 17) {
-		busy17 = false;
-	}
-	if (!busy17 && state != 18) {
-		busy18 = false;
-	}
-	if (!busy18 && state != 19) {
-		busy19 = false;
-	}
-	if (!busy19 && player->mHang.mState == 0) {
-		hangIdle = true;
-	}
-	if (hangIdle && player->mJump.mState == 0) {
-		jumpIdle = true;
-	}
-	if (jumpIdle && player->mLadder.mState == 0) {
-		ladderIdle = true;
-	}
-	if (ladderIdle && player->mRope.mState == 0) {
-		ropeIdle = true;
-	}
-	if (ropeIdle && player->mPush.mState == 0) {
-		pushIdle = true;
-	}
-	if (pushIdle && player->mTumble.mState == 0) {
-		tumbleIdle = true;
-	}
-	return tumbleIdle;
+	return result;
 }
 
 /**
@@ -201,9 +143,10 @@ void CCameraActionEye::Reset()
  * @note Address: 0x80164E00
  * @note Size: 0x118C
  */
-// NONMATCHING: the direct call targets, control flow, constants and pad words are checked.
-// PlayerCanLook now has retail's materialized busy/idle temporaries. The remaining 0x160-vs-0x130
-// frame difference also changes their register allocation; the pointer aim still has fewer Vec copies.
+// NONMATCHING: the direct call targets match; retail uses a 0x160 frame and saves r21, ours 0x130 and r27.
+// PlayerCanLook still loses retail's materialized bool temporaries; BOOL types and direct busy initialization
+// were flat or worse, and a plain bool `busy = state == 7 || ...` chain scores 67.6. Spelling each flag out
+// as a named bool reaches 88 but copies compiler temporaries. Control flow, constants and pad words are checked.
 void CCameraActionEye::Update(u32 step)
 {
 	CPad pad(0);
