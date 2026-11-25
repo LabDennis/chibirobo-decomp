@@ -292,9 +292,9 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
 	f32 ex = a->x - b->x;
-	f32 ez = a->z - b->z;
 	f32 rx = b->x - pos->x;
 	f32 rz = b->z - pos->z;
+	f32 ez = a->z - b->z;
 	Vec up = { 0.0f, -1.0f, 0.0f };
 	Vec edge, rel, n;
 
