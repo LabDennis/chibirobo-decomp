@@ -546,9 +546,9 @@ extern "C" void ResetMessageState(CMsgFont* font)
 // the glyph x/y expression and several float-register assignments still differ.
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
-	f32 spacing;
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->mBits._04_04, font->mSize);
 	// half the size change since the previous glyph; mPrevSize is NAN until the first one (CMsgFont_Init)
+	f32 spacing;
 	if (__fpclassifyf(font->mPrevSize) == FP_NAN) {
 		spacing = 0.0f;
 	} else {
@@ -558,8 +558,8 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	if ((u8)text[0] == MSG_CODE_ICON) {
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[120], 0);
 		CTexObj icon = gGame.mTpl.mTex;
-		s32 columns  = font->mData->mIconColumns;
 		s32 index    = (u8)text[1];
+		s32 columns  = font->mData->mIconColumns;
 		if (index >= columns) {
 			index = columns - 1;
 		}
