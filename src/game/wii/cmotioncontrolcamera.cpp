@@ -152,8 +152,7 @@ void CMotionControlCamera::fn_80167728()
 	_240          = -1;
 }
 
-// NONMATCHING: retail's Update is 0x16CC, ours 0x16C4. The behavior matches; the call list has one
-// extra ReadAction expansion (deferred-inline selection). Retail converts the wipe's 640 and 320 from
+// NONMATCHING: deferred-inline selection remains. Retail converts the wipe's 640 and 320 from
 // integers at run time; their source form is not recovered. Retail's PlayerCanLook keeps one bool
 // temporary per lift-state test (0x80168418); a plain `||` chain does not produce them and named
 // per-test bools would copy compiler temporaries. The rest is register/frame allocation throughout the body.
@@ -183,12 +182,7 @@ void CMotionControlCamera::Update(u32 step)
 					gGame.SetStatusFlags(2); // gGame.IsRunning() is false while the room camera is up
 				}
 			} else if (IsCurrent(CAMACTION_SCROLL2)) {
-				if (gWiiPointer.mFlags & 0x200) {
-					CInterfaceCameraAction* scroll = GetAction(CAMACTION_SCROLL);
-					if (scroll != NULL) {
-						PushAction(scroll);
-					}
-				} else if (gWiiPointer.mFlags & 0x2) {
+				if ((gWiiPointer.mFlags & 0x200) || (gWiiPointer.mFlags & 0x2)) {
 					PopAction();
 					room->ShowObjs();
 					room->mWipe.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
