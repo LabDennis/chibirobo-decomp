@@ -271,7 +271,7 @@ extern "C" void SetGsFixedGlyphWidthScale(CGs* gs, f32 width)
 }
 #endif
 
-static f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
+static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
 {
 	CFont font;
 	s32 charWidth;
@@ -325,6 +325,7 @@ static f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
  * @note Address: 0x801968BC
  * @note Size: 0x350
  */
+// NONMATCHING: retail keeps lineWidth/maxWidth in different float registers and stack slots; the remaining code differs only in scheduling.
 extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
 {
 	return GetTextWidth(gs, text, proportional, size);
