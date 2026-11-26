@@ -45,20 +45,6 @@ inline BOOL XObjRead::ReadStart(void* obj, void* info)
 }
 
 /**
- * @note Address: 0x80132428
- * @note Size: 0x40
- */
-// the reader thread entries below inline it
-inline void XObjRead::RunRequestLoop()
-{
-	OSMessage msg;
-	while (true) {
-		OSReceiveMessage(&mQueue.mQueue, &msg, OS_MESSAGE_BLOCK);
-		ProcessRequest((XObjReadReq*)msg);
-	}
-}
-
-/**
  * @note Address: 0x80132040
  * @note Size: 0xB4
  */
