@@ -240,6 +240,7 @@ void HSD_SynthSFXUpdatePitch(HSD_SynthSFXNode* node)
  * @note Address: 0x801EE78C
  * @note Size: 0xF4
  */
+// NONMATCHING: only the assert's anonymous absolute __FILE__ string and its argument scheduling differ from retail's sPathSynthC@sda21 form.
 void HSD_SynthSFXSetPitch(s32 id, s32 flag, f32 ratio)
 {
 	HSD_SynthSFXNode* node;
