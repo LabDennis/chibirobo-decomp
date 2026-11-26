@@ -88,6 +88,8 @@ int __OSCallResetFunctions(BOOL final) {
     return 1;
 }
 
+// NONMATCHING: retail emits three extra branches for the switch/loop layout.
+// The state switch itself is the SDK form kept by PrimeDecomp/sdk.
 /**
  * @note Address: 0x8016882C
  * @note Size: 0x68
@@ -98,8 +100,13 @@ static void KillThreads(void) {
 
     for (thread = __OSActiveThreadQueue.head; thread; thread = next) {
         next = thread->linkActive.next;
-        if (thread->state == OS_THREAD_STATE_READY || thread->state == OS_THREAD_STATE_WAITING) {
+        switch (thread->state) {
+        case OS_THREAD_STATE_READY:
+        case OS_THREAD_STATE_WAITING:
             OSCancelThread(thread);
+            break;
+        default:
+            break;
         }
     }
 }
