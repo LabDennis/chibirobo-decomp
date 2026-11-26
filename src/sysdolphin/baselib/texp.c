@@ -100,50 +100,85 @@ void HSD_TExpUnref(HSD_TExp* texp, u8 sel)
  * @note Address: 0x801D6C20
  * @note Size: 0x320
  */
+// Melee's HSD_TExpFree uses separate TEV and CNST cases.
+static inline void HSD_TExpFree(HSD_TExp* texp)
+{
+	switch (HSD_TExpGetType(texp)) {
+	case HSD_TE_TEV:
+		hsdFreeMemPiece(texp, sizeof(HSD_TETev));
+		break;
+	case HSD_TE_CNST:
+		hsdFreeMemPiece(texp, sizeof(HSD_TECnst));
+		break;
+	default:
+		break;
+	}
+}
+
 HSD_TExp* HSD_TExpFreeList(HSD_TExp* texp_list, HSD_TExpType type, s32 all)
 {
 	HSD_TExp** link;
 	HSD_TExp* node;
-
-	if (!all && (type == HSD_TE_ALL || type == HSD_TE_TEV)) {
-		for (node = texp_list; node != NULL; node = node->comm.next) {
-			// Retail releases both references when the color reference count reaches zero.
-			if (node->type == HSD_TE_TEV && node->tev.c_ref == 0) {
-				HSD_TExpUnref(node, HSD_TE_RGB);
-				HSD_TExpUnref(node, HSD_TE_A);
-			}
-		}
-	}
+	HSD_TExp* next;
 
 	link = &texp_list;
-	while ((node = *link) != NULL) {
-		if (type == HSD_TE_ALL || type == node->type) {
-			s32 size = 0;
-
-			switch (node->type) {
-			case HSD_TE_TEV:
-				if (all || (node->tev.c_ref == 0 && node->tev.a_ref == 0)) {
-					size = sizeof(HSD_TETev);
+	if (all) {
+		while ((node = *link) != NULL) {
+			if (type == HSD_TE_ALL || type == node->type) {
+				switch (node->type) {
+				case HSD_TE_TEV:
+					next = node->comm.next;
+					HSD_TExpFree(node);
+					*link = next;
+					continue;
+				case HSD_TE_CNST:
+					next = node->comm.next;
+					HSD_TExpFree(node);
+					*link = next;
+					continue;
+				default:
+					TEXP_ASSERT(220, 0);
+					break;
 				}
-				break;
-			case HSD_TE_CNST:
-				if (all || node->cnst.ref == 0) {
-					size = sizeof(HSD_TECnst);
-				}
-				break;
-			default:
-				TEXP_ASSERT(all ? 220 : 268, 0);
-				break;
 			}
-
-			if (size != 0) {
-				HSD_TExp* next = node->comm.next;
-				hsdFreeMemPiece(node, size);
-				*link = next;
-				continue;
+			link = &node->comm.next;
+		}
+	} else {
+		if (type == HSD_TE_ALL || type == HSD_TE_TEV) {
+			for (node = texp_list; node != NULL; node = node->comm.next) {
+				if (node->type == HSD_TE_TEV && node->tev.c_ref == 0) {
+					HSD_TExpUnref(node, HSD_TE_RGB);
+					HSD_TExpUnref(node, HSD_TE_A);
+				}
 			}
 		}
-		link = &node->comm.next;
+
+		while ((node = *link) != NULL) {
+			if (type == HSD_TE_ALL || type == node->type) {
+				switch (node->type) {
+				case HSD_TE_TEV:
+					if (node->tev.c_ref != 0 || node->tev.a_ref != 0) {
+						break;
+					}
+					next = node->comm.next;
+					HSD_TExpFree(node);
+					*link = next;
+					continue;
+				case HSD_TE_CNST:
+					if (node->cnst.ref != 0) {
+						break;
+					}
+					next = node->comm.next;
+					HSD_TExpFree(node);
+					*link = next;
+					continue;
+				default:
+					TEXP_ASSERT(268, 0);
+					break;
+				}
+			}
+			link = &node->comm.next;
+		}
 	}
 	return texp_list;
 }
