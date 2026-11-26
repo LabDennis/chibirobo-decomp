@@ -498,6 +498,7 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
  * @note Address: 0x801EDB84
  * @note Size: 0x284
  */
+// NONMATCHING: MWCC inlines HSD_SynthSFXFreeVoice on the stream-pending path instead of emitting the retail call.
 void HSD_SynthSFXKeyOff(s32 id)
 {
 	HSD_SynthSFXNode* node;
