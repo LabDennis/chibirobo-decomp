@@ -999,10 +999,6 @@ static s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 pan, u8 span, s16 pitch, u8 a
  */
 s32 HSD_AudioSFXStartParam(u32 sfx, u8 vol, u8 pan, s32 group, s32 track)
 {
-	// Check the track before indexing the auxiliary sends.
-	if ((u32)track >= AXDRIVER_TRACK_COUNT) {
-		return -1;
-	}
 	return AXDriverStartVVoice(sfx, vol, pan, 0, 0, sTrackAuxSends[0][track], sTrackAuxSends[1][track], group, track);
 }
 
