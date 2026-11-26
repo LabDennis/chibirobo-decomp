@@ -22,6 +22,14 @@ XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
 XObjReadAnm gObjectAnimationReader;
 
+/**
+ * @note Address: 0x80131BE8
+ * @note Size: 0x84
+ */
+XObjReadAnm::~XObjReadAnm()
+{
+}
+
 inline BOOL XObjRead::ReadStart(void* obj, void* info)
 {
 	for (s32 i = 0; i < 8; i++) { // eight pending requests at most
