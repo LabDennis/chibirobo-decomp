@@ -1721,10 +1721,16 @@ void AXDriverStopAllStreams(void)
 
 static inline BOOL AXDriverSetSlotVolume(s32 slot, u8 vol, u16 frames)
 {
+	u8 clamped;
+
 	if (slot < 1 || slot > sAXStreamSlotCount) {
 		return FALSE;
 	}
-	HSD_SynthSetVolFader(sStreamVoiceIds[slot], vol, frames, 1, 0);
+	clamped = vol;
+	if (clamped > AXDRIVER_VOLUME_MAX) {
+		clamped = AXDRIVER_VOLUME_MAX;
+	}
+	HSD_SynthSetVolFader(sStreamVoiceIds[slot], clamped, frames, 1, 0);
 	return TRUE;
 }
 
