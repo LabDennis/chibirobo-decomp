@@ -44,9 +44,16 @@ public:
 	virtual BOOL Create(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority,
 	                    u16 attr);                    // _0C, makes the thread and its queue
 	virtual BOOL QueueRead(void* object, void* info); // _10
-	virtual void RunRequestLoop();                    // _14
-	virtual void ProcessRequest(XObjReadReq* req);    // _18, runs one read
-	virtual BOOL HasPendingReads();                   // _1C
+	virtual void RunRequestLoop()                     // _14
+	{
+		OSMessage msg;
+		while (true) {
+			OSReceiveMessage(&mQueue.mQueue, &msg, OS_MESSAGE_BLOCK);
+			ProcessRequest((XObjReadReq*)msg);
+		}
+	}
+	virtual void ProcessRequest(XObjReadReq* req); // _18, runs one read
+	virtual BOOL HasPendingReads();                // _1C
 };
 typedef char XObjRead_size_check[sizeof(XObjRead) == 0x390 ? 1 : -1];
 
