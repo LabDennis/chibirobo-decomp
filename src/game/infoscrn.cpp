@@ -788,6 +788,7 @@ extern "C" void ResumeScrapCounterPulse(InfoScrn* scrn)
  * @note Address: 0x80068B70
  * @note Size: 0x28
  */
+// NONMATCHING: the retail .bss prefix before the three counters is not reconstructed; Suppress/Allow are instruction-identical.
 extern "C" void SuppressIdleHudCounters(InfoScrn* scrn)
 {
 	gHudHappyPointCounter.mSuppressIdleDisplay = TRUE;
