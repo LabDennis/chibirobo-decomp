@@ -408,6 +408,7 @@ void CopyJointPoseAsQuaternion(HSD_JObj* src, HSD_JObj* dst)
  * @note Size: 0x94
  */
 // copies the pose of a whole tree onto another
+// NONMATCHING: retail repeats both child NULL tests at the top of the loop body in addition to its loop condition.
 void CopyJointPoseTree(HSD_JObj* src, HSD_JObj* dst)
 {
 	HSD_JObj* s;
