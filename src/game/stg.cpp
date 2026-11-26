@@ -2870,14 +2870,13 @@ extern "C" const char* GetPCMenuLabelText(s32 id)
  * @note Address: 0x80034E4C
  * @note Size: 0x60
  */
-// NONMATCHING: regalloc
+// NONMATCHING: retail keeps separate element-offset and index registers; this build folds the reverse traversal into one pointer.
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
 	const Inventory& inventory = gGame.GetPlayer()->mParams.mInventory;
 	for (s32 i = ARRAY_SIZE(inventory.mItems) - 1; i >= 0; --i) {
-		const InventoryItem& entry = inventory.mItems[i];
-		if (id == entry.mId)
-			return entry.mCount;
+		if (id == inventory.mItems[i].mId)
+			return inventory.mItems[i].mCount;
 	}
 	return 0;
 }
