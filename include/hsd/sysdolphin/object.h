@@ -76,6 +76,31 @@ static inline BOOL ref_DEC(void* object)
     return HSD_OBJ(object)->ref_count-- == 0;
 }
 
+// Reference-count helpers follow https://github.com/doldecomp/melee/blob/master/src/sysdolphin/baselib/object.h.
+static inline s32 ref_CNT(void* o)
+{
+    if (HSD_OBJ(o)->ref_count == HSD_OBJ_NOREF) {
+        return -1;
+    } else {
+        return HSD_OBJ(o)->ref_count;
+    }
+}
+
+static inline s32 iref_CNT(void* o)
+{
+    return HSD_OBJ(o)->ref_count_individual;
+}
+
+static inline BOOL iref_DEC(void* o)
+{
+    BOOL unreferenced = HSD_OBJ(o)->ref_count_individual == 0;
+    if (unreferenced) {
+        return unreferenced;
+    }
+    HSD_OBJ(o)->ref_count_individual -= 1;
+    return HSD_OBJ(o)->ref_count_individual == 0;
+}
+
 inline void iref_INC(void* o)
 {
     HSD_OBJ(o)->ref_count_individual++;
