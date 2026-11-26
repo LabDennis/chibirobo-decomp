@@ -176,6 +176,7 @@ void HSD_SynthSFXSetMix(s32 id, f32 mixMain, f32 mixAuxA, f32 mixAuxB)
  * @note Address: 0x801EE54C
  * @note Size: 0x70
  */
+// NONMATCHING: the assert uses an anonymous absolute __FILE__ string instead of retail's sPathSynthC@sda21, changing argument scheduling.
 void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rearEntry)
 {
 	HSD_SynthSFXNode* it;
