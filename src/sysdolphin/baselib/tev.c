@@ -357,6 +357,7 @@ s32 HSD_TevStage2Num(s32 stage)
 	}
 }
 
+// NONMATCHING: without the removed single-use inline mapping helper, MWCC schedules the outgoing color copy after the switch instead of before it.
 void HSD_SetTevRegAll(void)
 {
 	static const GXTevRegID registerIds[] = { GX_TEVREG0, GX_TEVREG1, GX_TEVREG2, GX_TEVPREV };
