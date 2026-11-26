@@ -39,6 +39,7 @@ public:
 	CVec operator/(f32 s) const; // in the dol, 0x8002442C
 
 	bool operator!=(Vec v) const { return x != v.x || y != v.y || z != v.z; }
+	bool operator==(Vec v) const { return x == v.x && y == v.y && z == v.z; }
 
 	void Set(f32 x, f32 y, f32 z)
 	{
@@ -78,6 +79,7 @@ public:
 
 	// any of the mask's bits set
 	bool Check(u32 mask) const { return (mFlags & mask) != 0; }
+	void Clear() { mFlags = 0; }
 };
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
