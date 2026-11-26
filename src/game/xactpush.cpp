@@ -118,6 +118,7 @@ void XActPush::HandleInput(const CPadOne& pad, f32& moveWeight)
  * @note Address: 0x800C591C
  * @note Size: 0xE4
  */
+// NONMATCHING: retail inlines ReleasePushAction, including the target flag clear and virtual Reset; this build emits a call.
 void CancelPlayerPushAction(XActPush* act)
 {
 	if (act->mState != 0) {
