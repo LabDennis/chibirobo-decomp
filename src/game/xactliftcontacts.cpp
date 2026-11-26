@@ -75,6 +75,7 @@ void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
  * @note Address: 0x800CE9A8
  * @note Size: 0x354
  */
+// NONMATCHING: only register assignment and independent load/store scheduling differ; calls, field offsets and return copies match retail.
 Vec GetLiftTargetContactOffset(XActLift* act, XObj* target)
 {
 	// a plug (24) is held by its end joint
