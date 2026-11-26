@@ -165,6 +165,7 @@ BOOL XObjRead::QueueRead(void* object, void* info)
  * @note Address: 0x80132504
  * @note Size: 0xC8
  */
+// NONMATCHING: retail conditionally repeats the mStackSize store after successful OSCreateThread; that redundant assignment stays removed.
 BOOL XObjRead::Create(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority, u16 attr)
 {
 	mQueue.Initialize(8);
