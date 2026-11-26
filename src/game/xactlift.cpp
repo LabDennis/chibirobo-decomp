@@ -214,9 +214,14 @@ BOOL IsCarryingToothbrush(XActLift* act)
  * @note Address: 0x800D4FE8
  * @note Size: 0x4C
  */
+// NONMATCHING: MWCC folds the two failure exits into beqlr/bnelr; retail branches to the shared clrlwi/blr return.
 BOOL IsLiftTargetPlug(XActLift* act)
 {
-	return act->mTarget != NULL && act->mTarget->GetCategory() == 24;
+	bool result = false;
+	if (act->mTarget != NULL && act->mTarget->GetCategory() == 24) {
+		result = true;
+	}
+	return result;
 }
 
 /**
