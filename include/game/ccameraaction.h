@@ -373,6 +373,7 @@ public:
 
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 	void Reset2();
+	void UpdateTurn(u32 step);
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
 
@@ -421,6 +422,11 @@ public:
 	bool IsDisabled() const
 	{
 		u16 flags = mRecord->mFlags & 0x80;
+		return flags != 0;
+	}
+	bool AllowsTurn() const
+	{
+		u16 flags = mRecord->mFlags & 1;
 		return flags != 0;
 	}
 	f32 GetTop() const { return mRecord->mTop / 100.0f; }
