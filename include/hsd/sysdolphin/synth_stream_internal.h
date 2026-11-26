@@ -88,8 +88,53 @@ extern s32 sSynthNextFreeStreamBuffer;
 
 s32 HSD_SynthTakeStreamBuffer(void);
 u32 HSD_SynthStreamBufferAramAddress(s32 bufferIndex);
-HSD_SynthBeatMarker* HSD_SynthGetBeatMarker(s32 bufferIndex, s32 markerIndex);
-void HSD_SynthStoreBeatMarkers(HSD_SynthPStream* stream, const HSD_SynthBeatMarker* markers, s32 count);
+static inline HSD_SynthBeatMarkerBlock* allocBeatMarkerBlock(void)
+{
+	HSD_SynthBeatMarkerBlock* block = sSynthFreeBeatMarkerBlocks;
+	s32 i;
+
+	if (block != NULL) {
+		sSynthFreeBeatMarkerBlocks = block->next;
+	} else {
+		block = HSD_AudioMalloc(PSTREAM_MARKER_BLOCKS_PER_ALLOC * sizeof(*block));
+		for (i = 0; i < PSTREAM_MARKER_BLOCKS_PER_ALLOC - 1; i++) {
+			block[i].next = sSynthFreeBeatMarkerBlocks;
+			sSynthFreeBeatMarkerBlocks = &block[i];
+		}
+		block += PSTREAM_MARKER_BLOCKS_PER_ALLOC - 1;
+	}
+	return block;
+}
+
+static inline HSD_SynthBeatMarker* HSD_SynthGetBeatMarker(s32 bufferIndex, s32 markerIndex)
+{
+	HSD_SynthPStreamHako* hako = &sSynthStreamHakoBuffers[bufferIndex];
+	HSD_SynthBeatMarkerBlock* block = hako->markers;
+	HSD_SynthBeatMarkerBlock* next;
+	s32 i;
+
+	if (block == NULL) {
+		block = allocBeatMarkerBlock();
+		ASSERT_SYNTH_MSG(0x4BC, block, "bmb");
+		hako->markers = block;
+		block->next = NULL;
+	}
+	while (markerIndex >= PSTREAM_MARKERS_PER_BLOCK) {
+		next = block->next;
+		if (next == NULL) {
+			next = allocBeatMarkerBlock();
+			ASSERT_SYNTH_MSG(0x4C4, next, "bmbnext");
+			block->next = next;
+			next->next = NULL;
+			for (i = 0; i < PSTREAM_MARKERS_PER_BLOCK; i++) {
+				next->marker[i].sampleOffset = 0;
+			}
+		}
+		block = next;
+		markerIndex -= PSTREAM_MARKERS_PER_BLOCK;
+	}
+	return &block->marker[markerIndex];
+}
 void HSD_SynthPStreamNextHakoCallback(s32 playbackId);
 
 static inline s32 lastQueuedStreamBuffer(HSD_SynthPStream* pst)
@@ -100,6 +145,17 @@ static inline s32 lastQueuedStreamBuffer(HSD_SynthPStream* pst)
 		link = &sSynthStreamBufferNext[*link];
 	}
 	return *link;
+}
+
+static inline void HSD_SynthStoreBeatMarkers(HSD_SynthPStream* stream, const HSD_SynthBeatMarker* markers, s32 count)
+{
+	BOOL enabled = OSDisableInterrupts();
+	s32 i;
+
+	for (i = 0; i < count; i++) {
+		*HSD_SynthGetBeatMarker(stream->loadingBufferIndex, i) = markers[i];
+	}
+	OSRestoreInterrupts(enabled);
 }
 
 #endif

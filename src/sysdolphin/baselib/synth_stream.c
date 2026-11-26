@@ -387,6 +387,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(int requestID, void* context, void* b
  * @note Address: 0x801F1DB4
  * @note Size: 0x2D0
  */
+// NONMATCHING: the inlined beat-marker allocation and block-walking code uses different registers and scheduling than retail.
 void HSD_SynthPStreamFirstHakoMarkerCallback(int requestID, void* context, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode((s32)context);
