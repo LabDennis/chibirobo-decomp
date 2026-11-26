@@ -98,8 +98,9 @@ void SetClampedPlayerBattery(Params* params, f32 battery)
  */
 void EnableSubwindowWithFlags(CGame* game, u32 flags)
 {
-	game->mSubwin.mEnabled      = TRUE;
-	game->mSubwin.mFlags.mFlags = flags;
+	game->mSubwin.mEnabled = TRUE;
+	game->mSubwin.mFlags.Clear();
+	game->mSubwin.mFlags.mFlags |= flags;
 }
 
 /**
