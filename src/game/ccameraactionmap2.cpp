@@ -22,9 +22,6 @@ extern "C" {
 
 static CamCollisionPolygon sCameraCollisionPolygons[256];
 static Vec sPreviousMapOrbitAngle;
-// the last eye/center pair TrySetUnobstructedMapCameraYaw and Update tested
-static CVec sMapCameraTestEye;
-static CVec sMapCameraTestCenter;
 extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 
 extern "C" Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map);
@@ -293,9 +290,6 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, Vec& eye, co
 								candidate.Set(firstHit);
 								candidate.y = eye.y;
 							} else {
-								Vec a, b; // retail works these out and drops them
-								GetOutwardPerpendicularToEdge(&target, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &a);
-								GetOutwardPerpendicularToEdge(&nearest, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &b);
 								candidate.Set(nearest);
 								candidate.y = eye.y;
 							}
@@ -480,11 +474,9 @@ void CCameraActionMap::Update(u32 step)
 				distance = PSVECDistance(&target, &current);
 			}
 			Vec candidate;
-			candidate.x          = center.x + distance * std::cosf(yaw) * std::cosf(pitch);
-			candidate.z          = center.z + distance * -std::sinf(yaw) * std::cosf(pitch);
-			candidate.y          = center.y;
-			sMapCameraTestEye    = CVec(candidate);
-			sMapCameraTestCenter = CVec(center);
+			candidate.x = center.x + distance * std::cosf(yaw) * std::cosf(pitch);
+			candidate.z = center.z + distance * -std::sinf(yaw) * std::cosf(pitch);
+			candidate.y = center.y;
 
 			mIntersectionCount = CalcIntersectVec(candidate, center, mIntersectionEntries, 0);
 			if (mIntersectionCount == 0 && TrySetMapCameraTargetYaw(this, PI + mTarget->mMoveRotate.mTarget.y, 20.0f, 0.0f)) {
@@ -748,11 +740,9 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 		CVec eye(map->mEye);
 		distance = PSVECDistance(&target, &eye);
 	}
-	pos.x                = center.x + distance * std::cosf(angle) * std::cosf(pitch);
-	pos.z                = center.z + distance * -std::sinf(angle) * std::cosf(pitch);
-	pos.y                = center.y;
-	sMapCameraTestEye    = CVec(pos);
-	sMapCameraTestCenter = CVec(center);
+	pos.x = center.x + distance * std::cosf(angle) * std::cosf(pitch);
+	pos.z = center.z + distance * -std::sinf(angle) * std::cosf(pitch);
+	pos.y = center.y;
 
 	map->mIntersectionCount = map->CalcIntersectVec(pos, center, map->mIntersectionEntries, 0);
 	if (map->mIntersectionCount == 0 && SetMapYaw(map, yaw, 25.0f)) {
