@@ -1685,6 +1685,7 @@ static inline s32 AXDriverSelectSlot(void)
  * @note Address: 0x801E9E5C
  * @note Size: 0x148
  */
+// NONMATCHING: MWCC inlines AXDriverSelectSlot into this function; retail calls it separately.
 s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel)
 {
 	BOOL enabled;
