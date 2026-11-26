@@ -3,79 +3,69 @@
 INIT void* TRK_memcpy(void* dst, const void* src, size_t n);
 INIT void* TRK_memset(void* dst, int val, size_t n);
 
-// NONMATCHING: retail allocates the 32-byte fill counter/pointer as r4/r3 instead of r3/r4.
-// The pre-incremented copy and fill loops are the MetroTRK source form kept by ogws:
-// https://github.com/zeldaret/ogws/blob/main/src/MetroTRK/debugger/Portable/mem_TRK.c
+enum { FILL_BLOCK_SIZE = 32 };
+
 void TRK_fill_mem(void* dst, int val, size_t n)
 {
-	int work;
-	char* bdst  = (char*)dst;
-	int* wdst = (int*)dst;
-	unsigned int byte = (unsigned char)val;
+	u8* bytes = dst;
+	u8 byte   = (u8)val;
 
-	bdst--;
+	if (n >= FILL_BLOCK_SIZE) {
+		size_t leading = (-(size_t)bytes) & (sizeof(u32) - 1);
+		size_t blocks;
+		size_t words;
+		u32* aligned;
+		u32 word = byte;
 
-	if (n >= 32) {
-		work = ~(unsigned int)bdst & 3;
-
-		if (work) {
-			n -= work;
+		if (leading) {
+			n -= leading;
 			do {
-				*++bdst = byte;
-			} while (--work);
+				*bytes++ = byte;
+			} while (--leading != 0);
 		}
 
-		if (byte) {
-			byte = (byte << 24) | (byte << 16) | (byte << 8) | byte;
-		}
-
-		work = n / 32;
-		wdst = (int*)(bdst - 3);
-		if (work) {
+		// Replicate the fill byte across a word once the destination is aligned.
+		word |= word << 8;
+		word |= word << 16;
+		aligned = (u32*)bytes;
+		blocks = n / FILL_BLOCK_SIZE;
+		if (blocks) {
 			do {
-				wdst[1] = byte;
-				wdst[2] = byte;
-				wdst[3] = byte;
-				wdst[4] = byte;
-				wdst[5] = byte;
-				wdst[6] = byte;
-				wdst[7] = byte;
-				wdst[8] = byte;
-				wdst += 8;
-			} while (--work);
+				unsigned i;
+				for (i = 0; i < FILL_BLOCK_SIZE / sizeof(*aligned); ++i) {
+					aligned[i] = word;
+				}
+				aligned += FILL_BLOCK_SIZE / sizeof(*aligned);
+			} while (--blocks != 0);
 		}
-
-		work = (n / 4) & 7;
-		if (work) {
+		words = (n % FILL_BLOCK_SIZE) / sizeof(*aligned);
+		if (words) {
 			do {
-				*++wdst = byte;
-			} while (--work);
+				*aligned++ = word;
+			} while (--words != 0);
 		}
 
-		bdst = (char*)wdst + 3;
-		n &= 3;
+		bytes = (u8*)aligned;
+		n %= sizeof(*aligned);
 	}
 
 	if (n) {
 		do {
-			*++bdst = byte;
-		} while (--n);
+			*bytes++ = byte;
+		} while (--n != 0);
 	}
 }
 
 void* TRK_memcpy(void* dst, const void* src, size_t n)
 {
-	const char* srcBytes = (const char*)src;
-	char* destBytes      = (char*)dst;
+	u8* destBytes      = dst;
+	const u8* srcBytes = src;
 
-	srcBytes--;
-	destBytes--;
-	n++;
-
-	while (--n != 0) {
-		*++destBytes = *++srcBytes;
+	if (n) {
+		do {
+			*destBytes++ = *srcBytes++;
+		} while (--n != 0);
 	}
-
 	return dst;
 }
 
