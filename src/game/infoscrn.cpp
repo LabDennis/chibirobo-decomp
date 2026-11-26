@@ -40,6 +40,10 @@ extern "C" {
 f32 gHudScanlineHistory[10];
 }
 
+InfoPoint gHudMoneyCounter;
+InfoPoint gHudHappyPointCounter;
+InfoPoint gHudScrapCounter;
+
 // how bright the hud is, the counters and gauges multiply their alpha by it
 f32 gHudOpacityScale = 1.0f;
 
