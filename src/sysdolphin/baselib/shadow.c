@@ -85,6 +85,7 @@ HSD_Shadow* HSD_ShadowAlloc(void)
 	shadow->intensity = 0;
 
 	shadow->texture->imagedesc->format = GX_TF_I8;
+	shadow->texture->imagedesc->format = GX_TF_I8;
 	shadow->texture->imagedesc->width  = SHADOW_DEFAULT_SIZE;
 	shadow->texture->imagedesc->height = SHADOW_DEFAULT_SIZE;
 
