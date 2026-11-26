@@ -1033,6 +1033,7 @@ extern "C" BOOL InfoScrn_IsBatteryGaugeEmpty(InfoScrn* scrn)
  * @note Address: 0x8006656C
  * @note Size: 0x74
  */
+// NONMATCHING: retail has a fifth float initialization iteration at 0xF0/0x104/0x114/0x124 instead of the integer/byte stores below.
 extern "C" void InitBatteryGauge(InfoScrn* scrn, f32 x)
 {
 	for (int i = 0; i < ARRAY_SIZE(scrn->mDigitRoll); i++) {
