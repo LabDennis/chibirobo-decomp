@@ -309,6 +309,10 @@ void OSCancelAlarms(u32 tag) {
     }
 }
 
+// NONMATCHING: retail emits two extra branch-to-next-instruction hops before the loop test,
+// schedules the final check after the register saves, and uses mr rather than addi for the
+// alarm copy. The documented while form and the later SDK for-loop form compile identically
+// here, so the remaining difference is compiler control-flow cleanup.
 /**
  * @note Address: 0x80162554
  * @note Size: 0xA0
