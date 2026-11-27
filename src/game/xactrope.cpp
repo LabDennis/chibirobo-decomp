@@ -1,4 +1,6 @@
 #include "game/cgame.h"
+#include "game/cjobjinlineattach.h"
+#include "game/cjobjset.h"
 #include "game/cparticle.h"
 #include "game/cscrn.h"
 #include "game/csound.h"
