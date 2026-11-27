@@ -76,6 +76,8 @@ s32 HSD_SynthSFXCheck(s32 id)
  * @note Address: 0x801EE0DC
  * @note Size: 0x220
  */
+// NONMATCHING: retail expands HSD_SynthVolToDBx/HSD_SynthDBxToVol through log/exp; this unit emits the real
+// calls because their definitions live in synth.c. No copies of those functions are introduced here.
 void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
 {
 	HSD_SynthSFXNode* node;
