@@ -172,6 +172,8 @@ extern "C" void DrawStage(s32 arg)
  * @note Address: stage07 .text 0x10D0
  * @note Size: 0x110
  */
+// NONMATCHING: retail makes a discarded PSVECDistance call before GetSoundVolumeAtPosition and uses a larger
+// saved-register frame. The dead call stays removed; object filtering, volume update and UpdateTrash match.
 extern "C" void UpdateStage(s32 arg)
 {
 	XSound* sound = &gGame.mSound;
