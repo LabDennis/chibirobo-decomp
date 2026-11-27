@@ -3,12 +3,20 @@
 
 #include "game/cjobj.h"
 
+static inline Vec MakeVec(f32 x, f32 y, f32 z)
+{
+	Vec v = Vec();
+	v.x   = x;
+	v.y   = y;
+	v.z   = z;
+	return v;
+}
+
 inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		const Vec requested = { x, y, z };
 		// retail tests the cached translation here
-		if (!(mTranslate != requested)) {
+		if (!(mTranslate != MakeVec(x, y, z))) {
 			return;
 		}
 	}
@@ -19,8 +27,7 @@ inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		const Vec requested = { x, y, z };
-		if (!(mScale != requested)) {
+		if (!(mScale != MakeVec(x, y, z))) {
 			return;
 		}
 	}
@@ -33,8 +40,7 @@ inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		const Vec requested = { x, y, z };
-		if (!(mTranslate != requested)) {
+		if (!(mTranslate != MakeVec(x, y, z))) {
 			return;
 		}
 	}
