@@ -1,4 +1,5 @@
 #include "game/xobjactor.h"
+#include "game/cjobjset.h"
 #include "game/xchr.h"
 #include "game/gmath.h"
 

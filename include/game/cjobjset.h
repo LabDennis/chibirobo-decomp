@@ -12,6 +12,51 @@ static inline Vec MakeVec(f32 x, f32 y, f32 z)
 	return v;
 }
 
+inline void CJObj::SetRotationX(f32 x, s32 force)
+{
+	if (force == 0 && x == mRotate.x) {
+		return;
+	}
+	mRotate.x = x;
+	if (mJObj->flags & USE_QUATERNION) {
+		Quaternion q;
+		EulerToQuat(&mRotate, &q);
+		HSD_JObjSetRotation(mJObj, &q);
+	} else {
+		HSD_JObjSetRotationX(mJObj, x);
+	}
+}
+
+inline void CJObj::SetRotationY(f32 y, s32 force)
+{
+	if (force == 0 && y == mRotate.y) {
+		return;
+	}
+	mRotate.y = y;
+	if (mJObj->flags & USE_QUATERNION) {
+		Quaternion q;
+		EulerToQuat(&mRotate, &q);
+		HSD_JObjSetRotation(mJObj, &q);
+	} else {
+		HSD_JObjSetRotationY(mJObj, y);
+	}
+}
+
+inline void CJObj::SetRotationZ(f32 z, s32 force)
+{
+	if (force == 0 && z == mRotate.z) {
+		return;
+	}
+	mRotate.z = z;
+	if (mJObj->flags & USE_QUATERNION) {
+		Quaternion q;
+		EulerToQuat(&mRotate, &q);
+		HSD_JObjSetRotation(mJObj, &q);
+	} else {
+		HSD_JObjSetRotationZ(mJObj, z);
+	}
+}
+
 inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {

@@ -84,48 +84,9 @@ public:
 		mScale.z = z;
 		HSD_JObjSetScaleZ(mJObj, z);
 	}
-	virtual void SetRotationX(f32 x, s32 force) // _24
-	{
-		if (force == 0 && x == mRotate.x) {
-			return;
-		}
-		mRotate.x = x;
-		if (mJObj->flags & USE_QUATERNION) {
-			Quaternion q;
-			EulerToQuat(&mRotate, &q);
-			HSD_JObjSetRotation(mJObj, &q);
-		} else {
-			HSD_JObjSetRotationX(mJObj, x);
-		}
-	}
-	virtual void SetRotationY(f32 y, s32 force) // _28
-	{
-		if (force == 0 && y == mRotate.y) {
-			return;
-		}
-		mRotate.y = y;
-		if (mJObj->flags & USE_QUATERNION) {
-			Quaternion q;
-			EulerToQuat(&mRotate, &q);
-			HSD_JObjSetRotation(mJObj, &q);
-		} else {
-			HSD_JObjSetRotationY(mJObj, y);
-		}
-	}
-	virtual void SetRotationZ(f32 z, s32 force) // _2C
-	{
-		if (force == 0 && z == mRotate.z) {
-			return;
-		}
-		mRotate.z = z;
-		if (mJObj->flags & USE_QUATERNION) {
-			Quaternion q;
-			EulerToQuat(&mRotate, &q);
-			HSD_JObjSetRotation(mJObj, &q);
-		} else {
-			HSD_JObjSetRotationZ(mJObj, z);
-		}
-	}
+	virtual void SetRotationX(f32 x, s32 force);       // _24, in game/cjobjset.h
+	virtual void SetRotationY(f32 y, s32 force);       // _28, in game/cjobjset.h
+	virtual void SetRotationZ(f32 z, s32 force);       // _2C, in game/cjobjset.h
 	virtual void SetTranslate(const Vec& v, s32 force) // _30
 	{
 		if (force == 0 && !(mTranslate != v)) {

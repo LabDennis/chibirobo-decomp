@@ -7,6 +7,7 @@
 #include "game/ccamera.h"
 #include "game/cparticle.h"
 #include "game/stagedata.h"
+#include "game/cjobjset.h"
 #include "game/cjobjinlineattach.h"
 extern "C" {
 #include <sysdolphin/mtx.h>

@@ -1,6 +1,7 @@
 #include "game/xobjattachment.h"
 #include "game/cgame.h"
 #include "game/csound.h"
+#include "game/cjobjset.h"
 #include "game/evt.h"
 #include <math.h>
 
