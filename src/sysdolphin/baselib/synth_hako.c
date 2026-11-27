@@ -36,6 +36,7 @@ s32 HSD_SynthTakeStreamBuffer(void)
  * @note Address: 0x801F09A8
  * @note Size: 0x10C
  */
+// NONMATCHING: the remaining diff is queue traversal register allocation and global-base scheduling.
 void QueueLoadedSynthStreamBuffer(int requestID, void* context, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode((s32)context);
@@ -46,10 +47,6 @@ void QueueLoadedSynthStreamBuffer(int requestID, void* context, void* buffer, BO
 	}
 
 	bufferIndex = node->link.pstream->loadingBufferIndex;
-	if (bufferIndex == STREAM_BUFFER_FREE) {
-		return;
-	}
-
 	*streamBufferQueueTailLink(node->link.pstream) = bufferIndex;
 	sSynthStreamBufferNext[bufferIndex] = STREAM_BUFFER_END;
 	node->link.pstream->queuedBufferCount++;
