@@ -379,10 +379,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 void TryLeaveHang(XActHang* act)
 {
 	const XObjFloor& floor = act->mOwner->mFloors[0];
-	Vec extent             = ReadObjectFloorExtent(floor);
-	Vec offset             = ReadObjectFloorOffset(floor);
-	f32 radius             = act->mOwner->mMoveScale.x * extent.x;
-	f32 halfHeight         = 0.5f * (act->mOwner->mMoveScale.x * (offset.y + extent.y));
+	f32 radius             = act->mOwner->mMoveScale.x * ReadObjectFloorExtent(floor).x;
+	f32 halfHeight         = 0.5f * (act->mOwner->mMoveScale.x * (ReadObjectFloorOffset(floor).y + ReadObjectFloorExtent(floor).y));
 	s32 path[]             = { 0 };
 	Vec position           = GetEventJointWorldPosition(act->mOwner, 1, path);
 	position.y += 0.5f;

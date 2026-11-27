@@ -41,22 +41,32 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 		f32 dz = object->mMoveTranslate.z - pos->z;
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (radius + object->mFloorXZExtent))
 			continue;
-		Vec push, contact;
 		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
+			CVec push, contact;
 			if (CarriedObjectTouches(object, *pos, radius, height, push, contact) && object->OnItemUsed(pos, item)) {
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
 		}
-		const bool receivesSquirterHit = (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL))
-		                              || (checkOthers && !(object->mStatus.mFlags & 0x2000000000000ULL)
-		                                  && !(object->mStatus.mFlags & 0x100000) && object != act->mTarget && object != act->mOwner);
-		if (receivesSquirterHit && CarriedObjectTouches(object, *pos, radius, height, push, contact)) {
-			object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
-			found = TRUE;
-			if (result)
-				*result = contact;
+		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
+			CVec push, contact;
+			if (CarriedObjectTouches(object, *pos, radius, height, push, contact)) {
+				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
+				found = TRUE;
+				if (result)
+					*result = contact;
+			}
+		}
+		if (checkOthers && !(object->mStatus.mFlags & 0x2000000000000ULL) && !(object->mStatus.mFlags & 0x100000) && object != act->mTarget
+		    && object != act->mOwner) {
+			CVec push, contact;
+			if (CarriedObjectTouches(object, *pos, radius, height, push, contact)) {
+				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
+				found = TRUE;
+				if (result)
+					*result = contact;
+			}
 		}
 	}
 	return found;

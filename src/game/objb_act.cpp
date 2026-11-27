@@ -193,7 +193,7 @@ void UpdateHeldObject(XActLift* act, s32)
 		}
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
 		UpdateCarriedObjectPosition(act, obj);
-		if (IsLiftTargetPlug(act)) {
+		if (act->mTarget != NULL && act->mTarget->GetCategory() == 24) {
 			s32 handPath[] = { 0, 0 };
 			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
 			s32 path[] = { 0 };

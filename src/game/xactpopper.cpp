@@ -291,7 +291,11 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 					p->mParams.SetBattery(p->mParams.mBattery - act->mShotStrength);
 				}
 				s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, AttachmentPopper);
-				StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range);
+				if (target != NULL) {
+					StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range);
+				} else {
+					StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range);
+				}
 			}
 			ClearPopperCharge(&charge);
 			act->mState = 8;

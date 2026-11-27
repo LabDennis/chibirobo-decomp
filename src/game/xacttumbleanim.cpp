@@ -199,31 +199,33 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32,
  */
 void XActTumble::HandleInput(const CPadOne& pad, f32& moveWeight)
 {
-	switch (mState) {
-	case 0:
-		break;
-	case 2:
-	case 16:
+	if (mState == 2) {
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
-			f32 x = pad.mStickX;
-			f32 y = pad.mStickY;
-			if ((pad.mTrigger & (PAD_BUTTON_A | PAD_BUTTON_B)) || sqrtf(x * x + y * y) > 0.0f)
-				++mState;
+			if ((pad.mTrigger & PAD_BUTTON_A) || (pad.mTrigger & PAD_BUTTON_B)
+			    || sqrtf(pad.mStickX * pad.mStickX + pad.mStickY * pad.mStickY) > 0.0f) {
+				mState = 3;
+			}
 		}
 		moveWeight = 0.0f;
-		break;
-	case 5:
+	} else if (mState == 16) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
+			if ((pad.mTrigger & PAD_BUTTON_A) || (pad.mTrigger & PAD_BUTTON_B)
+			    || sqrtf(pad.mStickX * pad.mStickX + pad.mStickY * pad.mStickY) > 0.0f) {
+				mState = 17;
+			}
+		}
+		moveWeight = 0.0f;
+	} else if (mState == 5) {
 		// Recovering from an empty battery takes a button press.
-		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && (pad.mTrigger & (PAD_BUTTON_A | PAD_BUTTON_B)))
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL
+		    && ((pad.mTrigger & PAD_BUTTON_A) || (pad.mTrigger & PAD_BUTTON_B))) {
 			mState = 6;
+		}
 		moveWeight = 0.0f;
-		break;
-	case 7:
+	} else if (mState == 7) {
 		moveWeight = 0.8f;
-		break;
-	default:
+	} else if (mState != 0) {
 		moveWeight = 0.0f;
-		break;
 	}
 }
 
