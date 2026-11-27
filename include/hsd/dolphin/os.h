@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+#ifndef OSRoundUp32B
+#define OSRoundUp32B(x) (((u32)(x) + 32 - 1) & ~(32 - 1))
+#endif
+
 BOOL OSDisableInterrupts(void);
 BOOL OSRestoreInterrupts(BOOL level);
 void* OSGetArenaLo(void);

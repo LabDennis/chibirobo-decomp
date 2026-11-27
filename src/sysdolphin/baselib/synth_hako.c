@@ -88,6 +88,7 @@ void HSD_SynthPStreamHakoMarkerCallback(int requestID, void* context, void* buff
  * @note Address: 0x801F0DA0
  * @note Size: 0x16C
  */
+// NONMATCHING: after restoring the real rounding macro, only DevCom-request expansion and queue/register scheduling remain.
 void HSD_SynthPStreamHakoHeaderCallback(int requestID, void* context, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode((s32)context);
@@ -104,9 +105,6 @@ void HSD_SynthPStreamHakoHeaderCallback(int requestID, void* context, void* buff
 
 	stream = node->link.pstream;
 	bufferIndex = stream->loadingBufferIndex;
-	if (bufferIndex == STREAM_BUFFER_FREE) {
-		return;
-	}
 	headerOffset = sSynthStreamHakoBuffers[lastQueuedStreamBuffer(stream)].nextHeaderOffset;
 	hako = &sSynthStreamHakoBuffers[bufferIndex];
 	if (stream->stopAtLoop && hako->nextHeaderOffset <= headerOffset) {
