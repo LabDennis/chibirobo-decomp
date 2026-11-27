@@ -6403,24 +6403,6 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
  * @note Address: 0x80057318
  * @note Size: 0x424
  */
-// NONMATCHING: register allocation
-extern "C" void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width, f32 height, f32 alpha)
-{
-	f32 left    = x - width / 2.0f;
-	f32 top     = y - height / 2.0f;
-	f32 right   = width + left;
-	f32 bottom  = height + top;
-	Vec fill[5] = { (Vec) { left, top, z }, (Vec) { right, top, z }, (Vec) { right, bottom, z }, (Vec) { left, bottom, z },
-		            (Vec) { left, top, z } };
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fill, color, 5);
-	Vec border[6] = { (Vec) { left, top, 0.0f },    (Vec) { right, top, 0.0f }, (Vec) { right, bottom, 0.0f },
-		              (Vec) { left, bottom, 0.0f }, (Vec) { left, top, 0.0f },  (Vec) { right, top, 0.0f } };
-	u32 opacity   = (u32)(255.0f * alpha);
-	DrawGsLineStrip(&gGame.mGs, &border[3], opacity | 0x64646400, 3);
-	DrawGsLineStrip(&gGame.mGs, &border[1], opacity | 0xC8C8C800, 3);
-}
-
 static inline f32 MenuRectStart(f32 center, f32 size)
 {
 	return center - size / 2;
@@ -6429,6 +6411,25 @@ static inline f32 MenuRectStart(f32 center, f32 size)
 static inline f32 MenuRectEnd(f32 center, f32 size)
 {
 	return size + MenuRectStart(center, size);
+}
+
+// NONMATCHING: register allocation
+extern "C" void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width, f32 height, f32 alpha)
+{
+	Vec fill[5]
+	    = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
+		    (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z }, (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
+		    (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z } };
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fill, color, 5);
+	Vec border[6] = {
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f },
+		(Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), 0.0f },     (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), 0.0f },
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f }
+	};
+	u32 opacity = (u32)(255.0f * alpha);
+	DrawGsLineStrip(&gGame.mGs, &border[3], opacity | 0x64646400, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], opacity | 0xC8C8C800, 3);
 }
 
 /**
