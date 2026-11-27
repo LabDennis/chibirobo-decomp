@@ -11,7 +11,6 @@
 extern "C" {
 #include <dolphin/mtx/mtx.h>
 #include <sysdolphin/particle.h>
-f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index);
 }
 
 /**
@@ -258,14 +257,13 @@ void InitializePlayerLiftAction(XActLift* act, XObjChr* owner)
  */
 Vec GetTargetFloorPosition(XAction* act)
 {
-	Vec position       = { 0.0f, 0.0f, 0.0f };
+	Vec position       = Vec();
 	const XObj* target = act->mTarget;
 	if (target != NULL) {
 		const XObjFloor& floor = target->mFloors[act->mTargetFloor];
 		const Vec offset       = target->mMoveScale * ReadObjectFloorOffset(floor);
 		const Vec extent       = target->mMoveScale * ReadObjectFloorExtent(floor);
-		// Round the floor's local angle before composing it with the object's yaw.
-		const f32 yaw = target->mMoveRotate.y + GetFloorYawRadians(&target->mFloors, act->mTargetFloor);
+		const f32 yaw          = target->mMoveRotate.y + DEG2RAD * floor.mYawDegrees;
 		Mtx transform;
 		MakeFloorTransform(target, offset, extent, yaw, transform);
 		PSMTXMultVec(transform, &position, &position);

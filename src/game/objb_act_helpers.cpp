@@ -1,4 +1,5 @@
 #include "game/cgame.h"
+#include "game/cjobjinlineattach.h"
 #include "game/cparticle.h"
 #include "game/stagedata.h"
 #include "game/xchr.h"
