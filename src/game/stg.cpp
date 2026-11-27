@@ -2413,6 +2413,8 @@ void CMenu::Init()
  * @note Address: 0x8003AC48
  * @note Size: 0xE0
  */
+// NONMATCHING: retail expands sMenuMain.Resume(), while this build emits the real CMenu::Resume call. Sound,
+// close and status updates otherwise match.
 void MenuSave::State17(u32)
 {
 	MenuSave* menu = this;
@@ -4559,6 +4561,8 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
  * @note Address: 0x80049418
  * @note Size: 0xF0
  */
+// NONMATCHING: retail expands sMenuMain.Resume(), while this build emits the real CMenu::Resume call. Result,
+// close, sound and status updates otherwise match.
 void MenuPC::State11(u32)
 {
 	MenuPC* menu = this;
