@@ -201,6 +201,7 @@ s32 CFile::Read(const char* path, u32 offset, u32 size)
  * @note Address: 0x8019F804
  * @note Size: 0x74
  */
+// NONMATCHING: retail expands CFile::CloseHandle here; this unit calls its real out-of-line definition in ctpl.cpp.
 void CFile::Close()
 {
 	if (mEntrynum >= 0) {
