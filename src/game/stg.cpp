@@ -4609,7 +4609,8 @@ BOOL MenuStatus::Draw()
  * @note Size: 0x294
  */
 // two byte text a character at a time, digits and narrow letters moved to the middle of their cell
-// NONMATCHING: regalloc
+// NONMATCHING: the full call list, character conversion and jump-table logic match; the remaining differences
+// are register allocation and scheduling in the character loop.
 extern "C" void DrawDoubleByteMenuText(const char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
 {
 	const char* p;
