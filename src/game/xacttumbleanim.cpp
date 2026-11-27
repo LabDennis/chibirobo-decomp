@@ -217,8 +217,7 @@ void XActTumble::HandleInput(const CPadOne& pad, f32& moveWeight)
 		moveWeight = 0.0f;
 	} else if (mState == 5) {
 		// Recovering from an empty battery takes a button press.
-		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL
-		    && ((pad.mTrigger & PAD_BUTTON_A) || (pad.mTrigger & PAD_BUTTON_B))) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && ((pad.mTrigger & PAD_BUTTON_A) || (pad.mTrigger & PAD_BUTTON_B))) {
 			mState = 6;
 		}
 		moveWeight = 0.0f;

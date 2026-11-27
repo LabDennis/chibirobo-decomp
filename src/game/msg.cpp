@@ -1116,8 +1116,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			Vec quad[4] = { (Vec) { x, y, 0.0f }, (Vec) { x + font->mSize, y, 0.0f }, (Vec) { x + font->mSize, y + font->mSize, 0.0f },
 				            (Vec) { x, y + font->mSize, 0.0f } };
 			u32 color   = 0xFF00 | (u32)(200.0f * font->mHighlightAlpha);
-			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y,
-			                 quad[2].z, quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
+			                 quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
 			for (s32 i = 0; i < font->mDigitCount; i++) {
 				f32 digitX = ((font->mDigitCount * font->mSize) * 0.5f + center) - (i + 1) * font->mSize;
 				u32 color;
