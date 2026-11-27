@@ -2595,6 +2595,8 @@ extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj);
  * @note Address: 0x8007E7F4
  * @note Size: 0xAC
  */
+// NONMATCHING: only the initial joint load/null test is scheduled differently around the r31 save; the joint
+// walk, GetEventJObjWorldPosition call and CVec return are otherwise instruction-identical.
 extern "C" CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path)
 {
 #if defined(VERSION_JP)
