@@ -1,7 +1,7 @@
 #include "game/reltrash.h"
 #include "game/relmodule.h"
 #include "game/cgame.h"
-#include "game/cjobj.h"
+#include "game/cjobjset.h"
 #include "game/csound.h"
 
 // in rel/trash.cpp and rel/fafa.cpp

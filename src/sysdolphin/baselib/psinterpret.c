@@ -93,6 +93,15 @@ static inline s32 U8ClampAdd(u8 old, f32 delta)
 }
 
 /**
+ * @note Address: 0x801E22D0
+ * @note Size: 0x20
+ */
+static inline void HSD_MTXSRT(Mtx m, Vec* scale, Vec* rot, Vec* trans, Vec* parent_scale)
+{
+	HSD_MtxSRT(m, scale, rot, trans, parent_scale);
+}
+
+/**
  * @note Address: 0x801E22F0
  * @note Size: 0x64
  */
@@ -104,6 +113,15 @@ static inline void AttachJointToParticleGenerator(HSD_Generator* gen, HSD_JObj* 
 			ref_INC(jobj);
 		}
 	}
+}
+
+/**
+ * @note Address: 0x801E2354
+ * @note Size: 0x8
+ */
+static inline HSD_Particle* _psListGetNext(HSD_Particle* pp)
+{
+	return pp->next;
 }
 
 /**
@@ -396,7 +414,7 @@ HSD_Particle* psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev)
 	HSD_Particle* child;
 
 	if (pp->kind & PS_PARTICLE_PAUSED) {
-		return pp->next;
+		return _psListGetNext(pp);
 	}
 
 	if (pp->sizeCount != 0) {
@@ -1018,7 +1036,7 @@ HSD_Particle* psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev)
 						break;
 					}
 					SyncParticleGeneratorFromJoint(pp->appsrt->gp);
-					HSD_MtxSRT(pp->appsrt->mmtx, &pp->appsrt->scale, &pp->appsrt->rot, &pp->appsrt->translate, NULL);
+					HSD_MTXSRT(pp->appsrt->mmtx, &pp->appsrt->scale, &pp->appsrt->rot, &pp->appsrt->translate, NULL);
 					x  = pp->pos.x;
 					y  = pp->pos.y;
 					z  = pp->pos.z;
@@ -1683,7 +1701,7 @@ HSD_Particle* psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev)
 		if (pp->gen != NULL) {
 			pp->gen->numChild--;
 		}
-		next = pp->next;
+		next = _psListGetNext(pp);
 		if (pp->appsrt != NULL && psRemoveParticleAppSRT(pp) == 0 && prev == NULL && _psListGetFirst(pp->linkNo) != next) {
 			next = _psListGetFirst(pp->linkNo);
 		}
@@ -1760,7 +1778,7 @@ HSD_Particle* psInterpretParticle0(HSD_Particle* pp, HSD_Particle* prev)
 	if (pp->callback != NULL && pp->callback(pp) == -1) {
 		goto kill;
 	}
-	return pp->next;
+	return _psListGetNext(pp);
 }
 
 /**
