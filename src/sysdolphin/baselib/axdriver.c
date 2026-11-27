@@ -1738,6 +1738,7 @@ static inline BOOL AXDriverSetSlotVolume(s32 slot, u8 vol, u16 frames)
  * @note Address: 0x801EA028
  * @note Size: 0x9C
  */
+// NONMATCHING: Instructions match; only the vol copy scheduling and the slot-count reload register differ.
 BOOL AXDriverSetAllStreamVolumes(u8 vol, u16 frames)
 {
 	s32 i;
