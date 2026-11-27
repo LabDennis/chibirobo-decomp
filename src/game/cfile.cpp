@@ -17,6 +17,8 @@ static CFileArchive* gCurrentFileArchive;
  * @note Address: 0x8019FD78
  * @note Size: 0x24
  */
+// NONMATCHING: retail's callback is (s32, DVDFileInfo*, void*, int), while this definition follows the generic
+// DevCom callback type; using retail's typed context here would require a forbidden function-pointer cast.
 static void ReadCallback(int, void* context, void*, BOOL cancel)
 {
 	DVDFileInfo* info = static_cast<DVDFileInfo*>(context);
