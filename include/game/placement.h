@@ -7,7 +7,7 @@
 
 static inline Vec PlacementPosition(const CoordInfo& coord)
 {
-	Vec pos;
+	Vec pos                     = Vec();
 	const StagePlacement* entry = coord.mPlacement;
 	pos.x                       = entry->mPos[0] / 100.0f;
 	pos.y                       = entry->mPos[1] / 100.0f;
@@ -17,7 +17,7 @@ static inline Vec PlacementPosition(const CoordInfo& coord)
 
 static inline Vec PlacementRotation(const CoordInfo& coord)
 {
-	Vec rot;
+	Vec rot                     = Vec();
 	const StagePlacement* entry = coord.mPlacement;
 	rot.x                       = DEG2RAD * entry->mRot[0];
 	rot.y                       = DEG2RAD * entry->mRot[1];
@@ -27,7 +27,7 @@ static inline Vec PlacementRotation(const CoordInfo& coord)
 
 static inline Vec PlacementScale(const CoordInfo& coord)
 {
-	Vec scale;
+	Vec scale                   = Vec();
 	const StagePlacement* entry = coord.mPlacement;
 	scale.x                     = entry->mScale[0] / 100.0f;
 	scale.y                     = entry->mScale[1] / 100.0f;
