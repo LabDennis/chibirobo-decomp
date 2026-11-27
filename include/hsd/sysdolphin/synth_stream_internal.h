@@ -1,6 +1,8 @@
 #ifndef HSD_SYNTH_STREAM_INTERNAL_H
 #define HSD_SYNTH_STREAM_INTERNAL_H
 
+#include <dolphin/os.h>
+#include <sysdolphin/dvdsche.h>
 #include <sysdolphin/synth.h>
 #include <sysdolphin/synth_internal.h>
 
@@ -75,19 +77,120 @@ typedef struct HSD_SynthPStream {
 
 STATIC_ASSERT(sizeof(HSD_SynthPStream) == 0x2C);
 
+// a queued stream start, kicked off when the current stream goes away
+typedef struct HSD_SynthPStreamRequest {
+	struct HSD_SynthPStreamRequest* next;
+	s32 entrynum;
+	s16 vol;
+	s16 vol2;
+	u8 volMode;
+	u8 vol2Mode;
+	u8 macroPan;
+	u8 userPan;
+	u8 macroSPan;
+	u8 userSPan;
+	f32 pitch1;
+	f32 pitch2;
+	f32 mixMain;
+	f32 mixAuxA;
+	f32 mixAuxB;
+	s16 channel;
+	s16 useRear;
+} HSD_SynthPStreamRequest;
+
 #define HSD_SYNTHPSTREAM_MAX 4
 #define PSTREAM_MAX_BUFFER_DEPTH 3
 #define PSTREAM_MAX_BUFFERS (HSD_SYNTHPSTREAM_MAX * (PSTREAM_MAX_BUFFER_DEPTH + 1) + 1)
 
+extern HSD_SynthPStream* sSynthActivePStreams;
 extern HSD_SynthBeatMarkerBlock* sSynthFreeBeatMarkerBlocks;
+extern HSD_SynthPStreamRequest* sSynthFreePStreamRequests;
+extern HSD_SynthPStreamRequest* sSynthQueuedPStreamRequests;
+extern HSD_SynthPStream* sSynthFreePStreams;
 extern s32 sSynthStreamBufferAramBase;
 extern s32 sSynthStreamBufferCount;
 extern s32 sSynthStreamBufferNext[PSTREAM_MAX_BUFFERS];
 extern HSD_SynthPStreamHako sSynthStreamHakoBuffers[PSTREAM_MAX_BUFFERS];
 extern s32 sSynthNextFreeStreamBuffer;
+extern s32 sSynthQueuedStreamPlaybackId;
 
 s32 HSD_SynthTakeStreamBuffer(void);
 u32 HSD_SynthStreamBufferAramAddress(s32 bufferIndex);
+
+static inline void freeBeatMarkers(s32 buf)
+{
+	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[buf].markers;
+	HSD_SynthBeatMarkerBlock* next;
+
+	while (bmb != NULL) {
+		next                       = bmb->next;
+		bmb->next                  = sSynthFreeBeatMarkerBlocks;
+		sSynthFreeBeatMarkerBlocks = bmb;
+		bmb                        = next;
+	}
+	sSynthStreamHakoBuffers[buf].markers = NULL;
+}
+
+static inline void recycleStreamBuffer(s32 bufferIndex)
+{
+	freeBeatMarkers(bufferIndex);
+	sSynthStreamBufferNext[bufferIndex] = STREAM_BUFFER_FREE;
+}
+
+static inline void releaseStreamHead(HSD_SynthPStream* stream)
+{
+	s32 bufferIndex = stream->bufferQueueHead;
+
+	stream->bufferQueueHead = sSynthStreamBufferNext[bufferIndex];
+	recycleStreamBuffer(bufferIndex);
+}
+
+static inline void releasePStream(HSD_SynthPStream* pst)
+{
+	HSD_SynthPStream** pit;
+	HSD_SynthPStreamRequest** rit;
+	HSD_SynthPStreamRequest* req;
+	BOOL enabled;
+
+	pit = &sSynthActivePStreams;
+	if (pst->schedulerSlot >= 0) {
+		ReleaseDvdStreamingSlot(pst->schedulerSlot);
+	}
+	for (; *pit != NULL && *pit != pst; pit = &(*pit)->next) { }
+	if (*pit != NULL) {
+		// Only completed buffers belong to this queue.
+		while (pst->bufferQueueHead != STREAM_BUFFER_END) {
+			releaseStreamHead(pst);
+		}
+		*pit = (*pit)->next;
+	}
+	pst->next          = sSynthFreePStreams;
+	sSynthFreePStreams = pst;
+
+	if (pst->node->sfxID == sSynthQueuedStreamPlaybackId) {
+		req = sSynthQueuedPStreamRequests;
+		for (rit = &sSynthQueuedPStreamRequests; *rit != NULL; rit = &(*rit)->next) {
+			if (*rit == req) {
+				*rit = req->next;
+				break;
+			}
+		}
+		req->next                 = sSynthFreePStreamRequests;
+		sSynthFreePStreamRequests = req;
+
+		enabled = OSDisableInterrupts();
+		req     = sSynthQueuedPStreamRequests;
+		if (req != NULL) {
+			sSynthQueuedStreamPlaybackId =
+			    HSD_SynthPStreamStart(req->entrynum, req->vol, req->volMode, req->vol2, req->vol2Mode, req->macroPan, req->userPan,
+			                          req->macroSPan, req->pitch1, req->pitch2, req->mixMain, req->mixAuxA, req->mixAuxB,
+			                          req->userSPan, req->channel, req->useRear);
+		} else {
+			sSynthQueuedStreamPlaybackId = -1;
+		}
+		OSRestoreInterrupts(enabled);
+	}
+}
 static inline HSD_SynthBeatMarkerBlock* allocBeatMarkerBlock(void)
 {
 	HSD_SynthBeatMarkerBlock* block = sSynthFreeBeatMarkerBlocks;

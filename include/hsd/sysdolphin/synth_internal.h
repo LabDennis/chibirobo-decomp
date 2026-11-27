@@ -165,7 +165,6 @@ void UpdateSynthVolumeFadersAndVoices(void);
 void AdvancePendingSynthMixUpdates(void);
 void HSD_SynthCallback(void);
 void HSD_SynthPStreamMasterClockCallback(void);
-void releasePStream(struct HSD_SynthPStream* stream);
 void dropcallback(void* dropped);
 s32 nextPlaybackId(s32 voiceIndex);
 

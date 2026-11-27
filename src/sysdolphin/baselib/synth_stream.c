@@ -25,37 +25,16 @@ typedef struct HSD_SynthPStreamHeader {
 STATIC_ASSERT(offsetof(HSD_SynthPStreamHeader, channels) == 0x10);
 STATIC_ASSERT(sizeof(HSD_SynthPStreamHeader) == 0x80);
 
-// a queued stream start, kicked off when the current stream goes away
-typedef struct HSD_SynthPStreamRequest {
-	struct HSD_SynthPStreamRequest* next;
-	s32 entrynum;
-	s16 vol;
-	s16 vol2;
-	u8 volMode;
-	u8 vol2Mode;
-	u8 macroPan;
-	u8 userPan;
-	u8 macroSPan;
-	u8 userSPan;
-	f32 pitch1;
-	f32 pitch2;
-	f32 mixMain;
-	f32 mixAuxA;
-	f32 mixAuxB;
-	s16 channel;
-	s16 useRear;
-} HSD_SynthPStreamRequest;
-
 static inline u32 getAXEndAddress(const AXVPB* voice)
 {
 	return readAXAddress(&voice->pb.addr.endAddress);
 }
 
-static HSD_SynthPStream* sSynthActivePStreams = NULL; /* pstream entry active list */
+HSD_SynthPStream* sSynthActivePStreams = NULL; /* pstream entry active list */
 HSD_SynthBeatMarkerBlock* sSynthFreeBeatMarkerBlocks = NULL; /* bmb free list */
-static HSD_SynthPStreamRequest* sSynthFreePStreamRequests = NULL; /* request free list */
-static HSD_SynthPStreamRequest* sSynthQueuedPStreamRequests = NULL; /* request queue */
-static HSD_SynthPStream* sSynthFreePStreams = NULL; /* pstream entry free list */
+HSD_SynthPStreamRequest* sSynthFreePStreamRequests = NULL; /* request free list */
+HSD_SynthPStreamRequest* sSynthQueuedPStreamRequests = NULL; /* request queue */
+HSD_SynthPStream* sSynthFreePStreams = NULL; /* pstream entry free list */
 static BOOL sSynthStreamBufferUrgent = FALSE;
 static s32 sSynthStreamVolumeScale = 0;
 s32 sSynthStreamBufferAramBase = 0;
@@ -65,86 +44,11 @@ static u32 sSynthSilentSampleAddr = 0;
 s32 sSynthStreamBufferNext[PSTREAM_MAX_BUFFERS];
 HSD_SynthPStreamHako sSynthStreamHakoBuffers[PSTREAM_MAX_BUFFERS] ATTRIBUTE_ALIGN(32);
 static HSD_SynthPStream sSynthPStreams[HSD_SYNTHPSTREAM_MAX];
-static s32 sSynthQueuedStreamPlaybackId = -1;
+s32 sSynthQueuedStreamPlaybackId = -1;
 
 void HSD_SynthPStreamFirstHakoDataCallback(int requestID, void* context, void* buffer, BOOL cancelled);
 void HSD_SynthPStreamFirstHakoHeaderCallback(int requestID, void* context, void* buffer, BOOL cancelled);
 void HSD_SynthPStreamHeaderCallback(int requestID, void* context, void* buffer, BOOL cancelled);
-
-static void freeBeatMarkers(s32 buf)
-{
-	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[buf].markers;
-	HSD_SynthBeatMarkerBlock* next;
-
-	while (bmb != NULL) {
-		next         = bmb->next;
-		bmb->next    = sSynthFreeBeatMarkerBlocks;
-		sSynthFreeBeatMarkerBlocks = bmb;
-		bmb          = next;
-	}
-	sSynthStreamHakoBuffers[buf].markers = NULL;
-}
-
-static void recycleStreamBuffer(s32 bufferIndex)
-{
-	freeBeatMarkers(bufferIndex);
-	sSynthStreamBufferNext[bufferIndex] = STREAM_BUFFER_FREE;
-}
-
-static void releaseStreamHead(HSD_SynthPStream* stream)
-{
-	s32 bufferIndex = stream->bufferQueueHead;
-
-	stream->bufferQueueHead = sSynthStreamBufferNext[bufferIndex];
-	recycleStreamBuffer(bufferIndex);
-}
-
-void releasePStream(HSD_SynthPStream* pst)
-{
-	HSD_SynthPStream** pit;
-	HSD_SynthPStreamRequest** rit;
-	HSD_SynthPStreamRequest* req;
-	BOOL enabled;
-
-	pit = &sSynthActivePStreams;
-	if (pst->schedulerSlot >= 0) {
-		ReleaseDvdStreamingSlot(pst->schedulerSlot);
-	}
-	for (; *pit != NULL && *pit != pst; pit = &(*pit)->next) { }
-	if (*pit != NULL) {
-		// Only completed buffers belong to this queue.
-		while (pst->bufferQueueHead != STREAM_BUFFER_END) {
-			releaseStreamHead(pst);
-		}
-		*pit = (*pit)->next;
-	}
-	pst->next    = sSynthFreePStreams;
-	sSynthFreePStreams = pst;
-
-	if (pst->node->sfxID == sSynthQueuedStreamPlaybackId) {
-		req = sSynthQueuedPStreamRequests;
-		for (rit = &sSynthQueuedPStreamRequests; *rit != NULL; rit = &(*rit)->next) {
-			if (*rit == req) {
-				*rit = req->next;
-				break;
-			}
-		}
-		req->next    = sSynthFreePStreamRequests;
-		sSynthFreePStreamRequests = req;
-
-		enabled = OSDisableInterrupts();
-		req     = sSynthQueuedPStreamRequests;
-		if (req != NULL) {
-			sSynthQueuedStreamPlaybackId =
-			    HSD_SynthPStreamStart(req->entrynum, req->vol, req->volMode, req->vol2, req->vol2Mode, req->macroPan, req->userPan,
-			                          req->macroSPan, req->pitch1, req->pitch2, req->mixMain, req->mixAuxA, req->mixAuxB,
-			                          req->userSPan, req->channel, req->useRear);
-		} else {
-			sSynthQueuedStreamPlaybackId = -1;
-		}
-		OSRestoreInterrupts(enabled);
-	}
-}
 
 static inline u32 streamChannelNibbleAddress(s32 bufferIndex, s32 channel)
 {
