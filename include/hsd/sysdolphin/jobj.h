@@ -180,6 +180,7 @@ u32 HSD_JObjGetFlags(HSD_JObj* jobj);
 struct _HSD_DObj* HSD_JObjGetDObj(HSD_JObj* jobj);
 void HSD_JObjAddChild(HSD_JObj* jobj, HSD_JObj* child);
 void HSD_JObjRef(HSD_JObj* jobj);
+void IncrementHsdObjectRefCount(HSD_JObj* jobj);
 void HSD_JObjResolveRefsAll(HSD_JObj* jobj, HSD_Joint* joint);
 void HSD_JObjSetCurrent(HSD_JObj* jobj);
 void HSD_JObjSetFlags(HSD_JObj* jobj, u32 flags);

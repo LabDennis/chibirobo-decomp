@@ -958,6 +958,17 @@ void HSD_JObjResolveRefsAll(HSD_JObj* jobj, HSD_Joint* joint)
 }
 
 /**
+ * @note Address: 0x801C6C8C
+ * @note Size: 0x4C
+ */
+// NONMATCHING: increment and assertion match; only the assert file/condition relocations differ.
+void IncrementHsdObjectRefCount(HSD_JObj* jobj)
+{
+	HSD_OBJ(jobj)->ref_count++;
+	assert_line(93, HSD_OBJ(jobj)->ref_count != HSD_OBJ_NOREF);
+}
+
+/**
  * @note Address: 0x801C6CD8
  * @note Size: 0x148
  */
