@@ -52,79 +52,9 @@ void GetJointScale(CJObj*, HSD_JObj*, Vec*);
 f32 GetFirstFloorCollisionRadius(const XObj*);
 extern const s32 gSquirterChargeByCount[];
 
-static inline HSD_JObj* HeldItemJoint(XActLift* act)
-{
-	s32 path[] = { 0, 0 };
-	return GetObjectJointByPath(act->mOwner, 2, path);
-}
 static inline s32 HeldItemVariant(XActLift* act)
 {
 	return gSquirterChargeByCount[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)];
-}
-static inline void ScaleHeldItem(XActLift* act, XObj* obj)
-{
-	Vec scale;
-	GetJointScale(act->mOwner, HeldItemJoint(act), &scale);
-	obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
-}
-static inline s32 HeldIdleAnim(XActLift* act)
-{
-	switch (act->mOwner->mAnimId) {
-	case 0x895:
-		return 1;
-	case 0x8b7:
-		return 5;
-	case 0x8ae:
-		return 2;
-	case 0x8af:
-		return 3;
-	case 0x8c5:
-		return 14;
-	case 0x8c0:
-		return 9;
-	case 0x8d2:
-		return 17;
-	case 0x8d3:
-		return 18;
-	case 0x8c1:
-		return 10;
-	case 0x8c2:
-		return 11;
-	case 0x8c3:
-		return 12;
-	case 0x8c4:
-		return 13;
-	case 0xe0:
-		if (IsCarryingToothbrush(act))
-			return 0;
-		if (IsCarryingSpoon(act))
-			return 1;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 1;
-		break;
-	case 0xca:
-		if (IsCarryingToothbrush(act))
-			return 3;
-		if (IsCarryingSpoon(act))
-			return 4;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 5;
-		break;
-	default:
-		if (IsCarryingToothbrush(act))
-			return 0;
-		if (IsCarryingSpoon(act))
-			return 1;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 1;
-		break;
-	}
-	return 0;
-}
-static inline HSD_JObj* HeldPlugEndJoint(XObj* obj)
-{
-	s32 path[] = { 0 };
-	return GetObjectJointByPath(obj, 1, path);
 }
 
 /**
@@ -167,15 +97,19 @@ void UpdateHeldObject(XActLift* act, s32)
 	}
 	case 3:
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+			s32 path[]     = { 0, 0 };
 			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
+			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
 			if (IsCarryingSpoon(act))
 				obj->SetAnim(4, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			else if (IsCarryingSquirter(act))
 				obj->SetAnim(HeldItemVariant(act) + 5, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 		} else {
 			UpdateCarriedObjectPosition(act, obj);
-			ScaleHeldItem(act, obj);
+			s32 path[] = { 0, 0 };
+			Vec scale;
+			GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+			obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
 			act->mYawOffset = 0;
 			obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
 			if (IsCarryingMug(act))
@@ -188,15 +122,80 @@ void UpdateHeldObject(XActLift* act, s32)
 			obj->SetDestinationAlpha(FALSE, 0);
 		}
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+			s32 path[]     = { 0, 0 };
 			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
-			obj->SetAnim(HeldIdleAnim(act), FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
+			s32 id = 0;
+			switch (act->mOwner->mAnimId) {
+			case 0x895:
+				id = 1;
+				break;
+			case 0x8b7:
+				id = 5;
+				break;
+			case 0x8ae:
+				id = 2;
+				break;
+			case 0x8af:
+				id = 3;
+				break;
+			case 0x8c5:
+				id = 14;
+				break;
+			case 0x8c0:
+				id = 9;
+				break;
+			case 0x8d2:
+				id = 17;
+				break;
+			case 0x8d3:
+				id = 18;
+				break;
+			case 0x8c1:
+				id = 10;
+				break;
+			case 0x8c2:
+				id = 11;
+				break;
+			case 0x8c3:
+				id = 12;
+				break;
+			case 0x8c4:
+				id = 13;
+				break;
+			case 0xe0:
+				if (IsCarryingToothbrush(act))
+					id = 0;
+				else if (IsCarryingSpoon(act))
+					id = 1;
+				else if (IsCarryingSquirter(act))
+					id = HeldItemVariant(act) + 1;
+				break;
+			case 0xca:
+				if (IsCarryingToothbrush(act))
+					id = 3;
+				else if (IsCarryingSpoon(act))
+					id = 4;
+				else if (IsCarryingSquirter(act))
+					id = HeldItemVariant(act) + 5;
+				break;
+			default:
+				if (IsCarryingToothbrush(act))
+					id = 0;
+				else if (IsCarryingSpoon(act))
+					id = 1;
+				else if (IsCarryingSquirter(act))
+					id = HeldItemVariant(act) + 1;
+				break;
+			}
+			obj->SetAnim(id, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			break;
 		}
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
 		UpdateCarriedObjectPosition(act, obj);
 		if (IsLiftTargetPlug(act)) {
-			CJObj hand(HeldItemJoint(act));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
 			s32 path[] = { 0 };
 			CJObj plug(GetObjectJointByPath(obj, 1, path));
 			plug.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
@@ -248,8 +247,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 6:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
@@ -265,8 +266,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 7:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
@@ -283,8 +286,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 8:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
@@ -297,8 +302,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 10:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
@@ -311,8 +318,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 11:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
@@ -326,8 +335,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 12:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
 		}
@@ -335,8 +346,10 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 13:
 		UpdateCarriedObjectPosition(act, obj);
 		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
+			s32 handPath[] = { 0, 0 };
+			CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+			s32 endPath[] = { 0 };
+			CJObj end(GetObjectJointByPath(obj, 1, endPath));
 			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
 			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
 			XObjPlug* plug = (XObjPlug*)obj;
@@ -349,15 +362,19 @@ void UpdateHeldObject(XActLift* act, s32)
 		break;
 	case 14:
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+			s32 path[]     = { 0, 0 };
 			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
+			HSD_JObjCopyMtx(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
 			if (IsCarryingSpoon(act))
 				obj->SetAnim(4, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			else if (IsCarryingSquirter(act))
 				obj->SetAnim(HeldItemVariant(act) + 5, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 		} else {
 			UpdateCarriedObjectPosition(act, obj);
-			ScaleHeldItem(act, obj);
+			s32 path[] = { 0, 0 };
+			Vec scale;
+			GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+			obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
 
 			if (IsCarryingMug(act))
 				obj->SetAnim(3, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
@@ -376,7 +393,8 @@ void UpdateHeldObject(XActLift* act, s32)
 		CVec offset(GetLiftTargetContactOffset(act, obj));
 		Mtx trans, world;
 		PSMTXTrans(trans, offset.x, -offset.y, offset.z);
-		PSMTXConcat(HSD_JObjGetMtxPtr(HeldItemJoint(act)), trans, world);
+		s32 path[] = { 0, 0 };
+		PSMTXConcat(HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)), trans, world);
 		HSD_JObjCopyMtx(obj->mJObj, world);
 		Vec v;
 		HSD_MtxGetTranslate(world, &v);
@@ -392,14 +410,18 @@ void UpdateHeldObject(XActLift* act, s32)
 		obj->Release();
 		act->mTarget = NULL;
 		break;
-	case 19:
+	case 19: {
 		HSD_JObjClearMtxFlags(obj->mJObj);
 		act->mYawOffset = 0;
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
 		UpdateCarriedObjectPosition(act, obj);
-		ScaleHeldItem(act, obj);
+		s32 path[] = { 0, 0 };
+		Vec scale;
+		GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+		obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
 		act->mTargetState = 4;
 		break;
+	}
 	case 20:
 		if (GetAObj(obj->mJObj)->flags & 0x44000000) {
 			obj->Release();
