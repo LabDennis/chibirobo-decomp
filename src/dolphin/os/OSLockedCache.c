@@ -19,6 +19,9 @@ void LCEnable(void)
  * @note Address: 0x80163208
  * @note Size: 0xAC
  */
+// NONMATCHING: retail has two extra branch-to-next-instruction hops before the loop test and
+// uses mr rather than addi for the argument copies. The documented no-assert SDK forms in
+// mkdd and pikmin2 compile to the same local sequence with GC/1.2.5n.
 u32 LCStoreData(void* destAddr, void* srcAddr, u32 nBytes)
 {
 	u32 numBlocks       = (nBytes + 31) / 32;
