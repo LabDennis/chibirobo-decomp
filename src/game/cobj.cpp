@@ -1127,6 +1127,8 @@ void CXObjIntp::UpdateAnim(u32 speed)
  * @note Address: 0x801A0BCC
  * @note Size: 0x31C
  */
+// NONMATCHING: retail expands additional HSD assert/matrix-dirty paths around the inline setters. Pose restore,
+// translation, scale and rotation calls are present; no hand-expanded setters are introduced.
 void CXObjIntp::ApplyTransform()
 {
 	RestoreJointTreePose(mArchive.mJoint, mJObj);
