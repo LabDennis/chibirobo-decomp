@@ -115,6 +115,8 @@ static inline void HSD_TExpFree(HSD_TExp* texp)
 	}
 }
 
+// Direct link walking follows Melee's read-only HSD_TExpFreeList (tev.c:106-179).
+// NONMATCHING: retail repeats the c_ref == 0 test before the two Unref calls; the clean source checks once.
 HSD_TExp* HSD_TExpFreeList(HSD_TExp* texp_list, HSD_TExpType type, s32 all)
 {
 	HSD_TExp** link;
@@ -123,17 +125,17 @@ HSD_TExp* HSD_TExpFreeList(HSD_TExp* texp_list, HSD_TExpType type, s32 all)
 
 	link = &texp_list;
 	if (all) {
-		while ((node = *link) != NULL) {
-			if (type == HSD_TE_ALL || type == node->type) {
-				switch (node->type) {
+		while (*link != NULL) {
+			if (type == HSD_TE_ALL || type == (*link)->type) {
+				switch ((*link)->type) {
 				case HSD_TE_TEV:
-					next = node->comm.next;
-					HSD_TExpFree(node);
+					next = (*link)->comm.next;
+					HSD_TExpFree(*link);
 					*link = next;
 					continue;
 				case HSD_TE_CNST:
-					next = node->comm.next;
-					HSD_TExpFree(node);
+					next = (*link)->comm.next;
+					HSD_TExpFree(*link);
 					*link = next;
 					continue;
 				default:
@@ -141,35 +143,41 @@ HSD_TExp* HSD_TExpFreeList(HSD_TExp* texp_list, HSD_TExpType type, s32 all)
 					break;
 				}
 			}
-			link = &node->comm.next;
+			link = &(*link)->comm.next;
 		}
 	} else {
 		if (type == HSD_TE_ALL || type == HSD_TE_TEV) {
 			for (node = texp_list; node != NULL; node = node->comm.next) {
-				if (node->type == HSD_TE_TEV && node->tev.c_ref == 0) {
-					HSD_TExpUnref(node, HSD_TE_RGB);
-					HSD_TExpUnref(node, HSD_TE_A);
+				switch (node->type) {
+				case HSD_TE_TEV:
+					if (node->tev.c_ref == 0) {
+						HSD_TExpUnref(node, HSD_TE_RGB);
+						HSD_TExpUnref(node, HSD_TE_A);
+					}
+					break;
+				default:
+					break;
 				}
 			}
 		}
 
-		while ((node = *link) != NULL) {
-			if (type == HSD_TE_ALL || type == node->type) {
-				switch (node->type) {
+		while (*link != NULL) {
+			if (type == HSD_TE_ALL || type == (*link)->type) {
+				switch ((*link)->type) {
 				case HSD_TE_TEV:
-					if (node->tev.c_ref != 0 || node->tev.a_ref != 0) {
+					if ((*link)->tev.c_ref != 0 || (*link)->tev.a_ref != 0) {
 						break;
 					}
-					next = node->comm.next;
-					HSD_TExpFree(node);
+					next = (*link)->comm.next;
+					HSD_TExpFree(*link);
 					*link = next;
 					continue;
 				case HSD_TE_CNST:
-					if (node->cnst.ref != 0) {
+					if ((*link)->cnst.ref != 0) {
 						break;
 					}
-					next = node->comm.next;
-					HSD_TExpFree(node);
+					next = (*link)->comm.next;
+					HSD_TExpFree(*link);
 					*link = next;
 					continue;
 				default:
@@ -177,7 +185,7 @@ HSD_TExp* HSD_TExpFreeList(HSD_TExp* texp_list, HSD_TExpType type, s32 all)
 					break;
 				}
 			}
-			link = &node->comm.next;
+			link = &(*link)->comm.next;
 		}
 	}
 	return texp_list;
