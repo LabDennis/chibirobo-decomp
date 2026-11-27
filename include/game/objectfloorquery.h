@@ -6,7 +6,10 @@
 
 static inline Vec ReadFloorCoordinates(const s32 (&coordinates)[3])
 {
-	Vec result = { coordinates[0] / 100.0f, coordinates[1] / 100.0f, coordinates[2] / 100.0f };
+	Vec result = Vec();
+	result.x   = coordinates[0] / 100.0f;
+	result.y   = coordinates[1] / 100.0f;
+	result.z   = coordinates[2] / 100.0f;
 	return result;
 }
 
