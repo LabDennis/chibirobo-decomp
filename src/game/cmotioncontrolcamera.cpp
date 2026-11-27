@@ -355,56 +355,19 @@ void CMotionControlCamera::ChangeAction(s32 type)
 }
 
 /**
- * @note Address: 0x801491D0
- * @note Size: 0x29C
+ * @note Address: 0x80148B78
+ * @note Size: 0xF4
  */
-void CMotionControlCamera::PushAction(CInterfaceCameraAction* action)
+void CMotionControlCamera::EndEye()
 {
-	if (mAction != action) {
-		mPushedAction = mAction;
-		mAction       = action;
-		ReadAction();
-		StartAction();
-		CopyAction();
-	}
-}
-
-/**
- * @note Address: 0x80148F20
- * @note Size: 0x2B0
- */
-void CMotionControlCamera::PopAction()
-{
-	if (mPushedAction != NULL) {
-		mAction       = mPushedAction;
-		mPushedAction = NULL;
-		ReadAction();
-		BOOL scroll = IsCurrent(CAMACTION_SCROLL);
-		if (scroll) {
-			StartAction();
-		}
-		CopyAction();
-	}
-}
-// fn_80148F20
-/**
- * @note Address: 0x80148E30
- * @note Size: 0xF0
- */
-void CMotionControlCamera::ApplyAction()
-{
-	CopyAction();
-}
-
-/**
- * @note Address: 0x80148D6C
- * @note Size: 0xC4
- */
-void CMotionControlCamera::UpdateTarget(XObj* obj)
-{
-	if (mAction != NULL && obj == mAction->GetTarget() && (mFlags.mFlags & CAMFLAG_INTEREST)) {
-		mCamera.SetInterest(obj->GetCameraTarget());
-		mAction->SetInterest(obj->GetCameraTarget());
+	if (gGame.mStatus.mFlags & 0x100) {
+		gGame.mStatus.mFlags &= ~0x300ULL; // and 0x200, the eye action's c stick look
+		PopAction();
+		SetPlayerEyeCameraJointsHidden(gGame.GetPlayer(), 0);
+		// the hole grows back to 550x500 as the white fades out, then the wipe hides
+		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 224.0f, 430.0f, 400.0f, 550.0f,
+		                               500.0f, 0.2f, 0, 1);
+		PlayGameSound(&gGame.mSound, 2, 0xFF);
 	}
 }
 
@@ -426,19 +389,56 @@ void CMotionControlCamera::StartEye()
 }
 
 /**
- * @note Address: 0x80148B78
- * @note Size: 0xF4
+ * @note Address: 0x80148D6C
+ * @note Size: 0xC4
  */
-void CMotionControlCamera::EndEye()
+void CMotionControlCamera::UpdateTarget(XObj* obj)
 {
-	if (gGame.mStatus.mFlags & 0x100) {
-		gGame.mStatus.mFlags &= ~0x300ULL; // and 0x200, the eye action's c stick look
-		PopAction();
-		SetPlayerEyeCameraJointsHidden(gGame.GetPlayer(), 0);
-		// the hole grows back to 550x500 as the white fades out, then the wipe hides
-		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 224.0f, 430.0f, 400.0f, 550.0f,
-		                               500.0f, 0.2f, 0, 1);
-		PlayGameSound(&gGame.mSound, 2, 0xFF);
+	if (mAction != NULL && obj == mAction->GetTarget() && (mFlags.mFlags & CAMFLAG_INTEREST)) {
+		mCamera.SetInterest(obj->GetCameraTarget());
+		mAction->SetInterest(obj->GetCameraTarget());
+	}
+}
+
+/**
+ * @note Address: 0x80148E30
+ * @note Size: 0xF0
+ */
+void CMotionControlCamera::ApplyAction()
+{
+	CopyAction();
+}
+
+/**
+ * @note Address: 0x80148F20
+ * @note Size: 0x2B0
+ */
+void CMotionControlCamera::PopAction()
+{
+	if (mPushedAction != NULL) {
+		mAction       = mPushedAction;
+		mPushedAction = NULL;
+		ReadAction();
+		BOOL scroll = IsCurrent(CAMACTION_SCROLL);
+		if (scroll) {
+			StartAction();
+		}
+		CopyAction();
+	}
+}
+
+/**
+ * @note Address: 0x801491D0
+ * @note Size: 0x29C
+ */
+void CMotionControlCamera::PushAction(CInterfaceCameraAction* action)
+{
+	if (mAction != action) {
+		mPushedAction = mAction;
+		mAction       = action;
+		ReadAction();
+		StartAction();
+		CopyAction();
 	}
 }
 

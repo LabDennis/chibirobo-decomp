@@ -28,11 +28,7 @@ void TryLeaveHang(XActHang* act);
 Vec GetTargetFloorPosition(XAction* act);
 u32 CheckStageFlag(s32 stage, u32 mask);
 
-static f32 GetScaledTargetFloorExtent(const XAction* act)
-{
-	const XObj* target = act->mTarget;
-	return target->mMoveScale.x * ReadObjectFloorExtent(target->mFloors[act->mTargetFloor]).x;
-}
+static f32 GetScaledTargetFloorExtent(const XAction* act);
 
 s32 FindPlayerSupportingFloor(XObjChr*, s32, s32);
 f32 GetObjectEdgeOutwardYaw(const XObj*, Vec*, s32);
@@ -446,6 +442,12 @@ void XActHang::HandleInput(const CPadOne& pad, f32& moveWeight)
 	} else if (mState != 0) {
 		moveWeight = 0.0f;
 	}
+}
+
+static f32 GetScaledTargetFloorExtent(const XAction* act)
+{
+	const XObj* target = act->mTarget;
+	return target->mMoveScale.x * ReadObjectFloorExtent(target->mFloors[act->mTargetFloor]).x;
 }
 
 } // extern "C"
