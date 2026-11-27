@@ -72,6 +72,7 @@ struct Mato {
 	}
 
 	CVec GetPos() const { return mObj->mMoveTranslate; }
+	s32 GetPoints() const;
 
 	s32 mId;           // _00, id the stage script passed to AddMato; -1 when unused; returned by TakeDestroyedMatoId
 	XObj* mObj;        // _04, the dol actor this target is (XObj, an XObj); its mStatus bit 0x10000 marks it live
@@ -106,6 +107,11 @@ struct MatoList {
 	Mato mMatos[0x50];  // _2C, the targets, 0x50 slots, first _00 used
 };
 
+inline s32 Mato::GetPoints() const
+{
+	return mList->mKindPoints[mKind];
+}
+
 struct Shot {
 	Shot() { }
 	~Shot() { }
@@ -126,6 +132,7 @@ struct Shot {
 			mTrail[i] = mPos;
 		}
 	}
+	void Update(u32 dt);
 
 	u8 mActive;      // _00, shot in flight: set by Start, cleared when mTimer runs out, free slots are the ones with it false
 	u8 _01[0x3];     // _01
@@ -452,15 +459,15 @@ extern "C" void ShotList_Update(ShotList* shots, u32 dt);
  * @note Size: 0x16D4
  */
 // draws a caption with a black shadow on every side
-inline void DrawCaption(s32 id, f32 x, f32 y)
+inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
 {
 	s32 i;
 	f32 cx;
 	f32 cy;
 
 	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, x, y, 0.0f,
-	           MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, 20.0f) - 4.0f, 12.0f, 0.0f, 0.0f, 0.0f);
-	cx = x - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, 20.0f) * 0.5f;
+	           scale * (MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, 20.0f) - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
+	cx = x - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, 20.0f) / 2.0f;
 	cy = y - 13.0f;
 	for (i = 0; i < 4; i++) {
 		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(id), cx + captionShadowX[i], cy + captionShadowY[i], 0.0f,
@@ -472,21 +479,29 @@ inline void DrawCaption(s32 id, f32 x, f32 y)
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
 	CTexObj tex;
+	f32 scale = 1.0f;
+	f32 alpha = 255.0f;
 	s32 i;
 	s32 d;
 	f32 x;
 	f32 left;
 	f32 digW;
 	f32 digH;
-	f32 onesOffset;
 	f32 w;
-	u32 hi;
-	u32 lo;
+	u32 base;
+	s32 hi;
+	s32 lo;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
 
 	if (time >= 100) {
 		time = 99;
 	}
-	if (FindStageIndexByName("stage02") == gGame.mStage) {
+	stage   = gGame.mStage;
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
 		for (i = 0; i < 48; i++) {
 			XObj* obj = gGame.mXObjs.mPools[5].Get(i);
 			if (obj->GetKind() != 0x149) {
@@ -496,86 +511,102 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			if (!tpl.mBound) {
 				break;
 			}
-			TPLDescriptor* textures = static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray;
 
 			// score
-			tex = tpl.mTex.Init(&textures[3], 0);
-			w   = GXGetTexObjWidth(&tex);
-			x   = 640.0f - w * 0.5f - 40.0f;
+			tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[3], 0);
+			tw  = tex.GetWidth();
+			w   = scale * tw;
+			th  = tex.GetHeight();
+			x   = 640.0f - w / 2.0f - 40.0f;
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #if !defined(VERSION_JP)
-			DrawCaption(0x5A, x, 40.0f);
+			DrawCaption(0x5A, x, 40.0f, scale);
 #endif
-			tex  = tpl.mTex.Init(&textures[1], 0);
+			tex  = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[1], 0);
 			left = 20.0f + (x - 12.0f - 88.0f);
-			digW = 0.8f * (GXGetTexObjWidth(&tex) / 11);
-			digH = 0.8f * GXGetTexObjHeight(&tex);
+			tw   = tex.GetWidth();
+			digW = 0.8f * (scale * (tw / 11));
+			th   = tex.GetHeight();
+			digH = 0.8f * (scale * th);
 			PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
 			tex.mMtxDirty = 1;
-			hi            = 0xFAE0CFFF;
-			lo            = 0xE9813AFF;
-			onesOffset    = 7.0f * digW;
-			for (d = 0; d < 4; d++) {
+			d             = 0;
+			base          = alpha;
+			hi            = base | 0xFAE0CF00;
+			lo            = base | 0xE9813A00;
+			for (; d < 4; d++) {
 				f32 div = 1.0f;
 				s32 k;
 				s32 digit;
-				for (k = 0; k < d; k++) {
-					div *= 10.0f;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
 				}
 				digit = score / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex.mMtx[0], 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					digit %= 10;
+					PSMTXTrans(tex.mMtx[0], digit * 0.09090909f, 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-					DrawGsTexturedQuad(&gGame.mGs, &tex, hi, hi, lo, lo, onesOffset + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH,
+					DrawGsTexturedQuad(&gGame.mGs, &tex, hi, hi, lo, lo, 7.0f * digW + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH,
 					                   0.0f, 0.0f, 0.0f);
 					SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 				}
 			}
 
 			// time
-			tex = tpl.mTex.Init(&textures[4], 0);
+			tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[4], 0);
+			tw  = tex.GetWidth();
+			th  = tex.GetHeight();
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, GXGetTexObjWidth(&tex), GXGetTexObjHeight(&tex), 0.0f,
-			                   0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #if !defined(VERSION_JP)
-			DrawCaption(0x5B, 320.0f, 40.0f);
+			DrawCaption(0x5B, 320.0f, 40.0f, scale);
 #endif
-			tex  = tpl.mTex.Init(&textures[1], 0);
-			digW = 1.4f * (GXGetTexObjWidth(&tex) / 11);
-			digH = 1.4f * GXGetTexObjHeight(&tex);
+			tex  = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[1], 0);
+			tw   = tex.GetWidth();
+			digW = 1.4f * (scale * (tw / 11));
+			th   = tex.GetHeight();
+			digH = 1.4f * (scale * th);
 #if defined(VERSION_JP)
 			left = 110.0f;
 #else
 			left = 110.0f + 11.0f;
 #endif
 			PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
-			hi            = 0x1F33FFFF;
-			lo            = 0xFFFFFFFF;
-			onesOffset    = 7.0f * digW;
+			d             = 0;
+			base          = alpha;
+			hi            = base | 0x1F33FF00;
+			lo            = base | 0xFFFFFF00;
 			tex.mMtxDirty = 1;
-			for (d = 0; d < 2; d++) {
+			for (; d < 2; d++) {
 				f32 div = 1.0f;
 				s32 k;
 				s32 digit;
-				for (k = 0; k < d; k++) {
-					div *= 10.0f;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
 				}
 				digit = time / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex.mMtx[0], 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					digit %= 10;
+					PSMTXTrans(tex.mMtx[0], digit * 0.09090909f, 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-					DrawGsTexturedQuad(&gGame.mGs, &tex, lo, lo, hi, hi, onesOffset + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW,
-					                   digH, 0.0f, 0.0f, 0.0f);
+					DrawGsTexturedQuad(&gGame.mGs, &tex, lo, lo, hi, hi, 7.0f * digW + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f,
+					                   digW, digH, 0.0f, 0.0f, 0.0f);
 					SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 				}
 			}
-			digW = 1.4f * (GXGetTexObjWidth(&tex) / 11);
-			digH = 1.4f * GXGetTexObjHeight(&tex);
+			tw   = tex.GetWidth();
+			digW = 1.4f * (scale * (tw / 11));
+			th   = tex.GetHeight();
+			digH = 1.4f * (scale * th);
 #if defined(VERSION_JP)
 			left = 110.0f;
 #else
@@ -592,24 +623,29 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
 			// gauge
-			tex = tpl.mTex.Init(&textures[5], 0);
+			tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[5], 0);
+			tw  = tex.GetWidth();
+			th  = tex.GetHeight();
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, GXGetTexObjWidth(&tex), GXGetTexObjHeight(&tex), 0.0f,
-			                   0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #if !defined(VERSION_JP)
-			DrawCaption(0x5C, 100.0f, 44.0f);
+			DrawCaption(0x5C, 100.0f, 44.0f, scale);
 #endif
-			tex  = tpl.mTex.Init(&textures[6], 0);
-			w    = GXGetTexObjWidth(&tex);
-			digH = GXGetTexObjHeight(&tex);
+			tex  = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[6], 0);
+			tw   = tex.GetWidth();
+			w    = scale * tw;
+			th   = tex.GetHeight();
+			digH = scale * th;
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 72.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-			tex = tpl.mTex.Init(&textures[7], 0);
+			tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[7], 0);
+			tw  = tex.GetWidth();
+			th  = tex.GetHeight();
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f - w * 0.5f + gauge * w / 100.0f, 72.0f, 0.0f,
-			                   GXGetTexObjWidth(&tex), GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f - w / 2.0f + gauge * w / 100.0f, 72.0f, 0.0f, scale * tw,
+			                   scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 			break;
 		}
@@ -2144,7 +2180,7 @@ extern "C" void DrawFighterHud(void)
 		if (obj == NULL || !(obj->mStatus.mFlags & 1) || item->mPending) {
 			continue;
 		}
-		halfW = 0.5f * obj->GetFloorXZExtent();
+		halfW = obj->GetFloorXZExtent() / 2.0f;
 		if (halfW < 1.0f) {
 			halfW = 1.0f;
 		}
@@ -2153,13 +2189,13 @@ extern "C" void DrawFighterHud(void)
 			height = 1.0f;
 		}
 		if (item->mObj->ProjectVisibleBounds(&projW, &projH, NULL, halfW, height)) {
-			Vec zero        = { 0.0f, 0.0f, 0.0f };
 			item->mOnScreen = true;
 			if (projW > projH) {
 				projW = projH;
 			}
+			Vec zero = { 0.0f, 0.0f, 0.0f };
 			item->mObj->ProjectOffsetToScreen(&zero, &item->mScreenX, &item->mScreenY, &item->mScreenZ, NULL);
-			item->mScreenY -= projW * 0.5f; // raise the marker by half the smaller projected extent
+			item->mScreenY -= projW / 2.0f; // raise the marker by half the smaller projected extent
 		} else {
 			item->mOnScreen = false;
 		}
@@ -2346,17 +2382,27 @@ extern "C" void DrawShots(void)
 		gGame.mGs.mBillboardEnabled = 1; // the circles draw as billboards
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		for (j = 0; j < 10; j++) { // the trail as circles, older positions dimmer
-			const Vec& pos = entry->mTrail[j];
-			u32 alpha      = 96.0f * (1.0f - 0.1f * j);
-			DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos.x, pos.y, pos.z, 4.0f, 4.0f, 0.0f, 0.0f, 0.0f);
+			Vec* pos  = &entry->mTrail[j];
+			Vec up    = { 0.0f, 1.0f, 0.0f };
+			u32 alpha = 96.0f * (1.0f - 0.1f * j);
+			DrawGsCircle(&gGame.mGs, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
 		}
 		// the head: two white circles under a green one
-		const Vec& pos = entry->mPos;
+		Vec* pos = &entry->mPos;
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos.x, pos.y, pos.z, 4.0f, 4.0f, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos.x, pos.y, pos.z, 5.0f, 5.0f, 0.0f, 0.0f, 0.0f);
+		{
+			Vec up = { 0.0f, 1.0f, 0.0f };
+			DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
+		}
+		{
+			Vec up = { 0.0f, 1.0f, 0.0f };
+			DrawGsCircle(&gGame.mGs, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
+		}
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0x64FF6400, pos.x, pos.y, pos.z, 5.0f, 5.0f, 0.0f, 0.0f, 0.0f);
+		{
+			Vec up = { 0.0f, 1.0f, 0.0f };
+			DrawGsCircle(&gGame.mGs, 16, 0x64FF64C8, 0x64FF6400, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
+		}
 		gGame.mGs.mBillboardEnabled = 0;
 	}
 }
@@ -2577,11 +2623,6 @@ extern "C" void DrawFighterStage(void)
  */
 extern "C" void UpdateFighter(u32 dt)
 {
-	Mato* best;
-	f32 bestDist;
-	s32 i;
-	XSound* sfx;
-
 	if (fighterWork.mBody == NULL) {
 		return;
 	}
@@ -2605,7 +2646,7 @@ extern "C" void UpdateFighter(u32 dt)
 	matoList.mFrameCount++;
 	matoList.mProgress = fighterWork.mFrame / fighterWork.mEndFrame;
 	matoList.mTimeLeft = fighterWork.mTimeLeft / 60;
-	for (i = 0; i < matoList.mCount; i++) {
+	for (s32 i = 0; i < matoList.mCount; i++) {
 		Mato* item = &matoList.mMatos[i];
 		if (!item->mOnScreen) {
 			item->mOnScreenTime = 0;
@@ -2618,15 +2659,16 @@ extern "C" void UpdateFighter(u32 dt)
 			item->mMarkerPhase += 1.0f;
 		}
 	}
-	sfx = &gGame.mSound;
 	// re-lock the aim only once the flight is past its first percent and the lock-on sound 0x20006 isn't playing
-	if (IsGameSoundPlaying(sfx, 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+	if (IsGameSoundPlaying(&gGame.mSound, 0x20006) == 0 && 0.01f < fighterWork.mFrame / fighterWork.mEndFrame) {
+		Fighter* work = &fighterWork;
 		Vec pos;
-		best                     = NULL;
-		fighterWork.mAim.mTarget = NULL;
-		pos                      = fighterWork.mAim.mPos;
-		PSMTXMultVec(fighterWork.mBodyMtx, &pos, &pos);
-		for (i = 0; i < matoList.mCount; i++) { // the nearest live target within lock range
+		Mato* best = NULL;
+		f32 bestDist;
+		work->mAim.mTarget = NULL;
+		pos                = work->mAim.mPos;
+		PSMTXMultVec(work->mBodyMtx, &pos, &pos);
+		for (s32 i = 0; i < matoList.mCount; i++) { // the nearest live target within lock range
 			Mato* item = &matoList.mMatos[i];
 			f32 dist;
 			f32 range;
@@ -2641,25 +2683,28 @@ extern "C" void UpdateFighter(u32 dt)
 			} else {
 				range = (s32)ReadResourceOffset(fighterWork.mParams + 0xC) / 100.0f;
 			}
-			if (range >= dist && (best == NULL || dist < bestDist)) {
+			if (range < dist) {
+				continue;
+			}
+			if (best == NULL || dist < bestDist) {
 				best     = item;
 				bestDist = dist;
 			}
 		}
 		if (best != NULL && !best->mPending) {
-			if (fighterWork.mLastTarget != best) {
-				PlayGameSound(sfx, 0x20006, 0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
+			if (work->mLastTarget != best) {
+				PlayGameSound(&gGame.mSound, 0x20006, 0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
 			}
-			fighterWork.mAim.mTarget = best;
+			work->mAim.mTarget = best;
 		}
 	}
 	FighterPanels_Update(&panels, dt);
 	// cue records {frame, sound id}; a cue fires when the flight frame crosses its frame
-	for (i = 0; soundCueTable[0] != NULL && i < (s32)ReadResourceOffset(soundCueTable[0] + i * 8); i++) {
+	for (s32 i = 0; i < (s32)ReadResourceOffset(soundCueTable[0] + i * 8); i++) {
 		s32 frame = ReadResourceOffset(soundCueTable[0] + i * 8);
 		s32 id    = ReadResourceOffset(soundCueTable[0] + i * 8 + 4);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
-			PlayGameSound(sfx, id, 0xFF);
+			PlayGameSound(&gGame.mSound, id, 0xFF);
 		}
 	}
 }
@@ -3802,8 +3847,7 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 carriedJoint[2] = { 0, 0 };
-	jobj                = FindJointByPath(link->mPathObj->mJObj, carriedJoint, 2);
+	jobj = GetJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->mCarriedMtx);
 	HSD_JObjCopyMtx(link->mCarriedObj->mJObj, link->mCarriedMtx);
 	link->mAnimFrame = animFrame;
@@ -4733,18 +4777,16 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
  */
 extern "C" void Fighter_Update(Fighter* work, u32 dt)
 {
+	Mtx rot;
 	Mtx scale;
 	Mtx offset;
-	Mtx rot;
 	Vec zero;
 	HSD_JObj* jobj;
 	f32 rate;
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 flightJoint[2] = { 0, 0 };
-	s32 seatJoint[1]   = { 0 };
-	jobj               = FindJointByPath(work->mPath->mJObj, flightJoint, 2);
+	jobj = GetJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, work->mBodyMtx);
 	HSD_JObjCopyMtx(work->mBody->mJObj, work->mBodyMtx);
 	zero.x = zero.y = zero.z = 0.0f;
@@ -4752,7 +4794,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
 	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
 	PSMTXConcat(offset, rot, offset);
-	jobj = FindJointByPath(work->mBody->mJObj, seatJoint, 1);
+	jobj = GetJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), offset, work->mPlayerMtx);
 	HSD_JObjCopyMtx(gGame.GetPlayer()->mJObj, work->mPlayerMtx);
 	if (work->mExtra != NULL) {
@@ -4777,7 +4819,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 			rate = 2.5f;
 		}
 	}
-	work->mFrame = work->mSpeed * rate + work->mFrame;
+	work->mFrame += work->mSpeed * rate;
 	work->mPath->SetAnim(0, TRUE, NULL, NULL, NULL, work->mFrame, 1.0f, 0.0f, 10.0f);
 	ShotList_Update(&work->mShots, dt);
 }
@@ -5479,63 +5521,111 @@ extern "C" void Fighter_Init(Fighter* work, XObj* body, XObj* path, XObj* extra)
     blr
 */
 
-static void DrawFighterPanelQuad(CTexObj& tex, f32 y, f32 width, f32 height)
-{
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-}
-
-static void DrawFighterPanel(CTpl& tpl, TPLDescriptor& backdrop, TPLDescriptor& animation, TPLDescriptor& border, f32 openness, f32 y)
-{
-	CTexObj tex       = tpl.mTex.Init(&backdrop, 0);
-	const f32 width   = 1.1f * GXGetTexObjWidth(&tex);
-	const f32 opening = openness * GXGetTexObjHeight(&tex);
-	DrawFighterPanelQuad(tex, y, width, opening);
-
-	tex                       = tpl.mTex.Init(&animation, 0);
-	const f32 animationWidth  = 1.1f * GXGetTexObjWidth(&tex);
-	const f32 animationHeight = openness * GXGetTexObjHeight(&tex);
-	DrawFighterPanelQuad(tex, y, animationWidth, animationHeight);
-
-	tex                    = tpl.mTex.Init(&border, 0);
-	const f32 borderWidth  = 1.1f * GXGetTexObjWidth(&tex);
-	const f32 borderHeight = GXGetTexObjHeight(&tex);
-	DrawFighterPanelQuad(tex, y - 0.5f * opening, borderWidth, borderHeight);
-	DrawFighterPanelQuad(tex, y + 0.5f * opening, borderWidth, borderHeight);
-}
-
 /**
  * @note Address: stage02 .text 0x44F0
  * @note Size: 0xCB4
  */
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
-#if defined(VERSION_JP)
-	const f32 lowerY = 320.0f;
-#else
-	const f32 lowerY = 320.0f - 32.0f;
+	CTexObj tex;
+	f32 scale = 1.0f;
+	s32 i;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
+
+	stage   = gGame.mStage;
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
+		for (i = 0; i < 48; i++) {
+			XObj* obj = gGame.mXObjs.mPools[5].Get(i);
+			f32 y;
+			f32 half;
+			f32 top;
+			f32 w;
+			f32 h;
+			// Kind 0x149 carries the stage02 panel textures.
+			if (obj->GetKind() != 0x149) {
+				continue;
+			}
+			CTpl& tpl = static_cast<XObjActor3*>(obj)->mPanelTpl;
+			if (!tpl.mBound) {
+				continue;
+			}
+			if (fade->mLowerOpen > 0.0f) {
+				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
+				tex  = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[10], 0);
+				tw   = tex.GetWidth();
+				w    = 1.1f * (scale * tw);
+				th   = tex.GetHeight();
+				half = fade->mLowerOpen * (scale * th);
+				y    = 320.0f;
+#if !defined(VERSION_JP)
+				y -= 32.0f;
 #endif
-	if (FindStageIndexByName("stage02") != gGame.mStage) {
-		return;
-	}
-	for (s32 i = 0; i < 48; i++) {
-		XObj* obj = gGame.mXObjs.mPools[5].Get(i);
-		// Kind 0x149 carries the stage02 panel textures.
-		if (obj->GetKind() != 0x149) {
-			continue;
-		}
-		CTpl& tpl = static_cast<XObjActor3*>(obj)->mPanelTpl;
-		if (!tpl.mBound) {
-			continue;
-		}
-		TPLDescriptor* textures = static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray;
-		if (fade->mLowerOpen > 0.0f) {
-			DrawFighterPanel(tpl, textures[10], textures[fade->mLowerFrame + 25], textures[11], fade->mLowerOpen, lowerY);
-		}
-		if (fade->mCenterOpen > 0.0f) {
-			s32 frame = fade->mCenterFrame + (fade->mCenterVariant == 0 ? 12 : 18);
-			DrawFighterPanel(tpl, textures[8], textures[frame], textures[9], fade->mCenterOpen, 180.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[fade->mLowerFrame + 25], 0);
+				tw  = tex.GetWidth();
+				w   = 1.1f * (scale * tw);
+				th  = tex.GetHeight();
+				h   = fade->mLowerOpen * (scale * th);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[11], 0);
+				half *= 0.5f;
+				top = y;
+				top -= half;
+				tw = tex.GetWidth();
+				w  = 1.1f * (scale * tw);
+				th = tex.GetHeight();
+				h  = scale * th;
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, y + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+			}
+			if (fade->mCenterOpen > 0.0f) {
+				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
+				tex  = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[8], 0);
+				tw   = tex.GetWidth();
+				th   = tex.GetHeight();
+				half = fade->mCenterOpen * (scale * th);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (scale * tw), half, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				if (fade->mCenterVariant == 0) {
+					tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[fade->mCenterFrame + 12], 0);
+				} else {
+					tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[fade->mCenterFrame + 18], 0);
+				}
+				tw = tex.GetWidth();
+				w  = 1.1f * (scale * tw);
+				th = tex.GetHeight();
+				h  = fade->mCenterOpen * (scale * th);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				tex = tpl.mTex.Init(&static_cast<TPLPalette*>(tpl.mBuffer)->descriptorArray[9], 0);
+				half *= 0.5f;
+				top = 180.0f;
+				top -= half;
+				tw = tex.GetWidth();
+				w  = 1.1f * (scale * tw);
+				th = tex.GetHeight();
+				h  = scale * th;
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 100.0f, 180.0f + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+			}
 		}
 	}
 }
@@ -6948,42 +7038,54 @@ FighterPanels panels;
 s32 fireHoldFrames;
 u8* soundCueTable[2];
 
+inline void Shot::Update(u32 dt)
+{
+	s32 j;
+
+	if (mActive) {
+		mTimer -= dt;
+		if (mTimer <= 0) {
+			Mato* item;
+			mActive = false;
+			item    = mTarget;
+			if (item != NULL) {
+				if (--item->mHitsLeft > 0) {
+					item->mPending = false;
+				} else if (item->mObj != NULL && (item->mObj->mStatus.mFlags & 0x10000)) {
+					item->mList->mDestroyed = item;
+					item->mList->mScore += item->GetPoints();
+					shotEvents.mFlags |= 1;
+				}
+				mResult.mFlags |= 1;
+			} else {
+				mResult.mFlags |= 2;
+			}
+		} else {
+			mPos.x = mVelocity.x * dt + mPos.x;
+			mPos.y = mVelocity.y * dt + mPos.y;
+			mPos.z = mVelocity.z * dt + mPos.z;
+			for (j = 9; j > 0; j--) {
+				mTrail[j] = mTrail[j - 1];
+			}
+			mTrail[0] = mPos;
+		}
+	}
+}
+
 /**
  * @note Address: stage02 .text 0x5A48
  * @note Size: 0x2A0
  */
 extern "C" void ShotList_Update(ShotList* list, u32 dt)
 {
-	for (u32 i = 0; i < 5; i++) {
+	u32 i;
+
+	for (i = 0; i < 5; i++) {
 		Shot* entry = &list->mShots[i];
 		if (!entry->mActive) {
 			continue;
 		}
-		entry->mTimer -= dt;
-		if (entry->mTimer <= 0) {
-			entry->mActive = false;
-			Mato* item     = entry->mTarget;
-			if (item != NULL) {
-				if (--item->mHitsLeft > 0) {
-					item->mPending = false;
-				} else if (item->mObj != NULL && (item->mObj->mStatus.mFlags & 0x10000)) {
-					item->mList->mDestroyed = item;
-					item->mList->mScore += item->mList->mKindPoints[item->mKind];
-					shotEvents.mFlags |= 1;
-				}
-				entry->mResult.mFlags |= 1;
-			} else {
-				entry->mResult.mFlags |= 2;
-			}
-		} else {
-			entry->mPos.x = entry->mVelocity.x * dt + entry->mPos.x;
-			entry->mPos.y = entry->mVelocity.y * dt + entry->mPos.y;
-			entry->mPos.z = entry->mVelocity.z * dt + entry->mPos.z;
-			for (s32 j = 9; j > 0; j--) {
-				entry->mTrail[j] = entry->mTrail[j - 1];
-			}
-			entry->mTrail[0] = entry->mPos;
-		}
+		entry->Update(dt);
 		if (entry->mResult.mFlags & 1) {
 			list->mHitStreak++;
 			list->mMissStreak = 0;
