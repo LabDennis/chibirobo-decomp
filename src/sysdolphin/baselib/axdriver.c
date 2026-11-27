@@ -918,6 +918,7 @@ static inline u32 AXDriverTrackBit(u32 track)
  * @note Address: 0x801E8204
  * @note Size: 0x3A8
  */
+// NONMATCHING: with the track bounds restored, only field-initialization scheduling and local assert relocations remain.
 static s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 pan, u8 span, s16 pitch, u8 auxA, u8 auxB, s32 group, s32 track)
 {
 	HSD_SM* v;
@@ -939,6 +940,9 @@ static s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 pan, u8 span, s16 pitch, u8 a
 		return -1;
 	}
 	if (group < 0 || sAXMaxGroupIndex < group) {
+		return -1;
+	}
+	if (track < 0 || track > AXDRIVER_TRACK_COUNT - 1) {
 		return -1;
 	}
 	if (sAXPausedTrackMask & AXDriverTrackBit(track)) {
