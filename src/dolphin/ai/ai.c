@@ -2,13 +2,14 @@
 #include "Dolphin/hw_regs.h"
 #include "Dolphin/os.h"
 
-extern void __AICallOnStack(AIDCallback callback, u8* stack);
+void __AICallbackStackSwitch(AIDCallback cb);
 
 char* __AIVersion = "<< Dolphin SDK - AI\trelease build: Apr  5 2004 04:15:02 (0x2301) >>";
 
 static AISCallback __AIS_Callback = NULL;
 static AIDCallback __AID_Callback = NULL;
-static u8* __CallbackStack;
+u8* __CallbackStack;
+u8* __OldStack;
 static vs32 __AI_init_flag = FALSE;
 static vs32 __AID_Active   = FALSE;
 
@@ -415,7 +416,7 @@ static void __AIDHandler(s16 interrupt, OSContext* context)
 	if (__AID_Callback && !__AID_Active) {
 		__AID_Active = TRUE;
 		if (__CallbackStack) {
-			__AICallOnStack(__AID_Callback, __CallbackStack);
+			__AICallbackStackSwitch(__AID_Callback);
 		} else {
 			__AID_Callback();
 		}

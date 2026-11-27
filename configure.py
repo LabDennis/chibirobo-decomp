@@ -1486,6 +1486,58 @@ def link_order_callback(module_id: int, objects: List[str]) -> List[str]:
             "dolphin/os/os_timebase_write.s",
             "dolphin/os/os_fast_cast.s",
         ]
+    # Don't modify the link order for matching builds
+    if not config.non_matching:
+        return objects
+    if module_id == 0:  # DOL
+        result = []
+        for obj in objects:
+            if obj == "revolution/OS/__ppc_eabi_init.cpp":
+                result.append("revolution/OS/os_ppc_eabi_init.s")
+            if obj == "revolution/BASE/PPCArch.c":
+                result.append("revolution/BASE/ppc_registers.s")
+            result.append(obj)
+            if obj == "revolution/BASE/PPCArch.c":
+                result.append("revolution/BASE/ppc_fp_mode.s")
+                result.append("revolution/BASE/ppc_hid4.s")
+            if obj == "revolution/OS/OS.c":
+                result.append("revolution/OS/os_boot_fpu.s")
+            if obj == "revolution/OS/OSCache.c":
+                result.append("revolution/OS/os_cache_lines.s")
+                result.append("revolution/OS/os_locked_cache.s")
+            if obj == "revolution/OS/OSContext.c":
+                result.append("revolution/OS/os_context_switch.s")
+                result.append("revolution/OS/os_fpu_context.s")
+            if obj == "revolution/OS/OSInterrupt.c":
+                result.append("revolution/OS/os_interrupt_mask.s")
+                result.append("revolution/OS/os_interrupt_entry.s")
+            if obj == "revolution/OS/OSMemory.c":
+                result.append("revolution/OS/os_memory_mapping.s")
+            if obj == "revolution/OS/OSExec.c":
+                result.append("revolution/OS/os_exec_run.s")
+            if obj == "dolphin/ai/ai.c":
+                result.append("dolphin/ai/ai_callback_stack.s")
+            if obj == "revolution/AI/ai.c":
+                result.append("revolution/AI/ai_callback_stack.s")
+            if obj == "revolution/MTX/mtx44.c":
+                result.append("revolution/MTX/mtx44_paired.s")
+            if obj == "revolution/GX/GXLight.c":
+                result.append("revolution/GX/gx_light_load.s")
+            if obj == "revolution/GX/GXTransform.c":
+                result.append("revolution/GX/gx_transform_ps.s")
+            if obj == "rvl_runtime/__init_cpp_exceptions.cpp":
+                result.append("rvl_runtime/init_cpp_exceptions.s")
+            if obj == "rvl_trk/targimpl.c":
+                result.append("TRK_MINNOW_DOLPHIN/trk_target_context.s")
+            if obj == "rvl_trk/dolphin_trk.c":
+                result.append("TRK_MINNOW_DOLPHIN/trk_boot.s")
+            if obj == "rvl_trk/dolphin_trk_glue.c":
+                result.append("TRK_MINNOW_DOLPHIN/trk_context_load.s")
+            if obj == "revolution/DB/db.c":
+                result.append("revolution/DB/db_exception_entry.s")
+            if obj == "revolution/OS/OSAlarm.c":
+                result.append("revolution/OS/os_exception_vectors.s")
+        return result
     return objects
 
 
