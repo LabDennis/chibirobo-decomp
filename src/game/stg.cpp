@@ -2868,6 +2868,8 @@ extern "C" const char* GetPCMenuLabelText(s32 id)
  * @note Address: 0x80034E4C
  * @note Size: 0x60
  */
+// NONMATCHING: retail tracks a byte offset and an element index separately in the reverse scan. Direct-return
+// and named-entry variants score lower; manual pointer arithmetic from the rejected form is not restored.
 extern "C" s16 GetPlayerItemCount(s16 id)
 {
 	s16 count = 0;
