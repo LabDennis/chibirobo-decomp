@@ -34,6 +34,7 @@ void DrawHudBatteryGauge(InfoScrn* scrn);
 void DrawGameHud(InfoScrn* scrn);
 void UpdateHudIndicators(InfoScrn* scrn, u32 frames);
 void ResetGameHudState(InfoScrn* scrn);
+void ApproachHudValue(f32* cur, f32* target, f32 step);
 }
 
 extern "C" {
@@ -694,15 +695,6 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 		InfoScrn_DrawTimer(scrn);
 		DrawHudScanlines(scrn);
 	}
-}
-
-/**
- * @note Address: 0x80068C8C
- * @note Size: 0x84
- */
-extern "C" void ApproachHudValue(f32* cur, f32* target, f32 step)
-{
-	Approach(cur, target, step);
 }
 
 /**
@@ -1747,6 +1739,15 @@ static inline void DrawClockDisc(f32 rx, f32 ry, u32 color)
 		points[i].z = 0;
 	}
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, points, color, 65);
+}
+
+/**
+ * @note Address: 0x80068C8C
+ * @note Size: 0x84
+ */
+extern "C" void ApproachHudValue(f32* cur, f32* target, f32 step)
+{
+	Approach(cur, target, step);
 }
 
 static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h)
