@@ -766,6 +766,8 @@ extern "C" void StartCars(void)
  * @note Address: stage02 .text 0x7494
  * @note Size: 0x398
  */
+// NONMATCHING: retail constructs an otherwise unused CPad(0), as the Wii source also does; the clean GC
+// source omits it. Car updates, camera trail and braking logic are otherwise present.
 extern "C" void UpdateCars(u32 frames)
 {
 	CPad pad(0);
