@@ -41,6 +41,8 @@ static THPHuffmanTab* Vachuff ATTRIBUTE_ALIGN(32);
 static u8* __THPHuffmanBits;
 static u8* __THPHuffmanSizeTab;
 static u16* __THPHuffmanCodeTab;
+// Retail keeps the transform workspace in .bss; melee and mkdd keep the same SDK global.
+static f32 __THPIDCTWorkspace[64] ATTRIBUTE_ALIGN(32);
 static u8* __THPLCWork512[3];
 static u8* __THPLCWork672[3];
 static u8* __THPWorkArea;
@@ -787,7 +789,7 @@ static void __THPIDCTColumn(const f32* in, THPSample* top, THPSample* bottom)
 
 static void __THPInverseDCT(const THPCoeff* coeff, const f32* quant, THPSample* tile, u32 width)
 {
-	f32 workspace[64];
+	f32* workspace = __THPIDCTWorkspace;
 	THPSample* bottom = tile + 4 * width;
 	int i;
 
