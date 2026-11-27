@@ -1,5 +1,9 @@
 #include "Dolphin/vec.h"
 
+// NONMATCHING: same vector operations; retail uses mr for the normal/dst copies in the prologue,
+// while GC/1.2.5n emits addi ...,0 and interleaves those copies with the register saves.
+// The SDK source form is kept by bfbb:
+// https://github.com/bfbbdecomp/bfbb/blob/main/src/dolphin/src/mtx/vec.c
 /**
  * @note Address: 0x8016C7A4
  * @note Size: 0xD4
