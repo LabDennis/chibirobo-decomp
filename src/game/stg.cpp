@@ -1824,6 +1824,8 @@ BOOL MenuStageSelect::Update(u32 frames)
  * @note Address: 0x80034108
  * @note Size: 0xE4
  */
+// NONMATCHING: retail expands CMenu::Open; this build keeps the real call. Stage selection, list rebuilding
+// and all other stores match.
 void MenuStageSelect::Open()
 {
 	CMenu::Open();
@@ -1959,6 +1961,8 @@ void MenuItem::Init()
  * @note Address: 0x800611D4
  * @note Size: 0x30
  */
+// NONMATCHING: retail expands CMenu::Resume and its two flag stores; this build emits the real call. The
+// suspended-status update is otherwise identical.
 void MenuMain::Resume()
 {
 	if (mSuspended) {
@@ -1982,6 +1986,8 @@ void MenuMain::Close()
  * @note Address: 0x80061290
  * @note Size: 0x78
  */
+// NONMATCHING: retail expands CMenu::Open, while this build emits the real call. Sound playback and the
+// stage-pause flag update are otherwise identical.
 void MenuMain::Open()
 {
 	CMenu::Open();
