@@ -229,6 +229,9 @@ extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0x60
  * @note Size: 0x94
  */
+// NONMATCHING: retail's key table stores only x/y/character (12-byte entries), while our combined
+// DecaPanelKey also carries sound and texture data. Fixing the remaining index arithmetic needs those data
+// paths split too.
 extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 {
 	decaPanel.ResetInput();
