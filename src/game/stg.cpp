@@ -1725,6 +1725,8 @@ extern "C" void DispatchMemoryCardTestOperation(MenuMCTest* menu, s32 id)
  * @note Address: 0x80032E24
  * @note Size: 0xD8
  */
+// NONMATCHING: retail expands CMenu::Open, while the class keeps the real out-of-line call. Text clearing,
+// slot formatting, preview request and operation state otherwise match.
 void MenuMCTest::Open()
 {
 	CMenu::Open();
