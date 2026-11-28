@@ -953,28 +953,15 @@ game/cinterpolationeaseout.cpp:
 	.text       start:0x80137924 end:0x80137BF0
 	.sdata2     start:0x806659E0 end:0x806659F0
 
-game/cameraareagroups.cpp:
-	.text       start:0x80137BF0 end:0x801389D0
-
-game/cameraareadebug.cpp:
-	.text       start:0x801389D0 end:0x8013993C
-
 game/ccameraactionareaex.cpp:
-	.text       start:0x8013993C end:0x8013A898
-
-game/cameraareaentries.cpp:
-	.bss        start:0x805AB000 end:0x805C700C align:4
-
-game/ccameraactionareaexinit.cpp:
-	.text       start:0x8013A898 end:0x8013A904
+	.text       start:0x80137BF0 end:0x8013A9D8
 	.ctors      start:0x802000A4 end:0x802000A8
-	.bss        start:0x805A73C0 end:0x805AB000
-
-game/ccameraactionareaexdtor.cpp:
-	.text       start:0x8013A904 end:0x8013A9D8
-	.rodata     start:0x80212F40 end:0x80212F54
+	.rodata     start:0x80212F08 end:0x80212F54
 	.data       start:0x80234F48 end:0x80234F60
+	.bss        start:0x805A7280 end:0x805C700C
 	.sdata      start:0x806618D8 end:0x806618E8
+	.sbss       start:0x806621C0 end:0x806621D0
+	.sdata2     start:0x806659F0 end:0x80665A48
 
 game/ccameraactionarea.cpp:
 	.text       start:0x8013A9D8 end:0x8013C5DC
@@ -2048,30 +2035,15 @@ game/cshadow.cpp:
 	.sdata2     start:0x806666C8 end:0x806666E8
 
 game/cgs.cpp:
-	extab       start:0x80005CC0 end:0x80005D28
-	extabindex  start:0x80006A7C end:0x80006AE8
-	.text       start:0x80196C64 end:0x80199490
+	extab       start:0x80005CC0 end:0x80005E10
+	extabindex  start:0x80006A7C end:0x80006C44
+	.text       start:0x80196C64 end:0x8019E168
 	.rodata     start:0x80214F20 end:0x80215200
 	.data       start:0x8023E248 end:0x8023E528
 	.bss        start:0x80610318 end:0x80651328
 	.sbss       start:0x806626F0 end:0x806626F8
 	.sdata2     start:0x806666E8 end:0x80666780
 	.sbss2      start:0x806673E8 end:0x80667410
-
-game/cgsprimitive.cpp:
-	extab       start:0x80005D28 end:0x80005DA0
-	extabindex  start:0x80006AE8 end:0x80006B9C
-	.text       start:0x80199490 end:0x8019BDE4
-
-game/cgsinit.cpp:
-	extab       start:0x80005DA0 end:0x80005DD8
-	extabindex  start:0x80006B9C end:0x80006BF0
-	.text       start:0x8019BDE4 end:0x8019D644
-
-game/cgsstate.cpp:
-	extab       start:0x80005DD8 end:0x80005E10
-	extabindex  start:0x80006BF0 end:0x80006C44
-	.text       start:0x8019D644 end:0x8019E168
 
 game/cprimitive.cpp:
 	extab       start:0x80005E10 end:0x80005ED0
