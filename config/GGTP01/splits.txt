@@ -502,36 +502,12 @@ game/xobjspiderbossdata.cpp:
 	.ctors      start:0x80200098 end:0x8020009C
 	.data       start:0x802322F0 end:0x802325B8
 
-game/xobjactordtor.cpp:
-	.text       start:0x8010926C end:0x801092E4
+game/xobjactor.cpp:
+	.text       start:0x8010926C end:0x8010AC48
+	.rodata     start:0x80211AD0 end:0x80211C28
 	.data       start:0x80232930 end:0x80232B10
 	.sdata      start:0x80661698 end:0x806616C0
-
-game/xobjactorse.cpp:
-	.text       start:0x801092E4 end:0x801094FC
-
-game/xobjactorground.cpp:
-	.text       start:0x801094FC end:0x801098C4
-
-game/xobjactorstop.cpp:
-	.text       start:0x801098C4 end:0x801098FC
-
-game/xobjactorconstants.cpp:
-	.sdata2     start:0x80665230 end:0x80665234
-
-game/xobjactorevent.cpp:
-	.text       start:0x801098FC end:0x80109D60
-
-game/xobjactorlook.cpp:
-	.text       start:0x80109D60 end:0x80109F74
-	.rodata     start:0x80211B78 end:0x80211B84
-	.sdata2     start:0x80665264 end:0x80665274
-
-game/xobjactorjointupdate.cpp:
-	.text       start:0x80109F74 end:0x8010A604
-
-game/xobjactorupdate.cpp:
-	.text       start:0x8010A604 end:0x8010AC48
+	.sdata2     start:0x80665218 end:0x806652B0
 
 game/xobjactor3.cpp:
 	.text       start:0x8010AC48 end:0x80117D44
