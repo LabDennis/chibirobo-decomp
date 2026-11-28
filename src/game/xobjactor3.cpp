@@ -1,4 +1,10 @@
 #include "game/xobjactor.h"
+#include "game/xchr.h"
+#include "game/animframe.h"
+#include <sysdolphin/axdriver.h>
+#include "game/globals.h"
+#include "game/infoscrn.h"
+#include <stdlib.h>
 #include "game/xobjspiderboss.h"
 #include "game/xobjspider.h"
 #include "game/hsd_jobj.h"
@@ -6,23 +12,588 @@
 #include "game/cgs.h"
 #include "game/cpad.h"
 #include "game/cscrn.h"
-#include "game/xchr.h"
-#include "game/infoscrn.h"
 #include "game/stagedata.h"
 #include "game/ctpl.h"
 #include "game/ut.h"
 #include "game/gmath.h"
-#include "game/animframe.h"
 #include "game/video.h"
 #include "game/placement.h"
 #include <sysdolphin/rumble.h>
-#include <stdlib.h>
+
+// XObjActor3's destructor, its anim sounds and its script commands
+
+extern "C" {
+void HandleKind9ActorCommand(XObjActor3* actor);
+void HandleActorRiderCommand(XObjActor3* actor);
+}
+
+static void HideHeldItems()
+{
+	const XObjPool& pool = gGame.mXObjs.mPools[22];
+	for (s32 i = 0; i < 0x120; ++i) {
+		XObj* obj = pool.Get(i);
+		if (obj->GetKind() == 0x40B) {
+			obj->mStatus.mFlags &= ~0x10000ULL;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80108794
+ * @note Size: 0x870
+ */
+// the event commands: 100 carries another object at one of its joints, or lets go of all
+// of them, anything else is kept for the kind's function to read
+s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
+{
+	switch (argv[0]) {
+	case 100:
+		if (argv[1] == 0) {
+			mActorFlags.mFlags &= ~2;
+			for (u32 i = 0; i < 8; i++) {
+				if (mParts[i].mObj != NULL) {
+					HSD_JObjClearMtxFlags(mParts[i].mObj->mJObj);
+					mParts[i].mObj   = NULL;
+					mParts[i].mJoint = NULL;
+				}
+			}
+		} else {
+			u32 i = 0;
+			while (i < ARRAY_SIZE(mParts) && mParts[i].mObj) {
+				++i;
+			}
+			if (i < ARRAY_SIZE(mParts)) {
+#if !defined(VERSION_PAL)
+				OSReport("id = %d, argv[1]=%d\n", static_cast<int>(i), static_cast<int>(argv[1]));
+#endif
+				mActorFlags.mFlags |= 2;
+				if (argv[1] >= 10000) { // a placement id vs a slot index
+					mParts[i].mObj = FindObj(argv[1]);
+				} else {
+					mParts[i].mObj = gGame.GetObject((s16)argv[1]);
+				}
+#if !defined(VERSION_PAL)
+				if (mParts[i].mObj == NULL) {
+					OSReport("NULL===============\n");
+				}
+#endif
+				s32 path[8];
+				s32 depth = argv[2];
+				for (s32 j = 0; j < depth; j++) {
+					path[j] = argv[3 + j];
+				}
+				mParts[i].mJoint = GetJointByPath(mJObj, path, depth);
+				Mtx t;
+				XObj* obj = mParts[i].mObj;
+				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
+				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
+				Vec scale;
+				HSD_MtxGetScale(mParts[i].mMtx, &scale);
+				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
+				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
+				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
+				Mtx s;
+				PSMTXScale(s, scale.x, scale.y, scale.z);
+				Mtx m;
+				PSMTXConcat(mParts[i].mMtx, s, m);
+				PSMTXConcat(m, t, m);
+				HSD_JObj* joint = mParts[i].mObj->mJObj;
+				MtxPtr mp       = m;
+				HSD_JObjCopyMtx(joint, mp);
+			}
+		}
+		break;
+	default:
+		mEventCommand      = argv[0];
+		mEventArg1         = argv[1];
+		mEventArg2         = argv[2];
+		mEventArg3         = argv[3];
+		mExtraEventArgs[0] = argv[4];
+		mExtraEventArgs[1] = argv[5];
+		mExtraEventArgs[2] = argv[6];
+		mExtraEventArgs[3] = argv[7];
+		mExtraEventArgs[4] = argv[8];
+		mExtraEventArgs[5] = argv[9];
+		mExtraEventArgs[6] = 0;
+		switch (GetItem()) {
+		case 9:
+			HandleKind9ActorCommand(this);
+			break;
+		case 0x13:
+			HandleActorRiderCommand(this);
+			break;
+		case 8:
+			switch (mEventCommand) {
+			case 0:
+				break;
+			case 1:
+				if (mActorFlags.Check(0x100)) { // a 0x40B item is on show
+					mActorFlags.mFlags &= ~0x100;
+					HideHeldItems();
+				}
+				switch (mEventArg1) {
+				case 0x40B:
+					for (s32 i = 0; i < 0x120; i++) {
+						XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+						if (mEventArg1 == obj->GetKind()) {
+							mHeld = obj;
+							obj->mStatus.mFlags |= 0x10000ULL;
+							switch (mEventArg1) {
+							case 0x40B:
+								mActorFlags.mFlags |= 0x100;
+								obj->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+								break;
+							}
+						}
+					}
+					break;
+				default:
+					if (mHeld != NULL) {
+						HSD_JObjClearMtxFlags(mHeld->mJObj);
+						mHeld = NULL;
+					}
+					break;
+				}
+				mEventCommand = 0;
+				break;
+			}
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
+static inline void UpdateActorAnimationSound(XObjActor3* actor, s32 id)
+{
+	f32 frame = GetAnimFrame(actor->mJObj);
+	actor->mAnimSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &actor->mMoveTranslate, 0));
+}
+
+/**
+ * @note Address: 0x80108424
+ * @note Size: 0x11C
+ */
+XObjActor3::~XObjActor3()
+{
+}
+
+/**
+ * @note Address: 0x80108540
+ * @note Size: 0x154
+ */
+
+void XObjActor3::UpdateAnimationSounds()
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && mPoolIndex == 3) {
+		UpdateActorAnimationSound(this, mAnimId);
+	}
+}
+
+/**
+ * @note Address: 0x80108694
+ * @note Size: 0x94
+ */
+void XObjActor3::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	XObj::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
+	if (GetKind() == 0x31B) {
+		if (mAnimId == 7) {
+			mSe = PlayGameSound(&gGame.mSound, 0xB0000, 0xFF);
+		} else if (HSD_AudioSFXCheck(mSe)) { // leaving anim 7: key the sound off
+			HSD_AudioSFXKeyOff(mSe);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80108728
+ * @note Size: 0x6C
+ */
+void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
+{
+	if (GetItem() == 1) { // item 1's hits go to the base class
+		XObj::OnHitFromPosition(position, strength);
+	} else if (!mActorFlags.Check(1)) {
+		mActorFlags.mFlags |= 1;
+	}
+}
+
+/**
+ * @note Address: 0x80109004
+ * @note Size: 0x4
+ */
+void XObjActor3::DrawDebugStatus()
+{
+}
+
+/**
+ * @note Address: 0x80109008
+ * @note Size: 0x44
+ */
+void XObjActor3::DrawObjectEffects()
+{
+	if (GetKind() == 0x31B) {
+		DrawParticlePool(&mDust.mPtcl);
+	}
+}
+
+// XObjActor3's panel on stage02, the count over it
+
+extern "C" {
+u16 GXGetTexObjWidth(const GXTexObj* obj);
+u16 GXGetTexObjHeight(const GXTexObj* obj);
+}
+
+// a texture's size on screen at the scale
+static inline f32 TexSize(f32 size, f32 scale)
+{
+	return scale * size;
+}
+
+/**
+ * @note Address: 0x8010904C
+ * @note Size: 0x59C
+ */
+// Draw the stage02 spider count as two digits over the panel.
+// NONMATCHING: the colours, the texture matrix pointer and the loop count take other registers
+extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
+{
+	f32 alpha = actor->mCounterPanelAlpha;
+	if (alpha <= 0.0f) {
+		return;
+	}
+	if (!IsStage("stage02")) {
+		return;
+	}
+	if (!actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[9], 0);
+	f32 scale = 1.0f;
+	f32 w     = scale * GXGetTexObjWidth(&tex);
+	u16 h     = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0); // the digit sheet
+	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);                                           // eleven glyphs in a row
+	f32 x;
+	f32 dh    = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	x         = 110.0f - (1 - actor->mSpiderCount / 10) * 12;
+	f32 count = actor->mSpiderCount;
+	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f); // one eleventh of the digit sheet per glyph
+	tex.mMtxDirty = TRUE;
+	s32 i         = 0;
+	u32 a         = 255.0f * alpha;
+	u32 c0;
+	u32 c1 = a | 0x1F33FF00; // colored below
+	c0     = a | 0xFFFFFF00; // white above
+	for (; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mMtxDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+}
+
+extern "C" {
+#if !defined(VERSION_JP)
+extern f32 gStage02TimerOutlineX[], gStage02TimerOutlineY[];
+#endif
+}
+
+#if !defined(VERSION_JP)
+static inline void DrawTimerLabel(f32 scale)
+{
+	const f32 size = 20.0f;
+	f32 width      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size);
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, (width - 4.0f) * scale, 12.0f, 0.0f, 0.0f, 0.0f);
+	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) * 0.5f;
+	for (int i = 0; i < 4; ++i)
+		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
+		                             27.0f + gStage02TimerOutlineY[i], 0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(0x5B), left, 27.0f, 0.0f, size, size);
+}
+#endif
+extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
+{
+	f32 alpha = actor->mTimerPanelAlpha;
+	if (alpha <= 0.0f) {
+		return;
+	}
+	if (!IsStage("stage02")) {
+		return;
+	}
+	if (!actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
+	f32 scale = 1.0f;
+#if defined(VERSION_JP)
+	f32 w = TexSize(GXGetTexObjWidth(&tex), scale);
+#else
+	u16 w = GXGetTexObjWidth(&tex);
+#endif
+	u16 h = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+#if !defined(VERSION_JP)
+	DrawTimerLabel(scale);
+#endif
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
+	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
+	f32 dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	f32 x  = 110.0f;
+#if !defined(VERSION_JP)
+	x += 11.0f;
+#endif
+	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
+	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
+	tex.mMtxDirty = TRUE;
+	u32 a         = 255.0f * alpha;
+	u32 c0;
+	u32 c1 = a | 0x1F33FF00;
+	c0     = a | 0xFFFFFF00;
+	for (s32 i = 0; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mMtxDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+
+	dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
+	dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f); // the eleventh glyph
+	tex.mMtxDirty = TRUE;
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	s32 digits = count < 10.0f ? 1 : 2; // the glyph slides with the digit count
+	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+	                   0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+
+extern "C" {
+void DrawStage02TimerPanel(XObjActor3* actor);
+void DrawStage02ActorCounterPanel(XObjActor3* actor);
+}
+
+/**
+ * @note Address: 0x80109DD8
+ * @note Size: 0x6C
+ */
+void XObjActor3::DrawScreenOverlay()
+{
+	switch (GetItem()) {
+	case 14:
+		DrawStage02TimerPanel(this);
+		DrawStage02ActorCounterPanel(this);
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80109E44
+ * @note Size: 0x3C
+ */
+void XObjActor3::DrawObject()
+{
+	if (!(mActorFlags.mFlags & 0x10)) {
+		DrawWithView(NULL);
+	}
+}
+
+// XObjActor3's update
+
+extern "C" {
+void HandleSpiderCounterCommand(XObjActor3* actor);
+void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames);
+}
+
+/**
+ * @note Address: 0x80109E80
+ * @note Size: 0x680
+ */
+// the per-kind script commands, the kind's own function, the carried objects
+void XObjActor3::UpdateObject(u32 frames)
+{
+	switch (GetItem()) {
+	case 8:
+		mActorFlags.mFlags |= 4; // flag 4 skips the heading/pos write below
+		break;
+	case 9:
+		UpdateAnimationSounds();
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		break;
+	case 10:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 11:
+	case 12:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			if (mEventArg1 != 0) {
+				mActorFlags.mFlags &= ~4;
+			} else {
+				mActorFlags.mFlags |= 4;
+				mKindStep = 0;
+			}
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		case 2:
+			mKindStep     = 2;
+			mKindTimer    = mEventArg2 / 100.0f; // script units are 1/100
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 13:
+		switch (mRumble) {
+		case 0:
+			break;
+		case 1: // start the rumble
+			if (gGame.mStatus.mFlags & 0x800000000ULL) {
+				CPadOne* rumble = &gGame.mPad.mPad[0];
+				if (rumble->mConnected) {
+					HSD_PadRumbleOn(rumble->mPort);
+				}
+				mRumbleTimer = 24 / frames;
+				mRumble++;
+			} else {
+				mRumble = 0;
+			}
+			break;
+		case 2:
+			if (--mRumbleTimer < 0) {
+				CPadOne* rumble = &gGame.mPad.mPad[0];
+				if (rumble->mConnected) {
+					HSD_PadRumbleOffN(rumble->mPort);
+				}
+				if (rumble->mConnected) {
+					HSD_PadRumbleRemove(rumble->mPort);
+				}
+				mRumble = 0;
+			}
+			break;
+		}
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 14:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		HandleSpiderCounterCommand(this);
+		break;
+	}
+	if (mActorFlags.mFlags & 0x10) { // flag 0x10 skips the update
+		return;
+	}
+	(this->*gActor3UpdateHandlers[GetItem()])(frames);
+	if (!(mActorFlags.mFlags & 4)) {
+		SetRotateY(mHeading, 0.0f);
+		SetPos(mMoveTranslate, 0);
+	}
+	XObj::UpdateObject(frames);
+	if (GetKind() == 0x31B) { // 0x31B (haisui_nezumi) runs its dust particles
+		UpdateParticlePool(&mDust.mPtcl, frames);
+	}
+	if (GetKind() == 0x2C3) { // carries a rider at a joint
+		CarryRiderAtActorJoint(this, frames);
+	}
+	if (mActorFlags.mFlags & 2) { // flag 2: carried parts follow their joints
+		for (u32 i = 0; i < ARRAY_SIZE(mParts); i++) {
+			if (mParts[i].mJoint != NULL && mParts[i].mObj != NULL) {
+				Mtx t;
+				XObj* obj = mParts[i].mObj;
+				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
+				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
+				Vec scale;
+				HSD_MtxGetScale(mParts[i].mMtx, &scale);
+				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
+				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
+				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
+				Mtx s;
+				PSMTXScale(s, scale.x, scale.y, scale.z);
+				Mtx m;
+				PSMTXConcat(mParts[i].mMtx, s, m);
+				PSMTXConcat(m, t, m);
+				HSD_JObjCopyMtx(mParts[i].mObj->mJObj, m);
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8010A500
+ * @note Size: 0x74
+ */
+void XObjActor3::Release()
+{
+	switch (GetKind()) {
+	case 0x149:
+	case 0x42B:
+		mPanelTpl.Close();
+		break;
+	}
+	XObj::Release();
+}
 
 // XObjActor3, the actor most of the stage's small moving things are. which one it is comes
 // from the stage table, see GetKind and GetObjFlags
 
 extern "C" {
-u16 GetItemFlagsMasked(s16 item, s32 kind);
 BOOL IsPlayerFlashingFromHit(XObj* obj);
 void HideScrapCounter(void* mgr);
 void ShowScrapCounter(void* mgr);
@@ -2156,3 +2727,31 @@ void XObjActor3::UpdateObjectGauge(u32 frames)
 void XObjActor3::Kind0(u32 frames)
 {
 }
+
+/**
+ * @note Address: 0x801152A0
+ * @note Size: 0x298
+ */
+// built at startup, member function pointers can't be plain data
+XObjActor3Func gActor3UpdateHandlers[20] = {
+	&XObjActor3::Kind0,
+	&XObjActor3::UpdateObjectGauge,
+	&XObjActor3::Kind2,
+	&XObjActor3::Kind3,
+	&XObjActor3::Kind4,
+	&XObjActor3::Kind5,
+	&XObjActor3::Kind6,
+	&XObjActor3::Kind7,
+	&XObjActor3::Kind8,
+	&XObjActor3::Kind9,
+	&XObjActor3::Kind10,
+	&XObjActor3::Kind11,
+	&XObjActor3::Kind12,
+	&XObjActor3::Kind13,
+	&XObjActor3::UpdateSpiderCounterPanel,
+	&XObjActor3::Kind15,
+	&XObjActor3::Kind16,
+	&XObjActor3::Kind17,
+	&XObjActor3::Kind18,
+	&XObjActor3::Kind19,
+};

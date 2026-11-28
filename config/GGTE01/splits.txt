@@ -697,6 +697,12 @@ game/xactliftcontacts.cpp:
 
 game/objb_act.cpp:
 	.text       start:0x800CECFC end:0x800D0F4C
+	.rodata     start:0x8020A588 end:0x8020A768
+	.data       start:0x80228270 end:0x80228520
+	.bss        start:0x8037C278 end:0x8037C410
+	.sbss       start:0x8065B278 end:0x8065B280
+	.sdata2     start:0x8065D698 end:0x8065D858
+	.sbss2      start:0x806600A0 end:0x80660228
 
 game/xactliftanim.cpp:
 	.text       start:0x800D0F4C end:0x800D3A5C
@@ -716,54 +722,20 @@ game/objb_attach.cpp:
 	.sbss2      start:0x80660228 end:0x80660238
 
 game/objb_plug.cpp:
-	.text       start:0x800D7D3C end:0x800D93C8
-
-game/xobjplugrelease.cpp:
-	.text       start:0x800D93C8 end:0x800D9414
-
-game/xobjplugload.cpp:
-	.text       start:0x800D9414 end:0x800D9B10
-
-game/plugcordcollision.cpp:
-	.text       start:0x800D9B10 end:0x800D9F5C
-
-game/plugcordpush.cpp:
-	.text       start:0x800D9F5C end:0x800DA4D0
-
-game/xobjplugnodedraw.cpp:
-	.text       start:0x800DA4D0 end:0x800DA68C
-
-game/xobjplugcorddraw.cpp:
-	.text       start:0x800DA68C end:0x800DA9E0
-
-game/plugcordsimulation.cpp:
-	.text       start:0x800DA9E0 end:0x800DB7A8
-
-game/xobjplugcordend.cpp:
-	.text       start:0x800DB7A8 end:0x800DB810
-
-game/xobjplugcordreset.cpp:
-	.text       start:0x800DB810 end:0x800DBA7C
+	.text       start:0x800D7D3C end:0x800D9B10
+	.rodata     start:0x8020A8A0 end:0x8020A918
+	.data       start:0x80228CD8 end:0x80228FF8
+	.bss        start:0x8037C410 end:0x8037C430
+	.sdata      start:0x8065A628 end:0x8065A658
+	.sbss       start:0x8065B280 end:0x8065B288
+	.sdata2     start:0x8065D8B8 end:0x8065D930
+	.sbss2      start:0x80660238 end:0x80660250
 
 game/xobjplugcord.cpp:
-	.text       start:0x800DBA7C end:0x800DBC04
-	.bss        start:0x8037C448 end:0x8037DC54
-	.sbss       start:0x8065B288 end:0x8065B28C
-
-game/xobjplugcordpointctor.cpp:
-	.text       start:0x800DBC80 end:0x800DBC98
-
-game/xobjplugnodes.cpp:
-	.text       start:0x800DBC98 end:0x800DBDDC
-
-game/plugcordpoints.cpp:
-	.text       start:0x800DBDDC end:0x800DC43C
-
-game/xobjplugnode.cpp:
-	.text       start:0x800DC43C end:0x800DC62C
-
-game/xobjplugcordpointdtor.cpp:
-	.text       start:0x800DBC04 end:0x800DBC80
+	.text       start:0x800D9B10 end:0x800DC62C
+	.bss        start:0x8037C430 end:0x8037DC70
+	.sbss       start:0x8065B288 end:0x8065B2A0
+	.sdata2     start:0x8065D930 end:0x8065D9B8
 
 game/inventory.cpp:
 	.text       start:0x800DC62C end:0x800DCD30
@@ -965,30 +937,16 @@ game/xobjactorjointupdate.cpp:
 game/xobjactorupdate.cpp:
 	.text       start:0x80107DE0 end:0x80108424
 
-game/xobjactor3dtor.cpp:
-	.text       start:0x80108424 end:0x80109004
-
-game/xobjactor3ptcl.cpp:
-	.text       start:0x80109004 end:0x8010904C
-
-game/xobjactor3panel.cpp:
-	.text       start:0x8010904C end:0x80109DD8
-
-game/xobjactor3draw.cpp:
-	.text       start:0x80109DD8 end:0x80109E80
-
-game/xobjactor3update.cpp:
-	.text       start:0x80109E80 end:0x8010A500
-
-game/xobjactor3release.cpp:
-	.text       start:0x8010A500 end:0x8010A574
-
-game/scrc.cpp:
-	.text       start:0x8010A574 end:0x801152A0
-
-game/xobjactor3init.cpp:
-	.text       start:0x801152A0 end:0x80115538
+game/xobjactor3.cpp:
+	.text       start:0x80108424 end:0x80115538
 	.ctors      start:0x801FD698 end:0x801FD69C
+	.rodata     start:0x8020B3D0 end:0x8020B6C8
+	.data       start:0x8022C110 end:0x8022C7E0
+	.bss        start:0x8037FE40 end:0x8037FE58
+	.sdata      start:0x8065A838 end:0x8065A878
+	.sbss       start:0x8065B2F0 end:0x8065B2F8
+	.sdata2     start:0x8065E1A0 end:0x8065E358
+	.sbss2      start:0x80660270 end:0x80660290
 
 game/xobjactortoy.cpp:
 	.text       start:0x80115538 end:0x80122E0C
@@ -2734,9 +2692,6 @@ game/cgenerator_vtable.cpp:
 
 game/cmovie_vtable.cpp:
 	.data       start:0x802103FC end:0x80210408
-
-game/xobjactor3_vtable.cpp:
-	.data       start:0x8022C480 end:0x8022C5CC
 
 game/cfbtexeff_vtable.cpp:
 	.data       start:0x802102EC end:0x80210308
