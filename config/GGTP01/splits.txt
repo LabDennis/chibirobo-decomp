@@ -220,97 +220,14 @@ game/obja_map.cpp:
 	.sbss2      start:0x80667120 end:0x80667128
 
 game/obja_chr.cpp:
-	.text       start:0x80095C28 end:0x800AA10C
+	.text       start:0x80095C28 end:0x800BF8D0
 	.rodata     start:0x8020FCE8 end:0x80210F10
-	.data       start:0x8022CAC8 end:0x8022CD00
+	.data       start:0x8022CAC8 end:0x8022E3E4
 	.bss        start:0x8037EFC0 end:0x80383078
 	.sdata      start:0x80661380 end:0x80661468
 	.sbss       start:0x80662100 end:0x80662118
 	.sdata2     start:0x80664410 end:0x806647B8
 	.sbss2      start:0x80667128 end:0x806671E8
-
-game/playerframeevents.cpp:
-	.text       start:0x800AA10C end:0x800AAB18
-	.data       start:0x8022CD00 end:0x8022E3E4
-
-game/obja_chr_late.cpp:
-	.text       start:0x800AAB18 end:0x800B9E08
-
-game/xobjcurrentedge.cpp:
-	.text       start:0x800B9E08 end:0x800B9E6C
-
-game/xobjchrrestore.cpp:
-	.text       start:0x800B9E6C end:0x800BA0CC
-
-game/xobjchrreset.cpp:
-	.text       start:0x800BA0CC end:0x800BA2C4
-
-game/xobjchrsuitjoints.cpp:
-	.text       start:0x800BA2C4 end:0x800BB434
-
-game/xobjchritem.cpp:
-	.text       start:0x800BB434 end:0x800BB6A4
-
-game/xobjchrsuit.cpp:
-	.text       start:0x800BB6A4 end:0x800BBCEC
-
-game/xobjchratcanim.cpp:
-	.text       start:0x800BBCEC end:0x800BBD90
-
-game/xobjchrplacement.cpp:
-	.text       start:0x800BBD90 end:0x800BD314
-
-game/xobjchrstop.cpp:
-	.text       start:0x800BD314 end:0x800BD404
-
-game/xobjchrattachmentchange.cpp:
-	.text       start:0x800BD404 end:0x800BD964
-
-game/xobjchrjointrot.cpp:
-	.text       start:0x800BD964 end:0x800BDC9C
-
-game/xaction.cpp:
-	.text       start:0x800BDC9C end:0x800BDD10
-
-game/xobjchrresetstate.cpp:
-	.text       start:0x800BDD10 end:0x800BE32C
-
-game/xactioninit.cpp:
-	.text       start:0x800BE32C end:0x800BE35C
-	.data       start:0x8022EBC0 end:0x8022EBD0
-
-game/xobjchrdisplay.cpp:
-	.text       start:0x800BE35C end:0x800BEA30
-
-game/atcmenudtor.cpp:
-	.text       start:0x800BEA30 end:0x800BEAD4
-
-game/xobjchrdtor.cpp:
-	.text       start:0x800BEAD4 end:0x800BF168
-
-game/xactpoppershotdtor.cpp:
-	.text       start:0x800BF168 end:0x800BF1FC
-
-game/xobjplugdtor.cpp:
-	.text       start:0x800BF1FC end:0x800BF394
-
-game/xobjattachmentdtor.cpp:
-	.text       start:0x800BF394 end:0x800BF574
-
-game/oxmenumarkdtor.cpp:
-	.text       start:0x800BF574 end:0x800BF5CC
-
-game/xpaddtor.cpp:
-	.text       start:0x800BF72C end:0x800BF818
-
-game/oxmenudtor.cpp:
-	.text       start:0x800BF818 end:0x800BF888
-
-game/cptcldtor.cpp:
-	.text       start:0x800BF888 end:0x800BF8D0
-
-game/xobjfloorheight.cpp:
-	.text       start:0x800BF5CC end:0x800BF72C
 
 game/objb_act.cpp:
 	.text       start:0x800BF8D0 end:0x800D7BFC

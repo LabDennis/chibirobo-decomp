@@ -22,6 +22,16 @@
 #include <string.h>
 #include "game/octamenu.h"
 #include "game/xpad.h"
+#include <math.h>
+#include "game/xobj.h"
+#include "game/xobjs.h"
+#include "game/evt.h"
+#include "game/xobjchr.h"
+#include "game/xobjchritem.h"
+#include "game/xobjflags.h"
+#include "game/cobj.h"
+#include "game/xact.h"
+#include "game/xobjattachment.h"
 
 extern "C" {
 s32 GetObjectAnimationId(const CXObj* object);
@@ -5542,6 +5552,397 @@ void XObjAttachment::DrawWithView(Mtx view)
 }
 
 extern "C" {
+// the idle anim id of each suit, in mCurrent order
+s32 gPlayerSuitIdleAnimations[9] = { 1, 0xCF7, 0xCF9, 0xCF8, 0xCFD, 1, 0xCFA, 0xCFB, 0xCFC };
+
+// the per-anim footstep and action sounds, terminated by anim -1
+FrameEvent gPlayerAnimationFrameEvents[] = {
+	{ 18, -1.0f, -1.0f, FrameSoundStartIfSilent, FrameSoundStopIfPlaying, 12, 255 },
+	{ 3, 2.0f, 17.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 3, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 12, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2198, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2072, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 119, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 136, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2199, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2178, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 4, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 4, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 13, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 13, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2200, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 2200, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2073, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 2073, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 179, 2.0f, 16.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 298, 2.0f, 17.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 298, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 10, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 10, 42.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 11, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 11, 42.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 159, 34.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 160, 24.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 173, 76.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 172, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 32, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 150, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 31, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 149, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 27, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 30, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 148, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 291, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 117, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 57, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 89, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 159, 92.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 173, 80.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 92, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 273, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 279, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 98, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 276, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 282, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 101, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 285, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 288, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 91, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 272, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 278, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 97, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 275, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 281, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 100, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 284, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 287, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 23, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 13, 255 },
+	{ 125, 12.0f, -1.0f, FrameSoundOnStartFrame, NULL, 14, 255 },
+	{ 21, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 63, 255 },
+	{ 22, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 63, 255 },
+	{ 24, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 24, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 152, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 152, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 109, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 109, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 109, 97.0f, 116.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 109, 133.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 109, 50.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 139, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 16, 255 },
+	{ 141, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 16, 255 },
+	{ 64, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 32, 255 },
+	{ 65, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 31, 255 },
+	{ 53, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 269, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 59, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 59, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 54, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 54, 255 },
+	{ 90, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 271, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 277, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 96, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 274, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 280, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 99, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 283, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 286, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 19, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 19, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 25, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 102, 10.0f, 33.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 102, 37.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 102, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 105, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 105, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 106, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 106, 18.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 110, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 110, 20.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 110, 17.0f, 38.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 110, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 111, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 111, 20.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 111, 17.0f, 38.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 111, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 107, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 107, 18.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 108, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 108, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 114, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 115, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 33, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 33, 28.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 37, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 5, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 7, 24.0f, -1.0f, FrameSoundOnStartFrame, NULL, 7, 255 },
+	{ 62, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 62, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 66, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 9, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 159, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 173, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 160, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 122, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 61, 255 },
+	{ 202, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 61, 255 },
+	{ 2068, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 2071, 26.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 2070, 4.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 2169, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 2170, 26.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 2079, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 4, 255 },
+	{ 2080, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 4, 255 },
+	{ 2081, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 2, 255 },
+	{ 2084, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 2, 255 },
+	{ 120, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 120, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 239, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 239, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 315, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 315, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 175, 15.0f, 37.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 175, 59.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 176, 18.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 176, 61.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 234, 15.0f, 37.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 234, 59.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 235, 18.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 235, 61.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 2197, 10.0f, -1.0f, FrameSoundUntilAnimEnd, NULL, 253, 255 },
+	{ 188, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 191, 85.0f, -1.0f, FrameSoundOnStartFrame, NULL, 280, 255 },
+	{ 191, 142.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 2222, 5.0f, -1.0f, FrameSoundOnStartFrame, NULL, 268, 255 },
+	{ 2222, 80.0f, -1.0f, FrameSoundOnStartFrame, NULL, 269, 255 },
+	{ 2225, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 57, 255 },
+	{ 1187, 35.0f, 47.0f, FrameSoundOnEitherBoundary, NULL, 281, 255 },
+	{ 221, 22.0f, -1.0f, FrameSoundOnStartFrame, NULL, 347, 255 },
+	{ 213, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 246, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 1232, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 55, 30.0f, 35.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 55, 110.0f, 120.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 238, 110.0f, 120.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 3308, 100.0f, 110.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 2245, 7.0f, -1.0f, FrameSoundOnStartFrame, NULL, 365, 255 },
+	{ 2245, 32.0f, -1.0f, FrameSoundOnStartFrame, NULL, 366, 255 },
+	{ 2240, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 373, 255 },
+	{ 2241, 57.0f, -1.0f, FrameSoundOnStartFrame, NULL, 373, 255 },
+	{ 2242, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 374, 255 },
+	{ 2243, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 375, 255 },
+	{ 2244, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 376, 255 },
+	{ 1299, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 408, 255 },
+	{ -1, 0.0f, 0.0f, NULL, NULL, 0, 0 },
+};
+// the copter anim events, terminated by anim -1
+FrameEvent gCopterAnimationFrameEvents[] = {
+	{ 5, 22.0f, -1.0f, FrameSoundOnStartFrame, NULL, 15, 255 }, { 8, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 15, 255 },
+	{ 6, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 8, 255 },   { 2, 0.0f, -1.0f, FrameSoundStartIfSilent, NULL, 8, 255 },
+	{ 3, 0.0f, -1.0f, FrameSoundStartIfSilent, NULL, 8, 255 },  { 7, 0.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 8, 255 },
+	{ 0, 0.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 8, 255 },  { -1, 0.0f, 0.0f, NULL, NULL, 0, 0 },
+};
+// the alternate anim ids for carrying, lifting and attachments, terminated by -1
+PlayerAnimVariants gPlayerAnimVariants[] = {
+	{ 17, 8, 2196, -1 },   { 1, 8, 2196, -1 },    { 93, 8, 2196, -1 },    { 94, 8, 2196, -1 },    { 95, 8, 2196, -1 },
+	{ 8, 8, 2196, -1 },    { 212, 228, 229, -1 }, { 121, 137, 224, -1 },  { 3, 12, 2198, 2072 },  { 119, 136, 2199, 2178 },
+	{ 4, 13, 2200, 2073 }, { 2, 2, 2, 266 },      { 53, 53, 53, 269 },    { 67, 67, 67, 270 },    { 120, 315, 239, -1 },
+	{ 90, 271, 277, -1 },  { 91, 272, 278, -1 },  { 92, 273, 279, -1 },   { 96, 274, 280, -1 },   { 97, 275, 281, -1 },
+	{ 98, 276, 282, -1 },  { 99, 283, 286, -1 },  { 100, 284, 287, -1 },  { 101, 285, 288, -1 },  { 122, 202, -1, -1 },
+	{ 32, 150, 297, -1 },  { 31, 149, 296, -1 },  { 28, 146, 289, -1 },   { 29, 147, 290, -1 },   { 30, 148, 291, -1 },
+	{ 142, 155, 292, -1 }, { 143, 156, 293, -1 }, { 144, 157, 294, 267 }, { 154, 158, 295, 268 }, { -1, 0, 0, 0 },
+};
+}
+
+// a particle an anim frame table asks for
+struct PlayerFrameParticle {
+	s32 mCode;      // _00, -1 for none
+	Vec mTranslate; // _04
+	Vec mScale;     // _10
+	Vec mRotate;    // _1C
+};
+STATIC_ASSERT(sizeof(PlayerFrameParticle) == 0x28);
+
+extern "C" {
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj*, const FrameEventTime*, const FrameEvent*);
+}
+
+// steps the anim frame and fires the particles the frame tables ask for
+/**
+ * @note Address: 0x800A7C70
+ * @note Size: 0x1AC
+ */
+extern "C" void UpdatePlayerFrameEffects(XObjChr* player)
+{
+	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
+	HSD_AObj* aobj                = GetAObj(player->mJObj);
+	player->mFrameTime.mFrame     = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
+	PlayerFrameParticle particle  = ProcessPlayerFrameEvents(player, &player->mFrameTime, gPlayerAnimationFrameEvents);
+	if (particle.mCode >= 0 && !(gGame.mStatus.mFlags & 0x100ULL)) {
+		gGame.mParticle.CreateSRT((u32)particle.mCode | 0x10000, 1, particle.mTranslate, particle.mScale, particle.mRotate, FALSE);
+	}
+	if (player->mCopterObj.mVisible != 0)
+		ProcessPlayerFrameEvents(&player->mCopterObj, NULL, gCopterAnimationFrameEvents);
+}
+
+static void SetFrameParticleAtJoint(PlayerFrameParticle& particle, XObjChr* player, s32 code)
+{
+	particle.mCode      = code;
+	s32 path[]          = { 0, 1, 0, 1, 2, 0, 1 };
+	Vec offset          = { 0.0f, 2.0f, 0.0f };
+	particle.mTranslate = GetEventJointWorldPosition(player, 7, path) + offset;
+	particle.mScale     = player->mMoveScale;
+	particle.mRotate    = player->mMoveRotate;
+}
+
+/**
+ * @note Address: 0x800A7E1C
+ * @note Size: 0x638
+ */
+extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, const FrameEventTime* frames, const FrameEvent* table)
+{
+	PlayerFrameParticle particle = { -1 };
+	HSD_AObj* aobj               = GetAObj(object->mJObj);
+	if (aobj == NULL)
+		return particle;
+	s32 anim = object->mAnimId;
+	FrameEventTime time;
+	if (frames != NULL) {
+		time = *frames;
+	} else {
+		time.mFrame     = HSD_AObjGetCurrentFrame(aobj);
+		time.mLastFrame = time.mFrame - 1.0f;
+	}
+	for (const FrameEvent* event = table; event->mAnim >= 0; ++event) {
+		s32 result = 0;
+		if (anim == event->mAnim && event->mWhenAnimMatches != NULL)
+			result = event->mWhenAnimMatches(&aobj->flags, &time, event);
+		else if (anim != event->mAnim && event->mWhenAnimDiffers != NULL)
+			result = event->mWhenAnimDiffers(&aobj->flags, &time, event);
+		if (result > 0) {
+			XObjChr* player = gGame.GetPlayer();
+			if (event->mId == 7 && anim == 7 && player->mLift.mTarget != NULL) {
+				// sound 7 in anim 7 sounds like what he holds: an item (pool 8) by its own sound, anything else by its floor material
+				XObj* held = player->mLift.mTarget;
+				if ((s16)held->GetPool() == 8) {
+					s8 material = GetItemSoundIndex((s16)held->GetItem(), 0);
+					if (material >= 0)
+						PlayGameSound(&gGame.mSound, GetMaterialSoundId(material), event->mVolume);
+				} else {
+					PlayGameSound(&gGame.mSound, GetMaterialSoundId(held->mFloors->mType >> 8), event->mVolume);
+				}
+			} else {
+				PlayGameSound(&gGame.mSound, event->mId, event->mVolume);
+			}
+			if (event->mId == 5) {
+				SetFrameParticleAtJoint(particle, player, 0x18);
+			} else if (event->mId == 6) {
+				SetFrameParticleAtJoint(particle, player, 0x19);
+			} else if (event->mId == 0x38 && anim == 0x9F) {
+				const Vec& tint = player->mColorStep[0].mValue;
+				u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+				// no particle while his modulate color is plain white (untinted)
+				if (color < 0xFFFFFF00) {
+					particle.mCode      = 0x55;
+					s32 path[]          = { 0, 0 };
+					particle.mTranslate = GetEventJointWorldPosition(player, 2, path);
+					particle.mTranslate.x += 2.4f * (f32)sin(player->mMoveRotate.y);
+					particle.mTranslate.z += 2.4f * (f32)cos(player->mMoveRotate.y);
+					particle.mTranslate.y += 0.5f;
+					particle.mScale  = player->mMoveScale;
+					particle.mRotate = player->mMoveRotate;
+				}
+			}
+		} else if (result < 0) {
+			StopGameSfx(&gGame.mSound, event->mId);
+		}
+	}
+	return particle;
+}
+
+// stop once the sound is playing
+/**
+ * @note Address: 0x800A8454
+ * @note Size: 0x40
+ */
+extern "C" s32 FrameSoundStopIfPlaying(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsGameSoundPlaying(&gGame.mSound, event->mId) ? -1 : 0;
+}
+
+// start while the sound isn't playing
+/**
+ * @note Address: 0x800A8494
+ * @note Size: 0x3C
+ */
+extern "C" s32 FrameSoundStartIfSilent(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsGameSoundPlaying(&gGame.mSound, event->mId) ? FALSE : TRUE;
+}
+
+// keep the sound playing inside the window only
+/**
+ * @note Address: 0x800A84D0
+ * @note Size: 0x90
+ */
+extern "C" s32 FrameSoundInFrameWindow(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	if (time->mFrame >= event->mStart && time->mFrame < event->mEnd) {
+		if (!IsGameSoundPlaying(&gGame.mSound, event->mId))
+			return 1;
+	} else {
+		if (IsGameSoundPlaying(&gGame.mSound, event->mId))
+			return -1;
+	}
+	return 0;
+}
+
+// keep the sound playing until the anim ends
+/**
+ * @note Address: 0x800A8560
+ * @note Size: 0x7C
+ */
+extern "C" s32 FrameSoundUntilAnimEnd(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	if (*aobjFlags & 0x44000000) {
+		if (IsGameSoundPlaying(&gGame.mSound, event->mId))
+			return -1;
+	} else {
+		if (!IsGameSoundPlaying(&gGame.mSound, event->mId))
+			return 1;
+	}
+	return 0;
+}
+
+// fires on the frame it crosses mStart or mEnd, a loop back counts as crossing
+/**
+ * @note Address: 0x800A85DC
+ * @note Size: 0x64
+ */
+extern "C" s32 FrameSoundOnEitherBoundary(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	if (((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+	    || ((time->mLastFrame < event->mEnd || time->mLastFrame > time->mFrame) && time->mFrame >= event->mEnd))
+		return 1;
+	return 0;
+}
+
+// fires on the frame it crosses mStart
+/**
+ * @note Address: 0x800A8640
+ * @note Size: 0x3C
+ */
+extern "C" s32 FrameSoundOnStartFrame(const u32* aobjFlags, FrameEventTime* time, const FrameEvent* event)
+{
+	if ((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+		return 1;
+	return 0;
+}
+
+extern "C" {
 void ResetPlayerAttachment(XObjChr*, s32);
 void SetAreaCameraInterestTarget(CCameraActionArea*, s32, XObj*, f32);
 void SelectCurrentCameraAreaByViewDirection(CCameraActionArea*, s32, f32);
@@ -9129,3 +9530,1053 @@ extern "C" void EnableJointMaterialTranslucency(HSD_JObj* joint, void*, s32)
 	}
 }
 #endif
+
+extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj* object)
+{
+	const Vec edge = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+	// Retail returns the address of the temporary sum, which dies with the frame; the caller copies it right away.
+	return &(object->mMoveTranslate + edge);
+}
+
+/**
+ * @note Address: 0x800B78FC
+ * @note Size: 0x260
+ */
+// picks up again what he was holding before the reset, true once it's back in his hands
+extern "C" BOOL RestorePlayerHeldItem(XObjChr* chr)
+{
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 24) {
+				chr->mLift.mTarget      = &chr->mPlug;
+				chr->mLift.mTargetFloor = chr->mLift.mTarget->mSelectedFloorIndex;
+				chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+				chr->SetAnim(8, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+				return TRUE;
+			}
+		}
+		ResetPlayerLiftAction(&chr->mLift);
+	}
+
+	s16 id = chr->mSavedTarget;
+	if (id >= 0) {
+		CoordInfo placement(GetStageObjectPlacementByIndex(id));
+		chr->mPendingTarget = SpawnObjectFromPlacement(&gGame.mXObjs, &placement, 0, TRUE);
+		chr->mSavedTarget   = -1;
+	}
+	if (chr->mPendingTarget != NULL) {
+		if (!(chr->mPendingTarget->mStatus.mFlags & 0x0040000000000000ULL)) {
+			ResetPlayerLiftAction(&chr->mLift);
+			chr->mLift.mState = 4;
+			chr->mLift.SetTarget(chr->mPendingTarget);
+			chr->mLift.mTargetState = 4;
+			chr->mLift.mTarget->SetAnim(chr->mSavedTargetAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			chr->mLift.mTarget->mStatus.mFlags |= 0x0400000000000000ULL;
+			chr->SetAnim(8, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			chr->mPendingTarget = NULL;
+			if (IsCarryingSquirter(&chr->mLift)) {
+				ApplyPlayerItemTintToTarget(&chr->mLift);
+			}
+			return TRUE;
+		}
+	} else {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x800B7B5C
+ * @note Size: 0x1F8
+ */
+// puts him back to a clean state, keeps what he was holding to pick it up again after
+void XObjChr::Release()
+{
+	RestoreControl();
+	if (mJObj != NULL) {
+		HSD_JObjClearMtxFlags(mJObj);
+	}
+
+	if (mLift.mState != 0) {
+		XObj* target = mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 8) {
+				mSavedTarget      = target->GetObjFlags();
+				mSavedTargetAnim  = mLift.mTarget->mAnimId;
+				mSavedTargetState = mLift.mTargetState;
+			}
+		}
+	} else {
+		switch (GetAttachment()) {
+		case AttachmentToothbrush:
+		case AttachmentSpoon:
+		case AttachmentMug:
+		case AttachmentSquirter:
+			mAttachment = AttachmentNone;
+			break;
+		}
+	}
+
+	mAnim.Release();
+	mAttachmentAnim.Release();
+	mSuitAnim.Release();
+	RemovePlayerSuit(this);
+	if (mEvt.mData.mScript != NULL) {
+		ResetEventScriptState(&mEvt, TRUE, FALSE);
+	}
+}
+
+extern "C" void SetPlayerPopperMountHidden(XObj* player, BOOL hidden);
+
+static inline void BindRotationJoint(CJointRot& rotation)
+{
+	if (rotation.mObj) {
+		s32 path[]      = { 0, 1, 0, 1, 2 };
+		rotation.mJoint = FindJointByPath(rotation.mObj->mJObj, path, 5);
+	}
+}
+
+static void BindSuitMounts(XObjChr* player)
+{
+	s32 attachment[]         = { 0, 1, 0, 1, 2, 0, 0, 5 };
+	s32 tool[]               = { 0, 1, 0, 1, 2, 0, 0, 4 };
+	s32 popper[]             = { 0, 1, 0, 1, 3 };
+	player->mAttachmentJoint = FindJointByPath(player->mJObj, attachment, ARRAY_SIZE(attachment));
+	player->mCopterObj.SetParent(FindJointByPath(player->mJObj, tool, ARRAY_SIZE(tool)), FALSE);
+	player->mPopperObj.SetParent(FindJointByPath(player->mJObj, popper, ARRAY_SIZE(popper)), FALSE);
+	player->mRadarObj.SetParent(FindJointByPath(player->mJObj, tool, ARRAY_SIZE(tool)), FALSE);
+	player->mOXObj.SetParent(FindJointByPath(player->mJObj, tool, ARRAY_SIZE(tool)), FALSE);
+}
+
+/**
+ * @note Address: 0x800B7D54
+ * @note Size: 0xAFC
+ */
+extern "C" void ApplyPlayerSuit(XObjChr* player)
+{
+	if (!(player->mStatus.mFlags & 1) || !player->mSuits.mJoints[player->mSuits.mCurrent])
+		return;
+	player->ClearAnim();
+	player->ApplyTransform();
+	if (player->GetAttachment() == AttachmentPopper)
+		SetPlayerPopperMountHidden(player, FALSE);
+	s32 suitPath[]  = { 0, 1, 0 };
+	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
+	mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent]; // graft the suit's joint tree
+	for (HSD_JObj* child = mount->child; child; child = child->next)
+		child->parent = mount;
+	struct JointPath {
+		s32 depth;
+		s32* indices;
+	};
+	JointPath joints[] = { { 9, NULL }, { 9, NULL }, { 9, NULL }, { 9, NULL } };
+	s32 path3[]        = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+	joints[3].indices  = path3;
+	s32 path2[]        = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+	joints[2].indices  = path2;
+	s32 path1[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+	joints[1].indices  = path1;
+	s32 path0[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+	joints[0].indices  = path0;
+	for (s32 i = 0; i < 4; ++i) // the suit's four idle joints
+		player->mIdleJoints[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
+	BindSuitMounts(player);
+	BindRotationJoint(player->mJointRot);
+	BindRotationJoint(player->mHeadTurn.mNeck);
+	BindRotationJoint(player->mHeadTurn.mHead);
+	if (!(gGame.mStatus.mFlags & 0x100))
+		SetPlayerEyeCameraJointsHidden(player, FALSE);
+	if (player->GetAttachment() == AttachmentPopper) // hide the popper mount again
+		SetPlayerPopperMountHidden(player, TRUE);
+	player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	player->mIdleLoops = 3;
+}
+
+/**
+ * @note Address: 0x800B8850
+ * @note Size: 0x674
+ */
+extern "C" void RemovePlayerSuit(XObjChr* player)
+{
+	s32 anim  = player->mAnimId;
+	f32 frame = GetAnimFrame(player->mJObj);
+	player->ClearAnim();
+	player->ApplyTransform();
+
+	s32 suitPath[]  = { 0, 1, 0 };
+	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
+	mount->child    = player->mSuits.mJoints[0]; // restore slot 0's joints
+	for (HSD_JObj* child = mount->child; child; child = child->next)
+		child->parent = mount;
+	player->SetAnim(anim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
+
+	BindSuitMounts(player);
+
+	XObj& suit = player->mSuits.mObjects[player->mSuits.mCurrent];
+	if (suit.mStatus.mFlags & 1) // release the suit object if loaded
+		suit.Release();
+	if (player->mSuits.mJoints[player->mSuits.mCurrent])
+		player->mSuits.mJoints[player->mSuits.mCurrent] = NULL;
+	player->mSuitAnim.Release();
+}
+
+/**
+ * @note Address: 0x800B8EC4
+ * @note Size: 0x270
+ */
+// loads the item he's asked to hold, true once it's ready
+extern "C" BOOL LoadRequestedHeldItem(XObjChr* chr)
+{
+	PlayerSuits& suits = chr->mSuits;
+	if (suits.mLoadStep == 0)
+		suits.mLoadStep = 1;
+	if (suits.mCurrent != suits.mRequested) {
+		suits.mChangeStep = TRUE;
+		suits.mCurrent    = suits.mRequested;
+	}
+	if (LoadPlayerSuitItem(chr)) {
+		suits.mChangeStep = FALSE;
+		ApplyPlayerSuit(chr);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+extern "C" {
+extern f32 gPlayerSuitChangeTimer;
+}
+
+static inline bool SuitFadeFinished(const XObjChr* player)
+{
+	const Vec& speed = player->mColorStep[1].mSpeed;
+	return speed.x == 0.0f && speed.y == 0.0f && speed.z == 0.0f;
+}
+
+/**
+ * @note Address: 0x800B9134
+ * @note Size: 0x624
+ */
+extern "C" void UpdatePlayerSuitChange(XObjChr* player)
+{
+	PlayerSuits& suits = player->mSuits;
+	switch (suits.mChangeStep) {
+	case 1:
+		player->SetColor(2, 255, 255, 255, 0.5f);
+		gPlayerSuitChangeEffect.active = TRUE;
+		for (u32 i = 0; i < ARRAY_SIZE(gPlayerSuitChangeEffect.rings); ++i) {
+			for (u32 j = 0; j < ARRAY_SIZE(gPlayerSuitChangeEffect.rings[i]); ++j) {
+				SuitParticle& particle = gPlayerSuitChangeEffect.rings[i][j];
+				Vec position           = { 0.0f, 0.5f, 0.0f };
+				particle.position      = position;
+				particle.scale         = 0.0f;
+				u32 green              = rand() % 156 + 100;
+				u32 red                = rand() % 156 + 100;
+				u32 blue               = rand() % 156 + 100;
+				particle.color         = (red << 24) | (green << 16) | (blue << 8);
+				particle.angle         = 0.0f;
+			}
+		}
+		gPlayerSuitChangeEffect.rings[0][0].scale = 1.0f;
+		gPlayerSuitChangeEffect.rings[1][0].scale = 1.0f;
+		gPlayerSuitChangeEffect.rings[0][0].angle = DEG2RAD * (rand() % 360);
+		gPlayerSuitChangeEffect.rings[1][0].angle = PI + gPlayerSuitChangeEffect.rings[0][0].angle;
+		PlayGameSound(&gGame.mSound, 0x45, 255);
+		++suits.mChangeStep;
+		break;
+	case 2:
+		if (SuitFadeFinished(player))
+			++suits.mChangeStep;
+		break;
+	case 3:
+		if (suits.mCurrent != 0) {
+			RemovePlayerSuit(player);
+			player->SetColor(2, 255, 255, 255, 0.0f);
+		}
+		suits.mCurrent  = suits.mRequested;
+		suits.mLoadStep = 1;
+		++suits.mChangeStep;
+		gPlayerSuitChangeTimer = 0.5f * FRAME_RATE;
+		// fall through
+	case 4:
+		gPlayerSuitChangeTimer -= 2.0f;
+		if (gPlayerSuitChangeTimer <= 0.0f)
+			gPlayerSuitChangeTimer = 0.0f;
+		if (!LoadPlayerSuitItem(player) || gPlayerSuitChangeTimer != 0.0f)
+			break;
+		++suits.mChangeStep;
+		// fall through
+	case 5: {
+		ApplyPlayerSuit(player);
+		player->SetColor(2, 255, 255, 255, 0.0f);
+		player->SetColor(2, 0, 0, 0, 0.5f);
+		const Vec& tint = player->mColorStep[0].mValue;
+		u32 color       = ((u32)tint.y << 16) | ((u32)tint.x << 24) | ((u32)tint.z << 8);
+		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
+		++suits.mChangeStep;
+		break;
+	}
+	case 6:
+		if (SuitFadeFinished(player))
+			suits.mChangeStep = 0;
+		break;
+	}
+}
+
+// the animation file of each attachment
+const char* gAttachmentAnimationPaths[] = {
+	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
+};
+
+/**
+ * @note Address: 0x800B9758
+ * @note Size: 0xA4
+ */
+// reads the attachment's anims, true once they're in
+extern "C" BOOL LoadPlayerAttachmentAnimation(XObjChr* chr)
+{
+	const char* path = gAttachmentAnimationPaths[chr->mAttachment];
+	if (path != NULL) {
+		if (LoadJointAnimationAsync(&chr->mAttachmentAnim, path)) {
+			chr->SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return TRUE;
+}
+
+extern "C" {
+CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path);
+void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* path, f32 x, f32 y, f32 z);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
+}
+
+static inline void SamplePlayerPose(XObjChr* player, s32 anim)
+{
+	player->SetAnim(anim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	if (anim == 0x13) { // sampled at the anim's last frame
+		HSD_AObj* jointAnim = GetAObj(player->mJObj);
+		f32 end             = jointAnim != NULL ? HSD_AObjGetEndFrame(jointAnim) : 0.0f;
+		player->SetAnim(anim, TRUE, NULL, NULL, NULL, end, 1.0f, 1.0f, 10.0f);
+	}
+	player->UpdateAnim(0);
+}
+
+static inline void SampleRootOffset(XObjChr* player, s32 anim, CVec& offset)
+{
+	SamplePlayerPose(player, anim);
+	s32 root[] = { 0 }; // the root joint
+	offset.Set(GetPlayerJointLocalTranslationByPath(player, 1, root));
+	SetObjectJointTranslationByPath(player, 1, root, 0.0f, 0.0f, 0.0f);
+}
+
+static inline BOOL LoadPlayerModel(XObj& model, s32 id)
+{
+	return model.LoadFromPlacement(CoordInfo(GetSpawnData(id)));
+}
+
+static void SetHeadAttachmentParent(XObjChr* player, XObjAttachment& attachment)
+{
+	s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+	attachment.SetParent(FindJointByPath(player->mJObj, path, ARRAY_SIZE(path)), TRUE);
+}
+
+/**
+ * @note Address: 0x800B97FC
+ * @note Size: 0x1584
+ */
+BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
+{
+	u32 status  = (u32)mStatus.mFlags;
+	u32 flags[] = { status & 0x800000, status & 0x200000, status & 0x40, status & 0x20000, status & 0x400000 };
+	// Each ready model falls through to the next load. A pending one resumes at the same step.
+	switch (mLoadStep) {
+	case 0: {
+		if (!XObj::LoadFromPlacement(info))
+			break;
+		CJObj::SetRotationY(0.0f, TRUE);
+		SamplePlayerPose(this, 8);
+		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		SampleRootOffset(this, 0x13, mHang.mTargetOffset);
+		SampleRootOffset(this, 0x8A, mRope.mTargetOffset);
+		SamplePlayerPose(this, 0x36);
+		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
+		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
+		mTumble.mFade.mActive = FALSE;
+		mTumble.mFade.mAmount = 0.0f;
+		CJObj::SetRotationY(mMoveRotate.y, TRUE);
+		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		mIdleLoops = 3;
+		{
+			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+			s32 branch3Child0[] = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+			struct JointPath {
+				s32 depth;
+				s32* nodes;
+			};
+			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
+			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
+				XObjChrIdleJoint& idle = mIdleJoints[i];
+				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
+				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
+				idle.mLastAdHead       = NULL;
+			}
+			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
+			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
+			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, ARRAY_SIZE(attachment), attachment);
+			if (!mSuits.mJoints[0]) {
+				s32 suit[]        = { 0, 1, 0, 0 };
+				mSuits.mJoints[0] = FindJointByPath(mJObj, suit, 4);
+			}
+		}
+		mStatus.mFlags |= 0x0000200000000000ULL;
+		++mLoadStep;
+	}
+	case 1: // the plug
+		if (!LoadPlayerModel(mPlug, 15))
+			break;
+		++mLoadStep;
+	case 2: { // the copter
+
+		if (!LoadPlayerModel(mCopterObj, 17))
+			break;
+		SetHeadAttachmentParent(this, mCopterObj);
+		++mLoadStep;
+	}
+	case 3: { // the popper
+
+		if (!LoadPlayerModel(mPopperObj, 18))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 3 };
+		mPopperObj.SetParent(FindJointByPath(mJObj, path, ARRAY_SIZE(path)), TRUE);
+		++mLoadStep;
+	}
+	case 4: { // the radar
+
+		if (!LoadPlayerModel(mRadarObj, 19))
+			break;
+		SetHeadAttachmentParent(this, mRadarObj);
+		++mLoadStep;
+	}
+	case 5: {
+
+#if defined(VERSION_JP)
+		const s32 modelId = 20;
+#else
+		const s32 modelId = 44;
+#endif
+		if (!LoadPlayerModel(mOXObj, modelId))
+			break;
+		SetHeadAttachmentParent(this, mOXObj);
+		++mLoadStep;
+	}
+	case 6:
+#if !defined(VERSION_JP)
+		switch (mOXMenu.mLoadStep) {
+		case 0:
+			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
+				break;
+			if (mOXMenu.mMark[0].mObj.mJObj) // the circle (O) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 1:
+			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
+				break;
+			if (mOXMenu.mMark[1].mObj.mJObj) // the cross (X) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 2:
+			++mOXMenu.mLoadStep;
+		}
+		if ((s32)mOXMenu.mLoadStep <= 1)
+			break;
+#endif
+		++mLoadStep;
+	case 7:
+		++mLoadStep;
+	case 8:
+		++mLoadStep;
+	case 9:
+		ApplyMaterialPresets(flags);
+		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded())
+			EnableLighting(GetEnvData()[9] / 100.0f);
+		++mLoadStep;
+	case 10: {
+		CTpl& tpl = gGame.mTpl;
+		for (u32 i = 0; i < ARRAY_SIZE(mTex); ++i) {
+			TPLPalette* palette = static_cast<TPLPalette*>(tpl.mBuffer);
+			mTex[i]             = tpl.mTex.Init(&palette->descriptorArray[122 - StatusTextureOffset + i], 0);
+		}
+		++mLoadStep;
+	}
+	case 11:
+		++mLoadStep;
+	case 12:
+		if (GetAttachment() == AttachmentCopter)
+			ShowIdlePlayerCopter(&mCopterObj);
+		else if (GetAttachment() == AttachmentPopper)
+			mPopper.mState = 3;
+		else if (GetAttachment() == AttachmentRadar)
+			ShowIdlePlayerRadar(&mRadarObj);
+		++mLoadStep;
+	}
+	if (mLoadStep > 12) {
+		mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x800BAD80
+ * @note Size: 0x2C
+ */
+extern "C" CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path)
+{
+	return CJObj_GetJointLocalTranslationByPath(object, depth, path);
+}
+
+/**
+ * @note Address: 0x800BADAC
+ * @note Size: 0xC4
+ */
+// stops him where he stands
+extern "C" void StopPlayerMotion(XObjChr* chr)
+{
+	chr->mMotion.Reset(0.0f, 0.0f, 0.0f);
+	chr->mMoveRotate.Set(chr->mMoveRotate.mTarget);
+	if (chr->mPush.mState != 0) {
+		ReleasePushAction(&chr->mPush);
+		chr->mPush.mState = 0;
+		chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mIdleLoops = 3;
+	}
+}
+
+extern "C" {
+void SetPlayerPopperMountHidden(XObj*, BOOL);
+void SetObjectJointTranslationByPath(CJObj*, s32, s32*, f32, f32, f32);
+void SetJointYawByPath(CXObj*, s32, s32*, f32);
+void ResetPopperCharge(XActPopperCharge*);
+void ResetTumbleAction(XActTumble*);
+void ResetPlayerRadarAction(XActRadar*);
+}
+
+static inline void StopAttachmentSound(s32 id)
+{
+	if (IsGameSoundPlaying(&gGame.mSound, id))
+		StopGameSfx(&gGame.mSound, id);
+}
+
+static inline void ResetAttachmentJoint(XObjChr* player)
+{
+	s32 path[]          = { 0, 1, 0, 1, 2, 0, 0, 5 };
+	HSD_AnimJoint* anim = player->mArchive.GetAnimJoint(0x814, 8, path);
+	HSD_JObjAddAnimAll(player->mAttachmentJoint, anim, NULL, NULL);
+	HSD_JObjReqAnimAll(player->mAttachmentJoint, 0.0f);
+	HSD_JObjClearFlagsAll(player->mAttachmentJoint, 0x20000);
+	HSD_JObjAnimAll(player->mAttachmentJoint);
+}
+
+/**
+ * @note Address: 0x800BAE70
+ * @note Size: 0x560
+ */
+extern "C" void ResetPlayerAttachment(XObjChr* player, s32 nextAnimation)
+{
+	switch (player->GetAttachment()) {
+	case AttachmentCopter:
+		StopAttachmentSound(8);
+		player->mCopterObj.Hide();
+		ResetAttachmentJoint(player);
+		break;
+	case AttachmentPopper:
+		StopAttachmentSound(0x186);
+		StopAttachmentSound(0x18B);
+		player->mPopperObj.Hide();
+		SetPlayerPopperMountHidden(player, FALSE);
+		ResetPopperCharge(&player->mPopper.mCharge);
+		break;
+	case AttachmentRadar:
+		StopAttachmentSound(0x18C);
+		StopAttachmentSound(0x18D);
+		StopAttachmentSound(0x18E);
+		player->mRadarObj.Hide();
+		ResetAttachmentJoint(player);
+		break;
+	default:
+		if (player->mLift.mTarget) {
+			if ((s16)player->mLift.mTarget->GetPool() == 8) {
+				Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+				SetOrAddInventoryItemCount(inventory, player->mLift.mTarget->GetItem(), 1, TRUE);
+				((XObjItem*)player->mLift.mTarget)->SetFlag();
+			}
+			if ((s16)player->mLift.mTarget->GetPool() != 24)
+				player->mLift.mTarget->Release();
+		}
+	}
+	ResetPlayerLiftAction(&player->mLift);
+	player->mHang.Reset();
+	player->mJump.Reset();
+	player->mLadder.Reset();
+	player->mRope.Reset();
+	ReleasePushAction(&player->mPush);
+	ResetTumbleAction(&player->mTumble);
+	player->mCopter.Reset();
+	player->mPopper.Reset();
+	ResetPlayerRadarAction(&player->mRadar);
+	if (player->mJObj) {
+		s32 path[] = { 0 };
+		SetObjectJointTranslationByPath(player, 1, path, 0.0f, 0.0f, 0.0f);
+		s32 root[] = { 0 };
+		SetJointYawByPath(player, 1, root, 0.0f);
+	}
+	player->mAttachment                   = AttachmentNone;
+	player->mAttachmentRequest            = -1;
+	player->mAttachmentStep               = 0;
+	player->mScriptAttach                 = 0;
+	player->mNextClimbType                = 0;
+	player->mClimbType                    = 0;
+	player->mHitObjectIndex               = -1;
+	player->mActionObjectIndex            = -1;
+	player->mFloorContacts[2].objectIndex = -1;
+	gGame.mParticle.Kill(0x15);
+	if (nextAnimation >= 0)
+		player->SetAnim(nextAnimation, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	player->mFallDistance = 0.0f;
+}
+
+/**
+ * @note Address: 0x800BB3D0
+ * @note Size: 0x338
+ */
+extern "C" void SetJointYawByPath(CXObj* object, s32 count, s32* path, f32 angle)
+{
+	CJObj joint(GetJointByPath(object->mJObj, path, count));
+	joint.SetRotationY(angle, 1);
+}
+
+/**
+ * @note Address: 0x800BB708
+ * @note Size: 0x18
+ */
+// XAction::Reset
+void XAction::Reset()
+{
+	mState         = 0;
+	mMoveDirection = 0;
+	mTarget        = NULL;
+	mTargetState   = 0;
+}
+
+/**
+ * @note Address: 0x800BB720
+ * @note Size: 0x8
+ */
+s32 XObjFlags::GetFlagIndex()
+{
+	return mPlacementParam1;
+}
+
+/**
+ * @note Address: 0x800BB728
+ * @note Size: 0x54
+ */
+// XObjAttachment::Hide
+void XObjAttachment::Hide()
+{
+	mVisible = FALSE;
+	if (mStatus.mFlags & 1ULL)
+		HSD_JObjSetFlagsAll(mJObj, 0x10);
+}
+
+extern "C" {
+void SetPlayerEyeCameraJointsHidden(XObj*, BOOL);
+void InitializePlayerPopperAction(XActPopper*, XObjChr*);
+void InitRadarAction(XActRadar*, XObjChr*);
+}
+
+static inline void ClearRingHighlights(OctaMenu& ring)
+{
+	ring.mOpen = 0;
+	ring.mFade = 0.0f;
+	for (s32 i = 0; i < ARRAY_SIZE(ring.mItems); ++i)
+		ring.mItems[i].mHighlight = 0.0f;
+}
+
+/**
+ * @note Address: 0x800BB77C
+ * @note Size: 0x600
+ */
+void XObjChr::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	SetPlayerEyeCameraJointsHidden(this, FALSE);
+	mMotion.Reset(0.0f, 0.0f, 0.0f);
+	for (u32 i = 0; i < ARRAY_SIZE(mStick); ++i)
+		mStick[i] = 0.0f;
+	mHitObjectIndex = mActionObjectIndex = -1;
+	mFloorContacts[1].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[4].objectIndex = -1;
+	mLastContactFloorIndex                                                                                                        = -1;
+	mNearDistance                                                                                                                 = 2.0f;
+	mLetickerIndex                                                                                                                = -1;
+	_A14                                                                                                                          = 0;
+	mLiftPlugFlags &= ~0x80;
+	mPressTimer = mAPressed = 0;
+	mIdleLoops              = 0;
+	mIdleTimer              = 0.0f;
+	mFlashCount = mFlashTimer = 0;
+	mHitStrength              = 0.0f;
+	mMoveSpeedScale           = 1.0f;
+	mHang.Init(this);
+	mHang.mStickAway = FALSE;
+	mJump.Init(this);
+	mJump.mTargetStrength = mJump.mStrength = 0.0f;
+	mLadder.Init(this);
+	mLadder.mBPressed = FALSE;
+	mRope.Init(this);
+	mPush.Init(this);
+	mTumble.Init(this);
+	mCopter.Init(this);
+	mCopter.mTime = FRAME_RATE;
+	InitializePlayerPopperAction(&mPopper, this);
+	InitRadarAction(&mRadar, this);
+	mFrameTime.mLastFrame = mFrameTime.mFrame = -1.0f;
+	for (s32 i = 0; i < 4; ++i) {
+		mIdleJoints[i].mJObj       = NULL;
+		mIdleJoints[i].mAnimJoint  = NULL;
+		mIdleJoints[i].mLastAdHead = NULL;
+	}
+	mIdleJointCooldown   = 0;
+	mAttachmentJoint     = NULL;
+	mAttachmentJointAnim = NULL;
+	s32 joint[]          = { 0, 1, 0, 1, 2 };
+	mJointRot.Init(this, 5, joint, 'y');
+	s32 neck[] = { 0, 1, 0, 1, 2 };
+	mHeadTurn.mNeck.Init(this, 5, neck, 'y');
+	s32 head[] = { 0, 1, 0, 1, 2 };
+	mHeadTurn.mHead.Init(this, 5, head, 'z');
+	mLook.mActive = FALSE;
+	mLook.mMode   = -1;
+	mLook.mObject = this;
+	Vec zero      = { 0.0f, 0.0f, 0.0f };
+	mLook.mOffset = zero;
+	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
+	mAttachmentRequest                        = -1;
+	mAttachmentStep = mScriptAttach = mNextClimbType = mClimbType = 0;
+	mFallDistance                                                 = 0.0f;
+	mCameraTarget[2] = mCameraTarget[1] = mCameraTarget[0] = NAN;
+	mCameraTargetMarginSetting = mCameraTargetMargin = 1.0f;
+	mHeldStickAngle = mMoveAngle = mHeldMoveAngle = NAN;
+	mBatteryWarningFrames                         = 0;
+	mBatteryWarningFade = mBatteryWarningAngle = 0.0f;
+	mGaugeTarget                               = NULL;
+	mGaugeTime                                 = 0.0f;
+	mPlug.ResetObjectState();
+	mCopterObj.ResetObjectState();
+	mPopperObj.ResetObjectState();
+	mRadarObj.ResetObjectState();
+	mOXObj.ResetObjectState();
+	for (s32 i = 0; i < 9; ++i)
+		mSuits.mObjects[i].ResetObjectState();
+	mWalkHeading = NAN;
+	ClearRingHighlights(mMenu.mAtc);
+	ClearRingHighlights(mMenu.mDrs);
+	mMenu.mFade = mMenu.mCursorY = mMenu.mTargetY = 0.0f;
+	mOXMenu.mStarted                              = FALSE;
+	mOXMenu.mFade                                 = 0.0f;
+	mInAir                                        = TRUE;
+	InitParticlePool(&mDust.mPtcl, mDust.mPtcls, sizeof(mDust.mPtcls[0]), ARRAY_SIZE(mDust.mPtcls));
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.display.mState = p.burst.mState = 0;
+		gPointParticleSlots[i]            = NULL;
+	}
+	gPlayerSuitChangeEffect.Reset();
+	mIdleMode = mIdleModeTimer = mGroundType = 0;
+	_158C4.Set(0.0f, 0.0f, 0.0f);
+	mHeadOffset      = 5.0f;
+	mHeadOffsetReady = FALSE;
+}
+
+/**
+ * @note Address: 0x800BBD7C
+ * @note Size: 0x30
+ */
+void XAction::Init(XObjChr* owner)
+{
+	mOwner = owner;
+	Reset();
+}
+
+extern "C" {
+void SetPlayerPopperMountHidden(XObj*, BOOL);
+void InitializePlayerLiftAction(XActLift*, XObjChr*);
+void RefreshAttachmentMenuEntries(AttachmentValues*);
+void InitializeAttachmentMenuEntries(AttachmentValues*);
+}
+
+static inline void ResetRingMode(OctaMenu& ring)
+{
+	ring.mOpen        = 0;
+	ring.mCursorIndex = 0;
+	ring.mMenuType    = gCmdLineArgs.mAttachmentMenuType;
+	ring.mFocus       = 0;
+	ring.mHeadTurn    = NAN;
+}
+
+/**
+ * @note Address: 0x800BBDAC
+ * @note Size: 0x338
+ */
+void XObjChr::ResetForNewGame()
+{
+	ResetPlayerStats(&mParams);
+	mAttachment           = AttachmentNone;
+	mLiftPlugFlags        = gCmdLineArgs.mLiftPlugFlags;
+	mAttachmentActionType = gCmdLineArgs.mAttachmentActionType;
+	mToolActionType       = gCmdLineArgs.mToolActionType;
+	SetPlayerPopperMountHidden(this, FALSE);
+	InitializePlayerLiftAction(&mLift, this);
+	mPlug.ResetForNewGame();
+	mCopterObj.ResetForNewGame();
+	mPopperObj.ResetForNewGame();
+	mRadarObj.ResetForNewGame();
+	mOXObj.ResetForNewGame();
+	mSuits.mLoadStep = mSuits.mChangeStep = mSuits.mRequested = mSuits.mCurrent = mSuits.mSpecial = 0;
+	for (s32 i = 0; i < 9; ++i)
+		mSuits.mObjects[i].ResetForNewGame();
+	ApplyPlayerSuit(this);
+	mPad.mReset = TRUE;
+	RefreshAttachmentMenuEntries(&mAttachments);
+	ResetRingMode(mMenu.mAtc);
+	ResetRingMode(mMenu.mDrs);
+	mMenu.mPrevSel = mMenu.mSel = 0;
+	mOXMenu.mSelectedIndex      = 0;
+#if !defined(VERSION_JP)
+	mOXMenu.mLoadStep = 0;
+#endif
+	_15890           = 0;
+	mSavedTarget     = -1;
+	mPendingTarget   = NULL;
+	mBatteryDrains   = TRUE;
+	mSquirterContent = 0;
+	mItemTintWord    = -1;
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.display.mState = p.burst.mState = 0;
+	}
+	gPlayerSuitChangeEffect.Reset();
+	mPlayerStatus.mFlags = 0; // new-game reset clears these before handing control back
+	RestoreControl();
+}
+
+static inline void SetupPlayerRing(OctaMenu& ring, XObjChr* owner, f32 direction, f32 offset)
+{
+	ring.mChr = owner;
+	ResetRingMode(ring);
+	ring._284                     = offset;
+	ring.mFirstVisibleItem        = 4;
+	ring.mPendingFirstVisibleItem = -1;
+	ring._10                      = direction;
+}
+
+static void SetRingItems(OctaMenu& ring, const s32* order)
+{
+	for (s32 i = 0; i < ARRAY_SIZE(ring.mItems); ++i)
+		ring.mItems[i].mType = order[i];
+}
+
+/**
+ * @note Address: 0x800BC0E4
+ * @note Size: 0x39C
+ */
+void XObjChr::InitializeObject(u32 id)
+{
+	XObj::InitializeObject(id);
+	mLook.mActive = FALSE;
+	mLook.mMode   = -1;
+	mLook.mObject = NULL;
+	Vec zero      = { 0.0f, 0.0f, 0.0f };
+	mLook.mOffset = zero;
+	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
+	mLoadStep                                 = 0;
+	mPlug.InitializeObject(id);
+	mCopterObj.InitializeObject(id);
+	mPopperObj.InitializeObject(id);
+	mRadarObj.InitializeObject(id);
+	mOXObj.InitializeObject(id);
+	InitializeAttachmentMenuEntries(&mAttachments);
+	static const s32 attachmentOrder[] = { AttachmentCopter, AttachmentPopper, AttachmentRadar,    AttachmentToothbrush,
+		                                   AttachmentMug,    AttachmentSpoon,  AttachmentSquirter, AttachmentUnequip };
+	static const s32 costumeOrder[]    = { 3, 5, 4, 1, 6, 8, 7, 2 };
+	static const s32 costumeRowOrder[] = { 1, 4, 6, 3, 2, 7, 8, 5 };
+	SetupPlayerRing(mMenu.mAtc, this, -1.0f, -1.5f);
+	SetRingItems(mMenu.mAtc, attachmentOrder);
+	SetupPlayerRing(mMenu.mDrs, this, 1.0f, 0.9f);
+	SetRingItems(mMenu.mDrs, mMenu.mDrs.mMenuType == 3 ? costumeRowOrder : costumeOrder);
+	mMenu.mPrevSel         = 0;
+	mMenu.mSel             = 0;
+	mOXMenu.mChr           = this;
+	mOXMenu.mSelectedIndex = 0;
+#if !defined(VERSION_JP)
+	mOXMenu.mLoadStep = 0;
+#endif
+	for (s32 i = 0; i < 9; ++i) { // every suit model
+		mSuits.mObjects[i].InitializeObject(id);
+		mSuits.mJoints[i] = NULL;
+	}
+	mPad.Init(0);
+	ResetForNewGame();
+	mAttachmentAnim.Clear();
+	mSuitAnim.Clear();
+}
+
+OctaMenu::~OctaMenu()
+{
+}
+
+AtcMenu::~AtcMenu()
+{
+}
+
+/**
+ * @note Address: 0x800BC524
+ * @note Size: 0x694
+ */
+// NONMATCHING: retail lays out the member-destruction branch chain differently (beq placement)
+XObjChr::~XObjChr()
+{
+}
+
+/**
+ * @note Address: 0x800BCBB8
+ * @note Size: 0x94
+ */
+XActPopperShot::~XActPopperShot()
+{
+}
+
+/**
+ * @note Address: 0x800BCC4C
+ * @note Size: 0xA8
+ */
+XObjPlug::~XObjPlug()
+{
+}
+
+/**
+ * @note Address: 0x800BCCF4
+ * @note Size: 0x90
+ */
+XObjPlugCordNode::~XObjPlugCordNode()
+{
+}
+
+/**
+ * @note Address: 0x800BCD84
+ * @note Size: 0x60
+ */
+XObjWireEff::~XObjWireEff()
+{
+}
+
+/**
+ * @note Address: 0x800BCDE4
+ * @note Size: 0x60
+ */
+XObjCopter::~XObjCopter()
+{
+}
+
+/**
+ * @note Address: 0x800BCE44
+ * @note Size: 0x60
+ */
+XObjAttachment::~XObjAttachment()
+{
+}
+
+/**
+ * @note Address: 0x800BCEA4
+ * @note Size: 0x60
+ */
+XObjPopper::~XObjPopper()
+{
+}
+
+/**
+ * @note Address: 0x800BCF04
+ * @note Size: 0x60
+ */
+XObjRadar::~XObjRadar()
+{
+}
+
+/**
+ * @note Address: 0x800BCF64
+ * @note Size: 0x60
+ */
+XObjOX::~XObjOX()
+{
+}
+
+#if !defined(VERSION_JP)
+/**
+ * @note Address: 0x800BCFC4
+ * @note Size: 0x58
+ */
+OXMenuMark::~OXMenuMark()
+{
+}
+#endif
+
+/**
+ * @note Address: 0x800BD01C
+ * @note Size: 0x160
+ */
+f32 XObjChr::GetCollisionHeight()
+{
+	const XObjFloor& floor = mFloors[0];
+	f32 centerY            = floor.mCenterOffset[1] / 100.0f;
+	f32 extentY            = floor.mExtent[1] / 100.0f;
+	return mMoveScale.x * (centerY + extentY);
+}
+
+/**
+ * @note Address: 0x800BD17C
+ * @note Size: 0x48
+ */
+CJointRot::~CJointRot()
+{
+}
+
+/**
+ * @note Address: 0x800BD1C4
+ * @note Size: 0x48
+ */
+Params::~Params()
+{
+}
+
+/**
+ * @note Address: 0x800BD20C
+ * @note Size: 0x5C
+ */
+XPad::~XPad()
+{
+}
+
+/**
+ * @note Address: 0x800BD268
+ * @note Size: 0x70
+ */
+OXMenu::~OXMenu()
+{
+}
