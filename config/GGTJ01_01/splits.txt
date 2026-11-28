@@ -415,6 +415,7 @@ game/objb_leticker.cpp:
 	.text       start:0x800E42F0 end:0x800E8694
 	.ctors      start:0x801FEF44 end:0x801FEF48
 	.rodata     start:0x8020B6F0 end:0x8020B868
+	.data       start:0x80229128 end:0x80229A50
 	.bss        start:0x8035C9B8 end:0x8035CA2C
 	.sdata      start:0x80634B00 end:0x80634B58
 	.sdata2     start:0x80637DC0 end:0x80637F00
@@ -423,16 +424,22 @@ game/objb_leticker.cpp:
 game/objb_army.cpp:
 	.text       start:0x800E8694 end:0x800EC050
 	.ctors      start:0x801FEF48 end:0x801FEF4C
+	.rodata     start:0x8020B868 end:0x8020B8B0
 	.data       start:0x80229A50 end:0x80229F74
 	.bss        start:0x8035CA30 end:0x8035CA54
 	.sdata      start:0x80634B58 end:0x80634B80
 	.sbss       start:0x806356B8 end:0x806356D0
+	.sdata2     start:0x80637F00 end:0x80637FE4
 
 game/xobjspider.cpp:
 	.text       start:0x800EC050 end:0x800F6734
 	.ctors      start:0x801FEF4C end:0x801FEF50
+	.rodata     start:0x8020B8B0 end:0x8020BAC8
+	.data       start:0x80229F74 end:0x8022A6D0
 	.bss        start:0x8035CA58 end:0x8035CD98
+	.sdata      start:0x80634B80 end:0x80634BC8
 	.sbss       start:0x806356D0 end:0x806356E0
+	.sdata2     start:0x80637FE4 end:0x80638160
 	.sbss2      start:0x8063A528 end:0x8063A530
 
 game/xobjspidersmall.cpp:
@@ -591,6 +598,7 @@ game/ccameraactionarea.cpp:
 	.text       start:0x80139E14 end:0x8013B9C0
 	.rodata     start:0x8020D534 end:0x8020D5C8
 	.data       start:0x8022DB88 end:0x8022DB94
+	.sdata      start:0x80634E90 end:0x80634EA8
 	.sdata2     start:0x80638C00 end:0x80638C50
 
 game/ccameraactionmap2.cpp:
