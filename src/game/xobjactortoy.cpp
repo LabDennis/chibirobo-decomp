@@ -10,6 +10,8 @@
 #include <stdlib.h>
 extern "C" {
 #include <sysdolphin/tobj.h>
+#include "game/cscrn.h"
+#include "game/cjobj.h"
 }
 
 extern "C" {
@@ -47,6 +49,715 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 		joint.Attach(GetObjectJointByPath(toy, depth, (s32[]) { __VA_ARGS__ })); \
 		SetToyBlinkVisibility(toy, joint);                                       \
 	} while (0)
+
+static s32 sActorToyJointPathIndices[26] = { 0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0 };
+
+static AnimSfxEvent sActorToySounds110[] = {
+	{ 4, 15.0f, -1.0f, 1, 0x000D000D, 0xFF, 0, 0, 0x00 },      { 4, 60.0f, -1.0f, 1, 0x00000145, 0xFF, 0, 0, 0x00 },
+	{ 6, 22.0f, -1.0f, 1, 0x000D000F, 0xFF, 0, 0, 0x00 },      { 13, 0.0f, -1.0f, 1, 0x000D000B, 0xFF, 0, 0, 0x00 },
+	{ 14, 0.0f, -1.0f, 1, 0x000D000C, 0xFF, 0, 0, 0x00 },      { 14, 52.0f, -1.0f, 1, 0x000D000E, 0xFF, 0, 0, 0x00 },
+	{ 15, 0.0f, -1.0f, 1, 0x000D0011, 0xFF, 0, 0, 0x00 },      { 2, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ 1030, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },   { 36, 28.0f, 56.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ 1037, 30.0f, 60.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },   { 1037, 90.0f, 120.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ 1037, 150.0f, 160.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 }, { 1037, 180.0f, 190.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ 1037, 200.0f, 210.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 }, { 1037, 240.0f, 250.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ 1037, 260.0f, 270.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 }, { 1037, 280.0f, 300.0f, 1, 0x000D0010, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+f32 gActorToyMovementSpeeds[60] = {
+	0.0f,  0.1f,  0.1f,  0.1f,  0.2f,  0.2f,  0.3f,  0.3f,  0.35f, 0.35f, 0.4f,  0.4f,  0.4f,  0.43f, 0.43f,
+	0.47f, 0.48f, 0.45f, 0.44f, 0.43f, 0.4f,  0.4f,  0.4f,  0.4f,  0.37f, 0.36f, 0.31f, 0.3f,  0.3f,  0.3f,
+	0.3f,  0.3f,  0.3f,  0.3f,  0.3f,  0.35f, 0.35f, 0.43f, 0.43f, 0.48f, 0.48f, 0.49f, 0.49f, 0.49f, 0.47f,
+	0.47f, 0.46f, 0.43f, 0.41f, 0.38f, 0.36f, 0.36f, 0.36f, 0.36f, 0.36f, 0.3f,  0.24f, 0.2f,  0.12f, 0.0f,
+};
+
+static Vec sActorToyPositions[7] = {
+	{ -203.97f, 0.0f, -29.19f }, { -258.79f, 0.0f, -28.54f }, { -203.97f, 0.0f, -29.19f }, { -205.69f, 0.0f, -199.83f },
+	{ -68.85f, 0.0f, -316.37f }, { -46.55f, 0.0f, -280.86f }, { -66.58f, 0.0f, 89.06f },
+};
+
+static AnimSfxEvent sActorToySounds6F[] = {
+	{ 2, 33.0f, 66.0f, 1, 0x000C0008, 0xFF, 0, 0, 0x00 },    { 4, 40.0f, 80.0f, 1, 0x000C0006, 0xFF, 0, 0, 0x00 },
+	{ 1005, 40.0f, -1.0f, 1, 0x000C0007, 0xFF, 0, 0, 0x00 }, { 1005, 126.0f, -1.0f, 1, 0x000C0005, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds1FC[] = {
+	{ 1006, 73.0f, -1.0f, 1, 0x00100012, 0xFF, 0, 0, 0x00 }, { 2, 39.0f, 78.0f, 1, 0x00100013, 0xFF, 0, 0, 0x00 },
+	{ 2, 117.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0x00 },   { 1012, 37.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0x00 },
+	{ 1013, 37.0f, -1.0f, 1, 0x00100013, 0xFF, 0, 0, 0x00 }, { 1014, 1.0f, 20.0f, 1, 0x00100014, 0xFF, 0, 0, 0x00 },
+	{ 16, 1.0f, -1.0f, 1, 0x0010001F, 0xFF, 0, 0, 0x00 },    { -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds26CAnd485[] = {
+	{ 2, 37.0f, 76.0f, 1, 0x0000015C, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds159[] = {
+	{ 7, 2.0f, -1.0f, 1, 0x000E0008, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds117[] = {
+	{ 1026, 5.0f, -1.0f, 1, 0x000F001D, 0xFF, 0, 0, 0x00 },  { 2, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0x00 },
+	{ 2, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0x00 },    { 10, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0x00 },
+	{ 10, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0x00 },   { 17, 26.0f, 85.0f, 1, 0x000F001F, 0xFF, 0, 0, 0x00 },
+	{ 17, 55.0f, 115.0f, 1, 0x000F001E, 0xFF, 0, 0, 0x00 },  { 1039, 26.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0x00 },
+	{ 1039, 55.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0x00 }, { 13, 49.0f, -1.0f, 1, 0x000F001F, 0xFF, 0, 0, 0x00 },
+	{ 13, 95.0f, -1.0f, 1, 0x000F001E, 0xFF, 0, 0, 0x00 },   { -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds1FB[] = {
+	{ 2, 30.0f, 70.0f, 1, 0x0007001F, 0xFF, 0, 0, 0x00 },
+	{ 2, 110.0f, -1.0f, 1, 0x0007001F, 0xFF, 0, 0, 0x00 },
+	{ 43, 65.0f, -1.0f, 1, 0x0007001F, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds317[] = {
+	{ 2, 17.0f, 35.0f, 1, 0x0006000B, 0xFF, 0, 0, 0x00 },   { 4, 115.0f, -1.0f, 1, 0x0006000C, 0xFF, 0, 0, 0x00 },
+	{ 4, 220.0f, -1.0f, 1, 0x0006000D, 0xFF, 0, 0, 0x00 },  { 11, 50.0f, -1.0f, 1, 0x0006000E, 0xFF, 0, 0, 0x00 },
+	{ 5, 55.0f, -1.0f, 1, 0x0006000F, 0xFF, 0, 0, 0x00 },   { 8, 29.0f, -1.0f, 1, 0x0006000B, 0xFF, 0, 0, 0x00 },
+	{ 13, 99.0f, 160.0f, 1, 0x00000019, 0xFF, 0, 0, 0x00 }, { -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+static AnimSfxEvent sActorToySounds25E[] = {
+	{ 10, 1.0f, 50.0f, 1, 0x0012001C, 0xFF, 9, 0, 0x00 }, { 7, 15.0f, -1.0f, 1, 0x00120028, 0xFF, 0, 0, 0x00 },
+	{ 4, 40.0f, -1.0f, 1, 0x00120029, 0xFF, 0, 0, 0x00 }, { 5, 30.0f, -1.0f, 1, 0x00120027, 0xFF, 0, 0, 0x00 },
+	{ -1, 0.0f, 0.0f, 0, 0x00000000, 0x00, 0, 0, 0x00 },
+};
+
+/**
+ * @note Address: 0x8012214C
+ * @note Size: 0x82C
+ */
+void XObjActorToy::DrawObject()
+{
+	XObjActor::DrawObject();
+	if (mFirst.mStatus.mFlags & 0x10000) {                                                // the part draws when its flag is set
+		mFirst.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1); // it rides at the toy's transform
+		mFirst.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
+		mFirst.CJObj::SetRotationY(GetRotationY(), 1);
+		if (mJObj->flags & 8) { // the toy's flag 8 passes to the part
+			HSD_JObjSetFlags(mFirst.mJObj, 8);
+		} else {
+			HSD_JObjClearFlags(mFirst.mJObj, 8);
+		}
+		mFirst.DrawObject();
+	}
+	if (mSecond.mStatus.mFlags & 0x10000) {                                                // the part draws when its flag is set
+		mSecond.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1); // it rides at the toy's transform
+		mSecond.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
+		mSecond.CJObj::SetRotationY(GetRotationY(), 1);
+		if (mJObj->flags & 8) { // the toy's flag 8 passes to the part
+			HSD_JObjSetFlags(mSecond.mJObj, 8);
+		} else {
+			HSD_JObjClearFlags(mSecond.mJObj, 8);
+		}
+		mSecond.DrawObject();
+	}
+}
+
+/**
+ * @note Address: 0x80122978
+ * @note Size: 0x64
+ */
+void XObjActorToy::Release()
+{
+	mFirst.Release();
+	mSecond.Release();
+	XObj::Release();
+	mLoad      = 0;
+	mShownPart = 0;
+}
+
+/**
+ * @note Address: 0x801229DC
+ * @note Size: 0x1E8
+ */
+BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
+{
+	switch (GetKind()) {
+	case 0xF: // kind 0xf loads its two parts in stages
+		switch (mLoad) {
+		case 0:
+			if (!XObjActor::LoadFromPlacement(info)) {
+				break;
+			}
+			mLoad++;
+		case 1:
+			if (!mFirst.LoadFromPlacement(CoordInfo(GetSpawnData(0x2A)))) { // the first part's spawn data
+				break;
+			}
+			mFirst.mStatus.mFlags &= ~0x10000ULL;
+			mFirst.SetPos(mMoveTranslate, 0);
+			mLoad++;
+		case 2:
+			if (!mSecond.LoadFromPlacement(CoordInfo(GetSpawnData(0x2B)))) { // the second part's spawn data
+				break;
+			}
+			mSecond.mStatus.mFlags &= ~0x10000ULL;
+			mSecond.SetPos(mMoveTranslate, 0);
+			mLoad++;
+		}
+		if (mLoad > 2) { // actor and both parts loaded
+			mLoad = 0;
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return XObjActor::LoadFromPlacement(info) != FALSE;
+}
+
+/**
+ * @note Address: 0x80122BC4
+ * @note Size: 0x174
+ */
+void XObjActorToy::ResetObjectState()
+{
+	XObjActor::ResetObjectState();
+	mLoad      = 0;
+	mShownPart = 0;
+	mFirst.ResetObjectState();
+	mSecond.ResetObjectState();
+	switch (GetKind()) { // each kind gets its own anim-sound table
+	case 0x6F:
+		mAnimSfx.mEvents = sActorToySounds6F;
+		break;
+	case 0x110:
+		mAnimSfx.mEvents = sActorToySounds110;
+		break;
+	case 0x117:
+		mAnimSfx.mEvents = sActorToySounds117;
+		break;
+	case 0x159:
+		mAnimSfx.mEvents = sActorToySounds159;
+		break;
+	case 0x1FB:
+		mAnimSfx.mEvents = sActorToySounds1FB;
+		break;
+	case 0x1FC:
+		mAnimSfx.mEvents = sActorToySounds1FC;
+		break;
+	case 0x25E:
+		mAnimSfx.mEvents = sActorToySounds25E;
+		break;
+	case 0x317:
+		mAnimSfx.mEvents = sActorToySounds317;
+		break;
+	case 0x26C:
+	case 0x485:
+		mAnimSfx.mEvents = sActorToySounds26CAnd485;
+		break;
+	default:
+		mAnimSfx.mEvents = NULL; // kinds without a table
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80122D38
+ * @note Size: 0x60
+ */
+void XObjActorToy::ResetForNewGame()
+{
+	XObjActor::ResetForNewGame();
+	mLoad      = 0;
+	mShownPart = 0;
+	mFirst.ResetForNewGame();
+	mSecond.ResetForNewGame();
+}
+
+/**
+ * @note Address: 0x80122D98
+ * @note Size: 0x74
+ */
+void XObjActorToy::InitializeObject(u32 id)
+{
+	XObjActor::InitializeObject(id);
+	mLoad      = 0;
+	mShownPart = 0;
+	mFirst.InitializeObject(id);
+	mSecond.InitializeObject(id);
+}
+
+/**
+ * @note Address: 0x801220A8
+ * @note Size: 0xA4
+ */
+void XObjActorToy::DrawScreenOverlay()
+{
+	XObjActor::DrawScreenOverlay();
+	if (mFirst.mStatus.mFlags & 0x10000ULL)
+		mFirst.DrawScreenOverlay();
+	if (mSecond.mStatus.mFlags & 0x10000ULL)
+		mSecond.DrawScreenOverlay();
+}
+
+extern "C" {
+void UpdateToy0FCarriedObjects(XObjActorToy* object, u32 frames);
+void UpdateToy1FBJointScales(XObjActorToy* object, u32 frames);
+void UpdateToy159JointScales(XObjActorToy* object, u32 frames);
+void UpdateToy117JointVisibility(XObjActorToy* object, u32 frames);
+void UpdateToy6FJointSpin(XObjActorToy* object, u32 frames);
+void UpdateToy25EHeldObjects(XObjActorToy* object, u32 frames);
+void UpdateToyJointSpin(XObjActorToy* object, u32 frames);
+void UpdateToyJointVerticalOffset(XObjActorToy* object, u32 frames);
+void UpdateToyJointExtension(XObjActorToy* object, u32 frames);
+}
+
+/**
+ * @note Address: 0x8011E3A4
+ * @note Size: 0x2E4
+ */
+// hides the item the toy dropped, the mHideKinds bits say which
+extern "C" void HideToyDroppedItem(XObjActorToy* object)
+{
+	s32 id = -1;
+	if (object->mHideKinds.Check(1)) {
+		id = 0x3D;
+		object->mHideKinds.mFlags &= ~1;
+	} else if (object->mHideKinds.Check(2)) {
+		id = 0x3E;
+		object->mHideKinds.mFlags &= ~2;
+	} else if (object->mHideKinds.Check(4)) {
+		id = 0x3F;
+		object->mHideKinds.mFlags &= ~4;
+	} else if (object->mHideKinds.Check(8)) {
+		id = 0x3B;
+		object->mHideKinds.mFlags &= ~8;
+	} else if (object->mHideKinds.Check(0x80)) {
+		id = 0x21D;
+		object->mHideKinds.mFlags &= ~0x80;
+	} else if (object->mHideKinds.Check(0x10)) {
+		id = 0x21E;
+		object->mHideKinds.mFlags &= ~0x10;
+	} else if (object->mHideKinds.Check(0x40)) {
+		id = 0x341;
+		object->mHideKinds.mFlags &= ~0x40;
+	}
+	if (id < 0) {
+		return;
+	}
+	switch (id) {
+	case 0x3B:
+	case 0x3D:
+	case 0x3E:
+	case 0x3F:
+	case 0x21D:
+	case 0x21E:
+		for (s32 i = 0; i < 64; i++) {
+			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+			if (id == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x341:
+		for (s32 i = 0; i < 288; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (id == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011E688
+ * @note Size: 0x254
+ */
+extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = &XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		HideToyDroppedItem(object);
+		switch (object->mCmd[1]) {
+		case 0x341:
+			for (s32 i = 0; i < 288; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (object->mCmd[1] == obj->GetKind()) {
+					object->mHeldObjects[0] = obj;
+					obj->mStatus.mFlags |= 0x10000ULL;
+					switch (object->mCmd[1]) {
+					case 0x341:
+						object->mHideKinds.mFlags |= 0x40;
+						break;
+					}
+				}
+			}
+			break;
+		default:
+			if (object->mHeldObjects[0] != NULL) {
+				HSD_JObjClearMtxFlags(object->mHeldObjects[0]->mJObj);
+				object->mHeldObjects[0] = NULL;
+			}
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011E8DC
+ * @note Size: 0xD0
+ */
+extern "C" void HandleToyScreenShakeCommand(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 1:
+		StartScreenShake(&gGame.mQuake, object->mCmd[1], object->mCmd[2], object->mCmd[3], 0.0f, 0.0f, 0.0f, object->mCmd[4] / 100.0f);
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011E9AC
+ * @note Size: 0x140
+ */
+extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		object->mCmd[0] = 0;
+		break;
+	case 1:
+		StartScreenShake(&gGame.mQuake, object->mCmd[1], object->mCmd[2], object->mCmd[3], 0.0f, 0.0f, 0.0f, object->mCmd[4] / 100.0f);
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		switch (object->mCmd[1]) {
+		case 0:
+			object->mKindFlags.mFlags |= 1;
+			object->mCmd[0] = 0;
+			break;
+		case 1:
+			object->mKindFlags.mFlags &= ~1;
+			object->mCmd[0] = 0;
+			break;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011EAEC
+ * @note Size: 0xAC
+ */
+extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = &XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011EB98
+ * @note Size: 0x80
+ */
+extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	// 1 starts its blinking away (step 2 in ProcessPendingEvents), 2 tells the script whether it is still drawn
+	case 1:
+		object->mKindFlags.mFlags |= 8;
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		if (object->mStatus.mFlags & 0x10000) {
+			gEventVars.mVars[object->mCmd[1]] = 1;
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011EC18
+ * @note Size: 0x130
+ */
+extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 1:
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		if (object->mMoveTranslate.y <= 2.0f) {
+			gEventVars.mVars[object->mCmd[1]] = 1;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		if (object->mKindFlags.mFlags & 0x10) {
+			gEventVars.mVars[object->mCmd[1]] = 1;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 4:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = &XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 5:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011ED48
+ * @note Size: 0x144
+ */
+extern "C" void HandleToyKind110Command(XObjActorToy* object, u32 frames)
+{
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		switch (object->mCmd[1]) {
+		case 0: {
+			object->mKindFlags.mFlags &= ~1;
+			object->mMoveSpeed = 0.0f;
+			object->mKindStep  = 0;
+			CVec pos(object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+			object->SetMoveDir(&pos, 0.0f);
+			break;
+		}
+		case 1:
+			object->mKindFlags.mFlags |= 1;
+			object->mVelocity.x = object->mCmd[2] / 100.0f;
+			object->mVelocity.y = object->mCmd[3] / 100.0f;
+			object->mVelocity.z = object->mCmd[4] / 100.0f;
+			object->mKindStep   = 1;
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011EE8C
+ * @note Size: 0x410
+ */
+extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
+{
+	s32 count;
+	switch (object->mCmd[0]) {
+	case 0:
+		break;
+	case 1:
+		switch (object->mCmd[1]) {
+		// flag 1 keeps it turned to the player (UpdateToy0FCarriedObjects)
+		case 0:
+			object->mKindFlags.mFlags &= ~1;
+			break;
+		case 1:
+			object->mKindFlags.mFlags |= 1;
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 2:
+		HideToyDroppedItem(object);
+		switch (object->mCmd[1]) {
+		case 0x3B:
+		case 0x3D:
+		case 0x3E:
+		case 0x3F:
+		case 0x21D:
+		case 0x21E:
+			for (s32 i = 0; i < 64; i++) {
+				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+				if (object->mCmd[1] == obj->GetKind()) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					object->mHeldObjects[0] = obj;
+					switch (object->mCmd[1]) {
+					case 0x3B:
+						object->mHideKinds.mFlags |= 8;
+						break;
+					case 0x3D:
+						object->mHideKinds.mFlags |= 1;
+						break;
+					case 0x3E:
+						object->mHideKinds.mFlags |= 2;
+						break;
+					case 0x3F:
+						object->mHideKinds.mFlags |= 4;
+						break;
+					case 0x21D:
+						object->mHideKinds.mFlags |= 0x80;
+						break;
+					case 0x21E:
+						object->mHideKinds.mFlags |= 0x10;
+						break;
+					}
+				}
+			}
+			break;
+		default:
+			if (object->mHeldObjects[0] != NULL) {
+				HSD_JObjClearMtxFlags(object->mHeldObjects[0]->mJObj);
+				object->mHeldObjects[0] = NULL;
+			}
+			break;
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 3:
+		gEventVars.mVars[object->mCmd[1]] = CountSmallSpidersGrabbingPlayer();
+		object->mCmd[0]                   = 0;
+		break;
+	case 4:
+		count = 0;
+		for (s32 i = 0; i < 0x100; i++) {
+			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
+			s16 num              = items[i].GetCount();
+			s16 id               = items[i].GetId();
+			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+				count++;
+			}
+		}
+		gGame.mEvt.mSelectResult = count;
+		object->mCmd[0]          = 0;
+		break;
+	case 5:
+		object->mAttachedId = object->mCmd[1];
+		object->mState      = &XObjActorToy::StatePickUp;
+		object->ResetMovementStep();
+		object->mCmd[0] = 0;
+		break;
+	case 6:
+		object->mAttachedId = -1;
+		if (object->mAttached != NULL) {
+			object->mAttached->Release();
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 7:
+		if (object->mCmd[1]) {
+			object->mPieces[0].mId    = object->mCmd[2];
+			object->mPieces[0].mState = 1;
+		} else {
+			for (u32 j = 0; j < 4; j++) {
+				if (object->mPieces[j].mObj != NULL) {
+					object->mPieces[j].mObj->Release();
+				}
+				object->mPieces[j].mId    = -1;
+				object->mPieces[j].mState = 0;
+				object->mPieces[j].mObj   = NULL;
+			}
+		}
+		object->mCmd[0] = 0;
+		break;
+	case 8:
+		gEventVars.mVars[object->mCmd[1]] = CountEmergedSmallSpiders();
+		object->mCmd[0]                   = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011F29C
+ * @note Size: 0x220
+ */
+void XObjActorToy::UpdateAfterAnim(u32 frames)
+{
+	XObjActor::UpdateAfterAnim(frames);
+	switch (GetKind()) {
+	case 0xF:
+		UpdateToy0FCarriedObjects(this, frames);
+		break;
+	case 0x6F:
+		UpdateToy6FJointSpin(this, frames);
+		break;
+	case 0x110:
+		break;
+	case 0x117:
+		UpdateToy117JointVisibility(this, frames);
+		break;
+	case 0x156:
+		// flag 1: it rides on toy 0x157 (OnPushDisplacement)
+		if (mKindFlags.mFlags & 1) {
+			for (s32 i = 0; i < 15; i++) {
+				if (GetToy(i)->GetKind() == 0x157) {
+					Vec pos          = GetToy(i)->mMoveTranslate;
+					mMoveTranslate.x = pos.x;
+					mMoveTranslate.y = pos.y;
+					mMoveTranslate.z = pos.z;
+				}
+			}
+		}
+		break;
+	case 0x158:
+		break;
+	case 0x159:
+		UpdateToy159JointScales(this, frames);
+		break;
+	case 0x16C:
+		break;
+	case 0x1D3:
+		break;
+	case 0x1FB:
+		UpdateToy1FBJointScales(this, frames);
+		break;
+	case 0x1FC:
+		UpdateToyJointExtension(this, frames);
+		break;
+	case 0x26C:
+	case 0x485:
+		UpdateToyJointVerticalOffset(this, frames);
+		break;
+	case 0x26D:
+		UpdateToyJointSpin(this, frames);
+		break;
+	case 0x25E:
+		UpdateToy25EHeldObjects(this, frames);
+		break;
+	}
+}
 
 // NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, and copies each burst's
 // rotation from the six Vecs its .rodata starts with
@@ -1287,4 +1998,202 @@ void XObjActorToy::ResetActorState()
 	}
 	mPendingMove.Set(0.0f, 0.0f, 0.0f);
 	_1FA4 = 0;
+}
+
+/**
+ * @note Address: 0x80115538
+ * @note Size: 0x24
+ */
+void XObjActorToy::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x8011555C
+ * @note Size: 0x58
+ */
+void XObjActorToy::RunStateHandler(u32 frames)
+{
+	if (mState != NULL)
+		(this->*mState)(frames);
+}
+
+// the texture animation of the skip-th dobj's material
+static inline HSD_AObj* GetTexAObj(HSD_JObj* jobj, s32 skip)
+{
+	if (jobj == NULL) {
+		return NULL;
+	}
+	HSD_DObj* dobj = HSD_JObjGetDObj(jobj);
+	for (s32 i = 0; i < skip; i++) {
+		if (dobj == NULL) {
+			return NULL;
+		}
+		dobj = HSD_DObjGetNext(dobj);
+	}
+	HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
+	if (mobj == NULL) {
+		return NULL;
+	}
+	HSD_TObj* tobj = HSD_MObjGetTObj(mobj);
+	if (tobj == NULL) {
+		return NULL;
+	}
+	return tobj->aobj;
+}
+
+/**
+ * @note Address: 0x801155B4
+ * @note Size: 0xB8
+ */
+XObjActorToy::~XObjActorToy()
+{
+}
+
+/**
+ * @note Address: 0x8011566C
+ * @note Size: 0x44
+ */
+bool XObjActorToy::IsFree() const
+{
+	if (!mStatus.Check(1)) {
+		return true;
+	}
+	return !mActorStatus.Check(0x2000);
+}
+
+/**
+ * @note Address: 0x801156B0
+ * @note Size: 0x2D0
+ */
+void XObjActorToy::UpdateAnimationSounds(f32 frame)
+{
+	switch (GetKind()) {
+	case 0x1FC:
+		if (mAnimId == 0x3F6) { // its frame comes from the fifth dobj's tex anim
+			s32 path[3]    = { 0, 2, 0 };
+			HSD_AObj* aobj = GetTexAObj(GetJointByPath(mJObj, path, 3), 4);
+			frame          = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
+		}
+		if (IsGameSoundPlaying(&gGame.mSound, 0x10001F)) {
+			if (mAnimId != 0x10) { // the loop only runs in anim 0x10
+				StopGameSfx(&gGame.mSound, 0x10001F);
+			} else {
+				SetGameSfxVolume(&gGame.mSound, 0x10001F, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0), 0);
+			}
+		}
+		break;
+	case 0x159:
+		if (IsGameSoundPlaying(&gGame.mSound, 0xE0008) && mAnimId != 7) { // the loop stops outside anim 7
+			StopGameSfx(&gGame.mSound, 0xE0008);
+		}
+		break;
+	}
+	XObjActor::UpdateAnimationSounds(frame);
+}
+
+/**
+ * @note Address: 0x80115980
+ * @note Size: 0x598
+ */
+// the 0x157 toy carries the 0x156 ones along, with what they hold in their hand
+void XObjActorToy::OnPushDisplacement(const Vec& displacement)
+{
+	switch (GetKind()) {
+	case 0xF:
+		break;
+	case 0x6F:
+		break;
+	case 0x110:
+		break;
+	case 0x117:
+		break;
+	case 0x156:
+		break;
+	case 0x157:
+		mKindFlags.mFlags |= 2; // flag 2: being pushed
+		for (s32 i = 0; i < 15; i++) {
+			XObjActorToy* toy = GetToy(i);
+			if (toy->GetKind() == 0x156 && (toy->mKindFlags.mFlags & 1)) { // flag 1: carries along
+				toy->SetTranslateX(mMoveTranslate.x, 0);
+				toy->SetTranslateZ(mMoveTranslate.z, 0);
+				if (toy->mAttachedId >= 0 && toy->mAttached != NULL) {
+					CJObj joint;
+					s32 path[4] = { 0, 2, 4, 0 };
+					Mtx hand;
+					Mtx trans;
+					Mtx rot;
+					Mtx mtx;
+					joint.Attach(GetJointFromRoot(toy->mJObj, 4, path));
+					toy->mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+					PSMTXCopy(joint.GetMtx(), hand);
+					PSMTXRotRad(rot, 'z', 0.0f);
+					PSMTXConcat(hand, rot, mtx);
+					PSMTXTrans(trans, 0.0f, 2.0f, 2.0f); // held slightly up and out
+					PSMTXConcat(mtx, trans, mtx);
+					HSD_JObj* jobj = toy->mAttached->mJObj;
+					MtxPtr m       = mtx;
+					HSD_JObjCopyMtx(jobj, m);
+					if (mStatus.mFlags & 0x10000) { // the drawn flag follows the pusher's
+						toy->mStatus.mFlags |= 0x10000ULL;
+					} else {
+						toy->mStatus.mFlags &= ~0x10000ULL;
+					}
+				}
+			}
+		}
+		break;
+	case 0x159:
+		break;
+	case 0x1D3:
+		break;
+	case 0x1FB:
+		break;
+	case 0x1FC:
+		break;
+	case 0x25E:
+		break;
+	case 0x26C:
+		break;
+	case 0x26D:
+		break;
+	case 0x485:
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80115F18
+ * @note Size: 0xBC
+ */
+s32 XObjActorToy::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	if (count < 1)
+		return 0;
+	mCmd[0] = command[0];
+	if (count < 2)
+		mCmd[1] = 0;
+	else
+		mCmd[1] = command[1];
+	mCmd[2] = command[2];
+	mCmd[3] = command[3];
+	mCmd[4] = command[4];
+	mCmd[5] = command[5];
+	mCmd[6] = command[6];
+	mCmd[7] = command[7];
+	mCmd[8] = command[8];
+	mCmd[9] = command[9];
+	return 0;
+}
+
+void CJObj::Attach(HSD_JObj* jobj)
+{
+	Quaternion rotation;
+	mJObj = jobj;
+	HSD_JObjGetTranslation(jobj, &mTranslate);
+	HSD_JObjGetRotation(jobj, &rotation);
+	mRotate.Set(rotation.x, rotation.y, rotation.z);
+	HSD_JObjGetScale(jobj, &mScale);
 }

@@ -531,32 +531,15 @@ game/memcardinit.cpp:
 	.ctors      start:0x801FD67C end:0x801FD680
 	.bss        start:0x8036AC00 end:0x8036BF38
 
-game/cjanimarchive.cpp:
-	.text       start:0x8008A360 end:0x8008A530
-
-game/cjanim.cpp:
-	.text       start:0x8008A530 end:0x8008C7CC
-
-game/cjanim_vtable.cpp:
-	.data       start:0x80225914 end:0x80225930
-
-game/xobjfloor.cpp:
-	.text       start:0x8008C7CC end:0x8008C8A4
-
 game/obja.cpp:
-	.text       start:0x8008C8A4 end:0x800912B4
-
-game/xobjmaterial.cpp:
-	.text       start:0x800912B4 end:0x80091C44
-
-game/xobjwalk.cpp:
-	.text       start:0x80091C44 end:0x80091C80
-
-game/xobjinit.cpp:
-	.text       start:0x80091C80 end:0x800929C4
-
-game/xobjinitialize.cpp:
-	.text       start:0x800929C4 end:0x80092AA4
+	.text       start:0x8008A360 end:0x80092AA4
+	.rodata     start:0x802091E8 end:0x80209320
+	.data       start:0x8022565C end:0x80225B90
+	.bss        start:0x80378080 end:0x803781C0
+	.sdata      start:0x8065A430 end:0x8065A470
+	.sbss       start:0x8065B250 end:0x8065B258
+	.sdata2     start:0x8065D160 end:0x8065D248
+	.sbss2      start:0x8065FFB8 end:0x8065FFD8
 
 game/xobjcameradtor.cpp:
 	.text       start:0x80092AA4 end:0x80092B80
@@ -583,20 +566,15 @@ game/obja_map.cpp:
 	.sbss       start:0x8065B258 end:0x8065B260 align:4
 	.sbss2      start:0x8065FFD8 end:0x8065FFE0
 
-game/drsmenudtor.cpp:
-	.text       start:0x80093B7C end:0x80093BD8
-
-game/octamenureset.cpp:
-	.text       start:0x80093BD8 end:0x80093C14
-
-game/efftrail.cpp:
-	.text       start:0x80093C14 end:0x800970E4
-
-game/xobjmatcolor.cpp:
-	.text       start:0x800970E4 end:0x80097284
-
 game/obja_chr.cpp:
-	.text       start:0x80097284 end:0x800A7C70
+	.text       start:0x80093B7C end:0x800A7C70
+	.rodata     start:0x80209360 end:0x8020A588
+	.data       start:0x802260C8 end:0x80226300
+	.bss        start:0x803781C0 end:0x8037C278
+	.sdata      start:0x8065A4F8 end:0x8065A5E0
+	.sbss       start:0x8065B260 end:0x8065B278
+	.sdata2     start:0x8065D2E0 end:0x8065D698
+	.sbss2      start:0x8065FFE0 end:0x806600A0
 
 game/playerframeevents.cpp:
 	.text       start:0x800A7C70 end:0x800A867C
@@ -625,9 +603,6 @@ game/xobjchrsuit.cpp:
 
 game/xobjchratcanim.cpp:
 	.text       start:0x800B9758 end:0x800B97FC
-
-game/playerattachmentpaths.cpp:
-	.data       start:0x802262AC end:0x802262D0
 
 game/xobjchrplacement.cpp:
 	.text       start:0x800B97FC end:0x800BAD80
@@ -665,16 +640,9 @@ game/xactpoppershotdtor.cpp:
 
 game/xobjplugdtor.cpp:
 	.text       start:0x800BCC4C end:0x800BCDE4
-	.rodata     start:0x8020A90C end:0x8020A918
-	.data       start:0x80228D20 end:0x80228FF8
-	.sdata      start:0x8065A648 end:0x8065A658
 
 game/xobjattachmentdtor.cpp:
 	.text       start:0x800BCDE4 end:0x800BCFC4
-
-game/xobjattachment_rtti.cpp:
-	.data       start:0x8022855C end:0x80228CD8
-	.sdata      start:0x8065A600 end:0x8065A628
 
 game/oxmenumarkdtor.cpp:
 	.text       start:0x800BCFC4 end:0x800BD01C
@@ -740,13 +708,12 @@ game/xactlift.cpp:
 	.text       start:0x800D4368 end:0x800D552C
 
 game/objb_attach.cpp:
-	.text       start:0x800D552C end:0x800D6F98
-
-game/xobjradarinit.cpp:
-	.text       start:0x800D6F98 end:0x800D6FE8
-
-game/xobjpopper.cpp:
-	.text       start:0x800D6FE8 end:0x800D7D3C
+	.text       start:0x800D552C end:0x800D7D3C
+	.rodata     start:0x8020A768 end:0x8020A8A0
+	.data       start:0x80228520 end:0x80228CD8
+	.sdata      start:0x8065A5E0 end:0x8065A628
+	.sdata2     start:0x8065D858 end:0x8065D8B8
+	.sbss2      start:0x80660228 end:0x80660238
 
 game/objb_plug.cpp:
 	.text       start:0x800D7D3C end:0x800D93C8
@@ -1023,36 +990,15 @@ game/xobjactor3init.cpp:
 	.text       start:0x801152A0 end:0x80115538
 	.ctors      start:0x801FD698 end:0x801FD69C
 
-game/xobjactortoystate.cpp:
-	.text       start:0x80115538 end:0x801155B4
-
-game/xobjactortoydtor.cpp:
-	.text       start:0x801155B4 end:0x80115F18
-
-game/xobjactortoycmd.cpp:
-	.text       start:0x80115F18 end:0x80115FD4
-
 game/xobjactortoy.cpp:
-	.text       start:0x80115FD4 end:0x8011B6C8
-
-game/cjobjattach.cpp:
-	.text       start:0x8011B6C8 end:0x8011B7EC
-
-game/xobjactortoy_tail.cpp:
-	.text       start:0x8011B7EC end:0x8011E3A4
-
-game/xobjactortoybehavior.cpp:
-	.text       start:0x8011E3A4 end:0x8011F4BC
-
-game/xobjactortoy_pending.cpp:
-	.text       start:0x8011F4BC end:0x801220A8
-
-game/xobjactortoydraw.cpp:
-	.text       start:0x801220A8 end:0x8012214C
-
-game/xobjactortoyread.cpp:
-	.text       start:0x8012214C end:0x80122E0C
-	.data       start:0x8022C7E0 end:0x8022CFA4
+	.text       start:0x80115538 end:0x80122E0C
+	.rodata     start:0x8020B6C8 end:0x8020BBB8
+	.data       start:0x8022C7E0 end:0x8022D370
+	.bss        start:0x8037FE58 end:0x8037FE94
+	.sdata      start:0x8065A878 end:0x8065A8B8
+	.sbss       start:0x8065B2F8 end:0x8065B305
+	.sdata2     start:0x8065E358 end:0x8065E548
+	.sbss2      start:0x80660290 end:0x80660298
 
 game/xobjactorjenny.cpp:
 	.text       start:0x80122E0C end:0x8012641C
@@ -2735,10 +2681,6 @@ game/logo_rtti.cpp:
 	.data       start:0x80210338 end:0x80210390
 	.sdata      start:0x8065A0F8 end:0x8065A120
 
-game/oxmenu_rtti.cpp:
-	.data       start:0x80228254 end:0x80228260
-	.sdata      start:0x8065A5D0 end:0x8065A5D8
-
 game/title_title_vtable.cpp:
 	.data       start:0x802100C8 end:0x802100D4
 
@@ -2747,9 +2689,6 @@ game/title_cursor_vtable.cpp:
 
 game/title_xobjdemo_vtable.cpp:
 	.data       start:0x802119FC end:0x80211B44
-
-game/title_xobj_vtable.cpp:
-	.data       start:0x80225984 end:0x80225ACC
 
 game/title_cxobj_vtables.cpp:
 	.data       start:0x8025888C end:0x802589AC
