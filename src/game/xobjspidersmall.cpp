@@ -46,7 +46,30 @@ u8 gSmallSpiderWorkEnd[0x140 - 0xF8];
 #endif
 XObj* gSmallSpiderEffectObjects[12];
 s32 gSmallSpiderEffectSlotOwners[12];
+SmallSpiderStageStatus gSmallSpiderStatusByStage[39];
 }
+
+extern "C" XObjFloor sSmallSpiderLowFloor[] = {
+	{ 0, 0, { 0, 135, 0 }, 0, { 377, 158, 377 } },
+	{ -1 },
+};
+extern "C" XObjFloor sSmallSpiderHighFloor[] = {
+	{ 0, 0, { 0, 135, 0 }, 0, { 377, 632, 377 } },
+	{ -1 },
+};
+extern "C" XObjFloor* sSmallSpiderFloors[2] = { sSmallSpiderLowFloor, sSmallSpiderHighFloor };
+extern "C" {
+AnimSfxEvent gSmallSpiderAnimSfxEvents[] = {
+	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
+	{ 7, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+}
+
+void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32) = {
+	&XObjSpiderSmall::State0, &XObjSpiderSmall::State1, &XObjSpiderSmall::State2, &XObjSpiderSmall::State3, &XObjSpiderSmall::State4,
+	&XObjSpiderSmall::State5, &XObjSpiderSmall::State6, &XObjSpiderSmall::State7, &XObjSpiderSmall::State8, &XObjSpiderSmall::State9,
+};
 
 static inline void TakeSmallSpiderSlot(XObjSpiderSmall* spider)
 {
@@ -293,6 +316,18 @@ extern "C" f32 GetSmallSpiderDistanceXZ(Vec* a, Vec* b)
 extern "C" f32 GetSmallSpiderContactDistance(Vec* a, Vec* b)
 {
 	return SpiderContactDistance(a, b);
+}
+
+/**
+ * @note Address: 0x800FC930
+ * @note Size: 0x40
+ */
+// state 2, dead
+void XObjSpiderSmall::State2(u32)
+{
+	mStatus.mFlags &= ~0x10000ULL;
+	mSpiderStatus.mFlags |= 0x80000;
+	mSpiderStatus.mFlags &= ~0x100000;
 }
 
 // jumps onto the robot

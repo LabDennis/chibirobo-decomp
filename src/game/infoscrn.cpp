@@ -2259,3 +2259,11 @@ extern "C" s32 ConvertHudTextToFullWidth(char* text)
 	strcpy(text, out);
 	return count;
 }
+
+/**
+ * @note Address: 0x8006DB80
+ * @note Size: 0x48
+ */
+InfoPoint::~InfoPoint()
+{
+}

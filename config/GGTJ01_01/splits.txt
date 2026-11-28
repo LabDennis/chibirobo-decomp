@@ -421,25 +421,26 @@ game/titlestates.cpp:
 	.data       start:0x802123D8 end:0x80212648
 
 game/stg.cpp:
-	.text       start:0x80031180 end:0x80065480
-
-game/menu_cleanup.cpp:
-	.text       start:0x80065480 end:0x80065CD0
+	.text       start:0x80031180 end:0x80065CD0
+	.ctors      start:0x801FEF2C end:0x801FEF30
+	.rodata     start:0x80200D70 end:0x80203020
+	.data       start:0x80212A88 end:0x80213B90
+	.bss        start:0x8033FB68 end:0x8034541C
+	.sdata      start:0x806346E0 end:0x806347A0
+	.sbss       start:0x806355C0 end:0x80635638
+	.sdata2     start:0x80636848 end:0x80636CD8
+	.sbss2      start:0x8063A250 end:0x8063A260
 
 game/infoscrn.cpp:
-	.text       start:0x80065CD0 end:0x8006FF08
-	.bss        start:0x80345420 end:0x80345738
-	.data       start:0x80213BA0 end:0x80213C28
-	.sdata      start:0x806347A0 end:0x806347BC
-
-game/infopointdtor.cpp:
-	.text       start:0x8006FF94 end:0x8006FFDC
-	.data       start:0x80213C28 end:0x80213C38
-	.sdata      start:0x806347BC end:0x806347C4
-
-game/infopointinit.cpp:
-	.text       start:0x8006FF08 end:0x8006FF94
+	.text       start:0x80065CD0 end:0x8006FFDC
 	.ctors      start:0x801FEF30 end:0x801FEF34
+	.rodata     start:0x80203020 end:0x80203560
+	.data       start:0x80213BA0 end:0x80213C38
+	.bss        start:0x80345420 end:0x80345738
+	.sdata      start:0x806347A0 end:0x806347C4
+	.sbss       start:0x80635638 end:0x80635655
+	.sdata2     start:0x80636CD8 end:0x80636E90
+	.sbss2      start:0x8063A260 end:0x8063A270
 
 game/stage_data.cpp:
 	.text       start:0x8006FFDC end:0x80072048
@@ -921,21 +922,14 @@ game/xobjspider.cpp:
 	.sbss2      start:0x8063A528 end:0x8063A530
 
 game/xobjspidersmall.cpp:
-	.text       start:0x800F6734 end:0x800FE674
-	.bss        start:0x8035CD98 end:0x8035CF2C
-
-game/xobjspidersmallstate2.cpp:
-	.text       start:0x800FE674 end:0x800FE6B4
-
-game/xobjspidersmall_tail.cpp:
-	.text       start:0x800FE6B4 end:0x80101CE0
-
-game/xobjspidersmallinit.cpp:
-	.text       start:0x80101CE0 end:0x80101FA4
+	.text       start:0x800F6734 end:0x80101FA4
 	.ctors      start:0x801FEF50 end:0x801FEF54
-	.data       start:0x8022A6D0 end:0x8022A8F0
-	.bss        start:0x8035CF2C end:0x8035E2B8
-	.sdata      start:0x80634BC8 end:0x80634BD0
+	.rodata     start:0x8020BAC8 end:0x8020BC08
+	.data       start:0x8022A6D0 end:0x8022AF38
+	.bss        start:0x8035CD98 end:0x8035E2B8
+	.sdata      start:0x80634BC8 end:0x80634C08
+	.sbss       start:0x806356E0 end:0x80635700
+	.sdata2     start:0x80638160 end:0x806382D8
 
 game/xobjspiderbossdtor.cpp:
 	.text       start:0x80101FA4 end:0x8010201C
@@ -2795,9 +2789,6 @@ game/title_cxobj_vtables.cpp:
 
 game/menuex_vtable.cpp:
 	.data       start:0x80210D20 end:0x80210D2C
-
-game/menucursor_vtable.cpp:
-	.data       start:0x80213964 end:0x80213AAC
 
 game/cmsg_vtable.cpp:
 	.data       start:0x80210CF0 end:0x80210CFC
