@@ -1,3 +1,114 @@
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" f32 GetSoundVolumeAtPosition(XSound* sound, Vec* pos, s32 kind);
+
+extern "C" s32 Stage06_Init(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage06_Update(void* arg)
+{
+	Vec pos;
+	pos.x = 241.83f;
+	pos.y = 220.56f;
+	pos.z = 195.85f;
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x501)) {
+		SetWiiSfxVolume(&gGame.mSound, 0x501, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	}
+	if (IsWiiSfxPlaying(&gGame.mSound, 0x502)) {
+		SetWiiSfxVolume(&gGame.mSound, 0x502, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0.0f);
+	}
+	return 1;
+}
+
+extern "C" s32 Stage06_NoOpSlot5(void* arg)
+{
+	return 1;
+}
+
+extern "C" s32 Stage06_CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
+{
+	s16 pitch = args[0];
+	s32 time  = args[1] * 60 / 100;
+	if (time <= 0) {
+		time = 1;
+	}
+	gGame.mSound.mTargetMusicPitch = pitch;
+	gGame.mSound.mMusicPitchFrames = time;
+	return 0;
+}
+
+struct Stage06Work {
+	u8 _00[0x4];  // _00
+	s32 _04;      // _04, never accessed
+	s32 _08;      // _08, counted up by CmdStopRobo each time it stops the player, never read
+	u8 _0C[0x18]; // _0C
+};
+
+struct Stage06Cam {
+	u8 _00[0x4]; // _00
+	s32 _04;     // _04, set to 1 by SetCam, never read
+	f32 _08;     // _08, SetCam copies the player's x here, never read
+	f32 _0C;     // _0C, SetCam copies the player's y here, never read
+	f32 _10;     // _10, SetCam copies the player's z here, never read
+	f32 _14;     // _14, SetCam's first angle in radians, -pi/8 for preset 0, -7pi/8 for preset 1, never read
+	f32 _18;     // _18, always 0.15f from SetCam, never read
+	u8 _1C[0x4]; // _1C
+	f32 _20;     // _20, SetCam's second angle in radians, about -pi/2 for preset 0, 0 for preset 1, never read
+};
+
+static Stage06Work sParentState;
+static Stage06Cam sParentCamera;
+
+static inline void SetCam(f32 a, f32 b)
+{
+	WiiPlayerState* player = gGame.GetPlayer();
+	player->LockControl();
+	sParentCamera._04 = 1;
+	CVec* pos         = player->GetPos();
+	sParentCamera._08 = pos->x;
+	sParentCamera._0C = pos->y;
+	sParentCamera._10 = pos->z;
+	sParentCamera._14 = a;
+	sParentCamera._20 = b;
+	sParentCamera._18 = 0.15f;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot4(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdStopRobo(s32 cmd, s32 count, s32* args)
+{
+	gGame.GetPlayer()->LockControl();
+	sParentState._08++;
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdStopRoboPreset(s32 cmd, s32 count, s32* args)
+{
+	s32 type = *args;
+	if (type == 0) {
+		SetCam(-0.3926991f, -1.570196f);
+	} else if (type == 1) {
+		SetCam(-2.7488937f, 0.0f);
+	}
+	return 0;
+}
+
+extern "C" s32 Stage06_CmdParentNoOpSlot5(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "game/relana.h"
 #include "game/relmodule.h"
 #include "game/hsd_jobj.h"
@@ -164,3 +275,4 @@ extern "C" void UpdateStage(s32 arg)
 extern "C" void InitStage(s32 arg)
 {
 }
+#endif

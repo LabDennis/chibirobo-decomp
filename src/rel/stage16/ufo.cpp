@@ -1,4 +1,43 @@
-#include "game/relmodule.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" f64 atan2(f64 y, f64 x);
+
+static XObj* gameBotan2;
+
+extern "C" s32 Stage16_Init(void* arg)
+{
+	gameBotan2 = NULL;
+	return 1;
+}
+
+// NONMATCHING: the object/placement temporaries and local literal/global names differ; both virtual calls and the scan match.
+extern "C" s32 Stage16_Update(void* arg)
+{
+	if (gameBotan2 != NULL) {
+		XObj* other    = (XObj*)gGame.GetPlayer();
+		CVec* otherPos = other->GetPos();
+		CVec* pos      = gameBotan2->GetPos();
+		f32 angle      = atan2(otherPos->x - pos->x, otherPos->z - pos->z);
+		gameBotan2->SetRotateY(angle, 0.0f);
+	} else {
+		XObj* obj;
+		s32 i;
+		for (i = 0; i < gGame.mXObjs.mObjectCount && gameBotan2 == NULL; i++) {
+			obj = gGame.mXObjs.mObjects[i];
+			if ((obj->mStatus.mFlags & 1) && obj->GetKind() == 0x2E9) {
+				gameBotan2 = obj;
+			}
+		}
+	}
+	return 1;
+}
+
+extern "C" s32 Stage16_CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+#else
 #include "types.h"
 #include "Version.h"
 #include "game/cgame.h"
@@ -7,8 +46,11 @@
 extern "C" f64 atan2(f64 y, f64 x);
 
 extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
-extern "C" void UpdateStage(s32 arg);
-extern "C" void InitStage(s32 arg);
+extern "C" void UpdateStage(void* arg);
+extern "C" void InitStage(void* arg);
+
+typedef void (*RelSlotFunc)(void* arg);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage };
@@ -30,7 +72,7 @@ extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
  * @note Address: stage16 .text 0x8
  * @note Size: 0x114
  */
-extern "C" void UpdateStage(s32 arg)
+extern "C" void UpdateStage(void* arg)
 {
 	if (gameBotan2 != NULL) {
 		XObj* other = gGame.GetPlayer();
@@ -52,7 +94,8 @@ extern "C" void UpdateStage(s32 arg)
  * @note Address: stage16 .text 0x11C
  * @note Size: 0x10
  */
-extern "C" void InitStage(s32 arg)
+extern "C" void InitStage(void* arg)
 {
 	gameBotan2 = 0;
 }
+#endif

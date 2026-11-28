@@ -1,7 +1,33 @@
-#include "game/relmodule.h"
+#include "types.h"
+#if defined(VERSION_R24J01)
+extern void OSReport(const char* message, ...);
+extern u32 OSGetStackPointer(void);
+#else
 #include "dolphin/os.h"
+#endif
 
 typedef void (*RelCtorFunc)(void);
+#if defined(VERSION_R24J01)
+typedef s32 (*StageHook)(s32 count);
+typedef s32 (*StageCommand)(s32 cmd, s32 count, s32* args);
+
+// Minimal C view of Wii CGame for stage dispatch (CGame::mStage sits at +0x42FC).
+struct CGame {
+	u8 _00[0x42FC];
+	s32 mStage;
+};
+
+extern struct CGame gGame;
+extern StageHook* gStageHooks[40];
+extern StageCommand* gStageCommands[40];
+#else
+typedef void (*RelSlotFunc)(void* arg);
+typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+
+// defined by each module
+extern RelSlotFunc _prolog_slots[7];
+extern RelCmdFunc _prolog_cmds[];
+#endif
 
 extern RelCtorFunc _ctors[];
 extern RelCtorFunc _dtors[];
@@ -44,7 +70,36 @@ void _epilog(void)
  * @note Address: stage08 .text 0x108
  * @note Size: 0xB8
  */
+#if defined(VERSION_R24J01)
 s32 _prolog(s32 cmd, s32 count, s32* args)
+{
+	s32 ret = 0;
+	if (cmd < 0) {
+		RunFuncs(_ctors);
+	} else {
+		// Wii links the stage handlers into the DOL.
+		if (cmd < 7) {
+			StageHook* hooks = gStageHooks[gGame.mStage];
+			if (hooks != NULL) {
+				if (hooks[cmd] != NULL) {
+					ret = hooks[cmd](count);
+				} else {
+					ret = 1;
+				}
+			} else {
+				ret = 1;
+			}
+		} else if (cmd >= 7) {
+			StageCommand* commands = gStageCommands[gGame.mStage];
+			if (commands != NULL && commands[cmd - 7] != NULL) {
+				ret = commands[cmd - 7](cmd, count, args);
+			}
+		}
+	}
+	return ret;
+}
+#else
+s32 _prolog(s32 cmd, void* arg, void* arg2)
 {
 	s32 ret = 0;
 
@@ -52,10 +107,11 @@ s32 _prolog(s32 cmd, s32 count, s32* args)
 		RunFuncs(_ctors);
 	} else if (cmd < 7) {
 		if (_prolog_slots[cmd] != NULL) {
-			_prolog_slots[cmd](count);
+			_prolog_slots[cmd](arg);
 		}
 	} else if (cmd >= 7) {
-		ret = _prolog_cmds[cmd - 7](cmd, count, args);
+		ret = _prolog_cmds[cmd - 7](cmd, arg, arg2);
 	}
 	return ret;
 }
+#endif
