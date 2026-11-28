@@ -369,44 +369,39 @@ game/cgamector.cpp:
 	.text       start:0x80019728 end:0x8001AE18
 
 game/fbmirrorex.cpp:
-	.text       start:0x8001BBB0 end:0x8001C79C
-
-game/cpaddtor.cpp:
-	.text       start:0x8001C79C end:0x8001C7E4
-
-game/progressive.cpp:
-	.text       start:0x8001C7E4 end:0x8001CDE8
-	.rodata     start:0x801FF8C4 end:0x801FFAFC
-	.data       start:0x80211200 end:0x80211448
-
-game/cfiletextdtor.cpp:
-	.text       start:0x8001CDE8 end:0x8001CE44
-
-game/cfiletext_rtti.cpp:
-	.rodata     start:0x801FFB54 end:0x801FFB60
-	.data       start:0x80211454 end:0x80211490
-	.sdata      start:0x806345C8 end:0x806345D0
+	.text       start:0x8001BBB0 end:0x8001D8E8
+	.rodata     start:0x801FF7C8 end:0x801FFB70
+	.data       start:0x80211200 end:0x802114A0
+	.bss        start:0x8033FA10 end:0x8033FA30
+	.sdata      start:0x806345B8 end:0x806345D8
+	.sbss       start:0x80635598 end:0x806355A0
+	.sdata2     start:0x806363C4 end:0x80636498
 
 game/sound.cpp:
 	.text       start:0x8001D8E8 end:0x8001FCD8
 	.rodata     start:0x801FFC7C end:0x802006D0
-	.data       start:0x802114A0 end:0x8021204C
+	.data       start:0x802114A0 end:0x80212050
 	.sdata      start:0x806345E0 end:0x806345F0
 	.sdata2     start:0x80636498 end:0x806364DC
-
-game/gxa.cpp:
-	.text       start:0x8001CE44 end:0x8001D8E8
 
 game/gameosreport.cpp:
 	.text       start:0x80015790 end:0x800157E0
 
 game/screenwipe.cpp:
 	.text       start:0x8001FCD8 end:0x800240D0
+	.rodata     start:0x802006D0 end:0x80200AF8
+	.data       start:0x80212050 end:0x80212128
+	.bss        start:0x8033FA30 end:0x8033FA58
+	.sdata      start:0x806345F0 end:0x80634650
+	.sbss       start:0x806355A0 end:0x806355C0
+	.sdata2     start:0x806364F0 end:0x806365C0
 
 game/gxb.cpp:
 	.text       start:0x800240D0 end:0x80028518
-	.data       start:0x80212128 end:0x80212188
-	.sdata      start:0x80634650 end:0x80634668
+	.rodata     start:0x80200AF8 end:0x80200C18
+	.data       start:0x80212128 end:0x80212370
+	.bss        start:0x8033FA58 end:0x8033FA80
+	.sdata      start:0x80634650 end:0x80634690
 	.sdata2     start:0x806365C0 end:0x806366A8
 
 game/titlescreen.cpp:
@@ -2554,9 +2549,6 @@ game/logo_rtti.cpp:
 game/title_title_vtable.cpp:
 	.data       start:0x80210DC8 end:0x80210DD4
 
-game/title_cursor_vtable.cpp:
-	.data       start:0x802121E8 end:0x80212330
-
 game/title_cxobj_vtables.cpp:
 	.data       start:0x8023724C end:0x8023736C
 
@@ -2575,10 +2567,6 @@ game/atcmenu_vtables.cpp:
 game/cscrnwipecircle_rtti.cpp:
 	.data       start:0x80210FA8 end:0x80210FD4
 	.sdata      start:0x806344D8 end:0x806344E8
-
-game/cscrnwipe_rtti.cpp:
-	.data       start:0x8021204C end:0x80212128
-	.sdata      start:0x80634620 end:0x80634650
 
 game/cfboutline_rtti.cpp:
 	.data       start:0x80210FD4 end:0x80210FEC
