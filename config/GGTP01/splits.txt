@@ -312,59 +312,14 @@ game/cptcldtor.cpp:
 game/xobjfloorheight.cpp:
 	.text       start:0x800BF5CC end:0x800BF72C
 
-game/xactradar.cpp:
-	.text       start:0x800BF8D0 end:0x800C2404
-
-game/xactpopper.cpp:
-	.text       start:0x800C2404 end:0x800C53B8
-
-game/xactcopter.cpp:
-	.text       start:0x800C53B8 end:0x800C5D00
-
-game/xacttumbleanim.cpp:
-	.text       start:0x800C5D00 end:0x800C6F28
-
-game/xacttumble.cpp:
-	.text       start:0x800C6F28 end:0x800C6F68
-
-game/xactpushobject.cpp:
-	.text       start:0x800C6F68 end:0x800C788C
-
-game/xactpush.cpp:
-	.text       start:0x800C788C end:0x800C8098
-
-game/xactrope.cpp:
-	.text       start:0x800C8098 end:0x800CA224
-
-game/xactladderanim.cpp:
-	.text       start:0x800CA224 end:0x800CC1D4
-
-game/objb_act_motion.cpp:
-	.text       start:0x800CC1D4 end:0x800CE42C
-
-game/xacthang.cpp:
-	.text       start:0x800CE42C end:0x800D0994
-
-game/xactliftcontacts.cpp:
-	.text       start:0x800D0994 end:0x800D135C
-
 game/objb_act.cpp:
-	.text       start:0x800D135C end:0x800D35AC
+	.text       start:0x800BF8D0 end:0x800D7BFC
 	.rodata     start:0x80210F10 end:0x802110F0
 	.data       start:0x8022EC70 end:0x8022EF20
 	.bss        start:0x80383078 end:0x80383210
 	.sbss       start:0x80662118 end:0x80662120
 	.sdata2     start:0x806647B8 end:0x80664978
 	.sbss2      start:0x806671E8 end:0x80667370
-
-game/xactliftanim.cpp:
-	.text       start:0x800D35AC end:0x800D612C
-
-game/objb_act_helpers.cpp:
-	.text       start:0x800D612C end:0x800D6A38
-
-game/xactlift.cpp:
-	.text       start:0x800D6A38 end:0x800D7BFC
 
 game/objb_attach.cpp:
 	.text       start:0x800D7BFC end:0x800DA40C
