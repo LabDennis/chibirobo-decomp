@@ -410,15 +410,14 @@ game/gxb.cpp:
 	.sdata2     start:0x806365C0 end:0x806366A8
 
 game/titlescreen.cpp:
-	.text       start:0x80028518 end:0x80030E28
-	.rodata     start:0x80200C60 end:0x80200CB4
-	.bss        start:0x8033FA8C end:0x8033FB68
-	.sdata      start:0x80634690 end:0x80634698
-
-game/titlestates.cpp:
-	.text       start:0x80030E28 end:0x80031180
+	.text       start:0x80028518 end:0x80031180
 	.ctors      start:0x801FEF28 end:0x801FEF2C
-	.data       start:0x802123D8 end:0x80212648
+	.rodata     start:0x80200C18 end:0x80200D70
+	.data       start:0x80212370 end:0x80212A88
+	.bss        start:0x8033FA80 end:0x8033FB68 align:4
+	.sdata      start:0x80634690 end:0x806346E0
+	.sdata2     start:0x806366A8 end:0x80636848
+	.sbss2      start:0x8063A248 end:0x8063A250
 
 game/stg.cpp:
 	.text       start:0x80031180 end:0x80065CD0
@@ -2557,9 +2556,6 @@ game/title_title_vtable.cpp:
 
 game/title_cursor_vtable.cpp:
 	.data       start:0x802121E8 end:0x80212330
-
-game/title_xobjdemo_vtable.cpp:
-	.data       start:0x802126E8 end:0x80212830
 
 game/title_cxobj_vtables.cpp:
 	.data       start:0x8023724C end:0x8023736C
