@@ -421,7 +421,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
 #else
 		const s32 line = 3304;
 #endif
-		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("ptcl(...) - invalid type - %d!\n", type), "_cmd_PTCL");
+		OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("ptcl(...) - invalid type - %d!\n", type), __FUNCTION__);
 	}
 	return 0;
 }
@@ -531,7 +531,7 @@ s32 CEvt::_cmd_READ(u8, s32)
 #else
 		const s32 line = 3368;
 #endif
-		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("read(...) - invalid type - %d!\n", type), "_cmd_READ");
+		OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("read(...) - invalid type - %d!\n", type), __FUNCTION__);
 		break;
 	}
 	return 0;
@@ -1152,7 +1152,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 #else
 			const s32 line = 2667;
 #endif
-			OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("mdir(obj, %d,...) - unresolved!\n", mode), "_cmd_DIR");
+			OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("mdir(obj, %d,...) - unresolved!\n", mode), __FUNCTION__);
 			break;
 		}
 		f32 time = CEvt_Evaluate(this) / 100.0f;
@@ -1485,9 +1485,9 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	default:
 #if defined(VERSION_PAL)
-		OSPanic("evt.cpp", 2515, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), "_cmd_CAMERA");
+		OSPanic(__FILE__, 2515, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), __FUNCTION__);
 #else
-		OSPanic("evt.cpp", 2511, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), "_cmd_CAMERA");
+		OSPanic(__FILE__, 2511, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), __FUNCTION__);
 #endif
 		break;
 	}
@@ -2990,10 +2990,10 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			mSelectResult = CallStageModule(args[0] + 7, count - 1, &args[1]);
 #if defined(VERSION_PAL)
 		else
-			OSPanic("evt.cpp", 2161, "%s%s", "SYSCALL_STGFUNC, noargs\n", "_cmd_CALL");
+			OSPanic(__FILE__, 2161, "%s%s", "SYSCALL_STGFUNC, noargs\n", __FUNCTION__);
 #else
 		else
-			OSPanic("evt.cpp", 2157, "%s%s", "SYSCALL_STGFUNC, noargs\n", "_cmd_CALL");
+			OSPanic(__FILE__, 2157, "%s%s", "SYSCALL_STGFUNC, noargs\n", __FUNCTION__);
 #endif
 		break;
 	case -200:
@@ -3157,9 +3157,9 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			EvtWaitFor(this, command, start, InfoScrn_IsBatteryGaugeFull(&gGame.mInfoScrn), yield);
 		else {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4157, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), "_cmd_WAIT");
+			OSPanic(__FILE__, 4157, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), __FUNCTION__);
 #else
-			OSPanic("evt.cpp", 4146, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), "_cmd_WAIT");
+			OSPanic(__FILE__, 4146, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), __FUNCTION__);
 #endif
 		}
 		break;
@@ -3236,15 +3236,15 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 	default:
 		if (command == EVT_CMD_WAIT) {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4300, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
+			OSPanic(__FILE__, 4300, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), __FUNCTION__);
 #else
-			OSPanic("evt.cpp", 4289, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
+			OSPanic(__FILE__, 4289, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), __FUNCTION__);
 #endif
 		} else {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4302, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
+			OSPanic(__FILE__, 4302, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), __FUNCTION__);
 #else
-			OSPanic("evt.cpp", 4291, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
+			OSPanic(__FILE__, 4291, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), __FUNCTION__);
 #endif
 		}
 		break;
@@ -3345,7 +3345,7 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 #else
 				const s32 line = 3531;
 #endif
-				OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("scrn(@WIPE, %d,...) - unresolved!\n", type), "_cmd_SCRN");
+				OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("scrn(@WIPE, %d,...) - unresolved!\n", type), __FUNCTION__);
 			}
 			break;
 		}
@@ -3463,7 +3463,7 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 #else
 		const s32 line = 3726;
 #endif
-		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("scrn(%d,...) - unresolved!\n", mode), "_cmd_SCRN");
+		OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("scrn(%d,...) - unresolved!\n", mode), __FUNCTION__);
 		break;
 	}
 	return 0;
