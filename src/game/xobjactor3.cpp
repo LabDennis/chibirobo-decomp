@@ -1,14 +1,14 @@
 #include "game/xobjactor.h"
 #include "game/xchr.h"
 #include "game/animframe.h"
-#include <sysdolphin/axdriver.h>
+#include <stdlib.h>
 #include "game/globals.h"
 #include "game/infoscrn.h"
-#include <stdlib.h>
 #include "game/xobjspiderboss.h"
 #include "game/xobjspider.h"
 #include "game/hsd_jobj.h"
 #include "game/cgame.h"
+#include "game/cgameparticle.h"
 #include "game/cgs.h"
 #include "game/cpad.h"
 #include "game/cscrn.h"
@@ -20,148 +20,113 @@
 #include "game/placement.h"
 #include <sysdolphin/rumble.h>
 
-// XObjActor3's destructor, its anim sounds and its script commands
+// XObjActor3, the actor most of the stage's small moving things are: which one it is comes from the stage table,
+// see GetKind and GetObjFlags. Its destructor, script commands, stage02 panels, update and per-kind functions
+// NONMATCHING: besides the functions marked below, the data differs (US addresses). A trial link as Matching puts the code
+// at retail's addresses but Kind9 is 0x30 shorter and Kind13 0x10 longer than retail. .rodata (0x8020B3D0) equals retail
+// up to Kind11's literals; retail then has three Vecs no code reads ({1,1,1} and two {0,0,0}, 0x8020B4F0) in front of
+// Kind13's and three more {0,0,0} among them (0x8020B544, 0x8020B550, 0x8020B580), and its strings add the "CPtclOne" type
+// name and the jobj.h assert string. .sdata2 lacks the 40.0f, 0.0f and "scale" of probably a weak scale setter behind the
+// type names (0x8065E1C8-0x8065E1E5); its leading 0x80 and 4 (fbeffect.h's colour setters) go, the linker drops them.
+// After the jump tables (0x8022C6B0) .data and .sdata hold another set of weak vtables, base lists and type records than
+// retail
+
+// retail's .data for this file starts with these tables, then come the handler table's member pointer
+// constants and the table
+extern "C" {
+// the haisui nezumi's anim sounds, ResetActor3Fields hands them to the actor
+AnimSfxEvent gHaisuiNezumiAnimSfxEvents[] = {
+	{ 3, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 3, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 8, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 8, 53.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 4, 1.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ 4, 11.0f, 0.0f, 1, 0xB0003, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
+
+#if !defined(VERSION_JP)
+// the four offsets the countdown label's outline is drawn at
+f32 gStage02TimerOutlineX[4] = { -2.0f, 2.0f, 2.0f, -2.0f };
+f32 gStage02TimerOutlineY[4] = { -2.0f, -2.0f, 2.0f, 2.0f };
+#endif
+
+s32 gSpiderBossVolleySlot;
+s32 gActor3Kind15ActivationCounter;
+}
+
+// built at startup, member function pointers can't be plain data
+XObjActor3Func gActor3UpdateHandlers[20] = {
+	&XObjActor3::Kind0,
+	&XObjActor3::UpdateObjectGauge,
+	&XObjActor3::Kind2,
+	&XObjActor3::Kind3,
+	&XObjActor3::Kind4,
+	&XObjActor3::Kind5,
+	&XObjActor3::Kind6,
+	&XObjActor3::Kind7,
+	&XObjActor3::Kind8,
+	&XObjActor3::Kind9,
+	&XObjActor3::Kind10,
+	&XObjActor3::Kind11,
+	&XObjActor3::Kind12,
+	&XObjActor3::Kind13,
+	&XObjActor3::UpdateSpiderCounterPanel,
+	&XObjActor3::Kind15,
+	&XObjActor3::Kind16,
+	&XObjActor3::Kind17,
+	&XObjActor3::Kind18,
+	&XObjActor3::Kind19,
+};
 
 extern "C" {
+BOOL HSD_AudioSFXCheck(s32 id);
+BOOL HSD_AudioSFXKeyOff(s32 id);
+void HSD_MtxGetScale(Mtx mat, Vec* vec);
+void OSReport(const char* fmt, ...);
+u16 GXGetTexObjWidth(const GXTexObj* obj);
+u16 GXGetTexObjHeight(const GXTexObj* obj);
+BOOL IsPlayerFlashingFromHit(XObj* obj);
+void HideScrapCounter(void* mgr);
+void ShowScrapCounter(void* mgr);
+void HideMoolahCounter(void* mgr);
+void ShowMoolahCounter(void* mgr);
+void HideHappyPointCounter(void* mgr);
+void ShowHappyPointCounter(void* mgr);
+void PSMTXRotRad(Mtx m, char axis, f32 rad);
+void InitParticlePool(CPtcl* pool, void* particles, s32 count, s32 stride);
+
+// defined further down: the file is written in the reverse of retail's code order
 void HandleKind9ActorCommand(XObjActor3* actor);
 void HandleActorRiderCommand(XObjActor3* actor);
+void DrawStage02TimerPanel(XObjActor3* actor);
+void DrawStage02ActorCounterPanel(XObjActor3* actor);
+void HandleSpiderCounterCommand(XObjActor3* actor);
+void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames);
+void LaunchSpiderBossPart(XObjActor3* actor);
+void ResetActor3Fields(XObjActor3* actor);
 }
 
-static void HideHeldItems()
+// hides the items of the kind, the 0x40B ones only
+static inline void HideItems(XObjActor3* actor)
 {
-	const XObjPool& pool = gGame.mXObjs.mPools[22];
-	for (s32 i = 0; i < 0x120; ++i) {
-		XObj* obj = pool.Get(i);
-		if (obj->GetKind() == 0x40B) {
-			obj->mStatus.mFlags &= ~0x10000ULL;
+	s32 kind = -1;
+	if (actor->mActorFlags.Check(0x100)) { // a 0x40B item is on show
+		kind = 0x40B;
+		actor->mActorFlags.mFlags &= ~0x100;
+	}
+	if (kind >= 0) {
+		switch (kind) {
+		case 0x40B:
+			for (s32 i = 0; i < 0x120; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (kind == obj->GetKind()) {
+					obj->mStatus.mFlags &= ~0x10000ULL;
+				}
+			}
+			break;
 		}
 	}
-}
-
-/**
- * @note Address: 0x80108794
- * @note Size: 0x870
- */
-// the event commands: 100 carries another object at one of its joints, or lets go of all
-// of them, anything else is kept for the kind's function to read
-s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
-{
-	switch (argv[0]) {
-	case 100:
-		if (argv[1] == 0) {
-			mActorFlags.mFlags &= ~2;
-			for (u32 i = 0; i < 8; i++) {
-				if (mParts[i].mObj != NULL) {
-					HSD_JObjClearMtxFlags(mParts[i].mObj->mJObj);
-					mParts[i].mObj   = NULL;
-					mParts[i].mJoint = NULL;
-				}
-			}
-		} else {
-			u32 i = 0;
-			while (i < ARRAY_SIZE(mParts) && mParts[i].mObj) {
-				++i;
-			}
-			if (i < ARRAY_SIZE(mParts)) {
-#if !defined(VERSION_PAL)
-				OSReport("id = %d, argv[1]=%d\n", static_cast<int>(i), static_cast<int>(argv[1]));
-#endif
-				mActorFlags.mFlags |= 2;
-				if (argv[1] >= 10000) { // a placement id vs a slot index
-					mParts[i].mObj = FindObj(argv[1]);
-				} else {
-					mParts[i].mObj = gGame.GetObject((s16)argv[1]);
-				}
-#if !defined(VERSION_PAL)
-				if (mParts[i].mObj == NULL) {
-					OSReport("NULL===============\n");
-				}
-#endif
-				s32 path[8];
-				s32 depth = argv[2];
-				for (s32 j = 0; j < depth; j++) {
-					path[j] = argv[3 + j];
-				}
-				mParts[i].mJoint = GetJointByPath(mJObj, path, depth);
-				Mtx t;
-				XObj* obj = mParts[i].mObj;
-				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
-				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
-				Vec scale;
-				HSD_MtxGetScale(mParts[i].mMtx, &scale);
-				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
-				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
-				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
-				Mtx s;
-				PSMTXScale(s, scale.x, scale.y, scale.z);
-				Mtx m;
-				PSMTXConcat(mParts[i].mMtx, s, m);
-				PSMTXConcat(m, t, m);
-				HSD_JObj* joint = mParts[i].mObj->mJObj;
-				MtxPtr mp       = m;
-				HSD_JObjCopyMtx(joint, mp);
-			}
-		}
-		break;
-	default:
-		mEventCommand      = argv[0];
-		mEventArg1         = argv[1];
-		mEventArg2         = argv[2];
-		mEventArg3         = argv[3];
-		mExtraEventArgs[0] = argv[4];
-		mExtraEventArgs[1] = argv[5];
-		mExtraEventArgs[2] = argv[6];
-		mExtraEventArgs[3] = argv[7];
-		mExtraEventArgs[4] = argv[8];
-		mExtraEventArgs[5] = argv[9];
-		mExtraEventArgs[6] = 0;
-		switch (GetItem()) {
-		case 9:
-			HandleKind9ActorCommand(this);
-			break;
-		case 0x13:
-			HandleActorRiderCommand(this);
-			break;
-		case 8:
-			switch (mEventCommand) {
-			case 0:
-				break;
-			case 1:
-				if (mActorFlags.Check(0x100)) { // a 0x40B item is on show
-					mActorFlags.mFlags &= ~0x100;
-					HideHeldItems();
-				}
-				switch (mEventArg1) {
-				case 0x40B:
-					for (s32 i = 0; i < 0x120; i++) {
-						XObj* obj = gGame.mXObjs.mPools[22].Get(i);
-						if (mEventArg1 == obj->GetKind()) {
-							mHeld = obj;
-							obj->mStatus.mFlags |= 0x10000ULL;
-							switch (mEventArg1) {
-							case 0x40B:
-								mActorFlags.mFlags |= 0x100;
-								obj->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-								break;
-							}
-						}
-					}
-					break;
-				default:
-					if (mHeld != NULL) {
-						HSD_JObjClearMtxFlags(mHeld->mJObj);
-						mHeld = NULL;
-					}
-					break;
-				}
-				mEventCommand = 0;
-				break;
-			}
-			break;
-		}
-		break;
-	}
-	return 0;
 }
 
 static inline void UpdateActorAnimationSound(XObjActor3* actor, s32 id)
@@ -170,455 +135,30 @@ static inline void UpdateActorAnimationSound(XObjActor3* actor, s32 id)
 	actor->mAnimSfx.Update(id, frame, GetSoundVolumeAtPosition(&gGame.mSound, &actor->mMoveTranslate, 0));
 }
 
-/**
- * @note Address: 0x80108424
- * @note Size: 0x11C
- */
-XObjActor3::~XObjActor3()
-{
-}
-
-/**
- * @note Address: 0x80108540
- * @note Size: 0x154
- */
-
-void XObjActor3::UpdateAnimationSounds()
-{
-	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && mPoolIndex == 3) {
-		UpdateActorAnimationSound(this, mAnimId);
-	}
-}
-
-/**
- * @note Address: 0x80108694
- * @note Size: 0x94
- */
-void XObjActor3::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
-{
-	XObj::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
-	if (GetKind() == 0x31B) {
-		if (mAnimId == 7) {
-			mSe = PlayGameSound(&gGame.mSound, 0xB0000, 0xFF);
-		} else if (HSD_AudioSFXCheck(mSe)) { // leaving anim 7: key the sound off
-			HSD_AudioSFXKeyOff(mSe);
-		}
-	}
-}
-
-/**
- * @note Address: 0x80108728
- * @note Size: 0x6C
- */
-void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
-{
-	if (GetItem() == 1) { // item 1's hits go to the base class
-		XObj::OnHitFromPosition(position, strength);
-	} else if (!mActorFlags.Check(1)) {
-		mActorFlags.mFlags |= 1;
-	}
-}
-
-/**
- * @note Address: 0x80109004
- * @note Size: 0x4
- */
-void XObjActor3::DrawDebugStatus()
-{
-}
-
-/**
- * @note Address: 0x80109008
- * @note Size: 0x44
- */
-void XObjActor3::DrawObjectEffects()
-{
-	if (GetKind() == 0x31B) {
-		DrawParticlePool(&mDust.mPtcl);
-	}
-}
-
-// XObjActor3's panel on stage02, the count over it
-
-extern "C" {
-u16 GXGetTexObjWidth(const GXTexObj* obj);
-u16 GXGetTexObjHeight(const GXTexObj* obj);
-}
-
 // a texture's size on screen at the scale
 static inline f32 TexSize(f32 size, f32 scale)
 {
 	return scale * size;
 }
 
-/**
- * @note Address: 0x8010904C
- * @note Size: 0x59C
- */
-// Draw the stage02 spider count as two digits over the panel.
-// NONMATCHING: the colours, the texture matrix pointer and the loop count take other registers
-extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
-{
-	f32 alpha = actor->mCounterPanelAlpha;
-	if (alpha <= 0.0f) {
-		return;
-	}
-	if (!IsStage("stage02")) {
-		return;
-	}
-	if (!actor->mPanelTpl.mBound) {
-		return;
-	}
-	CTexObj tex;
-	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[9], 0);
-	f32 scale = 1.0f;
-	f32 w     = scale * GXGetTexObjWidth(&tex);
-	u16 h     = GXGetTexObjHeight(&tex);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0); // the digit sheet
-	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);                                           // eleven glyphs in a row
-	f32 x;
-	f32 dh    = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
-	x         = 110.0f - (1 - actor->mSpiderCount / 10) * 12;
-	f32 count = actor->mSpiderCount;
-	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f); // one eleventh of the digit sheet per glyph
-	tex.mMtxDirty = TRUE;
-	s32 i         = 0;
-	u32 a         = 255.0f * alpha;
-	u32 c0;
-	u32 c1 = a | 0x1F33FF00; // colored below
-	c0     = a | 0xFFFFFF00; // white above
-	for (; i < 2; i++) {
-		f32 p = 1.0f;
-		if (i > 0) {
-			for (s32 k = 0; k < i; k++) {
-				p *= 10.0f;
-			}
-		}
-		s32 d = count / p;
-		if (i == 0 || d != 0) {
-			d %= 10;
-			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
-			tex.mMtxDirty = TRUE;
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
-			                   0.0f);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		}
-	}
-}
-
-extern "C" {
-#if !defined(VERSION_JP)
-extern f32 gStage02TimerOutlineX[], gStage02TimerOutlineY[];
-#endif
-}
-
 #if !defined(VERSION_JP)
 static inline void DrawTimerLabel(f32 scale)
 {
 	const f32 size = 20.0f;
-	f32 width      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size);
-	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, (width - 4.0f) * scale, 12.0f, 0.0f, 0.0f, 0.0f);
-	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) * 0.5f;
+	f32 width      = scale * (MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) - 4.0f);
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, width, 12.0f, 0.0f, 0.0f, 0.0f);
+	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) / 2.0f;
 	for (int i = 0; i < 4; ++i)
 		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
 		                             27.0f + gStage02TimerOutlineY[i], 0.0f, size, size);
 	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(0x5B), left, 27.0f, 0.0f, size, size);
 }
 #endif
-extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
-{
-	f32 alpha = actor->mTimerPanelAlpha;
-	if (alpha <= 0.0f) {
-		return;
-	}
-	if (!IsStage("stage02")) {
-		return;
-	}
-	if (!actor->mPanelTpl.mBound) {
-		return;
-	}
-	CTexObj tex;
-	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
-	f32 scale = 1.0f;
-#if defined(VERSION_JP)
-	f32 w = TexSize(GXGetTexObjWidth(&tex), scale);
-#else
-	u16 w = GXGetTexObjWidth(&tex);
-#endif
-	u16 h = GXGetTexObjHeight(&tex);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-#if !defined(VERSION_JP)
-	DrawTimerLabel(scale);
-#endif
-	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
-	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
-	f32 dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
-	f32 x  = 110.0f;
-#if !defined(VERSION_JP)
-	x += 11.0f;
-#endif
-	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
-	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
-	tex.mMtxDirty = TRUE;
-	u32 a         = 255.0f * alpha;
-	u32 c0;
-	u32 c1 = a | 0x1F33FF00;
-	c0     = a | 0xFFFFFF00;
-	for (s32 i = 0; i < 2; i++) {
-		f32 p = 1.0f;
-		if (i > 0) {
-			for (s32 k = 0; k < i; k++) {
-				p *= 10.0f;
-			}
-		}
-		s32 d = count / p;
-		if (i == 0 || d != 0) {
-			d %= 10;
-			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
-			tex.mMtxDirty = TRUE;
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
-			                   0.0f);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		}
-	}
-
-	dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
-	dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
-	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f); // the eleventh glyph
-	tex.mMtxDirty = TRUE;
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	s32 digits = count < 10.0f ? 1 : 2; // the glyph slides with the digit count
-	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
-	                   0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-}
-
-extern "C" {
-void DrawStage02TimerPanel(XObjActor3* actor);
-void DrawStage02ActorCounterPanel(XObjActor3* actor);
-}
-
-/**
- * @note Address: 0x80109DD8
- * @note Size: 0x6C
- */
-void XObjActor3::DrawScreenOverlay()
-{
-	switch (GetItem()) {
-	case 14:
-		DrawStage02TimerPanel(this);
-		DrawStage02ActorCounterPanel(this);
-		break;
-	}
-}
-
-/**
- * @note Address: 0x80109E44
- * @note Size: 0x3C
- */
-void XObjActor3::DrawObject()
-{
-	if (!(mActorFlags.mFlags & 0x10)) {
-		DrawWithView(NULL);
-	}
-}
-
-// XObjActor3's update
-
-extern "C" {
-void HandleSpiderCounterCommand(XObjActor3* actor);
-void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames);
-}
-
-/**
- * @note Address: 0x80109E80
- * @note Size: 0x680
- */
-// the per-kind script commands, the kind's own function, the carried objects
-void XObjActor3::UpdateObject(u32 frames)
-{
-	switch (GetItem()) {
-	case 8:
-		mActorFlags.mFlags |= 4; // flag 4 skips the heading/pos write below
-		break;
-	case 9:
-		UpdateAnimationSounds();
-		if (gGame.mStatus.mFlags & 0x400) {
-			return;
-		}
-		break;
-	case 10:
-		if (gGame.mStatus.mFlags & 0x400) {
-			return;
-		}
-		switch (mEventCommand) {
-		case 1:
-			mActorFlags.mFlags &= ~4;
-			mEventCommand = 0;
-			mEventArg1    = 0;
-			break;
-		}
-		break;
-	case 11:
-	case 12:
-		if (gGame.mStatus.mFlags & 0x400) {
-			return;
-		}
-		switch (mEventCommand) {
-		case 1:
-			if (mEventArg1 != 0) {
-				mActorFlags.mFlags &= ~4;
-			} else {
-				mActorFlags.mFlags |= 4;
-				mKindStep = 0;
-			}
-			mEventCommand = 0;
-			mEventArg1    = 0;
-			break;
-		case 2:
-			mKindStep     = 2;
-			mKindTimer    = mEventArg2 / 100.0f; // script units are 1/100
-			mEventCommand = 0;
-			mEventArg1    = 0;
-			break;
-		}
-		break;
-	case 13:
-		switch (mRumble) {
-		case 0:
-			break;
-		case 1: // start the rumble
-			if (gGame.mStatus.mFlags & 0x800000000ULL) {
-				CPadOne* rumble = &gGame.mPad.mPad[0];
-				if (rumble->mConnected) {
-					HSD_PadRumbleOn(rumble->mPort);
-				}
-				mRumbleTimer = 24 / frames;
-				mRumble++;
-			} else {
-				mRumble = 0;
-			}
-			break;
-		case 2:
-			if (--mRumbleTimer < 0) {
-				CPadOne* rumble = &gGame.mPad.mPad[0];
-				if (rumble->mConnected) {
-					HSD_PadRumbleOffN(rumble->mPort);
-				}
-				if (rumble->mConnected) {
-					HSD_PadRumbleRemove(rumble->mPort);
-				}
-				mRumble = 0;
-			}
-			break;
-		}
-		if (gGame.mStatus.mFlags & 0x400) {
-			return;
-		}
-		switch (mEventCommand) {
-		case 1:
-			mActorFlags.mFlags &= ~4;
-			mEventCommand = 0;
-			mEventArg1    = 0;
-			break;
-		}
-		break;
-	case 14:
-		if (gGame.mStatus.mFlags & 0x400) {
-			return;
-		}
-		HandleSpiderCounterCommand(this);
-		break;
-	}
-	if (mActorFlags.mFlags & 0x10) { // flag 0x10 skips the update
-		return;
-	}
-	(this->*gActor3UpdateHandlers[GetItem()])(frames);
-	if (!(mActorFlags.mFlags & 4)) {
-		SetRotateY(mHeading, 0.0f);
-		SetPos(mMoveTranslate, 0);
-	}
-	XObj::UpdateObject(frames);
-	if (GetKind() == 0x31B) { // 0x31B (haisui_nezumi) runs its dust particles
-		UpdateParticlePool(&mDust.mPtcl, frames);
-	}
-	if (GetKind() == 0x2C3) { // carries a rider at a joint
-		CarryRiderAtActorJoint(this, frames);
-	}
-	if (mActorFlags.mFlags & 2) { // flag 2: carried parts follow their joints
-		for (u32 i = 0; i < ARRAY_SIZE(mParts); i++) {
-			if (mParts[i].mJoint != NULL && mParts[i].mObj != NULL) {
-				Mtx t;
-				XObj* obj = mParts[i].mObj;
-				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
-				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
-				Vec scale;
-				HSD_MtxGetScale(mParts[i].mMtx, &scale);
-				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
-				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
-				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
-				Mtx s;
-				PSMTXScale(s, scale.x, scale.y, scale.z);
-				Mtx m;
-				PSMTXConcat(mParts[i].mMtx, s, m);
-				PSMTXConcat(m, t, m);
-				HSD_JObjCopyMtx(mParts[i].mObj->mJObj, m);
-			}
-		}
-	}
-}
-
-/**
- * @note Address: 0x8010A500
- * @note Size: 0x74
- */
-void XObjActor3::Release()
-{
-	switch (GetKind()) {
-	case 0x149:
-	case 0x42B:
-		mPanelTpl.Close();
-		break;
-	}
-	XObj::Release();
-}
-
-// XObjActor3, the actor most of the stage's small moving things are. which one it is comes
-// from the stage table, see GetKind and GetObjFlags
-
-extern "C" {
-BOOL IsPlayerFlashingFromHit(XObj* obj);
-void HideScrapCounter(void* mgr);
-void ShowScrapCounter(void* mgr);
-void HideMoolahCounter(void* mgr);
-void ShowMoolahCounter(void* mgr);
-void HideHappyPointCounter(void* mgr);
-void ShowHappyPointCounter(void* mgr);
-void LaunchSpiderBossPart(XObjActor3* actor);
-void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames);
-void InitParticlePool(CPtcl* pool, void* particles, s32 count, s32 stride);
-void ResetActor3Fields(XObjActor3* actor);
-extern AnimSfxEvent gHaisuiNezumiAnimSfxEvents[];
-
-s32 gSpiderBossVolleySlot;
-s32 gActor3Kind15ActivationCounter;
-}
-
-static inline Vec ActorPlacementRotation(const XObjActor3* actor)
-{
-	return PlacementRotation(actor->mCoord);
-}
 
 // the robot is out of reach, past the front edge or in one of its climbing anims
-static inline bool IsPlayerAway(XObjChr* player, Vec pos)
+static inline bool IsPlayerAway(XObjChr* player)
 {
+	Vec pos = player->mMoveTranslate;
 	if (pos.z < -4.28f) {
 		return true;
 	}
@@ -703,37 +243,28 @@ static inline bool IsBusyAnim(s32 anim)
 	return false;
 }
 
-extern "C" BOOL IsPlayerWithinActorReach(XObjActor3*);
+extern "C" bool IsPlayerWithinActorReach(XObjActor3*);
 extern "C" BOOL IsUsingMug(XActLift*);
 extern "C" f32 GetPlayerCollisionRadius(XObjChr*);
-
-static inline void StartKind9Effect(XObjActor3* actor, u32 id, f32 size)
-{
-	Vec p, scale;
-	p.x     = actor->mMoveTranslate.x;
-	p.y     = 12.0f + actor->mMoveTranslate.y;
-	p.z     = 12.0f + actor->mMoveTranslate.z;
-	scale.x = scale.y = scale.z = size;
-	actor->mGens[0]             = (s32)gGame.mParticle.CreateSRT(id, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
-}
 
 static inline void EmitKind9Dust(XObjActor3* actor)
 {
 	f32 x = actor->mMoveTranslate.x, y = actor->mMoveTranslate.y, z = actor->mMoveTranslate.z;
 	f32 angle  = DEG2RAD * (rand() % 360);
-	f32 sine   = (f32)sin(angle);
+	f32 sine   = std::sinf(angle);
 	f32 vx     = sine * (rand() % 100) / 1000.0f;
-	f32 cosine = (f32)cos(angle);
+	f32 cosine = std::cosf(angle);
 	f32 vz     = cosine * (rand() % 100) / 1000.0f;
 	f32 vy     = (rand() % 100) / 800.0f;
 	Vec pos;
-	pos.x          = x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	pos.y          = y;
-	pos.z          = z + 16.0f * (vz * (rand() % 100) / 100.0f);
-	f32 width      = 1.0f + (rand() % 200) / 200.0f;
-	Vec scale      = { width, width, 1 };
-	Vec vel        = { vx, vy, vz };
-	CPtclOne* dust = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
+	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	pos.y = y;
+	Vec scale;
+	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
+	scale.z           = 1.0f;
+	Vec vel           = { vx, vy, vz };
+	CPtclOne* dust    = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
 	if (dust) {
 		dust->mAngle      = DEG2RAD * (rand() % 360);
 		dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
@@ -757,8 +288,339 @@ static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 	return end - frames <= current;
 }
 
+// the spider boss, the only object in pool 19
+static inline XObjSpiderBoss* GetSpiderBoss()
+{
+	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
+}
+
+// Each impact has its own entry in the original action table.
+static inline void BounceBossPart(XObjActor3* part, f32 speed)
+{
+	part->mKindTimer = speed;
+	++part->mFrameCount;
+}
+
+extern "C" bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
+
+static inline void PlaceBossProjectile(XObjActor3* actor, XObjSpiderBoss* boss, int spread)
+{
+	actor->mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
+	f32 base                = HSD_JObjGetTranslationY(boss->mJObj);
+	actor->mMoveTranslate.y = 16 + base + rand() % spread;
+	if (gSpiderBossVolleySlot == 0)
+		actor->mMoveTranslate.y = HSD_JObjGetTranslationY(boss->mJObj);
+	actor->mMoveTranslate.z = HSD_JObjGetTranslationZ(boss->mJObj);
+	actor->SetPos(actor->mMoveTranslate, 0);
+	actor->mStatus.mFlags |= 0x10000;
+	actor->mStatus.mFlags |= 4;
+}
+
+static inline void AimBossVolley(XObjActor3* actor, const Vec& center, f32 radius)
+{
+	actor->mStatus.mFlags |= 0x10000;
+	actor->mTimerFadeMode = gSpiderBossVolleySlot;
+	if (gSpiderBossVolleySlot == 0) {
+		actor->mOrbitX      = center.x;
+		actor->mOrbitHeight = center.y;
+		actor->mOrbitZ      = center.z;
+	} else {
+		actor->mOrbitX      = center.x + radius * (f32)sin(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
+		actor->mOrbitHeight = center.y;
+		actor->mOrbitZ      = center.z + radius * (f32)cos(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
+	}
+	++gSpiderBossVolleySlot;
+	++actor->mKindStep;
+}
+
+static inline bool BossProjectileLanded(XObjActor3* actor, u32 frames)
+{
+	actor->mKindTimer -= .09f * frames;
+	actor->mMoveTranslate.y += actor->mKindTimer;
+	return actor->mMoveTranslate.y <= -1;
+}
+
+static inline void HideBossProjectile(XObjActor3* actor, bool resetPitch)
+{
+	actor->mStatus.mFlags &= ~0x10000ULL;
+	actor->mStatus.mFlags &= ~4ULL;
+	actor->mActorFlags.mFlags |= 4;
+	actor->SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
+	if (resetPitch)
+		actor->mMoveRotate.x = 0;
+	actor->mKindStep = 0;
+}
+
+static inline void ResetBossAttachment(XObjActor3* obj)
+{
+	obj->mKindStep = 0;
+	obj->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+	obj->mActorFlags.mFlags |= 4;
+	obj->mActorFlags.mFlags |= 0x10;
+	obj->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+	obj->mActorFlags.mFlags &= ~4;
+	obj->mActorFlags.mFlags &= ~0x10;
+	obj->SetScale(0.1f, 0.1f, 0.1f, 0);
+	obj->mKindStep = 0;
+}
+
+/**
+ * @note Address: 0x8011529C
+ * @note Size: 0x4
+ */
+void XObjActor3::Kind0(u32 frames)
+{
+}
+
+/**
+ * @note Address: 0x801151E0
+ * @note Size: 0xBC
+ */
+void XObjActor3::UpdateObjectGauge(u32 frames)
+{
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 1, 1);
+		mEventCommand = 0;
+		break;
+	case 2:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 0, 1);
+		mEventCommand = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80114CC8
+ * @note Size: 0x518
+ */
+// a clock's minute hand, it turns twelve times as fast as Kind3's hour hand; kind 0x411 rides a joint of clock 0x2A1
+// NONMATCHING: retail saves r25 too, the joint reads in Attach go r27, r26, r25, r27 and the hand's joint and matrix r25, r26; here
+// r27, r26, r27, r26 and r26, r27
+void XObjActor3::Kind2(u32)
+{
+	CJObj joint;
+	f32 time = gGame.mTimeState.mTime;
+	switch (GetKind()) {
+	case 0x411: {
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				s32 path[] = { 0, 0, 3, 0 };
+				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -(12.0f * time)));
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				HSD_JObjCopyMtx(mJObj, result);
+				return;
+			}
+		}
+		break;
+	}
+	case 0x413:
+		mMoveRotate.z = PI * (2.0f * -(12.0f * time));
+		break;
+	case 0x435:
+		mMoveRotate.x = PI * (2.0f * (12.0f * time));
+		break;
+	default:
+		mMoveRotate.z = PI * (2.0f * (12.0f * time));
+	}
+}
+
+/**
+ * @note Address: 0x801147C0
+ * @note Size: 0x508
+ */
+// a clock's hour hand, 2.617994 and 3.6651917 are 150 and 210 degrees; kind 0x412 rides a joint of clock 0x2A1
+// NONMATCHING: the same registers as in Kind2
+void XObjActor3::Kind3(u32)
+{
+	CJObj joint;
+	f32 time = gGame.mTimeState.mTime;
+	switch (GetKind()) {
+	case 0x412: {
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				s32 path[] = { 0, 0, 3, 0 };
+				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -time) + 2.617994f);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				HSD_JObjCopyMtx(mJObj, result);
+				return;
+			}
+		}
+		break;
+	}
+	case 0x414:
+		mMoveRotate.z = PI * (2.0f * -time) + 2.617994f;
+		break;
+	case 0x436:
+		mMoveRotate.x = PI * (2.0f * time) + 3.6651917f;
+		break;
+	default:
+		mMoveRotate.z = PI * (2.0f * time) + 3.6651917f;
+	}
+}
+
+/**
+ * @note Address: 0x801146F8
+ * @note Size: 0xC8
+ */
+void XObjActor3::Kind4(u32 frames)
+{
+	mFrameCount++;
+	f32 wave  = sin(DEG2RAD * ((mFrameCount * 6) % 360));
+	f32 swing = 0.25f;
+	if (GetKind() == 0x437) {
+		mMoveRotate.x = wave * swing;
+	} else {
+		mMoveRotate.z = wave * swing;
+	}
+}
+
+/**
+ * @note Address: 0x801146F4
+ * @note Size: 0x4
+ */
+void XObjActor3::Kind5(u32 frames)
+{
+}
+
+/**
+ * @note Address: 0x8011463C
+ * @note Size: 0xB8
+ */
+// NONMATCHING: register allocation, retail holds the item id in r29 and the count in r28 (US 0x8011468C); the ids
+// declared in the loop body read the same, an InventoryItem& for the slot scores lower; swapping the declarations or the
+// two assignments changes nothing
+void XObjActor3::Kind6(u32 frames)
+{
+	s16 id;
+	s16 num;
+	s32 i;
+	s32 count = 0;
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		for (i = 0; i < 0x100; i++) {
+			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
+			id                   = items[i].GetId();
+			num                  = items[i].GetCount();
+			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+				count++;
+			}
+		}
+		gGame.mEvt.mSelectResult = count;
+		mEventCommand            = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80114540
+ * @note Size: 0xFC
+ */
+void XObjActor3::Kind7(u32 frames)
+{
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		if (mEventArg1 != 0) {
+			ShowScrapCounter(&gGame.mInfoScrn);
+		} else {
+			HideScrapCounter(&gGame.mInfoScrn);
+		}
+		mEventCommand = 0;
+		break;
+	case 2:
+		if (mEventArg1 != 0) {
+			ShowHappyPointCounter(&gGame.mInfoScrn);
+			ShowMoolahCounter(&gGame.mInfoScrn);
+			ShowScrapCounter(&gGame.mInfoScrn);
+		} else {
+			HideHappyPointCounter(&gGame.mInfoScrn);
+			HideMoolahCounter(&gGame.mInfoScrn);
+			HideScrapCounter(&gGame.mInfoScrn);
+		}
+		mEventCommand = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80114060
+ * @note Size: 0x4E0
+ */
+// holds the 0x40B item at its first joint while flag 0x100 is up
+// NONMATCHING: the loop and the joint's vectors take each other's registers
+void XObjActor3::Kind8(u32 frames)
+{
+	Mtx m;
+	Mtx t;
+	Mtx a;
+	CJObj joint;
+	if (mActorFlags.mFlags & 0x100) {
+		CVec pos;
+		s32 path[1] = { 0 };
+		joint.Attach(GetJointFromRoot(mJObj, 1, path));
+		pos      = GetJointPosition(joint.mJObj);
+		s32 kind = -1;
+		if (mActorFlags.mFlags & 0x100) {
+			kind = 0x40B;
+		}
+		if (kind >= 0) {
+			for (s32 i = 0; i < 0x120; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (kind == obj->GetKind()) {
+					PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), m);
+					PSMTXTrans(t, 0.0f, -14.0f, 0.0f);
+					PSMTXConcat(m, t, a);
+					HSD_JObj* jobj = obj->mJObj;
+					MtxPtr mp      = a;
+					HSD_JObjCopyMtx(jobj, mp);
+					if (mStatus.mFlags & 0x10000) {
+						obj->mStatus.mFlags |= 0x10000ULL;
+					} else {
+						obj->mStatus.mFlags &= ~0x10000ULL;
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80111A78
+ * @note Size: 0x25E8
+ */
 // Kind9 runs haisui_nezumi (GetKind 0x31B): it paces its window, charges the robot when it comes near and grabs it or ends
 // up stunned
+// NONMATCHING: retail builds each effect's rotation in one temporary and stores 0 to its y after the copy from .rodata, which a
+// rotation passed by value cannot give (a y that is not constant makes a second temporary here); the dust's saved float
+// registers come out in another order and step 6 needs r23 for the joint's third read
+static inline void StartKind9Effect(XObjActor3* actor, u32 id, f32 size)
+{
+	Vec p, scale;
+	p.x     = actor->mMoveTranslate.x;
+	p.y     = 12.0f + actor->mMoveTranslate.y;
+	p.z     = 12.0f + actor->mMoveTranslate.z;
+	scale.x = scale.y = scale.z = size;
+	actor->mGens[0]             = (s32)gGame.mParticle.CreateSRT(id, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
+}
+
 void XObjActor3::Kind9(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -858,7 +720,7 @@ void XObjActor3::Kind9(u32 frames)
 		if (Kind9AnimFinished(this, frames)) {
 			gGame.mParticle.Kill((HSD_Generator*)mGens[0]);
 			s32 path[] = { 0, 0, 1, 1 };
-			joint.Attach(GetJointByPath(mJObj, path, 4));
+			joint.Attach(FindJointByPath(mJObj, path, 4));
 			Vec p = joint.GetPos();
 			SetAnim(7, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			if (mHeading == -HALF_PI)
@@ -898,7 +760,7 @@ void XObjActor3::Kind9(u32 frames)
 		} else {
 			Vec projected = { pos.x, pos.y, mMoveTranslate.z };
 			f32 dx = projected.x - mMoveTranslate.x, dy = projected.y - mMoveTranslate.y, dz = projected.z - mMoveTranslate.z;
-			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 32 && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)
+			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 32 && !IsPlayerAway(gGame.GetPlayer())
 			    && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				SetAnim(9, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				mKindStep = 9;
@@ -934,8 +796,7 @@ void XObjActor3::Kind9(u32 frames)
 		} else {
 			Vec projected = { pos.x + offset, pos.y, mMoveTranslate.z };
 			f32 dx = projected.x - mMoveTranslate.x, dy = projected.y - mMoveTranslate.y, dz = projected.z - mMoveTranslate.z;
-			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 10 && !IsPlayerFlashingFromHit(player)
-			    && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)) {
+			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 10 && !IsPlayerFlashingFromHit(player) && !IsPlayerAway(gGame.GetPlayer())) {
 				if (radius < 2) { // the robot isn't holding up its mug
 					SetAnim(11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 					if (!IsBusyAnim(gGame.GetPlayer()->mAnimId) && gGame.GetPlayer()->mAttachmentRequest < 0
@@ -1004,370 +865,6 @@ void XObjActor3::Kind9(u32 frames)
 			mStatus.mFlags &= ~0x10000ULL;
 			++mKindStep;
 		}
-		break;
-	}
-}
-
-/**
- * @note Address: 0x8010A574
- * @note Size: 0x78C
- */
-BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
-{
-	if (XObj::LoadFromPlacement(info)) {
-		bool ready = false;
-		mMoveSpeed = 0.0f;
-		mKindTimer = 0.0f;
-
-		mKindStep          = 0;
-		mFrameCount        = 0;
-		mActorFlags.mFlags = 0;
-		mActorFlags.mFlags |= 4;
-		mEventCommand      = 0;
-		mEventArg1         = 0;
-		mEventArg2         = 0;
-		mEventArg3         = 0;
-		mExtraEventArgs[0] = 0;
-		mExtraEventArgs[1] = 0;
-		mExtraEventArgs[2] = 0;
-		mExtraEventArgs[3] = 0;
-		mExtraEventArgs[4] = 0;
-		mExtraEventArgs[5] = 0;
-		mExtraEventArgs[6] = 0;
-		mWindowLeft        = 0.0f;
-		mWindowRight       = 0.0f;
-		mOrbitAngle        = 0.0f;
-		Vec zero           = { 0.0f, 0.0f, 0.0f };
-		mOrbitX            = zero.x;
-		mOrbitHeight       = zero.y;
-		mOrbitZ            = zero.z;
-
-		mMoveTranslate.Set(PlacementPosition(mCoord));
-		mMoveRotate.Set(ActorPlacementRotation(this));
-		mHeading = mMoveRotate.y;
-		for (int i = 0; i < 8; ++i)
-			mParts[i].Clear();
-		if (mPoolIndex == 0) {
-			gSpiderBossVolleySlot          = 0;
-			gActor3Kind15ActivationCounter = 0;
-		}
-		switch (GetKind()) {
-		case 0x42B:
-		case 0x149:
-			if (mPanelTpl.ReadEx("tpl/stage02.tpl", 0, 0))
-				ready = true;
-			return ready;
-		case 0x31B: {
-
-			mTex[0] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[122 - StatusTextureOffset], 0);
-			mTex[1] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
-			return TRUE;
-		}
-		default:
-			return TRUE;
-		}
-	}
-	return FALSE;
-}
-
-/**
- * @note Address: 0x8010AD00
- * @note Size: 0x20
- */
-void XObjActor3::ResetForNewGame()
-{
-	ResetActor3Fields(this);
-}
-
-/**
- * @note Address: 0x8010AD20
- * @note Size: 0x34
- */
-void XObjActor3::ResetObjectState()
-{
-	XObj::ResetObjectState();
-	ResetActor3Fields(this);
-}
-
-/**
- * @note Address: 0x8010AD54
- * @note Size: 0x34
- */
-void XObjActor3::InitializeObject(u32 id)
-{
-	XObj::InitializeObject(id);
-	ResetActor3Fields(this);
-}
-
-/**
- * @note Address: 0x8010AD88
- * @note Size: 0x1EC
- */
-extern "C" void ResetActor3Fields(XObjActor3* actor)
-{
-	actor->_B70               = 0.0f;
-	actor->mMoveSpeed         = 0.0f;
-	actor->mKindTimer         = 0.0f;
-	actor->mHeading           = 0.0f;
-	actor->mKindStep          = 0;
-	actor->mFrameCount        = 0;
-	actor->mActorFlags.mFlags = 0;
-	actor->mActorFlags.mFlags |= 4;
-	actor->mEventCommand      = 0;
-	actor->mEventArg1         = 0;
-	actor->mEventArg2         = 0;
-	actor->mEventArg3         = 0;
-	actor->mExtraEventArgs[0] = 0;
-	actor->mExtraEventArgs[1] = 0;
-	actor->mExtraEventArgs[2] = 0;
-	actor->mExtraEventArgs[3] = 0;
-	actor->mExtraEventArgs[4] = 0;
-	actor->mExtraEventArgs[5] = 0;
-	actor->mExtraEventArgs[6] = 0;
-	actor->mWindowLeft        = 0.0f;
-	actor->mWindowRight       = 0.0f;
-	actor->mOrbitAngle        = 0.0f;
-	Vec zero                  = { 0.0f, 0.0f, 0.0f };
-	actor->mOrbitX            = zero.x;
-	actor->mOrbitHeight       = zero.y;
-	actor->mOrbitZ            = zero.z;
-	for (int i = 0; i < 8; i++) {
-		actor->mParts[i].Clear();
-	}
-	if (actor->mPoolIndex == 0) {
-		gSpiderBossVolleySlot          = 0;
-		gActor3Kind15ActivationCounter = 0;
-	}
-	actor->SetColor(1, 0, 0, 0, 0.0f);
-	actor->_BDC.x             = 0.0f;
-	actor->_BDC.y             = 0.0f;
-	actor->_BDC.z             = 0.0f;
-	actor->mTimerFadeMode     = 0;
-	actor->mTimerPanelAlpha   = 0.0f;
-	actor->mCountdownFrames   = 0.0f;
-	actor->mCountdownRunning  = 0;
-	actor->mCounterFadeMode   = 0;
-	actor->mCounterPanelAlpha = 0.0f;
-	actor->mSpiderCount       = 0;
-	actor->_C08               = 0;
-	if (actor->GetKind() == 0x31B) {
-		InitParticlePool(&actor->mDust.mPtcl, actor->mDust.mPtcls, 0x50, 0x32);
-		actor->mAnimSfx.mEvents = gHaisuiNezumiAnimSfxEvents;
-	}
-	actor->mGens[0]     = 0;
-	actor->mGens[1]     = 0;
-	actor->mGens[2]     = 0;
-	actor->mGens[3]     = 0;
-	actor->mGens[4]     = 0;
-	actor->mGens[5]     = 0;
-	actor->mRumble      = 0;
-	actor->mRumbleTimer = 0;
-	actor->mHeld        = NULL;
-	actor->_1DE4        = 0;
-	actor->mSe          = -1;
-}
-
-/**
- * @note Address: 0x80114CC8
- * @note Size: 0x518
- */
-// a clock's minute hand, it turns twelve times as fast as Kind3's hour hand; kind 0x411 rides a joint of clock 0x2A1
-void XObjActor3::Kind2(u32)
-{
-	CJObj joint;
-	f32 time = gGame.mTimeState.mTime;
-	switch (GetKind()) {
-	case 0x411: {
-		for (s32 i = 0; i < 0x120; i++) {
-			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
-			if (clock->GetKind() == 0x2A1) {
-				s32 path[] = { 0, 0, 3, 0 };
-				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
-				Mtx mount, translate, rotation, result;
-				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
-				PSMTXRotRad(rotation, 'z', PI * (2.0f * -(12.0f * time)));
-				PSMTXConcat(mount, rotation, result);
-				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
-				PSMTXConcat(result, translate, result);
-				HSD_JObjCopyMtx(mJObj, result);
-				return;
-			}
-		}
-		return;
-	}
-	case 0x413:
-		mMoveRotate.z = PI * (2.0f * -(12.0f * time));
-		break;
-	case 0x435:
-		mMoveRotate.x = PI * (2.0f * (12.0f * time));
-		break;
-	default:
-		mMoveRotate.z = PI * (2.0f * (12.0f * time));
-	}
-}
-
-/**
- * @note Address: 0x801147C0
- * @note Size: 0x508
- */
-// a clock's hour hand, 2.617994 and 3.6651917 are 150 and 210 degrees; kind 0x412 rides a joint of clock 0x2A1
-void XObjActor3::Kind3(u32)
-{
-	CJObj joint;
-	f32 time = gGame.mTimeState.mTime;
-	switch (GetKind()) {
-	case 0x412: {
-		for (s32 i = 0; i < 0x120; i++) {
-			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
-			if (clock->GetKind() == 0x2A1) {
-				s32 path[] = { 0, 0, 3, 0 };
-				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
-				Mtx mount, translate, rotation, result;
-				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
-				PSMTXRotRad(rotation, 'z', PI * (2.0f * -time) + 2.617994f);
-				PSMTXConcat(mount, rotation, result);
-				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
-				PSMTXConcat(result, translate, result);
-				HSD_JObjCopyMtx(mJObj, result);
-				return;
-			}
-		}
-		return;
-	}
-	case 0x414:
-		mMoveRotate.z = PI * (2.0f * -time) + 2.617994f;
-		break;
-	case 0x436:
-		mMoveRotate.x = PI * (2.0f * time) + 3.6651917f;
-		break;
-	default:
-		mMoveRotate.z = PI * (2.0f * time) + 3.6651917f;
-	}
-}
-
-/**
- * @note Address: 0x801146F8
- * @note Size: 0xC8
- */
-void XObjActor3::Kind4(u32 frames)
-{
-	mFrameCount++;
-	f32 wave  = sin(DEG2RAD * ((mFrameCount * 6) % 360));
-	f32 swing = 0.25f;
-	if (GetKind() == 0x437) {
-		mMoveRotate.x = wave * swing;
-	} else {
-		mMoveRotate.z = wave * swing;
-	}
-}
-
-/**
- * @note Address: 0x801146F4
- * @note Size: 0x4
- */
-void XObjActor3::Kind5(u32 frames)
-{
-}
-
-/**
- * @note Address: 0x8011463C
- * @note Size: 0xB8
- */
-// NONMATCHING: register allocation
-void XObjActor3::Kind6(u32 frames)
-{
-	s16 id;
-	s16 num;
-	s32 i;
-	s32 count = 0;
-	switch (mEventCommand) {
-	case 0:
-		break;
-	case 1:
-		for (i = 0; i < 0x100; i++) {
-			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
-			id                   = items[i].mId;
-			num                  = items[i].mCount;
-			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
-				count++;
-			}
-		}
-		gGame.mEvt.mSelectResult = count;
-		mEventCommand            = 0;
-		break;
-	}
-}
-
-/**
- * @note Address: 0x80114060
- * @note Size: 0x4E0
- */
-// holds the 0x40B item at its first joint while flag 0x100 is up
-// NONMATCHING: the loop and the joint's vectors take each other's registers
-void XObjActor3::Kind8(u32 frames)
-{
-	Mtx m;
-	Mtx t;
-	Mtx a;
-	CJObj joint;
-	if (mActorFlags.mFlags & 0x100) {
-		CVec pos;
-		s32 path[1] = { 0 };
-		joint.Attach(GetJointFromRoot(mJObj, 1, path));
-		pos      = GetJointPosition(joint.mJObj);
-		s32 kind = -1;
-		if (mActorFlags.mFlags & 0x100) {
-			kind = 0x40B;
-		}
-		if (kind >= 0) {
-			for (s32 i = 0; i < 0x120; i++) {
-				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
-				if (kind == obj->GetKind()) {
-					PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), m);
-					PSMTXTrans(t, 0.0f, -14.0f, 0.0f);
-					PSMTXConcat(m, t, a);
-					HSD_JObj* jobj = obj->mJObj;
-					MtxPtr mp      = a;
-					HSD_JObjCopyMtx(jobj, mp);
-					if (mStatus.mFlags & 0x10000) {
-						obj->mStatus.mFlags |= 0x10000ULL;
-					} else {
-						obj->mStatus.mFlags &= ~0x10000ULL;
-					}
-				}
-			}
-		}
-	}
-}
-
-/**
- * @note Address: 0x80114540
- * @note Size: 0xFC
- */
-void XObjActor3::Kind7(u32 frames)
-{
-	switch (mEventCommand) {
-	case 0:
-		break;
-	case 1:
-		if (mEventArg1 != 0) {
-			ShowScrapCounter(&gGame.mInfoScrn);
-		} else {
-			HideScrapCounter(&gGame.mInfoScrn);
-		}
-		mEventCommand = 0;
-		break;
-	case 2:
-		if (mEventArg1 != 0) {
-			ShowHappyPointCounter(&gGame.mInfoScrn);
-			ShowMoolahCounter(&gGame.mInfoScrn);
-			ShowScrapCounter(&gGame.mInfoScrn);
-		} else {
-			HideHappyPointCounter(&gGame.mInfoScrn);
-			HideMoolahCounter(&gGame.mInfoScrn);
-			HideScrapCounter(&gGame.mInfoScrn);
-		}
-		mEventCommand = 0;
 		break;
 	}
 }
@@ -1444,73 +941,58 @@ void XObjActor3::Kind10(u32 frames)
  * @note Size: 0x2D0
  */
 // whether the robot stands where the actor can reach it
-extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
+extern "C" bool IsPlayerWithinActorReach(XObjActor3* actor)
 {
 	XObjChr* player = gGame.GetPlayer();
 	Vec pos         = player->mMoveTranslate;
 	if (!(actor->mActorFlags.mFlags & 4)) {
-		if (IsPlayerAway(player, pos)) {
-			return FALSE;
+		if (IsPlayerAway(gGame.GetPlayer())) {
+			return false;
 		}
 		if (pos.y >= actor->mMoveTranslate.y - 16.0f && pos.y <= actor->mMoveTranslate.y + 16.0f) {
 			if (actor->mHeading == HALF_PI) {
 				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
-					return TRUE;
+					return true;
 				}
 				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mMoveTranslate.x - 32.0f) {
-							return TRUE;
+							return true;
 						}
 					} else {
 						if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mMoveTranslate.x - 12.0f) {
-							return TRUE;
+							return true;
 						}
 					}
 				}
 			} else {
 				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
-					return TRUE;
+					return true;
 				}
 				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mMoveTranslate.x + 32.0f) {
-							return TRUE;
+							return true;
 						}
 					} else {
 						if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mMoveTranslate.x + 12.0f) {
-							return TRUE;
+							return true;
 						}
 					}
 				}
 			}
 		}
 	}
-	return FALSE;
+	return false;
 }
 
-static inline void AdvanceActorAlongHeading(XObjActor3* actor, u32 frames, const f32& speed)
-{
-	CVec velocity;
-	velocity.x              = speed * (f32)sin(actor->mHeading);
-	velocity.z              = speed * (f32)cos(actor->mHeading);
-	velocity.y              = 0;
-	const CVec& pos         = actor->mMoveTranslate + velocity * (f32)frames;
-	actor->mMoveTranslate.x = pos.x;
-	actor->mMoveTranslate.y = pos.y;
-	actor->mMoveTranslate.z = pos.z;
-	actor->mMoveTranslate.SetTarget(pos);
-	actor->SetPos(actor->mMoveTranslate, 0);
-}
-
-// Each impact has its own entry in the original action table.
-static inline void BounceBossPart(XObjActor3* part, f32 speed)
-{
-	part->mKindTimer = speed;
-	++part->mFrameCount;
-}
-
+/**
+ * @note Address: 0x8010FF94
+ * @note Size: 0x1398
+ */
 // the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
+// the boss's rotation is read with its position but nothing uses it; its zero initializer still takes its place in .rodata
+// NONMATCHING: only the .rodata offsets differ, the unit's constants and strings are laid out differently from retail
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1519,14 +1001,11 @@ void XObjActor3::Kind11(u32 frames)
 		if (mActorFlags.mFlags & 4)
 			break;
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
 			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
 			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		switch (GetKind()) {
 		case 0x3cd:
@@ -1577,7 +1056,7 @@ void XObjActor3::Kind11(u32 frames)
 		default:
 			mOrbitDistance = 32;
 			mOrbitAngle    = DEG2RAD * (rand() % 360);
-			mOrbitHeight   = (48.f - (rand() % 1800) / 100) * .5f;
+			mOrbitHeight   = (48.f - (rand() % 1800) / 100) / 2;
 			break;
 		}
 		mOrbitX  = mOrbitDistance * (f32)sin(mOrbitAngle);
@@ -1590,8 +1069,9 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	}
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			f32 x = mOrbitX, y = mOrbitHeight, z = mOrbitZ;
 			SetScale(1, 1, 1, 0);
 			CJObj joint;
 			s32 path[] = { 0 };
@@ -1605,7 +1085,7 @@ void XObjActor3::Kind11(u32 frames)
 			scale.z = GetStagePlacementScale(this).z / scale.z;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mount, scaleMtx, result);
-			PSMTXTrans(translation, mOrbitX, mOrbitHeight, mOrbitZ);
+			PSMTXTrans(translation, x, y, z);
 			PSMTXConcat(result, translation, result);
 			HSD_JObj* jobj = mJObj;
 			MtxPtr matrix  = result;
@@ -1621,6 +1101,7 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 2: { // launched: falls along its heading and bounces, it stays down at the tenth landing
 		SetColor(1, 0, 0, 0, 0);
+		CVec velocity;
 		mKindTimer -= .09f * frames;
 		mMoveTranslate.y += mKindTimer;
 		f32 floor = 0;
@@ -1640,11 +1121,10 @@ void XObjActor3::Kind11(u32 frames)
 				mKindTimer = 8;
 				PlayGameSound(&gGame.mSound, 0x160020, 255);
 				Vec p;
-				p.x       = mMoveTranslate.x;
-				p.y       = mMoveTranslate.y - floor;
-				p.z       = mMoveTranslate.z;
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb5, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
+				p.x      = mMoveTranslate.x;
+				p.y      = mMoveTranslate.y - floor;
+				p.z      = mMoveTranslate.z;
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb5, 1, p, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 				break;
 			}
 			case 1:
@@ -1685,7 +1165,15 @@ void XObjActor3::Kind11(u32 frames)
 			mKindTimer -= .36f * frames;
 		else
 			mKindTimer = -3.4499998f;
-		AdvanceActorAlongHeading(this, frames, .6f);
+		velocity.x = .6f * (f32)sin(mHeading);
+		velocity.z = .6f * (f32)cos(mHeading);
+		velocity.y = 0;
+		{
+			const CVec next = mMoveTranslate + velocity * (f32)frames;
+			mMoveTranslate.Set(next);
+			mMoveTranslate.SetTarget(next);
+		}
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 3:
@@ -1701,37 +1189,40 @@ void XObjActor3::Kind11(u32 frames)
 		}
 		break;
 	case 5: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		CVec velocity;
 		Vec origin           = { 0, 0, 0 };
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
 			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
 			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
 			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 		}
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
 			mKindStep = 6;
-		AdvanceActorAlongHeading(this, frames, .6f);
+		velocity.x = .6f * (f32)sin(mHeading);
+		velocity.z = .6f * (f32)cos(mHeading);
+		velocity.y = 0;
+		{
+			const CVec next = mMoveTranslate + velocity * (f32)frames;
+			mMoveTranslate.Set(next);
+			mMoveTranslate.SetTarget(next);
+		}
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 6: {
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
 			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
 			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		mOrbitAngle  = DEG2RAD * (rand() % 360);
 		mOrbitX      = 32 * (f32)sin(mOrbitAngle);
-		mOrbitHeight = (48.f - (rand() % 1800) / 100) * .5f;
+		mOrbitHeight = (48.f - (rand() % 1800) / 100) / 2;
 		mOrbitZ      = 32 * (f32)cos(mOrbitAngle);
 		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
@@ -1779,18 +1270,18 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
  * @note Size: 0xC8
  */
 // starts the n-th kind 0xB actor
-// NONMATCHING: register allocation
+// NONMATCHING: register allocation (retail loads the stride into r11 before the zero offset in r8, US 0x8010FDC0);
+// a Get(i) loop and reading the pool through gGame at each use both score lower; `i * pool.mStride` is not strength-reduced
+// (mullw, 91.1), a `s32 stride` local puts the loads in retail's order but the offset's li first (94.7)
 extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 {
-	u8* data;
 	XObjActor3* obj;
-	s32 size;
-	s32 count = 0;
+	s32 offset;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
+	s32 count      = 0;
 	s32 i;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
-	for (i = 0; i < 48; i++) {
-		obj = (XObjActor3*)(data + i * size);
+	for (i = 0, offset = 0; i < 48; ++i, offset += pool.mStride) {
+		obj = (XObjActor3*)(pool.mObjects + offset);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xB) {
 			if (count == n && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				LaunchSpiderBossPart(obj);
@@ -1802,9 +1293,38 @@ extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 }
 
 /**
+ * @note Address: 0x8010FB1C
+ * @note Size: 0x284
+ */
+// jumps the actor onto its holder, at its angle and distance around it
+extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
+{
+	XObj* holder = gGame.mXObjs.mPools[19].Get(0);
+	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->mKindStep == 1) {
+		f32 s             = sin(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
+		f32 x             = actor->mOrbitDistance * s;
+		f32 y             = actor->mOrbitHeight;
+		f32 c             = cos(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
+		f32 z             = actor->mOrbitDistance * c;
+		actor->mKindStep  = 2;
+		actor->mKindTimer = 6.0f;
+		HSD_JObj* jobj    = actor->mJObj;
+		HSD_JObjClearMtxFlags(jobj);
+		actor->mMoveTranslate.x = x + HSD_JObjGetTranslationX(holder->mJObj);
+		actor->mMoveTranslate.y = y + 8.0f + 10.0f;
+		actor->mMoveTranslate.z = z + HSD_JObjGetTranslationZ(holder->mJObj);
+		actor->SetPos(actor->mMoveTranslate, 0);
+		actor->mHeading = (f32)atan2(holder->mMoveTranslate.x - actor->mMoveTranslate.x, holder->mMoveTranslate.z - actor->mMoveTranslate.z)
+		                + PI; // facing away from the holder
+		PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
+	}
+}
+
+/**
  * @note Address: 0x8010F318
  * @note Size: 0x804
  */
+// NONMATCHING: retail keeps the joint reads in other saved registers and saves r24 too
 void XObjActor3::Kind12(u32 frames)
 {
 	switch (mKindStep) {
@@ -1820,7 +1340,7 @@ void XObjActor3::Kind12(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f, 0);
@@ -1878,34 +1398,6 @@ void XObjActor3::Kind12(u32 frames)
 }
 
 /**
- * @note Address: 0x8010FB1C
- * @note Size: 0x284
- */
-// jumps the actor onto its holder, at its angle and distance around it
-extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
-{
-	XObj* holder = gGame.mXObjs.mPools[19].Get(0);
-	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->mKindStep == 1) {
-		f32 s             = sin(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
-		f32 x             = actor->mOrbitDistance * s;
-		f32 y             = actor->mOrbitHeight;
-		f32 c             = cos(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
-		f32 z             = actor->mOrbitDistance * c;
-		actor->mKindStep  = 2;
-		actor->mKindTimer = 6.0f;
-		HSD_JObj* jobj    = actor->mJObj;
-		HSD_JObjClearMtxFlags(jobj);
-		actor->mMoveTranslate.x = x + HSD_JObjGetTranslationX(holder->mJObj);
-		actor->mMoveTranslate.y = y + 8.0f + 10.0f;
-		actor->mMoveTranslate.z = z + HSD_JObjGetTranslationZ(holder->mJObj);
-		actor->SetPos(actor->mMoveTranslate, 0);
-		actor->mHeading = (f32)atan2(holder->mMoveTranslate.x - actor->mMoveTranslate.x, holder->mMoveTranslate.z - actor->mMoveTranslate.z)
-		                + PI; // facing away from the holder
-		PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
-	}
-}
-
-/**
  * @note Address: 0x8010F208
  * @note Size: 0x110
  */
@@ -1934,15 +1426,11 @@ extern "C" void EnableSpiderBossCenterPart(void)
  * @note Size: 0x298
  */
 // jumps the first kind 0xC actor onto the holder's middle
-// NONMATCHING: register allocation
+// NONMATCHING: only the constants' and strings' relocations differ, the unit's data is not split out of retail
 extern "C" void LaunchSpiderBossCenterPart(void)
 {
-	u8* data;
-	s32 size;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
 	for (s32 i = 0; i < 48; i++) {
-		XObjActor3* obj = (XObjActor3*)(data + i * size);
+		XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xC && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
 			if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
@@ -1966,71 +1454,13 @@ extern "C" void LaunchSpiderBossCenterPart(void)
 	}
 }
 
-extern "C" bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
-
-static inline XObjSpiderBoss* ProjectileOwner()
-{
-	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
-}
-
-static inline void PlaceBossProjectile(XObjActor3* actor, XObjSpiderBoss* boss, int spread)
-{
-	actor->mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
-	f32 base                = HSD_JObjGetTranslationY(boss->mJObj);
-	actor->mMoveTranslate.y = 16 + base + rand() % spread;
-	if (gSpiderBossVolleySlot == 0)
-		actor->mMoveTranslate.y = HSD_JObjGetTranslationY(boss->mJObj);
-	actor->mMoveTranslate.z = HSD_JObjGetTranslationZ(boss->mJObj);
-	actor->SetPos(actor->mMoveTranslate, 0);
-	actor->mStatus.mFlags |= 0x10000;
-	actor->mStatus.mFlags |= 4;
-}
-
-static inline void AimBossVolley(XObjActor3* actor, const Vec& center, f32 radius)
-{
-	actor->mStatus.mFlags |= 0x10000;
-	actor->mTimerFadeMode = gSpiderBossVolleySlot;
-	if (gSpiderBossVolleySlot == 0) {
-		actor->mOrbitX      = center.x;
-		actor->mOrbitHeight = center.y;
-		actor->mOrbitZ      = center.z;
-	} else {
-		actor->mOrbitX      = center.x + radius * (f32)sin(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
-		actor->mOrbitHeight = center.y;
-		actor->mOrbitZ      = center.z + radius * (f32)cos(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
-	}
-	++gSpiderBossVolleySlot;
-	++actor->mKindStep;
-}
-
-static inline bool BossProjectileLanded(XObjActor3* actor, u32 frames)
-{
-	actor->mKindTimer -= .09f * frames;
-	actor->mMoveTranslate.y += actor->mKindTimer;
-	return actor->mMoveTranslate.y <= -1;
-}
-
-static inline void SteerFallingProjectile(XObjActor3* actor, u32 frames)
-{
-	if (actor->mKindTimer >= -3.4499998f)
-		actor->mKindTimer -= .36f * frames;
-	else
-		actor->mKindTimer = -3.4499998f;
-	actor->mHeading = atan2(actor->mOrbitX - actor->mMoveTranslate.x, actor->mOrbitZ - actor->mMoveTranslate.z);
-	AdvanceActorAlongHeading(actor, frames, actor->mMoveSpeed);
-}
-
-static inline void HideBossProjectile(XObjActor3* actor, bool resetPitch)
-{
-	actor->mStatus.mFlags &= ~0x10000ULL;
-	actor->mStatus.mFlags &= ~4ULL;
-	actor->mActorFlags.mFlags |= 4;
-	actor->SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-	if (resetPitch)
-		actor->mMoveRotate.x = 0;
-	actor->mKindStep = 0;
-}
-
+/**
+ * @note Address: 0x8010D65C
+ * @note Size: 0x1914
+ */
+// NONMATCHING: step 11's effect turns with the heading; retail stores it into the one temporary it passes, a rotation by value
+// needs a second one here (12 bytes more frame), see Kind9. A named `Vec rotation = { 0, mHeading, 0 }` and a file inline
+// returning the Vec (rodata image, y stored) both still copy into the argument slot (0x190 frame)
 void XObjActor3::Kind13(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -2038,13 +1468,13 @@ void XObjActor3::Kind13(u32 frames)
 	switch (mKindStep) {
 	case 0:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed at the robot: the first lands on it, the rest in a ring of 24 round it
 				PlaceBossProjectile(this, boss, 64);
 				mKindTimer = 16;
-				f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
-				mMoveSpeed = .01f * sqrtf(dx * dx + 0.f + dz * dz);
+				f32 dx = pos.x - mMoveTranslate.x, dy = 0, dz = pos.z - mMoveTranslate.z;
+				mMoveSpeed = .01f * sqrtf(dx * dx + dy * dy + dz * dz);
 				if (mMoveSpeed < 1.2f)
 					mMoveSpeed = 1.2f;
 				if (mMoveSpeed > 24)
@@ -2054,8 +1484,10 @@ void XObjActor3::Kind13(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = ProjectileOwner();
-		bool blocked = ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) && IsSpiderBossProjectileHitSuppressed(boss);
+		XObjSpiderBoss* boss = GetSpiderBoss();
+		bool blocked         = false;
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000) && IsSpiderBossProjectileHitSuppressed(boss))
+			blocked = true;
 		f32 dx = pos.x - mMoveTranslate.x, dy = pos.y - mMoveTranslate.y, dz = pos.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)
 		    && !blocked) {
@@ -2063,26 +1495,39 @@ void XObjActor3::Kind13(u32 frames)
 			mRumble     = 1;
 			mFrameCount = 30;
 			gGame.mParticle.Kill((HSD_Generator*)mGens[0]);
-			Vec scale = { 1, 1, 1 };
-			mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
+			mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 2;
 			break;
 		}
+		CVec velocity;
 		if (BossProjectileLanded(this, frames)) {
 			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
 			mFrameCount      = 30;
 			if (mTimerFadeMode == 0) {
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 				PlayGameSound(&gGame.mSound, 0x127, 255);
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 2;
-		} else
-			SteerFallingProjectile(this, frames);
+			break;
+		}
+		if (mKindTimer >= -3.4499998f)
+			mKindTimer -= .36f * frames;
+		else
+			mKindTimer = -3.4499998f;
+		mHeading   = atan2(mOrbitX - mMoveTranslate.x, mOrbitZ - mMoveTranslate.z);
+		velocity.x = mMoveSpeed * (f32)sin(mHeading);
+		velocity.z = mMoveSpeed * (f32)cos(mHeading);
+		velocity.y = 0;
+		{
+			const CVec next = mMoveTranslate + velocity * (f32)frames;
+			mMoveTranslate.Set(next);
+			mMoveTranslate.SetTarget(next);
+		}
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 2:
@@ -2091,7 +1536,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 10: // fired straight at the robot, gone after 120 frames
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
 				mMoveTranslate.y = 10 + HSD_JObjGetTranslationY(boss->mJObj);
@@ -2109,20 +1554,29 @@ void XObjActor3::Kind13(u32 frames)
 		}
 		break;
 	case 11: {
-		f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
-		if (sqrtf(dx * dx + 0.f + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+		f32 dx = pos.x - mMoveTranslate.x, dy = 0, dz = pos.z - mMoveTranslate.z;
+		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			player->OnHitFromPosition(pos, 6);
 			mRumble     = 1;
 			mFrameCount = 30;
-			Vec scale   = { 1, 1, 1 };
-			mGens[0]    = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, scale, (Vec) { 0, mHeading, 0 }, TRUE);
+			mGens[0]    = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, mHeading, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 12;
 		} else if (--mFrameCount < 0)
 			HideBossProjectile(this, true);
-		else
-			AdvanceActorAlongHeading(this, frames, mMoveSpeed);
+		else {
+			CVec velocity;
+			velocity.x = mMoveSpeed * (f32)sin(mHeading);
+			velocity.z = mMoveSpeed * (f32)cos(mHeading);
+			velocity.y = 0;
+			{
+				const CVec next = mMoveTranslate + velocity * (f32)frames;
+				mMoveTranslate.Set(next);
+				mMoveTranslate.SetTarget(next);
+			}
+			SetPos(mMoveTranslate, 0);
+		}
 		break;
 	}
 	case 12:
@@ -2131,33 +1585,50 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 20:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
+			Vec center           = { 0, 0, 0 };
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed round the boss: the first onto its centre, the rest in a ring of 36
 				PlaceBossProjectile(this, boss, 16);
 				mKindTimer = 10;
-				Vec center
-				    = { HSD_JObjGetTranslationX(boss->mJObj), HSD_JObjGetTranslationY(boss->mJObj), HSD_JObjGetTranslationZ(boss->mJObj) };
+				center.x   = HSD_JObjGetTranslationX(boss->mJObj);
+				center.y   = HSD_JObjGetTranslationY(boss->mJObj);
+				center.z   = HSD_JObjGetTranslationZ(boss->mJObj);
 				mMoveSpeed = 2.4f;
 				AimBossVolley(this, center, 36);
 			}
 		}
 		break;
-	case 21:
+	case 21: {
+		CVec velocity;
 		if (BossProjectileLanded(this, frames)) {
 			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
 			mFrameCount      = 30;
 			if (mTimerFadeMode == 0) {
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
-				mRumble   = 1;
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
+				mRumble  = 1;
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 22;
-		} else
-			SteerFallingProjectile(this, frames);
+			break;
+		}
+		if (mKindTimer >= -3.4499998f)
+			mKindTimer -= .36f * frames;
+		else
+			mKindTimer = -3.4499998f;
+		mHeading   = atan2(mOrbitX - mMoveTranslate.x, mOrbitZ - mMoveTranslate.z);
+		velocity.x = mMoveSpeed * (f32)sin(mHeading);
+		velocity.z = mMoveSpeed * (f32)cos(mHeading);
+		velocity.y = 0;
+		{
+			const CVec next = mMoveTranslate + velocity * (f32)frames;
+			mMoveTranslate.Set(next);
+			mMoveTranslate.SetTarget(next);
+		}
+		SetPos(mMoveTranslate, 0);
 		break;
+	}
 	case 22:
 		if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj))
 			HideBossProjectile(this, false);
@@ -2174,8 +1645,10 @@ void XObjActor3::Kind13(u32 frames)
 extern "C" void CommandSpiderBossProjectiles(s32 mode)
 {
 	if (mode == 0) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 0;
@@ -2184,8 +1657,10 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 		}
 	}
 	if (mode == 2) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 20;
@@ -2322,12 +1797,12 @@ void XObjActor3::Kind15(u32 frames)
  * @note Address: 0x8010CDDC
  * @note Size: 0xA4
  */
-// NONMATCHING: regalloc
 extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 {
 	XObjActor3* obj;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
 	for (s32 i = 0; i < 48; i++) {
-		obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+		obj = (XObjActor3*)pool.Get(i);
 		switch (obj->GetKind()) {
 		case 0x43A:
 			if ((obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
@@ -2341,35 +1816,17 @@ extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 	}
 }
 
-static inline void ResetBossAttachment(XObjActor3* obj)
-{
-	obj->mKindStep = 0;
-	obj->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-	obj->mActorFlags.mFlags |= 4;
-	obj->mActorFlags.mFlags |= 0x10;
-	obj->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-	obj->mActorFlags.mFlags &= ~4;
-	obj->mActorFlags.mFlags &= ~0x10;
-	obj->SetScale(0.1f, 0.1f, 0.1f, 0);
-	obj->mKindStep = 0;
-}
-
-template <int depth>
-static inline Vec BossJointPosition(CJObj& joint, XObj* boss, s32 (&path)[depth])
-{
-	joint.Attach(GetJointFromRoot(boss->mJObj, depth, path));
-	return joint.GetPos();
-}
-
 /**
  * @note Address: 0x8010C304
  * @note Size: 0xAD8
  */
+// NONMATCHING: retail keeps the boss in r30 ahead of the joint's three vectors (r29 to r27) and gets by with r24 to r31; here the
+// vectors come first, the boss is in r25 and r23 is saved too
 void XObjActor3::Kind16(u32 frames)
 {
 	CJObj joint;
 	XObj* boss = gGame.mXObjs.mPools[19].First();
-	if (mActorFlags.mFlags & 0x10)
+	if (mActorFlags.Check(0x10))
 		return;
 	switch (mKindStep) {
 	case 0:
@@ -2379,14 +1836,16 @@ void XObjActor3::Kind16(u32 frames)
 		break;
 	case 1: {
 		s32 path[] = { 0, 7 };
-		Vec pos    = BossJointPosition(joint, boss, path);
+		joint.Attach(GetJointFromRoot(boss->mJObj, 2, path));
+		Vec pos = joint.GetPos();
 		mMoveTranslate.Set(pos);
 		mHeading = HSD_JObjGetRotationY(boss->mJObj);
 		break;
 	}
 	case 2: {
-		s32 path[]       = { 0, 2, 0, 1, 1, 0, 0 };
-		Vec pos          = BossJointPosition(joint, boss, path);
+		s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
+		joint.Attach(GetJointFromRoot(boss->mJObj, 7, path));
+		Vec pos          = joint.GetPos();
 		mHeading         = HSD_JObjGetRotationY(boss->mJObj);
 		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
 		mMoveTranslate.y = pos.y;
@@ -2395,7 +1854,8 @@ void XObjActor3::Kind16(u32 frames)
 	}
 	case 4: {
 		s32 path[] = { 0, 7 };
-		Vec pos    = BossJointPosition(joint, boss, path);
+		joint.Attach(GetJointFromRoot(boss->mJObj, 2, path));
+		Vec pos = joint.GetPos();
 		mMoveTranslate.Set(pos);
 		mHeading = HSD_JObjGetRotationY(boss->mJObj);
 		f32 end  = GetAnimEndFrame(mJObj);
@@ -2474,6 +1934,14 @@ extern "C" void ResetSpiderBossAttachment(void)
 }
 
 /**
+ * @note Address: 0x8010BF7C
+ * @note Size: 0x4
+ */
+void XObjActor3::Kind17(u32 frames)
+{
+}
+
+/**
  * @note Address: 0x8010BC0C
  * @note Size: 0x370
  */
@@ -2510,19 +1978,47 @@ void XObjActor3::Kind18(u32 frames)
 }
 
 /**
- * @note Address: 0x8010BF7C
- * @note Size: 0x4
- */
-void XObjActor3::Kind17(u32 frames)
-{
-}
-
-/**
  * @note Address: 0x8010BC08
  * @note Size: 0x4
  */
 void XObjActor3::Kind19(u32 frames)
 {
+}
+
+/**
+ * @note Address: 0x8010B7B4
+ * @note Size: 0x454
+ */
+// carries the robot while it rides the actor, at the actor's first joint
+// NONMATCHING: the robot and the joint's vectors take each other's registers
+extern "C" void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames)
+{
+	CJObj joint;
+	XObjChr* player = gGame.GetPlayer();
+	if ((actor->mActorFlags.mFlags & 0x40) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
+		Mtx scaleMtx;
+		Mtx rotMtx;
+		Mtx transMtx;
+		Mtx mtx;
+		Mtx m;
+		s32 path[2] = { 0, 0 };
+		joint.Attach(GetJointFromRoot(actor->mJObj, 2, path));
+		PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), m);
+		Vec scale;
+		HSD_MtxGetScale(m, &scale);
+		scale.x = GetStagePlacementScale(player).x / scale.x;
+		scale.y = GetStagePlacementScale(player).y / scale.y;
+		scale.z = GetStagePlacementScale(player).z / scale.z;
+		PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+		PSMTXConcat(m, scaleMtx, mtx);
+		PSMTXRotRad(rotMtx, 'y', 0.0f);
+		PSMTXConcat(mtx, rotMtx, mtx);
+		PSMTXTrans(transMtx, 0.0f, 3.7f, 30.0f);
+		PSMTXConcat(mtx, transMtx, mtx);
+		HSD_JObj* jobj = player->mJObj;
+		MtxPtr mp      = mtx;
+		HSD_JObjCopyMtx(jobj, mp);
+	}
 }
 
 /**
@@ -2568,42 +2064,6 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
 		break;
-	}
-}
-
-/**
- * @note Address: 0x8010B7B4
- * @note Size: 0x454
- */
-// carries the robot while it rides the actor, at the actor's first joint
-// NONMATCHING: the robot and the joint's vectors take each other's registers
-extern "C" void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames)
-{
-	CJObj joint;
-	XObjChr* player = gGame.GetPlayer();
-	if ((actor->mActorFlags.mFlags & 0x40) && (player->mPlayerStatus.mFlags & XObjChr::ControlLocked)) {
-		Mtx scaleMtx;
-		Mtx rotMtx;
-		Mtx transMtx;
-		Mtx mtx;
-		Mtx m;
-		s32 path[2] = { 0, 0 };
-		joint.Attach(GetJointFromRoot(actor->mJObj, 2, path));
-		PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), m);
-		Vec scale;
-		HSD_MtxGetScale(m, &scale);
-		scale.x = GetStagePlacementScale(player).x / scale.x;
-		scale.y = GetStagePlacementScale(player).y / scale.y;
-		scale.z = GetStagePlacementScale(player).z / scale.z;
-		PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
-		PSMTXConcat(m, scaleMtx, mtx);
-		PSMTXRotRad(rotMtx, 'y', 0.0f);
-		PSMTXConcat(mtx, rotMtx, mtx);
-		PSMTXTrans(transMtx, 0.0f, 3.7f, 30.0f);
-		PSMTXConcat(mtx, transMtx, mtx);
-		HSD_JObj* jobj = player->mJObj;
-		MtxPtr mp      = mtx;
-		HSD_JObjCopyMtx(jobj, mp);
 	}
 }
 
@@ -2672,7 +2132,6 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
  * @note Size: 0x420
  */
 // the robot gets on the actor at its first joint, or off it
-// NONMATCHING: the robot and the joint's vectors take each other's registers
 extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 {
 	CJObj joint;
@@ -2701,57 +2160,695 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 }
 
 /**
- * @note Address: 0x801151E0
- * @note Size: 0xBC
+ * @note Address: 0x8010AD88
+ * @note Size: 0x1EC
  */
-void XObjActor3::UpdateObjectGauge(u32 frames)
+extern "C" void ResetActor3Fields(XObjActor3* actor)
 {
-	switch (mEventCommand) {
-	case 0:
+	actor->_B70               = 0.0f;
+	actor->mMoveSpeed         = 0.0f;
+	actor->mKindTimer         = 0.0f;
+	actor->mHeading           = 0.0f;
+	actor->mKindStep          = 0;
+	actor->mFrameCount        = 0;
+	actor->mActorFlags.mFlags = 0;
+	actor->mActorFlags.mFlags |= 4;
+	actor->mEventCommand      = 0;
+	actor->mEventArg1         = 0;
+	actor->mEventArg2         = 0;
+	actor->mEventArg3         = 0;
+	actor->mExtraEventArgs[0] = 0;
+	actor->mExtraEventArgs[1] = 0;
+	actor->mExtraEventArgs[2] = 0;
+	actor->mExtraEventArgs[3] = 0;
+	actor->mExtraEventArgs[4] = 0;
+	actor->mExtraEventArgs[5] = 0;
+	actor->mExtraEventArgs[6] = 0;
+	actor->mWindowLeft        = 0.0f;
+	actor->mWindowRight       = 0.0f;
+	actor->mOrbitAngle        = 0.0f;
+	Vec zero                  = { 0.0f, 0.0f, 0.0f };
+	actor->mOrbitX            = zero.x;
+	actor->mOrbitHeight       = zero.y;
+	actor->mOrbitZ            = zero.z;
+	for (int i = 0; i < 8; i++) {
+		actor->mParts[i].Clear();
+	}
+	if (actor->mPoolIndex == 0) {
+		gSpiderBossVolleySlot          = 0;
+		gActor3Kind15ActivationCounter = 0;
+	}
+	actor->SetColor(1, 0, 0, 0, 0.0f);
+	actor->_BDC.x             = 0.0f;
+	actor->_BDC.y             = 0.0f;
+	actor->_BDC.z             = 0.0f;
+	actor->mTimerFadeMode     = 0;
+	actor->mTimerPanelAlpha   = 0.0f;
+	actor->mCountdownFrames   = 0.0f;
+	actor->mCountdownRunning  = 0;
+	actor->mCounterFadeMode   = 0;
+	actor->mCounterPanelAlpha = 0.0f;
+	actor->mSpiderCount       = 0;
+	actor->_C08               = 0;
+	if (actor->GetKind() == 0x31B) {
+		InitParticlePool(&actor->mDust.mPtcl, actor->mDust.mPtcls, 0x50, 0x32);
+		actor->mAnimSfx.mEvents = gHaisuiNezumiAnimSfxEvents;
+	}
+	actor->mGens[0]     = 0;
+	actor->mGens[1]     = 0;
+	actor->mGens[2]     = 0;
+	actor->mGens[3]     = 0;
+	actor->mGens[4]     = 0;
+	actor->mGens[5]     = 0;
+	actor->mRumble      = 0;
+	actor->mRumbleTimer = 0;
+	actor->mHeld        = NULL;
+	actor->_1DE4        = 0;
+	actor->mSe          = -1;
+}
+
+/**
+ * @note Address: 0x8010AD54
+ * @note Size: 0x34
+ */
+void XObjActor3::InitializeObject(u32 id)
+{
+	XObj::InitializeObject(id);
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010AD20
+ * @note Size: 0x34
+ */
+void XObjActor3::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010AD00
+ * @note Size: 0x20
+ */
+void XObjActor3::ResetForNewGame()
+{
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010A574
+ * @note Size: 0x78C
+ */
+// NONMATCHING: the executable instructions match; the remaining differences are local literal/template
+// relocations. No symbol or split changes are used to hide them.
+BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
+{
+	if (XObj::LoadFromPlacement(info)) {
+		bool ready = false;
+		mMoveSpeed = 0.0f;
+		mKindTimer = 0.0f;
+
+		mKindStep          = 0;
+		mFrameCount        = 0;
+		mActorFlags.mFlags = 0;
+		mActorFlags.mFlags |= 4;
+		mEventCommand      = 0;
+		mEventArg1         = 0;
+		mEventArg2         = 0;
+		mEventArg3         = 0;
+		mExtraEventArgs[0] = 0;
+		mExtraEventArgs[1] = 0;
+		mExtraEventArgs[2] = 0;
+		mExtraEventArgs[3] = 0;
+		mExtraEventArgs[4] = 0;
+		mExtraEventArgs[5] = 0;
+		mExtraEventArgs[6] = 0;
+		mWindowLeft        = 0.0f;
+		mWindowRight       = 0.0f;
+		mOrbitAngle        = 0.0f;
+		Vec zero           = { 0.0f, 0.0f, 0.0f };
+		mOrbitX            = zero.x;
+		mOrbitHeight       = zero.y;
+		mOrbitZ            = zero.z;
+
+		mMoveTranslate.x = PlacementPosition(mCoord).x;
+		mMoveTranslate.y = PlacementPosition(mCoord).y;
+		mMoveTranslate.z = PlacementPosition(mCoord).z;
+		mMoveRotate.x    = PlacementRotation(mCoord).x;
+		mMoveRotate.y    = PlacementRotation(mCoord).y;
+		mMoveRotate.z    = PlacementRotation(mCoord).z;
+		mHeading         = PlacementRotation(mCoord).y;
+		for (int i = 0; i < 8; ++i)
+			mParts[i].Clear();
+		if (mPoolIndex == 0) {
+			gSpiderBossVolleySlot          = 0;
+			gActor3Kind15ActivationCounter = 0;
+		}
+		switch (GetKind()) {
+		case 0x42B:
+		case 0x149:
+			if (mPanelTpl.ReadEx("tpl/stage02.tpl", 0, 0))
+				ready = true;
+			return ready;
+		case 0x31B: {
+
+			mTex[0] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[122 - StatusTextureOffset], 0);
+			mTex[1] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
+			return TRUE;
+		}
+		default:
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+// defined behind LoadFromPlacement, as retail's .rodata shows: the dust velocity's zero Vec (0x8020B5D8) follows
+// LoadFromPlacement's literals
+/**
+ * @note Address: 0x8010A500
+ * @note Size: 0x74
+ */
+void XObjActor3::Release()
+{
+	switch (GetKind()) {
+	case 0x149:
+	case 0x42B:
+		mPanelTpl.Close();
 		break;
-	case 1:
-		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 1, 1);
-		mEventCommand = 0;
+	}
+	XObj::Release();
+}
+
+/**
+ * @note Address: 0x80109E80
+ * @note Size: 0x680
+ */
+// the per-kind script commands, the kind's own function, the carried objects
+void XObjActor3::UpdateObject(u32 frames)
+{
+	switch (GetItem()) {
+	case 8:
+		mActorFlags.mFlags |= 4; // flag 4 skips the heading/pos write below
 		break;
-	case 2:
-		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 0, 1);
-		mEventCommand = 0;
+	case 9:
+		UpdateAnimationSounds();
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		break;
+	case 10:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 11:
+	case 12:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			if (mEventArg1 != 0) {
+				mActorFlags.mFlags &= ~4;
+			} else {
+				mActorFlags.mFlags |= 4;
+				mKindStep = 0;
+			}
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		case 2:
+			mKindStep     = 2;
+			mKindTimer    = mEventArg2 / 100.0f; // script units are 1/100
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 13:
+		switch (mRumble) {
+		case 0:
+			break;
+		case 1: // start the rumble
+			if (gGame.mStatus.mFlags & 0x800000000ULL) {
+				CPadOne* rumble = &gGame.mPad.mPad[0];
+				if (rumble->mConnected) {
+					HSD_PadRumbleOn(rumble->mPort);
+				}
+				mRumbleTimer = 24 / frames;
+				mRumble++;
+			} else {
+				mRumble = 0;
+			}
+			break;
+		case 2:
+			if (--mRumbleTimer < 0) {
+				CPadOne* rumble = &gGame.mPad.mPad[0];
+				if (rumble->mConnected) {
+					HSD_PadRumbleOffN(rumble->mPort);
+				}
+				if (rumble->mConnected) {
+					HSD_PadRumbleRemove(rumble->mPort);
+				}
+				mRumble = 0;
+			}
+			break;
+		}
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		switch (mEventCommand) {
+		case 1:
+			mActorFlags.mFlags &= ~4;
+			mEventCommand = 0;
+			mEventArg1    = 0;
+			break;
+		}
+		break;
+	case 14:
+		if (gGame.mStatus.mFlags & 0x400) {
+			return;
+		}
+		HandleSpiderCounterCommand(this);
+		break;
+	}
+	if (mActorFlags.mFlags & 0x10) { // flag 0x10 skips the update
+		return;
+	}
+	(this->*gActor3UpdateHandlers[GetItem()])(frames);
+	if (!(mActorFlags.mFlags & 4)) {
+		SetRotateY(mHeading, 0.0f);
+		SetPos(mMoveTranslate, 0);
+	}
+	XObj::UpdateObject(frames);
+	if (GetKind() == 0x31B) { // 0x31B (haisui_nezumi) runs its dust particles
+		UpdateParticlePool(&mDust.mPtcl, frames);
+	}
+	if (GetKind() == 0x2C3) { // carries a rider at a joint
+		CarryRiderAtActorJoint(this, frames);
+	}
+	if (mActorFlags.mFlags & 2) { // flag 2: carried parts follow their joints
+		for (u32 i = 0; i < 8; i++) {
+			if (mParts[i].mJoint != NULL && mParts[i].mObj != NULL) {
+				Mtx t;
+				XObj* obj = mParts[i].mObj;
+				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
+				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
+				Vec scale;
+				HSD_MtxGetScale(mParts[i].mMtx, &scale);
+				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
+				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
+				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
+				Mtx s;
+				PSMTXScale(s, scale.x, scale.y, scale.z);
+				Mtx m;
+				PSMTXConcat(mParts[i].mMtx, s, m);
+				PSMTXConcat(m, t, m);
+				HSD_JObjCopyMtx(mParts[i].mObj->mJObj, m);
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80109E44
+ * @note Size: 0x3C
+ */
+void XObjActor3::DrawObject()
+{
+	if (!(mActorFlags.mFlags & 0x10)) {
+		DrawWithView(NULL);
+	}
+}
+
+/**
+ * @note Address: 0x80109DD8
+ * @note Size: 0x6C
+ */
+// NONMATCHING: retail has a second unreachable NULL branch in the attribute lookup; the clean ternary omits it.
+void XObjActor3::DrawScreenOverlay()
+{
+	switch (GetItem()) {
+	case 14:
+		DrawStage02TimerPanel(this);
+		DrawStage02ActorCounterPanel(this);
 		break;
 	}
 }
 
 /**
- * @note Address: 0x8011529C
+ * @note Address: 0x801095E8
+ * @note Size: 0x7F0
+ */
+// Draw the stage02 countdown above the spider panel.
+// NONMATCHING: the locals and the quad arguments take other registers, and the
+// literal-pool slots differ
+extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
+{
+	f32 alpha = actor->mTimerPanelAlpha;
+	if (alpha <= 0.0f) {
+		return;
+	}
+	if (!IsStage("stage02")) {
+		return;
+	}
+	if (!actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
+	f32 scale = 1.0f;
+#if defined(VERSION_JP)
+	f32 w = scale * GXGetTexObjWidth(&tex);
+#else
+	u16 w = GXGetTexObjWidth(&tex);
+#endif
+	u16 h = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+#if defined(VERSION_JP)
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, scale * h, 0.0f, 0.0f, 0.0f);
+#else
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * w, scale * h, 0.0f, 0.0f, 0.0f);
+#endif
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+#if !defined(VERSION_JP)
+	DrawTimerLabel(scale);
+#endif
+	tex = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
+	f32 x;
+	s32 tw = GXGetTexObjWidth(&tex) / 11;
+	f32 dw = 1.4f * (scale * tw);
+	u16 th = GXGetTexObjHeight(&tex);
+	f32 dh = 1.4f * (scale * th);
+	x      = 110.0f;
+#if !defined(VERSION_JP)
+	x += 11.0f;
+#endif
+	f32 count = TimerFramesToHundredths(actor->mCountdownFrames) / 100.0f;
+	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
+	tex.mMtxDirty = TRUE;
+	u32 c0;
+	u32 c1;
+	s32 i = 0;
+	u32 a = 255.0f * alpha;
+	c0    = a | 0xFFFFFF00;
+	c1    = a | 0x1F33FF00;
+	for (; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mMtxDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+
+	tw = GXGetTexObjWidth(&tex) / 11;
+	dw = 1.4f * (scale * tw);
+	th = GXGetTexObjHeight(&tex);
+	dh = 1.4f * (scale * th);
+	x  = 110.0f;
+#if !defined(VERSION_JP)
+	x += 11.0f;
+#endif
+	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f); // the eleventh glyph
+	tex.mMtxDirty = TRUE;
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	s32 digits = 2; // the glyph slides with the digit count
+	if (count < 10.0f) {
+		digits = 1;
+	}
+	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+	                   0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+
+/**
+ * @note Address: 0x8010904C
+ * @note Size: 0x59C
+ */
+// Draw the stage02 spider count as two digits over the panel.
+// NONMATCHING: the colours, the texture matrix pointer and the loop count take other
+// saved regs. The instruction stream is identical to retail otherwise -- the residual is
+// allocation colouring plus the anonymous .sdata2 pool. Tried: `s32 i` inside the `for`
+// (98.0 on PAL) and the height fetch inlined into TexSize (96.2): both keep the same
+// stream but reseed the allocation and score lower. Retail numbers the width's conversion temps (f0, f1) before the
+// scale literal (f2, 0x801091A8); a u16 width local, TexSize on it or on the call all sink the product (92.9..96.9).
+extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
+{
+	f32 alpha = actor->mCounterPanelAlpha;
+	if (alpha <= 0.0f) {
+		return;
+	}
+	if (!IsStage("stage02")) {
+		return;
+	}
+	if (!actor->mPanelTpl.mBound) {
+		return;
+	}
+	CTexObj tex;
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[9], 0);
+	f32 scale = 1.0f;
+	f32 w     = scale * GXGetTexObjWidth(&tex);
+	u16 h     = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0); // the digit sheet
+	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);                                           // eleven glyphs in a row
+	f32 x;
+	f32 dh    = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	x         = 110.0f - (1 - actor->mSpiderCount / 10) * 12;
+	f32 count = actor->mSpiderCount;
+	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f); // one eleventh of the digit sheet per glyph
+	tex.mMtxDirty = TRUE;
+	s32 i         = 0;
+	u32 a         = 255.0f * alpha;
+	u32 c0;
+	u32 c1 = a | 0x1F33FF00; // colored below
+	c0     = a | 0xFFFFFF00; // white above
+	for (; i < 2; i++) {
+		f32 p = 1.0f;
+		if (i > 0) {
+			for (s32 k = 0; k < i; k++) {
+				p *= 10.0f;
+			}
+		}
+		s32 d = count / p;
+		if (i == 0 || d != 0) {
+			d %= 10;
+			PSMTXTrans(tex.mMtx[0], d * 0.09090909f, 0.0f, 0.0f);
+			tex.mMtxDirty = TRUE;
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - i * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
+			                   0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80109008
+ * @note Size: 0x44
+ */
+void XObjActor3::DrawObjectEffects()
+{
+	if (GetKind() == 0x31B) {
+		DrawParticlePool(&mDust.mPtcl);
+	}
+}
+
+/**
+ * @note Address: 0x80109004
  * @note Size: 0x4
  */
-void XObjActor3::Kind0(u32 frames)
+void XObjActor3::DrawDebugStatus()
 {
 }
 
 /**
- * @note Address: 0x801152A0
- * @note Size: 0x298
+ * @note Address: 0x80108794
+ * @note Size: 0x870
  */
-// built at startup, member function pointers can't be plain data
-XObjActor3Func gActor3UpdateHandlers[20] = {
-	&XObjActor3::Kind0,
-	&XObjActor3::UpdateObjectGauge,
-	&XObjActor3::Kind2,
-	&XObjActor3::Kind3,
-	&XObjActor3::Kind4,
-	&XObjActor3::Kind5,
-	&XObjActor3::Kind6,
-	&XObjActor3::Kind7,
-	&XObjActor3::Kind8,
-	&XObjActor3::Kind9,
-	&XObjActor3::Kind10,
-	&XObjActor3::Kind11,
-	&XObjActor3::Kind12,
-	&XObjActor3::Kind13,
-	&XObjActor3::UpdateSpiderCounterPanel,
-	&XObjActor3::Kind15,
-	&XObjActor3::Kind16,
-	&XObjActor3::Kind17,
-	&XObjActor3::Kind18,
-	&XObjActor3::Kind19,
-};
+// the event commands: 100 carries another object at one of its joints, or lets go of all
+// of them, anything else is kept for the kind's function to read
+// NONMATCHING: argv[1] and the second 0x40B item loop's i and pool base take other registers, as in game/xobjspider.
+s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
+{
+	switch (argv[0]) {
+	case 100:
+		if (argv[1] == 0) {
+			mActorFlags.mFlags &= ~2;
+			for (u32 i = 0; i < 8; i++) {
+				if (mParts[i].mObj != NULL) {
+					HSD_JObjClearMtxFlags(mParts[i].mObj->mJObj);
+					mParts[i].mObj   = NULL;
+					mParts[i].mJoint = NULL;
+				}
+			}
+		} else {
+			u32 i;
+			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { } // first free part slot
+			if (i < 8) {
+#if !defined(VERSION_PAL)
+				OSReport("id = %d, argv[1]=%d\n", i, argv[1]);
+#endif
+				mActorFlags.mFlags |= 2;
+				if (argv[1] >= 10000) { // a placement id vs a slot index
+					mParts[i].mObj = FindObj(argv[1]);
+				} else {
+					mParts[i].mObj = gGame.GetObject((s16)argv[1]);
+				}
+#if !defined(VERSION_PAL)
+				if (mParts[i].mObj == NULL) {
+					OSReport("NULL===============\n");
+				}
+#endif
+				s32 path[8];
+				s32 depth = argv[2];
+				for (s32 j = 0; j < depth; j++) {
+					path[j] = argv[3 + j];
+				}
+				mParts[i].mJoint = GetJointByPath(mJObj, path, depth);
+				Mtx t;
+				XObj* obj = mParts[i].mObj;
+				PSMTXTrans(t, obj->mMoveTranslate.x, obj->mMoveTranslate.y, obj->mMoveTranslate.z);
+				PSMTXCopy(HSD_JObjGetMtxPtr(mParts[i].mJoint), mParts[i].mMtx);
+				Vec scale;
+				HSD_MtxGetScale(mParts[i].mMtx, &scale);
+				scale.x = GetStagePlacementScale(mParts[i].mObj).x / scale.x;
+				scale.y = GetStagePlacementScale(mParts[i].mObj).y / scale.y;
+				scale.z = GetStagePlacementScale(mParts[i].mObj).z / scale.z;
+				Mtx s;
+				PSMTXScale(s, scale.x, scale.y, scale.z);
+				Mtx m;
+				PSMTXConcat(mParts[i].mMtx, s, m);
+				PSMTXConcat(m, t, m);
+				HSD_JObjCopyMtx(mParts[i].mObj->mJObj, m);
+			}
+		}
+		break;
+	default:
+		mEventCommand      = argv[0];
+		mEventArg1         = argv[1];
+		mEventArg2         = argv[2];
+		mEventArg3         = argv[3];
+		mExtraEventArgs[0] = argv[4];
+		mExtraEventArgs[1] = argv[5];
+		mExtraEventArgs[2] = argv[6];
+		mExtraEventArgs[3] = argv[7];
+		mExtraEventArgs[4] = argv[8];
+		mExtraEventArgs[5] = argv[9];
+		mExtraEventArgs[6] = 0;
+		switch (GetItem()) {
+		case 9:
+			HandleKind9ActorCommand(this);
+			break;
+		case 0x13:
+			HandleActorRiderCommand(this);
+			break;
+		case 8:
+			switch (mEventCommand) {
+			case 0:
+				break;
+			case 1:
+				HideItems(this);
+				switch (mEventArg1) {
+				case 0x40B:
+					for (s32 i = 0; i < 0x120; i++) {
+						XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+						if (mEventArg1 == obj->GetKind()) {
+							mHeld = obj;
+							obj->mStatus.mFlags |= 0x10000ULL;
+							switch (mEventArg1) {
+							case 0x40B:
+								mActorFlags.mFlags |= 0x100;
+								obj->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+								break;
+							}
+						}
+					}
+					break;
+				default:
+					if (mHeld != NULL) {
+						HSD_JObjClearMtxFlags(mHeld->mJObj);
+						mHeld = NULL;
+					}
+					break;
+				}
+				mEventCommand = 0;
+				break;
+			}
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x80108728
+ * @note Size: 0x6C
+ */
+void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
+{
+	if (GetItem() == 1) { // item 1's hits go to the base class
+		XObj::OnHitFromPosition(position, strength);
+	} else if (!mActorFlags.Check(1)) {
+		mActorFlags.mFlags |= 1;
+	}
+}
+
+/**
+ * @note Address: 0x80108694
+ * @note Size: 0x94
+ */
+void XObjActor3::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
+{
+	XObj::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
+	if (GetKind() == 0x31B) {
+		if (mAnimId == 7) {
+			mSe = PlayGameSound(&gGame.mSound, 0xB0000, 0xFF);
+		} else if (HSD_AudioSFXCheck(mSe)) { // leaving anim 7: key the sound off
+			HSD_AudioSFXKeyOff(mSe);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80108540
+ * @note Size: 0x154
+ */
+
+void XObjActor3::UpdateAnimationSounds()
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000) && mPoolIndex == 3) {
+		UpdateActorAnimationSound(this, mAnimId);
+	}
+}
+
+/**
+ * @note Address: 0x80108424
+ * @note Size: 0x11C
+ */
+XObjActor3::~XObjActor3()
+{
+}
