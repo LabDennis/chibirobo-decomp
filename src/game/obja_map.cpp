@@ -172,3 +172,19 @@ void XObjMap::InitializeObject(u32 id)
 {
 	XObj::InitializeObject(id);
 }
+
+/**
+ * @note Address: 0x80093134
+ * @note Size: 0x94
+ */
+XObjMap::~XObjMap()
+{
+}
+
+/**
+ * @note Address: 0x800931C8
+ * @note Size: 0x48
+ */
+CTrigon::~CTrigon()
+{
+}
