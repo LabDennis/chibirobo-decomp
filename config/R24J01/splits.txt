@@ -1,0 +1,3035 @@
+Sections:
+	.init       type:code align:4
+	extab       type:rodata align:32
+	extabindex  type:rodata align:32
+	.text       type:code align:32
+	.ctors      type:rodata align:32
+	.dtors      type:rodata align:32
+	.rodata     type:rodata align:32
+	.data       type:data align:32
+	.bss        type:bss align:128
+	.sdata      type:data align:32
+	.sbss       type:bss align:32
+	.sdata2     type:rodata align:32
+	.sbss2      type:bss align:32
+
+game/wii/init.cpp:
+	extab start:0x80008E54 end:0x80008FDC
+	extabindex start:0x80011F48 end:0x80011FE4
+	.text start:0x800354DC end:0x800365D8
+	.rodata start:0x802C5398 end:0x802C5728
+	.data start:0x802E6DA8 end:0x802E6DF8
+	.sdata start:0x805A0D48 end:0x805A0D60
+	.sdata2 start:0x805A2B60 end:0x805A2BD8
+
+game/wii/sound.cpp:
+	extab start:0x80008FEC end:0x80009104
+	extabindex start:0x80011FFC end:0x80012188
+	.text start:0x80036694 end:0x8003CEB0
+	.rodata start:0x802C6100 end:0x802C6328
+	.data start:0x802E7170 end:0x802E7A50
+	.sdata start:0x805A0D68 end:0x805A0DA8
+	.sdata2 start:0x805A2BF0 end:0x805A2C78
+
+game/wii/gxb.cpp:
+	.text start:0x8003CEB0 end:0x80044FD8
+	.sdata2 start:0x805A2C78 end:0x805A2DE8
+	.rodata start:0x802C6328 end:0x802C6468
+
+revolution/EXI/EXIBios.c:
+	.text start:0x8017C0A8 end:0x8017D93C
+	.data start:0x8030F2D8 end:0x8030F320
+	.bss start:0x804CC1C8 end:0x804CC288
+	.sdata start:0x805A1398 end:0x805A13A0
+	.sbss start:0x805A1E40 end:0x805A1E44
+
+revolution/EXI/EXIUart.c:
+	.text start:0x8017D93C end:0x8017DC70
+	.sbss start:0x805A1E48 end:0x805A1E58
+
+revolution/EXI/EXICommon.c:
+	.text start:0x8017DC70 end:0x8017DDFC
+	.sdata2 start:0x805A6408 end:0x805A640C
+
+revolution/SI/SIBios.c:
+	.text start:0x8017DDFC end:0x8017F36C
+	.data start:0x8030F320 end:0x8030F390
+	.bss start:0x804CC288 end:0x804CC4A8
+	.sdata start:0x805A13A0 end:0x805A13A4
+	.sbss start:0x805A1E58 end:0x805A1E68
+
+dolphin/si/SISamplingRate.c:
+	.text start:0x8017F36C end:0x8017F44C
+	.data start:0x8030F390 end:0x8030F428
+	.sbss start:0x805A1E68 end:0x805A1E70
+
+revolution/BASE/PPCArch.c:
+	.text start:0x8017F44C end:0x8017F5B0
+	.data start:0x8030F428 end:0x8030F460
+
+revolution/DB/db.c:
+	.text start:0x8017F5B0 end:0x8017F698
+	.data start:0x8030F460 end:0x8030F478
+	.sbss start:0x805A1E70 end:0x805A1E78
+
+revolution/OS/OSAlarm.c:
+	.text start:0x80180BB4 end:0x80181438
+	.data start:0x8030F988 end:0x8030F998
+	.sbss start:0x805A1EC0 end:0x805A1EC8
+
+revolution/OS/OSAlloc.c:
+	.text start:0x80181438 end:0x80181740
+	.sdata start:0x805A13D8 end:0x805A13E0
+	.sbss start:0x805A1EC8 end:0x805A1ED8
+
+revolution/OS/OSCache.c:
+	.text start:0x80181C88 end:0x801822B8
+	.data start:0x8030FA18 end:0x8030FC50
+
+revolution/OS/OSContext.c:
+	.text start:0x801822B8 end:0x80182B40
+	.data start:0x8030FC50 end:0x8030FE30
+
+revolution/OS/OSFatal.c:
+	.text start:0x80184864 end:0x8018549C
+	.bss start:0x804CC5A0 end:0x804CC880
+	.sdata start:0x805A1400 end:0x805A1408
+	.sdata2 start:0x805A6420 end:0x805A6460
+
+revolution/OS/OSFont.c:
+	.text start:0x8018549C end:0x80186764
+	.data start:0x803101C0 end:0x80310CD0
+	.sdata start:0x805A1408 end:0x805A1410
+	.sbss start:0x805A1EF8 end:0x805A1F08
+	.sdata2 start:0x805A6460 end:0x805A6468
+
+revolution/OS/OSInterrupt.c:
+	.text start:0x80186764 end:0x80186EE8
+	.data start:0x80310CD0 end:0x80310D00
+	.sbss start:0x805A1F08 end:0x805A1F1C
+
+revolution/OS/OSLink.c:
+	.text start:0x80186EE8 end:0x801878C4
+	.data start:0x80310D00 end:0x80310D50
+
+revolution/OS/OSRtc.c:
+	.text start:0x80189164 end:0x80189BF0
+	.bss start:0x804CC880 end:0x804CC8D8
+
+revolution/OS/os_syscall_vector.s:
+	.text start:0x80189DBC end:0x80189DDC
+
+revolution/OS/OSSync.c:
+	.text start:0x80189DDC end:0x80189E3C
+
+revolution/OS/OSThread.c:
+	.text start:0x80189E3C end:0x8018B324
+	.bss start:0x804CC8D8 end:0x804CD2D0
+	.sdata start:0x805A1418 end:0x805A1420
+	.sbss start:0x805A1F40 end:0x805A1F50
+
+revolution/MTX/mtx_paired.s:
+	.text start:0x8018E6A0 end:0x8018EAAC
+	.sdata start:0x805A1448 end:0x805A1450
+	.sdata2 start:0x805A6478 end:0x805A6488
+
+revolution/MTX/mtx.c:
+	.text start:0x8018EAAC end:0x8018EB28
+
+revolution/MTX/mtx_paired_rotation.s:
+	.text start:0x8018EB28 end:0x8018EC88
+
+revolution/MTX/mtx_rot_axis.c:
+	.text start:0x8018EC88 end:0x8018ED04
+
+revolution/MTX/mtx_paired_affine.s:
+	.text start:0x8018ED04 end:0x8018EF18
+
+revolution/MTX/mtx_view.c:
+	.text start:0x8018EF18 end:0x8018F2B0
+	.sdata2 start:0x805A6488 end:0x805A6494
+
+revolution/MTX/vec_paired.s:
+	.text start:0x8018FAB8 end:0x8018FBDC
+	.sdata2 start:0x805A64B0 end:0x805A64B8
+
+revolution/MTX/vec.c:
+	.text start:0x8018FBDC end:0x8018FC3C
+
+revolution/MTX/vec_paired_cross.s:
+	.text start:0x8018FC3C end:0x8018FC78
+
+revolution/MTX/vec_reflect.c:
+	.text start:0x8018FC78 end:0x8018FE24
+	.sdata2 start:0x805A64B8 end:0x805A64C0
+
+revolution/MTX/vec_paired_distance.s:
+	.text start:0x8018FE24 end:0x8018FEA0
+
+revolution/DVD/dvdqueue.c:
+	.text start:0x8019568C end:0x801958E4
+	.bss start:0x804D2370 end:0x804D2390
+
+revolution/PAD/Pad.c:
+	.text start:0x8019D69C end:0x8019EEE4
+	.data start:0x8031FC28 end:0x8031FC80
+	.bss start:0x804D2970 end:0x804D29F0
+	.sdata start:0x805A14D0 end:0x805A14F0
+	.sbss start:0x805A21B0 end:0x805A21E0
+
+revolution/AI/ai.c:
+	.text start:0x8019EEE4 end:0x8019F470
+	.data start:0x8031FC80 end:0x8031FCC8
+	.sdata start:0x805A14F0 end:0x805A14F8
+	.sbss start:0x805A21E0 end:0x805A2220
+
+revolution/DSP/dsp.c:
+	.text start:0x801A4920 end:0x801A4B9C
+	.data start:0x803230C0 end:0x80323140
+	.sdata start:0x805A1510 end:0x805A1518
+	.sbss start:0x805A2360 end:0x805A2368
+
+revolution/DSP/dsp_debug.c:
+	.text start:0x801A4B9C end:0x801A4BEC
+
+revolution/DSP/dsp_task.c:
+	.text start:0x801A4BEC end:0x801A5480
+	.data start:0x80323140 end:0x80323280
+	.sbss start:0x805A2368 end:0x805A2380
+
+revolution/ARC/arc.c:
+	.text start:0x801FEAB4 end:0x801FF434
+	.data start:0x8032DA30 end:0x8032DAA0
+	.sdata start:0x805A1870 end:0x805A1878
+
+game/THPDraw.cpp:
+	.text start:0x802C3D80 end:0x802C456C
+	.sdata2 start:0x805A7B90 end:0x805A7BAC
+
+game/THPSimple.cpp:
+	.text start:0x802C269C end:0x802C3D80
+	.rodata start:0x802E5E28 end:0x802E5E2C
+	.data start:0x80356690 end:0x80356790
+	.bss start:0x805A0300 end:0x805A08E0
+	.sdata start:0x805A1B28 end:0x805A1B2C
+	.sbss start:0x805A28C8 end:0x805A28F4
+	.sdata2 start:0x805A7B80 end:0x805A7B90
+
+game/cmovie.cpp:
+	extab start:0x80011140 end:0x80011178
+	extabindex start:0x80017A38 end:0x80017A8C
+	.text start:0x802C2278 end:0x802C269C
+	.rodata start:0x802E5E20 end:0x802E5E28
+	.sdata2 start:0x805A7B78 end:0x805A7B80
+
+game/wii/cprimitive.cpp:
+	.text start:0x802AF8B8 end:0x802B193C
+	.sdata2 start:0x805A7990 end:0x805A79B0
+	.rodata start:0x802E5278 end:0x802E53D0
+
+game/wii/stage_data.cpp:
+	extab start:0x8000A210 end:0x8000A278
+	extabindex start:0x80012F68 end:0x80013004
+	.text start:0x80092308 end:0x8009453C
+	.ctors start:0x802C4598 end:0x802C459C
+	.rodata start:0x802C6D20 end:0x802D8418
+	.data start:0x802E9F38 end:0x802FF340
+	.bss start:0x8044C198 end:0x8044C5A8
+	.sdata start:0x805A0ED0 end:0x805A0F00
+	.sbss start:0x805A1C20 end:0x805A1C28
+	.sdata2 start:0x805A34B0 end:0x805A4180
+
+game/wii/cpadact.cpp:
+	extab start:0x8000A600 end:0x8000A610
+	extabindex start:0x8001334C end:0x80013364
+	.text start:0x800A8164 end:0x800A92CC
+	.sbss start:0x805A1C28 end:0x805A1C2C
+	.sdata2 start:0x805A4430 end:0x805A4468
+
+game/wii/ccamera.cpp:
+	.text start:0x800A92CC end:0x800A9320
+	.ctors start:0x802C45A0 end:0x802C45A4
+	.bss start:0x80453600 end:0x80453938
+
+game/wii/savemanager.cpp:
+	extab start:0x8000A610 end:0x8000A6D0
+	extabindex start:0x80013364 end:0x80013454
+	.text start:0x800A9320 end:0x800AAD1C
+	.ctors start:0x802C45A4 end:0x802C45A8
+	.sdata2 start:0x805A4468 end:0x805A4470
+	.rodata start:0x802D9294 end:0x802D92A0
+
+game/wii/title.cpp:
+	extab start:0x80009364 end:0x800095CC
+	extabindex start:0x800124D0 end:0x80012650
+	.text start:0x80044FD8 end:0x8004F8F8
+	.ctors start:0x802C458C end:0x802C4590
+	.rodata start:0x802C6468 end:0x802C65F8
+	.sdata2 start:0x805A2DE8 end:0x805A2F70
+
+game/wii/menu.cpp:
+	extab start:0x800095CC end:0x8000A0A8
+	extabindex start:0x80012650 end:0x80012E3C
+	.text start:0x8004F8F8 end:0x800870E8
+	.sdata2 start:0x805A2F70 end:0x805A3350
+	.rodata start:0x802C6620 end:0x802C6AB8
+
+game/wii/infoscrn.cpp:
+	.text start:0x800870E8 end:0x80092308
+	.ctors start:0x802C4594 end:0x802C4598
+	.rodata start:0x802C6AB8 end:0x802C6CFC
+	.sdata start:0x805A0EA8 end:0x805A0EC4
+	.sdata2 start:0x805A3350 end:0x805A34A8
+	.bss start:0x8044B7A8 end:0x8044C170
+
+game/wii/homemenu.cpp:
+	extab start:0x8000A6D0 end:0x8000A708
+	extabindex start:0x80013454 end:0x80013490
+	.text start:0x800AAD1C end:0x800AC07C
+	.rodata start:0x802D9360 end:0x802D9460
+	.bss start:0x804569C0 end:0x80456A50
+	.sdata start:0x805A0F50 end:0x805A0F80
+	.sbss start:0x805A1C38 end:0x805A1C40
+	.sdata2 start:0x805A4470 end:0x805A44D0
+
+game/wii/obja.cpp:
+	.text start:0x800AC07C end:0x800B1558
+
+game/wii/evt.cpp:
+	.text start:0x8009453C end:0x800A1938
+	.sdata2 start:0x805A42E8 end:0x805A4350
+	.rodata start:0x802D8418 end:0x802D9158
+
+game/wii/xobj_camera.cpp:
+	extab start:0x8000B89C end:0x8000B954
+	extabindex start:0x80013EF8 end:0x80013FA0
+	.text start:0x800C659C end:0x800C7DC0
+	.sdata2 start:0x805A4E40 end:0x805A4E88
+	.rodata start:0x802DA330 end:0x802DA398
+
+game/wii/xobj_map.cpp:
+	extab start:0x8000B954 end:0x8000BAC0
+	extabindex start:0x80013FA0 end:0x80014090
+	.text start:0x800C7DC0 end:0x800C9E84
+	.sdata2 start:0x805A4E88 end:0x805A4EA8
+	.rodata start:0x802DA3A8 end:0x802DA548
+
+game/wii/xobj_chr.cpp:
+	.text start:0x800C9E84 end:0x800E9D30
+
+game/ringmenupointer.cpp:
+	extab start:0x8000C4EC end:0x8000C4F4
+	extabindex start:0x80014534 end:0x80014540
+	.text start:0x800E9D30 end:0x800E9FC4
+
+game/wii/ringmenu.cpp:
+	extab start:0x8000C4F4 end:0x8000C584
+	extabindex start:0x80014540 end:0x80014570
+	.text start:0x800E9FC4 end:0x800ED3B8
+
+game/wii/atcmenuselection.cpp:
+	.text start:0x800ED3B8 end:0x800ED45C
+
+game/wii/xobjchrmenu.cpp:
+	.text start:0x800ED45C end:0x800F0100
+
+game/wii/efftrail.cpp:
+	.text start:0x800F0100 end:0x800F48E0
+
+game/wii/cfile.cpp:
+	extab start:0x80010920 end:0x800109A0
+	extabindex start:0x800171F8 end:0x800172B8
+	.text start:0x802B438C end:0x802B4DAC
+	.rodata start:0x802E54E0 end:0x802E55C8
+	.data start:0x80355D60 end:0x80355E10
+	.sdata start:0x805A1A40 end:0x805A1A50
+	.sbss start:0x805A28A0 end:0x805A28A8
+	.sdata2 start:0x805A7A48 end:0x805A7A50
+
+game/wii/ctpl.cpp:
+	extab start:0x800109A0 end:0x80010AA0
+	extabindex start:0x800172B8 end:0x80017420
+	.text start:0x802B4DAC end:0x802B6094
+	.ctors start:0x802C465C end:0x802C4660
+	.rodata start:0x802E55C8 end:0x802E56C0
+	.data start:0x80355E10 end:0x80355EA0
+	.sdata start:0x805A1A50 end:0x805A1A58
+	.bss start:0x8059FF70 end:0x805A02B8
+	.sbss start:0x805A28A8 end:0x805A28B0
+	.sdata2 start:0x805A7A50 end:0x805A7A78
+
+game/wii/cresfile.cpp:
+	extab start:0x80010AA0 end:0x80010AD8
+	extabindex start:0x80017420 end:0x80017474
+	.text start:0x802B6094 end:0x802B6560
+	.rodata start:0x802E56C0 end:0x802E56D8
+
+game/wii/msg.cpp:
+	.text start:0x800A1938 end:0x800A8164
+	.sdata2 start:0x805A4350 end:0x805A4430
+	.rodata start:0x802D9158 end:0x802D9288
+
+rel/module.c:
+	.text start:0x8016AD78 end:0x8016AF80
+	.rodata start:0x802DDCA0 end:0x802DDD10
+
+rel/fafa.cpp:
+	.text start:0x8016AF80 end:0x8016B078
+
+rel/ana.cpp:
+	.text start:0x8016B078 end:0x8016C39C
+	.ctors start:0x802C45D0 end:0x802C45D4
+	.bss start:0x80485B48 end:0x804C2468
+
+rel/trash.cpp:
+	.text start:0x8016C39C end:0x8016D0CC
+	.ctors start:0x802C45D4 end:0x802C45D8
+	.bss start:0x804C2478 end:0x804C8530
+
+rel/stage01/hamburg.cpp:
+	.text start:0x8016D0CC end:0x80171498
+	.ctors start:0x802C45D8 end:0x802C45DC
+	.data start:0x8030E6D4 end:0x8030E704
+	.bss start:0x804C8548 end:0x804C8888
+	.sdata2 start:0x805A6140 end:0x805A6198
+
+rel/stage02/fighter.cpp:
+	.text start:0x80171498 end:0x8017624C
+	.sdata2 start:0x805A6198 end:0x805A6290
+	.rodata start:0x802DDD30 end:0x802DDD38
+
+rel/stage02/car.cpp:
+	.text start:0x8017624C end:0x80177238
+	.sdata2 start:0x805A6290 end:0x805A62E0
+
+rel/stage01/hamburgcmd.cpp:
+	.text start:0x80177238 end:0x80177A84
+	.sdata2 start:0x805A62E0 end:0x805A6310
+
+rel/stage02/rouka.cpp:
+	.text start:0x80177A84 end:0x80178580
+	.sdata2 start:0x805A6310 end:0x805A6320
+
+rel/stage03/decapanel.cpp:
+	.text start:0x80178580 end:0x80179B1C
+	.ctors start:0x802C45E4 end:0x802C45E8
+	.bss start:0x804CA258 end:0x804CB308
+	.sdata2 start:0x805A6320 end:0x805A6368
+	.rodata start:0x802DDD78 end:0x802DDEA8
+
+rel/stage20/stage20.cpp:
+	.text start:0x8017B184 end:0x8017B268
+	.sbss start:0x805A1E20 end:0x805A1E24
+	.sdata2 start:0x805A63E8 end:0x805A63F8
+
+rel/stage16/ufo.cpp:
+	.text start:0x8017AF18 end:0x8017B044
+	.sbss start:0x805A1E18 end:0x805A1E1C
+	.sdata2 start:0x805A63C0 end:0x805A63C8
+
+rel/stage11/haisui.cpp:
+	.text start:0x8017AE54 end:0x8017AF18
+	.sdata2 start:0x805A63B0 end:0x805A63C0
+
+rel/stage17/stage17.cpp:
+	.text start:0x8017B044 end:0x8017B108
+	.sdata2 start:0x805A63C8 end:0x805A63D8
+
+rel/stage18/kako.cpp:
+	.text start:0x8017B108 end:0x8017B184
+	.sdata2 start:0x805A63D8 end:0x805A63E8
+
+rel/stage08/stage08.cpp:
+	.text start:0x8017A16C end:0x8017A174
+
+rel/stage09/ambient.cpp:
+	.text start:0x8017A174 end:0x8017AE54
+	.ctors start:0x802C45E8 end:0x802C45EC
+	.rodata start:0x802DDEA8 end:0x802DDEF8
+	.data start:0x8030EEB8 end:0x8030F1D0
+	.bss start:0x804CB370 end:0x804CB3F8
+	.sdata2 start:0x805A6390 end:0x805A63B0
+
+rel/stage04/jenny.cpp:
+	.text start:0x80179B1C end:0x80179BCC
+
+rel/stage06/parent.cpp:
+	.text start:0x80179BCC end:0x80179E5C
+	.bss start:0x804CB308 end:0x804CB32C
+	.bss start:0x804CB32C end:0x804CB350
+	.sdata2 start:0x805A6368 end:0x805A6388
+
+rel/stage07/living.cpp:
+	.text start:0x80179E5C end:0x8017A16C
+	.sdata2 start:0x805A6388 end:0x805A6390
+
+revolution/MEM/mem_heapCommon.c:
+	.text start:0x801AE7A8 end:0x801AEC14
+	.bss start:0x804E8C70 end:0x804E8C98
+	.sbss start:0x805A23E0 end:0x805A23E4
+
+revolution/MEM/mem_expHeap.c:
+	.text start:0x801AEC14 end:0x801AF448
+
+revolution/MEM/mem_frameHeap.c:
+	.text start:0x801AF448 end:0x801AF844
+
+revolution/MEM/mem_allocator.c:
+	.text start:0x801AF844 end:0x801AF898
+	.sdata2 start:0x805A66C0 end:0x805A66C8
+
+revolution/MEM/mem_list.c:
+	.text start:0x801AF898 end:0x801AF9AC
+
+revolution/OS/OSArena.c:
+	.text start:0x80181740 end:0x801817D4
+	.sdata start:0x805A13E0 end:0x805A13E8
+	.sbss start:0x805A1ED8 end:0x805A1EE0
+
+dolphin/os/OSMessage.c:
+	.text start:0x801878C4 end:0x80187B98
+
+revolution/OS/OSMutex.c:
+	.text start:0x801882D0 end:0x801885D4
+
+dolphin/os/OSStopwatch.c:
+	.text start:0x80189BF0 end:0x80189DBC
+
+revolution/OS/os_timebase.s:
+	.text start:0x8018B324 end:0x8018B344
+
+revolution/OS/OSTime.c:
+	.text start:0x8018B344 end:0x8018B738
+	.data start:0x80310FE8 end:0x80311048
+
+revolution/OS/OSStateFlags.c:
+	.text start:0x8018C708 end:0x8018C914
+	.data start:0x8031CF98 end:0x8031CFC0
+	.bss start:0x804CD5A0 end:0x804CD5C0
+
+dolphin/mtx/mtxvec.c:
+	.text start:0x8018F2B0 end:0x8018F3E4
+
+revolution/MTX/mtx44.c:
+	.text start:0x8018F3E4 end:0x8018FA40
+	.sdata2 start:0x805A6498 end:0x805A64B0
+
+revolution/AX/AX.c:
+	.text start:0x8019F470 end:0x8019F514
+	.data start:0x8031FCC8 end:0x8031FD10
+	.sdata start:0x805A14F8 end:0x805A1500
+	.sbss start:0x805A2220 end:0x805A2228
+
+revolution/AX/AXAux.c:
+	.text start:0x8019FA7C end:0x801A02A8
+	.bss start:0x804D2B20 end:0x804D5CA0
+	.sbss start:0x805A2230 end:0x805A2278
+
+revolution/AX/AXCL.c:
+	.text start:0x801A02A8 end:0x801A0D50
+	.bss start:0x804D5CA0 end:0x804D5DA0
+	.sbss start:0x805A2278 end:0x805A22A0
+
+revolution/AX/AXComp.c:
+	.data start:0x8031FDA0 end:0x80320D60
+
+revolution/AX/AXAlloc.c:
+	.text start:0x8019F514 end:0x8019FA7C
+	.bss start:0x804D2A20 end:0x804D2B20
+	.sbss start:0x805A2228 end:0x805A2230
+
+revolution/AX/AXOut.c:
+	.text start:0x801A0D50 end:0x801A15B0
+	.bss start:0x804D5DA0 end:0x804D6BA0
+	.sbss start:0x805A22A0 end:0x805A22E0
+
+revolution/AX/AXProf.c:
+	.text start:0x801A2780 end:0x801A27C0
+	.sbss start:0x805A2350 end:0x805A2360
+
+revolution/AX/AXVPB.c:
+	.text start:0x801A19D4 end:0x801A2780
+	.bss start:0x804D6C20 end:0x804E8320
+	.sbss start:0x805A2330 end:0x805A2350
+	.data start:0x8031FD10 end:0x8031FDA0
+	.sdata2 start:0x805A64D8 end:0x805A64F8
+
+revolution/AX/AXSPB.c:
+	.text start:0x801A15B0 end:0x801A19D4
+	.bss start:0x804D6BA0 end:0x804D6C20
+	.sbss start:0x805A22E0 end:0x805A2330
+
+revolution/AXFX/AXFXReverbHi.c:
+	.text start:0x801A27C0 end:0x801A284C
+	.sdata2 start:0x805A64F8 end:0x805A6500
+
+revolution/AXFX/AXFXReverbHiExp.c:
+	.text start:0x801A284C end:0x801A3834
+	.data start:0x80322D60 end:0x80322F00
+	.sdata2 start:0x805A6500 end:0x805A6540
+
+revolution/AXFX/AXFXReverbHiExpDpl2.c:
+	.text start:0x801A3834 end:0x801A48E8
+	.data start:0x80322F00 end:0x803230C0
+	.sdata2 start:0x805A6540 end:0x805A6580
+
+revolution/AXFX/AXFXHooks.c:
+	.text start:0x801A48E8 end:0x801A4920
+	.sdata start:0x805A1508 end:0x805A1510
+
+revolution/WENC/wenc.c:
+	.text start:0x80202D64 end:0x8020303C
+	.rodata start:0x802DE670 end:0x802DE6B0
+	.sdata2 start:0x805A6828 end:0x805A6830
+
+revolution/WPAD/WPAD.c:
+	.text start:0x801E71D8 end:0x801EE900
+	.rodata start:0x802DE588 end:0x802DE5C8
+	.data start:0x8032A8B8 end:0x8032AC78
+	.bss start:0x80525F60 end:0x805296C0
+	.sdata start:0x805A17A8 end:0x805A17D8
+	.sbss start:0x805A24B8 end:0x805A2510
+	.sdata2 start:0x805A6720 end:0x805A6728
+
+revolution/WPAD/WPADHIDParser.c:
+	.text start:0x801EE900 end:0x801F2B70
+	.rodata start:0x802DE5C8 end:0x802DE5E0
+	.data start:0x8032AC78 end:0x8032B230
+	.bss start:0x805296C0 end:0x80529728
+	.sbss start:0x805A2510 end:0x805A2528
+	.sdata2 start:0x805A6728 end:0x805A6788
+
+revolution/WPAD/WPADEncrypt.c:
+	.text start:0x801F2B70 end:0x801F3C18
+	.data start:0x8032B230 end:0x8032C558
+	.sbss start:0x805A2528 end:0x805A2530
+
+revolution/WPAD/WPADMem.c:
+	.text start:0x801F3C18 end:0x801F3D10
+
+revolution/WPAD/debug_msg.c:
+	.text start:0x801F3D10 end:0x801F3D60
+
+revolution/EUART/euart.c:
+	.text start:0x801AF9AC end:0x801AFD1C
+	.sbss start:0x805A23E8 end:0x805A23F8
+
+revolution/FS/fs.c:
+	.text start:0x801AFD1C end:0x801B1220
+	.data start:0x803243E8 end:0x80324410
+	.sdata start:0x805A1578 end:0x805A1588
+	.sbss start:0x805A23F8 end:0x805A2410
+
+revolution/IPC/ipcMain.c:
+	.text start:0x801B1220 end:0x801B12EC
+	.sbss start:0x805A2410 end:0x805A2424
+
+revolution/IPC/ipcclt.c:
+	.text start:0x801B12EC end:0x801B2C5C
+	.bss start:0x804E8CA0 end:0x804E8D40
+	.sdata start:0x805A1588 end:0x805A1590
+	.sbss start:0x805A2428 end:0x805A2438
+
+revolution/IPC/memory.c:
+	.text start:0x801B2C5C end:0x801B3180
+	.bss start:0x804E8D40 end:0x804E8DC0
+
+revolution/IPC/ipcProfile.c:
+	.text start:0x801B3180 end:0x801B3344
+	.bss start:0x804E8DC0 end:0x804E8EC0
+	.sbss start:0x805A2438 end:0x805A2440
+
+revolution/NAND/nand.c:
+	.text start:0x801B3344 end:0x801B4064
+
+revolution/NAND/NANDOpenClose.c:
+	.text start:0x801B4064 end:0x801B4C84
+	.data start:0x80324410 end:0x80324440
+	.sdata start:0x805A1590 end:0x805A15A0
+	.sbss start:0x805A2440 end:0x805A2444
+
+revolution/NAND/NANDCore.c:
+	.text start:0x801B4C84 end:0x801B5DD4
+	.rodata start:0x802DDF70 end:0x802DE0B8
+	.data start:0x80324440 end:0x80324590
+	.bss start:0x804E8EC0 end:0x804E8F00
+	.sdata start:0x805A15A0 end:0x805A15C8
+	.sbss start:0x805A2448 end:0x805A244C
+revolution/KPAD/KPAD.c:
+	.text start:0x801FA5C8 end:0x801FEAB4
+	.data start:0x8032D998 end:0x8032DA30
+	.bss start:0x8052B8E8 end:0x8052D018
+	.sdata start:0x805A17F0 end:0x805A1870
+	.sbss start:0x805A2568 end:0x805A2590
+	.sdata2 start:0x805A6790 end:0x805A6808
+revolution/WUD/WUD.c:
+	.text start:0x801F3D60 end:0x801F9F90
+	.data start:0x8032C558 end:0x8032D700
+	.bss start:0x80529740 end:0x8052B8E8
+	.sdata start:0x805A17D8 end:0x805A17F0
+	.sbss start:0x805A2530 end:0x805A2568
+	.sdata2 start:0x805A6788 end:0x805A6790
+
+revolution/WUD/WUDHidHost.c:
+	.text start:0x801F9F90 end:0x801FA578
+	.data start:0x8032D700 end:0x8032D998
+
+revolution/WUD/debug_msg.c:
+	.text start:0x801FA578 end:0x801FA5C8
+
+revolution/BTE/gki_buffer.c:
+	.text start:0x801B8744 end:0x801B9B88
+	.data start:0x803248C0 end:0x80324A08
+
+revolution/BTE/gki_time.c:
+	.text start:0x801B9B88 end:0x801BA0E0
+
+revolution/BTE/gki_ppc.c:
+	.text start:0x801BA0E0 end:0x801BA370
+	.bss start:0x804F13A0 end:0x80519E80
+
+revolution/BTE/hcisu_h2.c:
+	.text start:0x801BA370 end:0x801BAA0C
+	.rodata start:0x802DE110 end:0x802DE128
+	.data start:0x80324A08 end:0x80324A78
+	.bss start:0x80519E80 end:0x80519EA4
+	.sdata2 start:0x805A66C8 end:0x805A66D8
+
+revolution/BTE/uusb_ppc.c:
+	.text start:0x801BAA0C end:0x801BB604
+	.bss start:0x80519EC0 end:0x8051BF20
+	.sdata start:0x805A16F8 end:0x805A1708
+	.sbss start:0x805A2470 end:0x805A2488
+
+revolution/BTE/bte_hcisu.c:
+	.text start:0x801BB604 end:0x801BB6BC
+	.sbss start:0x805A2488 end:0x805A2490
+
+revolution/BTE/bte_init.c:
+	.text start:0x801BB6BC end:0x801BB6E8
+
+revolution/BTE/bte_logmsg.c:
+	.text start:0x801BB6E8 end:0x801BB84C
+	.bss start:0x8051BF20 end:0x8051C6F0
+	.sdata start:0x805A1738 end:0x805A1740
+
+revolution/BTE/bte_main.c:
+	.text start:0x801BB84C end:0x801BB9A4
+	.bss start:0x8051C700 end:0x8051D730
+	.sdata start:0x805A1740 end:0x805A1748
+	.sbss start:0x805A2490 end:0x805A2498
+
+revolution/BTE/btu_task1.c:
+	.text start:0x801BB9A4 end:0x801BBDF4
+	.bss start:0x8051D730 end:0x8051D7B8
+	.sdata start:0x805A1748 end:0x805A1750
+	.sbss start:0x805A2498 end:0x805A24A0
+
+revolution/BTE/bd.c:
+	.text start:0x801BBDF4 end:0x801BBEC8
+	.sbss2 start:0x805A7BC8 end:0x805A7BD0
+
+revolution/BTE/bta_sys_conn.c:
+	.text start:0x801BBEC8 end:0x801BC11C
+
+revolution/BTE/bta_sys_main.c:
+	.text start:0x801BC11C end:0x801BC360
+	.data start:0x80324A78 end:0x80324AB0
+	.bss start:0x8051D7B8 end:0x8051D848
+	.sbss start:0x805A24A0 end:0x805A24A4
+
+revolution/BTE/ptim.c:
+	.text start:0x801BC360 end:0x801BC540
+
+revolution/BTE/utl.c:
+	.text start:0x801BC540 end:0x801BC584
+
+revolution/BTE/bta_dm_act.c:
+	.text start:0x801BC584 end:0x801BE8C0
+	.rodata start:0x802DE1C8 end:0x802DE270
+	.data start:0x80324AB0 end:0x80324BF0
+	.bss start:0x8051D848 end:0x8051D878
+	.sdata2 start:0x805A66E0 end:0x805A66E8
+
+revolution/BTE/bta_dm_api.c:
+	.text start:0x801BE8C0 end:0x801BED2C
+	.sdata2 start:0x805A66E8 end:0x805A66F8
+
+revolution/BTE/bta_dm_main.c:
+	.text start:0x801BED2C end:0x801BEE8C
+	.rodata start:0x802DE270 end:0x802DE398
+	.bss start:0x8051D878 end:0x8051D9F8
+
+revolution/BTE/bta_dm_pm.c:
+	.text start:0x801BEE8C end:0x801BF8A8
+	.data start:0x80324BF0 end:0x80324C40
+	.bss start:0x8051D9F8 end:0x8051DA28
+
+revolution/BTE/bta_hh_act.c:
+	.text start:0x801BF8A8 end:0x801C0FF0
+	.data start:0x80324C40 end:0x80325138
+	.sdata start:0x805A1750 end:0x805A1758
+
+revolution/BTE/bta_hh_api.c:
+	.text start:0x801C0FF0 end:0x801C13C0
+	.data start:0x80325138 end:0x80325168
+	.sdata2 start:0x805A66F8 end:0x805A6700
+
+revolution/BTE/bta_hh_main.c:
+	.text start:0x801C13C0 end:0x801C1914
+	.rodata start:0x802DE398 end:0x802DE420
+	.data start:0x80325168 end:0x80325448
+	.bss start:0x8051DA28 end:0x8051DC58
+
+revolution/BTE/bta_hh_utils.c:
+	.text start:0x801C1914 end:0x801C1CC0
+	.data start:0x80325448 end:0x80325708
+
+revolution/BTE/btm_acl.c:
+	.text start:0x801C1CC0 end:0x801C3A04
+	.data start:0x80325708 end:0x80325B28
+
+revolution/BTE/btm_dev.c:
+	.text start:0x801C3A04 end:0x801C40D0
+
+revolution/BTE/btm_devctl.c:
+	.text start:0x801C40D0 end:0x801C5A58
+	.data start:0x80325B28 end:0x80325D88
+	.sdata start:0x805A1758 end:0x805A1770
+
+revolution/BTE/btm_discovery.c:
+	.text start:0x801C5A58 end:0x801C5B8C
+
+revolution/BTE/btm_inq.c:
+	.text start:0x801C5B8C end:0x801C7624
+	.data start:0x80325D88 end:0x80325F98
+	.sdata2 start:0x805A6700 end:0x805A6708
+
+revolution/BTE/btm_main.c:
+	.text start:0x801C7624 end:0x801C7680
+	.bss start:0x8051DC58 end:0x80520420
+
+revolution/BTE/btm_pm.c:
+	.text start:0x801C7680 end:0x801C8314
+	.rodata start:0x802DE420 end:0x802DE430
+	.data start:0x80325F98 end:0x80325FD8
+	.sdata2 start:0x805A6708 end:0x805A6710
+
+revolution/BTE/btm_sco.c:
+	.text start:0x801C8314 end:0x801C914C
+	.rodata start:0x802DE430 end:0x802DE440
+	.data start:0x80325FD8 end:0x803262D8
+
+revolution/BTE/btm_sec.c:
+	.text start:0x801C914C end:0x801CC110
+	.data start:0x803262D8 end:0x80326CE8
+	.sdata2 start:0x805A6710 end:0x805A6718
+
+revolution/BTE/btu_hcif.c:
+	.text start:0x801CC110 end:0x801CD36C
+	.data start:0x80326CE8 end:0x80326D78
+
+revolution/BTE/btu_init.c:
+	.text start:0x801CD36C end:0x801CD3E4
+	.sdata2 start:0x805A6718 end:0x805A6720
+
+revolution/BTE/wbt_ext.c:
+	.text start:0x801CD3E4 end:0x801CD4C4
+
+revolution/BTE/gap_api.c:
+	.text start:0x801CD4C4 end:0x801CD524
+
+revolution/BTE/gap_conn.c:
+	.text start:0x801CD524 end:0x801CE060
+	.data start:0x80326D78 end:0x80326E48
+	.sdata start:0x805A1770 end:0x805A1778
+
+revolution/BTE/gap_utils.c:
+	.text start:0x801CE060 end:0x801CE67C
+	.data start:0x80326E48 end:0x80327138
+	.bss start:0x80520420 end:0x805207D0
+
+revolution/BTE/hcicmds.c:
+	.text start:0x801CE67C end:0x801D0D98
+	.rodata start:0x802DE440 end:0x802DE450
+
+revolution/BTE/hidd_api.c:
+	.text start:0x801D0D98 end:0x801D0E00
+
+revolution/BTE/hidd_conn.c:
+	.text start:0x801D0E00 end:0x801D0EC0
+	.data start:0x80327138 end:0x80327168
+
+revolution/BTE/hidd_mgmt.c:
+	.text start:0x801D0EC0 end:0x801D0F88
+	.data start:0x80327168 end:0x80327188
+	.bss start:0x805207D0 end:0x80520918
+
+revolution/BTE/hidd_pm.c:
+	.text start:0x801D0F88 end:0x801D1304
+
+revolution/BTE/hidh_api.c:
+	.text start:0x801D1304 end:0x801D2084
+	.data start:0x80327188 end:0x803272A0
+	.bss start:0x80520918 end:0x80520D20
+
+revolution/BTE/hidh_conn.c:
+	.text start:0x801D2084 end:0x801D40C4
+	.rodata start:0x802DE450 end:0x802DE478
+	.data start:0x803272A0 end:0x80327688
+
+revolution/BTE/l2c_api.c:
+	.text start:0x801D40C4 end:0x801D4C90
+	.data start:0x80327688 end:0x80327E18
+
+revolution/BTE/l2c_csm.c:
+	.text start:0x801D4C90 end:0x801D616C
+	.data start:0x80327E18 end:0x80328650
+
+revolution/BTE/l2c_link.c:
+	.text start:0x801D616C end:0x801D72F8
+	.data start:0x80328650 end:0x803288C0
+
+revolution/BTE/l2c_main.c:
+	.text start:0x801D72F8 end:0x801D8328
+	.data start:0x803288C0 end:0x80328BC0
+	.bss start:0x80520D20 end:0x80521508
+
+revolution/BTE/l2c_utils.c:
+	.text start:0x801D8328 end:0x801DA1EC
+	.data start:0x80328BC0 end:0x80328CA8
+	.sdata start:0x805A1778 end:0x805A1788
+
+revolution/BTE/port_api.c:
+	.text start:0x801DA1EC end:0x801DA23C
+
+revolution/BTE/port_rfc.c:
+	.text start:0x801DA23C end:0x801DB638
+	.data start:0x80328CA8 end:0x80328FD8
+
+revolution/BTE/port_utils.c:
+	.text start:0x801DB638 end:0x801DBC10
+	.data start:0x80328FD8 end:0x80329120
+
+revolution/BTE/rfc_l2cap_if.c:
+	.text start:0x801DBC10 end:0x801DC544
+	.data start:0x80329120 end:0x80329260
+
+revolution/BTE/rfc_mx_fsm.c:
+	.text start:0x801DC544 end:0x801DD188
+	.data start:0x80329260 end:0x80329518
+
+revolution/BTE/rfc_port_fsm.c:
+	.text start:0x801DD188 end:0x801DE328
+	.data start:0x80329518 end:0x80329840
+
+revolution/BTE/rfc_port_if.c:
+	.text start:0x801DE328 end:0x801DE854
+	.bss start:0x80521508 end:0x80521920
+
+revolution/BTE/rfc_ts_frames.c:
+	.text start:0x801DE854 end:0x801DFE9C
+	.data start:0x80329840 end:0x80329918
+	.sdata start:0x805A1788 end:0x805A1798
+
+revolution/BTE/rfc_utils.c:
+	.text start:0x801DFE9C end:0x801E067C
+	.rodata start:0x802DE478 end:0x802DE578
+	.data start:0x80329918 end:0x803299A8
+
+revolution/BTE/sdp_api.c:
+	.text start:0x801E067C end:0x801E14E4
+	.data start:0x803299A8 end:0x803299F8
+
+revolution/BTE/sdp_db.c:
+	.text start:0x801E14E4 end:0x801E21B0
+	.data start:0x803299F8 end:0x80329A90
+
+revolution/BTE/sdp_discovery.c:
+	.text start:0x801E21B0 end:0x801E3428
+	.data start:0x80329A90 end:0x80329BF0
+
+revolution/BTE/sdp_main.c:
+	.text start:0x801E3428 end:0x801E3F94
+	.data start:0x80329BF0 end:0x80329F50
+	.bss start:0x80521920 end:0x80525F54
+
+revolution/BTE/sdp_server.c:
+	.text start:0x801E3F94 end:0x801E4CA4
+	.data start:0x80329F50 end:0x80329F90
+
+revolution/BTE/sdp_utils.c:
+	.text start:0x801E4CA4 end:0x801E5CE4
+	.rodata start:0x802DE578 end:0x802DE588
+	.data start:0x80329F90 end:0x8032A088
+
+revolution/BTE/bta_dm_cfg.c:
+	.rodata start:0x802DE128 end:0x802DE1B8
+	.sdata start:0x805A1708 end:0x805A1720
+	.sbss2 start:0x805A7BC0 end:0x805A7BC8
+
+revolution/BTE/bta_hh_cfg.c:
+	.rodata start:0x802DE1B8 end:0x802DE1C8
+	.sdata start:0x805A1720 end:0x805A1730
+
+revolution/BTE/bta_sys_cfg.c:
+	.sdata start:0x805A1730 end:0x805A1738
+	.sdata2 start:0x805A66D8 end:0x805A66E0
+
+revolution/NAND/NANDSecret.c:
+	.text start:0x801B5DD4 end:0x801B5E8C
+
+revolution/NAND/NANDCheck.c:
+	.text start:0x801B5E8C end:0x801B616C
+	.data start:0x80324590 end:0x80324640
+	.sdata start:0x805A15C8 end:0x805A15D8
+
+revolution/NAND/NANDLogging.c:
+	.text start:0x801B616C end:0x801B673C
+	.data start:0x80324640 end:0x80324688
+	.bss start:0x804E8F00 end:0x804E9200
+	.sdata start:0x805A15D8 end:0x805A15DC
+	.sbss start:0x805A2450 end:0x805A2458
+
+revolution/SC/scsystem.c:
+	.text start:0x801B673C end:0x801B80A0
+	.rodata start:0x802DE0B8 end:0x802DE110
+	.data start:0x80324688 end:0x80324860
+	.bss start:0x804E9200 end:0x804F13A0
+	.sdata start:0x805A15E0 end:0x805A16E8
+	.sbss start:0x805A2458 end:0x805A2470
+
+revolution/SC/scapi.c:
+	.text start:0x801B80A0 end:0x801B84D0
+
+revolution/SC/scapi_prdinfo.c:
+	.text start:0x801B84D0 end:0x801B8744
+	.data start:0x80324860 end:0x803248C0
+	.sdata start:0x805A16E8 end:0x805A16F8
+
+revolution/USB/usb.c:
+	.text start:0x801E5CE4 end:0x801E71D8
+
+revolution/TPL/TPL.c:
+	.text start:0x8020303C end:0x80203170
+	.data start:0x8032DAE8 end:0x8032DB18
+	.sdata start:0x805A1880 end:0x805A1888
+
+revolution/ESP/esp.c:
+	.text start:0x80203170 end:0x80203864
+	.sdata start:0x805A1888 end:0x805A1898
+
+rvl_msl/mem.c:
+	.text start:0x8022A010 end:0x8022A180
+
+MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
+	.text start:0x8022A180 end:0x8022A450
+
+MSL_C.PPCEABI.bare.H/MSL_Common/errno.c:
+	.sbss start:0x805A26E0 end:0x805A26E8
+
+MSL_C.PPCEABI.bare.H/MSL_Common/float.c:
+	.sdata start:0x805A18B0 end:0x805A18B4
+
+MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
+	.text start:0x8022C924 end:0x8022C94C
+	.sdata start:0x805A18A0 end:0x805A18A4
+
+rvl_msl/string.c:
+	extab start:0x8000FED8 end:0x8000FEE0
+	extabindex start:0x80016958 end:0x80016964
+	.text start:0x8022CA8C end:0x8022CEB8
+	.sdata start:0x805A18A8 end:0x805A18B0
+	.sdata2 start:0x805A6858 end:0x805A6860
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c:
+	.text start:0x8022D6B0 end:0x8022D974
+	.sdata2 start:0x805A6860 end:0x805A68E8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c:
+	.text start:0x8022D974 end:0x8022DC0C
+	.sdata2 start:0x805A68E8 end:0x805A6970
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2.c:
+	.text start:0x8022DC0C end:0x8022DE7C
+	.sdata2 start:0x805A6970 end:0x805A69C8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log.c:
+	.text start:0x8022E1AC end:0x8022E460
+	.sbss start:0x805A26F8 end:0x805A2700
+	.sdata2 start:0x805A69C8 end:0x805A6A48
+
+rvl_msl/e_pow.c:
+	.text start:0x8022E574 end:0x8022EDBC
+	.rodata start:0x802DFA48 end:0x802DFA78
+	.sdata2 start:0x805A6A78 end:0x805A6B88
+
+rvl_msl/e_rem_pio2.c:
+	.text start:0x8022EDBC end:0x8022F154
+	.rodata start:0x802DFA78 end:0x802DFC00
+	.sdata2 start:0x805A6B88 end:0x805A6BE0
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos.c:
+	.text start:0x8022F22C end:0x8022F33C
+	.sdata2 start:0x805A6BE0 end:0x805A6C28
+
+rvl_msl/k_rem_pio2.c:
+	.text start:0x8022F33C end:0x80230A48
+	.rodata start:0x802DFC00 end:0x802DFC50
+	.sdata2 start:0x805A6C28 end:0x805A6C68
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin.c:
+	.text start:0x80230A48 end:0x80230B08
+	.sdata2 start:0x805A6C68 end:0x805A6CA0
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan.c:
+	.text start:0x80230B08 end:0x80230D60
+	.rodata start:0x802DFC50 end:0x802DFCB8
+	.sdata2 start:0x805A6CA0 end:0x805A6CD8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan.c:
+	.text start:0x80230D60 end:0x80230FA0
+	.rodata start:0x802DFCB8 end:0x802DFD50
+	.sdata2 start:0x805A6CD8 end:0x805A6D00
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign.c:
+	.text start:0x802310E0 end:0x8023110C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos.c:
+	.text start:0x8023110C end:0x802311E0
+	.sdata2 start:0x805A6D10 end:0x805A6D18
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor.c:
+	.text start:0x802311E0 end:0x80231324
+	.sdata2 start:0x805A6D18 end:0x805A6D28
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp.c:
+	.text start:0x80231324 end:0x802313AC
+	.sdata2 start:0x805A6D28 end:0x805A6D30
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp.c:
+	.text start:0x802313AC end:0x80231518
+	.sdata2 start:0x805A6D30 end:0x805A6D58
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf.c:
+	.text start:0x80231518 end:0x80231614
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin.c:
+	.text start:0x80231614 end:0x802316EC
+	.sdata2 start:0x805A6D58 end:0x805A6D60
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan.c:
+	.text start:0x802316EC end:0x80231764
+	.sdata2 start:0x805A6D60 end:0x805A6D68
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos.c:
+	.text start:0x80231764 end:0x80231768
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin.c:
+	.text start:0x80231768 end:0x8023176C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2.c:
+	.text start:0x8023176C end:0x80231770
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod.c:
+	.text start:0x80231770 end:0x80231774
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c:
+	.text start:0x80231778 end:0x8023177C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt.c:
+	.text start:0x8023177C end:0x802319C4
+	.sdata2 start:0x805A6D68 end:0x805A6D70
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c:
+	.text start:0x802319C4 end:0x802319C8
+
+rvl_runtime/__mem.c:
+	.init start:0x800062EC end:0x80006420
+	.text       start:0x80231A40 end:0x80231A5C
+
+Runtime.PPCEABI.H/__va_arg.c:
+	.text start:0x80231A5C end:0x80231B24
+
+rvl_runtime/global_destructor_chain.c:
+	.text start:0x80231B24 end:0x80231B84
+	.sbss start:0x805A2708 end:0x805A270C
+
+Runtime.PPCEABI.H/NMWException.cp:
+	extab start:0x8000FF10 end:0x8000FF50
+	extabindex start:0x800169AC end:0x800169DC
+	.text start:0x80231B84 end:0x80232110
+	.sdata start:0x805A18B8 end:0x805A18C0
+
+Runtime.PPCEABI.H/ptmf.c:
+	.text start:0x80232110 end:0x8023217C
+	.rodata start:0x802DFD50 end:0x802DFD5C
+
+Runtime.PPCEABI.H/ptmf_call.s:
+	.text start:0x8023217C end:0x802321A4
+
+rvl_runtime/runtime.s:
+	.text start:0x802321A4 end:0x80232810
+	.rodata start:0x802DFD60 end:0x802DFD78
+
+rvl_runtime/__init_cpp_exceptions.cpp:
+	.text start:0x80232810 end:0x80232880
+	.ctors start:0x802C4580 end:0x802C4584 rename:.ctors$10
+	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
+	.dtors start:0x802C4684 end:0x802C4688 rename:.dtors$15
+	.sdata start:0x805A18C0 end:0x805A18C4
+
+Runtime.PPCEABI.H/Gecko_ExceptionPPC.cp:
+	extab start:0x8000FF50 end:0x8000FFC4
+	extabindex start:0x800169DC end:0x80016A30
+	.text start:0x80232880 end:0x80233FC8
+	.rodata start:0x802DFD78 end:0x802DFDE0
+	.data start:0x803325B0 end:0x803326B0
+	.bss start:0x805307A8 end:0x805307B4
+	.sdata start:0x805A18C8 end:0x805A18D0
+
+Runtime.PPCEABI.H/GCN_mem_alloc.c:
+	.text start:0x80233FC8 end:0x80234080
+	.rodata start:0x802DFDE0 end:0x802DFE50
+
+game/wii/cgs.cpp:
+	extab start:0x800101F4 end:0x800106B4
+	extabindex start:0x80016B44 end:0x80016F10
+	.text start:0x802A80FC end:0x802AEBF0
+	.ctors start:0x802C4650 end:0x802C4654
+	.data start:0x80334D8C end:0x80335048
+	.rodata start:0x802E5160 end:0x802E5230
+	.sdata2 start:0x805A78C8 end:0x805A7990
+
+game/wii/cgs_nw.cpp:
+	extab start:0x800106B4 end:0x8001074C
+	extabindex start:0x80016F10 end:0x80016F58
+	.text start:0x802AEBF0 end:0x802AF8B8
+	.data start:0x80335048 end:0x80335078
+	.rodata start:0x802E5230 end:0x802E5278
+
+game/wii/cpad.cpp:
+	extab start:0x8001082C end:0x800108CC
+	extabindex start:0x800170A8 end:0x80017198
+	.text start:0x802B193C end:0x802B3B78
+	.ctors start:0x802C4654 end:0x802C4658
+	.rodata start:0x802E53E0 end:0x802E5460
+	.data start:0x803350F8 end:0x80335104
+	.bss start:0x8059AFB8 end:0x8059FE28
+	.sbss start:0x805A2888 end:0x805A2890
+	.sdata2 start:0x805A79C8 end:0x805A7A28
+
+game/wii/cfont.cpp:
+	extab start:0x800108CC end:0x80010920
+	extabindex start:0x80017198 end:0x800171F8
+	.text start:0x802B3B78 end:0x802B438C
+	.ctors start:0x802C4658 end:0x802C465C
+	.rodata start:0x802E5460 end:0x802E54E0
+	.bss start:0x8059FE28 end:0x8059FF70
+	.sbss start:0x805A2890 end:0x805A28A0
+	.sdata2 start:0x805A7A28 end:0x805A7A48
+
+game/wii/ut.cpp:
+	extab start:0x8000FFC4 end:0x800101A4
+	extabindex start:0x80016A30 end:0x80016ACC
+	.text start:0x802A5358 end:0x802A7478
+	.rodata start:0x802E4EB0 end:0x802E50C8
+	.sdata start:0x805A19D0 end:0x805A19D8
+	.sdata2 start:0x805A7888 end:0x805A78C0
+	.bss start:0x80576A08 end:0x80576B88
+
+game/wii/mem.cpp:
+	.text start:0x802A7478 end:0x802A7FB4
+	.rodata start:0x802E50C8 end:0x802E5150
+	.bss start:0x80576B88 end:0x8059ABA8
+	.sbss start:0x805A2858 end:0x805A2870
+
+game/wii/cobjvec.cpp:
+	.text start:0x802A7FB4 end:0x802A80FC
+	.sdata2 start:0x805A78C0 end:0x805A78C8
+
+game/wii/ctrigon.cpp:
+	.text start:0x802BA4F4 end:0x802BD294
+	.data start:0x80356090 end:0x80356268
+	.sdata2 start:0x805A7AA8 end:0x805A7AD0
+	.rodata start:0x802E59CC end:0x802E5AB0
+
+game/wii/cobj.cpp:
+	extab start:0x80010AD8 end:0x80010CA8
+	extabindex start:0x80017474 end:0x80017714
+	.text start:0x802B6560 end:0x802BA4F4
+	.rodata start:0x802E56D8 end:0x802E59A0
+	.data start:0x80355EE0 end:0x80356090
+	.sdata2 start:0x805A7A78 end:0x805A7AA8
+
+game/wii/ceffect.cpp:
+	extab start:0x80010DF0 end:0x80011088
+	extabindex start:0x800177C8 end:0x80017924
+	.text start:0x802BD3B4 end:0x802BF9F8
+	.rodata start:0x802E5AC0 end:0x802E5C50
+	.sbss start:0x805A28B0 end:0x805A28C0
+	.sdata2 start:0x805A7AD8 end:0x805A7B08
+
+game/wii/fbeffect.cpp:
+	extab start:0x80011088 end:0x800110D0
+	extabindex start:0x80017924 end:0x80017990
+	.text start:0x802BF9F8 end:0x802C19B8
+	.rodata start:0x802E5C50 end:0x802E5CB0
+	.data start:0x80356620 end:0x80356690
+	.sdata start:0x805A1B10 end:0x805A1B28
+	.sbss start:0x805A28C0 end:0x805A28C8
+	.sdata2 start:0x805A7B08 end:0x805A7B78
+
+game/cmodule.cpp:
+	extab start:0x800110D0 end:0x800110E0
+	extabindex start:0x80017990 end:0x800179A8
+	.text start:0x802C19B8 end:0x802C1B3C
+	.rodata start:0x802E5CB0 end:0x802E5CB8
+
+game/wii/nandfile.cpp:
+	extab start:0x800110E0 end:0x80011140
+	extabindex start:0x800179A8 end:0x80017A38
+	.text start:0x802C1B3C end:0x802C2278
+	.rodata start:0x802E5CB8 end:0x802E5E20
+
+game/cinterpolationeaseout.cpp:
+	.text start:0x80151D1C end:0x80151FCC
+	.sdata2 start:0x805A5CC8 end:0x805A5CD8
+
+game/wii/ccameraactionareaexinit.cpp:
+	.text start:0x801542A0 end:0x80154310
+	.ctors start:0x802C45C0 end:0x802C45C4
+	.bss start:0x8045F468 end:0x804630A8
+
+game/wii/ccameraactionareaexdtor.cpp:
+	.text start:0x801541F8 end:0x801542A0
+	.rodata start:0x802DB4C8 end:0x802DB4DC
+	.data start:0x8030DDA0 end:0x8030DDAC
+	.sdata start:0x805A1278 end:0x805A1280
+
+game/wii/ccameraactionarea.cpp:
+	.text start:0x80154310 end:0x80157154
+	.sdata2 start:0x805A5D18 end:0x805A5D70
+
+game/wii/ccameraactionmap2.cpp:
+	.text start:0x80157154 end:0x80160D30
+	.sdata2 start:0x805A5D70 end:0x805A5E40
+
+game/ccameraactionareaex.cpp:
+	.text start:0x80151FCC end:0x801541F8
+	.sdata2 start:0x805A5CD8 end:0x805A5D10
+	.rodata start:0x802DB490 end:0x802DB4C8
+
+game/ccameraactionevt.cpp:
+	.text start:0x80161458 end:0x80161FFC
+	.sdata2 start:0x805A5E80 end:0x805A5EA0
+
+game/wii/ccameraactionscroll2.cpp:
+	extab start:0x8000F340 end:0x8000F458
+	extabindex start:0x80015D40 end:0x80015DAC
+	.text start:0x80161FFC end:0x80164BFC
+	.sdata2 start:0x805A5EA0 end:0x805A5F28
+	.rodata start:0x802DB930 end:0x802DB9E0
+
+game/wii/ccameraactionchase.cpp:
+	extab start:0x8000F270 end:0x8000F2F0
+	extabindex start:0x80015CBC end:0x80015CEC
+	.text start:0x80160D30 end:0x80161458
+	.data start:0x8030DEF8 end:0x8030DF70
+	.sdata2 start:0x805A5E40 end:0x805A5E80
+
+game/wii/ccameraactioneye.cpp:
+	extab start:0x8000F458 end:0x8000F4E0
+	extabindex start:0x80015DAC end:0x80015DDC
+	.text start:0x80164BFC end:0x8016642C
+	.sdata2 start:0x805A5F28 end:0x805A5FB8
+	.rodata start:0x802DBA38 end:0x802DBA54
+
+game/wii/ccameraactionanim.cpp:
+	extab start:0x8000F4E0 end:0x8000F4F0
+	extabindex start:0x80015DDC end:0x80015DF4
+	.text start:0x8016642C end:0x801665C4
+
+game/wii/ccameraactionreset.cpp:
+	extab start:0x8000F4F0 end:0x8000F528
+	extabindex start:0x80015DF4 end:0x80015E24
+	.text start:0x801665C4 end:0x80166D50
+	.rodata start:0x802DBA94 end:0x802DBAE8
+	.sdata2 start:0x805A5FB8 end:0x805A5FE0
+
+game/wii/ccameraactionscroll.cpp:
+	extab start:0x8000F528 end:0x8000F548
+	extabindex start:0x80015E24 end:0x80015E54
+	.text start:0x80166D50 end:0x8016753C
+	.sdata2 start:0x805A5FE0 end:0x805A6008
+	.sbss start:0x805A1D78 end:0x805A1D80
+
+game/wii/cmotioncontrolcamera.cpp:
+	.text start:0x8016753C end:0x8016AD78
+	.sdata2 start:0x805A6008 end:0x805A6068
+	.rodata start:0x802DBB18 end:0x802DBB60
+
+game/wii/objb_act.cpp:
+	.text start:0x800F48E0 end:0x801067C0
+
+game/wii/xacttumble.cpp:
+	.text start:0x801067C0 end:0x801078C8
+	.rodata start:0x802DAD0C end:0x802DAD18
+
+game/wii/xactradar.cpp:
+	.text start:0x801078C8 end:0x8010E548
+
+game/wii/xobjattachment.cpp:
+	.text start:0x8010E548 end:0x8010F944
+	.sdata2 start:0x805A5338 end:0x805A535C
+	.rodata start:0x802DADBC end:0x802DADC8
+
+game/wii/xobjplug.cpp:
+	.text start:0x8010F944 end:0x80110C2C
+	.sdata start:0x805A1140 end:0x805A1150
+	.sdata2 start:0x805A5368 end:0x805A5390
+	.rodata start:0x802DADC8 end:0x802DAE10
+
+game/wii/xobjplugcord.cpp:
+	extab start:0x8000D644 end:0x8000D724
+	extabindex start:0x80014B7C end:0x80014C18
+	.text start:0x80110C2C end:0x80113394
+	.bss start:0x8045BED0 end:0x8045D700
+	.sdata start:0x805A1150 end:0x805A1158
+	.sbss start:0x805A1C70 end:0x805A1C80
+	.sdata2 start:0x805A5390 end:0x805A53F8
+
+game/wii/params.cpp:
+	extab start:0x8000D724 end:0x8000D734
+	extabindex start:0x80014C18 end:0x80014C30
+	.text start:0x80113394 end:0x80113910
+	.sdata2 start:0x805A53F8 end:0x805A53FC
+
+game/wii/inventory.cpp:
+	extab start:0x8000D734 end:0x8000D73C
+	extabindex start:0x80014C30 end:0x80014C3C
+	.text start:0x80113910 end:0x801141C0
+
+game/wii/xobjcoinupdate.cpp:
+	extab start:0x8000D73C end:0x8000D814
+	extabindex start:0x80014C3C end:0x80014D20
+	.text start:0x801141C0 end:0x80116528
+
+game/wii/xobjhboxpart.cpp:
+	extab start:0x8000D814 end:0x8000D84C
+	extabindex start:0x80014D20 end:0x80014D5C
+	.text start:0x80116528 end:0x8011701C
+
+game/wii/xobjhbox.cpp:
+	extab start:0x8000D84C end:0x8000D87C
+	extabindex start:0x80014D5C end:0x80014DA4
+	.text start:0x8011701C end:0x801178E4
+
+game/wii/xobjdust.cpp:
+	extab start:0x8000D87C end:0x8000D8B4
+	extabindex start:0x80014DA4 end:0x80014DE0
+	.text start:0x801178E4 end:0x80118360
+
+game/wii/xobjfreeevent.cpp:
+	extab start:0x8000D8B4 end:0x8000D8CC
+	extabindex start:0x80014DE0 end:0x80014E04
+	.text start:0x80118360 end:0x80118860
+
+game/wii/xobjfreeupdate.cpp:
+	extab start:0x8000D8CC end:0x8000D8FC
+	extabindex start:0x80014E04 end:0x80014E4C
+	.text start:0x80118860 end:0x801191F8
+	.bss start:0x8045D700 end:0x8045DD44
+	.rodata start:0x802DAE58 end:0x802DAE64
+game/wii/objb_leticker.cpp:
+	.text start:0x801191F8 end:0x8011D980
+	.sbss start:0x805A1C80 end:0x805A1C88
+	.sdata2 start:0x805A54E0 end:0x805A55B0
+	.rodata start:0x802DAEA8 end:0x802DAEB8
+
+game/wii/objb_army.cpp:
+	.text start:0x8011D980 end:0x80120634
+	.data start:0x80309AC0 end:0x8030A104
+	.sdata2 start:0x805A55B0 end:0x805A5648
+	.sbss start:0x805A1C88 end:0x805A1CA0
+	.bss start:0x8045DE30 end:0x8045DE48
+
+game/wii/xobjspider.cpp:
+	extab start:0x8000DB4C end:0x8000DD0C
+	extabindex start:0x80015008 end:0x800151B8
+	.text start:0x8012063C end:0x80128C84
+	.sdata2 start:0x805A5648 end:0x805A5738
+	.rodata start:0x802DAF14 end:0x802DAF38
+
+game/wii/xobjspidersmall.cpp:
+	extab start:0x8000DD0C end:0x8000DF6C
+	extabindex start:0x800151B8 end:0x80015308
+	.text start:0x80128C84 end:0x80132330
+	.sdata2 start:0x805A5738 end:0x805A5838
+	.rodata start:0x802DAF48 end:0x802DAF70
+
+game/wii/xobjspiderboss.cpp:
+	extab start:0x8000DF6C end:0x8000E0BC
+	extabindex start:0x80015308 end:0x800153C8
+	.text start:0x80132330 end:0x801370BC
+	.sdata2 start:0x805A5838 end:0x805A58B0
+	.rodata start:0x802DAF70 end:0x802DB120
+
+game/wii/xobjactor.cpp:
+	.text start:0x801370BC end:0x80138E24
+	.sdata2 start:0x805A58B0 end:0x805A58F8
+
+game/wii/xobjactor3.cpp:
+	.text start:0x80138E24 end:0x80142BD8
+	.sdata2 start:0x805A58F8 end:0x805A5A28
+	.rodata start:0x802DB130 end:0x802DB218
+
+game/wii/xobjactortoy.cpp:
+	.text start:0x80142BD8 end:0x8014A80C
+	.sdata2 start:0x805A5A28 end:0x805A5B08
+	.rodata start:0x802DB218 end:0x802DB378
+
+game/wii/xobjactorjenny.cpp:
+	.text start:0x8014A80C end:0x8014C090
+	.sdata2 start:0x805A5B28 end:0x805A5B78
+	.rodata start:0x802DB388 end:0x802DB3B0
+
+game/wii/xobjactormama.cpp:
+	.text start:0x8014C090 end:0x8014D968
+	.sdata2 start:0x805A5B78 end:0x805A5BE8
+	.rodata start:0x802DB3B0 end:0x802DB3E8
+
+game/wii/xobjactorpapa.cpp:
+	.text start:0x8014D968 end:0x8014F2EC
+	.sdata2 start:0x805A5BE8 end:0x805A5C50
+	.rodata start:0x802DB3F8 end:0x802DB410
+
+game/wii/xobjactortao.cpp:
+	.text start:0x8014F2EC end:0x80150C2C
+	.sdata2 start:0x805A5C50 end:0x805A5C78
+	.rodata start:0x802DB420 end:0x802DB430
+
+game/wii/xobjactordeca.cpp:
+	.text start:0x80150C2C end:0x80151D1C
+	.sdata2 start:0x805A5C78 end:0x805A5CB4
+	.rodata start:0x802DB440 end:0x802DB460
+
+game/gameosreport.cpp:
+	.text start:0x80019BA4 end:0x80019BF4
+
+game/wii/fbmirror.cpp:
+	.text start:0x80019BF4 end:0x8001A704
+
+game/cpaddtor.cpp:
+	extab start:0x80008FDC end:0x80008FE4
+	extabindex start:0x80011FE4 end:0x80011FF0
+	.text start:0x800365D8 end:0x80036618
+	.data start:0x802E6DF8 end:0x802E6E08
+	.sdata start:0x805A0D60 end:0x805A0D68
+	.sdata2 start:0x805A2BE8 end:0x805A2BF0
+
+game/gamefbsubwinfade.cpp:
+	.text start:0x8001A704 end:0x8001A958
+
+game/wii/fbsubwin.cpp:
+	.text start:0x8001A958 end:0x8001BA54
+	.rodata start:0x802C46F8 end:0x802C47F8
+
+game/gamefbsubwincam.cpp:
+	.text start:0x8001BA54 end:0x8001BB90
+
+game/gameinit.cpp:
+	.text start:0x8001BB90 end:0x8001C2D8
+
+game/wii/gameupdate.cpp:
+	.text start:0x8001C2D8 end:0x8002CFB8
+
+game/wii/cjanim.cpp:
+	extab start:0x8000A864 end:0x8000AC50
+	extabindex start:0x80013598 end:0x800138BC
+	.text start:0x800B1558 end:0x800BD6B4
+	.sdata2 start:0x805A44D0 end:0x805A4DF0
+
+game/wii/xobj_ut.cpp:
+	extab start:0x8000AC50 end:0x8000B89C
+	extabindex start:0x800138BC end:0x80013EF8
+	.text start:0x800BD6B4 end:0x800C659C
+	.ctors start:0x802C45AC end:0x802C45B0
+	.rodata start:0x802DA21C end:0x802DA320
+	.data start:0x80302A38 end:0x80303780
+	.bss start:0x80457720 end:0x80457E90
+	.sdata start:0x805A0F90 end:0x805A1078
+	.sdata2 start:0x805A4E08 end:0x805A4E40
+
+game/ctoon.cpp:
+	.text start:0x802BD294 end:0x802BD3B4
+
+game/wii/gamemain.cpp:
+	.text       start:0x80017BC0 end:0x80019A68
+
+game/wii/delete.cpp:
+	.text start:0x80019A68 end:0x80019AB4
+
+game/wii/new.cpp:
+	.text start:0x80019AB4 end:0x80019BA4
+
+game/wii/cinterpolationeaseoutdivide.cpp:
+	.text start:0x8002CFB8 end:0x800354DC
+	.data start:0x802E6110 end:0x802E6250
+
+TRK_MINNOW_DOLPHIN/mainloop.c:
+	.text start:0x80222DEC end:0x80222EE4
+
+TRK_MINNOW_DOLPHIN/nubevent.c:
+	.text start:0x80222EE4 end:0x8022310C
+	.bss start:0x8052DF90 end:0x8052DFB8
+
+rvl_trk/nubinit.c:
+	.text start:0x8022310C end:0x80223290
+	.rodata start:0x802DEC00 end:0x802DEC20
+	.bss start:0x8052DFB8 end:0x8052DFC0
+
+rvl_trk/msg.c:
+	.text start:0x80223290 end:0x802232BC
+
+TRK_MINNOW_DOLPHIN/msgbuf.c:
+	.text start:0x802232BC end:0x80223AF8
+	.rodata start:0x802DEC20 end:0x802DEC40
+	.bss start:0x8052DFC0 end:0x8052F970
+
+rvl_trk/serpoll.c:
+	.text       start:0x80223AF8 end:0x80223CA4
+	.bss start:0x8052F970 end:0x8052F988
+	.sbss start:0x805A26C8 end:0x805A26D0
+
+TRK_MINNOW_DOLPHIN/usr_put.c:
+	.text start:0x80223CA4 end:0x80223D30
+
+rvl_trk/dispatch.c:
+	.text start:0x80223D30 end:0x80223E78
+	.data start:0x80331D78 end:0x80331DE8
+
+rvl_trk/msghndlr.c:
+	.text start:0x80223E78 end:0x80224F54
+	.rodata start:0x802DEC40 end:0x802DEC78
+	.data start:0x80331DE8 end:0x80331E20
+	.bss start:0x8052F988 end:0x8052F990
+
+rvl_trk/support.c:
+	.text start:0x80224F54 end:0x80225608
+
+TRK_MINNOW_DOLPHIN/mutex_TRK.c:
+	.text start:0x80225608 end:0x80225620
+
+TRK_MINNOW_DOLPHIN/notify.c:
+	.text start:0x80225620 end:0x802256B8
+
+TRK_MINNOW_DOLPHIN/flush_cache.c:
+	.text start:0x802256B8 end:0x802256F0
+
+TRK_MINNOW_DOLPHIN/mem_TRK.c:
+	.text start:0x802256F0 end:0x802257A8
+	.init start:0x80004338 end:0x8000438C
+
+TRK_MINNOW_DOLPHIN/__exception.c:
+	.init start:0x8000438C end:0x800062C0
+
+TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
+	.text start:0x80227200 end:0x80227570
+
+TRK_MINNOW_DOLPHIN/mslsupp.c:
+	.text start:0x80227570 end:0x8022776C
+
+rvl_trk/dolphin_trk.c:
+	.text start:0x8022776C end:0x80227A88
+	.init start:0x800062C0 end:0x800062EC
+	.data start:0x80331E50 end:0x80331E90
+	.bss start:0x8052FF10 end:0x8052FF18
+
+rvl_trk/main_TRK.c:
+	.text start:0x80227A88 end:0x80227ACC
+	.bss start:0x8052FF18 end:0x8052FF20
+
+rvl_trk/dolphin_trk_glue.c:
+	.text start:0x80227ACC end:0x80227F8C
+	.rodata start:0x802DED00 end:0x802DEE08
+	.data start:0x80331E90 end:0x80331EB8
+	.bss start:0x8052FF20 end:0x8052FF28
+
+TRK_MINNOW_DOLPHIN/targcont.c:
+	.text start:0x80227F8C end:0x80227FC0
+
+TRK_MINNOW_DOLPHIN/target_options.c:
+	.text start:0x80227FC0 end:0x80227FDC
+	.bss start:0x8052FF28 end:0x8052FF30
+
+TRK_MINNOW_DOLPHIN/UDP_Stubs.c:
+	.text start:0x80227FDC end:0x80228024
+
+rvl_trk/gdev/main.c:
+	.text       start:0x80228024 end:0x802282E4
+	.bss start:0x8052FF30 end:0x80530450
+	.sbss start:0x805A26D0 end:0x805A26D8
+
+TRK_MINNOW_DOLPHIN/CircleBuffer.c:
+	.text start:0x802282E4 end:0x8022854C
+
+TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp:
+	.text start:0x8022854C end:0x802285A4
+
+revolution/OS/OSAudioSystem.c:
+	.text start:0x801817D4 end:0x80181C88
+	.data start:0x8030F998 end:0x8030FA18
+
+revolution/OS/OSError.c:
+	.text start:0x80182B40 end:0x801831E8
+	.data start:0x8030FE30 end:0x80310150
+	.bss start:0x804CC530 end:0x804CC578
+	.sdata start:0x805A13E8 end:0x805A13F0
+
+MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c:
+	.text start:0x802296A8 end:0x80229788
+
+MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c:
+	.text start:0x8022A54C end:0x8022A55C
+
+MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c:
+	.text start:0x8022D4C4 end:0x8022D594
+	.sbss start:0x805A26E8 end:0x805A26F0
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
+	.text start:0x8022DE7C end:0x8022E1AC
+	.rodata start:0x802DFA38 end:0x802DFA48
+
+revolution/NdevExi2A/DebuggerDriver.c:
+	.text start:0x8017B5A4 end:0x8017BAD4
+	.sdata start:0x805A1390 end:0x805A1398
+	.sbss start:0x805A1E28 end:0x805A1E40
+
+revolution/NdevExi2A/exi2.c:
+	.text start:0x8017BAD4 end:0x8017C0A8
+
+revolution/OS/OSMemory.c:
+	.text start:0x80187B98 end:0x801882D0
+	.data start:0x80310D50 end:0x80310D60
+	.sbss start:0x805A1F20 end:0x805A1F24
+
+revolution/OS/OSReboot.c:
+	.text start:0x801885D4 end:0x80188654
+	.sbss start:0x805A1F28 end:0x805A1F30
+
+revolution/OS/OSReset.c:
+	.text start:0x80188654 end:0x80189164
+	.data start:0x80310D60 end:0x80310FE8
+	.sdata start:0x805A1410 end:0x805A1418
+	.sbss start:0x805A1F30 end:0x805A1F40
+
+revolution/OS/__ppc_eabi_init.cpp:
+	.init start:0x800042E0 end:0x80004338
+	.text start:0x8018E5EC end:0x8018E6A0
+
+revolution/THP/THPDec.c:
+	.text start:0x801FF434 end:0x80202804
+	.rodata start:0x802DE5E0 end:0x802DE670
+	.data start:0x8032DAA0 end:0x8032DAE8
+	.bss start:0x8052D020 end:0x8052D16C
+	.sdata start:0x805A1878 end:0x805A187C
+	.sbss start:0x805A25A0 end:0x805A26C4
+	.sdata2 start:0x805A6808 end:0x805A6824
+
+revolution/THP/THPAudio.c:
+	.text start:0x80202804 end:0x80202D64
+
+revolution/GX/GXInit.c:
+	.text start:0x801A5480 end:0x801A664C
+	.data start:0x80323280 end:0x803234C0
+	.bss start:0x804E8320 end:0x804E89A0
+	.sdata start:0x805A1518 end:0x805A151C
+	.sbss start:0x805A2380 end:0x805A23A8
+	.sdata2 start:0x805A6580 end:0x805A65A8
+
+revolution/GX/GXFifo.c:
+	.text start:0x801A664C end:0x801A7294
+	.data start:0x803234C0 end:0x803234EE
+	.bss start:0x804E89A0 end:0x804E89E8
+	.sbss start:0x805A23A8 end:0x805A23C4
+
+revolution/GX/GXAttr.c:
+	.text start:0x801A7294 end:0x801A84B8
+	.data start:0x803234F0 end:0x80323764
+	.sdata start:0x805A1520 end:0x805A152C
+
+revolution/GX/GXMisc.c:
+	.text start:0x801A84B8 end:0x801A8D4C
+	.sbss start:0x805A23C8 end:0x805A23DC
+
+revolution/GX/GXGeometry.c:
+	.text start:0x801A8D4C end:0x801A9314
+
+revolution/GX/GXFrameBuf.c:
+	.text start:0x801A9314 end:0x801A9E8C
+	.data start:0x80323768 end:0x80324014
+	.sdata2 start:0x805A65A8 end:0x805A65B8
+
+revolution/GX/GXLight.c:
+	.text start:0x801A9E8C end:0x801AA5E0
+	.data start:0x80324018 end:0x80324034
+	.sdata2 start:0x805A65B8 end:0x805A65EC
+
+revolution/GX/GXTexture.c:
+	.text start:0x801AA5E0 end:0x801AB584
+	.data start:0x80324038 end:0x8032425C
+	.sdata start:0x805A1530 end:0x805A1578
+	.sdata2 start:0x805A65F0 end:0x805A6628
+
+revolution/GX/GXBump.c:
+	.text start:0x801AB584 end:0x801AB9D0
+	.sdata2 start:0x805A6628 end:0x805A662C
+
+revolution/GX/GXTev.c:
+	.text start:0x801AB9D0 end:0x801AC050
+	.data start:0x80324260 end:0x803242D4
+
+revolution/GX/GXPixel.c:
+	.text start:0x801AC050 end:0x801AC7B4
+	.data start:0x803242D8 end:0x803242F8
+	.sdata2 start:0x805A6630 end:0x805A6680
+
+revolution/GX/GXDraw.c:
+	.text start:0x801AC7B4 end:0x801AD814
+	.bss start:0x804E89E8 end:0x804E8C70
+	.sdata2 start:0x805A6680 end:0x805A66B0
+
+revolution/GX/GXDisplayList.c:
+	.text start:0x801AD814 end:0x801AD888
+
+revolution/GX/GXTransform.c:
+	.text start:0x801AD888 end:0x801ADF6C
+	.sdata2 start:0x805A66B0 end:0x805A66C0
+
+revolution/GX/GXPerf.c:
+	.text start:0x801ADF6C end:0x801AE7A8
+	.data start:0x803242F8 end:0x803243E4
+
+revolution/OS/OS.c:
+	.text start:0x8017F698 end:0x80180BB4
+	.data start:0x8030F478 end:0x8030F988
+	.bss start:0x804CC4C0 end:0x804CC530
+	.sdata start:0x805A13A8 end:0x805A13D8
+	.sbss start:0x805A1E78 end:0x805A1EC0
+	.sdata2 start:0x805A6410 end:0x805A6418
+
+revolution/OS/OSExec.c:
+	.text start:0x801831E8 end:0x80184864
+	.data start:0x80310150 end:0x803101C0
+	.bss start:0x804CC580 end:0x804CC5A0
+	.sdata start:0x805A13F0 end:0x805A1400
+	.sbss start:0x805A1EE0 end:0x805A1EF8
+	.sdata2 start:0x805A6418 end:0x805A6420
+
+revolution/OS/OSUtf.c:
+	.text start:0x8018B738 end:0x8018B970
+	.data start:0x80311048 end:0x8031CE88
+
+revolution/OS/OSIpc.c:
+	.text start:0x8018B970 end:0x8018B998
+	.sdata start:0x805A1420 end:0x805A1428
+	.sbss start:0x805A1F50 end:0x805A1F58
+
+revolution/OS/OSStateTM.c:
+	.text start:0x8018B998 end:0x8018C010
+	.data start:0x8031CE88 end:0x8031CF50
+	.bss start:0x804CD2E0 end:0x804CD3A0
+	.sbss start:0x805A1F58 end:0x805A1F78
+
+revolution/OS/OSPlayRecord.c:
+	.text start:0x8018C010 end:0x8018C708
+	.data start:0x8031CF50 end:0x8031CF98
+	.bss start:0x804CD3A0 end:0x804CD5A0
+	.sdata start:0x805A1428 end:0x805A1430
+	.sbss start:0x805A1F80 end:0x805A1FA0
+
+revolution/OS/OSNet.c:
+	.text start:0x8018C914 end:0x8018CE78
+	.data start:0x8031CFC0 end:0x8031D128
+	.bss start:0x804CD5C0 end:0x804CD680
+	.sdata start:0x805A1430 end:0x805A1438
+	.sbss start:0x805A1FA0 end:0x805A1FB0
+
+revolution/OS/OSNandbootInfo.c:
+	.text start:0x8018CE78 end:0x8018D080
+	.data start:0x8031D128 end:0x8031D148
+
+revolution/OS/OSPlayTime.c:
+	.text start:0x8018D080 end:0x8018D82C
+	.data start:0x8031D148 end:0x8031D188
+	.bss start:0x804CD680 end:0x804CD6B0
+	.sdata start:0x805A1438 end:0x805A1440
+	.sbss start:0x805A1FB0 end:0x805A1FC8
+	.sdata2 start:0x805A6468 end:0x805A6478
+
+revolution/OS/OSLaunch.c:
+	.text start:0x8018D82C end:0x8018E5EC
+	.data start:0x8031D188 end:0x8031D4A8
+	.sdata start:0x805A1440 end:0x805A1448
+	.sbss start:0x805A1FC8 end:0x805A1FD0
+
+revolution/MTX/quat.c:
+	.text start:0x8018FEA0 end:0x80190208
+	.rodata start:0x802DDF08 end:0x802DDF18
+	.sdata2 start:0x805A64C0 end:0x805A64D0
+
+revolution/DVD/dvdfs.c:
+	.text start:0x80190208 end:0x80190830
+	.data start:0x8031D4A8 end:0x8031D5D8
+	.sdata start:0x805A1450 end:0x805A1460
+	.sbss start:0x805A1FD0 end:0x805A1FF0
+
+revolution/DVD/dvd.c:
+	.text start:0x80190830 end:0x8019568C
+	.data start:0x8031D5D8 end:0x8031D980
+	.sdata start:0x805A1460 end:0x805A1478
+	.bss start:0x804CD6C0 end:0x804D2370
+	.sbss start:0x805A2000 end:0x805A2098
+
+revolution/DVD/dvderror.c:
+	.text start:0x801958E4 end:0x801962C8
+	.data start:0x8031D980 end:0x8031D9B0
+	.bss start:0x804D23A0 end:0x804D2600
+	.sbss start:0x805A2098 end:0x805A20A8
+
+revolution/DVD/dvdidutils.c:
+	.text start:0x801962C8 end:0x801963B8
+
+revolution/DVD/dvdFatal.c:
+	.text start:0x801963B8 end:0x80196534
+	.rodata start:0x802DDF18 end:0x802DDF50
+	.data start:0x8031D9B0 end:0x8031E020
+	.sdata start:0x805A1478 end:0x805A1480
+	.sbss start:0x805A20A8 end:0x805A20B0
+	.sdata2 start:0x805A64D0 end:0x805A64D8
+
+revolution/DVD/dvdDeviceError.c:
+	.text start:0x80196534 end:0x801967CC
+	.bss start:0x804D2600 end:0x804D2620
+	.sdata start:0x805A1480 end:0x805A1488
+	.sbss start:0x805A20B0 end:0x805A20B8
+
+revolution/DVD/dvd_broadway.c:
+	.text start:0x801967CC end:0x80198D8C
+	.data start:0x8031E1B8 end:0x8031F0C0
+	.sdata start:0x805A1488 end:0x805A1498
+	.bss start:0x804D2620 end:0x804D27E0
+	.sbss start:0x805A20B8 end:0x805A20E0
+
+revolution/VI/vi.c:
+	.text start:0x80198D8C end:0x8019B6DC
+	.data start:0x8031F0C0 end:0x8031F618
+	.bss start:0x804D27E0 end:0x804D2950
+	.sdata start:0x805A1498 end:0x805A14B8
+	.sbss start:0x805A20E0 end:0x805A2190
+
+revolution/VI/i2c.c:
+	.text start:0x8019B6DC end:0x8019BFE0
+	.sdata start:0x805A14B8 end:0x805A14BC
+	.sbss start:0x805A2190 end:0x805A2194
+
+revolution/VI/vi3in1.c:
+	.text start:0x8019BFE0 end:0x8019D69C
+	.data start:0x8031F618 end:0x8031FC28
+	.bss start:0x804D2950 end:0x804D2970
+	.sdata start:0x805A14C0 end:0x805A14D0
+	.sbss start:0x805A2198 end:0x805A21B0
+
+rvl_msl/alloc.c:
+	.text       start:0x802285A4 end:0x80228AB8
+	.rodata start:0x802DEE08 end:0x802DEE20
+	.bss start:0x80530450 end:0x80530488
+	.sbss start:0x805A26D8 end:0x805A26E0
+
+rvl_msl/ansi_files.c:
+	.text       start:0x80228AB8 end:0x80228BC8
+	.data start:0x80331EB8 end:0x80331FF8
+	.bss start:0x80530488 end:0x80530788
+
+rvl_msl/ansi_fp.c:
+	.text       start:0x80228BC8 end:0x80229688
+	.rodata start:0x802DEE20 end:0x802DEF00
+	.data start:0x80331FF8 end:0x8033211C
+	.sdata2 start:0x805A6830 end:0x805A6838
+
+rvl_msl/arith.c:
+	.text       start:0x80229688 end:0x802296A8
+
+rvl_msl/direct_io.c:
+	.text       start:0x80229788 end:0x80229A90
+
+rvl_msl/file_io.c:
+	.text       start:0x80229A90 end:0x80229C80
+
+rvl_msl/FILE_POS.c:
+	.text       start:0x80229C80 end:0x80229EF0
+
+rvl_msl/mbstring.c:
+	.text       start:0x80229EF0 end:0x8022A010
+
+rvl_msl/math_api.c:
+	.text       start:0x8022A450 end:0x8022A54C
+
+rvl_msl/printf.c:
+	.text       start:0x8022A55C end:0x8022C924
+	.rodata start:0x802DF408 end:0x802DF438
+	.data start:0x80332318 end:0x80332568
+	.sdata start:0x805A1898 end:0x805A18A0
+	.sdata2 start:0x805A6850 end:0x805A6858
+
+rvl_msl/scanf.c:
+	.text       start:0x8022C94C end:0x8022C9DC
+
+rvl_msl/strtoul.c:
+	.text       start:0x8022CEB8 end:0x8022D3AC
+	.data start:0x80332568 end:0x803325AC
+
+rvl_msl/wstring.c:
+	.text       start:0x8022D3AC end:0x8022D440
+
+rvl_msl/wchar_io.c:
+	.text       start:0x8022D440 end:0x8022D4C4
+
+rvl_msl/abort_exit_ppc_eabi.c:
+	.text       start:0x8022D594 end:0x8022D5C8
+	.sbss start:0x805A26F0 end:0x805A26F8
+
+rvl_msl/math_sun.c:
+	.text       start:0x8022D5C8 end:0x8022D608
+
+rvl_msl/extras.c:
+	.text       start:0x8022D608 end:0x8022D6B0
+
+rvl_msl/e_log10.c:
+	.text       start:0x8022E460 end:0x8022E574
+	.sbss start:0x805A2700 end:0x805A2708
+	.sdata2 start:0x805A6A48 end:0x805A6A78
+
+rvl_msl/s_ceil.c:
+	.text       start:0x80230FA0 end:0x802310E0
+	.sdata2 start:0x805A6D00 end:0x805A6D10
+
+rvl_msl/signal.c:
+	.text       start:0x8022C9DC end:0x8022CA8C
+	.bss start:0x80530788 end:0x805307A8
+
+rvl_msl/fminmaxdim.c:
+	.text       start:0x8022F154 end:0x8022F22C
+
+rvl_msl/w_log10.c:
+	.text       start:0x80231774 end:0x80231778
+
+rvl_trk/targimpl.c:
+	.text       start:0x802257C4 end:0x802271DC
+	.rodata start:0x802DEC78 end:0x802DED00
+	.data start:0x80331E20 end:0x80331E50
+	.bss start:0x8052F990 end:0x8052FF10
+
+rvl_trk/targsupp.c:
+	.text       start:0x802271E0 end:0x80227200
+
+rvl_trk/string_TRK.c:
+	.text       start:0x802257A8 end:0x802257C4
+nw4r/ut/ut_list.cpp:
+	.text start:0x80234080 end:0x802342D0
+
+nw4r/ut/ut_LinkList.cpp:
+	.text start:0x802342D0 end:0x8023443C
+
+nw4r/ut/ut_binaryFileFormat.cpp:
+	.text start:0x8023443C end:0x802344B0
+
+nw4r/ut/ut_CharStrmReader.cpp:
+	.text start:0x802344B0 end:0x802345C0
+
+nw4r/ut/ut_IOStream.cpp:
+	.text start:0x802345C0 end:0x802345DC
+	.ctors start:0x802C4608 end:0x802C460C
+	.sbss start:0x805A2710 end:0x805A2714
+
+nw4r/ut/ut_FileStream.cpp:
+	.text start:0x802345DC end:0x802346E4
+	.ctors start:0x802C460C end:0x802C4610
+	.sbss start:0x805A2718 end:0x805A271C
+
+nw4r/ut/ut_DvdFileStream.cpp:
+	.text start:0x802346E4 end:0x80234CFC
+	.ctors start:0x802C4610 end:0x802C4614
+	.data start:0x803326B0 end:0x80332714
+	.sbss start:0x805A2720 end:0x805A2724
+
+nw4r/ut/ut_DvdLockedFileStream.cpp:
+	.text start:0x80234CFC end:0x802350BC
+	.ctors start:0x802C4614 end:0x802C4618
+	.data start:0x80332718 end:0x8033277C
+	.bss start:0x805307B8 end:0x805307D0
+	.sbss start:0x805A2728 end:0x805A273C
+
+nw4r/ut/ut_LockedCache.cpp:
+	.text start:0x802350BC end:0x80235268
+	.ctors start:0x802C4618 end:0x802C461C
+	.bss start:0x805307D0 end:0x805307EC
+
+nw4r/ut/ut_Font.cpp:
+	.text start:0x80235268 end:0x80235310
+	.data start:0x80332780 end:0x803327B0
+
+nw4r/ut/ut_RomFont.cpp:
+	.text start:0x80235310 end:0x80235350
+	.data start:0x803327B0 end:0x8033280C
+
+nw4r/ut/ut_ResFontBase.cpp:
+	.text start:0x80235350 end:0x80235A50
+	.data start:0x80332810 end:0x80332878
+
+nw4r/ut/ut_ResFont.cpp:
+	.text start:0x80235A50 end:0x80235D54
+	.data start:0x80332878 end:0x803328D4
+
+nw4r/ef/ef_draworder.cpp:
+	.text start:0x802362B8 end:0x802363C4
+	.data start:0x80332958 end:0x80332970
+
+nw4r/ef/ef_effect.cpp:
+	.text start:0x802363C4 end:0x80236F6C
+	.data start:0x80332970 end:0x80332990
+	.sdata2 start:0x805A6D70 end:0x805A6D78
+
+nw4r/ef/ef_effectsystem.cpp:
+	.text start:0x80236F6C end:0x80237988
+	.ctors start:0x802C461C end:0x802C4620
+	.data start:0x80332990 end:0x803329D8
+	.bss start:0x80530820 end:0x8053C938
+	.sdata start:0x805A18D8 end:0x805A18E0
+	.sbss start:0x805A2750 end:0x805A2760
+	.sdata2 start:0x805A6D78 end:0x805A6D80
+
+nw4r/ef/ef_emitter.cpp:
+	.text start:0x80237988 end:0x80239A7C
+	.data start:0x803329D8 end:0x80332A00
+	.sdata2 start:0x805A6D80 end:0x805A6DB8
+
+nw4r/ef/ef_animcurve.cpp:
+	.text start:0x80239A7C end:0x8023E9C4
+	.data start:0x80332A00 end:0x80332C00
+	.sdata2 start:0x805A6DB8 end:0x805A6DF0
+
+nw4r/ef/ef_postfield.cpp:
+	.text start:0x8023E9C4 end:0x80241FA0
+	.sdata2 start:0x805A6DF0 end:0x805A6E28
+
+nw4r/ef/ef_particle.cpp:
+	.text start:0x80241FA0 end:0x80242DC0
+	.data start:0x80332C00 end:0x80332C18
+	.sdata2 start:0x805A6E28 end:0x805A6E78
+
+nw4r/ef/ef_particlemanager.cpp:
+	.text start:0x80242DC0 end:0x802450FC
+	.ctors start:0x802C4620 end:0x802C4624
+	.data start:0x80332C18 end:0x80332C80
+	.bss start:0x8053C938 end:0x8053C968
+	.sbss start:0x805A2760 end:0x805A2768
+	.sdata2 start:0x805A6E78 end:0x805A6EC0
+
+nw4r/ef/ef_resource.cpp:
+	.text start:0x802450FC end:0x80245CD0
+	.ctors start:0x802C4624 end:0x802C4628
+	.bss start:0x8053C968 end:0x8053C988
+
+nw4r/ef/ef_util.cpp:
+	.text start:0x80245CD0 end:0x80246BA0
+	.sdata start:0x805A18E0 end:0x805A18E8
+	.sdata2 start:0x805A6EC0 end:0x805A6F08
+
+nw4r/ef/ef_handle.cpp:
+	.text start:0x80246BA0 end:0x80246C44
+
+nw4r/ef/ef_emitterform.cpp:
+	.text start:0x80246C44 end:0x802471E0
+	.sdata2 start:0x805A6F08 end:0x805A6F38
+
+nw4r/ef/ef_creationqueue.cpp:
+	.text start:0x802471E0 end:0x80247620
+
+nw4r/ef/emform/ef_emform.cpp:
+	.text start:0x80247620 end:0x802476D8
+	.ctors start:0x802C4628 end:0x802C462C
+	.data start:0x80332C80 end:0x80332CB8
+	.sbss start:0x805A2768 end:0x805A2788
+
+nw4r/ef/emform/ef_point.cpp:
+	.text start:0x802476D8 end:0x80247A20
+	.data start:0x80332CB8 end:0x80332CC8
+	.sdata2 start:0x805A6F38 end:0x805A6F68
+
+nw4r/ef/emform/ef_line.cpp:
+	.text start:0x80247A20 end:0x80247D58
+	.data start:0x80332CC8 end:0x80332CD8
+	.sdata2 start:0x805A6F68 end:0x805A6F90
+
+nw4r/ef/emform/ef_disc.cpp:
+	.text start:0x80247D58 end:0x8024828C
+	.data start:0x80332CD8 end:0x80332CE8
+	.sdata2 start:0x805A6F90 end:0x805A6FD8
+
+nw4r/ef/emform/ef_sphere.cpp:
+	.text start:0x8024828C end:0x80248AE0
+	.data start:0x80332CE8 end:0x80332CF8
+	.sdata2 start:0x805A6FD8 end:0x805A7028
+
+nw4r/ef/emform/ef_cylinder.cpp:
+	.text start:0x80248AE0 end:0x80249290
+	.data start:0x80332CF8 end:0x80332D08
+	.sdata2 start:0x805A7028 end:0x805A7070
+
+nw4r/ef/emform/ef_torus.cpp:
+	.text start:0x80249290 end:0x802498CC
+	.data start:0x80332D08 end:0x80332D18
+	.sdata2 start:0x805A7070 end:0x805A70B8
+
+nw4r/ef/emform/ef_cube.cpp:
+	.text start:0x802498CC end:0x8024B4F4
+	.data start:0x80332D18 end:0x80332D28
+	.sdata2 start:0x805A70B8 end:0x805A70F0
+
+nw4r/ef/drawstrategy/ef_drawstrategybuilder.cpp:
+	.text start:0x8024B4F4 end:0x8024B898
+	.data start:0x80332D28 end:0x80332D50
+	.bss start:0x8053C988 end:0x8053D018
+	.sbss start:0x805A2788 end:0x805A2790
+
+nw4r/ef/drawstrategy/ef_drawstrategyimpl.cpp:
+	.text start:0x8024B898 end:0x8024DB78
+	.ctors start:0x802C462C end:0x802C4630
+	.data start:0x80332D50 end:0x80332D68
+	.bss start:0x8053D018 end:0x8053D078
+	.sdata2 start:0x805A70F0 end:0x805A7120
+
+nw4r/ef/drawstrategy/ef_drawbillboardstrategy.cpp:
+	.text start:0x8024DB78 end:0x8024FC14
+	.data start:0x80332D68 end:0x80332D88
+	.sdata start:0x805A1900 end:0x805A1908
+	.sdata2 start:0x805A7120 end:0x805A7150
+
+nw4r/ef/drawstrategy/ef_drawdirectionalstrategy.cpp:
+	.text start:0x8024FC14 end:0x80251EF0
+	.rodata start:0x802DFE50 end:0x802DFEB0
+	.data start:0x80332D88 end:0x80332DC8
+	.sdata start:0x805A1920 end:0x805A1928
+	.sdata2 start:0x805A7150 end:0x805A7178
+
+nw4r/ef/drawstrategy/ef_drawfreestrategy.cpp:
+	.text start:0x80251EF0 end:0x802528D0
+	.rodata start:0x802DFEB0 end:0x802DFF10
+	.data start:0x80332DC8 end:0x80332DE0
+	.sdata start:0x805A1940 end:0x805A1948
+	.sdata2 start:0x805A7178 end:0x805A71A0
+
+nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp:
+	.text start:0x802528D0 end:0x80252EB0
+	.data start:0x80332DE0 end:0x80332DF8
+	.sdata start:0x805A1948 end:0x805A1950
+	.sdata2 start:0x805A71A0 end:0x805A71B0
+
+nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp:
+	.text start:0x80252EB0 end:0x80253300
+	.data start:0x80332DF8 end:0x80332E10
+	.sdata start:0x805A1950 end:0x805A1958
+	.sdata2 start:0x805A71B0 end:0x805A71C0
+
+nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp:
+	.text start:0x80253300 end:0x802568B4
+	.data start:0x80332E10 end:0x80332F18
+	.sdata2 start:0x805A71C0 end:0x805A71F8
+
+nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp:
+	.text start:0x802568B4 end:0x8025B538
+	.data start:0x80332F18 end:0x80333020
+	.bss start:0x8053D078 end:0x8053D0A8
+	.sbss start:0x805A2790 end:0x805A2798
+	.sdata2 start:0x805A71F8 end:0x805A7230
+
+nw4r/ef/ef_res_emitter_ac.cpp:
+	.text start:0x8025B538 end:0x8025B5A4
+nw4r/db/db_console.cpp:
+	.text start:0x80235D54 end:0x80235E28
+
+nw4r/db/db_assert.cpp:
+	.text start:0x80235E28 end:0x802362B8
+	.data start:0x803328D8 end:0x80332958
+	.bss start:0x805307F0 end:0x80530820
+	.sdata start:0x805A18D0 end:0x805A18D8
+	.sbss start:0x805A2740 end:0x805A274C
+
+nw4r/math/math_arithmetic.cpp:
+	.text start:0x80282CA0 end:0x80282DDC
+	.data start:0x80333AB0 end:0x803343C0
+	.sdata2 start:0x805A7528 end:0x805A7544
+
+nw4r/math/math_triangular.cpp:
+	.text start:0x80282DDC end:0x80282F08
+	.rodata start:0x802E0280 end:0x802E1290
+	.sdata2 start:0x805A7548 end:0x805A7550
+
+nw4r/math/math_types.cpp:
+	.text start:0x80282F08 end:0x80283314
+	.sdata2 start:0x805A7550 end:0x805A7568
+
+nw4r/math/math_geometry.cpp:
+	.text start:0x80283314 end:0x80283EA8
+	.sdata2 start:0x805A7568 end:0x805A7578
+
+nw4r/snd/snd_AxManager.cpp:
+	.text start:0x80283EA8 end:0x80285824
+	.bss start:0x8055A680 end:0x8055AAC8
+	.ctors start:0x802C4634 end:0x802C4638
+	.sbss start:0x805A27C0 end:0x805A27D8
+	.sdata2 start:0x805A7578 end:0x805A7590
+
+nw4r/snd/snd_AxVoice.cpp:
+	.text start:0x80285824 end:0x802884E4
+	.sdata2 start:0x805A7590 end:0x805A75B8
+
+nw4r/snd/snd_AxVoiceManager.cpp:
+	.text start:0x802884E4 end:0x80288F18
+	.bss start:0x8055AAC8 end:0x8055AB00
+	.sbss start:0x805A27D8 end:0x805A27E0
+
+nw4r/snd/snd_AxfxImpl.cpp:
+	.text start:0x80288F18 end:0x802890E4
+	.sbss start:0x805A27E0 end:0x805A27E8
+
+nw4r/snd/snd_Bank.cpp:
+	.text start:0x802890E4 end:0x80289354
+	.sdata2 start:0x805A75B8 end:0x805A75D8
+
+nw4r/snd/snd_BankFile.cpp:
+	.text start:0x80289354 end:0x80289A10
+	.sdata2 start:0x805A75D8 end:0x805A75E0
+
+nw4r/snd/snd_BasicPlayer.cpp:
+	.text start:0x80289A10 end:0x80289E04
+	.data start:0x803343C0 end:0x803343E8
+	.sdata2 start:0x805A75E0 end:0x805A75E8
+
+nw4r/snd/snd_BasicSound.cpp:
+	.text start:0x80289E04 end:0x8028B5E4
+	.ctors start:0x802C4638 end:0x802C463C
+	.data start:0x803343E8 end:0x80334420
+	.sbss start:0x805A27E8 end:0x805A27F0
+	.sdata2 start:0x805A75E8 end:0x805A75F8
+
+nw4r/snd/snd_BiquadFilterPreset.cpp:
+	.text start:0x8028B5E4 end:0x8028B8B0
+	.rodata start:0x802E1290 end:0x802E26C8
+	.sdata2 start:0x805A75F8 end:0x805A7608
+	.data start:0x80334420 end:0x80334470
+
+nw4r/snd/snd_Channel.cpp:
+	.text start:0x8028B8B0 end:0x8028CB04
+	.bss start:0x8055AB00 end:0x8055AB30
+	.sbss start:0x805A27F0 end:0x805A27F8
+	.sdata2 start:0x805A7608 end:0x805A7630
+
+nw4r/snd/snd_DisposeCallbackManager.cpp:
+	.text start:0x8028CB04 end:0x8028CE94
+	.bss start:0x8055AB30 end:0x8055AB48
+	.sbss start:0x805A27F8 end:0x805A2800
+
+nw4r/snd/snd_DvdSoundArchive.cpp:
+	.text start:0x8028CE94 end:0x8028D3CC
+	.data start:0x80334470 end:0x803344F8
+
+nw4r/snd/snd_EnvGenerator.cpp:
+	.text start:0x8028D3CC end:0x8028D768
+	.rodata start:0x802E26C8 end:0x802E29C8
+	.sdata2 start:0x805A7630 end:0x805A7660
+
+nw4r/snd/snd_ExternalSoundPlayer.cpp:
+	.text start:0x8028D768 end:0x8028DBF4
+
+nw4r/snd/snd_FrameHeap.cpp:
+	.text start:0x8028DBF4 end:0x8028E350
+
+nw4r/snd/snd_FxReverbHiDpl2.cpp:
+	.text start:0x8028E350 end:0x8028EA8C
+	.data start:0x803344F8 end:0x80334520
+	.sdata2 start:0x805A7660 end:0x805A7680
+
+nw4r/snd/snd_InstancePool.cpp:
+	.text start:0x8028EA8C end:0x8028ED44
+
+nw4r/snd/snd_Lfo.cpp:
+	.text start:0x8028ED44 end:0x8028EF34
+	.rodata start:0x802E29C8 end:0x802E29F0
+	.sdata2 start:0x805A7680 end:0x805A76B0
+
+nw4r/snd/snd_MidiSeqPlayer.cpp:
+	.text start:0x8028EF34 end:0x8028EF88
+
+nw4r/snd/snd_MmlParser.cpp:
+	.text start:0x8028EF88 end:0x8029012C
+	.data start:0x80334520 end:0x80334750
+	.sbss start:0x805A2800 end:0x805A2808
+	.sdata start:0x805A19B0 end:0x805A19C0
+	.sdata2 start:0x805A76B0 end:0x805A76D0
+
+nw4r/snd/snd_MmlSeqTrack.cpp:
+	.text start:0x8029012C end:0x802901D4
+	.data start:0x80334750 end:0x80334760
+
+nw4r/snd/snd_MmlSeqTrackAllocator.cpp:
+	.text start:0x802901D4 end:0x802902F8
+	.data start:0x80334760 end:0x80334778
+
+nw4r/snd/snd_PlayerHeap.cpp:
+	.text start:0x802902F8 end:0x802904F8
+	.data start:0x80334778 end:0x80334788
+
+nw4r/snd/snd_RemoteSpeaker.cpp:
+	.text start:0x802904F8 end:0x80290E6C
+
+nw4r/snd/snd_RemoteSpeakerManager.cpp:
+	.text start:0x80290E6C end:0x802910EC
+	.bss start:0x8055AB48 end:0x8055AE20
+	.sbss start:0x805A2808 end:0x805A2810
+
+nw4r/snd/snd_SeqFile.cpp:
+	.text start:0x802910EC end:0x80291220
+
+nw4r/snd/snd_SeqPlayer.cpp:
+	.text start:0x80291220 end:0x802926D4
+	.bss start:0x8055AE20 end:0x8055AE40
+	.data start:0x80334788 end:0x803347F0
+	.sdata2 start:0x805A76D0 end:0x805A76E8
+
+nw4r/snd/snd_SeqSound.cpp:
+	.text start:0x802926D4 end:0x80292E1C
+	.ctors start:0x802C463C end:0x802C4640
+	.data start:0x803347F0 end:0x80334840
+	.sbss start:0x805A2810 end:0x805A2818
+
+nw4r/snd/snd_SeqSoundHandle.cpp:
+	.text start:0x80292E1C end:0x80292E54
+
+nw4r/snd/snd_SeqTrack.cpp:
+	.text start:0x80292E54 end:0x8029428C
+	.data start:0x80334840 end:0x80334850
+	.rodata start:0x802E29F0 end:0x802E2A18
+	.sdata2 start:0x805A76E8 end:0x805A7718
+
+nw4r/snd/snd_Sound3DActor.cpp:
+	.text start:0x8029428C end:0x80294634
+	.data start:0x80334850 end:0x80334880
+	.rodata start:0x802E2A18 end:0x802E2A30
+	.sdata2 start:0x805A7718 end:0x805A7720
+
+nw4r/snd/snd_Sound3DCalculator.cpp:
+	.text start:0x80294634 end:0x802950F0
+	.sdata2 start:0x805A7720 end:0x805A7768
+
+nw4r/snd/snd_Sound3DEngine.cpp:
+	.text start:0x802950F0 end:0x80295610
+	.data start:0x80334880 end:0x803348A0
+	.sdata2 start:0x805A7768 end:0x805A7780
+
+nw4r/snd/snd_Sound3DListener.cpp:
+	.text start:0x80295610 end:0x80295860
+	.sdata2 start:0x805A7780 end:0x805A7790
+
+nw4r/snd/snd_Sound3DManager.cpp:
+	.text start:0x80295860 end:0x80295B00
+	.bss start:0x8055AE40 end:0x8055AE60
+	.ctors start:0x802C4640 end:0x802C4644
+	.data start:0x803348A0 end:0x803348D8
+	.sdata2 start:0x805A7790 end:0x805A7798
+
+nw4r/snd/snd_SoundActor.cpp:
+	.text start:0x80295B00 end:0x80295CF0
+	.data start:0x803348D8 end:0x803348F8
+	.sdata2 start:0x805A7798 end:0x805A77A0
+
+nw4r/snd/snd_SoundArchive.cpp:
+	.text start:0x80295CF0 end:0x802962F4
+	.data start:0x803348F8 end:0x80334918
+
+nw4r/snd/snd_SoundArchiveFile.cpp:
+	.text start:0x802962F4 end:0x802973C8
+
+nw4r/snd/snd_SoundArchiveLoader.cpp:
+	.text start:0x802973C8 end:0x80297A18
+
+nw4r/snd/snd_SoundArchivePlayer.cpp:
+	.text start:0x80297A18 end:0x8029A240
+	.data start:0x80334918 end:0x80334968
+	.sdata2 start:0x805A77A0 end:0x805A77B0
+
+nw4r/snd/snd_SoundHandle.cpp:
+	.text start:0x8029A240 end:0x8029A328
+
+nw4r/snd/snd_SoundHeap.cpp:
+	.text start:0x8029A328 end:0x8029A588
+	.data start:0x80334968 end:0x80334978
+
+nw4r/snd/snd_SoundPlayer.cpp:
+	.text start:0x8029A588 end:0x8029AF4C
+	.bss start:0x8055AE60 end:0x8055B470
+	.sbss start:0x805A2818 end:0x805A2820
+	.sdata2 start:0x805A77B0 end:0x805A77B8
+
+nw4r/snd/snd_SoundStartable.cpp:
+	.text start:0x8029AF4C end:0x8029AFAC
+
+nw4r/snd/snd_SoundSystem.cpp:
+	.text start:0x8029AFAC end:0x8029B270
+	.data start:0x80334978 end:0x803349C0
+	.bss start:0x8055B480 end:0x805725C0
+	.ctors start:0x802C4644 end:0x802C4648
+	.sbss start:0x805A2820 end:0x805A2828
+	.sdata start:0x805A19C0 end:0x805A19C8
+
+nw4r/snd/snd_SoundThread.cpp:
+	.text start:0x8029B270 end:0x8029B954
+	.bss start:0x805725C0 end:0x80572968
+	.sbss start:0x805A2828 end:0x805A2830
+
+nw4r/snd/snd_StrmChannel.cpp:
+	.text start:0x8029B954 end:0x8029BB30
+
+nw4r/snd/snd_StrmFile.cpp:
+	.text start:0x8029BB30 end:0x8029C4E0
+
+nw4r/snd/snd_StrmPlayer.cpp:
+	.text start:0x8029C4E0 end:0x8029EF04
+	.bss start:0x80572980 end:0x80576998
+	.data start:0x803349C0 end:0x80334A38
+	.sbss start:0x805A2830 end:0x805A2838
+	.sdata2 start:0x805A77B8 end:0x805A77E0
+
+nw4r/snd/snd_StrmSound.cpp:
+	.text start:0x8029EF04 end:0x8029F694
+	.ctors start:0x802C4648 end:0x802C464C
+	.data start:0x80334A38 end:0x80334A70
+	.sbss start:0x805A2838 end:0x805A2840
+	.sdata2 start:0x805A77E0 end:0x805A77F0
+
+nw4r/snd/snd_StrmSoundHandle.cpp:
+	.text start:0x8029F694 end:0x8029F6CC
+
+nw4r/snd/snd_Task.cpp:
+	.text start:0x8029F6CC end:0x8029F70C
+
+nw4r/snd/snd_TaskManager.cpp:
+	.text start:0x8029F70C end:0x8029FE78
+	.bss start:0x80576998 end:0x805769E0
+	.sbss start:0x805A2840 end:0x805A2848
+
+nw4r/snd/snd_TaskThread.cpp:
+	.text start:0x8029FE78 end:0x802A0094
+
+nw4r/snd/snd_Voice.cpp:
+	.text start:0x802A0094 end:0x802A2BA0
+	.data start:0x80334A70 end:0x80334AA8
+	.sdata2 start:0x805A77F0 end:0x805A7828
+
+nw4r/snd/snd_VoiceManager.cpp:
+	.text start:0x802A2BA0 end:0x802A3318
+	.bss start:0x805769E0 end:0x80576A08
+	.sbss start:0x805A2848 end:0x805A2850
+
+nw4r/snd/snd_Util.cpp:
+	.text start:0x802A3318 end:0x802A3794
+	.data start:0x80334AA8 end:0x80334AB8
+	.rodata start:0x802E2A30 end:0x802E4EB0
+	.sdata start:0x805A19C8 end:0x805A19D0
+	.sdata2 start:0x805A7828 end:0x805A7858
+
+nw4r/snd/snd_WaveArchive.cpp:
+	.text start:0x802A3794 end:0x802A3890
+
+nw4r/snd/snd_WaveFile.cpp:
+	.text start:0x802A3890 end:0x802A3B20
+
+nw4r/snd/snd_WaveSound.cpp:
+	.text start:0x802A3B20 end:0x802A3E80
+	.ctors start:0x802C464C end:0x802C4650
+	.data start:0x80334AB8 end:0x80334AF0
+	.sbss start:0x805A2850 end:0x805A2858
+
+nw4r/snd/snd_WaveSoundHandle.cpp:
+	.text start:0x802A3E80 end:0x802A3EB8
+
+nw4r/snd/snd_WsdFile.cpp:
+	.text start:0x802A3EB8 end:0x802A4274
+	.sdata2 start:0x805A7858 end:0x805A7860
+
+nw4r/snd/snd_WsdPlayer.cpp:
+	.text start:0x802A4274 end:0x802A52CC
+	.data start:0x80334AF0 end:0x80334B50
+	.sdata2 start:0x805A7860 end:0x805A7888
+
+nw4r/snd/snd_adpcm.cpp:
+	.text start:0x802A52CC end:0x802A5358
+homebuttonLib/HBMFrameController.cpp:
+	.text start:0x80203864 end:0x80203A0C
+	.rodata start:0x802DE6B0 end:0x802DE6B8
+	.data start:0x8032DB18 end:0x8032DB40
+
+homebuttonLib/HBMAnmController.cpp:
+	.text start:0x80203A0C end:0x80203B18
+	.data start:0x8032DB40 end:0x8032DB88
+
+homebuttonLib/HBMGUIManager.cpp:
+	.text start:0x80203B18 end:0x802051AC
+	.rodata start:0x802DE6B8 end:0x802DE6C8
+	.data start:0x8032DB88 end:0x8032DDF8
+	.bss start:0x8052D170 end:0x8052D178
+
+homebuttonLib/HBMController.cpp:
+	.text start:0x802051AC end:0x80205CB0
+	.rodata start:0x802DE6C8 end:0x802DE6D8
+	.bss start:0x8052D178 end:0x8052D310
+
+homebuttonLib/HBMRemoteSpk.cpp:
+	.text start:0x80205CB0 end:0x8020657C
+	.data start:0x8032DDF8 end:0x8032DE28
+	.bss start:0x8052D310 end:0x8052D318
+
+homebuttonLib/HBMAxSound.cpp:
+	.text start:0x8020657C end:0x802070A8
+	.rodata start:0x802DE6D8 end:0x802DE70C
+	.data start:0x8032DE28 end:0x8032E178
+	.bss start:0x8052D318 end:0x8052D320
+
+homebuttonLib/HBMCommon.cpp:
+	.text start:0x802070A8 end:0x80207378
+	.data start:0x8032E178 end:0x8032E1C8
+	.bss start:0x8052D320 end:0x8052D330
+
+homebuttonLib/HBMBase.cpp:
+	.text start:0x80207378 end:0x8020F4A8
+	.rodata start:0x802DE710 end:0x802DEA70
+	.data start:0x8032E1C8 end:0x8032EEA8
+	.bss start:0x8052D330 end:0x8052D350
+
+homebuttonLib/nw4hbm/lyt/lyt_animation.cpp:
+	.text start:0x8020F4A8 end:0x80210044
+	.rodata start:0x802DEA70 end:0x802DEA90
+	.data start:0x8032EEA8 end:0x8032EF28
+
+homebuttonLib/nw4hbm/lyt/lyt_arcResourceAccessor.cpp:
+	.text start:0x80210044 end:0x802103D0
+	.data start:0x8032EF28 end:0x8032EFA8
+
+homebuttonLib/nw4hbm/lyt/lyt_bounding.cpp:
+	.ctors start:0x802C45F0 end:0x802C45F4
+	.text start:0x802103D0 end:0x80210534
+	.data start:0x8032EFA8 end:0x8032F090
+	.bss start:0x8052D350 end:0x8052D358
+
+homebuttonLib/nw4hbm/lyt/lyt_common.cpp:
+	.text start:0x80210534 end:0x80211348
+	.rodata start:0x802DEA90 end:0x802DEAA0
+	.bss start:0x8052D358 end:0x8052D380
+
+homebuttonLib/nw4hbm/lyt/lyt_drawInfo.cpp:
+	.text start:0x80211348 end:0x80211404
+	.rodata start:0x802DEAA0 end:0x802DEAA8
+	.data start:0x8032F090 end:0x8032F0C0
+
+homebuttonLib/nw4hbm/lyt/lyt_group.cpp:
+	.text start:0x80211404 end:0x80211730
+	.data start:0x8032F0C0 end:0x8032F0E8
+
+homebuttonLib/nw4hbm/lyt/lyt_layout.cpp:
+	.text start:0x80211730 end:0x802123DC
+	.rodata start:0x802DEAA8 end:0x802DEAB0
+	.data start:0x8032F0E8 end:0x8032F138
+	.bss start:0x8052D380 end:0x8052D388
+
+homebuttonLib/nw4hbm/lyt/lyt_material.cpp:
+	.text start:0x802123DC end:0x80215810
+	.rodata start:0x802DEAB0 end:0x802DEAE0
+	.data start:0x8032F138 end:0x8032F1C0
+
+homebuttonLib/nw4hbm/lyt/lyt_pane.cpp:
+	.ctors start:0x802C45F4 end:0x802C45F8
+	.text start:0x80215810 end:0x80216784
+	.rodata start:0x802DEAE0 end:0x802DEB00
+	.data start:0x8032F1C0 end:0x8032F228
+	.bss start:0x8052D388 end:0x8052D390
+
+homebuttonLib/nw4hbm/lyt/lyt_picture.cpp:
+	.ctors start:0x802C45F8 end:0x802C45FC
+	.text start:0x80216784 end:0x80216CBC
+	.rodata start:0x802DEB00 end:0x802DEB04
+	.data start:0x8032F228 end:0x8032F2C8
+	.bss start:0x8052D390 end:0x8052D398
+
+homebuttonLib/nw4hbm/lyt/lyt_resourceAccessor.cpp:
+	.text start:0x80216CBC end:0x80216D14
+	.data start:0x8032F2C8 end:0x8032F2E0
+
+homebuttonLib/nw4hbm/lyt/lyt_textBox.cpp:
+	.ctors start:0x802C45FC end:0x802C4600
+	.text start:0x80216D14 end:0x802183A8
+	.rodata start:0x802DEB08 end:0x802DEB20
+	.data start:0x8032F2E0 end:0x8032F390
+	.bss start:0x8052D398 end:0x8052D3A0
+
+homebuttonLib/nw4hbm/lyt/lyt_window.cpp:
+	.ctors start:0x802C4600 end:0x802C4604
+	.text start:0x802183A8 end:0x8021A858
+	.rodata start:0x802DEB20 end:0x802DEB38
+	.data start:0x8032F390 end:0x8032F478
+	.bss start:0x8052D3A0 end:0x8052D3A8
+
+homebuttonLib/nw4hbm/math/math_triangular.cpp:
+	.text start:0x8021A858 end:0x8021AADC
+	.rodata start:0x802DEB38 end:0x802DEB5C
+	.data start:0x8032F478 end:0x80330590
+
+homebuttonLib/nw4hbm/ut/ut_binaryFileFormat.cpp:
+	.text start:0x8021AADC end:0x8021AB50
+
+homebuttonLib/nw4hbm/ut/ut_CharStrmReader.cpp:
+	.text start:0x8021AB50 end:0x8021AC60
+
+homebuttonLib/nw4hbm/ut/ut_CharWriter.cpp:
+	.text start:0x8021AC60 end:0x8021C750
+	.rodata start:0x802DEB60 end:0x802DEB80
+	.bss start:0x8052D3A8 end:0x8052D3D0
+
+homebuttonLib/nw4hbm/ut/ut_Font.cpp:
+	.text start:0x8021C750 end:0x8021C7F8
+	.data start:0x80330590 end:0x803305C0
+
+homebuttonLib/nw4hbm/ut/ut_LinkList.cpp:
+	.text start:0x8021C7F8 end:0x8021C8F0
+
+homebuttonLib/nw4hbm/ut/ut_list.cpp:
+	.text start:0x8021C8F0 end:0x8021CA50
+
+homebuttonLib/nw4hbm/ut/ut_ResFont.cpp:
+	.text start:0x8021CA50 end:0x8021CD54
+	.data start:0x803305C0 end:0x803306A0
+
+homebuttonLib/nw4hbm/ut/ut_ResFontBase.cpp:
+	.text start:0x8021CD54 end:0x8021D324
+	.data start:0x803306A0 end:0x80330760
+
+homebuttonLib/nw4hbm/ut/ut_TagProcessorBase.cpp:
+	.text start:0x8021D324 end:0x8021DAF4
+	.rodata start:0x802DEB80 end:0x802DEB88
+	.data start:0x80330760 end:0x803307E8
+
+homebuttonLib/nw4hbm/ut/ut_TextWriterBase.cpp:
+	.ctors start:0x802C4604 end:0x802C4608
+	.text start:0x8021DAF4 end:0x8021F584
+	.rodata start:0x802DEB88 end:0x802DEBA0
+	.bss start:0x8052D3D0 end:0x8052D3F8
+
+homebuttonLib/sound/mix.cpp:
+	.text start:0x8021F584 end:0x80220EA4
+	.data start:0x803307E8 end:0x80331378
+	.bss start:0x8052D3F8 end:0x8052DAB4
+
+homebuttonLib/sound/syn.cpp:
+	.text start:0x80220EA4 end:0x80221318
+	.bss start:0x8052DAB8 end:0x8052DF84
+
+homebuttonLib/sound/synctrl.cpp:
+	.text start:0x80221318 end:0x802217B0
+	.data start:0x80331378 end:0x80331578
+
+homebuttonLib/sound/synenv.cpp:
+	.text start:0x802217B0 end:0x80221B94
+	.rodata start:0x802DEBA0 end:0x802DEBC0
+
+homebuttonLib/sound/synmix.cpp:
+	.text start:0x80221B94 end:0x80221CAC
+	.data start:0x80331578 end:0x80331908
+
+homebuttonLib/sound/synpitch.cpp:
+	.text start:0x80221CAC end:0x80221F1C
+	.rodata start:0x802DEBC0 end:0x802DEBD4
+	.data start:0x80331908 end:0x80331CF8
+
+homebuttonLib/sound/synsample.cpp:
+	.text start:0x80221F1C end:0x8022238C
+
+homebuttonLib/sound/synvoice.cpp:
+	.text start:0x8022238C end:0x8022252C
+
+homebuttonLib/sound/seq.cpp:
+	.text start:0x8022252C end:0x80222DEC
+	.rodata start:0x802DEBD8 end:0x802DEBFC
+	.data start:0x80331CF8 end:0x80331D78
+	.bss start:0x8052DF88 end:0x8052DF90
+nw4r/g3d/res/g3d_rescommon.cpp:
+	.text start:0x8025B5A4 end:0x8025B734
+
+nw4r/g3d/res/g3d_resdict.cpp:
+	.text start:0x8025B734 end:0x8025BA34
+
+nw4r/g3d/res/g3d_resfile.cpp:
+	.text start:0x8025BA34 end:0x8025CF84
+	.data start:0x80333020 end:0x80333180
+
+nw4r/g3d/res/g3d_resmdl.cpp:
+	.text start:0x8025CF84 end:0x8025E024
+
+nw4r/g3d/res/g3d_resshp.cpp:
+	.text start:0x8025E024 end:0x8025ED28
+
+nw4r/g3d/res/g3d_restev.cpp:
+	.text start:0x8025ED28 end:0x8025F40C
+	.rodata start:0x802DFF10 end:0x802DFF70
+
+nw4r/g3d/res/g3d_resmat.cpp:
+	.text start:0x8025F40C end:0x80260EA4
+	.data start:0x80333190 end:0x803331E4
+	.sdata2 start:0x805A7230 end:0x805A7264
+
+nw4r/g3d/res/g3d_resvtx.cpp:
+	.text start:0x80260EA4 end:0x8026129C
+
+nw4r/g3d/res/g3d_restex.cpp:
+	.text start:0x8026129C end:0x80261438
+
+nw4r/g3d/res/g3d_resnode.cpp:
+	.text start:0x80261438 end:0x8026186C
+	.sdata2 start:0x805A7268 end:0x805A7274
+
+nw4r/g3d/res/g3d_resanm.cpp:
+	.text start:0x8026186C end:0x80261A98
+	.sdata2 start:0x805A7278 end:0x805A728C
+
+nw4r/g3d/res/g3d_resanmvis.cpp:
+	.text start:0x80261A98 end:0x80261BB8
+	.sdata2 start:0x805A7290 end:0x805A72A0
+
+nw4r/g3d/res/g3d_resanmclr.cpp:
+	.text start:0x80261BB8 end:0x80261D24
+	.sdata2 start:0x805A72A0 end:0x805A72B0
+
+nw4r/g3d/res/g3d_resanmtexpat.cpp:
+	.text start:0x80261D24 end:0x80262260
+
+nw4r/g3d/res/g3d_resanmtexsrt.cpp:
+	.text start:0x80262260 end:0x80262674
+	.sdata2 start:0x805A72B0 end:0x805A72B8
+
+nw4r/g3d/res/g3d_resanmchr.cpp:
+	.text start:0x80262674 end:0x8026430C
+	.rodata start:0x802DFF70 end:0x802DFF90
+	.sdata2 start:0x805A72B8 end:0x805A72D8
+
+nw4r/g3d/res/g3d_reslightset.cpp:
+	.text start:0x8026430C end:0x802644B0
+
+nw4r/g3d/res/g3d_resanmamblight.cpp:
+	.text start:0x802644B0 end:0x80264580
+	.sdata2 start:0x805A72D8 end:0x805A72E8
+
+nw4r/g3d/res/g3d_resanmlight.cpp:
+	.text start:0x80264580 end:0x80264978
+	.sdata2 start:0x805A72E8 end:0x805A72F8
+
+nw4r/g3d/res/g3d_resanmfog.cpp:
+	.text start:0x80264978 end:0x80264AD8
+	.sdata2 start:0x805A72F8 end:0x805A7308
+
+nw4r/g3d/res/g3d_resanmcamera.cpp:
+	.text start:0x80264AD8 end:0x80264DF0
+
+nw4r/g3d/res/g3d_resanmscn.cpp:
+	.text start:0x80264DF0 end:0x802659CC
+	.data start:0x80333200 end:0x803332A0
+
+nw4r/g3d/res/g3d_resanmshp.cpp:
+	.text start:0x802659CC end:0x80265B34
+	.sdata2 start:0x805A7308 end:0x805A730C
+
+nw4r/g3d/g3d_transform.cpp:
+	.text start:0x80265B34 end:0x80265E24
+	.sdata2 start:0x805A7310 end:0x805A7314
+
+nw4r/g3d/g3d_anmvis.cpp:
+	.text start:0x80265E24 end:0x80266544
+	.sdata start:0x805A1958 end:0x805A1960
+	.rodata start:0x802DFF90 end:0x802DFFB4
+	.data start:0x803332A0 end:0x80333328
+	.sdata2 start:0x805A7318 end:0x805A7328
+
+nw4r/g3d/g3d_anmclr.cpp:
+	.text start:0x80266544 end:0x802672C8
+	.rodata start:0x802DFFB8 end:0x802DFFE8
+	.data start:0x80333328 end:0x803333B8
+	.sdata2 start:0x805A7328 end:0x805A7338
+
+nw4r/g3d/g3d_anmtexpat.cpp:
+	.text start:0x802672C8 end:0x80267CF4
+	.rodata start:0x802DFFE8 end:0x802E0018
+	.data start:0x803333B8 end:0x80333448
+	.sdata2 start:0x805A7338 end:0x805A7348
+
+nw4r/g3d/g3d_anmtexsrt.cpp:
+	.text start:0x80267CF4 end:0x80268770
+	.rodata start:0x802E0018 end:0x802E0048
+	.data start:0x80333448 end:0x803334D8
+	.sdata2 start:0x805A7348 end:0x805A7368
+
+nw4r/g3d/g3d_anmchr.cpp:
+	.text start:0x80268770 end:0x8026A668
+	.rodata start:0x802E0048 end:0x802E0094
+	.data start:0x803334D8 end:0x80333638
+	.sdata2 start:0x805A7368 end:0x805A7380
+
+nw4r/g3d/g3d_anmshp.cpp:
+	.text start:0x8026A668 end:0x8026AFC4
+	.rodata start:0x802E0098 end:0x802E00BC
+	.data start:0x80333638 end:0x803336D8
+	.sdata2 start:0x805A7380 end:0x805A7390
+
+nw4r/g3d/g3d_anmscn.cpp:
+	.text start:0x8026AFC4 end:0x8026C528
+	.rodata start:0x802E00C0 end:0x802E00E0
+	.data start:0x803336D8 end:0x803337F8
+	.sdata2 start:0x805A7390 end:0x805A73AC
+
+nw4r/g3d/g3d_obj.cpp:
+	.text start:0x8026C528 end:0x8026C644
+
+nw4r/g3d/g3d_anmobj.cpp:
+	.text start:0x8026C644 end:0x8026C6FC
+	.sdata2 start:0x805A73B0 end:0x805A73B4
+	.rodata start:0x802E00F0 end:0x802E00FC
+	.sdata start:0x805A1960 end:0x805A1964
+
+nw4r/g3d/platform/g3d_gpu.cpp:
+	.text start:0x8026C6FC end:0x8026CC0C
+	.sdata2 start:0x805A73B8 end:0x805A73D0
+
+nw4r/g3d/platform/g3d_cpu.cpp:
+	.text start:0x8026CC0C end:0x8026CE30
+	.sdata2 start:0x805A73D0 end:0x805A73D4
+
+nw4r/g3d/g3d_state.cpp:
+	.text start:0x8026CE30 end:0x8027064C
+	.ctors start:0x802C4630 end:0x802C4634
+	.data start:0x80333818 end:0x80333830
+	.rodata start:0x802E0100 end:0x802E0130
+	.bss start:0x8053D0C0 end:0x8054267C
+	.sdata start:0x805A1968 end:0x805A1970
+	.sbss start:0x805A2798 end:0x805A27B8
+	.sdata2 start:0x805A73D8 end:0x805A7400
+
+nw4r/g3d/g3d_draw1mat1shp.cpp:
+	.text start:0x8027064C end:0x80271380
+	.rodata start:0x802E0130 end:0x802E0140
+	.sdata2 start:0x805A7400 end:0x805A7420
+
+nw4r/g3d/g3d_calcview.cpp:
+	.text start:0x80271380 end:0x8027355C
+	.sdata2 start:0x805A7420 end:0x805A742C
+	.rodata start:0x802E0140 end:0x802E015C
+
+nw4r/g3d/g3d_dcc.cpp:
+	.text start:0x8027355C end:0x80273638
+
+nw4r/g3d/g3d_workmem.cpp:
+	.text start:0x80273638 end:0x80273678
+	.bss start:0x80542680 end:0x8055A680
+
+nw4r/g3d/g3d_calcworld.cpp:
+	.text start:0x80273678 end:0x80274130
+	.data start:0x80333830 end:0x80333840
+	.sdata start:0x805A1970 end:0x805A1978
+	.sdata2 start:0x805A7430 end:0x805A7438
+
+nw4r/g3d/g3d_draw.cpp:
+	.text start:0x80274130 end:0x80275F8C
+	.sdata start:0x805A1978 end:0x805A1980
+	.sdata2 start:0x805A7438 end:0x805A7448
+
+nw4r/g3d/g3d_camera.cpp:
+	.text start:0x80275F8C end:0x80276EC4
+	.sdata2 start:0x805A7448 end:0x805A7478
+
+nw4r/g3d/dcc/g3d_basic.cpp:
+	.text start:0x80276EC4 end:0x80277188
+	.sdata2 start:0x805A7478 end:0x805A7484
+
+nw4r/g3d/dcc/g3d_maya.cpp:
+	.text start:0x80277188 end:0x80277E48
+	.rodata start:0x802E0160 end:0x802E0198
+	.sdata2 start:0x805A7488 end:0x805A749C
+
+nw4r/g3d/dcc/g3d_xsi.cpp:
+	.text start:0x80277E48 end:0x80278A08
+	.rodata start:0x802E0198 end:0x802E01D0
+	.sdata2 start:0x805A74A0 end:0x805A74AC
+
+nw4r/g3d/dcc/g3d_3dsmax.cpp:
+	.text start:0x80278A08 end:0x802794B8
+	.rodata start:0x802E01D0 end:0x802E0208
+	.sdata2 start:0x805A74B0 end:0x805A74C4
+
+nw4r/g3d/g3d_scnobj.cpp:
+	.text start:0x802794B8 end:0x8027AB88
+	.rodata start:0x802E0208 end:0x802E0238
+	.data start:0x80333840 end:0x80333908
+	.sbss start:0x805A27B8 end:0x805A27BC
+	.sdata2 start:0x805A74C8 end:0x805A74D0
+
+nw4r/g3d/g3d_scnroot.cpp:
+	.text start:0x8027AB88 end:0x8027C64C
+	.rodata start:0x802E0238 end:0x802E0248
+	.data start:0x80333908 end:0x80333978
+	.sdata start:0x805A1980 end:0x805A1990
+	.sdata2 start:0x805A74D0 end:0x805A74D8
+
+nw4r/g3d/g3d_scnmdlsmpl.cpp:
+	.text start:0x8027C64C end:0x8027E3D4
+	.rodata start:0x802E0248 end:0x802E025C
+	.data start:0x80333978 end:0x803339E8
+	.sdata start:0x805A1990 end:0x805A19A8
+	.sdata2 start:0x805A74D8 end:0x805A74DC
+
+nw4r/g3d/g3d_scnmdl.cpp:
+	.text start:0x8027E3D4 end:0x80280E94
+	.rodata start:0x802E0260 end:0x802E026C
+	.data start:0x803339E8 end:0x80333A30
+
+nw4r/g3d/g3d_calcmaterial.cpp:
+	.text start:0x80280E94 end:0x802812A4
+
+nw4r/g3d/g3d_init.cpp:
+	.text start:0x802812A4 end:0x802813A0
+	.data start:0x80333A30 end:0x80333A78
+	.sdata start:0x805A19A8 end:0x805A19AC
+
+nw4r/g3d/g3d_scnproc.cpp:
+	.text start:0x802813A0 end:0x80281690
+	.rodata start:0x802E0270 end:0x802E0280
+	.data start:0x80333A78 end:0x80333AAC
+	.sdata2 start:0x805A74E0 end:0x805A74E4
+
+nw4r/g3d/g3d_fog.cpp:
+	.text start:0x80281690 end:0x8028188C
+	.sdata2 start:0x805A74E8 end:0x805A74EC
+
+nw4r/g3d/g3d_light.cpp:
+	.text start:0x8028188C end:0x802824A8
+	.sdata2 start:0x805A74F0 end:0x805A751C
+
+nw4r/g3d/g3d_calcvtx.cpp:
+	.text start:0x802824A8 end:0x80282CA0
+	.sdata2 start:0x805A7520 end:0x805A7524
