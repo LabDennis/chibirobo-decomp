@@ -446,6 +446,8 @@ game/stage_data.cpp:
 	.data       start:0x80224708 end:0x80224748
 	.bss        start:0x803672C0 end:0x803676CC
 	.sdata      start:0x8065A38C end:0x8065A3C0
+	.rodata     start:0x80201AF0 end:0x80207FA0 align:4
+	.sdata2     start:0x8065CA58 end:0x8065CE10 align:4
 
 game/stage_defaults.cpp:
 	.data       start:0x80212D88 end:0x802152CC
@@ -816,6 +818,10 @@ game/xobjfreedtor.cpp:
 
 game/objb_sound.cpp:
 	.text       start:0x800DD32C end:0x800DD5A0
+	.rodata     start:0x8020A918 end:0x8020A930
+	.data       start:0x80228FF8 end:0x802291F0
+	.sdata      start:0x8065A658 end:0x8065A680
+	.sdata2     start:0x8065D9C0 end:0x8065D9F0
 
 game/xobjfree.cpp:
 	.text       start:0x800DD600 end:0x800DDB8C
@@ -914,6 +920,9 @@ game/objb_army.cpp:
 game/xobjspider.cpp:
 	.text       start:0x800EA30C end:0x800F49F0
 	.ctors      start:0x801FD68C end:0x801FD690
+	.bss        start:0x8037E480 end:0x8037E7CC
+	.sbss       start:0x8065B2B8 end:0x8065B2C8
+	.sbss2      start:0x80660268 end:0x80660270
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F49F0 end:0x800FC930
@@ -1073,6 +1082,10 @@ game/xobjactortoyread.cpp:
 
 game/xobjactorjenny.cpp:
 	.text       start:0x80122E0C end:0x8012641C
+	.rodata     start:0x8020BBB8 end:0x8020BE08
+	.data       start:0x8022D370 end:0x8022D5C8
+	.sdata      start:0x8065A8B8 end:0x8065A8E8
+	.sdata2     start:0x8065E548 end:0x8065E5D8
 
 game/xobjactormama.cpp:
 	.text       start:0x8012641C end:0x80128210
@@ -1092,12 +1105,25 @@ game/mamareset.cpp:
 
 game/xobjactorpapa.cpp:
 	.text       start:0x8012931C end:0x8012C858
+	.rodata     start:0x8020BF88 end:0x8020C178
+	.data       start:0x8022D800 end:0x8022DA60
+	.sdata      start:0x8065A918 end:0x8065A948
+	.sdata2     start:0x8065E688 end:0x8065E728
 
 game/xobjactortao.cpp:
 	.text       start:0x8012C858 end:0x8012F428
+	.rodata     start:0x8020C178 end:0x8020C2B8
+	.data       start:0x8022DA60 end:0x8022DC88
+	.bss        start:0x8037FE98 end:0x8037FEB8
+	.sdata      start:0x8065A948 end:0x8065A978
+	.sdata2     start:0x8065E728 end:0x8065E788
 
 game/xobjactordeca.cpp:
 	.text       start:0x8012F428 end:0x80131BE8
+	.rodata     start:0x8020C2B8 end:0x8020C3F8
+	.data       start:0x8022DC88 end:0x8022DEF8
+	.sdata      start:0x8065A978 end:0x8065A9A8
+	.sdata2     start:0x8065E788 end:0x8065E820
 
 game/xobjreadanmdtor.cpp:
 	.text       start:0x80131BE8 end:0x80131C6C
@@ -2267,6 +2293,7 @@ game/cfont.cpp:
 	.sdata      start:0x8065AD68 end:0x8065AD70
 	.sbss       start:0x8065B860 end:0x8065B878
 	.sdata2     start:0x8065F680 end:0x8065F6A8
+	.sbss2      start:0x806602C8 end:0x806602D0
 
 game/cfile.cpp:
 	extab       start:0x80005F10 end:0x80005F78
@@ -2842,9 +2869,6 @@ game/params_vtable.cpp:
 
 game/xpad_vtable.cpp:
 	.data       start:0x8022823C end:0x80228254
-
-game/xobjsound_vtable.cpp:
-	.data       start:0x802290A0 end:0x802291EC
 
 game/cmotioncontrolcamera_vtable.cpp:
 	.data       start:0x8020FFCC end:0x8020FFD8

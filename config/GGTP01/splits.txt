@@ -448,6 +448,8 @@ game/stage_data.cpp:
 	.data       start:0x8022B10C end:0x8022B148
 	.bss        start:0x8036DFD8 end:0x8036E3E4
 	.sdata      start:0x80661214 end:0x80661248
+	.rodata     start:0x80204498 end:0x8020E928 align:4
+	.sdata2     start:0x806638F0 end:0x80663F28 align:4
 
 game/stage_defaults.cpp:
 	.data       start:0x802194A8 end:0x8021B9EC
@@ -819,6 +821,10 @@ game/xobjfreedtor.cpp:
 
 game/objb_sound.cpp:
 	.text       start:0x800DF9FC end:0x800DFC70
+	.rodata     start:0x802112A0 end:0x802112B8
+	.data       start:0x8022F9F8 end:0x8022FBF0
+	.sdata      start:0x806614E0 end:0x80661508
+	.sdata2     start:0x80664AE0 end:0x80664B10
 
 game/xobjfree.cpp:
 	.text       start:0x800DFCD0 end:0x800E025C
@@ -917,6 +923,9 @@ game/objb_army.cpp:
 game/xobjspider.cpp:
 	.text       start:0x800EC8B4 end:0x800F723C
 	.ctors      start:0x80200090 end:0x80200094
+	.bss        start:0x80385280 end:0x803855CC
+	.sbss       start:0x80662158 end:0x80662168
+	.sbss2      start:0x806673B0 end:0x806673B8
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F723C end:0x800FF184
@@ -1108,6 +1117,11 @@ game/xobjactorpapa.cpp:
 
 game/xobjactortao.cpp:
 	.text       start:0x8012F064 end:0x80131C34
+	.rodata     start:0x802129A0 end:0x80212AE0
+	.data       start:0x80234460 end:0x80234688
+	.bss        start:0x80386C98 end:0x80386CB8
+	.sdata      start:0x806617D0 end:0x80661800
+	.sdata2     start:0x80665838 end:0x80665898
 
 game/xobjactordeca.cpp:
 	.text       start:0x80131C34 end:0x801343F4
@@ -2284,6 +2298,7 @@ game/cfont.cpp:
 	.sdata      start:0x80661C00 end:0x80661C08
 	.sbss       start:0x80662700 end:0x80662718
 	.sdata2     start:0x806667C8 end:0x806667F0
+	.sbss2      start:0x80667410 end:0x80667418
 
 game/cfile.cpp:
 	extab       start:0x80005F10 end:0x80005F78
@@ -2859,9 +2874,6 @@ game/params_vtable.cpp:
 
 game/xpad_vtable.cpp:
 	.data       start:0x8022EC3C end:0x8022EC54
-
-game/xobjsound_vtable.cpp:
-	.data       start:0x8022FAA0 end:0x8022FBEC
 
 game/cmotioncontrolcamera_vtable.cpp:
 	.data       start:0x802166D8 end:0x802166E4

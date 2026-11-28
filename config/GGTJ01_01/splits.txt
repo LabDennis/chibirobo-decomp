@@ -447,6 +447,8 @@ game/stage_data.cpp:
 	.data       start:0x80223D70 end:0x80223DB0
 	.bss        start:0x8034586C end:0x80345C78
 	.sdata      start:0x806347C4 end:0x806347F8
+	.rodata     start:0x80203560 end:0x80208CA8 align:4
+	.sdata2     start:0x80636E90 end:0x806370D8 align:4
 
 game/stage_defaults.cpp:
 	.data       start:0x80213C38 end:0x8021617C
@@ -812,6 +814,10 @@ game/xobjfreedtor.cpp:
 
 game/objb_sound.cpp:
 	.text       start:0x800DF070 end:0x800DF2E4
+	.rodata     start:0x8020B620 end:0x8020B638
+	.data       start:0x80228640 end:0x80228838
+	.sdata      start:0x80634A88 end:0x80634AB0
+	.sdata2     start:0x80637C88 end:0x80637CB8
 
 game/xobjfree.cpp:
 	.text       start:0x800DF344 end:0x800DF8D0
@@ -910,6 +916,9 @@ game/objb_army.cpp:
 game/xobjspider.cpp:
 	.text       start:0x800EC050 end:0x800F6734
 	.ctors      start:0x801FEF4C end:0x801FEF50
+	.bss        start:0x8035CA58 end:0x8035CD98
+	.sbss       start:0x806356D0 end:0x806356E0
+	.sbss2      start:0x8063A528 end:0x8063A530
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F6734 end:0x800FE674
@@ -1101,6 +1110,11 @@ game/xobjactorpapa.cpp:
 
 game/xobjactortao.cpp:
 	.text       start:0x8012E438 end:0x80131008
+	.rodata     start:0x8020CE80 end:0x8020CFC0
+	.data       start:0x8022D088 end:0x8022D2B0
+	.bss        start:0x8035E448 end:0x8035E468
+	.sdata      start:0x80634D78 end:0x80634DA8
+	.sdata2     start:0x806389F0 end:0x80638A50
 
 game/xobjactordeca.cpp:
 	.text       start:0x80131008 end:0x801337C8
@@ -2277,6 +2291,7 @@ game/cfont.cpp:
 	.sdata      start:0x80635198 end:0x806351A0
 	.sbss       start:0x80635C78 end:0x80635C88
 	.sdata2     start:0x80639948 end:0x80639970
+	.sbss2      start:0x8063A588 end:0x8063A590
 
 game/cfile.cpp:
 	extab       start:0x80005F18 end:0x80005F80
@@ -2852,9 +2867,6 @@ game/params_vtable.cpp:
 
 game/xpad_vtable.cpp:
 	.data       start:0x80227884 end:0x8022789C
-
-game/xobjsound_vtable.cpp:
-	.data       start:0x802286E8 end:0x80228834
 
 game/cmotioncontrolcamera_vtable.cpp:
 	.data       start:0x80210CCC end:0x80210CD8
