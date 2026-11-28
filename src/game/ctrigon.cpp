@@ -186,8 +186,8 @@ static void CollectTrigons(HSD_JObj* jobj, void* context, s32 type)
 		if (mobj == NULL || mobj->mat == NULL) {
 			continue;
 		}
-		// the diffuse rgb, alpha shifted out
-		const u32 color = *reinterpret_cast<u32*>(&mobj->mat->diffuse) >> 8;
+		// the diffuse rgb, alpha omitted
+		const u32 color = ((u32)mobj->mat->diffuse.r << 16) | ((u32)mobj->mat->diffuse.g << 8) | mobj->mat->diffuse.b;
 		for (HSD_PObj* pobj = HSD_DObjGetPObj(dobj); pobj != NULL; pobj = HSD_PObjGetNext(pobj)) {
 			u32 n          = ParsePObj(pobj, &tri[trigon->mNum], mtx);
 			TRIGON_INFO* t = &tri[trigon->mNum];

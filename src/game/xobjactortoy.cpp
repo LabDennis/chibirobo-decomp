@@ -641,7 +641,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		mFacing    = mHeading;
 		CVec home(mHomePos);
 		f32 dx = home.x - mMoveTranslate.x, dz = home.z - mMoveTranslate.z;
-		if (sqrtf(dz * dz + (dx * dx + 0.0f)) < 1.0f) {
+		if (sqrtf(dx * dx + dz * dz) < 1.0f) {
 			mMoveTranslate.Set(mHomePos);
 			mMoveSpeed = 0;
 			++mKindStep;
