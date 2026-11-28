@@ -4795,7 +4795,7 @@ Vec XObjChr::GetCameraTarget()
  */
 extern "C" s32 ClassifyFloatBits(f32 value)
 {
-	return fpclassify(value);
+	return __fpclassifyf(value);
 }
 
 // The extracted map camera uses this vector copy.

@@ -31,7 +31,7 @@ static inline void GsChanSetNext(CGsChannel* ch, HSD_Chan* next)
 
 static inline bool ColorsEqual(const GXColor& first, const GXColor& second)
 {
-	return *(const u32*)&first == *(const u32*)&second;
+	return first.r == second.r && first.g == second.g && first.b == second.b && first.a == second.a;
 }
 
 static inline void GsChanSetAmbColor(CGsChannel* ch, GXColor color)
