@@ -1,6 +1,18 @@
 #ifndef _GAME_FBTEXEFF_H
 #define _GAME_FBTEXEFF_H
 
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
+
+STATIC_ASSERT(sizeof(CGame::FbMirrorEx) == 0x37C);
+
+// the game's mirrors
+extern "C" FbMirror gFramebufferMirrors[5];
+
+#else
 #include "game/ccamera.h"
 #include "game/ctpl.h"
 
@@ -56,6 +68,8 @@ public:
 };
 STATIC_ASSERT(sizeof(FbSubwin) == 0x2D8);
 
+extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
+
 // a mirror, renders the scene again through a camera reflected in a joint's plane
 class FbMirror : public CFbTexEff {
 public:
@@ -88,5 +102,6 @@ STATIC_ASSERT(sizeof(FbMirrorEx) == 0x2F4);
 
 // the game's mirrors
 extern "C" FbMirrorEx gFramebufferMirrors[5];
+#endif
 
 #endif

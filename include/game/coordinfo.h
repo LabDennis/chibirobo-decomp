@@ -32,8 +32,21 @@ public:
 	virtual ~CoordInfo() { } // _08
 };
 
-// The data for an object kind in objTable or objTableEx.
+// an entry of objTable or objTableEx, 0x18 bytes. the kind record an object points at
+#if defined(VERSION_R24J01)
+class ResourceFile;
+// what an object kind's objTable entry starts with, the archive its model is read from
+struct XObjSource {
+	const char* mName;      // _00
+	ResourceFile* mArchive; // _04
+	u32 _08;
+	u32 _0C;
+	const char** mAnimNames; // _10, the kind's animation names, SetAnim looks its anims up by them
+	s32 mAnimCount;          // _14, how many mAnimNames there are
+};
+#else
 struct XObjSource;
+#endif
 struct UnkObjData {
 	XObjSource* mSource; // _00
 	u32 mModel;          // _04
@@ -43,6 +56,9 @@ struct UnkObjData {
 	s16 mLookRange;      // _12
 	s16 mCategory;       // _14, category, also which pool in XOBJS
 	s16 mItemIndex;      // _16, item index, some callers test it as flags
+
+	s16 GetCategory() const { return this != NULL ? mCategory : 0; }
+	s16 GetItem() const { return this != NULL ? mItemIndex : 0; }
 };
 STATIC_ASSERT(sizeof(UnkObjData) == 0x18);
 extern "C" UnkObjData* GetObjData(const CoordInfo* info);
@@ -65,19 +81,37 @@ public:
 	// _08 vtable
 
 	AttrInfo() { mObjData = NULL; }
+#if defined(VERSION_R24J01)
+	AttrInfo(CoordInfo* info) { Init(info); } // the Wii ctor delegates to the real Init (SpawnObjectFromPlacement calls it)
+#else
 	AttrInfo(CoordInfo* info)
 	    : mObjData(GetObjData(info))
 	    , mPlacement(info->mPlacement)
 	{
 	}
+#endif
 	AttrInfo(const CoordInfo& info)
 	    : mObjData(GetObjData(&info))
 	    , mPlacement(info.mPlacement)
 	{
 	}
+#if defined(VERSION_R24J01)
+	// the Wii object archive comes from a shared ResourceFile pool, claimed on Init
+	void Init(CoordInfo* info);
+	virtual ~AttrInfo() { } // _08, XObj's ctor stores __vt__8AttrInfo on the Wii too
+#else
 	virtual ~AttrInfo() { } // _08
+#endif
 };
 
 extern "C" StagePlacement* GetStagePlacementByIndex(s32 i);
+
+// Spawned objects can use placements in the executable, outside the loaded stage table.
+inline s32 GetStagePlacementIndex(const StagePlacement* placement)
+{
+	const StagePlacement* first = GetStagePlacementByIndex(0);
+	s32 byteOffset              = (s32)((u32)placement - (u32)first);
+	return byteOffset / (s32)sizeof(StagePlacement);
+}
 
 #endif

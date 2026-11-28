@@ -10,10 +10,19 @@ namespace mm {
 
 // size must be a multiple of 32 or it complains, the name shows up in Dump
 void* Alloc(u32 size, const char* name);
+#if defined(VERSION_R24J01)
+void Free(void* ptr);
+#else
 // every caller passes 1, it clears the block's static flag
 void Free(void* ptr, s32 flag);
+#endif
 void Dump();
 void Init();
+#if defined(VERSION_R24J01)
+// each makes one expanded heap over the arena it is given and moves the arena's start past it
+void InitMem1(void* start, u32 size); // 0x802A7478
+void InitMem2(void* start, u32 size); // 0x802A74D4
+#endif
 // the name a block was allocated with, and setting a new one
 void SetName(void* ptr, const char* name);
 char* GetName(void* ptr);

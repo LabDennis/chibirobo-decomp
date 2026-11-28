@@ -2,7 +2,11 @@
 #define _GAME_CAMINFO_H
 
 #include "types.h"
+#if defined(VERSION_R24J01)
+#include <revolution/mtx.h>
+#else
 #include <dolphin/mtx/mtxtypes.h>
+#endif
 
 // split from ccameraaction.h since the getters' Vec literals land in the .rodata of every
 // file that includes them

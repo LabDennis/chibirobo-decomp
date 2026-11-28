@@ -3,6 +3,27 @@
 
 #include "types.h"
 
+#if defined(VERSION_R24J01)
+class CBitStatus64 {
+public:
+	CBitStatus64() { mFlags = 0; }
+
+	u64 mFlags;
+	// _08 vtable
+
+	virtual ~CBitStatus64() { } // _08
+
+	// any of the mask's bits set, as the GameCube CStatus::Check; the ternary is what leaves retail's
+	// srawi of the compared 0 behind (0x800505DC)
+	bool Check(u64 mask) const { return (mFlags & mask) ? true : false; }
+};
+STATIC_ASSERT(sizeof(CBitStatus64) == 0x10);
+
+class CStatus64 : public CBitStatus64 {
+public:
+	virtual ~CStatus64() { }
+};
+#else
 // CStatus with 64 flags, class name from RTTI. XObj keeps its state bits in one, so does CBase.
 // its own header since cgame.h can't take ut.h (cpad.h's CPad clashes with ut.h's)
 class CStatus64 {
@@ -14,9 +35,12 @@ public:
 
 	virtual ~CStatus64() { } // _08
 
-	// any of the mask's bits set, as CStatus::Check
+	// any of the mask's bits set, as CStatus::Check and the Wii's CBitStatus64::Check. The toy's 0x16C command handler
+	// tests the drawn bit with it: written out, the handler fits the inline limit of the toy's ProcessPendingEvents,
+	// where retail calls it (HandleToyKind16CCommand, 0x80120778)
 	bool Check(u64 mask) const { return (mFlags & mask) ? true : false; }
 };
+#endif
 typedef char CStatus64_size_check[sizeof(CStatus64) == 0x10 ? 1 : -1];
 
 #endif

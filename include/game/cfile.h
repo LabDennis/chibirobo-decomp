@@ -1,3 +1,135 @@
+#ifdef VERSION_R24J01
+#ifndef _GAME_CFILE_H
+#define _GAME_CFILE_H
+
+// relative, so files built with the HSD header tree first still get the sdk ones
+#include "../Dolphin/dvd.h"
+#include "../Dolphin/arc.h"
+
+// file loaders own their buffers. class names from RTTI, ReadEx from a halt string
+
+class CFileArchive;
+
+class CFile : public DVDFileInfo {
+public:
+	CFile()
+	{
+#if !defined(VERSION_R24J01)
+		mArchive = NULL;
+#endif
+		mEntrynum = -1;
+		mBuffer   = NULL;
+		mResult   = 0;
+#if defined(VERSION_R24J01)
+		mFromMemory = FALSE;
+		mInArchive  = FALSE;
+#endif
+		mState = 1;
+	}
+
+	// _00 DVDFileInfo
+#if defined(VERSION_R24J01)
+	char mPath[0x81]; // _3C, CBase::Start's copy of a CTpl copies 0x81 bytes of it
+#else
+	char mPath[0x84]; // _3C
+#endif
+	s32 mEntrynum; // _C0
+	u32 mOffset;   // _C4
+	u32 mSize;     // _C8
+	void* mBuffer; // _CC
+	s32 mResult;   // _D0, 1 while the read is running, then 0 or an error
+#if defined(VERSION_R24J01)
+	u8 mFromMemory; // _D4, mBuffer is the caller's memory, not read from disc
+	u8 mInArchive;  // _D5, read out of the current CFileArchive (_D6 is padding: copies skip it)
+#else
+	CFileArchive* mArchive; // _D4
+#endif
+	ARCFileInfo mArcInfo; // _D8
+	s32 mState;           // _E4, ReadEx step
+	                      // _E8 vtable
+
+	virtual ~CFile() { }                                                          // _08 (weak)
+	virtual void* Alloc(u32 size);                                                // _0C
+	virtual void Free();                                                          // _10
+	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
+	virtual s32 GetResult();                                                      // _18
+	virtual s32 Read(const char* path, u32 offset, u32 size);                     // _1C
+#if defined(VERSION_R24J01)
+	virtual BOOL Close(); // _20, the Wii version reports TRUE
+#else
+	virtual void Close(); // _20
+#endif
+	virtual BOOL ReadEx(const char* path, u32 offset, u32 size); // _24
+#if defined(VERSION_R24J01)
+	virtual BOOL IsLoaded() { return mBuffer != NULL && mState == 0; } // _28 (weak)
+#endif
+
+	s32 ConvertPathToEntrynum(const char* path);
+#if defined(VERSION_R24J01)
+	s32 Open(const char* path);
+	s32 CloseHandle();
+	s32 StartRead(u32 size, u32 offset);
+	BOOL IsInArchive(const char* path);
+	s32 OpenPath(const char* path);
+#else
+	s32 CloseHandle(); // in ctpl.cpp
+
+	// inlined:
+	s32 Open();
+	void StartRead(BOOL fromAram);
+#endif
+};
+// size checks by hand, STATIC_ASSERT lives in types.h
+typedef char CFile_size_check[sizeof(CFile) == 0xEC ? 1 : -1];
+
+// takes its buffer straight from the OS heap
+class CFileA : public CFile {
+public:
+	virtual ~CFileA() { }          // _08 (weak)
+	virtual void* Alloc(u32 size); // _0C
+	virtual void Free();           // _10
+};
+
+// an ARC image, files read while it's the current archive come out of it
+class CFileArchive : public CFile {
+public:
+	virtual ~CFileArchive() { }                                                   // _08 (weak)
+	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
+	virtual s32 GetResult();                                                      // _18
+	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
+
+	ARCHandle mHandle; // _EC
+};
+typedef char CFileArchive_size_check[sizeof(CFileArchive) == 0x108 ? 1 : -1];
+
+// a text file read a line at a time
+class CFileText : public CFile {
+public:
+	virtual ~CFileText() { } // _08 (weak)
+
+	BOOL GetLine(char* line);
+
+	u32 mPos; // _EC
+};
+typedef char CFileText_size_check[sizeof(CFileText) == 0xF0 ? 1 : -1];
+
+#if defined(VERSION_R24J01)
+// a pooled resource file: GetResult counts a use, Close only really closes once they run out
+class ResourceFile : public CFile {
+public:
+	ResourceFile() { mRefCount = 0; }
+	virtual ~ResourceFile() { } // _08 (weak), 0x8002F374
+
+	virtual s32 GetResult(); // _18
+	virtual BOOL Close();    // _20
+
+	u32 mRefCount; // _EC
+};
+typedef char ResourceFile_size_check[sizeof(ResourceFile) == 0xF0 ? 1 : -1];
+#endif
+
+#endif
+#else
 #ifndef _GAME_CFILE_H
 #define _GAME_CFILE_H
 
@@ -81,4 +213,5 @@ public:
 };
 typedef char CFileText_size_check[sizeof(CFileText) == 0xF0 ? 1 : -1];
 
+#endif
 #endif
