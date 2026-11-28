@@ -128,56 +128,6 @@ extern "C" void InitStage(s32 arg)
 }
 
 // InitStage
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    stw      r0, 0x14(r1)
-    bl       ClearFighterObjects
-    bl       Init__3CarFv
-    lis      r3, gGame@ha
-    lis      r4, takiObj@ha
-    addi     r8, r3, gGame@l
-    li       r0, 0x0
-    addi     r6, r4, takiObj@l
-    li       r10, 0x0
-    addis    r3, r8, 0x1
-    stw      r0, 0x0(r6)
-    lwz      r9, -0x57a0(r3)
-    b        .L_00006E38
-.L_00006DE8:
-    addis    r4, r8, 0x1
-    li       r3, 0x1
-    lwz      r7, -0x67a0(r4)
-    li       r4, 0x0
-    lwz      r0, 0x228(r7)
-    lwz      r5, 0x22c(r7)
-    and      r0, r0, r4
-    and      r3, r5, r3
-    xor      r3, r3, r4
-    xor      r0, r0, r4
-    or.      r0, r3, r0
-    beq      .L_00006E30
-    lwz      r3, 0x238(r7)
-    lwz      r0, 0x0(r3)
-    cmpwi    r0, 0x254
-    bne      .L_00006E30
-    lis      r3, takiObj@ha
-    stw      r7, takiObj@l(r3)
-.L_00006E30:
-    addi     r8, r8, 0x4
-    addi     r10, r10, 0x1
-.L_00006E38:
-    lwz      r0, 0x0(r6)
-    cmplwi   r0, 0x0
-    bne      .L_00006E4C
-    cmpw     r10, r9
-    blt      .L_00006DE8
-.L_00006E4C:
-    lwz      r0, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
 
 /**
  * @note Address: stage02 .text 0x6C34
@@ -283,42 +233,6 @@ extern "C" s32 CmdAddMato(s32 cmd, s32 count, s32* args)
 }
 
 // CmdAddMato
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    lis      r3, gGame@ha
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    addi     r31, r3, gGame@l
-    stw      r30, 0x18(r1)
-    mr       r30, r5
-    stw      r29, 0x14(r1)
-    li       r29, 0x0
-    stw      r28, 0x10(r1)
-    mr       r28, r4
-    b        .L_00006A74
-.L_00006A54:
-    lwz      r4, 0x0(r30)
-    slwi     r0, r4, 2
-    add      r3, r31, r0
-    addis    r3, r3, 0x1
-    lwz      r3, -0x67a0(r3)
-    bl       AddMato
-    addi     r30, r30, 0x4
-    addi     r29, r29, 0x1
-.L_00006A74:
-    cmpw     r29, r28
-    blt      .L_00006A54
-    lwz      r0, 0x24(r1)
-    li       r3, 0x0
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    lwz      r28, 0x10(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
 
 /**
  * @note Address: stage02 .text 0x69FC
@@ -408,60 +322,6 @@ extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 count, s32* args)
 }
 
 // CmdRegisterFighterLink
-/*
-    stwu     r1, -0x30(r1)
-    mflr     r0
-    lis      r3, gGame@ha
-    stw      r0, 0x34(r1)
-    li       r0, 0x0
-    addi     r3, r3, gGame@l
-    stmw     r27, 0x1c(r1)
-    addis    r30, r3, 0x6
-    addi     r29, r1, 0x8
-    mr       r27, r4
-    stw      r0, 0x8(r1)
-    mr       r31, r5
-    li       r28, 0x0
-    subi     r30, r30, 0x2f80
-    stw      r0, 0xc(r1)
-    stw      r0, 0x10(r1)
-    stw      r0, 0x14(r1)
-    b        .L_00006848
-.L_00006814:
-    lwz      r0, 0x0(r30)
-    lwz      r3, 0x0(r31)
-    cmplwi   r0, 0x0
-    extsh    r4, r3
-    beq      .L_00006834
-    mr       r3, r30
-    bl       ResolveEventObjectId
-    b        .L_00006838
-.L_00006834:
-    li       r3, 0x0
-.L_00006838:
-    stw      r3, 0x0(r29)
-    addi     r31, r31, 0x4
-    addi     r29, r29, 0x4
-    addi     r28, r28, 0x1
-.L_00006848:
-    cmplwi   r28, 0x4
-    bge      .L_0000685C
-    subi     r0, r28, 0x1
-    cmpw     r0, r27
-    blt      .L_00006814
-.L_0000685C:
-    lwz      r3, 0x8(r1)
-    lwz      r4, 0xc(r1)
-    lwz      r5, 0x10(r1)
-    lwz      r6, 0x14(r1)
-    bl       InitPilotNwing
-    lmw      r27, 0x1c(r1)
-    li       r3, 0x0
-    lwz      r0, 0x34(r1)
-    mtlr     r0
-    addi     r1, r1, 0x30
-    blr
-*/
 
 /**
  * @note Address: stage02 .text 0x678C

@@ -250,66 +250,6 @@ void CCamera::CalcInterest()
 	mInterest.z  = mEye.z + zOffset * cosPitch;
 	mInterest.y  = mEye.y + mDistance * (f32)sin(x);
 }
-/*
-    stwu     r1, -0x40(r1)
-    mflr     r0
-    stw      r0, 0x44(r1)
-    stfd     f31, 0x30(r1)
-    psq_st   f31, 0x38(r1), 0, qr0
-    stfd     f30, 0x20(r1)
-    psq_st   f30, 0x28(r1), 0, qr0
-    stfd     f29, 0x10(r1)
-    psq_st   f29, 0x18(r1), 0, qr0
-    stw      r31, 0xc(r1)
-    mr       r31, r3
-    lfs      f1, lbl_8065F52C@sda21(r0)
-    lfs      f0, 0xb4(r3)
-    lfs      f2, lbl_8065F528@sda21(r0)
-    fadds    f29, f1, f0
-    lfs      f0, 0xb8(r3)
-    fadds    f30, f2, f0
-    fmr      f1, f29
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       cos
-    frsp     f3, f1
-    lfs      f2, 0xe4(r31)
-    lfs      f0, 0x94(r31)
-    fmr      f1, f29
-    fmuls    f2, f2, f3
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0xa4(r31)
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       sin
-    frsp     f2, f1
-    lfs      f3, 0xe4(r31)
-    lfs      f0, 0x9c(r31)
-    fmr      f1, f29
-    fneg     f2, f2
-    fmuls    f2, f3, f2
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0xac(r31)
-    bl       sin
-    frsp     f2, f1
-    lfs      f1, 0xe4(r31)
-    lfs      f0, 0x98(r31)
-    fmadds   f0, f1, f2, f0
-    stfs     f0, 0xa8(r31)
-    psq_l    f31, 0x38(r1), 0, qr0
-    lfd      f31, 0x30(r1)
-    psq_l    f30, 0x28(r1), 0, qr0
-    lfd      f30, 0x20(r1)
-    psq_l    f29, 0x18(r1), 0, qr0
-    lfd      f29, 0x10(r1)
-    lwz      r0, 0x44(r1)
-    lwz      r31, 0xc(r1)
-    mtlr     r0
-    addi     r1, r1, 0x40
-    blr
-*/
 
 /**
  * @note Address: 0x8019265C

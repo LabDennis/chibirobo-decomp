@@ -1786,17 +1786,6 @@ s32 CEvt::_cmd_POPBP(u8, s32)
 	mValues.mCount = mFrames.mBuf[--mFrames.mCount];
 	return 0;
 }
-/*
-    lwz      r4, 0x38(r3)
-    lwz      r5, 0x34(r3)
-    subi     r0, r4, 0x1
-    stw      r0, 0x38(r3)
-    slwi     r0, r0, 2
-    lwzx     r0, r5, r0
-    stw      r0, 0x48(r3)
-    li       r3, 0x0
-    blr
-*/
 
 /**
  * @note Address: 0x8007BE30
