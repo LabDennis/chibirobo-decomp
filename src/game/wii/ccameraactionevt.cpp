@@ -1,0 +1,345 @@
+#include "game/ccameraaction.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "JSystem/JMath/Inline.h"
+// the Wii build times the interpolators off its own refresh counter
+extern s32 gRefreshRate;
+#undef FRAME_TIME
+#define FRAME_TIME (1.0f / gRefreshRate)
+// the Wii build inlines the five JMathInlineVEC helpers as paired-single code;
+// the longer SDK calls (PSVECNormalize, PSVECDistance) stay out of line
+#define PSVECAdd JMathInlineVEC::PSVECAdd
+#endif
+#include "game/gmath.h"
+#include "game/cvec.h"
+extern "C" {
+#include <dolphin/os.h>
+}
+#include "Version.h"
+
+// these come out in reverse, deferred inlining
+
+/**
+ * @note Address: 0x80143920
+ * @note Size: 0x94
+ */
+void CCameraActionEvt::Init()
+{
+	mEyeInterps[0]      = &mEyeLinear; // slot 0 linear, 1 ease-in-out, 2 ease-out
+	mEyeInterps[1]      = &mEyeEaseInOut;
+	mEyeInterps[2]      = &mEyeEaseOut;
+	mInterestInterps[0] = &mInterestLinear;
+	mInterestInterps[1] = &mInterestEaseInOut;
+	mInterestInterps[2] = &mInterestEaseOut;
+	mFovInterps[0]      = &mFovLinear;
+	mFovInterps[1]      = &mFovEaseInOut;
+	mFovInterps[2]      = &mFovEaseOut;
+	mDistanceInterps[0] = &mDistanceLinear;
+	mDistanceInterps[1] = &mDistanceEaseInOut;
+	mDistanceInterps[2] = &mDistanceEaseOut;
+	mAngleInterps[0]    = &mAngleLinear;
+	mAngleInterps[1]    = &mAngleEaseInOut;
+	mAngleInterps[2]    = &mAngleEaseOut;
+	mTarget             = NULL;
+}
+
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x801614EC
+ * @note Size: 0xD4
+ */
+void CCameraActionEvt::SetCamera(CCamera* camera)
+{
+	SetEye(camera->mView.mEye);
+	SetInterest(camera->mView.mInterest);
+	SetDistance(camera->mView.mDistance);
+	SetFov(camera->mFov);
+	SetAngle(camera->mView.mAngle);
+	mCameraFlags = 0;
+	mAxes.mFlags &= ~7;
+	mTarget         = NULL;
+	mEyeInterp      = NULL;
+	mInterestInterp = NULL;
+	mDistanceInterp = NULL;
+	mFovInterp      = NULL;
+	mAngleInterp    = NULL;
+}
+
+// NONMATCHING: identical instruction stream, but retail keeps this in r31 and step in r30
+// while this build assigns step to r31 and this to r30 (99.1%)
+/**
+ * @note Address: 0x801615C0
+ * @note Size: 0x300
+ */
+void CCameraActionEvt::Update(u32 step)
+{
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, FRAME_TIME)) {
+			SetEye(mEyeInterp->Get());
+		} else {
+			mEyeInterp = NULL;
+		}
+	}
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, FRAME_TIME)) {
+			SetInterest(mInterestInterp->Get());
+		} else {
+			mInterestInterp = NULL;
+		}
+	} else if (mTarget != NULL) { // no interp: keep tracking the target
+		SetInterest(((WiiPlayerState*)mTarget)->GetCameraTarget());
+	}
+	if (mDistanceInterp != NULL) {
+		if (!mDistanceInterp->Update(step, FRAME_TIME)) {
+			SetDistance(mDistanceInterp->Get());
+		} else {
+			mDistanceInterp = NULL;
+		}
+	}
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, FRAME_TIME)) {
+			SetFov(mFovInterp->Get());
+		} else {
+			mFovInterp = NULL;
+		}
+	}
+	if (mAngleInterp != NULL) {
+		if (!mAngleInterp->Update(step, FRAME_TIME)) {
+			SetAngle(mAngleInterp->Get());
+		} else {
+			mAngleInterp = NULL;
+		}
+	}
+}
+
+#else
+/**
+ * @note Address: 0x8014384C
+ * @note Size: 0xD4
+ */
+void CCameraActionEvt::SetCamera(CCamera* camera)
+{
+	SetEye(camera->mEye);
+	SetInterest(camera->mInterest);
+	SetDistance(camera->mDistance);
+	SetFov(camera->mFov);
+	SetAngle(camera->mAngle);
+	mCameraFlags = 0;
+	mAxes.mFlags &= ~7;
+	mTarget         = NULL;
+	mEyeInterp      = NULL;
+	mInterestInterp = NULL;
+	mDistanceInterp = NULL;
+	mFovInterp      = NULL;
+	mAngleInterp    = NULL;
+}
+
+/**
+ * @note Address: 0x801435E8
+ * @note Size: 0x264
+ */
+void CCameraActionEvt::Update(u32 step)
+{
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, FRAME_TIME)) {
+			SetEye(mEyeInterp->Get());
+		} else {
+			mEyeInterp = NULL;
+		}
+	}
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, FRAME_TIME)) {
+			SetInterest(mInterestInterp->Get());
+		} else {
+			mInterestInterp = NULL;
+		}
+	} else if (mTarget != NULL) { // no interp: keep tracking the target
+		SetInterest(mTarget->GetCameraTarget());
+	}
+	if (mDistanceInterp != NULL) {
+		if (!mDistanceInterp->Update(step, FRAME_TIME)) {
+			SetDistance(mDistanceInterp->Get());
+		} else {
+			mDistanceInterp = NULL;
+		}
+	}
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, FRAME_TIME)) {
+			SetFov(mFovInterp->Get());
+		} else {
+			mFovInterp = NULL;
+		}
+	}
+	if (mAngleInterp != NULL) {
+		if (!mAngleInterp->Update(step, FRAME_TIME)) {
+			SetAngle(mAngleInterp->Get());
+		} else {
+			mAngleInterp = NULL;
+		}
+	}
+}
+
+#endif
+
+/**
+ * @note Address: 0x80143528
+ * @note Size: 0xC0
+ */
+void CCameraActionEvt::SetEye_Interp(s32 mode, Vec eye, f32 time)
+{
+	if (mode == 3 || time <= 0.0f) { // mode 3 or no time means snap
+		mEyeInterp = NULL;
+		SetEye(eye);
+		return;
+	}
+	mEyeInterp = mEyeInterps[mode];
+	if (mEyeInterp != NULL) {
+		mEyeInterp->Start(mEye, eye, time);
+	}
+}
+
+/**
+ * @note Address: 0x801433EC
+ * @note Size: 0x13C
+ */
+void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
+{
+	if (target == NULL) {
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
+		OSReport("SetInterest_Interp( unknown data )\n");
+#endif
+		return;
+	}
+	mTarget = target;
+#if defined(VERSION_R24J01)
+	// the Wii player's focus point, XObj::GetCameraTarget on GameCube
+	SetInterest_Interp(mode, ((WiiPlayerState*)mTarget)->GetCameraTarget(), time);
+#else
+	SetInterest_Interp(mode, mTarget->GetCameraTarget(), time);
+#endif
+}
+
+/**
+ * @note Address: 0x8014332C
+ * @note Size: 0xC0
+ */
+void CCameraActionEvt::SetInterest_Interp(s32 mode, Vec interest, f32 time)
+{
+	if (mode == 3 || time <= 0.0f) {
+		mInterestInterp = NULL;
+		SetInterest(interest);
+		return;
+	}
+	mInterestInterp = mInterestInterps[mode];
+	if (mInterestInterp != NULL) {
+		mInterestInterp->Start(mInterest, interest, time);
+	}
+}
+
+/**
+ * @note Address: 0x8014329C
+ * @note Size: 0x90
+ */
+void CCameraActionEvt::SetFov_Interp(s32 mode, f32 fov, f32 time)
+{
+	if (mode == 3 || time <= 0.0f) {
+		mFovInterp = NULL;
+		SetFov(fov);
+		return;
+	}
+	mFovInterp = mFovInterps[mode];
+	if (mFovInterp != NULL) {
+		mFovInterp->Start(mFov, fov, time);
+	}
+}
+
+// todo: cleanup
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+inline void TurnShortWay(f32& to, f32& from)
+{
+	f32 f = WrapAngle(from);
+	f32 t = WrapAngle(to);
+	from  = f;
+	to    = t;
+	if (t != f) {
+		f32 diff = t - f;
+#if defined(VERSION_R24J01)
+		diff = nw4r::math::FAbs(diff); // the Wii build takes the absolute value through nw4r
+#else
+		if (diff < 0.0f) {
+			diff = -diff;
+		}
+#endif
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) { // more than half a turn: wrap the other way
+			if (t < f) {
+				to = TWO_PI + t;
+			} else {
+				to = t - TWO_PI;
+			}
+		}
+	}
+}
+
+// NONMATCHING (Wii): the copy of a non-relative angle loads x into f3 and z into f0, retail the
+// other way round (99.4%)
+/**
+ * @note Address: 0x80142DE8
+ * @note Size: 0x4B4
+ */
+void CCameraActionEvt::SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, BOOL relative, f32 time)
+{
+	CVec dest;
+	CVec from;
+
+	if (type == 1) {
+		mCameraFlags = 0x20012;
+	} else if (type == 2) {
+		mCameraFlags = 0x20011;
+	}
+	if (relative) { // relative angles add to the current ones
+		dest = mAngle;
+		dest += angle;
+	}
+	if (!relative) {
+#if defined(VERSION_R24J01)
+		dest.Set(Vec(angle)); // Wii assigns through Set() off a Vec copy of the arg
+#else
+		dest = CVec(angle);
+#endif
+	}
+
+	mAxes.mFlags &= ~7;
+	mAxes.mFlags |= axes;
+	Vec to = mAngle;
+	if (mAxes.mFlags & 1) {
+		to.x = dest.x;
+	}
+	if (mAxes.mFlags & 2) {
+		to.y = dest.y;
+	}
+	if (mAxes.mFlags & 4) {
+		to.z         = dest.z;
+		mCameraFlags = 0x40010;
+	}
+
+	from = mAngle;
+	TurnShortWay(to.x, from.x);
+	TurnShortWay(to.y, from.y);
+	TurnShortWay(to.z, from.z);
+
+	if (mode == 3 || time <= 0.0f) {
+		mAngleInterp = NULL;
+		SetAngle(to);
+		return;
+	}
+	mAngleInterp = mAngleInterps[mode];
+	if (mAngleInterp != NULL) {
+		mAngleInterp->Start(from, to, time);
+	}
+}

@@ -1,6 +1,44 @@
 #include "game/cmodule.h"
 #include "game/mm.h"
 
+// The Wii file defines its functions in the opposite order (retail: Load 0x802C19B8,
+// Unload 0x802C1AB8, Print 0x802C1B38) and its Print is an empty stub. The GameCube
+// file keeps Print, Unload, Load.
+
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C19B8 (R24J01)
+ * @note Size: 0x100
+ */
+BOOL CModule::Load(const char* path)
+{
+	// no rel on the disc counts as done, FALSE means still reading, call again
+	if (mFile.ConvertPathToEntrynum(path) < 0) {
+		return TRUE;
+	}
+
+	if (mFile.ReadEx(path, 0, 0)) {
+		mFile.CloseHandle();
+
+		OSModuleHeader* module = (OSModuleHeader*)mFile.mBuffer;
+		void* bss              = NULL;
+		if (module->bssSize != 0) {
+			bss = mm::Alloc(OSRoundUp32B(module->bssSize), "(bss)");
+			OSLink(&module->info, bss);
+		} else {
+			OSLink(&module->info, NULL);
+		}
+		mModule = module;
+		mBss    = bss;
+
+		if (mModule != NULL) {
+			((CModuleProlog)mModule->prolog)(-1, NULL, NULL);
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+#else
 /**
  * @note Address: 0x801A9050
  * @note Size: 0x1EC
@@ -36,6 +74,7 @@ void CModule::Print() const
 		OSReport("\n");
 	}
 }
+#endif
 
 /**
  * @note Address: 0x801A923C
@@ -47,7 +86,11 @@ void CModule::Unload()
 		Epilog();
 		OSUnlink(&mModule->info);
 		if (mBss != NULL) {
+#if defined(VERSION_R24J01)
+			mm::Free(mBss);
+#else
 			mm::Free(mBss, 1);
+#endif
 		}
 		mFile.Close();
 		mModule = NULL;
@@ -55,6 +98,15 @@ void CModule::Unload()
 	}
 }
 
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C1B38 (R24J01)
+ * @note Size: 0x4
+ */
+void CModule::Print() const
+{
+}
+#else
 /**
  * @note Address: 0x801A92C4
  * @note Size: 0x104
@@ -81,9 +133,10 @@ BOOL CModule::Load(const char* path)
 		mBss    = bss;
 
 		if (mModule != NULL) {
-			((CModuleProlog)mModule->prolog)(-1, 0, NULL);
+			((CModuleProlog)mModule->prolog)(-1, NULL, NULL);
 		}
 		return TRUE;
 	}
 	return FALSE;
 }
+#endif
