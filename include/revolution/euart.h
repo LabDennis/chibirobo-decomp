@@ -1,0 +1,22 @@
+#ifndef REVOLUTION_EUART_H
+#define REVOLUTION_EUART_H
+#include "types.h"
+
+BEGIN_SCOPE_EXTERN_C
+
+typedef enum {
+	EUART_ERROR_OK,
+	EUART_ERROR_FATAL,
+	EUART_ERROR_INVALID,
+	EUART_ERROR_BUSY,
+	EUART_ERROR_4,
+	EUART_ERROR_EXI,
+} EUARTError;
+
+BOOL EUARTInit(void);
+EUARTError InitializeUART(void);
+EUARTError WriteUARTN(const char* msg, u32 n);
+
+END_SCOPE_EXTERN_C
+
+#endif
